@@ -235,7 +235,7 @@ const TrocLiveValidationScreen: React.FC = () => {
                 )}
 
                 <View style={styles.instructions}>
-                    <Text style={styles.instructionsTitle}>\uD83D\uDCCB Instructions</Text>
+                    <Text style={styles.instructionsTitle}>📋 Instructions</Text>
                     <Text style={styles.instructionsText}>
                         Pour valider l'état du livre, vous devez enregistrer une vidéo montrant :
                     </Text>

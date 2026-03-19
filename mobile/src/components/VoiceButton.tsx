@@ -13,12 +13,12 @@ const VoiceButton: React.FC = () => {
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>\uD83C\uDF99️ Parlez</Text>
+        <Text style={styles.buttonText}>🎙️ Parlez</Text>
       </TouchableOpacity>
 
       {transcript && (
         <Text style={styles.transcript}>
-          \uD83D\uDD0A {transcript}
+          🔊 {transcript}
         </Text>
       )}
     </View>

@@ -113,7 +113,7 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>\uD83D\uDC5F Pointures et Couleurs Disponibles</Text>
+                <Text style={styles.headerTitle}>👟 Pointures et Couleurs Disponibles</Text>
                 {!readonly && (
                     <TouchableOpacity style={styles.addButton} onPress={handleAddVariant}>
                         <SafeIcon name="plus" size={16} color="#FFFFFF" />
@@ -123,7 +123,7 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
             </View>
 
             <Text style={styles.hint}>
-                \uD83D\uDCA1 Ajoutez toutes les pointures et couleurs disponibles (Ex: 38 Noir, 39 Blanc, 40 Marron)
+                💡 Ajoutez toutes les pointures et couleurs disponibles (Ex: 38 Noir, 39 Blanc, 40 Marron)
             </Text>
 
             {/* Liste des variantes */}

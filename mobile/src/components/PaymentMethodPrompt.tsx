@@ -254,7 +254,7 @@ const PaymentMethodPrompt: React.FC<PaymentMethodPromptProps> = ({
                             <View style={[styles.providerSection, mtnEnabled && styles.providerActive]}>
                                 <View style={styles.providerHeader}>
                                     <View style={styles.providerTitleRow}>
-                                        <Text style={styles.providerEmoji}>\uD83D\uDCF1</Text>
+                                        <Text style={styles.providerEmoji}>📱</Text>
                                         <Text style={[styles.providerTitle, mtnEnabled && { color: '#B45309' }]}>
                                             MTN Mobile Money
                                         </Text>
@@ -293,7 +293,7 @@ const PaymentMethodPrompt: React.FC<PaymentMethodPromptProps> = ({
                             <View style={[styles.providerSection, orangeEnabled && styles.providerActiveOrange]}>
                                 <View style={styles.providerHeader}>
                                     <View style={styles.providerTitleRow}>
-                                        <Text style={styles.providerEmoji}>\uD83D\uDCF1</Text>
+                                        <Text style={styles.providerEmoji}>📱</Text>
                                         <Text style={[styles.providerTitle, orangeEnabled && { color: '#C2410C' }]}>
                                             Orange Money
                                         </Text>
@@ -337,7 +337,7 @@ const PaymentMethodPrompt: React.FC<PaymentMethodPromptProps> = ({
                             <View style={[styles.providerSection, cardEnabled && styles.providerActiveStripe]}>
                                 <View style={styles.providerHeader}>
                                     <View style={styles.providerTitleRow}>
-                                        <Text style={styles.providerEmoji}>\uD83D\uDCB3</Text>
+                                        <Text style={styles.providerEmoji}>💳</Text>
                                         <View>
                                             <Text style={[styles.providerTitle, cardEnabled && { color: '#5B21B6' }]}>
                                                 {t('paymentPrompt.cardTitle') || 'Visa / Mastercard / Amex'}
@@ -384,7 +384,7 @@ const PaymentMethodPrompt: React.FC<PaymentMethodPromptProps> = ({
                             <View style={[styles.providerSection, paypalEnabled && styles.providerActivePaypal]}>
                                 <View style={styles.providerHeader}>
                                     <View style={styles.providerTitleRow}>
-                                        <Text style={styles.providerEmoji}>\uD83C\uDD7F️</Text>
+                                        <Text style={styles.providerEmoji}>🅿️</Text>
                                         <Text style={[styles.providerTitle, paypalEnabled && { color: '#1565C0' }]}>
                                             PayPal
                                         </Text>

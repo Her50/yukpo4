@@ -81,12 +81,12 @@ interface ProductCommentsSectionProps {
 }
 
 const REACTION_OPTIONS = [
-    { type: 'like', label: 'J\'aime', emoji: '\uD83D\uDC4D' },
+    { type: 'like', label: 'J\'aime', emoji: '👍' },
     { type: 'love', label: 'J\'adore', emoji: '❤️' },
-    { type: 'insightful', label: 'Pertinent', emoji: '\uD83D\uDCA1' },
-    { type: 'support', label: 'Soutien', emoji: '\uD83E\uDD1D' },
-    { type: 'funny', label: 'Drôle', emoji: '\uD83D\uDE04' },
-    { type: 'angry', label: 'Pas d\'accord', emoji: '\uD83D\uDE20' },
+    { type: 'insightful', label: 'Pertinent', emoji: '💡' },
+    { type: 'support', label: 'Soutien', emoji: '🤝' },
+    { type: 'funny', label: 'Drôle', emoji: '😄' },
+    { type: 'angry', label: 'Pas d\'accord', emoji: '😠' },
 ];
 
 const formatDate = (iso: string): string => {
@@ -399,7 +399,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         setShowEmojiPicker(false);
     }, []);
 
-    const popularEmojis = ['\uD83D\uDE00', '\uD83D\uDE02', '❤️', '\uD83D\uDC4D', '\uD83D\uDC4E', '\uD83D\uDE0A', '\uD83D\uDE0D', '\uD83E\uDD14', '\uD83D\uDE2E', '\uD83D\uDE22', '\uD83D\uDE21', '\uD83C\uDF89', '\uD83D\uDD25', '\uD83D\uDCAF', '✨', '\uD83D\uDE4F', '\uD83D\uDC4F', '\uD83C\uDFAF', '\uD83D\uDCAA', '\uD83D\uDE80'];
+    const popularEmojis = ['😀', '😂', '❤️', '👍', '👎', '😊', '😍', '🤔', '😮', '😢', '😡', '🎉', '🔥', '💯', '✨', '🙏', '👏', '🎯', '💪', '🚀'];
 
     const resetComposer = useCallback(() => {
         setComposerContent('');
@@ -466,7 +466,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     parent_comment_id: replyTarget?.id,
                     product_index: productIndex ?? null,
                 };
-                console.log('[ProductCommentsSection] \uD83D\uDCE4 Envoi commentaire:', {
+                console.log('[ProductCommentsSection] 📤 Envoi commentaire:', {
                     serviceId,
                     productIndex,
                     contentLength: payload.content.length,
@@ -702,7 +702,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                     >
                         <View style={styles.avatarBubble}>
                             <Text style={styles.avatarInitials}>
-                                {item.user_name ? item.user_name.charAt(0).toUpperCase() : '\uD83D\uDC64'}
+                                {item.user_name ? item.user_name.charAt(0).toUpperCase() : '👤'}
                             </Text>
                         </View>
                         <View style={styles.authorInfo}>
@@ -930,7 +930,7 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
                         style={styles.composerActionButton}
                         onPress={() => setShowEmojiPicker(!showEmojiPicker)}
                     >
-                        <Text style={styles.emojiButtonText}>\uD83D\uDE00</Text>
+                        <Text style={styles.emojiButtonText}>😀</Text>
                     </TouchableOpacity>
                     <View style={{ flex: 1 }} />
                     <TouchableOpacity

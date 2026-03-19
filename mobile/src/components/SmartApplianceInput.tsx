@@ -149,7 +149,7 @@ const SmartApplianceInput: React.FC<SmartApplianceInputProps> = ({
                         brand: brand,
                         model: normalized
                     });
-                    console.log(`\uD83C\uDF10 [SmartApplianceInput] Modèle sauvegardé en DB: ${normalized}`);
+                    console.log(`🌐 [SmartApplianceInput] Modèle sauvegardé en DB: ${normalized}`);
                 } catch (dbError) {
                     console.warn('[SmartApplianceInput] Erreur sauvegarde DB:', dbError);
                 }
@@ -303,12 +303,12 @@ const SmartApplianceInput: React.FC<SmartApplianceInputProps> = ({
             {/* Hint */}
             {!showSuggestions && !brand && (
                 <Text style={styles.hint}>
-                    \uD83D\uDCA1 Sélectionnez d'abord une marque pour voir les modèles
+                    💡 Sélectionnez d'abord une marque pour voir les modèles
                 </Text>
             )}
             {!showSuggestions && brand && allModels.length > 0 && (
                 <Text style={styles.hint}>
-                    \uD83D\uDCA1 {allModels.length} modèle(s) {brand} enregistré(s)
+                    💡 {allModels.length} modèle(s) {brand} enregistré(s)
                 </Text>
             )}
         </View>

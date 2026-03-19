@@ -70,7 +70,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
 
       // 2. Charger tous les services du prestataire
       const servicesResponse = await apiGet(`/api/services/user/${prestataireUserId}`);
-      console.log(`\uD83D\uDD0D [PrestataireBoutiqueScreen] Réponse services pour prestataire ${prestataireUserId}:`, {
+      console.log(`🔍 [PrestataireBoutiqueScreen] Réponse services pour prestataire ${prestataireUserId}:`, {
         success: servicesResponse.success,
         hasData: !!servicesResponse.data,
         dataType: typeof servicesResponse.data,
@@ -111,10 +111,10 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       // Charger les produits pour chaque service
       const productPromises = serviceIds.map(async (serviceId: number) => {
         try {
-          console.log(`\uD83D\uDD0D [PrestataireBoutiqueScreen] Chargement produits pour service ${serviceId}...`);
+          console.log(`🔍 [PrestataireBoutiqueScreen] Chargement produits pour service ${serviceId}...`);
           const productsResponse = await apiGet(`/api/services/${serviceId}/products`);
 
-          console.log(`\uD83D\uDCE6 [PrestataireBoutiqueScreen] Réponse produits service ${serviceId}:`, {
+          console.log(`📦 [PrestataireBoutiqueScreen] Réponse produits service ${serviceId}:`, {
             success: productsResponse.success,
             hasData: !!productsResponse.data,
             isArray: Array.isArray(productsResponse.data),
@@ -146,7 +146,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
             }
           }
 
-          console.log(`\uD83D\uDCE6 [PrestataireBoutiqueScreen] Produits extraits pour service ${serviceId}:`, {
+          console.log(`📦 [PrestataireBoutiqueScreen] Produits extraits pour service ${serviceId}:`, {
             productsCount: productsArray.length,
             firstProduct: productsArray[0] ? {
               id: productsArray[0].id,
@@ -211,7 +211,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       const productsArrays = await Promise.all(productPromises);
       let extractedProducts = productsArrays.flat();
 
-      console.log(`\uD83D\uDCCA [PrestataireBoutiqueScreen] Total produits extraits de l'API: ${extractedProducts.length}`, {
+      console.log(`📊 [PrestataireBoutiqueScreen] Total produits extraits de l'API: ${extractedProducts.length}`, {
         servicesProcessed: serviceIds.length,
         productsPerService: productsArrays.map((arr, idx) => ({ serviceId: serviceIds[idx], count: arr.length })),
       });
@@ -221,7 +221,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
       // tous les produits du prestataire via /api/services/{serviceId}/products
       // L'ajout manuel causait une duplication inutile
 
-      console.log(`\uD83D\uDCCA [PrestataireBoutiqueScreen] Total produits chargés: ${extractedProducts.length}`, {
+      console.log(`📊 [PrestataireBoutiqueScreen] Total produits chargés: ${extractedProducts.length}`, {
         servicesProcessed: serviceIds.length,
         productsPerService: productsArrays.map((arr, idx) => ({ serviceId: serviceIds[idx], count: arr.length })),
         note: t('prestataireBoutiqueScreen.leProduitCliqueEstDejaInclusDans')
@@ -301,7 +301,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
 
       // ✅ DEBUG 2026-01-21: Log final des produits
       if (productsWithDistance.length > 0) {
-        console.log(`\uD83D\uDCE6 [PrestataireBoutiqueScreen] Détails des produits chargés:`,
+        console.log(`📦 [PrestataireBoutiqueScreen] Détails des produits chargés:`,
           productsWithDistance.map((p: any) => ({
             id: p.id,
             nom: p.nom || p.name || p.nom_produit,
@@ -340,7 +340,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
   }, [location?.coords?.latitude, location?.coords?.longitude]);
 
   const renderProductCard = useCallback((product: any) => {
-    console.log(`\uD83C\uDFA8 [PrestataireBoutiqueScreen] Rendu ProductCard pour:`, {
+    console.log(`🎨 [PrestataireBoutiqueScreen] Rendu ProductCard pour:`, {
       productId: product.id,
       productNom: product.nom || product.name || product.nom_produit,
       hasService: !!product._service,
@@ -501,7 +501,7 @@ const PrestataireBoutiqueScreen: React.FC<PrestataireBoutiqueScreenProps> = () =
             renderItem={({ item, index }) => {
               // ✅ DEBUG 2026-01-21: Log chaque rendu de produit
               if (index === 0) {
-                console.log(`\uD83D\uDDA5️ [PrestataireBoutiqueScreen] Premier produit rendu:`, {
+                console.log(`🖥️ [PrestataireBoutiqueScreen] Premier produit rendu:`, {
                   id: item.id,
                   nom: item.nom || item.name || item.nom_produit,
                   totalProducts: products.length

@@ -116,7 +116,7 @@ const [testResults, setTestResults] = useState<any[]>([]);
         disabled={isLoading}
       >
         <Text style={styles.testButtonText}>
-          {isLoading ? '⏳ Tests en cours...' : '\uD83D\uDE80 Lancer tous les tests'}
+          {isLoading ? '⏳ Tests en cours...' : '🚀 Lancer tous les tests'}
         </Text>
       </TouchableOpacity>
 

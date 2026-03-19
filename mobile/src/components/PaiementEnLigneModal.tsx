@@ -247,9 +247,9 @@ const PaiementEnLigneModal: React.FC<PaiementEnLigneModalProps> = ({
 
                                 <View style={styles.prestataireMethodInfo}>
                                     <Text style={styles.prestataireMethodLabel}>
-                                        {prestatairePaymentMethod.type === 'mobile_money' ? '\uD83D\uDCF1 Mobile Money' :
-                                            prestatairePaymentMethod.type === 'orange_money' ? '\uD83C\uDF4A Orange Money' :
-                                                '\uD83D\uDCB3 Carte Bancaire'}
+                                        {prestatairePaymentMethod.type === 'mobile_money' ? '📱 Mobile Money' :
+                                            prestatairePaymentMethod.type === 'orange_money' ? '🍊 Orange Money' :
+                                                '💳 Carte Bancaire'}
                                     </Text>
                                     {prestatairePaymentMethod.phoneNumber && (
                                         <Text style={styles.prestataireMethodValue}>

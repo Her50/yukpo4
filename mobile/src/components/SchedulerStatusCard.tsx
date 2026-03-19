@@ -31,7 +31,7 @@ const SchedulerStatusCard: React.FC = () => {
           }
           style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#4F46E5', borderRadius: 6 } as any}
         >
-          <Text style={{ color: '#fff' }}>\uD83E\uDDE0 Résumer maintenant</Text>
+          <Text style={{ color: '#fff' }}>🧠 Résumer maintenant</Text>
         </TouchableOpacity>
       </View>
     );
@@ -44,7 +44,7 @@ const SchedulerStatusCard: React.FC = () => {
 
   return (
     <View style="p-4 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 border rounded shadow">
-      <Text style="text-lg font-semibold mb-2">\uD83D\uDD50 Statut de la Planification IA</Text>
+      <Text style="text-lg font-semibold mb-2">🕐 Statut de la Planification IA</Text>
 
       <Text>
         État :{" "}
@@ -63,7 +63,7 @@ const SchedulerStatusCard: React.FC = () => {
       <Text>Prochaine prévue : {data.next_run}</Text>
 
       {showAlert && (
-        <Text style="text-red-500 mt-2">\uD83D\uDEA8 Plus de 48h depuis le dernier résumé</Text>
+        <Text style="text-red-500 mt-2">🚨 Plus de 48h depuis le dernier résumé</Text>
       )}
 
       <TouchableOpacity
@@ -74,7 +74,7 @@ const SchedulerStatusCard: React.FC = () => {
         }
         style={{ marginTop: 12, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#4F46E5', borderRadius: 6 } as any}
       >
-        <Text style={{ color: '#fff' }}>\uD83E\uDDE0 Résumer maintenant</Text>
+        <Text style={{ color: '#fff' }}>🧠 Résumer maintenant</Text>
       </TouchableOpacity>
     </View>
   );

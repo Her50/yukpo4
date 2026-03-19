@@ -199,7 +199,7 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
             {/* Conseil */}
             <View style={styles.hintBox}>
                 <Text style={styles.hintText}>
-                    \uD83D\uDCA1 <Text style={styles.hintBold}>Conseil :</Text> Un logo professionnel et une belle bannière renforcent votre identité de marque
+                    💡 <Text style={styles.hintBold}>Conseil :</Text> Un logo professionnel et une belle bannière renforcent votre identité de marque
                 </Text>
             </View>
 

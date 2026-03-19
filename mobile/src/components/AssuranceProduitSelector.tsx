@@ -58,8 +58,8 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
 
             // Trier alphabétiquement
             const sortedOptions = combinedOptions.sort((a, b) => {
-                if (a.includes('\uD83C\uDD95')) return 1;
-                if (b.includes('\uD83C\uDD95')) return -1;
+                if (a.includes('🆕')) return 1;
+                if (b.includes('🆕')) return -1;
                 return a.localeCompare(b, 'fr');
             });
 
@@ -73,7 +73,7 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
     };
 
     const handleSelect = (option: string) => {
-        if (option.includes('\uD83C\uDD95 Autre')) {
+        if (option.includes('🆕 Autre')) {
             // Ouvrir modale d'ajout (compatible Android)
             setNewProduitName('');
             setAddModalVisible(true);
@@ -144,7 +144,7 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
                 {label} <Text style={styles.required}>*</Text>
             </Text>
             <Text style={styles.typeHint}>
-                \uD83D\uDCCB Produits {typeAssurance}
+                📋 Produits {typeAssurance}
             </Text>
 
             <TouchableOpacity
@@ -194,14 +194,14 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
                                         style={[
                                             styles.option,
                                             value === option && styles.optionSelected,
-                                            option.includes('\uD83C\uDD95') && styles.optionAdd
+                                            option.includes('🆕') && styles.optionAdd
                                         ]}
                                         onPress={() => handleSelect(option)}
                                     >
                                         <Text style={[
                                             styles.optionText,
                                             value === option && styles.optionTextSelected,
-                                            option.includes('\uD83C\uDD95') && styles.optionTextAdd
+                                            option.includes('🆕') && styles.optionTextAdd
                                         ]}>
                                             {option}
                                         </Text>

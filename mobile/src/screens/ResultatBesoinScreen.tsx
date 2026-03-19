@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Video } from 'expo-av';
 import * as Haptics from 'expo-haptics';
@@ -459,7 +459,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // DEBUG: Afficher les paramètres reçus
     useEffect(() => {
-        console.log('\uD83D\uDD0D [ResultatBesoinScreen] Paramètres de navigation reçus:', {
+        console.log('🔍 [ResultatBesoinScreen] Paramètres de navigation reçus:', {
             hasParams: !!routeParams,
             resultsLength: initialResults?.length || 0,
             results: initialResults,
@@ -518,7 +518,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const filterProducts = (productsList: any[]): any[] => {
         let filtered = [...productsList];
 
-        if (__DEV__) console.log('\uD83D\uDD0D [ResultatBesoinScreen] filterProducts:', productsList.length, 'produits');
+        if (__DEV__) console.log('🔍 [ResultatBesoinScreen] filterProducts:', productsList.length, 'produits');
 
         // Appliquer les filtres de catégorie spécifiques
         if (Object.keys(categoryFilters).length > 0) {
@@ -672,7 +672,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
             if (!location) {
                 // Si pas de géolocalisation, trier seulement par score
-                console.log('\uD83D\uDCCD Géolocalisation non disponible, tri par score uniquement');
+                console.log('📍 Géolocalisation non disponible, tri par score uniquement');
                 return validResults.sort((a, b) => (b.score || 0) - (a.score || 0));
             }
 
@@ -691,7 +691,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     // PRIORITÉ: Utiliser gps_fixe si disponible, sinon gps en temps réel
                     // Note: result.gps contient déjà la bonne valeur selon la logique backend
                     // qui priorise gps_fixe sur gps_mobile
-                    console.log('\uD83D\uDCCD [ResultatBesoinScreen] GPS utilisé pour distance:', {
+                    console.log('📍 [ResultatBesoinScreen] GPS utilisé pour distance:', {
                         serviceId: result.service_id,
                         gps: result.gps
                     });
@@ -760,7 +760,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
             const servicePromises = serviceIds.map(async (serviceId, index) => {
                 try {
-                    console.log(`\uD83D\uDD0D [ResultatBesoinScreen] Récupération du service ${serviceId}...`);
+                    console.log(`🔍 [ResultatBesoinScreen] Récupération du service ${serviceId}...`);
                     const response = await apiGet(`/api/services/${serviceId}`);
                     console.log(`✅ [ResultatBesoinScreen] Service ${serviceId} récupéré:`, response);
 
@@ -772,7 +772,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         try {
                             const productsResponse = await apiGet(`/api/services/${serviceId}/products`);
                             // ✅ DEBUG 2026-01-13: Logs détaillés pour diagnostiquer les problèmes d'affichage
-                            if (__DEV__) console.log(`\uD83D\uDD0D [ResultatBesoinScreen] DEBUG produits API pour service ${serviceId}:`, {
+                            if (__DEV__) console.log(`🔍 [ResultatBesoinScreen] DEBUG produits API pour service ${serviceId}:`, {
                                 success: productsResponse.success,
                                 hasData: !!productsResponse.data,
                                 dataType: typeof productsResponse.data,
@@ -787,7 +787,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                     console.log(`✅ [ResultatBesoinScreen] ${productsFromAPI.length} produits récupérés depuis API pour service ${serviceId}`);
                                     // ✅ DEBUG: Log détaillé des produits récupérés
                                     if (productsFromAPI.length > 0) {
-                                        console.log(`\uD83D\uDCE6 [ResultatBesoinScreen] Détails produits pour service ${serviceId}:`,
+                                        console.log(`📦 [ResultatBesoinScreen] Détails produits pour service ${serviceId}:`,
                                             productsFromAPI.map((p: any) => ({
                                                 id: p.id,
                                                 product_id: p.product_id,
@@ -877,7 +877,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     let serviceProduits: any[] = [];
 
                     // ✅ DEBUG 2026-01-13: Logs détaillés pour diagnostiquer les problèmes d'affichage
-                    if (__DEV__) console.log(`\uD83D\uDD0D [ResultatBesoinScreen] DEBUG extraction produits pour service ${service.id}:`, {
+                    if (__DEV__) console.log(`🔍 [ResultatBesoinScreen] DEBUG extraction produits pour service ${service.id}:`, {
                         hasProductsFromAPI: !!service._productsFromAPI,
                         isArray: Array.isArray(service._productsFromAPI),
                         productsFromAPICount: Array.isArray(service._productsFromAPI) ? service._productsFromAPI.length : 0,
@@ -929,7 +929,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             const productData = productFromAPI.product_data || productFromAPI;
 
                             if (__DEV__) {
-                                console.log(`\uD83D\uDD0D [ResultatBesoinScreen] Structure productFromAPI pour service ${service.id}:`, {
+                                console.log(`🔍 [ResultatBesoinScreen] Structure productFromAPI pour service ${service.id}:`, {
                                     hasProductData: !!productFromAPI.product_data,
                                     productDataKeys: productFromAPI.product_data ? Object.keys(productFromAPI.product_data) : [],
                                     productDataImages: productFromAPI.product_data?.images,
@@ -1003,7 +1003,7 @@ const ResultatBesoinScreen: React.FC = () => {
                             };
 
                             // ✅ DEBUG 2026-02-10: Log détaillé de chaque produit transformé avec description et images
-                            if (__DEV__) console.log(`\uD83D\uDCE6 [ResultatBesoinScreen] Produit transformé pour service ${service.id}:`, {
+                            if (__DEV__) console.log(`📦 [ResultatBesoinScreen] Produit transformé pour service ${service.id}:`, {
                                 id: transformedProduct.id,
                                 product_index: transformedProduct.product_index,
                                 nom_produit: transformedProduct.nom_produit,
@@ -1020,7 +1020,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         });
                         if (__DEV__) {
                             console.log(`✅ [ResultatBesoinScreen] ${serviceProduits.length} produits depuis API service_products pour service ${service.id}`);
-                            console.log(`\uD83D\uDCCB [ResultatBesoinScreen] Liste des produits extraits pour service ${service.id}:`,
+                            console.log(`📋 [ResultatBesoinScreen] Liste des produits extraits pour service ${service.id}:`,
                                 serviceProduits.map((p: any) => ({
                                     id: p.id,
                                     product_index: p.product_index,
@@ -1049,7 +1049,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 // ✅ DEBUG 2026-03-06: Logger les détails du premier produit pour diagnostiquer
                                 if (__DEV__ && (p.product_index === 0 || score === 0)) {
                                     const productData = p.product_data || p;
-                                    console.log(`\uD83D\uDD0D [ResultatBesoinScreen] DEBUG Score produit (index=${p.product_index}):`, {
+                                    console.log(`🔍 [ResultatBesoinScreen] DEBUG Score produit (index=${p.product_index}):`, {
                                         score,
                                         nom_produit: productData.nom_produit,
                                         product_name: productData.product_name,
@@ -1074,7 +1074,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 const firstProduct = serviceProduits.find(p => p.product_index === 0);
                                 const firstProductScore = firstProduct ? scoredProducts.find(sp => sp.product === firstProduct)?.relevanceScore : null;
 
-                                console.log(`\uD83C\uDFAF [ResultatBesoinScreen] Service ${service.id}: Filtrage recherche "${searchQuery}"`, {
+                                console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: Filtrage recherche "${searchQuery}"`, {
                                     totalProducts: serviceProduits.length,
                                     relevantCount: relevant.length,
                                     firstProductScore,
@@ -1091,12 +1091,12 @@ const ResultatBesoinScreen: React.FC = () => {
                                 // Avant: les produits gardaient l'ordre d'insertion API (ex: "salle à manger" avant "beignets")
                                 relevant.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
                                 filteredServiceProduits = relevant.map((sp: any) => sp.product);
-                                if (__DEV__) console.log(`\uD83C\uDFAF [ResultatBesoinScreen] Service ${service.id}: ${filteredServiceProduits.length}/${serviceProduits.length} produits pertinents pour "${searchQuery}"`, relevant.map((sp: any) => ({ nom: getProductName(sp.product.product_data || sp.product), score: sp.relevanceScore })));
+                                if (__DEV__) console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: ${filteredServiceProduits.length}/${serviceProduits.length} produits pertinents pour "${searchQuery}"`, relevant.map((sp: any) => ({ nom: getProductName(sp.product.product_data || sp.product), score: sp.relevanceScore })));
                             } else {
                                 // ✅ CORRIGÉ 2026-03-02: Aucun produit pertinent → ne rien afficher pour ce service
                                 // L'ancien code gardait le 1er produit par défaut, ce qui affichait des produits hors-sujet
                                 filteredServiceProduits = [];
-                                if (__DEV__) console.log(`\uD83C\uDFAF [ResultatBesoinScreen] Service ${service.id}: aucun produit pertinent pour "${searchQuery}", service ignoré`);
+                                if (__DEV__) console.log(`🎯 [ResultatBesoinScreen] Service ${service.id}: aucun produit pertinent pour "${searchQuery}", service ignoré`);
                             }
                         }
 
@@ -1142,7 +1142,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 if (__DEV__) {
                                     const productDataForLog = product.product_data || product;
                                     const productNameForLog = getProductName(productDataForLog) || 'unknown';
-                                    console.log(`\uD83C\uDFAF [ResultatBesoinScreen] Score produit calculé pour "${productNameForLog}":`, {
+                                    console.log(`🎯 [ResultatBesoinScreen] Score produit calculé pour "${productNameForLog}":`, {
                                         serviceScore: service.score || 0,
                                         productRelevanceScore,
                                         finalScore,
@@ -1267,9 +1267,9 @@ const ResultatBesoinScreen: React.FC = () => {
                 });
 
                 if (__DEV__) {
-                    console.log(`\uD83D\uDCE6 [ResultatBesoinScreen] ${extractedProducts.length} produits extraits de ${validServices.length} services`);
+                    console.log(`📦 [ResultatBesoinScreen] ${extractedProducts.length} produits extraits de ${validServices.length} services`);
                     if (extractedProducts.length > 0) {
-                        console.log(`\uD83D\uDD0D [ResultatBesoinScreen] DEBUG produits extraits (avant déduplication):`,
+                        console.log(`🔍 [ResultatBesoinScreen] DEBUG produits extraits (avant déduplication):`,
                             extractedProducts.map((p: any) => ({
                                 id: p.id,
                                 product_index: p.product_index,
@@ -1322,7 +1322,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 });
 
                 if (__DEV__) {
-                    console.log(`\uD83D\uDCE6 [ResultatBesoinScreen] ${deduplicatedProducts.length} produits après déduplication (${extractedProducts.length - deduplicatedProducts.length} doublons supprimés)`);
+                    console.log(`📦 [ResultatBesoinScreen] ${deduplicatedProducts.length} produits après déduplication (${extractedProducts.length - deduplicatedProducts.length} doublons supprimés)`);
                     if (deduplicatedProducts.length === 0 && extractedProducts.length > 0) {
                         console.error(`❌ [ResultatBesoinScreen] PROBLÈME: ${extractedProducts.length} produits extraits mais 0 après déduplication!`);
                     }
@@ -1346,7 +1346,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     return distA - distB;
                 });
 
-                if (__DEV__) console.log(`\uD83D\uDCCA [ResultatBesoinScreen] Produits triés: ${deduplicatedProducts.length} produits (ordre final)`);
+                if (__DEV__) console.log(`📊 [ResultatBesoinScreen] Produits triés: ${deduplicatedProducts.length} produits (ordre final)`);
 
                 // ✅ CORRIGÉ 2026-01-13: Utiliser startTransition pour les mises à jour non urgentes
                 startTransition(() => {
@@ -1360,7 +1360,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     await fetchPrestatairesBatch(userIds);
                 } else {
                     // Aucun prestataire à charger, marquer comme chargé
-                    if (__DEV__) console.log('\uD83D\uDCCA Aucun prestataire à charger');
+                    if (__DEV__) console.log('📊 Aucun prestataire à charger');
                     setPrestatairesLoaded(true);
                 }
             }
@@ -1377,7 +1377,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // Fonction pour récupérer les informations des prestataires
     const fetchPrestatairesBatch = async (userIds: string[]) => {
         try {
-            if (__DEV__) console.log('\uD83D\uDD04 Début du chargement des prestataires pour:', userIds);
+            if (__DEV__) console.log('🔄 Début du chargement des prestataires pour:', userIds);
 
             const prestatairePromises = userIds.map(async (userId) => {
                 try {
@@ -1408,11 +1408,11 @@ const ResultatBesoinScreen: React.FC = () => {
                         userId: result.userId
                     };
                     newPrestataires.set(result.userId, normalizedPrestataire);
-                    if (__DEV__) console.log(`\uD83D\uDCDD Prestataire ${result.userId} normalisé:`, normalizedPrestataire.name);
+                    if (__DEV__) console.log(`📝 Prestataire ${result.userId} normalisé:`, normalizedPrestataire.name);
                 }
             });
 
-            if (__DEV__) console.log(`\uD83D\uDCCA ${newPrestataires.size} prestataires chargés sur ${userIds.length} demandés`);
+            if (__DEV__) console.log(`📊 ${newPrestataires.size} prestataires chargés sur ${userIds.length} demandés`);
 
             // ✅ CORRIGÉ 2025-01-01: Mémoriser la Map pour éviter les changements de référence
             // Ne mettre à jour que si les données ont réellement changé
@@ -1529,7 +1529,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     return;
                 }
 
-                if (__DEV__) console.log('\uD83D\uDD04 [ResultatBesoinScreen] Traitement des résultats initiaux:', initialResults.length);
+                if (__DEV__) console.log('🔄 [ResultatBesoinScreen] Traitement des résultats initiaux:', initialResults.length);
 
                 // Marquer comme traité AVANT le traitement asynchrone
                 hasProcessedInitialResults.current = true;
@@ -1570,7 +1570,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     })
                     .filter((id: any): id is string => id !== null && id !== undefined && id !== '');
 
-                if (__DEV__) console.log('\uD83D\uDCCB [ResultatBesoinScreen] IDs des services à charger:', serviceIds.length, serviceIds);
+                if (__DEV__) console.log('📋 [ResultatBesoinScreen] IDs des services à charger:', serviceIds.length, serviceIds);
 
                 if (serviceIds.length > 0) {
                     await fetchServicesByIds(serviceIds, sortedResults);
@@ -1793,7 +1793,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 // ✅ CORRIGÉ: Utilise apiPost
                 await apiPost('/api/notifications/create', {
                     user_id: service.user_id,
-                    title: `\uD83D\uDCAC ${user.name} a ouvert une conversation`,
+                    title: `💬 ${user.name} a ouvert une conversation`,
                     message: `Au sujet de: ${serviceTitle}\n\nUn client potentiel souhaite discuter avec vous.`,
                     type: 'chat_opened',
                     priority: 'medium',
@@ -1889,10 +1889,10 @@ const ResultatBesoinScreen: React.FC = () => {
             let notificationMessage = '';
 
             if (contactType === 'whatsapp') {
-                notificationTitle = `\uD83D\uDCF1 ${user.name} souhaite vous contacter sur WhatsApp`;
+                notificationTitle = `📱 ${user.name} souhaite vous contacter sur WhatsApp`;
                 notificationMessage = `Au sujet de: ${serviceTitle}\n\nUn client potentiel souhaite discuter avec vous sur WhatsApp.`;
             } else if (contactType === 'call') {
-                notificationTitle = `\uD83D\uDCDE ${user.name} souhaite vous appeler`;
+                notificationTitle = `📞 ${user.name} souhaite vous appeler`;
                 notificationMessage = `Au sujet de: ${serviceTitle}\n\nUn client potentiel est en train de vous appeler.`;
             }
 
@@ -2123,7 +2123,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const filteredProducts = useMemo(() => {
         // ✅ OPTIMISÉ 2026-03-XX: Logs gatés derrière __DEV__ pour performance production
         if (__DEV__) {
-            console.log('\uD83D\uDD0D [ResultatBesoinScreen] filterProducts:', products.length, 'produits, filtres:', Object.keys(categoryFilters).length);
+            console.log('🔍 [ResultatBesoinScreen] filterProducts:', products.length, 'produits, filtres:', Object.keys(categoryFilters).length);
         }
 
         if (products.length === 0) {
@@ -2151,7 +2151,7 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ CORRIGÉ 2026-01-14: Mémoriser la liste combinée avec clés STABLES (sans score qui change)
     // ✅ CORRIGÉ 2026-01-XX: Éviter les doublons - ne pas afficher les services qui ont déjà des produits extraits
     const allResults = useMemo(() => {
-        if (__DEV__) console.log('\uD83D\uDD0D [ResultatBesoinScreen] allResults:', filteredServices.length, 'services,', filteredProducts.length, 'produits');
+        if (__DEV__) console.log('🔍 [ResultatBesoinScreen] allResults:', filteredServices.length, 'services,', filteredProducts.length, 'produits');
 
         // ✅ NOUVEAU: Créer un Set des serviceIds qui ont des produits pour éviter les doublons
         // ✅ CORRIGÉ: Vérifier aussi service_id en plus de _serviceId
@@ -2165,7 +2165,7 @@ const ResultatBesoinScreen: React.FC = () => {
         );
 
         // ✅ OPTIMISÉ 2026-03-XX: Debug gaté derriere __DEV__
-        if (__DEV__) console.log('\uD83D\uDD0D [ResultatBesoinScreen] serviceIdsWithProducts:', serviceIdsWithProducts.size);
+        if (__DEV__) console.log('🔍 [ResultatBesoinScreen] serviceIdsWithProducts:', serviceIdsWithProducts.size);
 
         // ✅ CORRIGÉ: Ne pas afficher les services qui ont déjà des produits (éviter doublon)
         const services = filteredServices
@@ -2173,7 +2173,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 const serviceId = String(service.id);
                 const hasProducts = serviceIdsWithProducts.has(serviceId);
                 if (hasProducts && __DEV__) {
-                    console.log(`\uD83D\uDD04 [ResultatBesoinScreen] Service ${serviceId} ignoré (produits extraits)`);
+                    console.log(`🔄 [ResultatBesoinScreen] Service ${serviceId} ignoré (produits extraits)`);
                 }
                 return !hasProducts; // Afficher uniquement les services SANS produits
             })
@@ -2449,7 +2449,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* \uD83D\uDD0D Barre de recherche avec support multimédia (comme HomeScreen) */}
+                {/* 🔍 Barre de recherche avec support multimédia (comme HomeScreen) */}
                 <View style={styles.searchContainer}>
                     <ChatInputMobile
                         onSubmit={handleSearch}
@@ -2528,7 +2528,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 {!services || services.length === 0 ? (
                     <View style={styles.emptyCard}>
                         <View style={[styles.cardContent, styles.emptyContent]}>
-                            <Text style={styles.emptyIcon}>\uD83D\uDD0D</Text>
+                            <Text style={styles.emptyIcon}>🔍</Text>
                             <Text style={styles.emptyTitle}>
                                 {terminology.emptyMessage || 'Aucun résultat trouvé'}
                             </Text>
@@ -2555,7 +2555,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     </View>
                 ) : (
                     <>
-                        {/* \uD83C\uDFA8 Section de filtres moderne */}
+                        {/* 🎨 Section de filtres moderne */}
                         <View style={styles.modernFiltersContainer}>
                             {/* En-tête avec compteur */}
                             <View style={styles.modernFiltersHeader}>
@@ -3197,7 +3197,7 @@ const styles = StyleSheet.create({
     sortButtonTextActive: {
         color: 'white',
     },
-    // \uD83C\uDFA8 Nouveaux styles modernes pour les filtres
+    // 🎨 Nouveaux styles modernes pour les filtres
     modernFiltersContainer: {
         backgroundColor: '#FFFFFF',
         marginHorizontal: 16,

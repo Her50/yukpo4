@@ -56,7 +56,7 @@ const LoginScreen: React.FC = () => {
     redirectUri: redirectUri, // ✅ Forcer le redirect URI pour garantir l'alignement
   });
 
-  // \uD83D\uDD0D Debug: Log de la configuration OAuth
+  // 🔍 Debug: Log de la configuration OAuth
   useEffect(() => {
     if (googleRequest) {
       console.log('[OAuth Debug] Request:', JSON.stringify(googleRequest, null, 2));
@@ -375,14 +375,20 @@ const LoginScreen: React.FC = () => {
           <TouchableOpacity
             onPress={() => {
               // ✅ NOUVEAU: Afficher un modal de confirmation avant de naviguer
+              const partnerAlertMessage = [
+                t('loginScreen.ceBoutonEstUniquementDestineAuxPartenaires'),
+                '',
+                '⚠️ Important :',
+                `• ${t('loginScreen.lesFonctionnalitesUtilisateursClassiquesNeSeront')}`,
+                `• ${t('loginScreen.votreCompteDevraEtreValideParUn')}`,
+                `• ${t('loginScreen.vousRecevrezUnEmailDeConfirmation')}`,
+                '',
+                t('loginScreen.etesvousSurDeVouloirContinuer'),
+              ].join('\n');
+
               Alert.alert(
                 '⚠️ Inscription Partenaire',
-                t('loginScreen.ceBoutonEstUniquementDestineAuxPartenaires') +
-                '⚠️ Important :\n' +
-                t('loginScreen.lesFonctionnalitesUtilisateursClassiquesNeSeront') +
-                t('loginScreen.votreCompteDevraEtreValideParUn') +
-                t('loginScreen.vousRecevrezUnEmailDeConfirmation') +
-                t('loginScreen.etesvousSurDeVouloirContinuer'),
+                partnerAlertMessage,
                 [
                   {
                     text: t('common.cancel'),
@@ -406,7 +412,7 @@ const LoginScreen: React.FC = () => {
             style={styles.partnerButton}
           >
             <Text style={styles.partnerButtonText}>
-              \uD83C\uDFE2 Devenir partenaire
+              🏢 Devenir partenaire
             </Text>
           </TouchableOpacity>
         </View>

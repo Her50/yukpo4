@@ -137,7 +137,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                     <Card style={styles.card}>
                         <View style={styles.cardContent}>
                             <View style={styles.iconContainer}>
-                                <Text style={styles.locationIcon}>\uD83D\uDDFA️</Text>
+                                <Text style={styles.locationIcon}>🗺️</Text>
                             </View>
 
                             <Title style={styles.cardTitle}>Position GPS</Title>
@@ -152,7 +152,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                             ) : location ? (
                                 <View style={styles.locationInfo}>
                                     <View style={styles.coordinatesContainer}>
-                                        <Text style={styles.mapIcon}>\uD83D\uDDFA️</Text>
+                                        <Text style={styles.mapIcon}>🗺️</Text>
                                         <Text style={styles.coordinatesText}>
                                             {formatCoordinates(location.coords.latitude, location.coords.longitude)}
                                         </Text>
@@ -167,7 +167,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                 </View>
                             ) : (
                                 <View style={styles.noLocationContainer}>
-                                    <Text style={styles.noLocationIcon}>\uD83D\uDCCD</Text>
+                                    <Text style={styles.noLocationIcon}>📍</Text>
                                     <Text style={styles.noLocationText}>
                                         Position non disponible
                                     </Text>
@@ -192,7 +192,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                     style={styles.mapButton}
                                     contentStyle={styles.buttonContent}
                                 >
-                                    <Text style={styles.buttonIconOutlined}>\uD83D\uDDFA️</Text>
+                                    <Text style={styles.buttonIconOutlined}>🗺️</Text>
                                     <Text style={[styles.buttonText, { color: theme.colors.primary }]}>
                                         Sélectionner sur carte
                                     </Text>
@@ -205,7 +205,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                     style={styles.refreshButton}
                                     contentStyle={styles.buttonContent}
                                 >
-                                    <Text style={styles.buttonIconOutlined}>\uD83D\uDD04</Text>
+                                    <Text style={styles.buttonIconOutlined}>🔄</Text>
                                     <Text style={[styles.buttonText, { color: theme.colors.primary }]}>
                                         Actualiser
                                     </Text>
@@ -219,7 +219,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                             <View style={styles.cardContent}>
                                 <Title style={styles.currentTitle}>Position actuelle</Title>
                                 <View style={styles.coordinatesContainer}>
-                                    <Text style={styles.pinIcon}>\uD83D\uDCCC</Text>
+                                    <Text style={styles.pinIcon}>📌</Text>
                                     <Text style={styles.coordinatesText}>
                                         {formatCoordinates(currentLocation.lat, currentLocation.lng)}
                                     </Text>

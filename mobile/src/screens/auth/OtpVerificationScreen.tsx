@@ -233,7 +233,7 @@ const OtpVerificationScreen: React.FC = () => {
       <Card style={styles.card}>
         <Card.Content style={styles.cardContent}>
           {/* Header */}
-          <Text style={styles.headerIcon}>\uD83D\uDCF1</Text>
+          <Text style={styles.headerIcon}>📱</Text>
           <Title style={styles.title}>{t('otpVerification.verificationDuTelephone')}</Title>
           <Paragraph style={styles.subtitle}>
             Un code à 6 chiffres a été envoyé par SMS/WhatsApp au numéro :

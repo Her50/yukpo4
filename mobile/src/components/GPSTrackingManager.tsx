@@ -61,7 +61,7 @@ const [isActive, setIsActive] = useState(false);
 
     const startGPSTracking = async () => {
         try {
-            console.log('[GPSTrackingManager] \uD83D\uDE80 Démarrage du tracking GPS...');
+            console.log('[GPSTrackingManager] 🚀 Démarrage du tracking GPS...');
 
             // Vérifier les permissions
             const { status } = await Location.requestForegroundPermissionsAsync();
@@ -82,7 +82,7 @@ const [isActive, setIsActive] = useState(false);
                 lng: location.coords.longitude
             };
 
-            console.log('[GPSTrackingManager] \uD83D\uDCCD Position actuelle:', coords);
+            console.log('[GPSTrackingManager] 📍 Position actuelle:', coords);
 
             // Envoyer au backend
             await sendLocationToBackend(coords.lat, coords.lng);
@@ -101,7 +101,7 @@ const [isActive, setIsActive] = useState(false);
                             lng: newLocation.coords.longitude
                         };
 
-                        console.log('[GPSTrackingManager] \uD83D\uDCCD Nouvelle position:', newCoords);
+                        console.log('[GPSTrackingManager] 📍 Nouvelle position:', newCoords);
 
                         // Envoyer au backend
                         await sendLocationToBackend(newCoords.lat, newCoords.lng);
@@ -117,7 +117,7 @@ const [isActive, setIsActive] = useState(false);
 
             // Cleanup function
             return () => {
-                console.log('[GPSTrackingManager] \uD83D\uDED1 Arrêt du tracking GPS...');
+                console.log('[GPSTrackingManager] 🛑 Arrêt du tracking GPS...');
                 watchSubscription.remove();
                 setIsActive(false);
             };
@@ -156,7 +156,7 @@ const [isActive, setIsActive] = useState(false);
     // Logs de suivi
     useEffect(() => {
         if (user && isActive) {
-            console.log('[GPSTrackingManager] \uD83D\uDCCD Tracking GPS actif pour:', user.email);
+            console.log('[GPSTrackingManager] 📍 Tracking GPS actif pour:', user.email);
         }
     }, [user, isActive]);
 

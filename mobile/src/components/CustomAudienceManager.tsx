@@ -189,7 +189,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
         <NativeCard style={styles.container}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>\uD83D\uDC65 Audiences Personnalisées</Text>
+                    <Text style={styles.title}>👥 Audiences Personnalisées</Text>
                     <Text style={styles.subtitle}>
                         Ciblez des utilisateurs similaires ou importez vos propres listes
                     </Text>
@@ -332,7 +332,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                                             styles.sourceText,
                                             customSource === source && styles.sourceTextActive,
                                         ]}>
-                                            {source === 'email' ? '\uD83D\uDCE7 Emails' : source === 'phone' ? '\uD83D\uDCF1 Téléphones' : '\uD83D\uDCC4 CSV'}
+                                            {source === 'email' ? '📧 Emails' : source === 'phone' ? '📱 Téléphones' : '📄 CSV'}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}

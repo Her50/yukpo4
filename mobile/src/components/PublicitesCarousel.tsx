@@ -210,18 +210,18 @@ const resolveThumbnail = (pub: ApiPublicite): string | null => {
 
 const getCategoryIcon = (type: string): string => {
     const icons: Record<string, string> = {
-        immobilier_batiment: '\uD83C\uDFE0',
-        immobilier_terrain: '\uD83C\uDFDE️',
-        hotellerie: '\uD83C\uDFE8',
-        automobile: '\uD83D\uDE97',
-        ticket_voyage: '\uD83C\uDFAB',
-        telephone: '\uD83D\uDCF1',
-        ordinateur: '\uD83D\uDCBB',
-        vetement: '\uD83D\uDC54',
-        electromenager: '\uD83D\uDD0C',
-        mobilier: '\uD83E\uDE91',
-        pharmacie: '\uD83D\uDC8A',
-        default: '\uD83D\uDCE6',
+        immobilier_batiment: '🏠',
+        immobilier_terrain: '🏞️',
+        hotellerie: '🏨',
+        automobile: '🚗',
+        ticket_voyage: '🎫',
+        telephone: '📱',
+        ordinateur: '💻',
+        vetement: '👔',
+        electromenager: '🔌',
+        mobilier: '🪑',
+        pharmacie: '💊',
+        default: '📦',
     };
     return icons[type] || icons.default;
 };

@@ -119,7 +119,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
 
                     {/* Primes */}
                     <NativeCard style={styles.sectionCard}>
-                        <Text style={styles.sectionTitle}>\uD83D\uDCB0 Primes estimées</Text>
+                        <Text style={styles.sectionTitle}>💰 Primes estimées</Text>
                         <View style={styles.primeRow}>
                             <Text style={styles.primeLabel}>Mensuelle</Text>
                             <Text style={styles.primeValue}>{formatPrice(quote.prime_mensuelle_estimee)}</Text>
@@ -132,7 +132,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
 
                     {/* Couvertures */}
                     <NativeCard style={styles.sectionCard}>
-                        <Text style={styles.sectionTitle}>\uD83D\uDEE1️ Couvertures incluses</Text>
+                        <Text style={styles.sectionTitle}>🛡️ Couvertures incluses</Text>
                         {quote.couvertures_incluses.map((c, i) => (
                             <View key={i} style={styles.listItem}>
                                 <SafeIcon name="check-circle" size={16} color="#10B981" type="lucide" />
@@ -144,7 +144,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                     {/* Franchises */}
                     {quote.franchises.length > 0 && (
                         <NativeCard style={styles.sectionCard}>
-                            <Text style={styles.sectionTitle}>\uD83D\uDCCB Franchises</Text>
+                            <Text style={styles.sectionTitle}>📋 Franchises</Text>
                             {quote.franchises.map((f, i) => (
                                 <View key={i} style={styles.franchiseRow}>
                                     <Text style={styles.franchiseGarantie}>{f.garantie}</Text>
@@ -167,7 +167,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
 
                     {/* Justification */}
                     <NativeCard style={styles.sectionCard}>
-                        <Text style={styles.sectionTitle}>\uD83D\uDCA1 Pourquoi ce produit ?</Text>
+                        <Text style={styles.sectionTitle}>💡 Pourquoi ce produit ?</Text>
                         <Text style={styles.justification}>{quote.justification}</Text>
                     </NativeCard>
 
@@ -318,7 +318,7 @@ const InsuranceQuoteRequestScreen: React.FC = () => {
                         </View>
                     ) : (
                         <NativeButton
-                            title="\uD83E\uDD16 Générer mon devis IA"
+                            title="🤖 Générer mon devis IA"
                             onPress={handleGenerateQuote}
                             style={styles.generateButton}
                         />

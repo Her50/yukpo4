@@ -148,7 +148,7 @@ const RecipeSearchScreen: React.FC = () => {
             >
                 <View style={styles.form}>
                     <NativeCard style={styles.searchCard}>
-                        <Text style={styles.label}>\uD83D\uDD0D Rechercher une recette</Text>
+                        <Text style={styles.label}>🔍 Rechercher une recette</Text>
                         <View style={styles.searchContainer}>
                             <TextInput
                                 value={searchQuery}

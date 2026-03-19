@@ -60,7 +60,7 @@ const [name, setName] = useState('');
     <SafeNativeView style={styles.container}>
       <KeyboardAwareScreen contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.title}>\uD83D\uDCDE Contactez-nous</Text>
+          <Text style={styles.title}>📞 Contactez-nous</Text>
           <Text style={styles.subtitle}>
             Nous sommes là pour vous aider ! N'hésitez pas à nous contacter.
           </Text>
@@ -132,7 +132,7 @@ const [name, setName] = useState('');
             style={styles.contactCard}
             onPress={() => openLink('mailto:contact@yukpomnang.com')}
           >
-            <Text style={styles.contactIcon}>\uD83D\uDCE7</Text>
+            <Text style={styles.contactIcon}>📧</Text>
             <View style={styles.contactInfo}>
               <Text style={styles.contactTitle}>Email</Text>
               <Text style={styles.contactValue}>contact@yukpomnang.com</Text>
@@ -143,7 +143,7 @@ const [name, setName] = useState('');
             style={styles.contactCard}
             onPress={() => openLink('tel:+237699999999')}
           >
-            <Text style={styles.contactIcon}>\uD83D\uDCDE</Text>
+            <Text style={styles.contactIcon}>📞</Text>
             <View style={styles.contactInfo}>
               <Text style={styles.contactTitle}>{t('contact.telephone')}</Text>
               <Text style={styles.contactValue}>+237 699 999 999</Text>
@@ -154,7 +154,7 @@ const [name, setName] = useState('');
             style={styles.contactCard}
             onPress={() => openLink('https://wa.me/237699999999')}
           >
-            <Text style={styles.contactIcon}>\uD83D\uDCAC</Text>
+            <Text style={styles.contactIcon}>💬</Text>
             <View style={styles.contactInfo}>
               <Text style={styles.contactTitle}>WhatsApp</Text>
               <Text style={styles.contactValue}>Chat direct</Text>
@@ -186,21 +186,21 @@ const [name, setName] = useState('');
               style={styles.socialButton}
               onPress={() => openLink('https://facebook.com/yukpomnang')}
             >
-              <Text style={styles.socialIcon}>\uD83D\uDCD8</Text>
+              <Text style={styles.socialIcon}>📘</Text>
               <Text style={styles.socialText}>Facebook</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialButton}
               onPress={() => openLink('https://twitter.com/yukpomnang')}
             >
-              <Text style={styles.socialIcon}>\uD83D\uDC26</Text>
+              <Text style={styles.socialIcon}>🐦</Text>
               <Text style={styles.socialText}>Twitter</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.socialButton}
               onPress={() => openLink('https://linkedin.com/company/yukpomnang')}
             >
-              <Text style={styles.socialIcon}>\uD83D\uDCBC</Text>
+              <Text style={styles.socialIcon}>💼</Text>
               <Text style={styles.socialText}>LinkedIn</Text>
             </TouchableOpacity>
           </View>

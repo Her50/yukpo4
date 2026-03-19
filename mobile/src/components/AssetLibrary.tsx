@@ -166,7 +166,7 @@ const [assets, setAssets] = useState<Asset[]>([]);
                                 styles.filterText,
                                 filterType === t && styles.filterTextActive,
                             ]}>
-                                {t === 'all' ? 'Tous' : t === 'image' ? '\uD83D\uDCF7 Images' : t('assetLibrary.videos')}
+                                {t === 'all' ? 'Tous' : t === 'image' ? '📷 Images' : t('assetLibrary.videos')}
                             </Text>
                         </TouchableOpacity>
                     ))}

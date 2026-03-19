@@ -20,7 +20,7 @@ const mockServices: ServiceItem[] = [
     description: 'Publication et gestion de biens immobiliers',
     categorie: 'Immobilier',
     type: 'plateforme',
-    icon: '\uD83C\uDFE0',
+    icon: '🏠',
   },
   {
     id: '2',
@@ -28,7 +28,7 @@ const mockServices: ServiceItem[] = [
     description: 'Réservation de billets et hôtels',
     categorie: 'Transport',
     type: 'service',
-    icon: '\uD83D\uDE97',
+    icon: '🚗',
   },
   {
     id: '3',
@@ -36,7 +36,7 @@ const mockServices: ServiceItem[] = [
     description: 'Suivi intelligent des tendances sociales',
     categorie: 'Analyse & Intelligence',
     type: 'moteur',
-    icon: '\uD83D\uDCCA',
+    icon: '📊',
   },
   {
     id: '4',
@@ -44,7 +44,7 @@ const mockServices: ServiceItem[] = [
     description: 'Gestion de boutique en ligne',
     categorie: 'E-commerce',
     type: 'plateforme',
-    icon: '\uD83D\uDECD️',
+    icon: '🛍️',
   },
   {
     id: '5',
@@ -52,7 +52,7 @@ const mockServices: ServiceItem[] = [
     description: 'Plateforme de cours et formations',
     categorie: 'Éducation',
     type: 'service',
-    icon: '\uD83D\uDCDA',
+    icon: '📚',
   },
 ];
 
@@ -72,7 +72,7 @@ const ServicesListScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>\uD83C\uDFAF Catalogue des services</Text>
+          <Text style={styles.title}>🎯 Catalogue des services</Text>
           <Text style={styles.subtitle}>
             Découvrez tous les services disponibles sur{' '}
             <Text style={styles.brandYuk}>Yuk</Text>
@@ -82,7 +82,7 @@ const ServicesListScreen: React.FC = () => {
 
         {/* Barre de recherche */}
         <View style={styles.searchContainer}>
-          <Text style={styles.searchIcon}>\uD83D\uDD0D</Text>
+          <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.searchInput}
             placeholder="Rechercher un service..."
@@ -98,7 +98,7 @@ const ServicesListScreen: React.FC = () => {
             style={[styles.actionCard, styles.actionCardPrimary]}
             onPress={() => (navigation as any).navigate('Home')}
           >
-            <Text style={styles.actionIcon}>\uD83D\uDD0D</Text>
+            <Text style={styles.actionIcon}>🔍</Text>
             <Text style={styles.actionTitle}>Trouver un service</Text>
             <Text style={styles.actionDescription}>
               Exprimez un besoin, Yukpo vous connecte automatiquement
@@ -118,11 +118,11 @@ const ServicesListScreen: React.FC = () => {
         </View>
 
         {/* Liste des services */}
-        <Text style={styles.sectionTitle}>\uD83D\uDCE6 Services disponibles</Text>
+        <Text style={styles.sectionTitle}>📦 Services disponibles</Text>
 
         {filtered.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>\uD83D\uDD0E</Text>
+            <Text style={styles.emptyIcon}>🔎</Text>
             <Text style={styles.emptyText}>
               Aucun service ne correspond à votre recherche
             </Text>

@@ -161,7 +161,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={s.headerTitleWrap}>
                             <Text style={s.headerTitle}>{isEmployer ? 'Espace Recruteur' : 'Offres d\'Emploi'}</Text>
-                            <Text style={s.headerSubtitle}>{isEmployer ? 'G\u00e9rez vos offres et candidatures' : 'Trouvez ou publiez un emploi'}</Text>
+                            <Text style={s.headerSubtitle}>{isEmployer ? 'Gérez vos offres et candidatures' : 'Trouvez ou publiez un emploi'}</Text>
                         </View>
                     </View>
 
@@ -184,7 +184,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                         <View style={[s.statCard, { borderLeftColor: '#10B981' }]}>
                             <SafeIcon name={isEmployer ? 'users' : 'send'} size={18} color="#10B981" type="lucide" />
                             <Text style={s.statValue}>{String(stats.total_candidatures || stats.candidatures_recues || 0)}</Text>
-                            <Text style={s.statLabel}>{isEmployer ? 'Candidatures re\u00e7ues' : 'Candidatures'}</Text>
+                            <Text style={s.statLabel}>{isEmployer ? 'Candidatures reçues' : 'Candidatures'}</Text>
                         </View>
                         <View style={[s.statCard, { borderLeftColor: '#F59E0B' }]}>
                             <SafeIcon name="clock" size={18} color="#F59E0B" type="lucide" />
@@ -194,7 +194,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                         <View style={[s.statCard, { borderLeftColor: '#8B5CF6' }]}>
                             <SafeIcon name={isEmployer ? 'eye' : 'zap'} size={18} color="#8B5CF6" type="lucide" />
                             <Text style={s.statValue}>{String(stats.meilleurs_matchings || stats.profils_consultes || 0)}</Text>
-                            <Text style={s.statLabel}>{isEmployer ? 'Profils consult\u00e9s' : 'Matchings'}</Text>
+                            <Text style={s.statLabel}>{isEmployer ? 'Profils consultés' : 'Matchings'}</Text>
                         </View>
                     </View>
                 )}
@@ -261,7 +261,7 @@ const OffresEmploiHubScreen: React.FC = () => {
                                 </View>
                                 <View style={s.employerCardContent}>
                                     <Text style={s.employerCardTitle}>Publier une offre</Text>
-                                    <Text style={s.employerCardSub}>Trouvez le candidat id\u00e9al</Text>
+                                    <Text style={s.employerCardSub}>Trouvez le candidat idéal</Text>
                                 </View>
                                 <SafeIcon name="chevron-right" size={22} color="#FFFFFF" type="lucide" />
                             </LinearGradient>

@@ -136,7 +136,7 @@ const ConferencesLivesScreen: React.FC = () => {
                     <Text style={styles.cardTitle}>{item.titre}</Text>
                     {live && (
                         <View style={styles.liveBadge}>
-                            <Text style={styles.liveText}>\uD83D\uDD34 EN DIRECT</Text>
+                            <Text style={styles.liveText}>🔴 EN DIRECT</Text>
                         </View>
                     )}
                     {upcoming && !live && (
@@ -146,10 +146,10 @@ const ConferencesLivesScreen: React.FC = () => {
                     )}
                 </View>
                 <Text style={styles.cardSubtitle}>
-                    \uD83D\uDCCD {item.nom_etablissement || `Établissement #${item.etablissement_id}`}
+                    📍 {item.nom_etablissement || `Établissement #${item.etablissement_id}`}
                 </Text>
                 <Text style={styles.cardSubtitle}>
-                    \uD83D\uDCC5 {new Date(item.date_debut).toLocaleString('fr-FR')}
+                    📅 {new Date(item.date_debut).toLocaleString('fr-FR')}
                 </Text>
                 {item.date_fin && (
                     <Text style={styles.cardSubtitle}>
@@ -168,7 +168,7 @@ const ConferencesLivesScreen: React.FC = () => {
                             onPress={() => handleJoinConference(item.id)}
                         >
                             <Text style={styles.joinButtonText}>
-                                {live ? '\uD83D\uDD34 Rejoindre' : 'Rejoindre'}
+                                {live ? '🔴 Rejoindre' : 'Rejoindre'}
                             </Text>
                         </TouchableOpacity>
                     )}

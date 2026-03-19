@@ -1,5 +1,5 @@
 /**
- * \uD83C\uDFAF Bouton avec haptic feedback
+ * 🎯 Bouton avec haptic feedback
  * Micro-interactions niveau iOS/Android natif
  */
 

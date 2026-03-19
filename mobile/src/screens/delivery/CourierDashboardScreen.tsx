@@ -221,7 +221,7 @@ const CourierDashboardScreen: React.FC = () => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>{t('courierDashboard.quickActions', 'Actions rapides')}</Text>
                         <NativeButton
-                            title="\uD83D\uDCCA Voir mes statistiques"
+                            title="📊 Voir mes statistiques"
                             variant="outline"
                             onPress={() => {
                                 // ✅ FIX 2026-03-14: Afficher les statistiques détaillées avec les données déjà chargées
@@ -237,7 +237,7 @@ const CourierDashboardScreen: React.FC = () => {
                             }}
                         />
                         <NativeButton
-                            title="\uD83D\uDCB0 Mon portefeuille"
+                            title="💰 Mon portefeuille"
                             variant="outline"
                             onPress={() => {
                                 (navigation as any).navigate('WalletFinancial');

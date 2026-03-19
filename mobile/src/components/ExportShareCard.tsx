@@ -27,7 +27,7 @@ const ExportShareCard = ({ content }: { content: string }) => {
 
   return (
     <View style="p-4 border rounded mt-4 bg-white shadow">
-      <Text style="text-md font-bold mb-2">\uD83D\uDCE4 Partager le contenu</Text>
+      <Text style="text-md font-bold mb-2">📤 Partager le contenu</Text>
 
       <select
         value={medium}
@@ -58,7 +58,7 @@ const ExportShareCard = ({ content }: { content: string }) => {
       {link && (
         <View style="mt-2">
           <a href={link} target="_blank" rel="noopener noreferrer" style="text-blue-600 underline">
-            \uD83D\uDC49 Ouvrir le lien
+            👉 Ouvrir le lien
           </a>
         </View>
       )}

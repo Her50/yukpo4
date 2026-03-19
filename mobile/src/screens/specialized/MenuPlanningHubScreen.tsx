@@ -362,11 +362,11 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             {/* ✅ SIMPLIFIÉ: Afficher seulement le nombre total de personnes */}
                             {typeof profile.total_members === 'number' && profile.total_members > 0 ? (
                                 <Text style={styles.profileTextCompact}>
-                                    \uD83D\uDC65 {profile.total_members > 1 ? t('menuPlanning.peopleInFamilyPlural', { count: profile.total_members }) : t('menuPlanning.peopleInFamily', { count: profile.total_members })}
+                                    👥 {profile.total_members > 1 ? t('menuPlanning.peopleInFamilyPlural', { count: profile.total_members }) : t('menuPlanning.peopleInFamily', { count: profile.total_members })}
                                 </Text>
                             ) : (
                                 <Text style={styles.profileTextCompact}>
-                                    \uD83D\uDC65 {t('menuPlanning.profileConfigured')}
+                                    👥 {t('menuPlanning.profileConfigured')}
                                 </Text>
                             )}
                         </View>
@@ -393,7 +393,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                             </Text>
                             {currentMenu.total_estimated_cost && (
                                 <Text style={styles.menuCostText}>
-                                    \uD83D\uDCB0 {currentMenu.total_estimated_cost.toLocaleString()} FCFA
+                                    💰 {currentMenu.total_estimated_cost.toLocaleString()} FCFA
                                 </Text>
                             )}
                         </View>
@@ -522,7 +522,7 @@ const MenuPlanningHubScreen: React.FC<MenuPlanningHubScreenProps> = () => {
                                             })}
                                         </Text>
                                         <Text style={styles.historyItemSubtitle}>
-                                            {menu.status === 'active' ? `✅ ${t('menuPlanning.active')}` : `\uD83D\uDCCB ${t('menuPlanning.archived')}`}
+                                            {menu.status === 'active' ? `✅ ${t('menuPlanning.active')}` : `📋 ${t('menuPlanning.archived')}`}
                                             {menu.total_budget && ` • ${menu.total_budget.toLocaleString()} FCFA`}
                                         </Text>
                                     </View>

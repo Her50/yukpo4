@@ -147,11 +147,11 @@ const ExternalProvidersAdminScreen: React.FC = () => {
 
     const shareProviderCredentials = async (provider: ExternalProvider) => {
         const message =
-            `\uD83D\uDE9A Yukpo - Vos identifiants de livraison\n\n` +
+            `🚚 Yukpo - Vos identifiants de livraison\n\n` +
             `Bonjour ${provider.provider_name},\n\n` +
             `Voici vos identifiants pour commander des livraisons Yukpo :\n\n` +
-            `\uD83D\uDCCB Votre clé API : ${provider.api_key}\n\n` +
-            `\uD83D\uDCF1 Formulaire de commande :\n${FORM_URL}\n\n` +
+            `📋 Votre clé API : ${provider.api_key}\n\n` +
+            `📱 Formulaire de commande :\n${FORM_URL}\n\n` +
             `Ouvrez le lien ci-dessus dans votre navigateur, entrez votre clé API et les détails de la livraison.\n\n` +
             `Pour toute question, contactez le support Yukpo.`;
 
@@ -168,11 +168,11 @@ const ExternalProvidersAdminScreen: React.FC = () => {
     const sendViaWhatsApp = async (provider: ExternalProvider) => {
         const phone = provider.contact_phone?.replace(/[^0-9+]/g, '') || '';
         const message =
-            `\uD83D\uDE9A *Yukpo - Vos identifiants de livraison*\n\n` +
+            `🚚 *Yukpo - Vos identifiants de livraison*\n\n` +
             `Bonjour *${provider.provider_name}*,\n\n` +
             `Voici vos identifiants pour commander des livraisons Yukpo :\n\n` +
-            `\uD83D\uDCCB Votre clé API : \`${provider.api_key}\`\n\n` +
-            `\uD83D\uDCF1 Formulaire de commande :\n${FORM_URL}\n\n` +
+            `📋 Votre clé API : \`${provider.api_key}\`\n\n` +
+            `📱 Formulaire de commande :\n${FORM_URL}\n\n` +
             `Ouvrez le lien ci-dessus dans votre navigateur, entrez votre clé API et les détails de la livraison.`;
 
         const encodedMessage = encodeURIComponent(message);
@@ -283,7 +283,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                         <Text style={styles.providerName}>{provider.provider_name}</Text>
                                         {provider.contact_phone && (
                                             <Text style={styles.providerMeta}>
-                                                \uD83D\uDCDE {provider.contact_phone}
+                                                📞 {provider.contact_phone}
                                             </Text>
                                         )}
                                         {provider.contact_email && (
@@ -292,10 +292,10 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                             </Text>
                                         )}
                                         <Text style={styles.providerMeta}>
-                                            \uD83D\uDCE6 {provider.total_deliveries} livraison{provider.total_deliveries !== 1 ? 's' : ''}
+                                            📦 {provider.total_deliveries} livraison{provider.total_deliveries !== 1 ? 's' : ''}
                                         </Text>
                                         <Text style={styles.providerMeta}>
-                                            \uD83D\uDCC5 Créé: {formatDate(provider.created_at)}
+                                            📅 Créé: {formatDate(provider.created_at)}
                                         </Text>
                                     </View>
                                     <View style={[
@@ -609,14 +609,14 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                 <NativeCard style={styles.detailCard}>
                                     <Text style={styles.detailLabel}>Statistiques</Text>
                                     <Text style={styles.detailValue}>
-                                        \uD83D\uDCE6 {selectedProvider.total_deliveries} livraison{selectedProvider.total_deliveries !== 1 ? 's' : ''}
+                                        📦 {selectedProvider.total_deliveries} livraison{selectedProvider.total_deliveries !== 1 ? 's' : ''}
                                     </Text>
                                     <Text style={styles.detailValue}>
                                         ⚡ Limite: {selectedProvider.rate_limit_per_hour} requêtes/heure
                                     </Text>
                                     {selectedProvider.last_used_at && (
                                         <Text style={styles.detailValue}>
-                                            \uD83D\uDD50 Dernière utilisation: {formatDate(selectedProvider.last_used_at)}
+                                            🕐 Dernière utilisation: {formatDate(selectedProvider.last_used_at)}
                                         </Text>
                                     )}
                                 </NativeCard>

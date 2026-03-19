@@ -64,7 +64,7 @@ const formatCount = (count: number): string => {
 };
 
 const normalizeVideoUrl = (url: any): string | null => {
-    console.log(`\uD83C\uDFAF [VideoFeedScreen] normalizeVideoUrl appelé avec:`, url, typeof url);
+    console.log(`🎯 [VideoFeedScreen] normalizeVideoUrl appelé avec:`, url, typeof url);
 
     if (!url) {
         console.log(`❌ [VideoFeedScreen] normalizeVideoUrl: url est falsy`);
@@ -90,7 +90,7 @@ const normalizeVideoUrl = (url: any): string | null => {
 
     const cdnUrl = mediaService.getVideoUrl(trimmed);
     const result = cdnUrl || trimmed;
-    console.log(`\uD83C\uDF10 [VideoFeedScreen] normalizeVideoUrl: CDN URL générée:`, cdnUrl, 'résultat final:', result);
+    console.log(`🌐 [VideoFeedScreen] normalizeVideoUrl: CDN URL générée:`, cdnUrl, 'résultat final:', result);
     return result;
 };
 
@@ -122,17 +122,17 @@ const extractVideoFromField = (field: any): string | null => {
 };
 
 const normalizeFeed = (raw: any[]): FeedItem[] => {
-    console.log(`\uD83D\uDE80 [VideoFeedScreen] normalizeFeed START - ${raw.length} items bruts`);
+    console.log(`🚀 [VideoFeedScreen] normalizeFeed START - ${raw.length} items bruts`);
 
     if (!Array.isArray(raw)) {
         console.warn(`❌ [VideoFeedScreen] normalizeFeed: raw n'est pas un tableau`, typeof raw, raw);
         return [];
     }
-    console.log(`\uD83D\uDCCA [VideoFeedScreen] normalizeFeed: ${raw.length} items bruts à traiter`);
+    console.log(`📊 [VideoFeedScreen] normalizeFeed: ${raw.length} items bruts à traiter`);
 
     const results = raw
         .map((item, index) => {
-            console.log(`\n\uD83D\uDD0D [VideoFeedScreen] Traitement item ${index}:`, item?.data?.nom || 'Sans nom');
+            console.log(`\n🔍 [VideoFeedScreen] Traitement item ${index}:`, item?.data?.nom || 'Sans nom');
 
             // ✅ CORRIGÉ 2026-03-04: Chercher la vidéo dans tous les formats possibles
             const rawVideo =
@@ -143,10 +143,10 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 extractVideoFromField(item?.data?.videos) ||
                 extractVideoFromField(item?.videos);
 
-            console.log(`\uD83D\uDCF9 [VideoFeedScreen] rawVideo trouvé:`, rawVideo ? 'OUI' : 'NON');
+            console.log(`📹 [VideoFeedScreen] rawVideo trouvé:`, rawVideo ? 'OUI' : 'NON');
             if (rawVideo) {
-                console.log(`\uD83D\uDCF9 [VideoFeedScreen] rawVideo type:`, typeof rawVideo);
-                console.log(`\uD83D\uDCF9 [VideoFeedScreen] rawVideo preview:`, String(rawVideo).substring(0, 100) + '...');
+                console.log(`📹 [VideoFeedScreen] rawVideo type:`, typeof rawVideo);
+                console.log(`📹 [VideoFeedScreen] rawVideo preview:`, String(rawVideo).substring(0, 100) + '...');
             }
 
             if (!rawVideo) {
@@ -162,7 +162,7 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
             }
 
             const video = normalizeVideoUrl(rawVideo);
-            console.log(`\uD83C\uDFAC [VideoFeedScreen] normalizeVideoUrl result:`, video ? 'VALID' : 'NULL');
+            console.log(`🎬 [VideoFeedScreen] normalizeVideoUrl result:`, video ? 'VALID' : 'NULL');
 
             if (!video) {
                 console.log(`❌ [VideoFeedScreen] Item ${index} ignoré: normalizeVideoUrl a retourné null pour`, rawVideo);
@@ -209,7 +209,7 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
                 serviceData?.livraison_type
             );
 
-            console.log(`\uD83D\uDE9A [VideoFeedScreen] Livraison détectée: ${hasDelivery ? 'OUI' : 'NON'}`);
+            console.log(`🚚 [VideoFeedScreen] Livraison détectée: ${hasDelivery ? 'OUI' : 'NON'}`);
 
             const result = {
                 id: String(id),
@@ -237,17 +237,17 @@ const normalizeFeed = (raw: any[]): FeedItem[] => {
         })
         .filter((item): item is FeedItem => item !== null && item !== undefined) as FeedItem[];
 
-    console.log(`\uD83C\uDFAF [VideoFeedScreen] normalizeFeed END - ${results.length} items validés`);
+    console.log(`🎯 [VideoFeedScreen] normalizeFeed END - ${results.length} items validés`);
     return results;
 };
 
 const REACTIONS = [
     { type: 'love', emoji: '❤️', label: "J'adore" },
-    { type: 'like', emoji: '\uD83D\uDC4D', label: "J'aime" },
-    { type: 'wow', emoji: '\uD83D\uDE2E', label: 'Impressionnant' },
-    { type: 'interested', emoji: '\uD83C\uDFAF', label: 'Intéressant' },
-    { type: 'thinking', emoji: '\uD83E\uDD14', label: 'À réfléchir' },
-    { type: 'disappointed', emoji: '\uD83D\uDE15', label: 'Déçu' },
+    { type: 'like', emoji: '👍', label: "J'aime" },
+    { type: 'wow', emoji: '😮', label: 'Impressionnant' },
+    { type: 'interested', emoji: '🎯', label: 'Intéressant' },
+    { type: 'thinking', emoji: '🤔', label: 'À réfléchir' },
+    { type: 'disappointed', emoji: '😕', label: 'Déçu' },
 ];
 
 const viewabilityConfig = {
@@ -761,10 +761,10 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 ? `${SHARE_BASE_URL}/product/${item.serviceId}_${item.productIndex ?? 0}`
                 : item.videoUrl;
 
-            let shareText = `\uD83C\uDFAC ${item.titre}`;
+            let shareText = `🎬 ${item.titre}`;
             if (item.description) shareText += `\n\n${item.description}`;
-            if (item.sellerName) shareText += `\n\uD83C\uDFEA ${item.sellerName}`;
-            shareText += `\n\n\uD83D\uDD17 Voir sur Yukpo:\n${shareUrl}`;
+            if (item.sellerName) shareText += `\n🏪 ${item.sellerName}`;
+            shareText += `\n\n🔗 Voir sur Yukpo:\n${shareUrl}`;
 
             await Share.share({ message: shareText, url: shareUrl, title: item.titre });
         } catch (error) {
@@ -823,7 +823,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     // ✅ AJOUT: Gérer le clic sur le bouton de livraison
     const handleDeliveryOrder = useCallback((item: FeedItem) => {
         if (item.serviceId && item.hasDelivery) {
-            console.log(`\uD83D\uDE9A [VideoFeedScreen] Ouverture modal de livraison pour le service ${item.serviceId}`);
+            console.log(`🚚 [VideoFeedScreen] Ouverture modal de livraison pour le service ${item.serviceId}`);
             setSelectedDeliveryItem(item);
             setShowDeliveryModal(true);
         } else {
@@ -833,7 +833,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     // ✅ AJOUT: Gérer la réussite de la commande de livraison
     const handleDeliverySuccess = useCallback((deliveryId: string) => {
-        console.log(`\uD83C\uDFAF [VideoFeedScreen] Livraison créée avec succès: ${deliveryId}`);
+        console.log(`🎯 [VideoFeedScreen] Livraison créée avec succès: ${deliveryId}`);
         setShowDeliveryModal(false);
         setSelectedDeliveryItem(null);
 
@@ -1116,7 +1116,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 {isActive && (
                     <View style={styles.playIndicator}>
                         <Text style={styles.playIndicatorText}>
-                            {playCount[contentId] === 1 ? '\uD83D\uDD04' : '▶️'} {playCount[contentId] || 1}/2
+                            {playCount[contentId] === 1 ? '🔄' : '▶️'} {playCount[contentId] || 1}/2
                         </Text>
                     </View>
                 )}

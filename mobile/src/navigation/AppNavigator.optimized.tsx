@@ -844,7 +844,7 @@ function MainStackNavigator() {
     // Android peut tuer la tâche background — ce listener la relance automatiquement
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
-        console.log('[AppNav] \uD83D\uDCF1 App revenue au premier plan, vérification tracking...');
+        console.log('[AppNav] 📱 App revenue au premier plan, vérification tracking...');
         PassiveActivityTracker.resumeIfEnabled().catch(() => { });
       }
       appStateRef.current = nextAppState;
@@ -865,11 +865,11 @@ function MainStackNavigator() {
       <Stack.Screen name="ServicesDashboard" component={ServicesDashboard} />
 
       {/* === Tous les écrans lazy (chargés à la demande) === */}
-      {Object.entries(S).map(([name, component]) =>
-        component ? (
-          <Stack.Screen key={name} name={name} component={component} />
-        ) : null
-      )}
+      {Object.entries(S).map(([name, component]) => {
+        if (!component) return null;
+        if (name === 'Contact' || name === 'Navigation' || name === 'GestionServicesSpecialises' || name === 'ServicesDashboard') return null;
+        return <Stack.Screen key={name} name={name} component={component} />;
+      })}
     </Stack.Navigator>
   );
 }

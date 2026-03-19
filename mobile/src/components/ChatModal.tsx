@@ -137,7 +137,7 @@ const [messages, setMessages] = useState<Message[]>([]);
 
                         return {
                             id: String(interaction._id || interaction.id || Date.now()),
-                            content: messageType === 'text' ? content : (messageType === 'image' ? '\uD83D\uDCF7 Image' : messageType === 'audio' ? '\uD83C\uDFA4 Audio' : `\uD83D\uDCCE ${fileName || 'Fichier'}`),
+                            content: messageType === 'text' ? content : (messageType === 'image' ? '📷 Image' : messageType === 'audio' ? '🎤 Audio' : `📎 ${fileName || 'Fichier'}`),
                             from: (interaction.user_id === parseInt(user.id) ? 'client' : 'prestataire') as 'client' | 'prestataire',
                             timestamp: new Date(interaction.created_at || interaction.timestamp || Date.now()),
                             status: 'read' as 'sent' | 'delivered' | 'read',
@@ -403,7 +403,7 @@ const [messages, setMessages] = useState<Message[]>([]);
             // Ajouter le message localement avec preview
             const tempMessage: Message = {
                 id: tempId,
-                content: mediaType === 'image' ? '\uD83D\uDCF7 Image' : mediaType === 'audio' ? '\uD83C\uDFA4 Audio' : `\uD83D\uDCCE ${fileName || 'Fichier'}`,
+                content: mediaType === 'image' ? '📷 Image' : mediaType === 'audio' ? '🎤 Audio' : `📎 ${fileName || 'Fichier'}`,
                 from: 'client',
                 timestamp: new Date(),
                 status: 'sent',
@@ -422,7 +422,7 @@ const [messages, setMessages] = useState<Message[]>([]);
                 fileName: fileName
             };
 
-            console.log(`[ChatModal] \uD83D\uDCE4 Envoi ${mediaType} pour service ${service.id}`);
+            console.log(`[ChatModal] 📤 Envoi ${mediaType} pour service ${service.id}`);
 
             const response = await apiPost(`/api/services/${service.id}/message`, payload);
 

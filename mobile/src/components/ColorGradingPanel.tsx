@@ -24,9 +24,9 @@ interface ColorGradingPanelProps {
 }
 
 const GRADING_PRESETS = [
-    { key: 'cinematic', label: 'Cinematic', icon: '\uD83C\uDFAC', description: t('colorGradingPanel.styleCinemaProfessionnel') },
-    { key: 'vibrant', label: 'Vibrant', icon: '\uD83C\uDF08', description: t('colorGradingPanel.couleursVivesEtEnergiques') },
-    { key: 'moody', label: 'Moody', icon: '\uD83C\uDF19', description: 'Ambiance sombre et dramatique' },
+    { key: 'cinematic', label: 'Cinematic', icon: '🎬', description: t('colorGradingPanel.styleCinemaProfessionnel') },
+    { key: 'vibrant', label: 'Vibrant', icon: '🌈', description: t('colorGradingPanel.couleursVivesEtEnergiques') },
+    { key: 'moody', label: 'Moody', icon: '🌙', description: 'Ambiance sombre et dramatique' },
     { key: 'warm', label: 'Warm', icon: '☀️', description: 'Tons chauds et accueillants' },
     { key: 'cool', label: 'Cool', icon: '❄️', description: 'Tons froids et modernes' },
 ];

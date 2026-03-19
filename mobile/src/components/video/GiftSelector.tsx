@@ -20,30 +20,30 @@ export interface Gift {
 
 const giftsLibrary: Gift[] = [
     // Cheap (10-50 tokens)
-    { id: 'gift-1', name: 'Rose', emoji: '\uD83C\uDF39', price: 10, category: 'cheap' },
+    { id: 'gift-1', name: 'Rose', emoji: '🌹', price: 10, category: 'cheap' },
     { id: 'gift-2', name: t('giftSelector.cur'), emoji: '❤️', price: 20, category: 'cheap' },
     { id: 'gift-3', name: t('giftSelector.etoile'), emoji: '⭐', price: 30, category: 'cheap' },
-    { id: 'gift-4', name: 'Clap', emoji: '\uD83D\uDC4F', price: 40, category: 'cheap' },
-    { id: 'gift-5', name: 'Feu', emoji: '\uD83D\uDD25', price: 50, category: 'cheap' },
+    { id: 'gift-4', name: 'Clap', emoji: '👏', price: 40, category: 'cheap' },
+    { id: 'gift-5', name: 'Feu', emoji: '🔥', price: 50, category: 'cheap' },
 
     // Medium (100-500 tokens)
-    { id: 'gift-6', name: 'Bouquet', emoji: '\uD83D\uDC90', price: 100, category: 'medium' },
-    { id: 'gift-7', name: 'Cadeau', emoji: '\uD83C\uDF81', price: 200, category: 'medium' },
-    { id: 'gift-8', name: t('giftSelector.trophee'), emoji: '\uD83C\uDFC6', price: 300, category: 'medium' },
-    { id: 'gift-9', name: 'Diamant', emoji: '\uD83D\uDC8E', price: 400, category: 'medium' },
-    { id: 'gift-10', name: 'Couronne', emoji: '\uD83D\uDC51', price: 500, category: 'medium' },
+    { id: 'gift-6', name: 'Bouquet', emoji: '💐', price: 100, category: 'medium' },
+    { id: 'gift-7', name: 'Cadeau', emoji: '🎁', price: 200, category: 'medium' },
+    { id: 'gift-8', name: t('giftSelector.trophee'), emoji: '🏆', price: 300, category: 'medium' },
+    { id: 'gift-9', name: 'Diamant', emoji: '💎', price: 400, category: 'medium' },
+    { id: 'gift-10', name: 'Couronne', emoji: '👑', price: 500, category: 'medium' },
 
     // Expensive (1000-5000 tokens)
-    { id: 'gift-11', name: 'Ferrari', emoji: '\uD83C\uDFCE️', price: 1000, category: 'expensive' },
-    { id: 'gift-12', name: 'Yacht', emoji: '\uD83D\uDEE5️', price: 2000, category: 'expensive' },
-    { id: 'gift-13', name: t('giftSelector.chateau'), emoji: '\uD83C\uDFF0', price: 3000, category: 'expensive' },
-    { id: 'gift-14', name: 'Rocket', emoji: '\uD83D\uDE80', price: 4000, category: 'expensive' },
+    { id: 'gift-11', name: 'Ferrari', emoji: '🏎️', price: 1000, category: 'expensive' },
+    { id: 'gift-12', name: 'Yacht', emoji: '🛥️', price: 2000, category: 'expensive' },
+    { id: 'gift-13', name: t('giftSelector.chateau'), emoji: '🏰', price: 3000, category: 'expensive' },
+    { id: 'gift-14', name: 'Rocket', emoji: '🚀', price: 4000, category: 'expensive' },
     { id: 'gift-15', name: t('giftSelector.meteore'), emoji: '☄️', price: 5000, category: 'expensive' },
 
     // Premium (10000+ tokens)
-    { id: 'gift-16', name: 'Supernova', emoji: '\uD83C\uDF1F', price: 10000, category: 'premium' },
-    { id: 'gift-17', name: 'Galaxie', emoji: '\uD83C\uDF0C', price: 20000, category: 'premium' },
-    { id: 'gift-18', name: 'Univers', emoji: '\uD83C\uDF20', price: 50000, category: 'premium' },
+    { id: 'gift-16', name: 'Supernova', emoji: '🌟', price: 10000, category: 'premium' },
+    { id: 'gift-17', name: 'Galaxie', emoji: '🌌', price: 20000, category: 'premium' },
+    { id: 'gift-18', name: 'Univers', emoji: '🌠', price: 50000, category: 'premium' },
 ];
 
 interface GiftSelectorProps {
@@ -82,10 +82,10 @@ const [selectedCategory, setSelectedCategory] = useState<'cheap' | 'medium' | 'e
                                 selectedCategory === category && styles.categoryTextActive,
                             ]}
                         >
-                            {category === 'cheap' ? '\uD83D\uDCB0' :
-                                category === 'medium' ? '\uD83D\uDC8E' :
-                                    category === 'expensive' ? '\uD83C\uDFC6' :
-                                        category === 'premium' ? '\uD83D\uDC51' : ''}
+                            {category === 'cheap' ? '💰' :
+                                category === 'medium' ? '💎' :
+                                    category === 'expensive' ? '🏆' :
+                                        category === 'premium' ? '👑' : ''}
                         </Text>
                     </TouchableOpacity>
                 ))}

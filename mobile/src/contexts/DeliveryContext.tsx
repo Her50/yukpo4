@@ -432,6 +432,46 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return undefined;
     }, [user?.id, refreshActiveDeliveries]);
 
+    const flushPendingMutations = useCallback(async () => {
+        if (flushingMutationsRef.current) {
+            return;
+        }
+        if (!networkOnlineRef.current || !websocketConnectedRef.current) {
+            return;
+        }
+
+        flushingMutationsRef.current = true;
+        try {
+            while (pendingMutationsRef.current.length > 0) {
+                const mutation = pendingMutationsRef.current[0];
+                try {
+                    await mutation.run();
+                    pendingMutationsRef.current.shift();
+                    setPendingMutationCount(pendingMutationsRef.current.length);
+                } catch (mutationError) {
+                    if (isOfflineException(mutationError)) {
+                        mutation.retries += 1;
+                        if (mutation.retries > 5) {
+                            captureHandledError(mutationError, {
+                                mutation: mutation.key,
+                                retries: mutation.retries,
+                            });
+                            pendingMutationsRef.current.shift();
+                            setPendingMutationCount(pendingMutationsRef.current.length);
+                        }
+                        break;
+                    }
+
+                    captureHandledError(mutationError, { mutation: mutation.key });
+                    pendingMutationsRef.current.shift();
+                    setPendingMutationCount(pendingMutationsRef.current.length);
+                }
+            }
+        } finally {
+            flushingMutationsRef.current = false;
+        }
+    }, []);
+
     useEffect(() => {
         let mounted = true;
 
@@ -538,46 +578,6 @@ export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const enqueueMutation = useCallback((mutation: PendingMutation) => {
         pendingMutationsRef.current.push(mutation);
         setPendingMutationCount(pendingMutationsRef.current.length);
-    }, []);
-
-    const flushPendingMutations = useCallback(async () => {
-        if (flushingMutationsRef.current) {
-            return;
-        }
-        if (!networkOnlineRef.current || !websocketConnectedRef.current) {
-            return;
-        }
-
-        flushingMutationsRef.current = true;
-        try {
-            while (pendingMutationsRef.current.length > 0) {
-                const mutation = pendingMutationsRef.current[0];
-                try {
-                    await mutation.run();
-                    pendingMutationsRef.current.shift();
-                    setPendingMutationCount(pendingMutationsRef.current.length);
-                } catch (mutationError) {
-                    if (isOfflineException(mutationError)) {
-                        mutation.retries += 1;
-                        if (mutation.retries > 5) {
-                            captureHandledError(mutationError, {
-                                mutation: mutation.key,
-                                retries: mutation.retries,
-                            });
-                            pendingMutationsRef.current.shift();
-                            setPendingMutationCount(pendingMutationsRef.current.length);
-                        }
-                        break;
-                    }
-
-                    captureHandledError(mutationError, { mutation: mutation.key });
-                    pendingMutationsRef.current.shift();
-                    setPendingMutationCount(pendingMutationsRef.current.length);
-                }
-            }
-        } finally {
-            flushingMutationsRef.current = false;
-        }
     }, []);
 
     const retryPendingMutations = useCallback(async () => {

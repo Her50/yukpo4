@@ -1,5 +1,5 @@
 /**
- * \uD83C\uDFAC ARVideoEditor - Éditeur vidéo immersif AR simplifié et robuste
+ * 🎬 ARVideoEditor - Éditeur vidéo immersif AR simplifié et robuste
  * Version reconstruite pour éviter les crashes
  * 
  * Utilise expo-image-picker pour une capture vidéo simple et fiable
@@ -176,7 +176,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                     {/* Boutons d'action */}
                     <View style={styles.actionButtonsContainer}>
                         <NativeButton
-                            title="\uD83D\uDD04 Reprendre"
+                            title="🔄 Reprendre"
                             variant="outline"
                             size="large"
                             onPress={handleRetake}
@@ -237,7 +237,7 @@ export const ARVideoEditor: React.FC<ARVideoEditorProps> = ({
                 {/* Bouton de capture */}
                 <View style={styles.buttonContainer}>
                     <NativeButton
-                        title={isCapturing ? 'Capture en cours...' : '\uD83D\uDCF9 Capturer une vidéo'}
+                        title={isCapturing ? 'Capture en cours...' : '📹 Capturer une vidéo'}
                         variant="primary"
                         size="large"
                         onPress={handleCaptureVideo}

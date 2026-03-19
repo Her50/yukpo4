@@ -1,5 +1,5 @@
 /**
- * \uD83D\uDD14 Gestionnaire de notifications push pour livraisons
+ * 🔔 Gestionnaire de notifications push pour livraisons
  * Système complet niveau Uber Eats / DoorDash
  */
 
@@ -79,17 +79,17 @@ export const sendDeliveryStatusNotification = async (
     body: string
 ) => {
     const statusEmojis: Record<string, string> = {
-        'assigned': '\uD83D\uDC64',
-        'en_route_pickup': '\uD83D\uDE9A',
-        'shopping_in_progress': '\uD83D\uDED2',
-        'en_route_delivery': '\uD83D\uDCE6',
+        'assigned': '👤',
+        'en_route_pickup': '🚚',
+        'shopping_in_progress': '🛒',
+        'en_route_delivery': '📦',
         'delivered': '✅',
         'cancelled': '❌',
     };
 
     await Notifications.scheduleNotificationAsync({
         content: {
-            title: `${statusEmojis[status] || '\uD83D\uDCE6'} ${title}`,
+            title: `${statusEmojis[status] || '📦'} ${title}`,
             body,
             data: { deliveryId, status },
             sound: true,
@@ -109,7 +109,7 @@ export const sendNewDeliveryAvailableNotification = async (
 ) => {
     await Notifications.scheduleNotificationAsync({
         content: {
-            title: '\uD83D\uDE9A Nouvelle livraison disponible',
+            title: '🚚 Nouvelle livraison disponible',
             body: `Livraison à ${distance.toFixed(1)} km • ~${estimatedEarnings.toLocaleString('fr-FR')} FCFA`,
             data: { deliveryId, type: 'new_delivery' },
             sound: true,

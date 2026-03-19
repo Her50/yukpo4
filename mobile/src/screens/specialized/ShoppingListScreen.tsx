@@ -149,7 +149,7 @@ const ShoppingListScreen: React.FC<ShoppingListScreenProps> = () => {
                 </View>
                 {item.store_section && (
                     <Text style={styles.itemSection}>
-                        \uD83D\uDCCD {item.store_section}
+                        📍 {item.store_section}
                     </Text>
                 )}
             </TouchableOpacity>

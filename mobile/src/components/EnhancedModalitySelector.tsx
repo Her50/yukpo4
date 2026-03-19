@@ -85,8 +85,8 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
             const combinedOptions = [...new Set([...staticOptions, ...serverCustomOptions])];
 
             // ✅ Ajouter une option sentinelle pour l'ajout manuel
-            if (!combinedOptions.some(opt => opt.includes('\uD83C\uDD95 Autre'))) {
-                combinedOptions.push('\uD83C\uDD95 Autre (ajouter)');
+            if (!combinedOptions.some(opt => opt.includes('🆕 Autre'))) {
+                combinedOptions.push('🆕 Autre (ajouter)');
             }
 
             setAllOptions(combinedOptions);
@@ -100,7 +100,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
     };
 
     const handleSelect = async (option: string) => {
-        if (option.includes('\uD83C\uDD95 Autre')) {
+        if (option.includes('🆕 Autre')) {
             // Proposer d'ajouter une nouvelle modalité
             Alert.prompt(
                 `Nouveau ${label.toLowerCase()}`,
@@ -268,7 +268,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
             {/* Indicateur du nombre d'options disponibles */}
             {allOptions.length > 0 && !loading && (
                 <Text style={styles.optionsCount}>
-                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('\uD83C\uDD95')) ? ' (inclut les modalités partagées)' : ''}
+                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('🆕')) ? ' (inclut les modalités partagées)' : ''}
                 </Text>
             )}
             {loading && (
@@ -461,7 +461,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                             {!searchQuery.trim() && (
                                 <TouchableOpacity
                                     style={styles.addCustomButton}
-                                    onPress={() => handleSelect('\uD83C\uDD95 Autre (ajouter)')}
+                                    onPress={() => handleSelect('🆕 Autre (ajouter)')}
                                 >
                                     <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
                                     <Text style={styles.addCustomButtonText}>

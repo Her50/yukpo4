@@ -91,7 +91,7 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
                         {value || placeholder}
                     </Text>
                     {locationEnabled && (
-                        <Text style={styles.locationHint}>\uD83D\uDCCD Recherche par proximité activée</Text>
+                        <Text style={styles.locationHint}>📍 Recherche par proximité activée</Text>
                     )}
                 </View>
                 <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
@@ -150,7 +150,7 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
 
                         {loading && (
                             <View style={styles.loadingContainer}>
-                                <Text style={styles.loadingText}>\uD83D\uDD0D Recherche en cours...</Text>
+                                <Text style={styles.loadingText}>🔍 Recherche en cours...</Text>
                             </View>
                         )}
 

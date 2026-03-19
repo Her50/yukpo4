@@ -101,7 +101,7 @@ export const LocationProximityFilter: React.FC<LocationProximityFilterProps> = (
     return (
         <View style={styles.container}>
             {/* Titre de section */}
-            <Text style={styles.sectionTitle}>\uD83D\uDCCD Localisation et proximité</Text>
+            <Text style={styles.sectionTitle}>📍 Localisation et proximité</Text>
             <Text style={styles.sectionDescription}>
                 Filtrez par zone géographique
             </Text>

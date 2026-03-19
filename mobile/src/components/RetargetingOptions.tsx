@@ -84,7 +84,7 @@ const [expanded, setExpanded] = useState(false);
         <NativeCard style={styles.container}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>\uD83D\uDD04 Retargeting</Text>
+                    <Text style={styles.title}>🔄 Retargeting</Text>
                     <Text style={styles.subtitle}>
                         Ciblez les utilisateurs qui ont déjà interagi avec votre contenu
                     </Text>

@@ -187,47 +187,57 @@ class NotificationSoundService {
 
     /**
      * Retourne le message de bienvenue dans la langue de l'utilisateur.
-     * Messages pré-traduits pour garantir la qualité TTS.
+     * Message simplifié, impactant, orienté innovation + assistant IA.
+     * IMPORTANT: version internationale (sans référence régionale).
      */
     private getWelcomeMessage(lang: string): string {
-        const messages: Record<string, string> = {
-            fr: 'Bienvenue sur Yukpo ! Votre assistant intelligent pour tous vos besoins. Nous sommes ravis de vous accueillir.',
-            en: 'Welcome to Yukpo! Your smart assistant for all your needs. We are delighted to have you.',
-            de: 'Willkommen bei Yukpo! Ihr intelligenter Assistent für alle Ihre Bedürfnisse. Wir freuen uns, Sie zu begrüßen.',
-            es: '¡Bienvenido a Yukpo! Tu asistente inteligente para todas tus necesidades. Estamos encantados de recibirte.',
-            pt: 'Bem-vindo ao Yukpo! Seu assistente inteligente para todas as suas necessidades. Estamos felizes em recebê-lo.',
-            it: 'Benvenuto su Yukpo! Il tuo assistente intelligente per tutte le tue esigenze. Siamo felici di accoglierti.',
-            nl: 'Welkom bij Yukpo! Uw slimme assistent voor al uw behoeften. Wij zijn blij u te verwelkomen.',
-            pl: 'Witamy w Yukpo! Twój inteligentny asystent na każdą potrzebę. Cieszymy się, że jesteś z nami.',
-            uk: 'Ласкаво просимо до Yukpo! Ваш розумний помічник для всіх потреб. Ми раді вітати вас.',
-            tr: 'Yukpo\'ya hoş geldiniz! Tüm ihtiyaçlarınız için akıllı asistanınız. Sizi ağırlamaktan mutluluk duyuyoruz.',
-            ru: 'Добро пожаловать в Yukpo! Ваш умный помощник для всех ваших нужд. Мы рады приветствовать вас.',
-            zh: '欢迎来到Yukpo！您的智能助手，满足您的一切需求。我们很高兴欢迎您。',
-            ja: 'Yukpoへようこそ！あらゆるニーズに応えるスマートアシスタントです。ようこそお越しくださいました。',
-            ko: 'Yukpo에 오신 것을 환영합니다! 모든 필요를 위한 스마트 어시스턴트입니다. 환영합니다.',
-            hi: 'Yukpo में आपका स्वागत है! आपकी सभी जरूरतों के लिए स्मार्ट सहायक। हमें आपका स्वागत करते हुए खुशी हो रही है।',
-            ar: 'مرحبا بك في يوكبو! مساعدك الذكي لجميع احتياجاتك. يسعدنا استقبالك.',
-            sw: 'Karibu kwenye Yukpo! Msaidizi wako mahiri kwa mahitaji yako yote. Tunafuraha kukukaribisha.',
-            ha: 'Barka da zuwa Yukpo! Mai taimakon ka mai wayo don duk bukatunka. Muna farin cikin maraba da kai.',
-            yo: 'Ẹ káàbọ̀ sí Yukpo! Olùrànlọ́wọ́ ọlọ́gbọ́n rẹ fún gbogbo àìní rẹ. A dúpẹ́ pé o wà.',
-            ig: 'Nnọọ na Yukpo! Onye inyeaka gị mara ihe maka mkpa gị niile. Anyị nwere obi ụtọ ịnabata gị.',
-            am: 'ወደ Yukpo እንኳን ደህና መጡ! ለሁሉም ፍላጎቶችዎ ዘመናዊ ረዳትዎ። እርስዎን በመቀበላችን ደስተኞች ነን።',
-            zu: 'Siyakwamukela ku-Yukpo! Umsizi wakho ohlakaniphile kuzo zonke izidingo zakho.',
-            wo: 'Dalal jàmm ci Yukpo! Sa ndimbal bu xaraal ngir sa soxla yépp. Bég nanu la yor.',
-            ln: 'Boyei malamu na Yukpo! Mosungi na yo ya mayele mpo na bamposa na yo nyonso.',
-            ff: 'Bisimilla e Yukpo! Ballo maa keewuɗo ngam haajuuji maa fof. Min ceyii jaɓɓaade ma.',
-            rw: 'Murakaza neza kuri Yukpo! Umufasha wawe w\'ubwenge ku byo ukeneye byose.',
-            sn: 'Titambire kuYukpo! Mubatsiri wako akangwara kune zvese zvaunoda.',
-            so: 'Ku soo dhawoow Yukpo! Kaaliyahaaga caqliga leh ee loogu talagalay dhamaan baahidaada.',
-            mg: 'Tongasoa eto amin\'ny Yukpo! Ny mpanampy maranitra ho an\'ny filànao rehetra.',
-            ht: 'Byenveni sou Yukpo! Asistan entelijan ou pou tout bezwen ou yo. Nou kontan resevwa ou.',
-            ewo: 'Mbolo a Yukpo! Mod a yëm a biyëdë bise bise boe.',
-            dua: 'Mbolo na Yukpo! Muna ndutu na bwam na niè nyèsè.',
-            bas: 'Sango a Yukpo! Mut a gwé mbok ni biniigà nyuu bisoŋ.',
-            bm: 'I ni ce Yukpo kɔnɔ! I ka dɛmɛbaga hakilitigi.',
-            pcm: 'Welcome to Yukpo! Your smart helper for all your needs. We dey happy to see you.',
+        const normalized = String(lang || 'en').toLowerCase().split('-')[0];
+        const fallbackAlias: Record<string, string> = {
+            // African language variants / low-resource locales -> closest available voice translation
+            ewo: 'fr', dua: 'fr', bas: 'fr', bbj: 'fr', bum: 'fr', bci: 'fr', dyu: 'fr', bet: 'fr',
+            mos: 'fr', dje: 'fr', ee: 'fr', kbp: 'fr', sar: 'fr', sg: 'fr', kg: 'fr', lua: 'fr',
+            fan: 'fr', st: 'en', rn: 'fr', srr: 'fr', af: 'en', bm: 'fr',
+            // Caribbean / regional fallbacks
+            pap: 'es', pcm: 'en',
+            // Generic safe fallback
+            ms: 'en', tl: 'en', vi: 'en', th: 'en', bn: 'en', tr: 'en', uk: 'en', pl: 'en',
+            it: 'it', nl: 'nl',
         };
-        return messages[lang] || messages['fr'];
+        const key = fallbackAlias[normalized] || normalized;
+
+        const messages: Record<string, string> = {
+            fr: 'Bienvenue sur Yukpo, la super-app intelligente qui vous simplifie la vie. Commerce, transport, santé, livraison et services essentiels sont réunis en un seul lieu. Créez votre compte, et je serai toujours là pour vous guider pas à pas dans l’application.',
+            en: 'Welcome to Yukpo, your intelligent super-app. First, create your account, then tap the chat icon at the bottom right: your intelligent guide helps you quickly access your essential services.',
+            de: 'Willkommen bei Yukpo. Sobald Ihr Konto erstellt ist, bleibt Ihr intelligenter Assistent immer verfügbar, um Sie zu begleiten. Bei Fragen zu Funktionen öffnen Sie den intelligenten Chat und stellen Sie einfach Ihre Frage.',
+            es: 'Bienvenido a Yukpo. Una vez creada su cuenta, su asistente inteligente estará siempre disponible para guiarle. Para cualquier duda sobre funciones, abra el chat inteligente y haga su pregunta.',
+            pt: 'Bem-vindo ao Yukpo. Depois de criar sua conta, seu assistente inteligente estará sempre disponível para orientar você. Para qualquer dúvida sobre funcionalidades, abra o chat inteligente e envie sua pergunta.',
+            it: 'Benvenuto su Yukpo. Dopo aver creato il tuo account, il tuo assistente intelligente sarà sempre disponibile per guidarti. Per qualsiasi domanda sulle funzionalità, apri la chat intelligente e fai la tua domanda.',
+            nl: 'Welkom bij Yukpo. Zodra je account is aangemaakt, blijft je intelligente assistent altijd beschikbaar om je te begeleiden. Voor vragen over functies open je de intelligente chat en stel je je vraag.',
+            pl: 'Witamy w Yukpo. Po utworzeniu konta Twój inteligentny asystent zawsze będzie dostępny, aby Cię prowadzić. W razie pytań o funkcje otwórz inteligentny czat i zadaj pytanie.',
+            uk: 'Ласкаво просимо до Yukpo. Після створення облікового запису ваш інтелектуальний помічник завжди поруч, щоб вас супроводжувати. Для будь-яких питань щодо функцій відкрийте інтелектуальний чат і поставте запитання.',
+            tr: 'Yukpo\'ya hoş geldiniz. Hesabınız oluşturulduktan sonra akıllı asistanınız size her adımda rehberlik etmek için her zaman hazırdır. Özelliklerle ilgili sorular için akıllı sohbeti açın ve sorunuzu yazın.',
+            ru: 'Добро пожаловать в Yukpo. После создания аккаунта ваш интеллектуальный помощник всегда рядом, чтобы направлять вас. По любому вопросу о функциях откройте умный чат и задайте вопрос.',
+            zh: '欢迎来到Yukpo。创建账户后，您的智能助手会始终陪伴并引导您。对任何功能有疑问时，打开智能聊天并直接提问即可。',
+            ja: 'Yukpoへようこそ。アカウント作成後は、インテリジェントアシスタントが常にあなたをサポートします。機能について質問があれば、インテリジェントチャットを開いてそのまま質問してください。',
+            ko: 'Yukpo에 오신 것을 환영합니다. 계정을 만든 후에는 지능형 어시스턴트가 항상 함께하며 안내합니다. 기능에 대한 질문이 있으면 지능형 채팅을 열고 바로 물어보세요.',
+            hi: 'Yukpo में आपका स्वागत है। खाता बन जाने के बाद आपका बुद्धिमान सहायक हमेशा आपकी मदद के लिए उपलब्ध रहेगा। किसी भी फीचर या समस्या के लिए इंटेलिजेंट चैट खोलें और अपना प्रश्न पूछें।',
+            ar: 'مرحبًا بك في Yukpo. بعد إنشاء حسابك سيبقى مساعدك الذكي متاحًا دائمًا لإرشادك. لأي سؤال حول الميزات، افتح الدردشة الذكية واسأل مباشرة.',
+            sw: 'Karibu Yukpo. Baada ya kuunda akaunti yako, msaidizi wako mahiri atakuwa nawe kila wakati kukuongoza. Kwa swali lolote kuhusu vipengele, fungua chat mahiri na uliza moja kwa moja.',
+            ha: 'Barka da zuwa Yukpo. Bayan ka ƙirƙiri asusunka, mataimakinka mai wayo zai kasance a tare da kai koyaushe don jagora. Duk tambaya game da fasali, ka buɗe chat mai wayo ka yi tambaya kai tsaye.',
+            yo: 'Kaabo si Yukpo. Lẹ́yìn tí o bá dá àkọọlẹ rẹ sílẹ̀, olùrànlọ́wọ́ ọlọ́gbọ́n rẹ máa wà pẹ̀lú rẹ ní gbogbo ìgbà láti tọ́ ọ sọ́nà. Fun ìbéèrè kankan nípa iṣẹ́, ṣí chat ọlọ́gbọ́n kí o sì béèrè taara.',
+            ig: 'Nnọọ na Yukpo. Mgbe emechara mepụta akaụntụ gị, onye enyemaka gị nwere ọgụgụ isi ga-anọnyere gị mgbe niile iji duzie gị. Maka ajụjụ ọ bụla gbasara atụmatụ, mepee chat ọgụgụ isi ma jụọ ozugbo.',
+            am: 'ወደ Yukpo እንኳን ደህና መጡ። መለያዎ ከተፈጠረ በኋላ ብልህ አጋዥዎ ሁልጊዜ እዚያ ይሆናል ለመመራት። ስለ ማንኛውም ባህሪ ጥያቄ ካለ ብልህ ቻትን ይክፈቱ እና በቀጥታ ይጠይቁ።',
+            zu: 'Siyakwamukela ku-Yukpo. Ngemuva kokudala i-akhawunti yakho, umsizi wakho ohlakaniphile uzohlala ekhona ukuze akuqondise. Noma yimuphi umbuzo ngezici, vula ingxoxo ehlakaniphile ubuze ngqo.',
+            wo: 'Dalal ak jàmm ci Yukpo. Bu sa kont bi amee, sa ndimbal bu xel dina nekk ak yow ngir gindi la. Su fekkee am nga laaj ci benn liggéey, ubbi chat bu xel bi te laaj.',
+            ln: 'Boyei malamu na Yukpo. Sima kont na yo esalemi, mosungi na yo ya mayele akozala ntango nyonso mpo na kokamba yo. Soki ozali na motuna na likambo ya ba fonctionnalités, fungola chat ya mayele mpe tuna mbala moko.',
+            ff: 'A jaaraama e Yukpo. Caggal kont maa taggi, ballo maa keewuɗo maa ɗon e ma ngam yillaade ma. Kala ɗum ko cuɓoraaɗe, uddit chat keewuɗo ɗaa ƴama.',
+            rw: 'Murakaza neza kuri Yukpo. Konti yawe nimara gukorwa, umufasha wawe w’ubwenge azahora ahari akuyobore. Ku kibazo icyo ari cyo cyose ku mikorere, fungura chat y’ubwenge ubaze ako kanya.',
+            sn: 'Mauya kuYukpo. Kana wagadzira account yako, mubatsiri wako akangwara anogara aripo kukutungamirira. Kana uine mubvunzo nezvemaficha, vhura intelligent chat wobvunza zvakananga.',
+            so: 'Ku soo dhawoow Yukpo. Marka akoonkaaga la sameeyo, kaaliyahaaga caqliga leh had iyo jeer wuu kula jiri doonaa si uu kuu hago. Su’aal kasta oo ku saabsan adeegyada, fur chat-ka caqliga leh oo si toos ah u weydii.',
+            mg: 'Tongasoa eto amin’i Yukpo. Rehefa voaforona ny kaontinao, ny mpanampy manan-tsaina dia ho eo foana hitari-dalana anao. Raha manana fanontaniana momba ny fiasa ianao dia sokafy ny chat manan-tsaina ary anontanio mivantana.',
+            ht: 'Byenveni sou Yukpo. Apre ou fin kreye kont ou, asistan entelijan ou ap toujou la pou gide ou. Pou nenpòt kesyon sou fonksyonalite yo, louvri chat entelijan an epi poze kesyon ou dirèkteman.',
+        };
+        return messages[key] || messages['en'];
     }
 
     /**
@@ -276,10 +286,18 @@ class NotificationSoundService {
             sw: 'sw-KE', ha: 'ha-NG', yo: 'yo-NG', am: 'am-ET', wo: 'wo-SN',
             zu: 'zu-ZA', ig: 'ig-NG', ln: 'ln-CD', ff: 'ff-GN', rw: 'rw-RW',
             sn: 'sn-ZW', so: 'so-SO', ti: 'ti-ER', mg: 'mg-MG',
-            ht: 'ht-HT', pap: 'nl-CW', // Papiamentu fallback to Dutch for TTS
+            ht: 'ht-HT', pap: 'es-ES',
+            // broader app-language coverage with practical fallbacks
+            af: 'en-ZA', bm: 'fr-FR', bas: 'fr-FR', bbj: 'fr-FR', bci: 'fr-FR', bet: 'fr-FR',
+            bum: 'fr-FR', dje: 'fr-FR', dua: 'fr-FR', dyu: 'fr-FR', ee: 'fr-FR', ewo: 'fr-FR',
+            fan: 'fr-FR', kbp: 'fr-FR', kg: 'fr-FR', ko: 'ko-KR', lua: 'fr-FR', mos: 'fr-FR',
+            ms: 'en-US', nl: 'nl-NL', pcm: 'en-US', pl: 'pl-PL', rn: 'fr-FR', sar: 'fr-FR',
+            sg: 'fr-FR', srr: 'fr-FR', st: 'en-US', th: 'th-TH', tl: 'en-US', tr: 'tr-TR',
+            uk: 'uk-UA', vi: 'vi-VN', xh: 'en-ZA',
         };
         const current = i18n.language || 'fr';
-        return langMap[current] || `${current}-${current.toUpperCase()}`;
+        const normalized = String(current).toLowerCase().split('-')[0];
+        return langMap[normalized] || 'en-US';
     }
 
     /**

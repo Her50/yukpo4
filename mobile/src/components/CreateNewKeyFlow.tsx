@@ -1,6 +1,6 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 /**
- * \uD83C\uDFAF FLUX DE CRÉATION DE NOUVELLE CLÉ
+ * 🎯 FLUX DE CRÉATION DE NOUVELLE CLÉ
  * 
  * Gère intelligemment les 3 scénarios :
  * 1. Détection automatique claire (confidence >= 80%)
@@ -39,7 +39,7 @@ const [detection, setDetection] = useState<CategoryDetectionResult | null>(null)
     const detected = detectCategoryFromQuery(query);
     setDetection(detected);
 
-    console.log(`\uD83D\uDD0D [CreateNewKey] Détection pour "${query}":`, detected);
+    console.log(`🔍 [CreateNewKey] Détection pour "${query}":`, detected);
 
     // Si haute confiance, sélectionner automatiquement
     if (detected.confidence >= 80 && detected.category_code !== 'UNKNOWN') {
@@ -189,18 +189,18 @@ function CategorySelectorManual({
 
   // Liste de toutes les catégories disponibles
   const CATEGORIES_LIST = [
-    { code: 'AUTO', name: 'Automobile', icon: '\uD83D\uDE97', form: 'FormAutoAutomobile' },
-    { code: 'MOTO', name: 'Moto', icon: '\uD83C\uDFCD️', form: 'FormAutoMoto' },
-    { code: 'TEL', name: t('createNewKeyFlow.telephone'), icon: '\uD83D\uDCF1', form: 'FormAutoTelephone' },
-    { code: 'PC', name: 'Ordinateur', icon: '\uD83D\uDCBB', form: 'FormAutoOrdinateur' },
+    { code: 'AUTO', name: 'Automobile', icon: '🚗', form: 'FormAutoAutomobile' },
+    { code: 'MOTO', name: 'Moto', icon: '🏍️', form: 'FormAutoMoto' },
+    { code: 'TEL', name: t('createNewKeyFlow.telephone'), icon: '📱', form: 'FormAutoTelephone' },
+    { code: 'PC', name: 'Ordinateur', icon: '💻', form: 'FormAutoOrdinateur' },
     { code: 'ELEC', name: t('createNewKeyFlow.electromenager'), icon: '⚡', form: 'FormAutoElectromenager' },
-    { code: 'AGRI', name: 'Agriculture', icon: '\uD83C\uDF3E', form: 'FormAutoAgriculture' },
-    { code: 'IMMO', name: 'Immobilier', icon: '\uD83C\uDFE0', form: 'FormAutoImmobilier' },
-    { code: 'TERR', name: 'Terrain', icon: '\uD83C\uDFDE️', form: 'FormAutoTerrain' },
-    { code: 'VET', name: t('createNewKeyFlow.vetement'), icon: '\uD83D\uDC55', form: 'FormAutoVetement' },
-    { code: 'CHAUS', name: 'Chaussure', icon: '\uD83D\uDC5F', form: 'FormAutoChaussure' },
-    { code: 'EMPL', name: 'Emploi', icon: '\uD83D\uDCBC', form: 'FormAutoEmploi' },
-    { code: 'FORM', name: 'Formation', icon: '\uD83D\uDCDA', form: 'FormAutoFormation' },
+    { code: 'AGRI', name: 'Agriculture', icon: '🌾', form: 'FormAutoAgriculture' },
+    { code: 'IMMO', name: 'Immobilier', icon: '🏠', form: 'FormAutoImmobilier' },
+    { code: 'TERR', name: 'Terrain', icon: '🏞️', form: 'FormAutoTerrain' },
+    { code: 'VET', name: t('createNewKeyFlow.vetement'), icon: '👕', form: 'FormAutoVetement' },
+    { code: 'CHAUS', name: 'Chaussure', icon: '👟', form: 'FormAutoChaussure' },
+    { code: 'EMPL', name: 'Emploi', icon: '💼', form: 'FormAutoEmploi' },
+    { code: 'FORM', name: 'Formation', icon: '📚', form: 'FormAutoFormation' },
     // ... 50+ autres catégories
   ];
 

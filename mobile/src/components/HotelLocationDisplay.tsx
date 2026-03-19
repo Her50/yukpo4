@@ -94,7 +94,7 @@ const generateReadableLocation = (lat: number, lng: number): string => {
     }
 
     // ════════════════════════════════════════════════════════════
-    // \uD83D\uDCCD ZONES GÉOGRAPHIQUES DU CAMEROUN (focus principal)
+    // 📍 ZONES GÉOGRAPHIQUES DU CAMEROUN (focus principal)
     // ════════════════════════════════════════════════════════════
     if (lat >= 3.5 && lat <= 13 && lng >= 8 && lng <= 16) {
         // Douala (Littoral)
@@ -150,7 +150,7 @@ const generateReadableLocation = (lat: number, lng: number): string => {
     }
 
     // ════════════════════════════════════════════════════════════
-    // \uD83D\uDCCD AUTRES PAYS D'AFRIQUE FRANCOPHONE
+    // 📍 AUTRES PAYS D'AFRIQUE FRANCOPHONE
     // ════════════════════════════════════════════════════════════
 
     // Côte d'Ivoire
@@ -191,7 +191,7 @@ const generateReadableLocation = (lat: number, lng: number): string => {
     }
 
     // ════════════════════════════════════════════════════════════
-    // \uD83D\uDCCD ZONES GÉOGRAPHIQUES GÉNÉRALES
+    // 📍 ZONES GÉOGRAPHIQUES GÉNÉRALES
     // ════════════════════════════════════════════════════════════
 
     // Afrique Centrale
@@ -262,7 +262,7 @@ const HotelLocationDisplay: React.FC<HotelLocationDisplayProps> = ({
             // Ouvrir Google Maps par défaut
             const url = `https://www.google.com/maps/search/?api=1&query=${hotelGPS.lat},${hotelGPS.lng}`;
             // Linking.openURL(url); // À décommenter si besoin
-            console.log('\uD83D\uDCCD Navigation vers:', url);
+            console.log('📍 Navigation vers:', url);
         }
     };
 

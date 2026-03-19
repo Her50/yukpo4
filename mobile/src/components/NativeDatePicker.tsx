@@ -107,7 +107,7 @@ const NativeDatePicker: React.FC<NativeDatePickerProps> = ({
 
             {/* Aide visuelle */}
             <Text style={styles.hintText}>
-                \uD83D\uDCC5 Format : JJ/MM/AAAA
+                📅 Format : JJ/MM/AAAA
             </Text>
         </View>
     );

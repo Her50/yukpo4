@@ -266,7 +266,7 @@ const [loading, setLoading] = useState(true);
                     {metadata.is_on_duty_now && (
                         <View style={styles.infoRow}>
                             <SafeIcon name="check-circle" size={16} color={modernColors.success} />
-                            <Text style={styles.infoText}>\uD83D\uDFE2 En service actuellement</Text>
+                            <Text style={styles.infoText}>🟢 En service actuellement</Text>
                         </View>
                     )}
                     {metadata.permanent_24h && (
@@ -293,13 +293,13 @@ const [loading, setLoading] = useState(true);
                     {metadata.rdv_en_ligne && (
                         <View style={styles.infoRow}>
                             <SafeIcon name="calendar" size={16} color={modernColors.primary} />
-                            <Text style={styles.infoText}>\uD83D\uDCC5 Prise de RDV en ligne disponible</Text>
+                            <Text style={styles.infoText}>📅 Prise de RDV en ligne disponible</Text>
                         </View>
                     )}
                     {metadata.urgences_disponible && (
                         <View style={styles.infoRow}>
                             <SafeIcon name="alert-circle" size={16} color={modernColors.error} />
-                            <Text style={styles.infoText}>\uD83D\uDEA8 Urgences disponibles</Text>
+                            <Text style={styles.infoText}>🚨 Urgences disponibles</Text>
                         </View>
                     )}
                 </NativeCard>

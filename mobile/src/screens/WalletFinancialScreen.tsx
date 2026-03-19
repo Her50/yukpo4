@@ -26,8 +26,8 @@ const currencySymbolForCountry = (code: string): string => {
     const map: Record<string, string> = {
         CM: 'FCFA', GA: 'FCFA', CG: 'FCFA', CF: 'FCFA', TD: 'FCFA', GQ: 'FCFA',
         SN: 'FCFA', CI: 'FCFA', ML: 'FCFA', BF: 'FCFA', NE: 'FCFA', TG: 'FCFA', BJ: 'FCFA', GW: 'FCFA',
-        NG: '\u20a6', GH: 'GH\u20b5', KE: 'KSh', TZ: 'TSh', UG: 'USh', RW: 'FRw',
-        ZA: 'R', CD: 'FC', ET: 'Br', MG: 'Ar', MA: 'DH', DZ: 'DA', TN: 'DT', EG: 'E\u00a3',
+        NG: '₦', GH: 'GH₵', KE: 'KSh', TZ: 'TSh', UG: 'USh', RW: 'FRw',
+        ZA: 'R', CD: 'FC', ET: 'Br', MG: 'Ar', MA: 'DH', DZ: 'DA', TN: 'DT', EG: 'E£',
     };
     return map[code?.toUpperCase()] || 'FCFA';
 };
@@ -614,7 +614,7 @@ const WalletFinancialScreen: React.FC = () => {
                         {item.description || item.reference_type || '—'}
                     </Text>
                     {item.location && (
-                        <Text style={styles.txnLocation}>\uD83D\uDCCD {item.location}</Text>
+                        <Text style={styles.txnLocation}>📍 {item.location}</Text>
                     )}
                     <Text style={styles.txnDate}>{formatDate(item.created_at)}</Text>
                     {item.trace_id && (

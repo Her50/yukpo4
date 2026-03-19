@@ -1,5 +1,5 @@
 /**
- * \uD83C\uDFA8 Toast d'erreur moderne avec animations
+ * 🎨 Toast d'erreur moderne avec animations
  * Design inspiré de Material Design et iOS
  */
 

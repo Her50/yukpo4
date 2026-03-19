@@ -719,14 +719,14 @@ const CreatePubliciteScreen: React.FC = () => {
 
             if (solde < coutEnFCFA) {
                 Alert.alert(
-                    `\uD83D\uDCB8 ${t('publicite.balance_insufficient')}`,
+                    `💸 ${t('publicite.balance_insufficient')}`,
                     `${t('publicite.total_cost')} : ${coutEstime.toLocaleString()} ${userCurrency}\n` +
                     `${t('createPublicite.yourBalance')} : ${Math.round(solde / exchangeRate).toLocaleString()} ${userCurrency}\n\n` +
                     `${t('publicite.recharge_account')}`,
                     [
                         { text: t('button.cancel'), style: 'cancel', onPress: () => setLoading(false) },
                         {
-                            text: `\uD83D\uDCB3 ${t('videoWizardExtra.recharge')}`,
+                            text: `💳 ${t('videoWizardExtra.recharge')}`,
                             onPress: () => {
                                 setLoading(false);
                                 (navigation as any).navigate('RechargeTokens');
@@ -739,7 +739,7 @@ const CreatePubliciteScreen: React.FC = () => {
 
             // Confirmation
             Alert.alert(
-                `\uD83D\uDCB0 ${t('button.confirm')}`,
+                `💰 ${t('button.confirm')}`,
                 `${t('createPublicite.createConfirm')}\n\n` +
                 `${t('publicite.products')} : ${selectedProduits.length}\n` +
                 `${t('publicite.videos')} : ${videos.length}\n` +
@@ -1127,7 +1127,7 @@ const CreatePubliciteScreen: React.FC = () => {
                 {/* ═══════════ ÉTAPE 1 : PRODUITS ═══════════ */}
                 {currentStep === 1 && (
                     <NativeCard style={styles.sectionCard}>
-                        <Text style={styles.sectionTitle}>\uD83D\uDCE6 {t('publicite.products')} ({selectedProduits.length})</Text>
+                        <Text style={styles.sectionTitle}>📦 {t('publicite.products')} ({selectedProduits.length})</Text>
                         <Text style={styles.sectionHint}>{t('createPublicite.optionnelSelectionnezLesProduitsA')}</Text>
 
                         {loading ? (
@@ -1169,7 +1169,7 @@ const CreatePubliciteScreen: React.FC = () => {
                 {/* ═══════════ ÉTAPE 2 : MÉDIAS ═══════════ */}
                 {currentStep === 2 && (
                     <NativeCard style={styles.sectionCard}>
-                        <Text style={styles.sectionTitle}>\uD83C\uDFAC {t('publicite.videos')} ({videos.length})</Text>
+                        <Text style={styles.sectionTitle}>🎬 {t('publicite.videos')} ({videos.length})</Text>
                         <Text style={styles.sectionHint}>{t('createPublicite.maximum30SecondesParVideo')}</Text>
 
                         <TouchableOpacity
@@ -1263,7 +1263,7 @@ const CreatePubliciteScreen: React.FC = () => {
                         </NativeCard>
 
                         <NativeCard style={[styles.sectionCard, styles.summaryCard]}>
-                            <Text style={styles.sectionTitle}>\uD83D\uDCB0 Budget & Performance</Text>
+                            <Text style={styles.sectionTitle}>💰 Budget & Performance</Text>
 
                             <BudgetSlider
                                 value={coutEstime}

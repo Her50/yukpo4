@@ -23,16 +23,16 @@ interface ParcelRejectionModalProps {
 }
 
 const REJECTION_REASONS: Array<{ value: ParcelRejectionReason; label: string; icon: string }> = [
-    { value: 'damaged', label: t('parcelRejection.produitEndommage'), icon: '\uD83D\uDC94' },
+    { value: 'damaged', label: t('parcelRejection.produitEndommage'), icon: '💔' },
     { value: 'wrong_item', label: 'Mauvais produit', icon: '❌' },
     { value: 'expired', label: t('parcelRejection.produitPerime'), icon: '⏰' },
-    { value: 'wrong_quantity', label: t('parcelRejection.mauvaiseQuantite'), icon: '\uD83D\uDD22' },
-    { value: 'wrong_size', label: 'Mauvaise taille', icon: '\uD83D\uDCCF' },
-    { value: 'wrong_color', label: 'Mauvaise couleur', icon: '\uD83C\uDFA8' },
+    { value: 'wrong_quantity', label: t('parcelRejection.mauvaiseQuantite'), icon: '🔢' },
+    { value: 'wrong_size', label: 'Mauvaise taille', icon: '📏' },
+    { value: 'wrong_color', label: 'Mauvaise couleur', icon: '🎨' },
     { value: 'quality_issue', label: t('parcelRejection.problemeDeQualite'), icon: '⚠️' },
-    { value: 'not_ordered', label: t('parcelRejection.nonCommande'), icon: '\uD83D\uDEAB' },
-    { value: 'duplicate', label: 'Doublon', icon: '\uD83D\uDCE6' },
-    { value: 'other', label: t('parcelRejection.autreRaison'), icon: '\uD83D\uDCDD' },
+    { value: 'not_ordered', label: t('parcelRejection.nonCommande'), icon: '🚫' },
+    { value: 'duplicate', label: 'Doublon', icon: '📦' },
+    { value: 'other', label: t('parcelRejection.autreRaison'), icon: '📝' },
 ];
 
 const ParcelRejectionModal: React.FC<ParcelRejectionModalProps> = ({

@@ -372,7 +372,7 @@ const CreateFlashPromoScreen: React.FC = () => {
                       </View>
                       {item.serviceTitle && (
                         <Text style={[styles.productService, { color: modernColors.textSecondary }]} numberOfLines={1}>
-                          \uD83D\uDCE6 {item.serviceTitle}
+                          📦 {item.serviceTitle}
                         </Text>
                       )}
                       {item.description && (
@@ -470,9 +470,9 @@ const CreateFlashPromoScreen: React.FC = () => {
               style={{ color: modernColors.text, fontWeight: '600' }}
               itemStyle={{ color: modernColors.text, fontWeight: '600' }}
             >
-              <Picker.Item label="\uD83D\uDCF1 En ligne uniquement" value="online" color={modernColors.text} />
-              <Picker.Item label="\uD83D\uDCFA Live uniquement" value="live" color={modernColors.text} />
-              <Picker.Item label="\uD83D\uDCF1\uD83D\uDCFA En ligne et Live" value="both" color={modernColors.text} />
+              <Picker.Item label="📱 En ligne uniquement" value="online" color={modernColors.text} />
+              <Picker.Item label="📺 Live uniquement" value="live" color={modernColors.text} />
+              <Picker.Item label="📱📺 En ligne et Live" value="both" color={modernColors.text} />
             </Picker>
           </View>
           {(availability === 'live' || availability === 'both') && (

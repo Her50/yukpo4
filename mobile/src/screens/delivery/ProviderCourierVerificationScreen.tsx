@@ -262,7 +262,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
           {verificationResult.products_to_pickup.length > 0 && (
             <View style={styles.productsSection}>
               <Text style={styles.productsSectionTitle}>
-                \uD83D\uDCE6 Produits à remettre ({verificationResult.products_to_pickup.length})
+                📦 Produits à remettre ({verificationResult.products_to_pickup.length})
               </Text>
               {verificationResult.products_to_pickup.map((product, index) => (
                 <View key={index} style={styles.productCard}>
@@ -282,7 +282,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
                       )}
                     </View>
                     {product.notes && (
-                      <Text style={styles.productNotes}>\uD83D\uDCDD {product.notes}</Text>
+                      <Text style={styles.productNotes}>📝 {product.notes}</Text>
                     )}
                   </View>
                 </View>
@@ -293,7 +293,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
           {/* Résumé des prix - même structure que estimate_delivery_costs */}
           {(verificationResult.products_to_pickup.length > 0 || verificationResult.delivery_price || verificationResult.insurance_cost) && (
             <View style={styles.priceSummaryCard}>
-              <Text style={styles.priceSummaryTitle}>\uD83D\uDCCB Résumé des coûts</Text>
+              <Text style={styles.priceSummaryTitle}>📋 Résumé des coûts</Text>
 
               {/* Total des produits */}
               {verificationResult.products_to_pickup.length > 0 && (
@@ -312,7 +312,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
               {/* Prix de livraison */}
               {verificationResult.delivery_price && (
                 <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>\uD83D\uDE9A Livraison</Text>
+                  <Text style={styles.priceLabel}>🚚 Livraison</Text>
                   <Text style={styles.priceValue}>
                     {verificationResult.delivery_price.toLocaleString()} FCFA
                   </Text>
@@ -322,7 +322,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
               {/* Frais d'assurance */}
               {verificationResult.insurance_cost && verificationResult.insurance_cost > 0 && (
                 <View style={styles.priceRow}>
-                  <Text style={styles.priceLabel}>\uD83D\uDEE1️ Assurance</Text>
+                  <Text style={styles.priceLabel}>🛡️ Assurance</Text>
                   <Text style={styles.priceValue}>
                     {verificationResult.insurance_cost.toLocaleString()} FCFA
                   </Text>
@@ -331,7 +331,7 @@ const ProviderCourierVerificationScreen: React.FC<ProviderCourierVerificationScr
 
               {/* Total général */}
               <View style={[styles.priceRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>\uD83D\uDCB0 Total à payer</Text>
+                <Text style={styles.totalLabel}>💰 Total à payer</Text>
                 <Text style={styles.totalValue}>
                   {(
                     verificationResult.products_to_pickup

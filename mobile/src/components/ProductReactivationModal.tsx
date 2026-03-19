@@ -106,7 +106,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
 
         if (!canAffordReactivation()) {
             Alert.alert(
-                '\uD83D\uDCB8 Solde insuffisant',
+                '💸 Solde insuffisant',
                 `Coût total : ${totalCost.toLocaleString()} FCFA\nVotre solde : ${userBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`,
                 [{ text: 'OK' }]
             );
@@ -204,21 +204,21 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
 
     const getProductTypeIcon = (type: string) => {
         const icons: Record<string, string> = {
-            'immobilier_batiment': '\uD83C\uDFE2',
-            'immobilier_terrain': '\uD83C\uDFDE️',
-            'automobile': '\uD83D\uDE97',
-            'vetement': '\uD83D\uDC54',
-            'chaussure': '\uD83D\uDC5F',
-            'electromenager': '\uD83D\uDCF1',
-            'mobilier': '\uD83E\uDE91',
-            'aliments': '\uD83C\uDF55',
-            'livres_fournitures': '\uD83D\uDCDA',
-            'quincaillerie': '\uD83D\uDD27',
-            'bien_etre_spa': '\uD83E\uDDD8',
-            'prestation_service': '\uD83D\uDCBC',
-            'autre': '\uD83D\uDCE6'
+            'immobilier_batiment': '🏢',
+            'immobilier_terrain': '🏞️',
+            'automobile': '🚗',
+            'vetement': '👔',
+            'chaussure': '👟',
+            'electromenager': '📱',
+            'mobilier': '🪑',
+            'aliments': '🍕',
+            'livres_fournitures': '📚',
+            'quincaillerie': '🔧',
+            'bien_etre_spa': '🧘',
+            'prestation_service': '💼',
+            'autre': '📦'
         };
-        return icons[type] || '\uD83D\uDCE6';
+        return icons[type] || '📦';
     };
 
     return (

@@ -159,7 +159,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
                 <Text style={styles.expandText}>
                     A/B Testing Avancé ({variants.length} variante{variants.length > 1 ? 's' : ''})
                     {stats.length > 0 && stats.some(s => s.is_winner) && (
-                        <Text style={styles.winnerBadge}> \uD83C\uDFC6 Gagnant identifié</Text>
+                        <Text style={styles.winnerBadge}> 🏆 Gagnant identifié</Text>
                     )}
                 </Text>
                 <SafeIcon name="chevron-right" size={16} color={modernColors.textSecondary} />
@@ -175,7 +175,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
         <NativeCard style={styles.container}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.title}>\uD83E\uDDEA A/B Testing Avancé</Text>
+                    <Text style={styles.title}>🧪 A/B Testing Avancé</Text>
                     <Text style={styles.subtitle}>
                         Analyse statistique et recommandations automatiques
                     </Text>

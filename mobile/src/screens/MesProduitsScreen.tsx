@@ -104,19 +104,19 @@ const getProductTypeLabel = (type: string | null | undefined): string => {
     if (!type) return 'Non catégorisé';
     const key = type.toLowerCase();
     const labels: Record<string, string> = {
-        'electronique': '\uD83D\uDCF1 Électronique',
-        'informatique': '\uD83D\uDCBB Informatique',
-        'plombier': '\uD83D\uDD27 Plomberie',
-        'plomberie': '\uD83D\uDD27 Plomberie',
+        'electronique': '📱 Électronique',
+        'informatique': '💻 Informatique',
+        'plombier': '🔧 Plomberie',
+        'plomberie': '🔧 Plomberie',
         'electricite': '⚡ Électricité',
-        'automobile': '\uD83D\uDE97 Automobile',
-        'agriculture': '\uD83C\uDF3E Agriculture',
-        'beaute': '\uD83D\uDC84 Beauté',
-        'sante': '\uD83E\uDE7A Santé',
-        'immobilier': '\uD83C\uDFE2 Immobilier',
-        'service': '\uD83D\uDCBC Service',
-        'prestation': '\uD83D\uDCBC Prestation',
-        'ticket_voyage': '\uD83D\uDE8C Ticket de voyage',
+        'automobile': '🚗 Automobile',
+        'agriculture': '🌾 Agriculture',
+        'beaute': '💄 Beauté',
+        'sante': '🩺 Santé',
+        'immobilier': '🏢 Immobilier',
+        'service': '💼 Service',
+        'prestation': '💼 Prestation',
+        'ticket_voyage': '🚌 Ticket de voyage',
     };
 
     if (labels[key]) {
@@ -368,7 +368,7 @@ const MesProduitsScreen: React.FC = () => {
                 // ✅ DEBUG: Logger les prix pour diagnostiquer le problème de multiplication
                 if (__DEV__ && prixValue && prixValue > 0) {
                     const priceVariant = productData.price_variant || productData.variabilite_prix || productData.variation_prix;
-                    console.log(`[MesProduitsScreen] \uD83D\uDCB0 Prix produit ${product.id}:`, {
+                    console.log(`[MesProduitsScreen] 💰 Prix produit ${product.id}:`, {
                         product_price: product.product_price,
                         prixValue,
                         hasPriceVariant: !!priceVariant,
@@ -531,7 +531,7 @@ const MesProduitsScreen: React.FC = () => {
         }
 
         const subscription = DeviceEventEmitter.addListener('product:created', () => {
-            console.log('[MesProduitsScreen] \uD83D\uDCE6 Événement product:created reçu, rechargement des produits');
+            console.log('[MesProduitsScreen] 📦 Événement product:created reçu, rechargement des produits');
             if (typeof loadProducts === 'function') {
                 loadProducts(true);
             }
@@ -623,7 +623,7 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     const handleVideoCreatorSuccess = useCallback(async (result: GeneratedVideoResponse) => {
-        console.log('[MesProduitsScreen] \uD83C\uDFAC Vidéo générée:', result);
+        console.log('[MesProduitsScreen] 🎬 Vidéo générée:', result);
 
         try {
             // ✅ CORRECTION 2025-12-01: Vérifier que media_id existe avant d'appeler trackMediaView
@@ -706,7 +706,7 @@ const MesProduitsScreen: React.FC = () => {
 
             // Si RÉACTIVATION (inactif → actif)
             if (newStatus) {
-                // \uD83D\uDE8C SPÉCIAL: Bloquer réactivation tickets de voyage expirés
+                // 🚌 SPÉCIAL: Bloquer réactivation tickets de voyage expirés
                 if (product.type === 'ticket_voyage' && product.dateDepart) {
                     try {
                         const [day, month, year] = product.dateDepart.split('/');
@@ -948,7 +948,7 @@ const MesProduitsScreen: React.FC = () => {
 
                             const productIndex = productIndexValue;
 
-                            console.log('[MesProduitsScreen] \uD83D\uDDD1️ Suppression produit:', {
+                            console.log('[MesProduitsScreen] 🗑️ Suppression produit:', {
                                 serviceId,
                                 productIndex,
                                 productName: product.nom
@@ -1022,7 +1022,7 @@ const MesProduitsScreen: React.FC = () => {
             let loadedDocuments: string[] = [];
 
             if (typeof product.product_index === 'number' && product.serviceId) {
-                console.log('[MesProduitsScreen] \uD83D\uDCE5 Chargement des médias pour édition produit:', {
+                console.log('[MesProduitsScreen] 📥 Chargement des médias pour édition produit:', {
                     serviceId: product.serviceId,
                     productIndex: product.product_index
                 });
@@ -1097,7 +1097,7 @@ const MesProduitsScreen: React.FC = () => {
                 doc_base64: finalDocuments,
             };
 
-            console.log('[MesProduitsScreen] \uD83D\uDCE6 Prefill final pour édition:', {
+            console.log('[MesProduitsScreen] 📦 Prefill final pour édition:', {
                 nom_produit: prefill.nom_produit,
                 images_count: finalImages.length,
                 videos_count: finalVideos.length,
@@ -1197,7 +1197,7 @@ const MesProduitsScreen: React.FC = () => {
             let loadedDocuments: string[] = [];
 
             if (typeof product.product_index === 'number' && product.serviceId) {
-                console.log('[MesProduitsScreen] \uD83D\uDCE5 Chargement des médias pour duplication produit:', {
+                console.log('[MesProduitsScreen] 📥 Chargement des médias pour duplication produit:', {
                     serviceId: product.serviceId,
                     productIndex: product.product_index
                 });
@@ -1271,7 +1271,7 @@ const MesProduitsScreen: React.FC = () => {
                 doc_base64: finalDocuments,
             };
 
-            console.log('[MesProduitsScreen] \uD83D\uDCE6 Prefill final pour duplication:', {
+            console.log('[MesProduitsScreen] 📦 Prefill final pour duplication:', {
                 nom_produit: prefill.nom_produit,
                 images_count: finalImages.length,
                 videos_count: finalVideos.length,
@@ -1532,7 +1532,7 @@ const MesProduitsScreen: React.FC = () => {
             const service = servicesData[0]; // Premier service
             const serviceData = service.data || {};
 
-            console.log('[MesProduitsScreen] \uD83D\uDCDD Édition service', service.id);
+            console.log('[MesProduitsScreen] 📝 Édition service', service.id);
 
             // Naviguer vers le formulaire en mode edit_service_info
             (navigation as any).navigate('FormulaireYukpoIntelligent', {
@@ -2068,7 +2068,7 @@ const MesProduitsScreen: React.FC = () => {
                                 {allUrls.length > 1 && (
                                     <View style={{ position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
                                         <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>
-                                            {imageUrls.length > 0 ? `\uD83D\uDCF7 ${imageUrls.length}` : ''}{imageUrls.length > 0 && videoUrls.length > 0 ? '  ' : ''}{videoUrls.length > 0 ? `\uD83C\uDFAC ${videoUrls.length}` : ''}
+                                            {imageUrls.length > 0 ? `📷 ${imageUrls.length}` : ''}{imageUrls.length > 0 && videoUrls.length > 0 ? '  ' : ''}{videoUrls.length > 0 ? `🎬 ${videoUrls.length}` : ''}
                                         </Text>
                                     </View>
                                 )}

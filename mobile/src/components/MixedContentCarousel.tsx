@@ -72,7 +72,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             // Déclencher le premier scroll après un court délai
             const initialTimer = setTimeout(() => {
                 if (scrollViewRef.current && content.length > 1) {
-                    console.log('[MixedContentCarousel] \uD83C\uDFAC Démarrage scroll automatique initial');
+                    console.log('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial');
                     const firstScrollPosition = SCREEN_PADDING + (CARD_WIDTH + CARD_MARGIN);
                     scrollViewRef.current.scrollTo({
                         x: firstScrollPosition,
@@ -88,7 +88,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     const loadMixedContent = async () => {
         try {
             setLoading(true);
-            console.log('[MixedContentCarousel] \uD83C\uDFAC Démarrage chargement contenu mixte...');
+            console.log('[MixedContentCarousel] 🎬 Démarrage chargement contenu mixte...');
 
             // Construire les paramètres
             const params = new URLSearchParams();
@@ -101,9 +101,9 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             }
             params.append('session_id', sessionId);
 
-            console.log('[MixedContentCarousel] \uD83D\uDD17 Appel API:', `/api/content/mixed?${params.toString()}`);
+            console.log('[MixedContentCarousel] 🔗 Appel API:', `/api/content/mixed?${params.toString()}`);
             const response = await apiGet(`/api/content/mixed?${params.toString()}`);
-            console.log('[MixedContentCarousel] \uD83D\uDCE6 Réponse API:', { success: response.success, hasData: !!response.data, dataLength: (response.data as any)?.length });
+            console.log('[MixedContentCarousel] 📦 Réponse API:', { success: response.success, hasData: !!response.data, dataLength: (response.data as any)?.length });
 
             if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
                 console.log(`[MixedContentCarousel] ✅ ${response.data.length} éléments de contenu mixte chargés`);
@@ -118,7 +118,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         } catch (error) {
             console.error('[MixedContentCarousel] ❌ Erreur chargement:', error);
             // ✅ FALLBACK: En cas d'erreur, charger les produits organiques
-            console.log('[MixedContentCarousel] \uD83D\uDD04 Basculement vers produits organiques (fallback)...');
+            console.log('[MixedContentCarousel] 🔄 Basculement vers produits organiques (fallback)...');
             await loadOrganicProducts();
             setLoading(false);
         }
@@ -246,7 +246,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             // Calculer la position exacte pour le scroll (avec padding au début)
             const scrollPosition = SCREEN_PADDING + nextIndex * (CARD_WIDTH + CARD_MARGIN);
 
-            console.log(`[MixedContentCarousel] \uD83C\uDFAC Scroll automatique: index ${currentIndex} → ${nextIndex} (position ${scrollPosition}px)`);
+            console.log(`[MixedContentCarousel] 🎬 Scroll automatique: index ${currentIndex} → ${nextIndex} (position ${scrollPosition}px)`);
 
             // Scroll vers la position suivante
             scrollViewRef.current.scrollTo({

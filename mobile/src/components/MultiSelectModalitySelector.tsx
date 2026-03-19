@@ -90,8 +90,8 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
             const combinedOptions = [...new Set([...staticOptions, ...customOptions])];
 
             // ✅ Ajouter une option sentinelle pour l'ajout manuel
-            if (!combinedOptions.some(opt => opt.includes('\uD83C\uDD95 Autre'))) {
-                combinedOptions.push('\uD83C\uDD95 Autre (ajouter)');
+            if (!combinedOptions.some(opt => opt.includes('🆕 Autre'))) {
+                combinedOptions.push('🆕 Autre (ajouter)');
             }
 
             setAllOptions(combinedOptions);
@@ -105,7 +105,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     };
 
     const toggleSelection = async (option: string) => {
-        if (option.includes('\uD83C\uDD95 Autre')) {
+        if (option.includes('🆕 Autre')) {
             // ✅ Ouvrir la modale d'ajout (compatible Android/iOS)
             setShowAddModal(true);
         } else {
@@ -240,7 +240,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
             {/* Indicateur du nombre d'options disponibles */}
             {allOptions.length > 0 && !loading && (
                 <Text style={styles.optionsCount}>
-                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('\uD83C\uDD95')) ? ' (inclut les modalités partagées)' : ''}
+                    {allOptions.length} option{allOptions.length > 1 ? 's' : ''} disponible{allOptions.length > 1 ? 's' : ''}{allOptions.some(opt => !opt.includes('🆕')) ? ' (inclut les modalités partagées)' : ''}
                 </Text>
             )}
             {loading && (
@@ -425,7 +425,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
 
                                     const newModality = text;
 
-                                    if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('\uD83C\uDD95'))) {
+                                    if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('🆕'))) {
                                         Alert.alert('⚠️ Modalité existante', `"${newModality}" existe déjà dans la liste.`, [{ text: 'OK' }]);
                                         return;
                                     }

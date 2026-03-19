@@ -206,7 +206,7 @@ const EtablissementSearchScreen: React.FC = () => {
             >
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>\uD83D\uDD0D Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity
@@ -232,7 +232,7 @@ const EtablissementSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>\uD83D\uDCCD Localisation</Text>
+                    <Text style={styles.sectionTitle}>📍 Localisation</Text>
 
                     {/* Ville */}
                     <View style={styles.inputGroup}>
@@ -341,7 +341,7 @@ const EtablissementSearchScreen: React.FC = () => {
                     <View style={styles.infoCard}>
                         <View style={styles.infoHeader}>
                             <SafeIcon name="info" size={20} color="#3B82F6" type="lucide" />
-                            <Text style={styles.infoTitle}>\uD83D\uDCA1 Aucun résultat</Text>
+                            <Text style={styles.infoTitle}>💡 Aucun résultat</Text>
                         </View>
                         <Text style={styles.infoText}>
                             Aucun établissement ne correspond à vos critères. Essayez de modifier vos filtres de recherche.

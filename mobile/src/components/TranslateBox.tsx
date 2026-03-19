@@ -53,11 +53,11 @@ const [text, setText] = useState('');
             onValueChange={setTargetLang}
             style={styles.picker}
           >
-            <Picker.Item label="\uD83C\uDDEC\uD83C\uDDE7 English" value="en" />
+            <Picker.Item label="🇬🇧 English" value="en" />
             <Picker.Item label={t('translateBox.francais')} value="fr" />
             <Picker.Item label={t('translateBox.portugues')} value="pt" />
-            <Picker.Item label="\uD83C\uDDF8\uD83C\uDDE6 العربية" value="ar" />
-            <Picker.Item label="\uD83C\uDF0D Fulfulde" value="ff" />
+            <Picker.Item label="🇸🇦 العربية" value="ar" />
+            <Picker.Item label="🌍 Fulfulde" value="ff" />
           </Picker>
         </View>
 

@@ -200,7 +200,7 @@ const StorageLocationSelector: React.FC<StorageLocationSelectorProps> = ({
                                     {selectedLocation.address}
                                 </Text>
                                 <Text style={styles.locationGPS}>
-                                    \uD83D\uDCCD {selectedLocation.latitude.toFixed(6)}, {selectedLocation.longitude.toFixed(6)}
+                                    📍 {selectedLocation.latitude.toFixed(6)}, {selectedLocation.longitude.toFixed(6)}
                                 </Text>
                             </View>
                         </>

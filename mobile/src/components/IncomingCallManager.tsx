@@ -24,7 +24,7 @@ const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(null);
     useEffect(() => {
         if (!user?.id) return;
 
-        console.log('[IncomingCallManager] \uD83D\uDCDE Écoute des appels entrants pour user:', user.id);
+        console.log('[IncomingCallManager] 📞 Écoute des appels entrants pour user:', user.id);
 
         // ✅ CORRECTION: Importer WebSocket seulement si user existe
         const setupWebSocketHandler = async () => {
@@ -52,11 +52,11 @@ const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(null);
         // TODO: Réactiver les notifications WebSocket une fois le système stabilisé
         /*
         const unsubscribe = registerNotificationHandler((notification) => {
-            console.log('[IncomingCallManager] \uD83D\uDCE8 Notification reçue:', notification.type, notification.data);
+            console.log('[IncomingCallManager] 📨 Notification reçue:', notification.type, notification.data);
 
             // Vérifier si c'est une notification d'appel
             if (notification.data.type === 'incoming_call') {
-                console.log('[IncomingCallManager] \uD83D\uDCDE Appel entrant détecté:', notification.data);
+                console.log('[IncomingCallManager] 📞 Appel entrant détecté:', notification.data);
 
                 setIncomingCall({
                     caller_id: notification.data.caller_id || notification.data.from,
@@ -71,7 +71,7 @@ const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(null);
         });
 
         return () => {
-            console.log('[IncomingCallManager] \uD83D\uDD0C Nettoyage listener d\'appels');
+            console.log('[IncomingCallManager] 🔌 Nettoyage listener d\'appels');
             unsubscribe();
         };
         */

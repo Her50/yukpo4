@@ -269,7 +269,7 @@ const LinkableText: React.FC<LinkableTextProps> = ({
           >
             <View style={styles.linkCardRow}>
               <View style={styles.productIconCircle}>
-                <Text style={{ fontSize: 14 }}>\uD83D\uDCE6</Text>
+                <Text style={{ fontSize: 14 }}>📦</Text>
               </View>
               <View style={styles.linkCardContent}>
                 <Text style={styles.productLinkTitle}>{t('linkableText.voirLeProduit')}</Text>

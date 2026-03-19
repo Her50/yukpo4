@@ -27,11 +27,11 @@ interface TrendingTransitionsLibraryProps {
 
 const CATEGORIES: { key: TransitionCategory; label: string; icon: string; color: string }[] = [
     { key: 'all', label: 'Toutes', icon: 'grid', color: modernColors.primary },
-    { key: 'transitions_tiktok', label: '\uD83D\uDD25 TikTok', icon: 'trending-up', color: '#FF0050' },
+    { key: 'transitions_tiktok', label: '🔥 TikTok', icon: 'trending-up', color: '#FF0050' },
     { key: 'transitions_creative', label: t('trendingTransitionsLibrary.creatives'), icon: 'sparkles', color: '#8B5CF6' },
-    { key: 'transitions_professional', label: '\uD83D\uDCBC Pro', icon: 'briefcase', color: '#3B82F6' },
+    { key: 'transitions_professional', label: '💼 Pro', icon: 'briefcase', color: '#3B82F6' },
     { key: 'transitions_glitch', label: '⚡ Glitch', icon: 'zap', color: '#10B981' },
-    { key: 'transitions_nature', label: '\uD83C\uDF3F Nature', icon: 'leaf', color: '#059669' },
+    { key: 'transitions_nature', label: '🌿 Nature', icon: 'leaf', color: '#059669' },
 ];
 
 const TRENDING_BADGES = {
@@ -168,7 +168,7 @@ const [transitions, setTransitions] = useState<any[]>([]);
                     </View>
                     <View style={styles.transitionStats}>
                         <Text style={styles.popularityScore}>
-                            \uD83D\uDD25 {transition.popularity_score}
+                            🔥 {transition.popularity_score}
                         </Text>
                         {transition.is_premium && (
                             <SafeIcon name="crown" size={14} color={modernColors.accent} />

@@ -37,14 +37,14 @@ const SignalementModal: React.FC<SignalementModalProps> = ({
 
     const typesSignalement = [
         { id: 'contenu_inapproprie', label: 'Contenu inapproprié', icon: '⚠️', color: '#EF4444' },
-        { id: 'arnaque_suspectee', label: 'Arnaque suspectée', icon: '\uD83D\uDEA8', color: '#DC2626' },
-        { id: 'prix_trompeur', label: 'Prix trompeur', icon: '\uD83D\uDCB0', color: '#F59E0B' },
-        { id: 'produit_contrefait', label: 'Produit contrefait', icon: '\uD83D\uDD0D', color: '#F97316' },
-        { id: 'photo_trompeuse', label: 'Photo trompeuse', icon: '\uD83D\uDCF7', color: '#FB923C' },
-        { id: 'harcèlement', label: 'Harcèlement', icon: '\uD83D\uDED1', color: '#B91C1C' },
-        { id: 'spam', label: 'Spam / Publicité', icon: '\uD83D\uDCE2', color: '#EA580C' },
+        { id: 'arnaque_suspectee', label: 'Arnaque suspectée', icon: '🚨', color: '#DC2626' },
+        { id: 'prix_trompeur', label: 'Prix trompeur', icon: '💰', color: '#F59E0B' },
+        { id: 'produit_contrefait', label: 'Produit contrefait', icon: '🔍', color: '#F97316' },
+        { id: 'photo_trompeuse', label: 'Photo trompeuse', icon: '📷', color: '#FB923C' },
+        { id: 'harcèlement', label: 'Harcèlement', icon: '🛑', color: '#B91C1C' },
+        { id: 'spam', label: 'Spam / Publicité', icon: '📢', color: '#EA580C' },
         { id: 'informations_fausses', label: 'Informations fausses', icon: '❌', color: '#DC2626' },
-        { id: 'autre', label: 'Autre', icon: '\uD83D\uDCDD', color: '#6B7280' },
+        { id: 'autre', label: 'Autre', icon: '📝', color: '#6B7280' },
     ];
 
     const motifsFrequents = [

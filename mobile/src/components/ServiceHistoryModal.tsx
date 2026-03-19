@@ -210,7 +210,7 @@ const [services, setServices] = useState<InteractedService[]>([]);
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
                         <Title style={styles.headerTitle}>
-                            \uD83D\uDCCB Mon historique
+                            📋 Mon historique
                         </Title>
                         <Text style={styles.headerSubtitle}>
                             Retrouvez tous vos échanges et interactions avec les services

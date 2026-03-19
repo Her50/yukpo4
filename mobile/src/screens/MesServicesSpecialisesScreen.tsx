@@ -56,7 +56,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
 
         try {
             setCreatingService(service.id);
-            console.log('[MesServicesSpecialisesScreen] \uD83D\uDE80 Début création service:', service.id, 'Route:', service.route);
+            console.log('[MesServicesSpecialisesScreen] 🚀 Début création service:', service.id, 'Route:', service.route);
 
             // ✅ CORRECTION: Créer un service avec le format structuré attendu par le backend
             // Le backend attend: titre_service, category, description (obligatoires)
@@ -87,7 +87,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                 return;
             }
 
-            console.log('[MesServicesSpecialisesScreen] \uD83D\uDCDD Données service à créer:', {
+            console.log('[MesServicesSpecialisesScreen] 📝 Données service à créer:', {
                 serviceId: service.id,
                 serviceData,
                 route: service.route,
@@ -128,13 +128,13 @@ const MesServicesSpecialisesScreen: React.FC = () => {
 
                 if (serviceId) {
                     console.log('[MesServicesSpecialisesScreen] ✅ Service créé avec ID:', serviceId);
-                    console.log('[MesServicesSpecialisesScreen] \uD83E\uDDED Tentative navigation vers:', service.route, 'avec serviceId:', serviceId);
+                    console.log('[MesServicesSpecialisesScreen] 🧭 Tentative navigation vers:', service.route, 'avec serviceId:', serviceId);
 
                     // ✅ CORRECTION: Naviguer vers le formulaire avec le serviceId en utilisant le navigateur parent
                     try {
                         // Utiliser le navigateur parent si disponible (pour navigation entre stacks)
                         const parentNavigation = (navigation as any).getParent?.() || navigation;
-                        console.log('[MesServicesSpecialisesScreen] \uD83E\uDDED Navigation avec parentNavigation vers:', service.route);
+                        console.log('[MesServicesSpecialisesScreen] 🧭 Navigation avec parentNavigation vers:', service.route);
                         parentNavigation.navigate(service.route, {
                             serviceId: serviceId,
                             mode: 'create'
@@ -142,7 +142,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                         console.log('[MesServicesSpecialisesScreen] ✅ Navigation réussie vers:', service.route);
                     } catch (navError: any) {
                         console.error('[MesServicesSpecialisesScreen] ❌ Erreur navigation parent:', navError);
-                        console.log('[MesServicesSpecialisesScreen] \uD83D\uDD04 Tentative navigation directe...');
+                        console.log('[MesServicesSpecialisesScreen] 🔄 Tentative navigation directe...');
                         // Fallback: essayer avec le navigateur direct
                         try {
                             (navigation as any).navigate(service.route, {
@@ -239,7 +239,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
 
                 if (isSoldeInsuffisant) {
                     Alert.alert(
-                        '\uD83D\uDCB8 Solde insuffisant',
+                        '💸 Solde insuffisant',
                         detailedMessage,
                         [
                             { text: t('common.cancel'), style: 'cancel' },
@@ -257,7 +257,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
                         {
                             text: 'Voir les détails',
                             onPress: () => {
-                                console.log('[MesServicesSpecialisesScreen] \uD83D\uDCCB Détails erreur:', {
+                                console.log('[MesServicesSpecialisesScreen] 📋 Détails erreur:', {
                                     service: service.title,
                                     serviceData,
                                     response
@@ -562,7 +562,7 @@ const MesServicesSpecialisesScreen: React.FC = () => {
             {/* ✅ NOUVEAU: Bouton pour accéder au hub unifié */}
             <View style={styles.hubButtonContainer}>
                 <NativeButton
-                    title="\uD83D\uDCCA Voir le Hub Unifié"
+                    title="📊 Voir le Hub Unifié"
                     variant="primary"
                     onPress={() => {
                         (navigation as any).navigate('SpecializedServicesHub');

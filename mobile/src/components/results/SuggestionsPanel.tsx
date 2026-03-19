@@ -152,7 +152,7 @@ const SuggestionsPanel: React.FC<SuggestionsPanelProps> = ({
                                 {item.has_variant && item.variant_dimension ? (
                                     <Text style={styles.statsText}>⚙️ {item.variant_dimension}</Text>
                                 ) : item.usage_count ? (
-                                    <Text style={styles.statsText}>\uD83D\uDC65 {item.usage_count} recherche(s)</Text>
+                                    <Text style={styles.statsText}>👥 {item.usage_count} recherche(s)</Text>
                                 ) : null}
                             </View>
 

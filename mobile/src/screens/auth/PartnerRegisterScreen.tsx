@@ -101,7 +101,7 @@ const PartnerRegisterScreen: React.FC = () => {
     const normalize = (str: string) => str
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, ''); // Supprimer les accents
+      .replace(/[̀-ͯ]/g, ''); // Supprimer les accents
 
     return normalize(a.label).localeCompare(normalize(b.label));
   });
@@ -754,7 +754,7 @@ const PartnerRegisterScreen: React.FC = () => {
 
             {/* MTN Mobile Money */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={{ fontWeight: '600', fontSize: 14 }}>\uD83D\uDCF1 MTN Mobile Money</Text>
+              <Text style={{ fontWeight: '600', fontSize: 14 }}>📱 MTN Mobile Money</Text>
               <TouchableOpacity
                 onPress={() => setPaymentMtnEnabled(!paymentMtnEnabled)}
                 style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: paymentMtnEnabled ? '#FBBF24' : '#E5E7EB' }}
@@ -779,7 +779,7 @@ const PartnerRegisterScreen: React.FC = () => {
 
             {/* Orange Money */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: 8 }}>
-              <Text style={{ fontWeight: '600', fontSize: 14 }}>\uD83D\uDCF1 Orange Money</Text>
+              <Text style={{ fontWeight: '600', fontSize: 14 }}>📱 Orange Money</Text>
               <TouchableOpacity
                 onPress={() => setPaymentOrangeEnabled(!paymentOrangeEnabled)}
                 style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: paymentOrangeEnabled ? '#F97316' : '#E5E7EB' }}

@@ -56,11 +56,11 @@ interface ProductCardProps {
 
 const REACTIONS = [
   { type: 'love', emoji: '❤️', label: 'J\'adore' },
-  { type: 'like', emoji: '\uD83D\uDC4D', label: 'J\'aime' },
-  { type: 'wow', emoji: '\uD83D\uDE2E', label: 'Impressionnant' },
-  { type: 'interested', emoji: '\uD83C\uDFAF', label: t('productCard.interessant') },
-  { type: 'thinking', emoji: '\uD83E\uDD14', label: t('productCard.aReflechir') },
-  { type: 'disappointed', emoji: '\uD83D\uDE15', label: t('productCard.decu') },
+  { type: 'like', emoji: '👍', label: 'J\'aime' },
+  { type: 'wow', emoji: '😮', label: 'Impressionnant' },
+  { type: 'interested', emoji: '🎯', label: t('productCard.interessant') },
+  { type: 'thinking', emoji: '🤔', label: t('productCard.aReflechir') },
+  { type: 'disappointed', emoji: '😕', label: t('productCard.decu') },
 ];
 
 const formatCompactNumber = (value: number | undefined | null): string => {
@@ -175,31 +175,31 @@ const normalizeMediaUrl = (media: any, type: 'image' | 'video' = 'image'): strin
 };
 
 const getCountryFlag = (country?: string): string => {
-  if (!country || typeof country !== 'string') return '\uD83C\uDF0D';
+  if (!country || typeof country !== 'string') return '🌍';
 
   const countryLower = country.toLowerCase().trim();
 
   // Drapeaux des pays africains et internationaux (même mapping que useLocationDisplay)
-  if (countryLower.includes('cameroun') || countryLower.includes('cameroon') || countryLower.includes('douala') || countryLower.includes(t('productCard.yaounde')) || countryLower.includes('yaounde')) return '\uD83C\uDDE8\uD83C\uDDF2';
-  if (countryLower.includes('nigeria') || countryLower.includes('lagos') || countryLower.includes('abuja')) return '\uD83C\uDDF3\uD83C\uDDEC';
-  if (countryLower.includes(t('productCard.senegal')) || countryLower.includes('senegal') || countryLower.includes('dakar')) return '\uD83C\uDDF8\uD83C\uDDF3';
-  if (countryLower.includes('côte') || countryLower.includes('ivoire') || countryLower.includes('ivory') || countryLower.includes('abidjan')) return '\uD83C\uDDE8\uD83C\uDDEE';
-  if (countryLower.includes('ghana') || countryLower.includes('accra')) return '\uD83C\uDDEC\uD83C\uDDED';
-  if (countryLower.includes('france') || countryLower.includes('paris')) return '\uD83C\uDDEB\uD83C\uDDF7';
-  if (countryLower.includes('togo') || countryLower.includes(t('productCard.lome'))) return '\uD83C\uDDF9\uD83C\uDDEC';
-  if (countryLower.includes('bénin') || countryLower.includes('benin') || countryLower.includes('cotonou')) return '\uD83C\uDDE7\uD83C\uDDEF';
-  if (countryLower.includes('mali')) return '\uD83C\uDDF2\uD83C\uDDF1';
-  if (countryLower.includes('burkina')) return '\uD83C\uDDE7\uD83C\uDDEB';
-  if (countryLower.includes('niger')) return '\uD83C\uDDF3\uD83C\uDDEA';
-  if (countryLower.includes('tchad') || countryLower.includes('chad')) return '\uD83C\uDDF9\uD83C\uDDE9';
-  if (countryLower.includes('gabon')) return '\uD83C\uDDEC\uD83C\uDDE6';
-  if (countryLower.includes('congo')) return '\uD83C\uDDE8\uD83C\uDDEC';
-  if (countryLower.includes('rdc')) return '\uD83C\uDDE8\uD83C\uDDE9';
-  if (countryLower.includes(t('productCard.guinee')) || countryLower.includes('guinea')) return '\uD83C\uDDEC\uD83C\uDDF3';
-  if (countryLower.includes('madagascar')) return '\uD83C\uDDF2\uD83C\uDDEC';
-  if (countryLower.includes('usa') || countryLower.includes('united states')) return '\uD83C\uDDFA\uD83C\uDDF8';
+  if (countryLower.includes('cameroun') || countryLower.includes('cameroon') || countryLower.includes('douala') || countryLower.includes(t('productCard.yaounde')) || countryLower.includes('yaounde')) return '🇨🇲';
+  if (countryLower.includes('nigeria') || countryLower.includes('lagos') || countryLower.includes('abuja')) return '🇳🇬';
+  if (countryLower.includes(t('productCard.senegal')) || countryLower.includes('senegal') || countryLower.includes('dakar')) return '🇸🇳';
+  if (countryLower.includes('côte') || countryLower.includes('ivoire') || countryLower.includes('ivory') || countryLower.includes('abidjan')) return '🇨🇮';
+  if (countryLower.includes('ghana') || countryLower.includes('accra')) return '🇬🇭';
+  if (countryLower.includes('france') || countryLower.includes('paris')) return '🇫🇷';
+  if (countryLower.includes('togo') || countryLower.includes(t('productCard.lome'))) return '🇹🇬';
+  if (countryLower.includes('bénin') || countryLower.includes('benin') || countryLower.includes('cotonou')) return '🇧🇯';
+  if (countryLower.includes('mali')) return '🇲🇱';
+  if (countryLower.includes('burkina')) return '🇧🇫';
+  if (countryLower.includes('niger')) return '🇳🇪';
+  if (countryLower.includes('tchad') || countryLower.includes('chad')) return '🇹🇩';
+  if (countryLower.includes('gabon')) return '🇬🇦';
+  if (countryLower.includes('congo')) return '🇨🇬';
+  if (countryLower.includes('rdc')) return '🇨🇩';
+  if (countryLower.includes(t('productCard.guinee')) || countryLower.includes('guinea')) return '🇬🇳';
+  if (countryLower.includes('madagascar')) return '🇲🇬';
+  if (countryLower.includes('usa') || countryLower.includes('united states')) return '🇺🇸';
 
-  return '\uD83C\uDF0D'; // Icône générique pour pays non reconnu
+  return '🌍'; // Icône générique pour pays non reconnu
 };
 
 // ✅ NOUVEAU: Fonction pour extraire le pays depuis la localisation
@@ -534,7 +534,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   useEffect(() => {
     if (__DEV__) {
       if (chosenLocation) {
-        console.log('[ProductCard] \uD83D\uDCCD Localisation extraite:', {
+        console.log('[ProductCard] 📍 Localisation extraite:', {
           chosenLocation,
           quartier,
           ville,
@@ -569,7 +569,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
       const variationPrix = productData.variation_prix || productData.variabilite_prix || productData.price_variant
         || product.variation_prix || product.variabilite_prix || product.price_variant;
       if (variationPrix || hasVariant || variants.length > 0) {
-        console.log('[ProductCard] \uD83D\uDCB0 Variations debug:', {
+        console.log('[ProductCard] 💰 Variations debug:', {
           hasVariant,
           variantsCount: variants.length,
           hasVariationPrix: !!variationPrix,
@@ -608,7 +608,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         unwrappedVariationPrix = unwrappedVariationPrix.valeur;
       }
 
-      console.log('[ProductCard] \uD83D\uDD0D variation_prix trouvé:', {
+      console.log('[ProductCard] 🔍 variation_prix trouvé:', {
         type: typeof unwrappedVariationPrix,
         isArray: Array.isArray(unwrappedVariationPrix),
         keys: typeof unwrappedVariationPrix === 'object' && !Array.isArray(unwrappedVariationPrix) ? Object.keys(unwrappedVariationPrix) : [],
@@ -804,8 +804,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // ✅ DEBUG 2026-03-06: Analyse complète des sources de médias pour diagnostiquer la limitation à 2
   useEffect(() => {
     if (__DEV__) {
-      console.log(`[ProductCard] \uD83D\uDD0D ANALYSE MÉDIA COMPLÈTE - Service ${serviceId}, Produit ${productIndex}:`);
-      console.log(`[ProductCard] \uD83D\uDCCA Sources brutes:`);
+      console.log(`[ProductCard] 🔍 ANALYSE MÉDIA COMPLÈTE - Service ${serviceId}, Produit ${productIndex}:`);
+      console.log(`[ProductCard] 📊 Sources brutes:`);
       console.log(`  - product.images:`, product.images);
       console.log(`  - product.videos:`, product.videos);
       console.log(`  - product.product_data?.images:`, product.product_data?.images);
@@ -815,13 +815,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
       console.log(`  - productData.data?.images:`, productData.data?.images);
       console.log(`  - productData.data?.videos:`, productData.data?.videos);
 
-      console.log(`[ProductCard] \uD83D\uDD04 Extraction asMediaArray:`);
+      console.log(`[ProductCard] 🔄 Extraction asMediaArray:`);
       console.log(`  - asMediaArray(product.images):`, asMediaArray(product.images));
       console.log(`  - asMediaArray(product.videos):`, asMediaArray(product.videos));
       console.log(`  - asMediaArray(product.product_data?.images):`, asMediaArray(product.product_data?.images));
       console.log(`  - asMediaArray(product.product_data?.videos):`, asMediaArray(product.product_data?.videos));
 
-      console.log(`[ProductCard] \uD83D\uDCC8 Résultats finaux:`);
+      console.log(`[ProductCard] 📈 Résultats finaux:`);
       console.log(`  - rawImages (${rawImages.length}):`, rawImages);
       console.log(`  - rawVideos (${rawVideos.length}):`, rawVideos);
       console.log(`  - images (${images.length}):`, images);
@@ -829,11 +829,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
       console.log(`  - variantImage:`, normalizedVariantImage);
       console.log(`  - totalMedia:`, images.length + videos.length + (normalizedVariantImage ? 1 : 0));
 
-      // \uD83D\uDEA8 ALERTE si limitation à 2 détectée
+      // 🚨 ALERTE si limitation à 2 détectée
       const totalRawMedia = rawImages.length + rawVideos.length;
       const totalProcessedMedia = images.length + videos.length;
       if (totalRawMedia > 2 && totalProcessedMedia === 2) {
-        console.warn(`[ProductCard] \uD83D\uDEA8 LIMITATION À 2 DÉTECTÉE!`);
+        console.warn(`[ProductCard] 🚨 LIMITATION À 2 DÉTECTÉE!`);
         console.warn(`[ProductCard]   - Brut: ${totalRawMedia} médias`);
         console.warn(`[ProductCard]   - Traités: ${totalProcessedMedia} médias`);
         console.warn(`[ProductCard]   - Perte: ${totalRawMedia - totalProcessedMedia} médias`);
@@ -854,7 +854,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // ✅ DEBUG: Logger pour diagnostiquer les problèmes de médias
   useEffect(() => {
     if (__DEV__ && (rawImages.length > 0 || rawVideos.length > 0 || images.length > 0 || videos.length > 0)) {
-      console.log('[ProductCard] \uD83D\uDCF8 Media debug:', {
+      console.log('[ProductCard] 📸 Media debug:', {
         hasMedia,
         imagesCount: images.length,
         videosCount: videos.length,
@@ -963,7 +963,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         return;
       }
 
-      console.log('[ProductCard] \uD83D\uDD0D Vérification config livraison pour:', {
+      console.log('[ProductCard] 🔍 Vérification config livraison pour:', {
         serviceId: numericServiceId,
         productIndex,
         serviceIdType: typeof serviceId,
@@ -972,7 +972,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
       try {
         const config = await productDeliveryService.getDeliveryConfig(numericServiceId, productIndex);
-        console.log('[ProductCard] \uD83D\uDCE6 Config livraison reçue:', {
+        console.log('[ProductCard] 📦 Config livraison reçue:', {
           config: config ? {
             id: config.id,
             service_id: config.service_id,
@@ -1030,7 +1030,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // ✅ DEBUG 2026-01-20: Logger l'état du bouton pour déboguer
   useEffect(() => {
     if (isProduct && serviceId) {
-      console.log('[ProductCard] \uD83D\uDD18 État bouton "Me livrer":', {
+      console.log('[ProductCard] 🔘 État bouton "Me livrer":', {
         deliveryEnabled,
         isProduct,
         serviceId,
@@ -1222,7 +1222,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // ✅ DEBUG: Logger pour diagnostiquer les problèmes de distance
   useEffect(() => {
     if (__DEV__) {
-      console.log('[ProductCard] \uD83D\uDCCD Distance debug:', {
+      console.log('[ProductCard] 📍 Distance debug:', {
         distanceKm,
         hasDistance,
         productDistanceKm: product.distance_km,
@@ -1262,7 +1262,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   useEffect(() => {
     if (__DEV__) {
       if (pays || countryFlag) {
-        console.log('[ProductCard] \uD83C\uDFF3️ Pays et drapeau extraits:', {
+        console.log('[ProductCard] 🏳️ Pays et drapeau extraits:', {
           pays,
           countryFlag,
           paysFromService,
@@ -1351,7 +1351,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   // ✅ DEBUG 2026-01-23: Logger les statistiques pour vérifier leur cohérence
   useEffect(() => {
     if (__DEV__) {
-      console.log('[ProductCard] \uD83D\uDCCA Statistiques extraites:', {
+      console.log('[ProductCard] 📊 Statistiques extraites:', {
         serviceId: service?.id,
         viewsCount,
         sharesCount,
@@ -1676,14 +1676,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
                 {isTrending && (
                   <View style={styles.trendingBadge}>
-                    <Text style={styles.trendingEmoji}>\uD83D\uDD25\uD83D\uDD25</Text>
+                    <Text style={styles.trendingEmoji}>🔥🔥</Text>
                     <Text style={styles.trendingText}>{t('productCard.tendance')}</Text>
                     <Text style={styles.trendingCount}>{usageCount}×</Text>
                   </View>
                 )}
                 {!isTrending && isPopular && (
                   <View style={styles.popularBadge}>
-                    <Text style={styles.popularEmoji}>\uD83D\uDD25</Text>
+                    <Text style={styles.popularEmoji}>🔥</Text>
                     <Text style={styles.popularText}>{t('productCard.populaire')}</Text>
                     <Text style={styles.popularCount}>{usageCount}×</Text>
                   </View>
@@ -2063,13 +2063,13 @@ const ProductCard: React.FC<ProductCardProps> = ({
                           <Text style={[styles.addressTextCompact, hasGPS && { color: '#6366F1' }]} numberOfLines={1}>
                             {chosenLocation}
                           </Text>
-                          {countryFlag && countryFlag !== '\uD83C\uDF0D' && (
+                          {countryFlag && countryFlag !== '🌍' && (
                             <Text style={styles.addressFlagCompact}>{countryFlag}</Text>
                           )}
                         </View>
                       </>
                     )}
-                    {!chosenLocation && countryFlag && countryFlag !== '\uD83C\uDF0D' && (
+                    {!chosenLocation && countryFlag && countryFlag !== '🌍' && (
                       <Text style={styles.addressFlagCompact}>{countryFlag}</Text>
                     )}
                   </TouchableOpacity>

@@ -124,10 +124,10 @@ const ConcoursEntreeScreen: React.FC = () => {
                     )}
                 </View>
                 <Text style={styles.cardSubtitle}>
-                    \uD83D\uDCCD {item.nom_etablissement || t('concoursEntreeScreen.etablissement', { item_etablissement_id: item.etablissement_id })}
+                    📍 {item.nom_etablissement || t('concoursEntreeScreen.etablissement', { item_etablissement_id: item.etablissement_id })}
                 </Text>
                 <Text style={styles.cardSubtitle}>
-                    \uD83D\uDCC5 Concours: {new Date(item.date_concours).toLocaleDateString('fr-FR')}
+                    📅 Concours: {new Date(item.date_concours).toLocaleDateString('fr-FR')}
                 </Text>
                 <Text style={styles.cardSubtitle}>
                     ⏰ Inscription jusqu'au:{' '}
@@ -135,7 +135,7 @@ const ConcoursEntreeScreen: React.FC = () => {
                 </Text>
                 {item.filieres_concernées && item.filieres_concernées.length > 0 && (
                     <Text style={styles.cardSubtitle}>
-                        \uD83C\uDF93 {item.filieres_concernées.join(', ')}
+                        🎓 {item.filieres_concernées.join(', ')}
                     </Text>
                 )}
                 <View style={styles.actionsContainer}>
@@ -144,7 +144,7 @@ const ConcoursEntreeScreen: React.FC = () => {
                             style={styles.downloadButton}
                             onPress={() => handleDownload(item.url_documentation!)}
                         >
-                            <Text style={styles.downloadButtonText}>\uD83D\uDCC4 Documentation</Text>
+                            <Text style={styles.downloadButtonText}>📄 Documentation</Text>
                         </TouchableOpacity>
                     )}
                     {item.etablissement_id && (

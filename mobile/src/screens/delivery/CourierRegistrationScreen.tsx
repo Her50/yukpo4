@@ -36,11 +36,11 @@ interface DocumentFile {
 
 // ✅ REFONDU: Liste des types de coursiers disponibles avec labels optimisés
 const COURIER_TYPES = [
-    { value: 'classic', label: 'Coursier', icon: '\uD83D\uDCE6' },
-    { value: 'market_shopping', label: 'Courses Marché', icon: '\uD83D\uDED2' },
-    { value: 'taxi', label: 'Chauffeur Taxi', icon: '\uD83D\uDE95' },
-    { value: 'carpooling', label: 'Covoiturage', icon: '\uD83D\uDE97' },
-    { value: 'moving', label: 'Déménagement', icon: '\uD83D\uDE9A' },
+    { value: 'classic', label: 'Coursier', icon: '📦' },
+    { value: 'market_shopping', label: 'Courses Marché', icon: '🛒' },
+    { value: 'taxi', label: 'Chauffeur Taxi', icon: '🚕' },
+    { value: 'carpooling', label: 'Covoiturage', icon: '🚗' },
+    { value: 'moving', label: 'Déménagement', icon: '🚚' },
 ] as const;
 
 const CourierRegistrationScreen: React.FC = () => {
@@ -495,7 +495,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 if (profile.paymentMethod) setPaymentMethod(profile.paymentMethod);
 
                 console.log('[CourierRegistrationScreen] ✅ Données du brouillon chargées');
-                toaster.info('\uD83D\uDCDD Brouillon chargé. Vous pouvez continuer à compléter votre candidature.');
+                toaster.info('📝 Brouillon chargé. Vous pouvez continuer à compléter votre candidature.');
             }
         } catch (error) {
             console.error('[CourierRegistrationScreen] Erreur chargement brouillon:', error);
@@ -789,7 +789,7 @@ const CourierRegistrationScreen: React.FC = () => {
             // ✅ CORRIGÉ: Convertir -1 (Yukpo virtuel) en null pour éviter les erreurs de contrainte de clé étrangère
             const validPartnerId = selectedPartnerId && selectedPartnerId > 0 ? selectedPartnerId : null;
 
-            console.log('[CourierRegistrationScreen] \uD83D\uDD0D Soumission avec partner_id:', {
+            console.log('[CourierRegistrationScreen] 🔍 Soumission avec partner_id:', {
                 selectedPartnerId,
                 validPartnerId,
                 'est Yukpo virtuel': selectedPartnerId === -1,
@@ -803,8 +803,8 @@ const CourierRegistrationScreen: React.FC = () => {
             });
 
             // ✅ DEBUG: Log complet de la réponse pour diagnostic
-            console.log('[CourierRegistrationScreen] \uD83D\uDD0D Réponse complète API:', JSON.stringify(response, null, 2));
-            console.log('[CourierRegistrationScreen] \uD83D\uDD0D Détails réponse:', {
+            console.log('[CourierRegistrationScreen] 🔍 Réponse complète API:', JSON.stringify(response, null, 2));
+            console.log('[CourierRegistrationScreen] 🔍 Détails réponse:', {
                 'response.success': response.success,
                 'response.error': response.error,
                 'response.status': response.status,
@@ -829,7 +829,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 // ✅ CORRIGÉ: Afficher le toast de confirmation immédiatement
                 const toastMessage = submit
                     ? '✅ Candidature soumise avec succès ! Votre formulaire est en attente de validation.'
-                    : '\uD83D\uDCBE Brouillon enregistré ! Vous pouvez compléter et soumettre plus tard.';
+                    : '💾 Brouillon enregistré ! Vous pouvez compléter et soumettre plus tard.';
 
                 console.log('[CourierRegistrationScreen] ✅ Réponse succès, affichage toast:', toastMessage);
                 console.log('[CourierRegistrationScreen] Structure réponse:', {
@@ -1264,13 +1264,13 @@ const CourierRegistrationScreen: React.FC = () => {
                                     </View>
                                     <View style={styles.documentButtons}>
                                         <NativeButton
-                                            title="\uD83D\uDCF7 Photo"
+                                            title="📷 Photo"
                                             variant="outline"
                                             size="small"
                                             onPress={() => pickImage('vehicle')}
                                         />
                                         <NativeButton
-                                            title="\uD83D\uDCC4 Fichier"
+                                            title="📄 Fichier"
                                             variant="outline"
                                             size="small"
                                             onPress={() => pickDocument('vehicle')}
@@ -1360,13 +1360,13 @@ const CourierRegistrationScreen: React.FC = () => {
                         </View>
                         <View style={styles.documentButtons}>
                             <NativeButton
-                                title="\uD83D\uDCF7 Photo"
+                                title="📷 Photo"
                                 variant="outline"
                                 size="small"
                                 onPress={() => pickImage('id')}
                             />
                             <NativeButton
-                                title="\uD83D\uDCC4 Fichier"
+                                title="📄 Fichier"
                                 variant="outline"
                                 size="small"
                                 onPress={() => pickDocument('id')}
@@ -1381,13 +1381,13 @@ const CourierRegistrationScreen: React.FC = () => {
                             </View>
                             <View style={styles.documentButtons}>
                                 <NativeButton
-                                    title="\uD83D\uDCF7 Photo"
+                                    title="📷 Photo"
                                     variant="outline"
                                     size="small"
                                     onPress={() => pickImage('license')}
                                 />
                                 <NativeButton
-                                    title="\uD83D\uDCC4 Fichier"
+                                    title="📄 Fichier"
                                     variant="outline"
                                     size="small"
                                     onPress={() => pickDocument('license')}
@@ -1406,13 +1406,13 @@ const CourierRegistrationScreen: React.FC = () => {
                                 </View>
                                 <View style={styles.documentButtons}>
                                     <NativeButton
-                                        title="\uD83D\uDCF7 Photo"
+                                        title="📷 Photo"
                                         variant="outline"
                                         size="small"
                                         onPress={() => pickImage('registration')}
                                     />
                                     <NativeButton
-                                        title="\uD83D\uDCC4 Fichier"
+                                        title="📄 Fichier"
                                         variant="outline"
                                         size="small"
                                         onPress={() => pickDocument('registration')}
@@ -1429,13 +1429,13 @@ const CourierRegistrationScreen: React.FC = () => {
                                     </View>
                                     <View style={styles.documentButtons}>
                                         <NativeButton
-                                            title="\uD83D\uDCF7 Photo"
+                                            title="📷 Photo"
                                             variant="outline"
                                             size="small"
                                             onPress={() => pickImage('insurance')}
                                         />
                                         <NativeButton
-                                            title="\uD83D\uDCC4 Fichier"
+                                            title="📄 Fichier"
                                             variant="outline"
                                             size="small"
                                             onPress={() => pickDocument('insurance')}
@@ -1456,13 +1456,13 @@ const CourierRegistrationScreen: React.FC = () => {
                         </View>
                         <View style={styles.documentButtons}>
                             <NativeButton
-                                title="\uD83D\uDCF7 Photo"
+                                title="📷 Photo"
                                 variant="outline"
                                 size="small"
                                 onPress={() => pickImage('location')}
                             />
                             <NativeButton
-                                title="\uD83D\uDCC4 Fichier"
+                                title="📄 Fichier"
                                 variant="outline"
                                 size="small"
                                 onPress={() => pickDocument('location')}
@@ -1526,7 +1526,7 @@ const CourierRegistrationScreen: React.FC = () => {
                             disabled={loading}
                         />
                         <Text style={styles.actionHelperText}>
-                            \uD83D\uDCBE Sauvegardez votre progression sans soumettre. Vous pourrez compléter et soumettre plus tard.
+                            💾 Sauvegardez votre progression sans soumettre. Vous pourrez compléter et soumettre plus tard.
                         </Text>
                     </View>
                     <View style={styles.actionButtonContainer}>

@@ -67,7 +67,7 @@ const [expanded, setExpanded] = useState(false);
     return (
         <NativeCard style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>\uD83D\uDCC5 Planification</Text>
+                <Text style={styles.title}>📅 Planification</Text>
                 <TouchableOpacity onPress={() => setExpanded(false)}>
                     <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
                 </TouchableOpacity>

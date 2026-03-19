@@ -259,10 +259,10 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
     const handleShareMedia = useCallback(async (item: MediaItem) => {
         try {
             const serviceName = service?.data?.titre_service?.valeur || service?.data?.titre_service || service?.titre || 'Yukpo';
-            const emoji = item.type === 'video' ? '\uD83C\uDFAC' : '\uD83D\uDCF8';
+            const emoji = item.type === 'video' ? '🎬' : '📸';
             const typeLabel = item.type === 'video' ? t('serviceMediaGallery.video') : 'photo';
             let shareText = `${emoji} ${item.description || typeLabel} — ${serviceName}`;
-            shareText += `\n\n\uD83D\uDD17 Voir sur Yukpo:\n${item.url}`;
+            shareText += `\n\n🔗 Voir sur Yukpo:\n${item.url}`;
             await Share.share({ message: shareText, url: item.url, title: `${item.description || typeLabel} — ${serviceName}` });
         } catch (error) {
             console.warn('[ServiceMediaGallery] Share error:', error);

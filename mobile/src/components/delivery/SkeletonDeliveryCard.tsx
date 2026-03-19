@@ -1,5 +1,5 @@
 /**
- * \uD83D\uDC80 Skeleton loader pour les cartes de livraison
+ * 💀 Skeleton loader pour les cartes de livraison
  * Design moderne inspiré de Shimmer effect (Uber Eats, Instagram)
  */
 

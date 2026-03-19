@@ -57,7 +57,7 @@ const [form, setForm] = useState({
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <Text style={styles.kicker}>Campagne officielle Yukpo</Text>
-                    <Text style={styles.title}>\uD83D\uDD25 Black Friday collectif</Text>
+                    <Text style={styles.title}>🔥 Black Friday collectif</Text>
                     <Text style={styles.subtitle}>
                         Sélectionnez la campagne ouverte puis renseignez l’identifiant de votre service pour qu’il
                         soit ajouté à la promo globale.

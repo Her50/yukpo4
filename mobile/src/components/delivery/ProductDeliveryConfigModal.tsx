@@ -354,7 +354,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                             })();
                             if (addressText) {
                                 console.log('[ProductDeliveryConfigModal] ✅ Lieu produit trouvé:', addressText);
-                                console.log('[ProductDeliveryConfigModal] \uD83D\uDCCD cleanPlaceName:', cleanPlaceName);
+                                console.log('[ProductDeliveryConfigModal] 📍 cleanPlaceName:', cleanPlaceName);
                                 // Initialiser pickupAddresses avec cette adresse si pas encore chargée
                                 setPickupAddresses(prev => {
                                     // Ne pas écraser si une config existe déjà
@@ -951,9 +951,9 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                 }
             } else {
                 // ✅ LOGS DÉTAILLÉS: Capturer toutes les informations pour diagnostic
-                console.log('[SAUVEGARDE_CONFIG_LIVRAISON] \uD83D\uDE80 === DÉBUT sauvegarde configuration ===');
-                console.log('[SAUVEGARDE_CONFIG_LIVRAISON] \uD83D\uDCCA Payload complet:', JSON.stringify(payload, null, 2));
-                console.log('[SAUVEGARDE_CONFIG_LIVRAISON] \uD83D\uDCCB Détails payload:', {
+                console.log('[SAUVEGARDE_CONFIG_LIVRAISON] 🚀 === DÉBUT sauvegarde configuration ===');
+                console.log('[SAUVEGARDE_CONFIG_LIVRAISON] 📊 Payload complet:', JSON.stringify(payload, null, 2));
+                console.log('[SAUVEGARDE_CONFIG_LIVRAISON] 📋 Détails payload:', {
                     service_id: payload.service_id,
                     product_index: payload.product_index,
                     pickup_address: payload.pickup_address?.substring(0, 50) + '...',
@@ -977,11 +977,11 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
 
                 while (retryCount <= maxRetries) {
                     try {
-                        console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] \uD83D\uDD04 Tentative ${retryCount + 1}/${maxRetries + 1}...`);
+                        console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] 🔄 Tentative ${retryCount + 1}/${maxRetries + 1}...`);
                         const response = await apiPost('/api/delivery/product-config', payload);
                         lastResponse = response;
 
-                        console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] \uD83D\uDCE1 Réponse reçue (tentative ${retryCount + 1}):`, {
+                        console.log(`[SAUVEGARDE_CONFIG_LIVRAISON] 📡 Réponse reçue (tentative ${retryCount + 1}):`, {
                             success: response.success,
                             message: response.message,
                             error: response.error,
@@ -1399,7 +1399,7 @@ const ProductDeliveryConfigModal: React.FC<ProductDeliveryConfigModalProps> = ({
                                 </View>
                                 <View style={styles.checkboxTextContainer}>
                                     <Text style={[styles.checkboxLabel, config.requires_fragile_handling && styles.checkboxLabelActive]}>
-                                        \uD83E\uDEF3 Manipulation fragile
+                                        🫳 Manipulation fragile
                                     </Text>
                                     <Text style={styles.checkboxDescription}>
                                         Produit nécessitant une manipulation délicate

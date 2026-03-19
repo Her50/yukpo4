@@ -440,7 +440,7 @@ const AutoServicesResultsScreen: React.FC = () => {
                 if (user && item.vendeur_user_id) {
                     apiPost('/api/notifications', {
                         user_id: item.vendeur_user_id,
-                        title: `\uD83D\uDCF1 ${user.name} vous contacte sur WhatsApp`,
+                        title: `📱 ${user.name} vous contacte sur WhatsApp`,
                         message: `Au sujet de: ${item.nom}`,
                         type: 'whatsapp_contact',
                         priority: 'high',
@@ -467,7 +467,7 @@ const AutoServicesResultsScreen: React.FC = () => {
                 if (user && item.vendeur_user_id) {
                     apiPost('/api/notifications', {
                         user_id: item.vendeur_user_id,
-                        title: `\uD83D\uDCDE ${user.name} souhaite vous appeler`,
+                        title: `📞 ${user.name} souhaite vous appeler`,
                         message: `Au sujet de: ${item.nom}`,
                         type: 'phone_call',
                         priority: 'high',
@@ -487,7 +487,7 @@ const AutoServicesResultsScreen: React.FC = () => {
             const specs = [item.marque, item.modele, item.annee ? `${item.annee}` : null, item.carburant].filter(Boolean).join(' · ');
             const priceStr = item.prix ? `${item.prix.toLocaleString('fr-FR')} ${item.devise}` : 'Prix sur demande';
             const smartLink = generateSmartShareLink(item.product_index, item.service_id);
-            const message = `\uD83D\uDE97 ${productName}\n${specs ? `\uD83D\uDCCB ${specs}\n` : ''}\uD83D\uDCB0 ${priceStr}\n\n${smartLink}`;
+            const message = `🚗 ${productName}\n${specs ? `📋 ${specs}\n` : ''}💰 ${priceStr}\n\n${smartLink}`;
 
             await Share.share({
                 message,

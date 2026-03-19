@@ -49,10 +49,10 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
       const rawNotifications = normalizeNotificationsResponse(response);
 
-      console.log('[NotificationHistoryModal] \uD83D\uDCE6 Réponse API complète:', JSON.stringify(response, null, 2));
-      console.log('[NotificationHistoryModal] \uD83D\uDD0D Type de response.data:', typeof response.data);
-      console.log('[NotificationHistoryModal] \uD83D\uDD0D Array?:', Array.isArray(response.data));
-      console.log('[NotificationHistoryModal] \uD83D\uDD0D Longueur normalisée:', rawNotifications.length);
+      console.log('[NotificationHistoryModal] 📦 Réponse API complète:', JSON.stringify(response, null, 2));
+      console.log('[NotificationHistoryModal] 🔍 Type de response.data:', typeof response.data);
+      console.log('[NotificationHistoryModal] 🔍 Array?:', Array.isArray(response.data));
+      console.log('[NotificationHistoryModal] 🔍 Longueur normalisée:', rawNotifications.length);
 
       if (rawNotifications.length > 0) {
         console.log('[NotificationHistoryModal] ✅ Données valides, mapping en cours...');
@@ -72,7 +72,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
               ? rawProductName?.valeur ?? rawProductName?.name
               : undefined;
 
-          console.log(`[NotificationHistoryModal] \uD83D\uDCDD Notif ${index}:`, {
+          console.log(`[NotificationHistoryModal] 📝 Notif ${index}:`, {
             id: notif.id,
             notification_type: notif.notification_type,
             type: notif.type,
@@ -99,7 +99,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         });
 
         console.log('[NotificationHistoryModal] ✅ Notifications mappées:', mappedNotifications.length);
-        console.log('[NotificationHistoryModal] \uD83D\uDCCA Détails:', {
+        console.log('[NotificationHistoryModal] 📊 Détails:', {
           total: mappedNotifications.length,
           unread: mappedNotifications.filter(n => !n.isRead).length,
           types: mappedNotifications.reduce((acc: any, n) => {
@@ -137,7 +137,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
       // Rafraîchissement automatique toutes les 15 secondes quand le modal est ouvert
       const interval = setInterval(() => {
-        console.log('[NotificationHistoryModal] \uD83D\uDD04 Rafraîchissement automatique des notifications');
+        console.log('[NotificationHistoryModal] 🔄 Rafraîchissement automatique des notifications');
         if (typeof loadNotifications === 'function') {
           // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
           loadNotifications().catch(error => {
@@ -242,7 +242,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   };
 
   const handleRefresh = async () => {
-    console.log('[NotificationHistoryModal] \uD83D\uDD04 Rafraîchissement manuel des notifications');
+    console.log('[NotificationHistoryModal] 🔄 Rafraîchissement manuel des notifications');
     await loadNotifications();
   };
 
@@ -299,7 +299,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
       case 'warning': return '⚠️';
       case 'error': return '❌';
       case 'info': return 'ℹ️';
-      default: return '\uD83D\uDD14';
+      default: return '🔔';
     }
   };
 
@@ -331,7 +331,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              \uD83D\uDD14 Notifications
+              🔔 Notifications
             </Text>
             {unreadCount != null && unreadCount > 0 && (
               <View style={styles.unreadBadge}>
@@ -347,7 +347,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
               disabled={loading}
             >
               <Text style={[styles.refreshIcon, loading && styles.refreshIconDisabled]}>
-                {loading ? '⏳' : '\uD83D\uDD04'}
+                {loading ? '⏳' : '🔄'}
               </Text>
             </TouchableOpacity>
 
@@ -374,7 +374,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         {/* Filtres */}
         <View style={styles.filtersContainer}>
           <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>\uD83D\uDD0D</Text>
+            <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
               placeholder={t('notificationHistory.rechercher')}
@@ -420,7 +420,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             </View>
           ) : filteredNotifications.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>\uD83D\uDD14</Text>
+              <Text style={styles.emptyIcon}>🔔</Text>
               <Text style={styles.emptyText}>
                 {notifications.length === 0
                   ? t('notificationHistoryModal.aucuneNotificationTrouvee')
@@ -541,7 +541,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                         style={styles.actionButton}
                         onPress={() => deleteNotification(notification.id)}
                       >
-                        <Text style={styles.actionIcon}>\uD83D\uDDD1️</Text>
+                        <Text style={styles.actionIcon}>🗑️</Text>
                         <Text style={[styles.actionButtonText, { color: '#F44336' }]}>{t('notificationHistoryModal.supprimer')}</Text>
                       </TouchableOpacity>
                     </View>

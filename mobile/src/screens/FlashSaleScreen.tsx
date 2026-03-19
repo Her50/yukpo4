@@ -189,7 +189,7 @@ const FlashSaleScreen: React.FC = () => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Text style={styles.backButtonText}>← Retour</Text>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>\uD83D\uDD25 Ventes Flash</Text>
+                <Text style={styles.headerTitle}>🔥 Ventes Flash</Text>
                 <View style={styles.placeholder} />
             </View>
 

@@ -1,5 +1,5 @@
 /**
- * \uD83E\uDDE0 CHAMP DE FORMULAIRE INTELLIGENT AVEC AUTOCOMPLETE CONDITIONNEL
+ * 🧠 CHAMP DE FORMULAIRE INTELLIGENT AVEC AUTOCOMPLETE CONDITIONNEL
  * 
  * Exemple d'utilisation dans ProductManagerMobile:
  * 
@@ -147,12 +147,12 @@ const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
     // Icône selon la source
     const getSourceIcon = (source: string) => {
         switch (source) {
-            case 'rules': return '\uD83C\uDFAF';
-            case 'history': return '\uD83D\uDCCA';
-            case 'popular': return '\uD83D\uDD25';
-            case 'ai': return '\uD83E\uDDE0';
-            case 'static': return '\uD83D\uDCDA';
-            default: return '\uD83D\uDCA1';
+            case 'rules': return '🎯';
+            case 'history': return '📊';
+            case 'popular': return '🔥';
+            case 'ai': return '🧠';
+            case 'static': return '📚';
+            default: return '💡';
         }
     };
 
@@ -241,7 +241,7 @@ const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
                         <View style={styles.legendItems}>
                             <Text style={styles.legendItem}>{t('intelligentProductField.baseSurVosSaisies')}</Text>
                             <Text style={styles.legendItem}>{t('intelligentProductField.votreHistorique')}</Text>
-                            <Text style={styles.legendItem}>\uD83D\uDD25 Populaire</Text>
+                            <Text style={styles.legendItem}>🔥 Populaire</Text>
                             <Text style={styles.legendItem}>{t('intelligentProductField.suggereParIa')}</Text>
                         </View>
                     </View>

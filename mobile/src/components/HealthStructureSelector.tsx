@@ -92,7 +92,7 @@ export const HealthStructureSelector: React.FC<HealthStructureSelectorProps> = (
                         {value || placeholder}
                     </Text>
                     {locationEnabled && (
-                        <Text style={styles.locationHint}>\uD83D\uDCCD Recherche par proximité activée</Text>
+                        <Text style={styles.locationHint}>📍 Recherche par proximité activée</Text>
                     )}
                 </View>
                 <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
@@ -163,7 +163,7 @@ export const HealthStructureSelector: React.FC<HealthStructureSelectorProps> = (
                                 <View style={styles.loadingContainer}>
                                     <Text style={styles.loadingText}>Recherche en cours...</Text>
                                     {locationEnabled && (
-                                        <Text style={styles.loadingHint}>\uD83D\uDCCD Recherche dans un rayon de {radius / 1000}km</Text>
+                                        <Text style={styles.loadingHint}>📍 Recherche dans un rayon de {radius / 1000}km</Text>
                                     )}
                                 </View>
                             ) : options.length === 0 ? (

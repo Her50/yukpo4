@@ -290,7 +290,7 @@ const renderLivreCard = ({ item }: { item: LivreScolaire }) => {
                 />
             ) : (
                 <View style={[styles.cardImage, styles.cardImagePlaceholder]}>
-                    <Text style={styles.cardImagePlaceholderText}>\uD83D\uDCDA</Text>
+                    <Text style={styles.cardImagePlaceholderText}>📚</Text>
                 </View>
             )}
 
@@ -333,7 +333,7 @@ const renderLivreCard = ({ item }: { item: LivreScolaire }) => {
 
                 {item.distance_km !== undefined && (
                     <Text style={styles.cardDistance}>
-                        \uD83D\uDCCD {item.distance_km.toFixed(1)} km
+                        📍 {item.distance_km.toFixed(1)} km
                     </Text>
                 )}
             </View>

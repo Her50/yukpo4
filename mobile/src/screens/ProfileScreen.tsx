@@ -302,7 +302,7 @@ const ProfileScreen: React.FC = () => {
       description: t('profile.financialTrackingDesc')
     },
     {
-      title: '\uD83C\uDFA5 ' + t('profile.startLive'),
+      title: '🎥 ' + t('profile.startLive'),
       icon: 'radio',
       color: '#DC2626',
       route: 'StartLive',
@@ -444,7 +444,7 @@ const ProfileScreen: React.FC = () => {
                 </View>
               )}
               <View style={styles.avatarEditBadge}>
-                <Text style={styles.avatarEditIcon}>\uD83D\uDCF7</Text>
+                <Text style={styles.avatarEditIcon}>📷</Text>
               </View>
             </TouchableOpacity>
             <Text style={styles.userName}>{cleanUserName(user?.name || user?.nom_complet)}</Text>
@@ -528,7 +528,7 @@ const ProfileScreen: React.FC = () => {
             onPress={handleLogout}
             style={styles.logoutButton}
           >
-            <Text style={styles.logoutIcon}>\uD83D\uDEAA</Text>
+            <Text style={styles.logoutIcon}>🚪</Text>
             <Text style={{ color: "#DC2626" }}>{t('profile.logout')}</Text>
           </TouchableOpacity>
         </View>

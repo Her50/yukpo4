@@ -35,11 +35,11 @@ const [weather, setWeather] = useState<WeatherData | null>(null);
         const desc = description.toLowerCase();
         if (desc.includes('sun') || desc.includes('clear')) return '☀️';
         if (desc.includes('cloud')) return '☁️';
-        if (desc.includes('rain')) return '\uD83C\uDF27️';
+        if (desc.includes('rain')) return '🌧️';
         if (desc.includes('storm')) return '⛈️';
         if (desc.includes('snow')) return '❄️';
-        if (desc.includes('fog') || desc.includes('mist')) return '\uD83C\uDF2B️';
-        return '\uD83C\uDF24️';
+        if (desc.includes('fog') || desc.includes('mist')) return '🌫️';
+        return '🌤️';
     };
 
     /**
@@ -103,7 +103,7 @@ const [weather, setWeather] = useState<WeatherData | null>(null);
             if (!currentLocation) {
                 // Essayer d'obtenir la position GPS si pas encore demandée
                 if (!gpsPermissionRequested) {
-                    console.log('[WeatherWidget] \uD83D\uDCCD Tentative d\'obtention de la position GPS...');
+                    console.log('[WeatherWidget] 📍 Tentative d\'obtention de la position GPS...');
                     currentLocation = await requestGPSLocation();
                 }
             }
@@ -228,7 +228,7 @@ const [weather, setWeather] = useState<WeatherData | null>(null);
         return (
             <View style={compact ? styles.compactContainer : styles.container}>
                 <TouchableOpacity style={compact ? styles.compactErrorContainer : styles.errorContainer} onPress={onLocationPress}>
-                    <Text style={compact ? styles.compactErrorIcon : styles.errorIcon}>\uD83C\uDF24️</Text>
+                    <Text style={compact ? styles.compactErrorIcon : styles.errorIcon}>🌤️</Text>
                     <Text style={compact ? styles.compactErrorText : styles.errorText}>
                         {compact ? t('weatherWidget.meteo') : t('weatherWidget.meteoIndisponible')}
                     </Text>
@@ -242,7 +242,7 @@ const [weather, setWeather] = useState<WeatherData | null>(null);
         return (
             <View style={compact ? styles.compactContainer : styles.container}>
                 <TouchableOpacity style={compact ? styles.compactNoDataContainer : styles.noDataContainer} onPress={onLocationPress}>
-                    <Text style={compact ? styles.compactNoDataIcon : styles.noDataIcon}>\uD83C\uDF24️</Text>
+                    <Text style={compact ? styles.compactNoDataIcon : styles.noDataIcon}>🌤️</Text>
                     <Text style={compact ? styles.compactNoDataText : styles.noDataText}>{t('weatherWidget.meteo')}</Text>
                     {!compact && <Text style={styles.noDataSubtext}>Activer GPS</Text>}
                 </TouchableOpacity>
@@ -257,7 +257,7 @@ const [weather, setWeather] = useState<WeatherData | null>(null);
                     style={styles.compactWeatherCard}
                     onPress={() => setShowForecastModal(true)}
                 >
-                    <Text style={styles.compactWeatherIcon}>{weather.icon || '\uD83C\uDF24️'}</Text>
+                    <Text style={styles.compactWeatherIcon}>{weather.icon || '🌤️'}</Text>
                     <Text style={styles.compactTemperature}>{weather.temperature != null ? `${weather.temperature}°C` : '--°C'}</Text>
                 </TouchableOpacity>
 
@@ -288,11 +288,11 @@ const [weather, setWeather] = useState<WeatherData | null>(null);
 
                 <View style={styles.weatherDetails}>
                     <View style={styles.detailItem}>
-                        <Text style={styles.detailIcon}>\uD83D\uDCA7</Text>
+                        <Text style={styles.detailIcon}>💧</Text>
                         <Text style={styles.detailText}>{weather.humidity != null ? `${weather.humidity}%` : '--%'}</Text>
                     </View>
                     <View style={styles.detailItem}>
-                        <Text style={styles.detailIcon}>\uD83D\uDCA8</Text>
+                        <Text style={styles.detailIcon}>💨</Text>
                         <Text style={styles.detailText}>{weather.windSpeed != null ? `${weather.windSpeed} km/h` : '-- km/h'}</Text>
                     </View>
                 </View>

@@ -133,14 +133,14 @@ const HospitalAIRecommendationsScreen: React.FC = () => {
                                 />
 
                                 <NativeButton
-                                    title="\uD83D\uDCCD Utiliser ma position GPS"
+                                    title="📍 Utiliser ma position GPS"
                                     onPress={handleGetLocation}
                                     variant="outline"
                                     style={styles.locationButton}
                                 />
 
                                 <NativeButton
-                                    title="\uD83E\uDD16 Obtenir les recommandations"
+                                    title="🤖 Obtenir les recommandations"
                                     onPress={handleGetRecommendations}
                                     disabled={loading || !symptoms.trim()}
                                     variant="primary"

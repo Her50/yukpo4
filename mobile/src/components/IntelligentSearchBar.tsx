@@ -48,7 +48,7 @@ const normalizeSearchText = (input: string): string => {
     try {
         return input
             .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[̀-ͯ]/g, '')
             .replace(/[^a-zA-Z0-9\s]/g, '')
             .toLowerCase();
     } catch (error) {
@@ -716,14 +716,14 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                                             {typeof topCombinationSuggestion.occurrences === 'number' &&
                                                 topCombinationSuggestion.occurrences > 0 && (
                                                     <Text style={styles.topCombinationMetaText}>
-                                                        \uD83D\uDD01 {topCombinationSuggestion.occurrences} occurrence
+                                                        🔁 {topCombinationSuggestion.occurrences} occurrence
                                                         {topCombinationSuggestion.occurrences > 1 ? 's' : ''}
                                                     </Text>
                                                 )}
                                         </View>
                                         {typeof topCombinationSuggestion.price === 'number' && (
                                             <Text style={styles.topCombinationMetaText}>
-                                                \uD83D\uDCB0 {Math.round(topCombinationSuggestion.price).toLocaleString('fr-FR')}{' '}
+                                                💰 {Math.round(topCombinationSuggestion.price).toLocaleString('fr-FR')}{' '}
                                                 {topCombinationSuggestion.devise || 'XAF'}
                                             </Text>
                                         )}

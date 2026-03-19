@@ -1,6 +1,6 @@
 // @ts-nocheck
 /**
- * \uD83D\uDED2 Composants d'étapes pour le flux de shopping
+ * 🛒 Composants d'étapes pour le flux de shopping
  * Divisé en étapes pour une meilleure UX
  */
 

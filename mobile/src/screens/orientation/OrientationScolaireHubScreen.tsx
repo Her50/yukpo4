@@ -89,7 +89,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
         {
             id: 'primaire',
             name: t('orientationScolaireHub.primary'),
-            icon: '\uD83D\uDCDA',
+            icon: '📚',
             color: '#10B981',
             route: 'EtablissementSearch',
             params: { type: 'primaire' },
@@ -97,7 +97,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
         {
             id: 'secondaire',
             name: t('orientationScolaireHub.secondary'),
-            icon: '\uD83C\uDF93',
+            icon: '🎓',
             color: '#3B82F6',
             route: 'EtablissementSearch',
             params: { type: 'secondaire' },
@@ -105,7 +105,7 @@ const OrientationScolaireHubScreen: React.FC = () => {
         {
             id: 'superieur',
             name: t('orientationScolaireHub.superieur'),
-            icon: '\uD83C\uDF93',
+            icon: '🎓',
             color: '#8B5CF6',
             route: 'EtablissementSearch',
             params: { type: 'superieur' },
@@ -116,19 +116,19 @@ const OrientationScolaireHubScreen: React.FC = () => {
         {
             id: 'concours',
             name: t('orientationScolaireHub.quickActionsItems.concours'),
-            icon: '\uD83C\uDFC6',
+            icon: '🏆',
             route: 'ConcoursList',
         },
         {
             id: 'conferences',
             name: t('orientationScolaireHub.quickActionsItems.conferences'),
-            icon: '\uD83D\uDCFA',
+            icon: '📺',
             route: 'ConferencesList',
         },
         {
             id: 'programmes',
             name: t('orientationScolaireHub.quickActionsItems.programmes'),
-            icon: '\uD83D\uDCD6',
+            icon: '📖',
             route: 'ProgrammesList',
         },
         {

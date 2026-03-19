@@ -170,7 +170,7 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                         <View style={styles.actions}>
                             {canRetry && !isRetrying && (
                                 <NativeButton
-                                    title="\uD83D\uDD04 Réessayer maintenant"
+                                    title="🔄 Réessayer maintenant"
                                     onPress={this.handleManualRetry}
                                     variant="primary"
                                     size="large"
@@ -179,7 +179,7 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                             )}
 
                             <NativeButton
-                                title="\uD83C\uDFE0 Retour à l'accueil"
+                                title="🏠 Retour à l'accueil"
                                 onPress={() => {
                                     // Navigation sera gérée par le parent
                                     this.setState({

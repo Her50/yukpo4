@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 // ✅ NOUVEAU: Sélecteur de filtres artistiques IA avec preview temps réel
 
 import { Slider } from '@react-native-community/slider';
@@ -27,10 +27,10 @@ interface ArtisticFilterSelectorProps {
 }
 
 const FILTER_CATEGORIES = [
-    { key: 'classics', label: '\uD83C\uDFA8 Classiques', icon: 'palette' },
-    { key: 'modern', label: '\uD83C\uDF06 Modernes', icon: 'sparkles' },
-    { key: 'abstract', label: '\uD83D\uDD37 Abstraits', icon: 'box' },
-    { key: 'vintage', label: '\uD83D\uDCF7 Vintage', icon: 'camera' },
+    { key: 'classics', label: '🎨 Classiques', icon: 'palette' },
+    { key: 'modern', label: '🌆 Modernes', icon: 'sparkles' },
+    { key: 'abstract', label: '🔷 Abstraits', icon: 'box' },
+    { key: 'vintage', label: '📷 Vintage', icon: 'camera' },
 ];
 
 const STYLE_PRESETS = {

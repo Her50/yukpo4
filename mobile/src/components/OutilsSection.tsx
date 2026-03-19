@@ -8,7 +8,7 @@ function OutilsSection() {
   return (
     <section id="outils" style={styles.sectionContainer}>
       <Text style="text-2xl font-bold mb-4">
-        \uD83D\uDEE0️ Outils Yukpo
+        🛠️ Outils Yukpo
       </Text>
       <Text style="text-gray-700 text-sm">
         Exploitez les outils Yukpo : contenus intelligents, tendances sociales, prédictions, dashboard.

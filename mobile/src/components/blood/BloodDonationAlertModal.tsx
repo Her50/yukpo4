@@ -204,10 +204,10 @@ const BloodDonationAlertModal: React.FC<BloodDonationAlertModalProps> = ({
                             <View style={styles.headerText}>
                                 <Text style={[styles.urgencyTitle, { color: getUrgencyColor() }]}>
                                     {requestData.is_urgent && requestData.urgence_level === 'critique'
-                                        ? '\uD83D\uDEA8 URGENCE CRITIQUE'
+                                        ? '🚨 URGENCE CRITIQUE'
                                         : requestData.is_urgent
                                             ? '⚠️ URGENCE'
-                                            : '\uD83E\uDE78 Demande de don'}
+                                            : '🩸 Demande de don'}
                                 </Text>
                                 <Text style={styles.banqueName}>{requestData.banque_sang_nom}</Text>
                             </View>

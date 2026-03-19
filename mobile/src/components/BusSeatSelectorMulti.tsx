@@ -114,10 +114,10 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
 
     const getSeatIcon = (seat: Seat) => {
         if (seat.type === 'driver') {
-            return '\uD83D\uDE97';
+            return '🚗';
         }
         if (seat.status === 'occupied' || seat.status === 'reserved') {
-            return '\uD83D\uDD12';
+            return '🔒';
         }
         const index = selectedSeats.findIndex(s => s.id === seat.id);
         if (index !== -1) {
@@ -371,7 +371,7 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
 
                             {multiSelectMode && selectedSeats.length > 0 && (
                                 <Text style={styles.multiHint}>
-                                    \uD83D\uDCA1 Cliquez sur une place verte pour l'ajouter à votre sélection
+                                    💡 Cliquez sur une place verte pour l'ajouter à votre sélection
                                 </Text>
                             )}
                         </ScrollView>
@@ -387,7 +387,7 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
                                 <Text style={styles.paymentAmount}>{totalPrice.toLocaleString()} FCFA</Text>
                             </View>
                             <Text style={styles.paymentNotice}>
-                                \uD83D\uDCB0 Paiement complet immédiat • Ticket PDF instantané
+                                💰 Paiement complet immédiat • Ticket PDF instantané
                             </Text>
                         </View>
                     )}

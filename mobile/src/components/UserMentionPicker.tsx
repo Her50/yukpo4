@@ -222,7 +222,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                     )}
                     {fromHistory && 'tag_count' in user && (
                         <Text style={styles.tagInfo}>
-                            \uD83D\uDCCC Tagué {user.tag_count} fois
+                            📌 Tagué {user.tag_count} fois
                         </Text>
                     )}
                 </View>
@@ -232,10 +232,10 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
     };
 
     const categories = [
-        { key: 'livraison', label: t('userMentionPicker.livraison'), icon: '\uD83D\uDE9A' },
-        { key: 'plombier', label: 'Plomberie', icon: '\uD83D\uDD27' },
+        { key: 'livraison', label: t('userMentionPicker.livraison'), icon: '🚚' },
+        { key: 'plombier', label: 'Plomberie', icon: '🔧' },
         { key: 'électricien', label: t('userMentionPicker.electricite'), icon: '⚡' },
-        { key: 'mécanicien', label: t('userMentionPicker.mecanique'), icon: '\uD83D\uDD28' },
+        { key: 'mécanicien', label: t('userMentionPicker.mecanique'), icon: '🔨' },
         { key: 'coiffeur', label: 'Coiffure', icon: '✂️' },
     ];
 

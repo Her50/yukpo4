@@ -1,5 +1,5 @@
 /**
- * \uD83C\uDF0D FORMULAIRE UNIVERSEL DE PRODUIT
+ * 🌍 FORMULAIRE UNIVERSEL DE PRODUIT
  * 
  * Ce composant s'adapte AUTOMATIQUEMENT à N'IMPORTE QUELLE catégorie
  * parmi vos 60+ catégories, sans configuration spécifique !
@@ -82,7 +82,7 @@ const [productQuery, setProductQuery] = useState(initialProductName);
     };
     
     /**
-     * \uD83C\uDFAF Sélection du produit → Pré-remplissage automatique
+     * 🎯 Sélection du produit → Pré-remplissage automatique
      */
     const handleProductSelect = async (productName: string) => {
         setProductQuery(productName);
@@ -322,7 +322,7 @@ const [productQuery, setProductQuery] = useState(initialProductName);
                     
                     {autoFillResult.fields_saved > 0 && (
                         <Text style={styles.footerText}>
-                            \uD83D\uDCAA Vous avez économisé {autoFillResult.fields_saved} saisies ({autoFillResult.reduction_percentage}%) !
+                            💪 Vous avez économisé {autoFillResult.fields_saved} saisies ({autoFillResult.reduction_percentage}%) !
                         </Text>
                     )}
                 </View>
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
 
 /**
  * ═══════════════════════════════════════════════════════════════
- * \uD83D\uDCDA EXEMPLE D'UTILISATION POUR N'IMPORTE QUELLE CATÉGORIE
+ * 📚 EXEMPLE D'UTILISATION POUR N'IMPORTE QUELLE CATÉGORIE
  * ═══════════════════════════════════════════════════════════════
  * 
  * // Pour TÉLÉPHONE

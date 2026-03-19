@@ -48,7 +48,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
 
   // ✅ NOUVEAU: Log pour diagnostiquer les médias reçus
   React.useEffect(() => {
-    console.log('[MediaUploadManager] \uD83D\uDCF8 Médias reçus:', {
+    console.log('[MediaUploadManager] 📸 Médias reçus:', {
       images_count: images.length,
       videos_count: videos.length,
       images_type: Array.isArray(images) ? 'array' : typeof images,
@@ -231,14 +231,14 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
           // Pour les vidéos volumineuses (>50MB), on stocke l'URI file:// directement
           // Le backend devra gérer l'upload via FormData multipart
           try {
-            console.log('[MediaUploadManager] \uD83D\uDCF9 Vidéo sélectionnée:', videoUri);
+            console.log('[MediaUploadManager] 📹 Vidéo sélectionnée:', videoUri);
 
             // Vérifier la taille du fichier avant de décider de la stratégie
             const fileInfo = await FileSystem.getInfoAsync(videoUri);
             const fileSize = fileInfo.exists && 'size' in fileInfo ? fileInfo.size : 0;
             const fileSizeMB = fileSize / (1024 * 1024);
 
-            console.log('[MediaUploadManager] \uD83D\uDCCA Taille vidéo:', fileSizeMB.toFixed(2), 'MB');
+            console.log('[MediaUploadManager] 📊 Taille vidéo:', fileSizeMB.toFixed(2), 'MB');
 
             // ✅ Pour les vidéos < 10MB, on peut convertir en base64
             // Pour les vidéos plus grandes, on garde l'URI file:// et on uploadera via FormData

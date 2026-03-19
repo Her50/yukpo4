@@ -327,11 +327,11 @@ const [data, setData] = useState<AdvancedAnalyticsData | null>(null);
     };
 
     const tabs = [
-        { key: 'time', label: '\uD83D\uDCC8 Tendances', icon: 'trending-up' },
-        { key: 'campaigns', label: '\uD83D\uDCCA Campagnes', icon: 'bar-chart' },
-        { key: 'funnel', label: '\uD83D\uDD04 Funnel', icon: 'filter' },
-        { key: 'placement', label: '\uD83D\uDCCD Placements', icon: 'map-pin' },
-        { key: 'targeting', label: '\uD83C\uDFAF Ciblage', icon: 'target' },
+        { key: 'time', label: '📈 Tendances', icon: 'trending-up' },
+        { key: 'campaigns', label: '📊 Campagnes', icon: 'bar-chart' },
+        { key: 'funnel', label: '🔄 Funnel', icon: 'filter' },
+        { key: 'placement', label: '📍 Placements', icon: 'map-pin' },
+        { key: 'targeting', label: '🎯 Ciblage', icon: 'target' },
     ];
 
     return (

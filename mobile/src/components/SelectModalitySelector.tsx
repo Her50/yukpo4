@@ -63,10 +63,10 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
             // ✅ PRIORISATION GÉOGRAPHIQUE: Trier avec zone utilisateur en premier
             let sortedOptions = sortOptionsByZone(combinedOptions, userZone);
 
-            // Mettre "\uD83C\uDD95 Autre" à la fin même après tri géographique
+            // Mettre "🆕 Autre" à la fin même après tri géographique
             sortedOptions = sortedOptions.sort((a, b) => {
-                if (a.includes('\uD83C\uDD95')) return 1;
-                if (b.includes('\uD83C\uDD95')) return -1;
+                if (a.includes('🆕')) return 1;
+                if (b.includes('🆕')) return -1;
                 return 0; // Garder l'ordre géographique déjà trié
             });
 
@@ -77,8 +77,8 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
             const staticOptions = getFieldOptions(productType, fieldName);
             let sortedOptions = sortOptionsByZone(staticOptions, userZone);
             sortedOptions = sortedOptions.sort((a, b) => {
-                if (a.includes('\uD83C\uDD95')) return 1;
-                if (b.includes('\uD83C\uDD95')) return -1;
+                if (a.includes('🆕')) return 1;
+                if (b.includes('🆕')) return -1;
                 return 0;
             });
             setAllOptions(sortedOptions);
@@ -88,7 +88,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
     };
 
     const handleSelect = async (option: string) => {
-        if (option.includes('\uD83C\uDD95 Autre')) {
+        if (option.includes('🆕 Autre')) {
             // Ouvrir modale d'ajout compatible Android/iOS
             setShowAddModal(true);
         } else {
@@ -249,7 +249,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                                                 <Text style={[
                                                     styles.optionText,
                                                     value === option && styles.optionTextSelected,
-                                                    option.includes('\uD83C\uDD95') && styles.optionTextNew
+                                                    option.includes('🆕') && styles.optionTextNew
                                                 ]}>
                                                     {option}
                                                 </Text>
@@ -310,7 +310,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
 
                                     const newModality = text;
 
-                                    if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('\uD83C\uDD95'))) {
+                                    if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('🆕'))) {
                                         Alert.alert('⚠️ Modalité existante', `"${newModality}" existe déjà dans la liste.`, [{ text: 'OK' }]);
                                         return;
                                     }

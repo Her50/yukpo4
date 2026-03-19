@@ -144,10 +144,10 @@ const UserRoleManagementScreen: React.FC = () => {
 
     const getRoleLabel = (role: string) => {
         const labels: Record<string, string> = {
-            user: '\uD83D\uDC64 Utilisateur',
-            admin: '\uD83D\uDC51 Administrateur',
-            client: '\uD83D\uDED2 Client',
-            prestataire: '\uD83C\uDFEA Prestataire',
+            user: '👤 Utilisateur',
+            admin: '👑 Administrateur',
+            client: '🛒 Client',
+            prestataire: '🏪 Prestataire',
         };
         return labels[role] || role;
     };

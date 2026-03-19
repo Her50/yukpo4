@@ -768,7 +768,7 @@ const LivreScolaireFormScreen: React.FC = () => {
 
                     {/* Bouton de soumission */}
                     <NativeButton
-                        title={mode === 'edit' ? '\uD83D\uDCBE Enregistrer les modifications' : '✅ Créer le livre'}
+                        title={mode === 'edit' ? '💾 Enregistrer les modifications' : '✅ Créer le livre'}
                         variant="primary"
                         onPress={handleSubmit}
                         style={styles.submitButton}

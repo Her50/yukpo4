@@ -148,7 +148,7 @@ const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigati
       <View style={[styles.section, mtnEnabled && styles.sectionActiveMtn]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionEmoji}>\uD83D\uDCF1</Text>
+            <Text style={styles.sectionEmoji}>📱</Text>
             <Text style={[styles.sectionTitle, mtnEnabled && { color: '#B45309' }]}>MTN Mobile Money</Text>
           </View>
           <Switch
@@ -183,7 +183,7 @@ const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigati
       <View style={[styles.section, orangeEnabled && styles.sectionActiveOrange]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionEmoji}>\uD83D\uDCF1</Text>
+            <Text style={styles.sectionEmoji}>📱</Text>
             <Text style={[styles.sectionTitle, orangeEnabled && { color: '#C2410C' }]}>Orange Money</Text>
           </View>
           <Switch
@@ -218,7 +218,7 @@ const PlatformPaymentSettingsScreen: React.FC<{ navigation: any }> = ({ navigati
       <View style={[styles.section, bankEnabled && styles.sectionActiveBank]}>
         <View style={styles.sectionHeader}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionEmoji}>\uD83C\uDFE6</Text>
+            <Text style={styles.sectionEmoji}>🏦</Text>
             <Text style={[styles.sectionTitle, bankEnabled && { color: '#1D4ED8' }]}>Compte Bancaire</Text>
           </View>
           <Switch

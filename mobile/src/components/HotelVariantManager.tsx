@@ -169,11 +169,11 @@ const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
             {variants.length > 0 && (
                 <View style={styles.summary}>
                     <Text style={styles.summaryText}>
-                        \uD83D\uDCCA {variants.length} type{variants.length > 1 ? 's' : ''} de chambre{variants.length > 1 ? 's' : ''}
+                        📊 {variants.length} type{variants.length > 1 ? 's' : ''} de chambre{variants.length > 1 ? 's' : ''}
                     </Text>
                     {getPriceRange() && (
                         <Text style={styles.summaryPrice}>
-                            \uD83D\uDCB0 {getPriceRange()}
+                            💰 {getPriceRange()}
                         </Text>
                     )}
                 </View>
@@ -183,7 +183,7 @@ const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
             <View style={styles.hintBox}>
                 <SafeIcon name="info" size={14} color={modernColors.primary} />
                 <Text style={styles.hintText}>
-                    \uD83D\uDCA1 Ajoutez les différents types de chambres avec leurs tarifs et photos.
+                    💡 Ajoutez les différents types de chambres avec leurs tarifs et photos.
                 </Text>
             </View>
 

@@ -99,7 +99,7 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
 
         return (
             <View style={styles.compactContainer}>
-                <Text style={styles.compactIcon}>\uD83D\uDECD️</Text>
+                <Text style={styles.compactIcon}>🛍️</Text>
                 <Text style={styles.compactPrice}>
                     {priceRange || averagePrice}
                 </Text>
@@ -116,7 +116,7 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
         <View style={styles.card}>
             <View style={styles.cardContent}>
                 <View style={styles.header}>
-                    <Text style={styles.headerIcon}>\uD83D\uDECD️</Text>
+                    <Text style={styles.headerIcon}>🛍️</Text>
                     <Text style={styles.headerTitle}>
                         Produits disponibles
                     </Text>
@@ -141,7 +141,7 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
                                     </Text>
                                     {(product.images?.length || 0) > 0 && (
                                         <View style={styles.productMediaInfo}>
-                                            <Text style={styles.mediaIcon}>\uD83D\uDDBC️</Text>
+                                            <Text style={styles.mediaIcon}>🖼️</Text>
                                             <Text style={styles.productMediaText}>
                                                 {product.images?.length} image{(product.images?.length || 0) > 1 ? 's' : ''}
                                             </Text>

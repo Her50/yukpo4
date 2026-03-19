@@ -1,5 +1,5 @@
 /**
- * \uD83C\uDFC6 Système de badges et gamification
+ * 🏆 Système de badges et gamification
  * Design moderne inspiré de Duolingo, Uber Driver
  */
 

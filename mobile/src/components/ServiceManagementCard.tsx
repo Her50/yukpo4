@@ -76,7 +76,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
     };
 
     const getStatusIcon = (active: boolean) => {
-        return active ? '\uD83D\uDFE2' : '\uD83D\uDD34';
+        return active ? '🟢' : '🔴';
     };
 
     // Fonction pour activer/désactiver un service (avec gestion du coût comme le frontend)
@@ -195,10 +195,10 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
             const prix = service.prix || service.data?.prix?.valeur;
             const devise = service.devise || service.data?.devise?.valeur || 'XAF';
 
-            let shareText = `\uD83D\uDECD️ ${serviceTitle}`;
+            let shareText = `🛍️ ${serviceTitle}`;
             if (description) shareText += `\n\n${description}`;
-            if (prix) shareText += `\n\uD83D\uDCB0 Prix: ${prix} ${devise}`;
-            shareText += `\n\n\uD83D\uDD17 Voir sur Yukpo:\n${serviceUrl}`;
+            if (prix) shareText += `\n💰 Prix: ${prix} ${devise}`;
+            shareText += `\n\n🔗 Voir sur Yukpo:\n${serviceUrl}`;
 
             const result = await Share.share({
                 message: shareText,
@@ -277,7 +277,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                         {getStatusText(isActive)}
                     </Text>
                 </View>
-                <Text style={styles.dateText}>\uD83D\uDDD3 Créé le {formatDate(service.created_at)}</Text>
+                <Text style={styles.dateText}>🗓 Créé le {formatDate(service.created_at)}</Text>
             </View>
 
             {/* Contenu principal */}
@@ -289,19 +289,19 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                 <View style={styles.infoContainer}>
                     {servicePrice !== 'Non spécifié' && (
                         <View style={styles.infoItem}>
-                            <Text style={styles.infoIcon}>\uD83D\uDCB0</Text>
+                            <Text style={styles.infoIcon}>💰</Text>
                             <Text style={styles.infoText}>{servicePrice} FCFA</Text>
                         </View>
                     )}
                     {serviceCategory !== 'Non spécifié' && (
                         <View style={styles.infoItem}>
-                            <Text style={styles.infoIcon}>\uD83D\uDCC2</Text>
+                            <Text style={styles.infoIcon}>📂</Text>
                             <Text style={styles.infoText}>{serviceCategory}</Text>
                         </View>
                     )}
                     {serviceLocation !== 'Non spécifié' && (
                         <View style={styles.infoItem}>
-                            <Text style={styles.infoIcon}>\uD83D\uDCCD</Text>
+                            <Text style={styles.infoIcon}>📍</Text>
                             <Text style={styles.infoText}>{serviceLocation}</Text>
                         </View>
                     )}
@@ -310,7 +310,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                 {/* Promotion active */}
                 {service.promotion?.active && (
                     <View style={styles.promotionBanner}>
-                        <Text style={styles.promotionIcon}>\uD83C\uDF89</Text>
+                        <Text style={styles.promotionIcon}>🎉</Text>
                         <Text style={styles.promotionText}>Promotion active</Text>
                     </View>
                 )}
@@ -325,12 +325,12 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[styles.actionButton, styles.viewButton]} onPress={viewService}>
-                        <Text style={styles.actionIcon}>\uD83D\uDC41️</Text>
+                        <Text style={styles.actionIcon}>👁️</Text>
                         <Text style={styles.actionText}>Voir</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[styles.actionButton, styles.shareButton]} onPress={shareService}>
-                        <Text style={styles.actionIcon}>\uD83D\uDCE4</Text>
+                        <Text style={styles.actionIcon}>📤</Text>
                         <Text style={styles.actionText}>Partager</Text>
                     </TouchableOpacity>
                 </View>
@@ -343,7 +343,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                         ]}
                         onPress={handlePromotion}
                     >
-                        <Text style={styles.actionIcon}>\uD83C\uDF89</Text>
+                        <Text style={styles.actionIcon}>🎉</Text>
                         <Text style={styles.actionText}>Promotion</Text>
                     </TouchableOpacity>
 
@@ -359,7 +359,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={deleteService}>
-                        <Text style={styles.actionIcon}>\uD83D\uDDD1️</Text>
+                        <Text style={styles.actionIcon}>🗑️</Text>
                         <Text style={styles.actionText}>Supprimer</Text>
                     </TouchableOpacity>
                 </View>
@@ -374,7 +374,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>\uD83C\uDF89 Gérer la promotion</Text>
+                        <Text style={styles.modalTitle}>🎉 Gérer la promotion</Text>
 
                         <TextInput
                             style={styles.modalInput}

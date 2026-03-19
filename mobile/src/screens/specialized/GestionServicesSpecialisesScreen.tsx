@@ -563,19 +563,19 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
     const getServiceIcon = (type: SpecializedService['type']): string => {
         switch (type) {
             case 'pharmacie':
-                return '\uD83D\uDC8A';
+                return '💊';
             case 'hopital':
-                return '\uD83C\uDFE5';
+                return '🏥';
             case 'laboratoire':
-                return '\uD83D\uDD2C';
+                return '🔬';
             case 'agence_voyage':
-                return '\uD83D\uDE8C';
+                return '🚌';
             case 'covoiturage':
-                return '\uD83D\uDE97';
+                return '🚗';
             case 'taxi':
-                return '\uD83D\uDE95';
+                return '🚕';
             default:
-                return '\uD83D\uDCCB';
+                return '📋';
         }
     };
 
@@ -903,7 +903,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
             {(item.is_on_duty_now || item.is_available_now) && (
                 <View style={styles.availabilityBadge}>
                     <Text style={styles.availabilityText}>
-                        {item.is_on_duty_now ? '\uD83D\uDFE2 DE GARDE' : '\uD83D\uDFE2 DISPONIBLE'}
+                        {item.is_on_duty_now ? '🟢 DE GARDE' : '🟢 DISPONIBLE'}
                     </Text>
                 </View>
             )}

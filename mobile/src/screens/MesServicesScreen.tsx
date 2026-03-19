@@ -280,7 +280,7 @@ const MesServicesScreen: React.FC = () => {
       // ✅ CORRIGÉ: Utilise apiGet
       const response = await apiGet('/api/prestataire/services');
 
-      logger.log('[MesServicesScreen] \uD83D\uDD0D Réponse API:', {
+      logger.log('[MesServicesScreen] 🔍 Réponse API:', {
         ok: response.ok,
         status: response.status,
         success: response.success
@@ -305,7 +305,7 @@ const MesServicesScreen: React.FC = () => {
           }
         }
 
-        logger.log('[MesServicesScreen] \uD83D\uDCE6 Services reçus:', {
+        logger.log('[MesServicesScreen] 📦 Services reçus:', {
           isArray: Array.isArray(data),
           count: Array.isArray(data) ? data.length : 0,
           type: typeof data
@@ -425,7 +425,7 @@ const MesServicesScreen: React.FC = () => {
 
     // Écouter les événements de création/modification de service/produit
     const subscription1 = DeviceEventEmitter.addListener('service:refresh', () => {
-      logger.log('[MesServicesScreen] \uD83D\uDD04 Événement service:refresh reçu');
+      logger.log('[MesServicesScreen] 🔄 Événement service:refresh reçu');
       // ✅ OPTIMISATION: Invalider le cache avant de recharger
       const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
       CacheManager.remove(cacheKey);
@@ -436,7 +436,7 @@ const MesServicesScreen: React.FC = () => {
 
     // ✅ NOUVEAU: Écouter les événements de création de produit
     const subscription2 = DeviceEventEmitter.addListener('product:created', () => {
-      logger.log('[MesServicesScreen] \uD83D\uDD04 Événement product:created reçu');
+      logger.log('[MesServicesScreen] 🔄 Événement product:created reçu');
       const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
       CacheManager.remove(cacheKey);
       if (typeof loadServices === 'function') {
@@ -445,7 +445,7 @@ const MesServicesScreen: React.FC = () => {
     });
 
     const subscription3 = DeviceEventEmitter.addListener('product:updated', () => {
-      logger.log('[MesServicesScreen] \uD83D\uDD04 Événement product:updated reçu');
+      logger.log('[MesServicesScreen] 🔄 Événement product:updated reçu');
       const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
       CacheManager.remove(cacheKey);
       if (typeof loadServices === 'function') {
@@ -633,17 +633,17 @@ const MesServicesScreen: React.FC = () => {
       // ✅ CORRIGÉ: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
       const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
 
-      let shareText = `\uD83D\uDECD️ ${titre}\n\n${description}`;
+      let shareText = `🛍️ ${titre}\n\n${description}`;
 
       if (prix) {
-        shareText += `\n\uD83D\uDCB0 Prix: ${prix} FCFA`;
+        shareText += `\n💰 Prix: ${prix} FCFA`;
       }
 
       if (localisation) {
-        shareText += `\n\uD83D\uDCCD Localisation: ${localisation}`;
+        shareText += `\n📍 Localisation: ${localisation}`;
       }
 
-      shareText += `\n\n\uD83D\uDD17 Voir ce service sur Yukpo :\n\uD83D\uDCF1 ${serviceUrl}`;
+      shareText += `\n\n🔗 Voir ce service sur Yukpo :\n📱 ${serviceUrl}`;
 
       // Utiliser l'API de partage native React Native
       const result = await Share.share({
@@ -703,7 +703,7 @@ const MesServicesScreen: React.FC = () => {
             });
 
             Alert.alert(
-              `\uD83D\uDCB8 ${t('mesServices.insufficientBalance')}`,
+              `💸 ${t('mesServices.insufficientBalance')}`,
               t('mesServices.reactivationCost', { cost: activationCost.toLocaleString(), balance: currentBalance.toLocaleString() }),
               [
                 { text: t('mesServices.cancel'), style: 'cancel' },
@@ -1055,7 +1055,7 @@ const MesServicesScreen: React.FC = () => {
 
     // Afficher un modal de gestion des promotions comme dans le frontend
     Alert.alert(
-      `\uD83D\uDCE2 ${t('mesServices.promotionTitle')}`,
+      `📢 ${t('mesServices.promotionTitle')}`,
       t('mesServices.promotionQuestion', { title: titre }),
       [
         { text: t('mesServices.cancel'), style: 'cancel' },
@@ -1076,7 +1076,7 @@ const MesServicesScreen: React.FC = () => {
           }
         },
         {
-          text: `\uD83C\uDF89 ${t('mesServices.createPromotion')}`,
+          text: `🎉 ${t('mesServices.createPromotion')}`,
           onPress: () => {
             try {
               // Navigation vers l'écran de modification pour créer une promotion
@@ -1447,7 +1447,7 @@ const MesServicesScreen: React.FC = () => {
                 onPress={() => (navigation as any).navigate('StartLive')}
               >
                 <SafeIcon name="radio" size={18} color="#DC2626" />
-                <Text style={[dynamicStyles.menuItemText, { color: '#DC2626' }]}>\uD83C\uDFA5 {t('mesServices.startLive')}</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: '#DC2626' }]}>🎥 {t('mesServices.startLive')}</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Analytiques Vidéos */}
@@ -1730,21 +1730,21 @@ const MesServicesScreen: React.FC = () => {
               ListFooterComponent={
                 <View style={dynamicStyles.footerContainer}>
                   <NativeButton
-                    title={`\uD83D\uDCCA ${t('mesServices.statistics')}`}
+                    title={`📊 ${t('mesServices.statistics')}`}
                     onPress={() => (navigation as any).navigate('AnalyticsDashboard')}
                     variant="primary"
                     size="large"
                     style={dynamicStyles.analyticsFooterButton}
                   />
                   <NativeButton
-                    title={`\uD83D\uDCE6 ${t('mesServices.manageProducts')}`}
+                    title={`📦 ${t('mesServices.manageProducts')}`}
                     onPress={() => navigation.navigate('MesProduits' as never)}
                     variant="outline"
                     size="large"
                     style={dynamicStyles.productsButton}
                   />
                   <NativeButton
-                    title={`\uD83C\uDFE0 ${t('mesServices.backToHome')}`}
+                    title={`🏠 ${t('mesServices.backToHome')}`}
                     onPress={() => navigation.navigate('Home' as never)}
                     variant="outline"
                     size="large"

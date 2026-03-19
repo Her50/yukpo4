@@ -51,21 +51,21 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
 
             if (response && Array.isArray(response)) {
                 const modelNames = response.map((v: any) => v.model).sort();
-                setModels([...modelNames, '\uD83C\uDD95 Autre (ajouter)']);
+                setModels([...modelNames, '🆕 Autre (ajouter)']);
             } else {
-                setModels(['\uD83C\uDD95 Autre (ajouter)']);
+                setModels(['🆕 Autre (ajouter)']);
             }
         } catch (error) {
             console.error('Erreur chargement modèles:', error);
             // Fallback: permettre seulement l'ajout manuel
-            setModels(['\uD83C\uDD95 Autre (ajouter)']);
+            setModels(['🆕 Autre (ajouter)']);
         } finally {
             setLoading(false);
         }
     };
 
     const handleSelect = (model: string) => {
-        if (model.includes('\uD83C\uDD95 Autre')) {
+        if (model.includes('🆕 Autre')) {
             // Ajouter un nouveau modèle
             Alert.prompt(
                 `Nouveau modèle ${marque}`,
@@ -154,7 +154,7 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
                 {label} {required && <Text style={styles.required}>*</Text>}
             </Text>
             <Text style={styles.marqueHint}>
-                \uD83D\uDE97 Modèles {marque}
+                🚗 Modèles {marque}
             </Text>
 
             <TouchableOpacity
@@ -203,14 +203,14 @@ const VehicleModelSelector: React.FC<VehicleModelSelectorProps> = ({
                                         style={[
                                             styles.option,
                                             value === model && styles.optionSelected,
-                                            model.includes('\uD83C\uDD95') && styles.optionAdd
+                                            model.includes('🆕') && styles.optionAdd
                                         ]}
                                         onPress={() => handleSelect(model)}
                                     >
                                         <Text style={[
                                             styles.optionText,
                                             value === model && styles.optionTextSelected,
-                                            model.includes('\uD83C\uDD95') && styles.optionTextAdd
+                                            model.includes('🆕') && styles.optionTextAdd
                                         ]}>
                                             {model}
                                         </Text>

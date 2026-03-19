@@ -94,7 +94,7 @@ export const TokensBalance: React.FC<TokensBalanceProps> = ({
         style={styles.refreshButton}
         disabled={loading}
       >
-        <Text style={styles.refreshIcon}>\uD83D\uDD04</Text>
+        <Text style={styles.refreshIcon}>🔄</Text>
       </TouchableOpacity>
     </View>
   );

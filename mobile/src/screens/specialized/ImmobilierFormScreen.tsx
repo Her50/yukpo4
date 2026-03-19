@@ -276,7 +276,7 @@ const ImmobilierFormScreen: React.FC = () => {
                             if (loc.coordinates?.lat && loc.coordinates?.lng) setSelectedGPS(`${loc.coordinates.lat},${loc.coordinates.lng}`);
                             if (loc.place_id) importGooglePlacePhotos(loc.place_id);
                         }} placeholder={t('immobilierFormScreen.adresseExacte')} scope="all" cityContext={formData.ville?.raw || formData.ville?.place_name || ''} enrichWithBackend />
-                        {importingGoogleMedia && <Text style={st.hint}>\uD83D\uDCE5 Import photos Google en cours...</Text>}
+                        {importingGoogleMedia && <Text style={st.hint}>📥 Import photos Google en cours...</Text>}
                     </View>
                     <TouchableOpacity style={st.gpsBtn} onPress={() => setShowGPSModal(true)}>
                         <SafeIcon name="map-pin" size={20} color={modernColors.primary} />

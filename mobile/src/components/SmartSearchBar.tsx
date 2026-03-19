@@ -144,34 +144,34 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({
 
     const getIconForKey = (key: string): string => {
         const iconMap: Record<string, string> = {
-            marque: '\uD83C\uDFF7️',
-            modele: '\uD83D\uDCE6',
-            type: '\uD83D\uDD16',
-            couleur: '\uD83C\uDFA8',
-            competence: '\uD83D\uDCBC',
+            marque: '🏷️',
+            modele: '📦',
+            type: '🔖',
+            couleur: '🎨',
+            competence: '💼',
             specialite: '⭐',
-            type_service: '\uD83D\uDEE0️',
-            domaine: '\uD83D\uDCDA',
-            niveau: '\uD83D\uDCCA',
-            experience: '\uD83C\uDF93',
-            annee: '\uD83D\uDCC5',
-            taille: '\uD83D\uDCCF',
-            pointure: '\uD83D\uDC5F',
-            matiere: '\uD83E\uDDF5',
+            type_service: '🛠️',
+            domaine: '📚',
+            niveau: '📊',
+            experience: '🎓',
+            annee: '📅',
+            taille: '📏',
+            pointure: '👟',
+            matiere: '🧵',
             style: '✨',
             etat: '⭐',
-            version: '\uD83D\uDD22',
+            version: '🔢',
             carburant: '⛽',
             transmission: '⚙️',
             puissance: '⚡',
-            kilometrage: '\uD83D\uDEE3️',
-            dimensions: '\uD83D\uDCD0',
+            kilometrage: '🛣️',
+            dimensions: '📐',
             poids: '⚖️',
             forme: '◾',
-            nombre_de_places: '\uD83D\uDC65',
-            capacite: '\uD83D\uDCCA',
+            nombre_de_places: '👥',
+            capacite: '📊',
         };
-        return iconMap[key.toLowerCase()] || '\uD83D\uDD0D';
+        return iconMap[key.toLowerCase()] || '🔍';
     };
 
     // ✅ NOUVEAU: Compter le total de filtres actifs
@@ -336,7 +336,7 @@ export const SmartSearchBar: React.FC<SmartSearchBarProps> = ({
             {showSuggestions && suggestions.length > 0 && (
                 <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>
-                        \uD83D\uDCA1 Suggestions ({suggestions.length})
+                        💡 Suggestions ({suggestions.length})
                     </Text>
                     <ScrollView
                         style={styles.suggestionsList}

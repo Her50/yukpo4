@@ -28,7 +28,7 @@ const [payload, setPayload] = useState("");
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>\uD83E\uDD16 YukAI Gateway</Text>
+      <Text style={styles.title}>🤖 YukAI Gateway</Text>
 
       <Text style={styles.label}>{t('yukAIGateway.serviceCible')}</Text>
       <View style={styles.pickerContainer}>
@@ -37,9 +37,9 @@ const [payload, setPayload] = useState("");
           onValueChange={setService}
           style={styles.picker}
         >
-          <Picker.Item label="\uD83E\uDD16 GPT" value="gpt" />
-          <Picker.Item label="\uD83C\uDFA8 DALL·E" value="dalle" />
-          <Picker.Item label="\uD83C\uDF10 Traduction" value="translate" />
+          <Picker.Item label="🤖 GPT" value="gpt" />
+          <Picker.Item label="🎨 DALL·E" value="dalle" />
+          <Picker.Item label="🌐 Traduction" value="translate" />
         </Picker>
       </View>
 

@@ -1,4 +1,4 @@
-﻿import * as DocumentPicker from 'expo-document-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -465,19 +465,19 @@ const buildDefaultVoiceover = (
     const lines: string[] = [];
 
     if (headline) {
-        lines.push(headline.replace(/[✅⚠️\uD83C\uDFB5\uD83D\uDD25\uD83D\uDCDE\uD83D\uDCE6\uD83D\uDCDD\uD83C\uDFAC…]+/g, '').trim());
+        lines.push(headline.replace(/[✅⚠️🎵🔥📞📦📝🎬…]+/g, '').trim());
     } else {
         lines.push(`Découvrez ${productName} sur Yukpo.`);
     }
 
     storyboardLines.slice(0, 3).forEach((line) => {
         if (line.trim().length > 0) {
-            lines.push(line.replace(/[✅⚠️\uD83C\uDFB5\uD83D\uDD25\uD83D\uDCDE\uD83D\uDCE6\uD83D\uDCDD\uD83C\uDFAC…]+/g, '').trim());
+            lines.push(line.replace(/[✅⚠️🎵🔥📞📦📝🎬…]+/g, '').trim());
         }
     });
 
     if (callToAction) {
-        lines.push(callToAction.replace(/[✅⚠️\uD83C\uDFB5\uD83D\uDD25\uD83D\uDCDE\uD83D\uDCE6\uD83D\uDCDD\uD83C\uDFAC…]+/g, '').trim());
+        lines.push(callToAction.replace(/[✅⚠️🎵🔥📞📦📝🎬…]+/g, '').trim());
     } else {
         lines.push('Contactez-nous dès maintenant via Yukpo.');
     }
@@ -713,7 +713,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             const serviceId = Number(productToUse.serviceId);
             const productIndex = productIndexValue;
 
-            console.log('[ProductVideoCreationModal] \uD83D\uDCE4 Début upload vidéo AR:', {
+            console.log('[ProductVideoCreationModal] 📤 Début upload vidéo AR:', {
                 serviceId,
                 productIndex,
                 product_name: productToUse.nom || productToUse.titre,
@@ -731,7 +731,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 `ar_video_${Date.now()}.mp4`
             );
 
-            console.log('[ProductVideoCreationModal] \uD83D\uDCE5 Résultat upload:', {
+            console.log('[ProductVideoCreationModal] 📥 Résultat upload:', {
                 success: uploadResult.success,
                 hasUrl: !!uploadResult.url,
                 error: uploadResult.error,
@@ -1628,7 +1628,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                             };
                                         });
 
-                                        console.log('[ProductVideoCreationModal] \uD83D\uDCBE Sauvegarde timeline dans session Studio:', {
+                                        console.log('[ProductVideoCreationModal] 💾 Sauvegarde timeline dans session Studio:', {
                                             sessionId,
                                             clipsCount: clips.length,
                                         });
@@ -1788,7 +1788,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         : 'inconnu';
                     const costStr = `${Math.round(estimation.total_cost_local).toLocaleString()} ${estimation.local_currency}`;
                     Alert.alert(
-                        '\uD83D\uDCB8 Solde insuffisant',
+                        '💸 Solde insuffisant',
                         `Coût estimé : ${costStr}\nVotre solde : ${balanceStr}\n\nVeuillez recharger votre compte pour générer cette vidéo.`,
                         [
                             { text: t('common.cancel'), style: 'cancel' },
@@ -1809,7 +1809,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             if (isBalanceError) {
                 Alert.alert(
-                    '\uD83D\uDCB8 Solde insuffisant',
+                    '💸 Solde insuffisant',
                     'Votre solde est insuffisant pour générer cette vidéo. Veuillez recharger votre compte.',
                     [
                         { text: t('common.cancel'), style: 'cancel' },
@@ -2017,7 +2017,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     throw new Error(response.error || 'Attache impossible');
                 }
                 await refreshMedia(selectedProduct);
-                Alert.alert('\uD83C\uDFB5 Audio ajouté', 'La boucle a été ajoutée à votre médiathèque.');
+                Alert.alert('🎵 Audio ajouté', 'La boucle a été ajoutée à votre médiathèque.');
             } catch (error) {
                 console.error("[ProductVideoCreationModal] Impossible d'attacher la boucle audio: ", error);
                 Alert.alert('Erreur', "Ajout de la boucle audio impossible pour le moment.");
@@ -2128,7 +2128,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 const warningMessage = `⚠️ Validation IA détecte ${invalidVariants.length} problème(s):\n\n` +
                     allWarnings.slice(0, 3).join('\n') +
                     (allWarnings.length > 3 ? `\n... et ${allWarnings.length - 3} autre(s)` : '') +
-                    `\n\n\uD83D\uDCA1 Suggestions:\n` +
+                    `\n\n💡 Suggestions:\n` +
                     allSuggestions.slice(0, 2).join('\n') +
                     (allSuggestions.length > 2 ? `\n... et ${allSuggestions.length - 2} autre(s)` : '') +
                     `\n\nVoulez-vous continuer avec ces briefs ou les améliorer ?`;
@@ -2337,7 +2337,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 Alert.alert(
                     'Style généré avec réserves',
-                    `✅ Effets visuels générés\n\n⚠️ Points à considérer:\n${styleValidation.warnings.slice(0, 2).join('\n')}\n\n\uD83D\uDCA1 Suggestions:\n${styleValidation.suggestions.slice(0, 2).join('\n')}`,
+                    `✅ Effets visuels générés\n\n⚠️ Points à considérer:\n${styleValidation.warnings.slice(0, 2).join('\n')}\n\n💡 Suggestions:\n${styleValidation.suggestions.slice(0, 2).join('\n')}`,
                     [{ text: 'OK' }]
                 );
             } else {
@@ -2474,8 +2474,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
 
         const productName = normalizeProductName(selectedProduct);
-        const defaultHeadline = `\uD83D\uDD25 ${productName} en ${getFieldValue(selectedProduct.city) || 'promo'}`;
-        const defaultCTA = `\uD83D\uDCDE Contactez ${extractServiceName(selectedProduct, 'nous')} sur Yukpo`;
+        const defaultHeadline = `🔥 ${productName} en ${getFieldValue(selectedProduct.city) || 'promo'}`;
+        const defaultCTA = `📞 Contactez ${extractServiceName(selectedProduct, 'nous')} sur Yukpo`;
 
         setHeadline(defaultHeadline);
         setCallToAction(defaultCTA);
@@ -2509,7 +2509,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 // Analyser seulement si on n'a pas déjà une analyse récente
                 if (hasMediaWithDescriptions && Object.keys(mediaAnalysis).length === 0) {
-                    console.log('[ProductVideoCreationModal] \uD83D\uDD0D Analyse automatique des médias sélectionnés');
+                    console.log('[ProductVideoCreationModal] 🔍 Analyse automatique des médias sélectionnés');
                     handleAnalyzeMedia().catch(error => {
                         console.warn('[ProductVideoCreationModal] ⚠️ Erreur analyse automatique:', error);
                         // Ne pas bloquer l'utilisateur si l'analyse automatique échoue
@@ -2542,7 +2542,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const groupedProducts: GroupedProducts[] = useMemo(() => {
         const groups = new Map<string, GroupedProducts>();
 
-        console.log('[ProductVideoCreationModal] \uD83D\uDCE6 Traitement produits:', products.length);
+        console.log('[ProductVideoCreationModal] 📦 Traitement produits:', products.length);
 
         products.forEach((product) => {
             const serviceId = product.serviceId || 'service';
@@ -2561,7 +2561,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         });
 
         const result = Array.from(groups.values());
-        console.log('[ProductVideoCreationModal] \uD83D\uDCE6 Groupes créés:', result.length, 'services');
+        console.log('[ProductVideoCreationModal] 📦 Groupes créés:', result.length, 'services');
         return result;
     }, [products]);
 
@@ -2906,7 +2906,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 // ✅ CORRIGÉ: Attacher les médias disponibles comme assets dynamiques si nécessaire
                 const allMedia = [...productMedia, ...serviceMedia];
                 if (allMedia.length > 0) {
-                    console.log('[ProductVideoCreationModal] \uD83D\uDCCE Attachement des médias à la session...');
+                    console.log('[ProductVideoCreationModal] 📎 Attachement des médias à la session...');
                     for (const media of allMedia.slice(0, 10)) { // Limiter à 10 médias
                         if (media.path) {
                             const mediaUrl = buildMediaUrl(media.path);
@@ -3028,7 +3028,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {selectedProduct && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>\uD83D\uDE9A Configuration de livraison</Text>
+                            <Text style={styles.sectionTitle}>🚚 Configuration de livraison</Text>
                         </View>
                         <Text style={styles.sectionSubtitle}>
                             Activez la livraison pour permettre aux clients de commander directement depuis la vidéo (bouton "Commander").
@@ -3064,7 +3064,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         </Text>
                                         {deliveryConfig?.pickup_address && (
                                             <Text style={styles.deliveryConfigAddress}>
-                                                \uD83D\uDCCD {deliveryConfig?.pickup_address}
+                                                📍 {deliveryConfig?.pickup_address}
                                             </Text>
                                         )}
                                         <TouchableOpacity
@@ -3152,7 +3152,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             <NativeCard style={styles.sectionCard}>
                 {renderStepTip(2)}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>\uD83D\uDCF8 Sélection des médias</Text>
+                    <Text style={styles.sectionTitle}>📸 Sélection des médias</Text>
                     <TouchableOpacity
                         style={styles.linkButton}
                         onPress={handleAnalyzeMedia}
@@ -3175,7 +3175,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {/* ✅ NOUVEAU Phase 3.2: Bouton pour créer vidéo AR */}
                 <View style={styles.arButtonContainer}>
                     <NativeButton
-                        title="\uD83C\uDFAC Créer vidéo AR immersive"
+                        title="🎬 Créer vidéo AR immersive"
                         variant="primary"
                         size="medium"
                         onPress={async () => {
@@ -3253,7 +3253,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     productIndex: productIndexValue
                                 };
                                 setArEditorProduct(normalizedProduct);
-                                console.log('[ProductVideoCreationModal] \uD83D\uDCCC Produit stocké pour AR:', {
+                                console.log('[ProductVideoCreationModal] 📌 Produit stocké pour AR:', {
                                     serviceId: productToUse.serviceId,
                                     product_index: productIndexValue,
                                     product_name: productToUse.nom || productToUse.titre
@@ -3388,7 +3388,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             <NativeCard style={styles.sectionCard}>
                 {renderStepTip(3)}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>\uD83C\uDFA8 Style et effets</Text>
+                    <Text style={styles.sectionTitle}>🎨 Style et effets</Text>
                     <TouchableOpacity
                         style={styles.linkButton}
                         onPress={handleGenerateStyleSuggestion}
@@ -3546,7 +3546,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {selectedProduct && storyTemplates.length > 0 && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>\uD83D\uDCDD Templates narratifs</Text>
+                            <Text style={styles.sectionTitle}>📝 Templates narratifs</Text>
                             {storyTemplatesLoading && (
                                 <ActivityIndicator size="small" color={modernColors.primary} />
                             )}
@@ -3582,7 +3582,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {/* ✅ Storyboard IA via Studio (déplacé depuis étape 1) */}
                 {selectedProduct && (
                     <NativeCard style={styles.sectionCard}>
-                        <Text style={[styles.sectionTitle, { marginBottom: 12 }]} numberOfLines={1}>\uD83C\uDFAC Storyboard IA</Text>
+                        <Text style={[styles.sectionTitle, { marginBottom: 12 }]} numberOfLines={1}>🎬 Storyboard IA</Text>
                         <TouchableOpacity
                             style={[styles.linkButton, { alignSelf: 'flex-start' }]}
                             onPress={handleGenerateStoryboard}
@@ -3661,7 +3661,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         <NativeInput
                             value={headline}
                             onChangeText={setHeadline}
-                            placeholder="Ex: \uD83C\uDFAF Promotion spéciale sur nos mèches premium !"
+                            placeholder="Ex: 🎯 Promotion spéciale sur nos mèches premium !"
                             multiline
                             minLines={2}
                         />
@@ -3748,7 +3748,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         </View>
                         <Text style={styles.durationHint}>
                             {Number(duration) >= 25 && Number(duration) <= 35
-                                ? '\uD83C\uDFAF Durée optimale pour les réseaux sociaux !'
+                                ? '🎯 Durée optimale pour les réseaux sociaux !'
                                 : 'Astuce : 25-35s performe mieux sur les réseaux sociaux.'}
                         </Text>
                     </View>
@@ -3810,7 +3810,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         {studioSessionId && (
                             <View style={styles.shortPreviewContainer}>
                                 <NativeButton
-                                    title={shortPreviewLoading ? "Génération preview…" : "\uD83C\uDFAC Preview courte (Studio)"}
+                                    title={shortPreviewLoading ? "Génération preview…" : "🎬 Preview courte (Studio)"}
                                     variant="outline"
                                     size="medium"
                                     onPress={handleShortPreview}
@@ -4012,7 +4012,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             <>
                 {renderStepTip(5)}
                 <NativeCard style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>\uD83C\uDFB5 Ambiance musicale</Text>
+                    <Text style={styles.sectionTitle}>🎵 Ambiance musicale</Text>
                     <Text style={styles.sectionSubtitle}>
                         Choisissez une ambiance générée automatiquement ou importez votre propre piste.
                     </Text>
@@ -4198,7 +4198,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>\uD83C\uDFA4 Narration vocale IA</Text>
+                        <Text style={styles.sectionTitle}>🎤 Narration vocale IA</Text>
                         <Switch
                             value={voiceoverEnabled}
                             onValueChange={(value) => {
@@ -4271,7 +4271,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
                     <View style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>\uD83C\uDFAC Génération en cours</Text>
+                            <Text style={styles.sectionTitle}>🎬 Génération en cours</Text>
                         </View>
 
                         <View style={styles.jobProgressContainer}>
@@ -4295,7 +4295,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 ⏱️ La génération peut prendre quelques minutes selon la durée et la complexité de la vidéo.
                             </Text>
                             <Text style={styles.jobInfoText}>
-                                \uD83D\uDCF1 Vous pouvez fermer cette fenêtre, vous recevrez une notification une fois la vidéo prête.
+                                📱 Vous pouvez fermer cette fenêtre, vous recevrez une notification une fois la vidéo prête.
                             </Text>
                         </View>
                     </View>
@@ -4314,7 +4314,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {/* ✅ NOUVEAU: Récapitulatif visuel avant génération (comme TikTok/Canva) */}
                 <NativeCard style={[styles.sectionCard, styles.recapCard]}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>\uD83D\uDCCB Récapitulatif</Text>
+                        <Text style={styles.sectionTitle}>📋 Récapitulatif</Text>
                     </View>
                     <View style={styles.recapGrid}>
                         <View style={styles.recapItem}>
@@ -4374,7 +4374,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {!generatedTimeline && !isGeneratingTimeline && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>\uD83C\uDFAC Structure de la vidéo</Text>
+                            <Text style={styles.sectionTitle}>🎬 Structure de la vidéo</Text>
                             <TouchableOpacity
                                 style={styles.linkButton}
                                 onPress={async () => {
@@ -4453,7 +4453,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {generatedTimeline && !isEditingTimeline && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>\uD83C\uDFAC Structure de la vidéo</Text>
+                            <Text style={styles.sectionTitle}>🎬 Structure de la vidéo</Text>
                         </View>
                         <Text style={styles.sectionSubtitle}>
                             Visualisez la structure de votre vidéo avant la génération finale.
@@ -4624,7 +4624,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             {/* Chaînage de vidéos */}
                             <View style={styles.advancedSection}>
                                 <View style={styles.sectionHeader}>
-                                    <Text style={styles.advancedSectionTitle}>\uD83D\uDD17 Chaînage de vidéos</Text>
+                                    <Text style={styles.advancedSectionTitle}>🔗 Chaînage de vidéos</Text>
                                     <Switch
                                         value={showVideoChaining}
                                         onValueChange={setShowVideoChaining}
@@ -4689,7 +4689,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                             {/* Formats de sortie */}
                             <View style={styles.advancedSection}>
-                                <Text style={styles.advancedSectionTitle}>\uD83D\uDCBE Formats de sortie</Text>
+                                <Text style={styles.advancedSectionTitle}>💾 Formats de sortie</Text>
                                 <Text style={styles.sectionSubtitle}>
                                     Générer des variantes dans d'autres formats pour une diffusion multi-plateformes.
                                 </Text>
@@ -5276,7 +5276,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             const currentBalance = estimation.current_balance_fcfa || 0;
             const isAffordable = estimation.affordable !== false;
 
-            let costMessage = `\uD83D\uDCB0 Estimation du coût de génération\n\n`;
+            let costMessage = `💰 Estimation du coût de génération\n\n`;
             costMessage += `Coût total : ${totalCost.toLocaleString('fr-FR')} FCFA\n`;
             if (estimation.breakdown) {
                 costMessage += `\nDétail :\n`;
@@ -5304,7 +5304,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         style: 'cancel',
                     },
                     {
-                        text: isAffordable ? 'Confirmer et générer' : '\uD83D\uDCB3 Recharger',
+                        text: isAffordable ? 'Confirmer et générer' : '💳 Recharger',
                         onPress: async () => {
                             if (!isAffordable) {
                                 // ✅ Naviguer vers l'écran de recharge de tokens
@@ -5329,7 +5329,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             if (isBalanceError) {
                 Alert.alert(
-                    '\uD83D\uDCB8 Solde insuffisant',
+                    '💸 Solde insuffisant',
                     'Votre solde est insuffisant pour générer cette vidéo. Veuillez recharger votre compte.',
                     [
                         { text: t('common.cancel'), style: 'cancel' },
@@ -5467,9 +5467,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             };
 
             // ✅ DEBUG: Log du payload pour diagnostic
-            console.log('[ProductVideoCreationModal] \uD83C\uDFAC Génération vidéo - Payload:', JSON.stringify(finalPayload, null, 2));
-            console.log('[ProductVideoCreationModal] \uD83C\uDFAC Service ID:', serviceId);
-            console.log('[ProductVideoCreationModal] \uD83C\uDFAC Product Index:', productIndex);
+            console.log('[ProductVideoCreationModal] 🎬 Génération vidéo - Payload:', JSON.stringify(finalPayload, null, 2));
+            console.log('[ProductVideoCreationModal] 🎬 Service ID:', serviceId);
+            console.log('[ProductVideoCreationModal] 🎬 Product Index:', productIndex);
 
             const response = await mediaApi.generateProductVideo(
                 serviceId,
@@ -5478,7 +5478,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             );
 
             // ✅ DEBUG: Log de la réponse
-            console.log('[ProductVideoCreationModal] \uD83C\uDFAC Réponse génération:', response);
+            console.log('[ProductVideoCreationModal] 🎬 Réponse génération:', response);
 
             if (!response.success || !response.data) {
                 // ✅ CORRIGÉ: Extraire le message d'erreur du backend si disponible
@@ -5654,7 +5654,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 }
 
                 const job = statusResponse.data;
-                console.log('[ProductVideoCreationModal] \uD83D\uDCCA Statut job:', job.status, 'Progress:', job.progress_steps?.length || 0);
+                console.log('[ProductVideoCreationModal] 📊 Statut job:', job.status, 'Progress:', job.progress_steps?.length || 0);
 
                 // Mettre à jour le statut et la progression
                 setJobStatus(job.status as 'queued' | 'running' | 'completed' | 'failed');
@@ -6362,7 +6362,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                             onPress={() => handleStepChange(5)}
                                         />
                                         <NativeButton
-                                            title={isSubmitting ? 'Génération en cours...' : '\uD83C\uDFAC Générer ma vidéo'}
+                                            title={isSubmitting ? 'Génération en cours...' : '🎬 Générer ma vidéo'}
                                             variant="primary"
                                             onPress={handleSubmit}
                                             disabled={isSubmitting || !selectedProduct}

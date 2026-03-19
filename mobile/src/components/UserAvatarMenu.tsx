@@ -53,7 +53,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         // ✅ SECTION ADMIN: Liens d'administration en priorité
         {
             title: t('userAvatarMenu.gererLesCoursiers'),
-            icon: '\uD83D\uDC65',
+            icon: '👥',
             route: 'CourierAdmin',
             description: t('userAvatarMenu.validerLesCandidaturesDeCoursiers'),
             highlighted: true,
@@ -61,7 +61,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         },
         {
             title: t('userAvatarMenu.gererLesPartenaires'),
-            icon: '\uD83D\uDE9A',
+            icon: '🚚',
             route: 'DeliveryPartnersAdmin',
             description: t('userAvatarMenu.validerLesCandidaturesEtGerer'),
             highlighted: true,
@@ -69,7 +69,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         },
         {
             title: t('userAvatarMenu.gestionDesRoles'),
-            icon: '\uD83D\uDC64',
+            icon: '👤',
             route: 'UserRoleManagement',
             description: t('userAvatarMenu.gererLesRolesDesUtilisateurs'),
             highlighted: true,
@@ -77,15 +77,15 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         },
         {
             title: 'Prestataires externes',
-            icon: '\uD83D\uDD11',
+            icon: '🔑',
             route: 'ExternalProvidersAdmin',
             description: t('userAvatarMenu.gererLesPrestatairesEtEnvoyer'),
             highlighted: true,
             adminOnly: true
         },
         {
-            title: '\uD83D\uDD25 Configuration Black Friday',
-            icon: '\uD83D\uDD25',
+            title: '🔥 Configuration Black Friday',
+            icon: '🔥',
             route: 'BlackFridayAdminConfig',
             description: t('userAvatarMenu.gererLesCampagnesBlackFriday'),
             highlighted: true,
@@ -94,7 +94,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         // ✅ SÉPARATEUR VISUEL: Déconnexion toujours visible en bas
         {
             title: t('userAvatarMenu.deconnexion'),
-            icon: '\uD83D\uDEAA',
+            icon: '🚪',
             route: 'logout',
             description: t('userAvatarMenu.seDeconnecterDeLapplication'),
             isSeparator: true
@@ -111,7 +111,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         // ✅ NOUVEAU 2026-01-XX: Navigation intelligente en deuxième position
         {
             title: t('userAvatarMenu.navigationIntelligente'),
-            icon: '\uD83E\uDDED',
+            icon: '🧭',
             route: 'NavigationScreen',
             description: t('userAvatarMenu.trouvezLeMeilleurCheminAvecEmbouteillagesEtPoints'),
             highlighted: true
@@ -119,7 +119,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         // ✅ AMÉLIORÉ 2026-01-23: Produits consultés en deuxième position
         {
             title: t('userAvatarMenu.produitsConsultes'),
-            icon: '\uD83D\uDD50',
+            icon: '🕐',
             route: 'HistoriqueProduitsConsultes',
             description: t('userAvatarMenu.voirLesProduitsQueVous')
         },
@@ -131,25 +131,25 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         },
         {
             title: t('userAvatarMenu.financialTracking'),
-            icon: '\uD83D\uDCCA',
+            icon: '📊',
             route: 'WalletFinancial',
             description: t('userAvatarMenu.financialTrackingDesc')
         },
         {
             title: t('userAvatarMenu.devenirCoursierYukpo'),
-            icon: '\uD83D\uDEB4',
+            icon: '🚴',
             route: 'CourierRegistration',
             description: t('userAvatarMenu.rejoignezNotreEquipeDeCoursiers')
         },
         {
             title: t('userAvatarMenu.contacterLeSupport'),
-            icon: '\uD83D\uDCAC',
+            icon: '💬',
             route: 'Contact',
             description: t('userAvatarMenu.besoinDaide')
         },
         {
             title: t('userAvatarMenu.deconnexion'),
-            icon: '\uD83D\uDEAA',
+            icon: '🚪',
             route: 'logout',
             description: t('userAvatarMenu.seDeconnecterDeLapplication')
         }
@@ -160,7 +160,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         // Insérer après "Navigation intelligente" (index 1 dans le menu utilisateur)
         const teamItem = {
             title: t('userAvatarMenu.mesEquipes', { teamMembershipCount: teamMembershipCount }),
-            icon: '\uD83D\uDC65',
+            icon: '👥',
             route: 'MesEquipes',
             description: t('userAvatarMenu.servicesQueVousCogerez'),
             highlighted: true

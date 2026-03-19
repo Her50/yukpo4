@@ -383,7 +383,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             setShowTable(false);
 
             // ✅ NOUVEAU : Sauvegarder dans la DB avec gestion d'erreur
-            console.log('[LinearAutocompleteEditor] \uD83D\uDCBE Sauvegarde sous-caractéristiques dans DB...', {
+            console.log('[LinearAutocompleteEditor] 💾 Sauvegarde sous-caractéristiques dans DB...', {
                 modality,
                 updatedProductLabels,
                 nbSousCaracs: Object.keys(updatedSousCaracs).length
@@ -447,7 +447,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             {showTable && (
                 <>
                     {/* ✅ DEBUG: Logger les props passées au tableau */}
-                    {console.log('[LinearAutocompleteEditor] \uD83D\uDD0D Props passées à SubCharacteristicsTable:', {
+                    {console.log('[LinearAutocompleteEditor] 🔍 Props passées à SubCharacteristicsTable:', {
                         sousCaracteristiques: JSON.stringify(sousCaracteristiques, null, 2),
                         separateur,
                         hasInitialRows: tableRows.length > 0,
@@ -491,7 +491,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                 });
 
                                 onChange([modality], updatedSousCaracs);
-                                console.log('[LinearAutocompleteEditor] \uD83D\uDCBE Modifications sauvegardées automatiquement (lignes directes du tableau)');
+                                console.log('[LinearAutocompleteEditor] 💾 Modifications sauvegardées automatiquement (lignes directes du tableau)');
                                 console.log('[LinearAutocompleteEditor] ✅ tableRows mis à jour:', rows.length, 'lignes');
 
                                 // ✅ NOUVEAU: Feedback visuel pour les modifications
@@ -499,7 +499,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             } else {
                                 // ✅ CORRECTION: Si aucune ligne valide, mettre à jour avec un tableau vide
                                 onChange([], {});
-                                console.log('[LinearAutocompleteEditor] \uD83D\uDDD1️ Tableau vidé, aucune modification sauvegardée');
+                                console.log('[LinearAutocompleteEditor] 🗑️ Tableau vidé, aucune modification sauvegardée');
                             }
                         }}
                     />
@@ -536,7 +536,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             {/* Suggestions linéaires (affichage horizontal) - seulement si le tableau n'est pas affiché */}
             {!showTable && uniqueSuggestions.length > 0 && (
                 <View style={styles.suggestionsSection}>
-                    <Text style={styles.suggestionsTitle}>\uD83D\uDCA1 Suggestions</Text>
+                    <Text style={styles.suggestionsTitle}>💡 Suggestions</Text>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}

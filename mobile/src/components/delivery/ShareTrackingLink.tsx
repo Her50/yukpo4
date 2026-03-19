@@ -1,5 +1,5 @@
 /**
- * \uD83D\uDD17 Partage social du lien de tracking
+ * 🔗 Partage social du lien de tracking
  * Design moderne avec options multiples
  */
 

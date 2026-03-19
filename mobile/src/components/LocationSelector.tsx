@@ -821,7 +821,7 @@ const [query, setQuery] = useState('');
             </View>
 
             {enriching && (
-                <Text style={styles.enrichingText}>\uD83C\uDF0D Enrichissement en cours...</Text>
+                <Text style={styles.enrichingText}>🌍 Enrichissement en cours...</Text>
             )}
 
             {/* ✅ NOUVEAU: Suggestions affichées directement sous le champ (pas dans un modal) */}

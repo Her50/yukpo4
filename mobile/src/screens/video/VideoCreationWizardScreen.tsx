@@ -565,11 +565,11 @@ const VideoCreationWizardScreen: React.FC = () => {
             setMediaLoading(true);
             const allMediaItems: ServiceMediaItem[] = [];
 
-            console.log('[VideoCreationWizard] \uD83C\uDFAC Début chargement médias pour serviceId:', serviceId, 'productIndex:', productIndex);
+            console.log('[VideoCreationWizard] 🎬 Début chargement médias pour serviceId:', serviceId, 'productIndex:', productIndex);
 
             // ✅ CORRECTION: Charger les médias du produit spécifique
             const productResponse = await apiCallWithRetry(() => mediaApi.getProductMedia(serviceId, productIndex));
-            console.log('[VideoCreationWizard] \uD83D\uDD0D Réponse getProductMedia:', {
+            console.log('[VideoCreationWizard] 🔍 Réponse getProductMedia:', {
                 success: productResponse.success,
                 hasData: !!productResponse.data,
                 isArray: Array.isArray(productResponse.data),
@@ -602,9 +602,9 @@ const VideoCreationWizardScreen: React.FC = () => {
             // ✅ AMÉLIORATION: Si peu de médias trouvés pour ce produit, charger aussi les médias du service entier
             // (utile pour les vidéos avec plusieurs produits ou si le produit n'a pas assez de médias)
             if (allMediaItems.length < 3) {
-                console.log('[VideoCreationWizard] \uD83D\uDCE6 Peu de médias pour le produit (' + allMediaItems.length + '), chargement des médias du service...');
+                console.log('[VideoCreationWizard] 📦 Peu de médias pour le produit (' + allMediaItems.length + '), chargement des médias du service...');
                 const serviceResponse = await apiCallWithRetry(() => mediaApi.getServiceMediaDetailed(serviceId));
-                console.log('[VideoCreationWizard] \uD83D\uDD0D Réponse getServiceMediaDetailed:', {
+                console.log('[VideoCreationWizard] 🔍 Réponse getServiceMediaDetailed:', {
                     success: serviceResponse.success,
                     hasData: !!serviceResponse.data,
                     isArray: Array.isArray(serviceResponse.data),
@@ -1514,7 +1514,7 @@ const VideoCreationWizardScreen: React.FC = () => {
             const alertButtons: any[] = [{ text: 'OK' }];
             if (isBalanceError) {
                 alertButtons.push({
-                    text: `\uD83D\uDCB3 ${t('videoWizardExtra.recharge')}`,
+                    text: `💳 ${t('videoWizardExtra.recharge')}`,
                     onPress: () => (navigation as any).navigate('RechargeTokens'),
                 });
             } else {
@@ -1665,7 +1665,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                             {item.ai_description || `Média #${item.id}`}
                         </Text>
                         <Text style={styles.mediaSubTitle}>
-                            {isVideo ? t('videoCreationWizardScreen.video') : '\uD83D\uDCF8 Image'}
+                            {isVideo ? t('videoCreationWizardScreen.video') : '📸 Image'}
                         </Text>
                     </View>
                 </NativeCard>

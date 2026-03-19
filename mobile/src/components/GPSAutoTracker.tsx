@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import * as React from "react";
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -39,7 +39,7 @@ const [isTracking, setIsTracking] = useState(false);
 
   const startGPSTracking = async () => {
     try {
-      console.log('\uD83D\uDE80 Démarrage du tracking GPS automatique...');
+      console.log('🚀 Démarrage du tracking GPS automatique...');
 
       // Démarrer le service de tracking
       gpsTrackingService.startTracking();
@@ -57,7 +57,7 @@ const [isTracking, setIsTracking] = useState(false);
             setCurrentLocation(coords);
             setLastUpdate(new Date());
 
-            console.log(`\uD83D\uDCCD Position GPS mise à jour: ${coords}`);
+            console.log(`📍 Position GPS mise à jour: ${coords}`);
 
             // Envoyer au backend
             await updateBackendGPS(newLocation.latitude, newLocation.longitude);
@@ -77,7 +77,7 @@ const [isTracking, setIsTracking] = useState(false);
   const stopGPSTracking = () => {
     gpsTrackingService.stopTracking();
     setIsTracking(false);
-    console.log('\uD83D\uDED1 Tracking GPS arrêté');
+    console.log('🛑 Tracking GPS arrêté');
   };
 
   const getCurrentLocation = async () => {
@@ -88,7 +88,7 @@ const [isTracking, setIsTracking] = useState(false);
         setCurrentLocation(coords);
         setLastUpdate(new Date());
 
-        console.log(`\uD83D\uDCCD Position GPS actuelle: ${coords}`);
+        console.log(`📍 Position GPS actuelle: ${coords}`);
 
         // Envoyer au backend
         await updateBackendGPS(location.latitude, location.longitude);
@@ -138,7 +138,7 @@ const [isTracking, setIsTracking] = useState(false);
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>
-          \uD83D\uDCCD Tracking GPS
+          📍 Tracking GPS
         </Text>
         <View style={[styles.statusDot, isTracking ? styles.statusDotActive : styles.statusDotInactive]} />
       </View>

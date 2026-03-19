@@ -171,7 +171,7 @@ const SmartQRShareButton: React.FC<SmartQRShareButtonProps> = ({
   const handleDirectShare = useCallback(async (result: SmartShareResult) => {
     try {
       const shareOptions = {
-        message: `\uD83D\uDCE6 Yukpo Delivery - Suivi colis\n\n${result.message}\nLien: ${result.shareUrl}\n\nSuivez votre livraison en temps réel!`,
+        message: `📦 Yukpo Delivery - Suivi colis\n\n${result.message}\nLien: ${result.shareUrl}\n\nSuivez votre livraison en temps réel!`,
         url: result.shareUrl,
         title: 'Suivi Livraison Yukpo',
       };
@@ -181,7 +181,7 @@ const SmartQRShareButton: React.FC<SmartQRShareButtonProps> = ({
       // Feedback de confirmation du partage natif
       triggerFeedback('info');
       showNotification('share_native', t('smartQRShareButton.linkSharedViaSystem'));
-      toaster?.show?.(`\uD83D\uDCE4 ${t('smartQRShareButton.linkSharedViaSystem')}`, 'info');
+      toaster?.show?.(`📤 ${t('smartQRShareButton.linkSharedViaSystem')}`, 'info');
     } catch (error: any) {
       console.error('[SmartQRShareButton] Erreur partage direct:', error);
       triggerFeedback('error');
@@ -191,15 +191,15 @@ const SmartQRShareButton: React.FC<SmartQRShareButtonProps> = ({
   // Options QR généré
   const handleQRGenerated = useCallback((result: SmartShareResult) => {
     Alert.alert(
-      `\uD83D\uDCF1 ${t('smartQRShareButton.qrCodeGenerated')}`,
+      `📱 ${t('smartQRShareButton.qrCodeGenerated')}`,
       result.message,
       [
         {
-          text: `\uD83D\uDCE4 ${t('smartQRShareButton.shareQR')}`,
+          text: `📤 ${t('smartQRShareButton.shareQR')}`,
           onPress: () => handleDirectShare(result)
         },
         {
-          text: `\uD83D\uDCCA ${t('smartQRShareButton.checkStatus')}`,
+          text: `📊 ${t('smartQRShareButton.checkStatus')}`,
           onPress: () => handleCheckStatus()
         },
         {
@@ -216,7 +216,7 @@ const SmartQRShareButton: React.FC<SmartQRShareButtonProps> = ({
       const status = await smartQRShareService.checkShareStatus(deliveryId, shareResult?.qrData?.qr_id);
 
       Alert.alert(
-        `\uD83D\uDCCA ${t('smartQRShareButton.shareStatus')}`,
+        `📊 ${t('smartQRShareButton.shareStatus')}`,
         `${t('smartQRShareButton.statusLabel')}: ${status?.delivery_status || t('smartQRShareButton.unknown')}\n` +
         `${t('smartQRShareButton.recipient')}: ${status?.has_recipient ? '✅' : '❌'}\n` +
         `${t('smartQRShareButton.courier')}: ${status?.has_courier ? '✅' : '❌'}\n` +
@@ -234,23 +234,23 @@ const SmartQRShareButton: React.FC<SmartQRShareButtonProps> = ({
     if (shareResult) {
       switch (shareResult.action) {
         case 'share_to_recipient':
-          return `\uD83D\uDCE4 ${t('smartQRShareButton.shareToClient')}`;
+          return `📤 ${t('smartQRShareButton.shareToClient')}`;
         case 'share_to_courier':
-          return `\uD83D\uDCCD ${t('smartQRShareButton.shareToCourier')}`;
+          return `📍 ${t('smartQRShareButton.shareToCourier')}`;
         case 'generate_qr':
-          return `\uD83D\uDCF1 ${t('smartQRShareButton.generateQR')}`;
+          return `📱 ${t('smartQRShareButton.generateQR')}`;
         default:
-          return `\uD83D\uDCE6 ${t('smartQRShareButton.shareDelivery')}`;
+          return `📦 ${t('smartQRShareButton.shareDelivery')}`;
       }
     }
 
     switch (userRole) {
       case 'courier':
-        return `\uD83D\uDCE4 ${t('smartQRShareButton.shareToClient')}`;
+        return `📤 ${t('smartQRShareButton.shareToClient')}`;
       case 'client':
-        return `\uD83D\uDCCD ${t('smartQRShareButton.shareToCourier')}`;
+        return `📍 ${t('smartQRShareButton.shareToCourier')}`;
       default:
-        return `\uD83D\uDCE6 ${t('smartQRShareButton.shareDelivery')}`;
+        return `📦 ${t('smartQRShareButton.shareDelivery')}`;
     }
   };
 
@@ -271,7 +271,7 @@ const SmartQRShareButton: React.FC<SmartQRShareButtonProps> = ({
       {showDetails && (
         <View style={styles.contextInfo}>
           <Text style={styles.contextText}>
-            {t('smartQRShareButton.role')}: {userRole === 'courier' ? `\uD83D\uDEB4 ${t('smartQRShareButton.roleCourier')}` : userRole === 'client' ? `\uD83D\uDC64 ${t('smartQRShareButton.roleClient')}` : `⚙️ ${t('smartQRShareButton.roleAdmin')}`}
+            {t('smartQRShareButton.role')}: {userRole === 'courier' ? `🚴 ${t('smartQRShareButton.roleCourier')}` : userRole === 'client' ? `👤 ${t('smartQRShareButton.roleClient')}` : `⚙️ ${t('smartQRShareButton.roleAdmin')}`}
           </Text>
           {shareResult && (
             <Text style={styles.resultText}>

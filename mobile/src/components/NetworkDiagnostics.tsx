@@ -68,7 +68,7 @@ const NetworkDiagnostics: React.FC<NetworkDiagnosticsProps> = ({ onClose }) => {
                 </Text>
 
                 <NativeButton
-                    title={isRunning ? "⏳ Test en cours..." : "\uD83D\uDD0D Lancer le diagnostic"}
+                    title={isRunning ? "⏳ Test en cours..." : "🔍 Lancer le diagnostic"}
                     onPress={runDiagnostics}
                     variant="primary"
                     style={styles.button}

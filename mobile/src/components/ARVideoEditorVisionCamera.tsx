@@ -1,5 +1,5 @@
 /**
- * \uD83C\uDFAC ARVideoEditorVisionCamera - Éditeur vidéo AR avec VisionCamera
+ * 🎬 ARVideoEditorVisionCamera - Éditeur vidéo AR avec VisionCamera
  * Phase 2: Migration vers react-native-vision-camera pour tracking AR réel
  * 
  * Cette version utilise react-native-vision-camera avec Frame Processor
@@ -362,7 +362,7 @@ export const ARVideoEditorVisionCamera: React.FC<ARVideoEditorVisionCameraProps>
                             />
 
                             <NativeButton
-                                title="\uD83D\uDD04 Réenregistrer"
+                                title="🔄 Réenregistrer"
                                 variant="secondary"
                                 size="medium"
                                 onPress={() => {

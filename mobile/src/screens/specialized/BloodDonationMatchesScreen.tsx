@@ -284,7 +284,7 @@ const BloodDonationMatchesScreen: React.FC = () => {
                                             </Text>
                                             {match.distance_km !== null && (
                                                 <Text style={styles.distance}>
-                                                    \uD83D\uDCCD {match.distance_km.toFixed(1)} km
+                                                    📍 {match.distance_km.toFixed(1)} km
                                                 </Text>
                                             )}
                                         </View>

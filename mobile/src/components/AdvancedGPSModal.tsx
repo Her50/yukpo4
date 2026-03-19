@@ -487,7 +487,7 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
                                     <Text style={styles.radiusInfo}>Rayon: {radius}m</Text>
                                 )}
                                 {address && (
-                                    <Text style={styles.addressInfo}>\uD83D\uDCCD {address}</Text>
+                                    <Text style={styles.addressInfo}>📍 {address}</Text>
                                 )}
                             </View>
                         </NativeCard>

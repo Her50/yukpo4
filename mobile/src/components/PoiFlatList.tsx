@@ -296,7 +296,7 @@ const PoiFlatList: React.FC<PoiFlatListProps> = memo(({
                             )}
                             {poi?.price_level != null && poi.price_level > 0 && (
                                 <Text style={styles.poiPrice}>
-                                    {'\uD83D\uDCB0'.repeat(poi.price_level)}
+                                    {'💰'.repeat(poi.price_level)}
                                 </Text>
                             )}
                             {poi?.is_open != null && (

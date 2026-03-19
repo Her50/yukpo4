@@ -166,7 +166,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
             >
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>\uD83D\uDD0D Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity
@@ -192,7 +192,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>\uD83D\uDEE1️ Type d'assurance</Text>
+                    <Text style={styles.sectionTitle}>🛡️ Type d'assurance</Text>
 
                     {/* Type assurance */}
                     <View style={styles.inputGroup}>
@@ -246,7 +246,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Localisation */}
-                    <Text style={styles.sectionTitle}>\uD83D\uDCCD Localisation</Text>
+                    <Text style={styles.sectionTitle}>📍 Localisation</Text>
 
                     {/* Ville */}
                     <View style={styles.inputGroup}>
@@ -331,7 +331,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                     )}
 
                     {/* Prix */}
-                    <Text style={styles.sectionTitle}>\uD83D\uDCB0 Prime annuelle</Text>
+                    <Text style={styles.sectionTitle}>💰 Prime annuelle</Text>
 
                     <View style={styles.priceRow}>
                         <View style={styles.priceInputContainer}>
@@ -387,7 +387,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={20} color="#1E40AF" type="lucide" />
-                        <Text style={styles.infoTitle}>\uD83D\uDCA1 Bon à savoir</Text>
+                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
                     </View>
                     <Text style={styles.infoText}>
                         • Comparez les garanties et les primes de plusieurs compagnies{'\n'}

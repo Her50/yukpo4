@@ -1,6 +1,15 @@
 import { Component, ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Sentry from 'sentry-expo';
+import i18n from '../i18n';
+
+const t = (key: string, options?: any) => {
+    try {
+        return i18n.t(key, options) || key;
+    } catch {
+        return key;
+    }
+};
 
 interface Props {
     children: ReactNode;
@@ -33,7 +42,7 @@ class ErrorBoundary extends Component<Props, State> {
             platform: require('react-native').Platform.OS,
         };
 
-        console.error('\uD83D\uDEA8 [ErrorBoundary] Erreur capturée:', detailedError);
+        console.error('🚨 [ErrorBoundary] Erreur capturée:', detailedError);
 
         // ✅ AMÉLIORATION: Logger les composants suspects si disponible
         try {
@@ -60,7 +69,11 @@ class ErrorBoundary extends Component<Props, State> {
             // Ignorer si le debugger n'est pas disponible
         }
 
-        Sentry.Native.captureException(error, { extra: detailedError });
+        try {
+            Sentry.Native?.captureException?.(error, { extra: detailedError });
+        } catch (sentryError) {
+            console.warn('[ErrorBoundary] Sentry non disponible:', sentryError);
+        }
     }
 
     handleRetry = () => {
@@ -70,7 +83,7 @@ class ErrorBoundary extends Component<Props, State> {
     render() {
         if (this.state.hasError) {
             // ✅ AMÉLIORÉ: Logger l'erreur pour debugging
-            console.error('[ErrorBoundary] \uD83D\uDEA8 Erreur capturée, affichage du fallback:', {
+            console.error('[ErrorBoundary] 🚨 Erreur capturée, affichage du fallback:', {
                 error: this.state.error?.message,
                 hasFallback: !!this.props.fallback,
                 stack: this.state.error?.stack
@@ -109,7 +122,7 @@ class ErrorBoundary extends Component<Props, State> {
                                 style={styles.retryButton}
                                 onPress={this.handleRetry}
                             >
-                                <Text style={styles.buttonIcon}>\uD83D\uDD04</Text>
+                                <Text style={styles.buttonIcon}>🔄</Text>
                                 <Text style={styles.retryButtonText}>{t('errorBoundary.redemarrer')}</Text>
                             </TouchableOpacity>
 
@@ -117,14 +130,16 @@ class ErrorBoundary extends Component<Props, State> {
                                 style={styles.reportButton}
                                 onPress={() => {
                                     if (this.state.error) {
-                                        Sentry.Native.captureException(this.state.error, {
-                                            extra: { origin: 'ErrorBoundaryUserReport' },
-                                        });
+                                        try {
+                                            Sentry.Native?.captureException?.(this.state.error, {
+                                                extra: { origin: 'ErrorBoundaryUserReport' },
+                                            });
+                                        } catch (e) { /* Sentry indisponible */ }
                                     }
                                     console.log('Report error:', this.state.error);
                                 }}
                             >
-                                <Text style={styles.buttonIcon}>\uD83D\uDC1B</Text>
+                                <Text style={styles.buttonIcon}>🐛</Text>
                                 <Text style={styles.reportButtonText}>Signaler</Text>
                             </TouchableOpacity>
                         </View>

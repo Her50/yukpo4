@@ -131,7 +131,7 @@ const DeliveryProofVideoRecorder: React.FC<DeliveryProofVideoRecorderProps> = ({
     const getInstructions = () => {
         if (proofType === 'pickup') {
             return {
-                title: '\uD83D\uDCE6 Preuve de récupération',
+                title: '📦 Preuve de récupération',
                 subtitle: 'Montrez le colis avant la récupération',
                 tips: [
                     'Montrez l\'état du colis',

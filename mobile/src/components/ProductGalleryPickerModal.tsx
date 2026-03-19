@@ -1,4 +1,4 @@
-// \uD83D\uDDBC️ Modal pour sélectionner des images/vidéos de la galerie produit et les envoyer dans le chat
+// 🖼️ Modal pour sélectionner des images/vidéos de la galerie produit et les envoyer dans le chat
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {

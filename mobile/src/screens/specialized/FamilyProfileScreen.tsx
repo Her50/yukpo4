@@ -395,7 +395,7 @@ const FamilyProfileScreen: React.FC = () => {
 
                 {/* Budget et temps */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.label}>\uD83D\uDCB0 Budget mensuel (FCFA)</Text>
+                    <Text style={styles.label}>💰 Budget mensuel (FCFA)</Text>
                     {/* ✅ NOUVEAU: Presets de budget rapide */}
                     <View style={styles.chipsContainer}>
                         {[25000, 50000, 75000, 100000, 150000].map((amount) => (
@@ -439,7 +439,7 @@ const FamilyProfileScreen: React.FC = () => {
                         keyboardType="numeric"
                     />
 
-                    <Text style={[styles.label, { marginTop: 16 }]}>\uD83D\uDC68‍\uD83C\uDF73 Niveau de cuisine</Text>
+                    <Text style={[styles.label, { marginTop: 16 }]}>👨‍🍳 Niveau de cuisine</Text>
                     <View style={styles.chipsContainer}>
                         {COOKING_LEVELS.map((level) => (
                             <TouchableOpacity

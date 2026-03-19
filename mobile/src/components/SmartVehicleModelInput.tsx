@@ -149,7 +149,7 @@ const SmartVehicleModelInput: React.FC<SmartVehicleModelInputProps> = ({
                         brand: marque,
                         model: normalized
                     });
-                    console.log(`\uD83C\uDF10 [SmartVehicleModelInput] Modèle sauvegardé en DB: ${normalized}`);
+                    console.log(`🌐 [SmartVehicleModelInput] Modèle sauvegardé en DB: ${normalized}`);
                 } catch (dbError) {
                     console.warn('[SmartVehicleModelInput] Erreur sauvegarde DB:', dbError);
                 }
@@ -303,12 +303,12 @@ const SmartVehicleModelInput: React.FC<SmartVehicleModelInputProps> = ({
             {/* Hint */}
             {!showSuggestions && !marque && (
                 <Text style={styles.hint}>
-                    \uD83D\uDCA1 Sélectionnez d'abord une marque pour voir les modèles
+                    💡 Sélectionnez d'abord une marque pour voir les modèles
                 </Text>
             )}
             {!showSuggestions && marque && allModels.length > 0 && (
                 <Text style={styles.hint}>
-                    \uD83D\uDCA1 {allModels.length} modèle(s) {marque} enregistré(s)
+                    💡 {allModels.length} modèle(s) {marque} enregistré(s)
                 </Text>
             )}
         </View>

@@ -35,9 +35,9 @@ const SidebarMenu: React.FC<SidebarMenuProps> = ({ currentRole }) => {
   const sectionOrder: Role[] = ['admin', 'user', 'public'];
 
   const roleLabels: Record<Role, string> = {
-    admin: '\uD83D\uDD10 Admin',
-    user: '\uD83D\uDC64 Utilisateur',
-    public: '\uD83C\uDF10 Public',
+    admin: '🔐 Admin',
+    user: '👤 Utilisateur',
+    public: '🌐 Public',
   };
 
   const handleNavigate = (path: string) => {

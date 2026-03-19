@@ -85,7 +85,7 @@ const OptionsPrimesManager: React.FC<OptionsPrimesManagerProps> = ({
             </View>
 
             <Text style={styles.hint}>
-                \uD83D\uDCA1 Ajoutez les différentes formules disponibles avec leurs tarifs
+                💡 Ajoutez les différentes formules disponibles avec leurs tarifs
             </Text>
 
             {/* Liste des options */}

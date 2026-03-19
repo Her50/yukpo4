@@ -183,7 +183,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
         try {
             return value
                 .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[̀-ͯ]/g, '')
                 .toLowerCase();
         } catch (error) {
             return value.toLowerCase();
@@ -237,7 +237,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                 if (currentGPS) {
                     payload.user_lat = currentGPS.lat;
                     payload.user_lng = currentGPS.lng;
-                    console.log('[ChatInputMobile] \uD83D\uDCCD GPS inclus dans autocomplete:', {
+                    console.log('[ChatInputMobile] 📍 GPS inclus dans autocomplete:', {
                         lat: payload.user_lat,
                         lng: payload.user_lng,
                         source: gpsData ? 'manuel' : 'auto'
@@ -287,7 +287,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         setDynamicPlaceholder(null);
                     }
 
-                    console.log('[ChatInputMobile] \uD83D\uDD0D Suggestions autocomplete:', {
+                    console.log('[ChatInputMobile] 🔍 Suggestions autocomplete:', {
                         count: filtered.length,
                         withGPS: !!gpsData,
                         query: debouncedText.trim()
@@ -817,7 +817,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
             const hasContent = finalText || images.length > 0 || documents.length > 0 ||
                 videos.length > 0 || excelFiles.length > 0 || audioBase64;
 
-            console.log('[ChatInputMobile] \uD83D\uDD0D handleSubmit appelé:', {
+            console.log('[ChatInputMobile] 🔍 handleSubmit appelé:', {
                 overrideText: overrideText,
                 finalText: finalText,
                 hasContent: hasContent,
@@ -834,7 +834,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
 
             const input = buildInputPayload(overrideText);
 
-            console.log('[ChatInputMobile] \uD83D\uDCE6 Payload construit:', {
+            console.log('[ChatInputMobile] 📦 Payload construit:', {
                 texte: input.texte,
                 texteLength: input.texte?.length || 0,
                 images: input.base64_image.length,
@@ -848,7 +848,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                 gps_mobile: input.gps_mobile
             });
 
-            console.log('[ChatInputMobile] \uD83D\uDCE4 Appel onSubmit avec payload...');
+            console.log('[ChatInputMobile] 📤 Appel onSubmit avec payload...');
             onSubmit(input);
             console.log('[ChatInputMobile] ✅ onSubmit appelé avec succès');
             resetForm();
@@ -865,7 +865,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
 
     const handleSuggestionSelect = (suggestion: any) => {
         try {
-            console.log('[ChatInputMobile] \uD83C\uDFAF handleSuggestionSelect appelé avec:', {
+            console.log('[ChatInputMobile] 🎯 handleSuggestionSelect appelé avec:', {
                 suggestion: suggestion,
                 hasFullVector: !!suggestion?.full_vector,
                 hasProductVector: !!suggestion?.product_vector,
@@ -874,7 +874,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
             });
 
             const vector = getSuggestionVector(suggestion);
-            console.log('[ChatInputMobile] \uD83D\uDCCA Vecteur extrait:', {
+            console.log('[ChatInputMobile] 📊 Vecteur extrait:', {
                 vectorLength: vector.length,
                 vector: vector
             });
@@ -897,7 +897,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
             setSuggestions([]);
 
             // ✅ CORRECTION: Appeler handleSubmit avec le texte de la suggestion
-            console.log('[ChatInputMobile] \uD83D\uDCE4 Appel handleSubmit avec texte:', fullText);
+            console.log('[ChatInputMobile] 📤 Appel handleSubmit avec texte:', fullText);
             handleSubmit(fullText);
             console.log('[ChatInputMobile] ✅ handleSubmit appelé avec succès');
         } catch (error: any) {
@@ -939,7 +939,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                     {/* Documents PDF */}
                     {documents.map((doc, index) => (
                         <View key={`doc-${index}`} style={styles.documentItem}>
-                            <Text style={styles.documentIcon}>\uD83D\uDCC4</Text>
+                            <Text style={styles.documentIcon}>📄</Text>
                             <Text style={styles.documentName} numberOfLines={1}>
                                 Document PDF {index != null ? String(index + 1) : ''}
                             </Text>
@@ -952,7 +952,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                     {/* Fichiers Excel */}
                     {excelFiles.map((excel, index) => (
                         <View key={`excel-${index}`} style={styles.excelItem}>
-                            <Text style={styles.excelIcon}>\uD83D\uDCCA</Text>
+                            <Text style={styles.excelIcon}>📊</Text>
                             <Text style={styles.documentName} numberOfLines={1}>
                                 Excel {index != null ? String(index + 1) : ''}
                             </Text>
@@ -965,7 +965,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                     {/* Vidéos */}
                     {videos.map((video, index) => (
                         <View key={`video-${index}`} style={styles.videoItem}>
-                            <Text style={styles.videoIcon}>\uD83C\uDFA5</Text>
+                            <Text style={styles.videoIcon}>🎥</Text>
                             <Text style={styles.documentName} numberOfLines={1}>
                                 Vidéo {index != null ? String(index + 1) : ''}
                             </Text>
@@ -986,7 +986,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                                 styles.recordingPulse,
                                 { transform: [{ scale: pulseAnim }] }
                             ]}>
-                                <Text style={styles.recordingIcon}>\uD83C\uDFA4</Text>
+                                <Text style={styles.recordingIcon}>🎤</Text>
                             </Animated.View>
 
                             <View style={styles.recordingInfo}>
@@ -1052,7 +1052,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         </View>
                     ) : (
                         <View style={styles.audioItem}>
-                            <Text style={styles.audioIcon}>\uD83C\uDFA4</Text>
+                            <Text style={styles.audioIcon}>🎤</Text>
                             <Text style={styles.audioText}>Audio enregistré ({formatDuration(lastRecordedDuration)})</Text>
                             <TouchableOpacity onPress={removeAudio}>
                                 <Text style={styles.closeIconSmall}>❌</Text>
@@ -1067,7 +1067,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                 <View style={styles.gpsContainer}>
                     <View style={styles.gpsItem}>
                         <Text style={styles.gpsIcon}>
-                            {gpsString.includes('|') ? '\uD83C\uDFAF' : '\uD83D\uDCCD'}
+                            {gpsString.includes('|') ? '🎯' : '📍'}
                         </Text>
                         <View style={styles.gpsTextContainer}>
                             <Text style={styles.gpsText} numberOfLines={1}>
@@ -1077,7 +1077,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                             </Text>
                             {gpsString.includes('|') && (
                                 <Text style={styles.gpsSubtext}>
-                                    \uD83D\uDCCD {gpsData.lat.toFixed(4)}, {gpsData.lng.toFixed(4)}
+                                    📍 {gpsData.lat.toFixed(4)}, {gpsData.lng.toFixed(4)}
                                 </Text>
                             )}
                         </View>
@@ -1137,7 +1137,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                             accessibilityRole="button"
                             accessibilityHint="Appuyez pour commencer l'enregistrement audio"
                         >
-                            <Text style={[styles.actionIcon, audioUri && styles.actionButtonActive]}>\uD83C\uDFA4</Text>
+                            <Text style={[styles.actionIcon, audioUri && styles.actionButtonActive]}>🎤</Text>
                             <Text style={[styles.actionButtonText, audioUri && styles.actionButtonTextActive]}>
                                 {audioUri ? '✓ Audio' : 'Audio'}
                             </Text>
@@ -1168,7 +1168,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         accessibilityHint="Appuyez pour ouvrir la carte et sélectionner une localisation"
                     >
                         <Text style={[styles.gpsIcon, gpsData && styles.gpsIconActive]}>
-                            {gpsString.includes('|') ? '\uD83C\uDFAF' : '\uD83D\uDCCD'}
+                            {gpsString.includes('|') ? '🎯' : '📍'}
                         </Text>
                         <Text style={[styles.actionButtonText, gpsData && styles.actionButtonTextActive]}>
                             {gpsData ? (gpsString.includes('|') ? 'Zone' : 'GPS') : 'GPS'}
@@ -1184,7 +1184,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         accessibilityRole="button"
                         accessibilityHint="Ouvre l'appareil photo pour prendre une photo"
                     >
-                        <Text style={styles.actionIcon}>\uD83D\uDCF7</Text>
+                        <Text style={styles.actionIcon}>📷</Text>
                         <Text style={styles.actionButtonText}>Photo</Text>
                     </TouchableOpacity>
 
@@ -1197,7 +1197,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         accessibilityRole="button"
                         accessibilityHint="Ouvre la galerie pour sélectionner une image"
                     >
-                        <Text style={styles.actionIcon}>\uD83D\uDDBC️</Text>
+                        <Text style={styles.actionIcon}>🖼️</Text>
                         <Text style={styles.actionButtonText}>Image</Text>
                     </TouchableOpacity>
 
@@ -1210,7 +1210,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         accessibilityRole="button"
                         accessibilityHint="Ouvre le sélecteur de fichiers pour choisir un document"
                     >
-                        <Text style={styles.actionIcon}>\uD83D\uDCC4</Text>
+                        <Text style={styles.actionIcon}>📄</Text>
                         <Text style={styles.actionButtonText}>Fichier</Text>
                     </TouchableOpacity>
                 </View>
@@ -1228,7 +1228,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                             style={dynamicStyles.suggestionsTitle}
                             accessibilityRole="header"
                         >
-                            \uD83D\uDD25 Caractéristiques recommandées
+                            🔥 Caractéristiques recommandées
                         </Text>
                         <TouchableOpacity
                             onPress={() => setShowSuggestions(false)}
@@ -1334,7 +1334,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         {loading ? (
                             <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
                         ) : (
-                            <Text style={styles.sendIcon}>\uD83D\uDE80</Text>
+                            <Text style={styles.sendIcon}>🚀</Text>
                         )}
                         <Text
                             style={[styles.submitButtonText, loading && styles.submitButtonTextLoading]}

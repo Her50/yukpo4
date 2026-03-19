@@ -403,15 +403,15 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         switch (status) {
             case 'assigned':
             case 'awaiting_courier':
-                return [{ label: 'En route vers départ', status: 'en_route_pickup', icon: '\uD83D\uDE9A' }];
+                return [{ label: 'En route vers départ', status: 'en_route_pickup', icon: '🚚' }];
             case 'en_route_pickup':
-                return [{ label: 'Arrivé au départ', status: 'shopping_pending', icon: '\uD83D\uDCCD' }];
+                return [{ label: 'Arrivé au départ', status: 'shopping_pending', icon: '📍' }];
             case 'shopping_pending':
-                return [{ label: 'Courses en cours', status: 'shopping_in_progress', icon: '\uD83D\uDED2' }];
+                return [{ label: 'Courses en cours', status: 'shopping_in_progress', icon: '🛒' }];
             case 'shopping_in_progress':
                 return [{ label: 'Courses terminées', status: 'shopping_completed', icon: '✅' }];
             case 'shopping_completed':
-                return [{ label: 'En route livraison', status: 'en_route_delivery', icon: '\uD83D\uDE9A' }];
+                return [{ label: 'En route livraison', status: 'en_route_delivery', icon: '🚚' }];
             case 'en_route_delivery':
                 return [{ label: 'Livré', status: 'delivered', icon: '✅' }];
             default:
@@ -508,7 +508,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                             </TouchableOpacity>
                         )}
                         <TouchableOpacity style={styles.button} onPress={handleNavigation}>
-                            <Text style={styles.buttonText}>\uD83E\uDDED Ouvrir navigation</Text>
+                            <Text style={styles.buttonText}>🧭 Ouvrir navigation</Text>
                         </TouchableOpacity>
                         {getStatusOptions().map((opt) => (
                             <TouchableOpacity
@@ -696,7 +696,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                                         style={[styles.button, { backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: modernColors.primary + '40' }]}
                                         onPress={() => (navigation as any).navigate('ProviderCourierVerification', { deliveryId })}
                                     >
-                                        <Text style={[styles.buttonText, { color: modernColors.primary }]}>\uD83D\uDEE1️ Vérifier l'identité du coursier</Text>
+                                        <Text style={[styles.buttonText, { color: modernColors.primary }]}>🛡️ Vérifier l'identité du coursier</Text>
                                     </TouchableOpacity>
                                 )}
 

@@ -23,7 +23,7 @@ const ClientSidebar: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>\uD83D\uDC64 Espace Client</Text>
+      <Text style={styles.title}>👤 Espace Client</Text>
       {links.map((link) => (
         <TouchableOpacity
           key={link.screen}

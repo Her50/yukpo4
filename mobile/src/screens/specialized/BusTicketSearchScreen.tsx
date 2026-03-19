@@ -244,7 +244,7 @@ const BusTicketSearchScreen: React.FC = () => {
             >
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>\uD83D\uDD0D Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity
@@ -270,7 +270,7 @@ const BusTicketSearchScreen: React.FC = () => {
 
                 {/* Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>\uD83D\uDCCD Recherche de trajet</Text>
+                    <Text style={styles.sectionTitle}>📍 Recherche de trajet</Text>
                     {/* Ville de départ */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
@@ -517,7 +517,7 @@ const BusTicketSearchScreen: React.FC = () => {
                                     </View>
                                     {result.distance_km && (
                                         <Text style={styles.distanceText}>
-                                            \uD83D\uDCCD {result.distance_km.toFixed(1)} km
+                                            📍 {result.distance_km.toFixed(1)} km
                                         </Text>
                                     )}
                                 </View>
@@ -531,7 +531,7 @@ const BusTicketSearchScreen: React.FC = () => {
                     <View style={styles.infoCard}>
                         <View style={styles.infoHeader}>
                             <SafeIcon name="info" size={20} color="#F59E0B" type="lucide" />
-                            <Text style={styles.infoTitle}>\uD83D\uDCA1 Bon à savoir</Text>
+                            <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
                         </View>
                         <Text style={styles.infoText}>
                             • Réservez vos tickets à l'avance pour garantir votre place{'\n'}

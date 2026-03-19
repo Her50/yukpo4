@@ -291,7 +291,7 @@ const CovoiturageSearchScreen: React.FC = () => {
                 >
                     {/* Recherches rapides */}
                     <View style={styles.quickSearchesSection}>
-                        <Text style={styles.sectionTitle}>\uD83D\uDD0D Recherches rapides</Text>
+                        <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
                         <View style={styles.quickSearchesGrid}>
                             {quickSearches.map((search) => (
                                 <TouchableOpacity

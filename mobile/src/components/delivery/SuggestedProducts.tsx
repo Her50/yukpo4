@@ -1,5 +1,5 @@
 /**
- * \uD83E\uDD16 Suggestions de produits intelligentes
+ * 🤖 Suggestions de produits intelligentes
  * IA-powered product suggestions
  */
 

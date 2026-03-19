@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import RequirePlan from "@/components/security/RequirePlan";
 import { Link, useLocation } from "@react-navigation/native";
 import * as React from "react";
@@ -11,7 +11,7 @@ const Sidebar: React.FC = () => {
   return (
     <aside style="w-64 bg-gray-100 dark:bg-gray-800 p-4 space-y-2">
       <Link to="/dashboard" style={`block px-4 py-2 rounded ${isActive("/dashboard")}`}>
-        \uD83C\uDFE0 Accueil
+        🏠 Accueil
       </Link>
 
       <RequirePlan plan="enterprise">
@@ -19,7 +19,7 @@ const Sidebar: React.FC = () => {
           to="/dashboard/premium"
           style={`block px-4 py-2 rounded ${isActive("/dashboard/premium")}`}
         >
-          \uD83E\uDDE0 Yukpo Premium
+          🧠 Yukpo Premium
         </Link>
       </RequirePlan>
     </aside>

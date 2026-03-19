@@ -40,7 +40,7 @@ const normalizeText = (text: string): string => {
     return text
         .toLowerCase()
         .normalize('NFD') // Décompose les caractères accentués
-        .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+        .replace(/[̀-ͯ]/g, '') // Supprime les accents
         .trim();
 };
 
@@ -74,7 +74,7 @@ const ModernSelectField = ({
                         ...options.map(option => ({
                             text: option,
                             onPress: () => {
-                                if (option.includes('\uD83C\uDD95 Autre') && allowCustom) {
+                                if (option.includes('🆕 Autre') && allowCustom) {
                                     Alert.prompt(
                                         'Nouveau type',
                                         `Entrez le ${label.toLowerCase()} :`,
@@ -450,52 +450,52 @@ interface ProductManagerMobileProps {
 
 // Configuration des types de produits avec noms adaptés
 const PRODUCT_TYPES = [
-    { value: 'agroalimentaire', label: 'Agroalimentaire & Produits Secs', icon: '\uD83C\uDF3E', color: '#F59E0B', description: 'Riz, pâtes, farine, huile, sucre, épices, conserves, boissons, produits transformés', keywords: ['riz', 'pâtes', 'macaroni', 'spaghetti', 'farine', 'huile', 'arachide', 'palme', 'tournesol', 'olive', 'sucre', 'sel', 'épices', 'poivre', 'curry', 'curcuma', 'gingembre', 'piment', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'maggi', 'jumbo', 'bouillon', 'cube', 'conserve', 'sardine', 'thon', 'maquereau', 'tomate', 'haricot', 'pois', 'maïs', 'boisson', 'eau', 'jus', 'soda', 'cola', 'sprite', 'fanta', 'café', 'nescafé', 'thé', 'lipton', 'lait', 'nido', 'peak', 'chocolat', 'cacao', 'biscuit', 'chips', 'snack', 'bonbon', 'confiserie', 'céréale', 'avoine', 'blé', 'maïs', 'mil', 'sorgho', 'manioc', 'couscous', 'semoule', 'légume', 'sec', 'lentille', 'fève', 'pois chiche', 'condiment', 'vinaigre', 'miel', 'confiture', 'beurre', 'cacahuète', 'arachide', 'noix', 'cajou', 'amande', 'produit', 'alimentaire', 'agro', 'transformation', 'conserverie', 'biscuiterie', 'huilerie', 'meunerie', 'rizerie', 'sucrerie', 'chocolaterie', 'confiserie'] },
-    { value: 'aliments', label: 'Aliments Frais & Produits du Marché', icon: '\uD83C\uDF4E', color: '#84CC16', description: 'Fruits frais, légumes frais, viandes, poissons, volailles, produits du marché', keywords: ['fruit', 'légume', 'viande', 'poisson', 'bœuf', 'poulet', 'porc', 'mouton', 'chèvre', 'tomate', 'oignon', 'pomme', 'banane', 'orange', 'mangue', 'avocat', 'ananas', 'carotte', 'chou', 'salade', 'frais', 'marché'] },
-    { value: 'assurance', label: 'Assurance et Protection', icon: '\uD83D\uDEE1️', color: '#14B8A6', description: 'Assurance auto, santé, habitation, vie, protection sociale', keywords: ['assurance', 'protection', 'garantie', 'prime', 'contrat', 'couverture', 'police', 'assureur', 'sinistre', 'indemnisation', 'franchise', 'souscription', 'mutuelle', 'prévoyance', 'responsabilité civile', 'tous risques'] },
-    { value: 'automobile', label: 'Automobiles et Véhicules', icon: '\uD83D\uDE97', color: '#EF4444', description: 'Voitures, motos, camions, véhicules utilitaires', keywords: ['voiture', 'auto', 'véhicule', 'automobile', 'moto', 'scooter', 'camion', '4x4', 'SUV', 'berline', 'coupé', 'cabriolet', 'Toyota', 'Honda', 'Mercedes', 'Peugeot', 'Renault', 'Nissan', 'occasion', 'neuf', 'kilométrage', 'essence', 'diesel', 'hybride', 'électrique', 'automatique', 'manuelle'] },
-    { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '\uD83D\uDC5F', color: '#6366F1', description: 'Chaussures, baskets, sandales, bottes', keywords: ['chaussure', 'soulier', 'basket', 'sneaker', 'sandale', 'tong', 'botte', 'bottine', 'escarpin', 'talon', 'mocassin', 'ballerine', 'pointure', 'semelle', 'cuir', 'sport', 'ville', 'Nike', 'Adidas', 'Puma'] },
-    { value: 'covoiturage', label: 'Covoiturage et Trajets', icon: '\uD83D\uDE99', color: '#F59E0B', description: 'Trajets partagés, carpooling, transport collectif', keywords: ['covoiturage', 'trajet', 'partage', 'carpooling', 'transport partagé', 'passager', 'conducteur', 'départ', 'arrivée', 'itinéraire', 'route', 'place disponible', 'voyage partagé', 'économique', 'écologique'] },
-    { value: 'decoration', label: 'Décoration Intérieure', icon: '\uD83D\uDDBC️', color: '#E91E63', description: 'Tableaux, luminaires, tapis, accessoires déco', keywords: ['décoration', 'déco', 'tableau', 'toile', 'peinture', 'affiche', 'cadre', 'luminaire', 'lampe', 'lustre', 'applique', 'tapis', 'carpette', 'coussin', 'rideau', 'vase', 'sculpture', 'miroir', 'horloge', 'bougie', 'moderne', 'classique', 'vintage', 'contemporain'] },
+    { value: 'agroalimentaire', label: 'Agroalimentaire & Produits Secs', icon: '🌾', color: '#F59E0B', description: 'Riz, pâtes, farine, huile, sucre, épices, conserves, boissons, produits transformés', keywords: ['riz', 'pâtes', 'macaroni', 'spaghetti', 'farine', 'huile', 'arachide', 'palme', 'tournesol', 'olive', 'sucre', 'sel', 'épices', 'poivre', 'curry', 'curcuma', 'gingembre', 'piment', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'maggi', 'jumbo', 'bouillon', 'cube', 'conserve', 'sardine', 'thon', 'maquereau', 'tomate', 'haricot', 'pois', 'maïs', 'boisson', 'eau', 'jus', 'soda', 'cola', 'sprite', 'fanta', 'café', 'nescafé', 'thé', 'lipton', 'lait', 'nido', 'peak', 'chocolat', 'cacao', 'biscuit', 'chips', 'snack', 'bonbon', 'confiserie', 'céréale', 'avoine', 'blé', 'maïs', 'mil', 'sorgho', 'manioc', 'couscous', 'semoule', 'légume', 'sec', 'lentille', 'fève', 'pois chiche', 'condiment', 'vinaigre', 'miel', 'confiture', 'beurre', 'cacahuète', 'arachide', 'noix', 'cajou', 'amande', 'produit', 'alimentaire', 'agro', 'transformation', 'conserverie', 'biscuiterie', 'huilerie', 'meunerie', 'rizerie', 'sucrerie', 'chocolaterie', 'confiserie'] },
+    { value: 'aliments', label: 'Aliments Frais & Produits du Marché', icon: '🍎', color: '#84CC16', description: 'Fruits frais, légumes frais, viandes, poissons, volailles, produits du marché', keywords: ['fruit', 'légume', 'viande', 'poisson', 'bœuf', 'poulet', 'porc', 'mouton', 'chèvre', 'tomate', 'oignon', 'pomme', 'banane', 'orange', 'mangue', 'avocat', 'ananas', 'carotte', 'chou', 'salade', 'frais', 'marché'] },
+    { value: 'assurance', label: 'Assurance et Protection', icon: '🛡️', color: '#14B8A6', description: 'Assurance auto, santé, habitation, vie, protection sociale', keywords: ['assurance', 'protection', 'garantie', 'prime', 'contrat', 'couverture', 'police', 'assureur', 'sinistre', 'indemnisation', 'franchise', 'souscription', 'mutuelle', 'prévoyance', 'responsabilité civile', 'tous risques'] },
+    { value: 'automobile', label: 'Automobiles et Véhicules', icon: '🚗', color: '#EF4444', description: 'Voitures, motos, camions, véhicules utilitaires', keywords: ['voiture', 'auto', 'véhicule', 'automobile', 'moto', 'scooter', 'camion', '4x4', 'SUV', 'berline', 'coupé', 'cabriolet', 'Toyota', 'Honda', 'Mercedes', 'Peugeot', 'Renault', 'Nissan', 'occasion', 'neuf', 'kilométrage', 'essence', 'diesel', 'hybride', 'électrique', 'automatique', 'manuelle'] },
+    { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '👟', color: '#6366F1', description: 'Chaussures, baskets, sandales, bottes', keywords: ['chaussure', 'soulier', 'basket', 'sneaker', 'sandale', 'tong', 'botte', 'bottine', 'escarpin', 'talon', 'mocassin', 'ballerine', 'pointure', 'semelle', 'cuir', 'sport', 'ville', 'Nike', 'Adidas', 'Puma'] },
+    { value: 'covoiturage', label: 'Covoiturage et Trajets', icon: '🚙', color: '#F59E0B', description: 'Trajets partagés, carpooling, transport collectif', keywords: ['covoiturage', 'trajet', 'partage', 'carpooling', 'transport partagé', 'passager', 'conducteur', 'départ', 'arrivée', 'itinéraire', 'route', 'place disponible', 'voyage partagé', 'économique', 'écologique'] },
+    { value: 'decoration', label: 'Décoration Intérieure', icon: '🖼️', color: '#E91E63', description: 'Tableaux, luminaires, tapis, accessoires déco', keywords: ['décoration', 'déco', 'tableau', 'toile', 'peinture', 'affiche', 'cadre', 'luminaire', 'lampe', 'lustre', 'applique', 'tapis', 'carpette', 'coussin', 'rideau', 'vase', 'sculpture', 'miroir', 'horloge', 'bougie', 'moderne', 'classique', 'vintage', 'contemporain'] },
     { value: 'electricite', label: 'Électricité et Éclairage', icon: '⚡', color: '#FFC107', description: 'Câbles, prises, interrupteurs, lampes, disjoncteurs', keywords: ['électricité', 'électrique', 'câble', 'fil', 'interrupteur', 'prise', 'disjoncteur', 'tableau électrique', 'lampe', 'ampoule', 'LED', 'néon', 'spot', 'variateur', 'minuterie', 'détecteur', 'multiprise', 'rallonge', '220V', 'installation électrique'] },
-    { value: 'electromenager', label: 'Électroménager Domestique', icon: '\uD83D\uDD0C', color: '#14B8A6', description: 'Frigos, fours, machines à laver, micro-ondes', keywords: ['électroménager', 'frigo', 'réfrigérateur', 'congélateur', 'four', 'cuisinière', 'micro-ondes', 'lave-linge', 'machine à laver', 'lave-vaisselle', 'aspirateur', 'climatiseur', 'ventilateur', 'Samsung', 'LG', 'Bosch', 'Whirlpool'] },
-    { value: 'hopital_clinique', label: 'Établissements de Santé', icon: '\uD83C\uDFE5', color: '#DC2626', description: 'Hôpitaux, cliniques, centres médicaux, spécialités', keywords: ['hôpital', 'clinique', 'centre médical', 'centre de santé', 'médecin', 'docteur', 'consultation', 'urgence', 'soins', 'chirurgie', 'imagerie', 'radio', 'scanner', 'IRM', 'laboratoire', 'maternité', 'pédiatrie', 'cardiologie', 'dentiste', 'rendez-vous'] },
-    { value: 'hotellerie', label: 'Hôtellerie et Hébergement', icon: '\uD83C\uDFE8', color: '#EC4899', description: 'Hôtels, chambres d\'hôtes, auberges, gîtes, réservations', keywords: ['hôtel', 'hébergement', 'chambre', 'chambre d\'hôtes', 'auberge', 'gîte', 'motel', 'palace', 'réservation', 'booking', 'nuitée', 'séjour', 'étoile', 'luxe', 'petit-déjeuner', 'Wi-Fi', 'piscine', 'restaurant', 'spa', 'climatisation'] },
-    { value: 'image_son', label: 'Image et Son', icon: '\uD83D\uDCFA', color: '#9C27B0', description: 'TV, home cinéma, enceintes, projecteurs, systèmes audio', keywords: ['télévision', 'TV', 'téléviseur', 'écran', 'home cinéma', 'enceinte', 'haut-parleur', 'barre de son', 'amplificateur', 'projecteur', 'casque', 'écouteurs', '4K', '8K', 'HD', 'OLED', 'QLED', 'LCD', 'LED', 'Samsung', 'Sony', 'LG'] },
-    { value: 'immobilier_batiment', label: 'Immobilier - Vente/Location', icon: '\uD83C\uDFE2', color: '#3B82F6', description: 'Appartements, villas, maisons à vendre ou louer (long terme)', keywords: ['immobilier', 'appartement', 'appart', 'F2', 'F3', 'F4', 'villa', 'maison', 'studio', 'duplex', 'loft', 'vente', 'location', 'louer', 'acheter', 'bail', 'loyer', 'chambre', 'salon', 'cuisine', 'salle de bain', 'balcon', 'terrasse', 'jardin', 'garage', 'meublé', 'standing'] },
-    { value: 'immobilier_terrain', label: 'Immobilier - Terrains', icon: '\uD83C\uDFDE️', color: '#10B981', description: 'Terrains constructibles, parcelles, lots', keywords: ['terrain', 'parcelle', 'lot', 'terrain constructible', 'constructible', 'viabilisé', 'terrain agricole', 'champ', 'plantation', 'titre foncier', 'cadastre', 'superficie', 'hectare', 'mètre carré', 'clôturé', 'lotissement'] },
-    { value: 'jouets_enfants', label: 'Jouets et Articles pour Enfants', icon: '\uD83E\uDDF8', color: '#FF69B4', description: 'Jouets éducatifs, peluches, jeux, puzzles, livres enfants', keywords: ['jouet', 'jeu', 'enfant', 'bébé', 'peluche', 'poupée', 'figurine', 'voiture miniature', 'puzzle', 'lego', 'construction', 'éducatif', 'éveil', 'jeu de société', 'ballon', 'vélo', 'trottinette', 'poussette', 'berceau', 'hochet', 'doudou', '0-3 ans', '3-6 ans'] },
-    { value: 'livres_fournitures', label: 'Livres et Fournitures Scolaires', icon: '\uD83D\uDCDA', color: '#7C3AED', description: 'Manuels, livres, cahiers, stylos, fournitures', keywords: ['livre', 'manuel', 'manuel scolaire', 'cahier', 'classeur', 'feuille', 'papier', 'stylo', 'crayon', 'gomme', 'règle', 'trousse', 'cartable', 'sac à dos', 'marqueur', 'feutre', 'calculatrice', 'dictionnaire', 'roman', 'BD', 'maternelle', 'primaire', 'secondaire', 'lycée', 'université', 'mathématiques', 'français'] },
-    { value: 'mobilier', label: 'Mobilier et Ameublement', icon: '\uD83E\uDE91', color: '#F97316', description: 'Meubles salon, chambre, bureau, rangement', keywords: ['meuble', 'mobilier', 'ameublement', 'canapé', 'fauteuil', 'chaise', 'table', 'bureau', 'armoire', 'placard', 'commode', 'étagère', 'bibliothèque', 'lit', 'matelas', 'rangement', 'salon', 'chambre', 'salle à manger', 'bois', 'métal', 'cuir', 'moderne', 'vintage', 'IKEA'] },
-    { value: 'ordinateur', label: 'Ordinateurs et Informatique', icon: '\uD83D\uDCBB', color: '#00BCD4', description: 'PC portables, bureaux, tablettes, accessoires', keywords: ['ordinateur', 'PC', 'laptop', 'portable', 'desktop', 'MacBook', 'iMac', 'tablette', 'iPad', 'processeur', 'CPU', 'Intel', 'AMD', 'RAM', 'disque dur', 'SSD', 'carte graphique', 'clavier', 'souris', 'Windows', 'macOS', 'Dell', 'HP', 'Lenovo', 'Asus', 'Apple', 'gaming'] },
-    { value: 'pharmacie', label: 'Pharmacies et Gardes', icon: '\uD83D\uDC8A', color: '#059669', description: 'Pharmacies, planning de garde, services pharmaceutiques', keywords: ['pharmacie', 'pharmacien', 'médicament', 'ordonnance', 'prescription', 'garde', 'pharmacie de garde', 'urgence', 'parapharmacie', 'vitamine', 'complément', 'pansement', 'sirop', 'comprimé', 'gélule', 'crème', 'antiseptique', 'doliprane', 'paracétamol'] },
-    { value: 'demenagement', label: 'Déménagement et Transport', icon: '\uD83D\uDCE6', color: '#F97316', description: 'Services de déménagement local, national et international', keywords: ['déménagement', 'déménager', 'déménageur', 'manutention', 'transport', 'camion', 'camionnette', 'carton', 'emballage', 'meuble', 'monte-meuble', 'garde-meuble', 'stockage', 'local', 'national', 'international', 'express', 'assurance', 'devis', 'tarif'] },
+    { value: 'electromenager', label: 'Électroménager Domestique', icon: '🔌', color: '#14B8A6', description: 'Frigos, fours, machines à laver, micro-ondes', keywords: ['électroménager', 'frigo', 'réfrigérateur', 'congélateur', 'four', 'cuisinière', 'micro-ondes', 'lave-linge', 'machine à laver', 'lave-vaisselle', 'aspirateur', 'climatiseur', 'ventilateur', 'Samsung', 'LG', 'Bosch', 'Whirlpool'] },
+    { value: 'hopital_clinique', label: 'Établissements de Santé', icon: '🏥', color: '#DC2626', description: 'Hôpitaux, cliniques, centres médicaux, spécialités', keywords: ['hôpital', 'clinique', 'centre médical', 'centre de santé', 'médecin', 'docteur', 'consultation', 'urgence', 'soins', 'chirurgie', 'imagerie', 'radio', 'scanner', 'IRM', 'laboratoire', 'maternité', 'pédiatrie', 'cardiologie', 'dentiste', 'rendez-vous'] },
+    { value: 'hotellerie', label: 'Hôtellerie et Hébergement', icon: '🏨', color: '#EC4899', description: 'Hôtels, chambres d\'hôtes, auberges, gîtes, réservations', keywords: ['hôtel', 'hébergement', 'chambre', 'chambre d\'hôtes', 'auberge', 'gîte', 'motel', 'palace', 'réservation', 'booking', 'nuitée', 'séjour', 'étoile', 'luxe', 'petit-déjeuner', 'Wi-Fi', 'piscine', 'restaurant', 'spa', 'climatisation'] },
+    { value: 'image_son', label: 'Image et Son', icon: '📺', color: '#9C27B0', description: 'TV, home cinéma, enceintes, projecteurs, systèmes audio', keywords: ['télévision', 'TV', 'téléviseur', 'écran', 'home cinéma', 'enceinte', 'haut-parleur', 'barre de son', 'amplificateur', 'projecteur', 'casque', 'écouteurs', '4K', '8K', 'HD', 'OLED', 'QLED', 'LCD', 'LED', 'Samsung', 'Sony', 'LG'] },
+    { value: 'immobilier_batiment', label: 'Immobilier - Vente/Location', icon: '🏢', color: '#3B82F6', description: 'Appartements, villas, maisons à vendre ou louer (long terme)', keywords: ['immobilier', 'appartement', 'appart', 'F2', 'F3', 'F4', 'villa', 'maison', 'studio', 'duplex', 'loft', 'vente', 'location', 'louer', 'acheter', 'bail', 'loyer', 'chambre', 'salon', 'cuisine', 'salle de bain', 'balcon', 'terrasse', 'jardin', 'garage', 'meublé', 'standing'] },
+    { value: 'immobilier_terrain', label: 'Immobilier - Terrains', icon: '🏞️', color: '#10B981', description: 'Terrains constructibles, parcelles, lots', keywords: ['terrain', 'parcelle', 'lot', 'terrain constructible', 'constructible', 'viabilisé', 'terrain agricole', 'champ', 'plantation', 'titre foncier', 'cadastre', 'superficie', 'hectare', 'mètre carré', 'clôturé', 'lotissement'] },
+    { value: 'jouets_enfants', label: 'Jouets et Articles pour Enfants', icon: '🧸', color: '#FF69B4', description: 'Jouets éducatifs, peluches, jeux, puzzles, livres enfants', keywords: ['jouet', 'jeu', 'enfant', 'bébé', 'peluche', 'poupée', 'figurine', 'voiture miniature', 'puzzle', 'lego', 'construction', 'éducatif', 'éveil', 'jeu de société', 'ballon', 'vélo', 'trottinette', 'poussette', 'berceau', 'hochet', 'doudou', '0-3 ans', '3-6 ans'] },
+    { value: 'livres_fournitures', label: 'Livres et Fournitures Scolaires', icon: '📚', color: '#7C3AED', description: 'Manuels, livres, cahiers, stylos, fournitures', keywords: ['livre', 'manuel', 'manuel scolaire', 'cahier', 'classeur', 'feuille', 'papier', 'stylo', 'crayon', 'gomme', 'règle', 'trousse', 'cartable', 'sac à dos', 'marqueur', 'feutre', 'calculatrice', 'dictionnaire', 'roman', 'BD', 'maternelle', 'primaire', 'secondaire', 'lycée', 'université', 'mathématiques', 'français'] },
+    { value: 'mobilier', label: 'Mobilier et Ameublement', icon: '🪑', color: '#F97316', description: 'Meubles salon, chambre, bureau, rangement', keywords: ['meuble', 'mobilier', 'ameublement', 'canapé', 'fauteuil', 'chaise', 'table', 'bureau', 'armoire', 'placard', 'commode', 'étagère', 'bibliothèque', 'lit', 'matelas', 'rangement', 'salon', 'chambre', 'salle à manger', 'bois', 'métal', 'cuir', 'moderne', 'vintage', 'IKEA'] },
+    { value: 'ordinateur', label: 'Ordinateurs et Informatique', icon: '💻', color: '#00BCD4', description: 'PC portables, bureaux, tablettes, accessoires', keywords: ['ordinateur', 'PC', 'laptop', 'portable', 'desktop', 'MacBook', 'iMac', 'tablette', 'iPad', 'processeur', 'CPU', 'Intel', 'AMD', 'RAM', 'disque dur', 'SSD', 'carte graphique', 'clavier', 'souris', 'Windows', 'macOS', 'Dell', 'HP', 'Lenovo', 'Asus', 'Apple', 'gaming'] },
+    { value: 'pharmacie', label: 'Pharmacies et Gardes', icon: '💊', color: '#059669', description: 'Pharmacies, planning de garde, services pharmaceutiques', keywords: ['pharmacie', 'pharmacien', 'médicament', 'ordonnance', 'prescription', 'garde', 'pharmacie de garde', 'urgence', 'parapharmacie', 'vitamine', 'complément', 'pansement', 'sirop', 'comprimé', 'gélule', 'crème', 'antiseptique', 'doliprane', 'paracétamol'] },
+    { value: 'demenagement', label: 'Déménagement et Transport', icon: '📦', color: '#F97316', description: 'Services de déménagement local, national et international', keywords: ['déménagement', 'déménager', 'déménageur', 'manutention', 'transport', 'camion', 'camionnette', 'carton', 'emballage', 'meuble', 'monte-meuble', 'garde-meuble', 'stockage', 'local', 'national', 'international', 'express', 'assurance', 'devis', 'tarif'] },
     { value: 'cosmetique_parfum', label: 'Cosmétique & Parfum', icon: '✨', color: '#E91E63', description: 'Parfums, maquillage, soins beauté, huiles, crèmes', keywords: ['cosmétique', 'parfum', 'maquillage', 'beauté', 'soin', 'crème', 'lotion', 'sérum', 'masque', 'fond de teint', 'rouge à lèvres', 'mascara', 'vernis', 'eau de toilette', 'déodorant', 'gel douche', 'shampoing', 'Chanel', 'Dior', 'L\'Oréal', 'Nivea', 'naturel', 'bio'] },
-    { value: 'bijoux', label: 'Bijoux & Accessoires', icon: '\uD83D\uDC8E', color: '#FFD700', description: 'Colliers, bagues, bracelets, montres, pierres précieuses', keywords: ['bijou', 'bijouterie', 'collier', 'pendentif', 'bague', 'alliance', 'bracelet', 'gourmette', 'boucle d\'oreille', 'montre', 'chaîne', 'médaille', 'or', 'argent', 'platine', 'diamant', 'pierre précieuse', 'rubis', 'saphir', 'perle', '18k', '14k', 'plaqué or', 'Cartier', 'Tiffany'] },
-    { value: 'coiffure_beaute', label: 'Coiffure & Beauté', icon: '\uD83D\uDC87‍♀️', color: '#E91E63', description: 'Mèches, extensions, perruques, accessoires de coiffure, soins cheveux', keywords: ['coiffure', 'cheveu', 'mèche', 'extension', 'perruque', 'tissage', 'tresse', 'défrisage', 'lissage', 'bouclage', 'coloration', 'teinture', 'balayage', 'coupe', 'brushing', 'lisse', 'bouclé', 'naturel', 'synthétique', 'brésilienne', 'indienne', 'remy hair', 'clip', 'pose'] },
-    { value: 'pieces_auto', label: 'Pièces Détachées Auto', icon: '\uD83D\uDD27', color: '#607D8B', description: 'Pièces moteur, freins, carrosserie, filtres, batteries', keywords: ['pièce auto', 'pièce détachée', 'pièce automobile', 'moteur', 'frein', 'disque', 'plaquette', 'carrosserie', 'pare-choc', 'aile', 'capot', 'phare', 'feu', 'filtre', 'huile', 'batterie', 'alternateur', 'bougie', 'courroie', 'embrayage', 'suspension', 'amortisseur', 'vidange', 'garage'] },
+    { value: 'bijoux', label: 'Bijoux & Accessoires', icon: '💎', color: '#FFD700', description: 'Colliers, bagues, bracelets, montres, pierres précieuses', keywords: ['bijou', 'bijouterie', 'collier', 'pendentif', 'bague', 'alliance', 'bracelet', 'gourmette', 'boucle d\'oreille', 'montre', 'chaîne', 'médaille', 'or', 'argent', 'platine', 'diamant', 'pierre précieuse', 'rubis', 'saphir', 'perle', '18k', '14k', 'plaqué or', 'Cartier', 'Tiffany'] },
+    { value: 'coiffure_beaute', label: 'Coiffure & Beauté', icon: '💇‍♀️', color: '#E91E63', description: 'Mèches, extensions, perruques, accessoires de coiffure, soins cheveux', keywords: ['coiffure', 'cheveu', 'mèche', 'extension', 'perruque', 'tissage', 'tresse', 'défrisage', 'lissage', 'bouclage', 'coloration', 'teinture', 'balayage', 'coupe', 'brushing', 'lisse', 'bouclé', 'naturel', 'synthétique', 'brésilienne', 'indienne', 'remy hair', 'clip', 'pose'] },
+    { value: 'pieces_auto', label: 'Pièces Détachées Auto', icon: '🔧', color: '#607D8B', description: 'Pièces moteur, freins, carrosserie, filtres, batteries', keywords: ['pièce auto', 'pièce détachée', 'pièce automobile', 'moteur', 'frein', 'disque', 'plaquette', 'carrosserie', 'pare-choc', 'aile', 'capot', 'phare', 'feu', 'filtre', 'huile', 'batterie', 'alternateur', 'bougie', 'courroie', 'embrayage', 'suspension', 'amortisseur', 'vidange', 'garage'] },
     { value: 'pieces_industrielles', label: 'Pièces Industrielles', icon: '⚙️', color: '#455A64', description: 'Roulements, courroies, moteurs, pompes, pièces machines', keywords: ['pièce industrielle', 'pièce machine', 'roulement', 'palier', 'courroie', 'chaîne', 'poulie', 'pignon', 'engrenage', 'moteur électrique', 'hydraulique', 'pneumatique', 'pompe', 'compresseur', 'vanne', 'vérin', 'tuyau', 'joint', 'acier', 'inox', 'industriel', 'usine', 'maintenance'] },
-    { value: 'prestation_service', label: 'Prestation de Service', icon: '\uD83C\uDFAF', color: '#8B5CF6', description: 'Plombier, électricien, mécanicien, coiffeur, développeur...', keywords: ['plombier', 'électricien', 'mécanicien', 'menuisier', 'peintre', 'maçon', 'carreleur', 'soudeur', 'serrurier', 'vitrier', 'plâtrier', 'couvreur', 'charpentier', 'ébéniste', 'tapissier', 'décorateur', 'jardinier', 'paysagiste', 'élagueur', 'coiffeur', 'barbier', 'esthéticienne', 'manucure', 'massage', 'spa', 'kinésithérapeute', 'ostéopathe', 'infirmier', 'sage-femme', 'aide-soignant', 'auxiliaire', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'technicien', 'réparateur', 'dépanneur', 'installateur', 'monteur', 'agent', 'nettoyage', 'entretien', 'ménage', 'repassage', 'cuisinier', 'traiteur', 'pâtissier', 'boulanger', 'serveur', 'barman', 'chauffeur', 'livreur', 'coursier', 'déménageur', 'manutentionnaire', 'gardien', 'vigile', 'agent de sécurité', 'coach', 'formateur', 'professeur', 'enseignant', 'répétiteur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'correcteur', 'secrétaire', 'assistant', 'comptable', 'auditeur', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'architecte', 'ingénieur', 'géomètre', 'topographe', 'vétérinaire', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'présentateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'couturier', 'tailleur', 'cordonnier', 'tapissier', 'sellier', 'bijoutier', 'horloger', 'opticien', 'prothésiste', 'dentiste', 'orthodontiste', 'pédicure', 'podologue', 'sophrologue', 'psychologue', 'psychiatre', 'nutritionniste', 'diététicien', 'coach sportif', 'personal trainer', 'yoga', 'pilates', 'danse', 'sport', 'guide', 'accompagnateur', 'moniteur', 'instructeur', 'analyste', 'data scientist', 'statisticien', 'économiste', 'chercheur', 'scientifique', 'laborantin', 'pharmacien', 'préparateur', 'radiologiste', 'échographiste', 'technicien médical', 'ambulancier', 'secouriste', 'pompier', 'agent immobilier', 'promoteur', 'syndic', 'gestionnaire', 'administrateur', 'directeur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'contrôleur', 'inspecteur', 'évaluateur', 'expert-comptable', 'fiscaliste', 'commissaire aux comptes', 'assureur', 'courtier', 'agent général', 'banquier', 'conseiller financier', 'trader', 'cambiste', 'caissier', 'guichetier', 'vendeur', 'commercial', 'télévendeur', 'VRP', 'représentant', 'agent commercial', 'négociateur', 'acheteur', 'approvisionneur', 'logisticien', 'magasinier', 'gestionnaire de stock', 'préparateur de commandes', 'cariste', 'grutier', 'conducteur', 'opérateur', 'machiniste', 'usineur', 'tourneur', 'fraiseur', 'ajusteur', 'monteur', 'assembleur', 'câbleur', 'électronicien', 'automaticien', 'roboticien', 'mécanicien auto', 'mécanicien moto', 'carrossier', 'peintre auto', 'tôlier', 'mécanicien poids lourds', 'mécanicien agricole', 'dépanneur auto', 'garagiste', 'vulcanisateur', 'climaticien', 'frigoriste', 'chauffagiste', 'sanitaire', 'zingueur'] },
-    { value: 'quincaillerie', label: 'Quincaillerie, Sanitaire & Électricité', icon: '\uD83D\uDD28', color: '#F59E0B', description: 'Outils, matériaux, plomberie, électricité, construction', keywords: ['quincaillerie', 'outil', 'marteau', 'tournevis', 'clé', 'pince', 'scie', 'perceuse', 'visseuse', 'meuleuse', 'ponceuse', 'raboteuse', 'tronçonneuse', 'matériaux', 'ciment', 'sable', 'gravier', 'brique', 'parpaing', 'fer', 'acier', 'béton', 'mortier', 'chaux', 'plâtre', 'peinture', 'vernis', 'colle', 'mastic', 'silicone', 'joint', 'sanitaire', 'plomberie', 'robinet', 'robinetterie', 'mitigeur', 'mélangeur', 'douche', 'baignoire', 'lavabo', 'évier', 'WC', 'toilette', 'chasse', 'tuyau', 'canalisation', 'raccord', 'coude', 'té', 'vanne', 'électricité', 'électrique', 'câble', 'fil', 'interrupteur', 'prise', 'disjoncteur', 'tableau', 'lampe', 'ampoule', 'LED', 'néon', 'spot', 'applique', 'lustre', 'plafonnier', 'variateur', 'minuterie', 'détecteur', 'sonnette', 'multiprise', 'rallonge', 'domino', 'gaine', 'conduit'] },
-    { value: 'telephone', label: 'Téléphones et Accessoires', icon: '\uD83D\uDCF1', color: '#FF9800', description: 'Smartphones, accessoires, coques, écouteurs', keywords: ['téléphone', 'smartphone', 'mobile', 'portable', 'cellulaire', 'iPhone', 'Samsung', 'Huawei', 'Xiaomi', 'Oppo', 'Tecno', 'Infinix', 'Nokia', 'Galaxy', 'Android', 'iOS', 'écran', 'tactile', 'appareil photo', 'caméra', 'double SIM', '4G', '5G', 'Wi-Fi', 'Bluetooth', 'stockage', '64GB', '128GB', '256GB', 'RAM', 'batterie', 'chargeur', 'coque', 'écouteurs', 'neuf', 'occasion', 'débloqué'] },
-    { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '\uD83C\uDFAB', color: '#8B5CF6', description: 'Bus, train, avion avec sélection de place', keywords: ['ticket', 'billet', 'voyage', 'transport', 'bus', 'car', 'autobus', 'train', 'avion', 'vol', 'bateau', 'ferry', 'départ', 'arrivée', 'destination', 'trajet', 'place', 'siège', 'réservation', 'aller simple', 'aller-retour', 'économique', 'affaires', 'première classe', 'VIP', 'escale', 'direct', 'compagnie', 'horaire'] },
-    { value: 'ustensiles_cuisine', label: 'Ustensiles de Cuisine', icon: '\uD83C\uDF74', color: '#FF5722', description: 'Casseroles, poêles, couteaux, mixers, batterie cuisine', keywords: ['ustensile', 'cuisine', 'casserole', 'poêle', 'faitout', 'marmite', 'cocotte', 'wok', 'couteau', 'planche à découper', 'râpe', 'fouet', 'louche', 'spatule', 'cuillère', 'mixer', 'mixeur', 'blender', 'robot cuisine', 'balance', 'batterie cuisine', 'inox', 'aluminium', 'téflon', 'anti-adhésif', 'set'] },
-    { value: 'vetement', label: 'Vêtements et Prêt-à-Porter', icon: '\uD83D\uDC55', color: '#EC4899', description: 'Vêtements, habits, articles de mode', keywords: ['vêtement', 'habit', 'mode', 'fashion', 'prêt-à-porter', 'textile', 'chemise', 'polo', 'T-shirt', 'pull', 'sweat', 'gilet', 'veste', 'manteau', 'blouson', 'pantalon', 'jean', 'short', 'jupe', 'robe', 'costume', 'tailleur', 'sous-vêtement', 'chaussette', 'écharpe', 'cravate', 'ceinture', 'gant', 'bonnet', 'chapeau', 'casquette', 'homme', 'femme', 'enfant', 'taille', 'coton', 'soie', 'lin', 'laine', 'Zara', 'H&M'] },
-    { value: 'restauration', label: 'Restauration & Traiteur', icon: '\uD83C\uDF7D️', color: '#F97316', description: 'Restaurants, cafés, bars, traiteurs, food trucks', keywords: ['restaurant', 'resto', 'café', 'bar', 'traiteur', 'food truck', 'cuisine', 'menu', 'plat', 'repas', 'déjeuner', 'dîner', 'petit-déjeuner', 'brunch', 'buffet', 'chef', 'cuisinier', 'gastronomie', 'mets', 'service', 'réservation', 'table', 'terrasse', 'livraison', 'à emporter', 'fast-food', 'snack', 'brasserie', 'bistrot', 'pizzeria', 'boulangerie', 'pâtisserie'] },
+    { value: 'prestation_service', label: 'Prestation de Service', icon: '🎯', color: '#8B5CF6', description: 'Plombier, électricien, mécanicien, coiffeur, développeur...', keywords: ['plombier', 'électricien', 'mécanicien', 'menuisier', 'peintre', 'maçon', 'carreleur', 'soudeur', 'serrurier', 'vitrier', 'plâtrier', 'couvreur', 'charpentier', 'ébéniste', 'tapissier', 'décorateur', 'jardinier', 'paysagiste', 'élagueur', 'coiffeur', 'barbier', 'esthéticienne', 'manucure', 'massage', 'spa', 'kinésithérapeute', 'ostéopathe', 'infirmier', 'sage-femme', 'aide-soignant', 'auxiliaire', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'technicien', 'réparateur', 'dépanneur', 'installateur', 'monteur', 'agent', 'nettoyage', 'entretien', 'ménage', 'repassage', 'cuisinier', 'traiteur', 'pâtissier', 'boulanger', 'serveur', 'barman', 'chauffeur', 'livreur', 'coursier', 'déménageur', 'manutentionnaire', 'gardien', 'vigile', 'agent de sécurité', 'coach', 'formateur', 'professeur', 'enseignant', 'répétiteur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'correcteur', 'secrétaire', 'assistant', 'comptable', 'auditeur', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'architecte', 'ingénieur', 'géomètre', 'topographe', 'vétérinaire', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'présentateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'couturier', 'tailleur', 'cordonnier', 'tapissier', 'sellier', 'bijoutier', 'horloger', 'opticien', 'prothésiste', 'dentiste', 'orthodontiste', 'pédicure', 'podologue', 'sophrologue', 'psychologue', 'psychiatre', 'nutritionniste', 'diététicien', 'coach sportif', 'personal trainer', 'yoga', 'pilates', 'danse', 'sport', 'guide', 'accompagnateur', 'moniteur', 'instructeur', 'analyste', 'data scientist', 'statisticien', 'économiste', 'chercheur', 'scientifique', 'laborantin', 'pharmacien', 'préparateur', 'radiologiste', 'échographiste', 'technicien médical', 'ambulancier', 'secouriste', 'pompier', 'agent immobilier', 'promoteur', 'syndic', 'gestionnaire', 'administrateur', 'directeur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'contrôleur', 'inspecteur', 'évaluateur', 'expert-comptable', 'fiscaliste', 'commissaire aux comptes', 'assureur', 'courtier', 'agent général', 'banquier', 'conseiller financier', 'trader', 'cambiste', 'caissier', 'guichetier', 'vendeur', 'commercial', 'télévendeur', 'VRP', 'représentant', 'agent commercial', 'négociateur', 'acheteur', 'approvisionneur', 'logisticien', 'magasinier', 'gestionnaire de stock', 'préparateur de commandes', 'cariste', 'grutier', 'conducteur', 'opérateur', 'machiniste', 'usineur', 'tourneur', 'fraiseur', 'ajusteur', 'monteur', 'assembleur', 'câbleur', 'électronicien', 'automaticien', 'roboticien', 'mécanicien auto', 'mécanicien moto', 'carrossier', 'peintre auto', 'tôlier', 'mécanicien poids lourds', 'mécanicien agricole', 'dépanneur auto', 'garagiste', 'vulcanisateur', 'climaticien', 'frigoriste', 'chauffagiste', 'sanitaire', 'zingueur'] },
+    { value: 'quincaillerie', label: 'Quincaillerie, Sanitaire & Électricité', icon: '🔨', color: '#F59E0B', description: 'Outils, matériaux, plomberie, électricité, construction', keywords: ['quincaillerie', 'outil', 'marteau', 'tournevis', 'clé', 'pince', 'scie', 'perceuse', 'visseuse', 'meuleuse', 'ponceuse', 'raboteuse', 'tronçonneuse', 'matériaux', 'ciment', 'sable', 'gravier', 'brique', 'parpaing', 'fer', 'acier', 'béton', 'mortier', 'chaux', 'plâtre', 'peinture', 'vernis', 'colle', 'mastic', 'silicone', 'joint', 'sanitaire', 'plomberie', 'robinet', 'robinetterie', 'mitigeur', 'mélangeur', 'douche', 'baignoire', 'lavabo', 'évier', 'WC', 'toilette', 'chasse', 'tuyau', 'canalisation', 'raccord', 'coude', 'té', 'vanne', 'électricité', 'électrique', 'câble', 'fil', 'interrupteur', 'prise', 'disjoncteur', 'tableau', 'lampe', 'ampoule', 'LED', 'néon', 'spot', 'applique', 'lustre', 'plafonnier', 'variateur', 'minuterie', 'détecteur', 'sonnette', 'multiprise', 'rallonge', 'domino', 'gaine', 'conduit'] },
+    { value: 'telephone', label: 'Téléphones et Accessoires', icon: '📱', color: '#FF9800', description: 'Smartphones, accessoires, coques, écouteurs', keywords: ['téléphone', 'smartphone', 'mobile', 'portable', 'cellulaire', 'iPhone', 'Samsung', 'Huawei', 'Xiaomi', 'Oppo', 'Tecno', 'Infinix', 'Nokia', 'Galaxy', 'Android', 'iOS', 'écran', 'tactile', 'appareil photo', 'caméra', 'double SIM', '4G', '5G', 'Wi-Fi', 'Bluetooth', 'stockage', '64GB', '128GB', '256GB', 'RAM', 'batterie', 'chargeur', 'coque', 'écouteurs', 'neuf', 'occasion', 'débloqué'] },
+    { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '🎫', color: '#8B5CF6', description: 'Bus, train, avion avec sélection de place', keywords: ['ticket', 'billet', 'voyage', 'transport', 'bus', 'car', 'autobus', 'train', 'avion', 'vol', 'bateau', 'ferry', 'départ', 'arrivée', 'destination', 'trajet', 'place', 'siège', 'réservation', 'aller simple', 'aller-retour', 'économique', 'affaires', 'première classe', 'VIP', 'escale', 'direct', 'compagnie', 'horaire'] },
+    { value: 'ustensiles_cuisine', label: 'Ustensiles de Cuisine', icon: '🍴', color: '#FF5722', description: 'Casseroles, poêles, couteaux, mixers, batterie cuisine', keywords: ['ustensile', 'cuisine', 'casserole', 'poêle', 'faitout', 'marmite', 'cocotte', 'wok', 'couteau', 'planche à découper', 'râpe', 'fouet', 'louche', 'spatule', 'cuillère', 'mixer', 'mixeur', 'blender', 'robot cuisine', 'balance', 'batterie cuisine', 'inox', 'aluminium', 'téflon', 'anti-adhésif', 'set'] },
+    { value: 'vetement', label: 'Vêtements et Prêt-à-Porter', icon: '👕', color: '#EC4899', description: 'Vêtements, habits, articles de mode', keywords: ['vêtement', 'habit', 'mode', 'fashion', 'prêt-à-porter', 'textile', 'chemise', 'polo', 'T-shirt', 'pull', 'sweat', 'gilet', 'veste', 'manteau', 'blouson', 'pantalon', 'jean', 'short', 'jupe', 'robe', 'costume', 'tailleur', 'sous-vêtement', 'chaussette', 'écharpe', 'cravate', 'ceinture', 'gant', 'bonnet', 'chapeau', 'casquette', 'homme', 'femme', 'enfant', 'taille', 'coton', 'soie', 'lin', 'laine', 'Zara', 'H&M'] },
+    { value: 'restauration', label: 'Restauration & Traiteur', icon: '🍽️', color: '#F97316', description: 'Restaurants, cafés, bars, traiteurs, food trucks', keywords: ['restaurant', 'resto', 'café', 'bar', 'traiteur', 'food truck', 'cuisine', 'menu', 'plat', 'repas', 'déjeuner', 'dîner', 'petit-déjeuner', 'brunch', 'buffet', 'chef', 'cuisinier', 'gastronomie', 'mets', 'service', 'réservation', 'table', 'terrasse', 'livraison', 'à emporter', 'fast-food', 'snack', 'brasserie', 'bistrot', 'pizzeria', 'boulangerie', 'pâtisserie'] },
     { value: 'electronique', label: 'Électronique & High-Tech', icon: '⚡', color: '#00BCD4', description: 'Appareils électroniques, gadgets, accessoires tech', keywords: ['électronique', 'high-tech', 'technologie', 'gadget', 'appareil', 'accessoire', 'tech', 'numérique', 'digital', 'connecté', 'smart', 'intelligent', 'console', 'PlayStation', 'Xbox', 'Nintendo', 'drone', 'caméra', 'GoPro', 'stabilisateur', 'microphone', 'audio', 'vidéo', 'streaming', 'gaming', 'esport'] },
-    { value: 'musique_instruments', label: 'Musique & Instruments', icon: '\uD83C\uDFB8', color: '#9C27B0', description: 'Instruments de musique, équipements audio, accessoires', keywords: ['musique', 'instrument', 'musical', 'guitare', 'piano', 'clavier', 'synthétiseur', 'batterie', 'percussion', 'saxophone', 'trompette', 'violon', 'flûte', 'harmonica', 'accordéon', 'djembé', 'tam-tam', 'balafon', 'kora', 'ampli', 'amplificateur', 'enceinte', 'micro', 'table de mixage', 'sono', 'sonorisation', 'studio', 'enregistrement'] },
-    { value: 'formation_education', label: 'Formation & Éducation', icon: '\uD83C\uDF93', color: '#7C3AED', description: 'Cours, formations, coaching, enseignement', keywords: ['formation', 'éducation', 'cours', 'leçon', 'enseignement', 'apprentissage', 'école', 'académie', 'institut', 'centre de formation', 'coaching', 'tutorat', 'soutien scolaire', 'répétition', 'professeur', 'enseignant', 'formateur', 'instructeur', 'mentor', 'coach', 'certification', 'diplôme', 'stage', 'atelier', 'séminaire', 'workshop', 'webinaire', 'e-learning', 'en ligne', 'langue', 'informatique', 'bureautique', 'management'] },
-    { value: 'evenementiel', label: 'Événementiel & Organisation', icon: '\uD83C\uDF89', color: '#EC4899', description: 'Organisation d\'événements, mariages, fêtes, célébrations', keywords: ['événement', 'évènement', 'organisation', 'mariage', 'fête', 'anniversaire', 'baptême', 'communion', 'célébration', 'cérémonie', 'réception', 'soirée', 'gala', 'conférence', 'séminaire', 'salon', 'exposition', 'concert', 'spectacle', 'animation', 'DJ', 'sono', 'décoration', 'traiteur', 'location', 'salle', 'tente', 'chapiteau', 'wedding planner', 'organisateur'] },
-    { value: 'agriculture', label: 'Agriculture & Élevage', icon: '\uD83C\uDF31', color: '#10B981', description: 'Produits agricoles, élevage, matériel agricole', keywords: ['agriculture', 'agricole', 'ferme', 'exploitation', 'élevage', 'culture', 'plantation', 'récolte', 'moisson', 'semence', 'graine', 'engrais', 'pesticide', 'herbicide', 'tracteur', 'charrue', 'moissonneuse', 'batteuse', 'irrigation', 'arrosage', 'serre', 'pépinière', 'maraîchage', 'légume', 'fruit', 'céréale', 'maïs', 'riz', 'mil', 'sorgho', 'manioc', 'bétail', 'vache', 'bœuf', 'mouton', 'chèvre', 'porc', 'volaille', 'poulet', 'canard', 'lapin'] },
-    { value: 'sport_fitness', label: 'Sport & Fitness', icon: '\uD83D\uDCAA', color: '#EF4444', description: 'Salles de sport, coaching, équipements sportifs', keywords: ['sport', 'fitness', 'gym', 'salle de sport', 'musculation', 'cardio', 'crossfit', 'yoga', 'pilates', 'zumba', 'danse', 'aerobic', 'spinning', 'cycling', 'running', 'course', 'jogging', 'marathon', 'natation', 'piscine', 'aquagym', 'tennis', 'foot', 'football', 'basketball', 'volleyball', 'handball', 'rugby', 'boxe', 'MMA', 'arts martiaux', 'karaté', 'judo', 'taekwondo', 'coach sportif', 'personal trainer', 'entraîneur', 'préparateur physique', 'nutrition', 'diététique'] },
-    { value: 'bien_etre_spa', label: 'Bien-être & Spa', icon: '\uD83E\uDDD8', color: '#14B8A6', description: 'Spa, massage, relaxation, soins bien-être', keywords: ['bien-être', 'spa', 'massage', 'relaxation', 'détente', 'soin', 'hammam', 'sauna', 'jacuzzi', 'balnéothérapie', 'thalasso', 'aromathérapie', 'réflexologie', 'shiatsu', 'ayurveda', 'thai', 'suédois', 'californien', 'pierre chaude', 'huile', 'gommage', 'enveloppement', 'modelage', 'drainage lymphatique', 'méditation', 'yoga', 'sophrologie', 'hypnose', 'reiki', 'énergétique'] },
-    { value: 'nettoyage_entretien', label: 'Nettoyage & Entretien', icon: '\uD83E\uDDF9', color: '#6B7280', description: 'Services de nettoyage, ménage, entretien', keywords: ['nettoyage', 'ménage', 'entretien', 'propreté', 'nettoyeur', 'femme de ménage', 'homme de ménage', 'agent d\'entretien', 'société de nettoyage', 'lavage', 'dépoussiérage', 'aspirateur', 'balai', 'serpillière', 'désinfection', 'décontamination', 'vitre', 'carrelage', 'moquette', 'tapis', 'canapé', 'bureaux', 'locaux', 'immeuble', 'copropriété', 'commercial', 'industriel', 'après chantier', 'fin de chantier'] },
-    { value: 'jardinage_paysagisme', label: 'Jardinage & Paysagisme', icon: '\uD83C\uDF33', color: '#059669', description: 'Entretien jardins, création espaces verts, paysagiste', keywords: ['jardinage', 'jardin', 'paysagisme', 'paysagiste', 'espaces verts', 'entretien', 'création', 'aménagement', 'plantation', 'arbre', 'arbuste', 'fleur', 'plante', 'pelouse', 'gazon', 'tonte', 'taille', 'élagage', 'débroussaillage', 'arrosage', 'irrigation', 'clôture', 'haie', 'allée', 'terrasse', 'pergola', 'potager', 'verger', 'compost', 'engrais', 'tondeuse', 'taille-haie', 'tronçonneuse'] },
-    { value: 'securite_surveillance', label: 'Sécurité & Surveillance', icon: '\uD83D\uDEE1️', color: '#DC2626', description: 'Agents de sécurité, gardiennage, vidéosurveillance', keywords: ['sécurité', 'surveillance', 'gardiennage', 'agent de sécurité', 'vigile', 'garde', 'protection', 'sûreté', 'ronde', 'patrouille', 'contrôle', 'accès', 'badge', 'portique', 'caméra', 'vidéosurveillance', 'CCTV', 'alarme', 'détecteur', 'sirène', 'télésurveillance', 'centrale', 'digicode', 'interphone', 'portail', 'barrière', 'gardien', 'concierge', 'veilleur', 'nuit', 'événement', 'magasin', 'entreprise', 'chantier'] },
-    { value: 'plomberie', label: 'Plomberie & Sanitaire', icon: '\uD83D\uDEB0', color: '#00BCD4', description: 'Installation, réparation, dépannage plomberie', keywords: ['plomberie', 'plombier', 'sanitaire', 'eau', 'canalisation', 'tuyauterie', 'robinetterie', 'robinet', 'fuite', 'débouchage', 'dégorgement', 'évier', 'lavabo', 'douche', 'baignoire', 'WC', 'toilette', 'chauffe-eau', 'ballon', 'cumulus', 'chaudière', 'installation', 'réparation', 'dépannage', 'urgence', 'tuyau', 'PVC', 'cuivre', 'joint', 'siphon', 'vidange', 'évacuation', 'raccord'] },
-    { value: 'menuiserie', label: 'Menuiserie & Ébénisterie', icon: '\uD83E\uDEB5', color: '#F97316', description: 'Fabrication, pose, réparation bois et meubles', keywords: ['menuiserie', 'menuisier', 'ébénisterie', 'ébéniste', 'bois', 'boiserie', 'charpente', 'charpentier', 'parquet', 'plancher', 'lambris', 'porte', 'fenêtre', 'volet', 'portail', 'portillon', 'clôture', 'pergola', 'terrasse', 'deck', 'escalier', 'garde-corps', 'rambarde', 'placard', 'dressing', 'bibliothèque', 'meuble', 'sur mesure', 'fabrication', 'pose', 'installation', 'réparation', 'restauration', 'rénovation', 'agencement', 'aménagement'] },
-    { value: 'animaux_veterinaire', label: 'Animaux & Vétérinaire', icon: '\uD83D\uDC3E', color: '#FF69B4', description: 'Vétérinaires, toilettage, dressage, accessoires animaux', keywords: ['animal', 'animaux', 'vétérinaire', 'véto', 'clinique vétérinaire', 'soin', 'consultation', 'vaccination', 'stérilisation', 'castration', 'vermifuge', 'antiparasitaire', 'urgence', 'chirurgie', 'toilettage', 'toiletteur', 'coupe', 'lavage', 'brushing', 'chien', 'chat', 'chiot', 'chaton', 'oiseau', 'lapin', 'rongeur', 'reptile', 'dressage', 'éducation', 'comportementaliste', 'pension', 'garde', 'promenade', 'dog sitter', 'accessoire', 'collier', 'laisse', 'gamelle', 'cage', 'niche', 'litière', 'jouet', 'nourriture', 'croquette', 'pâtée'] },
-    { value: 'autre', label: 'Autres Produits', icon: '\uD83D\uDCE6', color: '#6B7280', description: 'Autres types de produits et services', keywords: ['autre', 'divers', 'varié', 'mixte', 'général', 'non classé', 'produit', 'service', 'article', 'objet'] },
+    { value: 'musique_instruments', label: 'Musique & Instruments', icon: '🎸', color: '#9C27B0', description: 'Instruments de musique, équipements audio, accessoires', keywords: ['musique', 'instrument', 'musical', 'guitare', 'piano', 'clavier', 'synthétiseur', 'batterie', 'percussion', 'saxophone', 'trompette', 'violon', 'flûte', 'harmonica', 'accordéon', 'djembé', 'tam-tam', 'balafon', 'kora', 'ampli', 'amplificateur', 'enceinte', 'micro', 'table de mixage', 'sono', 'sonorisation', 'studio', 'enregistrement'] },
+    { value: 'formation_education', label: 'Formation & Éducation', icon: '🎓', color: '#7C3AED', description: 'Cours, formations, coaching, enseignement', keywords: ['formation', 'éducation', 'cours', 'leçon', 'enseignement', 'apprentissage', 'école', 'académie', 'institut', 'centre de formation', 'coaching', 'tutorat', 'soutien scolaire', 'répétition', 'professeur', 'enseignant', 'formateur', 'instructeur', 'mentor', 'coach', 'certification', 'diplôme', 'stage', 'atelier', 'séminaire', 'workshop', 'webinaire', 'e-learning', 'en ligne', 'langue', 'informatique', 'bureautique', 'management'] },
+    { value: 'evenementiel', label: 'Événementiel & Organisation', icon: '🎉', color: '#EC4899', description: 'Organisation d\'événements, mariages, fêtes, célébrations', keywords: ['événement', 'évènement', 'organisation', 'mariage', 'fête', 'anniversaire', 'baptême', 'communion', 'célébration', 'cérémonie', 'réception', 'soirée', 'gala', 'conférence', 'séminaire', 'salon', 'exposition', 'concert', 'spectacle', 'animation', 'DJ', 'sono', 'décoration', 'traiteur', 'location', 'salle', 'tente', 'chapiteau', 'wedding planner', 'organisateur'] },
+    { value: 'agriculture', label: 'Agriculture & Élevage', icon: '🌱', color: '#10B981', description: 'Produits agricoles, élevage, matériel agricole', keywords: ['agriculture', 'agricole', 'ferme', 'exploitation', 'élevage', 'culture', 'plantation', 'récolte', 'moisson', 'semence', 'graine', 'engrais', 'pesticide', 'herbicide', 'tracteur', 'charrue', 'moissonneuse', 'batteuse', 'irrigation', 'arrosage', 'serre', 'pépinière', 'maraîchage', 'légume', 'fruit', 'céréale', 'maïs', 'riz', 'mil', 'sorgho', 'manioc', 'bétail', 'vache', 'bœuf', 'mouton', 'chèvre', 'porc', 'volaille', 'poulet', 'canard', 'lapin'] },
+    { value: 'sport_fitness', label: 'Sport & Fitness', icon: '💪', color: '#EF4444', description: 'Salles de sport, coaching, équipements sportifs', keywords: ['sport', 'fitness', 'gym', 'salle de sport', 'musculation', 'cardio', 'crossfit', 'yoga', 'pilates', 'zumba', 'danse', 'aerobic', 'spinning', 'cycling', 'running', 'course', 'jogging', 'marathon', 'natation', 'piscine', 'aquagym', 'tennis', 'foot', 'football', 'basketball', 'volleyball', 'handball', 'rugby', 'boxe', 'MMA', 'arts martiaux', 'karaté', 'judo', 'taekwondo', 'coach sportif', 'personal trainer', 'entraîneur', 'préparateur physique', 'nutrition', 'diététique'] },
+    { value: 'bien_etre_spa', label: 'Bien-être & Spa', icon: '🧘', color: '#14B8A6', description: 'Spa, massage, relaxation, soins bien-être', keywords: ['bien-être', 'spa', 'massage', 'relaxation', 'détente', 'soin', 'hammam', 'sauna', 'jacuzzi', 'balnéothérapie', 'thalasso', 'aromathérapie', 'réflexologie', 'shiatsu', 'ayurveda', 'thai', 'suédois', 'californien', 'pierre chaude', 'huile', 'gommage', 'enveloppement', 'modelage', 'drainage lymphatique', 'méditation', 'yoga', 'sophrologie', 'hypnose', 'reiki', 'énergétique'] },
+    { value: 'nettoyage_entretien', label: 'Nettoyage & Entretien', icon: '🧹', color: '#6B7280', description: 'Services de nettoyage, ménage, entretien', keywords: ['nettoyage', 'ménage', 'entretien', 'propreté', 'nettoyeur', 'femme de ménage', 'homme de ménage', 'agent d\'entretien', 'société de nettoyage', 'lavage', 'dépoussiérage', 'aspirateur', 'balai', 'serpillière', 'désinfection', 'décontamination', 'vitre', 'carrelage', 'moquette', 'tapis', 'canapé', 'bureaux', 'locaux', 'immeuble', 'copropriété', 'commercial', 'industriel', 'après chantier', 'fin de chantier'] },
+    { value: 'jardinage_paysagisme', label: 'Jardinage & Paysagisme', icon: '🌳', color: '#059669', description: 'Entretien jardins, création espaces verts, paysagiste', keywords: ['jardinage', 'jardin', 'paysagisme', 'paysagiste', 'espaces verts', 'entretien', 'création', 'aménagement', 'plantation', 'arbre', 'arbuste', 'fleur', 'plante', 'pelouse', 'gazon', 'tonte', 'taille', 'élagage', 'débroussaillage', 'arrosage', 'irrigation', 'clôture', 'haie', 'allée', 'terrasse', 'pergola', 'potager', 'verger', 'compost', 'engrais', 'tondeuse', 'taille-haie', 'tronçonneuse'] },
+    { value: 'securite_surveillance', label: 'Sécurité & Surveillance', icon: '🛡️', color: '#DC2626', description: 'Agents de sécurité, gardiennage, vidéosurveillance', keywords: ['sécurité', 'surveillance', 'gardiennage', 'agent de sécurité', 'vigile', 'garde', 'protection', 'sûreté', 'ronde', 'patrouille', 'contrôle', 'accès', 'badge', 'portique', 'caméra', 'vidéosurveillance', 'CCTV', 'alarme', 'détecteur', 'sirène', 'télésurveillance', 'centrale', 'digicode', 'interphone', 'portail', 'barrière', 'gardien', 'concierge', 'veilleur', 'nuit', 'événement', 'magasin', 'entreprise', 'chantier'] },
+    { value: 'plomberie', label: 'Plomberie & Sanitaire', icon: '🚰', color: '#00BCD4', description: 'Installation, réparation, dépannage plomberie', keywords: ['plomberie', 'plombier', 'sanitaire', 'eau', 'canalisation', 'tuyauterie', 'robinetterie', 'robinet', 'fuite', 'débouchage', 'dégorgement', 'évier', 'lavabo', 'douche', 'baignoire', 'WC', 'toilette', 'chauffe-eau', 'ballon', 'cumulus', 'chaudière', 'installation', 'réparation', 'dépannage', 'urgence', 'tuyau', 'PVC', 'cuivre', 'joint', 'siphon', 'vidange', 'évacuation', 'raccord'] },
+    { value: 'menuiserie', label: 'Menuiserie & Ébénisterie', icon: '🪵', color: '#F97316', description: 'Fabrication, pose, réparation bois et meubles', keywords: ['menuiserie', 'menuisier', 'ébénisterie', 'ébéniste', 'bois', 'boiserie', 'charpente', 'charpentier', 'parquet', 'plancher', 'lambris', 'porte', 'fenêtre', 'volet', 'portail', 'portillon', 'clôture', 'pergola', 'terrasse', 'deck', 'escalier', 'garde-corps', 'rambarde', 'placard', 'dressing', 'bibliothèque', 'meuble', 'sur mesure', 'fabrication', 'pose', 'installation', 'réparation', 'restauration', 'rénovation', 'agencement', 'aménagement'] },
+    { value: 'animaux_veterinaire', label: 'Animaux & Vétérinaire', icon: '🐾', color: '#FF69B4', description: 'Vétérinaires, toilettage, dressage, accessoires animaux', keywords: ['animal', 'animaux', 'vétérinaire', 'véto', 'clinique vétérinaire', 'soin', 'consultation', 'vaccination', 'stérilisation', 'castration', 'vermifuge', 'antiparasitaire', 'urgence', 'chirurgie', 'toilettage', 'toiletteur', 'coupe', 'lavage', 'brushing', 'chien', 'chat', 'chiot', 'chaton', 'oiseau', 'lapin', 'rongeur', 'reptile', 'dressage', 'éducation', 'comportementaliste', 'pension', 'garde', 'promenade', 'dog sitter', 'accessoire', 'collier', 'laisse', 'gamelle', 'cage', 'niche', 'litière', 'jouet', 'nourriture', 'croquette', 'pâtée'] },
+    { value: 'autre', label: 'Autres Produits', icon: '📦', color: '#6B7280', description: 'Autres types de produits et services', keywords: ['autre', 'divers', 'varié', 'mixte', 'général', 'non classé', 'produit', 'service', 'article', 'objet'] },
 ] as const;
 
 // Modèles Excel pour chaque type de produit
@@ -952,7 +952,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             if (currentImagesCount >= 5) {
                 Alert.alert(
                     'Limite atteinte',
-                    '\uD83D\uDCF8 Maximum 5 images par produit pour optimiser la vitesse d\'envoi.\n\n\uD83D\uDCA1 Astuce : Choisissez les 5 meilleures photos de votre produit !',
+                    '📸 Maximum 5 images par produit pour optimiser la vitesse d\'envoi.\n\n💡 Astuce : Choisissez les 5 meilleures photos de votre produit !',
                     [{ text: 'OK' }]
                 );
                 return;
@@ -973,7 +973,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 if (result.assets.length > remainingSlots) {
                     Alert.alert(
                         'Images limitées',
-                        `\uD83D\uDCF8 Seulement ${remainingSlots} image(s) ajoutée(s).\n\nMaximum 5 images par produit pour optimiser l'envoi.`,
+                        `📸 Seulement ${remainingSlots} image(s) ajoutée(s).\n\nMaximum 5 images par produit pour optimiser l'envoi.`,
                         [{ text: 'OK' }]
                     );
                 }
@@ -1043,7 +1043,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             if (currentVideosCount >= 2) {
                 Alert.alert(
                     'Limite atteinte',
-                    '\uD83C\uDFA5 Maximum 2 vidéos par produit pour optimiser l\'envoi.\n\n\uD83D\uDCA1 Astuces :\n- Max 15 secondes par vidéo\n- Filmez en qualité moyenne\n- Privilégiez les vidéos essentielles',
+                    '🎥 Maximum 2 vidéos par produit pour optimiser l\'envoi.\n\n💡 Astuces :\n- Max 15 secondes par vidéo\n- Filmez en qualité moyenne\n- Privilégiez les vidéos essentielles',
                     [{ text: 'OK' }]
                 );
                 return;
@@ -1068,7 +1068,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     if (videoSizeMB > 5) {
                         Alert.alert(
                             'Vidéo trop volumineuse',
-                            `\uD83D\uDCF9 La vidéo fait ${videoSizeMB.toFixed(2)} MB.\n\n⚠️ Maximum : 5 MB et 15 secondes\n\n\uD83D\uDCA1 Solutions :\n- Réduire la résolution (720p ou moins)\n- Raccourcir la vidéo (max 15s)\n- Filmer en qualité moyenne`,
+                            `📹 La vidéo fait ${videoSizeMB.toFixed(2)} MB.\n\n⚠️ Maximum : 5 MB et 15 secondes\n\n💡 Solutions :\n- Réduire la résolution (720p ou moins)\n- Raccourcir la vidéo (max 15s)\n- Filmer en qualité moyenne`,
                             [{ text: 'OK' }]
                         );
                         return;
@@ -1090,7 +1090,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     const remainingVideos = 2 - (newProduct.videos?.length || 0) - 1;
                     Alert.alert(
                         'Vidéo ajoutée',
-                        `✅ Vidéo ajoutée${videoSizeMB > 0 ? ` (${videoSizeMB.toFixed(2)} MB)` : ''}\n\n\uD83D\uDCF9 ${remainingVideos > 0 ? `Vous pouvez encore ajouter ${remainingVideos} vidéo.` : 'Limite atteinte : 2 vidéos max'}`,
+                        `✅ Vidéo ajoutée${videoSizeMB > 0 ? ` (${videoSizeMB.toFixed(2)} MB)` : ''}\n\n📹 ${remainingVideos > 0 ? `Vous pouvez encore ajouter ${remainingVideos} vidéo.` : 'Limite atteinte : 2 vidéos max'}`,
                         [{ text: 'OK' }]
                     );
                 } catch (err) {
@@ -1967,7 +1967,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>\uD83D\uDCCD Localisation GPS</Text>
+                            <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
                             <TouchableOpacity
                                 style={styles.gpsButton}
                                 onPress={() => setShowGPSModal(true)}
@@ -1987,7 +1987,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             )}
                             <View style={styles.hintBox}>
                                 <Text style={styles.hintText}>
-                                    \uD83D\uDCA1 La localisation GPS aide les acheteurs à trouver facilement le bien
+                                    💡 La localisation GPS aide les acheteurs à trouver facilement le bien
                                 </Text>
                             </View>
                         </View>
@@ -2064,7 +2064,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>\uD83D\uDCCD Localisation GPS</Text>
+                            <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
                             <TouchableOpacity
                                 style={styles.gpsButton}
                                 onPress={() => setShowGPSModal(true)}
@@ -2084,7 +2084,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             )}
                             <View style={styles.hintBox}>
                                 <Text style={styles.hintText}>
-                                    \uD83D\uDCA1 La localisation GPS précise augmente la visibilité du terrain
+                                    💡 La localisation GPS précise augmente la visibilité du terrain
                                 </Text>
                             </View>
                         </View>
@@ -2220,7 +2220,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 col,
                                 status: isDriver ? 'occupied' : (busConfig.allSeatsAvailable ? 'available' : 'available'),
                                 type: isDriver ? 'driver' : 'standard',
-                                label: isDriver ? '\uD83D\uDE97 Chauffeur' : undefined
+                                label: isDriver ? '🚗 Chauffeur' : undefined
                             });
                         }
                     }
@@ -2234,7 +2234,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDE8C <Text style={styles.hintBold}>Système Pro de Réservation:</Text> Configurez votre bus, générez le plan des sièges et gérez les réservations en temps réel.
+                                🚌 <Text style={styles.hintBold}>Système Pro de Réservation:</Text> Configurez votre bus, générez le plan des sièges et gérez les réservations en temps réel.
                             </Text>
                         </View>
 
@@ -2407,7 +2407,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             {/* Aperçu du plan de bus */}
                             {newProduct.seatMap && newProduct.seatMap.length > 0 && (
                                 <View style={styles.busPreviewContainer}>
-                                    <Text style={styles.busPreviewTitle}>\uD83D\uDCCB Aperçu du Plan</Text>
+                                    <Text style={styles.busPreviewTitle}>📋 Aperçu du Plan</Text>
                                     <View style={styles.busLayout}>
                                         <View style={styles.busFront}>
                                             <SafeIcon name="navigation" size={16} color="#FFFFFF" />
@@ -2436,7 +2436,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                                                 styles.busSeatNumber,
                                                                                 isDriver && styles.busSeatDriverText
                                                                             ]}>
-                                                                                {isDriver ? '\uD83D\uDE97' : (seat?.number || '')}
+                                                                                {isDriver ? '🚗' : (seat?.number || '')}
                                                                             </Text>
                                                                         </View>
                                                                     </React.Fragment>
@@ -2621,7 +2621,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* GPS de l'hôtel */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>\uD83D\uDCCD Localisation GPS</Text>
+                            <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
                             <TouchableOpacity
                                 style={styles.gpsButton}
                                 onPress={() => setShowGPSModal(true)}
@@ -2641,7 +2641,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             )}
                             <View style={styles.hintBox}>
                                 <Text style={styles.hintText}>
-                                    \uD83D\uDCA1 La localisation GPS facilite la recherche de l'établissement par les clients
+                                    💡 La localisation GPS facilite la recherche de l'établissement par les clients
                                 </Text>
                             </View>
                         </View>
@@ -2862,7 +2862,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Précisez le type d'appareil pour aider les clients à trouver exactement ce qu'ils cherchent
+                                💡 Précisez le type d'appareil pour aider les clients à trouver exactement ce qu'ils cherchent
                             </Text>
                         </View>
                     </>
@@ -2924,7 +2924,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Précisez les dimensions et l'état pour faciliter l'évaluation par les acheteurs
+                                💡 Précisez les dimensions et l'état pour faciliter l'évaluation par les acheteurs
                             </Text>
                         </View>
                     </>
@@ -2987,7 +2987,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez de belles photos pour montrer comment votre article s'intègre dans un intérieur
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez de belles photos pour montrer comment votre article s'intègre dans un intérieur
                             </Text>
                         </View>
                     </>
@@ -3053,7 +3053,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Les informations sur l'origine et la certification rassurent les acheteurs sur la qualité
+                                💡 Les informations sur l'origine et la certification rassurent les acheteurs sur la qualité
                             </Text>
                         </View>
                     </>
@@ -3112,7 +3112,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Précisez la référence et le stock pour faciliter les commandes
+                                💡 Précisez la référence et le stock pour faciliter les commandes
                             </Text>
                         </View>
                     </>
@@ -3123,7 +3123,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 <Text style={styles.hintBold}>Portfolio de Réalisations :</Text> Ajoutez des images et vidéos de vos meilleures réalisations pour montrer votre savoir-faire. Le titre et la description sont automatiquement repris du service principal.
+                                💡 <Text style={styles.hintBold}>Portfolio de Réalisations :</Text> Ajoutez des images et vidéos de vos meilleures réalisations pour montrer votre savoir-faire. Le titre et la description sont automatiquement repris du service principal.
                             </Text>
                         </View>
 
@@ -3251,7 +3251,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         Ajoutez vos offres rapidement avec les boutons ci-dessus
                                     </Text>
                                     <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                                        <Text style={styles.emptyPrestationHint}>\uD83D\uDCA1 Astuce: Utilisez "+3 offres" pour gagner du temps</Text>
+                                        <Text style={styles.emptyPrestationHint}>💡 Astuce: Utilisez "+3 offres" pour gagner du temps</Text>
                                     </View>
                                 </View>
                             )}
@@ -3259,7 +3259,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCB0 <Text style={styles.hintBold}>Conseil :</Text> Listez toutes vos offres de service avec leur montant minimum. Utilisez le bouton de duplication \uD83D\uDCCB pour créer rapidement des variantes.
+                                💰 <Text style={styles.hintBold}>Conseil :</Text> Listez toutes vos offres de service avec leur montant minimum. Utilisez le bouton de duplication 📋 pour créer rapidement des variantes.
                             </Text>
                         </View>
                     </>
@@ -3346,7 +3346,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Précisez le niveau et la matière pour aider les étudiants à trouver le bon article
+                                💡 Précisez le niveau et la matière pour aider les étudiants à trouver le bon article
                             </Text>
                         </View>
                     </>
@@ -3357,7 +3357,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         {/* Planification nuit simplifiée */}
                         <ProductFieldSelector
-                            label="\uD83C\uDF19 Fonctionnement la nuit"
+                            label="🌙 Fonctionnement la nuit"
                             fieldName="types"
                             productType="pharmacie"
                             value={newProduct.typePharmacie || ''}
@@ -3447,7 +3447,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 {newProduct.typePharmacie === 'Permanence nuit' ? 'Votre pharmacie est de garde tous les soirs' : 'Sélectionnez les jours de garde hebdomadaire'}
+                                💡 {newProduct.typePharmacie === 'Permanence nuit' ? 'Votre pharmacie est de garde tous les soirs' : 'Sélectionnez les jours de garde hebdomadaire'}
                             </Text>
                         </View>
                     </>
@@ -3493,7 +3493,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         <SafeIcon name="check" size={16} color="#FFFFFF" />
                                     )}
                                 </View>
-                                <Text style={styles.checkboxLabel}>\uD83E\uDE78 Banque de sang disponible</Text>
+                                <Text style={styles.checkboxLabel}>🩸 Banque de sang disponible</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -3541,7 +3541,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             {/* Planning pour cette prestation si cochée */}
                                             {isSelected && (
                                                 <View style={styles.prestationPlanningContainer}>
-                                                    <Text style={styles.prestationPlanningTitle}>\uD83D\uDCC5 Planning pour {prestation}</Text>
+                                                    <Text style={styles.prestationPlanningTitle}>📅 Planning pour {prestation}</Text>
 
                                                     {/* Jours disponibles */}
                                                     <Text style={styles.fieldHint}>Jours disponibles :</Text>
@@ -3636,13 +3636,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         <SafeIcon name="check" size={16} color="#FFFFFF" />
                                     )}
                                 </View>
-                                <Text style={styles.checkboxLabel}>\uD83D\uDCC5 Prise de rendez-vous en ligne disponible</Text>
+                                <Text style={styles.checkboxLabel}>📅 Prise de rendez-vous en ligne disponible</Text>
                             </TouchableOpacity>
                         </View>
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Renseignez précisément vos prestations et horaires pour aider les patients à trouver le bon service médical
+                                💡 Renseignez précisément vos prestations et horaires pour aider les patients à trouver le bon service médical
                             </Text>
                         </View>
                     </>
@@ -3752,7 +3752,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Précisez le format, l'origine et les certifications pour rassurer les acheteurs
+                                💡 Précisez le format, l'origine et les certifications pour rassurer les acheteurs
                             </Text>
                         </View>
                     </>
@@ -3829,7 +3829,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.assuranceMarchandise && styles.checkboxChecked]}>
                                     {newProduct.assuranceMarchandise && <SafeIcon name="check" size={16} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>\uD83D\uDEE1️ Assurance marchandise</Text>
+                                <Text style={styles.checkboxLabel}>🛡️ Assurance marchandise</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -3839,7 +3839,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.serviceManutention && styles.checkboxChecked]}>
                                     {newProduct.serviceManutention && <SafeIcon name="check" size={16} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>\uD83D\uDCAA Service de manutention</Text>
+                                <Text style={styles.checkboxLabel}>💪 Service de manutention</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -3849,7 +3849,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.montageDemontage && styles.checkboxChecked]}>
                                     {newProduct.montageDemontage && <SafeIcon name="check" size={16} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>\uD83D\uDD27 Montage / Démontage meubles</Text>
+                                <Text style={styles.checkboxLabel}>🔧 Montage / Démontage meubles</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -3859,7 +3859,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.emballageCartons && styles.checkboxChecked]}>
                                     {newProduct.emballageCartons && <SafeIcon name="check" size={16} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>\uD83D\uDCE6 Fourniture cartons d'emballage</Text>
+                                <Text style={styles.checkboxLabel}>📦 Fourniture cartons d'emballage</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -3869,7 +3869,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.gardeMeuble && styles.checkboxChecked]}>
                                     {newProduct.gardeMeuble && <SafeIcon name="check" size={16} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>\uD83C\uDFE0 Garde-meuble disponible</Text>
+                                <Text style={styles.checkboxLabel}>🏠 Garde-meuble disponible</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -3879,7 +3879,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.debarras && styles.checkboxChecked]}>
                                     {newProduct.debarras && <SafeIcon name="check" size={16} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>\uD83D\uDDD1️ Service de débarras</Text>
+                                <Text style={styles.checkboxLabel}>🗑️ Service de débarras</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -3897,7 +3897,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Précisez tous vos services pour que les clients puissent comparer facilement les offres
+                                💡 Précisez tous vos services pour que les clients puissent comparer facilement les offres
                             </Text>
                         </View>
                     </>
@@ -4095,7 +4095,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDC8E Précisez tous les détails pour rassurer les clients sur l'authenticité et la qualité
+                                💎 Précisez tous les détails pour rassurer les clients sur l'authenticité et la qualité
                             </Text>
                         </View>
                     </>
@@ -4219,7 +4219,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDC87‍♀️ Précisez la qualité, l'origine et l'entretien pour aider vos clientes à faire le bon choix
+                                💇‍♀️ Précisez la qualité, l'origine et l'entretien pour aider vos clientes à faire le bon choix
                             </Text>
                         </View>
                     </>
@@ -4317,7 +4317,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 <Text style={styles.hintBold}>Conseil :</Text> Détaillez bien les garanties et la couverture pour aider vos clients à comparer les offres.
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Détaillez bien les garanties et la couverture pour aider vos clients à comparer les offres.
                             </Text>
                         </View>
                     </>
@@ -4416,7 +4416,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 <Text style={styles.hintBold}>Conseil :</Text> Détaillez vos spécialités et services pour attirer plus de clients.
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Détaillez vos spécialités et services pour attirer plus de clients.
                             </Text>
                         </View>
                     </>
@@ -4487,7 +4487,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Précisez les spécifications techniques pour aider les acheteurs.
+                                💡 Précisez les spécifications techniques pour aider les acheteurs.
                             </Text>
                         </View>
                     </>
@@ -4549,7 +4549,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Précisez si des accessoires sont inclus (étui, cordes, etc.).
+                                💡 Précisez si des accessoires sont inclus (étui, cordes, etc.).
                             </Text>
                         </View>
                     </>
@@ -4621,7 +4621,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Indiquez si la formation est certifiante ou diplômante.
+                                💡 Indiquez si la formation est certifiante ou diplômante.
                             </Text>
                         </View>
                     </>
@@ -4672,7 +4672,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Ajoutez des photos de vos événements précédents pour inspirer confiance.
+                                💡 Ajoutez des photos de vos événements précédents pour inspirer confiance.
                             </Text>
                         </View>
                     </>
@@ -4744,7 +4744,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Indiquez si vos produits sont bio, sans pesticides, ou issus de l'agriculture locale.
+                                💡 Indiquez si vos produits sont bio, sans pesticides, ou issus de l'agriculture locale.
                             </Text>
                         </View>
                     </>
@@ -4795,7 +4795,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Précisez si les équipements sont fournis ou si les participants doivent les apporter.
+                                💡 Précisez si les équipements sont fournis ou si les participants doivent les apporter.
                             </Text>
                         </View>
                     </>
@@ -4846,7 +4846,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Détaillez vos prestations pour permettre aux clients de choisir facilement.
+                                💡 Détaillez vos prestations pour permettre aux clients de choisir facilement.
                             </Text>
                         </View>
                     </>
@@ -4897,7 +4897,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Ajoutez des photos de qualité pour montrer votre animal ou vos services.
+                                💡 Ajoutez des photos de qualité pour montrer votre animal ou vos services.
                             </Text>
                         </View>
                     </>
@@ -4947,7 +4947,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Précisez si vous fournissez les produits d'entretien et le matériel.
+                                💡 Précisez si vous fournissez les produits d'entretien et le matériel.
                             </Text>
                         </View>
                     </>
@@ -4997,7 +4997,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Montrez vos réalisations avec des photos avant/après.
+                                💡 Montrez vos réalisations avec des photos avant/après.
                             </Text>
                         </View>
                     </>
@@ -5048,7 +5048,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Précisez vos certifications et agréments de sécurité.
+                                💡 Précisez vos certifications et agréments de sécurité.
                             </Text>
                         </View>
                     </>
@@ -5098,7 +5098,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Indiquez si vous intervenez en urgence 24h/24.
+                                💡 Indiquez si vous intervenez en urgence 24h/24.
                             </Text>
                         </View>
                     </>
@@ -5149,7 +5149,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Mentionnez vos certifications et agréments électriques.
+                                💡 Mentionnez vos certifications et agréments électriques.
                             </Text>
                         </View>
                     </>
@@ -5211,7 +5211,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCA1 Ajoutez des photos de vos réalisations pour montrer votre savoir-faire.
+                                💡 Ajoutez des photos de vos réalisations pour montrer votre savoir-faire.
                             </Text>
                         </View>
                     </>
@@ -5287,7 +5287,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCF1 Précisez les caractéristiques techniques pour rassurer les acheteurs
+                                📱 Précisez les caractéristiques techniques pour rassurer les acheteurs
                             </Text>
                         </View>
                     </>
@@ -5385,7 +5385,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCBB Les spécifications techniques sont essentielles pour les ordinateurs
+                                💻 Les spécifications techniques sont essentielles pour les ordinateurs
                             </Text>
                         </View>
                     </>
@@ -5449,7 +5449,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                \uD83D\uDCFA Pour les TV, précisez la taille et la résolution
+                                📺 Pour les TV, précisez la taille et la résolution
                             </Text>
                         </View>
                     </>
@@ -5735,12 +5735,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         )}
                                         {product.images && product.images.length > 1 && (
                                             <Text style={styles.productMediaCount}>
-                                                \uD83D\uDCF7 {product.images.length} image(s)
+                                                📷 {product.images.length} image(s)
                                             </Text>
                                         )}
                                         {product.videos && product.videos.length > 0 && (
                                             <Text style={styles.productMediaCount}>
-                                                \uD83C\uDFA5 {product.videos.length} vidéo(s)
+                                                🎥 {product.videos.length} vidéo(s)
                                             </Text>
                                         )}
                                     </View>
@@ -5959,7 +5959,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         </Text>
                                         {selectedType && (
                                             <Text style={styles.categoryReminder}>
-                                                \uD83D\uDCE6 Catégorie : {PRODUCT_TYPES.find(t => t.value === selectedType)?.label}
+                                                📦 Catégorie : {PRODUCT_TYPES.find(t => t.value === selectedType)?.label}
                                             </Text>
                                         )}
                                         <NativeInput
@@ -6034,13 +6034,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                     {/* Section Médias */}
                                     <View style={styles.mediaSectionContainer}>
-                                        <Text style={styles.sectionTitle}>\uD83D\uDCF8 Images du produit</Text>
+                                        <Text style={styles.sectionTitle}>📸 Images du produit</Text>
 
                                         {/* Message descriptif incitatif */}
                                         <View style={styles.mediaHintContainer}>
                                             <SafeIcon name="info" size={16} color={modernColors.info} />
                                             <Text style={styles.mediaHintText}>
-                                                \uD83D\uDCA1 Ajoutez des photos de qualité pour attirer plus de clients ! Montrez votre produit sous tous les angles.
+                                                💡 Ajoutez des photos de qualité pour attirer plus de clients ! Montrez votre produit sous tous les angles.
                                             </Text>
                                         </View>
 
@@ -6050,7 +6050,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         >
                                             <SafeIcon name="image" size={20} color={modernColors.primary} />
                                             <Text style={styles.mediaButtonText}>
-                                                \uD83D\uDCF7 Ajouter des images
+                                                📷 Ajouter des images
                                             </Text>
                                         </TouchableOpacity>
 
@@ -6070,13 +6070,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             </ScrollView>
                                         )}
 
-                                        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>\uD83C\uDFA5 Vidéos du produit</Text>
+                                        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🎥 Vidéos du produit</Text>
 
                                         {/* Message descriptif incitatif pour vidéos */}
                                         <View style={styles.mediaHintContainer}>
                                             <SafeIcon name="info" size={16} color={modernColors.info} />
                                             <Text style={styles.mediaHintText}>
-                                                \uD83C\uDFAC Les vidéos augmentent de 80% les chances de vente ! Montrez votre produit en action ou en démonstration.
+                                                🎬 Les vidéos augmentent de 80% les chances de vente ! Montrez votre produit en action ou en démonstration.
                                             </Text>
                                         </View>
 
@@ -6086,7 +6086,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         >
                                             <SafeIcon name="video" size={20} color={modernColors.success} />
                                             <Text style={styles.mediaButtonText}>
-                                                \uD83C\uDFA5 Ajouter des vidéos
+                                                🎥 Ajouter des vidéos
                                             </Text>
                                         </TouchableOpacity>
 
@@ -6110,7 +6110,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                     {/* Section Promotion - APRÈS les médias */}
                                     <View style={styles.promotionSectionContainer}>
-                                        <Text style={styles.sectionTitle}>\uD83C\uDF81 Promotion (optionnel)</Text>
+                                        <Text style={styles.sectionTitle}>🎁 Promotion (optionnel)</Text>
 
                                         <TouchableOpacity
                                             style={styles.checkboxContainer}
@@ -6130,7 +6130,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         {newProduct.promotionActive && (
                                             <View style={styles.promotionFields}>
                                                 <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>\uD83C\uDFF7️ Type de promotion</Text>
+                                                    <Text style={styles.fieldLabel}>🏷️ Type de promotion</Text>
                                                     <View style={styles.pickerButtons}>
                                                         {(['reduction', 'offre', 'bon_plan', 'flash'] as const).map((type) => (
                                                             <TouchableOpacity
@@ -6155,7 +6155,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 </View>
 
                                                 <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>\uD83D\uDCB0 Valeur</Text>
+                                                    <Text style={styles.fieldLabel}>💰 Valeur</Text>
                                                     <NativeInput
                                                         placeholder="Ex: -20%, 1+1 gratuit"
                                                         value={newProduct.promotionValeur || ''}
@@ -6165,7 +6165,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 </View>
 
                                                 <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>\uD83D\uDCDD Description</Text>
+                                                    <Text style={styles.fieldLabel}>📝 Description</Text>
                                                     <NativeInput
                                                         placeholder="Décrivez l'offre..."
                                                         value={newProduct.promotionDescription || ''}
@@ -6176,7 +6176,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                 </View>
 
                                                 <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>\uD83D\uDCC5 Date de fin</Text>
+                                                    <Text style={styles.fieldLabel}>📅 Date de fin</Text>
                                                     <NativeInput
                                                         placeholder="JJ/MM/AAAA"
                                                         value={newProduct.promotionDateFin || ''}

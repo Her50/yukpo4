@@ -165,17 +165,17 @@ const MesEquipesScreen: React.FC = () => {
 
     const getCategoryLabel = (category: string | null) => {
         const map: Record<string, string> = {
-            pharmacie: '\uD83D\uDC8A Pharmacie',
+            pharmacie: '💊 Pharmacie',
             hotel: t('mesEquipesScreen.hotel'),
             hopital: t('mesEquipesScreen.hopital'),
-            laboratoire: '\uD83D\uDD2C Laboratoire',
+            laboratoire: '🔬 Laboratoire',
             agence_voyage: '✈️ Agence de voyage',
-            restaurant: '\uD83C\uDF7D️ Restaurant',
-            immobilier: '\uD83C\uDFE0 Immobilier',
-            taxi: '\uD83D\uDE95 Taxi',
-            covoiturage: '\uD83D\uDE97 Covoiturage',
-            bus: '\uD83D\uDE8C Bus',
-            assurance: '\uD83D\uDEE1️ Assurance',
+            restaurant: '🍽️ Restaurant',
+            immobilier: '🏠 Immobilier',
+            taxi: '🚕 Taxi',
+            covoiturage: '🚗 Covoiturage',
+            bus: '🚌 Bus',
+            assurance: '🛡️ Assurance',
         };
         return map[category?.toLowerCase() || ''] || category || 'Service';
     };

@@ -86,9 +86,9 @@ const ProgrammesScolairesScreen: React.FC = () => {
             <Text style={styles.cardTitle}>
                 {item.nom_etablissement || `Établissement #${item.etablissement_id}`}
             </Text>
-            <Text style={styles.cardSubtitle}>\uD83D\uDCDA Niveau: {item.niveau}</Text>
-            <Text style={styles.cardSubtitle}>\uD83D\uDCC5 Année: {item.annee_scolaire}</Text>
-            {item.filiere && <Text style={styles.cardSubtitle}>\uD83C\uDF93 Filière: {item.filiere}</Text>}
+            <Text style={styles.cardSubtitle}>📚 Niveau: {item.niveau}</Text>
+            <Text style={styles.cardSubtitle}>📅 Année: {item.annee_scolaire}</Text>
+            {item.filiere && <Text style={styles.cardSubtitle}>🎓 Filière: {item.filiere}</Text>}
             <TouchableOpacity
                 style={styles.downloadButton}
                 onPress={() => handleDownload(item.url_programme)}

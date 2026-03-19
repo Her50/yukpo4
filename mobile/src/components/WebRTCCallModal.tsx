@@ -126,7 +126,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     useEffect(() => {
         // Appel ENTRANT : jouer la sonnerie immédiatement pour alerter le destinataire
         if (isIncoming && visible && callState === 'connecting') {
-            console.log('[WebRTC] \uD83D\uDD14 Appel entrant - Démarrage sonnerie destinataire');
+            console.log('[WebRTC] 🔔 Appel entrant - Démarrage sonnerie destinataire');
             if (playRingToneRef.current && typeof playRingToneRef.current === 'function') {
                 playRingToneRef.current();
             }
@@ -134,7 +134,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
 
         // Appel SORTANT : jouer la sonnerie quand on attend la réponse
         if (!isIncoming && callState === 'ringing') {
-            console.log('[WebRTC] \uD83D\uDD14 Appel sortant - Démarrage sonnerie émetteur');
+            console.log('[WebRTC] 🔔 Appel sortant - Démarrage sonnerie émetteur');
             if (playRingToneRef.current && typeof playRingToneRef.current === 'function') {
                 playRingToneRef.current();
             }
@@ -471,7 +471,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     // ✅ CORRIGÉ: Jouer la sonnerie d'appel avec son système
     const playRingTone = async () => {
         try {
-            console.log('[WebRTC] \uD83D\uDD14 Démarrage sonnerie...');
+            console.log('[WebRTC] 🔔 Démarrage sonnerie...');
 
             // Si déjà en cours, ne rien faire
             if (ringSound) {
@@ -515,7 +515,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
 
             // ✅ FALLBACK: Si le fichier son n'existe pas, essayer un son système alternatif
             try {
-                console.log('[WebRTC] \uD83D\uDD04 Tentative fallback avec son système...');
+                console.log('[WebRTC] 🔄 Tentative fallback avec son système...');
                 // Utiliser le son de notification système par défaut
                 const { sound } = await Audio.Sound.createAsync(
                     { uri: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg' },
@@ -537,7 +537,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     const stopRingTone = async () => {
         try {
             if (ringSound) {
-                console.log('[WebRTC] \uD83D\uDD15 Arrêt sonnerie');
+                console.log('[WebRTC] 🔕 Arrêt sonnerie');
                 await ringSound.stopAsync();
                 await ringSound.unloadAsync();
                 setRingSound(null);
@@ -559,7 +559,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     // ✅ CORRIGÉ: Envoyer une notification d'appel via API et WebSocket
     const sendCallPushNotification = async () => {
         try {
-            console.log('[WebRTC] \uD83D\uDCF2 Envoi notification d\'appel à:', recipientId);
+            console.log('[WebRTC] 📲 Envoi notification d\'appel à:', recipientId);
 
             // Import sécurisé de apiPost
             let apiPost;
@@ -668,7 +668,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
 
                     <Text style={styles.callStatus}>
                         {callState === 'connecting' ? 'Connexion...' :
-                            callState === 'ringing' ? '\uD83D\uDD14 Sonnerie en cours...' :
+                            callState === 'ringing' ? '🔔 Sonnerie en cours...' :
                                 callState === 'active' ? formatDuration(callDuration) :
                                     callState === 'ended' ? 'Appel terminé' : ''}
                     </Text>
@@ -676,7 +676,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                     {/* ✅ Indicateur sonore pendant ringing */}
                     {callState === 'ringing' && (
                         <View style={styles.ringingIndicator}>
-                            <Text style={styles.ringingText}>\uD83D\uDD0A Appel en cours</Text>
+                            <Text style={styles.ringingText}>🔊 Appel en cours</Text>
                             <View style={styles.soundWaves}>
                                 <Animated.View style={[styles.soundWave, { opacity: pulseAnim }]} />
                                 <Animated.View style={[styles.soundWave, { opacity: pulseAnim }]} />
@@ -777,7 +777,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                 {callState === 'connecting' && (
                     <View style={styles.demoNote}>
                         <Text style={styles.demoNoteText}>
-                            \uD83D\uDD04 Connexion en cours...
+                            🔄 Connexion en cours...
                         </Text>
                     </View>
                 )}

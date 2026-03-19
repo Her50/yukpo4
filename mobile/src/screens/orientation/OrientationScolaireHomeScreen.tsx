@@ -278,7 +278,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     return 'Les principaux concours au Cameroun: ENAM, ENSP, ENS, École Polytechnique, FMSB, IUT. Les inscriptions ouvrent généralement entre mars et juin. Vérifiez les dates sur le site du MINESUP.';
                 }
                 if (q.includes('université') || q.includes('faculté')) {
-                    return 'Le Cameroun compte 8 universités d\'\u00c9tat (Yaoundé I & II, Douala, Dschang, Buea, Bamenda, Maroua, Ngaoundéré) et de nombreuses universités privées. Choisissez en fonction de la filière souhaitée.';
+                    return 'Le Cameroun compte 8 universités d\'État (Yaoundé I & II, Douala, Dschang, Buea, Bamenda, Maroua, Ngaoundéré) et de nombreuses universités privées. Choisissez en fonction de la filière souhaitée.';
                 }
                 return 'Pour des conseils personnalisés en orientation scolaire, créez votre profil étudiant et consultez les recommandations IA. Vous pouvez aussi contacter un conseiller d\'orientation.';
             }

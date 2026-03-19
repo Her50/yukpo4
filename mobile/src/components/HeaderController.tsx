@@ -147,7 +147,7 @@ const HeaderController: React.FC = () => {
             style={styles.iconButton}
             onPress={handleNotificationsPress}
           >
-            <Text style={styles.icon}>\uD83D\uDD14</Text>
+            <Text style={styles.icon}>🔔</Text>
           </TouchableOpacity>
 
           {/* Messages */}
@@ -155,7 +155,7 @@ const HeaderController: React.FC = () => {
             style={styles.iconButton}
             onPress={handleChatHistoryPress}
           >
-            <Text style={styles.icon}>\uD83D\uDCAC</Text>
+            <Text style={styles.icon}>💬</Text>
           </TouchableOpacity>
 
           {/* Menu profil */}

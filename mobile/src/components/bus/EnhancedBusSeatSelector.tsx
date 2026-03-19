@@ -345,7 +345,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
                         {/* Recommandations */}
                         {recommendations.length > 0 && (
                             <View style={styles.recommendationsContainer}>
-                                <Text style={styles.recommendationsTitle}>\uD83D\uDCA1 Recommandations</Text>
+                                <Text style={styles.recommendationsTitle}>💡 Recommandations</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                     {recommendations.map((rec) => (
                                         <View key={rec.seat_id} style={styles.recommendationBadge}>

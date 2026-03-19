@@ -109,13 +109,13 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
 
             <View style={styles.userInfo}>
               <Text style={styles.userName}>
-                \uD83D\uDC64 {user?.name || t('avatarMenu.utilisateur')}
+                👤 {user?.name || t('avatarMenu.utilisateur')}
               </Text>
               <Text style={styles.userRole}>
-                \uD83D\uDEE1 Rôle : <Text style={styles.roleBold}>{user?.role || t('avatarMenu.utilisateur')}</Text>
+                🛡 Rôle : <Text style={styles.roleBold}>{user?.role || t('avatarMenu.utilisateur')}</Text>
               </Text>
               <Text style={styles.userEmail}>
-                \uD83D\uDCE7 {user?.email}
+                📧 {user?.email}
               </Text>
             </View>
           </View>

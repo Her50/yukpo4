@@ -1,5 +1,5 @@
 // @ts-nocheck
-// \uD83D\uDECD️ MON ACTIVITÉ - Dashboard intégré + Liste de services
+// 🛍️ MON ACTIVITÉ - Dashboard intégré + Liste de services
 // @ts-nocheck
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -336,7 +336,7 @@ const ServicesScreen: React.FC = () => {
         return;
       }
 
-      console.log('[ServicesScreen] \uD83D\uDC41️ Ouverture visualisation service:', {
+      console.log('[ServicesScreen] 👁️ Ouverture visualisation service:', {
         id: service.id,
         title: service.title,
         hasData: !!service.data
@@ -565,9 +565,9 @@ const ServicesScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
             <View style={styles.statsGrid}>
-              {renderStatsCard('Total Services', stats.totalServices, '\uD83D\uDCE6', '#3498db')}
-              {renderStatsCard('Vues Total', stats.totalViews, '\uD83D\uDC41️', '#e74c3c')}
-              {renderStatsCard('Interactions', stats.totalInteractions, '\uD83D\uDCAC', '#f39c12')}
+              {renderStatsCard('Total Services', stats.totalServices, '📦', '#3498db')}
+              {renderStatsCard('Vues Total', stats.totalViews, '👁️', '#e74c3c')}
+              {renderStatsCard('Interactions', stats.totalInteractions, '💬', '#f39c12')}
               {renderStatsCard('Score Moyen', stats.avgScore, '⭐', '#2ecc71')}
             </View>
           </View>
@@ -582,12 +582,12 @@ const ServicesScreen: React.FC = () => {
         {/* Liste des services */}
         <View style={styles.servicesContainer}>
           <Text style={styles.sectionTitle}>
-            \uD83D\uDCCB Services ({sortedServices.length})
+            📋 Services ({sortedServices.length})
           </Text>
 
           {sortedServices.length === 0 ? (
             <NativeCard style={styles.emptyCard}>
-              <Text style={styles.emptyIcon}>\uD83D\uDCED</Text>
+              <Text style={styles.emptyIcon}>📭</Text>
               <Text style={styles.emptyTitle}>{t('services.aucunServiceTrouve')}</Text>
               <Text style={styles.emptySubtitle}>
                 {selectedCategory === 'all'

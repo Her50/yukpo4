@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 // ✅ NOUVEAU: Bibliothèque de musique trending avec intégration TikTok/Spotify
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -29,21 +29,21 @@ interface TrendingMusicLibraryProps {
 }
 
 const MUSIC_CATEGORIES = [
-    { key: 'viral', label: '\uD83D\uDD25 Viral', icon: 'trending-up', color: '#FF0050' },
+    { key: 'viral', label: '🔥 Viral', icon: 'trending-up', color: '#FF0050' },
     { key: 'cinematic', label: t('trendingMusicLibrary.cine'), icon: 'film', color: '#8B5CF6' },
-    { key: 'corporate', label: '\uD83D\uDCBC Business', icon: 'briefcase', color: '#3B82F6' },
-    { key: 'chill', label: '\uD83C\uDF0A Chill', icon: 'waves', color: '#10B981' },
+    { key: 'corporate', label: '💼 Business', icon: 'briefcase', color: '#3B82F6' },
+    { key: 'chill', label: '🌊 Chill', icon: 'waves', color: '#10B981' },
     { key: 'energy', label: '⚡ Energy', icon: 'zap', color: '#F59E0B' },
-    { key: 'lofi', label: '\uD83C\uDFA7 Lo-Fi', icon: 'headphones', color: '#6B7280' },
+    { key: 'lofi', label: '🎧 Lo-Fi', icon: 'headphones', color: '#6B7280' },
 ];
 
 const MOOD_FILTERS = [
-    { key: 'energetic', label: t('trendingMusicLibrary.energique'), emoji: '\uD83D\uDD25' },
-    { key: 'happy', label: 'Joyeux', emoji: '\uD83D\uDE0A' },
-    { key: 'romantic', label: 'Romantique', emoji: '\uD83D\uDC95' },
-    { key: 'sad', label: 'Triste', emoji: '\uD83D\uDE22' },
-    { key: 'chill', label: t('trendingMusicLibrary.detendu'), emoji: '\uD83D\uDE0C' },
-    { key: 'dramatic', label: 'Dramatique', emoji: '\uD83C\uDFAD' },
+    { key: 'energetic', label: t('trendingMusicLibrary.energique'), emoji: '🔥' },
+    { key: 'happy', label: 'Joyeux', emoji: '😊' },
+    { key: 'romantic', label: 'Romantique', emoji: '💕' },
+    { key: 'sad', label: 'Triste', emoji: '😢' },
+    { key: 'chill', label: t('trendingMusicLibrary.detendu'), emoji: '😌' },
+    { key: 'dramatic', label: 'Dramatique', emoji: '🎭' },
 ];
 
 const GENRE_FILTERS = [
@@ -236,10 +236,10 @@ const [trendingTracks, setTrendingTracks] = useState<MusicTrack[]>([]);
                 <View style={styles.trackDetails}>
                     <View style={styles.trackStats}>
                         <Text style={styles.trackStat}>
-                            \uD83C\uDFB5 {track.genre}
+                            🎵 {track.genre}
                         </Text>
                         <Text style={styles.trackStat}>
-                            \uD83D\uDE0A {track.mood}
+                            😊 {track.mood}
                         </Text>
                         {track.tempo_bpm && (
                             <Text style={styles.trackStat}>
@@ -256,7 +256,7 @@ const [trendingTracks, setTrendingTracks] = useState<MusicTrack[]>([]);
                             ]} />
                         </View>
                         <Text style={styles.popularityText}>
-                            \uD83D\uDD25 {Math.round(track.trending_score * 100)}%
+                            🔥 {Math.round(track.trending_score * 100)}%
                         </Text>
                     </View>
                 </View>
@@ -290,7 +290,7 @@ const [trendingTracks, setTrendingTracks] = useState<MusicTrack[]>([]);
                             <SafeIcon name="play" size={16} color={modernColors.primary} />
                         </TouchableOpacity>
                         <Text style={styles.licenseType}>
-                            {track.license_type === 'royalty_free' ? '\uD83C\uDD93' : '\uD83D\uDC8E'}
+                            {track.license_type === 'royalty_free' ? '🆓' : '💎'}
                         </Text>
                     </View>
                 </View>
@@ -314,7 +314,7 @@ const [trendingTracks, setTrendingTracks] = useState<MusicTrack[]>([]);
                     </Text>
                     <View style={styles.playlistStats}>
                         <Text style={styles.playlistStat}>
-                            \uD83C\uDFB5 {playlist.track_count} titres
+                            🎵 {playlist.track_count} titres
                         </Text>
                         <Text style={styles.playlistStat}>
                             ⏱️ {playlist.total_duration_minutes} min

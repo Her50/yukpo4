@@ -636,10 +636,10 @@ const SpecializedServicesHubScreen: React.FC = () => {
 
             {/* Suggestions intelligentes */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>\uD83D\uDCA1 Suggestions</Text>
+                <Text style={styles.sectionTitle}>💡 Suggestions</Text>
                 <NativeCard style={styles.suggestionCard}>
                     <Text style={styles.suggestionText}>
-                        \uD83D\uDCCD Pharmacie de garde près de vous
+                        📍 Pharmacie de garde près de vous
                     </Text>
                 </NativeCard>
             </View>

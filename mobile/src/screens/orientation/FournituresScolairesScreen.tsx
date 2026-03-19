@@ -82,8 +82,8 @@ const FournituresScolairesScreen: React.FC = () => {
             <Text style={styles.cardTitle}>
                 {item.nom_etablissement || `Établissement #${item.etablissement_id}`}
             </Text>
-            <Text style={styles.cardSubtitle}>\uD83D\uDCDA Niveau: {item.niveau}</Text>
-            <Text style={styles.cardSubtitle}>\uD83D\uDCC5 Année: {item.annee_scolaire}</Text>
+            <Text style={styles.cardSubtitle}>📚 Niveau: {item.niveau}</Text>
+            <Text style={styles.cardSubtitle}>📅 Année: {item.annee_scolaire}</Text>
             {item.liste_fournitures && typeof item.liste_fournitures === 'object' && (
                 <Text style={styles.cardSubtitle}>
                     {Object.keys(item.liste_fournitures).length} catégorie(s)
@@ -94,7 +94,7 @@ const FournituresScolairesScreen: React.FC = () => {
                     style={styles.downloadButton}
                     onPress={() => handleDownload(item.url_liste!)}
                 >
-                    <Text style={styles.downloadButtonText}>\uD83D\uDCE5 Télécharger PDF</Text>
+                    <Text style={styles.downloadButtonText}>📥 Télécharger PDF</Text>
                 </TouchableOpacity>
             ) : (
                 <View style={styles.infoBox}>

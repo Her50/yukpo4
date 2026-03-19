@@ -4,7 +4,7 @@
  */
 
 import { registerRootComponent } from 'expo';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import 'react-native-gesture-handler';
 
 // ✅ CRITIQUE: Initialiser AsyncStorage de manière BLOQUANTE au démarrage

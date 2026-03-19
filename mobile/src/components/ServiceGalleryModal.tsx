@@ -1,4 +1,4 @@
-// \uD83D\uDDBC️ Modal galerie service - Affiche tous les médias d'un service (branding, produits, réalisations)
+// 🖼️ Modal galerie service - Affiche tous les médias d'un service (branding, produits, réalisations)
 import { Video as ExpoVideo, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
@@ -393,10 +393,10 @@ const [filter, setFilter] = useState<'all' | 'images' | 'videos'>('all');
                                 onPress={async () => {
                                     try {
                                         const serviceName = service?.titre || service?.data?.titre_service?.valeur || 'Yukpo';
-                                        const emoji = selectedMedia.type === 'video' ? '\uD83C\uDFAC' : '\uD83D\uDCF8';
+                                        const emoji = selectedMedia.type === 'video' ? '🎬' : '📸';
                                         const typeLabel = selectedMedia.type === 'video' ? t('serviceGalleryModal.video') : 'photo';
                                         let shareText = `${emoji} ${selectedMedia.label || typeLabel} — ${serviceName}`;
-                                        shareText += `\n\n\uD83D\uDD17 Voir sur Yukpo:\n${selectedMedia.url}`;
+                                        shareText += `\n\n🔗 Voir sur Yukpo:\n${selectedMedia.url}`;
                                         await Share.share({ message: shareText, url: selectedMedia.url, title: `${selectedMedia.label || typeLabel} — ${serviceName}` });
                                     } catch (e) { console.warn('[ServiceGalleryModal] Share error:', e); }
                                 }}

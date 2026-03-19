@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 // Composant pour charger les providers lourds de manière progressive
 // après que l'écran principal soit déjà affiché
 import React, { useEffect, useState } from 'react';
@@ -63,13 +63,13 @@ const DeferredProviders: React.FC<DeferredProvidersProps> = ({ children }) => {
   useEffect(() => {
     // Phase 1: Attendre que l'écran soit monté (500ms)
     const locationTimer = setTimeout(() => {
-      console.log('[DeferredProviders] \uD83D\uDCCD Chargement LocationProvider...');
+      console.log('[DeferredProviders] 📍 Chargement LocationProvider...');
       setLocationReady(true);
     }, 500);
 
     // Phase 2: Charger les stats IA (1000ms)
     const statsTimer = setTimeout(() => {
-      console.log('[DeferredProviders] \uD83D\uDCCA Chargement GlobalIAStatsProvider...');
+      console.log('[DeferredProviders] 📊 Chargement GlobalIAStatsProvider...');
       setStatsReady(true);
     }, 1000);
 
@@ -97,7 +97,7 @@ const DeferredProviders: React.FC<DeferredProvidersProps> = ({ children }) => {
 
   // ✅ ÉTAPE 2: LocationProvider chargé (+500ms) avec protection
   if (!statsReady) {
-    console.log('[DeferredProviders] \uD83D\uDCCD LocationProvider actif');
+    console.log('[DeferredProviders] 📍 LocationProvider actif');
     return (
       <SafeLocationProvider>
         {children}

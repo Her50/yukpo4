@@ -121,7 +121,7 @@ const [mtnEnabled, setMtnEnabled] = useState(false);
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>\uD83D\uDCB3 Modes de paiement</Text>
+            <Text style={styles.title}>💳 Modes de paiement</Text>
             <Text style={styles.subtitle}>
                 Renseignez vos numéros pour recevoir les paiements de vos clients. Vous pouvez activer plusieurs modes.
             </Text>
@@ -149,7 +149,7 @@ const [mtnEnabled, setMtnEnabled] = useState(false);
             <View style={[styles.providerSection, mtnEnabled && styles.providerSectionActive]}>
                 <View style={styles.providerHeader}>
                     <View style={styles.providerTitleRow}>
-                        <Text style={styles.providerEmoji}>\uD83D\uDCF1</Text>
+                        <Text style={styles.providerEmoji}>📱</Text>
                         <Text style={[styles.providerTitle, mtnEnabled && styles.providerTitleActive]}>MTN Mobile Money</Text>
                     </View>
                     <Switch
@@ -195,7 +195,7 @@ const [mtnEnabled, setMtnEnabled] = useState(false);
             <View style={[styles.providerSection, orangeEnabled && styles.providerSectionActiveOrange]}>
                 <View style={styles.providerHeader}>
                     <View style={styles.providerTitleRow}>
-                        <Text style={styles.providerEmoji}>\uD83D\uDCF1</Text>
+                        <Text style={styles.providerEmoji}>📱</Text>
                         <Text style={[styles.providerTitle, orangeEnabled && styles.providerTitleActiveOrange]}>Orange Money</Text>
                     </View>
                     <Switch
@@ -241,7 +241,7 @@ const [mtnEnabled, setMtnEnabled] = useState(false);
             <View style={[styles.providerSection, showBankCard && styles.providerSectionActiveCard]}>
                 <View style={styles.providerHeader}>
                     <View style={styles.providerTitleRow}>
-                        <Text style={styles.providerEmoji}>\uD83D\uDCB3</Text>
+                        <Text style={styles.providerEmoji}>💳</Text>
                         <Text style={[styles.providerTitle, showBankCard && styles.providerTitleActiveCard]}>{t('paymentMethodSelector.carteBancaire')}</Text>
                     </View>
                     <Switch

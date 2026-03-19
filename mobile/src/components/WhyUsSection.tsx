@@ -24,7 +24,7 @@ const WhyUsSection: React.FC = () => {
 
   const features: Feature[] = [
     {
-      icon: "\uD83C\uDFAF",
+      icon: "🎯",
       title: t('whyUsSection.connexionIntelligente'),
       desc: (
         <>
@@ -40,7 +40,7 @@ const WhyUsSection: React.FC = () => {
       link: user ? "Dashboard" : "Login",
     },
     {
-      icon: "\uD83C\uDF99️",
+      icon: "🎙️",
       title: "Interaction vocale",
       desc: (
         <>
@@ -50,7 +50,7 @@ const WhyUsSection: React.FC = () => {
       link: "Home", // TODO: Créer écran VoiceAssistant si nécessaire
     },
     {
-      icon: "\uD83D\uDEE0️",
+      icon: "🛠️",
       title: t('whyUsSection.creationDeService1clic'),
       desc: t('whyUsSection.creezUnServiceEnQuelquesSecondes'),
       link: user ? "FormulaireYukpoIntelligent" : "Register",

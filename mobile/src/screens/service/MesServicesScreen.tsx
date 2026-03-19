@@ -202,7 +202,7 @@ const MesServicesScreen: React.FC = () => {
                                 {service.products && service.products.length > 0 && (
                                     <View style={styles.productsContainer}>
                                         <Text style={styles.productsTitle}>
-                                            \uD83D\uDCE6 Produits ({service.products.length})
+                                            📦 Produits ({service.products.length})
                                         </Text>
                                         {service.products.map((product: Product, index: number) => (
                                             <View key={index} style={styles.productItem}>

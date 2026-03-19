@@ -118,7 +118,7 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({
         <TouchableOpacity style={styles.card} onPress={handlePress}>
             <View style={styles.header}>
                 <View style={styles.iconContainer}>
-                    <Text style={styles.icon}>\uD83D\uDE8C</Text>
+                    <Text style={styles.icon}>🚌</Text>
                 </View>
                 <View style={styles.titleContainer}>
                     <Text style={styles.title}>{agency.nom_agence}</Text>

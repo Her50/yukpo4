@@ -67,9 +67,9 @@ const Footer: React.FC = () => {
         {/* Bloc 3 : Contact rapide */}
         <View style={styles.block}>
           <Text style={styles.blockTitle}>Contact</Text>
-          <Text style={styles.contactText}>\uD83D\uDCDE +237 6 90 00 00 00</Text>
-          <Text style={styles.contactText}>\uD83D\uDCE7 contact@yukpo.app</Text>
-          <Text style={styles.contactText}>\uD83D\uDCAC WhatsApp : +237 6 70 00 00 00</Text>
+          <Text style={styles.contactText}>📞 +237 6 90 00 00 00</Text>
+          <Text style={styles.contactText}>📧 contact@yukpo.app</Text>
+          <Text style={styles.contactText}>💬 WhatsApp : +237 6 70 00 00 00</Text>
         </View>
       </View>
     </View>

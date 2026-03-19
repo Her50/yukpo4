@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import * as React from "react";
 import { useEffect } from 'react';
 import { Text } from 'react-native';
@@ -16,7 +16,7 @@ const GPSManager: React.FC<GPSManagerProps> = ({ children }) => {
   // Effet pour démarrer le tracking quand l'utilisateur se connecte
   useEffect(() => {
     if (user && !isTracking) {
-      console.log('\uD83D\uDC64 Utilisateur connecté, démarrage du tracking GPS...');
+      console.log('👤 Utilisateur connecté, démarrage du tracking GPS...');
       startTracking();
     }
   }, [user, isTracking, startTracking]);

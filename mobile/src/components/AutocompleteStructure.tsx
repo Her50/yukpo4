@@ -79,7 +79,7 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
             if (cached) {
                 structures = JSON.parse(cached) as string[];
                 setAllStructures(structures);
-                console.log(`\uD83D\uDCCB [AutocompleteStructure] ${structures.length} structures chargées du cache`);
+                console.log(`📋 [AutocompleteStructure] ${structures.length} structures chargées du cache`);
             }
 
             // 2. Charger depuis la base de données (source de vérité)
@@ -96,7 +96,7 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
                     await SafeStorage.setItem(storageKey, JSON.stringify(merged));
                     setAllStructures(merged);
 
-                    console.log(`\uD83C\uDF10 [AutocompleteStructure] ${dbStructures.length} structures chargées de la DB, ${merged.length} au total`);
+                    console.log(`🌐 [AutocompleteStructure] ${dbStructures.length} structures chargées de la DB, ${merged.length} au total`);
                 }
             } catch (dbError) {
                 // Si erreur DB, on utilise le cache local uniquement
@@ -120,7 +120,7 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
                 // Si le champ est vide et qu'on doit auto-charger, pré-remplir
                 if (autoLoadLastUsed && !value) {
                     onChangeText(lastUsed);
-                    console.log(`\uD83D\uDCA1 [AutocompleteStructure] Dernière valeur chargée: ${lastUsed}`);
+                    console.log(`💡 [AutocompleteStructure] Dernière valeur chargée: ${lastUsed}`);
                 }
             }
         } catch (error) {
@@ -169,7 +169,7 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
                     });
 
                     if (response.success) {
-                        console.log(`\uD83C\uDF10 [AutocompleteStructure] Structure sauvegardée en DB: ${normalized}`);
+                        console.log(`🌐 [AutocompleteStructure] Structure sauvegardée en DB: ${normalized}`);
                     }
                 } catch (dbError) {
                     // Erreur DB non bloquante - la structure reste dans le cache local
@@ -358,7 +358,7 @@ const AutocompleteStructure: React.FC<AutocompleteStructureProps> = ({
             {/* Hint */}
             {!showSuggestions && allStructures.length > 0 && (
                 <Text style={styles.hint}>
-                    \uD83D\uDCA1 {allStructures.length} {getTypeLabel().toLowerCase()}(s) enregistré(s).
+                    💡 {allStructures.length} {getTypeLabel().toLowerCase()}(s) enregistré(s).
                     Tapez pour voir les suggestions.
                 </Text>
             )}

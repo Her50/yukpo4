@@ -136,7 +136,7 @@ const NegotiatedPriceModal: React.FC<NegotiatedPriceModalProps> = ({
                 expires_in_hours: 24,
             });
 
-            console.log('[NegotiatedPriceModal] \uD83D\uDCE4 Envoi proposition:', {
+            console.log('[NegotiatedPriceModal] 📤 Envoi proposition:', {
                 conversationId: conversationIdStr,
                 serviceId,
                 productIndex,

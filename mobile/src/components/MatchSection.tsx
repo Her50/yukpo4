@@ -7,7 +7,7 @@ import { useLanguageSafe } from '../contexts/LanguageContext';
 function MatchSection() {
   return (
     <section id="match" style={styles.sectionContainer}>
-      <Text style="text-2xl font-bold mb-4">\uD83C\uDFAF Mise en relation intelligente</Text>
+      <Text style="text-2xl font-bold mb-4">🎯 Mise en relation intelligente</Text>
       <Text style="text-gray-700 text-sm">
         Exprimez un besoin (texte ou vocal), Yukpo vous connecte immédiatement au bon prestataire.
       </Text>

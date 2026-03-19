@@ -61,7 +61,7 @@ const SoldeDetailScreen: React.FC = () => {
   // ✅ NOUVEAU: Rafraîchir les données quand on revient sur l'écran
   useFocusEffect(
     React.useCallback(() => {
-      console.log('[SoldeDetailScreen] \uD83D\uDD04 Écran focus - Rafraîchissement des données...');
+      console.log('[SoldeDetailScreen] 🔄 Écran focus - Rafraîchissement des données...');
       if (user?.id) {
         // Rafraîchir le solde utilisateur
         refreshUser().catch(err => {
@@ -149,14 +149,14 @@ const SoldeDetailScreen: React.FC = () => {
   const getPaymentMethodIcon = (method: string) => {
     switch (method.toLowerCase()) {
       case 'orange_money':
-        return '\uD83D\uDFE0';
+        return '🟠';
       case 'mtn_money':
-        return '\uD83D\uDFE1';
+        return '🟡';
       case 'visa_card':
       case 'mastercard':
-        return '\uD83D\uDCB3';
+        return '💳';
       default:
-        return '\uD83D\uDCB0';
+        return '💰';
     }
   };
 
@@ -209,7 +209,7 @@ const SoldeDetailScreen: React.FC = () => {
         style={[styles.tabButton, selectedTab === 'consumption' && styles.tabButtonActive]}
         onPress={() => setSelectedTab('consumption')}
       >
-        <Text style={styles.tabIcon}>\uD83D\uDCCA</Text>
+        <Text style={styles.tabIcon}>📊</Text>
         <Text style={[styles.tabText, selectedTab === 'consumption' && styles.tabTextActive]}>
           Consommation
         </Text>
@@ -218,7 +218,7 @@ const SoldeDetailScreen: React.FC = () => {
         style={[styles.tabButton, selectedTab === 'payments' && styles.tabButtonActive]}
         onPress={() => setSelectedTab('payments')}
       >
-        <Text style={styles.tabIcon}>\uD83D\uDCB3</Text>
+        <Text style={styles.tabIcon}>💳</Text>
         <Text style={[styles.tabText, selectedTab === 'payments' && styles.tabTextActive]}>
           Paiements
         </Text>
@@ -231,17 +231,17 @@ const SoldeDetailScreen: React.FC = () => {
       {/* Statistiques */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>\uD83D\uDCB0</Text>
+          <Text style={styles.statIcon}>💰</Text>
           <Text style={styles.statValue}>{formatCurrency(totalConsumed)}</Text>
           <Text style={styles.statLabel}>Total consommé</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>\uD83D\uDCC8</Text>
+          <Text style={styles.statIcon}>📈</Text>
           <Text style={styles.statValue}>{logs.length}</Text>
           <Text style={styles.statLabel}>Utilisations</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>\uD83D\uDCCA</Text>
+          <Text style={styles.statIcon}>📊</Text>
           <Text style={styles.statValue}>
             {logs.length > 0 ? formatCurrency(totalConsumed / logs.length) : '0 FCFA'}
           </Text>
@@ -261,7 +261,7 @@ const SoldeDetailScreen: React.FC = () => {
           logs.map((log, index) => (
             <View key={index} style={styles.logItem}>
               <View style={styles.logIcon}>
-                <Text style={styles.logIconText}>\uD83D\uDD25</Text>
+                <Text style={styles.logIconText}>🔥</Text>
               </View>
               <View style={styles.logContent}>
                 <Text style={styles.logTitle}>{log.usage_type}</Text>
@@ -280,7 +280,7 @@ const SoldeDetailScreen: React.FC = () => {
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>\uD83D\uDCED</Text>
+            <Text style={styles.emptyIcon}>📭</Text>
             <Text style={styles.emptyText}>Aucune utilisation <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text> enregistrée</Text>
           </View>
         )}
@@ -293,17 +293,17 @@ const SoldeDetailScreen: React.FC = () => {
       {/* Statistiques */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>\uD83D\uDCB3</Text>
+          <Text style={styles.statIcon}>💳</Text>
           <Text style={styles.statValue}>{formatCurrency(totalPaid)}</Text>
           <Text style={styles.statLabel}>Total payé</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>\uD83E\uDE99</Text>
+          <Text style={styles.statIcon}>🪙</Text>
           <Text style={styles.statValue}>{totalTokensAdded.toLocaleString()}</Text>
           <Text style={styles.statLabel}>Tokens ajoutés</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>\uD83D\uDCDD</Text>
+          <Text style={styles.statIcon}>📝</Text>
           <Text style={styles.statValue}>{paymentLogs.length}</Text>
           <Text style={styles.statLabel}>Transactions</Text>
         </View>
@@ -343,7 +343,7 @@ const SoldeDetailScreen: React.FC = () => {
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>\uD83D\uDCB3</Text>
+            <Text style={styles.emptyIcon}>💳</Text>
             <Text style={styles.emptyText}>Aucun paiement enregistré</Text>
           </View>
         )}
@@ -381,7 +381,7 @@ const SoldeDetailScreen: React.FC = () => {
             style={styles.rechargeButton}
             onPress={() => (navigation as any).navigate('RechargeTokens')}
           >
-            <Text style={styles.rechargeIcon}>\uD83D\uDCB3</Text>
+            <Text style={styles.rechargeIcon}>💳</Text>
             <Text style={styles.rechargeText}>Recharger tokens</Text>
             <Text style={styles.rechargeArrow}>→</Text>
           </TouchableOpacity>

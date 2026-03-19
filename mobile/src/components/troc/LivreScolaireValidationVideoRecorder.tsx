@@ -199,7 +199,7 @@ const LivreScolaireValidationVideoRecorder: React.FC<LivreScolaireValidationVide
                     {/* Instructions */}
                     <View style={styles.instructionsContainer}>
                         <Text style={styles.instructionsTitle}>
-                            \uD83D\uDCDA Instructions de validation
+                            📚 Instructions de validation
                         </Text>
                         <Text style={styles.instructionsText}>
                             • Montrez bien la couverture du livre{'\n'}

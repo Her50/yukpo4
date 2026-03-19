@@ -137,14 +137,14 @@ const LivreScolaireListScreen: React.FC = () => {
                         )}
                         <View style={styles.livreMeta}>
                             <Text style={styles.livreMetaText}>
-                                \uD83D\uDCDA {livre.classe_actuelle} → {livre.classe_souhaitee}
+                                📚 {livre.classe_actuelle} → {livre.classe_souhaitee}
                             </Text>
                             <Text style={styles.livreMetaText}>
-                                \uD83D\uDCD6 {livre.matiere}
+                                📖 {livre.matiere}
                             </Text>
                             {livre.niveau && (
                                 <Text style={styles.livreMetaText}>
-                                    \uD83C\uDF93 {livre.niveau}
+                                    🎓 {livre.niveau}
                                 </Text>
                             )}
                         </View>
@@ -162,7 +162,7 @@ const LivreScolaireListScreen: React.FC = () => {
                             </View>
                             {item.distance_km && (
                                 <Text style={styles.distanceText}>
-                                    \uD83D\uDCCD {item.distance_km.toFixed(1)} km
+                                    📍 {item.distance_km.toFixed(1)} km
                                 </Text>
                             )}
                         </View>

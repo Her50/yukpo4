@@ -549,7 +549,7 @@ const LaboratoireHomeScreen: React.FC = () => {
                                 )}
                                 {lab.distance_km !== undefined && (
                                     <Text style={styles.distanceText}>
-                                        \uD83D\uDCCD {lab.distance_km.toFixed(1)} km
+                                        📍 {lab.distance_km.toFixed(1)} km
                                     </Text>
                                 )}
                                 {/* Actions rapides */}
@@ -776,7 +776,7 @@ const AIModal: React.FC<AIModalProps> = ({
 
                                     {!pathologyQuery.trim() && (
                                         <Text style={styles.pathologyHint}>
-                                            \uD83D\uDCA1 Exemples : "Douleurs thoraciques", "Fièvre persistante", "Troubles digestifs"
+                                            💡 Exemples : "Douleurs thoraciques", "Fièvre persistante", "Troubles digestifs"
                                         </Text>
                                     )}
                                 </View>

@@ -52,9 +52,9 @@ const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, o
     };
 
     const getStatusIcon = (statut: string) => {
-        if (statut.includes('vendre')) return '\uD83D\uDCB0';
-        if (statut.includes('louer')) return '\uD83C\uDFE0';
-        return '\uD83C\uDFE1';
+        if (statut.includes('vendre')) return '💰';
+        if (statut.includes('louer')) return '🏠';
+        return '🏡';
     };
 
     const photos = property.photos || [];
@@ -128,7 +128,7 @@ const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, o
                     </View>
                     {property.is_available_now && (
                         <View style={styles.badge}>
-                            <Text style={styles.badgeText}>\uD83D\uDFE2 DISPONIBLE</Text>
+                            <Text style={styles.badgeText}>🟢 DISPONIBLE</Text>
                         </View>
                     )}
                 </View>

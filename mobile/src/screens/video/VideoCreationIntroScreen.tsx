@@ -145,7 +145,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                 // Le timeout total peut être jusqu'à 60s (4 tentatives × 15s) ce qui est acceptable
                 const response = await apiGet('/api/prestataire/services');
 
-                console.log('[VideoCreationIntroScreen] \uD83D\uDD0D Réponse API chargement services:', {
+                console.log('[VideoCreationIntroScreen] 🔍 Réponse API chargement services:', {
                     success: response.success,
                     hasData: !!response.data,
                     isArray: Array.isArray(response.data),
@@ -165,7 +165,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                             totalProducts += produits.length;
                         }
                     });
-                    console.log('[VideoCreationIntroScreen] \uD83D\uDCCA Total produits détectés:', totalProducts);
+                    console.log('[VideoCreationIntroScreen] 📊 Total produits détectés:', totalProducts);
 
                     if (totalProducts === 0) {
                         console.warn('[VideoCreationIntroScreen] ⚠️ Aucun produit trouvé dans les services chargés');
@@ -181,7 +181,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                         );
                     } else if (response.data && !Array.isArray(response.data)) {
                         // ✅ CORRECTION: Essayer d'extraire les données d'une structure imbriquée
-                        console.log('[VideoCreationIntroScreen] \uD83D\uDD0D Tentative extraction données depuis structure imbriquée...');
+                        console.log('[VideoCreationIntroScreen] 🔍 Tentative extraction données depuis structure imbriquée...');
                         let extractedData = null;
                         if (response.data && typeof response.data === 'object') {
                             if (Array.isArray((response.data as any).data)) {
@@ -353,7 +353,7 @@ const VideoCreationIntroScreen: React.FC = () => {
     };
 
     const handleStart = async () => {
-        console.log('[VideoCreationIntroScreen] \uD83C\uDFAC Démarrage création vidéo', params);
+        console.log('[VideoCreationIntroScreen] 🎬 Démarrage création vidéo', params);
 
         // ✅ UNIFIÉ: Si params déjà présents → Ouvrir directement le modal
         if (params.serviceId && params.productIndex !== undefined) {
@@ -375,7 +375,7 @@ const VideoCreationIntroScreen: React.FC = () => {
         if (userServices.length > 0) {
             const allProducts: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string; productImage?: string | null }> = [];
 
-            console.log('[VideoCreationIntroScreen] \uD83D\uDD0D Analyse des services:', {
+            console.log('[VideoCreationIntroScreen] 🔍 Analyse des services:', {
                 servicesCount: userServices.length,
                 services: userServices.map(s => ({
                     id: s.id || s.service_id,
@@ -403,7 +403,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                         service.data?.data?.produits ||
                         (service.data && typeof service.data === 'object' && (service.data as any).produits);
 
-                    console.log('[VideoCreationIntroScreen] \uD83D\uDD0D Service', serviceId, 'produits raw:', {
+                    console.log('[VideoCreationIntroScreen] 🔍 Service', serviceId, 'produits raw:', {
                         type: typeof produitsRaw,
                         isArray: Array.isArray(produitsRaw),
                         hasValue: !!produitsRaw,
@@ -414,7 +414,7 @@ const VideoCreationIntroScreen: React.FC = () => {
 
                     const produits = normalizeServiceProducts(produitsRaw);
 
-                    console.log('[VideoCreationIntroScreen] \uD83D\uDD0D Service', serviceId, 'produits normalisés:', {
+                    console.log('[VideoCreationIntroScreen] 🔍 Service', serviceId, 'produits normalisés:', {
                         type: typeof produits,
                         isArray: Array.isArray(produits),
                         length: Array.isArray(produits) ? produits.length : 0
@@ -496,7 +496,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                 }
             });
 
-            console.log('[VideoCreationIntroScreen] \uD83D\uDCCA Total produits extraits:', allProducts.length);
+            console.log('[VideoCreationIntroScreen] 📊 Total produits extraits:', allProducts.length);
 
             if (allProducts.length === 0) {
                 Alert.alert(
@@ -549,13 +549,13 @@ const VideoCreationIntroScreen: React.FC = () => {
     };
 
     const handleShowExample = () => {
-        console.log('[VideoCreationIntroScreen] \uD83D\uDCFA Affichage d\'un exemple vidéo');
+        console.log('[VideoCreationIntroScreen] 📺 Affichage d\'un exemple vidéo');
         // ✅ PHASE 2: Afficher le modal avec exemple vidéo réel
         setShowExampleModal(true);
     };
 
     const handleShowTutorial = () => {
-        console.log('[VideoCreationIntroScreen] \uD83D\uDCDA Affichage du tutoriel manuel');
+        console.log('[VideoCreationIntroScreen] 📚 Affichage du tutoriel manuel');
         setShowTutorial(true);
     };
 
@@ -632,7 +632,7 @@ const VideoCreationIntroScreen: React.FC = () => {
 
                 <Animated.View style={[styles.benefits, contentAnimatedStyle]}>
                     <View style={styles.benefitItem}>
-                        <Text style={styles.benefitIcon}>\uD83C\uDFAC</Text>
+                        <Text style={styles.benefitIcon}>🎬</Text>
                         <Text style={styles.benefitText}>{t('video.intro.benefit.timeline')}</Text>
                     </View>
                     <View style={styles.benefitItem}>
@@ -640,7 +640,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                         <Text style={styles.benefitText}>{t('video.intro.benefit.broll')}</Text>
                     </View>
                     <View style={styles.benefitItem}>
-                        <Text style={styles.benefitIcon}>\uD83D\uDD0A</Text>
+                        <Text style={styles.benefitIcon}>🔊</Text>
                         <Text style={styles.benefitText}>{t('video.intro.benefit.audio')}</Text>
                     </View>
                 </Animated.View>

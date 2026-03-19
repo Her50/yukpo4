@@ -143,11 +143,11 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
             <View style={styles.header}>
                 <View style={styles.statsContainer}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statIcon}>\uD83D\uDC41️</Text>
+                        <Text style={styles.statIcon}>👁️</Text>
                         <Text style={styles.statValue}>{formatNumber(normalizedService.views || 0)}</Text>
                     </View>
                     <View style={styles.statItem}>
-                        <Text style={styles.statIcon}>\uD83D\uDCAC</Text>
+                        <Text style={styles.statIcon}>💬</Text>
                         <Text style={styles.statValue}>{formatNumber(normalizedService.comments || 0)}</Text>
                     </View>
                     <View style={styles.statItem}>
@@ -161,7 +161,7 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
                     )}
                 </View>
                 <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-                    <Text style={styles.shareIcon}>\uD83D\uDCE4</Text>
+                    <Text style={styles.shareIcon}>📤</Text>
                 </TouchableOpacity>
             </View>
 
@@ -196,7 +196,7 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
 
             {/* Localisation */}
             <View style={styles.locationContainer}>
-                <Text style={styles.locationIcon}>\uD83D\uDCCD</Text>
+                <Text style={styles.locationIcon}>📍</Text>
                 <Text style={styles.locationText}>{normalizedService.localisation}</Text>
                 <TouchableOpacity style={styles.mapButton}>
                     <Text style={styles.mapButtonText}>Carte</Text>
@@ -206,7 +206,7 @@ const ServiceResultCard: React.FC<ServiceResultCardProps> = ({
             {/* Actions principales */}
             <View style={styles.actionsContainer}>
                 <TouchableOpacity style={styles.primaryButton} onPress={() => handleContact('message')}>
-                    <Text style={styles.primaryButtonIcon}>\uD83D\uDCAC</Text>
+                    <Text style={styles.primaryButtonIcon}>💬</Text>
                     <Text style={styles.primaryButtonText}>{t('serviceResultCard.demarrerUneConversation')}</Text>
                 </TouchableOpacity>
             </View>

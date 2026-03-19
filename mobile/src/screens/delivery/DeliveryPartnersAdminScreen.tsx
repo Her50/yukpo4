@@ -125,7 +125,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
             // Le backend retourne probablement { partners: [...] } ou directement un tableau
             // Donc response.data devrait contenir { partners: [...] } ou directement un tableau
 
-            console.log('[DeliveryPartnersAdminScreen] \uD83D\uDD0D Réponse API complète:', JSON.stringify(response, null, 2));
+            console.log('[DeliveryPartnersAdminScreen] 🔍 Réponse API complète:', JSON.stringify(response, null, 2));
 
             let partnersList: PendingPartner[] = [];
 
@@ -393,11 +393,11 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                             <Text style={styles.partnerDescription}>{partner.email}</Text>
                                             {partner.partner_type && (
                                                 <Text style={styles.partnerMetaText}>
-                                                    \uD83C\uDFF7️ Type: {partner.partner_type}
+                                                    🏷️ Type: {partner.partner_type}
                                                 </Text>
                                             )}
                                             <Text style={styles.partnerMetaText}>
-                                                \uD83D\uDCC5 Inscrit: {formatDate(partner.created_at)}
+                                                📅 Inscrit: {formatDate(partner.created_at)}
                                             </Text>
                                         </View>
                                         <View style={styles.statusBadgePending}>
@@ -464,17 +464,17 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                         <View style={styles.partnerMeta}>
                                             {partner.partner_type && (
                                                 <Text style={styles.partnerMetaText}>
-                                                    \uD83C\uDFF7️ Type: {partner.partner_type}
+                                                    🏷️ Type: {partner.partner_type}
                                                 </Text>
                                             )}
                                             {partner.city && partner.country && (
                                                 <Text style={styles.partnerMetaText}>
-                                                    \uD83D\uDCCD {partner.city}, {partner.country}
+                                                    📍 {partner.city}, {partner.country}
                                                 </Text>
                                             )}
                                             {partner.contact_phone && (
                                                 <Text style={styles.partnerMetaText}>
-                                                    \uD83D\uDCDE {partner.contact_phone}
+                                                    📞 {partner.contact_phone}
                                                 </Text>
                                             )}
                                         </View>

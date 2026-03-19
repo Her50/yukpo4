@@ -46,7 +46,7 @@ const ResponsiveSidebar: React.FC = () => {
         <View style={styles.overlay} onTouchEnd={() => setOpen(false)}>
           <View style={styles.sidebar}>
             <View style={styles.header}>
-              <Text style={styles.headerText}>\uD83C\uDFAF Admin Panel</Text>
+              <Text style={styles.headerText}>🎯 Admin Panel</Text>
             </View>
             <View style={styles.nav}>
               {links.map((link) => (

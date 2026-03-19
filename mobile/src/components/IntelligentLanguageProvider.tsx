@@ -1,4 +1,4 @@
-// \uD83C\uDF0D Fournisseur intelligent de gestion des langues
+// 🌍 Fournisseur intelligent de gestion des langues
 import * as React from "react";
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
@@ -48,7 +48,7 @@ const [isInitialized, setIsInitialized] = useState(false);
                 languageDetectionService.cleanupOldBehaviorData();
 
                 setIsInitialized(true);
-                console.log('\uD83C\uDF0D [IntelligentLanguageProvider] Initialisation terminée');
+                console.log('🌍 [IntelligentLanguageProvider] Initialisation terminée');
             } catch (error) {
                 console.error('❌ [IntelligentLanguageProvider] Erreur initialisation:', error);
                 setIsInitialized(true); // Continuer même en cas d'erreur
@@ -94,7 +94,7 @@ const [isInitialized, setIsInitialized] = useState(false);
             try {
                 // En React Native, nous initialisons simplement le service de traduction
                 // sans manipulation DOM
-                console.log('\uD83C\uDF0D [IntelligentLanguageProvider] Service de traduction initialisé pour:', intelligentLanguage.currentLanguage);
+                console.log('🌍 [IntelligentLanguageProvider] Service de traduction initialisé pour:', intelligentLanguage.currentLanguage);
             } catch (error) {
                 console.warn('⚠️ [IntelligentLanguageProvider] Erreur initialisation traduction:', error);
             }
@@ -114,7 +114,7 @@ const [isInitialized, setIsInitialized] = useState(false);
 
         // En React Native, nous pouvons gérer les notifications différemment
         // sans utiliser les APIs web window et CustomEvent
-        console.log('\uD83C\uDF0D [IntelligentLanguageProvider] Gestionnaire de notifications initialisé');
+        console.log('🌍 [IntelligentLanguageProvider] Gestionnaire de notifications initialisé');
 
         // Ici, nous pourrions intégrer avec des services de notifications React Native
         // comme @react-native-async-storage/async-storage ou des services de push notifications

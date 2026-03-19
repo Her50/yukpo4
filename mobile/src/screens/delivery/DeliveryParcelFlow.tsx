@@ -1186,7 +1186,7 @@ const DeliveryParcelFlow: React.FC<DeliveryParcelFlowProps> = ({
                                     setShowTransportModal(false);
                                 }}
                             >
-                                <Text style={styles.transportOptionIcon}>\uD83D\uDEAB</Text>
+                                <Text style={styles.transportOptionIcon}>🚫</Text>
                                 <Text
                                     style={[
                                         styles.transportOptionLabel,

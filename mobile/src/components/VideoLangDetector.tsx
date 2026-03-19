@@ -87,10 +87,10 @@ const VideoLangDetector: React.FC = () => {
       {result && (
         <View style={styles.resultContainer}>
           <Text style={styles.resultText}>
-            \uD83C\uDF0D Langue : <Text style={styles.bold}>{result.language}</Text>
+            🌍 Langue : <Text style={styles.bold}>{result.language}</Text>
           </Text>
           <Text style={styles.resultText}>
-            \uD83D\uDCC4 Texte : {result.transcription}
+            📄 Texte : {result.transcription}
           </Text>
         </View>
       )}

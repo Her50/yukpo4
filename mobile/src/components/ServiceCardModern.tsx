@@ -227,7 +227,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                 )}
                 {service.interactions !== undefined && service.interactions != null && (
                     <View style={styles.infoRow}>
-                        <Text style={styles.infoText}>\uD83D\uDCCA {String(service.interactions || 0)} interactions</Text>
+                        <Text style={styles.infoText}>📊 {String(service.interactions || 0)} interactions</Text>
                     </View>
                 )}
                 {/* Nombre de produits - Cliquable comme statistique */}

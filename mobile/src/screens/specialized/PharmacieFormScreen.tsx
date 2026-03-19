@@ -817,7 +817,7 @@ const PharmacieFormScreen: React.FC = () => {
                         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}><SafeIcon name="arrow-left" size={24} color="#fff" /></TouchableOpacity>
                         <View style={{ flex: 1 }}>
                             <Text style={s.dashTitle}>{pharmacyData?.nom || formData.nom || t('pharmacieForm.maPharmacie')}</Text>
-                            <Text style={s.dashSub}>{stats.total} produit{stats.total !== 1 ? 's' : ''} · {isOnDuty ? '\uD83D\uDFE2 En garde' : '\uD83D\uDD34 Hors garde'}</Text>
+                            <Text style={s.dashSub}>{stats.total} produit{stats.total !== 1 ? 's' : ''} · {isOnDuty ? '🟢 En garde' : '🔴 Hors garde'}</Text>
                         </View>
                     </View>
                     <View style={s.tabsRow}>

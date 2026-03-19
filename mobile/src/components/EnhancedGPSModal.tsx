@@ -191,8 +191,8 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                     <View style={styles.headerLeft}>
                         <Text style={styles.headerTitle}>{title}</Text>
                         <View style={styles.headerIcons}>
-                            <Text style={styles.headerIcon}>\uD83D\uDCCD</Text>
-                            <Text style={styles.headerIcon}>\uD83D\uDDFA️</Text>
+                            <Text style={styles.headerIcon}>📍</Text>
+                            <Text style={styles.headerIcon}>🗺️</Text>
                         </View>
                     </View>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -206,7 +206,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                         {/* Instructions */}
                         <View style={styles.instructionsBox}>
                             <View style={styles.instructionsHeader}>
-                                <Text style={styles.instructionsIcon}>\uD83D\uDCCB</Text>
+                                <Text style={styles.instructionsIcon}>📋</Text>
                                 <Text style={styles.instructionsTitle}>Instructions</Text>
                             </View>
                             <View style={styles.instructionsList}>
@@ -224,9 +224,9 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                             disabled={loading}
                         >
                             <View style={styles.gpsButtonContent}>
-                                <Text style={styles.gpsButtonIcon}>\uD83C\uDFAF</Text>
+                                <Text style={styles.gpsButtonIcon}>🎯</Text>
                                 <Text style={styles.gpsButtonText}>Ma Position GPS</Text>
-                                <Text style={styles.gpsButtonPin}>\uD83D\uDCCD</Text>
+                                <Text style={styles.gpsButtonPin}>📍</Text>
                             </View>
                         </TouchableOpacity>
 
@@ -303,7 +303,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                                 style={styles.clearButton}
                                 onPress={clearSelection}
                             >
-                                <Text style={styles.clearButtonIcon}>\uD83D\uDDD1️</Text>
+                                <Text style={styles.clearButtonIcon}>🗑️</Text>
                                 <Text style={styles.clearButtonText}>Effacer</Text>
                             </TouchableOpacity>
 
@@ -323,7 +323,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                         {/* Contrôles de carte */}
                         <View style={styles.mapControls}>
                             <View style={styles.mapModeIndicator}>
-                                <Text style={styles.mapModeIcon}>\uD83D\uDCCD</Text>
+                                <Text style={styles.mapModeIcon}>📍</Text>
                                 <Text style={styles.mapModeText}>Mode: Point</Text>
                             </View>
 
@@ -340,7 +340,7 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                         {/* Zone de carte simulée */}
                         <View style={styles.mapContainer}>
                             <View style={styles.mapPlaceholder}>
-                                <Text style={styles.mapPlaceholderText}>\uD83D\uDDFA️</Text>
+                                <Text style={styles.mapPlaceholderText}>🗺️</Text>
                                 <Text style={styles.mapPlaceholderTitle}>Vue Satellite</Text>
                                 <Text style={styles.mapPlaceholderSubtitle}>
                                     {selectedLocation
@@ -352,19 +352,19 @@ const EnhancedGPSModal: React.FC<EnhancedGPSModalProps> = ({
                                 {/* Points d'intérêt simulés */}
                                 <View style={styles.poiContainer}>
                                     <View style={styles.poiItem}>
-                                        <Text style={styles.poiIcon}>\uD83C\uDFE2</Text>
+                                        <Text style={styles.poiIcon}>🏢</Text>
                                         <Text style={styles.poiText}>COMPLEXE LE CIEL chez GK</Text>
                                     </View>
                                     <View style={styles.poiItem}>
-                                        <Text style={styles.poiIcon}>\uD83C\uDF7D️</Text>
+                                        <Text style={styles.poiIcon}>🍽️</Text>
                                         <Text style={styles.poiText}>OASIS Boulangerie Superette</Text>
                                     </View>
                                     <View style={styles.poiItem}>
-                                        <Text style={styles.poiIcon}>\uD83D\uDCF1</Text>
+                                        <Text style={styles.poiIcon}>📱</Text>
                                         <Text style={styles.poiText}>YURI TÉLÉCOM Cell phone store</Text>
                                     </View>
                                     <View style={styles.poiItem}>
-                                        <Text style={styles.poiIcon}>\uD83C\uDF38</Text>
+                                        <Text style={styles.poiIcon}>🌸</Text>
                                         <Text style={styles.poiText}>Rond-point TEKAM</Text>
                                     </View>
                                 </View>

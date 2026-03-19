@@ -228,7 +228,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
         <NativeCard style={styles.card}>
             <View style={styles.header}>
                 <Text style={styles.title}>
-                    {proofType === 'pickup' ? t('proofMediaUpload.preuveDeRecuperation') : '\uD83D\uDCE6 Preuve de livraison'}
+                    {proofType === 'pickup' ? t('proofMediaUpload.preuveDeRecuperation') : '📦 Preuve de livraison'}
                 </Text>
                 {isCourier && (
                     <View style={styles.actions}>
@@ -239,7 +239,7 @@ const ProofMediaUpload: React.FC<ProofMediaUploadProps> = ({
                                     'Choisissez une option',
                                     [
                                         { text: t('proofMediaUpload.prendreUnePhotovideo'), onPress: handleTakePhoto },
-                                        { text: '\uD83D\uDDBC️ Choisir depuis la galerie', onPress: handlePickImage },
+                                        { text: '🖼️ Choisir depuis la galerie', onPress: handlePickImage },
                                         { text: t('common.cancel'), style: 'cancel' },
                                     ]
                                 );

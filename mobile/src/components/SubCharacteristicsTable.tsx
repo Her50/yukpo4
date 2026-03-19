@@ -72,9 +72,9 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             const initialRowsFromIA: SubCharacteristicRow[] = [];
 
             // ✅ DEBUG: Logger les données reçues pour diagnostiquer le problème
-            console.log('[SubCharacteristicsTable] \uD83D\uDD0D sousCaracteristiques reçues:', JSON.stringify(sousCaracteristiques, null, 2));
-            console.log('[SubCharacteristicsTable] \uD83D\uDD0D valeur parsée:', valeur);
-            console.log('[SubCharacteristicsTable] \uD83D\uDD0D productLabels:', productLabels);
+            console.log('[SubCharacteristicsTable] 🔍 sousCaracteristiques reçues:', JSON.stringify(sousCaracteristiques, null, 2));
+            console.log('[SubCharacteristicsTable] 🔍 valeur parsée:', valeur);
+            console.log('[SubCharacteristicsTable] 🔍 productLabels:', productLabels);
 
             // ✅ CORRECTION MAJEURE: Ne PAS utiliser la chaîne valeur pour mapper les valeurs aux labels
             // Car la chaîne valeur peut contenir des valeurs incohérentes ou des valeurs supplémentaires
@@ -121,12 +121,12 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             if (orderedLabels.length === 0) {
                 const allKeys = Object.keys(sousCaracteristiques);
                 orderedLabels = Array.from(new Set(allKeys));
-                console.log('[SubCharacteristicsTable] \uD83D\uDD0D Aucun label valide dans productLabels, utilisation des clés de sousCaracteristiques (sans doublons):', orderedLabels);
+                console.log('[SubCharacteristicsTable] 🔍 Aucun label valide dans productLabels, utilisation des clés de sousCaracteristiques (sans doublons):', orderedLabels);
                 console.warn('[SubCharacteristicsTable] ⚠️ ATTENTION: productLabels non disponible ou sans correspondance, utilisation de Object.keys() comme fallback.');
             }
 
-            console.log('[SubCharacteristicsTable] \uD83D\uDD0D Labels ordonnés depuis productLabels:', orderedLabels);
-            console.log('[SubCharacteristicsTable] \uD83D\uDD0D Clés dans sousCaracteristiques:', Object.keys(sousCaracteristiques));
+            console.log('[SubCharacteristicsTable] 🔍 Labels ordonnés depuis productLabels:', orderedLabels);
+            console.log('[SubCharacteristicsTable] 🔍 Clés dans sousCaracteristiques:', Object.keys(sousCaracteristiques));
 
             // ✅ CORRECTION CRITIQUE: Vérifier que tous les labels ordonnés existent dans sousCaracteristiques
             // et que toutes les clés de sousCaracteristiques sont présentes dans orderedLabels
@@ -148,9 +148,9 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
             let parsedValues: string[] = [];
             if (valeur && valeur.trim().length > 0) {
                 parsedValues = valeur.split(separateur).map(v => v.trim()).filter(v => v.length > 0);
-                console.log('[SubCharacteristicsTable] \uD83D\uDD0D Valeurs parsées depuis valeur:', parsedValues);
-                console.log('[SubCharacteristicsTable] \uD83D\uDD0D Nombre de valeurs parsées:', parsedValues.length);
-                console.log('[SubCharacteristicsTable] \uD83D\uDD0D Nombre de labels ordonnés:', orderedLabels.length);
+                console.log('[SubCharacteristicsTable] 🔍 Valeurs parsées depuis valeur:', parsedValues);
+                console.log('[SubCharacteristicsTable] 🔍 Nombre de valeurs parsées:', parsedValues.length);
+                console.log('[SubCharacteristicsTable] 🔍 Nombre de labels ordonnés:', orderedLabels.length);
 
                 // Vérifier si la valeur parsée est cohérente (même nombre de valeurs que de labels)
                 if (parsedValues.length !== orderedLabels.length) {
@@ -257,7 +257,7 @@ export const SubCharacteristicsTable: React.FC<SubCharacteristicsTableProps> = (
                 // Les lignes ont changé, réactiver le bouton
                 setIsValidated(false);
                 setValidatedRowsSnapshot([]);
-                console.log('[SubCharacteristicsTable] \uD83D\uDD04 Changements détectés, réactivation du bouton Valider');
+                console.log('[SubCharacteristicsTable] 🔄 Changements détectés, réactivation du bouton Valider');
             }
         }
     }, [rows, isValidated, validatedRowsSnapshot]);

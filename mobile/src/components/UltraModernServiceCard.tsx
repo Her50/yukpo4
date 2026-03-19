@@ -284,7 +284,7 @@ const [showChatModal, setShowChatModal] = useState(false);
             // ✅ CORRIGÉ: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
             const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
             const serviceUrl = `${SHARE_BASE_URL}/service/${service.id}`;
-            const shareText = `\uD83C\uDF1F Découvrez ce service sur Yukpo :\n\n${normalizedService.titre}\n\n${normalizedService.description}\n\n\uD83D\uDCB0 Prix: ${normalizedService.prix} ${normalizedService.devise}\n\uD83D\uDCCD Localisation: ${locationData?.location || t('ultraModernServiceCard.nonSpecifiee')}\n\n\uD83D\uDD17 ${serviceUrl}`;
+            const shareText = `🌟 Découvrez ce service sur Yukpo :\n\n${normalizedService.titre}\n\n${normalizedService.description}\n\n💰 Prix: ${normalizedService.prix} ${normalizedService.devise}\n📍 Localisation: ${locationData?.location || t('ultraModernServiceCard.nonSpecifiee')}\n\n🔗 ${serviceUrl}`;
 
             const result = await Share.share({
                 message: shareText,

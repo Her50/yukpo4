@@ -216,7 +216,7 @@ const HopitalSearchScreen: React.FC = () => {
             >
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>\uD83D\uDD0D Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity
@@ -242,7 +242,7 @@ const HopitalSearchScreen: React.FC = () => {
 
                 {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur services médicaux */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>\uD83C\uDFE5 Recherche de services médicaux</Text>
+                    <Text style={styles.sectionTitle}>🏥 Recherche de services médicaux</Text>
                     <Text style={styles.sectionDescription}>
                         Recherchez un service médical spécifique (consultation, chirurgie, spécialité...)
                     </Text>
@@ -261,7 +261,7 @@ const HopitalSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Localisation (optionnelle pour recherche de services) */}
-                    <Text style={styles.sectionTitle}>\uD83D\uDCCD Localisation (optionnelle)</Text>
+                    <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des services à proximité
                     </Text>
@@ -609,7 +609,7 @@ const HopitalSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={20} color="#3B82F6" type="lucide" />
-                        <Text style={styles.infoTitle}>\uD83D\uDCA1 Bon à savoir</Text>
+                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
                     </View>
                     <Text style={styles.infoText}>
                         • Les urgences sont disponibles 24h/24 dans la plupart des hôpitaux{'\n'}

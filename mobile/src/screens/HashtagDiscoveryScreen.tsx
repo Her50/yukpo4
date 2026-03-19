@@ -142,11 +142,11 @@ const HashtagDiscoveryScreen: React.FC = () => {
             >
                 {item.thumbnail ? (
                     <View style={styles.thumbnailContainer}>
-                        <Text style={styles.thumbnailPlaceholder}>\uD83D\uDCF9</Text>
+                        <Text style={styles.thumbnailPlaceholder}>📹</Text>
                     </View>
                 ) : (
                     <View style={styles.thumbnailContainer}>
-                        <Text style={styles.thumbnailPlaceholder}>\uD83D\uDCF9</Text>
+                        <Text style={styles.thumbnailPlaceholder}>📹</Text>
                     </View>
                 )}
                 <View style={styles.videoInfo}>
@@ -190,7 +190,7 @@ const HashtagDiscoveryScreen: React.FC = () => {
                     </Text>
                     {hashtagInfo && (
                         <Text style={styles.hashtagSubtitle}>
-                            {formatCount(hashtagInfo.video_count)} vidéos{hashtagInfo.is_trending ? ' • \uD83D\uDD25 Tendance' : ''}
+                            {formatCount(hashtagInfo.video_count)} vidéos{hashtagInfo.is_trending ? ' • 🔥 Tendance' : ''}
                         </Text>
                     )}
                 </View>

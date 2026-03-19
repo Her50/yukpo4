@@ -85,7 +85,7 @@ export function CombinationProgressBar({ progress, compact = false }: Combinatio
         )}
 
         <Text style={styles.hint}>
-          \uD83D\uDCA1 Vous pouvez déjà commencer à remplir le formulaire. Plus de suggestions arrivent...
+          💡 Vous pouvez déjà commencer à remplir le formulaire. Plus de suggestions arrivent...
         </Text>
       </View>
     );

@@ -61,7 +61,7 @@ export const CloudImage: React.FC<CloudImageProps> = ({
         }
         return (
             <View style={[styles.container, styles.errorContainer, style]}>
-                <Text style={styles.errorIcon}>\uD83D\uDDBC️</Text>
+                <Text style={styles.errorIcon}>🖼️</Text>
                 <Text style={styles.errorText}>{t('cloudImage.imageIndisponible')}</Text>
             </View>
         );
@@ -74,7 +74,7 @@ export const CloudImage: React.FC<CloudImageProps> = ({
         }
         return (
             <View style={[styles.container, styles.placeholderContainer, style]}>
-                <Text style={styles.placeholderIcon}>\uD83D\uDCF7</Text>
+                <Text style={styles.placeholderIcon}>📷</Text>
             </View>
         );
     }

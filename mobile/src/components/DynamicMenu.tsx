@@ -22,7 +22,7 @@ const DynamicMenu: React.FC<Props> = ({ role }) => {
       {/* ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin */}
       {isAdminRole(role) && (
         <section>
-          <Text style="font-bold text-sm text-gray-500 mb-1">\uD83D\uDD10 Admin</Text>
+          <Text style="font-bold text-sm text-gray-500 mb-1">🔐 Admin</Text>
           {routesByRole.admin.map((r) => (
             <a
               href={String(r.path)}
@@ -51,7 +51,7 @@ const DynamicMenu: React.FC<Props> = ({ role }) => {
       )}
 
       <section>
-        <Text style="font-bold text-sm text-gray-500 mb-1">\uD83C\uDF0D Public</Text>
+        <Text style="font-bold text-sm text-gray-500 mb-1">🌍 Public</Text>
         {routesByRole.public.map((r) => (
           <a
             href={String(r.path)}

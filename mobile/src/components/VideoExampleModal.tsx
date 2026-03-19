@@ -46,7 +46,7 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         style: 'tiktok',
         label: 'TikTok Boost',
         description: 'Transitions rapides, texte dynamique, format vertical 9:16',
-        icon: '\uD83C\uDFAC',
+        icon: '🎬',
         videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', // ✅ Vidéo démonstrative publique
         thumbnail: undefined,
         stats: {
@@ -61,7 +61,7 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         style: 'story',
         label: t('videoExample.storyProduit'),
         description: t('videoExample.narrationDouceHighlightDesAtouts'),
-        icon: '\uD83D\uDCDA',
+        icon: '📚',
         videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', // ✅ Vidéo démonstrative différente
         thumbnail: undefined,
         stats: {
@@ -76,7 +76,7 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         style: 'cinematic',
         label: t('videoExample.cinePremium'),
         description: t('videoExample.animationsLentesFocusSurDetails'),
-        icon: '\uD83C\uDFA8',
+        icon: '🎨',
         videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', // ✅ Vidéo démonstrative différente
         thumbnail: undefined,
         stats: {
@@ -91,7 +91,7 @@ const VIDEO_EXAMPLES: VideoExample[] = [
         style: 'carousel',
         label: 'Carousel Flash',
         description: t('videoExample.slidesPunchyCtaRepetesIdeal'),
-        icon: '\uD83D\uDD04',
+        icon: '🔄',
         videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4', // ✅ Vidéo démonstrative différente
         thumbnail: undefined,
         stats: {

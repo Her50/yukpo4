@@ -147,7 +147,7 @@ const IconPreview: React.FC<IconPreviewProps> = ({
 
             {showLabel && (
                 <View style={styles.infoContainer}>
-                    <Text style={styles.subtitle}>\uD83C\uDFA8 Design Professionnel</Text>
+                    <Text style={styles.subtitle}>🎨 Design Professionnel</Text>
                     <Text style={styles.description}>
                         Motif Ndop Bamiléké traditionnel avec le "Y" moderne de Yukpo
                     </Text>

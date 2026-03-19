@@ -47,7 +47,7 @@ const [loadManagers, setLoadManagers] = useState(false);
     // Charger après 5 secondes (l'utilisateur a bien vu l'écran et interagi)
     // Délai augmenté pour éviter la surcharge au démarrage
     const timer = setTimeout(() => {
-      console.log('[LazyManagers] \uD83D\uDD14 Chargement GPS et Push Notifications...');
+      console.log('[LazyManagers] 🔔 Chargement GPS et Push Notifications...');
       setLoadManagers(true);
     }, 5000);
 

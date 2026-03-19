@@ -149,7 +149,7 @@ const SmartPhoneModelInput: React.FC<SmartPhoneModelInputProps> = ({
                         brand: marque,
                         model: normalized
                     });
-                    console.log(`\uD83D\uDCF1 [SmartPhoneModelInput] Modèle sauvegardé en DB: ${normalized}`);
+                    console.log(`📱 [SmartPhoneModelInput] Modèle sauvegardé en DB: ${normalized}`);
                 } catch (dbError) {
                     console.warn('[SmartPhoneModelInput] Erreur sauvegarde DB:', dbError);
                 }

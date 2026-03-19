@@ -220,7 +220,7 @@ const LaboratoireSearchScreen: React.FC = () => {
 
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
-                    <Text style={styles.sectionTitle}>\uD83D\uDD0D Recherches rapides</Text>
+                    <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
                     <View style={styles.quickSearchesGrid}>
                         {quickSearches.map((search) => (
                             <TouchableOpacity
@@ -246,7 +246,7 @@ const LaboratoireSearchScreen: React.FC = () => {
 
                 {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur examens */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>\uD83D\uDD2C Recherche d'examens</Text>
+                    <Text style={styles.sectionTitle}>🔬 Recherche d'examens</Text>
                     <Text style={styles.sectionDescription}>
                         Recherchez un type d'examen médical spécifique
                     </Text>
@@ -265,7 +265,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                     </View>
 
                     {/* Localisation (optionnelle pour recherche d'examens) */}
-                    <Text style={styles.sectionTitle}>\uD83D\uDCCD Localisation (optionnelle)</Text>
+                    <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des examens à proximité
                     </Text>
@@ -515,7 +515,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                 <View style={styles.infoCard}>
                     <View style={styles.infoHeader}>
                         <SafeIcon name="info" size={20} color="#6366F1" type="lucide" />
-                        <Text style={styles.infoTitle}>\uD83D\uDCA1 Bon à savoir</Text>
+                        <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
                     </View>
                     <Text style={styles.infoText}>
                         • Certains laboratoires proposent la consultation des résultats en ligne{'\n'}

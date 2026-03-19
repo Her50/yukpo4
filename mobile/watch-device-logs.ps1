@@ -69,38 +69,38 @@ $filters = @(
     "WebRTC"
 )
 
-$filterPattern = $filters -join "|"
+$filterPattern = $filters -join '|'
 
 # Surveiller les logs avec couleurs
 adb logcat -v time 2>&1 | ForEach-Object {
     $line = $_
-    
+
+    # Filtrer tôt pour éviter Select-String en bout de pipeline (qui peut casser selon encodage)
+    if ($line -notmatch $filterPattern) { return }
+
     # Sauvegarder dans le fichier
     Add-Content -Path $logFile -Value $line
-    
+
     # Afficher avec couleurs selon le niveau
-    if ($line -match "FATAL|AndroidRuntime") {
+    if ($line -match 'FATAL|AndroidRuntime') {
         Write-Host $line -ForegroundColor Red
     }
-    elseif ($line -match "ERROR|E/") {
+    elseif ($line -match 'ERROR|E/') {
         Write-Host $line -ForegroundColor Red
     }
-    elseif ($line -match "WARN|W/") {
+    elseif ($line -match 'WARN|W/') {
         Write-Host $line -ForegroundColor Yellow
     }
-    elseif ($line -match "INFO|I/") {
+    elseif ($line -match 'INFO|I/') {
         Write-Host $line -ForegroundColor Cyan
     }
-    elseif ($line -match "DEBUG|D/") {
+    elseif ($line -match 'DEBUG|D/') {
         Write-Host $line -ForegroundColor Gray
     }
-    elseif ($line -match $filterPattern) {
+    else {
         Write-Host $line -ForegroundColor White
     }
-    else {
-        Write-Host $line -ForegroundColor DarkGray
-    }
-} | Select-String -Pattern $filterPattern
+}
 
 Write-Host ""
 Write-Host "📋 Logs sauvegardés dans: $logFile" -ForegroundColor Green

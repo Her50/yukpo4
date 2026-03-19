@@ -26,13 +26,13 @@ const currencyForCountry = (code: string): { currency: string; symbol: string } 
     ML: { currency: 'XOF', symbol: 'FCFA' }, BF: { currency: 'XOF', symbol: 'FCFA' },
     NE: { currency: 'XOF', symbol: 'FCFA' }, TG: { currency: 'XOF', symbol: 'FCFA' },
     BJ: { currency: 'XOF', symbol: 'FCFA' }, GW: { currency: 'XOF', symbol: 'FCFA' },
-    NG: { currency: 'NGN', symbol: '\u20a6' }, GH: { currency: 'GHS', symbol: 'GH\u20b5' },
+    NG: { currency: 'NGN', symbol: '₦' }, GH: { currency: 'GHS', symbol: 'GH₵' },
     KE: { currency: 'KES', symbol: 'KSh' }, TZ: { currency: 'TZS', symbol: 'TSh' },
     UG: { currency: 'UGX', symbol: 'USh' }, RW: { currency: 'RWF', symbol: 'FRw' },
     ZA: { currency: 'ZAR', symbol: 'R' }, CD: { currency: 'CDF', symbol: 'FC' },
     ET: { currency: 'ETB', symbol: 'Br' }, MG: { currency: 'MGA', symbol: 'Ar' },
     MA: { currency: 'MAD', symbol: 'DH' }, DZ: { currency: 'DZD', symbol: 'DA' },
-    TN: { currency: 'TND', symbol: 'DT' }, EG: { currency: 'EGP', symbol: 'E\u00a3' },
+    TN: { currency: 'TND', symbol: 'DT' }, EG: { currency: 'EGP', symbol: 'E£' },
   };
   return map[code?.toUpperCase()] || { currency: 'XAF', symbol: 'FCFA' };
 };
@@ -612,7 +612,7 @@ const RechargeTokensScreen: React.FC = () => {
       {(['mtn_momo', 'orange_money', 'wave', 'moov_money', 'airtel_money', 'mpesa', 'vodafone_cash', 'free_money', 'tigo_pesa', 'ecocash'].includes(selectedPaymentMethod || '')) && (
         <Card style={styles.phoneCard}>
           <Card.Content>
-            <Text style={styles.phoneLabel}>\uD83D\uDCF1 {t('payment.phone') || t('rechargeTokens.numeroDeTelephone')}</Text>
+            <Text style={styles.phoneLabel}>📱 {t('payment.phone') || t('rechargeTokens.numeroDeTelephone')}</Text>
             <TextInput
               style={styles.phoneInput}
               placeholder={t('rechargeScreen.phonePlaceholder') || 'Exemple: 699999999'}
@@ -623,7 +623,7 @@ const RechargeTokensScreen: React.FC = () => {
               maxLength={15}
             />
             <Text style={styles.phoneHint}>
-              {selectedPaymentMethod === 'mtn_momo' ? '\uD83D\uDCA1 MTN : 67X XXX XXX ou 65X XXX XXX' : '\uD83D\uDCA1 Orange : 69X XXX XXX'}
+              {selectedPaymentMethod === 'mtn_momo' ? '💡 MTN : 67X XXX XXX ou 65X XXX XXX' : '💡 Orange : 69X XXX XXX'}
             </Text>
             {!paymentCheck.has_payment_method && (
               <TouchableOpacity
@@ -735,7 +735,7 @@ const RechargeTokensScreen: React.FC = () => {
             style={styles.historyButton}
             onPress={() => (navigation as any).navigate('SoldeDetail')}
           >
-            <Text style={styles.historyButtonText}>\uD83D\uDCCA {t('tokens.history') || 'Historique'}</Text>
+            <Text style={styles.historyButtonText}>📊 {t('tokens.history') || 'Historique'}</Text>
           </TouchableOpacity>
         )}
       />

@@ -1,5 +1,5 @@
 /**
- * \uD83D\uDDFA️ Indicateur de route optimisée
+ * 🗺️ Indicateur de route optimisée
  * Affiche la route calculée et le temps estimé
  */
 

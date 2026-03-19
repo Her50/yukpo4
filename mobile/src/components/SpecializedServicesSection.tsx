@@ -1,4 +1,4 @@
-// \uD83C\uDFE5 Section Services Spécialisés pour HomeScreen
+// 🏥 Section Services Spécialisés pour HomeScreen
 // Regroupement en 5 catégories avec détection prestataire/client
 
 import { useNavigation } from '@react-navigation/native';
@@ -24,10 +24,10 @@ const SERVICE_CATEGORIES = [
         icon: 'heart-pulse',
         color: '#10B981',
         services: [
-            { id: 'pharmacie', name: 'Pharmacie', icon: 'pill', emoji: '\uD83D\uDC8A', route: 'PharmacieForm', searchRoute: 'PharmacieSearch' },
-            { id: 'hopital', name: t('specializedServicesSection.hopital'), icon: 'hospital', emoji: '\uD83C\uDFE5', route: 'HopitalForm', searchRoute: 'HopitalSearch' },
-            { id: 'laboratoire', name: 'Laboratoire', icon: 'microscope', emoji: '\uD83D\uDD2C', route: 'LaboratoireForm', searchRoute: 'LaboratoireSearch' },
-            { id: 'banque_sang', name: 'Banque Sang', icon: 'droplet', emoji: '\uD83E\uDE78', route: 'BanqueSangForm', searchRoute: 'BanqueSangSearch' },
+            { id: 'pharmacie', name: 'Pharmacie', icon: 'pill', emoji: '💊', route: 'PharmacieForm', searchRoute: 'PharmacieSearch' },
+            { id: 'hopital', name: t('specializedServicesSection.hopital'), icon: 'hospital', emoji: '🏥', route: 'HopitalForm', searchRoute: 'HopitalSearch' },
+            { id: 'laboratoire', name: 'Laboratoire', icon: 'microscope', emoji: '🔬', route: 'LaboratoireForm', searchRoute: 'LaboratoireSearch' },
+            { id: 'banque_sang', name: 'Banque Sang', icon: 'droplet', emoji: '🩸', route: 'BanqueSangForm', searchRoute: 'BanqueSangSearch' },
         ],
     },
     {
@@ -36,9 +36,9 @@ const SERVICE_CATEGORIES = [
         icon: 'car-front',
         color: '#3B82F6',
         services: [
-            { id: 'taxi', name: 'Taxi', icon: 'car', emoji: '\uD83D\uDE95', route: 'TaxiForm', searchRoute: 'TaxiSearch' },
-            { id: 'covoiturage', name: 'Covoiturage', icon: 'users', emoji: '\uD83D\uDE97', route: 'CovoiturageForm', searchRoute: 'CovoiturageSearch' },
-            { id: 'agence_voyage', name: 'Agence', icon: 'bus', emoji: '\uD83D\uDE8C', route: 'AgenceVoyageForm', searchRoute: 'AgenceVoyageSearch' },
+            { id: 'taxi', name: 'Taxi', icon: 'car', emoji: '🚕', route: 'TaxiForm', searchRoute: 'TaxiSearch' },
+            { id: 'covoiturage', name: 'Covoiturage', icon: 'users', emoji: '🚗', route: 'CovoiturageForm', searchRoute: 'CovoiturageSearch' },
+            { id: 'agence_voyage', name: 'Agence', icon: 'bus', emoji: '🚌', route: 'AgenceVoyageForm', searchRoute: 'AgenceVoyageSearch' },
         ],
     },
     {
@@ -47,7 +47,7 @@ const SERVICE_CATEGORIES = [
         icon: 'home',
         color: '#F59E0B',
         services: [
-            { id: 'immobilier', name: 'Immobilier', icon: 'home', emoji: '\uD83C\uDFE0', route: 'ImmobilierSearch', searchRoute: 'ImmobilierSearch' },
+            { id: 'immobilier', name: 'Immobilier', icon: 'home', emoji: '🏠', route: 'ImmobilierSearch', searchRoute: 'ImmobilierSearch' },
         ],
     },
     {
@@ -56,9 +56,9 @@ const SERVICE_CATEGORIES = [
         icon: 'graduation-cap',
         color: '#8B5CF6',
         services: [
-            { id: 'orientation_scolaire', name: 'Orientation', icon: 'graduation-cap', emoji: '\uD83C\uDF93', route: 'OrientationScolaireHub', searchRoute: 'OrientationScolaireHub' },
-            { id: 'offres_emploi', name: 'Emploi', icon: 'briefcase', emoji: '\uD83D\uDCBC', route: 'OffresEmploiHub', searchRoute: 'OffresEmploiHub' },
-            { id: 'bourse_livre', name: 'Livres', icon: 'book-open', emoji: '\uD83D\uDCDA', route: 'LivreScolaireHome', searchRoute: 'LivreScolaireHome' },
+            { id: 'orientation_scolaire', name: 'Orientation', icon: 'graduation-cap', emoji: '🎓', route: 'OrientationScolaireHub', searchRoute: 'OrientationScolaireHub' },
+            { id: 'offres_emploi', name: 'Emploi', icon: 'briefcase', emoji: '💼', route: 'OffresEmploiHub', searchRoute: 'OffresEmploiHub' },
+            { id: 'bourse_livre', name: 'Livres', icon: 'book-open', emoji: '📚', route: 'LivreScolaireHome', searchRoute: 'LivreScolaireHome' },
         ],
     },
     {
@@ -67,7 +67,7 @@ const SERVICE_CATEGORIES = [
         icon: 'utensils-crossed',
         color: '#EC4899',
         services: [
-            { id: 'menu_planning', name: 'Menus', icon: 'utensils-crossed', emoji: '\uD83C\uDF7D️', route: 'MenuPlanningHub', searchRoute: 'MenuPlanningHub' },
+            { id: 'menu_planning', name: 'Menus', icon: 'utensils-crossed', emoji: '🍽️', route: 'MenuPlanningHub', searchRoute: 'MenuPlanningHub' },
         ],
     },
 ];

@@ -77,7 +77,7 @@ const ProductDetailScreen: React.FC = () => {
                 }));
 
                 Alert.alert(
-                    '\uD83D\uDC4B Bienvenue sur Yukpo!',
+                    '👋 Bienvenue sur Yukpo!',
                     'Pour voir ce produit, veuillez vous connecter ou créer un compte gratuitement.',
                     [
                         {
@@ -93,7 +93,7 @@ const ProductDetailScreen: React.FC = () => {
                 return;
             }
 
-            console.log('\uD83D\uDD0D Chargement produit:', productId || finalProductIndex, 'du service:', finalServiceId);
+            console.log('🔍 Chargement produit:', productId || finalProductIndex, 'du service:', finalServiceId);
 
             // ✅ CORRIGÉ 2026-02-10: Utiliser le nouveau système (service_products via API)
             // Charger le service
@@ -229,7 +229,7 @@ const ProductDetailScreen: React.FC = () => {
                 <Text style={styles.errorTitle}>Produit introuvable</Text>
                 <Text style={styles.errorText}>{error || 'Ce produit n\'existe plus'}</Text>
                 <NativeButton
-                    title="\uD83C\uDFE0 Retour à l'accueil"
+                    title="🏠 Retour à l'accueil"
                     onPress={() => navigation.navigate('Home' as never)}
                     variant="primary"
                     size="large"
@@ -253,7 +253,7 @@ const ProductDetailScreen: React.FC = () => {
                 <View style={styles.welcomeBanner}>
                     <SafeIcon name="share" size={20} color={modernColors.primary} />
                     <Text style={styles.welcomeText}>
-                        Produit partagé avec vous! \uD83C\uDF89
+                        Produit partagé avec vous! 🎉
                     </Text>
                 </View>
 
@@ -291,9 +291,9 @@ const ProductDetailScreen: React.FC = () => {
                 {/* Boutons d'action */}
                 <View style={styles.actionsContainer}>
                     <NativeButton
-                        title="\uD83C\uDFAC Créer une vidéo immersive"
+                        title="🎬 Créer une vidéo immersive"
                         onPress={() => {
-                            console.log('[ProductDetailScreen] \uD83C\uDFAC Navigation vers VideoCreationIntro');
+                            console.log('[ProductDetailScreen] 🎬 Navigation vers VideoCreationIntro');
                             try {
                                 const parentNavigation = (navigation as any).getParent();
                                 const params = {
@@ -319,7 +319,7 @@ const ProductDetailScreen: React.FC = () => {
                     />
 
                     <NativeButton
-                        title="\uD83D\uDD0D Voir tous les produits similaires"
+                        title="🔍 Voir tous les produits similaires"
                         onPress={() => {
                             navigation.navigate('ResultatBesoin' as never, {
                                 results: [{ service_id: serviceId }],

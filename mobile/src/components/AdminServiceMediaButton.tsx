@@ -10,7 +10,7 @@ const AdminServiceMediaButton = ({ serviceId }) => {
   const navigate = useNavigation();
   return (
     <TouchableOpacity size="sm" variant="secondary" onPress={() => navigation.navigate(`/admin/service/${serviceId}/media`)}>
-      \uD83D\uDCC1 Médias associés
+      📁 Médias associés
     </TouchableOpacity>
   );
 };

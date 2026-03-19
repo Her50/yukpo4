@@ -1,4 +1,4 @@
-// \uD83D\uDDBC️ Modal de galerie produits - Affiche toutes les images et vidéos de tous les produits
+// 🖼️ Modal de galerie produits - Affiche toutes les images et vidéos de tous les produits
 import { ResizeMode, Video } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -328,10 +328,10 @@ const [media, setMedia] = useState<MediaItem[]>([]);
     const getSourceLabel = (source: string) => {
         switch (source) {
             case 'product_creation': return t('productGalleryModal.creationProduit');
-            case 'yukpo_video': return '\uD83C\uDFAC Yukpo IA';
+            case 'yukpo_video': return '🎬 Yukpo IA';
             case 'publicite': return t('productGalleryModal.publicite');
-            case 'product_api': return '\uD83D\uDDBC️ Produit';
-            default: return '\uD83D\uDCC1 Autre';
+            case 'product_api': return '🖼️ Produit';
+            default: return '📁 Autre';
         }
     };
 

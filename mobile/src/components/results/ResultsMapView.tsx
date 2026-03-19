@@ -151,7 +151,7 @@ const ResultsMapView: React.FC<ResultsMapViewProps> = ({
                                 <Text style={styles.markerPrice} numberOfLines={1}>
                                     {product.prix
                                         ? `${product.prix.toLocaleString()} ${product.devise || 'XAF'}`
-                                        : '\uD83D\uDCB0'}
+                                        : '💰'}
                                 </Text>
                             </View>
                             <View style={styles.markerPin} />

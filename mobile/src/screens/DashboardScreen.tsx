@@ -452,7 +452,7 @@ const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
           <Text style={styles.subtitle}>{t('dashboard.tableauDeBordIntelligentAvec')}</Text>
           <View style={styles.periodIndicator}>
             <Text style={styles.periodIndicatorText}>
-              \uD83D\uDCCA {getPeriodDescription(selectedPeriod)} - {getPeriodLabel(selectedPeriod)}
+              📊 {getPeriodDescription(selectedPeriod)} - {getPeriodLabel(selectedPeriod)}
             </Text>
           </View>
         </View>
@@ -465,11 +465,11 @@ const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
               contentContainerStyle={styles.periodScrollContainer}
             >
               {[
-                { key: '7d', label: '7 jours', icon: '\uD83D\uDCC5' },
-                { key: '30d', label: '30 jours', icon: '\uD83D\uDCC6' },
-                { key: '90d', label: '90 jours', icon: '\uD83D\uDDD3️' },
-                { key: '180d', label: '6 mois', icon: '\uD83D\uDCCA' },
-                { key: '365d', label: '1 an', icon: '\uD83D\uDCC8' }
+                { key: '7d', label: '7 jours', icon: '📅' },
+                { key: '30d', label: '30 jours', icon: '📆' },
+                { key: '90d', label: '90 jours', icon: '🗓️' },
+                { key: '180d', label: '6 mois', icon: '📊' },
+                { key: '365d', label: '1 an', icon: '📈' }
               ].map((period) => (
                 <TouchableOpacity
                   key={period.key}

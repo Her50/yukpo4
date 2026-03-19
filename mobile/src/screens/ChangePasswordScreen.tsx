@@ -207,7 +207,7 @@ const ChangePasswordScreen: React.FC = () => {
             disabled={loading}
           >
             <Text style={styles.changeButtonText}>
-              {loading ? '⏳...' : '\uD83D\uDD10 ' + (t('settings.changePassword') || 'Changer le mot de passe')}
+              {loading ? '⏳...' : '🔐 ' + (t('settings.changePassword') || 'Changer le mot de passe')}
             </Text>
           </TouchableOpacity>
         </View>
