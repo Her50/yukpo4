@@ -21,7 +21,7 @@
 // │ Sécurité/Police         │ 4 pts × 1 Google Nearby           │ ~85 XAF   │ GRATUIT  │
 // └─────────────────────────┴──────────────────────────────────┴───────────┴──────────┘
 
-import SafeStorage from '../utils/SafeStorage';
+import SafeStorage from '../utils/safeStorage';
 import { apiGet } from './api';
 
 export interface NavigationFeaturePrice {

@@ -2203,15 +2203,18 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             .execute(pool)
             .await?;
 
-            sqlx::query(r#"
-                DROP TRIGGER IF EXISTS trigger_publicite_audiences_updated_at ON publicite_audiences;
+            sqlx::query("DROP TRIGGER IF EXISTS trigger_publicite_audiences_updated_at ON publicite_audiences")
+                .execute(pool).await.ok();
+            sqlx::query(
+                r#"
                 CREATE TRIGGER trigger_publicite_audiences_updated_at
                     BEFORE UPDATE ON publicite_audiences
                     FOR EACH ROW
                     EXECUTE FUNCTION update_publicite_audiences_updated_at()
-            "#)
-                .execute(pool)
-                .await?;
+            "#,
+            )
+            .execute(pool)
+            .await?;
 
             info!("✅ Table publicite_audiences créée");
         }
@@ -2273,8 +2276,13 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             .await?;
 
             sqlx::query(
+                "DROP TRIGGER IF EXISTS trigger_automated_reports_updated_at ON automated_reports",
+            )
+            .execute(pool)
+            .await
+            .ok();
+            sqlx::query(
                 r#"
-                DROP TRIGGER IF EXISTS trigger_automated_reports_updated_at ON automated_reports;
                 CREATE TRIGGER trigger_automated_reports_updated_at
                     BEFORE UPDATE ON automated_reports
                     FOR EACH ROW
@@ -2414,9 +2422,12 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             .execute(pool)
             .await?;
 
+            sqlx::query("DROP TRIGGER IF EXISTS trigger_create_publicite_version ON publicites")
+                .execute(pool)
+                .await
+                .ok();
             sqlx::query(
                 r#"
-                DROP TRIGGER IF EXISTS trigger_create_publicite_version ON publicites;
                 CREATE TRIGGER trigger_create_publicite_version
                     AFTER INSERT OR UPDATE ON publicites
                     FOR EACH ROW
@@ -3493,11 +3504,12 @@ pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(),
     // ✅ CORRIGÉ 2025-12-31: Fix de la fonction run_audio_cache_cleanup avec gestion NULL
     // Corrige l'erreur UnexpectedNullError en gérant les valeurs NULL
     info!("🔧 Correction de la fonction run_audio_cache_cleanup avec gestion NULL...");
+    sqlx::query("DROP FUNCTION IF EXISTS run_audio_cache_cleanup()")
+        .execute(pool)
+        .await
+        .ok();
     sqlx::query(
-        r#"
-        DROP FUNCTION IF EXISTS run_audio_cache_cleanup();
-
-        CREATE OR REPLACE FUNCTION run_audio_cache_cleanup()
+        r#"CREATE OR REPLACE FUNCTION run_audio_cache_cleanup()
         RETURNS TABLE(
             deleted_count INTEGER,
             kept_count INTEGER,
@@ -3541,8 +3553,7 @@ pub async fn ensure_audio_search_cache_optimization(pool: &PgPool) -> Result<(),
             -- Retourner les résultats comme une table (toujours des valeurs non-NULL)
             RETURN QUERY SELECT deleted_count_var, kept_count_var, total_before_var, total_after_var;
         END;
-        $$ LANGUAGE plpgsql;
-        "#,
+        $$ LANGUAGE plpgsql"#
     )
     .execute(pool)
     .await?;
@@ -6746,9 +6757,12 @@ pub async fn ensure_delivery_round_trip_columns(pool: &PgPool) -> Result<(), sql
     .execute(pool)
     .await?;
 
+    sqlx::query("DROP TRIGGER IF EXISTS trigger_check_round_trip_consistency ON deliveries")
+        .execute(pool)
+        .await
+        .ok();
     sqlx::query(
         r#"
-        DROP TRIGGER IF EXISTS trigger_check_round_trip_consistency ON deliveries;
         CREATE TRIGGER trigger_check_round_trip_consistency
             BEFORE INSERT OR UPDATE ON deliveries
             FOR EACH ROW
@@ -6878,8 +6892,13 @@ pub async fn ensure_delivery_media_table(pool: &PgPool) -> Result<(), sqlx::Erro
     .await?;
 
     sqlx::query(
+        "DROP TRIGGER IF EXISTS trigger_update_delivery_media_updated_at ON delivery_media",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
         r#"
-        DROP TRIGGER IF EXISTS trigger_update_delivery_media_updated_at ON delivery_media;
         CREATE TRIGGER trigger_update_delivery_media_updated_at
             BEFORE UPDATE ON delivery_media
             FOR EACH ROW
@@ -12006,15 +12025,10 @@ pub async fn ensure_service_team_management_table(pool: &PgPool) -> Result<(), s
     let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_service_team_activities_user_id ON service_team_activities(user_id)").execute(pool).await;
 
     // 11. Ajouter 'rejected' au CHECK constraint si absent (migration sur table existante)
+    sqlx::query("ALTER TABLE service_team_invitations DROP CONSTRAINT IF EXISTS service_team_invitations_status_check")
+        .execute(pool).await.ok();
     let _ = sqlx::query(
-        r#"
-        DO $$ BEGIN
-            ALTER TABLE service_team_invitations DROP CONSTRAINT IF EXISTS service_team_invitations_status_check;
-            ALTER TABLE service_team_invitations ADD CONSTRAINT service_team_invitations_status_check
-                CHECK (status IN ('pending', 'accepted', 'declined', 'rejected', 'expired'));
-        EXCEPTION WHEN OTHERS THEN NULL;
-        END $$
-        "#,
+        "ALTER TABLE service_team_invitations ADD CONSTRAINT IF NOT EXISTS service_team_invitations_status_check CHECK (status IN ('pending', 'accepted', 'declined', 'rejected', 'expired'))"
     )
     .execute(pool)
     .await;
@@ -13937,10 +13951,20 @@ pub async fn execute_migration_sql_safe(pool: &PgPool, sql: &str) -> Result<(), 
         // ✅ CRITIQUE 2026-02-01: Vérifier si la ligne actuelle se termine par ';' AVANT d'ajouter à current
         // Si oui et qu'on n'est pas dans un bloc $$ ou une parenthèse, terminer la commande actuelle
         let line_ends_with_semicolon = trimmed.ends_with(';');
+        // ✅ CORRIGÉ 2026-03-19: Ne PAS split si le texte accumulé fait partie d'un statement multi-lignes
+        let current_upper = current.trim().to_uppercase();
+        let is_in_multiline_statement = current_upper.contains("CREATE TABLE")
+            || current_upper.contains("CREATE MATERIALIZED VIEW")
+            || current_upper.contains("CREATE VIEW")
+            || current_upper.contains("CREATE OR REPLACE")
+            || (current_upper.contains("CREATE INDEX") && !current_upper.contains("CREATE TABLE"))
+            || current_upper.contains("ALTER TABLE")
+            || current_upper.contains("INSERT INTO");
         let should_end_before_adding = line_ends_with_semicolon
             && !in_dollar_block
             && new_paren_depth == 0
-            && !current.trim().is_empty();
+            && !current.trim().is_empty()
+            && !is_in_multiline_statement;
 
         // Si on doit terminer avant d'ajouter, traiter la commande actuelle d'abord
         if should_end_before_adding {
@@ -15768,9 +15792,12 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
             .await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_pharmacies_services_gin ON pharmacies USING GIN(services)").execute(pool).await?;
 
+        sqlx::query("DROP TRIGGER IF EXISTS trigger_pharmacies_updated_at ON pharmacies")
+            .execute(pool)
+            .await
+            .ok();
         sqlx::query(
             r#"
-            DROP TRIGGER IF EXISTS trigger_pharmacies_updated_at ON pharmacies;
             CREATE TRIGGER trigger_pharmacies_updated_at
                 BEFORE UPDATE ON pharmacies
                 FOR EACH ROW
@@ -15869,9 +15896,12 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_prestations_gin ON hopitaux_cliniques USING GIN(prestations_medicales)").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_hopitaux_planning_gin ON hopitaux_cliniques USING GIN(planning_hebdomadaire)").execute(pool).await?;
 
+        sqlx::query("DROP TRIGGER IF EXISTS trigger_hopitaux_updated_at ON hopitaux_cliniques")
+            .execute(pool)
+            .await
+            .ok();
         sqlx::query(
             r#"
-            DROP TRIGGER IF EXISTS trigger_hopitaux_updated_at ON hopitaux_cliniques;
             CREATE TRIGGER trigger_hopitaux_updated_at
                 BEFORE UPDATE ON hopitaux_cliniques
                 FOR EACH ROW
@@ -15962,8 +15992,13 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_laboratoires_is_available ON laboratoires_imagerie(is_available_now) WHERE is_available_now = TRUE").execute(pool).await?;
 
         sqlx::query(
+            "DROP TRIGGER IF EXISTS trigger_laboratoires_updated_at ON laboratoires_imagerie",
+        )
+        .execute(pool)
+        .await
+        .ok();
+        sqlx::query(
             r#"
-            DROP TRIGGER IF EXISTS trigger_laboratoires_updated_at ON laboratoires_imagerie;
             CREATE TRIGGER trigger_laboratoires_updated_at
                 BEFORE UPDATE ON laboratoires_imagerie
                 FOR EACH ROW
@@ -16058,9 +16093,12 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_compagnies_gin ON agences_voyage USING GIN(compagnies_bus)").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_agences_destinations_gin ON agences_voyage USING GIN(destinations)").execute(pool).await?;
 
+        sqlx::query("DROP TRIGGER IF EXISTS trigger_agences_updated_at ON agences_voyage")
+            .execute(pool)
+            .await
+            .ok();
         sqlx::query(
             r#"
-            DROP TRIGGER IF EXISTS trigger_agences_updated_at ON agences_voyage;
             CREATE TRIGGER trigger_agences_updated_at
                 BEFORE UPDATE ON agences_voyage
                 FOR EACH ROW
@@ -16154,9 +16192,12 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_depart_destination ON covoiturages(depart, destination)").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_covoiturages_places_disponibles ON covoiturages(places_disponibles) WHERE places_disponibles > 0").execute(pool).await?;
 
+        sqlx::query("DROP TRIGGER IF EXISTS trigger_covoiturages_updated_at ON covoiturages")
+            .execute(pool)
+            .await
+            .ok();
         sqlx::query(
             r#"
-            DROP TRIGGER IF EXISTS trigger_covoiturages_updated_at ON covoiturages;
             CREATE TRIGGER trigger_covoiturages_updated_at
                 BEFORE UPDATE ON covoiturages
                 FOR EACH ROW
@@ -16218,9 +16259,12 @@ pub async fn ensure_specialized_services_tables(pool: &PgPool) -> Result<(), sql
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_is_on_duty ON taxis_ville(is_on_duty) WHERE is_on_duty = TRUE").execute(pool).await?;
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_taxis_zone_gin ON taxis_ville USING GIN(zone_intervention)").execute(pool).await?;
 
+        sqlx::query("DROP TRIGGER IF EXISTS trigger_taxis_updated_at ON taxis_ville")
+            .execute(pool)
+            .await
+            .ok();
         sqlx::query(
             r#"
-            DROP TRIGGER IF EXISTS trigger_taxis_updated_at ON taxis_ville;
             CREATE TRIGGER trigger_taxis_updated_at
                 BEFORE UPDATE ON taxis_ville
                 FOR EACH ROW
@@ -17424,11 +17468,74 @@ pub async fn ensure_covoiturage_tables(pool: &PgPool) -> Result<(), sqlx::Error>
 pub async fn ensure_user_stats_objects(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création de mv_user_stats et get_user_stats...");
 
-    // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/20251211_fix_user_stats_errors.sql");
+    // ✅ CORRIGÉ 2026-03-19: Exécuter chaque statement individuellement pour éviter les erreurs de split
+    sqlx::query("DROP MATERIALIZED VIEW IF EXISTS mv_user_stats CASCADE")
+        .execute(pool)
+        .await
+        .ok();
 
-    // Exécuter la migration SQL en divisant en commandes individuelles
-    execute_migration_sql_safe(pool, migration_sql).await?;
+    sqlx::query(
+        r#"CREATE MATERIALIZED VIEW mv_user_stats AS
+        SELECT
+            u.id,
+            u.tokens_balance,
+            COUNT(s.id) as services_count,
+            COUNT(CASE WHEN s.is_active THEN 1 END) as active_services_count,
+            NULL::BIGINT as reviews_count,
+            NULL::DOUBLE PRECISION as avg_rating
+        FROM users u
+        LEFT JOIN services s ON u.id = s.user_id
+        GROUP BY u.id, u.tokens_balance"#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_user_stats_id ON mv_user_stats(id)")
+        .execute(pool)
+        .await
+        .ok();
+
+    sqlx::query(
+        r#"CREATE OR REPLACE FUNCTION get_user_stats(user_id_param INTEGER)
+        RETURNS TABLE (
+            id INTEGER,
+            tokens_balance BIGINT,
+            services_count BIGINT,
+            active_services_count BIGINT,
+            reviews_count BIGINT,
+            avg_rating DOUBLE PRECISION
+        ) AS $$
+        BEGIN
+            RETURN QUERY
+            SELECT
+                u.id,
+                u.tokens_balance,
+                COUNT(s.id)::BIGINT as services_count,
+                COUNT(CASE WHEN s.is_active THEN 1 END)::BIGINT as active_services_count,
+                NULL::BIGINT as reviews_count,
+                NULL::DOUBLE PRECISION as avg_rating
+            FROM users u
+            LEFT JOIN services s ON u.id = s.user_id
+            WHERE u.id = user_id_param
+            GROUP BY u.id, u.tokens_balance;
+        END;
+        $$ LANGUAGE plpgsql"#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"CREATE OR REPLACE FUNCTION refresh_user_stats()
+        RETURNS void AS $$
+        BEGIN
+            REFRESH MATERIALIZED VIEW CONCURRENTLY mv_user_stats;
+        END;
+        $$ LANGUAGE plpgsql"#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query("REFRESH MATERIALIZED VIEW mv_user_stats").execute(pool).await.ok();
 
     info!("✅ Vue matérialisée et fonction user_stats créées");
     Ok(())
@@ -20270,8 +20377,7 @@ pub async fn ensure_token_ledger_table(pool: &PgPool) -> Result<(), sqlx::Error>
 
     info!("📦 Création de la table token_ledger...");
     sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS token_ledger (
+        r#"CREATE TABLE IF NOT EXISTS token_ledger (
             id BIGSERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             operation_type VARCHAR(30) NOT NULL,
@@ -20283,16 +20389,17 @@ pub async fn ensure_token_ledger_table(pool: &PgPool) -> Result<(), sqlx::Error>
             description TEXT,
             metadata JSONB DEFAULT '{}',
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_token_ledger_user_id ON token_ledger(user_id);
-        CREATE INDEX IF NOT EXISTS idx_token_ledger_user_created ON token_ledger(user_id, created_at DESC);
-        CREATE INDEX IF NOT EXISTS idx_token_ledger_operation_type ON token_ledger(operation_type);
-        CREATE INDEX IF NOT EXISTS idx_token_ledger_reference ON token_ledger(reference_type, reference_id);
-        "#,
+        )"#,
     )
     .execute(pool)
     .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_ledger_user_id ON token_ledger(user_id)")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_ledger_user_created ON token_ledger(user_id, created_at DESC)").execute(pool).await.ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_ledger_operation_type ON token_ledger(operation_type)").execute(pool).await.ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_ledger_reference ON token_ledger(reference_type, reference_id)").execute(pool).await.ok();
 
     info!("✅ Table token_ledger créée avec succès");
     Ok(())
@@ -20312,8 +20419,7 @@ pub async fn ensure_payment_attempts_aggregator_columns(pool: &PgPool) -> Result
     if !table_exists {
         info!("⚠️ Table payment_attempts n'existe pas encore, création complète...");
         sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS payment_attempts (
+            r#"CREATE TABLE IF NOT EXISTS payment_attempts (
                 id SERIAL PRIMARY KEY,
                 payment_id VARCHAR(255) NOT NULL UNIQUE,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -20328,16 +20434,24 @@ pub async fn ensure_payment_attempts_aggregator_columns(pool: &PgPool) -> Result
                 payment_url TEXT,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 confirmed_at TIMESTAMPTZ
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_payment_attempts_user ON payment_attempts(user_id);
-            CREATE INDEX IF NOT EXISTS idx_payment_attempts_status ON payment_attempts(status);
-            CREATE INDEX IF NOT EXISTS idx_payment_attempts_payment_id ON payment_attempts(payment_id);
-            CREATE INDEX IF NOT EXISTS idx_payment_attempts_aggregator_ref ON payment_attempts(aggregator_ref);
-            "#,
+            )"#,
         )
         .execute(pool)
         .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_payment_attempts_user ON payment_attempts(user_id)",
+        )
+        .execute(pool)
+        .await
+        .ok();
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_payment_attempts_status ON payment_attempts(status)",
+        )
+        .execute(pool)
+        .await
+        .ok();
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_payment_attempts_payment_id ON payment_attempts(payment_id)").execute(pool).await.ok();
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_payment_attempts_aggregator_ref ON payment_attempts(aggregator_ref)").execute(pool).await.ok();
         info!("✅ Table payment_attempts créée avec colonnes agrégateur");
         return Ok(());
     }
@@ -20392,8 +20506,7 @@ pub async fn ensure_wallet_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     if !wallets_exists {
         info!("📦 Création de la table user_wallets...");
         sqlx::query(
-            r#"
-            CREATE TABLE user_wallets (
+            r#"CREATE TABLE user_wallets (
                 id BIGSERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 balance_cents BIGINT NOT NULL DEFAULT 0,
@@ -20402,17 +20515,16 @@ pub async fn ensure_wallet_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 UNIQUE(user_id, currency)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_user_wallets_user_id ON user_wallets(user_id);
-
-            -- Contrainte: solde ne peut pas être négatif (hors gel)
-            ALTER TABLE user_wallets ADD CONSTRAINT chk_wallet_balance_non_negative
-                CHECK (balance_cents >= 0);
-            "#,
+            )"#,
         )
         .execute(pool)
         .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_user_wallets_user_id ON user_wallets(user_id)")
+            .execute(pool)
+            .await
+            .ok();
+        sqlx::query("ALTER TABLE user_wallets ADD CONSTRAINT chk_wallet_balance_non_negative CHECK (balance_cents >= 0)")
+            .execute(pool).await.ok();
         info!("✅ Table user_wallets créée");
     } else {
         info!("✅ Table user_wallets déjà présente");
@@ -20428,8 +20540,7 @@ pub async fn ensure_wallet_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     if !txn_exists {
         info!("📦 Création de la table wallet_transactions...");
         sqlx::query(
-            r#"
-            CREATE TABLE wallet_transactions (
+            r#"CREATE TABLE wallet_transactions (
                 id BIGSERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                 transaction_type VARCHAR(30) NOT NULL,
@@ -20443,17 +20554,20 @@ pub async fn ensure_wallet_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
                 description TEXT,
                 metadata JSONB,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_wallet_txn_user_id ON wallet_transactions(user_id);
-            CREATE INDEX IF NOT EXISTS idx_wallet_txn_user_created ON wallet_transactions(user_id, created_at DESC);
-            CREATE INDEX IF NOT EXISTS idx_wallet_txn_type ON wallet_transactions(transaction_type);
-            CREATE INDEX IF NOT EXISTS idx_wallet_txn_delivery ON wallet_transactions(delivery_id);
-            CREATE INDEX IF NOT EXISTS idx_wallet_txn_reference ON wallet_transactions(reference_type, reference_id);
-            "#,
+            )"#,
         )
         .execute(pool)
         .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_wallet_txn_user_id ON wallet_transactions(user_id)",
+        )
+        .execute(pool)
+        .await
+        .ok();
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_wallet_txn_user_created ON wallet_transactions(user_id, created_at DESC)").execute(pool).await.ok();
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_wallet_txn_type ON wallet_transactions(transaction_type)").execute(pool).await.ok();
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_wallet_txn_delivery ON wallet_transactions(delivery_id)").execute(pool).await.ok();
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_wallet_txn_reference ON wallet_transactions(reference_type, reference_id)").execute(pool).await.ok();
         info!("✅ Table wallet_transactions créée");
     } else {
         info!("✅ Table wallet_transactions déjà présente");
@@ -20480,8 +20594,7 @@ pub async fn ensure_disbursement_requests_table(pool: &PgPool) -> Result<(), sql
 
     info!("📦 Création de la table disbursement_requests...");
     sqlx::query(
-        r#"
-        CREATE TABLE disbursement_requests (
+        r#"CREATE TABLE disbursement_requests (
             id BIGSERIAL PRIMARY KEY,
             recipient_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             amount_cents BIGINT NOT NULL,
@@ -20499,16 +20612,19 @@ pub async fn ensure_disbursement_requests_table(pool: &PgPool) -> Result<(), sql
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             processed_at TIMESTAMPTZ,
             completed_at TIMESTAMPTZ
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_disbursement_user ON disbursement_requests(recipient_user_id);
-        CREATE INDEX IF NOT EXISTS idx_disbursement_status ON disbursement_requests(status);
-        CREATE INDEX IF NOT EXISTS idx_disbursement_delivery ON disbursement_requests(delivery_id);
-        CREATE INDEX IF NOT EXISTS idx_disbursement_provider_ref ON disbursement_requests(provider_reference);
-        "#,
+        )"#,
     )
     .execute(pool)
     .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_disbursement_user ON disbursement_requests(recipient_user_id)").execute(pool).await.ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_disbursement_status ON disbursement_requests(status)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_disbursement_delivery ON disbursement_requests(delivery_id)").execute(pool).await.ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_disbursement_provider_ref ON disbursement_requests(provider_reference)").execute(pool).await.ok();
 
     info!("✅ Table disbursement_requests créée");
     Ok(())
@@ -20518,9 +20634,9 @@ pub async fn ensure_disbursement_requests_table(pool: &PgPool) -> Result<(), sql
 pub async fn ensure_librairie_network_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🏪 Création des tables réseau de librairies...");
 
-    // Exécuter le script de migration complet
+    // ✅ CORRIGÉ 2026-03-19: Utiliser execute_migration_sql_safe pour multi-statement SQL
     let migration_sql = include_str!("create_librairie_network_tables.sql");
-    sqlx::query(migration_sql).execute(pool).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables réseau de librairies créées");
     Ok(())
@@ -20531,8 +20647,7 @@ pub async fn ensure_libraire_team_table(pool: &PgPool) -> Result<(), sqlx::Error
     info!("📚 Vérification/création table libraire_team_members...");
 
     sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS libraire_team_members (
+        r#"CREATE TABLE IF NOT EXISTS libraire_team_members (
             id SERIAL PRIMARY KEY,
             librairie_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL REFERENCES users(id),
@@ -20544,16 +20659,14 @@ pub async fn ensure_libraire_team_table(pool: &PgPool) -> Result<(), sqlx::Error
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             UNIQUE(librairie_id, user_id)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_libraire_team_librairie
-            ON libraire_team_members(librairie_id) WHERE is_active = true;
-        CREATE INDEX IF NOT EXISTS idx_libraire_team_user
-            ON libraire_team_members(user_id) WHERE is_active = true;
-        "#,
+        )"#,
     )
     .execute(pool)
     .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_libraire_team_librairie ON libraire_team_members(librairie_id) WHERE is_active = true")
+        .execute(pool).await.ok();
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_libraire_team_user ON libraire_team_members(user_id) WHERE is_active = true")
+        .execute(pool).await.ok();
 
     info!("✅ Table libraire_team_members OK");
     Ok(())
@@ -20563,9 +20676,9 @@ pub async fn ensure_libraire_team_table(pool: &PgPool) -> Result<(), sqlx::Error
 pub async fn ensure_missing_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("💰 Création des tables manquantes (wallets, paiements, QR codes)...");
 
-    // Exécuter le script de migration
+    // ✅ CORRIGÉ 2026-03-19: Utiliser execute_migration_sql_safe pour multi-statement SQL
     let migration_sql = include_str!("add_missing_tables.sql");
-    sqlx::query(migration_sql).execute(pool).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables manquantes créées");
     Ok(())
@@ -20597,9 +20710,10 @@ pub async fn ensure_exchange_rate_cache_table(pool: &PgPool) -> Result<(), sqlx:
 pub async fn ensure_bus_ticket_escrow_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🎫 Application du système escrow/crédit pour tickets bus...");
 
+    // ✅ CORRIGÉ 2026-03-19: Utiliser execute_migration_sql_safe pour multi-statement SQL
     let migration_sql =
         include_str!("../../migrations/00000046_bus_ticket_escrow_credit_system.sql");
-    sqlx::query(migration_sql).execute(pool).await?;
+    execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Système escrow/crédit tickets bus appliqué");
     Ok(())

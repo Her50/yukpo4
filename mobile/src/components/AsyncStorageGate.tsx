@@ -1,5 +1,5 @@
 /**
- * AsyncStorageGate - Composant qui bloque le rendu jusqut('asyncStorageGate.aCeQu')AsyncStorage soit prêt
+ * AsyncStorageGate - Composant qui bloque le rendu jusqu'à ce qu'AsyncStorage soit prêt
  * Résout définitivement les erreurs "Driver not found" et "No available storage method found"
  * en s'assurant qu'AsyncStorage est initialisé AVANT que les providers ne soient montés
  */
@@ -89,7 +89,7 @@ export const AsyncStorageGate: React.FC<AsyncStorageGateProps> = ({ children }) 
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="large" color="#6366F1" />
-                <Text style={styles.text}>Initialisation...</Text> // FIX: Texte statique pour éviter dépendance circulaire
+                <Text style={styles.text}>Initialisation...</Text>
                 {hasError && (
                     <Text style={[styles.text, { color: '#EF4444', marginTop: 8 }]}>
                         Mode sans persistance locale

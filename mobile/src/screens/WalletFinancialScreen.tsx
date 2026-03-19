@@ -92,6 +92,10 @@ const WalletFinancialScreen: React.FC = () => {
     const [periodSummaries, setPeriodSummaries] = useState<PeriodSummary[]>([]);
     const [error, setError] = useState<string | null>(null);
 
+    // ✅ Partner financial summary
+    const isPartner = user?.role === 'partenaire' || user?.role === 'partner';
+    const [partnerSummary, setPartnerSummary] = useState<any>(null);
+
     useFocusEffect(
         useCallback(() => {
             loadAllData();
@@ -110,10 +114,15 @@ const WalletFinancialScreen: React.FC = () => {
         setError(null);
         try {
             // Load balance and transactions first, then compute summary from fresh data
-            await Promise.all([
+            const promises: Promise<any>[] = [
                 loadUnifiedBalance(),
                 loadUnifiedTransactions(),
-            ]);
+            ];
+            // ✅ Partner: charger la synthèse financière prestataire
+            if (isPartner) {
+                promises.push(loadPartnerSummary());
+            }
+            await Promise.all(promises);
             // Summary is computed in a useEffect after transactions state updates
         } catch (error) {
             console.error('[WalletFinancial] Error loading data:', error);
@@ -121,6 +130,18 @@ const WalletFinancialScreen: React.FC = () => {
         } finally {
             setLoading(false);
             setRefreshing(false);
+        }
+    };
+
+    // ✅ Charger la synthèse financière prestataire
+    const loadPartnerSummary = async () => {
+        try {
+            const r = await apiGet<any>(`/api/users/partner-financial-summary?period=${selectedPeriod}d`);
+            if (r?.data?.success) {
+                setPartnerSummary(r.data);
+            }
+        } catch (err) {
+            console.warn('[WalletFinancial] Partner summary error:', err);
         }
     };
 
@@ -355,6 +376,107 @@ const WalletFinancialScreen: React.FC = () => {
                 if (type === 'refund') return t('financialTracking.refund');
                 return t('financialTracking.transaction');
         }
+    };
+
+    // ===== Partner Revenue Section =====
+    const renderPartnerRevenue = () => {
+        if (!isPartner || !partnerSummary?.summary) return null;
+        const s = partnerSummary.summary;
+        const bd = partnerSummary.breakdown || {};
+        const fmtXAF = (cents: number) => {
+            const xaf = Math.round(cents / 100);
+            return new Intl.NumberFormat('fr-FR').format(xaf) + ' ' + currSymbol;
+        };
+
+        return (
+            <View style={{ marginHorizontal: 16, marginTop: 16 }}>
+                {/* Revenue card */}
+                <NativeCard style={{ padding: 16, borderRadius: 14, borderLeftWidth: 4, borderLeftColor: '#10B981' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#10B98115', alignItems: 'center', justifyContent: 'center' }}>
+                            <SafeIcon name="trending-up" size={18} color="#10B981" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 16, fontWeight: '700', color: modernColors.text }}>{t('financialTracking.partnerRevenue') || 'Revenus Prestataire'}</Text>
+                            <Text style={{ fontSize: 11, color: modernColors.textSecondary }}>{selectedPeriod}{t('financialTracking.lastDays') || ' derniers jours'}</Text>
+                        </View>
+                    </View>
+
+                    {/* KPI row */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+                        <View style={{ alignItems: 'center', flex: 1 }}>
+                            <Text style={{ fontSize: 11, color: modernColors.textSecondary }}>{t('financialTracking.grossRevenue') || 'Brut'}</Text>
+                            <Text style={{ fontSize: 16, fontWeight: '800', color: '#10B981' }}>{fmtXAF(s.total_gross_revenue_cents || 0)}</Text>
+                        </View>
+                        <View style={{ width: 1, backgroundColor: modernColors.borderLight }} />
+                        <View style={{ alignItems: 'center', flex: 1 }}>
+                            <Text style={{ fontSize: 11, color: modernColors.textSecondary }}>{t('financialTracking.yukpoCommission') || 'Commission'}</Text>
+                            <Text style={{ fontSize: 16, fontWeight: '800', color: '#EF4444' }}>-{fmtXAF(s.total_commissions_yukpo_cents || 0)}</Text>
+                        </View>
+                        <View style={{ width: 1, backgroundColor: modernColors.borderLight }} />
+                        <View style={{ alignItems: 'center', flex: 1 }}>
+                            <Text style={{ fontSize: 11, color: modernColors.textSecondary }}>{t('financialTracking.netRevenue') || 'Net'}</Text>
+                            <Text style={{ fontSize: 16, fontWeight: '800', color: modernColors.primary }}>{fmtXAF(s.net_revenue_cents || 0)}</Text>
+                        </View>
+                    </View>
+
+                    {/* Orders count */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6, backgroundColor: modernColors.surfaceVariant, borderRadius: 8, marginBottom: 12 }}>
+                        <SafeIcon name="shopping-bag" size={14} color={modernColors.textSecondary} />
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: modernColors.textSecondary }}>
+                            {s.total_orders || 0} {t('financialTracking.orders') || 'commandes'} · {t('financialTracking.payoutsReceived') || 'Reversements'}: {fmtXAF(s.total_payouts_received_cents || 0)}
+                        </Text>
+                    </View>
+
+                    {/* Breakdown by source */}
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: modernColors.text, marginBottom: 8 }}>{t('financialTracking.revenueBreakdown') || 'Détail par source'}</Text>
+                    {(bd.delivery?.order_count > 0 || bd.reservations?.count > 0 || bd.bus_tickets?.count > 0) ? (
+                        <View style={{ gap: 6 }}>
+                            {bd.delivery?.order_count > 0 && (
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: modernColors.borderLight }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={{ fontSize: 14 }}>📦</Text>
+                                        <Text style={{ fontSize: 13, color: modernColors.text }}>{t('financialTracking.deliveryRevenue') || 'Livraisons'}</Text>
+                                        <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#16A34A' }}>{bd.delivery.order_count}x</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: modernColors.text }}>{fmtXAF(bd.delivery.gross_revenue_cents || 0)}</Text>
+                                </View>
+                            )}
+                            {bd.reservations?.count > 0 && (
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: modernColors.borderLight }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={{ fontSize: 14 }}>🎫</Text>
+                                        <Text style={{ fontSize: 13, color: modernColors.text }}>{t('financialTracking.reservationRevenue') || 'Réservations'}</Text>
+                                        <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#6366F1' }}>{bd.reservations.count}x</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: modernColors.text }}>{fmtXAF(bd.reservations.revenue_cents || 0)}</Text>
+                                </View>
+                            )}
+                            {bd.bus_tickets?.count > 0 && (
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={{ fontSize: 14 }}>🚌</Text>
+                                        <Text style={{ fontSize: 13, color: modernColors.text }}>{t('financialTracking.busTicketRevenue') || 'Tickets bus'}</Text>
+                                        <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#D97706' }}>{bd.bus_tickets.count}x</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: modernColors.text }}>{fmtXAF(bd.bus_tickets.revenue_cents || 0)}</Text>
+                                </View>
+                            )}
+                        </View>
+                    ) : (
+                        <Text style={{ fontSize: 12, color: modernColors.textTertiary, textAlign: 'center', paddingVertical: 10 }}>
+                            {t('financialTracking.noRevenueYet') || 'Aucun revenu sur cette période'}
+                        </Text>
+                    )}
+                </NativeCard>
+            </View>
+        );
     };
 
     // ===== Mini bar chart for daily summaries =====
@@ -654,6 +776,7 @@ const WalletFinancialScreen: React.FC = () => {
                 {/* Tab content */}
                 {activeTab === 'overview' ? (
                     <>
+                        {renderPartnerRevenue()}
                         {renderKPIs()}
                         {renderMiniChart()}
 

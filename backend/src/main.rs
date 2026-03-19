@@ -2548,16 +2548,16 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             log::info!("🚀 Cloud Run: Démarrage des migrations SQLx en arrière-plan...");
             tokio::time::sleep(std::time::Duration::from_secs(2)).await; // Attendre 2s pour laisser la DB se connecter
 
-            // Créer le pool dans le contexte async
+            // ✅ CORRIGÉ 2026-03-19: Utiliser connect_lazy pour éviter l'erreur "empty host"
+            // avec les URLs Cloud SQL Unix socket (format: postgresql://user:pass@/db?host=/cloudsql/...)
             let pg_for_migrations = match PgPoolOptions::new()
-                .max_connections(5) // ✅ CORRIGÉ 2026-02-18: Réduit de 10 à 5 pour éviter saturation (migrations rares)
-                .min_connections(2)
-                .acquire_timeout(std::time::Duration::from_secs(60)) // Timeout plus long pour migrations
+                .max_connections(5)
+                .min_connections(0) // ✅ CORRIGÉ: 0 pour lazy connect
+                .acquire_timeout(std::time::Duration::from_secs(60))
                 .idle_timeout(Some(std::time::Duration::from_secs(300)))
                 .max_lifetime(Some(std::time::Duration::from_secs(600)))
                 .test_before_acquire(true)
-                .connect(&database_url_for_migrations)
-                .await
+                .connect_lazy(&database_url_for_migrations)
             {
                 Ok(pool) => pool,
                 Err(e) => {
@@ -2815,7 +2815,18 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 log::warn!("⚠️ Erreur création wallet_tables: {}", e);
             }
-            log::info!("✅ Tables supplémentaires (video, shares, team, exchange_rate, history, wallets) créées/vérifiées");
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_chat_mentions_and_participants(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!(
+                    "⚠️ Erreur création chat_mentions/conversation_participants/tag_history: {}",
+                    e
+                );
+            }
+            log::info!("✅ Tables supplémentaires (video, shares, team, exchange_rate, history, wallets, chat_mentions) créées/vérifiées");
         });
     } else {
         let _ = yukpomnang_backend::migrations::auto_migrate::ensure_navigation_checkpoints_table(
@@ -2878,6 +2889,13 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         .await;
         let _ =
             yukpomnang_backend::migrations::auto_migrate::ensure_wallet_tables(&app_state.pg).await;
+
+        // ✅ CORRIGÉ 2026-03-19: Tables mentions/participants/tag_history pour @mention système
+        let _ =
+            yukpomnang_backend::migrations::auto_migrate::ensure_chat_mentions_and_participants(
+                &app_state.pg,
+            )
+            .await;
     }
 
     // ✅ 2026-03-16: Index MongoDB supprimés - index PostgreSQL créés via ensure_history_events_table

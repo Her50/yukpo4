@@ -810,9 +810,10 @@ impl HotelRoomManagementService {
     }
 
     /// Traite un paiement pour une réservation hôtel/meublé (avance ou solde complet)
+    /// ✅ FIX 2026-03-19: Débite tokens_balance + sync user_wallets + log transaction
     pub async fn pay_hotel_reservation(
         pool: &PgPool,
-        _user_id: i32,
+        user_id: i32,
         reservation_id: i32,
         payment_type: &str,   // "advance" ou "full"
         payment_method: &str, // "mobile_money", "cash", "card", etc.
@@ -821,7 +822,7 @@ impl HotelRoomManagementService {
         // Récupérer la réservation
         let row = sqlx::query(
             r#"
-            SELECT property_id, montant_total, montant_avance, payment_status, status
+            SELECT property_id, montant_total, montant_avance, payment_status, status, user_id
             FROM hotel_meuble_reservations
             WHERE id = $1
             "#,
@@ -841,6 +842,14 @@ impl HotelRoomManagementService {
             Some(r) => r,
             None => return Err(AppError::NotFound("Réservation introuvable".to_string())),
         };
+
+        // Vérifier que la réservation appartient à l'utilisateur
+        let reservation_user_id: i32 = row.try_get("user_id").unwrap_or(0);
+        if reservation_user_id != user_id && reservation_user_id != 0 {
+            return Err(AppError::BadRequest(
+                "Cette réservation ne vous appartient pas".to_string(),
+            ));
+        }
 
         let total: Decimal = row.try_get("montant_total").unwrap_or(Decimal::ZERO);
         let current_avance: Decimal = row.try_get("montant_avance").unwrap_or(Decimal::ZERO);
@@ -891,6 +900,76 @@ impl HotelRoomManagementService {
                     "Type de paiement invalide (advance ou full attendu)".to_string(),
                 ));
             }
+        }
+
+        // ✅ FIX 2026-03-19: Convertir amount_paid en i64 XAF pour le débit wallet
+        let amount_xaf = amount_paid.to_string().parse::<f64>().unwrap_or(0.0).round() as i64;
+
+        if amount_xaf > 0 {
+            // Vérifier le solde
+            let balance: i64 =
+                sqlx::query_scalar("SELECT COALESCE(tokens_balance, 0) FROM users WHERE id = $1")
+                    .bind(user_id)
+                    .fetch_one(pool)
+                    .await
+                    .map_err(|e| {
+                        log::error!(
+                            "[pay_hotel_reservation] Erreur lecture solde user_id={}: {}",
+                            user_id,
+                            e
+                        );
+                        AppError::Internal("Erreur lecture solde".to_string())
+                    })?;
+
+            if balance < amount_xaf {
+                return Err(AppError::BadRequest(format!(
+                    "Solde insuffisant. Disponible: {} XAF, Requis: {} XAF. Rechargez votre compte.",
+                    balance, amount_xaf
+                )));
+            }
+
+            // Débiter atomiquement
+            let new_balance: Option<i64> = sqlx::query_scalar(
+                "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 AND tokens_balance >= $1 RETURNING tokens_balance"
+            )
+            .bind(amount_xaf)
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| {
+                log::error!("[pay_hotel_reservation] Erreur débit user_id={}: {}", user_id, e);
+                AppError::Internal("Erreur débit solde".to_string())
+            })?;
+
+            if new_balance.is_none() {
+                return Err(AppError::BadRequest(
+                    "Solde insuffisant (concurrence)".to_string(),
+                ));
+            }
+
+            // Sync user_wallets (best effort)
+            let _ = sqlx::query(
+                "INSERT INTO user_wallets (user_id, balance_cents, currency, created_at, updated_at) VALUES ($1, 0, 'XAF', NOW(), NOW()) ON CONFLICT (user_id, currency) DO UPDATE SET balance_cents = GREATEST(0, user_wallets.balance_cents - $2), updated_at = NOW()"
+            )
+            .bind(user_id)
+            .bind(amount_xaf * 100)
+            .execute(pool)
+            .await;
+
+            // Log transaction
+            let _ = sqlx::query(
+                "INSERT INTO wallet_transactions (user_id, amount_cents, direction, description, created_at) VALUES ($1, $2, 'debit', $3, NOW())"
+            )
+            .bind(user_id)
+            .bind(amount_xaf * 100)
+            .bind(format!("Paiement réservation hôtel/meublé #{}", reservation_id))
+            .execute(pool)
+            .await;
+
+            log::info!(
+                "[pay_hotel_reservation] ✅ Wallet débité: user_id={}, amount={} XAF, new_balance={:?}",
+                user_id, amount_xaf, new_balance
+            );
         }
 
         // Mettre à jour la réservation

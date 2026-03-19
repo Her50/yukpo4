@@ -234,6 +234,17 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
               )}
             </View>
 
+            {showMentionPicker && mentionQuery.length >= 1 && (
+              <InlineMentionSuggestions
+                query={mentionQuery}
+                visible={showMentionPicker}
+                onSelect={(user) => {
+                  insertMention(user);
+                }}
+                maxHeight={160}
+              />
+            )}
+
             <TextInput
               label="Commentaire (optionnel)"
               value={comment}

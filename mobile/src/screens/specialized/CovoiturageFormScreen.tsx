@@ -281,6 +281,10 @@ const CovoiturageFormScreen: React.FC = () => {
                     <View style={[s.quickIcon, { backgroundColor: '#F59E0B15' }]}><SafeIcon name="bar-chart-2" size={22} color="#F59E0B" /></View>
                     <Text style={s.quickLabel}>{t('covoiturageForm.statistiques')}</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={s.quickAction} onPress={() => (navigation as any).navigate('WalletFinancial')}>
+                    <View style={[s.quickIcon, { backgroundColor: '#8B5CF615' }]}><SafeIcon name="wallet" size={22} color="#8B5CF6" /></View>
+                    <Text style={s.quickLabel}>{t('financialTracking.wallet') || 'Portefeuille'}</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Trips List */}

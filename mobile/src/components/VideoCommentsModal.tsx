@@ -12,11 +12,11 @@ import {
     View,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { commentsApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface MentionUser {
     id: number;
@@ -100,8 +100,8 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
     serviceTitle,
 }) => {
     const { user } = useAuth();
-        const { t } = useLanguageSafe();
-const [loading, setLoading] = useState(false);
+    const { t } = useLanguageSafe();
+    const [loading, setLoading] = useState(false);
     const [comments, setComments] = useState<ProductComment[]>([]);
     const [input, setInput] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -246,6 +246,23 @@ const [loading, setLoading] = useState(false);
                             }
                         />
                     )}
+
+                    {(() => {
+                        const lastAt = input.lastIndexOf('@');
+                        const inlineMentionQuery = lastAt >= 0 && !input.substring(lastAt + 1).includes(' ') ? input.substring(lastAt + 1) : '';
+                        return inlineMentionQuery.length >= 1 ? (
+                            <InlineMentionSuggestions
+                                query={inlineMentionQuery}
+                                visible={true}
+                                onSelect={(user) => {
+                                    handleSelectMention({ id: user.id, nom_complet: user.nom_complet, avatar_url: user.avatar_url });
+                                    const before = input.substring(0, lastAt);
+                                    setInput(`${before}@${user.nom_complet} `);
+                                }}
+                                maxHeight={160}
+                            />
+                        ) : null;
+                    })()}
 
                     <View style={styles.inputContainer}>
                         <TouchableOpacity

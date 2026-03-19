@@ -469,6 +469,7 @@ const PharmacieFormScreen: React.FC = () => {
                     { label: t('pharmacieForm.ajouterProduit'), icon: 'plus-circle', color: '#3B82F6', onPress: () => { setActiveTab('products'); setTimeout(() => openProductModal(), 200); } },
                     { label: 'IA Interactions', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('PharmacyAIInteractions', { serviceId }) },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('PharmacyAnalytics', { serviceId }) },
+                    { label: t('financialTracking.wallet') || 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
                     { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
@@ -533,8 +534,8 @@ const PharmacieFormScreen: React.FC = () => {
                 <View style={s.emptyDash}>
                     <SafeIcon name="activity" size={48} color="#9CA3AF" />
                     <Text style={s.emptyTitle}>{t('pharmacieForm.bienvenueSurVotreDashboard')}</Text>
-                        <Text style={s.emptyText}>{t('pharmacieForm.configurezVotrePharmacieDansMon')}</Text>
-                        <NativeButton title="Configurer" onPress={() => setActiveTab('service')} style={{ marginTop: 16 }} />
+                    <Text style={s.emptyText}>{t('pharmacieForm.configurezVotrePharmacieDansMon')}</Text>
+                    <NativeButton title="Configurer" onPress={() => setActiveTab('service')} style={{ marginTop: 16 }} />
                 </View>
             )}
         </ScrollView>
@@ -548,11 +549,11 @@ const PharmacieFormScreen: React.FC = () => {
             )}
             <View style={s.field}>
                 <Text style={s.label}>{t('pharmacieForm.localisationGps')}</Text>
-                    <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
-                        <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
-                        <Text style={s.gpsBtnText}>{selectedGPS ? t('pharmacieFormScreen.localisationSelectionnee') : t('pharmacieFormScreen.selectionnerSurLaCarte')}</Text>
-                        <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
-                    </TouchableOpacity>
+                <TouchableOpacity style={s.gpsBtn} onPress={() => setShowGPSModal(true)}>
+                    <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                    <Text style={s.gpsBtnText}>{selectedGPS ? t('pharmacieFormScreen.localisationSelectionnee') : t('pharmacieFormScreen.selectionnerSurLaCarte')}</Text>
+                    <SafeIcon name="chevron-right" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
             </View>
             {user?.role !== 'partenaire' && (
                 <View style={s.field}><NativeInput label="Adresse" value={formData.adresse} onChangeText={t => setFormData({ ...formData, adresse: t })} placeholder={t('pharmacieForm.adresseComplete')} multiline /></View>
@@ -562,13 +563,13 @@ const PharmacieFormScreen: React.FC = () => {
             </View>
             <View style={s.field}>
                 <Text style={s.label}>{t('pharmacieForm.joursDeGarde')}</Text>
-                    <TouchableOpacity style={s.greenBtn} onPress={() => setShowGuardDaysModal(true)}>
-                        <SafeIcon name="calendar" size={18} color="#fff" />
-                        <Text style={s.greenBtnText}>{Object.keys(formData.jours_garde).length > 0 ? 'Modifier planification' : 'Planifier jours de garde'}</Text>
-                    </TouchableOpacity>
-                    {Object.keys(formData.jours_garde).length > 0 && (
-                        <View style={s.guardSummary}><Text style={s.guardSummaryText}>{Object.values(formData.jours_garde).reduce((s, d) => s + d.length, 0)} jour(s) sur {Object.keys(formData.jours_garde).length} mois</Text></View>
-                    )}
+                <TouchableOpacity style={s.greenBtn} onPress={() => setShowGuardDaysModal(true)}>
+                    <SafeIcon name="calendar" size={18} color="#fff" />
+                    <Text style={s.greenBtnText}>{Object.keys(formData.jours_garde).length > 0 ? 'Modifier planification' : 'Planifier jours de garde'}</Text>
+                </TouchableOpacity>
+                {Object.keys(formData.jours_garde).length > 0 && (
+                    <View style={s.guardSummary}><Text style={s.guardSummaryText}>{Object.values(formData.jours_garde).reduce((s, d) => s + d.length, 0)} jour(s) sur {Object.keys(formData.jours_garde).length} mois</Text></View>
+                )}
             </View>
             <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={[s.field, { flex: 1 }]}><NativeInput label="Ouverture" value={formData.heures_ouverture} onChangeText={t => setFormData({ ...formData, heures_ouverture: t })} placeholder="08:00" /></View>

@@ -6,10 +6,10 @@ use std::sync::Arc;
 
 use crate::controllers::user_controller::{
     change_password, deduct_balance, delete_user_data, export_user_data, get_consumption_history,
-    get_payment_history, get_product_add_cost, get_user_balance, get_user_by_id,
-    get_user_conversations, get_user_payment_methods, get_user_profile, purchase_pack,
-    recharge_tokens, save_user_payment_methods, update_gps_consent, update_gps_location,
-    update_user_profile,
+    get_partner_financial_summary, get_payment_history, get_product_add_cost, get_user_balance,
+    get_user_by_id, get_user_conversations, get_user_payment_methods, get_user_profile,
+    purchase_pack, recharge_tokens, save_user_payment_methods, update_gps_consent,
+    update_gps_location, update_user_profile,
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -27,6 +27,10 @@ pub fn user_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(get_consumption_history),
         )
         .route("/api/users/payment-history", get(get_payment_history))
+        .route(
+            "/api/users/partner-financial-summary",
+            get(get_partner_financial_summary),
+        )
         .route("/api/users/purchase_pack", post(purchase_pack))
         .route("/api/users/deduct-balance", post(deduct_balance))
         .route("/api/tokens/recharge", post(recharge_tokens))

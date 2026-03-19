@@ -19,10 +19,12 @@ import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useLocationSafe } from '../contexts/LocationContext';
+import { useNavigationPayment } from '../hooks/useNavigationPayment';
 import { apiGet, apiPost } from '../services/api';
 import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
 import { socialSharing } from '../services/socialSharing';
 import { modernColors } from '../theme/modernTheme';
+import SafeStorage from '../utils/safeStorage';
 
 const { width, height } = Dimensions.get('window');
 const MAP_HEIGHT = height * 0.35;
@@ -1242,14 +1244,23 @@ const NavigationScreen: React.FC = () => {
                             >
                                 <SafeIcon name={alertMode === 'sound' ? 'Volume2' : 'VolumeX'} size={18} color={alertMode === 'visual' ? '#fff' : modernColors.text} />
                             </TouchableOpacity>
-                            {/* Bouton Alertes Communautaires */}
+                            {/* Bouton Alertes Communautaires — ✅ PAIEMENT via payForAlerts */}
                             <TouchableOpacity
                                 style={[st.headerBtn, showAlertHistory && st.headerBtnAlertActive]}
                                 onPress={() => {
-                                    const n = !showAlertHistory;
-                                    setShowAlertHistory(n);
-                                    setShowActivityStats(false); // Fermer les stats si ouvertes
-                                    if (n) loadAlertHistory();
+                                    if (showAlertHistory) {
+                                        setShowAlertHistory(false);
+                                        return;
+                                    }
+                                    // Gate l'ouverture avec payForAlerts
+                                    payForAlerts(
+                                        () => {
+                                            setShowAlertHistory(true);
+                                            setShowActivityStats(false);
+                                            loadAlertHistory();
+                                        },
+                                        () => { /* suspendu — le hook affiche déjà l'alerte */ }
+                                    );
                                 }}
                             >
                                 <SafeIcon name="AlertTriangle" size={18} color={showAlertHistory ? '#fff' : modernColors.text} />
@@ -1273,6 +1284,53 @@ const NavigationScreen: React.FC = () => {
                             </TouchableOpacity>
                         </View>
                     </View>
+
+                    {/* ━━ SOLDE & DETTE BANNER ━━ */}
+                    {user && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, paddingHorizontal: 4 }}>
+                            {/* Solde actuel */}
+                            <TouchableOpacity
+                                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: currentBalance > 0 ? '#DCFCE7' : '#FEF3C7', borderWidth: 1, borderColor: currentBalance > 0 ? '#BBF7D0' : '#FDE68A' }}
+                                onPress={() => redirectToRecharge('Navigation')}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={{ fontSize: 12 }}>{currentBalance > 0 ? '\uD83D\uDCB0' : '⚠️'}</Text>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: currentBalance > 0 ? '#16A34A' : '#92400E' }}>
+                                    {fmtPrice(currentBalance, userCurrency)}
+                                </Text>
+                            </TouchableOpacity>
+                            {/* Coaching status */}
+                            {isCoachingActive && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: isCoachingTrial ? '#EEF2FF' : '#F0FDF4' }}>
+                                    <Text style={{ fontSize: 10 }}>{isCoachingTrial ? '\uD83C\uDF81' : '\uD83E\uDD16'}</Text>
+                                    <Text style={{ fontSize: 10, fontWeight: '600', color: isCoachingTrial ? '#6366F1' : '#16A34A' }}>
+                                        {isCoachingTrial ? (t('navPayment.trialActive') || 'Essai') : 'Coach IA'}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+                    {/* Bannière de suspension / dette */}
+                    {(isSuspended || unpaidDebt > 0) && (
+                        <TouchableOpacity
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, marginBottom: 8, borderRadius: 12, backgroundColor: isSuspended ? '#FEE2E2' : '#FEF3C7', borderWidth: 1, borderColor: isSuspended ? '#FECACA' : '#FDE68A' }}
+                            onPress={() => redirectToRecharge('Navigation')}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={{ fontSize: 20 }}>{isSuspended ? '⛔' : '⚠️'}</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 13, fontWeight: '800', color: isSuspended ? '#DC2626' : '#92400E' }}>
+                                    {isSuspended ? (t('navPayment.suspended') || 'Service suspendu') : (t('navPayment.debtWarning') || 'Dette en cours')}
+                                </Text>
+                                <Text style={{ fontSize: 11, color: isSuspended ? '#991B1B' : '#78350F', marginTop: 2 }}>
+                                    {t('navPayment.debtAmount') || 'Dette'}: {fmtPrice(unpaidDebt, userCurrency)} · {unpaidCount}/{maxUnpaidUses} {t('navPayment.unpaidUses') || 'impayés'}
+                                </Text>
+                            </View>
+                            <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: isSuspended ? '#DC2626' : '#F59E0B' }}>
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>{t('navPayment.recharge') || 'Recharger'}</Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
 
                     {/* ━━ HISTORIQUE DES ALERTES (toggle via icône header) ━━ */}
                     {showAlertHistory && (

@@ -17,7 +17,7 @@ import {
     formatPriceInCurrency, getMicroFeaturePrice,
     MICRO_PAYMENT_POLICY
 } from '../services/navigationPricing';
-import SafeStorage from '../utils/SafeStorage';
+import SafeStorage from '../utils/safeStorage';
 import { useCurrencyDetection } from './useCurrencyDetection';
 
 interface DebitResult {

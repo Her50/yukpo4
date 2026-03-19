@@ -34,23 +34,48 @@ pub struct ChatResponse {
 pub struct RecommendationsRequest {
     pub preferences: serde_json::Value,
     pub r#type: String,
+    pub language: Option<String>,
+    pub context: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct RecommendationsResponse {
-    pub recommendations: Vec<String>,
+    pub recommendations: Vec<RecommendationItem>,
+    pub confidence: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RecommendationItem {
+    pub title: String,
+    pub description: String,
+    pub category: String,
+    pub route: Option<String>,
+    pub icon: Option<String>,
+    pub score: f64,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct AnalyzeRequest {
     pub text: String,
     pub r#type: String,
+    pub language: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct AnalyzeResponse {
     pub sentiment: String,
+    pub sentiment_score: f64,
     pub keywords: Vec<String>,
+    pub entities: Vec<EntityItem>,
+    pub summary: Option<String>,
+    pub language_detected: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EntityItem {
+    pub text: String,
+    pub entity_type: String,
+    pub confidence: f64,
 }
 
 fn get_language_instruction(lang_code: &str) -> &'static str {
@@ -777,75 +802,265 @@ pub async fn chat_ai(
     })))
 }
 
-/// Génère des recommandations personnalisées
+/// Génère des recommandations personnalisées via OpenAI
 pub async fn get_recommendations(
     State(_state): State<Arc<AppState>>,
-    Extension(_user): Extension<AuthenticatedUser>, // ✅ SÉCURITÉ: Authentification requise
-    Json(_payload): Json<RecommendationsRequest>,
-) -> Result<ResponseJson<RecommendationsResponse>, StatusCode> {
-    // Pour l'instant, retourner des recommandations basiques
-    // TODO: Intégrer avec votre système de recommandations existant
-    let recommendations = vec![
-        "Restaurant recommandé : Le Bistrot".to_string(),
-        "Activité suggérée : Visite du musée".to_string(),
-        "Service utile : Pharmacie à proximité".to_string(),
-    ];
-
-    Ok(ResponseJson(RecommendationsResponse { recommendations }))
-}
-
-/// Analyse le sentiment et extrait les mots-clés d'un texte
-pub async fn analyze_text(
-    State(_state): State<Arc<AppState>>,
-    Extension(_user): Extension<AuthenticatedUser>, // ✅ SÉCURITÉ: Authentification requise
-    Json(payload): Json<AnalyzeRequest>,
-) -> Result<ResponseJson<AnalyzeResponse>, StatusCode> {
-    // ✅ SÉCURITÉ: Valider la longueur
-    if let Err(e) = validate_input_length(&payload.text, 5000) {
-        return Ok(ResponseJson(AnalyzeResponse {
-            sentiment: "erreur".to_string(),
-            keywords: vec![format!("Erreur: {}", e)],
-        }));
-    }
-
-    // ✅ SÉCURITÉ: Détecter les tentatives d'injection
-    if detect_prompt_injection(&payload.text) {
-        return Ok(ResponseJson(AnalyzeResponse {
-            sentiment: "erreur".to_string(),
-            keywords: vec!["Requête rejetée pour raisons de sécurité".to_string()],
-        }));
-    }
-
-    // ✅ SÉCURITÉ: Sanitiser l'input
-    let sanitized_text = sanitize_prompt_input(&payload.text);
-
-    // Analyse basique du sentiment (utiliser texte sanitisé)
-    let sentiment = if sanitized_text.to_lowercase().contains("merci")
-        || sanitized_text.to_lowercase().contains("parfait")
-        || sanitized_text.to_lowercase().contains("excellent")
-    {
-        "positif"
-    } else if sanitized_text.to_lowercase().contains("problème")
-        || sanitized_text.to_lowercase().contains("erreur")
-        || sanitized_text.to_lowercase().contains("mauvais")
-    {
-        "négatif"
-    } else {
-        "neutre"
+    Extension(_user): Extension<AuthenticatedUser>,
+    Json(payload): Json<RecommendationsRequest>,
+) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
+    let api_key = match std::env::var("OPENAI_API_KEY") {
+        Ok(key) => key,
+        Err(_) => {
+            return Ok(ResponseJson(serde_json::json!({
+                "recommendations": [],
+                "confidence": 0.0,
+                "error": "API key not configured"
+            })));
+        }
     };
 
-    // Extraire les mots-clés (mots de plus de 3 caractères) depuis texte sanitisé
-    let keywords: Vec<String> = sanitized_text
-        .split_whitespace()
-        .filter(|word| word.len() > 3)
-        .map(|word| word.to_lowercase())
-        .take(5)
-        .collect();
+    let user_lang = payload.language.as_deref().unwrap_or("fr");
+    let lang_instruction = get_language_instruction(user_lang);
+    let preferences_str = serde_json::to_string_pretty(&payload.preferences).unwrap_or_default();
+    let context_str = payload
+        .context
+        .as_ref()
+        .map(|c| serde_json::to_string_pretty(c).unwrap_or_default())
+        .unwrap_or_default();
 
-    Ok(ResponseJson(AnalyzeResponse {
-        sentiment: sentiment.to_string(),
-        keywords,
-    }))
+    let system_prompt = format!(
+        "You are Yukpo's AI recommendation engine. {}\n\n\
+        Generate personalized recommendations for a Yukpo user based on their preferences and context.\n\n\
+        YUKPO SERVICES: pharmacy, hospital, lab, blood_bank, taxi, carpooling, bus_tickets, delivery, \
+        hotel, real_estate, jobs, school_orientation, books, supermarket, restaurant, insurance, \
+        automobile, video_creation, gps_navigation, menu_planning, wallet.\n\n\
+        USER PREFERENCES:\n{}\n\nCONTEXT:\n{}\n\nTYPE: {}\n\n\
+        Return STRICTLY valid JSON:\n\
+        {{\"recommendations\": [\n\
+          {{\"title\": \"...\", \"description\": \"...\", \"category\": \"health|transport|delivery|commerce|career|accommodation|creative|finance\", \
+          \"route\": \"ScreenName\", \"icon\": \"lucide-icon\", \"score\": 0.95}}\n\
+        ], \"confidence\": 0.9}}\n\n\
+        Generate 3-6 recommendations sorted by relevance score (0-1). Each must have a valid Yukpo screen route.\n\
+        Valid routes: PharmacieHome, HopitalHome, TaxiHome, CovoiturageHome, DeliveryHome, HotelMeubleHome, \
+        OffresEmploiHome, OrientationScolaireHome, LivreScolaireHome, SupermarketHome, Navigation, \
+        MenuPlanningHub, WalletFinancial, RechercheBesoin, VideoCreationIntro, AssuranceDashboard.",
+        lang_instruction, preferences_str, context_str, payload.r#type,
+    );
+
+    let client = Client::new();
+    let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_string());
+
+    let request_body = serde_json::json!({
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": format!("Generate personalized recommendations for type: {}", payload.r#type)}
+        ],
+        "max_tokens": 600,
+        "temperature": 0.7
+    });
+
+    let response = match client
+        .post("https://api.openai.com/v1/chat/completions")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            log::error!("[AI Recommendations] OpenAI request failed: {}", e);
+            return Ok(ResponseJson(serde_json::json!({
+                "recommendations": [], "confidence": 0.0
+            })));
+        }
+    };
+
+    if !response.status().is_success() {
+        log::error!(
+            "[AI Recommendations] OpenAI returned status: {}",
+            response.status()
+        );
+        return Ok(ResponseJson(serde_json::json!({
+            "recommendations": [], "confidence": 0.0
+        })));
+    }
+
+    let openai_response: serde_json::Value = match response.json().await {
+        Ok(data) => data,
+        Err(_) => {
+            return Ok(ResponseJson(serde_json::json!({
+                "recommendations": [], "confidence": 0.0
+            })));
+        }
+    };
+
+    let raw_content = openai_response["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_content) {
+        return Ok(ResponseJson(parsed));
+    }
+
+    Ok(ResponseJson(serde_json::json!({
+        "recommendations": [{"title": raw_content, "description": "", "category": "general", "score": 0.5}],
+        "confidence": 0.5
+    })))
+}
+
+/// Analyse le sentiment, extrait mots-clés, entités et résumé via OpenAI
+pub async fn analyze_text(
+    State(_state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+    Json(payload): Json<AnalyzeRequest>,
+) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
+    if let Err(e) = validate_input_length(&payload.text, 5000) {
+        return Ok(ResponseJson(serde_json::json!({
+            "sentiment": "error", "sentiment_score": 0.0,
+            "keywords": [], "entities": [],
+            "error": format!("Erreur: {}", e)
+        })));
+    }
+
+    if detect_prompt_injection(&payload.text) {
+        return Ok(ResponseJson(serde_json::json!({
+            "sentiment": "error", "sentiment_score": 0.0,
+            "keywords": [], "entities": [],
+            "error": "Requête rejetée pour raisons de sécurité"
+        })));
+    }
+
+    let sanitized_text = sanitize_prompt_input(&payload.text);
+
+    let api_key = match std::env::var("OPENAI_API_KEY") {
+        Ok(key) => key,
+        Err(_) => {
+            // Graceful fallback: basic local analysis if no API key
+            let lower = sanitized_text.to_lowercase();
+            let (sentiment, score) = if lower.contains("merci")
+                || lower.contains("parfait")
+                || lower.contains("excellent")
+                || lower.contains("super")
+                || lower.contains("genial")
+                || lower.contains("bravo")
+            {
+                ("positive", 0.7)
+            } else if lower.contains("probleme")
+                || lower.contains("erreur")
+                || lower.contains("mauvais")
+                || lower.contains("nul")
+                || lower.contains("horrible")
+                || lower.contains("pire")
+            {
+                ("negative", 0.7)
+            } else {
+                ("neutral", 0.5)
+            };
+            let keywords: Vec<String> = sanitized_text
+                .split_whitespace()
+                .filter(|w| w.len() > 3)
+                .map(|w| w.to_lowercase())
+                .take(5)
+                .collect();
+            return Ok(ResponseJson(serde_json::json!({
+                "sentiment": sentiment, "sentiment_score": score,
+                "keywords": keywords, "entities": [],
+                "summary": null, "language_detected": null,
+                "source": "local_fallback"
+            })));
+        }
+    };
+
+    let user_lang = payload.language.as_deref().unwrap_or("fr");
+    let lang_instruction = get_language_instruction(user_lang);
+
+    let system_prompt = format!(
+        "You are Yukpo's advanced NLP analysis engine. {}\n\n\
+        Analyze the following text and return STRICTLY valid JSON with:\n\
+        {{\n\
+          \"sentiment\": \"positive|negative|neutral|mixed\",\n\
+          \"sentiment_score\": 0.0-1.0 (confidence),\n\
+          \"keywords\": [\"top 5-8 keywords/keyphrases\"],\n\
+          \"entities\": [{{\"text\": \"...\", \"entity_type\": \"person|location|organization|product|service|date|price|phone\", \"confidence\": 0.9}}],\n\
+          \"summary\": \"1-2 sentence summary of the text\",\n\
+          \"language_detected\": \"language code (fr, en, sw, ha, etc.)\",\n\
+          \"intent\": \"question|complaint|praise|request|information|negotiation\",\n\
+          \"urgency\": \"low|medium|high\",\n\
+          \"topics\": [\"main topics discussed\"]\n\
+        }}\n\n\
+        Be precise and factual. Detect ALL entities (names, places, prices, phones). \
+        The summary should be in the detected language of the text.",
+        lang_instruction,
+    );
+
+    let client = Client::new();
+    let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_string());
+
+    let request_body = serde_json::json!({
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": format!("Analyze this text:\n\n{}", sanitized_text)}
+        ],
+        "max_tokens": 500,
+        "temperature": 0.3
+    });
+
+    let response = match client
+        .post("https://api.openai.com/v1/chat/completions")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            log::error!("[AI Analyze] OpenAI request failed: {}", e);
+            return Ok(ResponseJson(serde_json::json!({
+                "sentiment": "unknown", "sentiment_score": 0.0,
+                "keywords": [], "entities": [], "error": "API unavailable"
+            })));
+        }
+    };
+
+    if !response.status().is_success() {
+        let status = response.status();
+        log::error!("[AI Analyze] OpenAI returned status: {}", status);
+        return Ok(ResponseJson(serde_json::json!({
+            "sentiment": "unknown", "sentiment_score": 0.0,
+            "keywords": [], "entities": [], "error": format!("API error: {}", status)
+        })));
+    }
+
+    let openai_response: serde_json::Value = match response.json().await {
+        Ok(data) => data,
+        Err(_) => {
+            return Ok(ResponseJson(serde_json::json!({
+                "sentiment": "unknown", "sentiment_score": 0.0,
+                "keywords": [], "entities": []
+            })));
+        }
+    };
+
+    let raw_content = openai_response["choices"][0]["message"]["content"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_content) {
+        return Ok(ResponseJson(parsed));
+    }
+
+    // If JSON parsing fails, return the raw text as summary
+    Ok(ResponseJson(serde_json::json!({
+        "sentiment": "unknown", "sentiment_score": 0.5,
+        "keywords": [], "entities": [],
+        "summary": raw_content
+    })))
 }
 
 /// Contextual chat endpoint for the intelligent assistant overlay

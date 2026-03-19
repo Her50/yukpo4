@@ -244,6 +244,10 @@ const TaxiFormScreen: React.FC = () => {
                     <View style={[s.quickIcon, { backgroundColor: '#3B82F615' }]}><SafeIcon name="bar-chart-2" size={22} color="#3B82F6" /></View>
                     <Text style={s.quickLabel}>{t('taxiFormScreen.statistiques')}</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={s.quickAction} onPress={() => (navigation as any).navigate('WalletFinancial')}>
+                    <View style={[s.quickIcon, { backgroundColor: '#8B5CF615' }]}><SafeIcon name="wallet" size={22} color="#8B5CF6" /></View>
+                    <Text style={s.quickLabel}>{t('financialTracking.wallet') || 'Portefeuille'}</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Vehicle Info */}

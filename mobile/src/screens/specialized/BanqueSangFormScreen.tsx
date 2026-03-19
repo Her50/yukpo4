@@ -238,6 +238,10 @@ const BanqueSangFormScreen: React.FC = () => {
                     <View style={[s.quickIcon, { backgroundColor: '#6B728015' }]}><SafeIcon name="settings" size={22} color="#6B7280" /></View>
                     <Text style={s.quickLabel}>{t('banqueSangForm.monService') || 'Mon service'}</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={s.quickAction} onPress={() => (navigation as any).navigate('WalletFinancial')}>
+                    <View style={[s.quickIcon, { backgroundColor: '#8B5CF615' }]}><SafeIcon name="wallet" size={22} color="#8B5CF6" /></View>
+                    <Text style={s.quickLabel}>{t('financialTracking.wallet') || 'Portefeuille'}</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Stock Summary */}

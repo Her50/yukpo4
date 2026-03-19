@@ -20,9 +20,11 @@ import {
     View
 } from 'react-native';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useScreenContext } from '../hooks/useScreenContext';
 import { useWebSocketChat } from '../hooks/useWebSocketChat';
 import { apiGet, apiPost } from '../services/api';
 import { chatbotIntelligentService, ChatbotResponse, IconReference } from '../services/chatbotIntelligentService';
+import { intelligentChatService } from '../services/intelligentChatService';
 import { modernColors } from '../theme/modernTheme';
 import NegotiatedPriceModal from './chat/NegotiatedPriceModal';
 import OrderDeliveryModal from './delivery/OrderDeliveryModal';
@@ -67,6 +69,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 }) => {
     const navigation = useNavigation();
     const { t, language } = useLanguageSafe();
+    // ✅ FIX BUG 1: Use full contextual screen awareness for the chatbot panel
+    const screenContext = useScreenContext('ChatModalMobile');
     const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -114,10 +118,37 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
     // États pour le panneau chatbot IA inline
     const [showChatbotPanel, setShowChatbotPanel] = useState(false);
-    const [chatbotMessages, setChatbotMessages] = useState<Array<{ id: string; text: string; isUser: boolean; response?: ChatbotResponse }>>([]);
+    const [chatbotMessages, setChatbotMessages] = useState<Array<{ id: string; text: string; isUser: boolean; response?: ChatbotResponse & { suggestedActions?: any[]; nextSteps?: string[] } }>>([]);
     const [chatbotInput, setChatbotInput] = useState('');
     const [chatbotLoading, setChatbotLoading] = useState(false);
+    const [streamingText, setStreamingText] = useState('');
+    const [isStreaming, setIsStreaming] = useState(false);
     const chatbotScrollRef = useRef<ScrollView>(null);
+
+    // ✅ Animated typing dots (3 dots with staggered pulsing)
+    const typingDot1 = useRef(new Animated.Value(0.3)).current;
+    const typingDot2 = useRef(new Animated.Value(0.3)).current;
+    const typingDot3 = useRef(new Animated.Value(0.3)).current;
+
+    useEffect(() => {
+        if (prestataireTyping || chatbotLoading) {
+            const createPulse = (dot: Animated.Value, delay: number) =>
+                Animated.loop(
+                    Animated.sequence([
+                        Animated.delay(delay),
+                        Animated.timing(dot, { toValue: 1, duration: 400, easing: Easing.ease, useNativeDriver: true }),
+                        Animated.timing(dot, { toValue: 0.3, duration: 400, easing: Easing.ease, useNativeDriver: true }),
+                    ])
+                );
+            const a1 = createPulse(typingDot1, 0);
+            const a2 = createPulse(typingDot2, 150);
+            const a3 = createPulse(typingDot3, 300);
+            a1.start(); a2.start(); a3.start();
+            return () => { a1.stop(); a2.stop(); a3.stop(); };
+        } else {
+            typingDot1.setValue(0.3); typingDot2.setValue(0.3); typingDot3.setValue(0.3);
+        }
+    }, [prestataireTyping, chatbotLoading]);
 
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -285,44 +316,118 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     };
 
     // Handler pour le chatbot intelligent — panneau inline
+    // ✅ FIX BUG 1: Uses intelligentChatService (1185 lines, full contextual awareness)
+    // as PRIMARY, with chatbotIntelligentService as FALLBACK for service-specific queries
     const handleChatbotQuery = async (query: string) => {
         if (!query.trim() || chatbotLoading) return;
 
-        // Ajouter le message utilisateur
         const userMsg = { id: `user_${Date.now()}`, text: query, isUser: true };
         setChatbotMessages(prev => [...prev, userMsg]);
         setChatbotInput('');
         setChatbotLoading(true);
 
         try {
-            const recentMsgs = messages.slice(-5).map((m: any) => ({
-                isUser: m.isUser ?? (m.from === 'client'),
-                text: m.text || m.content || '',
-            }));
-            const response = await chatbotIntelligentService.generateChatbotResponse(
+            // Build conversation history from chatbot messages
+            const chatHistory = chatbotMessages
+                .filter(m => m.text)
+                .slice(-6)
+                .map(m => ({
+                    id: m.id,
+                    text: m.text,
+                    isUser: m.isUser,
+                    timestamp: new Date(),
+                    type: 'text' as const,
+                }));
+
+            // ✅ PRIMARY: Use intelligentChatService with full screen context
+            // This gives the chatbot awareness of: current screen, available actions,
+            // visible elements, user role, service data, navigation map (50+ destinations),
+            // and specialized context (covoiturage, taxi, emploi, hotel, pharmacie, etc.)
+            const enrichedContext = {
+                ...screenContext,
+                serviceData: {
+                    ...screenContext.serviceData,
+                    ...(service?.data || {}),
+                    nom: service?.data?.titre_service?.valeur || service?.data?.titre_service || service?.nom || service?.name,
+                    prix: service?.data?.prix?.valeur || service?.data?.prix || service?.prix,
+                    description: service?.data?.description?.valeur || service?.data?.description,
+                    products: service?.products || service?.produits || [],
+                },
+            };
+
+            const intelligentResponse = await intelligentChatService.generateContextualResponse(
                 query,
-                service,
-                recentMsgs,
+                enrichedContext,
+                chatHistory,
                 language,
             );
 
+            // ✅ Streaming word-by-word effect (ChatGPT style)
+            const fullText = intelligentResponse.message;
+            const responseData = {
+                message: fullText,
+                icons: [] as IconReference[],
+                quickReplies: intelligentResponse.nextSteps?.slice(0, 4) || [],
+                suggestedActions: intelligentResponse.suggestedActions || [],
+                nextSteps: intelligentResponse.nextSteps || [],
+            } as ChatbotResponse & { suggestedActions?: any[]; nextSteps?: string[] };
+
+            // Start streaming phase
+            setChatbotLoading(false);
+            setIsStreaming(true);
+            setStreamingText('');
+
+            const words = fullText.split(/(\s+)/); // preserve whitespace
+            let accumulated = '';
+            for (let i = 0; i < words.length; i++) {
+                accumulated += words[i];
+                setStreamingText(accumulated);
+                chatbotScrollRef.current?.scrollToEnd({ animated: false });
+                // Variable speed: faster for whitespace, slower for words
+                const delay = words[i].trim() === '' ? 5 : (15 + Math.random() * 20);
+                await new Promise(r => setTimeout(r, delay));
+            }
+
+            // Streaming complete — commit final message
+            setIsStreaming(false);
+            setStreamingText('');
+
             const botMsg = {
                 id: `bot_${Date.now()}`,
-                text: response.message,
+                text: fullText,
                 isUser: false,
-                response,
+                response: responseData,
             };
             setChatbotMessages(prev => [...prev, botMsg]);
-
-            // Auto-scroll
             setTimeout(() => chatbotScrollRef.current?.scrollToEnd({ animated: true }), 100);
         } catch (error) {
-            console.error('[ChatModalMobile] Erreur chatbot:', error);
-            setChatbotMessages(prev => [...prev, {
-                id: `err_${Date.now()}`,
-                text: t('intelligentChat.error'),
-                isUser: false,
-            }]);
+            console.error('[ChatModalMobile] intelligentChatService failed, trying fallback:', error);
+
+            // ✅ FALLBACK: Use chatbotIntelligentService for service-specific queries
+            try {
+                const recentMsgs = messages.slice(-5).map((m: any) => ({
+                    isUser: m.isUser ?? (m.from === 'client'),
+                    text: m.text || m.content || '',
+                }));
+                const fallbackResponse = await chatbotIntelligentService.generateChatbotResponse(
+                    query, service, recentMsgs, language,
+                );
+                const botMsg = {
+                    id: `bot_${Date.now()}`,
+                    text: fallbackResponse.message,
+                    isUser: false,
+                    response: fallbackResponse,
+                };
+                setChatbotMessages(prev => [...prev, botMsg]);
+                setTimeout(() => chatbotScrollRef.current?.scrollToEnd({ animated: true }), 100);
+            } catch (fallbackError) {
+                console.error('[ChatModalMobile] Both chatbot services failed:', fallbackError);
+                setChatbotMessages(prev => [...prev, {
+                    id: `err_${Date.now()}`,
+                    text: t('intelligentChat.error') || 'Une erreur est survenue. Réessayez.',
+                    isUser: false,
+                }]);
+            }
         } finally {
             setChatbotLoading(false);
         }
@@ -525,7 +630,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             if (isNaN(dateObj.getTime())) {
                 return '--:--';
             }
-            return dateObj.toLocaleTimeString('fr-FR', {
+            const locale = language === 'en' ? 'en-US' : language === 'fr' ? 'fr-FR' : language || 'fr-FR';
+            return dateObj.toLocaleTimeString(locale, {
                 hour: '2-digit',
                 minute: '2-digit'
             });
@@ -1206,9 +1312,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         <View style={styles.typingContainer}>
                             <View style={styles.typingBubble}>
                                 <View style={styles.typingDots}>
-                                    <View style={styles.typingDot} />
-                                    <View style={styles.typingDot} />
-                                    <View style={styles.typingDot} />
+                                    <Animated.View style={[styles.typingDot, { opacity: typingDot1, transform: [{ scale: typingDot1 }] }]} />
+                                    <Animated.View style={[styles.typingDot, { opacity: typingDot2, transform: [{ scale: typingDot2 }] }]} />
+                                    <Animated.View style={[styles.typingDot, { opacity: typingDot3, transform: [{ scale: typingDot3 }] }]} />
                                 </View>
                                 <Text style={styles.typingText}>{t('chatModalMobile.enTrainDecrire')}</Text>
                             </View>
@@ -1439,7 +1545,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             'ce produit';
 
                                         // ✅ CORRIGÉ: Message plus clair avec le lien sur sa propre ligne
-                                        const messageWithLink = `Bonjour, j'aimerais avoir votre avis sur ${productName}.\n\n${reviewLink}`;
+                                        const messageWithLink = t('chatModalMobile.reviewRequestMsg', { product: productName, link: reviewLink }) || `Bonjour, j'aimerais avoir votre avis sur ${productName}.\n\n${reviewLink}`;
 
                                         setNewMessage(messageWithLink);
 
@@ -1608,18 +1714,30 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name={showChatbotPanel ? 'x' : 'bot'} size={20} color={showChatbotPanel ? modernColors.error : '#6366f1'} />
                         </TouchableOpacity>
 
-                        <TextInput
-                            style={styles.textInput}
-                            value={newMessage}
-                            onChangeText={(text) => handleTyping(text)}
-                            onSelectionChange={(event) => {
-                                setCursorPosition(event.nativeEvent.selection.start);
-                            }}
-                            placeholder={replyingTo ? t('chatModalMobile.tapezVotreReponse') : (t('chatModalMobile.typePlaceholder') || "Tapez votre message... (@ pour mentionner, \uD83E\uDD16 pour l'aide)")}
-                            placeholderTextColor={modernColors.textSecondary}
-                            multiline
-                            maxLength={500}
-                        />
+                        <View style={{ flex: 1 }}>
+                            {showMentionPicker && mentionQuery.length >= 1 && (
+                                <InlineMentionSuggestions
+                                    query={mentionQuery}
+                                    visible={showMentionPicker}
+                                    onSelect={(user) => {
+                                        insertMention(user);
+                                    }}
+                                    maxHeight={160}
+                                />
+                            )}
+                            <TextInput
+                                style={styles.textInput}
+                                value={newMessage}
+                                onChangeText={(text) => handleTyping(text)}
+                                onSelectionChange={(event) => {
+                                    setCursorPosition(event.nativeEvent.selection.start);
+                                }}
+                                placeholder={replyingTo ? t('chatModalMobile.tapezVotreReponse') : (t('chatModalMobile.typePlaceholder') || "Tapez votre message... (@ pour mentionner, \uD83E\uDD16 pour l'aide)")}
+                                placeholderTextColor={modernColors.textSecondary}
+                                multiline
+                                maxLength={2000}
+                            />
+                        </View>
 
                         <TouchableOpacity
                             style={[
@@ -1944,10 +2062,21 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 </View>
                             ))}
 
-                            {chatbotLoading && (
+                            {chatbotLoading && !isStreaming && (
                                 <View style={[styles.chatbotBubbleRow, styles.chatbotBubbleRowLeft]}>
                                     <View style={[styles.chatbotBubble, styles.chatbotBubbleBot]}>
-                                        <Text style={styles.chatbotBubbleTextBot}>⏳ {t('intelligentChat.thinking')}</Text>
+                                        <View style={styles.typingDots}>
+                                            <Animated.View style={[styles.typingDotSmall, { opacity: typingDot1, transform: [{ scale: typingDot1 }] }]} />
+                                            <Animated.View style={[styles.typingDotSmall, { opacity: typingDot2, transform: [{ scale: typingDot2 }] }]} />
+                                            <Animated.View style={[styles.typingDotSmall, { opacity: typingDot3, transform: [{ scale: typingDot3 }] }]} />
+                                        </View>
+                                    </View>
+                                </View>
+                            )}
+                            {isStreaming && streamingText.length > 0 && (
+                                <View style={[styles.chatbotBubbleRow, styles.chatbotBubbleRowLeft]}>
+                                    <View style={[styles.chatbotBubble, styles.chatbotBubbleBot]}>
+                                        <Text style={styles.chatbotBubbleTextBot}>{streamingText}<Text style={styles.streamingCursor}>▊</Text></Text>
                                     </View>
                                 </View>
                             )}
@@ -2245,11 +2374,21 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     typingDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: modernColors.primary,
+    },
+    typingDotSmall: {
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: modernColors.textSecondary,
-        // Animation sera ajoutée via Animated API si nécessaire
+        backgroundColor: '#8B5CF6',
+    },
+    streamingCursor: {
+        color: '#8B5CF6',
+        fontWeight: '700',
+        fontSize: 14,
     },
     typingText: {
         fontSize: 12,

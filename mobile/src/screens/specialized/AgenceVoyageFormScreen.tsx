@@ -382,6 +382,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     { label: t('agenceVoyageForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
                     { label: t('agenceVoyageForm.modelesBus'), icon: 'truck', color: '#8B5CF6', onPress: () => setActiveTab('bus') },
                     { label: t('agenceVoyageForm.iaConseils'), icon: 'sparkles', color: '#7C3AED', onPress: handleAISuggest },
+                    { label: t('financialTracking.wallet') || 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
                     { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
