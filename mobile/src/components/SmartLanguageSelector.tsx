@@ -14,6 +14,7 @@ import {
     FlatList,
     Modal,
     Platform,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -176,7 +177,11 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                                 />
                             </>
                         ) : (
-                            <>
+                            <ScrollView
+                                style={styles.suggestedScroll}
+                                contentContainerStyle={styles.suggestedScrollContent}
+                                showsVerticalScrollIndicator={false}
+                            >
                                 {/* Langues suggérées */}
                                 {suggestedLanguages.length > 0 && (
                                     <View style={styles.section}>
@@ -201,7 +206,7 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                                     </Text>
                                     <Text style={styles.showAllChevron}>→</Text>
                                 </TouchableOpacity>
-                            </>
+                            </ScrollView>
                         )}
                     </View>
                 </TouchableOpacity>
@@ -322,6 +327,12 @@ const styles = StyleSheet.create({
     section: {
         paddingHorizontal: 16,
         paddingTop: 12,
+    },
+    suggestedScroll: {
+        maxHeight: Dimensions.get('window').height * 0.55,
+    },
+    suggestedScrollContent: {
+        paddingBottom: 12,
     },
     sectionTitle: {
         fontSize: 14,

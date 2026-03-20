@@ -34,12 +34,13 @@ export const COUNTRY_LANGUAGES: CountryLanguageMap = {
         languages: [
             { code: 'fr', name: 'Français', nativeName: 'Français', flag: '\uD83C\uDDEB\uD83C\uDDF7', isOfficial: true, isLocal: false },
             { code: 'en', name: 'English', nativeName: 'English', flag: '\uD83C\uDDEC\uD83C\uDDE7', isOfficial: true, isLocal: false },
+            // Mettre Foufouldé en évidence au Cameroun (forte adoption locale)
+            { code: 'ff', name: 'Foufouldé (Fulfulde)', nativeName: 'Fulfulde / Pulaar', flag: '\uD83C\uDDE8\uD83C\uDDF2', isOfficial: false, isLocal: true },
             { code: 'ewo', name: 'Ewondo', nativeName: 'Ewondo', flag: '\uD83C\uDDE8\uD83C\uDDF2', isOfficial: false, isLocal: true },
             { code: 'dua', name: 'Duala', nativeName: 'Duálá', flag: '\uD83C\uDDE8\uD83C\uDDF2', isOfficial: false, isLocal: true },
             { code: 'bbj', name: 'Ghomala', nativeName: "Ghomálá'", flag: '\uD83C\uDDE8\uD83C\uDDF2', isOfficial: false, isLocal: true },
             { code: 'bas', name: 'Bassa', nativeName: 'Bassa', flag: '\uD83C\uDDE8\uD83C\uDDF2', isOfficial: false, isLocal: true },
             { code: 'bum', name: 'Bulu', nativeName: 'Bulu', flag: '\uD83C\uDDE8\uD83C\uDDF2', isOfficial: false, isLocal: true },
-            { code: 'ff', name: 'Fulfulde', nativeName: 'Fufulde / Fulfulde', flag: '\uD83C\uDDE8\uD83C\uDDF2', isOfficial: false, isLocal: true },
             { code: 'pcm', name: 'Pidgin', nativeName: 'Naijá (Pidgin)', flag: '\uD83C\uDDE8\uD83C\uDDF2', isOfficial: false, isLocal: true },
             { code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '\uD83C\uDDF8\uD83C\uDDE6', isOfficial: false, isLocal: false },
         ],
