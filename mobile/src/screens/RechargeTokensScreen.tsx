@@ -56,6 +56,19 @@ interface PaymentMethod {
   icon: string;
 }
 
+const MOBILE_MONEY_METHOD_IDS = [
+  'mtn_momo',
+  'orange_money',
+  'wave',
+  'moov_money',
+  'airtel_money',
+  'mpesa',
+  'vodafone_cash',
+  'free_money',
+  'tigo_pesa',
+  'ecocash',
+];
+
 const RechargeTokensScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<any>();
@@ -650,6 +663,36 @@ const RechargeTokensScreen: React.FC = () => {
     </View>
   );
 
+  const renderPhoneNumberCard = () => (
+    <Card style={styles.phoneCard}>
+      <Card.Content>
+        <Text style={styles.phoneLabel}>📱 {t('payment.phone') || t('rechargeTokens.numeroDeTelephone')}</Text>
+        <TextInput
+          style={styles.phoneInput}
+          placeholder={t('rechargeScreen.phonePlaceholder') || 'Exemple: 699999999'}
+          placeholderTextColor="#999"
+          value={phoneNumber}
+          onChangeText={setPhoneNumber}
+          keyboardType="phone-pad"
+          maxLength={15}
+        />
+        <Text style={styles.phoneHint}>
+          {selectedPaymentMethod === 'mtn_momo' ? '💡 MTN : 67X XXX XXX ou 65X XXX XXX' : '💡 Orange : 69X XXX XXX'}
+        </Text>
+        {!paymentCheck.has_payment_method && (
+          <TouchableOpacity
+            style={{ marginTop: 8, padding: 8, backgroundColor: '#FEF3C7', borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+            onPress={() => setShowPaymentPrompt(true)}
+          >
+            <Text style={{ fontSize: 13, color: '#92400E' }}>
+              ⚠️ {t('paymentPrompt.saveForFuture') || t('rechargeTokens.enregistrerCeNumeroPourLes')}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </Card.Content>
+    </Card>
+  );
+
   const renderPaymentStep = () => (
     <View style={styles.stepContainer}>
       <Title style={styles.stepTitle}>{t('payment.method') || t('rechargeTokens.methodeDePaiement')}</Title>
@@ -657,69 +700,46 @@ const RechargeTokensScreen: React.FC = () => {
       <View style={styles.paymentMethodsContainer}>
         {paymentMethods
           .filter((m) => m.type !== 'mobile' || mobilePaymentIdsForCountry.includes(m.id))
-          .map((method) => (
-          <TouchableOpacity
-            key={method.id}
-            style={[
-              styles.paymentCard,
-              selectedPaymentMethod === method.id && styles.paymentCardSelected,
-            ]}
-            onPress={() => setSelectedPaymentMethod(method.id)}
-          >
-            <View style={styles.paymentContent}>
-              <Ionicons
-                name={method.icon as any}
-                size={24}
-                color={theme.colors.primary}
-              />
-              <View style={styles.paymentInfo}>
-                <Text style={styles.paymentName}>{method.name}</Text>
-                <Text style={styles.paymentTime}>
-                  {method.processingTime}
-                  {method.fees > 0 && ` • Frais: ${method.fees}%`}
-                </Text>
-              </View>
-            </View>
+          .map((method) => {
+            const isSelected = selectedPaymentMethod === method.id;
+            const shouldShowPhoneInput = isSelected && MOBILE_MONEY_METHOD_IDS.includes(method.id);
 
-            <RadioButton
-              value={method.id}
-              status={selectedPaymentMethod === method.id ? 'checked' : 'unchecked'}
-              onPress={() => setSelectedPaymentMethod(method.id)}
-            />
-          </TouchableOpacity>
-        ))}
+            return (
+              <React.Fragment key={method.id}>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentCard,
+                    isSelected && styles.paymentCardSelected,
+                  ]}
+                  onPress={() => setSelectedPaymentMethod(method.id)}
+                >
+                  <View style={styles.paymentContent}>
+                    <Ionicons
+                      name={method.icon as any}
+                      size={24}
+                      color={theme.colors.primary}
+                    />
+                    <View style={styles.paymentInfo}>
+                      <Text style={styles.paymentName}>{method.name}</Text>
+                      <Text style={styles.paymentTime}>
+                        {method.processingTime}
+                        {method.fees > 0 && ` • Frais: ${method.fees}%`}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <RadioButton
+                    value={method.id}
+                    status={isSelected ? 'checked' : 'unchecked'}
+                    onPress={() => setSelectedPaymentMethod(method.id)}
+                  />
+                </TouchableOpacity>
+
+                {shouldShowPhoneInput && renderPhoneNumberCard()}
+              </React.Fragment>
+            );
+          })}
       </View>
-
-      {/* Champ numéro de téléphone pour Mobile Money */}
-      {(['mtn_momo', 'orange_money', 'wave', 'moov_money', 'airtel_money', 'mpesa', 'vodafone_cash', 'free_money', 'tigo_pesa', 'ecocash'].includes(selectedPaymentMethod || '')) && (
-        <Card style={styles.phoneCard}>
-          <Card.Content>
-            <Text style={styles.phoneLabel}>📱 {t('payment.phone') || t('rechargeTokens.numeroDeTelephone')}</Text>
-            <TextInput
-              style={styles.phoneInput}
-              placeholder={t('rechargeScreen.phonePlaceholder') || 'Exemple: 699999999'}
-              placeholderTextColor="#999"
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-              maxLength={15}
-            />
-            <Text style={styles.phoneHint}>
-              {selectedPaymentMethod === 'mtn_momo' ? '💡 MTN : 67X XXX XXX ou 65X XXX XXX' : '💡 Orange : 69X XXX XXX'}
-            </Text>
-            {!paymentCheck.has_payment_method && (
-              <TouchableOpacity
-                style={{ marginTop: 8, padding: 8, backgroundColor: '#FEF3C7', borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-                onPress={() => setShowPaymentPrompt(true)}
-              >
-                <Text style={{ fontSize: 13, color: '#92400E' }}>
-                  ⚠️ {t('paymentPrompt.saveForFuture') || t('rechargeTokens.enregistrerCeNumeroPourLes')}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </Card.Content>
-        </Card>
-      )}
 
       <View style={styles.navigationButtons}>
         <TouchableOpacity
@@ -733,13 +753,13 @@ const RechargeTokensScreen: React.FC = () => {
           disabled={
             !selectedPaymentMethod ||
             getSelectedAmount() < minimumRechargeAmount ||
-            (['mtn_momo', 'orange_money', 'wave', 'moov_money', 'airtel_money', 'mpesa', 'vodafone_cash', 'free_money', 'tigo_pesa', 'ecocash'].includes(selectedPaymentMethod || '') && !phoneNumber)
+            (MOBILE_MONEY_METHOD_IDS.includes(selectedPaymentMethod || '') && !phoneNumber)
           }
           style={[
             styles.nextButton,
             (!selectedPaymentMethod ||
               getSelectedAmount() < minimumRechargeAmount ||
-              (['mtn_momo', 'orange_money', 'wave', 'moov_money', 'airtel_money', 'mpesa', 'vodafone_cash', 'free_money', 'tigo_pesa', 'ecocash'].includes(selectedPaymentMethod || '') && !phoneNumber)) &&
+              (MOBILE_MONEY_METHOD_IDS.includes(selectedPaymentMethod || '') && !phoneNumber)) &&
               styles.nextButtonDisabled
           ]}
         >
@@ -1202,7 +1222,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   phoneCard: {
-    marginVertical: 16,
+    marginTop: 8,
+    marginBottom: 12,
     elevation: 2,
   },
   phoneLabel: {
