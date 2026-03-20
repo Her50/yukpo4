@@ -94,6 +94,14 @@ const saveSession = async (session: PassiveSession): Promise<void> => {
     const consistency = Math.max(0, 100 - Math.sqrt(variance) * 5);
     const pacePerKm = dKm > 0.01 ? dSec / dKm : 0;
 
+    const coordFallback = (lat: number, lng: number) =>
+        `≈ ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+    /** Destination : coords seules ; le serveur fait le géocodage inverse + libellé « zone » (clé Google centralisée). */
+    const destination_address = coordFallback(session.lastLat, session.lastLng);
+
+    const origin_address = coordFallback(session.originLat, session.originLng);
+
     // Score de qualité simplifié
     let qual = 50;
     if (consistency > 70) qual += 15;
@@ -104,8 +112,9 @@ const saveSession = async (session: PassiveSession): Promise<void> => {
 
     const payload = {
         travel_mode: mode,
-        origin_address: 'Détection automatique',
-        destination_address: 'Détection automatique',
+        /** Préfixe stable pour repérer les sessions passives côté stats passives */
+        origin_address: `[auto] ${origin_address}`,
+        destination_address,
         origin_lat: session.originLat,
         origin_lng: session.originLng,
         dest_lat: session.lastLat,

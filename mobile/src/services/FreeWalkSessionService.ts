@@ -42,6 +42,47 @@ const estimateCalories = (distKm: number, durationMin: number, avgSpeedKmh: numb
   return (met * 70 * durationMin) / 60;
 };
 
+/** Mise à jour session (partagée tâche arrière-plan + repli watchPosition premier plan) */
+const persistWalkLocation = async (latitude: number, longitude: number, speed: number | null) => {
+  const now = new Date().toISOString();
+  const speedKmh = Math.max(0, (speed || 0) * 3.6);
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY_SESSION);
+    let session: FreeWalkSession | null = raw ? JSON.parse(raw) : null;
+    if (!session) {
+      session = {
+        startedAt: now,
+        lastUpdateAt: now,
+        totalDistance: 0,
+        maxSpeedKmh: speedKmh,
+        speedSampleCount: 1,
+        speedSampleSum: speedKmh,
+        lastLat: latitude,
+        lastLng: longitude,
+        currentSpeedKmh: speedKmh,
+      };
+      await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
+      return;
+    }
+
+    const d = haversine(session.lastLat, session.lastLng, latitude, longitude);
+    if (d > 0 && d < 500) session.totalDistance += d;
+    session.lastLat = latitude;
+    session.lastLng = longitude;
+    session.lastUpdateAt = now;
+    session.currentSpeedKmh = speedKmh;
+    session.speedSampleCount += 1;
+    session.speedSampleSum += speedKmh;
+    if (speedKmh > session.maxSpeedKmh) session.maxSpeedKmh = speedKmh;
+    await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
+  } catch {
+    // noop
+  }
+};
+
+/** Repli si startLocationUpdatesAsync échoue (FGS Android, config, etc.) — même persistance AsyncStorage */
+let foregroundWalkSubscription: Location.LocationSubscription | null = null;
+
 const registerTask = () => {
   try {
     if (TaskManager.isTaskDefined(FREE_WALK_TASK)) return;
@@ -54,41 +95,7 @@ const registerTask = () => {
       if (error || !data?.locations?.length) return;
       const latest = data.locations[data.locations.length - 1];
       const { latitude, longitude, speed } = latest.coords;
-      const now = new Date().toISOString();
-      const speedKmh = Math.max(0, (speed || 0) * 3.6);
-
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY_SESSION);
-        let session: FreeWalkSession | null = raw ? JSON.parse(raw) : null;
-        if (!session) {
-          session = {
-            startedAt: now,
-            lastUpdateAt: now,
-            totalDistance: 0,
-            maxSpeedKmh: speedKmh,
-            speedSampleCount: 1,
-            speedSampleSum: speedKmh,
-            lastLat: latitude,
-            lastLng: longitude,
-            currentSpeedKmh: speedKmh,
-          };
-          await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
-          return;
-        }
-
-        const d = haversine(session.lastLat, session.lastLng, latitude, longitude);
-        if (d > 0 && d < 500) session.totalDistance += d;
-        session.lastLat = latitude;
-        session.lastLng = longitude;
-        session.lastUpdateAt = now;
-        session.currentSpeedKmh = speedKmh;
-        session.speedSampleCount += 1;
-        session.speedSampleSum += speedKmh;
-        if (speedKmh > session.maxSpeedKmh) session.maxSpeedKmh = speedKmh;
-        await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
-      } catch {
-        // noop
-      }
+      await persistWalkLocation(latitude, longitude, speed);
     });
   } catch {
     // noop
@@ -120,6 +127,7 @@ export const FreeWalkSessionService = {
     try {
       const running = await Location.hasStartedLocationUpdatesAsync(FREE_WALK_TASK).catch(() => false);
       if (running) return true;
+      if (foregroundWalkSubscription) return true;
 
       const fg = await Location.requestForegroundPermissionsAsync();
       if (fg.status !== 'granted') return false;
@@ -143,23 +151,44 @@ export const FreeWalkSessionService = {
         await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(seed));
       }
 
-      await Location.startLocationUpdatesAsync(FREE_WALK_TASK, {
-        accuracy: Location.Accuracy.High,
-        timeInterval: 3000,
-        distanceInterval: 5,
-        deferredUpdatesInterval: 10000,
-        deferredUpdatesDistance: 15,
-        pausesUpdatesAutomatically: false,
-        activityType: Location.ActivityType.Fitness,
-        foregroundService: {
-          notificationTitle: 'Yukpo — Marche libre active',
-          notificationBody: 'Session en cours, suivi des stats en arrière-plan',
-          notificationColor: '#10B981',
-        },
-        showsBackgroundLocationIndicator: true,
-      });
+      try {
+        await Location.startLocationUpdatesAsync(FREE_WALK_TASK, {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 3000,
+          distanceInterval: 5,
+          deferredUpdatesInterval: 10000,
+          deferredUpdatesDistance: 15,
+          pausesUpdatesAutomatically: false,
+          activityType: Location.ActivityType.Fitness,
+          foregroundService: {
+            notificationTitle: 'Yukpo — Marche libre active',
+            notificationBody: 'Session en cours, suivi des stats en arrière-plan',
+            notificationColor: '#10B981',
+          },
+          showsBackgroundLocationIndicator: true,
+        });
+      } catch (bgErr) {
+        console.warn('[FreeWalkSession] startLocationUpdatesAsync failed, using foreground watchPosition', bgErr);
+        try {
+          foregroundWalkSubscription = await Location.watchPositionAsync(
+            {
+              accuracy: Location.Accuracy.High,
+              timeInterval: 3000,
+              distanceInterval: 5,
+            },
+            (loc) => {
+              const { latitude, longitude, speed } = loc.coords;
+              void persistWalkLocation(latitude, longitude, speed);
+            },
+          );
+        } catch (watchErr) {
+          console.warn('[FreeWalkSession] watchPositionAsync also failed', watchErr);
+          return false;
+        }
+      }
       return true;
-    } catch {
+    } catch (e) {
+      console.warn('[FreeWalkSession] start failed', e);
       return false;
     }
   },
@@ -169,6 +198,14 @@ export const FreeWalkSessionService = {
       const running = await Location.hasStartedLocationUpdatesAsync(FREE_WALK_TASK).catch(() => false);
       if (running) {
         await Location.stopLocationUpdatesAsync(FREE_WALK_TASK);
+      }
+      if (foregroundWalkSubscription) {
+        try {
+          foregroundWalkSubscription.remove();
+        } catch {
+          // noop
+        }
+        foregroundWalkSubscription = null;
       }
       const raw = await AsyncStorage.getItem(STORAGE_KEY_SESSION);
       if (!raw) return null;
@@ -181,6 +218,7 @@ export const FreeWalkSessionService = {
   },
 
   isRunning: async (): Promise<boolean> => {
+    if (foregroundWalkSubscription) return true;
     try {
       return await Location.hasStartedLocationUpdatesAsync(FREE_WALK_TASK);
     } catch {

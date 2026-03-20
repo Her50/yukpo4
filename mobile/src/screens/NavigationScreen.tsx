@@ -6,8 +6,8 @@ import * as Notifications from 'expo-notifications';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator, Alert, Animated, BackHandler,
-    Dimensions, Keyboard, KeyboardAvoidingView, Linking,
-    Platform, ScrollView, Share, StyleSheet, Text, ToastAndroid,
+    Dimensions, FlatList, Keyboard, KeyboardAvoidingView, Linking,
+    Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, ToastAndroid,
     TouchableOpacity, View
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
@@ -33,6 +33,85 @@ import { modernColors } from '../theme/modernTheme';
 import SafeStorage from '../utils/safeStorage';
 
 const { width, height } = Dimensions.get('window');
+
+type ActivityPeriodKey = 'week' | 'month' | 'quarter' | 'semester' | 'year';
+type StatsModality = 'all' | 'auto' | 'freewalk';
+
+function isPassiveActivityRow(a: any): boolean {
+    const o = String(a?.origin || '').toLowerCase();
+    return o.includes('détection automatique') || o.includes('[auto]');
+}
+
+function isFreeWalkLikeActivity(a: any): boolean {
+    const blob = `${String(a?.origin || '').toLowerCase()} ${String(a?.destination || '').toLowerCase()}`;
+    const mode = String(a?.travel_mode || '').toLowerCase();
+    return mode === 'walking' && (blob.includes('marche libre') || blob.includes('free walk'));
+}
+
+function bestSessionLooksLikeFreeWalk(best: any): boolean {
+    if (!best) return false;
+    const blob = `${String(best?.origin_address || '').toLowerCase()} ${String(best?.destination_address || '').toLowerCase()}`;
+    const mode = String(best?.travel_mode || '').toLowerCase();
+    return mode === 'walking' && (blob.includes('marche libre') || blob.includes('free walk'));
+}
+
+function aggregateActivitiesSummary(list: any[]): Record<string, any> {
+    const totalDistanceKm = list.reduce((s, a) => s + (Number(a?.distance_km) || 0), 0);
+    const totalMinutes = list.reduce((s, a) => s + (Number(a?.duration_minutes) || 0), 0);
+    const totalCalories = list.reduce((s, a) => s + (Number(a?.calories) || 0), 0);
+    const qs = list.map((a) => Number(a?.quality_score) || 0).filter((n) => n > 0);
+    let best: any = null;
+    for (const a of list) {
+        const q = Number(a?.quality_score) || 0;
+        if (q <= 0) continue;
+        if (!best || q > (Number(best.quality_score) || 0)) {
+            best = {
+                quality_score: q,
+                distance_km: Number(a?.distance_km) || 0,
+                duration_minutes: Number(a?.duration_minutes) || 0,
+                date: (String(a?.date || '').slice(0, 10)) || undefined,
+                travel_mode: a?.travel_mode,
+                origin_address: a?.origin,
+                destination_address: a?.destination,
+            };
+        }
+    }
+    const destCounts = new Map<string, number>();
+    for (const a of list) {
+        const d = String(a?.destination || '').trim();
+        if (!d) continue;
+        destCounts.set(d, (destCounts.get(d) || 0) + 1);
+    }
+    const most_visited_places = [...destCounts.entries()]
+        .sort((x, y) => y[1] - x[1])
+        .slice(0, 32)
+        .map(([name, visit_count]) => ({ name, visit_count }));
+    const modeCounts = new Map<string, { count: number; distance_km: number }>();
+    for (const a of list) {
+        const m = String(a?.travel_mode || 'unknown');
+        const cur = modeCounts.get(m) || { count: 0, distance_km: 0 };
+        cur.count += 1;
+        cur.distance_km += Number(a?.distance_km) || 0;
+        modeCounts.set(m, cur);
+    }
+    const by_mode = [...modeCounts.entries()].map(([mode, v]) => ({
+        mode,
+        count: v.count,
+        distance_km: v.distance_km,
+        duration_minutes: 0,
+    }));
+    return {
+        total_distance_km: totalDistanceKm,
+        total_duration_minutes: totalMinutes,
+        total_calories: totalCalories,
+        total_sessions: list.length,
+        avg_quality_score: qs.length ? qs.reduce((x, y) => x + y, 0) / qs.length : 0,
+        best_session: best,
+        most_visited_places,
+        by_mode,
+        daily_trend: [],
+    };
+}
 const MAP_HEIGHT = height * 0.35;
 const KEYBOARD_OFFSET = Platform.OS === 'ios' ? 0 : 20;
 
@@ -346,6 +425,8 @@ const playContextualAlert = async (
 };
 
 const SHARE_BASE_URL = 'https://yukpomnang.com';
+/** Lien unique pour invités (stores / APK selon plateforme côté site) */
+const SHARE_APP_DOWNLOAD_URL = `${SHARE_BASE_URL}/download`;
 
 const NavigationScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -439,17 +520,21 @@ const NavigationScreen: React.FC = () => {
     const wasOffRouteRef = useRef<boolean>(false);
     const encounteredCheckpointIdsRef = useRef<Map<string, number>>(new Map());
     const [isFreeWalking, setIsFreeWalking] = useState(false);
+    const [freeWalkStarting, setFreeWalkStarting] = useState(false);
     const [freeWalkTick, setFreeWalkTick] = useState(0);
     const [passiveTrackingActive, setPassiveTrackingActive] = useState(false);
     const [showNavChat, setShowNavChat] = useState(false);
     const [showActivityStats, setShowActivityStats] = useState(false);
-    const [activityPeriod, setActivityPeriod] = useState<'week' | 'month' | 'year'>('week');
+    const [activityPeriod, setActivityPeriod] = useState<ActivityPeriodKey>('week');
     const [activitySummary, setActivitySummary] = useState<any>(null);
     const [activityHistory, setActivityHistory] = useState<any[]>([]);
     const [walkingHistory, setWalkingHistory] = useState<any[]>([]);
     const [freeWalkFilterRange, setFreeWalkFilterRange] = useState<{ start: string; end: string } | null>(null);
     const [freeWalkCompareMode, setFreeWalkCompareMode] = useState<'last' | 'last2' | 'month'>('last');
-    const [statsScope, setStatsScope] = useState<'general' | 'freewalk'>('general');
+    const [statsModality, setStatsModality] = useState<StatsModality>('all');
+    const [statsPeriodMenuOpen, setStatsPeriodMenuOpen] = useState(false);
+    const [statsModalityMenuOpen, setStatsModalityMenuOpen] = useState(false);
+    const [visitedPlacesModalVisible, setVisitedPlacesModalVisible] = useState(false);
     const [loadingActivity, setLoadingActivity] = useState(false);
     const [aiInsights, setAiInsights] = useState<any>(null);
     const [coachingNotifHistory, setCoachingNotifHistory] = useState<Array<{
@@ -573,17 +658,19 @@ const NavigationScreen: React.FC = () => {
         () => (freeWalkFilterRange ? freeWalkHistoryScoped : activityHistory),
         [activityHistory, freeWalkFilterRange, freeWalkHistoryScoped]
     );
-    const passiveHistory = useMemo(
-        () => activityHistory.filter((a: any) => String(a?.origin || '').toLowerCase().includes('détection automatique')),
-        [activityHistory]
-    );
-    const passiveSummary = useMemo(() => {
-        const totalDistance = passiveHistory.reduce((s: number, a: any) => s + (Number(a?.distance_km) || 0), 0);
-        const totalCalories = passiveHistory.reduce((s: number, a: any) => s + (Number(a?.calories) || 0), 0);
-        const totalMinutes = passiveHistory.reduce((s: number, a: any) => s + (Number(a?.duration_minutes) || 0), 0);
-        return { sessions: passiveHistory.length, distanceKm: totalDistance, calories: totalCalories, minutes: totalMinutes };
-    }, [passiveHistory]);
+    /** Aligné sur `activityPeriod` via `?period=` sur `/activity/history` (serveur, jusqu’à 500 lignes). */
+    const modalityFilteredHistory = useMemo(() => {
+        if (statsModality === 'all') return activityHistory;
+        if (statsModality === 'auto') return activityHistory.filter(isPassiveActivityRow);
+        return activityHistory.filter(isFreeWalkLikeActivity);
+    }, [activityHistory, statsModality]);
+    const statsDashboardSummary = useMemo(() => {
+        if (freeWalkFilterRange) return activitySummaryForDisplay || {};
+        if (statsModality === 'all') return activitySummaryForDisplay || {};
+        return aggregateActivitiesSummary(modalityFilteredHistory);
+    }, [freeWalkFilterRange, statsModality, activitySummaryForDisplay, modalityFilteredHistory]);
     const trendVsPrevious = useMemo(() => {
+        if (statsModality !== 'all' || freeWalkFilterRange) return null;
         const trend = Array.isArray(activitySummaryForDisplay?.daily_trend) ? activitySummaryForDisplay.daily_trend : [];
         if (trend.length < 4) return null;
         const mid = Math.floor(trend.length / 2);
@@ -594,7 +681,7 @@ const NavigationScreen: React.FC = () => {
         const currDist = sumDist(curr);
         const delta = prevDist > 0 ? ((currDist - prevDist) / prevDist) * 100 : 0;
         return { prevDist, currDist, delta };
-    }, [activitySummaryForDisplay]);
+    }, [activitySummaryForDisplay, statsModality, freeWalkFilterRange]);
     const routePolylineCoords = useMemo(() => {
         if (!selectedRoute?.overview_polyline) { console.log('[Navigation] 🗺️ routePolylineCoords: no polyline'); return []; }
         try {
@@ -647,6 +734,31 @@ const NavigationScreen: React.FC = () => {
         const v = t(key);
         return v && v !== key ? v : fallback;
     }, [t]);
+    const statsPeriodMenuLabel = useMemo(() => {
+        switch (activityPeriod) {
+            case 'week': return t('navigation.periodWeek') || 'Semaine';
+            case 'month': return t('navigation.periodMonth') || 'Mois';
+            case 'quarter': return tr('navigation.periodQuarter', 'Trimestre');
+            case 'semester': return tr('navigation.periodSemester', 'Semestre');
+            case 'year': return t('navigation.periodYear') || 'Année';
+            default: return '';
+        }
+    }, [activityPeriod, t, tr]);
+    const statsModalityMenuLabel = useMemo(() => {
+        if (statsModality === 'all') return tr('navigation.statsModalityAll', 'Tout combiné');
+        if (statsModality === 'auto') return tr('navigation.statsModalityAuto', 'Détection auto');
+        return tr('navigation.statsModalityFreeWalk', 'Marche libre');
+    }, [statsModality, tr]);
+    const shareStatsPeriodPhrase = useMemo(() => {
+        switch (activityPeriod) {
+            case 'week': return t('navigation.thisWeek') || 'cette semaine';
+            case 'month': return t('navigation.thisMonth') || 'ce mois';
+            case 'quarter': return tr('navigation.thisQuarter', 'ce trimestre');
+            case 'semester': return tr('navigation.thisSemester', 'ce semestre');
+            case 'year': return t('navigation.thisYear') || 'cette année';
+            default: return '';
+        }
+    }, [activityPeriod, t, tr]);
     const getRouteEtaLabel = useCallback((route: RouteOption) => {
         const durSeconds = route.duration_in_traffic_seconds || route.duration_seconds;
         if (durSeconds && durSeconds > 0) {
@@ -1027,10 +1139,12 @@ const NavigationScreen: React.FC = () => {
             console.log('[Navigation] Loading activity stats for period:', period);
             setAiInsights(null);
             // ✅ Summary + History = GRATUIT
+            const pe = encodeURIComponent(period);
             const [sr, hr, wr] = await Promise.all([
-                apiGet(`/api/navigation/activity/summary?period=${period}`),
-                apiGet(`/api/navigation/activity/history?limit=50`),
-                apiGet(`/api/navigation/activity/history?limit=50&mode=walking`),
+                apiGet(`/api/navigation/activity/summary?period=${pe}`),
+                apiGet(`/api/navigation/activity/history?limit=500&period=${pe}`),
+                // Sans `period` : garde assez d’historique marche pour « vs dernière » (hors fenêtre stats).
+                apiGet(`/api/navigation/activity/history?limit=200&mode=walking`),
             ]) as any[];
 
             console.log('[Navigation] Activity summary response:', sr?.data);
@@ -1291,127 +1405,70 @@ const NavigationScreen: React.FC = () => {
         }
     }, [showConfirmationToast, loadAlertHistory]);
 
+    /** Ouvre uniquement Google Maps / Apple Plans — pas de second écran de suivi in-app (au retour : écran principal). */
     const startTracking = useCallback(async () => {
         if (!selectedRoute || isTracking) return;
         if (!selectedRoute.distance_meters || !selectedRoute.duration_seconds) { Alert.alert(t('message.error'), t('navigation.invalidRoute')); return; }
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') { Alert.alert(t('navigation.permissionRequired')); return; }
+        const dest = destinationCoords;
+        if (!dest) { Alert.alert(t('message.error'), t('navigation.positionUnavailable')); return; }
 
-        // ✅ Priorité: ouvrir Google Maps navigation (plus convivial)
-        // On le déclenche au moment où l'utilisateur clique "Suivi en temps réel".
+        const gmMode = travelMode === 'walking' ? 'walking' : travelMode === 'bicycling' ? 'bicycling' : travelMode === 'transit' ? 'transit' : 'driving';
+
         try {
-            const dest = destinationCoords;
-            if (dest) {
-                const origin = await getCurrentPosition();
-                const url = Platform.select({
-                    ios: origin
-                        ? `maps://app?daddr=${dest.lat},${dest.lng}&saddr=${origin.lat},${origin.lng}&dirflg=d`
-                        : `maps://app?daddr=${dest.lat},${dest.lng}&dirflg=d`,
-                    android: `google.navigation:q=${dest.lat},${dest.lng}`,
-                    default: origin
-                        ? `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${dest.lat},${dest.lng}&travelmode=driving`
-                        : `https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}&travelmode=driving`,
-                });
-                if (url) {
-                    const canOpen = await Linking.canOpenURL(url);
-                    if (canOpen) {
-                        // Ne pas bloquer le démarrage du tracking
-                        Linking.openURL(url).catch(() => { });
-                    }
-                }
+            const origin = await getCurrentPosition();
+            let url: string | null = null;
+            if (waypoints.length > 0 && origin) {
+                url = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${dest.lat},${dest.lng}&waypoints=${waypoints.map(wp => `${wp.lat},${wp.lng}`).join('|')}&travelmode=${gmMode}`;
+            } else if (Platform.OS === 'ios') {
+                url = origin
+                    ? `maps://app?daddr=${dest.lat},${dest.lng}&saddr=${origin.lat},${origin.lng}&dirflg=d`
+                    : `maps://app?daddr=${dest.lat},${dest.lng}&dirflg=d`;
+            } else if (Platform.OS === 'android' && gmMode === 'driving') {
+                url = `google.navigation:q=${dest.lat},${dest.lng}`;
+            } else {
+                url = origin
+                    ? `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${dest.lat},${dest.lng}&travelmode=${gmMode}`
+                    : `https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}&travelmode=${gmMode}`;
+            }
+            if (url) {
+                const canOpen = await Linking.canOpenURL(url);
+                const fallback = `https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}&travelmode=${gmMode}${origin ? `&origin=${origin.lat},${origin.lng}` : ''}`;
+                if (canOpen) await Linking.openURL(url);
+                else await Linking.openURL(fallback);
             }
         } catch (e) {
-            console.warn('[Navigation] Failed to open Google Maps navigation:', e);
+            console.warn('[Navigation] Open external maps failed:', e);
+            Alert.alert(t('message.error'), t('navigation.cannotOpenNav'));
         }
-
-        trackingStartTimeRef.current = new Date().toISOString(); speedSamplesRef.current = []; maxSpeedRef.current = 0; distanceTraveledRef.current = 0; lastPositionRef.current = null; checkpointsReportedRef.current = 0; checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false; encounteredCheckpointIdsRef.current = new Map();
-        setIsTracking(true); setNextStepIndex(0); setDistanceRemaining(selectedRoute.distance_meters || 1000); setDurationRemaining(selectedRoute.duration_in_traffic_seconds || selectedRoute.duration_seconds || 300);
-        loadCheckpointsSafely();
-        (async () => { try { const p = await getCurrentPosition(); if (p && destinationCoords) { const r = await apiGet(`/api/navigation/checkpoints/ai-analysis?origin_lat=${p.lat}&origin_lng=${p.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}`) as any; if (r?.data?.success) setCheckpointAiAnalysis(r.data.analysis); } } catch { } })();
-        checkpointRefreshRef.current = setInterval(() => { loadCheckpointsSafely(); }, 60000);
-        const sub = await Location.watchPositionAsync({ accuracy: Location.Accuracy.High, timeInterval: 2000, distanceInterval: 5 }, (loc) => {
-            const { latitude, longitude, speed, heading } = loc.coords;
-            const pos = { lat: latitude, lng: longitude }; const spd = Math.max(0, (speed || 0) * 3.6);
-            setLivePosition(pos); setCurrentSpeed(spd); if (heading != null) setCurrentHeading(heading);
-            speedSamplesRef.current.push(spd); if (spd > maxSpeedRef.current) maxSpeedRef.current = spd;
-            if (lastPositionRef.current) { const d = haversineDistance(lastPositionRef.current.lat, lastPositionRef.current.lng, latitude, longitude); if (d < 500) distanceTraveledRef.current += d; }
-            lastPositionRef.current = pos;
-            if (!selectedRoute?.steps?.length) return;
-            let minD = Infinity, ci = 0;
-            for (let i = 0; i < selectedRoute.steps.length; i++) { const d = haversineDistance(latitude, longitude, selectedRoute.steps[i].location.lat, selectedRoute.steps[i].location.lng); if (d < minD) { minD = d; ci = i; } }
-            setNextStepIndex(Math.min(ci + 1, selectedRoute.steps.length - 1));
-            let rd = 0, rt = 0; for (let i = ci; i < selectedRoute.steps.length; i++) { rd += selectedRoute.steps[i].distance_meters; rt += selectedRoute.steps[i].duration_seconds; }
-            setDistanceRemaining(rd); setDurationRemaining(rt);
-            const eta = new Date(Date.now() + rt * 1000); setLiveETA(`${eta.getHours().toString().padStart(2, '0')}:${eta.getMinutes().toString().padStart(2, '0')}`);
-            setIsOffRoute(minD > 200); if (minD > 200) wasOffRouteRef.current = true;
-            // ✅ Clustering temps réel + alertes progressives par seuils de distance
-            const cps = checkpointsRef.current;
-            // 1. Clustering: regrouper les checkpoints du même type à <200m
-            const rtClusters: Array<{ id: string; checkpoint_type: string; lat: number; lng: number; speed_limit?: number; items: string[] }> = [];
-            for (const cp of cps) {
-                let added = false;
-                for (const cl of rtClusters) {
-                    if (cl.checkpoint_type === cp.checkpoint_type && haversineDistance(cl.lat, cl.lng, cp.latitude, cp.longitude) < 200) {
-                        cl.items.push(cp.id);
-                        cl.lat = (cl.lat * (cl.items.length - 1) + cp.latitude) / cl.items.length;
-                        cl.lng = (cl.lng * (cl.items.length - 1) + cp.longitude) / cl.items.length;
-                        if (cp.speed_limit && !cl.speed_limit) cl.speed_limit = cp.speed_limit;
-                        added = true; break;
-                    }
-                }
-                if (!added) rtClusters.push({ id: cp.id, checkpoint_type: cp.checkpoint_type, lat: cp.latitude, lng: cp.longitude, speed_limit: cp.speed_limit, items: [cp.id] });
-            }
-            // 2. Trouver le cluster le plus proche dans le rayon d'alerte
-            let near: typeof nearbyCheckpoint = null;
-            for (const cl of rtClusters) {
-                const cd = haversineDistance(latitude, longitude, cl.lat, cl.lng);
-                const alertDist = CHECKPOINT_ALERT_DISTANCE[cl.checkpoint_type] || 2000;
-                if (cd < alertDist && (!near || cd < near.distance)) near = { id: cl.id, checkpoint_type: cl.checkpoint_type, distance: Math.round(cd), speed_limit: cl.speed_limit };
-            }
-            // 3. Alertes progressives par seuils — re-alerte quand on franchit un seuil plus proche
-            // ✅ PAIEMENT: Facturation par checkpoint UNIQUE rencontré (1ère détection = payMicroFeature)
-            if (near) {
-                const thresholds = CHECKPOINT_ALERT_THRESHOLDS[near.checkpoint_type] || [2000, 500];
-                const lastIdx = encounteredCheckpointIdsRef.current.get(near.id) ?? -1;
-                let newIdx = -1;
-                for (let t = 0; t < thresholds.length; t++) { if (near.distance < thresholds[t]) newIdx = t; }
-                if (newIdx > lastIdx) {
-                    encounteredCheckpointIdsRef.current.set(near.id, newIdx);
-                    if (lastIdx === -1) {
-                        // Première détection de ce checkpoint → facturer
-                        checkpointsEncounteredRef.current += 1;
-                        payMicroFeature('community_alerts',
-                            () => playContextualAlert(near!.checkpoint_type, near!.distance, near!.speed_limit, { alertMode: 'sound', lang: activeLang, t }),
-                        );
-                    } else {
-                        // Re-alerte progressive (seuil plus proche) → gratuit
-                        playContextualAlert(near.checkpoint_type, near.distance, near.speed_limit, { alertMode: 'sound', lang: activeLang, t });
-                    }
-                }
-            }
-            setNearbyCheckpoint(near);
-        });
-        locationSubscriptionRef.current = sub;
-    }, [selectedRoute, isTracking, haversineDistance, loadCheckpointsSafely, getCurrentPosition, destinationCoords, activeLang, payMicroFeature]);
+    }, [selectedRoute, isTracking, destinationCoords, getCurrentPosition, travelMode, waypoints, t]);
 
     // ── MARCHE LIBRE : session persistante en arrière-plan ──
     const startFreeWalking = useCallback(async () => {
-        if (isTracking || isFreeWalking) return;
-        const ok = await FreeWalkSessionService.start();
-        if (!ok) { Alert.alert(t('navigation.permissionRequired'), t('navigation.allowLocationWalking')); return; }
-        const snap = await FreeWalkSessionService.getSessionSnapshot();
-        trackingStartTimeRef.current = new Date().toISOString();
-        if (snap?.startedAt) trackingStartTimeRef.current = snap.startedAt;
-        speedSamplesRef.current = []; maxSpeedRef.current = 0; distanceTraveledRef.current = 0;
-        lastPositionRef.current = null; checkpointsReportedRef.current = 0;
-        checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false;
-        encounteredCheckpointIdsRef.current = new Map();
-        setIsFreeWalking(true); setIsTracking(true); setTravelMode('walking');
-        showToast(`🚶 ${t('navigation.freeWalkStarted') || 'Marche libre démarrée !'} `);
-        // Charger les alertes communautaires autour de la position
-        loadCheckpointsSafely();
-        checkpointRefreshRef.current = setInterval(() => { loadCheckpointsSafely(); }, 60000);
-    }, [isTracking, isFreeWalking, loadCheckpointsSafely]);
+        if (isFreeWalking) return;
+        if (isTracking && selectedRoute) {
+            showToast(`📡 ${t('navigation.stopRouteTrackingFirst') || 'Arrêtez d’abord le suivi d’itinéraire pour lancer la marche libre.'}`);
+            return;
+        }
+        setFreeWalkStarting(true);
+        try {
+            const ok = await FreeWalkSessionService.start();
+            if (!ok) { Alert.alert(t('navigation.permissionRequired'), t('navigation.allowLocationWalking')); return; }
+            const snap = await FreeWalkSessionService.getSessionSnapshot();
+            trackingStartTimeRef.current = new Date().toISOString();
+            if (snap?.startedAt) trackingStartTimeRef.current = snap.startedAt;
+            speedSamplesRef.current = []; maxSpeedRef.current = 0; distanceTraveledRef.current = 0;
+            lastPositionRef.current = null; checkpointsReportedRef.current = 0;
+            checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false;
+            encounteredCheckpointIdsRef.current = new Map();
+            setIsFreeWalking(true); setIsTracking(true); setTravelMode('walking');
+            setFreeWalkTick((x) => x + 1);
+            showToast(`🚶 ${t('navigation.freeWalkStarted') || 'Marche libre démarrée !'} `);
+            loadCheckpointsSafely();
+            checkpointRefreshRef.current = setInterval(() => { loadCheckpointsSafely(); }, 60000);
+        } finally {
+            setFreeWalkStarting(false);
+        }
+    }, [isTracking, isFreeWalking, selectedRoute, loadCheckpointsSafely, t]);
 
     const stopFreeWalking = useCallback(async () => {
         if (checkpointRefreshRef.current) { clearInterval(checkpointRefreshRef.current); checkpointRefreshRef.current = null; }
@@ -1453,7 +1510,7 @@ const NavigationScreen: React.FC = () => {
                 });
                 setFreeWalkFilterRange({ start: st || endedAtIso, end: endedAtIso });
                 setFreeWalkCompareMode('last');
-                setStatsScope('freewalk');
+                setStatsModality('freewalk');
                 setShowActivityStats(true);
                 setShowAlertHistory(false);
                 await loadActivityStats(activityPeriod);
@@ -1589,10 +1646,16 @@ const NavigationScreen: React.FC = () => {
                         <View style={st.headerRight}>
                             {/* Bouton Marche Libre (première position) */}
                             <TouchableOpacity
-                                style={[st.headerBtnSmall, isFreeWalking && st.headerBtnWalkActive]}
+                                style={[st.headerBtnSmall, (isFreeWalking || freeWalkStarting) && st.headerBtnWalkActive]}
                                 onPress={async () => {
+                                    if (freeWalkStarting) return;
                                     if (isFreeWalking) {
-                                        await stopFreeWalking();
+                                        setFreeWalkFilterRange(null);
+                                        setShowAlertHistory(false);
+                                        setStatsModality('freewalk');
+                                        setShowActivityStats(true);
+                                        loadActivityStats(activityPeriod);
+                                        setTimeout(() => scrollViewRef.current?.scrollTo({ y: 0, animated: true }), 150);
                                         return;
                                     }
                                     setFreeWalkFilterRange(null);
@@ -1602,7 +1665,11 @@ const NavigationScreen: React.FC = () => {
                                 }}
                                 activeOpacity={0.8}
                             >
-                                <Text style={{ fontSize: 14 }}>{isFreeWalking ? '🏃' : '🚶'}</Text>
+                                {freeWalkStarting ? (
+                                    <ActivityIndicator size="small" color="#10B981" />
+                                ) : (
+                                    <Text style={{ fontSize: 14 }}>{isFreeWalking ? '🏃' : '🚶'}</Text>
+                                )}
                                 {isFreeWalking && <View style={st.walkLiveDot} />}
                             </TouchableOpacity>
                             {/* Bouton Alertes Communautaires */}
@@ -1636,7 +1703,7 @@ const NavigationScreen: React.FC = () => {
                                 style={[st.headerBtnSmall, showActivityStats && st.headerBtnActive]}
                                 onPress={() => {
                                     setFreeWalkFilterRange(null);
-                                    setStatsScope('general');
+                                    setStatsModality('all');
                                     const n = !showActivityStats;
                                     setShowActivityStats(n);
                                     setShowAlertHistory(false);
@@ -1645,18 +1712,23 @@ const NavigationScreen: React.FC = () => {
                             >
                                 <SafeIcon name={showActivityStats ? 'Compass' : 'BarChart3'} size={14} color={showActivityStats ? '#fff' : modernColors.text} />
                             </TouchableOpacity>
-                            {/* Bouton Covoiturage */}
+                            {/* Bouton Covoiturage — pictogrammes vectoriels (Car + Users) pour un rendu homogène sur tous les appareils */}
                             <TouchableOpacity
                                 style={st.headerBtnSmall}
                                 onPress={() => (navigation as any).navigate('CovoiturageHome')}
+                                accessibilityRole="button"
+                                accessibilityLabel={t('navigation.covoiturage') || 'Covoiturage'}
                             >
-                                <Text style={{ fontSize: 14 }}>🚗👥</Text>
+                                <View style={st.carpoolHeaderIconWrap}>
+                                    <SafeIcon name="Car" size={12} color={modernColors.text} />
+                                    <SafeIcon name="Users" size={10} color={modernColors.text} />
+                                </View>
                             </TouchableOpacity>
                         </View>
                     </View>
 
-                    {/* Solde minimal (une seule pastille, le reste en toasts) */}
-                    {user && (
+                    {/* Solde minimal (une seule pastille, le reste en toasts) — masqué sur l’écran stats pour gagner de la place */}
+                    {user && !showActivityStats && (
                         <TouchableOpacity
                             style={{
                                 alignSelf: 'flex-start',
@@ -1797,7 +1869,7 @@ const NavigationScreen: React.FC = () => {
                     )}
 
                     {/* ━━━━━━ MODE: MARCHE LIBRE ━━━━━━ */}
-                    {isFreeWalking ? (
+                    {isFreeWalking && !showActivityStats ? (
                         <>
                             {/* freeWalkTick force le re-render du dashboard */}
                             <NativeCard key={`fw-${freeWalkTick}`} style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#10B981' }]}>
@@ -1855,113 +1927,119 @@ const NavigationScreen: React.FC = () => {
                             </TouchableOpacity>
                         </>
 
-                    ) : isTracking && selectedRoute ? (
-                        <>
-                            {/* AI Risk */}
-                            {checkpointAiAnalysis && (
-                                <View style={[st.riskBanner, { borderLeftColor: (checkpointAiAnalysis.risk_level || 0) >= 7 ? '#EF4444' : (checkpointAiAnalysis.risk_level || 0) >= 4 ? '#F59E0B' : '#10B981' }]}>
-                                    <View style={st.row8}>
-                                        <Text style={{ fontSize: 18 }}>{(checkpointAiAnalysis.risk_level || 0) >= 7 ? '🚨' : (checkpointAiAnalysis.risk_level || 0) >= 4 ? '⚠️' : '✅'}</Text>
-                                        <Text style={[st.riskTitle, { color: (checkpointAiAnalysis.risk_level || 0) >= 7 ? '#EF4444' : '#F59E0B' }]}>Risque {checkpointAiAnalysis.risk_label || ''} ({checkpointAiAnalysis.risk_level}/10)</Text>
-                                    </View>
-                                    {checkpointAiAnalysis.driving_tip && <Text style={st.riskTip}>{checkpointAiAnalysis.driving_tip}</Text>}
-                                    {checkpointAiAnalysis.alerts?.map((a: any, i: number) => (
-                                        <View key={i} style={[st.riskAlertRow, { borderLeftColor: a.severity === 'critical' ? '#EF4444' : '#F59E0B' }]}><Text style={st.riskAlertMsg}>{a.message}</Text></View>
-                                    ))}
-                                </View>
-                            )}
-                            {/* Nearby checkpoint */}
-                            {nearbyCheckpoint && (
-                                <View style={[st.cpAlert, { backgroundColor: (CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color || '#EF4444') + '15' }]}>
-                                    <Text style={{ fontSize: 28 }}>{CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.icon || '⚠️'}</Text>
-                                    <View style={st.flex1}>
-                                        <Text style={[st.cpTitle, { color: CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color }]}>
-                                            {(() => {
-                                                const entry = CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type];
-                                                const labelObj = entry?.label;
-                                                if (!labelObj) return nearbyCheckpoint.checkpoint_type;
-                                                return labelObj.labelKey ? (t(labelObj.labelKey) || labelObj.fallback) : labelObj.fallback;
-                                            })()} dans {nearbyCheckpoint.distance >= 1000 ? `${(nearbyCheckpoint.distance / 1000).toFixed(1)} km` : `${nearbyCheckpoint.distance} m`}
-                                        </Text>
-                                        {nearbyCheckpoint.speed_limit && <Text style={st.cpSpeed}>Limite: {nearbyCheckpoint.speed_limit} km/h</Text>}
-                                    </View>
-                                </View>
-                            )}
-                            {/* Deviation */}
-                            {isOffRoute && (
-                                <TouchableOpacity style={st.deviationAlert} onPress={() => { stopTracking(); searchRoutesRef.current(); }}>
-                                    <Text style={{ fontSize: 16 }}>⚠️</Text><Text style={st.deviationText}>{t('navigation.offRoute') || 'Hors itinéraire — Appuyez pour recalculer'}</Text>
-                                </TouchableOpacity>
-                            )}
-                            {/* Speed dashboard */}
-                            <NativeCard style={st.trackingCard}>
-                                <View style={st.trackRow}>
-                                    <View style={st.speedGauge}><Text style={st.speedVal}>{Math.round(currentSpeed)}</Text><Text style={st.speedUnit}>km/h</Text></View>
-                                    <View style={st.trackMetrics}>
-                                        <View style={st.trackMetric}><Text style={{ fontSize: 14 }}>📍</Text><Text style={st.mVal}>{formatDistance(distanceRemaining)}</Text><Text style={st.mLbl}>{t('navigation.remaining') || 'restant'}</Text></View>
-                                        <View style={st.trackMetric}><Text style={{ fontSize: 14 }}>⏱</Text><Text style={st.mVal}>{formatDuration(durationRemaining)}</Text><Text style={st.mLbl}>{t('navigation.duration') || 'durée'}</Text></View>
-                                        <View style={st.trackMetric}><Text style={{ fontSize: 14 }}>🏁</Text><Text style={[st.mVal, { color: '#10B981' }]}>{liveETA || '--:--'}</Text><Text style={st.mLbl}>{t('navigation.arrival') || 'arrivée'}</Text></View>
-                                    </View>
-                                </View>
-                                {selectedRoute.steps?.[nextStepIndex] && (
-                                    <View style={st.nextStep}><Text style={{ fontSize: 18 }}>↪️</Text>
-                                        <View style={st.flex1}><Text style={st.nextText} numberOfLines={2}>{selectedRoute.steps[nextStepIndex].instructions}</Text><Text style={st.nextDist}>{t('navigation.inDistance', { dist: formatDistance(selectedRoute.steps[nextStepIndex].distance_meters) }) || `dans ${formatDistance(selectedRoute.steps[nextStepIndex].distance_meters)}`}</Text></View>
-                                    </View>
-                                )}
-                                <View style={st.progressBg}><View style={[st.progressFill, { width: `${Math.max(2, Math.min(100, ((selectedRoute.distance_meters - distanceRemaining) / selectedRoute.distance_meters) * 100))}%` as any }]} /></View>
-                            </NativeCard>
-                            {/* Map tracking */}
-                            {showMap && mapRegion && (
-                                <View style={st.mapWrap}>
-                                    <AnyMapView ref={mapRef} style={st.mapView} provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (tracking)')} onError={(e: any) => console.error('[NavigationScreen] ❌ Map error (tracking):', e.nativeEvent || e)}>
-                                        {routePolylineCoords.length > 1 && <Polyline coordinates={routePolylineCoords} strokeColor={modernColors.primary} strokeWidth={4} />}
-                                        {destinationCoords && <Marker coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }} title={t('navigation.destination_marker') || "Destination"} pinColor="#EF4444" tracksViewChanges={false} />}
-                                        {livePosition && <Marker coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }} title={t('navigation.myPositionMarker') || "Ma position"} pinColor="#3B82F6" />}
-                                        {checkpoints.slice(0, 10).map(cp => <Marker key={cp.id} coordinate={{ latitude: cp.latitude, longitude: cp.longitude }} title={`${CHECKPOINT_LABELS[cp.checkpoint_type]?.icon || '⚠️'} ${CHECKPOINT_LABELS[cp.checkpoint_type]?.label || cp.checkpoint_type}`} pinColor={CHECKPOINT_LABELS[cp.checkpoint_type]?.color || '#6B7280'} tracksViewChanges={false} />)}
-                                    </AnyMapView>
-                                    <TouchableOpacity style={st.mapBtnLabeled} onPress={() => { if (livePosition && mapRef.current) mapRef.current.animateToRegion({ latitude: livePosition.lat, longitude: livePosition.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500); }}>
-                                        <SafeIcon name="Locate" size={14} color={modernColors.primary} />
-                                        <Text style={st.mapBtnLabelTxt}>{t('navigation.myPositionMarker') || 'Ma position'}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                            <TouchableOpacity style={st.stopBtn} onPress={stopTracking}><Text style={{ fontSize: 16 }}>⏹</Text><Text style={st.stopText}>{t('navigation.stopTracking') || 'Arrêter le suivi'}</Text></TouchableOpacity>
-                        </>
-
                     ) : showActivityStats ? (
                         /* ━━━━━━ MODE: STATISTIQUES ━━━━━━ */
                         <>
-                            <View style={st.periodRow}>
-                                {(['week', 'month', 'year'] as const).map(p => (
-                                    <TouchableOpacity key={p} style={[st.periodBtn, activityPeriod === p && st.periodBtnActive]} onPress={() => { setActivityPeriod(p); loadActivityStats(p); }}>
-                                        <Text style={[st.periodText, activityPeriod === p && st.periodTextActive]}>{p === 'week' ? (t('navigation.periodWeek') || 'Semaine') : p === 'month' ? (t('navigation.periodMonth') || 'Mois') : (t('navigation.periodYear') || 'Année')}</Text>
+                            {isFreeWalking && (
+                                <NativeCard key={`fw-live-${freeWalkTick}`} style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#10B981', marginBottom: 10 }]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                        <Text style={{ fontSize: 26 }}>🚶</Text>
+                                        <View style={st.flex1}>
+                                            <Text style={{ fontSize: 16, fontWeight: '800', color: modernColors.text }}>{t('navigation.freeWalkInProgress') || 'Marche libre en cours'}</Text>
+                                            <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '600' }}>{tr('navigation.activeWalkStatsBanner', 'Session active · statistiques live ci‑dessous')}</Text>
+                                        </View>
+                                        <View style={[st.walkLiveDot, { position: 'relative', top: 0, right: 0 }]} />
+                                    </View>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 12 }}>
+                                        <View style={{ alignItems: 'center' }}><Text style={{ fontSize: 11, color: modernColors.textSecondary }}>km</Text><Text style={{ fontSize: 20, fontWeight: '800', color: modernColors.text }}>{(distanceTraveledRef.current / 1000).toFixed(2)}</Text></View>
+                                        <View style={{ alignItems: 'center' }}><Text style={{ fontSize: 11, color: modernColors.textSecondary }}>min</Text><Text style={{ fontSize: 20, fontWeight: '800', color: modernColors.text }}>{trackingStartTimeRef.current ? Math.floor((Date.now() - new Date(trackingStartTimeRef.current).getTime()) / 60000) : 0}</Text></View>
+                                        <View style={{ alignItems: 'center' }}><Text style={{ fontSize: 11, color: modernColors.textSecondary }}>km/h</Text><Text style={{ fontSize: 20, fontWeight: '800', color: modernColors.text }}>{Math.round(currentSpeed)}</Text></View>
+                                        <View style={{ alignItems: 'center' }}><Text style={{ fontSize: 11, color: modernColors.textSecondary }}>cal</Text><Text style={{ fontSize: 20, fontWeight: '800', color: '#EF4444' }}>{Math.round(estimateCalories(distanceTraveledRef.current / 1000, trackingStartTimeRef.current ? (Date.now() - new Date(trackingStartTimeRef.current).getTime()) / 60000 : 0, 'walking', currentSpeed))}</Text></View>
+                                    </View>
+                                    <TouchableOpacity style={[st.stopBtn, { marginTop: 12 }]} onPress={stopFreeWalking}>
+                                        <Text style={{ fontSize: 16 }}>⏹</Text>
+                                        <Text style={st.stopText}>{t('navigation.stopWalking') || 'Arrêter la marche'}</Text>
                                     </TouchableOpacity>
-                                ))}
-                            </View>
-                            <View style={[st.periodRow, { marginTop: -4 }]}>
-                                <TouchableOpacity style={[st.periodBtn, statsScope === 'general' && st.periodBtnActive]} onPress={() => setStatsScope('general')}>
-                                    <Text style={[st.periodText, statsScope === 'general' && st.periodTextActive]}>{tr('navigation.statsScopeGeneral', 'Général')}</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[st.periodBtn, statsScope === 'freewalk' && st.periodBtnActive]} onPress={() => setStatsScope('freewalk')}>
-                                    <Text style={[st.periodText, statsScope === 'freewalk' && st.periodTextActive]}>{tr('navigation.statsScopeFreeWalk', 'Marches libres')}</Text>
-                                </TouchableOpacity>
-                                {!freeWalkFilterRange && (
-                                    <TouchableOpacity
-                                        style={st.periodBtn}
-                                        onPress={() => {
-                                            const places = (activitySummaryForDisplay?.most_visited_places || []) as any[];
-                                            if (places.length === 0) {
-                                                Alert.alert(tr('navigation.visitedPlaces', 'Lieux visités'), tr('navigation.noVisitedPlaceForPeriod', 'Aucun lieu visité sur cette période'));
-                                                return;
-                                            }
-                                            const text = places.slice(0, 8).map((p: any, i: number) => `${i + 1}. ${p.name} (${p.visit_count})`).join('\n');
-                                            Alert.alert(tr('navigation.mostVisitedPlaces', 'Lieux les plus visités'), text);
-                                        }}
-                                    >
-                                        <Text style={st.periodText}>{tr('navigation.visitedPlaces', 'Lieux visités')}</Text>
-                                    </TouchableOpacity>
+                                </NativeCard>
+                            )}
+                            <View style={st.statsFilterRow}>
+                                {!freeWalkFilterRange ? (
+                                    <>
+                                        <TouchableOpacity style={st.statsFilterChip} onPress={() => setStatsPeriodMenuOpen(true)} activeOpacity={0.75}>
+                                            <Text style={st.statsFilterChipText} numberOfLines={1}>{statsPeriodMenuLabel}</Text>
+                                            <SafeIcon name="ChevronDown" size={14} color={modernColors.textSecondary} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={st.statsFilterChip} onPress={() => setStatsModalityMenuOpen(true)} activeOpacity={0.75}>
+                                            <Text style={st.statsFilterChipText} numberOfLines={1}>{statsModalityMenuLabel}</Text>
+                                            <SafeIcon name="ChevronDown" size={14} color={modernColors.textSecondary} />
+                                        </TouchableOpacity>
+                                    </>
+                                ) : (
+                                    <View style={[st.statsFilterChip, { flex: 1 }]}>
+                                        <Text style={st.statsFilterChipText} numberOfLines={1}>{tr('navigation.filteredSessionActive', 'Session marche filtrée')}</Text>
+                                    </View>
                                 )}
                             </View>
+                            <Modal visible={statsPeriodMenuOpen} transparent animationType="fade" onRequestClose={() => setStatsPeriodMenuOpen(false)}>
+                                <View style={st.statsMenuOverlay}>
+                                    <Pressable style={StyleSheet.absoluteFill} onPress={() => setStatsPeriodMenuOpen(false)} />
+                                    <View style={st.statsMenuSheet}>
+                                        <Text style={st.statsMenuTitle}>{tr('navigation.choosePeriod', 'Période')}</Text>
+                                        {(['week', 'month', 'quarter', 'semester', 'year'] as ActivityPeriodKey[]).map((p) => (
+                                            <Pressable
+                                                key={p}
+                                                style={[st.statsMenuItem, activityPeriod === p && st.statsMenuItemActive]}
+                                                onPress={() => { setActivityPeriod(p); setStatsPeriodMenuOpen(false); loadActivityStats(p); }}
+                                            >
+                                                <Text style={[st.statsMenuItemText, activityPeriod === p && st.statsMenuItemTextActive]}>
+                                                    {p === 'week' ? (t('navigation.periodWeek') || 'Semaine')
+                                                        : p === 'month' ? (t('navigation.periodMonth') || 'Mois')
+                                                            : p === 'quarter' ? tr('navigation.periodQuarter', 'Trimestre')
+                                                                : p === 'semester' ? tr('navigation.periodSemester', 'Semestre')
+                                                                    : (t('navigation.periodYear') || 'Année')}
+                                                </Text>
+                                            </Pressable>
+                                        ))}
+                                    </View>
+                                </View>
+                            </Modal>
+                            <Modal visible={statsModalityMenuOpen} transparent animationType="fade" onRequestClose={() => setStatsModalityMenuOpen(false)}>
+                                <View style={st.statsMenuOverlay}>
+                                    <Pressable style={StyleSheet.absoluteFill} onPress={() => setStatsModalityMenuOpen(false)} />
+                                    <View style={st.statsMenuSheet}>
+                                        <Text style={st.statsMenuTitle}>{tr('navigation.chooseModality', 'Vue')}</Text>
+                                        {([
+                                            { k: 'all' as const, lbl: tr('navigation.statsModalityAll', 'Tout combiné') },
+                                            { k: 'auto' as const, lbl: tr('navigation.statsModalityAuto', 'Détection auto') },
+                                            { k: 'freewalk' as const, lbl: tr('navigation.statsModalityFreeWalk', 'Marche libre') },
+                                        ]).map(({ k, lbl }) => (
+                                            <Pressable
+                                                key={k}
+                                                style={[st.statsMenuItem, statsModality === k && st.statsMenuItemActive]}
+                                                onPress={() => { setStatsModality(k); setStatsModalityMenuOpen(false); }}
+                                            >
+                                                <Text style={[st.statsMenuItemText, statsModality === k && st.statsMenuItemTextActive]}>{lbl}</Text>
+                                            </Pressable>
+                                        ))}
+                                    </View>
+                                </View>
+                            </Modal>
+                            <Modal visible={visitedPlacesModalVisible} transparent animationType="slide" onRequestClose={() => setVisitedPlacesModalVisible(false)}>
+                                <View style={st.visitedPlacesModalRoot}>
+                                    <View style={st.visitedPlacesModalHdr}>
+                                        <Text style={st.visitedPlacesModalTitle}>{tr('navigation.allVisitedPlaces', 'Tous les lieux visités')}</Text>
+                                        <TouchableOpacity onPress={() => setVisitedPlacesModalVisible(false)} hitSlop={12}>
+                                            <SafeIcon name="X" size={22} color={modernColors.text} />
+                                        </TouchableOpacity>
+                                    </View>
+                                    <FlatList
+                                        data={(statsDashboardSummary?.most_visited_places || []) as any[]}
+                                        keyExtractor={(_, i) => `vp-${i}`}
+                                        contentContainerStyle={{ paddingBottom: 24 }}
+                                        renderItem={({ item: place, index: i }) => {
+                                            const name = typeof place?.name === 'string' ? place.name : (t('navigation.unknownPlace') || 'Lieu inconnu');
+                                            const count = typeof place?.visit_count === 'number' ? place.visit_count : 0;
+                                            return (
+                                                <View style={[st.visitedPlacesRow, i > 0 && { borderTopWidth: 1, borderTopColor: modernColors.border }]}>
+                                                    <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: modernColors.text }} numberOfLines={2}>{name}</Text>
+                                                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#8B5CF6' }}>{count}×</Text>
+                                                </View>
+                                            );
+                                        }}
+                                        ListEmptyComponent={<Text style={{ padding: 20, color: modernColors.textSecondary }}>{tr('navigation.noVisitedPlaceForPeriod', 'Aucun lieu sur cette période')}</Text>}
+                                    />
+                                </View>
+                            </Modal>
                             {freeWalkFilterRange && (
                                 <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#10B981', marginBottom: 10 }]}>
                                     <Text style={st.secTitle}>🚶 {tr('navigation.filteredFreeWalkSession', 'Session marche libre filtrée')}</Text>
@@ -2009,66 +2087,41 @@ const NavigationScreen: React.FC = () => {
                                     {/* Summary */}
                                     <NativeCard style={st.summCard}>
                                         <View style={st.statsGrid}>
-                                            {[{ e: '📏', v: (activitySummaryForDisplay.total_distance_km || 0).toFixed(1), l: 'km' }, { e: '🏃', v: activitySummaryForDisplay.total_sessions || 0, l: 'sessions' }, { e: '🔥', v: Math.round(activitySummaryForDisplay.total_calories || 0), l: 'cal' }, { e: '⏱', v: Math.round(activitySummaryForDisplay.total_duration_minutes || 0), l: 'min' }].map((s, i) => (
+                                            {[{ e: '📏', v: (statsDashboardSummary.total_distance_km || 0).toFixed(1), l: 'km' }, { e: '🏃', v: statsDashboardSummary.total_sessions || 0, l: 'sessions' }, { e: '🔥', v: Math.round(statsDashboardSummary.total_calories || 0), l: 'cal' }, { e: '⏱', v: Math.round(statsDashboardSummary.total_duration_minutes || 0), l: 'min' }].map((s, i) => (
                                                 <React.Fragment key={i}>{i > 0 && <View style={st.statDiv} />}<View style={st.statItem}><Text style={{ fontSize: 20 }}>{s.e}</Text><Text style={st.statVal}>{s.v}</Text><Text style={st.statLbl}>{s.l}</Text></View></React.Fragment>
                                             ))}
                                         </View>
                                     </NativeCard>
-                                    {/* ━━ PARTAGE EXTERNE DES STATS ━━ */}
-                                    <TouchableOpacity
-                                        style={st.shareStatsBtn}
-                                        activeOpacity={0.8}
-                                        onPress={async () => {
-                                            const periodLabel = activityPeriod === 'week' ? (t('navigation.thisWeek') || 'cette semaine') : activityPeriod === 'month' ? (t('navigation.thisMonth') || 'ce mois') : (t('navigation.thisYear') || 'cette année');
-                                            const dist = (activitySummaryForDisplay.total_distance_km || 0).toFixed(1);
-                                            const sess = activitySummaryForDisplay.total_sessions || 0;
-                                            const cal = Math.round(activitySummaryForDisplay.total_calories || 0);
-                                            const dur = Math.round(activitySummaryForDisplay.total_duration_minutes || 0);
-                                            const best = activitySummaryForDisplay.best_session;
-                                            const hs = aiInsights?.health_score;
-                                            const freeWalkLabel = freeWalkFilterRange
-                                                ? `🚶 ${t('navigation.freeWalkShareTitle') || 'Ma session de marche libre'}`
-                                                : `🏃‍♂️ ${t('navigation.myNavStats') || 'Mes stats Yukpo Navigation'} (${periodLabel})`;
-                                            let msg = `${freeWalkLabel} :\n\n` +
-                                                `📏 ${dist} km\n` +
-                                                `🔥 ${cal} ${t('navigation.caloriesBurned') || 'calories brûlées'}\n` +
-                                                `⏱ ${dur} ${t('navigation.minutesOfActivity') || "minutes d'activité"}\n` +
-                                                `🎯 ${sess} session${sess > 1 ? 's' : ''}`;
-                                            if (freeWalkFilterRange) {
-                                                msg += `\n🕒 ${t('navigation.sessionWindow') || 'Période'}: ${new Date(freeWalkFilterRange.start).toLocaleTimeString()} → ${new Date(freeWalkFilterRange.end).toLocaleTimeString()}`;
-                                            }
-                                            if (hs?.score) msg += `\n🫀 ${t('navigation.healthScoreLabel') || 'Score santé'} : ${hs.score}/100 (${hs.label || ''})`;
-                                            if (best) msg += `\n🏅 Record : ${best.distance_km?.toFixed(1)} km / ${Math.round(best.duration_minutes || 0)} min`;
-                                            msg += `\n\n${t('navigation.installPrompt') || 'Télécharge Yukpo pour suivre tes marches et stats intelligentes :'}\n`;
-                                            msg += Platform.OS === 'ios'
-                                                ? 'https://apps.apple.com/app/yukpomnang'
-                                                : 'https://play.google.com/store/apps/details?id=com.yukpomnang';
-                                            try { await Share.share({ message: msg, title: t('navigation.myNavStats') || 'Mes stats Yukpo Navigation' }); } catch { }
-                                        }}
-                                    >
-                                        <SafeIcon name="share" size={18} color="#fff" />
-                                        <View>
-                                            <Text style={st.shareStatsTxt}>{freeWalkFilterRange ? (t('navigation.shareFreeWalk') || 'Partager ma marche libre') : (t('navigation.shareMyStats') || 'Partager mes statistiques')}</Text>
-                                            <Text style={st.shareStatsSub}>{t('navigation.inviteFriends') || 'Invite tes amis à rejoindre Yukpo !'}</Text>
-                                        </View>
-                                    </TouchableOpacity>
                                     {/* Best session */}
-                                    {statsScope === 'general' && !freeWalkFilterRange && activitySummaryForDisplay.best_session && (
-                                        <NativeCard style={[st.secCard, { backgroundColor: '#FFFBEB' }]}>
-                                            <Text style={st.secTitle}>🏅 {t('navigation.bestSession') || 'Meilleure session'}</Text>
-                                            <View style={st.bestRow}>
-                                                <Text style={st.bestStat}>{activitySummaryForDisplay.best_session.distance_km?.toFixed(1)} km</Text>
-                                                <Text style={st.bestStat}>{Math.round(activitySummaryForDisplay.best_session.duration_minutes || 0)} min</Text>
-                                                <Text style={st.bestStat}>⭐ {Math.round(activitySummaryForDisplay.best_session.quality_score)}/100</Text>
-                                            </View>
-                                        </NativeCard>
-                                    )}
+                                    {!freeWalkFilterRange && statsDashboardSummary.best_session && (() => {
+                                        const bs = statsDashboardSummary.best_session;
+                                        const dayStr = bs.date ? new Date(`${bs.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) : '';
+                                        const fw = bestSessionLooksLikeFreeWalk(bs);
+                                        return (
+                                            <NativeCard style={[st.secCard, { backgroundColor: '#FFFBEB' }]}>
+                                                <Text style={st.secTitle}>🏅 {t('navigation.bestSession') || 'Meilleure session'}</Text>
+                                                {dayStr ? (
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                                        {fw ? <Text style={{ fontSize: 20 }}>🚶</Text> : null}
+                                                        <Text style={{ fontSize: 12, color: modernColors.textSecondary, flex: 1 }}>
+                                                            {tr('navigation.bestSessionOnDate', 'Le {{date}}').replace('{{date}}', dayStr)}
+                                                            {fw ? ` · ${tr('navigation.bestSessionFreeWalkTag', 'Marche libre')}` : ''}
+                                                        </Text>
+                                                    </View>
+                                                ) : null}
+                                                <View style={st.bestRow}>
+                                                    <Text style={st.bestStat}>{bs.distance_km?.toFixed(1)} km</Text>
+                                                    <Text style={st.bestStat}>{Math.round(bs.duration_minutes || 0)} min</Text>
+                                                    <Text style={st.bestStat}>⭐ {Math.round(bs.quality_score)}/100</Text>
+                                                </View>
+                                            </NativeCard>
+                                        );
+                                    })()}
                                     {/* By mode */}
-                                    {statsScope === 'general' && !freeWalkFilterRange && activitySummaryForDisplay.by_mode?.length > 0 && (
+                                    {!freeWalkFilterRange && statsDashboardSummary.by_mode?.length > 0 && (
                                         <NativeCard style={st.secCard}>
-                                            <Text style={st.secTitle}>🚀 Par mode</Text>
-                                            {activitySummaryForDisplay.by_mode.map((m: any, i: number) => {
-                                                // Validation et extraction sécurisée des données
+                                            <Text style={st.secTitle}>🚀 {tr('navigation.byTravelMode', 'Par mode')}</Text>
+                                            {statsDashboardSummary.by_mode.map((m: any, i: number) => {
                                                 const mode = typeof m?.mode === 'string' ? m.mode : 'unknown';
                                                 const count = typeof m?.count === 'number' ? m.count : 0;
                                                 const distance = typeof m?.distance_km === 'number' ? m.distance_km : 0;
@@ -2088,24 +2141,93 @@ const NavigationScreen: React.FC = () => {
                                             })}
                                         </NativeCard>
                                     )}
-                                    {/* ━━ LIEUX VISITÉS ━━ */}
-                                    {statsScope === 'general' && !freeWalkFilterRange && activitySummaryForDisplay.most_visited_places?.length > 0 && (
+                                    {/* Performance (sans doublon détection auto) */}
+                                    {!freeWalkFilterRange && (
+                                        <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#10B981' }]}>
+                                            <Text style={st.secTitle}>🌿 {tr('navigation.performanceProgression', 'Performance & progression')}</Text>
+                                            {trendVsPrevious ? (
+                                                <Text style={{ fontSize: 13, color: modernColors.textSecondary, lineHeight: 20 }}>
+                                                    {tr('navigation.recentDistanceVsPrevious', 'Distance récente: {{current}} km vs {{previous}} km')
+                                                        .replace('{{current}}', trendVsPrevious.currDist.toFixed(1))
+                                                        .replace('{{previous}}', trendVsPrevious.prevDist.toFixed(1))}
+                                                    {'  '}
+                                                    <Text style={{ color: trendVsPrevious.delta >= 0 ? '#10B981' : '#EF4444', fontWeight: '700' }}>
+                                                        {trendVsPrevious.delta >= 0 ? '↑' : '↓'} {Math.abs(trendVsPrevious.delta).toFixed(0)}%
+                                                    </Text>
+                                                </Text>
+                                            ) : (
+                                                <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>{statsModality === 'all' ? tr('navigation.notEnoughHistoryForComparison', 'Pas assez d’historique pour la comparaison.') : tr('navigation.trendOnlyForAllView', 'Passe en « Tout combiné » pour la tendance sur la période.')}</Text>
+                                            )}
+                                            <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: modernColors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>{tr('navigation.estimatedCo2Saved', 'CO2 estimé économisé')}</Text>
+                                                <Text style={{ fontSize: 14, fontWeight: '800', color: '#10B981' }}>
+                                                    {(((statsDashboardSummary?.by_mode || []).reduce((s: number, m: any) => s + ((m?.mode === 'walking' || m?.mode === 'bicycling') ? (Number(m?.distance_km) || 0) : 0), 0)) * 0.12).toFixed(1)} kg
+                                                </Text>
+                                            </View>
+                                        </NativeCard>
+                                    )}
+                                    {/* Partage : après perf & record, sans lieux visités */}
+                                    <TouchableOpacity
+                                        style={st.shareStatsBtn}
+                                        activeOpacity={0.8}
+                                        onPress={async () => {
+                                            const periodLabel = shareStatsPeriodPhrase;
+                                            const dist = (statsDashboardSummary.total_distance_km || 0).toFixed(1);
+                                            const sess = statsDashboardSummary.total_sessions || 0;
+                                            const cal = Math.round(statsDashboardSummary.total_calories || 0);
+                                            const dur = Math.round(statsDashboardSummary.total_duration_minutes || 0);
+                                            const best = statsDashboardSummary.best_session;
+                                            const hs = aiInsights?.health_score;
+                                            const freeWalkLabel = freeWalkFilterRange
+                                                ? `🚶 ${t('navigation.freeWalkShareTitle') || 'Ma session de marche libre'}`
+                                                : `🏃‍♂️ ${t('navigation.myNavStats') || 'Mes stats Yukpo Navigation'} (${periodLabel})`;
+                                            let msg = `${freeWalkLabel} :\n\n` +
+                                                `📏 ${dist} km\n` +
+                                                `🔥 ${cal} ${t('navigation.caloriesBurned') || 'calories brûlées'}\n` +
+                                                `⏱ ${dur} ${t('navigation.minutesOfActivity') || "minutes d'activité"}\n` +
+                                                `🎯 ${sess} session${sess > 1 ? 's' : ''}`;
+                                            if (freeWalkFilterRange) {
+                                                msg += `\n🕒 ${t('navigation.sessionWindow') || 'Période'}: ${new Date(freeWalkFilterRange.start).toLocaleTimeString()} → ${new Date(freeWalkFilterRange.end).toLocaleTimeString()}`;
+                                            }
+                                            if (hs?.score) msg += `\n🫀 ${t('navigation.healthScoreLabel') || 'Score santé'} : ${hs.score}/100 (${hs.label || ''})`;
+                                            if (best) {
+                                                const dStr = best.date ? new Date(`${best.date}T12:00:00`).toLocaleDateString() : '';
+                                                msg += `\n🏅 ${t('navigation.bestSession') || 'Meilleure session'}${dStr ? ` (${dStr})` : ''} : ${best.distance_km?.toFixed(1)} km / ${Math.round(best.duration_minutes || 0)} min`;
+                                                if (bestSessionLooksLikeFreeWalk(best)) msg += ` 🚶`;
+                                            }
+                                            msg += `\n\n${t('navigation.installPrompt') || 'Télécharge Yukpo pour suivre tes marches et stats intelligentes :'}\n`;
+                                            msg += SHARE_APP_DOWNLOAD_URL;
+                                            try { await Share.share({ message: msg, title: t('navigation.myNavStats') || 'Mes stats Yukpo Navigation' }); } catch { }
+                                        }}
+                                    >
+                                        <SafeIcon name="share" size={18} color="#fff" />
+                                        <View>
+                                            <Text style={st.shareStatsTxt}>{freeWalkFilterRange ? (t('navigation.shareFreeWalk') || 'Partager ma marche libre') : (t('navigation.shareMyStats') || 'Partager mes statistiques')}</Text>
+                                            <Text style={st.shareStatsSub}>{tr('navigation.shareStatsExcludesPlaces', 'Sans lieux visités')}</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                    {/* Top 5 lieux */}
+                                    {!freeWalkFilterRange && (statsDashboardSummary.most_visited_places || []).length > 0 && (
                                         <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#8B5CF6' }]}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                                                <Text style={st.secTitle}>📍 {t('navigation.visitedPlaces') || 'Lieux visités'}</Text>
-                                                <Text style={{ fontSize: 11, color: modernColors.textSecondary }}>{activityPeriod === 'week' ? (t('navigation.thisWeek') || 'Cette semaine') : activityPeriod === 'month' ? (t('navigation.thisMonth') || 'Ce mois') : (t('navigation.thisYear') || 'Cette année')}</Text>
+                                                <Text style={st.secTitle}>📍 {tr('navigation.topVisitedPlaces', 'Top lieux')}</Text>
+                                                <Text style={{ fontSize: 10, color: modernColors.textSecondary, textAlign: 'right' as any, maxWidth: '48%' as any }} numberOfLines={2}>{statsPeriodMenuLabel} · {statsModalityMenuLabel}</Text>
                                             </View>
-                                            {activitySummaryForDisplay.most_visited_places.map((place: any, i: number) => {
+                                            {(statsDashboardSummary.most_visited_places || []).slice(0, 5).map((place: any, i: number) => {
                                                 const name = typeof place?.name === 'string' ? place.name : (t('navigation.unknownPlace') || 'Lieu inconnu');
                                                 const count = typeof place?.visit_count === 'number' ? place.visit_count : 0;
                                                 const isTop = i === 0;
+                                                const isGpsApprox = typeof name === 'string' && name.trimStart().startsWith('≈');
                                                 return (
                                                     <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: modernColors.border }}>
                                                         <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isTop ? '#8B5CF620' : modernColors.surfaceVariant, alignItems: 'center', justifyContent: 'center' }}>
                                                             <Text style={{ fontSize: isTop ? 16 : 14 }}>{isTop ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : '📌'}</Text>
                                                         </View>
                                                         <View style={st.flex1}>
-                                                            <Text style={{ fontSize: 13, fontWeight: '600', color: modernColors.text }} numberOfLines={1}>{name}</Text>
+                                                            <Text style={{ fontSize: 13, fontWeight: '600', color: modernColors.text }} numberOfLines={2}>{name}</Text>
+                                                            {isGpsApprox ? (
+                                                                <Text style={{ fontSize: 10, color: modernColors.textSecondary, marginTop: 2 }}>{tr('navigation.placeLabelFromGps', 'Libellé issu des coordonnées GPS (géocodage indisponible)')}</Text>
+                                                            ) : null}
                                                         </View>
                                                         <View style={{ backgroundColor: '#8B5CF615', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8 }}>
                                                             <Text style={{ fontSize: 12, fontWeight: '700', color: '#8B5CF6' }}>{count} {t('navigation.visits') || 'visite(s)'}</Text>
@@ -2113,11 +2235,17 @@ const NavigationScreen: React.FC = () => {
                                                     </View>
                                                 );
                                             })}
+                                            {(statsDashboardSummary.most_visited_places || []).length > 5 ? (
+                                                <TouchableOpacity style={st.visitedPlacesSeeAllBtn} onPress={() => setVisitedPlacesModalVisible(true)} activeOpacity={0.75}>
+                                                    <Text style={st.visitedPlacesSeeAllTxt}>{tr('navigation.seeAllVisitedPlaces', 'Voir tous les lieux')}</Text>
+                                                    <SafeIcon name="ChevronRight" size={16} color="#8B5CF6" />
+                                                </TouchableOpacity>
+                                            ) : null}
                                         </NativeCard>
                                     )}
 
                                     {/* ━━ TYPES DE LIEUX FAVORIS ━━ */}
-                                    {statsScope === 'general' && !freeWalkFilterRange && activitySummaryForDisplay.favorite_poi_types?.length > 0 && (
+                                    {statsModality === 'all' && !freeWalkFilterRange && activitySummaryForDisplay.favorite_poi_types?.length > 0 && (
                                         <NativeCard style={st.secCard}>
                                             <Text style={st.secTitle}>⭐ Types de lieux favoris</Text>
                                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
@@ -2137,8 +2265,8 @@ const NavigationScreen: React.FC = () => {
                                         </NativeCard>
                                     )}
 
-                                    {/* Recent history */}
-                                    {statsScope === 'freewalk' && activityHistoryForDisplay.length > 0 && (
+                                    {/* Activités détaillées (vue marche libre / auto / session filtrée) */}
+                                    {(statsModality === 'freewalk' || statsModality === 'auto' || freeWalkFilterRange) && activityHistoryForDisplay.length > 0 && (
                                         <NativeCard style={st.secCard}>
                                             <Text style={st.secTitle}>📋 {t('navigation.recentActivities') || 'Activités récentes'}</Text>
                                             {activityHistoryForDisplay.slice(0, 5).map((a: any, i: number) => {
@@ -2148,6 +2276,8 @@ const NavigationScreen: React.FC = () => {
                                                 const distance = typeof a?.distance_km === 'number' ? a.distance_km : 0;
                                                 const duration = typeof a?.duration_minutes === 'number' ? a.duration_minutes : 0;
                                                 const quality = typeof a?.quality_score === 'number' ? a.quality_score : 0;
+                                                const destGpsApprox = typeof destination === 'string' && destination.trimStart().startsWith('≈');
+                                                const destAutoPassive = typeof a?.origin === 'string' && a.origin.toLowerCase().includes('[auto]');
 
                                                 return (
                                                     <View key={i} style={st.histRow}>
@@ -2155,8 +2285,14 @@ const NavigationScreen: React.FC = () => {
                                                             {travelMode === 'walking' ? '🚶' : travelMode === 'bicycling' ? '🚲' : travelMode === 'driving' ? '🚗' : '🚗'}
                                                         </Text>
                                                         <View style={st.flex1}>
-                                                            <Text style={st.histDest} numberOfLines={1}>{destination}</Text>
-                                                            <Text style={st.histMeta}>{distance.toFixed(1)} km · {Math.round(duration)} min</Text>
+                                                            <Text style={st.histDest} numberOfLines={2}>{destination}</Text>
+                                                            <Text style={st.histMeta}>
+                                                                {distance.toFixed(1)} km · {Math.round(duration)} min
+                                                                {destAutoPassive ? ` · ${tr('navigation.passiveTrackHint', 'détection auto')}` : ''}
+                                                            </Text>
+                                                            {destGpsApprox ? (
+                                                                <Text style={{ fontSize: 10, color: modernColors.textSecondary, marginTop: 2 }}>{tr('navigation.placeLabelFromGps', 'Libellé issu des coordonnées GPS (géocodage indisponible)')}</Text>
+                                                            ) : null}
                                                         </View>
                                                         <Text style={[st.histScore, { color: quality >= 70 ? '#10B981' : '#F59E0B' }]}>
                                                             {Math.round(quality)}
@@ -2166,42 +2302,8 @@ const NavigationScreen: React.FC = () => {
                                             })}
                                         </NativeCard>
                                     )}
-                                    {statsScope === 'general' && (
-                                        <>
-                                            <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#10B981' }]}>
-                                                <Text style={st.secTitle}>🌿 {tr('navigation.performanceProgression', 'Performance & progression')}</Text>
-                                                {trendVsPrevious ? (
-                                                    <Text style={{ fontSize: 13, color: modernColors.textSecondary }}>
-                                                        {tr('navigation.recentDistanceVsPrevious', 'Distance récente: {{current}} km vs {{previous}} km')
-                                                            .replace('{{current}}', trendVsPrevious.currDist.toFixed(1))
-                                                            .replace('{{previous}}', trendVsPrevious.prevDist.toFixed(1))}
-                                                        {'  '}
-                                                        <Text style={{ color: trendVsPrevious.delta >= 0 ? '#10B981' : '#EF4444', fontWeight: '700' }}>
-                                                            {trendVsPrevious.delta >= 0 ? '↑' : '↓'} {Math.abs(trendVsPrevious.delta).toFixed(0)}%
-                                                        </Text>
-                                                    </Text>
-                                                ) : (
-                                                    <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>{tr('navigation.notEnoughHistoryForComparison', 'Pas assez d’historique pour la comparaison.')}</Text>
-                                                )}
-                                                <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'space-between' }}>
-                                                    <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>{tr('navigation.estimatedCo2Saved', 'CO2 estimé économisé')}</Text>
-                                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#10B981' }}>
-                                                        {(((activitySummaryForDisplay?.by_mode || []).reduce((s: number, m: any) => s + ((m?.mode === 'walking' || m?.mode === 'bicycling') ? (Number(m?.distance_km) || 0) : 0), 0)) * 0.12).toFixed(1)} kg
-                                                    </Text>
-                                                </View>
-                                            </NativeCard>
-                                            <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#8B5CF6' }]}>
-                                                <Text style={st.secTitle}>🎮 {tr('navigation.passiveAutoStats', 'Statistiques passives (détection auto)')}</Text>
-                                                <View style={st.statsGrid}>
-                                                    {[{ e: '🏃', v: passiveSummary.sessions, l: 'sessions' }, { e: '📏', v: passiveSummary.distanceKm.toFixed(1), l: 'km' }, { e: '🔥', v: Math.round(passiveSummary.calories), l: 'cal' }, { e: '⏱', v: Math.round(passiveSummary.minutes), l: 'min' }].map((s, i) => (
-                                                        <React.Fragment key={i}><View style={st.statItem}><Text style={{ fontSize: 18 }}>{s.e}</Text><Text style={st.statVal}>{s.v}</Text><Text style={st.statLbl}>{s.l}</Text></View></React.Fragment>
-                                                    ))}
-                                                </View>
-                                            </NativeCard>
-                                        </>
-                                    )}
                                     {/* AI Coach */}
-                                    {statsScope === 'general' && !freeWalkFilterRange && aiInsights ? (
+                                    {statsModality === 'all' && !freeWalkFilterRange && aiInsights ? (
                                         <>
                                             <View style={st.coachHdr}><Text style={st.coachTitle}>🤖 Coach IA</Text><TouchableOpacity onPress={sharePerformance} style={st.shareBtn}><SafeIcon name="share" size={14} color="#fff" /><Text style={st.shareTxt}>{t('common.share') || 'Partager'}</Text></TouchableOpacity></View>
                                             {/* Health score */}
@@ -2622,57 +2724,12 @@ const NavigationScreen: React.FC = () => {
                                                 </NativeCard>
                                             )}
                                         </>
-                                    ) : (
-                                        /* AI Features Preview — interactif */
-                                        <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#7C3AED', paddingBottom: 6 }]}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                                                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#7C3AED15', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <Text style={{ fontSize: 22 }}>🤖</Text>
-                                                </View>
-                                                <View style={st.flex1}>
-                                                    <Text style={{ fontSize: 16, fontWeight: '800', color: modernColors.text }}>Coach IA</Text>
-                                                    <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>{t('navigation.startTripToActivate') || "Commencez un trajet pour activer l'analyse"}</Text>
-                                                </View>
-                                            </View>
-                                            {[
-                                                { emoji: '🌍', title: t('navigation.environmentalImpact') || 'Impact Environnemental', desc: t('navigation.envImpactDesc') || 'CO2 économisé, arbres équivalents', color: '#10B981', action: () => Alert.alert(`🌍 ${t('navigation.environmentalImpact') || 'Impact Environnemental'}`, t('navigation.envImpactInfo') || 'Effectuez votre premier trajet pour commencer à mesurer votre empreinte carbone.', [{ text: t('navigation.startTrip') || 'Commencer un trajet', onPress: () => { setShowActivityStats(false); } }, { text: 'OK' }]) },
-                                                { emoji: '❤️', title: t('navigation.fitnessCondition') || 'Condition Physique', desc: t('navigation.fitnessDesc') || 'VO2max, calories, niveau fitness', color: '#EF4444', action: () => Alert.alert(`❤️ ${t('navigation.fitnessCondition') || 'Condition Physique'}`, t('navigation.fitnessInfo') || 'Le Coach IA estime votre VO2max.', [{ text: t('navigation.planWalk') || 'Planifier une marche', onPress: () => { setShowActivityStats(false); } }, { text: 'OK' }]) },
-                                                { emoji: '🎯', title: t('navigation.personalizedChallenges') || 'Défis Personnalisés', desc: t('navigation.challengesDesc') || 'Objectifs adaptés à votre niveau', color: '#3B82F6', action: () => Alert.alert(`🎯 ${t('navigation.personalizedChallenges') || 'Défis Personnalisés'}`, t('navigation.challengesInfo') || 'Le Coach IA crée des défis sur mesure.', [{ text: 'OK' }]) },
-                                                { emoji: '🏅', title: 'Records & Badges', desc: t('navigation.recordsDesc') || 'Performances et récompenses', color: '#FFD700', action: () => Alert.alert('🏅 Records & Badges', t('navigation.recordsInfo') || 'Le Coach IA suit vos records automatiquement.', [{ text: 'OK' }]) },
-                                                { emoji: '🏠', title: t('navigation.frequentTrips') || 'Trajets Habituels', desc: t('navigation.frequentTripsDesc') || 'Routes fréquentes, heures de pointe', color: '#6366F1', action: () => Alert.alert(`🏠 ${t('navigation.frequentTrips') || 'Trajets Habituels'}`, t('navigation.frequentTripsInfo') || 'Le Coach IA identifie vos routes fréquentes.', [{ text: 'OK' }]) },
-                                            ].map((feat, i) => (
-                                                <TouchableOpacity
-                                                    key={i}
-                                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: 8, marginBottom: 2, borderRadius: 10, backgroundColor: feat.color + '08' }}
-                                                    onPress={feat.action}
-                                                    activeOpacity={0.6}
-                                                >
-                                                    <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: feat.color + '15', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <Text style={{ fontSize: 18 }}>{feat.emoji}</Text>
-                                                    </View>
-                                                    <View style={st.flex1}>
-                                                        <Text style={{ fontSize: 14, fontWeight: '700', color: modernColors.text }}>{feat.title}</Text>
-                                                        <Text style={{ fontSize: 11, color: modernColors.textSecondary, marginTop: 1 }}>{feat.desc}</Text>
-                                                    </View>
-                                                    <SafeIcon name="ChevronRight" size={16} color={feat.color} />
-                                                </TouchableOpacity>
-                                            ))}
-                                            <TouchableOpacity
-                                                style={[st.aiActivateBtn, { marginTop: 12 }]}
-                                                onPress={() => loadActivityStats(activityPeriod)}
-                                                disabled={loadingActivity}
-                                            >
-                                                {loadingActivity ? (
-                                                    <ActivityIndicator color="#fff" />
-                                                ) : (
-                                                    <>
-                                                        <SafeIcon name="Zap" size={16} color="#fff" />
-                                                        <Text style={st.aiActivateBtnText}>Charger mes données</Text>
-                                                    </>
-                                                )}
-                                            </TouchableOpacity>
-                                        </NativeCard>
-                                    )}
+                                    ) : statsModality === 'all' && !freeWalkFilterRange && !loadingActivity ? (
+                                        <Text style={{ fontSize: 12, color: modernColors.textSecondary, textAlign: 'center', paddingVertical: 10, paddingHorizontal: 8, lineHeight: 18 }}>
+                                            {tr('navigation.coachIaCompactHint', 'Les analyses détaillées du Coach IA (score santé, défis, CO₂…) s’affichent ici quand elles sont disponibles. Les données se chargent déjà à l’ouverture des statistiques.')}
+                                        </Text>
+                                    ) : null}
+                                    {statsModality === 'all' && !freeWalkFilterRange ? (
                                     <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#7C3AED' }]}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                                             <Text style={st.secTitle}>📝 Historique Coach IA</Text>
@@ -2725,46 +2782,113 @@ const NavigationScreen: React.FC = () => {
                                             ))
                                         )}
                                     </NativeCard>
+                                    ) : null}
                                 </>
                             ) : null}
                         </>
+                    ) : isTracking && selectedRoute ? (
+                        <>
+                            {/* AI Risk */}
+                            {checkpointAiAnalysis && (
+                                <View style={[st.riskBanner, { borderLeftColor: (checkpointAiAnalysis.risk_level || 0) >= 7 ? '#EF4444' : (checkpointAiAnalysis.risk_level || 0) >= 4 ? '#F59E0B' : '#10B981' }]}>
+                                    <View style={st.row8}>
+                                        <Text style={{ fontSize: 18 }}>{(checkpointAiAnalysis.risk_level || 0) >= 7 ? '🚨' : (checkpointAiAnalysis.risk_level || 0) >= 4 ? '⚠️' : '✅'}</Text>
+                                        <Text style={[st.riskTitle, { color: (checkpointAiAnalysis.risk_level || 0) >= 7 ? '#EF4444' : '#F59E0B' }]}>Risque {checkpointAiAnalysis.risk_label || ''} ({checkpointAiAnalysis.risk_level}/10)</Text>
+                                    </View>
+                                    {checkpointAiAnalysis.driving_tip && <Text style={st.riskTip}>{checkpointAiAnalysis.driving_tip}</Text>}
+                                    {checkpointAiAnalysis.alerts?.map((a: any, i: number) => (
+                                        <View key={i} style={[st.riskAlertRow, { borderLeftColor: a.severity === 'critical' ? '#EF4444' : '#F59E0B' }]}><Text style={st.riskAlertMsg}>{a.message}</Text></View>
+                                    ))}
+                                </View>
+                            )}
+                            {/* Nearby checkpoint */}
+                            {nearbyCheckpoint && (
+                                <View style={[st.cpAlert, { backgroundColor: (CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color || '#EF4444') + '15' }]}>
+                                    <Text style={{ fontSize: 28 }}>{CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.icon || '⚠️'}</Text>
+                                    <View style={st.flex1}>
+                                        <Text style={[st.cpTitle, { color: CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type]?.color }]}>
+                                            {(() => {
+                                                const entry = CHECKPOINT_LABELS[nearbyCheckpoint.checkpoint_type];
+                                                const labelObj = entry?.label;
+                                                if (!labelObj) return nearbyCheckpoint.checkpoint_type;
+                                                return labelObj.labelKey ? (t(labelObj.labelKey) || labelObj.fallback) : labelObj.fallback;
+                                            })()} dans {nearbyCheckpoint.distance >= 1000 ? `${(nearbyCheckpoint.distance / 1000).toFixed(1)} km` : `${nearbyCheckpoint.distance} m`}
+                                        </Text>
+                                        {nearbyCheckpoint.speed_limit && <Text style={st.cpSpeed}>Limite: {nearbyCheckpoint.speed_limit} km/h</Text>}
+                                    </View>
+                                </View>
+                            )}
+                            {/* Deviation */}
+                            {isOffRoute && (
+                                <TouchableOpacity style={st.deviationAlert} onPress={() => { stopTracking(); searchRoutesRef.current(); }}>
+                                    <Text style={{ fontSize: 16 }}>⚠️</Text><Text style={st.deviationText}>{t('navigation.offRoute') || 'Hors itinéraire — Appuyez pour recalculer'}</Text>
+                                </TouchableOpacity>
+                            )}
+                            {/* Speed dashboard */}
+                            <NativeCard style={st.trackingCard}>
+                                <View style={st.trackRow}>
+                                    <View style={st.speedGauge}><Text style={st.speedVal}>{Math.round(currentSpeed)}</Text><Text style={st.speedUnit}>km/h</Text></View>
+                                    <View style={st.trackMetrics}>
+                                        <View style={st.trackMetric}><Text style={{ fontSize: 14 }}>📍</Text><Text style={st.mVal}>{formatDistance(distanceRemaining)}</Text><Text style={st.mLbl}>{t('navigation.remaining') || 'restant'}</Text></View>
+                                        <View style={st.trackMetric}><Text style={{ fontSize: 14 }}>⏱</Text><Text style={st.mVal}>{formatDuration(durationRemaining)}</Text><Text style={st.mLbl}>{t('navigation.duration') || 'durée'}</Text></View>
+                                        <View style={st.trackMetric}><Text style={{ fontSize: 14 }}>🏁</Text><Text style={[st.mVal, { color: '#10B981' }]}>{liveETA || '--:--'}</Text><Text style={st.mLbl}>{t('navigation.arrival') || 'arrivée'}</Text></View>
+                                    </View>
+                                </View>
+                                {selectedRoute.steps?.[nextStepIndex] && (
+                                    <View style={st.nextStep}><Text style={{ fontSize: 18 }}>↪️</Text>
+                                        <View style={st.flex1}><Text style={st.nextText} numberOfLines={2}>{selectedRoute.steps[nextStepIndex].instructions}</Text><Text style={st.nextDist}>{t('navigation.inDistance', { dist: formatDistance(selectedRoute.steps[nextStepIndex].distance_meters) }) || `dans ${formatDistance(selectedRoute.steps[nextStepIndex].distance_meters)}`}</Text></View>
+                                    </View>
+                                )}
+                                <View style={st.progressBg}><View style={[st.progressFill, { width: `${Math.max(2, Math.min(100, ((selectedRoute.distance_meters - distanceRemaining) / selectedRoute.distance_meters) * 100))}%` as any }]} /></View>
+                            </NativeCard>
+                            {/* Map tracking */}
+                            {showMap && mapRegion && (
+                                <View style={st.mapWrap}>
+                                    <AnyMapView ref={mapRef} style={st.mapView} provider={Platform.OS === 'ios' ? PROVIDER_GOOGLE : undefined} initialRegion={mapRegion} showsUserLocation showsTraffic showsCompass loadingEnabled onMapReady={() => console.log('[NavigationScreen] ✅ Map ready (tracking)')} onError={(e: any) => console.error('[NavigationScreen] ❌ Map error (tracking):', e.nativeEvent || e)}>
+                                        {routePolylineCoords.length > 1 && <Polyline coordinates={routePolylineCoords} strokeColor={modernColors.primary} strokeWidth={4} />}
+                                        {destinationCoords && <Marker coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }} title={t('navigation.destination_marker') || "Destination"} pinColor="#EF4444" tracksViewChanges={false} />}
+                                        {livePosition && <Marker coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }} title={t('navigation.myPositionMarker') || "Ma position"} pinColor="#3B82F6" />}
+                                        {checkpoints.slice(0, 10).map(cp => <Marker key={cp.id} coordinate={{ latitude: cp.latitude, longitude: cp.longitude }} title={`${CHECKPOINT_LABELS[cp.checkpoint_type]?.icon || '⚠️'} ${CHECKPOINT_LABELS[cp.checkpoint_type]?.label || cp.checkpoint_type}`} pinColor={CHECKPOINT_LABELS[cp.checkpoint_type]?.color || '#6B7280'} tracksViewChanges={false} />)}
+                                    </AnyMapView>
+                                    <TouchableOpacity style={st.mapBtnLabeled} onPress={() => { if (livePosition && mapRef.current) mapRef.current.animateToRegion({ latitude: livePosition.lat, longitude: livePosition.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500); }}>
+                                        <SafeIcon name="Locate" size={14} color={modernColors.primary} />
+                                        <Text style={st.mapBtnLabelTxt}>{t('navigation.myPositionMarker') || 'Ma position'}</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                            <TouchableOpacity style={st.stopBtn} onPress={stopTracking}><Text style={{ fontSize: 16 }}>⏹</Text><Text style={st.stopText}>{t('navigation.stopTracking') || 'Arrêter le suivi'}</Text></TouchableOpacity>
+                        </>
+
                     ) : (
                         /* ━━━━━━ MODE: NAVIGATION (planification) ━━━━━━ */
                         <>
                             {/* Search */}
                             <NativeCard style={st.searchCard}>
-                                <View style={st.originRow}>
-                                    <View style={st.originDot} />
-                                </View>
-                                <View style={st.routeLine} />
-                                <View style={st.destRow}>
-                                    <View style={st.destDot} />
-                                    <View style={st.flex1}>
-                                        <LocationSelector
-                                            value={selectedLocation ? selectedLocation : (destination || '')}
-                                            onSelect={(loc: any) => {
-                                                setSelectedLocation(loc);
-                                                const t = loc.raw || loc.place_name || '';
-                                                setDestination(t);
-                                                if ((loc as any).latitude && (loc as any).longitude) {
-                                                    setDestinationCoords({ lat: (loc as any).latitude, lng: (loc as any).longitude });
-                                                    setTimeout(() => searchRoutesRef.current(), 200);
-                                                }
-                                                else {
-                                                    geocodeDestination(t).then(c => {
-                                                        if (c) {
-                                                            setDestinationCoords(c);
-                                                            setTimeout(() => searchRoutesRef.current(), 200);
-                                                        }
-                                                    });
-                                                }
-                                            }}
-                                            placeholder="Où allez-vous ?"
-                                            scope="all"
-                                            style={dynamicStyles.locationSelectorDynamic}
-                                            onFocusChange={(focused: boolean) => setIsLocationSelectorFocused(focused)}
-                                        />
-                                    </View>
+                                <View style={st.searchFieldWrap}>
+                                    <LocationSelector
+                                        value={selectedLocation ? selectedLocation : (destination || '')}
+                                        onSelect={(loc: any) => {
+                                            setSelectedLocation(loc);
+                                            const t = loc.raw || loc.place_name || '';
+                                            setDestination(t);
+                                            if ((loc as any).latitude && (loc as any).longitude) {
+                                                setDestinationCoords({ lat: (loc as any).latitude, lng: (loc as any).longitude });
+                                                setTimeout(() => searchRoutesRef.current(), 200);
+                                            }
+                                            else {
+                                                geocodeDestination(t).then(c => {
+                                                    if (c) {
+                                                        setDestinationCoords(c);
+                                                        setTimeout(() => searchRoutesRef.current(), 200);
+                                                    }
+                                                });
+                                            }
+                                        }}
+                                        placeholder="Où allez-vous ?"
+                                        scope="all"
+                                        style={dynamicStyles.locationSelectorDynamic}
+                                        onFocusChange={(focused: boolean) => setIsLocationSelectorFocused(focused)}
+                                    />
                                 </View>
                                 <TouchableOpacity style={[st.searchBtn, loading && { opacity: 0.6 }]} onPress={searchRoutes} disabled={loading || (!destination.trim() && !selectedLocation)}>
                                     {loading ?
@@ -3064,8 +3188,11 @@ const NavigationScreen: React.FC = () => {
                                         <SafeIcon name="share" size={16} color={modernColors.primary} /><Text style={st.shareRouteTxt}>{tr('navigation.shareRoute', 'Partager l\'itinéraire')}</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity style={st.goBtn} onPress={startTracking} activeOpacity={0.8}>
-                                        <Text style={{ fontSize: 20 }}>📡</Text>
-                                        <View><Text style={st.goBtnText}>Suivi en temps réel</Text><Text style={st.goBtnSub}>Vitesse, radars, progression</Text></View>
+                                        <Text style={{ fontSize: 20 }}>🗺️</Text>
+                                        <View>
+                                            <Text style={st.goBtnText}>{tr('navigation.openInMapsApp', 'Ouvrir dans Maps')}</Text>
+                                            <Text style={st.goBtnSub}>{tr('navigation.openInMapsAppSub', 'Google Maps ou Apple Plans — retour ici pour Yukpo')}</Text>
+                                        </View>
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -3121,18 +3248,7 @@ const NavigationScreen: React.FC = () => {
                 screenContext={{
                     screenName: 'Navigation',
                     screenType: 'specialized',
-                    guideText: t('intelligentChat.navigation.screenGuide') || 'Navigation intelligente : itinéraires, alertes, POI, stats, Coach IA.',
-                    availableActions: [
-                        {
-                            id: 'coach-notif-settings',
-                            label: t('intelligentChat.navigation.openNotifSettings') || 'Notifications (réglages)',
-                            icon: 'settings',
-                            route: 'Settings',
-                            params: { initialSection: 'notifications' },
-                            category: 'navigation',
-                            description: '',
-                        },
-                    ],
+                    guideText: t('intelligentChat.navigation.screenGuide') || 'Navigation Yukpo : itinéraires, alertes, POI, marche libre, statistiques & Coach IA.',
                 }}
             />
         </SafeNativeView >
@@ -3157,6 +3273,7 @@ const st = StyleSheet.create({
     headerSub: { fontSize: 13, color: modernColors.textSecondary, marginTop: 1 },
     headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center', justifyContent: 'center', position: 'relative' },
     headerBtnSmall: { width: 32, height: 32, borderRadius: 10, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+    carpoolHeaderIconWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1 },
     headerBtnActive: { backgroundColor: modernColors.primary, borderColor: modernColors.primary },
     headerBtnWalkActive: { backgroundColor: '#10B98115', borderColor: '#10B981' },
     headerBtnAlertActive: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
@@ -3177,13 +3294,9 @@ const st = StyleSheet.create({
     alertChipLabel: { fontSize: 12, fontWeight: '700' },
 
     // Search
-    searchCard: { marginBottom: 12, padding: 16, zIndex: 100, elevation: 100, overflow: 'visible' as any },
-    originRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
-    originDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#10B981', borderWidth: 2, borderColor: '#DCFCE7' },
-    routeLine: { width: 2, height: 14, backgroundColor: modernColors.border, marginLeft: 5, marginVertical: 2 },
-    destRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, zIndex: 100, overflow: 'visible' as any },
-    destDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#EF4444', borderWidth: 2, borderColor: '#FEE2E2', marginTop: 12 },
-    searchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, paddingVertical: 14, backgroundColor: modernColors.primary, borderRadius: 12 },
+    searchCard: { marginBottom: 10, padding: 12, zIndex: 100, elevation: 100, overflow: 'visible' as any },
+    searchFieldWrap: { zIndex: 100, overflow: 'visible' as any },
+    searchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8, paddingVertical: 12, backgroundColor: modernColors.primary, borderRadius: 12 },
     searchBtnTxt: { fontSize: 15, fontWeight: '700', color: 'white' },
     destActions: { flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' },
     actChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, backgroundColor: modernColors.surfaceVariant, borderWidth: 1, borderColor: modernColors.border },
@@ -3359,6 +3472,43 @@ const st = StyleSheet.create({
     stopText: { fontSize: 15, fontWeight: '700', color: '#EF4444' },
 
     // Stats
+    statsFilterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+    statsFilterChip: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 6,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1.5,
+        borderColor: modernColors.border,
+    },
+    statsFilterChipText: { flex: 1, fontSize: 13, fontWeight: '700', color: modernColors.text },
+    statsMenuOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
+    statsMenuSheet: {
+        backgroundColor: modernColors.surface,
+        borderTopLeftRadius: 18,
+        borderTopRightRadius: 18,
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        paddingBottom: 28,
+        borderTopWidth: 1,
+        borderColor: modernColors.border,
+    },
+    statsMenuTitle: { fontSize: 15, fontWeight: '800', color: modernColors.text, marginBottom: 10 },
+    statsMenuItem: { paddingVertical: 14, paddingHorizontal: 4, borderRadius: 10 },
+    statsMenuItemActive: { backgroundColor: modernColors.primary + '12' },
+    statsMenuItemText: { fontSize: 15, fontWeight: '600', color: modernColors.text },
+    statsMenuItemTextActive: { color: modernColors.primary, fontWeight: '800' },
+    visitedPlacesModalRoot: { flex: 1, marginTop: 56, backgroundColor: modernColors.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
+    visitedPlacesModalHdr: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: modernColors.border },
+    visitedPlacesModalTitle: { fontSize: 17, fontWeight: '800', color: modernColors.text },
+    visitedPlacesRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16 },
+    visitedPlacesSeeAllBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12, paddingVertical: 10 },
+    visitedPlacesSeeAllTxt: { fontSize: 13, fontWeight: '700', color: '#8B5CF6' },
     periodRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
     periodBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center' },
     periodBtnActive: { backgroundColor: modernColors.primary + '15', borderColor: modernColors.primary },

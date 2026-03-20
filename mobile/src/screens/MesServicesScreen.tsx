@@ -1955,7 +1955,7 @@ const MesServicesScreen: React.FC = () => {
         <SidebarNavigation
           visible={showSidebar}
           onClose={() => setShowSidebar(false)}
-          currentRoute="MesServices"
+          currentRoute="Services"
           items={[
             {
               id: 'create-product',

@@ -69,6 +69,8 @@ const PartnerRegisterScreen: React.FC = () => {
   const [confirmPasswordMatch, setConfirmPasswordMatch] = useState<boolean | null>(null);
   const [showGPSModal, setShowGPSModal] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // ✅ NOUVEAU: Mettre à jour le partner_type si fourni via les paramètres de route
   useEffect(() => {
@@ -458,10 +460,16 @@ const PartnerRegisterScreen: React.FC = () => {
                 label={t('partnerRegister.motDePasse')}
                 value={form.password}
                 onChangeText={handlePasswordChange}
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 disabled={loading}
                 style={styles.input}
                 left={<TextInput.Icon icon={() => <Lock size={20} color={theme.colors.textSecondary} />} />}
+                right={
+                  <TextInput.Icon
+                    icon={showPassword ? 'eye-off' : 'eye'}
+                    onPress={() => setShowPassword((v) => !v)}
+                  />
+                }
               />
               {form.password.length > 0 && (
                 <View style={styles.passwordCriteria}>
@@ -505,7 +513,7 @@ const PartnerRegisterScreen: React.FC = () => {
                 label={t('partnerRegisterScreen.confirmerLeMotDePasse')}
                 value={form.confirmPassword}
                 onChangeText={handleConfirmPasswordChange}
-                secureTextEntry
+                secureTextEntry={!showConfirmPassword}
                 disabled={loading}
                 style={[
                   styles.input,
@@ -513,6 +521,12 @@ const PartnerRegisterScreen: React.FC = () => {
                   confirmPasswordMatch === true && styles.inputValid,
                 ]}
                 left={<TextInput.Icon icon={() => <LockKey size={20} color={theme.colors.textSecondary} />} />}
+                right={
+                  <TextInput.Icon
+                    icon={showConfirmPassword ? 'eye-off' : 'eye'}
+                    onPress={() => setShowConfirmPassword((v) => !v)}
+                  />
+                }
               />
               {form.confirmPassword.length > 0 && confirmPasswordMatch === false && (
                 <View style={styles.passwordMismatchContainer}>

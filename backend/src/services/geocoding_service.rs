@@ -8,6 +8,12 @@ use std::{cmp::min, env, time::Duration};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GeocodingResult {
     pub address: Option<String>,
+    /// Quartier / zone (Google: neighborhood, sublocality…)
+    #[serde(default)]
+    pub neighborhood: Option<String>,
+    /// Nom de lieu « spécifique » si Google le fournit (commerce, pharmacie, bureau…)
+    #[serde(default)]
+    pub place_name: Option<String>,
     pub city: Option<String>,
     pub country: Option<String>,
     pub formatted_address: Option<String>,
@@ -308,6 +314,8 @@ impl GeocodingService {
     ) -> GeocodingResult {
         let mut geocoding_result = GeocodingResult {
             address: None,
+            neighborhood: None,
+            place_name: None,
             city: None,
             country: None,
             formatted_address: Some(result.formatted_address.clone()),
@@ -337,6 +345,14 @@ impl GeocodingService {
                             ));
                         }
                     }
+                    "neighborhood"
+                    | "sublocality"
+                    | "sublocality_level_1"
+                    | "sublocality_level_2" => {
+                        if geocoding_result.neighborhood.is_none() {
+                            geocoding_result.neighborhood = Some(component.long_name.clone());
+                        }
+                    }
                     "locality" | "administrative_area_level_2" => {
                         geocoding_result.city = Some(component.long_name.clone());
                         geocoding_result.administrative_area_level_2 =
@@ -351,6 +367,11 @@ impl GeocodingService {
                     "administrative_area_level_1" => {
                         geocoding_result.administrative_area_level_1 =
                             Some(component.long_name.clone());
+                    }
+                    "point_of_interest" | "establishment" => {
+                        if geocoding_result.place_name.is_none() {
+                            geocoding_result.place_name = Some(component.long_name.clone());
+                        }
                     }
                     _ => {}
                 }
@@ -381,8 +402,21 @@ impl GeocodingService {
             }
         }
 
+        let place_name = if feature.place_type.iter().any(|t| t == "poi" || t == "establishment") {
+            feature
+                .place_name
+                .split(',')
+                .next()
+                .map(|s| s.trim().to_string())
+                .filter(|s| (2..=120).contains(&s.len()))
+        } else {
+            None
+        };
+
         GeocodingResult {
             address: Some(feature.place_name.clone()),
+            neighborhood: admin_level_2.clone(),
+            place_name,
             city,
             country,
             formatted_address: Some(feature.place_name.clone()),
@@ -657,6 +691,8 @@ impl GeocodingService {
     fn build_offline_result(&self, latitude: f64, longitude: f64) -> GeocodingResult {
         GeocodingResult {
             address: None,
+            neighborhood: None,
+            place_name: None,
             city: None,
             country: None,
             formatted_address: None,
@@ -671,6 +707,86 @@ impl GeocodingService {
             partial_match: true,
             confidence: 0.2,
         }
+    }
+
+    fn collect_activity_zone_parts(r: &GeocodingResult) -> Vec<String> {
+        let mut parts: Vec<String> = Vec::new();
+        let push_unique = |parts: &mut Vec<String>, s: &str| {
+            let t = s.trim();
+            if t.is_empty() {
+                return;
+            }
+            if !parts.iter().any(|p| p.eq_ignore_ascii_case(t)) {
+                parts.push(t.to_string());
+            }
+        };
+        if let Some(ref n) = r.neighborhood {
+            push_unique(&mut parts, n);
+        }
+        if let Some(ref c) = r.city {
+            push_unique(&mut parts, c);
+        }
+        if let Some(ref a2) = r.administrative_area_level_2 {
+            push_unique(&mut parts, a2);
+        }
+        if let Some(ref a1) = r.administrative_area_level_1 {
+            push_unique(&mut parts, a1);
+        }
+        parts
+    }
+
+    /// Stats « lieux visités » : nom de lieu (POI) quand Google le donne, sinon zone (quartier · ville · région).
+    pub fn format_activity_zone_label(r: &GeocodingResult) -> String {
+        let zone = Self::collect_activity_zone_parts(r).join(" · ");
+
+        let merge_place_and_zone = |place: &str| -> String {
+            let p = place.trim();
+            if p.is_empty() {
+                return zone.clone();
+            }
+            if zone.is_empty() {
+                return p.to_string();
+            }
+            let z_lower = zone.to_lowercase();
+            let p_lower = p.to_lowercase();
+            if z_lower.contains(&p_lower) || p_lower.contains(&z_lower) {
+                return zone.clone();
+            }
+            format!("{} · {}", p, zone)
+        };
+
+        if let Some(ref p) = r.place_name {
+            return merge_place_and_zone(p);
+        }
+
+        let is_poi_type = r.types.iter().any(|t| {
+            matches!(
+                t.as_str(),
+                "establishment" | "point_of_interest" | "premise" | "subpremise"
+            )
+        });
+        if is_poi_type {
+            if let Some(ref f) = r.formatted_address {
+                if let Some(first) = f.split(',').next().map(str::trim) {
+                    if (2..=120).contains(&first.len())
+                        && !first.chars().all(|c| c.is_ascii_digit())
+                    {
+                        return merge_place_and_zone(first);
+                    }
+                }
+            }
+        }
+
+        if !zone.is_empty() {
+            return zone;
+        }
+        if let Some(ref f) = r.formatted_address {
+            let f = f.trim();
+            if !f.is_empty() {
+                return f.to_string();
+            }
+        }
+        format!("≈ {:.4}, {:.4}", r.latitude, r.longitude)
     }
 
     pub fn get_service_info(&self) -> std::collections::HashMap<String, String> {

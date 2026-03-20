@@ -17,6 +17,8 @@ import { authApi } from '../services/api';
 import SafeStorage from '../utils/safeStorage';
 // ✅ NOUVEAU: Utiliser KeyboardAwareScreen pour une meilleure gestion du clavier
 import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
+import SafeIcon from '../components/SafeIcon';
+import { theme } from '../theme/theme';
 
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -32,6 +34,8 @@ const RegisterScreen: React.FC = () => {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     setForm({ ...form, [field]: value });
@@ -170,13 +174,29 @@ const RegisterScreen: React.FC = () => {
 
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>{t('auth.passwordLabel')} *</Text>
-            <TextInput
-              style={styles.input}
-              value={form.password}
-              onChangeText={(value) => handleChange('password', value)}
-              placeholder={t('auth.passwordPlaceholder')}
-              secureTextEntry
-            />
+            <View style={styles.passwordInputRow}>
+              <TextInput
+                style={styles.passwordInputField}
+                value={form.password}
+                onChangeText={(value) => handleChange('password', value)}
+                placeholder={t('auth.passwordPlaceholder')}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              >
+                <SafeIcon
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={theme.colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
             <Text style={styles.passwordHint}>
               {t('auth.passwordHint')}
             </Text>
@@ -184,13 +204,29 @@ const RegisterScreen: React.FC = () => {
 
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>{t('auth.confirmPassword')} *</Text>
-            <TextInput
-              style={styles.input}
-              value={form.confirmPassword}
-              onChangeText={(value) => handleChange('confirmPassword', value)}
-              placeholder={t('auth.confirmPasswordPlaceholder')}
-              secureTextEntry
-            />
+            <View style={styles.passwordInputRow}>
+              <TextInput
+                style={styles.passwordInputField}
+                value={form.confirmPassword}
+                onChangeText={(value) => handleChange('confirmPassword', value)}
+                placeholder={t('auth.confirmPasswordPlaceholder')}
+                secureTextEntry={!showConfirmPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowConfirmPassword((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={showConfirmPassword ? 'Masquer la confirmation' : 'Afficher la confirmation'}
+              >
+                <SafeIcon
+                  name={showConfirmPassword ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={theme.colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {error ? (
@@ -276,6 +312,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     backgroundColor: '#fff',
+  },
+  passwordInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  passwordInputField: {
+    flex: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  eyeButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   passwordHint: {
     fontSize: 12,

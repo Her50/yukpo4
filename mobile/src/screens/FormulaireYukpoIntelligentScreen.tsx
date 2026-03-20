@@ -50,6 +50,7 @@ import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '.
 import GoogleBusinessModal from '../components/GoogleBusinessModal';
 // ✅ NOUVEAU: Import des fonctions de synchronisation prix_variation <-> sous-caractéristiques
 import { applyPriceVariantToProduits, extractPriceVariant } from '../utils/priceVariant';
+import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 
 const { width } = Dimensions.get('window');
 
@@ -534,7 +535,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     if (currentDisplayIndex === 0) {
       if (fromMesServices) {
         try {
-          (navigation as any).navigate('MesServices');
+          navigateToMesServicesHub(navigation as any);
         } catch (error) {
           console.error('Erreur navigation retour MesServices:', error);
           navigation.goBack();
@@ -4560,7 +4561,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   // Retour vers Mes Produits
                   navigation.goBack();
                 } else if (fromMesServices) {
-                  (navigation as any).navigate('MesServices');
+                  navigateToMesServicesHub(navigation as any);
                 } else {
                   navigation.goBack();
                 }
@@ -4796,7 +4797,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   if (fromMesProduits) {
                     (navigation as any).navigate('MesProduits');
                   } else if (fromMesServices) {
-                    (navigation as any).navigate('MesServices');
+                    navigateToMesServicesHub(navigation as any);
                   } else {
                     navigation.goBack();
                   }
@@ -5969,7 +5970,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           setSuccessModalData(null);
           // Rediriger après fermeture
           if (fromMesServices) {
-            (navigation as any).navigate('MesServices');
+            navigateToMesServicesHub(navigation as any);
           } else {
             (navigation as any).navigate('Home');
           }
@@ -6001,7 +6002,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 } else {
                   // Pour les prestations, rediriger directement
                   if (fromMesServices) {
-                    (navigation as any).navigate('MesServices');
+                    navigateToMesServicesHub(navigation as any);
                   } else {
                     (navigation as any).navigate('Home');
                   }
@@ -6144,7 +6145,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             setSuccessModalData(null);
             // Rediriger vers Home ou MesServices
             if (fromMesServices) {
-              (navigation as any).navigate('MesServices');
+              navigateToMesServicesHub(navigation as any);
             } else {
               (navigation as any).navigate('Home');
             }
@@ -6186,7 +6187,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         setExistingDeliveryConfig(null);
                         setSuccessModalData(null);
                         if (fromMesServices) {
-                          (navigation as any).navigate('MesServices');
+                          navigateToMesServicesHub(navigation as any);
                         } else {
                           (navigation as any).navigate('Home');
                         }
@@ -6229,7 +6230,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             // Après fermeture, rediriger vers Home ou MesServices
             setTimeout(() => {
               if (fromMesServices) {
-                (navigation as any).navigate('MesServices');
+                navigateToMesServicesHub(navigation as any);
               } else {
                 (navigation as any).navigate('Home');
               }

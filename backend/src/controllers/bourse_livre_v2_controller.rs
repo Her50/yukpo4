@@ -305,7 +305,7 @@ pub async fn analyze_recto_verso(
 
     // Analyser avec l'IA
     let ai_service = BookExchangeAIService::new(state.ia.clone());
-    let analysis = ai_service
+    let mut analysis = ai_service
         .analyze_book_recto_verso(
             &recto_b64,
             &verso_b64,
@@ -314,6 +314,9 @@ pub async fn analyze_recto_verso(
             &programmes_json,
         )
         .await?;
+
+    // Prix sur couverture souvent illisible : compléter avec prix_officiel du programme si match
+    BookExchangeAIService::enrich_prix_from_programmes_officiels(&mut analysis, &programmes);
 
     // Calculer la valorisation
     let (valeur_calculee, ratio) = if let Some(prix) = analysis.prix_detecte {
@@ -2465,12 +2468,13 @@ pub async fn browse_books_by_class(
 
     // ✅ Redis cache: clé basée sur les paramètres de recherche
     let cache_key = format!(
-        "bourse_livre:browse:{}:{}:{}:{}:{}:{}:{}",
+        "bourse_livre:browse:{}:{}:{}:{}:{}:{}:{}:{}",
         params.classe.as_deref().unwrap_or("all"),
         params.matiere.as_deref().unwrap_or("all"),
         params.niveau.as_deref().unwrap_or("all"),
         params.mode_listing.as_deref().unwrap_or("all"),
         params.ville.as_deref().unwrap_or("all"),
+        params.search.as_deref().unwrap_or("all"),
         limit,
         offset
     );
@@ -2647,7 +2651,7 @@ pub async fn get_classes_with_programmes(
     State(state): State<Arc<AppState>>,
 ) -> AppResult<impl IntoResponse> {
     // Cache Redis via CacheService
-    let cache_key = "bourse_livre:classes_programmes";
+    let cache_key = "bourse_livre:classes_programmes_v2";
     if let Ok(Some(cached)) = state.cache_service.get::<serde_json::Value>(cache_key).await {
         info!("[get_classes_with_programmes] Cache hit");
         return Ok(Json(cached));
@@ -2669,13 +2673,15 @@ pub async fn get_classes_with_programmes(
     .await
     .unwrap_or_default();
 
-    let classes: Vec<serde_json::Value> = rows
-        .iter()
-        .map(|row| {
-            use sqlx::Row;
-            let classe: String = row.get("classe");
-            let niveau =
-                crate::services::book_exchange_ai_service::compute_niveau_from_classe(&classe);
+    use std::collections::BTreeMap;
+    let mut merged: BTreeMap<String, serde_json::Value> = BTreeMap::new();
+
+    for row in &rows {
+        use sqlx::Row;
+        let classe: String = row.get("classe");
+        let niveau = crate::services::book_exchange_ai_service::compute_niveau_from_classe(&classe);
+        merged.insert(
+            classe.clone(),
             json!({
                 "classe": classe,
                 "niveau": niveau,
@@ -2684,9 +2690,60 @@ pub async fn get_classes_with_programmes(
                 "en_vente": row.get::<i64, _>("en_vente"),
                 "en_troc": row.get::<i64, _>("en_troc"),
                 "en_don": row.get::<i64, _>("en_don"),
-            })
-        })
-        .collect();
+                "entrees_programme": 0_i64,
+            }),
+        );
+    }
+
+    // Classes présentes dans le référentiel programmes officiels (même sans annonces sur la bourse)
+    let prog_rows = sqlx::query(
+        r#"SELECT classe,
+                  MIN(niveau) AS niveau,
+                  COUNT(*)::bigint AS entrees_programme
+           FROM programmes_scolaires
+           WHERE is_active = true
+             AND classe IS NOT NULL
+             AND TRIM(classe) != ''
+           GROUP BY classe
+           ORDER BY classe"#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    for row in &prog_rows {
+        use sqlx::Row;
+        let classe: String = row.get("classe");
+        let niveau_db: Option<String> = row.try_get("niveau").ok();
+        let entrees: i64 = row.get::<i64, _>("entrees_programme");
+        let niveau: String = match niveau_db {
+            Some(ref s) if !s.trim().is_empty() => s.clone(),
+            _ => crate::services::book_exchange_ai_service::compute_niveau_from_classe(&classe)
+                .to_string(),
+        };
+
+        if let Some(existing) = merged.get_mut(&classe) {
+            if let Some(obj) = existing.as_object_mut() {
+                obj.insert("entrees_programme".to_string(), json!(entrees));
+            }
+        } else {
+            merged.insert(
+                classe.clone(),
+                json!({
+                    "classe": classe,
+                    "niveau": niveau,
+                    "total_livres": 0_i64,
+                    "au_programme": 0_i64,
+                    "en_vente": 0_i64,
+                    "en_troc": 0_i64,
+                    "en_don": 0_i64,
+                    "entrees_programme": entrees,
+                }),
+            );
+        }
+    }
+
+    let classes: Vec<serde_json::Value> = merged.into_values().collect();
 
     let response = json!({
         "success": true,
@@ -4851,6 +4908,7 @@ pub async fn update_delivery_location(
 pub async fn invalidate_bourse_livre_cache(state: &AppState) {
     let _ = state.cache_service.delete_pattern("bourse_livre:browse:*").await;
     let _ = state.cache_service.delete("bourse_livre:classes_programmes").await;
+    let _ = state.cache_service.delete("bourse_livre:classes_programmes_v2").await;
 }
 
 // ============================================================================

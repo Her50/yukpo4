@@ -23,6 +23,7 @@ import type { GeneratedVideoResponse } from '../../types/VideoGeneration';
 import { extractProductName, extractServiceName } from '../../utils/displayHelpers';
 import { normalizeServiceProducts } from '../../utils/productNormalizer';
 import SafeStorage from '../../utils/safeStorage';
+import { navigateToMesServicesHub } from '../../navigation/mesServicesNavigation';
 
 interface VideoCreationIntroParams {
     serviceId?: number;
@@ -507,12 +508,8 @@ const VideoCreationIntroScreen: React.FC = () => {
                         {
                             text: t('videoCreationIntro.allerAMesServices'),
                             onPress: () => {
-                                const parent = (navigation as any).getParent();
-                                if (parent) {
-                                    parent.navigate('Services');
-                                } else {
-                                    navigation.navigate('Services' as never);
-                                }
+                                const parent = (navigation as any).getParent?.();
+                                navigateToMesServicesHub(parent || navigation);
                             }
                         }
                     ]
@@ -536,12 +533,8 @@ const VideoCreationIntroScreen: React.FC = () => {
                 {
                     text: t('videoCreationIntro.allerAMesServices'),
                     onPress: () => {
-                        const parent = (navigation as any).getParent();
-                        if (parent) {
-                            parent.navigate('Services');
-                        } else {
-                            navigation.navigate('Services' as never);
-                        }
+                        const parent = (navigation as any).getParent?.();
+                        navigateToMesServicesHub(parent || navigation);
                     }
                 }
             ]

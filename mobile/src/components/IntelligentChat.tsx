@@ -38,15 +38,32 @@ const FRIENDLY_SCREEN_NAMES: Record<string, string> = {
   Profile: 'Compte',
   RechercheBesoin: 'Recherche',
   Navigation: 'Navigation GPS',
+  Services: 'Mes services (Produits)',
+  MesServices: 'Mes services (Produits)',
   ServicesDashboard: 'Tableau de bord services',
-  GestionServicesSpecialises: 'Mes services',
+  MesServices: 'Mes services',
+  Services: 'Mes services (produits)',
+  GestionServicesSpecialises: 'Services spécialisés',
   OffresEmploiHome: 'Offres d’emploi',
   HotelMeubleHome: 'Hôtels & meublés',
+  HotelSearch: 'Recherche hôtels',
+  MeubleSearch: 'Recherche meublés',
+  HotelBooking: 'Réservation séjour',
+  AssuranceDashboard: 'Assurance — espace partenaire',
+  InsuranceServicesSearch: 'Recherche assurance',
+  InsuranceQuoteRequest: 'Devis assurance IA',
   TaxiHome: 'Taxi',
   DeliveryHome: 'Livraison',
   LivreScolaireHome: 'Bourse du livre',
   WalletFinancial: 'Portefeuille',
 };
+
+function getLeafRouteFromState(state: any): { name?: string; params?: any } {
+  if (!state?.routes?.length) return {};
+  const r = state.routes[state.index ?? 0];
+  if (r?.state) return getLeafRouteFromState(r.state);
+  return { name: r?.name, params: r?.params };
+}
 
 const humanizeScreenName = (rawName?: string): string => {
   if (!rawName) return 'Yukpo';
@@ -148,9 +165,14 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
 }) => {
   const navigation = useNavigation();
   const { t, language } = useLanguageSafe();
-  const navState = navigation.getState();
-  const route = navState?.routes[navState?.index];
-  const inferredContext = useScreenContext(route?.name, route?.params);
+  const navState = navigation.getState?.();
+  const route = navState?.routes?.[navState?.index ?? 0];
+  const leaf = getLeafRouteFromState(navState);
+  const effectiveRouteName = externalContext?.screenName ?? leaf.name ?? route?.name;
+  const effectiveRouteParams = externalContext?.routeParams !== undefined
+    ? externalContext.routeParams
+    : (leaf.params ?? route?.params);
+  const inferredContext = useScreenContext(effectiveRouteName, effectiveRouteParams);
   const screenContext = useMemo(() => {
     if (!externalContext) return inferredContext;
     return {
@@ -163,13 +185,36 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
       serviceData: {
         ...(inferredContext?.serviceData || {}),
         ...(externalContext?.serviceData || {}),
+        ...((externalContext as any)?.routeParams &&
+        typeof (externalContext as any).routeParams === 'object' &&
+        !Array.isArray((externalContext as any).routeParams)
+          ? (externalContext as any).routeParams
+          : {}),
       },
-      availableActions: Array.isArray(externalContext?.availableActions) && externalContext.availableActions.length > 0
-        ? externalContext.availableActions
-        : inferredContext?.availableActions || [],
-      visibleElements: Array.isArray(externalContext?.visibleElements) && externalContext.visibleElements.length > 0
-        ? externalContext.visibleElements
-        : inferredContext?.visibleElements || [],
+      availableActions: (() => {
+        const inf = inferredContext?.availableActions || [];
+        const ext = externalContext?.availableActions;
+        if (Array.isArray(ext) && ext.length > 0) {
+          return dedupeActions([...inf, ...ext]);
+        }
+        return inf;
+      })(),
+      visibleElements: (() => {
+        const inf = inferredContext?.visibleElements || [];
+        const ext = externalContext?.visibleElements;
+        if (Array.isArray(ext) && ext.length > 0) {
+          const seen = new Set<string>();
+          const out: any[] = [];
+          for (const el of [...inf, ...ext]) {
+            if (!el?.id) continue;
+            if (seen.has(el.id)) continue;
+            seen.add(el.id);
+            out.push(el);
+          }
+          return out;
+        }
+        return inf;
+      })(),
       currentRoute: externalContext?.currentRoute || inferredContext?.currentRoute,
       breadcrumbs: externalContext?.breadcrumbs || inferredContext?.breadcrumbs,
       previousScreen: externalContext?.previousScreen || inferredContext?.previousScreen,
@@ -233,8 +278,9 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         { id: 'delivery', label: t('intelligentChat.nav.delivery') || '📦 Livraison', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: '' },
         { id: 'gps', label: t('intelligentChat.nav.gps') || '🗺️ Navigation GPS', icon: 'map', route: 'Navigation', category: 'navigation', description: '' },
         { id: 'emploi', label: t('intelligentChat.nav.jobs') || '💼 Emploi', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: '' },
-        { id: 'hotel', label: t('intelligentChat.nav.hotel') || '🏨 Hôtels', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: '' },
+        { id: 'hotel', label: t('intelligentChat.nav.hotel') || '🏨 Hôtels', icon: 'building', route: 'HotelSearch', params: { mode: 'hotel' }, category: 'navigation', description: '' },
         { id: 'books', label: t('intelligentChat.nav.books') || '📚 Livres', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation', description: '' },
+        { id: 'services', label: t('intelligentChat.nav.myServices') || 'Mes services', icon: 'briefcase', route: 'MesServices', category: 'navigation', description: '' },
       ] : [];
 
       const welcomeMessage: ChatMessage = {
@@ -369,7 +415,11 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     } else if (action.route) {
       try {
         // @ts-ignore - dynamic route navigation
-        navigation.navigate(action.route, action.params);
+        if (action.params != null && typeof action.params === 'object') {
+          navigation.navigate(action.route, action.params);
+        } else {
+          navigation.navigate(action.route);
+        }
       } catch {
         // @ts-ignore - dynamic route navigation
         navigation.navigate(action.route);

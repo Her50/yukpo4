@@ -10,6 +10,7 @@ use sqlx::{PgPool, Row};
 use crate::core::types::{AppError, AppResult};
 use crate::services::cache_service::{cache_keys, CacheService};
 use crate::services::geocoding_service::GeocodingService;
+use log::warn;
 use uuid::Uuid;
 
 /// Résultat d'un calcul de distance optimisé
@@ -51,7 +52,7 @@ pub struct NavigationStep {
 pub struct GeographicMatchingService {
     pool: PgPool,
     cache_service: Arc<CacheService>,
-    _geocoding_service: GeocodingService,
+    geocoding_service: GeocodingService,
     use_google_maps: bool,
 }
 
@@ -70,8 +71,22 @@ impl GeographicMatchingService {
         Self {
             pool,
             cache_service,
-            _geocoding_service: geocoding_service,
+            geocoding_service,
             use_google_maps,
+        }
+    }
+
+    /// Géocodage inverse + libellé « zone » pour stats navigation (sessions passives).
+    pub async fn reverse_geocode_activity_zone(&self, lat: f64, lng: f64) -> Option<String> {
+        match self.geocoding_service.reverse_geocode(lat, lng).await {
+            Ok(r) => Some(GeocodingService::format_activity_zone_label(&r)),
+            Err(e) => {
+                warn!(
+                    "[GeographicMatching] reverse_geocode_activity_zone échec ({},{}): {}",
+                    lat, lng, e
+                );
+                None
+            }
         }
     }
 

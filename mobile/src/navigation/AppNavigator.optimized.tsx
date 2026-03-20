@@ -207,7 +207,8 @@ reg('ResultatBesoin', () => import('../screens/ResultatBesoinScreen'));
 reg('ServiceDetailShared', () => import('../screens/ServiceDetailSharedScreen'));
 reg('ServicesInteragis', () => import('../screens/ServicesInteragisScreen'));
 reg('ServicesList', () => import('../screens/ServicesListScreen'));
-reg('Services', () => import('../screens/ServicesScreen'));
+/** Ancien tableau « Mon activité » — ne pas confondre avec l’onglet **Services** (MesServicesScreen). */
+reg('ServicesActivity', () => import('../screens/ServicesScreen'));
 reg('Settings', () => import('../screens/SettingsScreen'));
 reg('SimpleError', () => import('../screens/SimpleErrorScreen'));
 reg('SoldeDetail', () => import('../screens/SoldeDetailScreen'));
@@ -452,6 +453,7 @@ reg('BookBuyDirect', () => import('../screens/bourse-livre/BookBuyDirectScreen')
 reg('AdminProgrammeUpload', () => import('../screens/bourse-livre/AdminProgrammeUploadScreen'));
 reg('BookDeliveryTracking', () => import('../screens/specialized/BookDeliveryTrackingScreen'));
 reg('NewBooks', () => import('../screens/specialized/NewBooksScreen'));
+reg('ProgrammeBesoinsSelector', () => import('../screens/specialized/ProgrammeBesoinsSelectorScreen'));
 reg('MesBesoinsLivres', () => import('../screens/specialized/MesBesoinsLivresScreen'));
 reg('AdminDonations', () => import('../screens/specialized/AdminDonationsScreen'));
 

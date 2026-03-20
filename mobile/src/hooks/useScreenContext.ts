@@ -84,6 +84,7 @@ const LUCIDE_ICONS: Record<string, string> = {
   'video': 'video',
   'map': 'map',
   'list': 'list',
+  'list-checks': 'list-checks',
   'file': 'file-text',
   'clipboard': 'clipboard',
   'dollar': 'dollar-sign',
@@ -94,6 +95,7 @@ const LUCIDE_ICONS: Record<string, string> = {
   'building2': 'building-2',
   'activity': 'activity',
   'refresh': 'refresh-cw',
+  'repeat': 'repeat',
   'download': 'download',
   'upload': 'upload',
   'eye': 'eye',
@@ -131,12 +133,89 @@ const getGlobalActions = (t: (key: string) => string): ActionDescriptor[] => [
   {
     id: 'services',
     label: t('useScreenContext.services') || 'Mes Services',
-    icon: LUCIDE_ICONS.menu,
+    icon: LUCIDE_ICONS.briefcase,
     route: 'MesServices',
     category: 'navigation',
-    description: t('useScreenContext.servicesDesc') || 'Accéder à tous les services',
+    description: t('useScreenContext.servicesDesc') || 'Hub produits moderne (MesServicesScreen) — route pile **MesServices** ou onglet **Services** ; pas la route **ServicesActivity** (ancien écran).',
   },
 ];
+
+/** MesServicesScreen : onglet `Services` (barre du bas) = même UI que la route pile `MesServices`. */
+const MES_SERVICES_TAB_CONFIG: {
+  type: ScreenContext['screenType'];
+  actions: ActionDescriptor[];
+  elements: UIElement[];
+  guide: string;
+} = {
+  type: 'dashboard',
+  actions: [
+    { id: 'ms-sidebar', label: 'Menu latéral (☰)', icon: LUCIDE_ICONS.menu, category: 'action', description: 'SidebarNavigation : créer produit, galerie médias, équipe, stats, pub, vidéos, live, promos, réglages' },
+    { id: 'ms-video-intro', label: 'Intro création vidéo', icon: LUCIDE_ICONS.add, route: 'VideoCreationIntro', category: 'creation', description: 'Premier bouton + du bandeau : parcours vidéo' },
+    { id: 'ms-flash-header', label: 'Flash promo (éclair)', icon: 'zap', category: 'action', description: 'Sélection produits puis CreateFlashPromo (un ou plusieurs)' },
+    { id: 'ms-delivery-header', label: 'Config livraison globale', icon: LUCIDE_ICONS.truck, category: 'action', description: 'Sélection produits → GlobalDeliveryConfigModal' },
+    { id: 'ms-bulk', label: 'Sélection multiple', icon: LUCIDE_ICONS.check, category: 'action', description: 'Mode bulk + BulkActionsBar (activer/désactiver/supprimer en masse)' },
+    { id: 'ms-add-product', label: 'Ajouter un produit', icon: LUCIDE_ICONS.add, category: 'creation', description: 'handleAddProduct : si service existe → AjouterProduitSimple ; sinon → FormulaireYukpoIntelligent (focus produit)' },
+    { id: 'ms-mesproduits', label: 'Gérer produits (écran détaillé)', icon: LUCIDE_ICONS.package, route: 'MesProduits', category: 'navigation', description: 'Bouton pied de liste / carte — MesProduitsScreen (catalogue avancé, médias, livraison unitaire)' },
+    { id: 'ms-analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'AnalyticsDashboard', category: 'navigation', description: 'Dashboard analytique' },
+    { id: 'ms-publicite', label: 'Mes publicités', icon: LUCIDE_ICONS.eye, route: 'PubliciteDashboard', category: 'navigation', description: 'Campagnes pub' },
+    { id: 'ms-new-ad', label: 'Nouvelle publicité', icon: LUCIDE_ICONS.add, route: 'CreatePublicite', category: 'creation', description: 'Création pub' },
+    { id: 'ms-video-feed', label: 'Mes vidéos', icon: LUCIDE_ICONS.video, route: 'VideoFeed', category: 'navigation', description: 'Fil vidéos créées (navigation parent si besoin)' },
+    { id: 'ms-live', label: 'Démarrer un live', icon: LUCIDE_ICONS.video, route: 'StartLive', category: 'creation', description: 'Live streaming' },
+    { id: 'ms-video-analytics', label: 'Analytiques vidéos', icon: LUCIDE_ICONS.activity, route: 'VideoAnalytics', category: 'navigation', description: 'Stats vidéo' },
+    { id: 'ms-black-friday', label: 'Promo Black Friday', icon: LUCIDE_ICONS.star, route: 'GlobalPromoSubmission', category: 'navigation', description: 'Soumission promo globale' },
+    { id: 'ms-flash-active', label: 'Flash promos actifs', icon: 'zap', route: 'FlashPromosActive', category: 'navigation', description: 'Voir flashs en cours' },
+    { id: 'ms-settings', label: 'Paramètres', icon: LUCIDE_ICONS.settings, route: 'Settings', category: 'navigation', description: 'Réglages app' },
+    { id: 'ms-home', label: 'Accueil', icon: LUCIDE_ICONS.home, route: 'Home', category: 'navigation', description: 'Fil d’Ariane / bouton retour accueil' },
+    { id: 'ms-team', label: 'Équipe (par service)', icon: LUCIDE_ICONS.users, category: 'action', description: 'ServiceTeamModal après sélection produits (serviceId parent)' },
+    { id: 'ms-gallery', label: 'Galerie médias produits', icon: LUCIDE_ICONS.camera, category: 'action', description: 'ProductGalleryModal' },
+    { id: 'ms-card-edit', label: 'Carte produit — modifier service', icon: LUCIDE_ICONS.edit, route: 'FormulaireYukpoIntelligent', category: 'action', description: 'ServiceCardModern → FormulaireYukpoIntelligent mode edit (fromMesServices)' },
+    { id: 'ms-card-promo', label: 'Carte — promotions', icon: LUCIDE_ICONS.tag, category: 'action', description: 'Alerte CreateFlashPromo ou Formulaire focus promotion' },
+    { id: 'ms-share', label: 'Partager fiche', icon: LUCIDE_ICONS.share, category: 'action', description: 'Share natif lien yukpomnang.com/service/{id}' },
+    { id: 'ms-toggle-status', label: 'Activer / désactiver', icon: LUCIDE_ICONS.check, category: 'action', description: 'apiPatch toggle-status ; réactivation peut coûter 1000 FCFA (solde)' },
+    { id: 'ms-delete', label: 'Supprimer', icon: LUCIDE_ICONS.delete, category: 'action', description: 'apiDelete ; bloqué si ≥2 produits (backend)' },
+  ],
+  elements: [
+    { id: 'ms-header-gradient', type: 'card', label: 'En-tête gradient « Produits »', actionable: false },
+    { id: 'ms-breadcrumbs', type: 'card', label: 'Fil d’Ariane Accueil → Produits', actionable: true },
+    { id: 'ms-stats-cards', type: 'card', label: 'StatsCard (total, actifs, inactifs, vues)', actionable: true },
+    { id: 'ms-filter-chips', type: 'tab', label: 'Filtres Tous / Actif / Inactif', actionable: true },
+    { id: 'ms-flashlist', type: 'card', label: 'FlashList ServiceCardModern (cartes produit)', actionable: true },
+    { id: 'ms-pull-refresh', type: 'button', label: 'Tirer pour rafraîchir', icon: LUCIDE_ICONS.refresh, actionable: true },
+    { id: 'ms-modals', type: 'modal', label: 'Modales : équipe, sélecteur produits, livraison globale, vidéo, galerie', actionable: true },
+  ],
+  guide: '**Mes services (Produits)** = `MesServicesScreen`. L’onglet barre du bas s’appelle **`Services`** (c’est l’écran enrichi moderne). La route pile **`MesServices`** ouvre la même UI. **Ne pas** utiliser la route **`ServicesActivity`** (ancien `ServicesScreen`). Données : `GET /api/prestataire/services` puis produits par `productsService.getProductsByService` (fallback parsing JSON legacy). Rafraîchissement sur `service:refresh`, `product:created`, `product:updated`. L’écran **`MesProduits`** est un complément (vue catalogue détaillée) accessible depuis le pied de liste ou la carte, pas l’onglet principal.',
+};
+
+/** Liste utilisateur hôtels / meublés — `HotelMeubleHomeScreen` (routes `HotelMeubleHome`, `HotelSearch`, `MeubleSearch`). */
+const HOTEL_MEUBLE_USER_HUB_CONFIG: {
+  type: ScreenContext['screenType'];
+  actions: ActionDescriptor[];
+  elements: UIElement[];
+  guide: string;
+} = {
+  type: 'specialized',
+  actions: [
+    { id: 'hm-run-search', label: 'Lancer la recherche', icon: LUCIDE_ICONS.search, category: 'search', description: 'Barre texte + touche Rechercher / retour clavier : recharge la liste via immobilierService.searchProperties' },
+    { id: 'hm-filter-ville', label: 'Filtrer par ville', icon: LUCIDE_ICONS['map-pin'], category: 'action', description: 'Champ ville dans le bandeau gradient ; envoyé comme filtre API `ville`' },
+    { id: 'hm-filter-chambres', label: 'Chambres minimum', icon: LUCIDE_ICONS.list, category: 'action', description: 'Saisie numérique min chambres → `nb_chambres_min`' },
+    { id: 'hm-filter-budget', label: 'Budget max (nuit)', icon: LUCIDE_ICONS['credit-card'], category: 'action', description: 'Budget maximum → `prix_max` (API)' },
+    { id: 'hm-filter-standing', label: 'Filtrer par standing', icon: LUCIDE_ICONS.star, category: 'action', description: 'Chips : Tous, Économique, Standard, Bon standing, Haut standing, Luxe / Prestige → paramètre `standing` (sauf Tous)' },
+    { id: 'hm-refresh', label: 'Tirer pour rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Pull-to-refresh sur la FlatList' },
+    { id: 'hm-open-details', label: 'Fiche du bien', icon: LUCIDE_ICONS.info, route: 'ImmobilierDetails', category: 'navigation', description: 'Appui sur une carte → ImmobilierDetails avec propertyId' },
+    { id: 'hm-book', label: 'Réserver', icon: LUCIDE_ICONS.calendar, route: 'HotelBooking', category: 'action', description: 'Bouton Réserver sur la carte → HotelBooking (propertyId, propertyName, typeBien, prixNuitee, ville) — dates saisies sur cet écran, pas sur la liste' },
+    { id: 'hm-gps-radius', label: 'Tri / périmètre GPS', icon: LUCIDE_ICONS.location, category: 'help', description: 'Si LocationContext a des coordonnées : lat, lng et max_distance_km=50 envoyés à l’API ; distance affichée sur les cartes si renvoyée' },
+  ],
+  elements: [
+    { id: 'hm-header-back', type: 'button', label: 'Retour (header)', icon: LUCIDE_ICONS.back, actionable: true },
+    { id: 'hm-header-title', type: 'card', label: 'Titre Hôtels ou Meublés + sous-titre résultats', actionable: false },
+    { id: 'hm-search-bar', type: 'input', label: 'Recherche texte (query API)', actionable: true },
+    { id: 'hm-quick-filters', type: 'input', label: 'Ligne filtres : ville, chambres min, budget max', actionable: true },
+    { id: 'hm-standing-chips', type: 'tab', label: 'Chips standing (scroll horizontal)', actionable: true },
+    { id: 'hm-property-list', type: 'card', label: 'FlatList cartes (titre, lieu, chambres, standing, distance, prix/nuit, note, badge dispo)', actionable: true },
+    { id: 'hm-fab-chat', type: 'fab', label: 'Assistant IA (FAB)', actionable: true },
+  ],
+  guide: '**Hôtel / meublé (utilisateur)** — `HotelMeubleHomeScreen`, routes **`HotelMeubleHome`**, **`HotelSearch`**, **`MeubleSearch`** (même écran). Mode **`hotel`** vs **`meuble`** : `route.params.mode` ou `initialFilter.type_bien`, défaut `hotel`. **Aucune saisie de dates sur cette liste** : calendrier et occupants sur **`HotelBooking`** après **Réserver**. Données : **`immobilierService.searchProperties`** → **GET /api/immobilier/biens** avec `type_bien`, `limit` 20, `page` 1, filtres optionnels `query`, `ville`, `standing`, `prix_max`, `nb_chambres_min` ; si position Yukpo : `lat`, `lng`, `max_distance_km: 50`. UI : recherche texte, filtres en-tête, chips standing, liste ; carte → **ImmobilierDetails** ; **Réserver** → **HotelBooking**.',
+};
 
 const SCREEN_CONFIGS: Record<string, {
   type: ScreenContext['screenType'];
@@ -147,22 +226,68 @@ const SCREEN_CONFIGS: Record<string, {
   Home: {
     type: 'home',
     actions: [
-      { id: 'quick-search', label: 'Recherche Rapide', icon: LUCIDE_ICONS.search, route: 'RechercheBesoin', category: 'search', description: 'Trouver rapidement ce dont vous avez besoin' },
-      { id: 'create-service', label: 'Créer Service', icon: LUCIDE_ICONS.add, route: 'ServicesDashboard', category: 'creation', description: 'Ajouter un nouveau service' },
-      { id: 'pharmacy', label: 'Pharmacie', icon: LUCIDE_ICONS.pharmacy, route: 'PharmacieHome', category: 'navigation', description: 'Accéder aux services pharmaceutiques' },
-      { id: 'hospital', label: 'Hôpital', icon: LUCIDE_ICONS.hospital, route: 'HopitalHome', category: 'navigation', description: 'Services médicaux et urgences' },
-      { id: 'hotel', label: 'Hôtel', icon: LUCIDE_ICONS.hotel, route: 'HotelDashboard', category: 'navigation', description: 'Réservations hôtelières' },
-      { id: 'taxi', label: 'Taxi', icon: LUCIDE_ICONS.car, route: 'TaxiHome', category: 'navigation', description: 'Commander un taxi' },
-      { id: 'delivery', label: 'Livraison', icon: LUCIDE_ICONS.truck, route: 'DeliveryHome', category: 'navigation', description: 'Service de livraison' },
-      { id: 'covoiturage', label: 'Covoiturage', icon: LUCIDE_ICONS.users, route: 'CovoiturageHome', category: 'navigation', description: 'Trouver un covoiturage' },
+      { id: 'home-ai-search', label: 'Recherche (ChatInputMobile)', icon: LUCIDE_ICONS.search, category: 'search', description: 'Mode 🔍 Rechercher : saisie texte + médias optionnels ; envoi → API rechercherServices puis écran ResultatBesoin (pas l’écran RechercheBesoin). Connexion requise.' },
+      { id: 'home-create-mode', label: 'Créer produit / service (mode)', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Basculer sur le mode Création puis envoyer photo/texte dans ChatInputMobile. Si le prestataire a déjà un service → AjouterProduitSimple + suggestion IA ; sinon → FormulaireYukpoIntelligent (création complète).' },
+      { id: 'home-gps-modal', label: 'GPS / zone (modal)', icon: LUCIDE_ICONS.location, category: 'action', description: 'Bouton localisation sur ChatInputMobile ou en-tête : ModernGPSModal (point ou zone), alimente la recherche / création et la météo du menu avatar.' },
+      { id: 'header-navigation', label: 'Navigation GPS', icon: LUCIDE_ICONS.map, route: 'Navigation', category: 'navigation', description: 'Icône navigation à gauche : écran Navigation Yukpo.' },
+      { id: 'header-delivery', label: 'Livraison', icon: LUCIDE_ICONS.truck, route: 'Delivery', category: 'navigation', description: 'Icône vélo/livraison à droite : module Livraison (Delivery).' },
+      { id: 'header-chat-list', label: 'Mes conversations', icon: LUCIDE_ICONS.message, category: 'action', description: 'Bulles message : ChatHistoryModal (liste puis ouverture ChatModalMobile). Badge = messages non lus (API conversations).' },
+      { id: 'header-notifications', label: 'Notifications', icon: LUCIDE_ICONS.bell, category: 'action', description: 'Cloche : NotificationHistoryModal. Badge = non lues API + compteur Coach IA local.' },
+      { id: 'header-avatar-menu', label: 'Menu profil (avatar)', icon: LUCIDE_ICONS.profile, category: 'navigation', description: 'UserAvatarMenu : profil, solde crédits, raccourcis navigation, météo si position choisie.' },
+      { id: 'promo-flash', label: 'Promos flash', icon: 'zap', route: 'FlashPromosActive', category: 'navigation', description: 'Menu Offres spéciales (cadeau) : promos flash.' },
+      { id: 'promo-catalog', label: 'Catalogue promos', icon: LUCIDE_ICONS['shopping-cart'], route: 'GlobalPromoCatalog', category: 'navigation', description: 'Offres spéciales → catalogue global (ex. Black Friday).' },
+      { id: 'promo-lives', label: 'Lives', icon: LUCIDE_ICONS.video, route: 'LivesList', category: 'navigation', description: 'Offres spéciales → liste des lives.' },
+      { id: 'svc-pharmacie', label: 'Pharmacie (accès rapide)', icon: LUCIDE_ICONS.pharmacy, route: 'PharmacieSearch', category: 'navigation', description: 'Grille Yukpo : recherche utilisateur PharmacieSearch.' },
+      { id: 'svc-hopital', label: 'Hôpital', icon: LUCIDE_ICONS.hospital, route: 'HopitalSearch', category: 'navigation', description: 'HopitalSearch.' },
+      { id: 'svc-labo', label: 'Laboratoire', icon: LUCIDE_ICONS.activity, route: 'LaboratoireSearch', category: 'navigation', description: 'LaboratoireSearch.' },
+      { id: 'svc-banque-sang', label: 'Banque de sang', icon: LUCIDE_ICONS.droplet, route: 'BanqueSangSearch', category: 'navigation', description: 'BanqueSangSearch.' },
+      { id: 'svc-bus', label: 'Billets / voyage', icon: LUCIDE_ICONS.bus, route: 'BusTicketSearch', category: 'navigation', description: 'BusTicketSearch (ticket voyage).' },
+      { id: 'svc-covoit', label: 'Covoiturage', icon: LUCIDE_ICONS.users, route: 'CovoiturageSearch', category: 'navigation', description: 'CovoiturageSearch.' },
+      { id: 'svc-taxi', label: 'Taxi', icon: LUCIDE_ICONS.car, route: 'TaxiSearch', category: 'navigation', description: 'TaxiSearch.' },
+      { id: 'svc-auto', label: 'Automobile', icon: LUCIDE_ICONS.car, route: 'AutoServicesSearch', category: 'navigation', description: 'AutoServicesSearch.' },
+      { id: 'svc-assurance', label: 'Assurance', icon: LUCIDE_ICONS.shield, route: 'InsuranceServicesSearch', category: 'navigation', description: 'InsuranceServicesSearch.' },
+      { id: 'svc-orientation', label: 'Orientation scolaire', icon: LUCIDE_ICONS.book, route: 'OrientationScolaireHub', category: 'navigation', description: 'OrientationScolaireHub.' },
+      { id: 'svc-livres', label: 'Bourse du livre', icon: LUCIDE_ICONS.book, route: 'LivreScolaireHome', category: 'navigation', description: 'LivreScolaireHome.' },
+      { id: 'svc-menu', label: 'Menu / repas (IA)', icon: LUCIDE_ICONS.utensils, route: 'MenuPlanningHub', category: 'navigation', description: 'MenuPlanningHub.' },
+      { id: 'svc-bayamselam', label: 'BayamSelam (prix)', icon: LUCIDE_ICONS.activity, route: 'BayamSelamSearch', category: 'navigation', description: 'BayamSelamSearch (supermarché / comparatif).' },
+      { id: 'svc-emploi', label: 'Offres d’emploi', icon: LUCIDE_ICONS.briefcase, route: 'OffresEmploiHub', category: 'navigation', description: 'OffresEmploiHub.' },
+      { id: 'svc-immo', label: 'Immobilier', icon: LUCIDE_ICONS.building2, route: 'ImmobilierSearch', category: 'navigation', description: 'ImmobilierSearch.' },
+      { id: 'svc-hotel', label: 'Hôtels', icon: LUCIDE_ICONS.hotel, route: 'HotelSearch', params: { mode: 'hotel' }, category: 'navigation', description: 'HotelSearch mode=hôtel.' },
+      { id: 'svc-meuble', label: 'Meublés', icon: LUCIDE_ICONS.building2, route: 'MeubleSearch', params: { mode: 'meuble' }, category: 'navigation', description: 'MeubleSearch mode=meublé.' },
+      { id: 'tab-services', label: 'Onglet Mes services', icon: LUCIDE_ICONS.briefcase, route: 'MesServices', category: 'navigation', description: 'Barre d’onglets : nom interne **Services** → composant MesServicesScreen ; navigation explicite **MesServices** (éviter **ServicesActivity** = ancien écran).' },
     ],
     elements: [
-      { id: 'search-bar', type: 'input', label: 'Barre de recherche', actionable: true },
-      { id: 'quick-actions', type: 'card', label: 'Actions rapides', actionable: true },
-      { id: 'promotions', type: 'card', label: 'Promotions en cours', actionable: true },
-      { id: 'services-grid', type: 'card', label: 'Grille des services', actionable: true },
+      { id: 'header-brand', type: 'card', label: 'Logo Yukpo (Yuk / po)', actionable: false },
+      { id: 'header-avatar', type: 'button', label: 'Avatar & menu utilisateur', icon: LUCIDE_ICONS.profile, actionable: true },
+      { id: 'header-nav-shortcut', type: 'button', label: 'Raccourci Navigation GPS', icon: LUCIDE_ICONS.map, actionable: true },
+      { id: 'header-delivery-btn', type: 'button', label: 'Livraison', icon: LUCIDE_ICONS.truck, actionable: true },
+      { id: 'header-chat-btn', type: 'button', label: 'Conversations (badge)', icon: LUCIDE_ICONS.message, actionable: true },
+      { id: 'header-bell-btn', type: 'button', label: 'Notifications (badge)', icon: LUCIDE_ICONS.bell, actionable: true },
+      { id: 'mode-toggle-search', type: 'tab', label: 'Mode 🔍 Rechercher', actionable: true },
+      { id: 'mode-toggle-create', type: 'tab', label: 'Mode Créer produit/service', actionable: true },
+      { id: 'chat-input-main', type: 'input', label: 'ChatInputMobile (texte, photo, audio, vidéo, docs, logo/bannière création)', actionable: true },
+      { id: 'promo-special-offers', type: 'button', label: 'Offres spéciales (menu déroulant)', icon: 'gift', actionable: true },
+      { id: 'services-categories', type: 'card', label: 'YukpoServicesQuickAccess — 6 catégories / 17 services (Santé, Transport, Vie pratique, Bourse du livre, Assurance, Immobilier)', actionable: true },
+      { id: 'fab-assistant-ia', type: 'fab', label: 'Assistant IA (bulle, hors HomeScreen — AppNavigator)', actionable: true },
     ],
-    guide: 'Écran d\'accueil principal. Recherche rapide, accès aux services spécialisés (pharmacie, hôpital, hôtel, taxi, livraison, covoiturage), promotions, création de services.',
+    guide: 'Accueil Yukpo (HomeScreen) : en-tête fixe (avatar/solde/météo, Navigation, marque, Livraison, conversations avec badge, notifications avec badge). Double mode Rechercher vs Créer : ChatInputMobile envoie soit vers ResultatBesoin (recherche IA connectée), soit vers création (FormulaireYukpoIntelligent si premier service, sinon AjouterProduitSimple + suggestions). GPS via modal. Offres spéciales → FlashPromos, catalogue promos, Lives. Grille services ouvre toujours des écrans **utilisateur** (Search/Hub/Home dédiés), jamais les formulaires partenaires. Au focus, le mode repasse sur Rechercher. Assistant IA flottant est global (AppNavigator). L’onglet **Mes services** en bas = onglet interne **Services** (composant MesServicesScreen) ; la même UI est accessible par la route pile **MesServices**. La route pile **ServicesActivity** est un ancien écran « Mon activité » — ne pas la confondre.',
+  },
+
+  /** Onglet barre du bas + route pile MesServices : **MesServicesScreen** (hub moderne). */
+  Services: MES_SERVICES_TAB_CONFIG,
+  MesServices: MES_SERVICES_TAB_CONFIG,
+
+  /** Ancien **ServicesScreen** (« Mon activité ») — route pile dédiée pour éviter collision avec l’onglet Services. */
+  ServicesActivity: {
+    type: 'dashboard',
+    actions: [
+      { id: 'sa-open-modern', label: 'Hub produits moderne', icon: LUCIDE_ICONS.package, route: 'MesServices', category: 'navigation', description: 'MesServicesScreen (recommandé)' },
+      { id: 'sa-edit', label: 'Modifier un service', icon: LUCIDE_ICONS.edit, category: 'action', description: 'Carte service → FormulaireYukpoIntelligent (fromServicesScreen)' },
+    ],
+    elements: [
+      { id: 'sa-list', type: 'card', label: 'Liste / cartes services (legacy)', actionable: true },
+    ],
+    guide: 'Écran legacy **ServicesScreen** (route pile `ServicesActivity`). Le hub enrichi pour gérer produits, promos, vidéos et stats est **MesServicesScreen** (`MesServices` ou onglet **Services**).',
   },
 
   RechercheBesoin: {
@@ -215,60 +340,95 @@ const SCREEN_CONFIGS: Record<string, {
   PharmacieHome: {
     type: 'specialized',
     actions: [
-      { id: 'search-pharmacy', label: 'Chercher Pharmacie', icon: LUCIDE_ICONS.search, route: 'PharmacieSearch', category: 'search', description: 'Rechercher une pharmacie' },
-      { id: 'pharmacy-list', label: 'Liste Pharmacies', icon: LUCIDE_ICONS.list, route: 'PharmacieList', category: 'navigation', description: 'Voir toutes les pharmacies' },
-      { id: 'my-orders', label: 'Mes Commandes', icon: LUCIDE_ICONS.clipboard, route: 'MyPharmacyOrders', category: 'navigation', description: 'Suivi de commandes médicaments' },
+      { id: 'filters', label: 'Filtres avancés', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Prix min/max, rayon GPS, uniquement disponibles (badge = filtres actifs)' },
+      { id: 'sort', label: 'Trier', icon: 'arrow-up-down', category: 'action', description: 'Modal: pertinence, prix, distance, nom A–Z' },
+      { id: 'ai-expand', label: 'Assistant IA Pharmacie', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Photo médicament, suggestions, question → askPharmacyQuestion' },
+      { id: 'ai-dosage-card', label: 'Posologie IA (carte)', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Sur chaque médicament de la liste' },
+      { id: 'ai-interactions-card', label: 'Interactions IA (carte)', icon: LUCIDE_ICONS.alert, category: 'help', description: 'Sur chaque médicament de la liste' },
+      { id: 'reserve', label: 'Disponibilité / Réserver', icon: LUCIDE_ICONS['shopping-cart'], category: 'action', description: 'Vérifier stock chez la pharmacie liée au produit puis réserver' },
     ],
     elements: [
-      { id: 'pharmacy-search', type: 'input', label: 'Recherche médicaments', actionable: true },
-      { id: 'pharmacy-categories', type: 'card', label: 'Catégories', actionable: true },
+      { id: 'search-medicaments', type: 'input', label: 'Recherche médicaments / produits (barre + loupe)', actionable: true },
+      { id: 'chip-proche', type: 'card', label: 'Chip Proche de moi', actionable: true },
+      { id: 'chip-dispo', type: 'card', label: 'Chip Disponibles', actionable: true },
+      { id: 'chip-prix-bas', type: 'card', label: 'Chip Prix bas', actionable: true },
+      { id: 'liste-medicaments', type: 'card', label: 'Liste de cartes médicaments (détail, posologie, interactions)', actionable: true },
     ],
-    guide: 'Accueil Pharmacie. Recherchez des médicaments, trouvez les pharmacies proches, suivez vos commandes. L\'IA peut analyser vos ordonnances.',
+    guide: 'Catalogue multi-pharmacies: recherche produits via pharmacyProductService.searchProducts (texte, GPS, rayon, dispo, prix). En-tête filtre avec pastille. Chips rapides, tri modal. Bloc repliable Assistant IA: analyse photo (imageAnalysisService), suggestions, chat askPharmacyQuestion. Chaque carte: fiche modal, Posologie IA, Interactions IA, vérif stock/réservation. Pour lister des officines (garde, adresse), orienter vers PharmacieSearch → PharmacieList — pas sur cet écran.',
   },
   PharmacieForm: {
     type: 'dashboard',
     actions: [
-      { id: 'add-product', label: 'Ajouter Médicament', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Ajouter un nouveau médicament à votre stock' },
-      { id: 'view-stock', label: 'Voir Stock', icon: LUCIDE_ICONS.package, category: 'action', description: 'Consulter l\'état du stock' },
-      { id: 'ai-analysis', label: 'Analyse IA', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Analyser une ordonnance avec l\'IA' },
-      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'PharmacyAnalytics', category: 'navigation', description: 'Voir les statistiques' },
+      { id: 'add-product', label: 'Ajouter Médicament', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Onglet Produits: nouveau produit / stock' },
+      { id: 'bulk-import', label: 'Import produits', icon: LUCIDE_ICONS.upload, category: 'action', description: 'Import en masse (texte) avec option écraser' },
+      { id: 'guard-days', label: 'Jours de garde', icon: LUCIDE_ICONS.clock, category: 'action', description: 'GuardDaysSelector / modal jours de garde' },
+      { id: 'gps', label: 'GPS / Adresse', icon: LUCIDE_ICONS.location, category: 'action', description: 'LocationSelector + ModernGPSModal' },
+      { id: 'team', label: 'Équipe', icon: LUCIDE_ICONS.users, category: 'action', description: 'Onglet Équipe: ServiceTeamManager' },
+      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'PharmacyAnalytics', category: 'navigation', description: 'Onglet Stats + lien analytics détaillé si besoin' },
+      { id: 'ai-interactions-screen', label: 'IA Interactions (écran dédié)', icon: LUCIDE_ICONS.activity, route: 'PharmacyAIInteractions', category: 'help', description: 'Depuis overview / tests: écran interactions & dosage avancé partenaire' },
     ],
     elements: [
-      { id: 'tabs', type: 'tab', label: 'Onglets: Accueil, Produits, Stock, Commandes, Stats', actionable: true },
-      { id: 'product-form', type: 'input', label: 'Formulaire médicament / produit', actionable: true },
-      { id: 'stock-list', type: 'card', label: 'Liste du stock (produits, quantités, prix)', actionable: true },
-      { id: 'orders', type: 'card', label: 'Commandes clients (statuts, paiement, livraison)', actionable: true },
-      { id: 'analytics', type: 'card', label: 'Statistiques (ventes, produits populaires, ruptures)', actionable: false },
+      { id: 'tabs', type: 'tab', label: 'Onglets: Accueil (overview), Mon service, Produits, Stats (analytics), Équipe', actionable: true },
+      { id: 'product-form', type: 'input', label: 'Formulaire médicament / produit (modal édition)', actionable: true },
+      { id: 'stock-list', type: 'card', label: 'Liste du stock avec recherche locale filtrée', actionable: true },
+      { id: 'orders', type: 'card', label: 'Commandes clients (overview / intégration dashboard)', actionable: true },
+      { id: 'analytics-strip', type: 'card', label: 'Indicateurs analytics (onglet Stats)', actionable: false },
     ],
-    guide: 'Dashboard partenaire Pharmacie. Gérez votre service (infos, GPS, contacts, horaires), ajoutez/modifiez des produits/médicaments, mettez à jour les quantités et prix, traitez les commandes (validation, préparation, livraison/retrait, annulation/remboursement si applicable), consultez les statistiques. L\'assistant peut guider étape par étape pour n\'importe quelle action: ajouter un médicament, modifier un prix, marquer une commande comme prête, activer/désactiver la disponibilité, analyser une ordonnance et vérifier interactions/dosages.',
+    guide: 'Partenaire pharmacie: mode dashboard si officine existante (GET /api/pharmacies). 5 onglets — overview, service (infos, horaires, garde, prestations, contacts), products (CRUD, import bulk, recherche), analytics (KPI), team (ServiceTeamManager). Raccourcis overview vers PharmacyAIInteractions (tests interactions IA). Mode création (route mode) = formulaire guidé avec autosave. CRUD pharmacie, produits, commandes, garde.',
   },
   PharmacieSearch: {
     type: 'search',
     actions: [
-      { id: 'search-med', label: 'Rechercher', icon: LUCIDE_ICONS.search, category: 'search', description: 'Rechercher un médicament' },
-      { id: 'filter-location', label: 'Proximité', icon: LUCIDE_ICONS.location, category: 'action', description: 'Filtrer par proximité' },
+      { id: 'ai-features', label: 'Fonctionnalités IA', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Bandeau → modal PharmacyAIFeatures (interactions, dosage, budget produits)' },
+      { id: 'quick-garde', label: 'Recherche rapide garde', icon: LUCIDE_ICONS.clock, category: 'search', description: 'Carte rapide: pharmacies de garde' },
+      { id: 'quick-near', label: 'Recherche rapide proximité', icon: LUCIDE_ICONS.location, category: 'search', description: 'Carte rapide: rayon 10 km + dispo' },
+      { id: 'gps-modal', label: 'Position GPS', icon: LUCIDE_ICONS.map, category: 'action', description: 'ModernGPSModal (optionnel)' },
+      { id: 'launch-search', label: 'Lancer la recherche', icon: LUCIDE_ICONS.search, category: 'search', description: 'Navigate PharmacieList avec filters (produit prioritaire ou établissements)' },
     ],
     elements: [
-      { id: 'search-input', type: 'input', label: 'Nom du médicament', actionable: true },
+      { id: 'product-search', type: 'input', label: 'Nom produit / médicament (prioritaire)', actionable: true },
+      { id: 'distance-stepper', type: 'input', label: 'Distance max (km)', actionable: true },
+      { id: 'toggle-garde', type: 'card', label: 'Switch De garde uniquement', actionable: true },
+      { id: 'toggle-dispo', type: 'card', label: 'Switch Pharmacies avec stock disponible', actionable: true },
+      { id: 'advanced-filters', type: 'card', label: 'Type officine, services, livraison', actionable: true },
     ],
-    guide: 'Recherche de pharmacies. Trouvez une pharmacie par nom de médicament, proximité ou spécialité.',
+    guide: 'Recherche d\'officines et produits: priorité champ produit/médicament + GPS optionnel + distance. Recherches rapides (garde, proche). Filtres avancés: type pharmacie, services, livraison. Basculer garde/dispo. CTA → PharmacieList (params.filters). Bandeau IA → PharmacyAIFeatures.',
   },
 
   // === HÔPITAL ===
   HopitalHome: {
     type: 'specialized',
     actions: [
-      { id: 'search-hospital', label: 'Chercher Hôpital', icon: LUCIDE_ICONS.search, route: 'HopitalSearch', category: 'search', description: 'Rechercher un hôpital' },
-      { id: 'hospital-list', label: 'Liste Hôpitaux', icon: LUCIDE_ICONS.list, route: 'HopitalList', category: 'navigation', description: 'Tous les hôpitaux' },
-      { id: 'book-appointment', label: 'Prendre RDV', icon: LUCIDE_ICONS.calendar, route: 'BookAppointment', category: 'action', description: 'Réserver une consultation' },
-      { id: 'my-consultations', label: 'Mes Consultations', icon: LUCIDE_ICONS.clipboard, route: 'MyConsultations', category: 'navigation', description: 'Historique de consultations' },
-      { id: 'ai-reco', label: 'Recommandations IA', icon: LUCIDE_ICONS.activity, route: 'HospitalAIRecommendations', category: 'help', description: 'Recommandations santé par IA' },
+      { id: 'ai-modal', label: 'IA (pathologie)', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Header brain + modal: recherche pathologie / image hôpital' },
+      { id: 'search-prestation', label: 'Recherche prestation', icon: LUCIDE_ICONS.search, category: 'search', description: 'Autocomplete hospitalService.searchMedicalServices + loupe' },
+      { id: 'image-ia', label: 'Analyser image', icon: LUCIDE_ICONS.camera, category: 'help', description: 'Quick action → analyzeHospitalImage dans AIModal' },
+      { id: 'pathologie-ia', label: 'Recherche pathologie', icon: LUCIDE_ICONS.search, category: 'help', description: 'Quick action → AIModal + aiSearchPathology' },
+      { id: 'sort', label: 'Trier', icon: 'arrow-up-down', category: 'action', description: 'Modal pertinence, prix, distance, nom' },
+      { id: 'book-slot', label: 'Prendre RDV (carte)', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Sur carte disponibilité: hospitalService.bookAppointment' },
+      { id: 'wait-time', label: 'Temps d\'attente', icon: LUCIDE_ICONS.clock, category: 'action', description: 'getWaitTimes sur service_id' },
     ],
     elements: [
-      { id: 'hospital-search', type: 'input', label: 'Recherche hôpitaux', actionable: true },
-      { id: 'specialties', type: 'card', label: 'Spécialités médicales', actionable: true },
+      { id: 'autocomplete', type: 'input', label: 'Liste déroulante autocomplete prestations', actionable: true },
+      { id: 'availability-cards', type: 'card', label: 'Cartes établissements + services disponibles + distance', actionable: true },
     ],
-    guide: 'Accueil Santé. Trouvez des hôpitaux, prenez rendez-vous, consultez l\'historique de vos consultations. L\'IA peut recommander des spécialistes.',
+    guide: 'Hub **prestations / disponibilité** (pas la liste filtrée HopitalList): avec GPS, searchAvailableMedicalServices (50 km) ; sans GPS ou hors chemin dispo → navigation HopitalList avec serviceType. Autocomplete searchMedicalServices. AIModal: pathologie (useAIWithFallback) + image (imageAnalysisService.analyzeHospitalImage). Cartes: RDV bookAppointment, bouton Attente getWaitTimes. Pour filtres établissements (ville, urgences, spécialités) → HopitalSearch.',
+  },
+  HopitalSearch: {
+    type: 'search',
+    actions: [
+      { id: 'gps', label: 'GPS', icon: LUCIDE_ICONS.map, category: 'action', description: 'ModernGPSModal' },
+      { id: 'distance', label: 'Distance max', icon: LUCIDE_ICONS.location, category: 'action', description: 'Stepper km' },
+      { id: 'quick-urgences', label: 'Recherche rapide Urgences', icon: LUCIDE_ICONS.alert, category: 'search', description: 'Carte rapide' },
+      { id: 'quick-proche', label: 'Plus proche', icon: LUCIDE_ICONS.location, category: 'search', description: 'Réduit rayon + dispo' },
+      { id: 'advanced', label: 'Filtres avancés', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Spécialités, banque sang, urgences 24h, RDV ligne, assurances' },
+      { id: 'launch', label: 'Lancer recherche', icon: LUCIDE_ICONS.search, category: 'search', description: 'MedicalServicesList si prestation/spécialité sinon HopitalList' },
+    ],
+    elements: [
+      { id: 'prestation', type: 'input', label: 'Prestation / spécialité (prioritaire)', actionable: true },
+      { id: 'type-etablissement', type: 'card', label: 'Type Hôpital / Clinique / …', actionable: true },
+      { id: 'switches', type: 'card', label: 'Urgences only, Disponible, RDV en ligne (selon UI)', actionable: true },
+    ],
+    guide: 'Formulaire recherche établissements et services: GPS, distance, type, prestation, toggles. Si prestation ou spécialité renseignée → navigate MedicalServicesList {filters} (alias même écran que HealthServicesHub — params non lus par le composant actuellement). Sinon → HopitalList {filters} → GET /api/hopitaux/search.',
   },
   HopitalForm: {
     type: 'dashboard',
@@ -290,7 +450,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'hospital-info', type: 'card', label: 'Informations de l\'établissement (adresse, téléphone, type)', actionable: false },
       { id: 'tabs', type: 'tab', label: 'Onglets: Accueil, Service, Créneaux, Stats, Équipe', actionable: true },
     ],
-    guide: 'Tableau de bord hôpital/clinique complet. 5 onglets : Accueil (stats, actions rapides, statut urgences, consultations récentes, infos), Service (modifier nom, type d\'établissement, adresse, GPS, prestations, urgences, RDV en ligne, contacts), Créneaux (gérer les créneaux de consultation par prestation avec planning hebdomadaire), Stats (consultations totales/7j, temps d\'attente moyen, taux d\'occupation, accès IA triage), Équipe (gestion du personnel médical). Le partenaire peut demander de l\'aide sur : comment ajouter une prestation, configurer ses créneaux horaires, activer les urgences, suivre ses consultations, voir ses statistiques, gérer son équipe, accéder au triage IA.',
+    guide: 'Tableau de bord hôpital/clinique complet. 5 onglets : Accueil (stats, actions rapides, statut urgences, consultations récentes, infos), Service (modifier nom, type d\'établissement, adresse, GPS, prestations, urgences, RDV en ligne, contacts), Créneaux (PrestationSelectorWithSchedule), Stats, Équipe (ServiceTeamManager). Init partenaire : GET /api/partners/me + GET /api/hopitaux (première fiche), puis analytics/consultations/urgence avec id fiche API. Raccourcis overview : HospitalAIRecommendations (hospitalId + serviceId si connus), HospitalAnalytics (hospitalId requis — alerte si fiche non chargée).',
   },
 
   // === HÔTEL ===
@@ -317,37 +477,23 @@ const SCREEN_CONFIGS: Record<string, {
     ],
     guide: 'Tableau de bord hôtel/meublé complet. 5 onglets : Vue d\'ensemble (stats + actions rapides + arrivées en attente + clients en séjour), Réservations (liste complète avec check-in/out/QR/paiement), Mes biens (propriétés avec disponibilité + modifier + IA tarifs), IA (insights tarification et remplissage par propriété), Équipe (gestion du personnel). Actions clés : ajouter un bien → ImmobilierForm, créer réservation manuelle → modal, scanner QR client → HotelQRScanner, voir QR réservation, paiement réservation → HotelBookingPayment, portefeuille → WalletFinancial. Le partenaire peut demander de l\'aide sur n\'importe quelle fonctionnalité.',
   },
-  HotelMeubleHome: {
-    type: 'specialized',
-    actions: [
-      { id: 'search-hotel', label: 'Chercher Hôtel', icon: LUCIDE_ICONS.search, category: 'search', description: 'Rechercher un hôtel ou meublé par nom, ville, standing' },
-      { id: 'filter-standing', label: 'Filtrer par standing', icon: LUCIDE_ICONS.list, category: 'action', description: 'Filtrer: Économique, Standard, Confort, Premium, Luxe' },
-      { id: 'filter-city', label: 'Filtrer par ville', icon: LUCIDE_ICONS['map-pin'], category: 'action', description: 'Filtrer les hébergements par ville' },
-      { id: 'filter-budget', label: 'Budget max', icon: LUCIDE_ICONS['credit-card'], category: 'action', description: 'Définir un budget maximum par nuit' },
-      { id: 'book-hotel', label: 'Réserver', icon: LUCIDE_ICONS.calendar, route: 'HotelBooking', category: 'action', description: 'Réserver un hébergement directement' },
-      { id: 'view-details', label: 'Voir détails', icon: LUCIDE_ICONS.info, route: 'ImmobilierDetails', category: 'navigation', description: 'Voir les détails complets d\'un hébergement' },
-    ],
-    elements: [
-      { id: 'hotel-search', type: 'input', label: 'Barre de recherche hôtel/meublé', actionable: true },
-      { id: 'quick-filters', type: 'input', label: 'Filtres rapides: ville, chambres, budget', actionable: true },
-      { id: 'standing-chips', type: 'button', label: 'Chips standing: Tous, Économique, Standard, Confort, Premium, Luxe', actionable: true },
-      { id: 'hotel-list', type: 'card', label: 'Liste des hébergements avec prix/nuit, note, distance, chambres', actionable: true },
-    ],
-    guide: 'Recherche d\'hébergement hôtel ou meublé. Filtrez par ville, nombre de chambres, budget max et standing. Chaque carte affiche: titre, localisation, chambres, standing, distance, prix/nuit, note. Bouton Réserver pour chaque hébergement → écran de réservation.',
-  },
+  HotelMeubleHome: HOTEL_MEUBLE_USER_HUB_CONFIG,
+  HotelSearch: HOTEL_MEUBLE_USER_HUB_CONFIG,
+  MeubleSearch: HOTEL_MEUBLE_USER_HUB_CONFIG,
   HotelBooking: {
     type: 'form',
     actions: [
-      { id: 'submit-booking', label: 'Envoyer la réservation', icon: LUCIDE_ICONS.check, category: 'action', description: 'Soumettre la demande de réservation au gérant' },
-      { id: 'pay-now', label: 'Payer maintenant', icon: LUCIDE_ICONS['credit-card'], route: 'HotelBookingPayment', category: 'action', description: 'Payer la réservation après confirmation' },
+      { id: 'submit-booking', label: 'Envoyer la réservation', icon: LUCIDE_ICONS.check, category: 'action', description: 'POST /api/hotel/reservations/request (bookHotelStay) — demande au gérant' },
+      { id: 'pay-now', label: 'Payer maintenant', icon: LUCIDE_ICONS['credit-card'], route: 'HotelBookingPayment', category: 'action', description: 'Proposé dans l’alerte après succès si id réservation + montant > 0 ; sinon paiement plus tard selon confirmation' },
     ],
     elements: [
-      { id: 'dates-input', type: 'input', label: 'Dates arrivée/départ (format AAAA-MM-JJ)', actionable: true },
-      { id: 'occupants', type: 'input', label: 'Nombre adultes, enfants, chambres (boutons +/-)', actionable: true },
-      { id: 'contact-info', type: 'input', label: 'Nom, téléphone, email du client', actionable: true },
-      { id: 'price-estimate', type: 'card', label: 'Estimation du prix total (prix/nuit × nuits × chambres)', actionable: false },
+      { id: 'dates-input', type: 'input', label: 'Dates arrivée/départ (AAAA-MM-JJ, validées Date)', actionable: true },
+      { id: 'occupants', type: 'input', label: 'Adultes (min 1), enfants, chambres (min 1) — steppers +/-', actionable: true },
+      { id: 'contact-info', type: 'input', label: 'Nom et téléphone obligatoires ; email optionnel', actionable: true },
+      { id: 'notes-special', type: 'input', label: 'Notes / demandes spéciales (optionnel)', actionable: true },
+      { id: 'price-estimate', type: 'card', label: 'Estimation si prix/nuit connu : nuit × chambres × prix/nuit', actionable: false },
     ],
-    guide: 'Formulaire de réservation hôtel/meublé. Renseignez les dates d\'arrivée et de départ (format AAAA-MM-JJ), le nombre d\'adultes/enfants/chambres, vos coordonnées. L\'estimation du prix s\'affiche automatiquement. Après envoi, le gérant confirme la réservation. Vous pouvez ensuite payer directement dans l\'app.',
+    guide: 'Réservation **HotelBookingScreen** pour un **seul** bien (\`propertyId\` en params). Dates, occupants, coordonnées ; envoi via **bookHotelStay**. Paiement immédiat seulement si l’alerte de succès propose **Payer maintenant** (réservation id + total > 0). Pas de choix de chambre type catalogue — le bien est déjà fixé.',
   },
   ImmobilierForm: {
     type: 'form',
@@ -369,15 +515,26 @@ const SCREEN_CONFIGS: Record<string, {
   ImmobilierHome: {
     type: 'specialized',
     actions: [
-      { id: 'search-property', label: 'Chercher Bien', icon: LUCIDE_ICONS.search, route: 'ImmobilierSearch', category: 'search', description: 'Rechercher un bien immobilier' },
-      { id: 'compare', label: 'Comparer', icon: LUCIDE_ICONS.list, route: 'ImmobilierCompare', category: 'action', description: 'Comparer des biens' },
-      { id: 'price-alerts', label: 'Alertes Prix', icon: LUCIDE_ICONS.bell, route: 'ImmobilierPriceAlerts', category: 'action', description: 'Configurer des alertes de prix' },
-      { id: 'add-property', label: 'Publier Annonce', icon: LUCIDE_ICONS.add, route: 'ImmobilierForm', category: 'creation', description: 'Publier une annonce immobilière' },
+      { id: 'submit-search', label: 'Lancer la recherche', icon: LUCIDE_ICONS.search, category: 'search', description: 'Barre texte + bouton loupe / retour clavier → immobilierService.searchProperties (pagination 20)' },
+      { id: 'filters-modal', label: 'Filtres avancés', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Icône sliders en-tête → FiltersModal (types, statuts, standing, prix, surface, chambres, GPS)' },
+      { id: 'sort-modal', label: 'Trier', icon: LUCIDE_ICONS['arrow-up-down'], category: 'action', description: 'SortModal : pertinence, prix, date, superficie' },
+      { id: 'quick-filters', label: 'Filtres rapides', icon: LUCIDE_ICONS.zap, category: 'action', description: 'Chips vente / location / proche / nouveautés' },
+      { id: 'view-toggle', label: 'Liste ou grille', icon: LUCIDE_ICONS.list, category: 'action', description: 'Basculer vue liste / grille' },
+      { id: 'add-property', label: 'Publier une annonce', icon: LUCIDE_ICONS.add, route: 'ImmobilierForm', category: 'creation', description: 'Bouton + en-tête → ImmobilierForm mode create' },
+      { id: 'open-details', label: 'Fiche bien', icon: LUCIDE_ICONS.info, route: 'ImmobilierDetails', category: 'navigation', description: 'Carte → ImmobilierDetails (propertyId) + trackPropertyView source search' },
+      { id: 'card-favorite', label: 'Favori (carte)', icon: LUCIDE_ICONS.heart, category: 'action', description: 'addToFavorites / removeFromFavorites + miroir AsyncStorage' },
+      { id: 'card-estimate-ia', label: 'Estimer (IA)', icon: LUCIDE_ICONS.activity, category: 'action', description: 'useAIWithFallback estimatePropertyPrice → Alert (≠ estimatePrice sur ImmobilierDetails)' },
+      { id: 'card-visite', label: 'Visite (carte)', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Alert puis bookVisit demain 10h en_personne — pas ImmobilierBooking' },
+      { id: 'card-share', label: 'Partager', icon: LUCIDE_ICONS.share, category: 'action', description: 'shareProperty + partage système' },
+      { id: 'card-pret-modal', label: 'Simuler prêt (carte)', icon: LUCIDE_ICONS['credit-card'], category: 'action', description: 'Si prix_vente : modal calculateLoan local (durée/taux) — pas simulateLoan API' },
     ],
     elements: [
-      { id: 'property-search', type: 'input', label: 'Recherche immobilière', actionable: true },
+      { id: 'header-gradient', type: 'card', label: 'En-tête : retour, titre (Immobilier / Hôtels / Meublés), + création, filtres', actionable: true },
+      { id: 'property-search', type: 'input', label: 'Recherche texte bien / quartier / ville', actionable: true },
+      { id: 'results-list', type: 'card', label: 'FlatList ImmobilierResultCard + actions par carte', actionable: true },
+      { id: 'loan-modal', type: 'modal', label: 'Modal simulation prêt (client-side)', actionable: true },
     ],
-    guide: 'Immobilier. Recherchez, comparez et réservez des biens. Configurez des alertes de prix. Publiez vos annonces.',
+    guide: '**ImmobilierHomeScreen** : hub catalogue **sans** les 3 modes de **ImmobilierSearch**. Données : **immobilierService.searchProperties** (page/limit 20), filtres **FiltersModal**, tri **SortModal**, chips rapides, liste/grille. **Pas** de navigation directe vers ImmobilierCompare / ImmobilierPriceAlerts / ImmobilierSearch depuis cet écran. Sur chaque carte : favoris serveur, estimation **useAIWithFallback.estimatePropertyPrice** (Alert), visite via **Alert + bookVisit** (créneau fixe), partage **shareProperty**, prêt **modal locale** si vente. **+** → **ImmobilierForm** create. Comparaison / recherche carte avancée / alertes : autres routes Yukpo.',
   },
   ImmobilierSearch: {
     type: 'search',
@@ -440,28 +597,35 @@ const SCREEN_CONFIGS: Record<string, {
   ImmobilierPriceAlerts: {
     type: 'list',
     actions: [
-      { id: 'toggle-alert', label: 'Activer/Désactiver', icon: LUCIDE_ICONS.bell, category: 'action', description: 'Activer ou désactiver une alerte prix' },
-      { id: 'delete-alert', label: 'Supprimer', icon: LUCIDE_ICONS.trash, category: 'action', description: 'Supprimer une alerte prix' },
+      { id: 'toggle-alert', label: 'Activer/Désactiver', icon: LUCIDE_ICONS.bell, category: 'action', description: 'UI : Alert « bientôt disponible » (pas d’API toggle branchée)' },
+      { id: 'delete-alert', label: 'Supprimer', icon: LUCIDE_ICONS.trash, category: 'action', description: 'UI : confirmation puis message suppression à implémenter' },
     ],
     elements: [
-      { id: 'alerts-list', type: 'card', label: 'Liste des alertes prix actives', actionable: true },
+      { id: 'alerts-list', type: 'card', label: 'Liste immobilierService.getMyPriceAlerts (GET /api/immobilier/my-alerts)', actionable: true },
     ],
-    guide: 'Gestion des alertes de prix immobilier. Recevez des notifications quand un bien correspond à vos critères ou quand un prix baisse. Activez/désactivez ou supprimez vos alertes.',
+    guide: '**ImmobilierPriceAlertsScreen** : chargement **getMyPriceAlerts** au focus. L’activation/désactivation et la suppression sont pour l’instant des **Alert** placeholder (backend non branché dans ces handlers). Ne pas promettre une gestion complète tant que le code TODO n’est pas fait.',
   },
 
   // === TAXI ===
   TaxiHome: {
     type: 'specialized',
     actions: [
-      { id: 'book-taxi', label: 'Commander Taxi', icon: LUCIDE_ICONS.car, route: 'TaxiBooking', category: 'action', description: 'Commander un taxi maintenant' },
-      { id: 'search-taxi', label: 'Chercher Taxi', icon: LUCIDE_ICONS.search, route: 'TaxiSearch', category: 'search', description: 'Rechercher un taxi' },
-      { id: 'ai-search', label: 'Recherche IA', icon: LUCIDE_ICONS.activity, route: 'TaxiIntelligentSearch', category: 'search', description: 'Recherche intelligente de taxi' },
-      { id: 'my-taxis', label: 'Mes Taxis', icon: LUCIDE_ICONS.list, route: 'MesTaxis', category: 'navigation', description: 'Historique de courses' },
+      { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.back, category: 'navigation', description: 'Flèche en-tête' },
+      { id: 'register-driver', label: 'Devenir chauffeur', icon: LUCIDE_ICONS.user, route: 'CourierRegistration', category: 'navigation', description: 'Si non chauffeur validé — params applicationType driver' },
+      { id: 'publish-service', label: 'Publier un service', icon: LUCIDE_ICONS.add, route: 'TaxiForm', category: 'creation', description: 'Chauffeur validé → TaxiForm mode create ; sinon toast' },
+      { id: 'depart-selector', label: 'Départ', icon: LUCIDE_ICONS.location, category: 'action', description: 'LocationSelector — prérempli par GPS / adresse si dispo' },
+      { id: 'destination-selector', label: 'Destination', icon: LUCIDE_ICONS.location, category: 'action', description: 'LocationSelector adresse précise' },
+      { id: 'available-only', label: 'Taxis disponibles uniquement', icon: LUCIDE_ICONS.check, category: 'action', description: 'Chip filtre client is_available' },
+      { id: 'search-taxis', label: 'Rechercher', icon: LUCIDE_ICONS.search, category: 'search', description: 'taxiService.searchTaxis (coords départ ou ville, radius 20 km)' },
+      { id: 'open-taxi', label: 'Fiche taxi', icon: LUCIDE_ICONS.car, route: 'TaxiDetails', category: 'navigation', description: 'Carte résultat ou recommandation IA' },
+      { id: 'book-taxi', label: 'Réserver', icon: LUCIDE_ICONS['credit-card'], route: 'TaxiBooking', category: 'action', description: 'TaxiBooking avec taxiId + départ/destination' },
     ],
     elements: [
-      { id: 'destination-input', type: 'input', label: 'Où allez-vous ?', actionable: true },
+      { id: 'ia-demand-card', type: 'card', label: 'Prédiction demande (forte/normale/faible) avant 1re recherche', actionable: false },
+      { id: 'ia-recommendations', type: 'card', label: 'Liste recommandations IA (getPersonalizedRecommendations)', actionable: true },
+      { id: 'results-list', type: 'card', label: 'Liste taxis après recherche', actionable: true },
     ],
-    guide: 'Service Taxi. Commandez un taxi, suivez votre course en temps réel, consultez l\'historique.',
+    guide: 'TaxiHomeScreen (hub refondu). Départ auto depuis GPS possible ; avant recherche : recommandations IA + prédiction demande ; recherche par LocationSelector + filtre disponibilité ; publier service → TaxiForm ; devenir chauffeur → CourierRegistration. Routes alternatives : TaxiSearch, TaxiIntelligentSearch — pas obligatoires depuis cet accueil.',
   },
   TaxiForm: {
     type: 'form',
@@ -479,15 +643,21 @@ const SCREEN_CONFIGS: Record<string, {
   CovoiturageHome: {
     type: 'specialized',
     actions: [
-      { id: 'search-ride', label: 'Chercher Trajet', icon: LUCIDE_ICONS.search, route: 'CovoiturageSearch', category: 'search', description: 'Rechercher un covoiturage' },
-      { id: 'create-ride', label: 'Proposer Trajet', icon: LUCIDE_ICONS.add, route: 'CovoiturageForm', category: 'creation', description: 'Proposer un trajet en covoiturage' },
-      { id: 'ai-search', label: 'Recherche IA', icon: LUCIDE_ICONS.activity, route: 'CovoiturageIntelligentSearch', category: 'search', description: 'Recherche intelligente' },
-      { id: 'my-reservations', label: 'Mes Réservations', icon: LUCIDE_ICONS.clipboard, route: 'MesReservationsCovoiturage', category: 'navigation', description: 'Mes réservations de covoiturage' },
+      { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.back, category: 'navigation', description: 'Flèche en-tête' },
+      { id: 'register-driver', label: 'Devenir chauffeur', icon: LUCIDE_ICONS.user, route: 'CourierRegistration', category: 'navigation', description: 'Si non profil chauffeur validé' },
+      { id: 'publish-trip', label: 'Publier un trajet', icon: LUCIDE_ICONS.add, route: 'CovoiturageForm', category: 'creation', description: 'Chauffeur validé → CovoiturageForm mode create' },
+      { id: 'depart-selector', label: 'Départ', icon: LUCIDE_ICONS.location, category: 'action', description: 'LocationSelector lieu départ' },
+      { id: 'destination-selector', label: 'Destination', icon: LUCIDE_ICONS.location, category: 'action', description: 'LocationSelector destination' },
+      { id: 'date-trip', label: 'Date du trajet', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'DatePicker trajet' },
+      { id: 'search-covoit', label: 'Rechercher', icon: LUCIDE_ICONS.search, category: 'search', description: 'covoiturageService.searchCovoiturages (départ, destination, date, GPS optionnel)' },
+      { id: 'open-trajet', label: 'Détails trajet', icon: LUCIDE_ICONS.car, route: 'CovoiturageDetails', category: 'navigation', description: 'Appui carte' },
+      { id: 'reserve', label: 'Réserver', icon: LUCIDE_ICONS.check, route: 'CovoiturageBooking', category: 'action', description: 'CovoiturageBooking avec covoiturageId' },
     ],
     elements: [
-      { id: 'ride-search', type: 'input', label: 'Départ → Arrivée', actionable: true },
+      { id: 'empty-state', type: 'card', label: 'État initial : remplir départ & destination avant recherche', actionable: false },
+      { id: 'trajet-cards', type: 'card', label: 'Cartes trajets (téléphone, WhatsApp, Réserver)', actionable: true },
     ],
-    guide: 'Covoiturage. Trouvez ou proposez un trajet partagé. L\'IA optimise les correspondances.',
+    guide: 'CovoiturageHomeScreen. Recherche inline LocationSelector + date — pas de résultats au montage. Publier un trajet : bouton header → CovoiturageForm (chauffeur validé). Création API nécessite service_id (sinon GestionServicesSpecialises). CovoiturageSearch / CovoiturageIntelligentSearch = autres entrées.',
   },
 
   // === LIVRAISON ===
@@ -506,15 +676,18 @@ const SCREEN_CONFIGS: Record<string, {
   CourierDashboard: {
     type: 'dashboard',
     actions: [
-      { id: 'active-deliveries', label: 'Livraisons Actives', icon: LUCIDE_ICONS.truck, category: 'action', description: 'Voir les livraisons en cours' },
-      { id: 'delivery-history', label: 'Historique', icon: LUCIDE_ICONS.clock, category: 'navigation', description: 'Historique des livraisons' },
-      { id: 'earnings', label: 'Revenus', icon: LUCIDE_ICONS.dollar, category: 'navigation', description: 'Consulter les revenus' },
+      { id: 'open-delivery-tracking', label: 'Ouvrir une livraison', icon: LUCIDE_ICONS.truck, category: 'navigation', description: 'Carte livraison → **DeliveryShoppingTracking** (`deliveryId`)' },
+      { id: 'verification-code', label: 'Code de vérification', icon: LUCIDE_ICONS.shield, category: 'navigation', description: 'Bouton sur carte → **CourierVerificationCode** (`deliveryId`)' },
+      { id: 'stats-alert', label: 'Statistiques (Alert)', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Bouton actions rapides → **Alert** texte (pas d’écran dédié)' },
+      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS.wallet, route: 'WalletFinancial', category: 'navigation', description: '**WalletFinancial**' },
+      { id: 'book-courier-packages', label: 'Bourse du livre (paquets)', icon: LUCIDE_ICONS.book, category: 'action', description: '**BookCourierSubDashboard** : **bourseLivreV2Api** (accepter / statuts paquets)' },
     ],
     elements: [
-      { id: 'delivery-list', type: 'card', label: 'Livraisons en cours', actionable: true },
-      { id: 'earnings-card', type: 'card', label: 'Résumé des revenus', actionable: false },
+      { id: 'stats-chart', type: 'card', label: 'CourierStatsChart (stats API)', actionable: false },
+      { id: 'book-subdashboard', type: 'card', label: 'Sous-dashboard livres scolaires (coursier)', actionable: true },
+      { id: 'delivery-list', type: 'card', label: 'Livraisons actives (GET /api/deliveries/active)', actionable: true },
     ],
-    guide: 'Tableau de bord coursier. Gérez vos livraisons actives, consultez l\'historique et vos revenus.',
+    guide: '**CourierDashboardScreen** : au focus **notificationSoundService** + **loadData** ; polling **15 s** ; **deliveryApi.listActiveDeliveries** + **getCourierStats** (GET `/api/delivery/courier/stats`) ; graphiques **CourierStatsChart** ; **BookCourierSubDashboard** (Bourse livre V2) ; carte livraison → **DeliveryShoppingTracking** ; code vérif → **CourierVerificationCode** ; actions rapides = **Alert** stats + **WalletFinancial**. Pas d’entrée Historique / Revenus dédiée dans ce fichier.',
   },
 
   // === LABORATOIRE ===
@@ -523,26 +696,50 @@ const SCREEN_CONFIGS: Record<string, {
     actions: [
       { id: 'search-lab', label: 'Chercher Labo', icon: LUCIDE_ICONS.search, route: 'LaboratoireSearch', category: 'search', description: 'Rechercher un laboratoire' },
       { id: 'my-exams', label: 'Mes Examens', icon: LUCIDE_ICONS.clipboard, route: 'MyLabExaminations', category: 'navigation', description: 'Historique d\'examens' },
-      { id: 'ai-analysis', label: 'Analyse IA', icon: LUCIDE_ICONS.activity, route: 'LabAIAnalysis', category: 'help', description: 'Analyse de résultats par IA' },
+      { id: 'ai-analysis', label: 'Analyse IA (modal)', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Modale IA : pathologie texte + image (**laboratoryService**), pas **LabAIAnalysis**' },
     ],
     elements: [
-      { id: 'lab-search', type: 'input', label: 'Recherche laboratoire', actionable: true },
+      { id: 'lab-search', type: 'input', label: 'Recherche + autocomplete examens', actionable: true },
     ],
-    guide: 'Laboratoires d\'analyses. Trouvez un labo, consultez vos résultats, l\'IA peut aider à interpréter les analyses.',
+    guide: '**LaboratoireHomeScreen** : autocomplete **GET** `/api/laboratoires/examinations/autocomplete` ; si GPS + dispo → **GET** `/api/search/scheduling` ; sinon **LaboratoireList** avec `examinationType` (texte). Modales IA pathologie / image. Raccourcis **LaboratoireSearch** et **MyLabExaminations**.',
   },
 
-  // === BANQUE DE SANG ===
+  // === BANQUE DE SANG / TRANSFUSION (utilisateur) ===
+  BanqueSangSearch: {
+    type: 'search',
+    actions: [
+      { id: 'bs-back', label: 'Retour', icon: LUCIDE_ICONS.back, category: 'navigation', description: 'Flèche en-tête' },
+      { id: 'bs-gps', label: 'Choisir localisation GPS', icon: LUCIDE_ICONS.location, category: 'action', description: 'ModernGPSModal — obligatoire avant recherche' },
+      { id: 'bs-distance', label: 'Distance max (5–200 km)', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Stepper − / +' },
+      { id: 'bs-unified-search', label: 'Recherche intelligente / Lancer la recherche', icon: LUCIDE_ICONS.search, category: 'search', description: 'Si connecté **et** groupe chargé → **BloodDonation** avec searchParams ; sinon → **BanqueSangList** (filters available_only, check_stocks, groupe optionnel)' },
+      { id: 'bs-banner-group', label: 'Bandeau groupe sanguin', icon: LUCIDE_ICONS.droplet, category: 'action', description: 'GET `/api/blood-donation/donor/blood-groups` ; affiche compatibles via GET `/api/blood-donation/compatibility/{groupe}`' },
+      { id: 'bs-save-group', label: 'Enregistrer groupe (modal)', icon: LUCIDE_ICONS.add, category: 'action', description: 'POST `/api/blood-donation/donor/blood-group` avec **groupe_sanguin** (pas blood_group)' },
+      { id: 'bs-heart-header', label: 'Devenir donneur (cœur animé)', icon: LUCIDE_ICONS.heart, route: 'BloodDonation', category: 'navigation', description: 'Visible seulement si pas encore de groupe enregistré' },
+      { id: 'bs-open-blood-app', label: 'Espace don / matching', icon: LUCIDE_ICONS.users, route: 'BloodDonation', category: 'navigation', description: 'Même route que bouton cœur — profil donneur + demandes urgentes' },
+    ],
+    elements: [
+      { id: 'bs-header-gradient', type: 'card', label: 'En-tête gradient (titre Transfusion / banque de sang)', actionable: false },
+      { id: 'bs-info-card', type: 'card', label: 'Bon à savoir (dons, urgence téléphone, stocks)', actionable: false },
+    ],
+    guide: '**BanqueSangSearchScreen** : accueil utilisateur « Transfusion » (grille Yukpo). Prérequis **GPS** (contexte Location ou modal). Connecté : chargement groupe via API donneur ; recherche unifiée bascule vers **BloodDonation** (matching) si `user && userBloodGroup`, sinon liste classique **BanqueSangList** avec filtres géo. Ne pas confondre avec **BloodDonationRequest** (formulaire de **demande** de sang).',
+  },
+
   BloodDonation: {
     type: 'specialized',
     actions: [
-      { id: 'donate', label: 'Donner du Sang', icon: LUCIDE_ICONS.droplet, route: 'BloodDonationRequest', category: 'action', description: 'Faire un don de sang' },
-      { id: 'find-blood', label: 'Chercher Sang', icon: LUCIDE_ICONS.search, route: 'BanqueSangSearch', category: 'search', description: 'Rechercher du sang compatible' },
-      { id: 'my-donations', label: 'Mes Dons', icon: LUCIDE_ICONS.clipboard, route: 'MyBloodDonations', category: 'navigation', description: 'Historique de dons' },
+      { id: 'bd-tab-requests', label: 'Onglet Demandes urgentes', icon: LUCIDE_ICONS.alert, category: 'action', description: 'Liste `bloodDonationService.listActiveRequests` — badges urgence critical/urgent/normal' },
+      { id: 'bd-tab-profile', label: 'Onglet Profil donneur', icon: LUCIDE_ICONS.user, category: 'action', description: 'Groupe(s) via `getMyBloodGroups` ; sélecteur + `createOrUpdateBloodGroup`' },
+      { id: 'bd-tab-compat', label: 'Onglet Compatibilité', icon: LUCIDE_ICONS.list, category: 'action', description: '`getBloodGroupCompatibility` pour le groupe sélectionné' },
+      { id: 'bd-respond', label: 'Répondre à une demande', icon: LUCIDE_ICONS.check, category: 'action', description: 'Modal puis `notifyDonorsForRequest(request.id)`' },
+      { id: 'find-banks', label: 'Rechercher des banques', icon: LUCIDE_ICONS.search, route: 'BanqueSangSearch', category: 'search', description: 'Retour au flux carte / liste banques' },
+      { id: 'new-blood-request', label: 'Créer une demande de sang (formulaire)', icon: LUCIDE_ICONS.add, route: 'BloodDonationRequest', category: 'creation', description: 'Écran dédié **BloodDonationRequest** (pas l’onglet Profil)' },
+      { id: 'my-donations', label: 'Historique dons / demandes', icon: LUCIDE_ICONS.clipboard, route: 'MyBloodDonations', category: 'navigation', description: 'MyBloodDonationsScreen' },
     ],
     elements: [
-      { id: 'blood-type-selector', type: 'button', label: 'Groupe sanguin', actionable: true },
+      { id: 'bd-tabs', type: 'tab', label: 'Segments Demandes / Profil / Compatibilité', actionable: true },
+      { id: 'bd-requests-list', type: 'card', label: 'Cartes demandes (répondre)', actionable: true },
     ],
-    guide: 'Don de sang. Faites un don, cherchez du sang compatible, consultez l\'historique de vos dons.',
+    guide: '**BloodDonationScreen** : espace donneur + mur des **demandes actives**. Trois onglets (demandes, profil groupe sanguin, compatibilité). Les boutons « Faire une demande de don / Devenir donneur » sur **BanqueSangDetails** ouvrent souvent **BloodDonation** (pas directement BloodDonationRequest). Pour **publier** une demande structurée : **BloodDonationRequest**.',
   },
 
   BloodDonationRequest: {
@@ -592,14 +789,121 @@ const SCREEN_CONFIGS: Record<string, {
   AssuranceDashboard: {
     type: 'dashboard',
     actions: [
-      { id: 'my-policies', label: 'Mes Polices', icon: LUCIDE_ICONS.shield, route: 'MesPolicesAssurance', category: 'navigation', description: 'Consulter mes polices' },
-      { id: 'declare-claim', label: 'Déclarer Sinistre', icon: LUCIDE_ICONS.alert, route: 'DeclarationSinistre', category: 'action', description: 'Déclarer un sinistre' },
-      { id: 'get-quote', label: 'Demander Devis', icon: LUCIDE_ICONS.file, route: 'InsuranceQuoteRequest', category: 'action', description: 'Obtenir un devis d\'assurance' },
+      { id: 'tab-overview', label: 'Onglet Accueil', icon: LUCIDE_ICONS.list, category: 'action', description: 'Vue d’ensemble : stats (produits actifs, polices actives, sinistres ouverts, souscriptions), bannières renouvellement / sinistres, actions rapides, derniers sinistres et polices' },
+      { id: 'tab-products', label: 'Onglet Produits', icon: LUCIDE_ICONS.package, category: 'action', description: 'Liste des produits assurance du partenaire ; bascule actif/inactif (toggle) ; bouton ajouter → modal création' },
+      { id: 'tab-policies', label: 'Onglet Polices', icon: LUCIDE_ICONS.file, category: 'action', description: 'Polices émises ; si statut **active** : Suspendre ou Résilier (confirmation) — pas de formulaire d’émission sur cet écran (quick action bascule seulement vers cet onglet)' },
+      { id: 'tab-claims', label: 'Onglet Sinistres', icon: LUCIDE_ICONS.alert, category: 'action', description: 'Traitement sinistres : Analyse IA ; Instruire ; Approuver / Refuser ; Indemniser (montant = montant réclamé si présent)' },
+      { id: 'tab-analytics', label: 'Onglet Stats', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Synthèse produits, polices (CA total si renvoyé), sinistres (totaux réclamé/indemnisé si renvoyés)' },
+      { id: 'new-product-modal', label: 'Nouveau produit (modal)', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Modal : nom obligatoire ; type / sous-catégorie ; compagnie, description, primes, couverture max, franchise, âges, durée mois — POST création avec service_id des params route' },
+      { id: 'toggle-product', label: 'Activer / désactiver produit', icon: LUCIDE_ICONS.check, category: 'action', description: 'POST /api/assurance/products/{id}/toggle' },
+      { id: 'search-market', label: 'Recherche marché assurance', icon: LUCIDE_ICONS.search, route: 'InsuranceServicesSearch', category: 'search', description: 'Icône loupe en-tête — catalogue / recherche utilisateur (pas la gestion partenaire)' },
+      { id: 'ai-quote', label: 'Devis IA', icon: LUCIDE_ICONS.activity, route: 'InsuranceQuoteRequest', category: 'navigation', description: 'Action rapide — écran devis / IA assurance côté flux utilisateur' },
+      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS['credit-card'], route: 'WalletFinancial', category: 'navigation', description: 'Revenus et solde Yukpo' },
+      { id: 'logout', label: 'Déconnexion', icon: LUCIDE_ICONS.x, category: 'action', description: 'Action rapide — confirmation puis logout (AuthContext)' },
+      { id: 'client-polices', label: 'Mes polices (client)', icon: LUCIDE_ICONS.shield, route: 'MesPolicesAssurance', category: 'navigation', description: 'Hors de cet écran — réservé aux assurés ; ne pas présenter comme action principale du dashboard partenaire' },
+      { id: 'client-declare-sinistre', label: 'Déclarer sinistre (client)', icon: LUCIDE_ICONS.alert, route: 'DeclarationSinistre', category: 'navigation', description: 'Hors dashboard partenaire — écran client' },
     ],
     elements: [
-      { id: 'policies-overview', type: 'card', label: 'Mes polices', actionable: true },
+      { id: 'tabs', type: 'tab', label: 'Onglets : Accueil, Produits, Polices, Sinistres, Stats', actionable: true },
+      { id: 'stats-overview', type: 'card', label: 'Grille statistiques (vue Accueil)', actionable: false },
+      { id: 'banners', type: 'card', label: 'Bannières polices à renouveler / sinistres en attente', actionable: true },
+      { id: 'quick-actions', type: 'button', label: 'Actions rapides (nouveau produit, polices, sinistres, Devis IA, portefeuille, déconnexion)', actionable: true },
+      { id: 'product-modal', type: 'modal', label: 'Modal création produit', actionable: true },
+      { id: 'pull-refresh', type: 'button', label: 'Tirer pour rafraîchir (tous onglets scroll)', actionable: true },
     ],
-    guide: 'Assurance. Gérez vos polices, déclarez un sinistre, obtenez des devis. Suivez l\'état de vos dossiers.',
+    guide: '**AssuranceDashboardScreen** : tableau de bord **partenaire / assureur** Yukpo. Chargement au focus : **listProducts**, **listPolicies**, **listClaims**, **getDashboardStats** (échecs partiels tolérés). Cinq onglets : Accueil (stats + bannières + actions rapides + aperçus), Produits (liste + toggle actif + modal création), Polices (liste + suspendre/résilier si active), Sinistres (workflow + **aiAnalyzeClaim**), Stats (agrégats dashboard). L’icône recherche en-tête ouvre **InsuranceServicesSearch** (marché), pas le CRUD partenaire. Les écrans **MesPolicesAssurance** / **DeclarationSinistre** sont des parcours **client**, pas ce dashboard.',
+  },
+
+  InsuranceServicesSearch: {
+    type: 'search',
+    actions: [
+      { id: 'quick-type', label: 'Recherches rapides', icon: 'zap', category: 'action', description: 'Cartes Auto / Santé / Habitation — pré-remplissent le type (chips)' },
+      { id: 'chips-type', label: 'Type d’assurance (chips)', icon: LUCIDE_ICONS.shield, category: 'action', description: 'Liste fixe : Auto, Santé, Habitation, Vie, Voyage, Professionnelle, Responsabilité civile' },
+      { id: 'chips-compagnie', label: 'Compagnie', icon: LUCIDE_ICONS.building2, category: 'action', description: 'Saisie libre + chips (AXA, Allianz, Sanlam, …)' },
+      { id: 'loc-ville', label: 'Ville', icon: LUCIDE_ICONS.location, category: 'action', description: '**LocationSelector** (scope all, enrichWithBackend)' },
+      { id: 'loc-quartier', label: 'Quartier', icon: LUCIDE_ICONS.location, category: 'action', description: '**LocationSelector** optionnel avec **cityContext** depuis la ville' },
+      { id: 'gps-modal', label: 'GPS', icon: LUCIDE_ICONS.location, category: 'action', description: '**ModernGPSModal** ; sinon remplissage auto depuis **LocationContext** au montage' },
+      { id: 'rayon', label: 'Rayon (km)', icon: LUCIDE_ICONS.activity, category: 'action', description: '1–50 km si coordonnées GPS valides' },
+      { id: 'prix-range', label: 'Prime annuelle min/max', icon: LUCIDE_ICONS.dollar, category: 'action', description: 'Champs numériques optionnels → filtres API' },
+      { id: 'run-search', label: 'Rechercher', icon: LUCIDE_ICONS.search, route: 'InsuranceServicesResults', category: 'search', description: 'Navigation **InsuranceServicesResults** avec `{ filters }` construit (type, compagnie, ville, quartier, gps, rayon, prix) — **sans** appel API sur cet écran' },
+      { id: 'request-quote', label: 'Demander un devis', icon: LUCIDE_ICONS.file, route: 'InsuranceQuoteRequest', category: 'navigation', description: '**InsuranceQuoteRequest** avec `typeAssurance`, `compagnie`, `ville`, `quartier` — ne lance pas la recherche catalogue' },
+    ],
+    elements: [
+      { id: 'header', type: 'card', label: 'En-tête gradient + retour', actionable: true },
+      { id: 'form-card', type: 'input', label: 'Formulaire filtres + deux boutons (Rechercher / Demander un devis)', actionable: true },
+    ],
+    guide: '**InsuranceServicesSearchScreen** : entrée **utilisateur** assurance (grille accueil → cette route). Construit un objet filtres puis soit **navigate InsuranceServicesResults** (recherche), soit **navigate InsuranceQuoteRequest** (devis IA). Pas d’appel **searchInsurance** ici.',
+  },
+
+  InsuranceServicesResults: {
+    type: 'list',
+    actions: [
+      { id: 'refresh', label: 'Tirer pour rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Relance **GET /api/assurance/search** avec les mêmes filtres (params route)' },
+      { id: 'open-service', label: 'Ouvrir la fiche', icon: LUCIDE_ICONS.info, route: 'ServiceDetail', category: 'navigation', description: 'Carte → **ServiceDetail** avec `serviceId: item.id` (id résultat recherche)' },
+      { id: 'back-edit', label: 'Modifier la recherche', icon: LUCIDE_ICONS.back, category: 'navigation', description: 'État vide : retour arrière pour changer critères' },
+    ],
+    elements: [
+      { id: 'flatlist', type: 'card', label: 'Liste résultats (titre, type, adresse, distance km, prix ou « Sur devis »)', actionable: true },
+    ],
+    guide: '**InsuranceServicesResultsScreen** : au montage, **assuranceService.searchInsurance** → **GET /api/assurance/search** avec filtres issus de `route.params.filters`. Mapping champs backend (`titre`, `ville`, `telephone`, `prix`, `distance_km`, …). Pas de comparaison IA ni **compareProducts** sur cet écran.',
+  },
+
+  InsuranceQuoteRequest: {
+    type: 'form',
+    actions: [
+      { id: 'pick-type', label: 'Type d’assurance *', icon: LUCIDE_ICONS.shield, category: 'action', description: 'Obligatoire pour générer ; même liste de types que la recherche' },
+      { id: 'fill-profile', label: 'Profil', icon: LUCIDE_ICONS.profile, category: 'action', description: 'Âge, nb personnes, profession, ville (texte), situation familiale (chips), budget mensuel — tous optionnels sauf type' },
+      { id: 'auto-fields', label: 'Champs Auto', icon: LUCIDE_ICONS.car, category: 'action', description: 'Si type = Auto : type véhicule, valeur' },
+      { id: 'home-fields', label: 'Champs Habitation', icon: LUCIDE_ICONS.home, category: 'action', description: 'Si type = Habitation : type bien, valeur' },
+      { id: 'generate', label: 'Générer devis IA', icon: LUCIDE_ICONS.activity, category: 'action', description: '**POST /api/assurance/ai/quote** via **generateQuote(type, profile)**' },
+      { id: 'new-quote', label: 'Nouveau devis', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Après résultat : `setShowResults(false)` pour revenir au formulaire' },
+    ],
+    elements: [
+      { id: 'results-view', type: 'card', label: 'Vue résultat : primes, score adéquation (%), couvertures, franchises, avantages, justification', actionable: false },
+    ],
+    guide: '**InsuranceQuoteRequestScreen** : devis **IA** uniquement (**generateQuote**). Paramètres route optionnels `typeAssurance`, `compagnie`, `ville`, `quartier` depuis **InsuranceServicesSearch** — le formulaire n’exploite pas `compagnie`/`quartier` dans le state initial (seulement type et ville si passés). Pas de **compareProducts** / **getRecommendations** dans l’UI.',
+  },
+
+  MesPolicesAssurance: {
+    type: 'list',
+    actions: [
+      { id: 'filter-chips', label: 'Filtres', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Toutes, Actives, Suspendues, Expirées — filtre client sur la liste chargée' },
+      { id: 'refresh', label: 'Rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Pull-to-refresh → **getClientPolicies**' },
+      { id: 'declare-claim', label: 'Déclarer un sinistre', icon: LUCIDE_ICONS.alert, route: 'DeclarationSinistre', category: 'navigation', description: 'Uniquement si statut **active** — passe `{ policy }`' },
+      { id: 'track-claims', label: 'Mes sinistres', icon: LUCIDE_ICONS.eye, route: 'SuiviSinistre', category: 'navigation', description: 'Si **active** — **SuiviSinistre** avec `{ policy_id }`' },
+      { id: 'find-insurance', label: 'Rechercher une assurance', icon: LUCIDE_ICONS.search, route: 'InsuranceServicesSearch', category: 'search', description: 'État vide : bouton vers le formulaire de recherche marché' },
+    ],
+    elements: [
+      { id: 'expiry-banner', type: 'card', label: 'Bannière si expiration dans 30 jours', actionable: false },
+      { id: 'policy-cards', type: 'card', label: 'Cartes police : numéro, produit, dates, prime, couverture max, renouvellement auto', actionable: true },
+    ],
+    guide: '**MesPolicesAssuranceScreen** : **GET /api/assurance/policies/client** (**getClientPolicies**). Compteur polices actives ; alerte **30 jours** avant expiration. Actions réservées aux polices **active**. Ce n’est **pas** le dashboard partenaire (**AssuranceDashboard**).',
+  },
+
+  DeclarationSinistre: {
+    type: 'form',
+    actions: [
+      { id: 'step1', label: 'Étape 1', icon: LUCIDE_ICONS['list-checks'], category: 'action', description: 'Type de sinistre (grille) + date AAAA-MM-JJ * + lieu optionnel' },
+      { id: 'step2', label: 'Étape 2', icon: LUCIDE_ICONS.file, category: 'action', description: 'Description * (min 20 caractères), circonstances, témoins' },
+      { id: 'step3', label: 'Étape 3', icon: LUCIDE_ICONS.dollar, category: 'action', description: 'Dommages estimés, montant réclamé, récapitulatif' },
+      { id: 'submit', label: 'Soumettre', icon: LUCIDE_ICONS.check, category: 'action', description: '**POST /api/assurance/claims** (**createClaim**) ; exige `route.params.policy` sinon erreur' },
+    ],
+    elements: [
+      { id: 'policy-context', type: 'card', label: 'Police préchargée depuis Mes polices', actionable: false },
+    ],
+    guide: '**DeclarationSinistreScreen** : déclaration **assuré**. **policy** obligatoire via navigation depuis **MesPolicesAssurance** (police active). Workflow 3 étapes puis **createClaim** ; succès → alerte avec **numero_sinistre**.',
+  },
+
+  SuiviSinistre: {
+    type: 'list',
+    actions: [
+      { id: 'refresh', label: 'Rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Pull-to-refresh → **getClientClaims**' },
+      { id: 'expand-card', label: 'Détail sinistre', icon: LUCIDE_ICONS.eye, category: 'action', description: 'Appui carte pour replier/déplier (état local)' },
+    ],
+    elements: [
+      { id: 'timeline', type: 'card', label: 'Progression statuts (lecture seule)', actionable: false },
+    ],
+    guide: '**SuiviSinistreScreen** : **GET /api/assurance/claims/client** ; si `policy_id` en params, filtre **côté app**. Affichage des dossiers et statuts — **aucune** action métier (pas d’approbation / indemnisation : côté partenaire).',
   },
 
   // === AUTOMOBILE ===
@@ -618,26 +922,64 @@ const SCREEN_CONFIGS: Record<string, {
   OffresEmploiHome: {
     type: 'specialized',
     actions: [
-      { id: 'search-jobs', label: 'Chercher Emploi', icon: LUCIDE_ICONS.search, route: 'OffreSearch', category: 'search', description: 'Rechercher des offres d\'emploi' },
-      { id: 'my-offers', label: 'Mes Offres', icon: LUCIDE_ICONS.briefcase, route: 'MesOffres', category: 'navigation', description: 'Voir mes offres publiées' },
-      { id: 'cv-analysis', label: 'Analyse CV', icon: LUCIDE_ICONS.file, route: 'AICVAnalysis', category: 'help', description: 'Analyser un CV avec l\'IA' },
-      { id: 'salary-predict', label: 'Prédiction Salaire', icon: LUCIDE_ICONS.dollar, route: 'AISalaryPrediction', category: 'help', description: 'Prédire un salaire avec l\'IA' },
-      { id: 'suggest-formations', label: 'Formations IA', icon: LUCIDE_ICONS.graduation, route: 'AISuggestFormations', category: 'help', description: 'Suggestions de formations par IA' },
-      { id: 'alerts', label: 'Alertes Emploi', icon: LUCIDE_ICONS.bell, route: 'AlertesEmploi', category: 'action', description: 'Configurer des alertes emploi' },
+      { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.back, category: 'navigation', description: 'Flèche en-tête' },
+      { id: 'create-offre-header', label: 'Publier (+)', icon: LUCIDE_ICONS.add, route: 'CreateOffre', category: 'creation', description: 'Création d’offre (écran CreateOffreScreen) — distinct du formulaire partenaire OffresEmploiForm' },
+      { id: 'run-search', label: 'Lancer recherche', icon: LUCIDE_ICONS.search, category: 'search', description: 'Barre titre/secteur → onSubmit / recherche : offreEmploiService.searchOffres (GET /api/offres-emploi/search), pas navigation vers OffreSearch' },
+      { id: 'profil-cv', label: 'Mon CV / Profil', icon: LUCIDE_ICONS.profile, route: 'ProfilCandidat', category: 'navigation', description: 'Raccourci en-tête' },
+      { id: 'cv-analysis', label: 'Analyse CV', icon: LUCIDE_ICONS.file, route: 'AICVAnalysis', category: 'help', description: 'Navigation vers écran dédié (pas de modal IA ouverte depuis ce fichier)' },
+      { id: 'salary-predict', label: 'Salaire IA', icon: LUCIDE_ICONS.dollar, route: 'AISalaryPrediction', category: 'help', description: 'Écran prédiction salaire' },
+      { id: 'suggest-formations', label: 'Formations IA', icon: LUCIDE_ICONS.graduation, route: 'AISuggestFormations', category: 'help', description: 'Suggestions formations' },
+      { id: 'alerts', label: 'Alertes', icon: LUCIDE_ICONS.bell, route: 'AlertesEmploi', category: 'action', description: 'Alertes emploi' },
+      { id: 'matching-suggestions', label: 'Offres recommandées', icon: LUCIDE_ICONS.star, category: 'search', description: 'getMatchingOffres(60,10) → OffreList { offres, title } ou alerte profil' },
+      { id: 'open-details', label: 'Détails / Postuler', icon: LUCIDE_ICONS.briefcase, route: 'OffreDetails', category: 'navigation', description: 'Carte offre → OffreDetails { offreId }' },
     ],
     elements: [
-      { id: 'job-search', type: 'input', label: 'Recherche emploi', actionable: true },
+      { id: 'job-search', type: 'input', label: 'Champ recherche (query API)', actionable: true },
+      { id: 'contract-chips', type: 'button', label: 'Filtres contrat (client-side sur liste chargée)', actionable: true },
+      { id: 'bookmark-local', type: 'button', label: 'Sauvegarder (état local Set, session)', actionable: true },
+      { id: 'estimate-inline', type: 'button', label: 'Estimer salaire carte (useAIWithFallback.predictSalary)', actionable: true },
     ],
-    guide: 'Offres d\'emploi. Recherchez des offres, analysez votre CV avec l\'IA, prédisez votre salaire, recevez des suggestions de formations.',
+    guide: 'OffresEmploiHomeScreen : liste via searchOffres (page 1, limit 20, GPS + rayon_km 50 si dispo, query optionnelle). Filtres CDI/CDD/Stage/Freelance = filtrage client. Signets = mémoire locale. Bouton + → CreateOffre. Raccourcis IA = navigation AICVAnalysis / AISalaryPrediction / AISuggestFormations. Recommandations = matching/offres → OffreList. Distinguer CreateOffre et OffresEmploiForm (hub).',
   },
   OffresEmploiHub: {
     type: 'dashboard',
     actions: [
-      { id: 'create-offer', label: 'Publier Offre', icon: LUCIDE_ICONS.add, route: 'CreateOffre', category: 'creation', description: 'Publier une offre d\'emploi' },
-      { id: 'manage-candidatures', label: 'Candidatures', icon: LUCIDE_ICONS.users, category: 'action', description: 'Gérer les candidatures' },
+      { id: 'search-bar', label: 'Barre recherche', icon: LUCIDE_ICONS.search, route: 'OffreSearch', category: 'search', description: 'Ouvre OffreSearch (filtres avancés)' },
+      { id: 'fab-create', label: 'FAB +', icon: LUCIDE_ICONS.add, route: 'OffresEmploiForm', category: 'creation', description: 'Toujours OffresEmploiForm (formulaire partenaire / service)' },
+      { id: 'dashboard-api', label: 'Stats', icon: LUCIDE_ICONS.activity, category: 'action', description: 'dashboard/candidat ou dashboard/employeur selon détection' },
+      { id: 'mes-offres', label: 'Mes offres / Candidatures', icon: LUCIDE_ICONS.briefcase, route: 'MesOffres', category: 'navigation', description: 'Plusieurs raccourcis hub pointent vers MesOffres' },
+      { id: 'explorer-home', label: 'Explorer offres', icon: LUCIDE_ICONS.search, route: 'OffresEmploiHome', category: 'navigation', description: 'Liste recherche moderne' },
     ],
-    elements: [],
-    guide: 'Hub employeur. Publiez des offres d\'emploi et gérez les candidatures reçues.',
+    elements: [
+      { id: 'stats-grid', type: 'card', label: 'Grille stats (offres, candidatures, attente, matchings)', actionable: false },
+      { id: 'ai-tools-row', type: 'card', label: 'Outils IA (AICVAnalysis, AISalaryPrediction, AISuggestFormations)', actionable: true },
+    ],
+    guide: 'OffresEmploiHubScreen : employeur si partenaire (partner_type offre_emploi / offreemploi / recruteur / employeur, normalisé) ou si offres déjà publiées détectées via API. Stats GET dashboard employeur|candidat. FAB → OffresEmploiForm. Carte « Publier » candidat → OffresEmploiForm. Quick actions employeur : nouvelle offre OffresEmploiForm ; MesOffres réutilisé pour candidatures/matching dans le code.',
+  },
+
+  CreateOffre: {
+    type: 'form',
+    actions: [
+      { id: 'ai-fill', label: 'Remplir par IA', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Modal : POST /api/yukpo type creation_offre_emploi + texte' },
+      { id: 'gps-current', label: 'Position GPS', icon: LUCIDE_ICONS.location, category: 'action', description: 'Remplit champ gps depuis LocationContext' },
+      { id: 'submit', label: 'Publier', icon: LUCIDE_ICONS.check, category: 'creation', description: 'offreEmploiService.createOffre → POST /api/offres-emploi' },
+    ],
+    elements: [
+      { id: 'contract-skills', type: 'input', label: 'Contrat, secteur, compétences, tags, salaire, télétravail…', actionable: true },
+    ],
+    guide: 'CreateOffreScreen : formulaire texte classique + compétences/tags. IA = orchestration Yukpo (creation_offre_emploi). Connexion requise. Différent d’OffresEmploiForm.',
+  },
+
+  OffreSearch: {
+    type: 'search',
+    actions: [
+      { id: 'run-filters', label: 'Rechercher', icon: LUCIDE_ICONS.search, category: 'search', description: 'Navigate OffreList avec { filters } (secteur, types_contrat[], salaire_min, lieu, remote)' },
+    ],
+    elements: [
+      { id: 'secteur-chips', type: 'button', label: 'Secteur (grille)', actionable: true },
+      { id: 'contrat-chips', type: 'button', label: 'Types de contrat multi-sélection', actionable: true },
+    ],
+    guide: 'OffreSearchScreen : pas de carte GPS ici ; filtres → OffreList puis searchOffres avec params.',
   },
 
   // === ORIENTATION SCOLAIRE ===
@@ -657,78 +999,103 @@ const SCREEN_CONFIGS: Record<string, {
   },
 
   // === LIVRES SCOLAIRES / BOURSE DU LIVRE ===
+  // LivreScolaireHome et BourseLivre → même composant LivreScolaireHomeScreen (AppNavigator.optimized).
   LivreScolaireHome: {
     type: 'specialized',
     actions: [
-      { id: 'search-book', label: 'Chercher Livre', icon: LUCIDE_ICONS.search, route: 'LivreScolaireSearch', category: 'search', description: 'Rechercher un livre scolaire' },
-      { id: 'sell-book', label: 'Vendre Livre', icon: LUCIDE_ICONS.add, route: 'LivreScolaireForm', category: 'creation', description: 'Mettre en vente un livre' },
-      { id: 'my-books', label: 'Mes Livres', icon: LUCIDE_ICONS.book, route: 'MesLivres', category: 'navigation', description: 'Mes livres en vente' },
-      { id: 'book-bourse', label: 'Bourse du Livre', icon: LUCIDE_ICONS.dollar, route: 'BourseLivre', category: 'navigation', description: 'Bourse d\'échange de livres' },
+      { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.arrowLeft, category: 'navigation', description: 'Flèche en-tête — revenir à l’écran précédent' },
+      { id: 'libraire-header', label: 'Ma librairie / Devenir libraire', icon: LUCIDE_ICONS.store, category: 'navigation', description: 'Bouton en-tête à droite : partenaire librairie → LivreScolaireForm ; sinon → LibrairieRegistration' },
+      { id: 'sell-troquer', label: 'Mettez vos livres en circulation', icon: LUCIDE_ICONS.camera, route: 'BookUploadV2', category: 'creation', description: 'Carte verte : photo recto/verso, session V2, vente / troc / don à l’étape suivante' },
+      { id: 'buy-programme', label: 'Trouvez votre liste scolaire', icon: LUCIDE_ICONS['list-checks'], route: 'ProgrammeBesoinsSelector', category: 'navigation', description: 'Carte bleue : classe + manuels au programme officiel, neuf vs occasion' },
+      { id: 'track-packages', label: 'Suivre mes paquets', icon: LUCIDE_ICONS.package, route: 'BookPackages', category: 'navigation', description: 'Livraisons / paquets livres (coursier, QR)' },
+      { id: 'track-trocs', label: 'Suivre mes trocs', icon: LUCIDE_ICONS.refresh, route: 'MesTrocs', category: 'navigation', description: 'Échanges en cours' },
+      { id: 'mes-besoins', label: 'Mes besoins', icon: LUCIDE_ICONS['list-checks'], route: 'MesBesoinsLivres', category: 'navigation', description: 'Demandes de dons / besoins actifs' },
+      { id: 'qr-scan', label: 'Scanner QR', icon: LUCIDE_ICONS.camera, route: 'QRCodeShare', category: 'action', description: 'Icône QR du dashboard — mode scan pour valider arrivée coursier' },
+      { id: 'refresh-ops', label: 'Rafraîchir le tableau de bord', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Recharge compteurs (achats, paquets, trocs, besoins)' },
+      { id: 'open-book-detail', label: 'Ouvrir fiche livre', icon: LUCIDE_ICONS.book, route: 'LivreScolaireDetails', category: 'navigation', description: 'Appui sur une carte de la liste → détails + troc' },
     ],
     elements: [
-      { id: 'book-search', type: 'input', label: 'Recherche livre', actionable: true },
+      { id: 'header-gradient', type: 'card', label: 'En-tête Bourse du Livre (dégradé orange)', actionable: false },
+      { id: 'ops-dashboard', type: 'card', label: 'Dashboard des opérations (compteurs + QR + refresh)', actionable: true },
+      { id: 'nearby-list', type: 'card', label: 'Liste livres à proximité (GPS ~20 km, pull to refresh)', actionable: true },
     ],
-    guide: 'Livres scolaires. Achetez, vendez ou échangez des livres. Accédez à la bourse du livre pour des échanges avantageux.',
+    guide: 'Accueil Bourse du Livre (V2). Deux entrées principales : **Mettez vos livres en circulation** → BookUploadV2 (photos, analyse IA, vente/troc/don) ; **Trouvez votre liste scolaire** → ProgrammeBesoinsSelector. Le dashboard résume achats en cours, paquets à recevoir/envoyer, trocs en cours, besoins actifs ; raccourcis paquets / trocs / besoins ; astuce QR coursier. La liste charge les annonces proches via la position.',
   },
 
   // === BUS / TICKETS DE VOYAGE ===
   TicketVoyageHome: {
     type: 'specialized',
     actions: [
-      { id: 'search-ticket', label: 'Chercher Billet', icon: LUCIDE_ICONS.search, route: 'BusTicketSearch', category: 'search', description: 'Rechercher un billet de bus' },
-      { id: 'my-tickets', label: 'Mes Billets', icon: LUCIDE_ICONS.clipboard, route: 'MyBusTickets', category: 'navigation', description: 'Mes billets de voyage' },
-      { id: 'my-trips', label: 'Mes Voyages', icon: LUCIDE_ICONS.map, route: 'MyTrips', category: 'navigation', description: 'Historique de voyages' },
+      { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.back, category: 'navigation', description: 'Flèche en-tête' },
+      { id: 'my-tickets-header', label: 'Mes billets', icon: LUCIDE_ICONS.clipboard, route: 'MyBusTickets', category: 'navigation', description: 'Icône ticket en-tête' },
+      { id: 'filters-panel', label: 'Filtres / tri', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Sliders + badge filtres actifs' },
+      { id: 'search-run', label: 'Lancer recherche', icon: LUCIDE_ICONS.search, category: 'search', description: 'busTicketService.searchBusTickets après départ+arrivée' },
+      { id: 'open-details', label: 'Détails offre', icon: LUCIDE_ICONS.bus, route: 'BusTicketDetails', category: 'navigation', description: 'Tap carte → product_id / agency' },
+      { id: 'book-seat', label: 'Réserver', icon: LUCIDE_ICONS['credit-card'], route: 'BusTicketBooking', category: 'action', description: 'Si places disponibles → BusTicketBooking' },
     ],
     elements: [
-      { id: 'ticket-search', type: 'input', label: 'Départ → Arrivée', actionable: true },
+      { id: 'location-departure', type: 'input', label: 'LocationSelector départ', actionable: true },
+      { id: 'location-arrival', type: 'input', label: 'LocationSelector arrivée', actionable: true },
+      { id: 'sort-modal', type: 'modal', label: 'Tri (prix, heure, pertinence…)', actionable: true },
+      { id: 'quick-filters', type: 'button', label: 'Puces Aujourd’hui / Demain / Week-end / Proche', actionable: true },
     ],
-    guide: 'Tickets de voyage. Réservez des billets de bus, consultez vos billets et l\'historique de voyages.',
+    guide: 'TicketVoyageHomeScreen — hub moderne bus. LocationSelector départ/arrivée, date, aller-retour, filtres, tri client. Pas de chargement sans critères. Données via busTicketService.searchBusTickets. Autre parcours recherche : écran BusTicketSearch (CityAutocomplete + GET /api/bus-tickets/search).',
   },
 
   // === SUPERMARCHÉ / RESTAURANT ===
   SupermarketHome: {
     type: 'specialized',
     actions: [
-      { id: 'select-supermarket', label: 'Choisir Magasin', icon: LUCIDE_ICONS.building2, category: 'navigation', description: 'Sélectionner un supermarché parmi ceux à proximité (onglet Magasins)' },
-      { id: 'browse-products', label: 'Parcourir Produits', icon: LUCIDE_ICONS['shopping-cart'], category: 'search', description: 'Parcourir les produits du supermarché sélectionné (onglet Produits). Filtrer par catégorie et promotions.' },
-      { id: 'compare-prices', label: 'Comparer Prix', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Comparer le prix d\'un produit entre tous les supermarchés à proximité avec IA similarity (onglet Comparer). Trouver le meilleur prix.' },
-      { id: 'view-promotions', label: 'Promotions', icon: LUCIDE_ICONS.tag, category: 'navigation', description: 'Voir les promotions actives du supermarché sélectionné ou de tous les supermarchés à proximité (onglet Promos)' },
-      { id: 'menu-planning', label: 'Menu Semaine', icon: LUCIDE_ICONS.calendar, route: 'MenuPlanningHub', category: 'navigation', description: 'Planifier les repas de la semaine' },
-      { id: 'shopping-list', label: 'Liste de Courses', icon: LUCIDE_ICONS.list, route: 'ShoppingList', category: 'action', description: 'Ma liste de courses' },
-      { id: 'order-delivery', label: 'Commander Livraison', icon: LUCIDE_ICONS.truck, route: 'DeliveryShoppingFlowNew', category: 'action', description: 'Commander une livraison de courses — un coursier fait vos courses et livre chez vous' },
+      { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.back, category: 'navigation', description: 'Depuis Magasins sans magasin → goBack ; sinon retour liste magasins + désélection' },
+      { id: 'select-supermarket', label: 'Choisir Magasin', icon: LUCIDE_ICONS.building2, category: 'navigation', description: 'Liste via supermarketService.listSupermarkets (GET /api/services/nearby + filtre client) — GPS requis' },
+      { id: 'change-supermarket', label: 'Changer de magasin', icon: LUCIDE_ICONS.repeat, category: 'navigation', description: 'Icône repeat en-tête → onglet Magasins' },
+      { id: 'browse-products', label: 'Parcourir Produits', icon: LUCIDE_ICONS['shopping-cart'], category: 'search', description: 'Après sélection : GET produits + catégories ; recherche debouncée ; chips catégorie + toggle promos uniquement' },
+      { id: 'compare-prices', label: 'Comparer Prix', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Nom du produit (texte) → POST /api/supermarkets/compare-prices (compareProductPrices) — pas de scan code-barres sur cet écran' },
+      { id: 'view-promotions', label: 'Promotions', icon: LUCIDE_ICONS.tag, category: 'navigation', description: 'Magasin choisi : promos du magasin ; sinon à proximité (nearby) si GPS' },
     ],
     elements: [
-      { id: 'tab-magasins', type: 'tab', label: 'Magasins (liste des supermarchés à proximité)', actionable: true },
-      { id: 'tab-produits', type: 'tab', label: 'Produits (catalogue du supermarché sélectionné)', actionable: true },
-      { id: 'tab-comparer', type: 'tab', label: 'Comparer (prix entre supermarchés)', actionable: true },
-      { id: 'tab-promos', type: 'tab', label: 'Promos (promotions actives)', actionable: true },
-      { id: 'search-bar', type: 'input', label: 'Barre de recherche (supermarché, produit ou comparaison)', actionable: true },
-      { id: 'category-filter', type: 'button', label: 'Filtres catégorie produits', actionable: true },
+      { id: 'tab-magasins', type: 'tab', label: 'Magasins (seul onglet visible tant qu’aucun magasin n’est sélectionné)', actionable: true },
+      { id: 'tab-produits', type: 'tab', label: 'Produits (après sélection magasin)', actionable: true },
+      { id: 'tab-comparer', type: 'tab', label: 'Comparer (après sélection — compare tout de même par nom via API)', actionable: true },
+      { id: 'tab-promos', type: 'tab', label: 'Promos (après sélection magasin)', actionable: true },
+      { id: 'search-bar', type: 'input', label: 'Recherche contextuelle (magasin / produit / nom à comparer selon l’onglet)', actionable: true },
+      { id: 'category-filter', type: 'button', label: 'Chips catégorie + bascule « promotions uniquement » (mode Produits)', actionable: true },
     ],
-    guide: 'Supermarché. 4 onglets : Magasins (sélection par proximité GPS), Produits (catalogue avec filtres catégorie/promotions), Comparer (comparaison IA de prix entre supermarchés — code-barre + similarity trigram), Promos (promotions actives). Sélectionnez d\'abord un supermarché pour accéder aux produits, comparaison et promos. Vous pouvez aussi commander une livraison de courses ou planifier vos repas de la semaine.',
+    guide: 'SupermarketHomeScreen : flux Magasins → (optionnel) Produits / Comparer / Promos. Onglets Produits-Comparer-Promos n’apparaissent qu’après choix d’un supermarché. Chargement magasins = GPS obligatoire, listSupermarkets → /api/services/nearby. Produits = /api/supermarkets/:id/products + categories. Comparaison = nom produit, compareProductPrices (POST compare-prices), pas de trigram/code-barre côté UI. Promos = magasin sélectionné ou nearby. Pas de navigation in-screen vers MenuPlanningHub / liste courses / livraison — autres modules Yukpo.',
   },
 
   // === AGENCE DE VOYAGE ===
   AgenceVoyageForm: {
     type: 'dashboard',
     actions: [
-      { id: 'add-schedule', label: 'Ajouter Horaire', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Créer un nouvel horaire de départ (ville départ, ville arrivée, heures)' },
-      { id: 'manage-schedules', label: 'Horaires', icon: LUCIDE_ICONS.clock, category: 'action', description: 'Voir et gérer tous les horaires de départ de l\'agence' },
-      { id: 'bus-models', label: 'Modèles Bus', icon: LUCIDE_ICONS.truck, category: 'action', description: 'Configurer les modèles de bus (places, classe, équipements)' },
-      { id: 'sold-tickets', label: 'Tickets Vendus', icon: LUCIDE_ICONS['credit-card'], category: 'action', description: 'Voir les tickets vendus, passagers, embarquement' },
-      { id: 'scan-qr', label: 'Scanner QR', icon: LUCIDE_ICONS.camera, route: 'BusTicketQRScanner', category: 'action', description: 'Scanner le QR code d\'un passager pour valider l\'embarquement' },
-      { id: 'edit-service', label: 'Mon Service', icon: LUCIDE_ICONS.settings, category: 'action', description: 'Modifier les infos de l\'agence (nom, adresse, GPS, services, destinations, compagnies, horaires d\'ouverture)' },
-      { id: 'team', label: 'Équipe', icon: LUCIDE_ICONS.users, category: 'action', description: 'Gérer l\'équipe et les collaborateurs de l\'agence' },
-      { id: 'ai-suggest', label: 'Conseils IA', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Obtenir des recommandations IA pour améliorer votre chiffre d\'affaires et la satisfaction client' },
+      { id: 'add-schedule', label: 'Ajouter Horaire', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Modal → POST ou PUT `/api/bus-tickets/agencies/schedules`' },
+      { id: 'manage-schedules', label: 'Horaires', icon: LUCIDE_ICONS.clock, category: 'action', description: 'Onglet Horaires : GET `/api/bus-tickets/agencies/schedules`, édition/suppression' },
+      { id: 'bus-models', label: 'Modèles Bus', icon: LUCIDE_ICONS.truck, category: 'action', description: 'Nouveau → POST `/api/bus-tickets/create-product` + `/api/bus-tickets/link` ; édition locale seulement après création' },
+      { id: 'sold-tickets', label: 'Tickets Vendus', icon: LUCIDE_ICONS['credit-card'], category: 'action', description: 'GET `/api/bus-tickets/agency/tickets` ; tap → boarding summary + passengers' },
+      { id: 'scan-qr', label: 'Scanner QR', icon: LUCIDE_ICONS.camera, route: 'BusTicketQRScanner', category: 'action', description: '**BusTicketQRScanner** : POST `/api/bus-tickets/validate` avec `qr_code_data` (params `product_id` du formulaire non lus par l’écran scanner actuel)' },
+      { id: 'edit-service', label: 'Mon Service', icon: LUCIDE_ICONS.settings, category: 'action', description: 'POST `/api/agences-voyage` ; **partenaire** : nom/adresse/tél/email masqués dans l’UI' },
+      { id: 'team', label: 'Équipe', icon: LUCIDE_ICONS.users, category: 'action', description: '**ServiceTeamManager** (`serviceId`)' },
+      { id: 'ai-suggest', label: 'Conseils IA', icon: LUCIDE_ICONS.activity, category: 'help', description: 'POST `/ai/chat` + `context: travel_agency_partner_dashboard`' },
     ],
     elements: [
       { id: 'stats-grid', type: 'card', label: 'Statistiques (destinations, compagnies, horaires, tickets)', actionable: false },
       { id: 'quick-actions', type: 'button', label: 'Actions rapides', actionable: true },
       { id: 'ai-card', type: 'card', label: 'Recommandations IA', actionable: true },
       { id: 'schedules-list', type: 'card', label: 'Horaires récents', actionable: true },
-      { id: 'tabs', type: 'tab', label: 'Onglets: Accueil / Service / Horaires / Bus / Tickets / Équipe', actionable: true },
+      { id: 'tabs', type: 'tab', label: 'Onglets: overview | service | schedules | bus | tickets | team', actionable: true },
     ],
-    guide: 'Dashboard partenaire Agence de Voyage. 6 onglets : Accueil (statistiques, actions rapides, IA conseils, horaires récents), Service (modifier nom/adresse/GPS/services/destinations/compagnies/horaires d\'ouverture), Horaires (créer/modifier/supprimer les horaires de départ), Bus (configurer les modèles de bus avec places et classes), Tickets (voir les ventes, passagers, embarquement, scanner QR), Équipe (gérer les collaborateurs). L\'IA peut analyser votre agence et donner des recommandations business.',
+    guide: '**AgenceVoyageFormScreen** partenaire : init **GET** `/api/partners/me` + **GET** `/api/agences-voyage` (première agence). Dashboard 6 onglets ; création fiche **POST** `/api/agences-voyage` + **servicesApi.createService** si besoin. Horaires bus-tickets agencies ; tickets **GET** `/api/bus-tickets/agency/tickets` ; embarquement **GET** boarding summary/passengers, **POST** `/api/bus-tickets/validate/manual`. Conseils IA = `/ai/chat`. Flux **client** recherche agence = **AgenceVoyageSearch**, pas cet écran.',
+  },
+  BusTicketQRScanner: {
+    type: 'specialized',
+    actions: [
+      { id: 'bts-scan', label: 'Scanner un QR', icon: LUCIDE_ICONS.camera, category: 'action', description: '**QRCodeScanner** → **POST** `/api/bus-tickets/validate` `{ qr_code_data }`' },
+      { id: 'bts-again', label: 'Scanner un autre', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Réinitialise le flux après résultat' },
+    ],
+    elements: [
+      { id: 'bts-header', type: 'card', label: 'Titre scanner + compteur tickets validés', actionable: false },
+    ],
+    guide: '**BusTicketQRScannerScreen** : validation **POST** `/api/bus-tickets/validate` avec **`qr_code_data`** seul (pas de `product_id` dans ce fichier). Ouvert depuis l’onglet Tickets du dashboard agence ; params passés par **AgenceVoyageForm** non consommés ici.',
   },
   AgenceVoyageSearch: {
     type: 'search',
@@ -766,16 +1133,19 @@ const SCREEN_CONFIGS: Record<string, {
   BusTicketSearch: {
     type: 'search',
     actions: [
-      { id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, category: 'search', description: 'Lancer la recherche de billets de bus' },
-      { id: 'my-tickets', label: 'Mes Billets', icon: LUCIDE_ICONS.clipboard, route: 'MyBusTickets', category: 'navigation', description: 'Voir mes billets existants' },
+      { id: 'quick-dates', label: 'Recherches rapides', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Aujourd’hui, demain, week-end — ajuste date départ' },
+      { id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, category: 'search', description: 'GET /api/bus-tickets/search + params (GPS optionnel, radius 100 km, filtres SearchFilters)' },
+      { id: 'filters', label: 'Filtres', icon: LUCIDE_ICONS.filter, category: 'action', description: 'SearchFiltersComponent (prix, créneau horaire, compagnie, tri)' },
+      { id: 'round-trip', label: 'Aller-retour', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Switch + date retour + heure retour optionnelle' },
+      { id: 'pick-result', label: 'Choisir trajet', icon: LUCIDE_ICONS.bus, route: 'BusTicketBooking', category: 'action', description: 'Carte résultat → BusTicketBooking (productId, ticketData, isRoundTrip, returnDate/Time)' },
     ],
     elements: [
-      { id: 'departure-input', type: 'input', label: 'Ville de départ', actionable: true },
-      { id: 'arrival-input', type: 'input', label: 'Ville d\'arrivée', actionable: true },
+      { id: 'departure-city', type: 'input', label: 'CityAutocomplete ville départ', actionable: true },
+      { id: 'arrival-city', type: 'input', label: 'CityAutocomplete ville arrivée', actionable: true },
       { id: 'date-picker', type: 'input', label: 'Date de départ', actionable: true },
-      { id: 'results-list', type: 'card', label: 'Résultats de recherche', actionable: true },
+      { id: 'results-list', type: 'card', label: 'Cartes trajets (prix, places, agence)', actionable: true },
     ],
-    guide: 'Recherche de billets de bus. Entrez ville de départ, ville d\'arrivée et date. Les résultats montrent les bus disponibles avec prix, places restantes et horaires. Sélectionnez un bus pour réserver.',
+    guide: 'BusTicketSearchScreen — formulaire scroll distinct du hub TicketVoyageHome. CityAutocomplete + apiGet /api/bus-tickets/search. Ne pas confondre avec LocationSelector du TicketVoyageHome.',
   },
   BusTicketBooking: {
     type: 'form',
@@ -924,22 +1294,30 @@ const SCREEN_CONFIGS: Record<string, {
   MesProduits: {
     type: 'dashboard',
     actions: [
-      { id: 'add-product', label: 'Ajouter Produit', icon: LUCIDE_ICONS.add, route: 'AjouterProduitSimple', category: 'creation', description: 'Ajouter un nouveau produit à votre catalogue' },
-      { id: 'edit-product', label: 'Modifier Produit', icon: LUCIDE_ICONS.edit, category: 'action', description: 'Modifier un produit existant (prix, stock, photos, description)' },
-      { id: 'delete-product', label: 'Supprimer', icon: LUCIDE_ICONS.delete, category: 'action', description: 'Supprimer un produit du catalogue' },
-      { id: 'toggle-status', label: 'Activer/Désactiver', icon: LUCIDE_ICONS.check, category: 'action', description: 'Activer ou désactiver la visibilité d\'un produit' },
-      { id: 'duplicate', label: 'Dupliquer', icon: LUCIDE_ICONS.clipboard, category: 'action', description: 'Dupliquer un produit pour en créer un similaire rapidement' },
-      { id: 'import-csv', label: 'Import CSV', icon: LUCIDE_ICONS.upload, category: 'action', description: 'Importer des produits en masse via fichier CSV/Excel' },
-      { id: 'orders', label: 'Commandes', icon: LUCIDE_ICONS.clipboard, route: 'ProviderOrderManagement', category: 'navigation', description: 'Voir les commandes reçues' },
-      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'ProductStats', category: 'navigation', description: 'Statistiques de vente' },
+      { id: 'back-services-tab', label: 'Retour hub Mes services', icon: LUCIDE_ICONS.briefcase, route: 'MesServices', category: 'navigation', description: 'MesServicesScreen (même UI que l’onglet Services)' },
+      { id: 'header-add', label: 'Ajouter (en-tête +)', icon: LUCIDE_ICONS.add, category: 'creation', description: 'handleCreateNewProduct → AjouterProduitSimple ou FormulaireYukpoIntelligent selon contexte' },
+      { id: 'header-stats', label: 'Statistiques globales', icon: LUCIDE_ICONS.activity, route: 'ProductStats', category: 'navigation', description: 'handleViewGlobalStats — stats catalogue' },
+      { id: 'header-menu', label: 'Menu ⋮', icon: LUCIDE_ICONS.menu, category: 'action', description: 'Modale : Créer une vidéo, Galerie médias, Mes Publicités, Flash Promo, Promo Black Friday, Configuration livraison, Gérer les membres, Mes vidéos, Éditer service' },
+      { id: 'card-modifier', label: 'Carte — Modifier', icon: LUCIDE_ICONS.edit, category: 'action', description: 'Édition rapide fiche produit' },
+      { id: 'card-pause', label: 'Carte — Activer / Mettre en pause', icon: LUCIDE_ICONS.check, category: 'action', description: 'handleToggleProduct' },
+      { id: 'card-share', label: 'Carte — Partager', icon: LUCIDE_ICONS.share, category: 'action', description: 'Partage externe (lien / message)' },
+      { id: 'card-internal-share', label: 'Carte — Envoyer (interne)', icon: LUCIDE_ICONS.message, category: 'action', description: 'InternalShareButton (partage interne Yukpo)' },
+      { id: 'card-more', label: 'Carte — Plus', icon: 'more-vertical', category: 'action', description: 'Feuille : Promouvoir, Statistiques produit, Dupliquer, Livraison (ProductDeliveryConfigModal), Supprimer' },
+      { id: 'filter-chips', label: 'Filtres Tous / Actifs / En pause', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Chips sous l’en-tête' },
+      { id: 'delivery-modal', label: 'Livraison par produit', icon: LUCIDE_ICONS.truck, category: 'action', description: 'ProductDeliveryConfigModal (serviceId + product_index)' },
+      { id: 'video-modal', label: 'Vidéo produit', icon: LUCIDE_ICONS.video, category: 'action', description: 'ProductVideoCreationModal + navigateToVideoWizard' },
+      { id: 'team-modal', label: 'Équipe / membres', icon: LUCIDE_ICONS.users, category: 'action', description: 'ServiceTeamManager en modal' },
+      { id: 'media-gallery', label: 'Galerie médias', icon: LUCIDE_ICONS.camera, category: 'action', description: 'ServiceMediaGallery (service sélectionné)' },
+      { id: 'dashboard-presta', label: 'Dashboard prestataire', icon: LUCIDE_ICONS.clipboard, route: 'DashboardPrestataire', category: 'navigation', description: 'Raccourci depuis flux existant' },
     ],
     elements: [
-      { id: 'product-list', type: 'card', label: 'Liste des produits', actionable: true },
-      { id: 'search-bar', type: 'input', label: 'Recherche de produits', actionable: true },
-      { id: 'filter-button', type: 'button', label: 'Filtres', icon: LUCIDE_ICONS.filter, actionable: true },
-      { id: 'view-toggle', type: 'button', label: 'Mode d\'affichage (grille/liste)', actionable: true },
+      { id: 'mp-toolbar', type: 'card', label: 'NavigatorToolbar « Produits » + compteur', actionable: false },
+      { id: 'mp-mini-stats', type: 'card', label: 'Rangée mini cartes stats (scroll horizontal)', actionable: true },
+      { id: 'mp-filter-chips', type: 'tab', label: 'Filtres tous / actif / inactif', actionable: true },
+      { id: 'mp-product-cards', type: 'card', label: 'Cartes produit NativeCard (actions primaires + secondaires)', actionable: true },
+      { id: 'mp-pull-refresh', type: 'button', label: 'Tirer pour rafraîchir', icon: LUCIDE_ICONS.refresh, actionable: true },
     ],
-    guide: 'Gestion complète de votre catalogue produits. Ajoutez, modifiez, dupliquez ou supprimez des produits. Importez en masse via CSV. Activez/désactivez la visibilité. Chaque produit peut avoir : nom, prix (avec variantes), photos, description, catégorie, stock. Utilisez la duplication pour créer rapidement des produits similaires. Consultez les statistiques de vente par produit.',
+    guide: '**MesProduitsScreen** : catalogue produits « dense » (filtres, stats mini, cartes avec Modifier / Pause / Partager / Envoyer / Plus). Menu ⋮ : vidéo, galerie médias, publicités, flash promo, Black Friday, livraison (1er produit filtré), membres, VideoFeed, édition service (FormulaireYukpoIntelligent). Feuille **Plus** sur une carte : promouvoir, stats produit (ProductStats), dupliquer (mode duplicate), livraison unitaire, supprimer. **Rapport avec MesServicesScreen** : l’onglet barre du bas **Services** et la route **MesServices** = hub moderne principal ; **MesProduits** est l’écran complémentaire (bouton « Gérer les produits » / pied de liste). Ne pas confondre avec **ServicesActivity** (legacy).',
   },
 
   // === FORMULAIRE CRÉATION SERVICE (First-time) ===
@@ -997,48 +1375,60 @@ const SCREEN_CONFIGS: Record<string, {
   Navigation: {
     type: 'specialized',
     actions: [
-      { id: 'set-destination', label: 'Définir Destination', icon: LUCIDE_ICONS.location, category: 'action', description: 'Saisir ou sélectionner une destination sur la carte' },
-      { id: 'start-navigation', label: 'Démarrer Navigation', icon: LUCIDE_ICONS.forward, category: 'action', description: 'Lancer le guidage GPS en temps réel' },
-      { id: 'change-mode', label: 'Mode Transport', icon: LUCIDE_ICONS.car, category: 'action', description: 'Changer le mode : voiture, à pied, transport, vélo' },
-      { id: 'report-checkpoint', label: 'Signaler', icon: LUCIDE_ICONS.alert, category: 'action', description: 'Signaler un radar, contrôle, accident ou danger sur la route' },
-      { id: 'search-poi', label: 'Points d\'Intérêt', icon: LUCIDE_ICONS.search, category: 'search', description: 'Chercher pharmacies, stations-service, restaurants etc. sur le trajet' },
-      { id: 'share-route', label: 'Partager Trajet', icon: LUCIDE_ICONS.share, category: 'action', description: 'Partager votre itinéraire avec un contact' },
-      { id: 'voice-guidance', label: 'Guidage Vocal', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Activer/désactiver le guidage vocal' },
+      { id: 'open-stats-coach', label: 'Statistiques & Coach IA', icon: 'bar-chart-3', category: 'action', description: 'Panneau complet : km, sessions, calories, score santé, série, badges, défis, CO₂, historique Coach IA (icône graphique en-tête)' },
+      { id: 'free-walk', label: 'Marche libre', icon: 'activity', category: 'action', description: 'Démarrer/arrêter une session GPS marche ; en cours : rouvrir les stats filtrées marche libre (icône piéton 🚶/🏃 en-tête)' },
+      { id: 'community-alerts', label: 'Alertes communautaires', icon: LUCIDE_ICONS.alert, category: 'action', description: 'Historique des alertes, confirmer/infirmer, commentaires (icône triangle alerte en-tête)' },
+      { id: 'report-alert-bar', label: 'Signaler une alerte', icon: LUCIDE_ICONS.alert, category: 'action', description: 'Bandeau dépliable puis puces horizontales (radar, contrôle, accident…)' },
+      { id: 'set-destination', label: 'Saisie destination', icon: LUCIDE_ICONS.location, category: 'action', description: 'Champ destination / sélecteur de lieux + recherche d\'itinéraire (bouton principal bleu)' },
+      { id: 'search-route', label: 'Recherche itinéraire', icon: LUCIDE_ICONS.search, category: 'search', description: 'Calcul d\'itinéraire (peut débiter des jetons Navigation)' },
+      { id: 'start-navigation', label: 'Ouvrir dans Maps / Suivi', icon: LUCIDE_ICONS.forward, category: 'action', description: 'Lancer guidage dans Google Maps ou Apple Plans ; revenir sur Yukpo pour alertes et coach' },
+      { id: 'change-mode', label: 'Mode de transport', icon: LUCIDE_ICONS.car, category: 'action', description: 'Voiture, à pied, transports, vélo' },
+      { id: 'waypoints', label: 'Étapes & recalcul', icon: LUCIDE_ICONS.map, category: 'action', description: 'Ajouter des étapes POI et recalculer l\'itinéraire' },
+      { id: 'share-route', label: 'Partager l\'itinéraire', icon: LUCIDE_ICONS.share, category: 'action', description: 'Partager le trajet sélectionné' },
+      { id: 'share-stats', label: 'Partager mes stats', icon: LUCIDE_ICONS.share, category: 'action', description: 'Depuis le panneau statistiques : partage des performances de navigation/marche' },
+      { id: 'recharge-nav-tokens', label: 'Solde / recharger', icon: LUCIDE_ICONS.dollar, category: 'action', description: 'Pastille sous l\'en-tête : jetons Navigation et période offerte' },
+      { id: 'carpool-shortcut', label: 'Covoiturage Yukpo', icon: LUCIDE_ICONS.users, route: 'CovoiturageHome', category: 'navigation', description: 'Raccourci voiture+personnes dans l\'en-tête' },
+      { id: 'coach-notif-settings', label: 'Notifications Coach IA', icon: LUCIDE_ICONS.settings, route: 'Settings', params: { initialSection: 'notifications' }, category: 'navigation', description: 'Réglages son/vibration des rappels motivation' },
     ],
     elements: [
+      { id: 'header-back-compass', type: 'button', label: 'Retour (boussole 🧭)', icon: 'compass', actionable: true },
+      { id: 'header-subtitle', type: 'card', label: 'Sous-titre mode (itinéraires / suivi / marche libre / stats / alertes)', actionable: false },
       { id: 'map-view', type: 'card', label: 'Carte GPS', actionable: true },
-      { id: 'destination-input', type: 'input', label: 'Saisie destination', actionable: true },
-      { id: 'route-options', type: 'card', label: 'Options d\'itinéraire', actionable: true },
+      { id: 'destination-input', type: 'input', label: 'Saisie destination & origine', actionable: true },
+      { id: 'route-options', type: 'card', label: 'Cartes d\'itinéraires (trafic, durée, péage)', actionable: true },
       { id: 'travel-mode-tabs', type: 'tab', label: 'Voiture / À pied / Transport / Vélo', actionable: true },
-      { id: 'checkpoint-reports', type: 'card', label: 'Signalements route (radars, contrôles)', actionable: true },
-      { id: 'poi-categories', type: 'button', label: 'Catégories POI (santé, alimentation, carburant...)', actionable: true },
+      { id: 'prefs-chips', type: 'button', label: 'Préférences trajet (éviter péages, autoroutes…)', actionable: true },
+      { id: 'favorites-chips', type: 'card', label: 'Favoris / lieux enregistrés', actionable: true },
+      { id: 'checkpoint-reports', type: 'card', label: 'Signalements & alertes communautaires', actionable: true },
+      { id: 'poi-categories', type: 'button', label: 'POI : Santé, Alimentation, Carburant, DAB, Parking, Culte, Hôtel, Police', actionable: true },
+      { id: 'health-coach-preview', type: 'card', label: 'Aperçu Score Santé & Coach IA (carte violette)', actionable: true },
+      { id: 'stats-period-modality', type: 'tab', label: 'Stats : période (semaine…année) & vue (tout / auto / marche libre)', actionable: true },
+      { id: 'fab-chat', type: 'fab', label: 'Assistant IA (bulle flottante)', actionable: true },
     ],
-    guide: 'Navigation GPS complète. Saisissez une destination, choisissez votre mode de transport (voiture, à pied, transport en commun, vélo), lancez le guidage vocal en temps réel. Signalez des radars, contrôles de police/Mintransport, accidents ou dangers sur la route. Découvrez les points d\'intérêt à proximité (pharmacies, stations-service, hôtels, restaurants). Estimation du coût de transport et du temps de trajet. Alertes vocales automatiques à l\'approche des signalements.',
+    guide: 'Navigation Yukpo : planification d\'itinéraire (destination, modes, étapes, POI), suivi, alertes communautaires, marche libre GPS, jetons. **Les statistiques de marche et performances** (distance, durée, calories, sessions, score santé, série, badges, conseils, CO₂, défis) sont dans **Statistiques & Coach IA** (icône graphique en-tête) et via **Marche libre** (icône piéton). Ne pas renvoyer vers une app fitness externe pour ces données.',
   },
 
-  // === BOURSE DU LIVRE ===
+  // === BOURSE DU LIVRE === (route legacy : même écran que LivreScolaireHome)
   BourseLivre: {
     type: 'specialized',
     actions: [
-      { id: 'search-book', label: 'Chercher Livre', icon: LUCIDE_ICONS.search, category: 'search', description: 'Rechercher un livre par titre, auteur ou matière' },
-      { id: 'filter-books', label: 'Filtrer', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Filtrer par classe, matière, niveau, état du livre, ville' },
-      { id: 'ai-recommendations', label: 'Recommandations IA', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Obtenir des recommandations de livres par l\'IA selon la classe et la matière' },
-      { id: 'ai-price', label: 'Estimation Prix IA', icon: LUCIDE_ICONS.dollar, category: 'help', description: 'Obtenir une estimation de prix par l\'IA pour un livre' },
-      { id: 'sell-book', label: 'Vendre un Livre', icon: LUCIDE_ICONS.add, route: 'LivreScolaireForm', category: 'creation', description: 'Mettre un livre en vente sur la bourse' },
-      { id: 'upload-v2', label: 'Publier Livre V2', icon: LUCIDE_ICONS.upload, route: 'BookUploadV2', category: 'creation', description: 'Publier un livre avec le formulaire avancé' },
-      { id: 'book-packages', label: 'Packages Livres', icon: LUCIDE_ICONS.package, route: 'BookPackages', category: 'navigation', description: 'Voir les packages de livres par niveau' },
-      { id: 'buy-direct', label: 'Achat Direct', icon: LUCIDE_ICONS['shopping-cart'], route: 'BookBuyDirect', category: 'action', description: 'Acheter un livre directement' },
-      { id: 'my-books', label: 'Mes Livres', icon: LUCIDE_ICONS.book, route: 'MesLivres', category: 'navigation', description: 'Voir mes livres mis en vente' },
-      { id: 'new-books', label: 'Livres Neufs', icon: LUCIDE_ICONS.star, route: 'NewBooks', category: 'navigation', description: 'Découvrir les livres neufs disponibles' },
+      { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.arrowLeft, category: 'navigation', description: 'Flèche en-tête — revenir à l’écran précédent' },
+      { id: 'libraire-header', label: 'Ma librairie / Devenir libraire', icon: LUCIDE_ICONS.store, category: 'navigation', description: 'Bouton en-tête à droite : partenaire librairie → LivreScolaireForm ; sinon → LibrairieRegistration' },
+      { id: 'sell-troquer', label: 'Mettez vos livres en circulation', icon: LUCIDE_ICONS.camera, route: 'BookUploadV2', category: 'creation', description: 'Carte verte : photo recto/verso, session V2, vente / troc / don à l’étape suivante' },
+      { id: 'buy-programme', label: 'Trouvez votre liste scolaire', icon: LUCIDE_ICONS['list-checks'], route: 'ProgrammeBesoinsSelector', category: 'navigation', description: 'Carte bleue : classe + manuels au programme officiel, neuf vs occasion' },
+      { id: 'track-packages', label: 'Suivre mes paquets', icon: LUCIDE_ICONS.package, route: 'BookPackages', category: 'navigation', description: 'Livraisons / paquets livres (coursier, QR)' },
+      { id: 'track-trocs', label: 'Suivre mes trocs', icon: LUCIDE_ICONS.refresh, route: 'MesTrocs', category: 'navigation', description: 'Échanges en cours' },
+      { id: 'mes-besoins', label: 'Mes besoins', icon: LUCIDE_ICONS['list-checks'], route: 'MesBesoinsLivres', category: 'navigation', description: 'Demandes de dons / besoins actifs' },
+      { id: 'qr-scan', label: 'Scanner QR', icon: LUCIDE_ICONS.camera, route: 'QRCodeShare', category: 'action', description: 'Icône QR du dashboard — mode scan pour valider arrivée coursier' },
+      { id: 'refresh-ops', label: 'Rafraîchir le tableau de bord', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Recharge compteurs (achats, paquets, trocs, besoins)' },
+      { id: 'open-book-detail', label: 'Ouvrir fiche livre', icon: LUCIDE_ICONS.book, route: 'LivreScolaireDetails', category: 'navigation', description: 'Appui sur une carte de la liste → détails + troc' },
     ],
     elements: [
-      { id: 'search-input', type: 'input', label: 'Recherche par titre ou auteur', actionable: true },
-      { id: 'filter-panel', type: 'button', label: 'Filtres (classe, matière, état)', icon: LUCIDE_ICONS.filter, actionable: true },
-      { id: 'books-grid', type: 'card', label: 'Grille de livres disponibles', actionable: true },
-      { id: 'ai-reco-button', type: 'button', label: 'Recommandations IA', icon: LUCIDE_ICONS.activity, actionable: true },
-      { id: 'ai-price-button', type: 'button', label: 'Estimation prix IA', icon: LUCIDE_ICONS.dollar, actionable: true },
+      { id: 'header-gradient', type: 'card', label: 'En-tête Bourse du Livre (dégradé orange)', actionable: false },
+      { id: 'ops-dashboard', type: 'card', label: 'Dashboard des opérations (compteurs + QR + refresh)', actionable: true },
+      { id: 'nearby-list', type: 'card', label: 'Liste livres à proximité (GPS ~20 km, pull to refresh)', actionable: true },
     ],
-    guide: 'Bourse du Livre — marché d\'échange et de vente de livres scolaires. Recherchez par titre, auteur, classe ou matière. Filtrez par niveau (primaire, collège, lycée), état du livre (neuf, très bon, bon, acceptable) et localisation. L\'IA peut recommander les livres adaptés à votre classe et estimer le prix juste d\'un livre. Achetez directement, explorez les packages par niveau, ou mettez vos anciens livres en vente. Contactez les vendeurs pour négocier.',
+    guide: 'Même accueil que LivreScolaireHome (LivreScolaireHomeScreen). Ne pas décrire l’ancien écran avec barre de recherche + filtres + boutons « Recommandations IA » en tête — ce n’est plus cette UI.',
   },
 
   // === CHAT MODAL MOBILE (chatbot prestataire) ===
@@ -1148,33 +1538,33 @@ const SCREEN_CONFIGS: Record<string, {
   LaboratoireForm: {
     type: 'dashboard',
     actions: [
-      { id: 'manage-exams', label: 'Examens', icon: LUCIDE_ICONS.clipboard, category: 'action', description: 'Gérer le catalogue d\'examens' },
-      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'LabAnalytics', category: 'navigation', description: 'Statistiques du laboratoire' },
-      { id: 'ai-analysis', label: 'Analyse IA', icon: LUCIDE_ICONS.activity, route: 'LabAIAnalysis', category: 'help', description: 'Outils IA d\'analyse' },
+      { id: 'manage-exams', label: 'Examens', icon: LUCIDE_ICONS.clipboard, category: 'action', description: 'Onglet Examens : catalogue types (analyse / imagerie), prix, durée, préparation' },
+      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, route: 'LabAnalytics', category: 'navigation', description: '**LabAnalytics** avec `laboratoryId` = id fiche labo (`labData.id`)' },
+      { id: 'ai-analysis', label: 'IA Analyse (info)', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Alerte : **LabAIAnalysis** nécessite `examinationId` (flux patient Mes examens)' },
     ],
     elements: [
-      { id: 'tabs', type: 'tab', label: 'Onglets: Accueil, Examens, Planning, Résultats/IA, Stats', actionable: true },
+      { id: 'tabs', type: 'tab', label: 'Onglets: overview | service | exams | analytics | team', actionable: true },
       { id: 'exam-catalog', type: 'card', label: 'Catalogue examens (analyses, imagerie, prix, délais)', actionable: true },
-      { id: 'planning', type: 'card', label: 'Planning / disponibilité (créneaux, jours, heures)', actionable: true },
-      { id: 'ai-tools', type: 'card', label: 'Outils IA (interprétation, explications, recommandations)', actionable: true },
+      { id: 'overview-quick', type: 'card', label: 'Vue d’ensemble : stats + actions rapides (examens, IA info, stats, service, wallet)', actionable: true },
     ],
-    guide: 'Dashboard partenaire Laboratoire. Gérez le service (infos, GPS, contacts), configurez le catalogue d\'examens (types, prix, délais), gérez la disponibilité/planning, traitez les demandes et consultez les statistiques. Le chat doit pouvoir guider précisément: ajouter un examen, modifier un prix, activer l\'imagerie, définir un planning, analyser un résultat et expliquer la signification.',
+    guide: '**LaboratoireFormScreen** partenaire : dashboard **overview | service | exams | analytics | team** ; création **POST** `/api/laboratoires` avec `service_id`. **Statistiques** → **LabAnalytics** (`laboratoryId`). Raccourci **IA Analyse** = message d’information (pas d’`examinationId` côté dashboard).',
   },
 
   BanqueSangForm: {
     type: 'dashboard',
     actions: [
-      { id: 'manage-stock', label: 'Stock Sanguin', icon: LUCIDE_ICONS.droplet, category: 'action', description: 'Gérer le stock de poches de sang' },
-      { id: 'manage-groups', label: 'Groupes Sanguins', icon: LUCIDE_ICONS.list, route: 'BloodGroupManagement', category: 'action', description: 'Gérer les groupes sanguins disponibles' },
-      { id: 'donation-matches', label: 'Correspondances', icon: LUCIDE_ICONS.users, route: 'BloodDonationMatches', category: 'action', description: 'Voir les correspondances donneur/receveur' },
+      { id: 'tab-overview', label: 'Onglet Accueil (overview)', icon: LUCIDE_ICONS.home, category: 'action', description: 'Résumé stocks + stats `GET /api/banques-sang/:id/statistics`' },
+      { id: 'tab-service', label: 'Onglet Service', icon: LUCIDE_ICONS.settings, category: 'action', description: 'Nom, adresse, LocationSelector / ModernGPSModal, Switch accepte_dons, accepte_demandes, urgence_24h, contacts' },
+      { id: 'tab-stocks', label: 'Onglet Stocks', icon: LUCIDE_ICONS.droplet, category: 'action', description: 'Saisie quantités par groupe (GROUPES_SANGUINS) puis **POST** `/api/banques-sang/:id/stocks` body `{ stocks_groupes_sanguins }`' },
+      { id: 'submit-bank', label: 'Enregistrer la banque (création)', icon: LUCIDE_ICONS.check, category: 'creation', description: '**POST** `/api/banques-sang` avec service_id (création service `servicesApi.createService` si besoin), gps, flags, contacts' },
+      { id: 'manage-groups', label: 'Groupes (écran dédié)', icon: LUCIDE_ICONS.list, route: 'BloodGroupManagement', category: 'navigation', description: 'Si utilisé dans votre build' },
+      { id: 'donation-matches', label: 'Correspondances dons', icon: LUCIDE_ICONS.users, route: 'BloodDonationMatches', category: 'navigation', description: 'Liste correspondances' },
     ],
     elements: [
-      { id: 'tabs', type: 'tab', label: 'Onglets: Accueil, Service, Stocks', actionable: true },
-      { id: 'stock-grid', type: 'card', label: 'Stocks par groupe (quantité, unité, dernière mise à jour)', actionable: true },
-      { id: 'urgence', type: 'button', label: 'Urgence 24h (activer/désactiver)', actionable: true },
-      { id: 'contacts', type: 'card', label: 'Contacts (téléphone, urgence, WhatsApp, email)', actionable: true },
+      { id: 'tabs', type: 'tab', label: 'Onglets: overview | service | stocks', actionable: true },
+      { id: 'partner-prefill', type: 'card', label: 'Préremplissage partenaire GET `/api/partners/me` + banque GET `/api/banques-sang`', actionable: false },
     ],
-    guide: 'Dashboard partenaire Banque de sang / Transfusion. 3 onglets: Accueil (résumé stock + stats), Service (infos, GPS, contacts, accepte dons/demandes, urgence 24h), Stocks (mise à jour par groupe). Le chat doit guider n\'importe quelle action: enregistrer la banque, sélectionner GPS, mettre à jour un groupe, comprendre compatibilités, traiter une demande urgente, consulter statistiques.',
+    guide: '**BanqueSangFormScreen** (partenaire **banquesang**) : mode **dashboard** si banque existante (`GET /api/banques-sang`), sinon formulaire création. Données persistantes auto-save `@banque_sang_form`. Mise à jour stocks via endpoint dédié (voir onglet Stocks). Distinct de l’écran **utilisateur** **BanqueSangSearch**.',
   },
 
   CovoiturageForm: {
@@ -1203,11 +1593,11 @@ const SCREEN_CONFIGS: Record<string, {
   OffresEmploiForm: {
     type: 'form',
     actions: [
-      { id: 'create-offer', label: 'Publier Offre', icon: LUCIDE_ICONS.add, route: 'CreateOffre', category: 'creation', description: 'Publier une offre d\'emploi' },
-      { id: 'manage-candidatures', label: 'Candidatures', icon: LUCIDE_ICONS.users, category: 'action', description: 'Gérer les candidatures reçues' },
+      { id: 'submit-offer', label: 'Soumettre offre', icon: LUCIDE_ICONS.check, category: 'creation', description: 'Formulaire partenaire : LocationSelector, serviceId, auto-save, confirmation — flux distinct de CreateOffreScreen' },
+      { id: 'gps-lieu', label: 'Lieu / GPS', icon: LUCIDE_ICONS.location, category: 'action', description: 'ModernGPSModal + LocationSelector pour lieu_travail' },
     ],
     elements: [],
-    guide: 'Gestion offres d\'emploi. Publiez des offres et gérez les candidatures des candidats.',
+    guide: 'OffresEmploiFormScreen : création/édition recruteur (params serviceId, offreId, mode). Pas la même UI que CreateOffre (+ depuis OffresEmploiHome).',
   },
 
   GestionServicesSpecialises: {
@@ -1228,26 +1618,53 @@ const SCREEN_CONFIGS: Record<string, {
   PharmacieDetails: {
     type: 'detail',
     actions: [
-      { id: 'order-meds', label: 'Commander', icon: LUCIDE_ICONS['shopping-cart'], category: 'action', description: 'Commander des médicaments' },
-      { id: 'contact', label: 'Contacter', icon: LUCIDE_ICONS.message, category: 'action', description: 'Contacter la pharmacie' },
-      { id: 'call', label: 'Appeler', icon: LUCIDE_ICONS.call, category: 'action', description: 'Appeler la pharmacie' },
-      { id: 'itinerary', label: 'Itinéraire', icon: LUCIDE_ICONS.location, route: 'Navigation', category: 'navigation', description: 'Se rendre à la pharmacie' },
-      { id: 'ai-analysis', label: 'Analyse IA', icon: LUCIDE_ICONS.activity, route: 'PharmacyAIInteractions', category: 'help', description: 'Analyse IA des médicaments (dosage, interactions)' },
+      { id: 'share', label: 'Partager', icon: LUCIDE_ICONS.share, category: 'action', description: 'Partager la fiche pharmacie' },
+      { id: 'call', label: 'Appeler', icon: LUCIDE_ICONS.call, category: 'action', description: 'Appel téléphonique (si numéro renseigné)' },
+      { id: 'whatsapp', label: 'WhatsApp', icon: LUCIDE_ICONS.message, category: 'action', description: 'Contact WhatsApp (si renseigné)' },
+      { id: 'chat-yukpo', label: 'Chat Yukpo', icon: 'message-square', category: 'action', description: 'ChatModalMobile in-app (connexion requise)' },
+      { id: 'email', label: 'Email', icon: 'mail', category: 'action', description: 'Si email renseigné' },
+      { id: 'website', label: 'Site web', icon: 'globe', category: 'action', description: 'Si URL renseignée' },
+      { id: 'check-med', label: 'Disponibilité médicament', icon: LUCIDE_ICONS.search, category: 'action', description: 'Recherche dans cette pharmacie → checkAvailability → réserver si stock' },
+      { id: 'ia-interactions', label: 'Interactions médicamenteuses', icon: LUCIDE_ICONS.alert, category: 'help', description: 'Modal: plusieurs noms → pharmacyService.checkInteractions' },
+      { id: 'ia-conseils', label: 'Conseils santé IA', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Conseils contextualisés (handleAISuggest)' },
+      { id: 'my-orders', label: 'Mes commandes', icon: LUCIDE_ICONS.clipboard, route: 'MyPharmacyOrders', category: 'navigation', description: 'Suivi commandes client' },
+      { id: 'itinerary', label: 'Itinéraire', icon: LUCIDE_ICONS.location, route: 'Navigation', category: 'navigation', description: 'GPS Yukpo vers la pharmacie' },
+      { id: 'analytics-owner', label: 'Analytics', icon: LUCIDE_ICONS.activity, route: 'PharmacyAnalytics', category: 'navigation', description: 'Uniquement si user = propriétaire (user_id)' },
     ],
-    elements: [],
-    guide: 'Détails d\'une pharmacie. Commandez des médicaments, contactez la pharmacie, obtenez l\'itinéraire. L\'IA analyse les dosages et interactions.',
+    elements: [
+      { id: 'hero-badges', type: 'card', label: 'Ouvert/Fermé, De garde, Vérifié, 24h/24', actionable: false },
+      { id: 'hours', type: 'card', label: 'Horaires + urgence téléphone', actionable: false },
+      { id: 'reviews', type: 'card', label: 'Avis ProductCommentsSection', actionable: true },
+    ],
+    guide: 'Fiche officine: hero (badges, note, adresse), actions rapides conditionnelles (appel, WhatsApp, chat Yukpo, email, site), horaires/urgences, services en chips, recherche médicament dans cette pharmacie (modal + dispo + réservation), bloc IA (interactions multi-médicaments en modal, conseils santé), Mes commandes, Analytics si propriétaire, avis. Pas de navigation directe vers PharmacyAIInteractions depuis cet écran (IA intégrée ici en modals).',
   },
 
   HopitalDetails: {
     type: 'detail',
     actions: [
-      { id: 'book-appointment', label: 'Prendre RDV', icon: LUCIDE_ICONS.calendar, route: 'BookAppointment', category: 'action', description: 'Prendre rendez-vous' },
-      { id: 'contact', label: 'Contacter', icon: LUCIDE_ICONS.message, category: 'action', description: 'Contacter l\'hôpital' },
-      { id: 'call', label: 'Appeler', icon: LUCIDE_ICONS.call, category: 'action', description: 'Appeler l\'hôpital' },
-      { id: 'itinerary', label: 'Itinéraire', icon: LUCIDE_ICONS.location, route: 'Navigation', category: 'navigation', description: 'Se rendre à l\'hôpital' },
+      { id: 'share', label: 'Partager', icon: LUCIDE_ICONS.share, category: 'action', description: 'Share API fiche établissement' },
+      { id: 'call', label: 'Appeler', icon: LUCIDE_ICONS.call, category: 'action', description: 'Téléphone standard' },
+      { id: 'whatsapp', label: 'WhatsApp', icon: LUCIDE_ICONS.message, category: 'action', description: 'wa.me' },
+      { id: 'chat-yukpo', label: 'Chat Yukpo', icon: 'message-square', category: 'action', description: 'ChatModalMobile — connexion requise' },
+      { id: 'rdv-quick', label: 'RDV (quick)', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Si rdv_en_ligne: quick action handleBook' },
+      { id: 'email', label: 'Email', icon: 'mail', category: 'action', description: 'mailto si renseigné' },
+      { id: 'website', label: 'Site web', icon: 'globe', category: 'action', description: 'Si URL renseignée' },
+      { id: 'urgence-call', label: 'Urgences (tél)', icon: LUCIDE_ICONS.alert, category: 'action', description: 'Si telephone_urgence' },
+      { id: 'book-inline', label: 'Réserver RDV (plein bouton)', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'POST /api/hopitaux/{hospitalId}/book si rdv_en_ligne' },
+      { id: 'ia-symptomes', label: 'IA symptômes / pathologie', icon: LUCIDE_ICONS.activity, category: 'help', description: 'searchPathology sur place' },
+      { id: 'ia-reco', label: 'Recommandations IA', icon: LUCIDE_ICONS.activity, route: 'HospitalAIRecommendations', category: 'help', description: 'Écran dédié avec hospitalId' },
+      { id: 'my-consultations', label: 'Mes consultations', icon: LUCIDE_ICONS.clipboard, route: 'MyConsultations', category: 'navigation', description: 'Liste client' },
+      { id: 'analytics-owner', label: 'Analytics', icon: LUCIDE_ICONS.activity, route: 'HospitalAnalytics', category: 'navigation', description: 'Si propriétaire (user_id)' },
+      { id: 'itinerary', label: 'Itinéraire', icon: LUCIDE_ICONS.location, route: 'Navigation', category: 'navigation', description: 'GPS Yukpo' },
     ],
-    elements: [],
-    guide: 'Détails d\'un hôpital. Prenez rendez-vous, consultez les spécialités, contactez directement ou obtenez l\'itinéraire.',
+    elements: [
+      { id: 'hero-badges', type: 'card', label: 'Ouvert, Urgences, Banque sang, RDV ligne, Vérifié', actionable: false },
+      { id: 'wait-times', type: 'card', label: 'Temps d\'attente par spécialité (getWaitTimes)', actionable: false },
+      { id: 'emergency-status', type: 'card', label: 'Statut urgences (getEmergencyStatus)', actionable: false },
+      { id: 'prestations-chips', type: 'card', label: 'Prestations médicales', actionable: false },
+      { id: 'reviews', type: 'card', label: 'Avis ProductCommentsSection', actionable: true },
+    ],
+    guide: 'Fiche hôpital refonte: hero bleu, actions rapides conditionnelles, ligne urgence + stats si urgences_disponible, temps d\'attente, prestations, bloc IA symptômes (searchPathology), bouton réserver (POST book), Recommandations IA → écran séparé, Mes consultations, Analytics propriétaire, avis. BookAppointment (créneaux) est un autre flux — non ouvert automatiquement depuis cette fiche dans le code actuel.',
   },
 
   LaboratoireDetails: {
@@ -1264,12 +1681,41 @@ const SCREEN_CONFIGS: Record<string, {
   BanqueSangDetails: {
     type: 'detail',
     actions: [
-      { id: 'donate', label: 'Donner du Sang', icon: LUCIDE_ICONS.droplet, route: 'BloodDonationRequest', category: 'action', description: 'Faire un don de sang' },
-      { id: 'contact', label: 'Contacter', icon: LUCIDE_ICONS.message, category: 'action', description: 'Contacter la banque de sang' },
-      { id: 'itinerary', label: 'Itinéraire', icon: LUCIDE_ICONS.location, route: 'Navigation', category: 'navigation', description: 'Se rendre à la banque de sang' },
+      { id: 'bsd-back-share', label: 'Retour / Partager', icon: LUCIDE_ICONS.share, category: 'action', description: 'Hero : retour + partage natif (message + tel + urgence 24h)' },
+      { id: 'bsd-call', label: 'Appeler', icon: LUCIDE_ICONS.call, category: 'action', description: 'Linking tel — si `telephone`' },
+      { id: 'bsd-whatsapp', label: 'WhatsApp', icon: LUCIDE_ICONS.message, category: 'action', description: 'wa.me depuis whatsapp ou téléphone' },
+      { id: 'bsd-chat', label: 'Chat Yukpo', icon: 'message-square', category: 'action', description: 'ChatModalMobile — connexion requise ; service type banque_sang' },
+      { id: 'bsd-don-quick', label: 'Don (raccourci)', icon: LUCIDE_ICONS.heart, route: 'BloodDonation', category: 'navigation', description: 'Même logique que « Faire une demande » / devenir donneur : **BloodDonation**' },
+      { id: 'bsd-email', label: 'Email', icon: 'mail', category: 'action', description: 'mailto si renseigné' },
+      { id: 'bsd-urgence-tel', label: 'Urgence (téléphone)', icon: LUCIDE_ICONS.alert, category: 'action', description: 'Si `telephone_urgence`' },
+      { id: 'bsd-request-donation', label: 'Faire une demande de don', icon: LUCIDE_ICONS.heart, route: 'BloodDonation', category: 'navigation', description: 'Bouton pleine largeur — **BloodDonation**, login si besoin' },
+      { id: 'bsd-become-donor', label: 'Devenir donneur', icon: LUCIDE_ICONS.droplet, route: 'BloodDonation', category: 'navigation', description: 'Si `accepte_dons` — **BloodDonation**' },
+      { id: 'itinerary', label: 'Itinéraire GPS Yukpo', icon: LUCIDE_ICONS.location, route: 'Navigation', category: 'navigation', description: 'À proposer si l’utilisateur demande le trajet — pas un bouton dédié sur cet écran' },
     ],
-    elements: [],
-    guide: 'Détails d\'une banque de sang. Faites un don, vérifiez la compatibilité, contactez ou obtenez l\'itinéraire.',
+    elements: [
+      { id: 'bsd-hero', type: 'card', label: 'Hero gradient : nom, badges Ouvert/Fermé, Urgence 24h, Dons acceptés, Vérifié, note', actionable: false },
+      { id: 'bsd-stocks', type: 'card', label: 'Grille stocks par groupe (seuils high/medium/low)', actionable: false },
+      { id: 'bsd-comments', type: 'card', label: 'ProductCommentsSection (avis) si service_id', actionable: true },
+    ],
+    guide: '**BanqueSangDetailsScreen** : fiche `GET /api/banques-sang/:banqueId` ; stats notes `GET /api/specialized-services/:service_id/ratings/stats`. Stocks depuis `stocks_groupes_sanguins` (quantité objet) ou `stocks` plat. **Ne pas** dire que « Don » ouvre **BloodDonationRequest** : le code ouvre **BloodDonation** (sauf création de demande via autre écran). Chat = **ChatModalMobile**.',
+  },
+
+  /** Alias navigateur (`BloodBankDetails` → même composant que BanqueSangDetails) */
+  BloodBankDetails: {
+    type: 'detail',
+    actions: [
+      { id: 'bsd-back-share', label: 'Retour / Partager', icon: LUCIDE_ICONS.share, category: 'action', description: 'Hero' },
+      { id: 'bsd-call', label: 'Appeler', icon: LUCIDE_ICONS.call, category: 'action', description: 'Téléphone principal' },
+      { id: 'bsd-whatsapp', label: 'WhatsApp', icon: LUCIDE_ICONS.message, category: 'action', description: 'Contact WhatsApp' },
+      { id: 'bsd-chat', label: 'Chat Yukpo', icon: 'message-square', category: 'action', description: 'ChatModalMobile' },
+      { id: 'bsd-don', label: 'Don / demande donneur', icon: LUCIDE_ICONS.heart, route: 'BloodDonation', category: 'navigation', description: '**BloodDonation**' },
+      { id: 'bsd-urgence-tel', label: 'Ligne urgence', icon: LUCIDE_ICONS.alert, category: 'action', description: 'telephone_urgence' },
+    ],
+    elements: [
+      { id: 'bsd-stocks', type: 'card', label: 'Stocks par groupe sanguin', actionable: false },
+      { id: 'bsd-comments', type: 'card', label: 'Avis (ProductCommentsSection)', actionable: true },
+    ],
+    guide: 'Même écran que **BanqueSangDetails** (route alias **BloodBankDetails**). Voir guide BanqueSangDetails pour le détail.',
   },
 
   TaxiBooking: {
@@ -1328,19 +1774,6 @@ const SCREEN_CONFIGS: Record<string, {
     guide: 'Détails d\'une agence de voyage. Réservez un voyage, consultez les horaires et contactez l\'agence.',
   },
 
-  HotelBooking: {
-    type: 'form',
-    actions: [
-      { id: 'confirm-booking', label: 'Confirmer Réservation', icon: LUCIDE_ICONS.check, category: 'action', description: 'Confirmer la réservation' },
-      { id: 'payment', label: 'Payer', icon: LUCIDE_ICONS['credit-card'], route: 'HotelBookingPayment', category: 'action', description: 'Procéder au paiement' },
-    ],
-    elements: [
-      { id: 'date-picker', type: 'input', label: 'Dates de séjour', actionable: true },
-      { id: 'room-selector', type: 'card', label: 'Choix de chambre', actionable: true },
-    ],
-    guide: 'Réservation hôtelière. Choisissez vos dates, sélectionnez une chambre et procédez au paiement.',
-  },
-
   ImmobilierDetails: {
     type: 'detail',
     actions: [
@@ -1380,12 +1813,13 @@ const SCREEN_CONFIGS: Record<string, {
   OffreDetails: {
     type: 'detail',
     actions: [
-      { id: 'apply', label: 'Postuler', icon: LUCIDE_ICONS.check, category: 'action', description: 'Postuler à cette offre' },
-      { id: 'cv-analysis', label: 'Analyse CV', icon: LUCIDE_ICONS.file, route: 'AICVAnalysis', category: 'help', description: 'Analyser la compatibilité de votre CV' },
-      { id: 'share', label: 'Partager', icon: LUCIDE_ICONS.share, category: 'action', description: 'Partager l\'offre' },
+      { id: 'apply', label: 'Postuler', icon: LUCIDE_ICONS.check, category: 'action', description: 'createCandidature après contrôle profil + cv_url (getProfil)' },
+      { id: 'profil-cv-link', label: 'Mettre à jour mon CV', icon: LUCIDE_ICONS.edit, route: 'ProfilCandidat', category: 'navigation', description: 'Lien sous le bouton postuler' },
     ],
-    elements: [],
-    guide: 'Détails d\'une offre d\'emploi. Postulez directement, analysez la compatibilité de votre CV avec l\'IA, ou partagez l\'offre.',
+    elements: [
+      { id: 'matching-card', type: 'card', label: 'Score matching (getMatchingOffres si connecté)', actionable: false },
+    ],
+    guide: 'OffreDetailsScreen : GET offre par offreId ; carte score depuis liste matching/offres ; postuler POST candidatures ; pas de bouton partager ni navigation AICVAnalysis dans ce fichier.',
   },
 
   EtablissementDetails: {
@@ -1402,12 +1836,17 @@ const SCREEN_CONFIGS: Record<string, {
   LivreScolaireDetails: {
     type: 'detail',
     actions: [
-      { id: 'buy', label: 'Acheter', icon: LUCIDE_ICONS['shopping-cart'], category: 'action', description: 'Acheter ce livre' },
-      { id: 'contact-seller', label: 'Contacter Vendeur', icon: LUCIDE_ICONS.message, category: 'action', description: 'Contacter le vendeur' },
-      { id: 'ai-price', label: 'Prix IA', icon: LUCIDE_ICONS.dollar, category: 'help', description: 'Vérifier le juste prix avec l\'IA' },
+      { id: 'share', label: 'Partager', icon: LUCIDE_ICONS.share, category: 'action', description: 'Partager la fiche (message + titre / matière / lieu)' },
+      { id: 'troquer', label: 'Troquer / Trouver un troc', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'POST /api/troc-livres/match puis navigation TrocMatching (si non propriétaire et livre disponible)' },
+      { id: 'edit-owner', label: 'Modifier', icon: LUCIDE_ICONS.edit, route: 'LivreScolaireForm', category: 'action', description: 'Propriétaire uniquement : LivreScolaireForm avec livreId + mode edit' },
+      { id: 'toggle-availability', label: 'Marquer disponible / indisponible', icon: LUCIDE_ICONS.check, category: 'action', description: 'Propriétaire : PATCH /api/bourse-livre/{id}/availability' },
     ],
-    elements: [],
-    guide: 'Détails d\'un livre scolaire. Achetez, contactez le vendeur ou vérifiez le prix avec l\'IA.',
+    elements: [
+      { id: 'hero', type: 'card', label: 'Bandeau orange : titre, auteur, badges disponibilité et état, viz classe → classe souhaitée', actionable: false },
+      { id: 'gallery', type: 'card', label: 'Carrousel photos', actionable: true },
+      { id: 'info-cards', type: 'card', label: 'Cartes Informations, État, Localisation, Vidéo si présente', actionable: false },
+    ],
+    guide: 'Fiche livre refonte 2026. Visiteur : **Partager**, **Troquer** (matching chaînes / TrocMatching). Propriétaire : **Modifier** (LivreScolaireForm), basculer **disponible / indisponible**. Pas de boutons « Acheter » ni « Contacter » ni « Prix IA » sur cet écran dans le code actuel — achat direct / chat passent par d’autres parcours (ex. TrocMatching, BookBuyDirect selon contexte).',
   },
 
   TrocDetails: {
@@ -1445,12 +1884,24 @@ const SCREEN_CONFIGS: Record<string, {
   HealthServicesHub: {
     type: 'specialized',
     actions: [
-      { id: 'pharmacy', label: 'Pharmacie', icon: LUCIDE_ICONS.pharmacy, route: 'PharmacieSearch', category: 'navigation', description: 'Rechercher des pharmacies' },
-      { id: 'hospital', label: 'Hôpital', icon: LUCIDE_ICONS.hospital, route: 'HopitalSearch', category: 'navigation', description: 'Rechercher des hôpitaux' },
-      { id: 'lab', label: 'Laboratoire', icon: LUCIDE_ICONS.activity, route: 'LaboratoireSearch', category: 'navigation', description: 'Rechercher des laboratoires' },
+      { id: 'emergency-119', label: 'Urgence 119', icon: LUCIDE_ICONS.call, category: 'action', description: 'Appel rapide 119 / fallback 112' },
+      { id: 'pharmacy', label: 'Pharmacie', icon: LUCIDE_ICONS.pharmacy, route: 'PharmacieSearch', category: 'navigation', description: 'Tuile hub' },
+      { id: 'hospital', label: 'Hôpital', icon: LUCIDE_ICONS.hospital, route: 'HopitalSearch', category: 'navigation', description: 'Tuile hub' },
+      { id: 'lab', label: 'Laboratoire', icon: LUCIDE_ICONS.activity, route: 'LaboratoireSearch', category: 'navigation', description: 'Tuile hub' },
+      { id: 'blood', label: 'Banque de sang', icon: LUCIDE_ICONS.droplet, route: 'BanqueSangSearch', category: 'navigation', description: 'Tuile hub' },
     ],
+    elements: [
+      { id: 'unified-search', type: 'input', label: 'Recherche unifiée (routing mots-clés)', actionable: true },
+      { id: 'duty-pharmacy', type: 'card', label: 'Pharmacie de garde proche (API products search garde)', actionable: true },
+    ],
+    guide: 'Hub santé rose: barre recherche intelligente (pharmacie/hôpital/labo/sang), 4 tuiles, bandeau pharmacie de garde (GET /api/pharmacies/products/search query garde + GPS). **MedicalServicesList** = alias même composant — params filtres non lus actuellement.',
+  },
+
+  MedicalServicesList: {
+    type: 'specialized',
+    actions: [],
     elements: [],
-    guide: 'Hub Santé. Accédez à toutes les catégories de soins : pharmacies, hôpitaux et laboratoires d\'analyses.',
+    guide: 'Alias stack → **HealthServicesHubScreen** (identique à HealthServicesHub). HopitalSearch y navigue avec {filters} si prestation/spécialité ; l\'écran n\'applique pas ces params — pour liste hôpitaux filtrée utiliser **HopitalList**.',
   },
 
   // =========================================================================
@@ -1568,16 +2019,196 @@ const SCREEN_CONFIGS: Record<string, {
   // SEARCH / LIST generics (many screens follow this pattern)
   // =========================================================================
 
-  PharmacieList: { type: 'list', actions: [{ id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, route: 'PharmacieSearch', category: 'search', description: 'Affiner la recherche' }], elements: [{ id: 'list', type: 'card', label: 'Liste des pharmacies', actionable: true }], guide: 'Liste des pharmacies. Sélectionnez une pharmacie pour voir ses détails, produits et contacter.' },
-  HopitalList: { type: 'list', actions: [{ id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, route: 'HopitalSearch', category: 'search', description: 'Affiner la recherche' }], elements: [{ id: 'list', type: 'card', label: 'Liste des hôpitaux', actionable: true }], guide: 'Liste des hôpitaux. Sélectionnez un hôpital pour voir ses détails et prendre rendez-vous.' },
-  LaboratoireList: { type: 'list', actions: [{ id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, route: 'LaboratoireSearch', category: 'search', description: 'Affiner la recherche' }], elements: [{ id: 'list', type: 'card', label: 'Liste des laboratoires', actionable: true }], guide: 'Liste des laboratoires. Sélectionnez un laboratoire pour réserver un examen.' },
-  BanqueSangList: { type: 'list', actions: [{ id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, route: 'BanqueSangSearch', category: 'search', description: 'Affiner la recherche' }], elements: [{ id: 'list', type: 'card', label: 'Liste des banques de sang', actionable: true }], guide: 'Liste des banques de sang. Vérifiez la disponibilité des groupes sanguins.' },
+  PharmacieList: {
+    type: 'list',
+    actions: [
+      { id: 'search', label: 'Affiner la recherche', icon: LUCIDE_ICONS.search, route: 'PharmacieSearch', category: 'search', description: 'Retour au formulaire (produit, garde, GPS, filtres)' },
+    ],
+    elements: [
+      { id: 'list', type: 'card', label: 'Cartes pharmacie (Disponible, De garde, ville, distance, téléphone)', actionable: true },
+    ],
+    guide: 'Résultats depuis PharmacieSearch: params.filters (produit, garde, GPS, distance…). Chargement GET /api/pharmacies/search avec pagination (page/limit). Tap carte → PharmacieDetails (pharmacieId). Infinite scroll. État vide → retour / nouvelle recherche.',
+  },
+  MyPharmacyOrders: {
+    type: 'list',
+    actions: [
+      { id: 'filter-all', label: 'Tous', icon: LUCIDE_ICONS.list, category: 'action', description: 'Afficher toutes les commandes' },
+      { id: 'filter-pending', label: 'En attente', icon: LUCIDE_ICONS.clock, category: 'action', description: 'Statut pending / en_attente' },
+      { id: 'filter-processing', label: 'En traitement', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Statut processing / en_traitement' },
+      { id: 'filter-ready', label: 'Prêtes', icon: LUCIDE_ICONS.check, category: 'action', description: 'Statut ready / prête' },
+      { id: 'filter-delivered', label: 'Livrées', icon: LUCIDE_ICONS.truck, category: 'action', description: 'Statut delivered / livrée' },
+      { id: 'voir-pharmacie', label: 'Voir la pharmacie', icon: LUCIDE_ICONS.pharmacy, route: 'PharmacieDetails', category: 'navigation', description: 'Carte commande → PharmacieDetails(pharmacieId)' },
+      { id: 'empty-search-pharma', label: 'Rechercher une pharmacie', icon: LUCIDE_ICONS.search, route: 'PharmacieSearch', category: 'navigation', description: 'Bouton si liste vide' },
+    ],
+    elements: [
+      { id: 'filters-row', type: 'card', label: 'Filtres: Tous, En attente, En traitement, Prêtes, Livrées', actionable: true },
+      { id: 'orders-list', type: 'card', label: 'Liste commandes (pharmacyService.getMyOrders)', actionable: true },
+    ],
+    guide: 'Client connecté: historique commandes pharmacie, pagination, filtres statut, pull refresh, infinite scroll. Tap carte ou « voir détails » → PharmacieDetails(pharmacieId). Vide → CTA PharmacieSearch. Sans compte → alerte et retour.',
+  },
+  PharmacyAnalytics: {
+    type: 'dashboard',
+    actions: [
+      { id: 'period-7', label: 'Période 7 jours', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Vue courte' },
+      { id: 'period-30', label: 'Période 30 jours', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Vue par défaut' },
+      { id: 'period-90', label: 'Période 90 jours', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Vue longue' },
+    ],
+    elements: [
+      { id: 'kpi-scroll', type: 'card', label: 'Indicateurs / graphiques analytics pharmacie', actionable: false },
+    ],
+    guide: 'Écran partenaire: nécessite pharmacyId en params + vérification propriétaire (user.id = pharmacy.user_id). Sélecteur 7d/30d/90d, refresh. Accès refusé si non propriétaire.',
+  },
+  PharmacyAIInteractions: {
+    type: 'specialized',
+    actions: [
+      { id: 'add-med', label: 'Ajouter médicament', icon: LUCIDE_ICONS.add, category: 'action', description: 'Liste de noms avant analyse' },
+      { id: 'add-condition', label: 'Ajouter pathologie', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Contexte optionnel pour checkInteractions' },
+      { id: 'verify', label: 'Vérifier les interactions', icon: LUCIDE_ICONS.check, category: 'help', description: 'pharmacyService.checkInteractions (âge optionnel)' },
+    ],
+    elements: [
+      { id: 'age-input', type: 'input', label: 'Âge (optionnel)', actionable: true },
+      { id: 'result-card', type: 'card', label: 'Résultat gravité + description + recommandations', actionable: false },
+    ],
+    guide: 'Écran dédié interactions IA: saisie de plusieurs médicaments, âge et pathologies optionnels, bouton vérifier → résultat (gravité, alternatives). Connexion requise. Accès typique depuis PharmacieForm (partenaire), distinct des modals PharmacieDetails.',
+  },
+  HopitalList: {
+    type: 'list',
+    actions: [
+      { id: 'search', label: 'Affiner la recherche', icon: LUCIDE_ICONS.search, route: 'HopitalSearch', category: 'search', description: 'Retour au formulaire filtres' },
+    ],
+    elements: [
+      { id: 'cards', type: 'card', label: 'Cartes nom, type, Disponible, badge Urgences, ville, distance, tél', actionable: true },
+    ],
+    guide: 'GET /api/hopitaux/search avec params.filters (GPS, distance, type, prestation, urgences_only, available_only…). Pagination page/limit. Tap → HopitalDetails(hospitalId). Peut recevoir serviceType depuis HopitalHome sans être typé dans HopitalListScreenParams — préférer filters complets.',
+  },
+  BookAppointment: {
+    type: 'form',
+    actions: [
+      { id: 'pick-date', label: 'Choisir date', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Dates avec créneaux disponibles' },
+      { id: 'pick-slot', label: 'Choisir créneau', icon: LUCIDE_ICONS.clock, category: 'action', description: 'Slot available + remaining' },
+      { id: 'confirm', label: 'Confirmer RDV', icon: LUCIDE_ICONS.check, category: 'action', description: 'POST réservation avec motif / notes' },
+    ],
+    elements: [
+      { id: 'patient-fields', type: 'input', label: 'Nom patient, motif, notes', actionable: true },
+    ],
+    guide: 'Params: serviceId, serviceType hopital | laboratoire. GET available-slots par date pour hôpital ou labo. Réservation créneau avec formulaire patient.',
+  },
+  MyConsultations: {
+    type: 'list',
+    actions: [
+      { id: 'filter-status', label: 'Filtrer par statut', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Chips statut consultation' },
+      { id: 'open-hospital', label: 'Voir l\'hôpital', icon: LUCIDE_ICONS.hospital, route: 'HopitalDetails', category: 'navigation', description: 'Depuis une ligne si applicable' },
+    ],
+    elements: [
+      { id: 'consultations', type: 'card', label: 'Liste hospitalService.getMyConsultations', actionable: true },
+    ],
+    guide: 'Client connecté: historique consultations hôpital, filtres, pagination, pull refresh. Sans compte → alerte et retour.',
+  },
+  HospitalAIRecommendations: {
+    type: 'specialized',
+    actions: [
+      { id: 'symptoms', label: 'Symptômes', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Texte obligatoire' },
+      { id: 'submit-ia', label: 'Obtenir recommandations', icon: LUCIDE_ICONS.check, category: 'help', description: 'hospitalService.getAIRecommendations — connexion requise' },
+      { id: 'view-hospital', label: 'Voir un hôpital', icon: LUCIDE_ICONS.hospital, route: 'HopitalDetails', category: 'navigation', description: 'Liens depuis résultats' },
+    ],
+    elements: [
+      { id: 'location-fields', type: 'input', label: 'Localisation texte (GPS bouton TODO)', actionable: true },
+    ],
+    guide: 'Triage / recommandations IA: symptômes, option localisation, getAIRecommendations. Param hospitalId optionnel depuis HopitalDetails. Bouton géoloc non implémenté (placeholder).',
+  },
+  HospitalAnalytics: {
+    type: 'dashboard',
+    actions: [
+      { id: 'refresh', label: 'Rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Pull refresh analytics' },
+    ],
+    elements: [
+      { id: 'kpi', type: 'card', label: 'RDV, revenus, satisfaction, top services', actionable: false },
+    ],
+    guide: 'Partenaire: GET /api/hopitaux/{hospitalId}/analytics. Params route hospitalId. Connexion requise.',
+  },
+  LaboratoireSearch: {
+    type: 'search',
+    actions: [
+      { id: 'ls-gps', label: 'GPS / carte', icon: LUCIDE_ICONS.location, category: 'action', description: 'ModernGPSModal + LocationContext' },
+      { id: 'ls-submit', label: 'Rechercher', icon: LUCIDE_ICONS.search, category: 'search', description: '→ **LaboratoireList** avec `filters` (types_examens, prestation_analyse, lat/lng, distance, rdv_en_ligne, available_only, service_type…)' },
+      { id: 'ls-my-exams', label: 'Mes examens', icon: LUCIDE_ICONS.clipboard, route: 'MyLabExaminations', category: 'navigation', description: 'Bandeau haut' },
+    ],
+    elements: [
+      { id: 'ls-header', type: 'card', label: 'En-tête gradient indigo « Rechercher un laboratoire »', actionable: false },
+      { id: 'ls-filters', type: 'input', label: 'Types d’examens, prestation, distance, chips rapides', actionable: true },
+    ],
+    guide: '**LaboratoireSearchScreen** : formulaire filtres → **LaboratoireList** ; bandeau **MyLabExaminations**.',
+  },
+  LaboratoireList: {
+    type: 'list',
+    actions: [
+      { id: 'll-refine', label: 'Affiner la recherche', icon: LUCIDE_ICONS.search, route: 'LaboratoireSearch', category: 'search', description: 'Retour critères' },
+      { id: 'll-open', label: 'Ouvrir fiche labo', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Tap → **LaboratoireDetails** `laboratoryId`' },
+    ],
+    elements: [
+      { id: 'll-cards', type: 'card', label: 'Cartes : nom, type, dispo, ville, distance, tel, analyses/imagerie chips', actionable: true },
+    ],
+    guide: '**LaboratoireListScreen** : GET `/api/laboratoires/search` à partir de `route.params.filters` (ville, lat/lng, max_distance_km, type_laboratoire, service_type, prestation_analyse, types_examens[], rdv_en_ligne, imagerie, available_only), page/limit 20.',
+  },
+  MyLabExaminations: {
+    type: 'list',
+    actions: [
+      { id: 'mle-results', label: 'Voir résultats / Analyser IA', icon: LUCIDE_ICONS.activity, route: 'LabAIAnalysis', category: 'navigation', description: 'Si statut **completed** → **LabAIAnalysis** + `examinationId`' },
+    ],
+    elements: [{ id: 'mle-list', type: 'card', label: 'Liste examens paginée', actionable: true }],
+    guide: '**MyLabExaminationsScreen** : **labService.getMyExaminations** GET `/api/laboratoires/my-examinations`. Connexion obligatoire.',
+  },
+  LabAIAnalysis: {
+    type: 'specialized',
+    actions: [{ id: 'lai-run', label: 'Lancer analyse IA', icon: LUCIDE_ICONS.activity, category: 'help', description: '**labService.analyzeExamination** sur `examinationId`' }],
+    elements: [],
+    guide: '**LabAIAnalysisScreen** : param **`examinationId`** — chargement résultats puis analyse POST `/api/laboratoires/examinations/{id}/analyze`.',
+  },
+  LabAnalytics: {
+    type: 'dashboard',
+    actions: [{ id: 'la-refresh', label: 'Rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Pull refresh ; boutons 7j/30j/90j relancent loadAnalytics mais getAnalytics() n’envoie pas de param période' }],
+    elements: [{ id: 'la-kpi', type: 'card', label: 'KPI : total_examinations, examinations_7d/30d, completed_count, examination_types_count', actionable: false }],
+    guide: '**LabAnalyticsScreen** : param **`laboratoryId`** ; **getLaboratoryDetails** puis comparaison **user.id** / **laboratory.user_id** ; **labService.getAnalytics** GET `/api/laboratoires/{id}/analytics` sans query period côté client.',
+  },
+  BanqueSangList: {
+    type: 'list',
+    actions: [
+      { id: 'bsl-back', label: 'Retour', icon: LUCIDE_ICONS.back, category: 'navigation', description: 'Nouvelle recherche via retour' },
+      { id: 'bsl-refresh', label: 'Tirer pour rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'RefreshControl' },
+      { id: 'bsl-open', label: 'Ouvrir fiche banque', icon: LUCIDE_ICONS.droplet, category: 'action', description: 'Tap carte → **BanqueSangDetails** avec `banqueId`' },
+      { id: 'bsl-search-again', label: 'Modifier critères', icon: LUCIDE_ICONS.search, route: 'BanqueSangSearch', category: 'search', description: 'Retour écran filtres' },
+    ],
+    elements: [
+      { id: 'bsl-cards', type: 'card', label: 'Cartes : nom, badge Disponible/Indisponible, ville, distance_km, tel, stocks (4+…)', actionable: true },
+    ],
+    guide: '**BanqueSangListScreen** : `GET /api/banques-sang/search` avec query params depuis `route.params.filters` (lat, lng, max_distance_km, groupe_sanguin, available_only, ville, quartier). Pagination page/limit 20, `onEndReached`. États vides → bouton retour. **Pas** d’itinéraire intégré ici — ouvrir la fiche puis GPS si besoin.',
+  },
   TaxiList: { type: 'list', actions: [{ id: 'book', label: 'Réserver', icon: LUCIDE_ICONS.car, route: 'TaxiBooking', category: 'action', description: 'Réserver un taxi' }], elements: [{ id: 'list', type: 'card', label: 'Taxis disponibles', actionable: true }], guide: 'Liste des taxis disponibles. Sélectionnez un taxi pour réserver une course.' },
   CovoiturageList: { type: 'list', actions: [{ id: 'book', label: 'Réserver', icon: LUCIDE_ICONS.users, category: 'action', description: 'Réserver une place' }], elements: [{ id: 'list', type: 'card', label: 'Trajets disponibles', actionable: true }], guide: 'Liste des trajets de covoiturage. Réservez une place auprès d\'un conducteur.' },
   AgenceVoyageList: { type: 'list', actions: [{ id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, route: 'AgenceVoyageSearch', category: 'search', description: 'Affiner la recherche' }], elements: [{ id: 'list', type: 'card', label: 'Agences de voyage', actionable: true }], guide: 'Liste des agences de voyage. Consultez les offres et réservez.' },
-  ImmobilierList: { type: 'list', actions: [{ id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, route: 'ImmobilierSearch', category: 'search', description: 'Affiner la recherche' }, { id: 'compare', label: 'Comparer', icon: LUCIDE_ICONS.list, route: 'ImmobilierCompare', category: 'action', description: 'Comparer des biens' }], elements: [{ id: 'list', type: 'card', label: 'Biens immobiliers', actionable: true }], guide: 'Liste des biens immobiliers. Comparez les prix, réservez une visite.' },
+  ImmobilierList: {
+    type: 'list',
+    actions: [
+      { id: 'select-for-compare', label: 'Sélectionner (max 5)', icon: LUCIDE_ICONS.check, category: 'action', description: 'Cases à cocher sur cartes ; max 5 sinon Alert' },
+      { id: 'compare-selected', label: 'Comparer la sélection', icon: LUCIDE_ICONS.list, route: 'ImmobilierCompare', category: 'action', description: 'Barre Comparer si ≥2 sélectionnés → ImmobilierCompare avec propertyIds' },
+      { id: 'open-details', label: 'Ouvrir fiche', icon: LUCIDE_ICONS.info, route: 'ImmobilierDetails', category: 'navigation', description: 'Tap carte si pas en mode sélection → ImmobilierDetails' },
+      { id: 'refresh', label: 'Rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Pull-to-refresh → searchProperties(filters)' },
+    ],
+    elements: [
+      { id: 'list', type: 'card', label: 'FlatList résultats (route.params.filters)', actionable: true },
+    ],
+    guide: '**ImmobilierListScreen** : **searchProperties** avec **route.params.filters** (souvent depuis **ImmobilierSearch**). Sélection **jusqu’à 5** biens → **ImmobilierCompare** (\`propertyIds\`). Sinon tap → **ImmobilierDetails**. Pas de CTA « retour recherche » codé en dur — retour navigation.',
+  },
   LivreScolaireList: { type: 'list', actions: [{ id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, route: 'LivreScolaireSearch', category: 'search', description: 'Rechercher un livre' }], elements: [{ id: 'list', type: 'card', label: 'Livres scolaires', actionable: true }], guide: 'Liste des livres scolaires disponibles. Achetez ou contactez le vendeur.' },
-  OffreList: { type: 'list', actions: [{ id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, route: 'OffreSearch', category: 'search', description: 'Rechercher une offre' }], elements: [{ id: 'list', type: 'card', label: 'Offres d\'emploi', actionable: true }], guide: 'Liste des offres d\'emploi. Postulez directement ou analysez la compatibilité de votre CV.' },
+  OffreList: {
+    type: 'list',
+    actions: [
+      { id: 'search', label: 'Affiner (OffreSearch)', icon: LUCIDE_ICONS.search, route: 'OffreSearch', category: 'search', description: 'Formulaire filtres' },
+      { id: 'open-offre', label: 'Ouvrir offre', icon: LUCIDE_ICONS.briefcase, route: 'OffreDetails', category: 'navigation', description: 'Tap carte → OffreDetails' },
+    ],
+    elements: [{ id: 'list', type: 'card', label: 'Liste (searchOffres ou offres passées en params)', actionable: true }],
+    guide: 'OffreListScreen : searchOffres avec route.params.filters OU liste préremplie (ex. matching depuis OffresEmploiHome). Pagination limit 20.',
+  },
 };
 
 export const useScreenContext = (currentRouteName?: string, routeParams?: any): ScreenContext => {

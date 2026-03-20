@@ -1870,17 +1870,18 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         // Ajouter les images si pr?sentes
         if let Some(image_data) = images {
             for (i, image_base64) in image_data.iter().enumerate() {
+                let clean = Self::multimodal_image_base64_clean(image_base64);
                 content_parts.push(json!({
                     "type": "image_url",
                     "image_url": {
-                        "url": format!("data:image/jpeg;base64,{}", image_base64),
+                        "url": format!("data:image/jpeg;base64,{}", clean),
                         "detail": "high"
                     }
                 }));
                 log::info!(
-                    "[OpenAI Multimodal] Image {} ajout?e (taille: {} bytes)",
+                    "[OpenAI Multimodal] Image {} ajout?e (taille base64: {} chars)",
                     i + 1,
-                    image_base64.len()
+                    clean.len()
                 );
             }
         }
@@ -1977,6 +1978,16 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         Ok((content.to_string(), tokens_used))
     }
 
+    /// Nettoie une chaîne base64 (data-URI ou brut) pour les APIs multimodales.
+    fn multimodal_image_base64_clean(raw: &str) -> String {
+        let s = raw.trim();
+        if s.starts_with("data:") {
+            s.split(',').nth(1).unwrap_or(s).trim().to_string()
+        } else {
+            s.to_string()
+        }
+    }
+
     /// ?? Appel Google Gemini Pro multimodal
     #[allow(dead_code)]
     async fn call_gemini_multimodal(
@@ -1990,11 +2001,32 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             model.base_url, model.model, model.api_key
         );
 
-        let mut request_body = json!({
+        // ✅ Texte + vraies images en inline_data (l'ancien code envoyait le base64 comme texte → pas de vision)
+        let mut parts: Vec<Value> = vec![json!({ "text": prompt })];
+        if let Some(imgs) = images {
+            for (i, raw_b64) in imgs.iter().enumerate() {
+                let b64 = Self::multimodal_image_base64_clean(raw_b64);
+                if b64.is_empty() {
+                    log::warn!("[Gemini Multimodal] Image {} ignorée (base64 vide)", i + 1);
+                    continue;
+                }
+                log::info!(
+                    "[Gemini Multimodal] Image {}: {} caractères base64 (inline JPEG)",
+                    i + 1,
+                    b64.len()
+                );
+                parts.push(json!({
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": b64
+                    }
+                }));
+            }
+        }
+
+        let request_body = json!({
             "contents": [{
-                "parts": [{
-                    "text": prompt
-                }]
+                "parts": parts
             }],
             "generationConfig": {
                 "temperature": model.temperature,
@@ -2022,14 +2054,6 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 }
             ]
         });
-
-        if let Some(image_urls) = images {
-            request_body["contents"] = serde_json::json!([{
-                "parts": [{
-                    "text": image_urls.iter().map(|url| format!("Image URL: {}", url)).collect::<Vec<String>>().join("\n")
-                }]
-            }]);
-        }
 
         let response = self
             .http
@@ -2095,17 +2119,42 @@ Réponds SEULEMENT le JSON, rien d'autre.",
     ) -> AppResult<(String, u32)> {
         let url = format!("{}/messages", model.base_url);
 
-        let mut messages: Vec<serde_json::Value> = vec![json!({
-            "role": "user",
-            "content": prompt
-        })];
-
-        if let Some(image_urls) = images {
-            messages.push(json!({
-                "role": "user",
-                "content": image_urls.iter().map(|url| format!("Image URL: {}", url)).collect::<Vec<String>>().join("\n")
-            }));
+        // ✅ Blocs image base64 + texte (l'ancien code passait le base64 en chaîne « Image URL: » → pas de vision)
+        let mut content_blocks: Vec<Value> = Vec::new();
+        if let Some(imgs) = images {
+            for (i, raw_b64) in imgs.iter().enumerate() {
+                let b64 = Self::multimodal_image_base64_clean(raw_b64);
+                if b64.is_empty() {
+                    log::warn!(
+                        "[Anthropic Multimodal] Image {} ignorée (base64 vide)",
+                        i + 1
+                    );
+                    continue;
+                }
+                log::info!(
+                    "[Anthropic Multimodal] Image {}: {} caractères base64",
+                    i + 1,
+                    b64.len()
+                );
+                content_blocks.push(json!({
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
+                        "data": b64
+                    }
+                }));
+            }
         }
+        content_blocks.push(json!({
+            "type": "text",
+            "text": prompt
+        }));
+
+        let messages = vec![json!({
+            "role": "user",
+            "content": content_blocks
+        })];
 
         let payload = json!({
             "model": model.model,

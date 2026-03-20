@@ -4,6 +4,7 @@ import * as React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 
 const StarterHero: React.FC = () => {
   const { user } = useAuth();
@@ -12,7 +13,7 @@ const StarterHero: React.FC = () => {
 
   const handlePress = () => {
     if (user) {
-      (navigation as any).navigate('Services');
+      navigateToMesServicesHub(navigation as any);
     } else {
       (navigation as any).navigate('Register');
     }

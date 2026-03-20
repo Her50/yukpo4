@@ -216,6 +216,14 @@ const HopitalFormScreen: React.FC = () => {
         try { const r = await apiGet(`/api/hopitaux/${hid}/emergency-status`); if (r.success) setEmergencyStatus(r.data); } catch (e) { console.log('[Hopital] Emergency:', e); }
     };
 
+    /** Identifiant API hôpital pour routes `/api/hopitaux/{id}/…` (analytics, urgence) — **HospitalAnalytics** attend `hospitalId`. */
+    const resolveHospitalEntityId = (): number | null => {
+        const raw = hospitalData?.id ?? hospitalData?.service_id;
+        if (raw === undefined || raw === null) return null;
+        const n = Number(raw);
+        return Number.isFinite(n) ? n : null;
+    };
+
     const handleRefresh = async () => {
         setRefreshing(true);
         const hid = hospitalData?.id || hospitalData?.service_id || serviceId;
@@ -283,8 +291,31 @@ const HopitalFormScreen: React.FC = () => {
             <View style={s.quickRow}>
                 {[
                     { label: t('hopitalForm.gererCreneaux'), icon: 'calendar', color: '#3B82F6', onPress: () => setActiveTab('slots') },
-                    { label: t('hopitalFormScreen.iaTriage') || 'IA Triage', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('HospitalAIRecommendations', { serviceId }) },
-                    { label: t('hopitalFormScreen.statistiques') || 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('HospitalAnalytics', { serviceId }) },
+                    {
+                        label: t('hopitalFormScreen.iaTriage') || 'IA Triage',
+                        icon: 'brain',
+                        color: '#7C3AED',
+                        onPress: () => {
+                            const hid = resolveHospitalEntityId();
+                            (navigation as any).navigate('HospitalAIRecommendations', {
+                                ...(hid != null ? { hospitalId: hid } : {}),
+                                serviceId: serviceId ?? undefined,
+                            });
+                        },
+                    },
+                    {
+                        label: t('hopitalFormScreen.statistiques') || 'Statistiques',
+                        icon: 'bar-chart-2',
+                        color: '#F59E0B',
+                        onPress: () => {
+                            const hid = resolveHospitalEntityId();
+                            if (hid == null) {
+                                Alert.alert(t('message.error'), t('hopitalFormScreen.hospitalIdRequiredForStats') || 'Fiche hôpital non chargée : enregistrez l’établissement ou rafraîchissez.');
+                                return;
+                            }
+                            (navigation as any).navigate('HospitalAnalytics', { hospitalId: hid });
+                        },
+                    },
                     { label: t('hopitalForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
                     { label: t('financialTracking.wallet') || 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
                     { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
@@ -428,7 +459,17 @@ const HopitalFormScreen: React.FC = () => {
             <View style={s.analyticsCard}>
                 <View style={s.analyticsHdr}><SafeIcon name="sparkles" size={22} color="#F59E0B" /><Text style={s.analyticsTitle}>{t('hopitalFormScreen.intelligenceArtificielle') || 'Intelligence Artificielle'}</Text></View>
                 <Text style={s.analyticsEmpty}>{t('hopitalFormScreen.triageIaDescription') || 'Triage IA, recommandations et recherche par pathologie disponibles.'}</Text>
-                <NativeButton title={t('hopitalFormScreen.iaTriage') || 'Triage IA'} onPress={() => (navigation as any).navigate('HospitalAIRecommendations')} style={{ marginTop: 12, backgroundColor: '#F59E0B' }} />
+                <NativeButton
+                    title={t('hopitalFormScreen.iaTriage') || 'Triage IA'}
+                    onPress={() => {
+                        const hid = resolveHospitalEntityId();
+                        (navigation as any).navigate('HospitalAIRecommendations', {
+                            ...(hid != null ? { hospitalId: hid } : {}),
+                            serviceId: serviceId ?? undefined,
+                        });
+                    }}
+                    style={{ marginTop: 12, backgroundColor: '#F59E0B' }}
+                />
             </View>
         </ScrollView>
     );

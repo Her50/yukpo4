@@ -1,5 +1,5 @@
 // ✅ NOUVEAU 2026-03-11: Écran utilisateur dédié Hôtel / Meublé
-// UX spécifique hébergement : recherche par dates, voyageurs, chambres
+// Liste : recherche texte, ville, chambres min, budget max, standing, GPS ~50 km ; dates & occupants → HotelBooking
 // Distinct de l'écran Immobilier générique
 
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -51,6 +51,9 @@ const HotelMeubleHomeScreen: React.FC = () => {
     const screenSubtitle = isHotel ? t('hotelMeubleHomeScreen.hebergementIdeal') : t('hotelMeubleHomeScreen.locationsMeubleesDisponibles');
     const gradientColors: [string, string] = isHotel ? ['#1E3A5F', '#2563EB'] : ['#7C3AED', '#A855F7'];
     const accentColor = isHotel ? '#2563EB' : '#8B5CF6';
+
+    const navigationRouteName = (route as { name?: string }).name || 'HotelMeubleHome';
+    const chatScreenName = navigationRouteName;
 
     const devise = getCurrencyIntelligently() || 'FCFA';
     const [showChat, setShowChat] = useState(false);
@@ -407,17 +410,21 @@ const HotelMeubleHomeScreen: React.FC = () => {
             <IntelligentChatFab
                 onPress={() => setShowChat(true)}
                 visible={!showChat}
-                screenName="HotelMeubleHome"
+                screenName={chatScreenName}
             />
             <IntelligentChat
                 visible={showChat}
                 onClose={() => setShowChat(false)}
                 screenContext={{
-                    screenName: 'HotelMeubleHome',
+                    screenName: chatScreenName,
+                    currentRoute: navigationRouteName,
                     screenType: 'specialized',
                     serviceData: {
                         nom: screenTitle,
                         description: screenSubtitle,
+                        type_bien: mode,
+                        mode,
+                        navigation_route: navigationRouteName,
                     },
                 }}
             />

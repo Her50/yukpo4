@@ -44,6 +44,7 @@ import { extractDescription, extractProductName, extractServiceName, safeStringD
 import { normalizeServiceProducts } from '../../utils/productNormalizer';
 import { apiCallWithRetry } from '../../utils/retryWithBackoff';
 import { clearVideoDraft, loadVideoDraft, saveVideoDraft } from '../../utils/videoDraftStorage';
+import { navigateToMesServicesHub } from '../../navigation/mesServicesNavigation';
 
 const buildMediaUrl = (path: string | undefined | null): string => {
     if (!path) return '';
@@ -457,12 +458,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                     {
                         text: t('videoWizardExtra.createService'),
                         onPress: () => {
-                            const parent = (navigation as any).getParent();
-                            if (parent) {
-                                parent.navigate('Services');
-                            } else {
-                                navigation.navigate('Services' as never);
-                            }
+                            const parent = (navigation as any).getParent?.();
+                            navigateToMesServicesHub(parent || navigation);
                         },
                     },
                 ]

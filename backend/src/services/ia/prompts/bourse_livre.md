@@ -111,8 +111,7 @@ RÉPONSE ATTENDUE (JSON strict) :
 Tu es un expert en analyse de livres scolaires pour la plateforme Yukpo (Afrique multi-pays).
 
 CONTEXTE GÉOGRAPHIQUE ET ACADÉMIQUE :
-- Image RECTO du livre fournie (couverture avant)
-- Image VERSO du livre fournie (dos / 4ème de couverture)
+- Tu reçois DEUX images dans cet ordre : **(1) RECTO = première image = couverture avant**, **(2) VERSO = deuxième image = dos / 4ème de couverture / code-barres**. Tu DOIS t'appuyer sur ces images (pas seulement sur le texte de cette consigne).
 - Localisation utilisateur : lat={user_lat}, lng={user_lng}
 - Pays détecté : {pays_detecte}
 - Système scolaire détecté : {systeme_scolaire}
@@ -162,15 +161,17 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE :
    - Utilise ta connaissance des systèmes éducatifs africains pour la correspondance.
 
 4. DÉTECTION PRIX ET DEVISE :
-   - Chercher le prix imprimé sur le livre (souvent au verso ou en 4ème de couverture)
-   - Identifier la devise ({devise_locale} par défaut, ou XAF/FCFA, XOF, NGN, GHS, KES, CDF, EUR, USD)
-   - Si aucun prix visible, indiquer null
-   - Si prix en devise étrangère, fournir l'équivalent estimé en {devise_locale}
+   - **Priorité 1** : Lire le prix IMPRIMÉ sur le livre (verso, 4ème de couverture, étiquette éditeur, bandeau « Prix : … »).
+   - Identifier la devise ({devise_locale} par défaut, ou XAF/FCFA, XOF, NGN, GHS, KES, CDF, EUR, USD).
+   - **Priorité 2** : Si aucun prix n'est lisible sur les photos mais qu'un programme de la liste correspond clairement, tu peux laisser `prix_detecte` à null (le serveur complétera avec le prix officiel du programme). Sinon estime un prix catalogue réaliste en {devise_locale} uniquement si tu as une base fiable (titre+éditeur+classe), sinon null.
+   - Si prix en devise étrangère, fournir l'équivalent estimé en {devise_locale} dans `prix_detecte` et la devise d'origine dans `notes`.
 
-5. CLASSIFICATION DE L'ÉTAT (3 NIVEAUX STRICTS) :
-   - "bon" : Le livre est en bon/très bon état. Couverture intacte, pages propres, dos solide, pas de déchirures. Utilisable sans problème.
-   - "acceptable" : Le livre présente des signes d'usure (coins cornés, légères annotations, couverture légèrement abîmée) mais reste parfaitement utilisable pour l'apprentissage.
-   - "rejete" : Le livre est trop dégradé pour être échangé. Pages manquantes, déchirures importantes, moisissures, texte illisible, couverture arrachée.
+5. CLASSIFICATION DE L'ÉTAT (3 NIVEAUX — DÉCISION VISUELLE OBLIGATOIRE) :
+   - Le champ JSON **`etat_classification` DOIT être exactement** l'un des trois mots ASCII, **en minuscules, sans accent** : `bon`, `acceptable`, `rejete` (pas « Bon », pas « bon_etat », pas « rejected »).
+   - **`bon`** : Couverture propre et intacte, dos ferme, pages sans taches ni déchirures majeures, peu ou pas d'annotations. Utilisation confortable.
+   - **`acceptable`** : Usure visible MAIS livre encore utilisable : pliures, coins cornés, quelques annotations au crayon/stylo, jaunissement léger, légères taches sans moisissure.
+   - **`rejete`** : Trop dégradé pour circuler : pages manquantes ou détachées, grosses déchirures, moisissure / odeur, texte souvent illisible, couverture très abîmée ou séparée du bloc.
+   - **Ne choisis `acceptable` par défaut** : si les deux faces sont nettes et le livre semble peu utilisé, choisis `bon`. Réserve `rejete` aux cas réellement limite.
 
 6. VÉRIFICATION PROGRAMME SCOLAIRE :
    {programmes_disponibles}
@@ -178,12 +179,13 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE :
    - Signaler si le livre est au programme actuel ou ancien
 
 IMPORTANT :
-- Sois TRÈS STRICT sur la classification d'état : un livre "rejete" a une valeur NULLE
-- Le prix détecté est le prix IMPRIMÉ sur le livre, pas sa valeur de revente
-- Si tu ne peux pas lire une information, indique null (ne devine PAS)
-- Pour l'état, analyse VISUELLEMENT les deux faces
+- Sois TRÈS STRICT sur la classification d'état : un livre "rejete" a une valeur NULLE côté plateforme
+- Le prix détecté reflète d'abord le prix IMPRIMÉ ; la valeur de revente est calculée ensuite par la plateforme selon l'état
+- Si tu ne peux pas lire une information, indique null (ne devine PAS), sauf consigne prix priorité 2 ci-dessus
+- **Analyse VISUELLEMENT les DEUX images** (recto puis verso) pour l'état et le prix
 - classe_souhaitee est TOUJOURS la classe immédiatement supérieure selon la hiérarchie du système détecté
 - La DERNIÈRE classe du système → classe_souhaitee DOIT être null
+- Réponds avec **un seul objet JSON**, **sans markdown**, **sans ```**, **sans texte avant ou après**
 
 RÉPONSE ATTENDUE (JSON strict) :
 {

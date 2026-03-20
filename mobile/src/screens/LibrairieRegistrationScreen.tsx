@@ -188,13 +188,6 @@ const LibrairieRegistrationScreen: React.FC = () => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.contentContainer}
             >
-                <View style={styles.infoCard}>
-                    <SafeIcon name="info" size={20} color={modernColors.primary} />
-                    <Text style={styles.infoText}>
-                        Rejoignez notre réseau de librairies partenaires et touchez une commission de 5% sur chaque vente de livre neuf.
-                    </Text>
-                </View>
-
                 {/* Nom de la librairie */}
                 <View style={styles.formGroup}>
                     <Text style={styles.label}>Nom de la librairie *</Text>
@@ -383,22 +376,6 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         padding: 20,
-    },
-    infoCard: {
-        flexDirection: 'row',
-        backgroundColor: '#F0F9FF',
-        padding: 16,
-        borderRadius: modernStyles.borderRadius.lg,
-        marginBottom: 24,
-        borderLeftWidth: 4,
-        borderLeftColor: modernColors.primary,
-    },
-    infoText: {
-        flex: 1,
-        fontSize: 14,
-        color: modernColors.text,
-        marginLeft: 12,
-        lineHeight: 20,
     },
     formGroup: {
         marginBottom: 20,

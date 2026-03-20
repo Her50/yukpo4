@@ -13,7 +13,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
@@ -31,6 +31,7 @@ import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 
 type UploadStep = 'gps' | 'recto' | 'verso' | 'analyzing' | 'result' | 'list';
+type BookListingMode = 'troc' | 'vente' | 'don';
 
 interface BookEntry {
     id: number;
@@ -45,7 +46,15 @@ interface BookEntry {
     image_recto_uri: string;
     image_verso_uri: string;
     confidence: number;
+    /** Choisi avant les photos (défaut troc), repris dans le récap */
+    mode_listing: BookListingMode;
 }
+
+const LISTING_MODE_OPTIONS: { key: BookListingMode; labelKey: string; labelFr: string; icon: string; color: string }[] = [
+    { key: 'troc', labelKey: 'bookUploadV2.modeTroc', labelFr: 'Troc', icon: 'repeat', color: '#3b82f6' },
+    { key: 'vente', labelKey: 'bookUploadV2.modeVente', labelFr: 'Vente', icon: 'dollar-sign', color: '#22c55e' },
+    { key: 'don', labelKey: 'bookUploadV2.modeDon', labelFr: 'Don', icon: 'heart', color: '#ef4444' },
+];
 
 const MAX_BOOKS_PER_SESSION = 20;
 
@@ -73,6 +82,10 @@ const BookUploadV2Screen: React.FC = () => {
     const [gpsCoords, setGpsCoords] = useState<string | null>(null);
     const [gpsAddress, setGpsAddress] = useState<string | null>(null);
     const [showGPSModal, setShowGPSModal] = useState(false);
+    /** Mode par défaut pour la session (choisi avant la 1ʳᵉ photo) */
+    const [sessionListingMode, setSessionListingMode] = useState<BookListingMode>('troc');
+    /** Mode du livre en cours (réinitialisé au défaut session à chaque nouveau livre) */
+    const [currentBookListingMode, setCurrentBookListingMode] = useState<BookListingMode>('troc');
 
     // Current book being photographed
     const [rectoUri, setRectoUri] = useState<string | null>(null);
@@ -123,16 +136,17 @@ const BookUploadV2Screen: React.FC = () => {
             const sess = await bourseLivreV2Api.createSession(
                 coordinates,
                 address || undefined,
-                'troc'
+                sessionListingMode
             );
             setSession(sess);
+            setCurrentBookListingMode(sessionListingMode);
             setStep('recto');
             toaster.show(t('bookUploadV2Screen.sessionCreeePrenezLaPhotoRecto'), 'success');
         } catch (error: any) {
             console.error('[BookUploadV2] Erreur création session:', error);
             Alert.alert('Erreur', t('bookUploadV2Screen.impossibleDeCreerLaSessionReessayez'));
         }
-    }, [toaster]);
+    }, [toaster, sessionListingMode, t]);
 
     // ============================
     // CAMERA
@@ -166,21 +180,21 @@ const BookUploadV2Screen: React.FC = () => {
                 } else {
                     setVersoUri(asset.uri);
                     setVersoBase64(base64);
-                    // Auto-launch analysis
-                    analyzeBook(rectoBase64!, base64!);
+                    // Auto-launch analysis (mode figé au moment du verso)
+                    analyzeBook(rectoBase64!, base64!, currentBookListingMode);
                 }
             }
         } catch (error: any) {
             console.error(`[BookUploadV2] Erreur photo ${side}:`, error);
             Alert.alert('Erreur', t('bookUploadV2Screen.impossibleDePrendreLaPhotoReessayez'));
         }
-    }, [rectoBase64, session, toaster]);
+    }, [rectoBase64, session, toaster, currentBookListingMode]);
 
     // ============================
     // ANALYSIS
     // ============================
 
-    const analyzeBook = useCallback(async (recto: string, verso: string) => {
+    const analyzeBook = useCallback(async (recto: string, verso: string, modeListing: BookListingMode) => {
         if (!session) return;
 
         setStep('analyzing');
@@ -220,6 +234,7 @@ const BookUploadV2Screen: React.FC = () => {
                 image_recto_uri: rectoUri!,
                 image_verso_uri: versoUri || '',
                 confidence: result.analysis?.confidence || 0,
+                mode_listing: modeListing,
             };
 
             setBooks(prev => [...prev, entry]);
@@ -230,10 +245,13 @@ const BookUploadV2Screen: React.FC = () => {
             if (result.is_rejected) {
                 toaster.show(t('bookUploadV2Screen.ceLivreEstRejeteTropDegrade'), 'error');
             } else {
-                toaster.show(
-                    `${entry.titre} — ${etatLabels[normalizedEtat]} — ${Math.round(safeValue)} XAF`,
-                    'success'
-                );
+                const etatLabel =
+                    normalizedEtat === 'bon'
+                        ? t('bookUploadV2Screen.bonEtat')
+                        : normalizedEtat === 'rejete'
+                          ? t('bookUploadV2Screen.rejete')
+                          : t('bookUploadV2Screen.acceptable', 'Acceptable');
+                toaster.show(`${entry.titre} — ${etatLabel} — ${Math.round(safeValue)} XAF`, 'success');
             }
         } catch (error: any) {
             console.error('[BookUploadV2] Erreur analyse:', error);
@@ -241,7 +259,7 @@ const BookUploadV2Screen: React.FC = () => {
             setStep('recto');
             Alert.alert('Erreur analyse', t('bookUploadV2Screen.liaNaPasPuAnalyserCe'));
         }
-    }, [session, location, rectoUri, versoUri, toaster]);
+    }, [session, location, rectoUri, versoUri, toaster, t]);
 
     // ============================
     // NEXT / FINISH
@@ -261,8 +279,9 @@ const BookUploadV2Screen: React.FC = () => {
         setVersoUri(null);
         setVersoBase64(null);
         setCurrentResult(null);
+        setCurrentBookListingMode(sessionListingMode);
         setStep('recto');
-    }, [books.length]);
+    }, [books.length, sessionListingMode]);
 
     const handleFinish = useCallback(() => {
         if (books.length === 0) {
@@ -286,6 +305,63 @@ const BookUploadV2Screen: React.FC = () => {
     // ============================
     // RENDERS
     // ============================
+
+    const renderListingModePicker = (variant: 'gps' | 'camera') => {
+        const forSession = variant === 'gps';
+        return (
+            <View style={forSession ? styles.modePickerGps : styles.modePickerCamera}>
+                <Text style={styles.modePickerTitle}>
+                    {forSession
+                        ? t('bookUploadV2.modeAvantPhotos', 'Comment proposez-vous vos livres ?')
+                        : t('bookUploadV2.modePourCeLivre', 'Mode pour ce livre')}
+                </Text>
+                {forSession ? (
+                    <Text style={styles.modePickerHint}>
+                        {t(
+                            'bookUploadV2.modeHintGps',
+                            'Troc par défaut. Vous pouvez changer avant chaque photo recto si besoin.'
+                        )}
+                    </Text>
+                ) : null}
+                <View style={styles.modeChipsRow}>
+                    {LISTING_MODE_OPTIONS.map((opt) => {
+                        const active = forSession
+                            ? sessionListingMode === opt.key
+                            : currentBookListingMode === opt.key;
+                        return (
+                            <TouchableOpacity
+                                key={opt.key}
+                                style={[
+                                    styles.modeChip,
+                                    active && { borderColor: opt.color, backgroundColor: `${opt.color}22` },
+                                ]}
+                                onPress={() => {
+                                    hapticPress();
+                                    if (forSession) setSessionListingMode(opt.key);
+                                    else setCurrentBookListingMode(opt.key);
+                                }}
+                                activeOpacity={0.85}
+                            >
+                                <SafeIcon
+                                    name={opt.icon}
+                                    size={16}
+                                    color={active ? opt.color : '#9ca3af'}
+                                />
+                                <Text
+                                    style={[
+                                        styles.modeChipText,
+                                        active && { color: opt.color, fontWeight: '700' },
+                                    ]}
+                                >
+                                    {t(opt.labelKey, opt.labelFr)}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+            </View>
+        );
+    };
 
     const renderGPSStep = () => (
         <View style={styles.centerContainer}>
@@ -311,11 +387,14 @@ const BookUploadV2Screen: React.FC = () => {
             />
 
             {gpsCoords && (
-                <NativeButton
-                    title="Commencer les photos"
-                    onPress={() => handleGPSConfirm(gpsCoords, gpsAddress || undefined)}
-                    style={[styles.gpsButton, { backgroundColor: modernColors.primary }]}
-                />
+                <>
+                    {renderListingModePicker('gps')}
+                    <NativeButton
+                        title={t('bookUploadV2.commencerLesPhotos', 'Commencer les photos')}
+                        onPress={() => handleGPSConfirm(gpsCoords, gpsAddress || undefined)}
+                        style={[styles.gpsButton, { backgroundColor: modernColors.primary }]}
+                    />
+                </>
             )}
 
             <ModernGPSModal
@@ -331,6 +410,7 @@ const BookUploadV2Screen: React.FC = () => {
 
     const renderCameraStep = (side: 'recto' | 'verso') => (
         <View style={styles.centerContainer}>
+            {session && renderListingModePicker('camera')}
             <View style={styles.cameraGuide}>
                 <SafeIcon
                     name={side === 'recto' ? 'book-open' : 'rotate-ccw'}
@@ -494,6 +574,21 @@ const BookUploadV2Screen: React.FC = () => {
                             <View style={styles.bookValueRow}>
                                 <View style={[styles.etatDot, { backgroundColor: ETAT_COLORS[item.etat_classification] }]} />
                                 <Text style={styles.etatText}>{etatLabels[item.etat_classification]}</Text>
+                                <View
+                                    style={[
+                                        styles.modeBadgeMini,
+                                        {
+                                            borderColor:
+                                                LISTING_MODE_OPTIONS.find((o) => o.key === item.mode_listing)?.color ||
+                                                '#e5e7eb',
+                                        },
+                                    ]}
+                                >
+                                    <Text style={styles.modeBadgeMiniText}>
+                                        {LISTING_MODE_OPTIONS.find((o) => o.key === item.mode_listing)?.labelFr ||
+                                            item.mode_listing}
+                                    </Text>
+                                </View>
                                 <Text style={styles.bookValue}>
                                     {item.is_rejected ? '0' : Math.round(item.valeur_calculee)} XAF
                                 </Text>
@@ -577,6 +672,53 @@ const styles = StyleSheet.create({
     gpsText: { fontSize: 14, color: '#166534', marginLeft: 8 },
     gpsAddress: { fontSize: 12, color: '#4ade80', marginLeft: 32, marginTop: 4, width: '100%' },
     gpsButton: { marginTop: 16, minWidth: 200 },
+
+    modePickerGps: {
+        width: '100%',
+        maxWidth: 360,
+        marginTop: 20,
+        padding: 14,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+    },
+    modePickerCamera: {
+        width: '100%',
+        maxWidth: 360,
+        marginBottom: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+    },
+    modePickerTitle: { fontSize: 15, fontWeight: '700', color: '#1f2937', textAlign: 'center' },
+    modePickerHint: { fontSize: 12, color: '#6b7280', textAlign: 'center', marginTop: 6, lineHeight: 17 },
+    modeChipsRow: { flexDirection: 'row', gap: 8, marginTop: 12, justifyContent: 'center' },
+    modeChip: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: '#e5e7eb',
+        backgroundColor: '#f9fafb',
+    },
+    modeChipText: { fontSize: 12, color: '#6b7280', fontWeight: '600' },
+    modeBadgeMini: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        borderWidth: 1,
+        marginLeft: 4,
+    },
+    modeBadgeMiniText: { fontSize: 10, fontWeight: '700', color: '#374151' },
 
     cameraGuide: { alignItems: 'center', marginBottom: 24 },
     cameraTitle: { fontSize: 24, fontWeight: '700', color: '#1f2937', marginTop: 12 },

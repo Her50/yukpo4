@@ -3,8 +3,11 @@
  * Partage trajets, tickets, promotions sur réseaux sociaux
  */
 
-import { Linking, Platform, Share } from 'react-native';
+import { Linking, Share } from 'react-native';
 import { analytics } from './analytics';
+
+/** Page téléchargement unique (détection plateforme côté serveur) */
+const YUKPO_DOWNLOAD_URL = 'https://yukpomnang.com/download';
 
 interface ShareOptions {
     title: string;
@@ -153,9 +156,7 @@ class SocialSharingService {
             if (stats.userId) {
                 lines.push(`https://yukpomnang.com/navigation/share/${stats.userId}`);
             } else {
-                lines.push(Platform.OS === 'ios'
-                    ? 'https://apps.apple.com/app/yukpomnang'
-                    : 'https://play.google.com/store/apps/details?id=com.yukpomnang');
+                lines.push(YUKPO_DOWNLOAD_URL);
             }
 
             const message = lines.join('\n');
@@ -185,9 +186,7 @@ class SocialSharingService {
     async shareApp(): Promise<boolean> {
         try {
             const message = `\uD83D\uDE80 Découvrez Yukpo, la meilleure plateforme de réservation de tickets de bus !\n\n✅ Réservation facile\n✅ Paiement sécurisé\n✅ Suivi en temps réel\n\nTéléchargez maintenant !`;
-            const url = Platform.OS === 'ios'
-                ? 'https://apps.apple.com/app/yukpomnang'
-                : 'https://play.google.com/store/apps/details?id=com.yukpomnang';
+            const url = YUKPO_DOWNLOAD_URL;
 
             const result = await Share.share({
                 message: `${message}\n${url}`,

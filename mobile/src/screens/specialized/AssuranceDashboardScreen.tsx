@@ -4,7 +4,7 @@
 
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -17,6 +17,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import IntelligentChat from '../../components/IntelligentChat';
+import IntelligentChatFab from '../../components/IntelligentChatFab';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
@@ -31,48 +33,6 @@ import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 type TabType = 'overview' | 'products' | 'policies' | 'claims' | 'analytics';
 
-const TYPES_ASSURANCE = [
-    { key: 'auto', label: 'Automobile', icon: 'car', color: '#3B82F6' },
-    { key: 'sante', label: t('assuranceDashboard.sante'), icon: 'heart', color: '#DC2626' },
-    { key: 'habitation', label: 'Habitation', icon: 'home', color: '#10B981' },
-    { key: 'vie', label: 'Vie', icon: 'shield', color: '#8B5CF6' },
-    { key: 'voyage', label: 'Voyage', icon: 'plane', color: '#F59E0B' },
-    { key: 'entreprise', label: 'Entreprise', icon: 'briefcase', color: '#6366F1' },
-];
-
-const SOUS_CATEGORIES: Record<string, string[]> = {
-    auto: ['Tous risques', 'Tiers collision', t('assuranceDashboardScreen.responsabiliteCivile'), 'Vol/Incendie'],
-    sante: ['Hospitalisation', 'Ambulatoire', t('assuranceDashboardScreen.maternite'), 'Dentaire', 'Optique'],
-    habitation: ['Multirisque', 'Incendie', 'Vol', t('assuranceDashboardScreen.degatsDesEaux')],
-    vie: [t('assuranceDashboardScreen.deces'), t('assuranceDashboardScreen.epargne'), 'Retraite', 'Mixte'],
-    voyage: ['Annulation', 'Rapatriement', 'Bagages', 'Multi-garanties'],
-    entreprise: ['RC Pro', 'Multirisque', t('assuranceDashboardScreen.hommeCle'), 'Flotte auto'],
-};
-
-const CLAIM_STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-    declare: { label: t('assuranceDashboard.declare'), color: '#D97706', bg: '#FEF3C7' },
-    en_cours_instruction: { label: 'En instruction', color: '#2563EB', bg: '#DBEAFE' },
-    expertise_demandee: { label: t('assuranceDashboard.expertiseDemandee'), color: '#7C3AED', bg: '#EDE9FE' },
-    expertise_en_cours: { label: 'Expertise en cours', color: '#7C3AED', bg: '#EDE9FE' },
-    en_attente_documents: { label: 'Attente documents', color: '#D97706', bg: '#FEF3C7' },
-    approuve: { label: t('assuranceDashboard.approuve'), color: '#059669', bg: '#D1FAE5' },
-    partiellement_approuve: { label: t('assuranceDashboard.partiellementApprouve'), color: '#059669', bg: '#D1FAE5' },
-    refuse: { label: t('assuranceDashboard.refuse'), color: '#DC2626', bg: '#FEE2E2' },
-    indemnise: { label: t('assuranceDashboard.indemnise'), color: '#059669', bg: '#D1FAE5' },
-    clos: { label: 'Clos', color: '#6B7280', bg: '#F3F4F6' },
-    conteste: { label: t('assuranceDashboard.conteste'), color: '#DC2626', bg: '#FEE2E2' },
-};
-
-const POLICY_STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-    brouillon: { label: 'Brouillon', color: '#6B7280', bg: '#F3F4F6' },
-    en_attente: { label: t('assuranceDashboard.enAttente'), color: '#D97706', bg: '#FEF3C7' },
-    active: { label: 'Active', color: '#059669', bg: '#D1FAE5' },
-    suspendue: { label: 'Suspendue', color: '#D97706', bg: '#FEF3C7' },
-    resiliee: { label: t('assuranceDashboard.resiliee'), color: '#DC2626', bg: '#FEE2E2' },
-    expiree: { label: t('assuranceDashboard.expiree'), color: '#6B7280', bg: '#F3F4F6' },
-    annulee: { label: t('assuranceDashboard.annulee'), color: '#DC2626', bg: '#FEE2E2' },
-};
-
 const AssuranceDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
@@ -80,7 +40,62 @@ const AssuranceDashboardScreen: React.FC = () => {
     const { t } = useLanguageSafe();
     const serviceId = (route.params as any)?.serviceId || (route.params as any)?.service_id || 0;
 
+    const TYPES_ASSURANCE = useMemo(
+        () => [
+            { key: 'auto', label: 'Automobile', icon: 'car', color: '#3B82F6' },
+            { key: 'sante', label: t('assuranceDashboard.sante'), icon: 'heart', color: '#DC2626' },
+            { key: 'habitation', label: 'Habitation', icon: 'home', color: '#10B981' },
+            { key: 'vie', label: 'Vie', icon: 'shield', color: '#8B5CF6' },
+            { key: 'voyage', label: 'Voyage', icon: 'plane', color: '#F59E0B' },
+            { key: 'entreprise', label: 'Entreprise', icon: 'briefcase', color: '#6366F1' },
+        ],
+        [t]
+    );
+
+    const SOUS_CATEGORIES = useMemo(
+        (): Record<string, string[]> => ({
+            auto: ['Tous risques', 'Tiers collision', t('assuranceDashboardScreen.responsabiliteCivile'), 'Vol/Incendie'],
+            sante: ['Hospitalisation', 'Ambulatoire', t('assuranceDashboardScreen.maternite'), 'Dentaire', 'Optique'],
+            habitation: ['Multirisque', 'Incendie', 'Vol', t('assuranceDashboardScreen.degatsDesEaux')],
+            vie: [t('assuranceDashboardScreen.deces'), t('assuranceDashboardScreen.epargne'), 'Retraite', 'Mixte'],
+            voyage: ['Annulation', 'Rapatriement', 'Bagages', 'Multi-garanties'],
+            entreprise: ['RC Pro', 'Multirisque', t('assuranceDashboardScreen.hommeCle'), 'Flotte auto'],
+        }),
+        [t]
+    );
+
+    const CLAIM_STATUS_LABELS = useMemo(
+        (): Record<string, { label: string; color: string; bg: string }> => ({
+            declare: { label: t('assuranceDashboard.declare'), color: '#D97706', bg: '#FEF3C7' },
+            en_cours_instruction: { label: 'En instruction', color: '#2563EB', bg: '#DBEAFE' },
+            expertise_demandee: { label: t('assuranceDashboard.expertiseDemandee'), color: '#7C3AED', bg: '#EDE9FE' },
+            expertise_en_cours: { label: 'Expertise en cours', color: '#7C3AED', bg: '#EDE9FE' },
+            en_attente_documents: { label: 'Attente documents', color: '#D97706', bg: '#FEF3C7' },
+            approuve: { label: t('assuranceDashboard.approuve'), color: '#059669', bg: '#D1FAE5' },
+            partiellement_approuve: { label: t('assuranceDashboard.partiellementApprouve'), color: '#059669', bg: '#D1FAE5' },
+            refuse: { label: t('assuranceDashboard.refuse'), color: '#DC2626', bg: '#FEE2E2' },
+            indemnise: { label: t('assuranceDashboard.indemnise'), color: '#059669', bg: '#D1FAE5' },
+            clos: { label: 'Clos', color: '#6B7280', bg: '#F3F4F6' },
+            conteste: { label: t('assuranceDashboard.conteste'), color: '#DC2626', bg: '#FEE2E2' },
+        }),
+        [t]
+    );
+
+    const POLICY_STATUS_LABELS = useMemo(
+        (): Record<string, { label: string; color: string; bg: string }> => ({
+            brouillon: { label: 'Brouillon', color: '#6B7280', bg: '#F3F4F6' },
+            en_attente: { label: t('assuranceDashboard.enAttente'), color: '#D97706', bg: '#FEF3C7' },
+            active: { label: 'Active', color: '#059669', bg: '#D1FAE5' },
+            suspendue: { label: 'Suspendue', color: '#D97706', bg: '#FEF3C7' },
+            resiliee: { label: t('assuranceDashboard.resiliee'), color: '#DC2626', bg: '#FEE2E2' },
+            expiree: { label: t('assuranceDashboard.expiree'), color: '#6B7280', bg: '#F3F4F6' },
+            annulee: { label: t('assuranceDashboard.annulee'), color: '#DC2626', bg: '#FEE2E2' },
+        }),
+        [t]
+    );
+
     const [activeTab, setActiveTab] = useState<TabType>('overview');
+    const [showChat, setShowChat] = useState(false);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
@@ -630,11 +645,11 @@ const AssuranceDashboardScreen: React.FC = () => {
 
                         <Text style={s.fieldLabel}>{t('assuranceDashboard.typeDassurance')}</Text>
                         <View style={s.typeSelector}>
-                            {TYPES_ASSURANCE.map(t => (
-                                <TouchableOpacity key={t.key}
-                                    style={[s.typeSelectorItem, newProduct.type_assurance === t.key && { backgroundColor: t.color + '20', borderColor: t.color }]}
-                                    onPress={() => setNewProduct(p => ({ ...p, type_assurance: t.key, sous_categorie: SOUS_CATEGORIES[t.key]?.[0] || '' }))}>
-                                    <Text style={[s.typeSelectorText, newProduct.type_assurance === t.key && { color: t.color, fontWeight: '700' }]}>{t.label}</Text>
+                            {TYPES_ASSURANCE.map(typeRow => (
+                                <TouchableOpacity key={typeRow.key}
+                                    style={[s.typeSelectorItem, newProduct.type_assurance === typeRow.key && { backgroundColor: typeRow.color + '20', borderColor: typeRow.color }]}
+                                    onPress={() => setNewProduct(p => ({ ...p, type_assurance: typeRow.key, sous_categorie: SOUS_CATEGORIES[typeRow.key]?.[0] || '' }))}>
+                                    <Text style={[s.typeSelectorText, newProduct.type_assurance === typeRow.key && { color: typeRow.color, fontWeight: '700' }]}>{typeRow.label}</Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -717,10 +732,10 @@ const AssuranceDashboardScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabRow}>
-                    {TABS.map(t => (
-                        <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabActive]} onPress={() => setActiveTab(t.key)}>
-                            <SafeIcon name={t.icon as any} size={14} color={activeTab === t.key ? '#fff' : 'rgba(255,255,255,0.6)'} />
-                            <Text style={[s.tabLabel, activeTab === t.key && s.tabLabelActive]}>{t.label}</Text>
+                    {TABS.map(tab => (
+                        <TouchableOpacity key={tab.key} style={[s.tab, activeTab === tab.key && s.tabActive]} onPress={() => setActiveTab(tab.key)}>
+                            <SafeIcon name={tab.icon as any} size={14} color={activeTab === tab.key ? '#fff' : 'rgba(255,255,255,0.6)'} />
+                            <Text style={[s.tabLabel, activeTab === tab.key && s.tabLabelActive]}>{tab.label}</Text>
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
@@ -739,6 +754,21 @@ const AssuranceDashboardScreen: React.FC = () => {
                     <Text style={s.loadingOverlayText}>Traitement en cours...</Text>
                 </View>
             )}
+            <IntelligentChatFab
+                onPress={() => setShowChat(true)}
+                visible={!showChat && !showProductModal}
+                screenName="AssuranceDashboard"
+            />
+            <IntelligentChat
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                screenContext={{
+                    screenName: 'AssuranceDashboard',
+                    screenType: 'dashboard',
+                    userData: { role: user?.role, partner_type: user?.partner_type, name: user?.name },
+                    serviceData: { service_id: serviceId },
+                }}
+            />
         </View>
     );
 };

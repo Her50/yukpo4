@@ -14,7 +14,9 @@ use uuid::Uuid;
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::{jwt_auth, AuthenticatedUser};
+use crate::services::geocoding_service::GeocodingService;
 use crate::state::AppState;
+use log::warn;
 
 #[derive(Deserialize)]
 struct GeocodeRequest {
@@ -1510,6 +1512,21 @@ struct ActivityHistoryQuery {
     page: Option<i32>,
     limit: Option<i32>,
     mode: Option<String>,
+    /// Filtre `started_at >=` aligné sur les périodes du résumé (week, month, quarter, semester, year).
+    /// Avec `period`, la limite max est relevée pour couvrir les stats « par modalité » côté mobile.
+    period: Option<String>,
+}
+
+/// Borne basse de dates pour l’historique (None = pas de filtre temporel).
+fn activity_history_period_since(period: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    match period {
+        "week" => Some(chrono::Utc::now() - chrono::Duration::days(7)),
+        "month" => Some(chrono::Utc::now() - chrono::Duration::days(30)),
+        "quarter" => Some(chrono::Utc::now() - chrono::Duration::days(90)),
+        "semester" => Some(chrono::Utc::now() - chrono::Duration::days(182)),
+        "year" => Some(chrono::Utc::now() - chrono::Duration::days(365)),
+        _ => None,
+    }
 }
 
 #[derive(Serialize, sqlx::FromRow)]
@@ -1538,6 +1555,34 @@ async fn log_activity(
         .map(|dt| dt.with_timezone(&chrono::Utc))
         .unwrap_or_else(|_| chrono::Utc::now());
 
+    // Sessions passives (`[auto]` dans origin) : géocodage inverse serveur (clé Google centralisée)
+    // + libellé « zone » (quartier · ville · région) pour agréger les stats sans adresse de rue.
+    let mut destination_address = req.destination_address.clone();
+    let passive_auto = req.origin_address.as_deref().map(|s| s.contains("[auto]")).unwrap_or(false);
+
+    if passive_auto {
+        if let (Some(lat), Some(lng)) = (req.dest_lat, req.dest_lng) {
+            let zone_label = if let Some(ref gm) = state.geographic_matching {
+                gm.reverse_geocode_activity_zone(lat, lng).await
+            } else {
+                let geo = GeocodingService::new();
+                match geo.reverse_geocode(lat, lng).await {
+                    Ok(r) => Some(GeocodingService::format_activity_zone_label(&r)),
+                    Err(e) => {
+                        warn!(
+                            "[navigation] log_activity géocodage inverse sans geographic_matching: {}",
+                            e
+                        );
+                        None
+                    }
+                }
+            };
+            if let Some(z) = zone_label {
+                destination_address = Some(z);
+            }
+        }
+    }
+
     sqlx::query(
         r#"
         INSERT INTO navigation_activity_log (
@@ -1553,7 +1598,7 @@ async fn log_activity(
     .bind(user.id)
     .bind(&req.travel_mode)
     .bind(&req.origin_address)
-    .bind(&req.destination_address)
+    .bind(&destination_address)
     .bind(req.origin_lat)
     .bind(req.origin_lng)
     .bind(req.dest_lat)
@@ -1586,6 +1631,8 @@ async fn get_activity_summary(
     let since = match period.as_str() {
         "week" => chrono::Utc::now() - chrono::Duration::days(7),
         "month" => chrono::Utc::now() - chrono::Duration::days(30),
+        "quarter" => chrono::Utc::now() - chrono::Duration::days(90),
+        "semester" => chrono::Utc::now() - chrono::Duration::days(182),
         "year" => chrono::Utc::now() - chrono::Duration::days(365),
         _ => chrono::DateTime::<chrono::Utc>::MIN_UTC,
     };
@@ -1665,9 +1712,22 @@ async fn get_activity_summary(
     .await?;
 
     // Meilleure session (qualité la plus élevée)
-    let best_session = sqlx::query_as::<_, (f64, f64, i32, f64, chrono::DateTime<chrono::Utc>)>(
+    let best_session = sqlx::query_as::<
+        _,
+        (
+            f64,
+            f64,
+            i32,
+            f64,
+            chrono::DateTime<chrono::Utc>,
+            String,
+            Option<String>,
+            Option<String>,
+        ),
+    >(
         r#"
-        SELECT quality_score, distance_meters, duration_seconds, avg_speed_kmh, started_at
+        SELECT quality_score, distance_meters, duration_seconds, avg_speed_kmh, started_at,
+               travel_mode, origin_address, destination_address
         FROM navigation_activity_log
         WHERE user_id = $1 AND started_at >= $2 AND quality_score > 0
         ORDER BY quality_score DESC
@@ -1727,12 +1787,15 @@ async fn get_activity_summary(
         "by_mode": modes_json,
         "top_destinations": destinations_json,
         "daily_trend": trend_json,
-        "best_session": best_session.map(|(q, d, dur, spd, date)| serde_json::json!({
+        "best_session": best_session.map(|(q, d, dur, spd, date, mode, origin, dest)| serde_json::json!({
             "quality_score": q,
             "distance_km": d / 1000.0,
             "duration_minutes": dur as f64 / 60.0,
             "avg_speed_kmh": spd,
             "date": date.format("%Y-%m-%d").to_string(),
+            "travel_mode": mode,
+            "origin_address": origin,
+            "destination_address": dest,
         })),
     })))
 }
@@ -1744,44 +1807,95 @@ async fn get_activity_history(
     Query(params): Query<ActivityHistoryQuery>,
 ) -> AppResult<Json<serde_json::Value>> {
     let page = params.page.unwrap_or(1).max(1);
-    let limit = params.limit.unwrap_or(20).min(50);
+    let raw_limit = params.limit.unwrap_or(20).max(1);
+    let since = params.period.as_deref().and_then(activity_history_period_since);
+    // Avec `period` : assez de lignes pour agréger auto / marche libre sur l’écran stats.
+    // `mode` sans `period` : plus de lignes pour les comparaisons (ex. marche libre vs sessions précédentes).
+    let limit_cap: i32 = match (since.is_some(), params.mode.is_some()) {
+        (true, _) => 500,
+        (false, true) => 200,
+        (false, false) => 50,
+    };
+    let limit = raw_limit.min(limit_cap);
     let offset = (page - 1) * limit;
 
-    let rows = if let Some(mode) = &params.mode {
-        sqlx::query_as::<_, ActivityRow>(
-            r#"
-            SELECT id, travel_mode, origin_address, destination_address,
-                   distance_meters, duration_seconds, avg_speed_kmh, max_speed_kmh,
-                   calories_burned, quality_score, started_at, ended_at
-            FROM navigation_activity_log
-            WHERE user_id = $1 AND travel_mode = $2
-            ORDER BY started_at DESC
-            LIMIT $3 OFFSET $4
-            "#,
-        )
-        .bind(user.id)
-        .bind(mode)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&state.pg)
-        .await?
-    } else {
-        sqlx::query_as::<_, ActivityRow>(
-            r#"
-            SELECT id, travel_mode, origin_address, destination_address,
-                   distance_meters, duration_seconds, avg_speed_kmh, max_speed_kmh,
-                   calories_burned, quality_score, started_at, ended_at
-            FROM navigation_activity_log
-            WHERE user_id = $1
-            ORDER BY started_at DESC
-            LIMIT $2 OFFSET $3
-            "#,
-        )
-        .bind(user.id)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&state.pg)
-        .await?
+    let rows = match (since, params.mode.as_deref()) {
+        (Some(since_dt), Some(mode)) => {
+            sqlx::query_as::<_, ActivityRow>(
+                r#"
+                SELECT id, travel_mode, origin_address, destination_address,
+                       distance_meters, duration_seconds, avg_speed_kmh, max_speed_kmh,
+                       calories_burned, quality_score, started_at, ended_at
+                FROM navigation_activity_log
+                WHERE user_id = $1 AND travel_mode = $2 AND started_at >= $3
+                ORDER BY started_at DESC
+                LIMIT $4 OFFSET $5
+                "#,
+            )
+            .bind(user.id)
+            .bind(mode)
+            .bind(since_dt)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&state.pg)
+            .await?
+        }
+        (Some(since_dt), None) => {
+            sqlx::query_as::<_, ActivityRow>(
+                r#"
+                SELECT id, travel_mode, origin_address, destination_address,
+                       distance_meters, duration_seconds, avg_speed_kmh, max_speed_kmh,
+                       calories_burned, quality_score, started_at, ended_at
+                FROM navigation_activity_log
+                WHERE user_id = $1 AND started_at >= $2
+                ORDER BY started_at DESC
+                LIMIT $3 OFFSET $4
+                "#,
+            )
+            .bind(user.id)
+            .bind(since_dt)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&state.pg)
+            .await?
+        }
+        (None, Some(mode)) => {
+            sqlx::query_as::<_, ActivityRow>(
+                r#"
+                SELECT id, travel_mode, origin_address, destination_address,
+                       distance_meters, duration_seconds, avg_speed_kmh, max_speed_kmh,
+                       calories_burned, quality_score, started_at, ended_at
+                FROM navigation_activity_log
+                WHERE user_id = $1 AND travel_mode = $2
+                ORDER BY started_at DESC
+                LIMIT $3 OFFSET $4
+                "#,
+            )
+            .bind(user.id)
+            .bind(mode)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&state.pg)
+            .await?
+        }
+        (None, None) => {
+            sqlx::query_as::<_, ActivityRow>(
+                r#"
+                SELECT id, travel_mode, origin_address, destination_address,
+                       distance_meters, duration_seconds, avg_speed_kmh, max_speed_kmh,
+                       calories_burned, quality_score, started_at, ended_at
+                FROM navigation_activity_log
+                WHERE user_id = $1
+                ORDER BY started_at DESC
+                LIMIT $2 OFFSET $3
+                "#,
+            )
+            .bind(user.id)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&state.pg)
+            .await?
+        }
     };
 
     let activities: Vec<serde_json::Value> = rows
@@ -2440,8 +2554,8 @@ async fn get_ai_insights(
     let cache_key = format!("nav:ai_insights:{}:{}", user.id, period);
     let cache_ttl_secs: u64 = match period.as_str() {
         "week" => 1800,
-        "month" => 3600,
-        "year" => 7200,
+        "month" | "quarter" => 3600,
+        "semester" | "year" => 7200,
         _ => 1800,
     };
     if let Ok(mut conn) = state.redis_client.get_multiplexed_async_connection().await {
@@ -2463,6 +2577,8 @@ async fn get_ai_insights(
     let since = match period.as_str() {
         "week" => chrono::Utc::now() - chrono::Duration::days(7),
         "month" => chrono::Utc::now() - chrono::Duration::days(30),
+        "quarter" => chrono::Utc::now() - chrono::Duration::days(90),
+        "semester" => chrono::Utc::now() - chrono::Duration::days(182),
         "year" => chrono::Utc::now() - chrono::Duration::days(365),
         _ => chrono::DateTime::<chrono::Utc>::MIN_UTC,
     };

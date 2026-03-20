@@ -212,12 +212,15 @@ const LivreScolaireHomeScreen: React.FC = () => {
                         {t('livreScolaireHome.vendreTroquerTitle', 'Mettez vos livres en circulation')}
                     </Text>
                     <Text style={styles.primaryActionSubtitle}>
-                        {t('livreScolaireHome.vendreTroquerSubtitle', 'Vente ou troc rapide, sécurisé et visible immédiatement')}
+                        {t(
+                            'livreScolaireHome.vendreTroquerSubtitle',
+                            'Vente, troc ou don — à l\'étape suivante, précisez si le livre est offert gratuitement'
+                        )}
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.primaryActionButton, styles.primaryActionBuy]}
-                    onPress={() => safeNavigate('MesBesoinsLivres')}
+                    onPress={() => safeNavigate('ProgrammeBesoinsSelector')}
                     activeOpacity={0.9}
                 >
                     <SafeIcon name="book-check" size={20} color="#FFFFFF" type="lucide" />

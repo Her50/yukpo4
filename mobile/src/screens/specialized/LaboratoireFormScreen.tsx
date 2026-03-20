@@ -284,8 +284,31 @@ const LaboratoireFormScreen: React.FC = () => {
             <View style={s.quickRow}>
                 {[
                     { label: t('laboratoireForm.ajouterExamen'), icon: 'plus-circle', color: '#0891B2', onPress: () => { setActiveTab('exams'); setTimeout(() => openExamModal(), 200); } },
-                    { label: t('laboForm.iaAnalyse') || 'IA Analyse', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('LabAIAnalysis', { serviceId }) },
-                    { label: t('laboForm.statistiques') || 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('LabAnalytics', { serviceId }) },
+                    {
+                        label: t('laboForm.iaAnalyse') || 'IA Analyse',
+                        icon: 'brain',
+                        color: '#7C3AED',
+                        onPress: () => {
+                            Alert.alert(
+                                t('laboForm.iaAnalyse') || 'IA Analyse',
+                                t('laboForm.iaAnalysePartnerHint') ||
+                                    "L'analyse IA des résultats s'ouvre depuis un examen terminé (écran Mes examens côté patient, avec examinationId). Gérez les demandes et résultats depuis votre flux prestataire ou l'onglet Examens."
+                            );
+                        },
+                    },
+                    {
+                        label: t('laboForm.statistiques') || 'Statistiques',
+                        icon: 'bar-chart-2',
+                        color: '#F59E0B',
+                        onPress: () => {
+                            const lid = labData?.id;
+                            if (!lid) {
+                                Alert.alert(t('message.error'), t('laboForm.labIdMissingForAnalytics') || 'Laboratoire non chargé : enregistrez ou rafraîchissez le tableau de bord.');
+                                return;
+                            }
+                            (navigation as any).navigate('LabAnalytics', { laboratoryId: lid });
+                        },
+                    },
                     { label: t('laboratoireForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
                     { label: t('financialTracking.wallet') || 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
                     { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },

@@ -43,7 +43,11 @@ interface LaboratoireListScreenParams {
         lng?: number;
         max_distance_km?: number;
         type_laboratoire?: string;
+        service_type?: string;
         analyse?: string;
+        prestation_analyse?: string;
+        types_examens?: string[];
+        rdv_en_ligne?: boolean;
         imagerie?: string;
         available_only?: boolean;
     };
@@ -84,7 +88,16 @@ const LaboratoireListScreen: React.FC = () => {
             if (filters.lng) queryParams.append('lng', filters.lng.toString());
             if (filters.max_distance_km) queryParams.append('max_distance_km', filters.max_distance_km.toString());
             if (filters.type_laboratoire) queryParams.append('type_laboratoire', filters.type_laboratoire);
-            if (filters.analyse) queryParams.append('prestation_analyse', filters.analyse);
+            const prestation =
+                filters.analyse?.trim() ||
+                (typeof filters.prestation_analyse === 'string' ? filters.prestation_analyse.trim() : '');
+            if (prestation) queryParams.append('prestation_analyse', prestation);
+            if (filters.types_examens?.length) {
+                filters.types_examens.forEach((t) => queryParams.append('types_examens', t));
+            }
+            const typeService = filters.service_type?.trim();
+            if (typeService) queryParams.append('service_type', typeService);
+            if (filters.rdv_en_ligne) queryParams.append('rdv_en_ligne', 'true');
             if (filters.imagerie) queryParams.append('imagerie', filters.imagerie);
             if (filters.available_only) queryParams.append('available_only', 'true');
             queryParams.append('page', currentPage.toString());

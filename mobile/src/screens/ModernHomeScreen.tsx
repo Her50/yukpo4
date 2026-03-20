@@ -23,6 +23,7 @@ import { SafeIcon } from '../components/SafeIcon';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 
 const { width } = Dimensions.get('window');
 
@@ -67,21 +68,31 @@ const ModernHomeScreen: React.FC = () => {
     </TouchableOpacity>
   );
 
-  const StatCard = ({ iconName, title, value, color, trend }: any) => (
-    <ModernCard variant="glass" style={styles.statCard}>
-      <View style={styles.statHeader}>
-        <SafeIcon name={iconName} size={20} color={color} />
-        <Text style={styles.statTitle}>{title}</Text>
-      </View>
-      <Text style={[styles.statValue, { color }]}>{value != null ? String(value) : ''}</Text>
-      {trend && (
-        <View style={styles.trendContainer}>
-          <SafeIcon name="up" size={12} color={modernColors.success} />
-          <Text style={styles.trendText}>{trend}</Text>
+  const StatCard = ({ iconName, title, value, color, trend, onPress }: any) => {
+    const inner = (
+      <ModernCard variant="glass" style={styles.statCard}>
+        <View style={styles.statHeader}>
+          <SafeIcon name={iconName} size={20} color={color} />
+          <Text style={styles.statTitle}>{title}</Text>
         </View>
-      )}
-    </ModernCard>
-  );
+        <Text style={[styles.statValue, { color }]}>{value != null ? String(value) : ''}</Text>
+        {trend && (
+          <View style={styles.trendContainer}>
+            <SafeIcon name="up" size={12} color={modernColors.success} />
+            <Text style={styles.trendText}>{trend}</Text>
+          </View>
+        )}
+      </ModernCard>
+    );
+    if (onPress) {
+      return (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={{ flex: 1 }}>
+          {inner}
+        </TouchableOpacity>
+      );
+    }
+    return inner;
+  };
 
   return (
     <NativeGradient
@@ -136,7 +147,7 @@ const ModernHomeScreen: React.FC = () => {
                 iconName="heart"
                 title="Favoris"
                 gradient={modernColors.warningGradient}
-                onPress={() => (navigation as any).navigate('Services')}
+                onPress={() => (navigation as any).navigate('MyFavorites')}
               />
               <QuickAction
                 iconName="location"
@@ -157,6 +168,7 @@ const ModernHomeScreen: React.FC = () => {
                 value="12"
                 color={modernColors.primary}
                 trend="+2 cette semaine"
+                onPress={() => navigateToMesServicesHub(navigation as any)}
               />
               <StatCard
                 iconName="star"

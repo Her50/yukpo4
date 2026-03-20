@@ -1493,6 +1493,183 @@ RÉPONSE ATTENDUE (JSON strict) :
         Ok(suggestion)
     }
 
+    /// Nettoie la sortie LLM (blocs ```json) et isole le premier objet `{ ... }`.
+    pub fn sanitize_recto_verso_llm_json(raw: &str) -> String {
+        let mut s = raw.trim().to_string();
+        if s.starts_with("```") {
+            if let Some(i) = s.find('\n') {
+                s = s[i + 1..].to_string();
+            }
+            if let Some(end) = s.rfind("```") {
+                s = s[..end].trim().to_string();
+            }
+        }
+        if let Some(start) = s.find('{') {
+            if let Some(end) = s.rfind('}') {
+                if end >= start {
+                    return s[start..=end].to_string();
+                }
+            }
+        }
+        s
+    }
+
+    /// Ramène les variantes LLM vers exactement `bon`, `acceptable` ou `rejete`.
+    pub fn normalize_etat_classification_llm(raw: &str) -> String {
+        let s = raw.trim().to_lowercase();
+        let n: String = s
+            .chars()
+            .map(|c| match c {
+                'é' | 'è' | 'ê' | 'ë' => 'e',
+                'à' | 'â' => 'a',
+                'ù' | 'û' => 'u',
+                'î' | 'ï' => 'i',
+                'ô' => 'o',
+                'ç' => 'c',
+                _ => c,
+            })
+            .collect();
+
+        if n.contains("rejet") {
+            return "rejete".to_string();
+        }
+        match n.as_str() {
+            "bon" | "tres bon" => return "bon".to_string(),
+            "acceptable" => return "acceptable".to_string(),
+            _ => {}
+        }
+        if (n.starts_with("tres bon")
+            || n.contains("excellent")
+            || n.contains("comme neuf")
+            || n.contains("tres bon etat")
+            || n.contains("bon etat"))
+            && !n.contains("pas tres bon")
+            && !n.contains("pas bon")
+        {
+            return "bon".to_string();
+        }
+        if n.contains("acceptable")
+            || n.contains("etat moyen")
+            || n.contains("usure")
+            || n.contains("abime")
+            || n.contains("corners")
+            || n.contains("annot")
+        {
+            return "acceptable".to_string();
+        }
+        if n.contains("bon") && !n.contains("acceptable") {
+            return "bon".to_string();
+        }
+        "acceptable".to_string()
+    }
+
+    fn normalize_isbn_key(s: &str) -> String {
+        s.chars().filter(|c| c.is_alphanumeric()).collect::<String>().to_lowercase()
+    }
+
+    /// Si `prix_detecte` est absent ou nul : `prix_officiel` du programme (ID renvoyé par l'IA ou rapprochement).
+    pub fn enrich_prix_from_programmes_officiels(
+        analysis: &mut BookRectoVersoAnalysis,
+        programmes: &[crate::models::livre_scolaire::ProgrammeScolaire],
+    ) {
+        use rust_decimal::prelude::ToPrimitive;
+
+        fn prix_manquant(p: Option<f64>) -> bool {
+            match p {
+                None => true,
+                Some(x) => !x.is_finite() || x <= 0.0,
+            }
+        }
+
+        if !prix_manquant(analysis.prix_detecte) {
+            return;
+        }
+
+        if let Some(pid) = analysis.programme_scolaire_id {
+            if let Some(prog) = programmes.iter().find(|p| p.id == pid && p.is_active) {
+                if let Some(v) = prog.prix_officiel.and_then(|d| d.to_f64()) {
+                    if v > 0.0 {
+                        analysis.prix_detecte = Some(v);
+                        if analysis.devise_detectee.as_deref().unwrap_or("").is_empty() {
+                            analysis.devise_detectee = prog
+                                .devise
+                                .clone()
+                                .filter(|d| !d.is_empty())
+                                .or(Some("XAF".to_string()));
+                        }
+                        let note = format!(
+                            "prix_officiel programme #{} (aucun prix lisible sur les photos)",
+                            pid
+                        );
+                        analysis.notes = Some(match analysis.notes.take() {
+                            Some(n) if !n.is_empty() => format!("{} | {}", n, note),
+                            _ => note,
+                        });
+                        return;
+                    }
+                }
+            }
+        }
+
+        let isbn_k =
+            analysis.isbn.as_deref().map(Self::normalize_isbn_key).filter(|s| !s.is_empty());
+        let titre_u = analysis.titre.as_deref().unwrap_or("").trim().to_lowercase();
+        let classe_u = analysis.classe_actuelle.as_deref().unwrap_or("").trim().to_lowercase();
+
+        let mut best_score: i32 = 0;
+        let mut best_price: f64 = 0.0;
+        let mut best_id: Option<i32> = None;
+
+        for prog in programmes.iter().filter(|p| p.is_active) {
+            let Some(v) = prog.prix_officiel.and_then(|d| d.to_f64()) else {
+                continue;
+            };
+            if v <= 0.0 {
+                continue;
+            }
+
+            let mut score: i32 = 0;
+            if let Some(ref ik) = isbn_k {
+                if prog.isbn_livre.as_deref().map(Self::normalize_isbn_key).as_ref() == Some(ik) {
+                    score += 100;
+                }
+            }
+            if !titre_u.is_empty() {
+                let tp = prog.titre_livre.to_lowercase();
+                if tp.contains(&titre_u) || titre_u.contains(&tp) {
+                    score += 45;
+                }
+            }
+            if !classe_u.is_empty() && prog.classe.to_lowercase().trim() == classe_u {
+                score += 28;
+            }
+
+            if score >= 50 && (score > best_score || (score == best_score && v > best_price)) {
+                best_score = score;
+                best_price = v;
+                best_id = Some(prog.id);
+            }
+        }
+
+        if best_price > 0.0 {
+            analysis.prix_detecte = Some(best_price);
+            if analysis.devise_detectee.as_deref().unwrap_or("").is_empty() {
+                analysis.devise_detectee = Some("XAF".to_string());
+            }
+            if analysis.programme_scolaire_id.is_none() {
+                analysis.programme_scolaire_id = best_id;
+            }
+            let note = format!(
+                "prix_officiel programme (rapprochement score={})",
+                best_score
+            );
+            analysis.notes = Some(match analysis.notes.take() {
+                Some(n) if !n.is_empty() => format!("{} | {}", n, note),
+                _ => note,
+            });
+        }
+    }
+
     /// ✅ V2: Analyse recto-verso d'un livre avec classification 3 niveaux,
     /// détection prix/devise, et vérification programme scolaire
     pub async fn analyze_book_recto_verso(
@@ -1503,6 +1680,12 @@ RÉPONSE ATTENDUE (JSON strict) :
         user_lng: Option<f64>,
         programmes_disponibles: &str,
     ) -> AppResult<BookRectoVersoAnalysis> {
+        log::info!(
+            "[BookExchangeAIService] Payload vision: recto_base64_len={}, verso_base64_len={}",
+            image_recto_base64.len(),
+            image_verso_base64.len()
+        );
+
         let lat = user_lat.unwrap_or(0.0);
         let lng = user_lng.unwrap_or(0.0);
 
@@ -1635,11 +1818,12 @@ Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, cla
             tokens
         );
 
-        let analysis: BookRectoVersoAnalysis = match serde_json::from_str(&response) {
+        let response_json = sanitize_recto_verso_llm_json(&response);
+        let analysis: BookRectoVersoAnalysis = match serde_json::from_str(&response_json) {
             Ok(a) => a,
             Err(e) => {
                 log::warn!(
-                    "[BookExchangeAIService] Erreur parsing JSON recto-verso: {}. Réponse: {}",
+                    "[BookExchangeAIService] Erreur parsing JSON recto-verso: {}. Réponse (500): {}",
                     e,
                     &response[..response.len().min(500)]
                 );
@@ -1669,6 +1853,8 @@ Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, cla
         // ✅ Fallback déterministe (GPS-aware): si l'IA a trouvé classe_actuelle mais pas classe_souhaitee,
         // ou si classe_souhaitee est incorrecte, on la recalcule en tenant compte du système scolaire détecté
         let mut analysis = analysis;
+        analysis.etat_classification =
+            normalize_etat_classification_llm(&analysis.etat_classification);
         if let Some(ref classe_act) = analysis.classe_actuelle {
             if is_classe_terminale(classe_act) {
                 // Dernière classe du système (Terminale, Upper Sixth, SSS 3, etc.)

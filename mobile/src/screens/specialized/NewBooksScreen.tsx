@@ -2,7 +2,7 @@
 // Permet aux utilisateurs de parcourir les livres neufs par classe/matière,
 // comparer les prix neuf vs occasion, et acheter directement
 
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -31,8 +31,18 @@ const NIVEAUX = [
     { key: 'Lycée', labelKey: 'livresNeufs.lycee' },
 ];
 
+/** Prix renvoyés par l’API (Decimal sérialisé, nombre, chaîne). */
+function prixToNumber(v: unknown): number {
+    if (v == null) return 0;
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    const s = String(v).replace(/\s/g, '').replace(',', '.');
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : 0;
+}
+
 const NewBooksScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const route = useRoute();
     const { t } = useLanguageSafe();
     const { location } = useLocation();
     const toaster = useToaster();
@@ -78,6 +88,13 @@ const NewBooksScreen: React.FC = () => {
     useEffect(() => {
         loadNewBooks();
     }, [selectedNiveau, selectedClasse]);
+
+    const classeFromRoute = (route.params as { classe?: string } | undefined)?.classe;
+    useEffect(() => {
+        if (classeFromRoute?.trim()) {
+            setSelectedClasse(classeFromRoute.trim());
+        }
+    }, [classeFromRoute]);
 
     // Chercher avec debounce
     useEffect(() => {
@@ -222,7 +239,9 @@ const NewBooksScreen: React.FC = () => {
                                         <View key={i} style={styles.compItem}>
                                             <Text style={styles.compItemTitle} numberOfLines={1}>{p.titre}</Text>
                                             <Text style={styles.compItemPrice}>
-                                                {p.prix_officiel ? `${p.prix_officiel.toLocaleString()} XAF` : '-'}
+                                                {prixToNumber(p.prix_officiel) > 0
+                                                    ? `${Math.round(prixToNumber(p.prix_officiel)).toLocaleString()} XAF`
+                                                    : '-'}
                                                 {p.est_obligatoire ? ' ★' : ''}
                                             </Text>
                                         </View>
@@ -240,7 +259,7 @@ const NewBooksScreen: React.FC = () => {
                                         <View key={i} style={styles.compItem}>
                                             <Text style={styles.compItemTitle} numberOfLines={1}>{n.titre}</Text>
                                             <Text style={[styles.compItemPrice, { color: '#059669' }]}>
-                                                {n.prix?.toLocaleString()} XAF
+                                                {Math.round(prixToNumber(n.prix)).toLocaleString()} XAF
                                             </Text>
                                         </View>
                                     ))}
@@ -260,7 +279,7 @@ const NewBooksScreen: React.FC = () => {
                                                 <Text style={styles.compItemMeta}>{o.etat} • {o.source}</Text>
                                             </View>
                                             <Text style={[styles.compItemPrice, { color: '#d97706' }]}>
-                                                {o.prix?.toLocaleString()} XAF
+                                                {Math.round(prixToNumber(o.prix)).toLocaleString()} XAF
                                             </Text>
                                         </View>
                                     ))}
@@ -270,6 +289,37 @@ const NewBooksScreen: React.FC = () => {
                             {comparison.neufs.length === 0 && comparison.occasions.length === 0 && (
                                 <Text style={styles.emptyComp}>{t('livresNeufs.aucuneComparaison')}</Text>
                             )}
+
+                            <View style={styles.budgetBox}>
+                                <Text style={styles.budgetTitle}>{t('livresNeufs.budgetEstimationTitle')}</Text>
+                                <Text style={styles.budgetLine}>
+                                    <Text style={styles.budgetLabel}>{t('livresNeufs.budgetLigneProgramme')} </Text>
+                                    <Text style={styles.budgetValue}>
+                                        {Math.round(
+                                            comparison.programme_officiel.reduce(
+                                                (s, p) => s + prixToNumber(p.prix_officiel),
+                                                0
+                                            )
+                                        ).toLocaleString()}{' '}
+                                        XAF
+                                    </Text>
+                                </Text>
+                                <Text style={styles.budgetLine}>
+                                    <Text style={styles.budgetLabel}>{t('livresNeufs.budgetLigneNeufs')} </Text>
+                                    <Text style={[styles.budgetValue, { color: '#059669' }]}>
+                                        {Math.round(comparison.neufs.reduce((s, n) => s + prixToNumber(n.prix), 0)).toLocaleString()}{' '}
+                                        XAF
+                                    </Text>
+                                </Text>
+                                <Text style={styles.budgetLine}>
+                                    <Text style={styles.budgetLabel}>{t('livresNeufs.budgetLigneOccasions')} </Text>
+                                    <Text style={[styles.budgetValue, { color: '#d97706' }]}>
+                                        {Math.round(comparison.occasions.reduce((s, o) => s + prixToNumber(o.prix), 0)).toLocaleString()}{' '}
+                                        XAF
+                                    </Text>
+                                </Text>
+                                <Text style={styles.budgetDisclaimer}>{t('livresNeufs.budgetDisclaimer')}</Text>
+                            </View>
                         </ScrollView>
                     ) : null}
                 </View>
@@ -447,6 +497,19 @@ const styles = StyleSheet.create({
     compItemPrice: { fontSize: 14, fontWeight: '700', color: '#1f2937' },
     compItemMeta: { fontSize: 11, color: '#9ca3af', marginTop: 2 },
     emptyComp: { textAlign: 'center', fontSize: 14, color: '#9ca3af', marginVertical: 20 },
+    budgetBox: {
+        marginTop: 8,
+        padding: 14,
+        borderRadius: 12,
+        backgroundColor: '#f8fafc',
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    budgetTitle: { fontSize: 15, fontWeight: '800', color: '#0f172a', marginBottom: 10 },
+    budgetLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginBottom: 6 },
+    budgetLabel: { fontSize: 13, color: '#64748b', flexShrink: 1 },
+    budgetValue: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
+    budgetDisclaimer: { fontSize: 11, color: '#94a3b8', marginTop: 10, lineHeight: 15 },
 });
 
 export default NewBooksScreen;

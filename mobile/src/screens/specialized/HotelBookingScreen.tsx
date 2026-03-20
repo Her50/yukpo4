@@ -312,6 +312,9 @@ const HotelBookingScreen: React.FC = () => {
                     screenType: 'form',
                     serviceData: {
                         nom: propertyName,
+                        property_id: propertyId,
+                        type_bien: typeBien,
+                        ville,
                         prix: prixNuitee > 0 ? `${prixNuitee} ${devise}/${t('hotelMeubleHome.nuit')}` : undefined,
                         description: `${typeBien === 'meuble' ? t('hotelBookingScreen.locationMeublee') : t('hotelBookingScreen.hotel')} · ${ville}`,
                     },

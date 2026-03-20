@@ -78,6 +78,8 @@ const RegisterScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Configuration Google OAuth
   // ✅ CORRECTION ALIGNEMENT: Utiliser Linking.createURL() pour garantir l'alignement avec app.config.js
@@ -520,20 +522,32 @@ const RegisterScreen: React.FC = () => {
             label={t('auth.passwordLabel')}
             value={form.password}
             onChangeText={(text) => setForm({ ...form, password: text })}
-            secureTextEntry
+            secureTextEntry={!showPassword}
             disabled={formLoading || loading}
             style={styles.input}
             left={<TextInput.Icon icon="lock" />}
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye-off' : 'eye'}
+                onPress={() => setShowPassword((v) => !v)}
+              />
+            }
           />
 
           <TextInput
             label={t('auth.confirmPassword')}
             value={form.confirmPassword}
             onChangeText={(text) => setForm({ ...form, confirmPassword: text })}
-            secureTextEntry
+            secureTextEntry={!showConfirmPassword}
             disabled={formLoading || loading}
             style={styles.input}
             left={<TextInput.Icon icon="lock-check" />}
+            right={
+              <TextInput.Icon
+                icon={showConfirmPassword ? 'eye-off' : 'eye'}
+                onPress={() => setShowConfirmPassword((v) => !v)}
+              />
+            }
           />
 
           <Text style={styles.passwordHint}>

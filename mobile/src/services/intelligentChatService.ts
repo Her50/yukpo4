@@ -167,6 +167,186 @@ class IntelligentChatService {
     const userRole = userData?.role || 'guest';
     const userName = userData?.name || userData?.email?.split('@')[0] || '';
 
+    const onNavigationScreen = screenName === 'Navigation';
+    const onProductHubScreen = screenName === 'Services' || screenName === 'MesServices';
+    const onMesProduitsScreen = screenName === 'MesProduits';
+    const onBookExchangeHome = screenName === 'LivreScolaireHome' || screenName === 'BourseLivre';
+    const onTicketVoyageHome = screenName === 'TicketVoyageHome';
+    const onBusTicketSearch = screenName === 'BusTicketSearch';
+    const onCovoiturageHome = screenName === 'CovoiturageHome';
+    const onTaxiHome = screenName === 'TaxiHome';
+    const onSupermarketHome = screenName === 'SupermarketHome';
+    const onOffresEmploiHome = screenName === 'OffresEmploiHome';
+    const onOffresEmploiHub = screenName === 'OffresEmploiHub';
+
+    const normalizePartnerTypeEmploi = (pt: string | undefined) =>
+      String(pt || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[\s_]+/g, '');
+    const isPartnerEmployerEmploi =
+      userRole === 'partenaire' &&
+      ['offreemploi', 'offresemploi', 'recruteur', 'employeur'].includes(
+        normalizePartnerTypeEmploi(userData?.partner_type)
+      );
+
+    const onBloodTransfusionScreen =
+      screenName === 'BanqueSangSearch' ||
+      screenName === 'BanqueSangList' ||
+      screenName === 'BanqueSangDetails' ||
+      screenName === 'BloodBankDetails' ||
+      screenName === 'BloodDonation' ||
+      screenName === 'BloodDonationRequest' ||
+      screenName === 'BloodDonationMatches' ||
+      screenName === 'MyBloodDonations' ||
+      screenName === 'BanqueSangForm' ||
+      screenName === 'BloodGroupManagement';
+
+    const onLaboratoryModule =
+      screenName === 'LaboratoireSearch' ||
+      screenName === 'LaboratoireList' ||
+      screenName === 'LaboratoireDetails' ||
+      screenName === 'LaboratoireHome' ||
+      screenName === 'LaboratoireForm' ||
+      screenName === 'MyLabExaminations' ||
+      screenName === 'LabAnalytics' ||
+      screenName === 'LabAIAnalysis';
+
+    /** Partenaire agence de voyage : dashboard **AgenceVoyageForm** + scan QR ouvert depuis l’onglet Tickets */
+    const onTravelAgencyPartnerModule =
+      screenName === 'AgenceVoyageForm' || screenName === 'BusTicketQRScanner';
+
+    const onCourierDashboard = screenName === 'CourierDashboard';
+    const onFleetDashboard = screenName === 'FleetDashboard';
+
+    const mobilityDriverValidated = (ud: any, role: string): boolean => {
+      const pt = String(ud?.partner_type || '').toLowerCase().trim();
+      const ds = String(ud?.driver_status || '').toLowerCase();
+      return (
+        role === 'driver' ||
+        ud?.is_driver === true ||
+        ds === 'validated' ||
+        ds === 'approved' ||
+        (role === 'partenaire' && ['chauffeur', 'taxi', 'covoiturage'].includes(pt))
+      );
+    };
+
+    const onHealthServicesHubScreen =
+      screenName === 'HealthServicesHub' || screenName === 'MedicalServicesList';
+
+    /** Flux patient / RDV / fiches — **sans** le dashboard partenaire **HopitalForm** (traité à part). */
+    const onHospitalModule =
+      screenName === 'HopitalHome' ||
+      screenName === 'HopitalSearch' ||
+      screenName === 'HopitalList' ||
+      screenName === 'HopitalDetails' ||
+      screenName === 'BookAppointment' ||
+      screenName === 'MyConsultations' ||
+      screenName === 'HospitalAIRecommendations' ||
+      screenName === 'HospitalAnalytics';
+
+    const onHospitalPartnerDashboard = screenName === 'HopitalForm';
+
+    const onPharmacyModule =
+      screenName === 'PharmacieHome' ||
+      screenName === 'PharmacieSearch' ||
+      screenName === 'PharmacieList' ||
+      screenName === 'PharmacieDetails' ||
+      screenName === 'PharmacieForm' ||
+      screenName === 'MyPharmacyOrders' ||
+      screenName === 'PharmacyAnalytics' ||
+      screenName === 'PharmacyAIInteractions';
+
+    const onImmobilierModule =
+      screenName === 'ImmobilierHome' ||
+      screenName === 'ImmobilierSearch' ||
+      screenName === 'ImmobilierList' ||
+      screenName === 'ImmobilierDetails' ||
+      screenName === 'ImmobilierForm' ||
+      screenName === 'ImmobilierBooking' ||
+      screenName === 'ImmobilierCompare' ||
+      screenName === 'ImmobilierPriceAlerts' ||
+      screenName === 'HotelMeubleHome' ||
+      screenName === 'HotelSearch' ||
+      screenName === 'MeubleSearch' ||
+      screenName === 'HotelBooking' ||
+      screenName === 'HotelDashboard';
+
+    const yukpoCatalogBlock = onNavigationScreen
+      ? `YUKPO (brief reminder only — detailed UI is in NAVIGATION_GPS_DETAIL below):
+Yukpo is the all-in-one super-app (health, transport, delivery, jobs, education, wallet, e‑commerce…). The user is on the **Navigation GPS** module right now; answer using that module's real controls, not generic assumptions.`
+      : onProductHubScreen
+        ? `YUKPO (brief reminder only — detailed UI is in MES_SERVICES_PRODUCT_HUB_DETAIL below):
+Yukpo is the all-in-one super-app for commerce, services, wallet, delivery, video, promos… The user is on **Mes services / Produits** (prestataire). Answer with the **real buttons and flows of this hub**, not a generic tour of the whole app.`
+        : onMesProduitsScreen
+          ? `YUKPO (brief reminder only — detailed UI is in MES_PRODUITS_DETAIL below):
+Yukpo connects sellers and buyers. The user is on **Mes produits** (catalog management). Prioritize **MES_PRODUITS_DETAIL** over generic Yukpo marketing.`
+          : onBookExchangeHome
+            ? `YUKPO (brief reminder only — detailed UI is in BOURSE_DU_LIVRE_HOME_DETAIL below):
+Yukpo is the all-in-one super-app (health, education, wallet, delivery, e‑commerce…). The user is on the **Bourse du Livre home** (**LivreScolaireHomeScreen**, routes **LivreScolaireHome** or **BourseLivre**). Prioritize **BOURSE_DU_LIVRE_HOME_DETAIL**; **do not** describe the deprecated **BourseLivreScreen** (search bar + filter panel + purple "Recommandations IA" header buttons) as the current UI.`
+            : onTicketVoyageHome
+              ? `YUKPO (brief reminder only — detailed UI is in TICKET_VOYAGE_HOME_DETAIL below):
+Transport & voyage. The user is on **TicketVoyageHome** (**TicketVoyageHomeScreen**): bus ticket search with **LocationSelector**, **busTicketService.searchBusTickets**, tri & filtres. Prioritize **TICKET_VOYAGE_HOME_DETAIL** — not a generic “all transport” pitch.`
+              : onBusTicketSearch
+                ? `YUKPO (brief reminder only — detailed UI is in BUS_TICKET_SEARCH_DETAIL below):
+The user is on **BusTicketSearch** (**BusTicketSearchScreen**): **CityAutocomplete** + **GET /api/bus-tickets/search** + filtres **SearchFilters**. This is a **different** layout from **TicketVoyageHome**; do not merge the two.`
+                : onCovoiturageHome
+                  ? `YUKPO (brief reminder only — detailed UI is in COVOITURAGE_HOME_DETAIL below):
+Mobility — **covoiturage**. The user is on **CovoiturageHome** (**CovoiturageHomeScreen**). Prioritize **COVOITURAGE_HOME_DETAIL** (LocationSelector, **covoiturageService.searchCovoiturages**, publish → **CovoiturageForm**).`
+                  : onTaxiHome
+                    ? `YUKPO (brief reminder only — detailed UI is in TAXI_HOME_DETAIL below):
+Mobility — **taxi**. The user is on **TaxiHome** (**TaxiHomeScreen**). Prioritize **TAXI_HOME_DETAIL** (GPS pré-rempli au départ, reco IA, prédiction demande, **taxiService.searchTaxis**).`
+                    : onSupermarketHome
+                      ? `YUKPO (brief reminder only — detailed UI is in SUPERMARKET_HOME_DETAIL below):
+Supermarchés & catalogue. The user is on **SupermarketHome** (**SupermarketHomeScreen**): 4 modes (magasins, produits, comparer, promos) via **supermarketService** / **GET /api/services/nearby**. Prioritize **SUPERMARKET_HOME_DETAIL**. **No** in-screen navigation to **MenuPlanningHub** or **DeliveryShoppingFlowNew** — mention them only as **other Yukpo modules** if the user asks.`
+                      : onOffresEmploiHome
+                        ? `YUKPO (brief reminder only — detailed UI is in OFFRES_EMPLOI_HOME_DETAIL below):
+Emploi — **recherche d’emploi** (vue candidat). The user is on **OffresEmploiHome** (**OffresEmploiHomeScreen**). Prioritize **OFFRES_EMPLOI_HOME_DETAIL** (\`offreEmploiService.searchOffres\`, matching, raccourcis vers **AICVAnalysis** / **AISalaryPrediction** / **AISuggestFormations**).`
+                        : onOffresEmploiHub
+                          ? `YUKPO (brief reminder only — detailed UI is in OFFRES_EMPLOI_HUB_DETAIL below):
+Emploi — **hub** (**OffresEmploiHub** / **OffresEmploiHubScreen**): dashboard stats + actions (employeur vs candidat). Prioritize **OFFRES_EMPLOI_HUB_DETAIL**.`
+                    : onBloodTransfusionScreen
+                      ? `YUKPO (brief reminder only — detailed UI is in BLOOD_TRANSFUSION_MODULE_DETAIL below):
+Santé — **banque de sang / transfusion / don**. The user is in the **blood transfusion module**. Prioritize **BLOOD_TRANSFUSION_MODULE_DETAIL**; do not substitute a generic “health app” pitch.`
+                      : onLaboratoryModule
+                        ? `YUKPO (brief reminder only — detailed UI is in LABORATORY_MODULE_DETAIL below):
+Santé — **laboratoires d’analyses & imagerie**. The user is in the **laboratory vertical**. Prioritize **LABORATORY_MODULE_DETAIL**; do not describe **Pharmacie** or **Hôpital** flows unless the user explicitly asks to switch.`
+                        : onTravelAgencyPartnerModule
+                          ? `YUKPO (brief reminder only — detailed UI is in TRAVEL_AGENCY_PARTNER_DETAIL below):
+Transport — **dashboard partenaire agence de voyage** (**AgenceVoyageForm**) ou **scanner QR bus** (**BusTicketQRScanner**). Prioritize **TRAVEL_AGENCY_PARTNER_DETAIL**; do not describe **TicketVoyageHome** / **BusTicketSearch** (flux **client** billet) sauf si l’utilisateur demande explicitement l’entrée voyageur.`
+                          : onCourierDashboard
+                            ? `YUKPO (brief reminder only — detailed UI is in COURIER_DASHBOARD_DETAIL below):
+Livraison — **coursier individuel** (**CourierDashboard** / **CourierDashboardScreen**) : livraisons actives, stats API, sous-dashboard **Bourse du livre** coursier. Prioritize **COURIER_DASHBOARD_DETAIL**; **ne pas** décrire **FleetDashboard** (gérant de flotte) sauf demande explicite.`
+                            : onFleetDashboard
+                              ? `YUKPO (brief reminder only — detailed UI is in FLEET_PARTNER_DASHBOARD_DETAIL below):
+Livraison — **gérant de flotte partenaire** (**FleetDashboard** / **FleetDashboardScreen**) : stats flotte, coursiers, candidatures, onglet analytics. Prioritize **FLEET_PARTNER_DASHBOARD_DETAIL**; **ne pas** décrire **CourierDashboard** (coursier solo) sauf demande explicite.`
+                          : onHealthServicesHubScreen
+                            ? `YUKPO (brief reminder only — detailed UI is in HEALTH_SERVICES_HUB_DETAIL below):
+Cross-health **launcher** (pharmacy, hospital, lab, blood bank) + unified search. Prioritize **HEALTH_SERVICES_HUB_DETAIL**; do not collapse to one vertical.`
+                          : onHospitalPartnerDashboard
+                            ? `YUKPO (brief reminder only — detailed UI is in HOSPITAL_PARTNER_DASHBOARD_DETAIL below):
+Santé — **dashboard partenaire hôpital / clinique** (**HopitalForm**). Prioritize **HOSPITAL_PARTNER_DASHBOARD_DETAIL**; do not describe **HopitalHome** / **HopitalSearch** (parcours **patient**) sauf demande explicite.`
+                            : onHospitalModule
+                              ? `YUKPO (brief reminder only — detailed UI is in HOSPITAL_MODULE_DETAIL below):
+Hospitals & clinics — **patient**: **HopitalHome**, **HopitalSearch**, **HopitalList**, **HopitalDetails**, **BookAppointment**, **MyConsultations**, **HospitalAIRecommendations**, **HospitalAnalytics**. Prioritize **HOSPITAL_MODULE_DETAIL**.`
+                              : onPharmacyModule
+                              ? `YUKPO (brief reminder only — detailed UI is in PHARMACY_MODULE_DETAIL below):
+Santé Yukpo couvre pharmacies, hôpitaux, laboratoires… L'utilisateur est dans le **module Pharmacie** (catalogue produits et/ou fiches officines). Prioritize **PHARMACY_MODULE_DETAIL**; do not replace it with a generic super-app pitch.`
+                              : `YUKPO — THE DIGITAL REVOLUTION:
+Yukpo is the FIRST all-in-one super-app that digitalizes daily life across Africa and beyond:
+• 🏥 Health: Pharmacies (stock search, ordering), Hospitals (AI triage, appointments), Labs, Blood banks
+• 🏨 Real Estate: Hotels, furnished rentals, property management with AI pricing
+• 🚗 Transport: Taxi (AI dynamic pricing), Carpooling, Bus tickets (seat selection, QR boarding)
+• 📦 Delivery: Parcels, grocery shopping, fleet management, real-time tracking
+• 💼 Jobs: AI CV analysis, salary prediction, training suggestions, smart matching
+• 🎓 Education: School orientation AI, book exchange (Bourse du Livre with AI matching & trocchains)
+• 🗺️ Smart Navigation: GPS with voice guidance, speed cameras, POI, community alerts, **in-app walking stats & Coach IA**
+• 🎬 Video: AI video creation, ads, lives
+• 🛒 E-commerce: Products, negotiations, promotions, comparisons
+• 🍽️ Menu Planning: AI meal plans, recipes, shopping lists
+• 💰 Wallet: Multi-method payments (MTN MoMo, Orange Money, Wave, Visa, PayPal...), bonuses
+• And much more: Insurance, Supermarkets, Restaurants, Travel agencies...`;
+
     let prompt = `${langInstr}
 
 You are **Yukpo Assistant** — the intelligent concierge of Yukpo, a revolutionary all-in-one digital platform for Africa and the world.
@@ -178,21 +358,108 @@ YOUR PERSONALITY:
 - When presenting Yukpo's services, convey the REVOLUTION: "First platform to digitize X in Africa", "AI-powered", "Unique in the market"
 - Use short, punchy sentences. No walls of text. Think of each response as a mini pitch.
 - Add relevant emojis sparingly for visual appeal (1-3 per response max)
-
-YUKPO — THE DIGITAL REVOLUTION:
-Yukpo is the FIRST all-in-one super-app that digitalizes daily life across Africa and beyond:
-• 🏥 Health: Pharmacies (stock search, ordering), Hospitals (AI triage, appointments), Labs, Blood banks
-• 🏨 Real Estate: Hotels, furnished rentals, property management with AI pricing
-• 🚗 Transport: Taxi (AI dynamic pricing), Carpooling, Bus tickets (seat selection, QR boarding)
-• 📦 Delivery: Parcels, grocery shopping, fleet management, real-time tracking
-• 💼 Jobs: AI CV analysis, salary prediction, training suggestions, smart matching
-• 🎓 Education: School orientation AI, book exchange (Bourse du Livre with AI matching & trocchains)
-• 🗺️ Smart Navigation: GPS with voice guidance, speed cameras, POI, community alerts
-• 🎬 Video: AI video creation, ads, lives
-• 🛒 E-commerce: Products, negotiations, promotions, comparisons
-• 🍽️ Menu Planning: AI meal plans, recipes, shopping lists
-• 💰 Wallet: Multi-method payments (MTN MoMo, Orange Money, Wave, Visa, PayPal...), bonuses
-• And much more: Insurance, Supermarkets, Restaurants, Travel agencies...
+${onNavigationScreen ? `
+NAVIGATION_SCREEN_MODE:
+- **Prioritize** the NAVIGATION_GPS_DETAIL block below over any generic service list.
+- Walking / fitness / performance / calories / "stats" questions: Yukpo shows them **inside this screen** (Statistics & Coach IA + free walk). **Do not** push third-party fitness apps unless the user explicitly asks for external alternatives.
+` : ''}
+${onProductHubScreen ? `
+MES_SERVICES_HUB_MODE:
+- **Prioritize** MES_SERVICES_PRODUCT_HUB_DETAIL below over generic Yukpo lists.
+- **Critical naming:** the **modern** product hub is **MesServicesScreen**, reached via pile route **MesServices** or bottom tab **Services** (same component). Route pile **ServicesActivity** = legacy **ServicesScreen** (“Mon activité”) — **do not** present it as the main “Mes services” experience.
+` : ''}
+${onMesProduitsScreen ? `
+MES_PRODUITS_MODE:
+- **Prioritize** MES_PRODUITS_DETAIL below. This screen is the **dense product catalog**; the tab hub **Services** / **MesServices** is the **summary** view with cards and quick actions.
+` : ''}
+${onBookExchangeHome ? `
+BOURSE_DU_LIVRE_HOME_MODE:
+- **Prioritize** **BOURSE_DU_LIVRE_HOME_DETAIL** below over generic Yukpo education bullets or the legacy **BourseLivreScreen** story.
+- The live home UI is **LivreScolaireHomeScreen** (stack names **LivreScolaireHome** or **BourseLivre** — same component).
+` : ''}
+${onTicketVoyageHome ? `
+TICKET_VOYAGE_HOME_MODE:
+- **Prioritize** **TICKET_VOYAGE_HOME_DETAIL** below.
+- Distinguish from **BusTicketSearch** (autocomplete villes + autre API client).
+` : ''}
+${onBusTicketSearch ? `
+BUS_TICKET_SEARCH_MODE:
+- **Prioritize** **BUS_TICKET_SEARCH_DETAIL** below.
+- Do not describe **TicketVoyageHome** (LocationSelector compact header) as this screen.
+` : ''}
+${onCovoiturageHome ? `
+COVOITURAGE_HOME_MODE:
+- **Prioritize** **COVOITURAGE_HOME_DETAIL** below over generic “carpool app” talk.
+- Publishing a trip uses **CovoiturageForm** from the header when chauffeur validé — not a separate stack route **CovoiturageSearch** on this home.
+` : ''}
+${onTaxiHome ? `
+TAXI_HOME_MODE:
+- **Prioritize** **TAXI_HOME_DETAIL** below.
+- Before first search, the list shows **IA recommendations** + **demand prediction** when GPS + user id exist.
+` : ''}
+${onSupermarketHome ? `
+SUPERMARKET_HOME_MODE:
+- **Prioritize** **SUPERMARKET_HOME_DETAIL** below.
+- **Produits / Comparer / Promos** tabs exist in code but are **hidden** until the user selects a supermarket — only **Magasins** is shown first.
+- Store list load requires **GPS** (\`LocationContext\` coords); no in-screen links to **MenuPlanningHub** or **DeliveryShoppingFlowNew**.
+` : ''}
+${onOffresEmploiHome ? `
+OFFRES_EMPLOI_HOME_MODE:
+- **Prioritize** **OFFRES_EMPLOI_HOME_DETAIL** below.
+- Liste principale = **GET /api/offres-emploi/search** via \`offreEmploiService.searchOffres\` (pas l’écran **OffreSearch** — celui-ci est un formulaire de filtres → **OffreList**).
+- Filtres **CDI/CDD/Stage/Freelance** sur l’accueil = **filtrage client** sur la page déjà chargée ; signets = **état local** (\`Set\`), pas une API persistante dans ce fichier.
+` : ''}
+${onOffresEmploiHub ? `
+OFFRES_EMPLOI_HUB_MODE:
+- **Prioritize** **OFFRES_EMPLOI_HUB_DETAIL** below.
+- L’UI **employeur** s’affiche si \`partner_type\` recruteur (normalisé : \`offre_emploi\`, \`offreemploi\`, \`recruteur\`, \`employeur\`) **ou** si l’app détecte des offres déjà publiées (\`getMesOffres\` / stats) — le chat ne voit pas toujours cette seconde condition.
+` : ''}
+${onBloodTransfusionScreen ? `
+BLOOD_TRANSFUSION_MODULE_MODE:
+- **Prioritize** **BLOOD_TRANSFUSION_MODULE_DETAIL** below.
+- **Medical safety:** Yukpo = information & logistics — **never** replace **SAMU / urgences** ; saignement vital → **appeler les secours** tout de suite.
+- **BloodDonation** (hub donneur + mur des demandes) ≠ **BloodDonationRequest** (formulaire **publier** une demande).
+` : ''}
+${onTravelAgencyPartnerModule ? `
+TRAVEL_AGENCY_PARTNER_MODE:
+- **Prioritize** **TRAVEL_AGENCY_PARTNER_DETAIL** below.
+- **Scope:** outils **prestataire** (fiche agence, horaires lignes, produits bus Yukpo, tickets vendus, embarquement) — pas le parcours **achat** billet (**TicketVoyageHome** / **BusTicketSearch**).
+- **IA conseils** dashboard = **POST** \`/ai/chat\` avec \`context: 'travel_agency_partner_dashboard'\` — recommandations business, pas un contrat de résultat.
+` : ''}
+${onHospitalPartnerDashboard ? `
+HOSPITAL_PARTNER_DASHBOARD_MODE:
+- **Prioritize** **HOSPITAL_PARTNER_DASHBOARD_DETAIL** below.
+- **Scope:** **prestataire** établissement de santé (fiche, créneaux/prestations, stats internes, équipe) — pas la recherche patient (**HopitalList** / **HopitalDetails**).
+- **Urgence réelle:** l’app **ne remplace pas** le **15 / SAMU** ; l’IA (**HospitalAIRecommendations**) = aide à l’orientation, **pas** diagnostic.
+` : ''}
+${onHealthServicesHubScreen ? `
+HEALTH_SERVICES_HUB_MODE:
+- **Prioritize** **HEALTH_SERVICES_HUB_DETAIL** below. Cover **all** hub entry points (pharmacy, hospital, lab, blood bank) + unified search + duty pharmacy, not a single service.
+` : ''}
+${onHospitalModule ? `
+HOSPITAL_MODULE_MODE:
+- **Prioritize** **HOSPITAL_MODULE_DETAIL** below over generic “all health” marketing.
+- **Emergency safety:** in-app IA / wait times are **not** a substitute for **real emergencies** — use official emergency numbers; hub exposes **119** quick call where implemented.
+` : ''}
+${onPharmacyModule ? `
+PHARMACY_MODULE_MODE:
+- **Prioritize** PHARMACY_MODULE_DETAIL below over generic health marketing bullets.
+- **Medical safety:** IA = information / education only — **never** replace a clinician; for dosage, emergencies, pregnancy, children, or serious illness, direct to **doctor or pharmacist**.
+` : ''}
+${screenName === 'LaboratoireForm' ? `
+LABORATOIRE_PARTNER_DASHBOARD_MODE:
+- **Prioritize** **LABORATOIRE_PARTNER_DASHBOARD_DETAIL** below (after LABORATORY_MODULE_DETAIL) over generic **client** lab search/booking story.
+- **LaboratoireFormScreen** = **prestataire** (dashboard + fiche service) **ou** parcours **création** sans dashboard ; ne pas décrire **LaboratoireList** / **LaboratoireDetails** comme cet écran.
+- **Catalogue examens (modal)** : dans le code actuel, ajout/édition = **état local uniquement** — **pas** d’appel API de persistance dans le handler du modal ; dire clairement si l’utilisateur demande « sauvegarder les examens ».
+- **Medical / IA:** analyse IA des résultats = **LabAIAnalysis** côté **patient** (\`examinationId\`) ; le bouton **IA Analyse** du dashboard = **Alert** pédagogique seulement.
+` : ''}
+${onImmobilierModule ? `
+IMMOBILIER_MODULE_MODE:
+- **Prioritize** IMMOBILIER_MODULE_DETAIL below over generic Yukpo service lists.
+- **Distinguish flows:** **ImmobilierHome** quick “Visite” uses an **in-place Alert + bookVisit** (fixed slot), while **ImmobilierDetails** opens **ImmobilierBooking** or **HotelBooking** for hôtel/meublé — do not merge them.
+- **IA disclaimer:** price estimates and investment text are **indicative**, not legal/financial advice.
+` : ''}
+${yukpoCatalogBlock}
 
 CURRENT SCREEN: "${screenName}" (type: ${screenType})
 USER: ${userRole}${userName ? ` (${userName})` : ''}
@@ -205,6 +472,789 @@ ${visibleElements.map(el => `- [${el.type}] "${el.label}" ${el.icon ? `(icon: ${
 AVAILABLE ACTIONS (the user can do these right now):
 ${availableActions.map(action => `- "${action.label}" → ${action.description || action.route || 'action'} (icon: ${action.icon})`).join('\n')}
 `;
+
+    if (screenName === 'Navigation') {
+      prompt += `
+
+=== NAVIGATION_GPS_DETAIL (authoritative — follow this for every answer on this screen) ===
+
+**What this screen is:** Intelligent GPS inside Yukpo: route planning, live/off-app tracking hooks, **community alerts** (radars, controls, hazards), **POI** along the route, **token/wallet** debits for some features, **Statistics & Coach IA** (distance, sessions, calories, duration, health score, streaks, badges, tips, CO₂/fuel savings, challenges, records, habits), and **free walk** GPS sessions.
+
+**Header (top):**
+- **Left — compass / navigation emoji button (🧭):** acts as **Back**. If the user opened **Statistics & Coach IA** or **Alert history**, the first tap closes that panel and returns to the main navigation UI; from the main UI it leaves the Navigation screen. Subtitle under the title shows the current mode (smart routes, tracking, free walk, stats, alerts).
+- **Right — small icon buttons (Lucide-style in app, often shown with emoji in marketing copy):**
+  1. **Walking / running emoji (🚶 / 🏃) + optional green dot:** **Free walk**. Starts a GPS walking session when idle. **While free walk is active**, tapping opens **statistics** with **free-walk / filtered session** context (distance, time, speed, comparisons).
+  2. **AlertTriangle:** **Community alerts** panel (history list, badge count). Users can **confirm / dispute** alerts and open **comments** per alert.
+  3. **BarChart3** (inactive) / **Compass** or highlighted state when stats are open: opens **Statistics & Coach IA** — full dashboard with **period** (week / month / quarter / semester / year), **view modality** (**All combined**, **Auto detection**, **Free walk**), summary tiles (km, sessions, calories, minutes), **best session**, **breakdown by travel mode** (walk 🚶, bike 🚲, transit 🚌, drive 🚗), **performance & progression** (trend vs previous period when enough data), **estimated CO₂ saved**, **share stats** button, **top visited places** (+ modal for full list), **favorite POI types**, **recent activities** list (especially for auto/free-walk views), then **Coach IA** blocks: **health score** 🫀 (/100 + breakdown: activity, quality, streak, eco), **AI tips**, **gamification** (streak 🔥, record 🏆, points ⭐, badges), challenges, personal records, habitual routes, fuel/CO₂ savings, **Coach IA notification history**. Tapping the **Score Santé & Coach IA** preview card on the main scroll (when logged in) also opens this stats area.
+  4. **Car + Users composite icon:** shortcut to **Covoiturage** (Yukpo carpool).
+
+**Below header:** **Balance / free-navigation period** chip — tap to **recharge Navigation tokens**.
+
+**Main navigation UI (when not in stats/alerts-only panels):**
+- **"Signaler une alerte"** row (chevron): expands **horizontal chips** to **report** checkpoint types (radar, police/control, accident, etc.).
+- **Destination / origin inputs** (LocationSelector), **Search route** / primary CTA (may trigger micro-payment gating).
+- **Favorite places** chips, **travel mode** row (driving, walking, transit, bicycle), **route preferences** chips (avoid tolls/highways…).
+- **Waypoints** list, **recalculate** route.
+- **Route cards:** distance, duration, traffic level, optional fare; select one, **share route**, **Open in Maps** (Google Maps / Apple Plans) — user can return to Yukpo for alerts/coach.
+- **Map** area (preview / tracking), **POI category** selector: Health 🏥, Food 🍞, Fuel ⛽, Finance/Bank & ATM 🏧, Auto & parking 🚗, Religion 🕌, Hotel 🏨, Security 🚔 — results can be added as **waypoints** (+).
+- **Free walk** panel when session active: live **km**, **minutes**, **speed**, controls to end session.
+- **Off-route / deviation** banner: tap to **recalculate**.
+
+**Chat quick actions (bottom of Assistant IA modal):**
+- **Retour** often uses a **help-circle / question style icon in the UI** but means **navigate back** in the app (e.g. Home) — not "destination entry".
+- **Recherche** = Yukpo **global service search** (RechercheBesoin), **not** the blue **route search** button on this screen.
+
+**Hard rules:**
+- Questions about **walking performance, stats, calories, health score, VO2-style insights, progression, streaks, badges, Coach IA**: guide the user to **Statistics & Coach IA** (BarChart3 / stats icon) and mention **period + modality** selectors and **free walk** (🚶) if relevant. **Never** claim Yukpo has no walking stats here.
+- Questions about **notifications / sound / Coach IA reminders**: **Settings → Notifications** (Coach IA section) and optional **home bell** history for per-type mute — use the dedicated action if present.
+`;
+    }
+
+    if (onProductHubScreen) {
+      prompt += `
+
+=== MES_SERVICES_PRODUCT_HUB_DETAIL (authoritative — MesServicesScreen, routes **Services** tab or **MesServices** stack) ===
+
+**What this screen is:** Prestataire hub to manage **products/offers** tied to **GET /api/prestataire/services**, with **ServiceCardModern** list, **stats** (totals, actifs, inactifs, vues), **filters** (Tous / Actif / Inactif), **pull to refresh**, and **DeviceEventEmitter** refresh on \`service:refresh\`, \`product:created\`, \`product:updated\`.
+
+**Header / bandeau:**
+- **Menu ☰ (SidebarNavigation):** création produit, galerie médias, équipe (par service), stats, mes pubs, nouvelle pub, création vidéo, flash promo, promos actives, live, analytiques vidéo, réglages, rafraîchir — aligné sur les entrées du menu latéral dans le code.
+- **Boutons + rapides:** intro **vidéo**, **Flash promo** (sélection produits → CreateFlashPromo), **livraison globale** (sélection → GlobalDeliveryConfigModal), **sélection multiple** + barre d’actions bulk (activer/désactiver/supprimer).
+- **Ajouter un produit:** si un service existe → **AjouterProduitSimple** ; sinon → **FormulaireYukpoIntelligent** (création service + produits).
+- **Fil d’Ariane / accueil:** retour **Home** selon UI.
+
+**Cartes produit (ServiceCardModern):** modifier fiche service (**FormulaireYukpoIntelligent**), promos (flash / promotion), **partage** (lien yukpomnang.com/service/{id}), **activer/désactiver** (coût éventuel réactivation **jetons** / solde — messaging UI), **suppression** (bloquée côté API si plusieurs produits selon règles métier).
+
+**Pied de liste / cartes vides:** accès **MesProduits** (vue catalogue détaillée), **statistiques** (**AnalyticsDashboard**), **retour accueil**.
+
+**Hard rules:**
+- To open this hub from code or deep links, use **MesServices** or the tab **Services**, **never** confuse with **ServicesActivity** (legacy ServicesScreen).
+- If the user asks “où sont mes produits / gérer catalogue”, describe **this** screen + mention **MesProduits** as the **advanced** list view.
+`;
+    }
+
+    if (onMesProduitsScreen) {
+      prompt += `
+
+=== MES_PRODUITS_DETAIL (authoritative — MesProduitsScreen) ===
+
+**Role:** Detailed **product catalog** for the prestataire: **NavigatorToolbar** titre « Produits », **mini stats** horizontales, **filtres** Tous / Actifs / En pause, liste de **cartes** avec actions.
+
+**Header:** **+** → création (**AjouterProduitSimple** ou **FormulaireYukpoIntelligent** selon contexte) ; **graphique** → **ProductStats** global ; **⋮** → menu modal : **Créer une vidéo**, **Galerie médias** (ServiceMediaGallery), **Mes Publicités** → PubliciteDashboard, **Flash Promo** → CreateFlashPromo (produit actif), **Promo Black Friday** → GlobalPromoSubmission, **Configuration livraison** (premier produit filtré) → ProductDeliveryConfigModal, **Gérer les membres** → ServiceTeamManager modal, **Mes vidéos** → VideoFeed, **Éditer service** → FormulaireYukpoIntelligent.
+
+**Sur chaque carte:** **Modifier**, **Activer / Mettre en pause**, **Partager** (externe), **Envoyer** (InternalShareButton / interne Yukpo), **Plus** → feuille : **Promouvoir**, **Statistiques** (produit), **Dupliquer**, **Livraison** (modal livraison unitaire), **Supprimer**.
+
+**Retour au hub synthèse:** route **MesServices** (même UI que l’onglet **Services**).
+
+**Hard rules:** Ne pas inventer d’**import CSV** sur cet écran (non présent dans MesProduitsScreen). Ne pas confondre avec **ServicesActivity**.
+`;
+    }
+
+    if (onBookExchangeHome) {
+      prompt += `
+
+=== BOURSE_DU_LIVRE_HOME_DETAIL (authoritative — LivreScolaireHomeScreen, routes LivreScolaireHome or BourseLivre) ===
+
+**What this screen is:** Hub **Bourse du Livre** (V2): découvre des annonces **à proximité**, suit **achats / paquets / trocs / besoins**, et lance les deux parcours métier principaux — **mettre ses livres en circulation** ou **composer sa liste au programme officiel**.
+
+**Header (dégradé orange):**
+- **Gauche — flèche retour:** \`navigation.goBack()\`.
+- **Titre:** libellé type « Bourse du Livre » (i18n).
+- **Droite — bouton librairie:** si \`partner_type\` ∈ {librairie, libraire, livrescolaire, livre_scolaire} → **LivreScolaireForm** (« Ma librairie », icône type tableau de bord) ; sinon → **LibrairieRegistration** (« Devenir libraire », icône store).
+
+**Deux cartes d’action principales (sous l’en-tête):**
+1. **Verte — « Mettez vos livres en circulation »** (icône **camera**): → **BookUploadV2**. Sous-texte: vente, troc ou don ; le don se précise à l’étape suivante du flux.
+2. **Bleue — « Trouvez votre liste scolaire »** (icône **book-check** / list-checks): → **ProgrammeBesoinsSelector**. Cocher les manuels au **programme officiel**, arbitrer **neuf vs occasion**.
+
+**Bloc « Dashboard des opérations »:**
+- Compteurs (API agrégée): **achats en cours**, **paquets à recevoir**, **paquets à envoyer**, **trocs en cours**, **besoins actifs** (\`bourseLivreV2Api.getUserBookDashboard\`, demandes de dons, \`/api/troc-livres/my-trocs\`).
+- **Icône QR** → **QRCodeShare** avec \`{ mode: 'scan' }\` (scan pour valider l’arrivée du coursier).
+- **Refresh** recharge ces compteurs.
+- **Trois boutons de suivi:** **Suivre mes paquets** → **BookPackages** ; **Suivre mes trocs** → **MesTrocs** ; **Mes besoins** → **MesBesoinsLivres**.
+- **Texte d’aide** sous le bloc: rappel de **scanner le QR du coursier** à l’arrivée.
+
+**Liste principale:**
+- **FlatList** de livres: \`livreScolaireService.searchLivres\` avec **limit 20**, offset 0 ; si GPS dispo → \`gps_lat\`, \`gps_lon\`, **rayon_km = 20**.
+- **Pull to refresh** recharge la liste.
+- **Tap carte** → **LivreScolaireDetails** (\`livreId\`). Chaque carte: image, titre, auteur, classe actuelle → souhaitée, matière, ville/quartier, distance formatée, état.
+
+**Hard rules:**
+- **Ne pas** décrire une **barre de recherche + panneau filtres + bouton violet « Recommandations IA »** en tête: c’est l’ancien **BourseLivreScreen** (fichier déprécié), pas l’écran monté par la navigation actuelle.
+- Pour « comment vendre / troquer / donner »: pointer **carte verte** → **BookUploadV2**.
+- Pour « liste de classe / manuels officiels »: pointer **carte bleue** → **ProgrammeBesoinsSelector**.
+- Pour livraison / QR / paquets: **dashboard** + **BookPackages** + rappel QR.
+`;
+    }
+
+    if (screenName === 'LivreScolaireDetails') {
+      prompt += `
+
+=== LIVRE_SCOLAIRE_DETAILS_DETAIL (authoritative — LivreScolaireDetailsScreen) ===
+
+**Data:** GET \`/api/bourse-livre/{livreId}\` (détails annonce).
+
+**Visitor (non propriétaire, livre disponible):**
+- Actions rapides / bas de page: **Partager** (Share API), **Troquer** / **Trouver un troc** → POST \`/api/troc-livres/match\` avec \`livre_id\`, \`include_chaines\`, \`max_participants\` → navigation **TrocMatching** avec matchings.
+- **Pas** de boutons « Acheter », « Contacter le vendeur », « Estimation prix IA » sur cet écran dans le code actuel.
+
+**Owner:**
+- **Modifier** → **LivreScolaireForm** (\`livreId\`, \`mode: 'edit'\`).
+- **Marquer disponible / indisponible** → PATCH \`/api/bourse-livre/{id}/availability\`.
+
+**UI:** bandeau hero orange, galerie photos, cartes Infos / État / Localisation / Vidéo si présente.
+
+**Hard rule:** Ne pas inventer de bouton d’achat direct sur cette fiche ; l’achat/troc suite se fait via **TrocMatching**, **BookBuyDirect**, ou autres écrans du module selon le parcours.
+`;
+    }
+
+    if (onTicketVoyageHome) {
+      prompt += `
+
+=== TICKET_VOYAGE_HOME_DETAIL (authoritative — TicketVoyageHomeScreen, route TicketVoyageHome) ===
+
+**Role:** Recherche de **produits / lignes de bus** (billets) avec **LocationSelector** (départ + arrivée, \`scope="all"\`, \`enrichWithBackend\`), date & heure optionnelles, nom d’agence optionnel, **aller-retour** (switch + date retour).
+
+**Données:** \`busTicketService.searchBusTickets\` → agrège filtres (\`BusTicketSearchFilters\`: \`radius_km\` défaut 50, \`min_seats\`, GPS utilisateur injecté depuis **LocationContext**). **Pas de chargement auto** au montage : l’utilisateur doit renseigner départ + arrivée puis lancer la recherche (\`loadTickets\` / bouton).
+
+**Header:** retour ; titre i18n type « Tickets de voyage » ; **icône ticket** → **MyBusTickets** ; **sliders** ouvre panneau filtres avec **badge** = \`activeFiltersCount\`.
+
+**Tri:** modal **sortBy** — pertinence, prix ↑/↓, heure départ, date (tri aussi côté client sur les résultats).
+
+**Filtres rapides:** aujourd’hui / demain / week-end (date) ; **Proche de moi** ajuste \`radius_km\` (ex. 20) puis relance.
+
+**Carte résultat:** appui → **BusTicketDetails** (\`ticketId: product_id\`, \`agencyId\`). Réservation directe → **BusTicketBooking** (\`productId\`, \`ticketData\` enrichi, \`isRoundTrip\`, \`returnDate\`) si places > 0.
+
+**Hard rules:** Ne pas confondre avec **BusTicketSearch** (écran séparé, **CityAutocomplete** + \`/api/bus-tickets/search\`). Ne pas affirmer que les billets se chargent tout seuls à l’ouverture sans critères.
+`;
+    }
+
+    if (onBusTicketSearch) {
+      prompt += `
+
+=== BUS_TICKET_SEARCH_DETAIL (authoritative — BusTicketSearchScreen, route BusTicketSearch) ===
+
+**Role:** Formulaire **scroll** avec en-tête gradient orange « Rechercher un trajet », **CityAutocomplete** (villes texte) pour départ & arrivée, **date** (DateTimePicker), **aller-retour** (Switch + date retour + heure retour optionnelle HH:MM).
+
+**Recherche:** \`GET /api/bus-tickets/search\` avec \`URLSearchParams\`: \`departure_city\`, \`arrival_city\`, \`departure_date\` (YYYY-MM-DD), GPS optionnel (\`user_lat\`, \`user_lng\`), \`radius_km: 100\`, \`min_seats: 1\`, filtres **SearchFilters** (\`min_price\`, \`max_price\`, \`time_range\`, \`company\`, \`sort_by\`, \`sort_order\`). Tri client supplémentaire sur prix / heure.
+
+**UI:** section **Recherches rapides** (aujourd’hui, demain, week-end) ; bouton **Filtres** ouvre \`SearchFiltersComponent\` ; bouton **Rechercher** désactivé si villes vides.
+
+**Résultat:** tap carte → **BusTicketBooking** (\`productId\`, \`ticketData\`, \`isRoundTrip\`, \`returnDate\`, \`returnTime\`).
+
+**Hard rules:** Cet écran **n’utilise pas** \`busTicketService.searchBusTickets\` ni les **LocationSelector** du hub **TicketVoyageHome**. Expliquer les deux entrées si l’utilisateur compare les parcours.
+`;
+    }
+
+    if (onCovoiturageHome) {
+      prompt += `
+
+=== COVOITURAGE_HOME_DETAIL (authoritative — CovoiturageHomeScreen, route CovoiturageHome) ===
+
+**Chauffeur reconnu:** \`user.role === 'driver'\` OU \`is_driver\` / \`driver_status\` validated|approved OU partenaire avec \`partner_type\` ∈ {chauffeur, taxi, covoiturage} ; sinon appel **GET /api/users/{id}/driver-status** au montage.
+
+**Header barre:** si non chauffeur → **Devenir chauffeur** → **CourierRegistration** (\`applicationType: 'driver'\`). **Publier un trajet** : si non validé → toast avertissement ; si validé → **CovoiturageForm** (\`mode: 'create'\`) — pas le formulaire inline \`CreateTrajetForm\` (code présent mais \`viewMode\` reste \`'search'\` dans le flux actuel).
+
+**Recherche:** \`viewMode === 'search'\` — **LocationSelector** départ & destination (\`enrichWithBackend\`), **date** trajet, bouton **Rechercher** → \`covoiturageService.searchCovoiturages\` avec \`depart\`, \`destination\`, \`date_depart\`, pagination, et si GPS : \`lat\`, \`lng\`, \`radius_km: 100\`. **Aucune recherche auto** au premier rendu : état vide invite à remplir départ/destination.
+
+**Liste:** pull refresh appelle \`loadNearbyTrips\` (proximité + date). Carte trajet : ouvrir **CovoiturageDetails** ; **Réserver** → **CovoiturageBooking** ; icônes **téléphone** / **WhatsApp** si \`onContact\` (appel direct).
+
+**Création trajet (API):** \`covoiturageService.createCovoiturage\` exige \`service_id\` — sinon alerte « créer un service » → **GestionServicesSpecialises**.
+
+**Hard rules:** Ne pas promettre un onglet « créer » visible sur cet écran si l’utilisateur ne voit que la recherche : la création passe par le bouton **Publier** → **CovoiturageForm**. Ne pas inventer d’autre portail **CovoiturageSearch** obligatoire depuis cet accueil.
+`;
+    }
+
+    if (onTaxiHome) {
+      prompt += `
+
+=== TAXI_HOME_DETAIL (authoritative — TaxiHomeScreen, route TaxiHome) ===
+
+**Chauffeur reconnu:** même logique que covoiturage + **GET /api/users/{id}/driver-status**.
+
+**Header:** **Devenir chauffeur** → **CourierRegistration** (\`applicationType: 'driver'\`) ; **Publier un service** → **TaxiForm** (\`mode: 'create'\`) si profil chauffeur validé, sinon toast.
+
+**Départ auto-GPS:** au montage, si **LocationContext** a des coords et champ départ vide, \`getLocationAddress\` remplit un **LocationObject** (ou « Ma position actuelle »). Bouton **Ma position** sous le départ pour ré-injecter GPS.
+
+**Recherche:** **LocationSelector** départ & destination ; chip **Taxis disponibles uniquement** bascule \`availableOnly\` (filtre client sur \`is_available\`). Bouton **Rechercher** → \`taxiService.searchTaxis\` : priorité coords du **départ** (\`lat\`/\`lng\`, \`radius_km: 20\`), sinon ville/quartier parsés, sinon fallback position GPS utilisateur.
+
+**Avant la première recherche (\`!hasSearched\`):** **FlatList** affiche **recommandations IA** (\`taxiService.getPersonalizedRecommendations\` — max 5) et carte **prédiction de demande** (\`taxiService.predictDemand\` avec tranche matin/après-midi/soir). **loadIARecommendations** si \`user.id\` + GPS.
+
+**Carte taxi:** **TaxiDetails** ; appel **tel:** ; **Réserver** → **TaxiBooking** (\`taxiId\`, texte départ/destination selon contexte). Après recherche, liste = résultats filtrés.
+
+**Hard rules:** Ne pas dire que l’utilisateur doit obligatoirement passer par **TaxiSearch** ou **TaxiIntelligentSearch** pour commander : l’accueil **TaxiHome** est déjà le hub principal refondu. Mentionner **TaxiTracking** seulement pour le suivi post-réservation si pertinent.
+`;
+    }
+
+    if (onSupermarketHome) {
+      prompt += `
+
+=== SUPERMARKET_HOME_DETAIL (authoritative — SupermarketHomeScreen, route SupermarketHome) ===
+
+**Role:** Single-screen hub with **four internal modes** (\`viewMode\`): **select** (magasins), **products**, **compare**, **promotions** — driven by **supermarketService** + **LocationContext**.
+
+**GPS & liste magasins:** \`loadSupermarkets\` runs on mount. If **no** \`location.coords\` → alert (activate location). Else → \`supermarketService.listSupermarkets(lat, lng, 20)\` → **GET /api/services/nearby** (\`type: 'supermarche'\`, radius in meters, limit 50) then **client-side** keyword filter (supermarket / chain names, épicerie, etc.). Local **search** filters the in-memory list by name/address (no extra API).
+
+**Deep link / entrées:** \`route.params.supermarketId\` + liste chargée → auto-select that store, \`viewMode = 'products'\`, \`loadProducts\`. \`fromBayamSelam\` or route **BayamSelamSearch** tweaks header title (\`isBayamSelam\`).
+
+**Header back:** if \`viewMode === 'select'\` **or** no \`selectedSupermarket\` → \`navigation.goBack()\`. Else → return to **select**, clear \`selectedSupermarket\` (does **not** open Menu Planning / livraison).
+
+**Tabs:** \`availableTabs\` = full **TAB_ITEMS** only when \`selectedSupermarket\` is set; otherwise **only** the **Magasins** tab row is shown (\`filter(t => t.key === 'select')\`). **Changer de magasin** (repeat icon) forces **select** mode.
+
+**Produits:** \`getSupermarketProducts(supermarketId, { query, category, on_promotion, page: 1, limit: 50 })\` → **GET /api/supermarkets/:id/products**. Categories via **GET /api/supermarkets/:id/categories**. UI: horizontal **category chips** + toggle **Promotions uniquement** (\`on_promotion\`). Product search **debounced ~500 ms** on text change (\`loadProducts\`).
+
+**Comparer:** **free-text product name** only (placeholder comparaison) — **no** barcode scanner on this screen. Submit → \`supermarketService.compareProductPrices(trimmedName, undefined, lat, lng, 20)\` → **POST /api/supermarkets/compare-prices** (\`product_name\`, optional \`product_id\`, \`lat\`/\`lng\`, \`radius_km\`). Success sets \`priceComparison\` and switches to **compare** mode; cheapest / average / range from API payload.
+
+**Promotions:** \`loadPromotions\` — if **store selected** → **GET /api/supermarkets/:id/promotions** (\`active_only: true\`). If **no** store but GPS → **GET /api/supermarkets/promotions/nearby** (\`getNearbyPromotions\`).
+
+**Devise:** prices formatted with **useCurrencyDetection** when product currency omitted.
+
+**Hard rules:** Do **not** describe **code-barre** or **trigram** similarity on this screen — comparison is **by product name** via \`compareProductPrices\`. Do **not** list **MenuPlanningHub**, **ShoppingList**, or **DeliveryShoppingFlowNew** as buttons on **SupermarketHome**; cite them only as **other Yukpo modules** if the user asks. Do not claim all four tabs are visible before a supermarket is chosen.
+`;
+    }
+
+    if (onOffresEmploiHome) {
+      prompt += `
+
+=== OFFRES_EMPLOI_HOME_DETAIL (authoritative — OffresEmploiHomeScreen, route OffresEmploiHome) ===
+
+**Role:** Candidate-oriented **job discovery** home: list + search bar + quick links to AI tools and profile.
+
+**Data load:** On mount, \`loadOffres(true)\` builds \`SearchOffresFilters\` (\`limit: 20\`, \`page: 1\`) and calls \`offreEmploiService.searchOffres\` → **GET /api/offres-emploi/search** with optional \`lat\`/\`lng\` + \`rayon_km: 50\` from **LocationContext** (proximity when GPS exists) and optional \`query\` from the header text field. Pull-to-refresh recalls \`loadOffres\`.
+
+**Search field:** \`onSubmitEditing\` / explicit search triggers another \`searchOffres\` — **not** navigation to **OffreSearch** (that screen is a separate filter form).
+
+**Contract chips (Tous / CDI / CDD / Stage / Freelance):** filter **only the in-memory** \`offres\` array (\`type_contrat\` string match) — they do **not** change API params on this screen.
+
+**Header + (publish):** navigates to **CreateOffre** (full-screen form for logged-in publishers — distinct from partner **OffresEmploiForm** used from the hub FAB).
+
+**Quick action row:** **ProfilCandidat** ; **AICVAnalysis** ; **AISalaryPrediction** ; **AISuggestFormations** ; **AlertesEmploi** — each is **navigation** to its route (no \`setShowAIModal(true)\` in this file; the legacy **AIModal** is effectively unused).
+
+**“Offres recommandées”:** \`offreEmploiService.getMatchingOffres(60, 10)\` → **GET /api/offres-emploi/matching/offres** ; on success → **OffreList** with \`{ offres, title }\` ; if empty/error → alert suggesting **ProfilCandidat**.
+
+**Cards:** tap or **Postuler** → **OffreDetails** with \`offreId\`. Per-card row: **Sauvegarder** toggles local \`savedOffers\` **Set** (session state). **Estimer salaire** uses **useAIWithFallback** \`predictSalary\` (3-level fallback) with poste/secteur/expérience fixe \`3\` ans + \`lieu_travail\` or default city — **not** necessarily the same as **AISalaryPrediction** screen or **GET /api/offres-emploi/ai/salary-prediction** directly.
+
+**Hard rules:** Do **not** say the home screen opens an IA modal for CV/salaire/formations — it **navigates** to dedicated screens. Distinguish **CreateOffre** (from this home +) vs **OffresEmploiForm** (hub / recruteur form with \`LocationSelector\`, \`serviceId\`, etc.).
+`;
+    }
+
+    if (onOffresEmploiHub) {
+      prompt += `
+
+=== OFFRES_EMPLOI_HUB_DETAIL (authoritative — OffresEmploiHubScreen, route OffresEmploiHub) ===
+
+**Role:** Entry **dashboard** after quick access / deep links: stats grid, quick actions, horizontal **Outils IA**, optional **Espace employeur** strip, FAB.
+
+**Employer detection (code):** \`isPartnerEmployer\` = \`user.role === 'partenaire'\` and \`partner_type\` normalized (remove spaces/underscores) ∈ {\`offreemploi\` from \`offre_emploi\` or \`offreemploi\`, \`recruteur\`, \`employeur\`}. **Additionally** \`hasPublishedOffers\` is set if \`getMesOffres(1,1)\` shows \`total > 0\` or employer dashboard stats show active offers — then \`isEmployer\` = partner **or** \`hasPublishedOffers\`, switching quick actions and gradient.
+
+**Stats:** Logged-in users load **GET /api/offres-emploi/dashboard/employeur** or **GET /api/offres-emploi/dashboard/candidat** depending on \`useEmployerDashboard\`.
+
+**Search bar (header):** navigates to **OffreSearch** (placeholder text differs employer vs candidat).
+
+**Quick actions (employer):** **OffresEmploiForm** (nouvelle offre), **MesOffres** (also used for “Candidatures” / “Matching IA” shortcuts — same destination in code), **AISalaryPrediction**, **OffresEmploiHome** (Explorer). **Quick actions (candidate):** **OffresEmploiHome**, **OffreCandidatures**, **ProfilCandidat**, **AlertesEmploi**, **MesOffres**.
+
+**Outils IA:** horizontal cards → **AICVAnalysis**, **AISalaryPrediction**, **AISuggestFormations**.
+
+**Espace employeur (when \`!isEmployer\`):** card **Publier une offre** → **OffresEmploiForm** ; secondary rows → **MesOffres**.
+
+**FAB (+):** always **OffresEmploiForm** (both branches identical in code).
+
+**Hard rules:** Tell users the hub uses **OffresEmploiForm** + **MesOffres** for publishing/management from here; **CreateOffre** is the alternate full form opened from **OffresEmploiHome** (+). Do not invent separate routes for “Matching IA” on the hub — it maps to **MesOffres** in \`buildEmployerQuickActions\`.
+`;
+    }
+
+    if (onBloodTransfusionScreen) {
+      prompt += `
+
+=== BLOOD_TRANSFUSION_MODULE_DETAIL (authoritative — align on **CURRENT SCREEN** name) ===
+
+**Entry (user):** Accueil → **YukpoServicesQuickAccess** carte **Transfusion** (\`banque_sang\`) ou hub santé → **BanqueSangSearch** (**BanqueSangSearchScreen**).
+
+### BanqueSangSearch
+- **GPS requis** pour lancer : coords **LocationContext** ou **ModernGPSModal** ; sinon alerte.
+- **Distance** 5–200 km.
+- Si **connecté** : **GET** \`/api/blood-donation/donor/blood-groups\` ; compat **GET** \`/api/blood-donation/compatibility/{groupe}\` ; enregistrement **POST** \`/api/blood-donation/donor/blood-group\` avec **\`groupe_sanguin\`**.
+- **Recherche** : si \`user && userBloodGroup\` → **BloodDonation** + \`searchParams\` ; sinon → **BanqueSangList** (\`available_only\`, \`check_stocks\`, groupe optionnel).
+- **Cœur header** (sans groupe) → **BloodDonation**.
+
+### BanqueSangList
+- **GET** \`/api/banques-sang/search\` + \`route.params.filters\` ; pagination 20 ; tap → **BanqueSangDetails** (\`banqueId\`).
+
+### BanqueSangDetails / BloodBankDetails
+- **GET** \`/api/banques-sang/:id\` ; notes **GET** \`/api/specialized-services/:service_id/ratings/stats\`.
+- Actions : appel, WhatsApp, **ChatModalMobile**, **Don** → **BloodDonation** (code actuel), email, urgence ; stocks ; avis **ProductCommentsSection**.
+
+### BloodDonation
+- Onglets demandes / profil groupe / compatibilité ; **bloodDonationService** ; réponse à demande → **notifyDonorsForRequest**.
+
+### BloodDonationRequest
+- Formulaire **création de demande** — distinct du bouton « Don » sur la fiche banque.
+
+### BanqueSangForm (partenaire)
+- Onglets overview / service / stocks ; **POST** \`/api/banques-sang\` ; stocks **POST** \`/api/banques-sang/:id/stocks\`.
+
+**Hard rules:** Urgence vitale → **secours** + \`telephone_urgence\` sur la fiche si présent. Pas de bouton itinéraire dédié ici → module **Navigation** global si besoin.
+`;
+    }
+
+    if (onLaboratoryModule) {
+      prompt += `
+
+=== LABORATORY_MODULE_DETAIL (authoritative — align on **CURRENT SCREEN** name) ===
+
+**User entry points:** grille d’accueil (**LaboratoireSearch**), hub santé (**HealthServicesHub** → tuile **LaboratoireSearch**), éventuellement **LaboratoireHome** (hub examens + IA / dispo).
+
+### LaboratoireSearch (**LaboratoireSearchScreen**)
+- **GPS:** **LocationContext** préremplit \`gpsData\` ; sinon **ModernGPSModal** (\`handleGPSSelect\`).
+- **Filtres:** ville/quartier (champs), type de prestation texte \`serviceType\`, **distance max** (\`maxDistance\`, défaut 50 km), switches **RDV en ligne** (\`rdv_en_ligne\`), **disponibles** (\`available_only\`, défaut true), **types d’examens** multi (\`selectedTypesExamens\`), texte **prestation / analyse** (\`prestationAnalyse\`), filtres avancés repliables.
+- **Rechercher:** si \`selectedTypesExamens.length > 0\` **ou** \`prestationAnalyse\` non vide → **LaboratoireList** avec \`{ filters }\` (inclut \`types_examens\`, \`prestation_analyse\`, lat/lng, \`max_distance_km\`, flags) ; sinon → **LaboratoireList** avec filtres « labo » (\`service_type\`, GPS, distance, RDV, \`available_only\`).
+- **Bandeau « Mes examens »** → **MyLabExaminations** (connexion requise sur l’écran liste).
+- **Quick searches:** « Plus proche » (rayon 15 km + dispo), « RDV en ligne », « Résultats en ligne » (intention UI ; filtre backend \`resultats_en_ligne\` commenté côté recherche).
+
+### LaboratoireList (**LaboratoireListScreen**)
+- **GET** \`/api/laboratoires/search\` : \`ville\`, \`quartier\`, \`lat\`, \`lng\`, \`max_distance_km\`, \`type_laboratoire\`, \`service_type\`, \`prestation_analyse\` (depuis \`filters.analyse\` **ou** \`filters.prestation_analyse\`), \`types_examens\` (répété par valeur si tableau), \`rdv_en_ligne\`, \`imagerie\`, \`available_only\`, \`page\`, \`limit\` (20), infinite scroll.
+- Tap carte → **LaboratoireDetails** avec \`laboratoryId: laboratoire.id\`.
+
+### LaboratoireDetails (**LaboratoireDetailsScreen**)
+- **GET** \`/api/laboratoires/{laboratoryId}\` ; types d’examens **GET** \`/api/laboratoires/{id}/examination-types\` via **\`labService.getExaminationTypes\`**.
+- **Actions rapides:** appel, WhatsApp, **Chat Yukpo** (**ChatModalMobile**), **RDV** → **POST** \`/api/laboratoires/{id}/book\` (notes fixes « Réservation depuis l’application mobile »), email, site, partage natif.
+- **Liste « Types d’examens »:** tap ligne → réservation examen **\`labService.bookExamination\`** → **POST** \`/api/laboratoires/{id}/book-examination\` (modal notes + \`examination_type_id\`).
+- **Bloc IA symptômes:** chips symptômes → **\`labService.searchPathology(symptoms)\`** → **POST** \`/api/laboratoires/ai/search-pathology\` (urgence, examens suggérés, pathologies possibles — **indicatif**).
+- **Boutons pleine largeur:** « Réserver un rendez-vous » (même **POST** \`/book\` ; désactivé si fermé), **Mes examens** → **MyLabExaminations**, **Analytics** (propriétaire) → **LabAnalytics** avec \`laboratoryId\`.
+- **Avis:** **GET** \`/api/specialized-services/{service_id}/ratings/stats\` + **ProductCommentsSection**.
+
+### LaboratoireHome (**LaboratoireHomeScreen**)
+- Autocomplete **\`laboratoryService.searchExaminationTypes\`** → **GET** \`/api/laboratoires/examinations/autocomplete\`.
+- Si **dispo + GPS** (\`useAvailability\` + **LocationContext**): **\`laboratoryService.searchWithAvailability\`** → **GET** \`/api/search/scheduling\` (query + lat/lng + \`max_distance\`).
+- Sinon navigation vers **LaboratoireList** avec param \`examinationType\` (texte) — la liste principale attend surtout \`filters\` ; en cas d’écart, orienter l’utilisateur vers **LaboratoireSearch** pour des critères complets.
+- Raccourcis **LaboratoireSearch** / **MyLabExaminations** ; modales IA pathologie / image via **laboratoryService** (\`/api/laboratoires/ai/search-pathology\`, \`/api/laboratoires/examinations/analyze-image\`).
+
+### MyLabExaminations (**MyLabExaminationsScreen**)
+- **GET** \`/api/laboratoires/my-examinations\` via **\`labService.getMyExaminations\`** (pagination 20, filtres statut UI).
+- Examen **completed** → **Voir résultats** / **Analyser avec IA** → **LabAIAnalysis** avec \`examinationId\`.
+
+### LabAIAnalysis (**LabAIAnalysisScreen**)
+- Param **\`examinationId\`** (obligatoire pour le flux standard) : **\`labService.getExaminationResults\`**, puis **\`labService.analyzeExamination\`** → **POST** \`/api/laboratoires/examinations/{id}/analyze\`.
+
+### LabAnalytics (**LabAnalyticsScreen**)
+- Param route **\`laboratoryId\`** : vérif propriétaire **\`labService.getLaboratoryDetails\`** (\`user.id === laboratory.user_id\`), sinon **Alert** + retour.
+- Puis **\`labService.getAnalytics(laboratoryId)\`** → **GET** \`/api/laboratoires/{id}/analytics\` (**sans** query \`period\` dans le client actuel).
+- UI : sélecteur **7j / 30j / 90j** relance \`loadAnalytics\` au changement, mais l’appel API reste le même ; affichage des champs \`total_examinations\`, \`examinations_7d\`, \`examinations_30d\`, \`completed_count\`, \`examination_types_count\`, etc.
+
+### LaboratoireForm (**LaboratoireFormScreen** — prestataire / création)
+- Détail : **LABORATOIRE_PARTNER_DASHBOARD_DETAIL** lorsque \`CURRENT SCREEN\` = **LaboratoireForm**.
+
+**Hard rules:** Ne pas confondre **POST** \`/book\` (RDV générique labo) et **POST** \`/book-examination\` (créneau/type d’examen structuré). Pas de bouton **Navigation / itinéraire** sur **LaboratoireDetails** dans le code actuel → module **Navigation** global si l’utilisateur demande l’itinéraire.
+`;
+    }
+
+    if (screenName === 'LaboratoireForm') {
+      prompt += `
+
+=== LABORATOIRE_PARTNER_DASHBOARD_DETAIL (LaboratoireFormScreen — authoritative) ===
+
+**Double rôle:** (1) **Dashboard partenaire** (\`isDashboardMode\` ou \`partenaire && serviceId\`) avec **5 onglets** ; (2) **Formulaire création** (header « Enregistrer un laboratoire » + \`renderServiceForm\` seul) si hors dashboard.
+
+**Init partenaire** (\`role === 'partenaire'\` && \`partner_type === 'laboratoire'\`): **GET** \`/api/partners/me\` → préremplit \`formData\` (nom, adresse, téléphone, email, ville). **GET** \`/api/laboratoires\` → utilise **\`labs[0]\`** comme \`labData\` ; si présent : \`setLabData\`, \`isDashboardMode(true)\`, \`service_id\` depuis la fiche, **\`loadExamTypes(lab.id || lab.service_id)\`** → **GET** \`/api/laboratoires/{lid}/examination-types\`. Si la réponse est vide, **fallback** = concaténation locale des chips **analyses** / **imagerie** (\`selectedAnalyses\` / \`selectedImagerie\`).
+
+**Dashboard:** affiché si \`isDashboardMode || (partenaire && serviceId)\`. **Pas de FAB IntelligentChat** dans ce fichier.
+
+### Onglets (header gradient)
+1. **Accueil (\`overview\`):** **4 stats** calculées depuis \`examinationTypes\` (total, analyses, imagerie, avec prix). **Actions rapides:** **Ajouter examen** → bascule **Examens** + ouverture **modal** (timeout) ; **IA Analyse** → **Alert** (orientation patient / \`examinationId\` / **MyLabExaminations**) ; **Statistiques** → **LabAnalytics** avec \`laboratoryId: labData.id\` — **Alert** si pas d’\`id\` ; **Mon service** → onglet Service ; **Portefeuille** → **WalletFinancial** ; **Sortir** → **Alert** + \`logout\`. Infos horaires / 24h, **RDV requis**, **résultats en ligne**. **4 derniers** examens + **Tout voir** → Examens. **Pull-to-refresh** → \`handleRefresh\` = **seulement** \`loadExamTypes\` (**ne** recharge pas \`labData\` via **GET** \`/api/laboratoires\`).
+
+2. **Service:** \`renderServiceForm\` — si **partenaire**, champs **nom, adresse, téléphone, WhatsApp, email** **masqués**. Restent type (3 chips), **ModernGPSModal**, **LocationSelector** quartier, **SimplePrestationSelector** (analyses + imagerie), horaires, switches 24h / RDV / résultats en ligne. **Mettre à jour / Enregistrer** → \`handleSubmit\` : **\`servicesApi.createService\`** si besoin, puis **POST** \`/api/laboratoires\` avec \`service_id\` et payload (gps, listes, contacts null si vides).
+
+3. **Examens:** liste + recherche locale ; modal ajout/édition — au **Valider**, le code ne fait que **\`setExaminationTypes\`** (**état React**) : **aucune** requête **POST/PUT** vers \`/examination-types\` dans ce fichier → **pas de persistance serveur** de ce flux modal dans l’implémentation actuelle.
+
+4. **Stats (onglet \`analytics\` in-app):** compteurs **catalogue** depuis \`examinationTypes\` + texte **IA résultats** statique — **≠** écran **LabAnalytics** (API + contrôle propriétaire).
+
+5. **Équipe:** **ServiceTeamManager** \`serviceId={serviceId?.toString()}\` (ID **service Yukpo**, pas \`laboratoryId\`).
+
+**Mode création** (sans barre d’onglets): \`renderServiceForm\` + GPS + même modal examens.
+
+**Hard rules:** Ne pas confondre onglet **Stats** du formulaire et **LabAnalytics** ; ne pas affirmer que la modal examens **enregistre** côté API ; **Statistiques** (navigation) dépend de **\`labData.id\`**.
+`;
+    }
+
+    if (onTravelAgencyPartnerModule) {
+      prompt += `
+
+=== TRAVEL_AGENCY_PARTNER_DETAIL (authoritative — **AgenceVoyageFormScreen** / **BusTicketQRScannerScreen**) ===
+
+**Route principale partenaire:** **AgenceVoyageForm** (\`usePartnerData(..., 'agencevoyage')\`). Accès aussi **Services spécialisés** / hub (\`agence_voyage\` → même écran).
+
+### Chargement initial (rôle **partenaire**)
+- **GET** \`/api/partners/me\` → préremplit nom, adresse, téléphone, email, ville (**partenaire**).
+- **GET** \`/api/agences-voyage\` → liste ; le code prend **\`agencies[0]\`** comme \`agencyData\`, fixe \`service_id\` si manquant, puis **\`loadSchedules\`** + **\`loadAgencyTickets\`**.
+- **Création service Yukpo:** si besoin, **\`servicesApi.createService\`** (\`category: 'transport'\`, titre = nom agence).
+
+### Modes d’affichage
+- **Dashboard** si agence existante **ou** (\`partenaire\` **et** \`serviceId\`) : header gradient bleu, **6 onglets** — **overview** | **service** | **schedules** | **bus** | **tickets** | **team**.
+- **Formulaire création** (non partenaire ou sans dashboard) : header + **\`renderServiceForm\`** (pas d’onglets bus/tickets dans ce mode).
+
+### Onglet **Service** (fiche agence)
+- **POST** \`/api/agences-voyage\` (création / mise à jour même handler \`handleSubmit\`) : \`service_id\`, \`nom_agence\`, \`adresse\`, \`quartier\`, \`gps\` (**ModernGPSModal** ou coords **LocationContext**), \`services_voyage\` (chips : Billetterie bus/avion, Organisation voyages, Visa), \`compagnies_bus\`, \`destinations\` (**LocationSelector**), horaires ouverture/fermeture, \`jours_ouverture\` (**WeekDaysSelector**), contacts, \`peut_emettre_tickets_bus\`, \`compagnies_affiliees\` (si switch actif), \`devise\`.
+- **Partenaire:** champs **nom agence, adresse brute, téléphone, WhatsApp, email** sont **masqués** dans l’UI (\`user?.role !== 'partenaire'\`) — le partenaire édite surtout **GPS, quartier, services, compagnies, destinations, horaires, switch billetterie**.
+
+### Onglet **Horaires** (lignes / créneaux agence)
+- Liste : **GET** \`/api/bus-tickets/agencies/schedules\`.
+- Création : **POST** \`/api/bus-tickets/agencies/schedules\` (villes départ/arrivée, \`departure_times[]\`, \`day_of_week\` optionnel, \`notes\`).
+- Édition : **PUT** \`/api/bus-tickets/agencies/schedules/{id}\`.
+- Suppression : **DELETE** \`/api/bus-tickets/agencies/schedules/{id}\`.
+
+### Onglet **Bus** (modèles / produit billet Yukpo)
+- **BusModelForm** : nouveau modèle → **POST** \`/api/bus-tickets/create-product\` (\`service_id\`, \`name\`, \`type: 'ticket_voyage'\`, sièges, \`bus_configuration\`, \`seat_map\`, \`price_cents\`, \`currency\`) puis si \`agencyData.id\` → **POST** \`/api/bus-tickets/link\` (\`agency_id\`, \`product_id\`, \`nom_modele\`, \`classe\`, \`equipements\`).
+- **Modification / suppression** d’un modèle **déjà listé** : mise à jour **state local** \`busModels\` — **pas** d’appel API dédié dans ce fichier pour éditer un produit existant (hors création initiale).
+
+### Onglet **Tickets** (ventes & embarquement)
+- Liste : **GET** \`/api/bus-tickets/agency/tickets\`.
+- Sélection d’une vente : **GET** \`/api/bus-tickets/boarding/{productId}/summary\` + **GET** \`/api/bus-tickets/boarding/{productId}/passengers\`.
+- **Valider** manuellement un passager : **POST** \`/api/bus-tickets/validate/manual\` \`{ reservation_id }\`.
+- Bouton **Scanner QR** → **BusTicketQRScanner** : voir section scanner ci-dessous.
+
+### Onglet **Équipe**
+- **ServiceTeamManager** avec \`serviceId\` (string).
+
+### Accueil (**overview**)
+- Stats : destinations, compagnies, horaires, tickets (compteurs locaux).
+- Actions rapides : nouvel horaire (modal), **Service**, **Bus**, **Conseils IA** (\`handleAISuggest\`), **Portefeuille** (**WalletFinancial**), déconnexion.
+- **IA conseils:** **POST** \`/ai/chat\` — message métier + \`context: 'travel_agency_partner_dashboard'\` + \`language\` (langue active).
+
+### BusTicketQRScanner (**BusTicketQRScannerScreen**, route **BusTicketQRScanner**)
+- Scan : **POST** \`/api/bus-tickets/validate\` avec **\`{ qr_code_data }\`** uniquement dans **\`handleScan\`** (pas de \`product_id\` dans ce fichier).
+- **Note d’implémentation:** **AgenceVoyageForm** ouvre le scanner avec des **params** (\`onValidate\`, \`product_id\`) pour une validation enrichie, mais **l’écran scanner actuel ne lit pas \`route.params\`** — en cas d’échec ou de besoin de contexte trajet, orienter vers **sélection d’une ligne** dans l’onglet Tickets puis support / évolution produit.
+
+**Hard rules:** Ne pas confondre ce dashboard avec **AgenceVoyageSearch** / **AgenceVoyageList** / **AgenceVoyageDetails** (**client** qui cherche une agence). Ne pas promettre la synchro API des modèles bus **édités** après création si ce n’est pas reflété dans le code ci-dessus.
+`;
+    }
+
+    if (onHealthServicesHubScreen) {
+      prompt += `
+
+=== HEALTH_SERVICES_HUB_DETAIL (HealthServicesHubScreen — routes **HealthServicesHub** or **MedicalServicesList**, same component) ===
+
+**Role:** Cross-health **launcher**: pharmacy, hospital/clinic, laboratory, blood bank — plus **unified search** and optional **nearby duty pharmacy** strip.
+
+**Header (pink gradient):** back ; title/subtitle santé ; **119** (or fallback **112**) **emergency call** button → \`Linking.openURL(tel:)\`.
+
+**Unified search bar:** free text ; **onSubmit** \`handleSearch\` routes by keywords → **PharmacieSearch**, **HopitalSearch**, **LaboratoireSearch**, **BanqueSangSearch**, or default **HopitalSearch**.
+
+**Tiles (horizontal cards):** each opens a dedicated search route — **PharmacieSearch**, **HopitalSearch**, **LaboratoireSearch**, **BanqueSangSearch** (counts from \`servicesCounts\` when loaded).
+
+**Duty pharmacy block:** loads via **GET** \`/api/pharmacies/products/search\` with \`query: 'garde'\`, optional GPS + radius ; tap can call pharmacy phone.
+
+**Note:** \`MedicalServicesList\` is a **navigation alias** to this screen. The component **does not** read \`route.params.filters\` today — service-led filters from **HopitalSearch** that target **MedicalServicesList** are **not** applied inside this hub in current code; use **HopitalList** / **HopitalHome** flows for structured hospital/service discovery.
+
+**Hard rules:** Do not describe this hub as **PharmacieHome** (product catalog) or as **HopitalHome** (medical services availability list) — it is the **entry hub** only.
+`;
+    }
+
+    if (onHospitalPartnerDashboard) {
+      prompt += `
+
+=== HOSPITAL_PARTNER_DASHBOARD_DETAIL (authoritative — **HopitalFormScreen**, route **HopitalForm**) ===
+
+**Rôle:** tableau de bord **partenaire** hôpital / clinique / centre de santé (\`usePartnerData(..., 'hopital')\`). Distinct des écrans **patient** (**HopitalHome**, **HopitalSearch**, **HopitalList**, **HopitalDetails**).
+
+### Accès & chargement
+- Init si \`user.role === 'partenaire'\` **et** \`user.partner_type === 'hopital'\` : **GET** \`/api/partners/me\` (préremplit nom, adresse, téléphone, email, ville) ; **GET** \`/api/hopitaux\` — le code retient **\`hospitals[0]\`** comme \`hospitalData\`, active le dashboard, fixe \`service_id\` Yukpo si besoin, puis **\`loadAnalytics(hid)\`**, **\`loadConsultations()\`**, **\`loadEmergency(hid)\`** avec \`hid = hospitalData.id || hospitalData.service_id\`.
+- Mode **\`edit\` + \`specializedServiceId\`** : **GET** \`/api/hopitaux/{specializedServiceId}\` pour préremplir le formulaire + \`planning_prestations\`.
+- **Création service Yukpo:** effet si \`!serviceId\` et \`formData.nom\` → **\`servicesApi.createService\`** (\`category: 'sante'\`).
+
+### Modes d’affichage
+- **Dashboard** si agence chargée **ou** (\`partenaire\` **et** \`serviceId\`) : header gradient rouge, **5 onglets** — **overview** | **service** | **slots** | **analytics** | **team**.
+- **Création** (sinon) : en-tête + **\`renderServiceForm\`** uniquement (pas d’onglets créneaux/stats/équipe).
+
+### Onglet **Service**
+- **POST** \`/api/hopitaux\` via \`handleSubmit\` : \`service_id\`, \`nom\`, \`type_etablissement\`, \`adresse\`, \`quartier\`, \`gps\` (**ModernGPSModal** ou **LocationContext**), \`prestations_medicales\`, \`planning_prestations\` (sélection **PrestationSelectorWithSchedule**), \`urgences_disponible\`, \`rdv_en_ligne\`, contacts.
+- **Partenaire:** champs **nom, adresse, téléphone, urgence, WhatsApp, email** sont **masqués** (\`user?.role !== 'partenaire'\`) — édition surtout **type**, **GPS**, **quartier**, **switches** urgences / RDV en ligne.
+
+### Onglet **Créneaux** (\`slots\`)
+- **PrestationSelectorWithSchedule** : liste \`PRESTATIONS_OPTIONS\` + planning par prestation (\`scheduleByDay\` / \`timeSlots\`), \`allowCustom\`.
+
+### Onglet **Stats** (in-app)
+- Affiche \`analyticsData\` issu de **GET** \`/api/hopitaux/{hid}/analytics\` (champs utilisés : \`total_consultations\`, \`consultations_7d\`, \`avg_wait_time_min\`, \`occupancy_rate\`).
+- Carte « IA » : bouton **HospitalAIRecommendations** avec **\`hospitalId\`** si résolu (\`resolveHospitalEntityId()\`) + \`serviceId\` optionnel.
+
+### Onglet **Équipe**
+- **ServiceTeamManager** (\`serviceId\` string).
+
+### Accueil (**overview**)
+- Stats calculées : prestations, créneaux, **GET** \`/api/hopitaux/my-consultations\` (compteur + aperçu), temps d’attente depuis \`analyticsData\`.
+- **GET** \`/api/hopitaux/{hid}/emergency-status\` → carte statut urgences (affichage basé sur \`formData.urgences_disponible\` + RDV ligne).
+- **Identifiant API hôpital** : \`resolveHospitalEntityId()\` = \`Number(hospitalData?.id ?? hospitalData?.service_id)\` si fini ; utilisé pour analytics / urgence / navigation **HospitalAnalytics** / **HospitalAIRecommendations**.
+- Actions rapides : onglet créneaux, **HospitalAIRecommendations** (\`hospitalId\` si dispo + \`serviceId\`), **HospitalAnalytics** (\`hospitalId\` obligatoire — **Alert** si fiche non résolue), **Service**, **WalletFinancial**, déconnexion.
+
+### Écrans liés (navigation depuis le dashboard)
+- **HospitalAnalyticsScreen** : param **\`hospitalId\`** pour **GET** \`/api/hopitaux/{hospitalId}/analytics\` — le dashboard passe **\`hospitalId: resolveHospitalEntityId()\`** depuis l’overview (quick action **Statistiques**).
+- **HospitalAIRecommendationsScreen** : symptômes + \`hospitalService.getAIRecommendations\` ; \`hospitalId\` / \`serviceId\` en params quand connus ; bouton **géoloc** = **TODO** (Alerte placeholder).
+
+**Hard rules:** Ne pas confondre **\`service_id\`** (service Yukpo) et **\`id\`** hôpital API pour les routes **\`/api/hopitaux/{id}/…\`**. Pour « comment un patient prend RDV », renvoyer vers **HopitalDetails** / **BookAppointment**, pas ce dashboard.
+`;
+    }
+
+    if (onHospitalModule) {
+      prompt += `
+
+=== HOSPITAL_MODULE_DETAIL (authoritative — match **CURRENT SCREEN** name) ===
+
+**Flow map (user confusion):**
+- **HopitalHome** = **live medical offerings** near the user when **GPS + internal availability path**: \`hospitalService.searchAvailableMedicalServices\` (list of establishments with \`available_services\`, distance, 24h, blood bank flag). **Without** GPS (or when not using that path), search can **navigate** to **HopitalList** with \`serviceType\` text (list screen primarily expects \`filters\` object — align UX with **HopitalSearch** for reliable establishment filters).
+- **HopitalSearch** = **filters form** (ville/quartier optional in types, **GPS** \`ModernGPSModal\`, distance, type établissement, prestation, urgences, disponible, **advanced**: spécialités multi, banque sang, urgences 24h, RDV en ligne, assurances). If **prestation** or first **spécialité** is set → navigate **MedicalServicesList** (same screen as **HealthServicesHub**) with \`{ filters }\` (hub UI ignores params in current code). Else → **HopitalList** with \`filters\` → **GET** \`/api/hopitaux/search\`.
+- **HopitalList** = cards (nom, type, dispo, **urgences** badge, ville, distance, téléphones) → **HopitalDetails** (\`hospitalId\`).
+- **HopitalDetails** = full **Doctolib-style** fiche: hero (badges ouvert, urgences, banque sang, RDV en ligne, vérifié, notes), quick actions (appel, WhatsApp, **Chat Yukpo**, **RDV** if \`rdv_en_ligne\` → \`handleBook\` **POST** \`/api/hopitaux/{id}/book\`, email, site), **urgences** phone + **emergencyStatus** + **waitTimes** (\`hospitalService\`), prestations chips, **IA symptômes** (\`hospitalService.searchPathology\`), full buttons **Réserver RDV** (if online booking), **Recommandations IA** → **HospitalAIRecommendations** (\`hospitalId\`), **Mes consultations** → **MyConsultations**, **Analytics** if owner → **HospitalAnalytics** (\`hospitalId\`), **ProductCommentsSection** + **ChatModalMobile**.
+
+### HopitalHome (prestations / disponibilité)
+- Header gradient **red/orange**: back ; title **Hôpitaux** + subtitle **Recherche de prestations médicales** ; **brain** button opens **AIModal** (pathology mode).
+- **Search + autocomplete** (debounced): \`hospitalService.searchMedicalServices\` ; select row or submit: if **useAvailability** (state, default true) **and** **GPS** → \`searchAvailableMedicalServices\` (50 km) ; else → **HopitalList** + \`serviceType\`.
+- Quick actions: **Analyser image** → \`imageAnalysisService.analyzeHospitalImage\` (JPEG via **expo-image-manipulator**) inside **AIModal** ; **Recherche pathologie** opens same modal.
+- **AIModal:** pathology text → \`aiSearchPathology\` (**useAIWithFallback**) ; optional **Évaluer / triage** style flow via \`hospitalService.getAIRecommendations\` from inline handler (**Alert**).
+- **Sort** bar → modal (pertinence, prix, distance, nom).
+- **Result cards** (\`MedicalServiceAvailability\`): **Prendre RDV** → \`hospitalService.bookAppointment\` ; **Attente** → \`getWaitTimes\`.
+
+### HopitalSearch & HopitalList
+- See flow map above ; establishment search API **\`/api/hopitaux/search\`** with query params built from \`filters\`.
+
+### Partner: HopitalFormScreen
+- When the user is **on** **HopitalForm**, use **HOSPITAL_PARTNER_DASHBOARD_DETAIL** (authoritative). This bullet is for readers on **other** hospital screens only: partner dashboard has 5 tabs (**overview**, **service**, **slots**, **analytics**, **team**), **PrestationSelectorWithSchedule**, **ServiceTeamManager**, **ModernGPSModal**, toggles, consultations; navigation to **HospitalAnalytics** / **HospitalAIRecommendations** uses **\`hospitalId\`** from \`hospitalData.id ?? hospitalData.service_id\` when available.
+
+### BookAppointmentScreen
+- Params: \`serviceId\`, \`serviceType\` **hopital** | **laboratoire** ; loads **GET** \`/api/hopitaux/{id}/available-slots?date=\` (or lab equivalent) ; user picks slot, patient fields, confirms booking via API.
+
+### MyConsultationsScreen
+- Logged-in list: \`hospitalService.getMyConsultations\` with **status filters**, pagination, pull refresh ; **navigate** to **HopitalDetails** from a row when relevant.
+
+### HospitalAIRecommendationsScreen
+- Symptoms text (+ optional location fields) ; **login required** ; \`hospitalService.getAIRecommendations\` ; results may link to **HopitalDetails** ; **GPS button** in UI is placeholder (TODO).
+
+### HospitalAnalyticsScreen
+- **GET** \`/api/hopitaux/{hospitalId}/analytics\` ; requires login ; partner/owner context expected.
+
+**Hard rules:**
+- **RDV** on **HopitalDetails** is primarily **in-place booking** (\`POST .../book\`) when \`rdv_en_ligne\` ; **BookAppointment** is the **slot-picker** flow when navigated with params — do not merge the two UIs.
+- **Recommandations IA** on the detail screen is a **separate** full screen (**HospitalAIRecommendations**), not the same modal as **HopitalHome** pathology search.
+- For “liste des hôpitaux avec filtres”, point to **HopitalSearch** → **HopitalList**, not **HopitalHome** alone.
+`;
+    }
+
+    if (onPharmacyModule) {
+      prompt += `
+
+=== PHARMACY_MODULE_DETAIL (authoritative — follow per current screen name) ===
+
+**Critical distinction (user confusion):**
+- **PharmacieHome** = **multi-pharmacy product catalog** (search \`pharmacyProductService.searchProducts\`: text query, GPS radius, availability, price filters). Users browse **medications/products** with distance/stock context — **not** a plain list of pharmacy shop names only.
+- **PharmacieSearch → PharmacieList** = **pharmacy establishment search** (API \`/api/pharmacies/search\` from the app list screen): filters like **on duty**, **available**, optional **product_search** in navigation params, GPS + **max distance** in the UI, advanced chips (type, services, delivery). Tap row → **PharmacieDetails**.
+
+### PharmacieHome (catalog)
+- **Header:** back ; title **Pharmacie** ; subtitle = **count of available medications** when loaded ; **filter** icon (**sliders**) with **badge** = number of active advanced filters (price min/max, radius < default, “only available”).
+- **Main search row:** text field **search medications** + **submit search** (magnifier) + clear **X** when non-empty.
+- **Quick chips:** **Near me** (radius 10 km), **Available** (stock filter), **Lowest price** (sets sort to ascending price).
+- **Sort row:** opens **modal** — relevance, price ↑/↓, nearest (**distance_km** on cards), name A–Z (client-side sort).
+- **“Assistant IA Pharmacie”** (expandable): **Analyze medication photo** (camera/gallery → \`imageAnalysisService.analyzePharmacyImage\`, result shown as IA reply) ; **suggestion chips** (tap fills question + send) ; **free-text question** + send → \`askPharmacyQuestion\` with context from **first visible product names** ; **IA response** area + **new question** reset.
+- **Product cards:** open **detail modal** ; on card: **Posologie IA** (\`getDosageRecommendation\`), **Interactions** (\`checkDrugInteractions\` for that product), **check availability / reserve** for the **linked pharmacy** (\`checkAvailability\`, \`reserveMedication\`).
+- **Modals:** advanced **filters**, **sort**, medication **details**, **dosage**, **interactions**.
+
+### PharmacieSearch (find establishments / refine product-led search)
+- **Gradient header** + back.
+- **AI features banner** → opens **PharmacyAIFeatures** (explains IA aids: interactions, dosage, budget-oriented product help, etc.).
+- **Quick search cards:** product-oriented shortcut (opens advanced section), **on-duty pharmacy** preset, **near me** preset (tightens distance + availability).
+- **Primary form:** **product / medication name** field (priority path) ; optional **GPS** via **ModernGPSModal** ; **max distance** stepper ; toggles **on duty only**, **pharmacies with available stock** ; expandable **advanced filters** (pharmacy type classic/guard/24h, service tags e.g. vaccination, **home delivery** switch).
+- **Search CTA** → **PharmacieList** with \`route.params.filters\` (product-led branch sets \`product_search\` when filled).
+
+### PharmacieList
+- **FlatList** of pharmacy **cards**: name, **Disponible / Indisponible**, **De garde** badge, city/quarter, optional **distance** and **phone**.
+- Tap → **PharmacieDetails** (\`pharmacieId\`). Empty state → back / **new search**.
+
+### PharmacieDetails (single pharmacy)
+- **Hero:** back, **share**, name, description, badges **open/closed**, **on duty**, **verified**, **24/7**, **rating** + review count, address line.
+- **Quick actions** (when data exists): **Call**, **WhatsApp**, **Chat** (in-app **ChatModalMobile**, login required), **Email**, **Website**.
+- **Hours** + on-duty notice ; **emergency phone** row if set ; **services** chips.
+- **Search medication in this pharmacy:** field + modal → **checkAvailability** → if available: stock, price, **prescription required** flag, **Reserve**.
+- **IA block:** **Interactions** modal (add several drug names → **checkInteractions**, severity + alternatives) ; **Conseils santé** (**contextual AI tips** for this pharmacy).
+- **Mes commandes** → **MyPharmacyOrders** (logged-in). If **owner** → **PharmacyAnalytics** entry.
+- **Reviews:** **ProductCommentsSection** inline.
+
+### PharmacieForm (partner)
+- **Existing pharmacy:** dashboard tabs **overview**, **service**, **products**, **analytics**, **team** — manage pharmacy profile (GPS, hours, guard days, services), **product/stock** CRUD, **bulk import**, orders, **ServiceTeamManager**, stats.
+- **Creation / edit mode** (route \`mode\`): guided form with autosave, **LocationSelector**, **GuardDaysSelector**, prestations.
+
+### MyPharmacyOrders / PharmacyAnalytics
+- **MyPharmacyOrders:** client **order history** for pharmacy purchases (\`pharmacyService.getMyOrders\`), filters by status, pull to refresh, pagination.
+- **PharmacyAnalytics:** **owner-only** analytics for a given \`pharmacyId\` (authorization checked against pharmacy **user_id**), periods 7d/30d/90d.
+
+### PharmacyAIInteractions (stack — mainly partner)
+- Full-screen **interactions / dosage** tooling (not the same as the **modals** on **PharmacieDetails**). Typically opened from **PharmacieForm** (quick action **IA Interactions** or test buttons with optional \`serviceId\`).
+
+**Hard rules for answers:**
+- “Where is on-duty pharmacy / pharmacy near me (shop, not product)?” → **PharmacieSearch** (on-duty toggle + GPS/distance) then **PharmacieList**, not only **PharmacieHome**.
+- “Where to find medicine X near me / who has stock?” → **PharmacieHome** product search + **near me** / sort by distance **and/or** product-led flow from **PharmacieSearch**.
+- Never invent buttons (e.g. a separate **PharmacyAIInteractions** route on details) — interactions are **modals on PharmacieHome cards** and **PharmacieDetails** section.
+`;
+    }
+
+    if (onImmobilierModule) {
+      prompt += `
+
+=== IMMOBILIER_MODULE_DETAIL (authoritative — match **CURRENT SCREEN** name) ===
+
+**API client (shared):** \`immobilierService\` → **GET** \`/api/immobilier/biens\` (\`searchProperties\`), **GET** \`/api/immobilier/biens/:id\`, **POST** \`/api/immobilier/biens/:id/book-visit\`, **POST** \`/api/immobilier/biens/:id/simulate-loan\`, **POST** \`/api/immobilier/ai/price-estimate\`, **POST** \`/api/immobilier/ai/recommendations\`, **POST** \`/api/immobilier/compare\`, favorites, **GET** \`/api/immobilier/my-alerts\`, etc. Hôtellerie client: **HotelBookingScreen** uses hotel booking APIs (e.g. \`bookHotelStay\` — see code).
+
+### ImmobilierHome (**ImmobilierHomeScreen**)
+- **Not** the same as **ImmobilierSearch** (no point/zone/quartier modes here). This is the **main catalog**: **search bar** + **submit**, **quick filter chips** (statut, distance, “récent” → sort), **advanced FiltersModal**, **SortModal**, **list/grid** toggle.
+- **Data:** \`immobilierService.searchProperties\` with pagination (\`page\`, \`limit\` 20), filters from state (types alignés formulaire: maison, appartement, terrain, bureau, local_commercial, **hotel**, **meuble**), \`initialFilter\` from \`route.params\` can pre-set e.g. hôtel/meublé.
+- **Header:** back ; title reflects \`filters.type_bien\` (Hôtels / Meublés / Immobilier) ; **+** → **ImmobilierForm** (\`mode: 'create'\`) ; **sliders** → filters modal (badge = active filter count).
+- **Per-card actions:** **Favori** (\`addToFavorites\` / \`removeFromFavorites\` + AsyncStorage mirror) ; **Estimer** → **useAIWithFallback** \`estimatePropertyPrice\` → **Alert** (not the same code path as **ImmobilierDetails** \`estimatePrice\`) ; **Visite** → **Alert** then **bookVisit** with **next day** date, **10:00**, type **\`en_personne\`** (no navigation to **ImmobilierBooking**) ; **Partager** → \`shareProperty\` + system Share ; **Simuler prêt** (if \`prix_vente\`) → **local modal** \`calculateLoan\` (duration/rate chips) — **not** \`simulateLoan\` API used on this screen.
+- Tap card → **ImmobilierDetails** (\`propertyId\`) + \`trackPropertyView\` (\`source: 'search'\`).
+
+### ImmobilierSearch → ImmobilierList
+- **ImmobilierSearch:** modes **point GPS**, **zone carte** (\`search_zone\` polygon string), **quartiers** multiples ; **ModernGPSModal**, **RealEstateAIFeatures** ; search navigates to **ImmobilierList** with \`route.params.filters\`.
+- **ImmobilierList:** **GET** liste via \`searchProperties(filters)\` from params. **Sélection** max **5** biens → bar **Comparer** → **ImmobilierCompare** (\`propertyIds\` array). Tap card (sans mode sélection) → **ImmobilierDetails**. Pull to refresh.
+
+### ImmobilierDetails
+- Load **\`getPropertyDetails\`**, favoris, optional **virtual tours** API.
+- **Hotel / meublé** (\`type_bien\` **hotel** ou **meuble**): primary CTA **Réserver un séjour** → **HotelBooking** ; sinon **Réserver une visite** → **ImmobilierBooking**.
+- Quick actions: **call / WhatsApp** if numbers ; favoris ; **ShareServiceModal**.
+- **Simuler un prêt** (if \`prix_vente\`): modal → **\`simulateLoan\`** API (apport %, durée, revenu optionnel).
+- **Estimation IA:** **\`estimatePrice\`** API (card “Obtenir estimation IA”).
+- **Recommandations IA:** **\`getAIRecommendations\`** (budget derived from price).
+- **ProductCommentsSection** ; **IntelligentChat** FAB. **trackPropertyView** on open.
+
+### ImmobilierBooking
+- Params: \`propertyId\`, optional \`propertyName\`. Fields: date, heure, **type visite** **Physique** / **Virtuelle** (strings) → **\`bookVisit\`**.
+
+### ImmobilierCompare
+- Params: \`propertyIds\` (required), \`comparisonName\`. **\`compareProperties\`** POST → horizontal comparison table ; column tap → **ImmobilierDetails**.
+
+### ImmobilierPriceAlerts
+- **\`getMyPriceAlerts\`** on focus. Toggle/delete actions currently **Alert placeholders** (backend toggle/delete not wired in UI — say “à venir” if asked).
+
+### ImmobilierForm
+- Partenaire / annonce : types & statuts alignés backend, médias, GPS / Places, création service (**\`servicesApi.createService\`** path in screen).
+
+### Hôtel / meublé — **HotelMeubleHomeScreen** (routes **HotelMeubleHome**, **HotelSearch**, **MeubleSearch**)
+- \`mode\` **hotel** | **meuble** from \`route.params.mode\` or \`initialFilter.type_bien\`.
+- **\`searchProperties\`** with \`type_bien: mode\`, \`limit\` 20, optional **GPS** \`max_distance_km: 50\`, text **query**, ville, standing chips, \`prix_max\`, \`nb_chambres_min\`.
+- Card tap → **ImmobilierDetails** ; **Réserver** → **HotelBooking** (dates **not** on this list — only on **HotelBooking**).
+
+### HotelBooking
+- **Séjour** pour un bien déjà choisi : dates, occupants, contact → **bookHotelStay** (see **HotelBookingScreen**). Optional **Payer maintenant** after success when applicable.
+
+### HotelDashboard
+- **Partenaire uniquement** — détail opérationnel : bloc **HOTEL_PARTNER_DASHBOARD_DETAIL** (ajouté au prompt quand \`CURRENT SCREEN\` = **HotelDashboard**).
+
+**Hard rules:**
+- Do **not** claim **ImmobilierHome** has buttons to **ImmobilierSearch**, **ImmobilierCompare**, or **ImmobilierPriceAlerts** unless another entry point (e.g. Home grid) is explicitly in scope — those are **separate routes**.
+- **Visite** on **ImmobilierHome** ≠ **ImmobilierBooking** screen (different UX).
+- **Estimation** on **ImmobilierHome** (\`estimatePropertyPrice\` hook) ≠ **ImmobilierDetails** (\`immobilierService.estimatePrice\`) — same domain, different implementation.
+`;
+    }
+
+    if (screenName === 'HotelDashboard') {
+      prompt += `
+
+=== HOTEL_PARTNER_DASHBOARD_DETAIL (HotelDashboardScreen — partenaire hôtel / meublé — authoritative) ===
+
+**Role:** Tableau de bord **gérant** pour biens **type_bien** hôtel ou meublé : chargement des biens et réservations, actions accueil, équipe limitée au **premier** \`service_id\` si plusieurs biens.
+
+**Data load (focus / refresh):** en parallèle \`immobilierService.getMyHotelProperties()\` → **GET** \`/api/hotel/my-properties\` et \`getMyHotelReservations()\` → **GET** \`/api/hotel/reservations/my\`. Pull-to-refresh sur onglets **Réservations** et **Mes biens**.
+
+**Header:** retour ; titre dashboard (libellé **hôtel** vs **meublé** selon \`user.partner_type\`) ; sous-titre = nombre de biens · clients **en séjour** ; bouton **scan** (droite) → **HotelQRScanner** (raccourci identique à l’action rapide Scanner).
+
+**5 onglets (barre sous le header):** \`overview\` | \`reservations\` | \`properties\` | \`ai\` | \`team\`.
+
+### Vue d’ensemble (\`overview\`)
+- **Stats (4 cartes):** nombre de propriétés ; nombre total de réservations chargées ; **en séjour** = réservations avec \`checked_in_at\` renseigné et sans \`checked_out_at\` ; **revenus** = **somme des \`prix_total\`** sur **toutes** les réservations de la liste (pas de filtre période dans le code).
+- **Actions rapides (grille):** **Ajouter un bien** → **ImmobilierForm** \`mode: 'create'\`, \`initialTypeBien\` = **meuble** si \`partner_type === 'meuble'\` sinon **hotel** ; **Nouvelle réservation** → ouvre **modal** (pas une route) ; **Scanner QR** → **HotelQRScanner** ; **IA Insights** → bascule onglet **IA** ; **Portefeuille** → **WalletFinancial** ; **Sortir** → **Alert** confirmation puis \`logout\` (**AuthContext**).
+- **Arrivées en attente:** réservations avec \`reservation_status === 'confirmed'\` **et** pas de \`checked_in_at\` ; max 3 cartes puis lien **voir toutes** → onglet **Réservations**.
+- **Clients en séjour:** liste des réservations \`checked_in_at\` && !\`checked_out_at\`.
+- **État vide sans biens:** carte invitant à **Ajouter un bien**.
+
+### Réservations (onglet \`reservations\`)
+- **FlatList** de toutes les réservations ; carte = client, téléphone, badges **séjour** (terminé / en séjour / confirmé / annulé / en attente selon champs) et **paiement** (\`paid\` / \`fully_paid\` / \`partial\` / \`advance_paid\` / \`pending\` / défaut).
+- **Check-in:** visible seulement si **\`reservation_status === 'confirmed'\`** et **pas** de \`checked_in_at\` → **POST** \`/api/hotel/reservations/{id}/check-in\` (\`checkInReservation\`).
+- **Check-out:** si en séjour (\`checked_in_at\` && !\`checked_out_at\`) → confirmation **Alert** puis **POST** \`/api/hotel/reservations/{id}/check-out\` (\`checkOutReservation\`).
+- **QR:** **HotelReservationQR** avec \`reservationId\`, \`propertyName\`.
+- **Payer:** si statut paiement ≠ \`paid\` et ≠ \`fully_paid\` → **HotelBookingPayment** avec \`reservationId\`, \`montantTotal\` (\`prix_total\`), \`propertyName\`.
+
+### Mes biens (\`properties\`)
+- Carte par propriété : badge hôtel/meublé, **disponible / complet** (\`is_available_now\`), adresse, chambres, prix nuit ou vente.
+- **Modifier** → **ImmobilierForm** \`mode: 'edit'\`, \`propertyId\`, \`serviceId\`.
+- **IA tarifs** (libellé UI) → **\`getPropertyAIInsights(propertyId)\`** — **GET** \`/api/hotel/properties/{propertyId}/ai-insights\` — **not** \`getAIPropertyPricing\` / \`getAIUnitPricing\` on this screen.
+
+### IA (\`ai\`)
+- Texte d’intro puis liste des biens ; appui → même **\`getPropertyAIInsights\`** ; affichage si succès : blocs **pricing_suggestion**, **occupancy_forecast**, **recommendations** (sinon JSON brut / stringify).
+- Si **aucun bien**, message invitant à ajouter un bien d’abord.
+
+### Équipe (\`team\`)
+- **ServiceTeamManager** avec \`serviceId={properties[0]?.service_id?.toString()}\` — **un seul** service (celui du **premier** bien listé). Si **0 bien**, \`serviceId\` est **indéfini** : l’onglet équipe n’est pas utilisable pour rattacher une équipe tant qu’aucun bien n’existe.
+
+### Modal « Nouvelle réservation »
+- Ouverture depuis action rapide ou état vide réservations. **Obligatoire:** choisir une **propriété** (chips), nom + téléphone client, dates **arrivée / départ** (format saisi type AAAA-MM-JJ dans les placeholders), adultes / enfants / chambres, **prix par nuit**, notes optionnelles, email optionnel.
+- **\`prix_total\`** / \`montant_total\` calculés client-side : **nuits** × **prix_nuitee** × **nombre_chambres** (\`manual_reservation_source: 'dashboard'\`).
+- Envoi : **POST** \`/api/hotel/reservations/manual\` via \`createManualReservation\`.
+
+**APIs hôtel présentes dans \`immobilierService\` mais sans écran de blocage dans ce fichier:** \`createManualBlockage\`, \`listManualBlockages\`, \`deleteBlockage\` — **ne pas** les présenter comme accessibles depuis **HotelDashboardScreen** actuel.
+
+**IntelligentChat:** FAB masqué si la modal nouvelle réservation est ouverte ; contexte envoie \`userData\` (role, partner_type, name) et \`serviceData\` agrégé depuis les biens.
+
+**Hard rules for answers:**
+- Ne pas confondre **demande client** (\`/api/hotel/reservations/request\`, **HotelBooking**) avec **réservation manuelle gérant** (\`/api/hotel/reservations/manual\`).
+- **Check-in** n’apparaît pas pour les réservations simplement « en attente » non confirmées — le code exige **\`confirmed\`** sans check-in.
+`;
+    }
+
+    if (screenName === 'Home') {
+      prompt += `
+
+=== HOME_SCREEN_DETAIL (authoritative for Yukpo Home / Accueil) ===
+
+**Role of this screen:** Central hub for **AI search** (needs login), **creating products/services** as a provider (photo/text via AI), **quick entry to every specialized service** (always **user** flows: Search / Hub / Home — never partner Form/Dashboard from here), **promotions**, and shortcuts in the header.
+
+**Header (fixed):**
+- **Avatar:** opens **UserAvatarMenu** (profile navigation, **credits balance**, optional **weather** when a location is set).
+- **Navigation icon:** opens **Navigation** (GPS Yukpo).
+- **Center:** Yukpo wordmark.
+- **Bike / delivery icon:** opens **Delivery** module (same as route \`Delivery\`).
+- **Message bubble:** opens **ChatHistoryModal** (conversation list → **ChatModalMobile**). Red badge = unread count from **GET /api/chat/conversations** (plus refresh on focus / app resume / notification event).
+- **Bell:** opens **NotificationHistoryModal**. Badge = server unread + **Coach IA** local reminders from **coachingNotificationService**.
+
+**Mode switch (below header):**
+- **🔍 Rechercher (default on every focus):** primary mode after each visit to Home.
+- **Créer (product/service):** switches **ChatInputMobile** to creation placeholders and submit handler.
+
+**ChatInputMobile (main block):**
+- **Search mode:** user describes a need (text; images/media optional). Submit calls **rechercherServices** → navigates to **ResultatBesoin** with normalized results. **Not** the standalone **RechercheBesoin** screen. Errors surface as localized **Alert** (timeout, network, auth, HTTP).
+- **Create mode:** submit calls **genererSuggestionsService**. If **GET /api/prestataire/services** found an existing active service → **AjouterProduitSimple** with **suggestionIA** + media/GPS payloads. If **no** service yet → **FormulaireYukpoIntelligent** with full **suggestion** object (service_data path preferred for rich product fields). User must be logged in.
+- **GPS:** **onGPSPress** / location controls open **ModernGPSModal** (point or **zone** selection) feeding **gps_mobile / gps_fixe** into payloads and **selectedLocation** for header weather.
+
+**Offres spéciales (gift button):** dropdown with horizontal cards → **FlashPromosActive**, **GlobalPromoCatalog**, **LivesList** (icons zap / bag / video).
+
+**YukpoServicesQuickAccess:** six categories (Santé, Transport, Vie pratique, Bourse du livre, Assurance, Immobilier) covering **17 services**. Taps use **searchRoutes** mapping, e.g. Pharmacie→**PharmacieSearch**, Hôpital→**HopitalSearch**, Taxi→**TaxiSearch**, Covoiturage→**CovoiturageSearch**, Bourse du livre→**LivreScolaireHome**, Emploi→**OffresEmploiHub**, Menu→**MenuPlanningHub**, BayamSelam→**BayamSelamSearch**, Immobilier→**ImmobilierSearch**, Hôtel→**HotelSearch** with \`{ mode: 'hotel' }\`, Meublé→**MeubleSearch** with \`{ mode: 'meuble' }\`, etc. **Never** route casual users from Home into partner-only management screens.
+
+**Assistant IA FAB:** rendered in **AppNavigator** (global). Quick actions like **Retour** / **Recherche** refer to stack/tab navigation, not internal Home controls.
+
+**Answering guidelines:** Match explanations to the **actual** buttons/modals above. If user asks “how to search”, describe **mode Rechercher + send in ChatInputMobile + ResultatBesoin**. If “how to publish a product”, describe **mode Créer + existing vs new service split**. For “where are taxis/pharmacy”, point to **quick access grid** and the **Search** route names.
+`;
+    }
+
+    if (screenName === 'Services' || screenName === 'MesServices') {
+      prompt += `
+
+=== MES_SERVICES_PRODUCTS_DETAIL (MesServicesScreen — authoritative) ===
+
+**Route names (clarification):** The **bottom tab** label is “Mes services” but the React Navigation route is **`Services`**. The same component (**MesServicesScreen**) can also open via stack route **`MesServices`**. Tell users: *onglet Mes services en bas* = **Services**. Do **not** confuse with **ServicesDashboard** (autre écran tableau de bord création).
+
+**What the screen shows:** A **product-first** dashboard: each row is a **product** from \`productsService.getProductsByService(serviceId)\` (Phase 4), with fallback parsing of legacy \`service.data.produits\`. Header title **“Produits”**. API: \`GET /api/prestataire/services\` then parallel product fetches. Cache 5 min + invalidation on \`service:refresh\`, \`product:created\`, \`product:updated\`.
+
+**Header actions:** (1) **+** → **VideoCreationIntro**. (2) **⚡** → pick product(s) → **CreateFlashPromo** (single or multi). (3) **Bike** → pick products → **GlobalDeliveryConfigModal**. (4) **Checkbox icon** → **bulk selection** + **BulkActionsBar** (mass activate/deactivate/delete). (5) **☰** → **SidebarNavigation** (same entries as legacy global menu: create product, media gallery, team via **ServiceProductSelector**, analytics **AnalyticsDashboard**, ads **PubliciteDashboard** / **CreatePublicite**, **VideoFeed**, **StartLive**, **VideoAnalytics**, **GlobalPromoSubmission**, flash promo selector, **Settings**, etc.).
+
+**Body:** **Breadcrumbs** Home → Produits. **StatsCard** strip (totals / active / inactive / views) filters list. **Chips** Tous | Actif | Inactif. **FlashList** of **ServiceCardModern** cards: view/edit service (**FormulaireYukpoIntelligent** with \`fromMesServices\`), share (link \`yukpomnang.com/service/{id}\`), toggle status (**PATCH** toggle; reactivation may charge **1000 FCFA** tokens), delete (**DELETE**; blocked if backend reports multiple products rule), promotions (alert → **CreateFlashPromo** or form with \`focusPromotion\`), “voir produits” navigates to **MesProduits**. Footer buttons: **AnalyticsDashboard**, **MesProduits**, **Home**.
+
+**Related screen:** **MesProduits** = **MesProduitsScreen** — deeper per-product tools (gallery, delivery modal, etc.). It **complements** this tab; the **primary** “Mes services” hub is here.
+
+**Hard rules:** When the user asks where to manage products after publishing, point to the **Mes services** tab (internal name **Services**, component **MesServicesScreen**) or pile route **MesServices**. **Do not** tell them to use pile route **ServicesActivity** (legacy ServicesScreen). Never claim the tab opens **RechercheBesoin** or **PharmacieHome**.
+`;
+    }
 
     if (serviceData) {
       const sName = serviceData.nom || serviceData.name || serviceData.titre || '';
@@ -226,116 +1276,193 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
       prompt += `\nRECENT CONVERSATION:\n${history.slice(-3).map(msg => `${msg.isUser ? 'USER' : 'ASSISTANT'}: ${msg.text}`).join('\n')}`;
     }
 
-    // Home / Creation / Management context
-    const homeCreationScreens = ['Home', 'HomeScreen', 'FormulaireYukpoIntelligent', 'AjouterProduitSimple', 'MesProduits', 'DashboardPrestataire', 'ProductManagerMobile'];
+    // Creation / management (Home-specific onboarding is in HOME_SCREEN_DETAIL — keep this for form & catalog screens)
+    const homeCreationScreens = ['FormulaireYukpoIntelligent', 'AjouterProduitSimple', 'MesProduits', 'Services', 'MesServices', 'DashboardPrestataire', 'ProductManagerMobile', 'HomeScreen'];
     if (homeCreationScreens.some(s => screenName.includes(s))) {
       prompt += `\n\nPRODUCT/SERVICE CREATION & MANAGEMENT CONTEXT:
 
-HOW TO CREATE (revolutionary simplicity):
-1. On Home screen, switch to "Create" mode (toggle button)
-2. Submit a PHOTO of your product/service OR type a description — AI does the rest!
-3. AI analyzes the image/text and auto-fills: name, category, description, price suggestion
+FROM HOME (summary — details in HOME_SCREEN_DETAIL if screen is Home):
+- Toggle **Create** mode → **ChatInputMobile** → AI suggestions → either **FormulaireYukpoIntelligent** (first business) or **AjouterProduitSimple** (existing service).
 
-FIRST-TIME CREATION (captures business info):
-- Google Business auto-import (name, address, phone, website, photos)
-- 6-step intelligent form: General Info → Contacts → Location GPS → Products (with price variants) → Visual Identity (logo + banner) → Payment Methods (MTN MoMo, Orange Money, Visa, cash...)
-- All business info is saved — subsequent creations skip this!
+FIRST-TIME BUSINESS (FormulaireYukpoIntelligent path):
+- Google Business auto-import when available; multi-step intelligent form: general info → contacts → GPS → products (variants) → visual identity (logo/banner) → payment methods (MoMo, Orange Money, card, cash…).
 
-SUBSEQUENT PRODUCT ADDITIONS (simplified):
-- Just a photo + quick adjustments → product added to existing catalog
-- AI pre-fills everything from the image
-- Price variants (sizes, colors, options) support
+SUBSEQUENT PRODUCTS (AjouterProduitSimple path):
+- Photo/text → AI pre-fill; variants supported.
 
-PRODUCT MANAGEMENT (MesProduits screen):
-- Edit: modify name, price, photos, description, stock anytime
-- Price Variants: add sizes/colors/options with different prices
-- Activate/Deactivate: toggle product visibility instantly
-- Duplicate: clone a product to create similar ones fast
-- Bulk Import: upload up to 500 products via CSV/Excel
-- Stats: track views, orders, revenue per product
-- Orders: manage incoming orders from customers
-- Advertising: create promotional campaigns for products
+CATALOG MANAGEMENT:
+- **Tab \`Services\` (MesServicesScreen):** liste produits moderne, cartes, bulk, sidebar, flash/livraison/vidéo — hub principal “Mes services”.
+- **MesProduitsScreen:** catalogue détaillé, import CSV, actions fines par produit.
+- Edit, variants, activate/deactivate, duplicate, bulk import, stats, orders, promos.
 
-IMPORTANT: When user asks about creation/management, be specific about WHICH step they need. Always suggest relevant follow-up actions.`;
+IMPORTANT: On **Home**, do not tell users to open **ServicesDashboard** or **RechercheBesoin** as the primary flows — search uses **ChatInputMobile → ResultatBesoin**; creation uses the **Create** toggle + forms above. The **Mes services** tab route is **\`Services\`**, not \`MesProduits\` alone.`;
+    }
+
+    const hotelMeubleUserHubScreens = ['HotelMeubleHome', 'HotelSearch', 'MeubleSearch'];
+    if (hotelMeubleUserHubScreens.includes(screenName)) {
+      prompt += `
+
+=== HOTEL_MEUBLE_USER_HUB_DETAIL (HotelMeubleHomeScreen — liste recherche, autoritaire) ===
+
+**Même composant** pour les routes **HotelMeubleHome**, **HotelSearch**, **MeubleSearch** (alias dans le navigateur). Mode **hotel** vs **meuble** : \`route.params.mode\` ou \`initialFilter.type_bien\`, défaut \`hotel\`.
+
+**Ce que l’écran ne fait pas :** aucun calendrier ni dates de séjour sur cette liste. Les **dates** (format attendu sur **HotelBooking**) et le détail des **occupants** se saisissent sur **HotelBooking** après le bouton **Réserver** sur une carte.
+
+**API :** \`immobilierService.searchProperties\` → **GET /api/immobilier/biens** avec \`type_bien\` \`hotel\` ou \`meuble\`, \`limit\` 20, \`page\` 1, filtres optionnels \`query\`, \`ville\`, \`standing\`, \`prix_max\`, \`nb_chambres_min\`. Si la position Yukpo (**LocationContext**) est disponible : \`lat\`, \`lng\`, \`max_distance_km: 50\`.
+
+**UI :** barre recherche (validation clavier recherche) ; filtres en-tête : ville, chambres minimum, budget max ; chips standing : Tous, Économique, Standard, Bon standing, Haut standing, Luxe / Prestige. **FlatList** avec pull-to-refresh : appui sur la carte → **ImmobilierDetails** (\`propertyId\`) ; CTA **Réserver** → **HotelBooking** (\`propertyId\`, \`propertyName\`, \`typeBien\`, \`prixNuitee\`, \`ville\`).
+
+**Règles pour l’IA :** ne pas inventer de filtres par dates sur cet écran ; ne pas affirmer que l’utilisateur choisit les voyageurs ici — tout ça est sur **HotelBooking**. Distinguer ce hub (client) du **HotelDashboard** (partenaire / gérant).
+`;
+    }
+
+    if (screenName === 'HotelBooking') {
+      prompt += `
+
+=== HOTEL_BOOKING_DETAIL (HotelBookingScreen — formulaire client, autoritaire) ===
+
+**Rôle :** demande de réservation pour **un bien déjà choisi** (arrivée depuis la liste hôtel/meublé ou équivalent). Paramètres route : \`propertyId\` (obligatoire), \`propertyName\`, \`typeBien\` (\`hotel\` / \`meuble\`), \`prixNuitee\`, \`ville\`.
+
+**Champs UI :** deux champs texte **arrivée / départ** (placeholder AAAA-MM-JJ) — parsés avec \`new Date()\` : doivent être valides et départ **strictement après** arrivée. **Adultes** (minimum 1), **enfants** (minimum 0), **chambres** (minimum 1) via **steppers +/-**. **Nom** et **téléphone** obligatoires à l’envoi ; **email** et **notes** optionnels. Bloc **estimation** affiché seulement si \`prixNuitee > 0\` et nuits calculées : \`prixNuitee × nombre de nuits × nombre de chambres\` (nuits = différence en jours, minimum 1).
+
+**Soumission :** bouton **Envoyer la demande** → \`immobilierService.bookHotelStay\` → **POST /api/hotel/reservations/request** (property_id, date_arrivee, date_depart, nombre_adultes, nombre_enfants, nombre_chambres, nom_client, telephone_client, email optionnel, prix_nuitee/prix_total optionnels, notes optionnelles).
+
+**Après succès :** alerte de confirmation ; bouton **Payer maintenant** vers **HotelBookingPayment** **uniquement si** la réponse fournit un \`reservationId\` (ou id réservation) **et** \`prixTotal > 0\`. Sinon l’utilisateur ferme avec OK. **Ne pas** promettre un paiement systématique avant envoi réussi.
+
+**Règles IA :** il n’y a **pas** de sélecteur de chambre catalogue sur cet écran — un seul bien (\`propertyId\`). Ne pas confondre avec **ImmobilierBooking** (visite bien classique). Tarification IA / QR gérant = **HotelDashboard** (partenaire), pas cet écran.
+`;
+    }
+
+    if (screenName === 'AssuranceDashboard') {
+      const sid =
+        serviceData?.service_id ??
+        serviceData?.serviceId ??
+        (typeof serviceData?.service_id === 'number' ? serviceData.service_id : undefined);
+      const sidLine =
+        sid !== undefined && sid !== null && String(sid) !== ''
+          ? `**service_id (route)** transmis au chat : \`${sid}\` — utilisé à la création produit (\`createProduct\`). Si la valeur est 0, le comportement exact côté API doit rester prudent dans les réponses.`
+          : '**service_id** : lu depuis \`route.params.serviceId\` ou \`service_id\` — nécessaire pour rattacher un **nouveau produit** au service partenaire.';
+
+      prompt += `
+
+=== ASSURANCE_PARTNER_DASHBOARD_DETAIL (AssuranceDashboardScreen — partenaire, autoritaire) ===
+
+**Rôle :** tableau de bord **prestataire assurance** (gestion produits, polices émises, traitement sinistres, stats). **Ce n’est pas** l’écran **client** (**MesPolicesAssurance**, **DeclarationSinistre**, recherche catalogue **InsuranceServicesSearch**).
+
+**Chargement (useFocusEffect) :** \`Promise.allSettled\` sur **GET** \`/api/assurance/products\`, **GET** \`/api/assurance/policies\`, **GET** \`/api/assurance/claims\`, **GET** \`/api/assurance/dashboard/stats\` (\`assuranceService.listProducts\`, \`listPolicies\`, \`listClaims\`, \`getDashboardStats\`). Un échec partiel vide la liste concernée sans bloquer les autres.
+
+**5 onglets :** Accueil | Produits | Polices | Sinistres | Stats (libellés UI traduits partiellement).
+
+**Accueil :** cartes stats (produits actifs, polices actives, sinistres ouverts = déclarés + en instruction + en expertise, souscriptions). Bannières cliquables : polices **à renouveler** → onglet Polices ; sinistres **déclarés** en attente → onglet Sinistres. **Actions rapides :** ouvrir modal nouveau produit ; aller onglet Polices / Sinistres ; **InsuranceQuoteRequest** (« Devis IA ») ; **WalletFinancial** ; déconnexion (logout). Aperçus des 3 derniers sinistres / polices.
+
+**Produits :** **POST** \`/api/assurance/products\` (\`createProduct\`) avec \`service_id\` + \`nom_produit\` obligatoire (alerte sinon) ; champs optionnels (type, sous-catégorie, compagnie, description, primes, couverture max, franchise, âges, durée mois). **POST** \`/api/assurance/products/{id}/toggle\` pour actif/inactif. Pas d’édition inline liste dans ce fichier (seulement toggle + création).
+
+**Polices :** liste **GET** \`/api/assurance/policies\`. Si statut **active** uniquement : boutons **Suspendre** / **Résilier** → **PUT** \`/api/assurance/policies/{id}/status\` avec \`statut\` \`suspendue\` ou \`resiliee\` (motif texte pour résiliation). **Pas** de formulaire « émettre police » sur cet écran — le raccourci « Émettre police » ne fait que changer d’onglet.
+
+**Sinistres :** **Analyse IA** → **POST** \`/api/assurance/claims/{id}/ai-analyze\` (\`aiAnalyzeClaim\`) ; alerte avec score fraude, action recommandée, justification. **Instruire** (si statut \`declare\`) → **PUT** \`/api/assurance/claims/{id}/status\` → \`en_cours_instruction\`. Si \`en_cours_instruction\` ou \`expertise_en_cours\` : **Approuver** → \`approuve\` ; **Refuser** → \`refuse\` avec \`motif_refus\` (Alert.prompt si dispo, sinon alerte avec motif par défaut traduit). Si \`approuve\` : **Indemniser** → \`indemnise\` avec \`montant_indemnise\` = parseFloat(\`montant_reclame\`) ou 0.
+
+**Stats :** réutilise \`dashStats\` (produits, polices dont \`ca_total\` optionnel, sinistres + totaux réclamé/indemnisé si présents).
+
+**En-tête :** icône **recherche** → navigation **InsuranceServicesSearch** (parcours utilisateur / marché), pas la gestion interne partenaire.
+
+${sidLine}
+
+**Règles IA :** ne pas décrire ce dashboard comme « mes polices assuré » ou « déclarer mon sinistre » par défaut — réservé au **partenaire**. Pour « trouver une assurance », orienter vers **InsuranceServicesSearch** ou la grille accueil. Distinguer APIs **partenaire** (products/policies/claims/dashboard) des APIs **IA devis** (\`/api/assurance/ai/*\`) et **search** **GET** \`/api/assurance/search\` (catalogue public).
+`;
     }
 
     // Covoiturage-specific context for driver AND passenger
-    const covoiturageScreens = ['CovoiturageHome', 'CovoiturageForm', 'CovoiturageDetails', 'CovoiturageBooking', 'CovoiturageSearch', 'CovoiturageList', 'MesReservationsCovoiturage', 'MyTrips'];
+    const covoiturageScreens = ['CovoiturageHome', 'CovoiturageForm', 'CovoiturageDetails', 'CovoiturageBooking', 'CovoiturageSearch', 'CovoiturageList', 'CovoiturageIntelligentSearch', 'MesReservationsCovoiturage', 'MyTrips'];
     if (covoiturageScreens.some(s => screenName.includes(s) || screenName.includes('Covoiturage'))) {
-      const isDriver = userRole === 'partenaire' || userRole === 'driver' || userData?.partner_type === 'covoiturage' || userData?.partner_type === 'chauffeur';
+      const isDriver = mobilityDriverValidated(userData, userRole);
+      const homeNote = onCovoiturageHome
+        ? `**CovoiturageHome** layout is authoritative in **COVOITURAGE_HOME_DETAIL** above. Cross-screen module context:\n\n`
+        : '';
       prompt += `\n\nCOVOITURAGE SERVICE CONTEXT:
-Role: ${isDriver ? 'DRIVER/PARTNER (manages trips)' : 'PASSENGER (searches & books trips)'}
-${isDriver ? `DRIVER FEATURES:
-- Create trips: CovoiturageForm screen (set departure, destination, date, time, seats, price, vehicle info, recurring options)
-- My trips dashboard: view all published trips, stats, bookings count
-- Confirm departure: triggers automatic payout to wallet (10% commission deducted)
-- Recurring trips: daily, weekly (select days), monthly — auto-republished
-- Vehicle photo upload, baggage/pets/smoking/AC options
-- Revenue tracking via Stats tab` : `PASSENGER FEATURES:
-- Search trips: by departure city + destination city + date
-- Book seats: choose number of places, pay via Yukpo Wallet
-- Insurance options: basic, premium, full coverage
-- QR code ticket after booking
-- Driver verification badge
-- Reviews after trip completion
-- My reservations: track all bookings`}
-Payment: Yukpo Wallet (primary), Stripe/PayPal (coming soon). 10% commission on each booking.
-Key screens: CovoiturageHome (search+create), CovoiturageForm (driver dashboard), CovoiturageBooking (passenger booking+payment), CovoiturageDetails (trip info+reviews)`;
+${homeNote}Role: ${isDriver ? 'DRIVER/PARTNER (validated driver profile — can publish via CovoiturageForm)' : 'PASSENGER (searches & books trips)'}
+${isDriver ? `DRIVER / PUBLISHER (code-aligned):
+- **CovoiturageForm** (\`mode: 'create' | 'edit'\`): publish or edit a trip ; requires **service_id** linked to user (otherwise redirect **GestionServicesSpecialises**).
+- **CourierRegistration** with \`applicationType: 'driver'\` when becoming a driver from home header.
+- Trip fields include places, price per seat, vehicle info, baggage/pets/smoking/AC flags (see \`CreateCovoiturageRequest\`).
+- After successful **createCovoiturage**, UI returns to search mode on home.` : `PASSENGER (code-aligned):
+- **CovoiturageHome**: LocationSelector depart/destination + date → **searchCovoiturages** → cards → **CovoiturageDetails** or **CovoiturageBooking**.
+- **CovoiturageBooking**: optional **InsuranceSelector** (basic / premium / full) → POST \`/api/reservations/{id}/insurance\` when selected ; commission line shown in UI (e.g. 10% Yukpo).
+- **MesReservationsCovoiturage**: track reservations.`}
+Other routes: **CovoiturageSearch** / **CovoiturageList** / **CovoiturageIntelligentSearch** — alternate entry points, not the same UI as **CovoiturageHome**.
+Payment: follow **CovoiturageBooking** (wallet / methods shown in-app).`;
     }
 
     // Taxi-specific context for driver AND passenger
-    const taxiScreens = ['TaxiHome', 'TaxiForm', 'TaxiDetails', 'TaxiBooking', 'TaxiSearch', 'TaxiList', 'TaxiTracking', 'TaxiAvailability', 'MesTaxis'];
+    const taxiScreens = ['TaxiHome', 'TaxiForm', 'TaxiDetails', 'TaxiBooking', 'TaxiSearch', 'TaxiList', 'TaxiIntelligentSearch', 'TaxiTracking', 'TaxiAvailability', 'MesTaxis'];
     if (taxiScreens.some(s => screenName.includes(s) || screenName.includes('Taxi'))) {
-      const isDriver = userRole === 'partenaire' || userRole === 'driver' || userData?.partner_type === 'taxi' || userData?.partner_type === 'chauffeur';
+      const isDriver = mobilityDriverValidated(userData, userRole);
+      const homeNote = onTaxiHome
+        ? `**TaxiHome** layout is authoritative in **TAXI_HOME_DETAIL** above. Cross-screen module context:\n\n`
+        : '';
       prompt += `\n\nTAXI SERVICE CONTEXT:
-Role: ${isDriver ? 'DRIVER/PARTNER (manages taxi service)' : 'PASSENGER (searches & books taxis)'}
-${isDriver ? `DRIVER FEATURES:
-- Dashboard: TaxiForm screen with 3 tabs (Overview / Service / Stats)
-- Availability toggle: go online/offline for clients
-- Vehicle info: type, make/model, registration, color, year, photo
-- Pricing: base rate + per-km rate, dynamic pricing via AI
-- Payment methods: cash, mobile money, bank card
-- Options: AC, WiFi
-- GPS position for proximity matching
-- Zone d'intervention management
-- AI demand prediction and revenue analytics` : `PASSENGER FEATURES:
-- Search taxis: by location (GPS auto-detected), destination, availability filter
-- AI recommendations: personalized taxi suggestions based on location
-- Real-time demand prediction: high/normal/low demand indicator
-- Dynamic pricing: AI-calculated price with surge factor
-- Book taxi: select pickup/dropoff GPS, insurance options, QR code ticket
-- Call or WhatsApp driver directly from the card
-- Real-time tracking: live driver position on map, ETA, status updates
-- Price estimation: base + per-km calculation with distance`}
-Payment: Cash, Mobile Money, Bank Card. AI dynamic pricing adjusts based on demand/supply.
-Key screens: TaxiHome (search+recommendations), TaxiForm (driver dashboard), TaxiBooking (passenger booking), TaxiTracking (live tracking), TaxiDetails (driver info+reviews)`;
+${homeNote}Role: ${isDriver ? 'DRIVER/PARTNER (validated — can manage service via TaxiForm)' : 'PASSENGER (searches & books rides)'}
+${isDriver ? `DRIVER / PRESTATAIRE (code-aligned):
+- **TaxiForm** (\`mode: 'create' | 'edit'\`): vehicle, tariffs (\`tarif_base\`, \`tarif_par_km\`), payments flags (cash, mobile money, card), AC/WiFi, zone, GPS courant.
+- Requires **service_id** ; otherwise alert → **GestionServicesSpecialises**.
+- **CourierRegistration** for new drivers from home.` : `PASSENGER (code-aligned):
+- **TaxiHome**: GPS-filled depart when possible, IA **recommendations** + **demandPrediction** before first search, then **searchTaxis** with depart coords / ville, filter **availableOnly**.
+- **TaxiBooking**: pickup/destination context, optional **InsuranceSelector** (basic/premium/full) same pattern as covoiturage booking API.
+- **TaxiDetails** from cards ; **tel:** via **Linking**.
+- **TaxiTracking** for live follow-up after booking.`}
+Do **not** claim every screen has 3-tab TaxiForm unless user is on **TaxiForm** — verify current route.`;
     }
 
-    // Emploi/Job-specific context for employer AND candidate
-    const emploiScreens = ['OffresEmploiHome', 'OffresEmploiHub', 'CreateOffre', 'OffreDetails', 'OffreList', 'OffreSearch', 'MesOffres', 'OffreCandidatures', 'AlertesEmploi', 'ProfilCandidat', 'AICVAnalysis', 'AISalaryPrediction', 'AISuggestFormations'];
-    if (emploiScreens.some(s => screenName.includes(s) || screenName.includes('Offre') || screenName.includes('Emploi'))) {
-      const isEmployer = userRole === 'partenaire' || userData?.partner_type === 'offres_emploi' || userData?.partner_type === 'recruteur' || userData?.partner_type === 'employeur';
-      prompt += `\n\nJOB/EMPLOYMENT SERVICE CONTEXT:
-Role: ${isEmployer ? 'EMPLOYER/RECRUITER (publishes & manages job offers)' : 'CANDIDATE (searches & applies to jobs)'}
-${isEmployer ? `EMPLOYER FEATURES:
-- Create job offers: CreateOffre screen (title, description, sector, contract type, location, salary, skills, remote)
-- AI form filling: describe the job in natural language → AI fills all fields
-- My offers dashboard: MesOffres with candidature count per offer
-- Candidature management: view applicants, update status (pending/shortlisted/accepted/rejected)
-- AI matching: find best candidates for an offer based on skills + experience
-- Offer stats: views, applications, conversion rate
-- Close/mark as filled` : `CANDIDATE FEATURES:
-- Search jobs: by title, sector, skills, GPS proximity, contract type (CDI/CDD/Stage/Freelance)
-- AI CV Analysis: score /100, strengths, weaknesses, improvement suggestions
-- AI Salary Prediction: estimate based on role, sector, experience, location
-- AI Formation Suggestions: trainings to fill skill gaps
-- AI Job Matching: personalized recommendations based on profile
-- Apply: one-click with profile + CV
-- Job alerts: notifications for matching offers
-- Candidate profile: CV, skills, experience, languages, salary expectations
-- Save/bookmark offers`}
-AI: CV analysis, salary prediction, formation suggestions, job matching — all with 3-level fallback.
-Key screens: OffresEmploiHome (search+AI), CreateOffre (employer form+AI), OffreDetails (apply+score), MesOffres (employer), ProfilCandidat (candidate)`;
+    const busTicketFollowupScreens = ['BusTicketBooking', 'BusTicketPayment', 'BusTicketDetails', 'MyBusTickets', 'BusTicketQR', 'BusTicketCredits', 'BusReturnRequests', 'BusReturnRequestForm'];
+    if (busTicketFollowupScreens.includes(screenName)) {
+      prompt += `\n\nBUS TICKET FLOW (suite — hors écrans recherche):
+- **BusTicketBooking**: plan sièges (\`seat_map\` / sélection), récap, puis paiement.
+- **BusTicketPayment**: tokens / mobile money / autres moyens selon UI.
+- **BusTicketDetails**: fiche ligne/agence depuis **TicketVoyageHome** (ids produit/agence).
+- **MyBusTickets**: billets achetés ; **BusTicketQR**: QR embarquement ; **BusTicketCredits** / retours (**BusReturnRequests**) : parcours annexes.
+Prioriser l’écran courant ; la recherche se fait sur **TicketVoyageHome** ou **BusTicketSearch**.`;
+    }
+
+    // Emploi/Job-specific context for employer AND candidate (align with offreEmploiService + screens)
+    const emploiScreens = [
+      'OffresEmploiHome',
+      'OffresEmploiHub',
+      'OffresEmploiForm',
+      'CreateOffre',
+      'OffreDetails',
+      'OffreList',
+      'OffreSearch',
+      'MesOffres',
+      'OffreCandidatures',
+      'AlertesEmploi',
+      'ProfilCandidat',
+      'AICVAnalysis',
+      'AnalyseCV',
+      'AISalaryPrediction',
+      'AISuggestFormations',
+    ];
+    if (
+      emploiScreens.includes(screenName) ||
+      screenName.includes('OffreEmploi') ||
+      (screenName.includes('Offre') &&
+        !screenName.includes('BusTicket') &&
+        !screenName.includes('AgenceVoyage'))
+    ) {
+      const isEmployer = isPartnerEmployerEmploi;
+      prompt += `\n\nJOB/EMPLOYMENT SERVICE CONTEXT (code-aligned):
+Employer flag in this prompt: **partenaire** with normalized \`partner_type\` ∈ {\`offre_emploi\` / \`offreemploi\`, \`recruteur\`, \`employeur\`} (also \`offres_emploi\` → \`offresemploi\`). The app **hub** can still show employer UI if the user has already published offers (API) — not inferred here.
+${isEmployer ? `EMPLOYER / RECRUTEUR (APIs):
+- Publish: **OffresEmploiForm** (hub/FAB) or **CreateOffre** (home +) — two different screens in code.
+- **POST /api/offres-emploi** \`createOffre\` ; **GET /api/offres-emploi** \`getMesOffres\` ; **PATCH /api/offres-emploi/:id/close** ; **GET /api/offres-emploi/:id/candidatures** ; **PATCH /api/offres-emploi/candidatures/:id/statut** ; **GET /api/offres-emploi/:id/matching/candidats** ; **GET /api/offres-emploi/:id/stats**.
+- Dashboard employeur: **GET /api/offres-emploi/dashboard/employeur**.
+- **CreateOffre** IA pré-remplissage: **POST /api/yukpo** with \`type: 'creation_offre_emploi'\` + \`texte\` (natural language).` : `CANDIDAT (APIs):
+- Search: **GET /api/offres-emploi/search** (\`searchOffres\`) — query, secteur, contrat, lieu, salaire, remote, GPS + \`rayon_km\`, pagination.
+- Détail: **GET /api/offres-emploi/:id** ; matching list for score card: **GET /api/offres-emploi/matching/offres** (\`getMatchingOffres\`).
+- Postuler: **POST /api/offres-emploi/candidatures** (\`createCandidature\`) — **OffreDetails** vérifie **GET /api/offres-emploi/profil** + \`cv_url\` avant envoi.
+- Profil: **GET/POST /api/offres-emploi/profil** ; alertes: **GET/POST /api/offres-emploi/alertes**.
+- IA: **POST /api/offres-emploi/ai/analyze-cv** ; **GET /api/offres-emploi/ai/salary-prediction** ; **POST /api/offres-emploi/ai/suggest-formations** ; **POST /api/offres-emploi/ai/matching** ; + fallbacks **useAIWithFallback** on some flows.
+- Dashboard candidat: **GET /api/offres-emploi/dashboard/candidat**.`}
+**Parcours écrans:** **OffresEmploiHub** (stats + raccourcis) ; **OffresEmploiHome** (liste + matching → **OffreList**) ; **OffreSearch** (filtres → **OffreList**) ; **OffreDetails** (score matching + postuler + lien **ProfilCandidat**) ; **MesOffres** / **OffreCandidatures** ; **AICVAnalysis** / **AnalyseCV** ; **AISalaryPrediction** ; **AISuggestFormations**.
+${onOffresEmploiHome ? `**Current screen:** prioritize **OFFRES_EMPLOI_HOME_DETAIL** above.` : ''}${onOffresEmploiHub ? `**Current screen:** prioritize **OFFRES_EMPLOI_HUB_DETAIL** above.` : ''}`;
     }
 
     // Menu planning / food menu context
@@ -378,34 +1505,36 @@ AI features: profile analysis, recommendations, program comparison, academic sea
     }
 
     // Hotel/Meublé-specific context for partner AND user
-    const hotelScreens = ['HotelDashboard', 'HotelMeubleHome', 'HotelBooking', 'HotelBookingPayment', 'HotelQRScanner', 'HotelReservationQR', 'ImmobilierForm', 'ImmobilierDetails', 'ImmobilierSearch'];
+    const hotelScreens = ['HotelDashboard', 'HotelMeubleHome', 'HotelSearch', 'MeubleSearch', 'HotelBooking', 'HotelBookingPayment', 'HotelQRScanner', 'HotelReservationQR', 'ImmobilierForm', 'ImmobilierDetails', 'ImmobilierSearch'];
     if (hotelScreens.some(s => screenName.includes(s) || screenName.includes('Hotel') || screenName.includes('Immobilier'))) {
       const isPartner = userRole === 'partenaire' || userData?.partner_type === 'hotel' || userData?.partner_type === 'meuble';
       prompt += `\n\nHOTEL/MEUBLÉ SERVICE CONTEXT:
 Role: ${isPartner ? 'PARTNER/MANAGER (manages properties & reservations)' : 'USER/GUEST (searches & books accommodations)'}
-${isPartner ? `PARTNER DASHBOARD FEATURES (HotelDashboard):
-- 5 TABS: Vue d'ensemble (overview stats + quick actions + pending arrivals + checked-in clients), Réservations (full list with check-in/out/QR/payment), Mes biens (properties with availability + edit + AI pricing), IA (AI insights: pricing suggestions, occupancy forecast, recommendations per property), Équipe (team management)
-- QUICK ACTIONS: Ajouter un bien → ImmobilierForm, Nouvelle réservation → modal form, Scanner QR → HotelQRScanner, IA Insights → AI tab, Portefeuille → WalletFinancial
-- RESERVATION MANAGEMENT: Create manual reservations (client name, phone, dates, rooms, price per night), Check-in button (on confirmed reservations), Check-out button (on checked-in guests), View QR codes, Record payments (advance or full)
-- PROPERTY MANAGEMENT: Add/edit properties via ImmobilierForm (title, description, type, location with GPS + Google Places photos import, characteristics, pricing, media upload, virtual tour 360°)
-- AI FEATURES: Pricing suggestions per property, occupancy forecasts, optimization recommendations
-- FINANCIAL: Revenue tracking, payment status (paid/advance/pending), Wallet access
-- QR SYSTEM: Each reservation gets a QR code. Scan at reception to verify guest. Generate guest QR for co-occupants
-- TEAM: Manage staff members via ServiceTeamManager` : `USER/GUEST FEATURES:
-- SEARCH (HotelMeubleHome): Search by name, filter by ville (city), nombre de chambres (rooms), budget max, standing (Économique/Standard/Confort/Premium/Luxe)
-- PROPERTY CARDS: Show title, location, rooms, standing, distance, price per night, rating
-- BOOKING (HotelBooking): Enter dates (AAAA-MM-JJ format), adults/children/rooms count with +/- steppers, contact info, notes. Price auto-calculated (price × nights × rooms)
-- PAYMENT: After booking confirmation by manager, pay via HotelBookingPayment screen (MTN MoMo, Orange Money, Visa/Mastercard)
-- DETAILS: View full property details, photos, description, amenities on ImmobilierDetails screen`}
+${isPartner ? `PARTNER — HotelDashboardScreen (if user is on this route, full UI = HOTEL_PARTNER_DASHBOARD_DETAIL in main prompt):
+- Parallel load: GET /api/hotel/my-properties + GET /api/hotel/reservations/my
+- Tabs: overview | reservations | properties | ai | team
+- Overview: 4 stat cards; quick actions (+ bien → ImmobilierForm create with initialTypeBien; nouvelle réservation → modal → POST /api/hotel/reservations/manual; scan → HotelQRScanner; IA tab; WalletFinancial; Sortir → logout)
+- “Arrivées en attente” = confirmed && !checked_in_at; check-in only in that case; check-out after check-in; QR → HotelReservationQR; pay → HotelBookingPayment if not paid/fully_paid
+- Property card “IA tarifs” + IA tab: getPropertyAIInsights (GET .../ai-insights), not getAIPropertyPricing in this screen
+- Team: ServiceTeamManager serviceId = first property’s service_id only; no calendar blockage UI in HotelDashboardScreen (state showBlockageModal unused)
+` : `USER/GUEST FEATURES:
+- SEARCH HUB (HotelMeubleHome / HotelSearch / MeubleSearch — same HotelMeubleHomeScreen): text query + ville + min chambres + budget max + standing chips (Économique, Standard, Bon standing, Haut standing, Luxe / Prestige). Optional GPS: lat/lng + max_distance_km 50. **No date filters on this list** (full detail in HOTEL_MEUBLE_USER_HUB_DETAIL when that block is in the prompt).
+- PROPERTY CARDS: title, location, rooms, standing, distance if returned, price/night, rating, disponible badge when applicable
+- BOOKING (HotelBooking): stay dates (AAAA-MM-JJ placeholders), adults/children/rooms (+/-), contact (name+phone required), optional email/notes; submit → POST /api/hotel/reservations/request via bookHotelStay; price estimate = prixNuitee × nights × rooms when nightly price known
+- PAYMENT: Optional immediate navigation to HotelBookingPayment from success alert only when reservation id returned and total > 0; otherwise manager confirmation flow — HotelBookingPayment supports MTN MoMo, Orange Money, Visa/Mastercard (see payment screen)
+- DETAILS: tap listing card → ImmobilierDetails (propertyId)`}
 Payment methods: MTN MoMo, Orange Money, Visa/Mastercard, Cash. Commission: 5% on transactions.
-Key screens: HotelMeubleHome (user search), HotelBooking (user reservation form), HotelBookingPayment (payment), HotelDashboard (partner management), ImmobilierForm (property creation/edit), HotelQRScanner (QR verification)`;
+Key screens: HotelMeubleHome / HotelSearch / MeubleSearch (user listing), HotelBooking, HotelBookingPayment, HotelDashboard (partner), ImmobilierForm, HotelQRScanner (QR verification)`;
     }
 
     // Bourse du Livre / Coursier Livres context
-    const bookScreens = ['BookPackages', 'BookUploadV2', 'BookRecapV2', 'BookBuyDirect', 'LivreScolaireHome', 'LivreScolaireSearch', 'LivreScolaireDetails', 'LivreScolaireForm', 'LivreScolaireList', 'MesLivres', 'MesBesoinsLivres', 'MesTrocs', 'TrocMatching', 'TrocDetails', 'TrocLiveValidation', 'NewBooks', 'AdminProgrammeUpload', 'AdminDonations', 'BourseLivre'];
+    const bookScreens = ['BookPackages', 'BookUploadV2', 'BookRecapV2', 'BookBuyDirect', 'LivreScolaireHome', 'LivreScolaireSearch', 'LivreScolaireDetails', 'LivreScolaireForm', 'LivreScolaireList', 'MesLivres', 'MesBesoinsLivres', 'ProgrammeBesoinsSelector', 'MesTrocs', 'TrocMatching', 'TrocDetails', 'TrocLiveValidation', 'NewBooks', 'AdminProgrammeUpload', 'AdminDonations', 'BourseLivre'];
     if (bookScreens.some(s => screenName.includes(s) || screenName.includes('Livre') || screenName.includes('Troc') || screenName.includes('BookPackage') || screenName.includes('Bourse'))) {
       const isCourier = userRole === 'coursier' || userData?.is_courier || screenName.includes('courier') || screenName === 'BookPackages';
-      const isLibraire = userData?.partner_type === 'librairie' || userData?.partner_type === 'livrescolaire' || screenName.includes('AdminProgramme');
+      const isLibraire =
+        ['librairie', 'libraire', 'livrescolaire', 'livre_scolaire'].includes(
+          String(userData?.partner_type || '').toLowerCase(),
+        ) || screenName.includes('AdminProgramme');
       prompt += `\n\nBOURSE DU LIVRE / TROC SCOLAIRE CONTEXT:
 Role: ${isCourier ? 'COURSIER (livre les paquets de livres scolaires)' : isLibraire ? 'LIBRAIRE/PARTENAIRE (vend des livres neufs, gère une équipe)' : 'UTILISATEUR (troc, achat, vente de livres scolaires)'}
 
@@ -475,7 +1604,7 @@ ${isCourier ? `COURSIER — GUIDE COMPLET DE LIVRAISON LIVRES:
 
 \uD83D\uDCB0 COMMISSIONS: 5% sur chaque vente/troc` :
 
-            `UTILISATEUR — TROC ET ACHAT DE LIVRES:
+            `${onBookExchangeHome ? `NOTE — Sur l’accueil **LivreScolaireHome** / **BourseLivre**, la structure réelle est dans **BOURSE_DU_LIVRE_HOME_DETAIL** ; ce qui suit décrit les **autres** parcours (upload, troc, achat, dons, programme).\n\n` : ''}UTILISATEUR — TROC ET ACHAT DE LIVRES (flux du module):
 
 \uD83D\uDCF8 ENVOYER DES LIVRES (BookUploadV2):
 1. Activer le GPS (obligatoire — c'est le lieu de récupération par défaut)
@@ -701,11 +1830,26 @@ RESPONSE FORMAT (JSON):
     const actionsByCategory = (cat: string) => availableActions.filter(a => a.category === cat);
     const topActions = (n = 3) => availableActions.filter(a => a.id !== 'home' && a.id !== 'profile' && a.id !== 'services').slice(0, n);
 
-    // === Navigation GPS — Coach IA & notifications ===
+    // === Navigation GPS — stats / marche / Coach IA / notifications ===
     if (screenName === 'Navigation') {
+      const statsPerfKw = [
+        'statist', 'perform', 'perf ', 'performance', 'marche', 'walking', 'walk', 'calor', 'calorie',
+        'distance', 'duree', ' kilomet', ' km', 'sante', 'santé', 'health', 'vo2', 'progress', 'streak',
+        'badge', 'gamification', 'score', 'graphique', 'courbe', 'activit', 'activité', 'session',
+        'fitness', 'pas ', 'footing', 'course ', 'brule', 'brûl',
+      ];
+      if (statsPerfKw.some(k => q.includes(k))) {
+        return {
+          message:
+            t('intelligentChat.navigation.statsPerformanceBody') ||
+            'Tes **stats de marche et de performance** sont dans Yukpo : appuie sur l’icône **graphique** (Statistiques & Coach IA) en haut à droite, ou sur la carte **Score Santé & Coach IA** sur l’écran principal. Tu peux choisir la **période** et la vue **Tout / Détection auto / Marche libre**. Pour une session en cours, l’icône **piéton** 🚶 rouvre l’écran stats filtré. **Ne quitte pas Yukpo** pour ça.',
+          type: 'navigation_help',
+          suggestedActions: [],
+        };
+      }
       const coachNotifKw = [
-        'coach', 'coaching', 'ia', 'notif', 'notification', 'cloche', 'bell',
-        'son', 'sound', 'silenc', 'mute', 'vibrat', 'vibre', 'parametr', 'reglage',
+        'coach', 'coaching', 'notif', 'notification', 'cloche', 'bell',
+        'son', 'sound', 'silenc', 'mute', 'vibrat', 'vibre', 'parametr', 'reglage', 'réglage',
       ];
       if (coachNotifKw.some(k => q.includes(k))) {
         return {
@@ -724,6 +1868,42 @@ RESPONSE FORMAT (JSON):
               description: '',
             },
           ],
+        };
+      }
+    }
+
+    // === Home — align fallback with HomeScreen.tsx ===
+    if (screenName === 'Home') {
+      const homeChatKw = ['conversation', 'messagerie', 'message non lu', 'mes messages', 'chat ', 'discussion'];
+      if (homeChatKw.some(k => q.includes(k))) {
+        return {
+          message: t('intelligentChat.home.chatHint') || '',
+          type: 'navigation_help',
+          suggestedActions: [],
+        };
+      }
+      const homeNotifKw = ['notif', 'cloche', 'alerte yukpo'];
+      if (homeNotifKw.some(k => q.includes(k))) {
+        return {
+          message: t('intelligentChat.home.notifHint') || '',
+          type: 'navigation_help',
+          suggestedActions: [],
+        };
+      }
+      const homeCreateKw = ['creer un service', 'creer un produit', 'publier un produit', 'vendre sur', 'devenir prestataire', 'ajouter un produit', 'nouveau produit'];
+      if (homeCreateKw.some(k => q.includes(k))) {
+        return {
+          message: t('intelligentChat.home.createHint') || '',
+          type: 'navigation_help',
+          suggestedActions: [],
+        };
+      }
+      const homeSearchKw = ['comment cherch', 'lancer une recherche', 'resultat besoin', 'rechercher un service', 'recherche sur accueil', 'barre du haut'];
+      if (homeSearchKw.some(k => q.includes(k))) {
+        return {
+          message: t('intelligentChat.home.searchHint') || '',
+          type: 'navigation_help',
+          suggestedActions: [],
         };
       }
     }
@@ -1072,14 +2252,14 @@ Commencez dès maintenant ! 👇`
       { id: 'pack-delivery', label: t('intelligentChat.pack.delivery') || '📦 Livraison & Courses', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: t('intelligentChat.pack.deliveryDesc') || 'Colis · Courses · Suivi temps réel · Coursiers' },
       { id: 'pack-commerce', label: t('intelligentChat.pack.commerce') || '🛒 Commerce & Services', icon: 'shopping-cart', route: 'RechercheBesoin', category: 'search', description: t('intelligentChat.pack.commerceDesc') || 'E-commerce · BayamSelam · Supermarché · Restaurant' },
       { id: 'pack-career', label: t('intelligentChat.pack.career') || '💼 Carrière & Éducation', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: t('intelligentChat.pack.careerDesc') || 'Emploi · CV IA · Orientation scolaire · Livres/Troc' },
-      { id: 'pack-realestate', label: t('intelligentChat.pack.realestate') || '🏨 Immobilier & Séjour', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: t('intelligentChat.pack.realestateDesc') || 'Hôtels · Meublés · Immobilier · Assurance' },
+      { id: 'pack-realestate', label: t('intelligentChat.pack.realestate') || '🏠 Immobilier', icon: 'building-2', route: 'ImmobilierSearch', category: 'navigation', description: t('intelligentChat.pack.realestateDesc') || 'Vente, location, annonces — ImmobilierSearch. Hôtels & meublés : raccourci « Hôtel / Meublé ».' },
       { id: 'pack-creative', label: t('intelligentChat.pack.creative') || '🎬 Créativité & IA', icon: 'video', route: 'Home', category: 'creation', description: t('intelligentChat.pack.creativeDesc') || 'Vidéo IA · Création en 1 photo · Menu IA · Recettes' },
       { id: 'pack-finance', label: t('intelligentChat.pack.finance') || '💰 Finance & Paiement', icon: 'wallet', route: 'WalletFinancial', category: 'navigation', description: t('intelligentChat.pack.financeDesc') || 'Wallet · Recharge · 14 paiements · Historique' },
       { id: 'solo-gps', label: t('intelligentChat.solo.gps') || '🗺️ Navigation Intelligente Yukpo', icon: 'map', route: 'Navigation', category: 'navigation', description: t('intelligentChat.solo.gpsDesc') || 'Guidage vocal · Radars · Alertes · POI · Santé · Marche · CO2 · Performances · Coach IA' },
       { id: 'solo-books', label: t('intelligentChat.solo.books') || '📚 Bourse du Livre Yukpo / Troc', icon: 'book-open', route: 'BourseLivre', category: 'navigation', description: t('intelligentChat.solo.booksDesc') || 'Troc intelligent · Achat/Vente · Chaînes DAG · Dons' },
       { id: 'solo-bus', label: t('intelligentChat.solo.bus') || '🎫 Tickets de Bus Yukpo', icon: 'bus', route: 'TicketVoyageHome', category: 'navigation', description: t('intelligentChat.solo.busDesc') || 'Réservation · Sélection siège · QR boarding · Agences' },
       { id: 'solo-carpooling', label: t('intelligentChat.solo.carpooling') || '🚗 Covoiturage Yukpo', icon: 'users', route: 'CovoiturageHome', category: 'navigation', description: t('intelligentChat.solo.carpoolingDesc') || 'Trajets partagés · Matching IA · Récurrent · QR ticket' },
-      { id: 'solo-hotel', label: t('intelligentChat.solo.hotel') || '🏨 Hôtel / Meublé Yukpo', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: t('intelligentChat.solo.hotelDesc') || 'Réservation · Tarification IA · QR check-in · 360°' },
+      { id: 'solo-hotel', label: t('intelligentChat.solo.hotel') || '🏨 Hôtel / Meublé Yukpo', icon: 'building', route: 'HotelSearch', params: { mode: 'hotel' }, category: 'navigation', description: t('intelligentChat.solo.hotelDesc') || 'Liste et filtres ; dates et occupants sur HotelBooking après Réserver' },
       { id: 'solo-supermarket', label: t('intelligentChat.solo.supermarket') || '🛒 Supermarché Yukpo', icon: 'shopping-cart', route: 'SupermarketHome', category: 'navigation', description: t('intelligentChat.solo.supermarketDesc') || 'Magasins · Produits · Comparaison IA · Livraison' },
     ];
   }
@@ -1106,17 +2286,20 @@ Commencez dès maintenant ! 👇`
     { keywords: ['urgence', 'emergency', 'dharura', 'gaggawa'], action: { id: 'emergency', label: 'Urgences', icon: 'alert-circle', route: 'HopitalHome', category: 'navigation', description: '' } },
     { keywords: ['medecin', 'doctor', 'daktari', 'likita'], action: { id: 'doctor', label: 'Médecin', icon: 'stethoscope', route: 'HopitalHome', category: 'navigation', description: '' } },
     { keywords: ['consultation', 'rendez-vous', 'rdv', 'appointment', 'miadi'], action: { id: 'appointment', label: 'Rendez-vous', icon: 'calendar', route: 'HopitalHome', category: 'navigation', description: '' } },
-    { keywords: ['hotel', 'meuble', 'hebergement', 'accommodation', 'hoteli', 'otal'], action: { id: 'hotel', label: 'Hôtel', icon: 'building', route: 'HotelMeubleHome', category: 'navigation', description: '' } },
+    { keywords: ['meuble', 'meublé', 'furnished rental'], action: { id: 'meuble-search', label: 'Meublés', icon: 'building', route: 'MeubleSearch', params: { mode: 'meuble' }, category: 'navigation', description: '' } },
+    { keywords: ['hotel', 'hebergement', 'hébergement', 'accommodation', 'hoteli', 'otal', 'logement hotel'], action: { id: 'hotel-search', label: 'Hôtels', icon: 'building', route: 'HotelSearch', params: { mode: 'hotel' }, category: 'navigation', description: '' } },
     { keywords: ['taxi', 'cab', 'teksi'], action: { id: 'taxi', label: 'Taxi', icon: 'car', route: 'TaxiHome', category: 'navigation', description: '' } },
     { keywords: ['covoiturage', 'carpooling', 'ride share', 'kushiriki safari'], action: { id: 'covoit', label: 'Covoiturage', icon: 'users', route: 'CovoiturageHome', category: 'navigation', description: '' } },
     { keywords: ['livraison', 'delivery', 'entrega', 'lieferung', 'uwasilishaji', 'isarwa'], action: { id: 'delivery', label: 'Livraison', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: '' } },
     { keywords: ['emploi', 'travail', 'job', 'work', 'kazi', 'aiki'], action: { id: 'emploi', label: 'Emploi', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: '' } },
     { keywords: ['orientation', 'ecole', 'school', 'shule', 'makaranta'], action: { id: 'orientation', label: 'Orientation scolaire', icon: 'graduation-cap', route: 'OrientationScolaireHome', category: 'navigation', description: '' } },
     { keywords: ['livre', 'book', 'kitabu', 'littafi'], action: { id: 'livres', label: 'Livres', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation', description: '' } },
+    { keywords: ['mes services', 'my services', 'gestion produits', 'catalogue prestataire', 'mes produits vendeur', 'onglet services'], action: { id: 'services-tab', label: 'Mes services (Produits)', icon: 'briefcase', route: 'MesServices', category: 'navigation', description: '' } },
     { keywords: ['profil', 'profile', 'wasifu', 'bayanan'], action: { id: 'profile', label: 'Profil', icon: 'user', route: 'Profile', category: 'navigation', description: '' } },
     { keywords: ['parametre', 'reglage', 'settings', 'mipangilio'], action: { id: 'settings', label: 'Paramètres', icon: 'settings', route: 'EnhancedSettings', category: 'navigation', description: '' } },
     { keywords: ['immobilier', 'real estate', 'mali isiyohamishika'], action: { id: 'immo', label: 'Immobilier', icon: 'building-2', route: 'ImmobilierHome', category: 'navigation', description: '' } },
-    { keywords: ['assurance', 'insurance', 'bima', 'inshora'], action: { id: 'assurance', label: 'Assurance', icon: 'shield', route: 'AssuranceDashboard', category: 'navigation', description: '' } },
+    { keywords: ['dashboard assurance', 'assurance partenaire', 'prestataire assurance', 'espace assureur', 'tableau assurance partenaire', 'gestion assurance yukpo', 'assureur yukpo'], action: { id: 'assurance-partner', label: 'Tableau assurance partenaire', icon: 'shield', route: 'AssuranceDashboard', category: 'navigation', description: '' } },
+    { keywords: ['assurance', 'insurance', 'bima', 'inshora'], action: { id: 'assurance', label: 'Recherche assurance', icon: 'shield', route: 'InsuranceServicesSearch', category: 'navigation', description: '' } },
     { keywords: ['laboratoire', 'labo', 'laboratory', 'lab', 'maabara'], action: { id: 'lab', label: 'Laboratoire', icon: 'activity', route: 'LaboratoireHome', category: 'navigation', description: '' } },
     { keywords: ['sang', 'blood', 'damu', 'jini'], action: { id: 'blood', label: 'Don de sang', icon: 'droplet', route: 'BloodDonation', category: 'navigation', description: '' } },
     { keywords: ['bus', 'autobus', 'basi'], action: { id: 'bus', label: 'Bus', icon: 'bus', route: 'TicketVoyageHome', category: 'navigation', description: '' } },
@@ -1136,7 +2319,6 @@ Commencez dès maintenant ! 👇`
     { keywords: ['automobile', 'voiture', 'car', 'gari'], action: { id: 'auto', label: 'Automobile', icon: 'car', route: 'AutoServicesSearch', category: 'navigation', description: '' } },
     { keywords: ['recette', 'recipe', 'mapishi'], action: { id: 'recipe', label: 'Recettes', icon: 'book-open', route: 'RecipeSearch', category: 'navigation', description: '' } },
     { keywords: ['bayam', 'marche', 'market', 'soko', 'kasuwa'], action: { id: 'bayam', label: 'BayamSelam', icon: 'tag', route: 'BayamSelamSearch', category: 'navigation', description: '' } },
-    { keywords: ['mes services', 'my services'], action: { id: 'services', label: 'Mes Services', icon: 'grid', route: 'GestionServicesSpecialises', category: 'navigation', description: '' } },
     { keywords: ['favoris', 'favorites', 'vipendwa'], action: { id: 'favs', label: 'Favoris', icon: 'heart', route: 'MyFavorites', category: 'navigation', description: '' } },
     { keywords: ['recharge', 'topup', 'top up', 'jaza'], action: { id: 'recharge', label: 'Recharger mon solde', icon: 'plus-circle', route: 'RechargeTokens', category: 'navigation', description: '' } },
     { keywords: ['solde', 'balance', 'salio'], action: { id: 'balance', label: 'Mon solde', icon: 'wallet', route: 'WalletFinancial', category: 'navigation', description: '' } },
@@ -1177,6 +2359,12 @@ Commencez dès maintenant ! 👇`
 
     const descriptions: Record<string, string> = {
       'Home': t('intelligentChat.screenDesc.home') || 'Page d\'accueil — accédez à tous les services Yukpo.',
+      'Services': t('intelligentChat.screenDesc.servicesTab') || 'Onglet Mes services : gestion produits (MesServicesScreen).',
+      'MesServices': t('intelligentChat.screenDesc.servicesTab') || 'Onglet Mes services : gestion produits (MesServicesScreen).',
+      'HotelMeubleHome': t('intelligentChat.screenDesc.hotelMeubleHub') || 'Liste hôtels/meublés : filtres sans dates sur place ; réserver ouvre HotelBooking.',
+      'HotelSearch': t('intelligentChat.screenDesc.hotelMeubleHub') || 'Liste hôtels/meublés : filtres sans dates sur place ; réserver ouvre HotelBooking.',
+      'MeubleSearch': t('intelligentChat.screenDesc.hotelMeubleHub') || 'Liste hôtels/meublés : filtres sans dates sur place ; réserver ouvre HotelBooking.',
+      'HotelBooking': t('intelligentChat.screenDesc.hotelBooking') || 'Demande de séjour : dates, occupants, coordonnées ; envoi API réservation ; paiement optionnel selon réponse.',
       'RechercheBesoin': t('intelligentChat.screenDesc.search') || 'Recherchez services et produits. Filtrez et négociez.',
       'ServiceDetail': t('intelligentChat.screenDesc.serviceDetail') || 'Détails d\'un service. Contactez, appelez, itinéraire.',
       'Profile': t('intelligentChat.screenDesc.profile') || 'Votre profil. Infos, paramètres, portefeuille.',
@@ -1193,6 +2381,8 @@ Commencez dès maintenant ! 👇`
       'RechargeTokens': t('intelligentChat.screenDesc.recharge') || 'Rechargez votre solde. Bonus jusqu\'à +20%.',
       'WalletFinancial': t('intelligentChat.screenDesc.wallet') || 'Suivi financier détaillé.',
       'SupermarketHome': t('intelligentChat.screenDesc.supermarket') || 'Supermarché : magasins, produits, comparaison IA.',
+      'AssuranceDashboard': t('intelligentChat.screenDesc.assurancePartner') || 'Partenaire assurance : produits, polices, sinistres, stats ; loupe = marché utilisateur.',
+      'InsuranceServicesSearch': t('intelligentChat.screenDesc.insuranceSearch') || 'Recherche / catalogue assurance utilisateur (API search, devis IA).',
     };
     return descriptions[screenName] || t('intelligentChat.fallback.genericHelp', { screen: screenName }) || `Écran « ${screenName} ». Je peux vous guider ici.`;
   }

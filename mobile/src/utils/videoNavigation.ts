@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 
 export interface VideoWizardParams {
     serviceId: number;
@@ -26,13 +27,9 @@ export const navigateToVideoWizard = (
                     onPress: () => {
                         try {
                             const parent = navigation.getParent ? navigation.getParent() : null;
-                            if (parent) {
-                                parent.navigate('Services');
-                            } else {
-                                navigation.navigate('Services' as never);
-                            }
+                            navigateToMesServicesHub(parent || navigation);
                         } catch (error) {
-                            console.error('[navigateToVideoWizard] Erreur navigation vers Services:', error);
+                            console.error('[navigateToVideoWizard] Erreur navigation vers Mes services:', error);
                         }
                     }
                 }
@@ -53,13 +50,9 @@ export const navigateToVideoWizard = (
                     onPress: () => {
                         try {
                             const parent = navigation.getParent ? navigation.getParent() : null;
-                            if (parent) {
-                                parent.navigate('Services');
-                            } else {
-                                navigation.navigate('Services' as never);
-                            }
+                            navigateToMesServicesHub(parent || navigation);
                         } catch (error) {
-                            console.error('[navigateToVideoWizard] Erreur navigation vers Services:', error);
+                            console.error('[navigateToVideoWizard] Erreur navigation vers Mes services:', error);
                         }
                     }
                 }
