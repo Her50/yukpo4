@@ -2,6 +2,7 @@
 // Design moderne inspiré du frontend - Version améliorée UX niveau géant
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -19,9 +20,8 @@ import ServiceCardModern from '../components/ServiceCardModern';
 import ServiceProductSelector from '../components/ServiceProductSelector';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import { SidebarNavigation } from '../components/SidebarNavigation';
-import { SkeletonLoader } from '../components/SkeletonLoader';
+import { SkeletonCard, SkeletonStats } from '../components/SkeletonLoader';
 import { StatsCard } from '../components/StatsCard';
-import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
@@ -399,18 +399,18 @@ const MesServicesScreen: React.FC = () => {
   }, [user?.id, parseProduct, extractProduits]);
 
   useEffect(() => {
-    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    // ✅ CORRIGÉ: Pas de dépendance à loadServices pour éviter la boucle infinie
     loadServices().catch(error => {
       console.error('[MesServicesScreen] Erreur loadServices:', error);
     });
     // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
     return undefined;
-  }, [loadServices]);
+  }, []); // ✅ Tableau vide pour n'exécuter qu'au montage
 
   useFocusEffect(
     useCallback(() => {
       loadServices(true);
-    }, [loadServices])
+    }, []) // ✅ Tableau vide pour éviter la boucle infinie
   );
 
   useEffect(() => {
@@ -619,6 +619,7 @@ const MesServicesScreen: React.FC = () => {
   };
 
   const handleShareService = async (service: any) => {
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
     try {
       // Implémentation du partage avec deep linking
       const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service Yukpo';
@@ -698,8 +699,13 @@ const MesServicesScreen: React.FC = () => {
               return newMap;
             });
 
-            toaster.error(
-              `Solde insuffisant (${currentBalance} FCFA). Coût: ${activationCost} FCFA`
+            Alert.alert(
+              t('mesServices.soldeInsuffisant'),
+              `${t('mesServices.coutReactivation', { cost: activationCost.toLocaleString() })}\n${t('mesServices.votreSolde', { balance: currentBalance.toLocaleString() })}\n\n${t('mesServices.veuillezRecharger')}`,
+              [
+                { text: 'Annuler', style: 'cancel' },
+                { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+              ]
             );
             return;
           }
@@ -781,8 +787,8 @@ const MesServicesScreen: React.FC = () => {
   const handleDeleteService = async (service: any) => {
     // Confirmation avant suppression comme dans le frontend
     Alert.alert(
-      'Supprimer le service',
-      `Êtes-vous sûr de vouloir supprimer définitivement le service "${service.title}" ?\n\nCette action est irréversible.`,
+      t('mesServices.supprimerService'),
+      `${t('mesServices.confirmSuppression', { title: service.title })}\n\n${t('mesServices.actionIrreversible')}`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -982,8 +988,8 @@ const MesServicesScreen: React.FC = () => {
     if (produitsDuService.length === 0) {
       // Utiliser Alert pour confirmation avec actions multiples
       Alert.alert(
-        'Produit requis',
-        'Aucun produit trouvé pour ce service. Créez d\'abord un produit pour pouvoir créer une vidéo.',
+        t('mesServices.produitRequis'),
+        t('mesServices.aucunProduitTrouve'),
         [
           { text: 'Annuler', style: 'cancel' },
           {
@@ -1149,6 +1155,9 @@ const MesServicesScreen: React.FC = () => {
     };
   }, [services]);
 
+  // ✅ CORRIGÉ: Créer les styles dynamiquement avec le thème AVANT le early return loading
+  const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
+
   if (loading && services.length === 0) {
     return (
       <View style={[dynamicStyles.container, { backgroundColor: colors.background }]}>
@@ -1168,15 +1177,12 @@ const MesServicesScreen: React.FC = () => {
           </View>
         </LinearGradient>
         <View style={dynamicStyles.scrollView}>
-          <SkeletonLoader type="stats" count={4} />
-          <SkeletonLoader type="card" count={3} />
+          <SkeletonStats count={4} />
+          <SkeletonCard count={3} />
         </View>
       </View>
     );
   }
-
-  // ✅ NOUVEAU: Créer les styles dynamiquement avec le thème
-  const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
 
   // ✅ NOUVEAU: Breadcrumbs navigation
   const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {

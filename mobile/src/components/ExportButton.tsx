@@ -3,9 +3,9 @@ import * as Sharing from 'expo-sharing';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Share, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { config } from '../config/environment';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface ExportButtonProps {
     data: any;
@@ -14,14 +14,14 @@ interface ExportButtonProps {
     onExport?: (filePath: string) => void;
 }
 
-export const ExportButton: React.FC<ExportButtonProps> = ({
+const ExportButton: React.FC<ExportButtonProps> = ({
     data,
     format,
     filename,
     onExport,
 }) => {
-        const { t } = useLanguageSafe();
-const [exporting, setExporting] = useState(false);
+    const { t } = useLanguageSafe();
+    const [exporting, setExporting] = useState(false);
 
     const convertToCSV = (data: any): string => {
         if (!Array.isArray(data) || data.length === 0) {
@@ -206,6 +206,8 @@ const [exporting, setExporting] = useState(false);
         </TouchableOpacity>
     );
 };
+
+export default ExportButton;
 
 const styles = StyleSheet.create({
     exportButton: {

@@ -85,6 +85,12 @@
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
+  from = "/download"
+  to = "https://storage.googleapis.com/yukpo-project-yukpo-backend-media/yukpomnang-latest.apk"
+  status = 302
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

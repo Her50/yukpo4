@@ -127,6 +127,10 @@ const loadScreen = (path: string, name?: string): React.ComponentType<any> => {
         return require('../screens/specialized/GestionServicesSpecialisesScreen').default;
       case '../screens/specialized/ServicesDashboard':
         return require('../screens/specialized/ServicesDashboard').default;
+      case '../screens/video/VideoCreationIntroScreen':
+        return require('../screens/video/VideoCreationIntroScreen').default;
+      case '../screens/delivery/CourierDashboardScreen':
+        return require('../screens/delivery/CourierDashboardScreen').default;
       case '../components/IntelligentChatFab':
         return require('../components/IntelligentChatFab').default;
       case '../components/IntelligentChat':
