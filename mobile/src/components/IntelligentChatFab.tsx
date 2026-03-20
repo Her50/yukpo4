@@ -150,9 +150,13 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
           accessibilityRole="button"
           accessibilityHint={t('intelligentChat.tooltipHelp') || 'Ouvrir l\'assistant intelligent'}
         >
+          <View style={styles.fabGlow} />
           <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-            <SafeIcon name="bot" size={20} color="#FFFFFF" />
+            <SafeIcon name="sparkles" size={20} color="#FFFFFF" />
           </Animated.View>
+          <View style={styles.aiMiniBadge}>
+            <SafeIcon name="brain" size={10} color="#06b6d4" />
+          </View>
         </TouchableOpacity>
       </Animated.View>
 
@@ -181,6 +185,27 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22,
     shadowRadius: 6,
     elevation: 6,
+  },
+  fabGlow: {
+    position: 'absolute',
+    width: FAB_SIZE + 12,
+    height: FAB_SIZE + 12,
+    borderRadius: (FAB_SIZE + 12) / 2,
+    backgroundColor: '#6366f1',
+    opacity: 0.18,
+  },
+  aiMiniBadge: {
+    position: 'absolute',
+    right: 7,
+    bottom: 7,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
   },
   statusDot: {
     position: 'absolute',

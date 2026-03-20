@@ -213,6 +213,11 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
             ? `${userName}, bienvenue sur Yukpo ! 🚀 Je suis votre assistant IA. Santé, transport, livraison, emploi, éducation — demandez-moi tout !`
             : `Bienvenue sur Yukpo ! 🚀 La super-app qui révolutionne votre quotidien. Découvrez nos services — demandez ou appuyez ci-dessous !`;
         }
+        // Retire la mention "aujourd'hui" dans le texte d'accueil Home.
+        greeting = greeting
+          .replace(/aujourd[’']hui/gi, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim();
       } else {
         const screenKey = userName ? 'intelligentChat.welcomeUser' : 'intelligentChat.welcomeScreen';
         greeting = t(screenKey, { name: userName, screen: screenLabel });
@@ -238,7 +243,9 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         isUser: false,
         timestamp: new Date(),
         type: 'text',
-        suggestedActions: isHomeScreen ? welcomeActions : undefined,
+        // Les actions restent dans le bloc "Actions rapides" du bas.
+        // On masque ici les boutons attachés au message d'accueil.
+        suggestedActions: undefined,
         metadata: isHomeScreen ? {
           nextSteps: [
             t('intelligentChat.followUp.whatIsYukpo') || "C'est quoi Yukpo ?",
@@ -481,7 +488,10 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
             </TouchableOpacity>
             <View style={styles.headerContent}>
               <View style={styles.headerTitleRow}>
-                <SafeIcon name="bot" size={18} color="#6366f1" />
+                <View style={styles.headerAiIconWrap}>
+                  <SafeIcon name="sparkles" size={18} color="#6366f1" />
+                  <View style={styles.headerAiDot} />
+                </View>
                 <Text style={styles.headerTitle}>{t('intelligentChat.title') || 'Assistant IA'}</Text>
               </View>
               <View style={styles.headerStatusRow}>
@@ -566,6 +576,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  headerAiIconWrap: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAiDot: {
+    position: 'absolute',
+    right: 0,
+    top: 1,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#06b6d4',
   },
   headerTitle: {
     fontSize: 16,

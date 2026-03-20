@@ -114,11 +114,10 @@ const MesServicesScreen: React.FC = () => {
               Vous n'avez pas encore cr�� de service. Cr�ez votre premier service pour commencer.
             </Text>
             <TouchableOpacity
-              mode="contained"
               onPress={() => navigation.navigate('CreateService' as never)}
               style={styles.createButton}
             >
-              Cr�er un service
+              <Text style={styles.createButtonText}>Cr�er un service</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -153,20 +152,18 @@ const MesServicesScreen: React.FC = () => {
                 
                 <View style={styles.serviceActions}>
                   <TouchableOpacity
-                    mode="outlined"
                     onPress={() => navigation.navigate('ServiceDetail' as never, { serviceId: service.id })}
                     style={styles.actionButton}
                   >
-                    Voir
+                    <Text style={styles.actionButtonText}>Voir</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    mode="outlined"
                     onPress={() => {
                       Alert.alert('�dition', 'Fonctionnalit� d\'�dition � impl�menter');
                     }}
                     style={styles.actionButton}
                   >
-                    Modifier
+                    <Text style={styles.actionButtonText}>Modifier</Text>
                   </TouchableOpacity>
                 </View>
               </Card.Content>
@@ -242,6 +239,14 @@ const styles = StyleSheet.create({
   },
   createButton: {
     backgroundColor: theme.colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   serviceCard: {
     marginBottom: 16,
@@ -295,6 +300,18 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     marginHorizontal: 4,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtonText: {
+    color: theme.colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

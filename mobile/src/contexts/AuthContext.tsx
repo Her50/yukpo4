@@ -220,7 +220,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           };
 
           setUser(userData);
-          playWelcomeAudioOnceForUser(userData.id).catch(() => { });
 
           // ✅ Auto-reprendre le tracking passif si activé précédemment
           PassiveActivityTracker.resumeIfEnabled().catch(() => { });
@@ -305,6 +304,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           };
 
           setUser(userData);
+          playWelcomeAudioOnceForUser(userData.id).catch(() => { });
 
           // ✅ Enregistrer le token push pour notifications (en arrière-plan)
           try {
@@ -422,9 +422,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const updateUser = (userData: Partial<User>) => {
     setUser(prev => {
       const nextUser = prev ? { ...prev, ...userData } : null;
-      if (nextUser?.id) {
-        playWelcomeAudioOnceForUser(nextUser.id).catch(() => { });
-      }
       return nextUser;
     });
   };
