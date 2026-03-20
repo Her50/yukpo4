@@ -895,6 +895,8 @@ function MainStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {/* === Onglets principaux === */}
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+      {/* Alias rétro-compatibilité: plusieurs écrans utilisent encore navigate('Main', { screen: ... }) */}
+      <Stack.Screen name="Main" component={MainTabNavigator} />
 
       {/* === Écrans statiques (toujours disponibles) === */}
       <Stack.Screen

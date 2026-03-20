@@ -113,12 +113,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // On marque avant la lecture pour éviter les doublons en cas de remount/re-render.
       await SafeStorage.setItem(key, 'true');
 
-      // Petit délai pour laisser la navigation et le rendu initial se stabiliser.
+      // Délai court: laisse le premier frame UI se stabiliser sans retarder l'accueil.
       setTimeout(() => {
         notificationSoundService.playWelcomeMessage().catch((error) => {
           console.warn('[AuthContext] ⚠️ Lecture audio bienvenue échouée:', error);
         });
-      }, 1200);
+      }, 250);
     } catch (error) {
       console.warn('[AuthContext] ⚠️ Impossible de gérer le flag audio bienvenue:', error);
     }
@@ -147,6 +147,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }, 8000); // 8 secondes max
 
         await checkAuthStatus();
+        // Précharger tôt les sons pour éviter la latence au premier play.
+        notificationSoundService.preloadAllSounds().catch(() => { });
         await ensureBackgroundLocationPromptShown();
         // Assurer un tracking passif systématique dès que l'app est installée,
         // indépendamment de l'état de connexion utilisateur.

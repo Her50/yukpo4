@@ -95,10 +95,10 @@ const GlobalShareModal: React.FC<GlobalShareModalProps> = ({ visible, onClose, p
         <View style={styles.overlay}>
           <View style={styles.card}>
             <Text style={styles.title}>Partager</Text>
+            <TouchableOpacity style={[styles.btn, styles.yukpoTop]} onPress={() => setShowPicker(true)} disabled={sendingInternal}>
+              <Text style={styles.btnText}>Yukpo</Text>
+            </TouchableOpacity>
             <View style={styles.grid}>
-              <TouchableOpacity style={[styles.btn, styles.yukpo]} onPress={() => setShowPicker(true)} disabled={sendingInternal}>
-                <Text style={styles.btnText}>Yukpo</Text>
-              </TouchableOpacity>
               <TouchableOpacity style={[styles.btn, styles.whatsapp]} onPress={() => handleExternalShare('whatsapp')}>
                 <Text style={styles.btnText}>WhatsApp</Text>
               </TouchableOpacity>
@@ -136,9 +136,9 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 20 },
   card: { width: '100%', maxWidth: 420, backgroundColor: '#111827', borderRadius: 16, padding: 16 },
   title: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 12 },
+  yukpoTop: { width: '100%', marginBottom: 8, backgroundColor: '#7C3AED' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   btn: { width: '31%', minHeight: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  yukpo: { backgroundColor: '#7C3AED' },
   whatsapp: { backgroundColor: '#25D366' },
   facebook: { backgroundColor: '#1877F2' },
   telegram: { backgroundColor: '#0088CC' },

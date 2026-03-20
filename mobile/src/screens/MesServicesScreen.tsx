@@ -1159,6 +1159,21 @@ const MesServicesScreen: React.FC = () => {
   // ✅ CORRIGÉ: Créer les styles dynamiquement avec le thème AVANT le early return loading
   const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
 
+  // ✅ NOUVEAU: Breadcrumbs navigation (doit rester avant tout return conditionnel)
+  // pour garantir un ordre de hooks stable entre les rendus.
+  const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
+    const items: BreadcrumbItem[] = [
+      {
+        label: t('mesServices.home'),
+        onPress: () => navigation.navigate('Home' as never),
+      },
+      {
+        label: t('mesServices.products'),
+      },
+    ];
+    return items;
+  }, [navigation, t]);
+
   if (loading && services.length === 0) {
     return (
       <View style={[dynamicStyles.container, { backgroundColor: colors.background }]}>
@@ -1184,20 +1199,6 @@ const MesServicesScreen: React.FC = () => {
       </View>
     );
   }
-
-  // ✅ NOUVEAU: Breadcrumbs navigation
-  const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
-    const items: BreadcrumbItem[] = [
-      {
-        label: t('mesServices.home'),
-        onPress: () => navigation.navigate('Home' as never),
-      },
-      {
-        label: t('mesServices.products'),
-      },
-    ];
-    return items;
-  }, [navigation, t]);
 
   return (
     <ErrorBoundaryWithRetry

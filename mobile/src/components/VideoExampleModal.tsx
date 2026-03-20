@@ -218,7 +218,7 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
             }
 
             // 2. Grouper par style et prendre la meilleure vidéo de chaque style
-            const examplesByStyle = VIDEO_EXAMPLES.map(defaultExample => {
+            const examplesByStyle = defaultExamples.map(defaultExample => {
                 const styleVideos = allVideos.filter(v => {
                     const videoStyle = v.style_preset || 'story';
                     return videoStyle === defaultExample.style;
@@ -292,11 +292,11 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
         } catch (error) {
             console.warn('[VideoExampleModal] Erreur chargement exemples réels:', error);
             // En cas d'erreur, utiliser les exemples par défaut
-            setExamples(VIDEO_EXAMPLES);
+            setExamples(defaultExamples);
         } finally {
             setLoadingExamples(false);
         }
-    }, [extractStyleFromVideo, formatNumber, calculateEngagementRate, calculateEngagementRateFromStats]);
+    }, [extractStyleFromVideo, formatNumber, calculateEngagementRate, calculateEngagementRateFromStats, defaultExamples]);
 
 
     // Réinitialiser les états quand le modal s'ouvre
@@ -539,7 +539,7 @@ const VideoExampleModal: React.FC<VideoExampleModalProps> = ({
 
                     {/* Carrousel */}
                     <View style={styles.carouselContainer}>
-                        {loadingExamples && examples.length === VIDEO_EXAMPLES.length ? (
+                        {loadingExamples && examples.length === defaultExamples.length ? (
                             <View style={styles.loadingExamplesContainer}>
                                 <ActivityIndicator size="large" color={modernColors.primary} />
                                 <Text style={styles.loadingExamplesText}>{t('videoExample.chargementDesExemplesReels')}</Text>

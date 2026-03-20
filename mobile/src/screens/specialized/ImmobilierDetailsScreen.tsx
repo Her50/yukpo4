@@ -17,11 +17,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import GlobalShareModal, { GlobalSharePayload } from '../../components/GlobalShareModal';
 import IntelligentChat from '../../components/IntelligentChat';
 import IntelligentChatFab from '../../components/IntelligentChatFab';
 import ProductCommentsSection from '../../components/ProductCommentsSection';
 import SafeIcon from '../../components/SafeIcon';
-import ShareServiceModal from '../../components/ShareServiceModal';
 import PropertyPhotoGallery from '../../components/specialized/PropertyPhotoGallery';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { immobilierService, RealEstateProperty } from '../../services/immobilierService';
@@ -40,8 +40,9 @@ const ImmobilierDetailsScreen: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isFavorite, setIsFavorite] = useState(false);
     const [virtualTours, setVirtualTours] = useState<any[]>([]);
-    // Sharing state
-    const [showShareModal, setShowShareModal] = useState(false);
+    // Sharing state (Yukpo interne)
+    const [showYukpoShareModal, setShowYukpoShareModal] = useState(false);
+    const [sharePayload, setSharePayload] = useState<GlobalSharePayload | null>(null);
     // IA: Simulation prêt
     const [showLoanModal, setShowLoanModal] = useState(false);
     const [loanDuration, setLoanDuration] = useState('20');
@@ -152,8 +153,20 @@ const ImmobilierDetailsScreen: React.FC = () => {
         } catch (err: any) { Alert.alert('Erreur', err.message || t('immobilierDetailsScreen.erreurLorsDeLaMiseA')); }
     };
 
-    const handleShare = () => {
-        setShowShareModal(true);
+    const handleShare = async () => {
+        if (!property) return;
+        const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
+        const shareUrl = `${SHARE_BASE_URL}/service/${property.service_id}`;
+        setSharePayload({
+            title: property.titre,
+            description: property.description || '',
+            shareUrl,
+            contentType: 'product',
+            serviceId: property.service_id ?? null,
+            productIndex: null,
+            extraData: { source: 'immobilier_details' },
+        });
+        setShowYukpoShareModal(true);
     };
 
     const handleTrackView = async () => { if (!property) return; try { await immobilierService.trackPropertyView(property.id, undefined, ['description'], 'details'); } catch { } };
@@ -357,21 +370,19 @@ const ImmobilierDetailsScreen: React.FC = () => {
                 </View>
             </Modal>
 
-            {/* Share Modal */}
-            <ShareServiceModal
-                open={showShareModal}
-                onClose={() => setShowShareModal(false)}
-                serviceId={property.service_id.toString()}
-                titre={property.titre}
-                description={property.description}
-                prix={property.prix_vente || property.prix_location_mensuel}
-                devise={getCurrencyIntelligently()}
+            <GlobalShareModal
+                visible={showYukpoShareModal}
+                onClose={() => {
+                    setShowYukpoShareModal(false);
+                    setSharePayload(null);
+                }}
+                payload={sharePayload}
             />
 
             {/* Intelligent Chat FAB */}
             <IntelligentChatFab
                 onPress={() => setShowChat(true)}
-                visible={!showChat && !showShareModal && !showLoanModal}
+                visible={!showChat && !showYukpoShareModal && !showLoanModal}
                 screenName="ImmobilierDetails"
             />
             <IntelligentChat

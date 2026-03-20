@@ -817,7 +817,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         const shareUrl = item.serviceId
             ? `${SHARE_BASE_URL}/product/${item.serviceId}_${item.productIndex ?? 0}`
             : item.videoUrl;
-
         setSharePayload({
             title: item.titre || 'Vidéo',
             description: item.description || '',

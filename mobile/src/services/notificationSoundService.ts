@@ -206,7 +206,7 @@ class NotificationSoundService {
         const key = fallbackAlias[normalized] || normalized;
 
         const messages: Record<string, string> = {
-            fr: 'Bienvenue sur Yukpo — tout l’essentiel de votre quotidien, réuni dans une seule app. Un doute, une question ? Touchez l’icône du chat en bas à droite : je suis là pour vous accompagner, simplement et à votre rythme.',
+            fr: 'Bienvenue sur Yukpo — tout l’essentiel de votre quotidien, réuni dans une seule app. Un doute, une question ? Touchez l’icône du tchat en bas à droite : je suis là pour vous accompagner, simplement et à votre rythme.',
             en: 'Welcome to Yukpo, your intelligent super-app. First, create your account, then tap the chat icon at the bottom right: your intelligent guide helps you quickly access your essential services.',
             de: 'Willkommen bei Yukpo. Sobald Ihr Konto erstellt ist, bleibt Ihr intelligenter Assistent immer verfügbar, um Sie zu begleiten. Bei Fragen zu Funktionen öffnen Sie den intelligenten Chat und stellen Sie einfach Ihre Frage.',
             es: 'Bienvenido a Yukpo. Una vez creada su cuenta, su asistente inteligente estará siempre disponible para guiarle. Para cualquier duda sobre funciones, abra el chat inteligente y haga su pregunta.',
@@ -266,7 +266,7 @@ class NotificationSoundService {
                     onError: (e) => console.warn('[NotificationSoundService] TTS bienvenue erreur:', e),
                     onDone: () => console.log('[NotificationSoundService] ✅ Message de bienvenue terminé'),
                 });
-            }, 1200);
+            }, 300);
         } catch (error) {
             console.error('[NotificationSoundService] ❌ Erreur message bienvenue:', error);
         }

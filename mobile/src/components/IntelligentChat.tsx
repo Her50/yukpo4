@@ -117,6 +117,41 @@ const actionDisplayLabel = (action: { label?: string; icon?: string | null }): s
   return s.trimStart();
 };
 
+type InlineToken = { text: string; bold?: boolean; italic?: boolean };
+
+const parseInlineMarkdown = (raw: string): InlineToken[] => {
+  const source = String(raw || '');
+  if (!source) return [{ text: '' }];
+
+  // Support léger du markdown inline: **gras** et *italique*.
+  // On ignore volontairement les cas complexes imbriqués pour rester stable.
+  const pattern = /(\*\*[^*]+\*\*|\*[^*\n]+\*)/g;
+  const parts = source.split(pattern).filter(Boolean);
+
+  return parts.map((part) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+      return { text: part.slice(2, -2), bold: true };
+    }
+    if (part.startsWith('*') && part.endsWith('*') && part.length >= 3) {
+      return { text: part.slice(1, -1), italic: true };
+    }
+    return { text: part };
+  });
+};
+
+type BlockToken = { type: 'bullet' | 'text'; content: string };
+
+const parseBlockMarkdown = (raw: string): BlockToken[] => {
+  const lines = String(raw || '').split('\n');
+  return lines.map((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('- ') && trimmed.length > 2) {
+      return { type: 'bullet' as const, content: trimmed.slice(2).trim() };
+    }
+    return { type: 'text' as const, content: line };
+  });
+};
+
 const TypingIndicator: React.FC = () => {
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
@@ -466,9 +501,46 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         )}
         <View style={{ flex: 1, alignItems: isUser ? 'flex-end' : 'flex-start' }}>
           <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.aiBubble]}>
-            <Text style={[styles.messageText, isUser ? styles.userText : styles.aiText]}>
-              {item.text}
-            </Text>
+            <View style={styles.markdownBlockContainer}>
+              {parseBlockMarkdown(item.text).map((block, blockIdx) => {
+                if (block.type === 'bullet') {
+                  return (
+                    <View key={`${item.id}-block-${blockIdx}`} style={styles.bulletRow}>
+                      <Text style={[styles.bulletSymbol, isUser ? styles.userText : styles.aiText]}>•</Text>
+                      <Text style={[styles.messageText, isUser ? styles.userText : styles.aiText, styles.bulletText]}>
+                        {parseInlineMarkdown(block.content).map((token, idx) => (
+                          <Text
+                            key={`${item.id}-block-${blockIdx}-token-${idx}`}
+                            style={[
+                              token.bold ? styles.markdownBold : null,
+                              token.italic ? styles.markdownItalic : null,
+                            ]}
+                          >
+                            {token.text}
+                          </Text>
+                        ))}
+                      </Text>
+                    </View>
+                  );
+                }
+
+                return (
+                  <Text key={`${item.id}-block-${blockIdx}`} style={[styles.messageText, isUser ? styles.userText : styles.aiText]}>
+                    {parseInlineMarkdown(block.content).map((token, idx) => (
+                      <Text
+                        key={`${item.id}-block-${blockIdx}-token-${idx}`}
+                        style={[
+                          token.bold ? styles.markdownBold : null,
+                          token.italic ? styles.markdownItalic : null,
+                        ]}
+                      >
+                        {token.text}
+                      </Text>
+                    ))}
+                  </Text>
+                );
+              })}
+            </View>
 
             {item.visualElements && item.visualElements.length > 0 && (
               <View style={styles.visualElementsContainer}>
@@ -734,11 +806,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  markdownBlockContainer: {
+    gap: 2,
+  },
   userText: {
     color: '#FFFFFF',
   },
   aiText: {
     color: modernColors.text,
+  },
+  markdownBold: {
+    fontWeight: '700',
+  },
+  markdownItalic: {
+    fontStyle: 'italic',
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  bulletSymbol: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginRight: 8,
+    marginTop: 0,
+  },
+  bulletText: {
+    flex: 1,
   },
   timestamp: {
     fontSize: 10,
