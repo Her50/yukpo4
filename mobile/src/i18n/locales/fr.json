@@ -14898,6 +14898,9 @@
             "profile": "Profil",
             "settings": "Paramètres",
             "immo": "Immobilier",
+            "assurance-my-policies": "Mes polices assurance",
+            "assurance-claims-track": "Suivi sinistres",
+            "assurance-quote-ia": "Devis assurance IA",
             "assurance-partner": "Tableau assurance partenaire",
             "assurance": "Recherche assurance",
             "lab": "Laboratoire",
@@ -14989,7 +14992,7 @@
             "detailFinance": "Quels sont les 14 modes de paiement ?",
             "detailCreative": "Comment créer un service ou une vidéo IA ?",
             "detailCareer": "Emploi IA, Orientation scolaire, Bourse du Livre ?",
-            "detailRealestate": "Immobilier (recherche biens), hôtels/meublés et assurance dans Yukpo — comment ça marche ?",
+            "detailRealestate": "Immobilier (recherche biens), hôtels/meublés ; assurance utilisateur = recherche + devis IA + Mes polices / sinistres ; assurance partenaire = tableau AssuranceDashboard — comment ça marche ?",
             "detailDelivery": "Comment fonctionne la livraison de colis et courses ?",
             "detailGps": "Parle-moi de la Navigation GPS intelligente",
             "detailBooks": "Comment fonctionne la Bourse du Livre et le Troc ?"
@@ -15016,7 +15019,14 @@
             "hotelMeubleHub": "Hôtels & meublés (liste) : recherche texte, ville, chambres min, budget max, standing, rafraîchir ; GPS ~50 km si position. Pas de dates ici — elles se saisissent sur HotelBooking après Réserver. Carte → ImmobilierDetails.",
             "hotelBooking": "Réservation hôtel/meublé : dates arrivée-départ, adultes/enfants/chambres, nom et téléphone obligatoires ; envoi de la demande (API) ; bouton payer seulement si l’app le propose après succès.",
             "assurancePartner": "Dashboard partenaire assurance (AssuranceDashboard) : 5 onglets — produits (création + toggle), polices (suspendre/résilier si active), sinistres (workflow + analyse IA), stats. Loupe en-tête → recherche marché (InsuranceServicesSearch), pas le CRUD partenaire.",
-            "insuranceSearch": "Recherche / catalogue assurance utilisateur : filtres et résultats (API search), parcours devis IA — pas le tableau de bord assureur (AssuranceDashboard)."
+            "insuranceSearch": "Formulaire de recherche assurance (utilisateur) : filtres locaux, pas d’API sur cet écran ; « Rechercher » ouvre la liste résultats ; « Demander un devis » ouvre le devis IA. Pas le tableau partenaire (AssuranceDashboard).",
+            "insuranceResults": "Liste après recherche : GET /api/assurance/search ; chaque carte ouvre la fiche prestataire (ServiceDetail). Pas de comparaison IA multi-offres sur cet écran.",
+            "insuranceQuoteUser": "Devis IA utilisateur : type d’assurance obligatoire, profil optionnel ; POST /api/assurance/ai/quote. Pas d’appel compareProducts / getRecommendations dans l’UI.",
+            "mesPolicesAssurance": "Mes polices (assuré) : GET /api/assurance/policies/client ; filtres et alerte expiration sous 30 jours ; depuis une police active : déclarer sinistre ou suivi des sinistres.",
+            "declarationSinistre": "Déclaration sinistre : police reçue en paramètre (depuis Mes polices) ; 3 étapes ; description min. 20 caractères ; POST /api/assurance/claims.",
+            "suiviSinistre": "Suivi sinistres (assuré) : GET /api/assurance/claims/client ; filtre optionnel par police ; consultation et historique — pas d’actions assureur.",
+            "courierDashboard": "Coursier : livraisons GET /api/deliveries/active, stats GET /api/delivery/courier/stats, Bourse du livre (bourseLivreV2Api), suivi DeliveryShoppingTracking, code CourierVerificationCode, portefeuille — pas d’écran « historique livreur » ici.",
+            "fleetDashboard": "Partenaire flotte livraison (FleetDashboard) : onglets Aperçu / coursiers / candidatures / Analytics ; GET /api/partners/me/fleet/stats|couriers|applications ; approve, reject (motif), toggle suspend|activate ; revenus mois en XAF (centimes÷100) ; pas de suivi course coursier sur cet écran."
         }
     },
     "chatbot": {

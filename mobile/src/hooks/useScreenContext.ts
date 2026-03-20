@@ -679,7 +679,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'open-delivery-tracking', label: 'Ouvrir une livraison', icon: LUCIDE_ICONS.truck, category: 'navigation', description: 'Carte livraison → **DeliveryShoppingTracking** (`deliveryId`)' },
       { id: 'verification-code', label: 'Code de vérification', icon: LUCIDE_ICONS.shield, category: 'navigation', description: 'Bouton sur carte → **CourierVerificationCode** (`deliveryId`)' },
       { id: 'stats-alert', label: 'Statistiques (Alert)', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Bouton actions rapides → **Alert** texte (pas d’écran dédié)' },
-      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS.wallet, route: 'WalletFinancial', category: 'navigation', description: '**WalletFinancial**' },
+      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS['credit-card'], route: 'WalletFinancial', category: 'navigation', description: '**WalletFinancial**' },
       { id: 'book-courier-packages', label: 'Bourse du livre (paquets)', icon: LUCIDE_ICONS.book, category: 'action', description: '**BookCourierSubDashboard** : **bourseLivreV2Api** (accepter / statuts paquets)' },
     ],
     elements: [
@@ -1257,12 +1257,70 @@ const SCREEN_CONFIGS: Record<string, {
   MenuPlanningHub: {
     type: 'specialized',
     actions: [
-      { id: 'week-calendar', label: 'Calendrier Semaine', icon: LUCIDE_ICONS.calendar, route: 'MenuWeekCalendar', category: 'navigation', description: 'Planning des repas de la semaine' },
-      { id: 'search-recipe', label: 'Chercher Recette', icon: LUCIDE_ICONS.search, route: 'RecipeSearch', category: 'search', description: 'Rechercher une recette' },
-      { id: 'shopping-list', label: 'Liste Courses', icon: LUCIDE_ICONS.list, route: 'ShoppingList', category: 'action', description: 'Générer la liste de courses' },
+      { id: 'generate-menu', label: 'Générer le menu', icon: LUCIDE_ICONS.star, category: 'action', description: 'Profil famille requis → POST /api/menus/ai/generate-week (lundi semaine courante + GPS optionnel). Période UI 1 sem. / 2 sem. / 1 mois = libellés + param period vers calendrier, pas le body API.' },
+      { id: 'family-profile', label: 'Profil famille', icon: LUCIDE_ICONS.users, route: 'FamilyProfile', category: 'navigation', description: 'GET/PUT /api/menus/family-profile' },
+      { id: 'week-calendar', label: 'Calendrier', icon: LUCIDE_ICONS.calendar, route: 'MenuWeekCalendar', category: 'navigation', description: 'Après génération : navigate avec { menu } ; sinon depuis carte menu courant' },
+      { id: 'shopping-list', label: 'Liste courses', icon: LUCIDE_ICONS.list, route: 'ShoppingList', category: 'navigation', description: 'Avec weekStart si menu chargé ; quick action sans params' },
+      { id: 'recipes-modal', label: 'Recettes (modal)', icon: LUCIDE_ICONS.book, category: 'help', description: 'Modal + useAIWithFallback cuisine_recette + generateRecipe (pas la route RecipeSearch depuis ce hub)' },
+      { id: 'recipe-search-route', label: 'RecipeSearch (route)', icon: LUCIDE_ICONS.search, route: 'RecipeSearch', category: 'search', description: 'Écran dédié dans le navigateur (recherche + timeout ~95s)' },
     ],
-    elements: [],
-    guide: 'Planning des repas. Planifiez vos menus, trouvez des recettes, générez automatiquement la liste de courses.',
+    elements: [
+      { id: 'header-profile', type: 'button', label: 'Raccourci profil famille (badge membres)', actionable: true },
+      { id: 'history-menus', type: 'card', label: 'Historique menus / listes (GET /api/menus/history)', actionable: true },
+    ],
+    guide: 'MenuPlanningHubScreen : hub orange. Focus : getFamilyProfile, getMyWeekMenu, getHistory(10). Génération menu bloquée sans profil → FamilyProfile. generateWeeklyMenu : week_start = lundi semaine courante, current_gps lat,lng si dispo. Sélecteur période = UX + message + param period pour MenuWeekCalendar, pas envoyé à generate-week. Recettes = modal + fallback IA locale. Carte menu : voir calendrier { menu }, liste courses { weekStart }. Historique : tap menu navigue MenuWeekCalendar avec weekStart seulement (calendrier attend surtout params.menu — risque écran chargement). Quick : modal recettes, ShoppingList sans params, FamilyProfile.',
+  },
+
+  MenuWeekCalendar: {
+    type: 'specialized',
+    actions: [
+      { id: 'export-menu-pdf', label: 'PDF menu', icon: LUCIDE_ICONS.download, category: 'action', description: 'menuPdfGenerator + partage' },
+      { id: 'shopping-list-ai', label: 'Liste courses IA', icon: LUCIDE_ICONS.list, category: 'action', description: 'Modal repas → POST /api/menus/ai/generate-shopping-list' },
+      { id: 'order-courier', label: 'Commande coursier', icon: LUCIDE_ICONS.truck, category: 'action', description: 'Solde tokens, marché Places obligatoire, deliveryApi.createDeliveryRequest (menu_shopping) → DeliveryShoppingTracking' },
+      { id: 'open-shopping-screen', label: 'Liste courses écran', icon: LUCIDE_ICONS['shopping-cart'], route: 'ShoppingList', category: 'navigation', description: 'Params weekStart du menu' },
+      { id: 'back-hub', label: 'Hub menu', icon: LUCIDE_ICONS.utensils, route: 'MenuPlanningHub', category: 'navigation', description: 'Bouton historique / retour' },
+    ],
+    elements: [
+      { id: 'view-table-list', type: 'tab', label: 'Vue tableau / liste', actionable: true },
+      { id: 'meal-cells', type: 'card', label: 'Repas petit_dejeuner + repas_du_jour (midi+soir)', actionable: true },
+    ],
+    guide: 'MenuWeekCalendarScreen : nécessite route.params.menu (WeeklyMenu) pour l’UI principale. Tableau/liste, export PDF, recette par plat via generateRecipe (sans useAIWithFallback du hub). Liste IA + commande livraison (tokens, frais 15% max 2000 + 500 est., marché, createDeliveryRequest). ShoppingList avec week_start.',
+  },
+
+  ShoppingList: {
+    type: 'list',
+    actions: [
+      { id: 'refresh-list', label: 'Charger / générer', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'GET /api/menus/shopping-list puis POST generate si vide' },
+      { id: 'toggle-check', label: 'Cocher article', icon: LUCIDE_ICONS.check, category: 'action', description: 'État local uniquement (TODO API)' },
+      { id: 'order-market', label: 'Commande marché', icon: LUCIDE_ICONS.shoppingBag, category: 'action', description: 'GPS → listSupermarkets 10 km → DeliveryShoppingFlow basketItems' },
+    ],
+    elements: [
+      { id: 'organize-toggles', type: 'button', label: 'Par magasin / rayon (toggles locaux, TODO)', actionable: true },
+    ],
+    guide: 'ShoppingListScreen : param optionnel weekStart. getShoppingList / generateShoppingList. Coursier via deliveryApi + DeliveryShoppingFlow. Cases cochées = local state seulement.',
+  },
+
+  FamilyProfile: {
+    type: 'form',
+    actions: [
+      { id: 'save-profile', label: 'Enregistrer', icon: LUCIDE_ICONS.save, category: 'action', description: 'PUT /api/menus/family-profile + validations (membres, adulte, style cuisine)' },
+    ],
+    elements: [
+      { id: 'prefs-chips', type: 'card', label: 'Préférences, allergies, restrictions, cuisines, niveau, budget, temps', actionable: true },
+    ],
+    guide: 'FamilyProfileScreen : profil foyer pour generate-week. GET/PUT /api/menus/family-profile. Au moins un style de cuisine requis à la sauvegarde.',
+  },
+
+  RecipeSearch: {
+    type: 'search',
+    actions: [
+      { id: 'search-recipe', label: 'Générer recette', icon: LUCIDE_ICONS.search, category: 'search', description: 'POST /api/menus/ai/generate-recipe + timeout client ~95s' },
+      { id: 'recipe-pdf', label: 'PDF recette', icon: LUCIDE_ICONS.file, category: 'action', description: 'recipePdfGenerator' },
+    ],
+    elements: [
+      { id: 'recipe-detail-modal', type: 'modal', label: 'Détail recette générée', actionable: true },
+    ],
+    guide: 'RecipeSearchScreen : recherche autonome par nom de plat, pas le modal du MenuPlanningHub. Pas de useAIWithFallback.',
   },
 
   // === TROC ===
@@ -1511,16 +1569,20 @@ const SCREEN_CONFIGS: Record<string, {
   FleetDashboard: {
     type: 'dashboard',
     actions: [
-      { id: 'manage-couriers', label: 'Mes Coursiers', icon: LUCIDE_ICONS.users, category: 'action', description: 'Gérer l\'équipe de coursiers' },
-      { id: 'view-candidatures', label: 'Candidatures', icon: LUCIDE_ICONS['user-plus'], category: 'action', description: 'Voir les candidatures de coursiers' },
-      { id: 'fleet-stats', label: 'Statistiques Flotte', icon: LUCIDE_ICONS.activity, category: 'navigation', description: 'Statistiques de la flotte' },
-      { id: 'active-deliveries', label: 'Livraisons Actives', icon: LUCIDE_ICONS.truck, category: 'action', description: 'Suivre les livraisons en cours' },
+      { id: 'tab-overview', label: 'Onglet Vue d’ensemble', icon: LUCIDE_ICONS.list, category: 'action', description: '**overview** : stats grille, alerte candidatures, raccourcis, top coursiers' },
+      { id: 'tab-couriers', label: 'Onglet Coursiers', icon: LUCIDE_ICONS.users, category: 'action', description: '**couriers** : liste **GET** `/api/partners/me/fleet/couriers` — **Suspendre** / **Reactiver** → **POST** `.../couriers/{id}/toggle`' },
+      { id: 'tab-applications', label: 'Onglet Candidatures', icon: LUCIDE_ICONS['user-plus'], category: 'action', description: '**applications** : filtres **submitted|approved|rejected|all** — **POST** approve / reject (modal motif)' },
+      { id: 'tab-analytics', label: 'Onglet Analytics', icon: LUCIDE_ICONS.activity, category: 'action', description: '**analytics** : métriques depuis `stats` + `couriers` (pas d’API analytics dédiée dans l’écran)' },
+      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS['credit-card'], route: 'WalletFinancial', category: 'navigation', description: 'Action rapide **WalletFinancial**' },
+      { id: 'logout', label: 'Déconnexion', icon: 'log-out', category: 'action', description: '**Alert** + **logout** (AuthContext)' },
     ],
     elements: [
-      { id: 'couriers-list', type: 'card', label: 'Liste des coursiers', actionable: true },
-      { id: 'stats-overview', type: 'card', label: 'Statistiques flotte', actionable: false },
+      { id: 'tab-bar', type: 'tab', label: 'Onglets: overview | couriers | applications | analytics', actionable: true },
+      { id: 'fleet-stats-api', type: 'card', label: 'Stats flotte (GET /api/partners/me/fleet/stats)', actionable: false },
+      { id: 'couriers-list', type: 'card', label: 'Liste coursiers (toggle statut)', actionable: true },
+      { id: 'applications-filter', type: 'input', label: 'Filtre candidatures (chips)', actionable: true },
     ],
-    guide: 'Dashboard Flotte de livraison. Gérez vos coursiers (chauffeurs, livreurs, déménageurs), traitez les candidatures, suivez les livraisons en cours et consultez les statistiques.',
+    guide: '**FleetDashboardScreen** (**FleetDashboard**) : **partner_type** → libellé flotte ; **loadAll** = stats + coursiers + candidatures ; **GET** `/api/partners/me/fleet/stats`, `/fleet/couriers`, `/fleet/applications?status=` ; **POST** `applications/{id}/approve|reject`, `couriers/{id}/toggle` ; modale rejet avec **reason** optionnelle. **Pas** de liste livraisons actives type coursier (**CourierDashboard**).',
   },
 
   OrientationPartnerDashboard: {

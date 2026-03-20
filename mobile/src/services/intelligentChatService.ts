@@ -272,6 +272,14 @@ class IntelligentChatService {
       screenName === 'HotelBooking' ||
       screenName === 'HotelDashboard';
 
+    /** Plan menus / recettes / liste de courses (module « menu alimentaire » Yukpo). */
+    const onMenuPlanningModule =
+      screenName === 'MenuPlanningHub' ||
+      screenName === 'MenuWeekCalendar' ||
+      screenName === 'ShoppingList' ||
+      screenName === 'FamilyProfile' ||
+      screenName === 'RecipeSearch';
+
     const yukpoCatalogBlock = onNavigationScreen
       ? `YUKPO (brief reminder only — detailed UI is in NAVIGATION_GPS_DETAIL below):
 Yukpo is the all-in-one super-app (health, transport, delivery, jobs, education, wallet, e‑commerce…). The user is on the **Navigation GPS** module right now; answer using that module's real controls, not generic assumptions.`
@@ -319,7 +327,7 @@ Transport — **dashboard partenaire agence de voyage** (**AgenceVoyageForm**) o
 Livraison — **coursier individuel** (**CourierDashboard** / **CourierDashboardScreen**) : livraisons actives, stats API, sous-dashboard **Bourse du livre** coursier. Prioritize **COURIER_DASHBOARD_DETAIL**; **ne pas** décrire **FleetDashboard** (gérant de flotte) sauf demande explicite.`
                             : onFleetDashboard
                               ? `YUKPO (brief reminder only — detailed UI is in FLEET_PARTNER_DASHBOARD_DETAIL below):
-Livraison — **gérant de flotte partenaire** (**FleetDashboard** / **FleetDashboardScreen**) : stats flotte, coursiers, candidatures, onglet analytics. Prioritize **FLEET_PARTNER_DASHBOARD_DETAIL**; **ne pas** décrire **CourierDashboard** (coursier solo) sauf demande explicite.`
+Livraison & mobilité — **dashboard partenaire gérant une flotte** (**FleetDashboard** / **FleetDashboardScreen**) : entreprises de **livraison**, **transport**, **chauffeurs**, **déménagement**, **courses marché** (types **getPartnerDashboardScreen**). Prioritize **FLEET_PARTNER_DASHBOARD_DETAIL**; **ne pas** décrire **CourierDashboard** (coursier **solo** / livraisons actives) sauf demande explicite.`
                           : onHealthServicesHubScreen
                             ? `YUKPO (brief reminder only — detailed UI is in HEALTH_SERVICES_HUB_DETAIL below):
 Cross-health **launcher** (pharmacy, hospital, lab, blood bank) + unified search. Prioritize **HEALTH_SERVICES_HUB_DETAIL**; do not collapse to one vertical.`
@@ -329,6 +337,9 @@ Santé — **dashboard partenaire hôpital / clinique** (**HopitalForm**). Prior
                             : onHospitalModule
                               ? `YUKPO (brief reminder only — detailed UI is in HOSPITAL_MODULE_DETAIL below):
 Hospitals & clinics — **patient**: **HopitalHome**, **HopitalSearch**, **HopitalList**, **HopitalDetails**, **BookAppointment**, **MyConsultations**, **HospitalAIRecommendations**, **HospitalAnalytics**. Prioritize **HOSPITAL_MODULE_DETAIL**.`
+                              : onMenuPlanningModule
+                                ? `YUKPO (brief reminder only — detailed UI is in MENU_PLANNING_MODULE_DETAIL below):
+Alimentation & foyer — **menus IA, profil famille, calendrier, liste de courses** (**MenuPlanningHub** et écrans liés). Prioritize **MENU_PLANNING_MODULE_DETAIL**; **do not** describe **SupermarketHome** (retail catalog) as this module.`
                               : onPharmacyModule
                               ? `YUKPO (brief reminder only — detailed UI is in PHARMACY_MODULE_DETAIL below):
 Santé Yukpo couvre pharmacies, hôpitaux, laboratoires… L'utilisateur est dans le **module Pharmacie** (catalogue produits et/ou fiches officines). Prioritize **PHARMACY_MODULE_DETAIL**; do not replace it with a generic super-app pitch.`
@@ -426,6 +437,23 @@ TRAVEL_AGENCY_PARTNER_MODE:
 - **Scope:** outils **prestataire** (fiche agence, horaires lignes, produits bus Yukpo, tickets vendus, embarquement) — pas le parcours **achat** billet (**TicketVoyageHome** / **BusTicketSearch**).
 - **IA conseils** dashboard = **POST** \`/ai/chat\` avec \`context: 'travel_agency_partner_dashboard'\` — recommandations business, pas un contrat de résultat.
 ` : ''}
+${onCourierDashboard ? `
+COURIER_DASHBOARD_MODE:
+- **Prioritize** **COURIER_DASHBOARD_DETAIL** below.
+- **Stats « détaillées »** = **Alert** avec chiffres déjà en mémoire (**pas** de route dédiée).
+- **Livraisons** : suivi = **DeliveryShoppingTracking** ; code vérif prestataire = **CourierVerificationCode** (par \`deliveryId\`).
+- **Bourse du livre (coursier)** : **BookCourierSubDashboard** + **bourseLivreV2Api** — distinct des livraisons **deliveryApi**.
+` : ''}
+${onFleetDashboard ? `
+FLEET_PARTNER_DASHBOARD_MODE:
+- **Prioritize** **FLEET_PARTNER_DASHBOARD_DETAIL** below.
+- **Métier:** **gérant / entreprise** avec **plusieurs coursiers ou chauffeurs** — stats agrégées, **validation des candidatures**, **suspendre / réactiver** des comptes. **≠** coursier **individuel** (**CourierDashboard** : livraisons actives, suivi, sous-dashboard livres).
+- **Entrée:** **PartnerDashboardTab** → **getPartnerDashboardScreen** (**AppNavigator.optimized.tsx**) → **FleetDashboard** pour **chauffeur**, **fleet**, **livraison**, **livraison_courses_marche**, **demenagement**, **transport**.
+- **Libellé sous-titre:** **fleetLabel** = map **PARTNER_TYPE_LABELS** dans **FleetDashboardScreen** (**Chauffeurs**, **Coursiers Livraison**, **Coursiers Marche**, **Equipe Demenagement**, **Transporteurs**) ou **« Flotte »** si le type n’y figure pas (**cas \`partner_type === 'fleet'\`** : route **FleetDashboard** mais clé absente de **PARTNER_TYPE_LABELS**).
+- **Onglets:** **Apercu** (orthographe fichier) | **{fleetLabel}** | **Candidatures** (badge **rouge** si candidatures en attente) | **Analytics** (données **locales**).
+- **APIs:** **GET** \`/api/partners/me/fleet/stats\`, **/couriers**, **/applications?status=\`submitted|approved|rejected|all\`** ; **POST** \`.../applications/{id}/approve\` (\`{}\`), **reject** (\`reason\` optionnel), **couriers/{id}/toggle** \`{ action: 'suspend' | 'activate' }\`.
+- **Hors scope écran:** pas de **GET /api/deliveries/active**, pas de **DeliveryShoppingTracking** depuis ce dashboard.
+` : ''}
 ${onHospitalPartnerDashboard ? `
 HOSPITAL_PARTNER_DASHBOARD_MODE:
 - **Prioritize** **HOSPITAL_PARTNER_DASHBOARD_DETAIL** below.
@@ -440,6 +468,12 @@ ${onHospitalModule ? `
 HOSPITAL_MODULE_MODE:
 - **Prioritize** **HOSPITAL_MODULE_DETAIL** below over generic “all health” marketing.
 - **Emergency safety:** in-app IA / wait times are **not** a substitute for **real emergencies** — use official emergency numbers; hub exposes **119** quick call where implemented.
+` : ''}
+${onMenuPlanningModule ? `
+MENU_PLANNING_MODULE_MODE:
+- **Prioritize** **MENU_PLANNING_MODULE_DETAIL** below over generic “meal app” talk.
+- **Health / nutrition:** IA + profils = **aide à la planification** — **not** a substitute for a **dietitian or doctor** for medical diets, severe allergies, or therapeutic nutrition; encourage professional advice when in doubt.
+- **MenuWeekCalendar** expects **\`route.params.menu\`** (\`WeeklyMenu\`). If the user sees endless “Chargement du menu…”, they likely opened the calendar **without** that object (e.g. history row from the Hub only passes \`weekStart\` today).
 ` : ''}
 ${onPharmacyModule ? `
 PHARMACY_MODULE_MODE:
@@ -927,6 +961,96 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 `;
     }
 
+    if (onCourierDashboard) {
+      prompt += `
+
+=== COURIER_DASHBOARD_DETAIL (authoritative — **CourierDashboardScreen**, route **CourierDashboard**) ===
+
+**Rôle:** tableau de bord **coursier / livreur**. **≠** **FleetDashboard** (gérant d’entreprise de livraison).
+
+### Accès navigation
+- Route pile **CourierDashboard** ; onglet barre affiché lorsque le profil indique coursier (**\`is_courier\`** chargé côté **AppNavigator**, ex. depuis données utilisateur).
+
+### Chargement & cycle de vie
+- **\`useFocusEffect\`** : \`notificationSoundService.initialize()\` ; **\`loadData\`** immédiat ; **intervalle 15 s** qui rappelle \`loadData\` (nettoyage au blur).
+- **\`loadData\`** : **\`deliveryApi.listActiveDeliveries()\`** → **GET** \`/api/deliveries/active\` ; parse \`data.deliveries\` ou \`data\` (tableau) ; si \`length > lastDeliveryCount\` **et** \`lastDeliveryCount > 0\` → \`playSoundWithVibration('delivery_request')\`.
+- **Stats** : **\`deliveryApi.getCourierStats()\`** → **GET** \`/api/delivery/courier/stats\` ; erreur → \`console.warn\` uniquement (pas d’écran d’erreur dédié).
+- **Pull-to-refresh** sur le **ScrollView** → \`handleRefresh\`.
+
+### UI
+- **\`CourierStatsChart\`** : livraisons complétées, gains totaux / mois, temps moyen, taux de réussite (nombres sécurisés côté écran).
+- **\`BookCourierSubDashboard\`** : **Bourse du livre V2** coursier — **\`bourseLivreV2Api.getCourierBookDashboard\`**, accepter paquet, **\`updatePackageStatus\`** (workflow **distinct** des livraisons **delivery**).
+- **Livraisons actives** : carte → **\`DeliveryShoppingTracking\`** (\`deliveryId\`) ; bouton **code vérification** → **\`CourierVerificationCode\`** (\`deliveryId\`).
+- **Actions rapides** : **« Voir mes statistiques »** = **\`Alert.alert\`** avec texte (pas de route) ; **« Mon portefeuille »** → **\`WalletFinancial\`**.
+
+**Hard rules:** Ne pas promettre **Historique** / **Revenus** comme écrans séparés depuis cet écran. Ne pas décrire candidatures / suspension de coursiers (**FleetDashboard**).
+`;
+    }
+
+    if (onFleetDashboard) {
+      prompt += `
+
+=== FLEET_PARTNER_DASHBOARD_DETAIL (authoritative — **FleetDashboardScreen**, route **FleetDashboard**) ===
+
+**Rôle:** tableau de bord **partenaire entreprise / flotte** (livraison, courses marché, déménagement, transport, chauffeurs — selon **\`partner_type\`** normalisé en minuscules). **Usage métier courant:** gérant d’**équipe de coursiers** ou de **chauffeurs / véhicules** (dont **flotte automobile** au sens transport). L’utilisateur **ne pilote pas** ici une livraison comme sur **CourierDashboard** (**DeliveryShoppingTracking**, livraisons actives).
+
+### Navigation Yukpo → cet écran
+- **\`getPartnerDashboardScreen(partnerType)\`** (**AppNavigator.optimized.tsx**) retourne **\`FleetDashboard\`** pour : **chauffeur**, **fleet**, **livraison**, **livraison_courses_marche**, **demenagement**, **transport**.
+- **\`PartnerDashboardTab\`** monte l’écran retourné (onglet partenaire).
+- **\`fleetLabel\`** (**sous-titre header**) : **\`PARTNER_TYPE_LABELS[partnerType]\`** dans **FleetDashboardScreen** — clés **chauffeur** → *Chauffeurs*, **livraison** → *Coursiers Livraison*, **livraison_courses_marche** → *Coursiers Marche*, **demenagement** → *Equipe Demenagement*, **transport** → *Transporteurs*. Si **absent** (ex. **\`partner_type === 'fleet'\`**) → **« Flotte »** (fallback chaîne dans le code).
+
+### Modèle de données affiché (aligné interfaces fichier)
+- **FleetStats** (GET stats) : \`total_couriers\`, \`pending_applications\`, \`completed_deliveries_30d\`, \`active_deliveries\`, \`avg_rating\`, \`monthly_revenue_cents\`.
+- **FleetCourier** : \`courier_id\`, \`user_id\`, \`name\`, \`email\`, \`phone\`, \`status\`, \`courier_type\`, \`deliveries_30d\`, \`rating\`.
+- **FleetApplication** : \`id\`, \`user_id\`, \`name\`, \`status\`, \`submitted_at\`, \`phone\`, \`city\`, \`vehicle_type\`, \`courier_type\`, \`has_documents\`.
+- **Types coursier affichés** (**\`COURIER_TYPE_LABELS\`**) : **classic** → Coursier, **market_shopping** → Courses Marche, **taxi** → Chauffeur Taxi, **carpooling** → Covoiturage, **moving** → Demenagement.
+
+### Chargement & rafraîchissement
+- **useEffect** montage : **\`loadAll(false)\`** = **Promise.all**(\`loadStats\`, \`loadCouriers\`, \`loadApplications\`) puis \`setLoading(false)\`.
+- **loadStats** : **GET** \`/api/partners/me/fleet/stats\` ; si \`res.data.data\` → **setStats(data.data)** (enveloppe **apiGet**).
+- **loadCouriers** : **GET** \`/api/partners/me/fleet/couriers\` ; liste **\`data.data\`** ou \`[]\`.
+- **loadApplications** : **GET** \`/api/partners/me/fleet/applications?status=\${appFilter}\` ; \`appFilter\` **submitted** | **approved** | **rejected** | **all**.
+- **useEffect** \`[appFilter]\` : **uniquement** \`loadApplications()\` (pas recharger stats/coursiers).
+- **onRefresh** / header **refresh-cw** / **RefreshControl** sur overview, couriers, applications, analytics : **\`loadAll(true)\`** (\`setRefreshing(true)\` puis **stats + coursiers + candidatures**).
+
+### UI — header
+- **SafeNativeView** ; titre i18n **fleetDashboard.gestionDeFlotte** + sous-titre **fleetLabel**.
+- Bouton **refresh-cw** : même **loadAll(true)** que le pull.
+
+### Barre d’onglets (4)
+| key | Libellé onglet | Icône | Détail |
+| **overview** | **Apercu** (sans accent, texte en dur) | layout-dashboard | — |
+| **couriers** | **fleetLabel** | users | — |
+| **applications** | **Candidatures** | user-plus | **Badge** si \`stats.pending_applications > 0\` : pastille **\`#ef4444\`**, texte = nombre |
+| **analytics** | **Analytics** | bar-chart-2 | — |
+
+### Onglet **overview**
+- Titre section **en dur** : **« Tableau de bord — {fleetLabel} »**.
+- **Grille 4 cartes** — libellés **en dur** (FR) sauf **En cours** : **Coursiers actifs** (\`total_couriers\`), **Candidatures** (\`pending_applications\`), **Courses (30j)** (\`completed_deliveries_30d\`), **En cours** (\`active_deliveries\`, i18n **fleetDashboard.enCours**).
+- **Deux cartes larges** : note **\`avg_rating\` /5** (i18n **fleetDashboard.noteMoyenneFlotte**) ; **revenus** \`formatCurrency(monthly_revenue_cents)\` = **\`Math.round(cents/100)\` + « XAF »** (i18n libellé **fleetDashboard.revenusCeMois**).
+- **Bandeau orange** si \`pending_applications > 0\` : texte **en dur** (*« N candidature(s) en attente de validation »*) → **setActiveTab('applications')**.
+- **Actions rapides** (libellés **en dur**) : **Candidatures**, **Coursiers**, **Analytics** → changement d’onglet ; **Portefeuille** → **navigate('WalletFinancial')** ; **Sortir** → **Alert** + **logout** (i18n **common**).
+- **Meilleurs coursiers** : tri **deliveries_30d** desc, **top 3** ; **voir tous** (i18n **fleetDashboard.voirTous**) → onglet **couriers**.
+
+### Onglet **couriers**
+- Titre **« Mes {fleetLabel} (count) »** ; **FlatList** ou vide (**fleetDashboard.aucunCoursier** + texte **en dur** sur inscription entreprise).
+- **Suspendre / Reactiver** : si \`currentStatus === 'approved'\` → action **suspend**, sinon **activate** ; libellés bouton **Suspendre** / **Reactiver** **en dur** ; Alert secondaire réactivation **en dur** (*courses*). **POST** \`/api/partners/me/fleet/couriers/{courier_id}/toggle\` **\`{ action: 'suspend' | 'activate' }\`** ; succès → **loadCouriers** + **loadStats** (pas **loadAll**).
+
+### Onglet **applications**
+- Chips : **En attente** / **Approuvees** / **Rejetees** / **Toutes** ↔ **submitted** / **approved** / **rejected** / **all**.
+- Carte : **Approuver** + **Rejeter** **uniquement** si \`item.status === 'submitted'\`. **Approuver** → Alert i18n puis **POST** \`.../applications/{id}/approve\` **\`{}\`** → **loadAll(true)**. **Rejeter** → modal ; **POST** \`.../reject\` **\`{ reason }\`** (\`undefined\` si vide) → **loadAll(true)**.
+- Date **Soumis le** : **toLocaleDateString('fr-FR')** **en dur**.
+
+### Modal **rejeter**
+- Titres / placeholder **en dur** : **Rejeter la candidature**, **Motif du refus...** ; **Annuler** : ferme modal + **rejectTarget** null (**rejectReason** non effacé sur Annuler — réinitialisé à l’ouverture suivante via **setRejectReason('')**).
+
+### Onglet **analytics**
+- **Aucune route analytics dédiée** : **même** \`stats\` + **top 5** coursiers (\`deliveries_30d\`), barres proportionnelles, carte revenus, **Metriques cles** (libellés **en dur** : *Livraisons (30j)*, etc.).
+
+**Hard rules:** Ne pas décrire **CourierDashboard** (livraisons actives, **deliveryApi** liste coursier) comme cet écran. Ne pas inventer d’API ou filtres hors **submitted / approved / rejected / all**. **PARTNER_TYPE_LABELS** ne contient **pas** la clé **fleet** : dire **« Flotte »** pour ce cas. Pas de **FAB** chat dans **FleetDashboardScreen.tsx** (chat accessible ailleurs dans l’app).
+`;
+    }
+
     if (onHealthServicesHubScreen) {
       prompt += `
 
@@ -1033,6 +1157,59 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 - **RDV** on **HopitalDetails** is primarily **in-place booking** (\`POST .../book\`) when \`rdv_en_ligne\` ; **BookAppointment** is the **slot-picker** flow when navigated with params — do not merge the two UIs.
 - **Recommandations IA** on the detail screen is a **separate** full screen (**HospitalAIRecommendations**), not the same modal as **HopitalHome** pathology search.
 - For “liste des hôpitaux avec filtres”, point to **HopitalSearch** → **HopitalList**, not **HopitalHome** alone.
+`;
+    }
+
+    if (onMenuPlanningModule) {
+      prompt += `
+
+=== MENU_PLANNING_MODULE_DETAIL (authoritative — menu / meal planning vertical) ===
+
+**Client API:** \`menuPlanningService\` (\`mobile/src/services/menuPlanningService.ts\`). Types: \`FamilyProfile\`, \`WeeklyMenu\`, \`DailyMeal\` (\`petit_dejeuner\`, \`repas_du_jour\` fusion midi/soir, legacy \`dejeuner\`/\`diner\`), \`ShoppingList\`, \`GeneratedRecipe\`.
+
+### Endpoints used in app code
+- **POST** \`/api/menus/ai/generate-week\` — body: \`week_start\` (date string), \`profile_override\` (partial profile), optional \`current_gps\` (**\`"lat,lng"\`** string).
+- **GET** \`/api/menus/my-week\` optional \`?week_start=\`.
+- **GET** + **PUT** \`/api/menus/family-profile\`.
+- **POST** \`/api/menus/ai/generate-recipe\` — \`recipe_name\`, \`servings\` (default 4 in service).
+- **POST** \`/api/menus/shopping-list\` + **GET** \`/api/menus/shopping-list\` — \`week_start\`.
+- **POST** \`/api/menus/ai/generate-shopping-list\` — \`meal_items\` (recipeName, times, servings, day, mealType), \`family_members\`, \`adults_count\`, \`children_count\`.
+- **GET** \`/api/menus/history\` — optional \`?limit=\` (Hub uses **10**).
+- **POST** \`/api/menus/ai/suggest-recipes\` — implemented in **service only**; **no screen calls it** in current codebase.
+
+### MenuPlanningHub (**MenuPlanningHubScreen**, route **MenuPlanningHub**)
+- **On focus:** load **GET** family profile + **GET** \`my-week\` + **GET** \`history(10)\`; pull-to-refresh repeats profile + history.
+- **Generate menu:** **blocked** without family profile → Alert → **FamilyProfile**. Builds **Monday of current week** as \`week_start\`; sends profile fields + optional **live GPS** from \`getCurrentLocation\` / \`LocationContext\`.
+- **UI period** (\`1_week\` | \`2_weeks\` | \`1_month\`): used for **labels** and passed as \`period\` to **MenuWeekCalendar** after success — **not** sent in **\`generateWeeklyMenu\`** payload (backend always receives the computed week start only).
+- After generation: Alert → open **MenuWeekCalendar** with \`{ menu, period }\`; if a menu is already in state, card buttons → **MenuWeekCalendar** \`{ menu }\`, **ShoppingList** \`{ weekStart: menu.week_start }\`.
+- **Recipe quick action:** **modal** + **useAIWithFallback** (\`cuisine_recette\`) wrapping **generateRecipe**; local stub recipe if IA unavailable; PDF via \`recipePdfGenerator\` (share / download helpers in screen).
+- **Other quick actions:** **ShoppingList** (no params), **FamilyProfile**.
+- **Header** profile shortcut → **FamilyProfile** (badge = \`total_members\` when > 0).
+- **History lists:** tap **menu** row → **MenuWeekCalendar** with **\`weekStart\` only** — screen code still requires **\`params.menu\`** for the main UI (**spinner** if missing). Tap **shopping list** row → **ShoppingList** \`{ weekStart }\`.
+
+### MenuWeekCalendar (**MenuWeekCalendarScreen**, route **MenuWeekCalendar**)
+- **Params:** \`menu\` (**WeeklyMenu**) required for the implemented UI path.
+- **Layout:** **table** vs **list**; rows = days; columns **petit_dejeuner** + **repas_du_jour** (cost for \`repas_du_jour\` already covers **midi + soir** in totals).
+- **Cell / card tap:** opens recipe modal prefilled → **generateRecipe** (**no** \`useAIWithFallback\` here).
+- **Export:** **generateAndDownloadMenuPDF** + **shareMenuPDF** (WhatsApp-oriented share).
+- **Intelligent shopping list:** modal to review **mealItems** (editable counts / custom lines) → **generateIntelligentShoppingList** → editable list + **order** flow: check **userApi.getTokensBalance**; fees = subtotal + **15% service (cap 2000)** + **500** delivery estimate; **must** pick **market** (Google Places / \`LocationSelector\`); **deliveryApi.createDeliveryRequest** with \`parcel.type: 'shopping'\`, \`metadata.order_type: 'menu_shopping'\`; insufficient balance → **RechargeTokens**; success → **DeliveryShoppingTracking** \`{ deliveryId }\`.
+- **Shopping list screen shortcut:** **ShoppingList** \`{ weekStart: menu.week_start }\`.
+- **History icon:** navigates back to **MenuPlanningHub**.
+
+### ShoppingList (**ShoppingListScreen**, route **ShoppingList**)
+- **Params:** optional \`weekStart\`.
+- Load: **getShoppingList(weekStart)**; if none, **generateShoppingList(weekStart)**.
+- **Check item:** toggles **local state** only (**TODO** persist API in code comments).
+- **Organize by store / aisle:** **local toggles** (**TODO** reorder API).
+- **“Passer une commande marché”:** requires **GPS** → **deliveryApi.listSupermarkets** (10 km) → on success navigate **DeliveryShoppingFlow** with \`basketItems\` from list rows; else alerts.
+
+### FamilyProfile (**FamilyProfileScreen**, route **FamilyProfile**)
+- Load/save via **getFamilyProfile** / **updateFamilyProfile**; validation: **≥1** member, **≥1** adult, **≥1** cuisine style before save; chips for preferences, allergies, restrictions, cuisines, cooking level, budget, time available.
+
+### RecipeSearch (**RecipeSearchScreen**, route **RecipeSearch**)
+- Standalone recipe search: **generateRecipe** with client **~95s** timeout; recipe detail modal + recipe PDF helpers — **different** resilience story than Hub (no \`useAIWithFallback\`).
+
+**Hard rules:** Do **not** merge this module with **SupermarketHome** / product catalog. Do **not** claim **2-week / 1-month** plans change the **generate-week** API contract until the app sends a period field. Mention **suggest-recipes** only as **unused** in UI today. For medical nutrition or severe allergy management, stay **informational** and recommend a **health professional**.
 `;
     }
 
@@ -1465,25 +1642,7 @@ ${isEmployer ? `EMPLOYER / RECRUTEUR (APIs):
 ${onOffresEmploiHome ? `**Current screen:** prioritize **OFFRES_EMPLOI_HOME_DETAIL** above.` : ''}${onOffresEmploiHub ? `**Current screen:** prioritize **OFFRES_EMPLOI_HUB_DETAIL** above.` : ''}`;
     }
 
-    // Menu planning / food menu context
-    const menuScreens = ['MenuPlanningHub', 'MenuWeekCalendar', 'ShoppingList', 'FamilyProfile'];
-    if (menuScreens.some(s => screenName.includes(s) || screenName.includes('MenuPlanning') || screenName.includes('MenuWeek'))) {
-      prompt += `\n\nMENU PLANNING SERVICE CONTEXT:
-Goal: generate a periodic meal plan + recipes + shopping lists, using AI with safe fallbacks.
-Key screens:
-- MenuPlanningHub: entry point to generate a menu (1 week / 15 days / 1 month), access family profile, recipes, history.
-- FamilyProfile: configure household (members, adults/children, preferences, allergies, restrictions, budget, cuisines, cooking level, time available).
-- MenuWeekCalendar: view the menu as table/list, add/edit meals, export PDF, generate recipe details, build shopping list / courier order flow.
-- ShoppingList: view items, check/uncheck, optionally organize by store/aisle.
-Main backend endpoints:
-- POST /api/menus/ai/generate-week (creates a menu plan, uses user GPS context)
-- POST /api/menus/ai/generate-recipe
-- POST /api/menus/ai/generate-shopping-list
-- GET/POST /api/menus/shopping-list
-- GET/PUT /api/menus/family-profile
-- GET /api/menus/history
-Common user questions you can help with: how to configure profile, generate a menu, adjust period, export/share PDF, create a shopping list, and what to do if AI is unavailable.`;
-    }
+    // Menu planning: full code-aligned block is MENU_PLANNING_MODULE_DETAIL + MENU_PLANNING_MODULE_MODE (onMenuPlanningModule).
 
     // Orientation scolaire context
     const orientationScreens = ['OrientationScolaireHub', 'OrientationScolaireHome', 'ProfilEtudiant', 'OrientationAIProfileAnalysis', 'OrientationAIRecommendations', 'OrientationAIComparePrograms', 'OrientationAICompareProgramsScreen', 'OrientationAIRecommendationsScreen', 'OrientationAIProfileAnalysisScreen'];
@@ -2298,6 +2457,9 @@ Commencez dès maintenant ! 👇`
     { keywords: ['profil', 'profile', 'wasifu', 'bayanan'], action: { id: 'profile', label: 'Profil', icon: 'user', route: 'Profile', category: 'navigation', description: '' } },
     { keywords: ['parametre', 'reglage', 'settings', 'mipangilio'], action: { id: 'settings', label: 'Paramètres', icon: 'settings', route: 'EnhancedSettings', category: 'navigation', description: '' } },
     { keywords: ['immobilier', 'real estate', 'mali isiyohamishika'], action: { id: 'immo', label: 'Immobilier', icon: 'building-2', route: 'ImmobilierHome', category: 'navigation', description: '' } },
+    { keywords: ['mes polices assurance', 'polices assurance client', 'mes assurances souscrites'], action: { id: 'assurance-my-policies', label: 'Mes polices assurance', icon: 'shield', route: 'MesPolicesAssurance', category: 'navigation', description: '' } },
+    { keywords: ['suivi sinistre', 'suivi des sinistres', 'mes sinistres assurance'], action: { id: 'assurance-claims-track', label: 'Suivi sinistres', icon: 'alert-triangle', route: 'SuiviSinistre', category: 'navigation', description: '' } },
+    { keywords: ['devis assurance ia', 'devis assurance intelligent'], action: { id: 'assurance-quote-ia', label: 'Devis assurance IA', icon: 'file-text', route: 'InsuranceQuoteRequest', category: 'navigation', description: '' } },
     { keywords: ['dashboard assurance', 'assurance partenaire', 'prestataire assurance', 'espace assureur', 'tableau assurance partenaire', 'gestion assurance yukpo', 'assureur yukpo'], action: { id: 'assurance-partner', label: 'Tableau assurance partenaire', icon: 'shield', route: 'AssuranceDashboard', category: 'navigation', description: '' } },
     { keywords: ['assurance', 'insurance', 'bima', 'inshora'], action: { id: 'assurance', label: 'Recherche assurance', icon: 'shield', route: 'InsuranceServicesSearch', category: 'navigation', description: '' } },
     { keywords: ['laboratoire', 'labo', 'laboratory', 'lab', 'maabara'], action: { id: 'lab', label: 'Laboratoire', icon: 'activity', route: 'LaboratoireHome', category: 'navigation', description: '' } },
@@ -2312,7 +2474,7 @@ Commencez dès maintenant ! 👇`
     { keywords: ['colis', 'parcel', 'package', 'kifurushi'], action: { id: 'parcel', label: 'Envoyer Colis', icon: 'package', route: 'DeliveryParcelFlowNew', category: 'navigation', description: '' } },
     { keywords: ['courses', 'shopping', 'ununuzi'], action: { id: 'shopping', label: 'Courses', icon: 'shopping-cart', route: 'DeliveryShoppingFlowNew', category: 'navigation', description: '' } },
     { keywords: ['coursier', 'courier', 'mjumbe'], action: { id: 'courier', label: 'Dashboard Coursier', icon: 'truck', route: 'CourierDashboard', category: 'navigation', description: '' } },
-    { keywords: ['flotte', 'fleet'], action: { id: 'fleet', label: 'Gestion Flotte', icon: 'users', route: 'FleetDashboard', category: 'navigation', description: '' } },
+    { keywords: ['flotte', 'fleet', 'flotte livraison', 'gestion flotte'], action: { id: 'fleet', label: 'Gestion Flotte', icon: 'users', route: 'FleetDashboard', category: 'navigation', description: 'Dashboard partenaire : stats /api/partners/me/fleet/*, coursiers, candidatures (approve-reject), analytics local' } },
     { keywords: ['restaurant', 'mkahawa'], action: { id: 'restaurant', label: 'Restaurant', icon: 'utensils', route: 'RestaurantDashboard', category: 'navigation', description: '' } },
     { keywords: ['agence', 'voyage', 'travel', 'safari'], action: { id: 'agence', label: 'Agence de Voyage', icon: 'plane', route: 'AgenceVoyageSearch', category: 'navigation', description: '' } },
     { keywords: ['ticket', 'billet', 'tikiti'], action: { id: 'bus-ticket', label: 'Tickets Bus', icon: 'bus', route: 'BusTicketSearch', category: 'navigation', description: '' } },
@@ -2383,6 +2545,13 @@ Commencez dès maintenant ! 👇`
       'SupermarketHome': t('intelligentChat.screenDesc.supermarket') || 'Supermarché : magasins, produits, comparaison IA.',
       'AssuranceDashboard': t('intelligentChat.screenDesc.assurancePartner') || 'Partenaire assurance : produits, polices, sinistres, stats ; loupe = marché utilisateur.',
       'InsuranceServicesSearch': t('intelligentChat.screenDesc.insuranceSearch') || 'Recherche / catalogue assurance utilisateur (API search, devis IA).',
+      'InsuranceServicesResults': t('intelligentChat.screenDesc.insuranceResults') || 'Résultats GET /api/assurance/search ; carte → ServiceDetail.',
+      'InsuranceQuoteRequest': t('intelligentChat.screenDesc.insuranceQuoteUser') || 'Devis IA : POST /api/assurance/ai/quote (type obligatoire).',
+      'MesPolicesAssurance': t('intelligentChat.screenDesc.mesPolicesAssurance') || 'Polices client : GET /api/assurance/policies/client.',
+      'DeclarationSinistre': t('intelligentChat.screenDesc.declarationSinistre') || 'Déclaration sinistre : policy requise, createClaim.',
+      'SuiviSinistre': t('intelligentChat.screenDesc.suiviSinistre') || 'Suivi sinistres client : GET claims/client, lecture seule.',
+      'CourierDashboard': t('intelligentChat.screenDesc.courierDashboard') || 'Coursier : livraisons actives (GET /api/deliveries/active), stats, bourse du livre coursier, portefeuille.',
+      'FleetDashboard': t('intelligentChat.screenDesc.fleetDashboard') || 'Partenaire flotte : stats GET /api/partners/me/fleet/*, coursiers, candidatures, analytics (données locales).',
     };
     return descriptions[screenName] || t('intelligentChat.fallback.genericHelp', { screen: screenName }) || `Écran « ${screenName} ». Je peux vous guider ici.`;
   }

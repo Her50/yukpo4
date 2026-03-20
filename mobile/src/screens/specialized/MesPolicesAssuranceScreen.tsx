@@ -3,7 +3,7 @@
 
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     RefreshControl,
@@ -18,19 +18,22 @@ import assuranceService, { type InsurancePolicy } from '../../services/assurance
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 
-const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: string }> = {
-    brouillon: { label: 'Brouillon', color: '#6B7280', bg: '#F3F4F6', icon: 'edit' },
-    en_attente: { label: t('mesPolicesAssurance.enAttente'), color: '#D97706', bg: '#FEF3C7', icon: 'clock' },
-    active: { label: 'Active', color: '#059669', bg: '#D1FAE5', icon: 'check-circle' },
-    suspendue: { label: 'Suspendue', color: '#D97706', bg: '#FEF3C7', icon: 'pause-circle' },
-    resiliee: { label: t('mesPolicesAssurance.resiliee'), color: '#DC2626', bg: '#FEE2E2', icon: 'x-circle' },
-    expiree: { label: t('mesPolicesAssurance.expiree'), color: '#6B7280', bg: '#F3F4F6', icon: 'clock' },
-    annulee: { label: t('mesPolicesAssurance.annulee'), color: '#DC2626', bg: '#FEE2E2', icon: 'x-circle' },
-};
-
 const MesPolicesAssuranceScreen: React.FC = () => {
     const navigation = useNavigation();
     const { t } = useLanguageSafe();
+
+    const STATUS_MAP = useMemo(
+        (): Record<string, { label: string; color: string; bg: string; icon: string }> => ({
+            brouillon: { label: 'Brouillon', color: '#6B7280', bg: '#F3F4F6', icon: 'edit' },
+            en_attente: { label: t('mesPolicesAssurance.enAttente'), color: '#D97706', bg: '#FEF3C7', icon: 'clock' },
+            active: { label: 'Active', color: '#059669', bg: '#D1FAE5', icon: 'check-circle' },
+            suspendue: { label: 'Suspendue', color: '#D97706', bg: '#FEF3C7', icon: 'pause-circle' },
+            resiliee: { label: t('mesPolicesAssurance.resiliee'), color: '#DC2626', bg: '#FEE2E2', icon: 'x-circle' },
+            expiree: { label: t('mesPolicesAssurance.expiree'), color: '#6B7280', bg: '#F3F4F6', icon: 'clock' },
+            annulee: { label: t('mesPolicesAssurance.annulee'), color: '#DC2626', bg: '#FEE2E2', icon: 'x-circle' },
+        }),
+        [t]
+    );
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [policies, setPolicies] = useState<InsurancePolicy[]>([]);

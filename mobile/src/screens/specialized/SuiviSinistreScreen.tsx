@@ -3,7 +3,7 @@
 
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     RefreshControl,
@@ -18,34 +18,34 @@ import assuranceService, { type InsuranceClaim } from '../../services/assuranceS
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 
-const STATUS_FLOW = [
-    { key: 'declare', label: t('suiviSinistre.declare'), icon: 'file-plus', color: '#D97706' },
-    { key: 'en_cours_instruction', label: 'En instruction', icon: 'search', color: '#2563EB' },
-    { key: 'expertise_demandee', label: t('suiviSinistre.expertiseDemandee'), icon: 'clipboard', color: '#7C3AED' },
-    { key: 'expertise_en_cours', label: 'Expertise en cours', icon: 'activity', color: '#7C3AED' },
-    { key: 'en_attente_documents', label: 'Attente documents', icon: 'file', color: '#D97706' },
-    { key: 'approuve', label: t('suiviSinistre.approuve'), icon: 'check-circle', color: '#059669' },
-    { key: 'partiellement_approuve', label: t('suiviSinistre.partiellementApprouve'), icon: 'check', color: '#059669' },
-    { key: 'indemnise', label: t('suiviSinistre.indemnise'), icon: 'dollar-sign', color: '#10B981' },
-    { key: 'refuse', label: t('suiviSinistre.refuse'), icon: 'x-circle', color: '#DC2626' },
-    { key: 'clos', label: 'Clos', icon: 'archive', color: '#6B7280' },
-    { key: 'conteste', label: t('suiviSinistre.conteste'), icon: 'alert-circle', color: '#DC2626' },
-];
-
-const getStatusInfo = (statut: string) => {
-    return STATUS_FLOW.find(s => s.key === statut) || { key: statut, label: statut, icon: 'help-circle', color: '#6B7280' };
-};
-
-const getStatusIndex = (statut: string) => {
-    const idx = STATUS_FLOW.findIndex(s => s.key === statut);
-    return idx >= 0 ? idx : 0;
-};
-
 const SuiviSinistreScreen: React.FC = () => {
     const navigation = useNavigation();
     const { t } = useLanguageSafe();
     const route = useRoute();
     const policyId = (route.params as any)?.policy_id;
+
+    const STATUS_FLOW = useMemo(
+        () => [
+            { key: 'declare', label: t('suiviSinistre.declare'), icon: 'file-plus', color: '#D97706' },
+            { key: 'en_cours_instruction', label: 'En instruction', icon: 'search', color: '#2563EB' },
+            { key: 'expertise_demandee', label: t('suiviSinistre.expertiseDemandee'), icon: 'clipboard', color: '#7C3AED' },
+            { key: 'expertise_en_cours', label: 'Expertise en cours', icon: 'activity', color: '#7C3AED' },
+            { key: 'en_attente_documents', label: 'Attente documents', icon: 'file', color: '#D97706' },
+            { key: 'approuve', label: t('suiviSinistre.approuve'), icon: 'check-circle', color: '#059669' },
+            { key: 'partiellement_approuve', label: t('suiviSinistre.partiellementApprouve'), icon: 'check', color: '#059669' },
+            { key: 'indemnise', label: t('suiviSinistre.indemnise'), icon: 'dollar-sign', color: '#10B981' },
+            { key: 'refuse', label: t('suiviSinistre.refuse'), icon: 'x-circle', color: '#DC2626' },
+            { key: 'clos', label: 'Clos', icon: 'archive', color: '#6B7280' },
+            { key: 'conteste', label: t('suiviSinistre.conteste'), icon: 'alert-circle', color: '#DC2626' },
+        ],
+        [t]
+    );
+
+    const getStatusInfo = useCallback(
+        (statut: string) =>
+            STATUS_FLOW.find(s => s.key === statut) || { key: statut, label: statut, icon: 'help-circle', color: '#6B7280' },
+        [STATUS_FLOW]
+    );
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);

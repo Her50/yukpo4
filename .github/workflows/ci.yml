@@ -60,19 +60,19 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         shell: pwsh
         run: |
-          ./backend/scripts/build_sqlx_migrations_strict_source.ps1 `
+          ./scripts/build_sqlx_migrations_strict_source.ps1 `
             -DatabaseUrl "${{ secrets.DATABASE_URL_OFFLINE }}" `
-            -SourceDir "backend/migrations" `
-            -TargetDir "backend/migrations_strict" `
-            -AmbiguousMapPath "backend/scripts/sqlx_ambiguous_map.json"
+            -SourceDir "migrations" `
+            -TargetDir "migrations_strict" `
+            -AmbiguousMapPath "scripts/sqlx_ambiguous_map.json"
 
       - name: Verify strict SQLx checksums
         if: matrix.os == 'ubuntu-latest'
         shell: pwsh
         run: |
-          ./backend/scripts/verify_sqlx_strict_checksums.ps1 `
+          ./scripts/verify_sqlx_strict_checksums.ps1 `
             -DatabaseUrl "${{ secrets.DATABASE_URL_OFFLINE }}" `
-            -SourceDir "backend/migrations_strict"
+            -SourceDir "migrations_strict"
 
       - name: Check sqlx-data.json or .sqlx directory
         if: matrix.os == 'ubuntu-latest'
