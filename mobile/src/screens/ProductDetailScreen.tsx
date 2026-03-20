@@ -19,6 +19,7 @@ import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeStorage from '../utils/safeStorage';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { navigateToVideoCreationTab } from '../navigation/mesServicesNavigation';
 
 const PENDING_DEEP_LINK_KEY = '@yukpomnang:pending_deep_link';
 
@@ -295,20 +296,14 @@ const ProductDetailScreen: React.FC = () => {
                         onPress={() => {
                             console.log('[ProductDetailScreen] 🎬 Navigation vers VideoCreationIntro');
                             try {
-                                const parentNavigation = (navigation as any).getParent();
                                 const params = {
                                     serviceId,
                                     productId,
                                     productIndex: product?._productIndex ?? 0,
                                     productName: product?.nom || product?.name || product?.title,
                                 };
-                                if (parentNavigation) {
-                                    parentNavigation.navigate('VideoCreationIntro', params);
-                                    console.log('[ProductDetailScreen] ✅ Navigation réussie via parent');
-                                } else {
-                                    navigation.navigate('VideoCreationIntro' as never, params as never);
-                                    console.log('[ProductDetailScreen] ✅ Navigation réussie (directe)');
-                                }
+                                navigateToVideoCreationTab(navigation as any, params);
+                                console.log('[ProductDetailScreen] ✅ Navigation robuste vers VideoCreationIntro');
                             } catch (error) {
                                 console.error('[ProductDetailScreen] ❌ Erreur navigation vers VideoCreationIntro:', error);
                                 Alert.alert('Erreur', 'Impossible d\'ouvrir la création de vidéo.');

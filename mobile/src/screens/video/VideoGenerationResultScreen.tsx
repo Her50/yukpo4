@@ -12,6 +12,7 @@ import {
 } from '../../types/VideoGeneration';
 import { safeStringDisplay } from '../../utils/displayHelpers';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { navigateToVideoCreationTab } from '../../navigation/mesServicesNavigation';
 
 interface ResultParams {
     result: GeneratedVideoResponse;
@@ -58,7 +59,7 @@ const VideoGenerationResultScreen: React.FC = () => {
     };
 
     const handleCreateAnother = () => {
-        navigation.navigate('VideoCreationIntro' as never);
+        navigateToVideoCreationTab(navigation as any);
     };
 
     const handleViewAnalytics = () => {

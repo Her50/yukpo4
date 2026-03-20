@@ -20520,6 +20520,23 @@ pub async fn ensure_payment_attempts_aggregator_columns(pool: &PgPool) -> Result
         .await
         .ok();
 
+    // ✅ Aligner la contrainte valid_status avec les statuts réellement utilisés
+    // par le flux agrégateur (pending/processing/success/completed/failed/cancelled/expired).
+    sqlx::query("UPDATE payment_attempts SET status = 'success' WHERE status = 'completed'")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("ALTER TABLE payment_attempts DROP CONSTRAINT IF EXISTS valid_status")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query(
+        "ALTER TABLE payment_attempts ADD CONSTRAINT valid_status CHECK (status IN ('pending','processing','success','completed','failed','cancelled','expired'))",
+    )
+    .execute(pool)
+    .await
+    .ok();
+
     info!("✅ Colonnes agrégateur payment_attempts OK");
     Ok(())
 }

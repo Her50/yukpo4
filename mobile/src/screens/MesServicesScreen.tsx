@@ -37,6 +37,7 @@ import { CacheManager, createCacheKey } from '../utils/cache';
 import { extractProductName, extractServiceName } from '../utils/displayHelpers';
 import { logger } from '../utils/logger';
 import { navigateToVideoWizard } from '../utils/videoNavigation';
+import { navigateToVideoCreationTab } from '../navigation/mesServicesNavigation';
 
 const { width } = Dimensions.get('window');
 
@@ -1231,7 +1232,7 @@ const MesServicesScreen: React.FC = () => {
                 style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
                 onPress={() => {
                   try {
-                    (navigation as any).navigate('VideoCreationIntro');
+                    navigateToVideoCreationTab(navigation as any);
                   } catch (error) {
                     logger.error('[MesServicesScreen] Erreur navigation vers VideoCreationIntro:', error);
                     toaster.error(t('mesServices.cannotCreateVideo'));

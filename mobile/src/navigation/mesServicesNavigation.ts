@@ -16,6 +16,7 @@ export function navigateToMesServicesHub(navigation: { navigate: (...args: any[]
   // - fallback stack "MesServices" (même écran)
   const targets: Array<{ route: string; params?: Record<string, any> }> = [
     { route: 'MainTabs', params: { screen: 'Services' } },
+    { route: 'Main', params: { screen: 'Services' } },
     { route: 'MesServices' },
   ];
 
@@ -31,4 +32,36 @@ export function navigateToMesServicesHub(navigation: { navigate: (...args: any[]
   }
 
   console.warn('[mesServicesNavigation] Unable to navigate to Mes Services hub');
+}
+
+/**
+ * Ouvre l'onglet "+" de création vidéo depuis n'importe quel niveau de navigation.
+ */
+export function navigateToVideoCreationTab(
+  navigation: { navigate: (...args: any[]) => void },
+  params?: Record<string, any>
+): void {
+  const nav = navigation as any;
+  const parent = nav?.getParent?.();
+  const grandParent = parent?.getParent?.();
+
+  const navigators = [nav, parent, grandParent].filter(Boolean);
+  const targets: Array<{ route: string; params?: Record<string, any> }> = [
+    { route: 'MainTabs', params: { screen: 'VideoCreationIntro', params } },
+    { route: 'Main', params: { screen: 'VideoCreationIntro', params } },
+    { route: 'VideoCreationIntro', params },
+  ];
+
+  for (const currentNav of navigators) {
+    for (const target of targets) {
+      try {
+        currentNav.navigate(target.route, target.params);
+        return;
+      } catch {
+        // continue trying other route names / navigator levels
+      }
+    }
+  }
+
+  console.warn('[mesServicesNavigation] Unable to navigate to Video creation tab');
 }
