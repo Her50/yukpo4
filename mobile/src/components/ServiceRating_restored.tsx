@@ -50,6 +50,17 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
   customStyle,
   onContactUser
 }) => {
+  const extractActiveMentionQuery = (text: string): string | null => {
+    if (!text) return null;
+    const match = text.match(/(?:^|[\s([{])@([^@\n\r]*)$/);
+    if (!match) return null;
+    const query = match[1]
+      .replace(/^[\s]+/, '')
+      .replace(/[),!?;:]+$/, '')
+      .trim();
+    return query.length > 0 ? query : null;
+  };
+
       const { t } = useLanguageSafe();
 const [showReviewFormLocal, setShowReviewFormLocal] = useState(showReviewForm);
   const [rating, setRating] = useState(service.user_rating || 0);
@@ -130,19 +141,10 @@ const [showReviewFormLocal, setShowReviewFormLocal] = useState(showReviewForm);
   const handleCommentChange = (text: string) => {
     setComment(text);
 
-    // D├®tecter @mention
-    const lastAtIndex = text.lastIndexOf('@');
-    if (lastAtIndex >= 0) {
-      const textAfterAt = text.substring(lastAtIndex + 1);
-      const spaceIndex = textAfterAt.indexOf(' ');
-
-      if (spaceIndex === -1) {
-        // Pas encore d'espace apr├¿s @, rechercher
-        setMentionQuery(textAfterAt);
-        setShowMentionPicker(true);
-      } else {
-        setShowMentionPicker(false);
-      }
+    const activeQuery = extractActiveMentionQuery(text);
+    if (activeQuery) {
+      setMentionQuery(activeQuery);
+      setShowMentionPicker(true);
     } else {
       setShowMentionPicker(false);
     }
@@ -152,11 +154,7 @@ const [showReviewFormLocal, setShowReviewFormLocal] = useState(showReviewForm);
   const insertMention = (user: User) => {
     const lastAtIndex = comment.lastIndexOf('@');
     const beforeAt = comment.substring(0, lastAtIndex);
-    const afterAt = comment.substring(lastAtIndex + 1);
-    const spaceIndex = afterAt.indexOf(' ');
-    const afterMention = spaceIndex >= 0 ? afterAt.substring(spaceIndex) : '';
-
-    setComment(`${beforeAt}@${user.nom_complet} ${afterMention}`);
+    setComment(`${beforeAt}@${user.nom_complet} `);
     setShowMentionPicker(false);
   };
 

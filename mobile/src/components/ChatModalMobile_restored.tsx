@@ -56,6 +56,17 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     conversationId: privateConversationId,
     isPrivateConversation = false
 }) => {
+    const extractActiveMentionQuery = (text: string): string | null => {
+        if (!text) return null;
+        const match = text.match(/(?:^|[\s([{])@([^@\n\r]*)$/);
+        if (!match) return null;
+        const query = match[1]
+            .replace(/^[\s]+/, '')
+            .replace(/[),!?;:]+$/, '')
+            .trim();
+        return query.length > 0 ? query : null;
+    };
+
         const { t } = useLanguageSafe();
 const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -313,17 +324,14 @@ const [newMessage, setNewMessage] = useState('');
         setNewMessage(text);
         if (cursorPos !== undefined) setCursorPosition(cursorPos);
 
-        // Ô£à NOUVEAU: D├®tecter le @ pour ouvrir le mention picker
         const lastAtIndex = text.lastIndexOf('@');
         if (lastAtIndex !== -1 && (cursorPos === undefined || cursorPos > lastAtIndex)) {
-            // Extraire le texte apr├¿s le @
             const query = text.substring(lastAtIndex + 1, cursorPos || text.length);
-
-            // Si pas d'espace apr├¿s le @, c'est une mention en cours
-            if (!query.includes(' ')) {
-                setMentionQuery(query);
+            const activeQuery = extractActiveMentionQuery(`@${query}`);
+            if (activeQuery) {
+                setMentionQuery(activeQuery);
                 setShowMentionPicker(true);
-                console.log('[ChatModalMobile] @ d├®tect├®, query:', query);
+                console.log('[ChatModalMobile] @ d├®tect├®, query:', activeQuery);
             } else {
                 setShowMentionPicker(false);
             }

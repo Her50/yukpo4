@@ -217,6 +217,15 @@ class IntelligentChatService {
       screenName === 'AgenceVoyageForm' || screenName === 'BusTicketQRScanner';
 
     const onCourierDashboard = screenName === 'CourierDashboard';
+    const onDeliveryOrderModule =
+      screenName === 'DeliveryHome' ||
+      screenName === 'DeliveryParcelFlowNew' ||
+      screenName === 'DeliveryShoppingFlowNew' ||
+      screenName === 'ShoppingBasket' ||
+      screenName === 'ShoppingBudget' ||
+      screenName === 'ShoppingSummary' ||
+      screenName === 'DeliveryShoppingTracking' ||
+      screenName === 'DeliveryProof';
     const onFleetDashboard = screenName === 'FleetDashboard';
     /** Partenaire **automobile** (stock véhicules / annonces) — **≠** **FleetDashboard** (coursiers). */
     const onAutomobilePartnerDashboard = screenName === 'AutomobileDashboard';
@@ -358,6 +367,9 @@ Transport — **dashboard partenaire agence de voyage** (**AgenceVoyageForm**) o
                           : onCourierDashboard
                             ? `YUKPO (brief reminder only — detailed UI is in COURIER_DASHBOARD_DETAIL below):
 Livraison — **coursier individuel** (**CourierDashboard** / **CourierDashboardScreen**) : livraisons actives, stats API, sous-dashboard **Bourse du livre** coursier. Prioritize **COURIER_DASHBOARD_DETAIL**; **ne pas** décrire **FleetDashboard** (gérant de flotte) sauf demande explicite.`
+                            : onDeliveryOrderModule
+                              ? `YUKPO (brief reminder only — detailed UI is in DELIVERY_ORDER_MODULE_DETAIL below):
+Livraison — **commande et suivi** (colis / courses). The user is in a delivery ordering/tracking screen. Prioritize **DELIVERY_ORDER_MODULE_DETAIL** with real steps and practical guidance.`
                             : onFleetDashboard
                               ? `YUKPO (brief reminder only — detailed UI is in FLEET_PARTNER_DASHBOARD_DETAIL below):
 Livraison & mobilité — **dashboard partenaire gérant une flotte** (**FleetDashboard** / **FleetDashboardScreen**) : entreprises de **livraison**, **transport**, **chauffeurs**, **déménagement**, **courses marché** (types **getPartnerDashboardScreen**). Prioritize **FLEET_PARTNER_DASHBOARD_DETAIL**; **ne pas** décrire **CourierDashboard** (coursier **solo** / livraisons actives) sauf demande explicite.`
@@ -491,6 +503,12 @@ COURIER_DASHBOARD_MODE:
 - **Stats « détaillées »** = **Alert** avec chiffres déjà en mémoire (**pas** de route dédiée).
 - **Livraisons** : suivi = **DeliveryShoppingTracking** ; code vérif prestataire = **CourierVerificationCode** (par \`deliveryId\`).
 - **Bourse du livre (coursier)** : **BookCourierSubDashboard** + **bourseLivreV2Api** — distinct des livraisons **deliveryApi**.
+` : ''}
+${onDeliveryOrderModule ? `
+DELIVERY_ORDER_MODULE_MODE:
+- **Prioritize** **DELIVERY_ORDER_MODULE_DETAIL** below over generic Yukpo lists.
+- Explain concrete steps the user can execute now (pickup/dropoff, basket, budget, confirmation, tracking).
+- If user asks benefits, highlight: gain de temps, délégation des courses, suivi temps réel, contact coursier, preuve de livraison.
 ` : ''}
 ${onFleetDashboard ? `
 FLEET_PARTNER_DASHBOARD_MODE:
@@ -1588,7 +1606,7 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 `;
     }
 
-    if (screenName === 'Home') {
+    if (screenName === 'Home' || screenName === 'HomeScreen') {
       prompt += `
 
 === HOME_SCREEN_DETAIL (authoritative for Yukpo Home / Accueil) ===
@@ -1619,6 +1637,11 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 **Assistant IA FAB:** rendered in **AppNavigator** (global). Quick actions like **Retour** / **Recherche** refer to stack/tab navigation, not internal Home controls.
 
 **Answering guidelines:** Match explanations to the **actual** buttons/modals above. If user asks “how to search”, describe **mode Rechercher + send in ChatInputMobile + ResultatBesoin**. If “how to publish a product”, describe **mode Créer + existing vs new service split**. For “where are taxis/pharmacy”, point to **quick access grid** and the **Search** route names.
+
+**Home + creation priorities:**
+- When user asks how to create a **product or service/prestation**, always start with: go to **HomeScreen** and switch to **Create mode**.
+- Explain this path is easier because AI guides form filling step by step from user input (text/media/GPS).
+- Recommend **\`variation_prix\`** as default for variants (weight, volume, shoe size, package, duration, level of service, etc.) to avoid duplicate listings.
 `;
     }
 
@@ -1637,7 +1660,37 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 
 **Related screen:** **MesProduits** = **MesProduitsScreen** — deeper per-product tools (gallery, delivery modal, etc.). It **complements** this tab; the **primary** “Mes services” hub is here.
 
+**Creation priority rule (very important):**
+- For creating a new product/service, guide users first to **HomeScreen** in **Create mode** (ChatInputMobile), because it offers the easiest intelligent assistance.
+- In creation guidance, explicitly recommend **\`variation_prix\`** for variants (weight, volume, size, shoe size, packaging, etc.) to avoid duplicate product sheets.
+- Preferred strategy: **one product sheet + variants**, instead of many near-identical products.
+
 **Hard rules:** When the user asks where to manage products after publishing, point to the **Mes services** tab (internal name **Services**, component **MesServicesScreen**) or pile route **MesServices**. **Do not** tell them to use pile route **ServicesActivity** (legacy ServicesScreen). Never claim the tab opens **RechercheBesoin** or **PharmacieHome**.
+`;
+    }
+
+    if (onDeliveryOrderModule) {
+      prompt += `
+
+=== DELIVERY_ORDER_MODULE_DETAIL (authoritative — order/tracking delivery screens) ===
+
+**Scope:** user flow for parcel and shopping delivery: **DeliveryHome**, **DeliveryParcelFlowNew**, **DeliveryShoppingFlowNew**, **ShoppingBasket**, **ShoppingBudget**, **ShoppingSummary**, **DeliveryShoppingTracking**, **DeliveryProof**.
+
+**Practical orientation by screen:**
+- **DeliveryHome:** choose between parcel flow and shopping flow.
+- **DeliveryParcelFlowNew:** set parcel type + weight/dimensions + pickup/dropoff + optional insurance, then confirm.
+- **DeliveryShoppingFlowNew:** choose store, build basket, set budget and delivery address, then summary/confirm.
+- **ShoppingBasket / ShoppingBudget / ShoppingSummary:** iterative order preparation and validation.
+- **DeliveryShoppingTracking:** real-time progress timeline, courier contact/call, basket review.
+- **DeliveryProof:** delivery proof capture/confirmation (photo/signature as configured).
+
+**How to explain “smart delivery config” benefits:**
+- faster order preparation with guided steps;
+- better budget control before confirmation;
+- transparent tracking with courier contact;
+- fewer delivery errors thanks to structured address and proof flow.
+
+**Hard rules:** do not confuse **customer delivery order** screens with **CourierDashboard** or **FleetDashboard** partner operations.
 `;
     }
 
@@ -1668,12 +1721,14 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 
 FROM HOME (summary — details in HOME_SCREEN_DETAIL if screen is Home):
 - Toggle **Create** mode → **ChatInputMobile** → AI suggestions → either **FormulaireYukpoIntelligent** (first business) or **AjouterProduitSimple** (existing service).
+- This HomeScreen flow is the **recommended default** for users because it guides form filling more intelligently and simply.
 
 FIRST-TIME BUSINESS (FormulaireYukpoIntelligent path):
 - Google Business auto-import when available; multi-step intelligent form: general info → contacts → GPS → products (variants) → visual identity (logo/banner) → payment methods (MoMo, Orange Money, card, cash…).
 
 SUBSEQUENT PRODUCTS (AjouterProduitSimple path):
 - Photo/text → AI pre-fill; variants supported.
+- Promote **\`variation_prix\`** (weight, volume, shoe size, packaging, etc.) to manage variants without duplicating products.
 
 CATALOG MANAGEMENT:
 - **Tab \`Services\` (MesServicesScreen):** liste produits moderne, cartes, bulk, sidebar, flash/livraison/vidéo — hub principal “Mes services”.
@@ -2178,6 +2233,20 @@ RESPONSE FORMAT (JSON):
 
     const actionsByCategory = (cat: string) => availableActions.filter(a => a.category === cat);
     const topActions = (n = 3) => availableActions.filter(a => a.id !== 'home' && a.id !== 'profile' && a.id !== 'services').slice(0, n);
+    const getMesServicesAction = (): ActionDescriptor => {
+      const preferred = availableActions.find((a) => a.id === 'tab-services')
+        || availableActions.find((a) => a.id === 'services')
+        || availableActions.find((a) => a.route === 'MesServices')
+        || availableActions.find((a) => a.route === 'Services');
+      return preferred || {
+        id: 'services',
+        label: t('useScreenContext.services') || 'Mes Services',
+        icon: 'briefcase',
+        route: 'MesServices',
+        category: 'navigation',
+        description: 'Ouvrir le hub produits moderne (MesServicesScreen)',
+      };
+    };
 
     // === Navigation GPS — stats / marche / Coach IA / notifications ===
     if (screenName === 'Navigation') {
@@ -2247,12 +2316,42 @@ RESPONSE FORMAT (JSON):
           suggestedActions: [],
         };
       }
+      const homeManageProductsKw = [
+        'mes services',
+        'management produit',
+        'gestion produit',
+        'gerer mes produits',
+        'gérer mes produits',
+        'dashboard produits',
+        'tableau de bord produits',
+        'publicite',
+        'publicité',
+        'video produit',
+      ];
+      if (homeManageProductsKw.some(k => q.includes(k))) {
+        return {
+          message:
+            'Pour gérer tes produits, vidéos, publicités et stats, ouvre **Mes services** (hub moderne `MesServicesScreen`). C\'est l\'onglet du bas **Services**.',
+          type: 'navigation_help',
+          suggestedActions: [getMesServicesAction()],
+        };
+      }
       const homeSearchKw = ['comment cherch', 'lancer une recherche', 'resultat besoin', 'rechercher un service', 'recherche sur accueil', 'barre du haut'];
       if (homeSearchKw.some(k => q.includes(k))) {
         return {
           message: t('intelligentChat.home.searchHint') || '',
           type: 'navigation_help',
           suggestedActions: [],
+        };
+      }
+      const homeDeliveryKw = ['livraison', 'delivery', 'coursier', 'commander livraison', 'envoyer colis', 'courses marche'];
+      if (homeDeliveryKw.some(k => q.includes(k))) {
+        return {
+          message: 'Depuis Home, utilise le bouton **Livraison** (icône vélo/coursier en haut) pour accéder aux flux colis et courses avec suivi temps réel. Tu peux préparer ton panier, fixer ton budget, puis suivre le coursier et confirmer la livraison.',
+          type: 'navigation_help',
+          suggestedActions: [
+            { id: 'go-delivery-home', label: '📦 Commander une livraison', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: '' },
+          ],
         };
       }
     }
@@ -2417,14 +2516,19 @@ Commencez dès maintenant ! 👇`
 
     // === CROSS-SCREEN: Help / How-to ===
     if (matchGroup('help')) {
+      const productHubHelpActions = (screenName === 'Services' || screenName === 'MesServices')
+        ? availableActions.filter(a =>
+          ['ms-add-product', 'ms-video-intro', 'ms-publicite', 'ms-analytics', 'ms-mesproduits'].includes(a.id)
+        ).slice(0, 5)
+        : [];
       return {
         message: `${guideText || t('intelligentChat.fallback.youAreOn', { screen: screenName })}\n\n${t('intelligentChat.fallback.availableActions') || 'Available actions:'}`,
         type: 'text',
-        suggestedActions: topActions(5),
+        suggestedActions: productHubHelpActions.length > 0 ? productHubHelpActions : topActions(5),
         nextSteps: [
-          t('intelligentChat.fallback.tapAction') || 'Tap an action above to execute it',
-          t('intelligentChat.fallback.askSpecific') || 'Ask a more specific question for step-by-step guidance',
-          t('intelligentChat.fallback.askWhere') || 'Ask "where is..." to navigate to a screen',
+          'Comment lancer une pub pour booster mes ventes ?',
+          'Comment créer une vidéo produit qui vend ?',
+          'Comment activer la livraison globale sur mes produits ?',
         ],
       };
     }
@@ -2433,26 +2537,33 @@ Commencez dès maintenant ! 👇`
     if (matchGroup('manage') && (matchGroup('product') || match(['produit', 'product', 'service', 'boutique', 'catalog']))) {
       return {
         message: t('intelligentChat.fallback.manageGuide') ||
-          '📦 Product Management on Yukpo gives you full control!\n\n'
-          + '• Edit products: change name, price, photos, description anytime\n'
-          + '• Price variants: add sizes, colors, options with different prices\n'
-          + '• Activate/Deactivate: control product visibility instantly\n'
-          + '• Duplicate: clone a product to create similar ones fast\n'
-          + '• Bulk Import: upload up to 500 products via CSV/Excel\n'
-          + '• Stats: track views, orders and revenue per product\n\n'
-          + 'Access your products from the Dashboard or "My Products".',
+          '📦 Gestion produit façon commerçant terrain.\n\n'
+          + '✅ Pour créer vite et bien, commence sur **HomeScreen** en mode **Créer** (guidage IA plus simple).\n\n'
+          + '• Modifie ton produit à tout moment: nom, prix, photos, description\n'
+          + '• **variation_prix**: un seul produit, plusieurs variantes\n'
+          + '  Exemples concrets:\n'
+          + '  - riz: 1kg / 5kg / 25kg\n'
+          + '  - chaussure: 41 / 42 / 43\n'
+          + '  - huile: 0.5L / 1L / 5L\n'
+          + '• Active/désactive un produit en 1 clic\n'
+          + '• Duplique une fiche pour gagner du temps\n'
+          + '• Importe ton catalogue en lot (CSV/Excel)\n'
+          + '• Suis tes stats: vues, commandes, ventes\n\n'
+          + 'Retrouve tout dans **Mes services** et **Mon catalogue**.',
         type: 'action_suggestion',
         suggestedActions: [
-          { id: 'my-products', label: t('intelligentChat.fallback.myProducts') || '📦 My Products', icon: 'package', route: 'MesProduits', category: 'navigation', description: '' },
-          { id: 'add-product', label: t('intelligentChat.fallback.addProduct') || '➕ Add Product', icon: 'plus', route: 'AjouterProduitSimple', category: 'creation', description: '' },
-          { id: 'dashboard', label: t('intelligentChat.fallback.dashboard_nav') || '📊 Dashboard', icon: 'bar-chart-3', route: 'DashboardPrestataire', category: 'navigation', description: '' },
-          { id: 'orders', label: t('intelligentChat.fallback.orders') || '📋 Orders', icon: 'clipboard-list', route: 'ProviderOrderManagement', category: 'navigation', description: '' },
+          { id: 'go-home-create', label: '✨ Créer mon produit (accueil)', icon: 'home', route: 'Home', category: 'creation', description: '' },
+          { id: 'mes-services-hub', label: '🧭 Gérer mes produits', icon: 'briefcase', route: 'MesServices', category: 'navigation', description: '' },
+          { id: 'my-products', label: t('intelligentChat.fallback.myProducts') || '📦 Voir mon catalogue', icon: 'package', route: 'MesProduits', category: 'navigation', description: '' },
+          { id: 'add-product', label: t('intelligentChat.fallback.addProduct') || '➕ Ajouter un produit', icon: 'plus', route: 'AjouterProduitSimple', category: 'creation', description: '' },
+          { id: 'dashboard', label: t('intelligentChat.fallback.dashboard_nav') || '📊 Voir mes stats', icon: 'bar-chart-3', route: 'AnalyticsDashboard', category: 'navigation', description: '' },
+          { id: 'ads-dashboard', label: '📣 Publicités', icon: 'megaphone', route: 'PubliciteDashboard', category: 'navigation', description: '' },
         ],
         nextSteps: [
-          t('intelligentChat.followUp.howCreateProduct') || 'How do I create a product?',
-          t('intelligentChat.followUp.howImportCSV') || 'Can I import products in bulk?',
-          t('intelligentChat.followUp.howTrackSales') || 'How to track my sales?',
-          t('intelligentChat.followUp.howSetPricing') || 'How to set up price variants?',
+          'Comment lancer une pub pour mon produit ?',
+          'Comment créer une vidéo produit ?',
+          'Comment activer la livraison globale ?',
+          'Comment configurer variation_prix (1kg/5kg/25kg, 41/42/43...) ?',
         ],
       };
     }
@@ -2466,20 +2577,27 @@ Commencez dès maintenant ! 👇`
       if (isOnHome || match(['produit', 'product', 'service', 'boutique', 'shop', 'prestation', 'catalog', 'vendre', 'sell'])) {
         return {
           message: t('intelligentChat.fallback.createGuide') ||
-            '🚀 Creating on Yukpo is revolutionary!\n\n'
-            + '📸 Just take a PHOTO of your product — AI auto-fills everything (name, price, category)!\n\n'
-            + '🏪 First time? The app captures your business info (name, contacts, logo, banner, payment methods). After that, adding products is even faster!\n\n'
-            + 'On the Home screen, switch to "Create" mode and submit a photo or description.',
+            '🚀 Créer sur Yukpo, c’est simple et rapide.\n\n'
+            + '🏠 Commence sur **HomeScreen** en mode **Créer**: c’est le parcours le plus facile.\n\n'
+            + '📸 Envoie une photo ou un texte — l’IA propose nom, catégorie, prix et pré-remplit le formulaire.\n\n'
+            + '🧩 Utilise **variation_prix** pour éviter les doublons.\n'
+            + 'Exemples terrain:\n'
+            + '• riz: 1kg / 5kg / 25kg\n'
+            + '• chaussure: 41 / 42 / 43\n'
+            + '• huile: 0.5L / 1L / 5L\n'
+            + '👉 Un seul produit, plusieurs prix selon format/poids/pointure.\n\n'
+            + '🏪 Première mise en place: l’app enregistre aussi les infos de ta boutique (nom, contacts, logo, moyens de paiement).',
           type: 'action_suggestion',
           suggestedActions: [
-            { id: 'go-home-create', label: t('intelligentChat.fallback.goCreate') || '✨ Create Now', icon: 'plus', route: 'Home', category: 'creation', description: '' },
-            { id: 'my-products', label: t('intelligentChat.fallback.myProducts') || '📦 My Products', icon: 'package', route: 'MesProduits', category: 'navigation', description: '' },
-            { id: 'dashboard', label: t('intelligentChat.fallback.dashboard_nav') || '📊 Dashboard', icon: 'bar-chart-3', route: 'DashboardPrestataire', category: 'navigation', description: '' },
+                  { id: 'go-home-create', label: t('intelligentChat.fallback.goCreate') || '✨ Créer maintenant', icon: 'plus', route: 'Home', category: 'creation', description: '' },
+                  { id: 'my-products', label: t('intelligentChat.fallback.myProducts') || '📦 Voir mon catalogue', icon: 'package', route: 'MesProduits', category: 'navigation', description: '' },
+                  { id: 'dashboard', label: t('intelligentChat.fallback.dashboard_nav') || '📊 Voir mes stats', icon: 'bar-chart-3', route: 'DashboardPrestataire', category: 'navigation', description: '' },
           ],
           nextSteps: [
-            t('intelligentChat.followUp.howManageProducts') || 'How do I manage my products?',
-            t('intelligentChat.followUp.howAddVariants') || 'How to add price variants?',
-            t('intelligentChat.followUp.howImportCSV') || 'Can I import products in bulk?',
+            'Comment gérer mes produits après création ?',
+            'Comment lancer une pub depuis Mes services ?',
+            'Comment créer une vidéo produit depuis Mes services ?',
+            'Comment activer la livraison globale pour tous mes produits ?',
           ],
         };
       }
@@ -2490,8 +2608,9 @@ Commencez dès maintenant ! 👇`
           type: 'action_suggestion',
           suggestedActions: creationActions.slice(0, 3),
           nextSteps: [
-            t('intelligentChat.followUp.howCreateFromImage') || 'Can I create from just a photo?',
-            t('intelligentChat.followUp.whatHappensFirst') || 'What happens on first creation?',
+            'Comment créer à partir d’une simple photo ?',
+            'Que se passe-t-il lors de la première création ?',
+            'Comment lancer une pub ensuite ?',
           ],
         };
       }
@@ -2722,59 +2841,6 @@ Commencez dès maintenant ! 👇`
       'ServiceDetail': t('intelligentChat.screenDesc.serviceDetail') || 'Détails d\'un service. Contactez, appelez, itinéraire.',
       'Profile': t('intelligentChat.screenDesc.profile') || 'Votre profil. Infos, paramètres, portefeuille.',
       'PharmacieHome': t('intelligentChat.screenDesc.pharmacy') || 'Pharmacies et médicaments proches.',
-      'HopitalHome': t('intelligentChat.screenDesc.hospital') || 'Hôpitaux, cliniques, RDV, IA triage.',
-      'HotelDashboard': t('intelligentChat.screenDesc.hotel') || 'Gestion hôtel : chambres, réservations, tarifs.',
-      'TaxiHome': t('intelligentChat.screenDesc.taxi') || 'Taxi avec tarification IA dynamique.',
-      'DeliveryHome': t('intelligentChat.screenDesc.delivery') || 'Colis et courses avec livraison.',
-      'CovoiturageHome': t('intelligentChat.screenDesc.carpooling') || 'Covoiturage : trouvez ou proposez.',
-      'OffresEmploiHome': t('intelligentChat.screenDesc.jobs') || 'Emplois : recherche et publication.',
-      'OrientationScolaireHome': t('intelligentChat.screenDesc.orientation') || 'Orientation scolaire avec IA.',
-      'LivreScolaireHome': t('intelligentChat.screenDesc.books') || 'Livres scolaires : achat, vente, troc.',
-      'Navigation': t('intelligentChat.screenDesc.navigation') || 'GPS avec guidage vocal et alertes.',
-      'RechargeTokens': t('intelligentChat.screenDesc.recharge') || 'Rechargez votre solde. Bonus jusqu\'à +20%.',
-      'WalletFinancial': t('intelligentChat.screenDesc.wallet') || 'Suivi financier détaillé.',
-      'SupermarketHome': t('intelligentChat.screenDesc.supermarket') || 'Supermarché : magasins, produits, comparaison IA.',
-      'AssuranceDashboard': t('intelligentChat.screenDesc.assurancePartner') || 'Partenaire assurance : produits, polices, sinistres, stats ; loupe = marché utilisateur.',
-      'InsuranceServicesSearch': t('intelligentChat.screenDesc.insuranceSearch') || 'Recherche / catalogue assurance utilisateur (API search, devis IA).',
-      'InsuranceServicesResults': t('intelligentChat.screenDesc.insuranceResults') || 'Résultats GET /api/assurance/search ; carte → ServiceDetail.',
-      'InsuranceQuoteRequest': t('intelligentChat.screenDesc.insuranceQuoteUser') || 'Devis IA : POST /api/assurance/ai/quote (type obligatoire).',
-      'MesPolicesAssurance': t('intelligentChat.screenDesc.mesPolicesAssurance') || 'Polices client : GET /api/assurance/policies/client.',
-      'DeclarationSinistre': t('intelligentChat.screenDesc.declarationSinistre') || 'Déclaration sinistre : policy requise, createClaim.',
-      'SuiviSinistre': t('intelligentChat.screenDesc.suiviSinistre') || 'Suivi sinistres client : GET claims/client, lecture seule.',
-      'CourierDashboard': t('intelligentChat.screenDesc.courierDashboard') || 'Coursier : livraisons actives (GET /api/deliveries/active), stats, bourse du livre coursier, portefeuille.',
-      'FleetDashboard': t('intelligentChat.screenDesc.fleetDashboard') || 'Partenaire flotte : stats GET /api/partners/me/fleet/*, coursiers, candidatures, analytics (données locales).',
-      'AutomobileDashboard': t('intelligentChat.screenDesc.automobileDashboard') || 'Partenaire auto : stock GET /api/specialized-services/user?type=automobile ; ajout = Alert formulaire intelligent.',
-      'AutoServicesSearch': t('intelligentChat.screenDesc.autoServicesSearch') || 'Recherche véhicules : GET /api/auto/filters, puis résultats /api/auto/search (GPS+rayon ; ville non envoyée au backend).',
-      'AutoServicesResults': t('intelligentChat.screenDesc.autoServicesResults') || 'Liste auto : GET /api/auto/search, ServiceDetail, chat/WhatsApp/appel, avis inline.',
-    };
-    return descriptions[screenName] || t('intelligentChat.fallback.genericHelp', { screen: screenName }) || `Écran « ${screenName} ». Je peux vous guider ici.`;
-  }
-
-  /**
-   * Mettre en cache le contexte d'écran
-   */
-  cacheScreenContext(route: string, context: ScreenContext): void {
-    this.contextCache.set(route, context);
-  }
-
-  /**
-   * Obtenir le contexte mis en cache
-   */
-  getCachedContext(route: string): ScreenContext | undefined {
-    return this.contextCache.get(route);
-  }
-
-  /**
-   * Nettoyer le cache
-   */
-  clearCache(): void {
-    this.contextCache.clear();
-  }
-}
-
-export const intelligentChatService = new IntelligentChatService();
-export default intelligentChatService;
-     'PharmacieHome': t('intelligentChat.screenDesc.pharmacy') || 'Pharmacies et médicaments proches.',
       'HopitalHome': t('intelligentChat.screenDesc.hospital') || 'Hôpitaux, cliniques, RDV, IA triage.',
       'HotelDashboard': t('intelligentChat.screenDesc.hotel') || 'Gestion hôtel : chambres, réservations, tarifs.',
       'TaxiHome': t('intelligentChat.screenDesc.taxi') || 'Taxi avec tarification IA dynamique.',

@@ -39,6 +39,19 @@ const InlineMentionSuggestions: React.FC<InlineMentionSuggestionsProps> = ({
     const [results, setResults] = useState<MentionSuggestion[]>([]);
     const [loading, setLoading] = useState(false);
 
+    const normalizeForSearch = (value?: string): string => {
+        if (!value) return '';
+        try {
+            return value
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .trim();
+        } catch {
+            return value.toLowerCase().trim();
+        }
+    };
+
     const searchUsers = useCallback(async (q: string) => {
         if (!q || q.trim().length < 1) {
             setResults([]);
@@ -48,25 +61,33 @@ const InlineMentionSuggestions: React.FC<InlineMentionSuggestionsProps> = ({
         setLoading(true);
         try {
             const response = await apiGet<any>(
-                `/api/conversations/search-users?query=${encodeURIComponent(q.trim())}&limit=8`
+                `/api/conversations/search-users?query=${encodeURIComponent(q.trim())}&limit=12&search_type=all`
             );
 
             if (response.success && response.data) {
                 const backendResp = response.data as any;
                 const users: MentionSuggestion[] = backendResp?.data || (Array.isArray(backendResp) ? backendResp : []);
 
-                // Tri intelligent : correspondances exactes d'abord
-                const queryLower = q.toLowerCase();
-                const sorted = users.sort((a, b) => {
-                    const aName = (a.nom_complet || '').toLowerCase();
-                    const bName = (b.nom_complet || '').toLowerCase();
+                const queryLower = normalizeForSearch(q);
+                const score = (user: MentionSuggestion): number => {
+                    const name = normalizeForSearch(user.nom_complet);
+                    const email = normalizeForSearch(user.email);
 
-                    if (aName.startsWith(queryLower) && !bName.startsWith(queryLower)) return -1;
-                    if (!aName.startsWith(queryLower) && bName.startsWith(queryLower)) return 1;
-                    if (aName.includes(queryLower) && !bName.includes(queryLower)) return -1;
-                    if (!aName.includes(queryLower) && bName.includes(queryLower)) return 1;
+                    if (name === queryLower || email === queryLower) return 100;
+                    if (name.startsWith(queryLower) || email.startsWith(queryLower)) return 80;
+                    if (name.includes(queryLower) || email.includes(queryLower)) return 60;
                     return 0;
+                };
+
+                // Fallback local pour fiabiliser l'affichage même si backend renvoie large.
+                const filtered = users.filter((user) => {
+                    const name = normalizeForSearch(user.nom_complet);
+                    const email = normalizeForSearch(user.email);
+                    return name.includes(queryLower) || email.includes(queryLower);
                 });
+
+                const source = filtered.length > 0 ? filtered : users;
+                const sorted = source.sort((a, b) => score(b) - score(a));
 
                 setResults(sorted);
             } else {

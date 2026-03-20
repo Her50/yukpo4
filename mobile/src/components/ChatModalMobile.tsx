@@ -31,6 +31,7 @@ import { modernColors } from '../theme/modernTheme';
 import NegotiatedPriceModal from './chat/NegotiatedPriceModal';
 import OrderDeliveryModal from './delivery/OrderDeliveryModal';
 import InAppCallModal from './InAppCallModal';
+import InlineMentionSuggestions from './InlineMentionSuggestions';
 import LinkableText from './LinkableText';
 import ProductCommentsSection from './ProductCommentsSection';
 import ProductGalleryPickerModal from './ProductGalleryPickerModal';
@@ -69,6 +70,17 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     isPrivateConversation = false,
     initialMessages
 }) => {
+    const extractActiveMentionQuery = (text: string): string | null => {
+        if (!text) return null;
+        const match = text.match(/(?:^|[\s([{])@([^@\n\r]*)$/);
+        if (!match) return null;
+        const query = match[1]
+            .replace(/^[\s]+/, '')
+            .replace(/[),!?;:]+$/, '')
+            .trim();
+        return query.length > 0 ? query : null;
+    };
+
     const navigation = useNavigation();
     const { t, language } = useLanguageSafe();
     const keyboardBottomInset = useKeyboardBottomInset();
@@ -572,21 +584,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const handleTyping = (text: string) => {
         setNewMessage(text);
 
-        // ✅ FIX: Détecter le @ pour ouvrir le mention picker
-        // On utilise text.length comme position du curseur (l'user tape à la fin)
-        const lastAtIndex = text.lastIndexOf('@');
-        if (lastAtIndex !== -1) {
-            // Extraire le texte après le dernier @
-            const query = text.substring(lastAtIndex + 1);
-
-            // Si pas d'espace après le @, c'est une mention en cours
-            if (!query.includes(' ')) {
-                setMentionQuery(query);
-                setShowMentionPicker(true);
-                console.log('[ChatModalMobile] @ détecté, query:', query);
-            } else {
-                setShowMentionPicker(false);
-            }
+        const activeQuery = extractActiveMentionQuery(text);
+        if (activeQuery) {
+            setMentionQuery(activeQuery);
+            setShowMentionPicker(true);
+            console.log('[ChatModalMobile] @ détecté, query:', activeQuery);
         } else {
             setShowMentionPicker(false);
         }
@@ -611,13 +613,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         const lastAtIndex = newMessage.lastIndexOf('@');
         if (lastAtIndex === -1) return;
 
-        // Remplacer le @query par @nom_utilisateur
         const before = newMessage.substring(0, lastAtIndex);
-        const afterAt = newMessage.substring(lastAtIndex + 1);
-        const spaceIndex = afterAt.indexOf(' ');
-        const trailing = spaceIndex >= 0 ? afterAt.substring(spaceIndex) : '';
-
-        const newText = `${before}@${user.nom_complet} ${trailing}`.trimEnd() + ' ';
+        const newText = `${before}@${user.nom_complet} `;
         setNewMessage(newText);
 
         // Ajouter l'ID à la liste des mentions

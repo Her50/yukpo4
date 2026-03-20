@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import ReactNative from 'react-native';
 import { Card, TextInput } from 'react-native-paper';
 import { theme } from '../theme/theme';
+import InlineMentionSuggestions from './InlineMentionSuggestions';
 import UserMentionPicker from './UserMentionPicker';
 
 const { Alert, StyleSheet, Text, TouchableOpacity, View } = ReactNative;
@@ -49,6 +50,17 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
   customStyle,
   onContactUser
 }) => {
+  const extractActiveMentionQuery = (text: string): string | null => {
+    if (!text) return null;
+    const match = text.match(/(?:^|[\s([{])@([^@\n\r]*)$/);
+    if (!match) return null;
+    const query = match[1]
+      .replace(/^[\s]+/, '')
+      .replace(/[),!?;:]+$/, '')
+      .trim();
+    return query.length > 0 ? query : null;
+  };
+
   const [showReviewFormLocal, setShowReviewFormLocal] = useState(showReviewForm);
   const [rating, setRating] = useState(service.user_rating || 0);
   const [comment, setComment] = useState('');
@@ -128,19 +140,10 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
   const handleCommentChange = (text: string) => {
     setComment(text);
 
-    // D├®tecter @mention
-    const lastAtIndex = text.lastIndexOf('@');
-    if (lastAtIndex >= 0) {
-      const textAfterAt = text.substring(lastAtIndex + 1);
-      const spaceIndex = textAfterAt.indexOf(' ');
-
-      if (spaceIndex === -1) {
-        // Pas encore d'espace apr├¿s @, rechercher
-        setMentionQuery(textAfterAt);
-        setShowMentionPicker(true);
-      } else {
-        setShowMentionPicker(false);
-      }
+    const activeQuery = extractActiveMentionQuery(text);
+    if (activeQuery) {
+      setMentionQuery(activeQuery);
+      setShowMentionPicker(true);
     } else {
       setShowMentionPicker(false);
     }
@@ -150,11 +153,7 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
   const insertMention = (user: User) => {
     const lastAtIndex = comment.lastIndexOf('@');
     const beforeAt = comment.substring(0, lastAtIndex);
-    const afterAt = comment.substring(lastAtIndex + 1);
-    const spaceIndex = afterAt.indexOf(' ');
-    const afterMention = spaceIndex >= 0 ? afterAt.substring(spaceIndex) : '';
-
-    setComment(`${beforeAt}@${user.nom_complet} ${afterMention}`);
+    setComment(`${beforeAt}@${user.nom_complet} `);
     setShowMentionPicker(false);
   };
 

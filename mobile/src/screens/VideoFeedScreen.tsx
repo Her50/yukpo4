@@ -14,7 +14,6 @@ import {
     Platform,
     Pressable,
     RefreshControl,
-    Share,
     StatusBar,
     StyleSheet,
     Text,
@@ -23,8 +22,8 @@ import {
     View,
     ViewToken
 } from 'react-native';
+import GlobalShareModal, { GlobalSharePayload } from '../components/GlobalShareModal';
 import OrderDeliveryModal from '../components/delivery/OrderDeliveryModal';
-import InternalShareButton from '../components/InternalShareButton';
 import ProductCommentsSection from '../components/ProductCommentsSection';
 import ProductDescriptionSection from '../components/ProductDescriptionSection';
 import SafeIcon from '../components/SafeIcon';
@@ -297,6 +296,8 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [selectedDeliveryItem, setSelectedDeliveryItem] = useState<FeedItem | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [shareModalVisible, setShareModalVisible] = useState(false);
+    const [sharePayload, setSharePayload] = useState<GlobalSharePayload | null>(null);
     const [searchExpanded, setSearchExpanded] = useState(false);
     const searchWidthAnim = useRef(new Animated.Value(0)).current;
     const searchInputRef = useRef<TextInput>(null);
@@ -812,21 +813,21 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     const handleShare = useCallback(async (item: FeedItem) => {
         try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
-        try {
-            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
-            const shareUrl = item.serviceId
-                ? `${SHARE_BASE_URL}/product/${item.serviceId}_${item.productIndex ?? 0}`
-                : item.videoUrl;
+        const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
+        const shareUrl = item.serviceId
+            ? `${SHARE_BASE_URL}/product/${item.serviceId}_${item.productIndex ?? 0}`
+            : item.videoUrl;
 
-            let shareText = `🎬 ${item.titre}`;
-            if (item.description) shareText += `\n\n${item.description}`;
-            if (item.sellerName) shareText += `\n🏪 ${item.sellerName}`;
-            shareText += `\n\n🔗 Voir sur Yukpo:\n${shareUrl}`;
-
-            await Share.share({ message: shareText, url: shareUrl, title: item.titre });
-        } catch (error) {
-            console.warn('[VideoFeedScreen] Share error', error);
-        }
+        setSharePayload({
+            title: item.titre || 'Vidéo',
+            description: item.description || '',
+            shareUrl,
+            contentType: 'video',
+            serviceId: item.serviceId ?? null,
+            productIndex: item.productIndex ?? null,
+            extraData: { videoUrl: item.videoUrl, sellerName: item.sellerName || '' },
+        });
+        setShareModalVisible(true);
     }, []);
 
     // ✅ FIX 2026-03-14: Barre de recherche style Facebook — icône ronde → expand au clic
@@ -1278,24 +1279,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         <Text style={styles.actionLabel}>Partager</Text>
                     </TouchableOpacity>
 
-                    {/* ✅ NOUVEAU 2026-03-14: Partage interne vidéo */}
-                    <View style={styles.actionButton}>
-                        <InternalShareButton
-                            payload={{
-                                contentType: 'video',
-                                serviceId: item.serviceId ?? null,
-                                productIndex: item.productIndex ?? null,
-                                title: item.titre || 'Vidéo',
-                                description: item.description || '',
-                                extraData: { videoUrl: item.videoUrl, sellerName: item.sellerName },
-                            }}
-                            iconSize={22}
-                            iconColor="#fff"
-                            showLabel
-                            label="Envoyer"
-                            style={{ alignItems: 'center', padding: 0 }}
-                        />
-                    </View>
                 </View>
 
                 {/* ✅ Disque tournant vendeur (comme TikTok) */}
@@ -1497,6 +1480,15 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                     clientUserId={parseInt(user?.id || '0', 10)} // ✅ CORRECTION: Convertir string en number avec base 10
                 />
             )}
+
+            <GlobalShareModal
+                visible={shareModalVisible}
+                onClose={() => {
+                    setShareModalVisible(false);
+                    setSharePayload(null);
+                }}
+                payload={sharePayload}
+            />
         </SafeNativeView>
     );
 };

@@ -25,6 +25,7 @@ import {
     ServiceTeamMember,
     ServiceTeamRole
 } from '../types/serviceTeam';
+import InlineMentionSuggestions, { MentionSuggestion } from './InlineMentionSuggestions';
 import SafeIcon from './SafeIcon';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
 import UserMentionPicker from './UserMentionPicker';
@@ -54,6 +55,37 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
     const [inviteEmail, setInviteEmail] = useState('');
     const [inviteRole, setInviteRole] = useState<ServiceTeamRole | null>(null);
     const [showUserPicker, setShowUserPicker] = useState(false);
+    const [inviteMentionQuery, setInviteMentionQuery] = useState('');
+    const [showInviteMentionSuggestions, setShowInviteMentionSuggestions] = useState(false);
+
+    const extractActiveMentionQuery = (text: string): string | null => {
+        if (!text) return null;
+        const match = text.match(/(?:^|[\s([{])@([^@\n\r]*)$/);
+        if (!match) return null;
+        const query = match[1]
+            .replace(/^[\s]+/, '')
+            .replace(/[),!?;:]+$/, '')
+            .trim();
+        return query.length > 0 ? query : null;
+    };
+
+    const handleInviteInputChange = (text: string) => {
+        setInviteEmail(text);
+        const mentionQuery = extractActiveMentionQuery(text);
+        if (mentionQuery) {
+            setInviteMentionQuery(mentionQuery);
+            setShowInviteMentionSuggestions(true);
+            return;
+        }
+        const plainQuery = text.trim().replace(/^@/, '');
+        if (plainQuery.length >= 2) {
+            setInviteMentionQuery(plainQuery);
+            setShowInviteMentionSuggestions(true);
+        } else {
+            setInviteMentionQuery('');
+            setShowInviteMentionSuggestions(false);
+        }
+    };
 
     useEffect(() => {
         loadTeamData();
@@ -488,17 +520,19 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                         <TextInput
                             style={styles.textInput}
                             value={inviteEmail}
-                            onChangeText={setInviteEmail}
+                            onChangeText={handleInviteInputChange}
                             placeholder="exemple@email.com ou @username"
                             keyboardType="email-address"
                             autoCapitalize="none"
                         />
-                        {inviteEmail.trim().length >= 2 && (
+                        {showInviteMentionSuggestions && inviteMentionQuery.length >= 1 && (
                             <InlineMentionSuggestions
-                                query={inviteEmail}
-                                visible={inviteEmail.trim().length >= 2}
+                                query={inviteMentionQuery}
+                                visible={showInviteMentionSuggestions}
                                 onSelect={(user: MentionSuggestion) => {
                                     setInviteEmail(user.email || user.nom_complet || '');
+                                    setInviteMentionQuery('');
+                                    setShowInviteMentionSuggestions(false);
                                 }}
                                 maxHeight={160}
                             />

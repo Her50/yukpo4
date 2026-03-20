@@ -17,6 +17,7 @@ import {
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useKeyboardBottomInset } from '../hooks/useKeyboardBottomInset';
 import { useScreenContext } from '../hooks/useScreenContext';
+import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 import { ChatMessage, ChatResponse, intelligentChatService, VisualElement } from '../services/intelligentChatService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
@@ -425,6 +426,14 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     if (action.id === 'discover') {
       const discoveryQuery = t('intelligentChat.discoveryQuery') || 'What is Yukpo? Show me all features';
       handleSendMessage(discoveryQuery);
+    } else if (
+      action.id === 'services' ||
+      action.id === 'tab-services' ||
+      action.route === 'MesServices' ||
+      action.route === 'Services'
+    ) {
+      navigateToMesServicesHub(navigation as any);
+      handleClose();
     } else if (action.route) {
       try {
         // @ts-ignore - dynamic route navigation

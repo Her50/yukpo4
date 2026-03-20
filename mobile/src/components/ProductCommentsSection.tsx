@@ -24,6 +24,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { commentsApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import InlineMentionSuggestions, { MentionSuggestion } from './InlineMentionSuggestions';
 import { NativeCard } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
@@ -192,6 +193,17 @@ const normalizeComments = (items: any[]): ProductComment[] =>
         can_delete: Boolean(item.can_delete),
         replies: normalizeComments(item.replies || []),
     }));
+
+const extractActiveMentionQuery = (text: string): string | null => {
+    if (!text || !text.length) return null;
+    const match = text.match(/(?:^|[\s([{])@([^@\n\r]*)$/);
+    if (!match) return null;
+    const sanitized = match[1]
+        .replace(/^[\s]+/, '')
+        .replace(/[),!?;:]+$/, '')
+        .trim();
+    return sanitized.length > 0 ? sanitized : null;
+};
 
 const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
     serviceId,
@@ -584,16 +596,10 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
 
     const handleComposerChange = useCallback((text: string) => {
         setComposerContent(text);
-        const lastAtIndex = text.lastIndexOf('@');
-        if (lastAtIndex >= 0) {
-            const textAfterAt = text.substring(lastAtIndex + 1);
-            const spaceIndex = textAfterAt.indexOf(' ');
-            if (spaceIndex === -1) {
-                setMentionQuery(textAfterAt);
-                setShowMentionPicker(true);
-            } else {
-                setShowMentionPicker(false);
-            }
+        const activeQuery = extractActiveMentionQuery(text);
+        if (activeQuery) {
+            setMentionQuery(activeQuery);
+            setShowMentionPicker(true);
         } else {
             setShowMentionPicker(false);
         }
@@ -603,13 +609,8 @@ const ProductCommentsSection: React.FC<ProductCommentsSectionProps> = ({
         (userId: number, userName: string, userEmail: string, userAvatar?: string) => {
             const lastAtIndex = composerContent.lastIndexOf('@');
             if (lastAtIndex < 0) return;
-
             const beforeAt = composerContent.substring(0, lastAtIndex);
-            const afterAt = composerContent.substring(lastAtIndex + 1);
-            const spaceIndex = afterAt.indexOf(' ');
-            const trailing = spaceIndex >= 0 ? afterAt.substring(spaceIndex) : ' ';
-
-            const newContent = `${beforeAt}@${userName}${trailing.startsWith(' ') ? trailing : ` ${trailing}`}`.trimEnd() + ' ';
+            const newContent = `${beforeAt}@${userName} `;
             setComposerContent(newContent);
 
             setSelectedMentions((prev) => {

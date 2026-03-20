@@ -15,6 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { commentsApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import InlineMentionSuggestions from './InlineMentionSuggestions';
 import SafeIcon from './SafeIcon';
 import UserMentionPicker from './UserMentionPicker';
 
@@ -107,6 +108,17 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [mentionPickerVisible, setMentionPickerVisible] = useState(false);
     const [selectedMentions, setSelectedMentions] = useState<MentionUser[]>([]);
+
+    const extractActiveMentionQuery = useCallback((text: string): string | null => {
+        if (!text) return null;
+        const match = text.match(/(?:^|[\s([{])@([^@\n\r]*)$/);
+        if (!match) return null;
+        const query = match[1]
+            .replace(/^[\s]+/, '')
+            .replace(/[),!?;:]+$/, '')
+            .trim();
+        return query.length > 0 ? query : null;
+    }, []);
 
     const fetchComments = useCallback(async () => {
         try {
@@ -249,8 +261,8 @@ const VideoCommentsModal: React.FC<VideoCommentsModalProps> = ({
 
                     {(() => {
                         const lastAt = input.lastIndexOf('@');
-                        const inlineMentionQuery = lastAt >= 0 && !input.substring(lastAt + 1).includes(' ') ? input.substring(lastAt + 1) : '';
-                        return inlineMentionQuery.length >= 1 ? (
+                        const inlineMentionQuery = extractActiveMentionQuery(input) ?? '';
+                        return inlineMentionQuery.length >= 1 && lastAt >= 0 ? (
                             <InlineMentionSuggestions
                                 query={inlineMentionQuery}
                                 visible={true}
