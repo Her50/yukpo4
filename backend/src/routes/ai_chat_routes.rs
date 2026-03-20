@@ -5,9 +5,10 @@ use axum::{
     routing::post,
     Router,
 };
+use log::{error, info, warn};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;
@@ -530,6 +531,7 @@ fn build_system_prompt_for_mode(
 
     let mode = ctx.get("mode").and_then(|v| v.as_str()).unwrap_or("");
     let context_prompt = ctx.get("context_prompt").and_then(|v| v.as_str()).unwrap_or("");
+    let context_prompt = truncate_for_prompt(context_prompt, 4000);
     let screen = ctx.get("screen").and_then(|v| v.as_str()).unwrap_or("");
     let screen_type = ctx.get("screen_type").and_then(|v| v.as_str()).unwrap_or("");
     let category = ctx.get("category").and_then(|v| v.as_str()).unwrap_or("");
@@ -680,12 +682,42 @@ fn build_system_prompt_for_mode(
     )
 }
 
+fn truncate_for_prompt(input: &str, max_len: usize) -> String {
+    if input.len() <= max_len {
+        return input.to_string();
+    }
+    let mut end = max_len;
+    while !input.is_char_boundary(end) && end > 0 {
+        end -= 1;
+    }
+    format!("{}\n\n[Context truncated for stability]", &input[..end])
+}
+
 /// Chat IA unifié avec OpenAI — supporte les modes assistant guide et chatbot service
 pub async fn chat_ai(
     State(_state): State<Arc<AppState>>,
-    Extension(_user): Extension<AuthenticatedUser>,
+    user: Option<Extension<AuthenticatedUser>>,
     Json(payload): Json<ChatRequest>,
 ) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
+    let user_id = user.as_ref().map(|Extension(u)| u.id).unwrap_or(0);
+    if user_id == 0 {
+        warn!(
+            "[AI Chat] AuthenticatedUser manquant, rejet en mode gracieux (évite 500 extracteur)"
+        );
+        return Ok(ResponseJson(serde_json::json!({
+            "message": "Authentification requise pour utiliser l'assistant IA",
+            "type": "text",
+            "confidence": 0.0
+        })));
+    }
+
+    info!(
+        "[AI Chat] Début requête user_id={}, message_len={}, has_context={}",
+        user_id,
+        payload.message.len(),
+        payload.context.is_some()
+    );
+
     if let Err(e) = validate_input_length(&payload.message, 5000) {
         return Ok(ResponseJson(serde_json::json!({
             "message": format!("Erreur: {}", e),
@@ -748,6 +780,7 @@ pub async fn chat_ai(
         "temperature": 0.7
     });
 
+    let openai_start = Instant::now();
     let response = match client
         .post("https://api.openai.com/v1/chat/completions")
         .header("Authorization", format!("Bearer {}", api_key))
@@ -757,7 +790,13 @@ pub async fn chat_ai(
         .await
     {
         Ok(resp) => resp,
-        Err(_) => {
+        Err(e) => {
+            error!(
+                "[AI Chat] Erreur réseau OpenAI user_id={}, elapsed_ms={}, err={}",
+                user_id,
+                openai_start.elapsed().as_millis(),
+                e
+            );
             return Ok(ResponseJson(serde_json::json!({
                 "message": "Erreur de connexion à l'API",
                 "type": "text",
@@ -767,6 +806,15 @@ pub async fn chat_ai(
     };
 
     if !response.status().is_success() {
+        let status = response.status();
+        let error_body = response.text().await.unwrap_or_default();
+        error!(
+            "[AI Chat] OpenAI status non-success user_id={}, status={}, elapsed_ms={}, body_snippet={}",
+            user_id,
+            status.as_u16(),
+            openai_start.elapsed().as_millis(),
+            error_body.chars().take(300).collect::<String>()
+        );
         return Ok(ResponseJson(serde_json::json!({
             "message": "Erreur de l'API IA",
             "type": "text",
@@ -776,7 +824,13 @@ pub async fn chat_ai(
 
     let openai_response: serde_json::Value = match response.json().await {
         Ok(data) => data,
-        Err(_) => {
+        Err(e) => {
+            error!(
+                "[AI Chat] Erreur parsing OpenAI user_id={}, elapsed_ms={}, err={}",
+                user_id,
+                openai_start.elapsed().as_millis(),
+                e
+            );
             return Ok(ResponseJson(serde_json::json!({
                 "message": "Erreur de parsing de la réponse",
                 "type": "text",
@@ -784,6 +838,11 @@ pub async fn chat_ai(
             })));
         }
     };
+    info!(
+        "[AI Chat] Succès OpenAI user_id={}, elapsed_ms={}",
+        user_id,
+        openai_start.elapsed().as_millis()
+    );
 
     let raw_content = openai_response["choices"][0]["message"]["content"]
         .as_str()
@@ -1195,10 +1254,10 @@ pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/ai/contextual-chat", post(contextual_chat))
         .route("/ai/recommendations", post(get_recommendations))
         .route("/ai/analyze", post(analyze_text))
-        .layer(axum::middleware::from_fn(jwt_auth))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             ia_rate_limit,
         ))
+        .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)
 }

@@ -12,6 +12,7 @@ import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiPost } from '../services/api';
+import { coachingNotificationService } from '../services/coachingNotificationService';
 import {
     estimatePoiCost, fetchDynamicPricing, formatPrice,
     formatPriceInCurrency, getMicroFeaturePrice,
@@ -592,6 +593,17 @@ export function useNavigationPayment() {
     useEffect(() => {
         if (isCoachingActive) checkCoachingExpiry();
     }, [isCoachingActive]);
+
+    // ── Activer/désactiver les notifications Coach IA (sonores + push)
+    // Règle: actif si abonnement/trial actif OU période de gratuité globale navigation.
+    useEffect(() => {
+        const shouldEnableCoachPush = isCoachingActive || isNavigationFreePeriod;
+        if (shouldEnableCoachPush) {
+            coachingNotificationService.activate().catch(() => { });
+        } else {
+            coachingNotificationService.deactivate().catch(() => { });
+        }
+    }, [isCoachingActive, isNavigationFreePeriod]);
 
     // ── Suspension alertes communautaires ──
     const suspendAlerts = useCallback(async () => {

@@ -35,22 +35,10 @@ interface BookEntry {
     confidence: number;
 }
 
-const MODE_OPTIONS = [
-    { key: 'troc', label: 'Troc', icon: 'repeat', color: '#3b82f6', desc: t('bookRecapV2Screen.echangerContreUnAutreLivre') },
-    { key: 'vente', label: 'Vente', icon: 'dollar-sign', color: '#22c55e', desc: t('bookRecapV2Screen.vendreAuPrixCalcule') },
-    { key: 'don', label: 'Don', icon: 'heart', color: '#ef4444', desc: 'Donner gratuitement' },
-];
-
 const ETAT_COLORS: Record<string, string> = {
     bon: '#22c55e',
     acceptable: '#f59e0b',
     rejete: '#ef4444',
-};
-
-const ETAT_LABELS: Record<string, string> = {
-    bon: t('bookRecapV2Screen.bonEtat'),
-    acceptable: 'Acceptable',
-    rejete: t('bookRecapV2Screen.rejete'),
 };
 
 const BookRecapV2Screen: React.FC = () => {
@@ -65,6 +53,16 @@ const BookRecapV2Screen: React.FC = () => {
     const totalValue: number = params?.totalValue || 0;
     const gpsCoords: string = params?.gpsCoords || '';
     const gpsAddress: string = params?.gpsAddress || '';
+    const MODE_OPTIONS = [
+        { key: 'troc', label: 'Troc', icon: 'repeat', color: '#3b82f6', desc: t('bookRecapV2Screen.echangerContreUnAutreLivre') },
+        { key: 'vente', label: 'Vente', icon: 'dollar-sign', color: '#22c55e', desc: t('bookRecapV2Screen.vendreAuPrixCalcule') },
+        { key: 'don', label: 'Don', icon: 'heart', color: '#ef4444', desc: t('bookRecapV2Screen.donnerGratuitement', 'Donner gratuitement') },
+    ];
+    const ETAT_LABELS: Record<string, string> = {
+        bon: t('bookRecapV2Screen.bonEtat'),
+        acceptable: t('bookRecapV2Screen.acceptable', 'Acceptable'),
+        rejete: t('bookRecapV2Screen.rejete'),
+    };
 
     // Mode par livre (par défaut: troc)
     const [bookModes, setBookModes] = useState<Record<number, string>>(() => {
@@ -297,7 +295,7 @@ const BookRecapV2Screen: React.FC = () => {
             <View style={styles.gpsInfo}>
                 <SafeIcon name="map-pin" size={14} color="#6b7280" />
                 <Text style={styles.gpsInfoText}>
-                    Récupération: {gpsAddress || gpsCoords?.substring(0, 25)}
+                    Récupération: {gpsAddress || t('bookRecapV2Screen.lieuSelectionne', 'Lieu sélectionné')}
                 </Text>
             </View>
 

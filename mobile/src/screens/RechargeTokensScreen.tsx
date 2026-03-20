@@ -245,6 +245,7 @@ const RechargeTokensScreen: React.FC = () => {
   ];
 
   const MIN_RECHARGE_XAF = 1000;
+  const DIGITS_ONLY_REGEX = /[^\d]/g;
 
   // ── Enforcement dette: montant minimum = dette cumulée ──
   const hasDebt = (debtAmount ?? 0) > 0;
@@ -350,7 +351,7 @@ const RechargeTokensScreen: React.FC = () => {
     // Enforce minimum amount (montant libre compris)
     const chosenAmount = selectedOption
       ? rechargeOptions.find(opt => opt.id === selectedOption)?.amount || 0
-      : parseInt(customAmount) || 0;
+      : parseInt((customAmount || '').replace(DIGITS_ONLY_REGEX, ''), 10) || 0;
 
     if (chosenAmount < minimumRechargeAmount) {
       if (hasDebt) {
@@ -398,7 +399,7 @@ const RechargeTokensScreen: React.FC = () => {
 
       const amount = selectedOption
         ? rechargeOptions.find(opt => opt.id === selectedOption)?.amount || 0
-        : parseInt(customAmount) || 0;
+        : parseInt((customAmount || '').replace(DIGITS_ONLY_REGEX, ''), 10) || 0;
 
       // Appel API via l'agrégateur (CinetPay/NotchPay)
       const response = await apiPost('/api/payments/initiate', {
@@ -540,11 +541,12 @@ const RechargeTokensScreen: React.FC = () => {
   }, [t, refreshUser]);
 
   const getSelectedAmount = () => {
+    const parsedCustomAmount = parseInt((customAmount || '').replace(DIGITS_ONLY_REGEX, ''), 10) || 0;
     if (selectedOption) {
       const option = rechargeOptions.find(opt => opt.id === selectedOption);
       return option?.amount || 0;
     }
-    return parseInt(customAmount) || 0;
+    return parsedCustomAmount;
   };
 
   const getSelectedTokens = () => {
@@ -615,7 +617,7 @@ const RechargeTokensScreen: React.FC = () => {
             placeholder={t('rechargeScreen.enterAmount') || `Entrez le montant en ${userCurrency.symbol}`}
             value={customAmount}
             onChangeText={(text) => {
-              setCustomAmount(text);
+              setCustomAmount((text || '').replace(DIGITS_ONLY_REGEX, ''));
               setSelectedOption(null);
             }}
             keyboardType="numeric"
@@ -623,6 +625,13 @@ const RechargeTokensScreen: React.FC = () => {
           {customAmount && (
             <Text style={styles.customTokens}>
               {(t('rechargeScreen.willBeCredited') || t('rechargeTokens.amountFcfaSerontCreditesA')).replace('{{amount}}', (parseInt(customAmount) || 0).toLocaleString())}
+            </Text>
+          )}
+          {!selectedOption && customAmount !== '' && getSelectedAmount() < minimumRechargeAmount && (
+            <Text style={styles.customErrorText}>
+              {(t('rechargeScreen.minAmountHint') || 'Montant minimum: {{minimum}} {{currency}}')
+                .replace('{{minimum}}', String(minimumRechargeAmount))
+                .replace('{{currency}}', userCurrency.symbol)}
             </Text>
           )}
         </Card.Content>
@@ -902,8 +911,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 120,
+    padding: 12,
+    paddingBottom: 96,
   },
   historyButton: {
     backgroundColor: theme.colors.primary,
@@ -958,12 +967,12 @@ const styles = StyleSheet.create({
   stepsIndicator: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 32,
+    marginBottom: 18,
   },
   step: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderBottomWidth: 2,
     borderBottomColor: theme.colors.border,
   },
@@ -971,7 +980,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.primary,
   },
   stepText: {
-    fontSize: 14,
+    fontSize: 12,
     color: theme.colors.textSecondary,
   },
   stepTextActive: {
@@ -982,22 +991,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stepTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: 'bold',
     color: theme.colors.text,
-    marginBottom: 20,
+    marginBottom: 12,
     textAlign: 'center',
   },
   optionsContainer: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginBottom: 8,
     elevation: 2,
     position: 'relative',
   },
@@ -1027,49 +1037,57 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   optionAmount: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: theme.colors.text,
   },
   optionTokens: {
-    fontSize: 14,
+    fontSize: 12,
     color: theme.colors.textSecondary,
-    marginTop: 4,
+    marginTop: 2,
   },
   bonusText: {
     color: theme.colors.primary,
     fontWeight: '600',
   },
   savingsText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#4CAF50',
     fontWeight: '600',
-    marginTop: 4,
+    marginTop: 2,
   },
   customCard: {
-    marginBottom: 20,
+    marginBottom: 12,
     elevation: 2,
   },
   customTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: theme.colors.text,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   customInput: {
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
     color: theme.colors.text,
     backgroundColor: theme.colors.surface,
+    minHeight: 40,
   },
   customTokens: {
-    fontSize: 14,
+    fontSize: 12,
     color: theme.colors.primary,
-    marginTop: 8,
+    marginTop: 6,
     fontWeight: '500',
+  },
+  customErrorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    marginTop: 6,
+    fontWeight: '600',
   },
   paymentMethodsContainer: {
     marginBottom: 20,
@@ -1129,14 +1147,14 @@ const styles = StyleSheet.create({
   navigationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 12,
   },
   backButton: {
     flex: 1,
     marginRight: 8,
     backgroundColor: '#F3F4F6',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -1144,15 +1162,15 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: '#6B7280',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   nextButton: {
     flex: 1,
     marginLeft: 8,
     backgroundColor: '#6366F1',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1162,15 +1180,15 @@ const styles = StyleSheet.create({
   },
   nextButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   confirmButton: {
     flex: 1,
     marginLeft: 8,
     backgroundColor: '#10B981',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1180,7 +1198,7 @@ const styles = StyleSheet.create({
   },
   confirmButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   phoneCard: {

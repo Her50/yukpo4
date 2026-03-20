@@ -36,6 +36,7 @@ import { API_ENDPOINTS } from '../config/api.config';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
+import { coachingNotificationService } from '../services/coachingNotificationService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 import { modernColors } from '../theme/modernTheme';
 import { hapticError } from '../utils/hapticFeedback';
@@ -174,8 +175,9 @@ const HomeScreen: React.FC = () => {
 
     // ✅ NOUVEAU: Charger le nombre de notifications non lues
     const loadUnreadNotificationsCount = useCallback(async () => {
+        const coachN = await coachingNotificationService.getUnreadCount().catch(() => 0);
         if (!user?.id) {
-            setUnreadNotificationsCount(0);
+            setUnreadNotificationsCount(coachN);
             return;
         }
 
@@ -183,11 +185,12 @@ const HomeScreen: React.FC = () => {
             const response = await apiGet(API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT(String(user.id)));
             // ✅ CORRIGÉ: Le backend retourne { success: true, count: number }
             const count = (response.data as any)?.count ?? 0;
-            setUnreadNotificationsCount(typeof count === 'number' ? count : 0);
-            console.log('[HomeScreen] 📬 Notifications non lues:', count);
+            const apiN = typeof count === 'number' ? count : 0;
+            setUnreadNotificationsCount(apiN + coachN);
+            console.log('[HomeScreen] 📬 Notifications non lues (API + Coach):', apiN, coachN);
         } catch (error) {
             console.error('[HomeScreen] Erreur chargement notifications non lues:', error);
-            setUnreadNotificationsCount(0);
+            setUnreadNotificationsCount(coachN);
         }
     }, [user?.id]);
 

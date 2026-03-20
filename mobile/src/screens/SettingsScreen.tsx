@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Migration vers des composants React Native natifs pour éviter les crashes
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
-import { useNavigation, useRoute } from '@react-navigation/native'; // ✅ NOUVEAU 2026-02-06: Pour gérer les paramètres de route
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native'; // ✅ NOUVEAU 2026-02-06: Pour gérer les paramètres de route
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import ReactNative from 'react-native';
@@ -10,6 +10,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { apiPatch, apiPost } from '../services/api'; // ✅ NOUVEAU 2026-02-06: Ajouter apiPost pour changement de mot de passe
+import { coachingNotificationService } from '../services/coachingNotificationService';
+import { notificationUiPreferences } from '../services/notificationUiPreferences';
 import { theme } from '../theme/theme';
 import SafeStorage from '../utils/safeStorage';
 const { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, Modal } = ReactNative;
@@ -97,6 +99,13 @@ const SettingsScreen: React.FC = () => {
   });
 
   const [activeSection, setActiveSection] = useState<string>('profile');
+  const [coachIaSoundFull, setCoachIaSoundFull] = useState(true);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      notificationUiPreferences.getCoachIaSoundFull().then(setCoachIaSoundFull).catch(() => { });
+    }, []),
+  );
 
   // ✅ NOUVEAU 2026-02-06: Vérifier les paramètres de route au montage
   useEffect(() => {
@@ -350,6 +359,27 @@ const SettingsScreen: React.FC = () => {
           onValueChange={(value) => updateSetting('marketingEmails', value)}
           trackColor={{ false: '#767577', true: '#81b0ff' }}
           thumbColor={settings.marketingEmails ? '#f5dd4b' : '#f4f3f4'}
+        />
+      </View>
+
+      <View style={[styles.settingRow, { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#E5E7EB' }]}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>
+            {t('settings.coachIaNavTitle') || '🤖 Coach IA — Navigation intelligente'}
+          </Text>
+          <Text style={styles.settingDescription}>
+            {t('settings.coachIaNavDesc') || 'Notifications de motivation liées à l’écran Navigation (GPS). Désactivé : alerte visuelle + vibration, sans son.'}
+          </Text>
+        </View>
+        <Switch
+          value={coachIaSoundFull}
+          onValueChange={async (value) => {
+            setCoachIaSoundFull(value);
+            await notificationUiPreferences.setCoachIaSoundFull(value);
+            await coachingNotificationService.refreshScheduleIfActive();
+          }}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={coachIaSoundFull ? '#f5dd4b' : '#f4f3f4'}
         />
       </View>
     </View>

@@ -7,6 +7,7 @@
 import * as Notifications from 'expo-notifications';
 import i18n from 'i18next';
 import { Platform, Vibration } from 'react-native';
+import { notificationUiPreferences } from './notificationUiPreferences';
 import SafeStorage from '../utils/safeStorage';
 
 // ══════════════════════════════════════════════════════════════════════
@@ -93,6 +94,7 @@ const COACHING_NOTIF_STORAGE_KEY = 'coaching_scheduled_ids';
 const COACHING_LAST_ACTIVITY_KEY = 'coaching_last_activity_ts';
 const COACHING_STATS_KEY = 'coaching_notification_stats';
 const COACHING_HISTORY_KEY = 'coaching_notification_history'; // Historique pour lecture
+const COACHING_ENABLED_KEY = 'coaching_notifications_enabled';
 
 // ══════════════════════════════════════════════════════════════════════
 // SERVICE PRINCIPAL
@@ -127,11 +129,21 @@ class CoachingNotificationService {
                 lightColor: '#7C3AED',
                 sound: 'default',
             });
+            await Notifications.setNotificationChannelAsync('coaching_quiet', {
+                name: 'Coach IA Yukpo (sans son)',
+                description: 'Visuel + vibration, sans son',
+                importance: Notifications.AndroidImportance.HIGH,
+                vibrationPattern: [0, 250, 120, 250, 120, 250],
+                lightColor: '#7C3AED',
+                enableVibrate: true,
+                sound: null,
+            });
         }
 
         // Planifier les 3 push quotidiens + 1 hebdo
         await this.scheduleAllNotifications();
         this.isActive = true;
+        await SafeStorage.setItem(COACHING_ENABLED_KEY, 'true').catch(() => { });
         console.log('[CoachingNotif] ✅ Coaching push activé — 3 notifs/jour + 1 hebdo');
     }
 
@@ -141,7 +153,46 @@ class CoachingNotificationService {
     async deactivate(): Promise<void> {
         await this.cancelAllScheduled();
         this.isActive = false;
+        await SafeStorage.setItem(COACHING_ENABLED_KEY, 'false').catch(() => { });
         console.log('[CoachingNotif] ⛔ Coaching push désactivé');
+    }
+
+    /**
+     * Restaurer automatiquement les notifications coaching au démarrage
+     * si elles étaient explicitement activées avant fermeture/redémarrage.
+     */
+    async restoreFromPersistedFlag(): Promise<void> {
+        try {
+            const enabled = await SafeStorage.getItem(COACHING_ENABLED_KEY).catch(() => null);
+            if (enabled === 'true') {
+                await this.activate();
+            }
+        } catch {
+            // noop
+        }
+    }
+
+    /** Replanifier les créneaux Coach IA après changement des préférences son (paramètres / historique). */
+    async refreshScheduleIfActive(): Promise<void> {
+        if (!this.isActive) return;
+        try {
+            await this.scheduleAllNotifications();
+        } catch {
+            // noop
+        }
+    }
+
+    private async resolveCoachSoundAndChannel(
+        type: CoachingNotificationType,
+        msg: CoachingMessage,
+    ): Promise<{ playSound: boolean; channelId: string }> {
+        const globalOn = await notificationUiPreferences.getCoachIaSoundFull();
+        const subtypeMuted = await notificationUiPreferences.isCoachSubtypeSoundMuted(type);
+        const playSound = globalOn && !subtypeMuted && !!msg.sound;
+        return {
+            playSound,
+            channelId: playSound ? 'coaching' : 'coaching_quiet',
+        };
     }
 
     /**
@@ -202,14 +253,15 @@ class CoachingNotificationService {
             const msg = this.pickRandomMessage(type);
             const title = `${msg.emoji} ${i18n.t(msg.titleKey)}`;
             const body = i18n.t(msg.bodyKey);
+            const { playSound, channelId } = await this.resolveCoachSoundAndChannel(type, msg);
 
             const id = await Notifications.scheduleNotificationAsync({
                 content: {
                     title,
                     body,
                     data: { type: 'coaching', subtype: type },
-                    sound: true,
-                    ...(Platform.OS === 'android' ? { channelId: 'coaching' } : {}),
+                    sound: playSound,
+                    ...(Platform.OS === 'android' ? { channelId } : {}),
                 },
                 trigger: {
                     type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -237,14 +289,15 @@ class CoachingNotificationService {
             const msg = this.pickRandomMessage(type);
             const title = `${msg.emoji} ${i18n.t(msg.titleKey)}`;
             const body = i18n.t(msg.bodyKey);
+            const { playSound, channelId } = await this.resolveCoachSoundAndChannel(type, msg);
 
             const id = await Notifications.scheduleNotificationAsync({
                 content: {
                     title,
                     body,
                     data: { type: 'coaching', subtype: type },
-                    sound: true,
-                    ...(Platform.OS === 'android' ? { channelId: 'coaching' } : {}),
+                    sound: playSound,
+                    ...(Platform.OS === 'android' ? { channelId } : {}),
                 },
                 trigger: {
                     type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
@@ -292,8 +345,13 @@ class CoachingNotificationService {
         body: string,
         metadata?: Record<string, any>
     ): Promise<void> {
-        const normalizedType = (String(subtype || '') || 'midday_activity') as CoachingNotificationType;
-        await this.trackNotification(normalizedType, title || 'Coach IA', body || '', metadata);
+        let normalizedType = (String(subtype || '').trim() || 'midday_activity') as CoachingNotificationType;
+        if (!COACHING_MESSAGES[normalizedType]) {
+            normalizedType = 'midday_activity';
+        }
+        const msg = this.pickRandomMessage(normalizedType);
+        const { playSound } = await this.resolveCoachSoundAndChannel(normalizedType, msg);
+        await this.trackNotification(normalizedType, title || 'Coach IA', body || '', metadata, playSound);
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -318,8 +376,10 @@ class CoachingNotificationService {
             });
         }
 
-        // Vibration
-        if (msg.vibrate) {
+        const { playSound, channelId } = await this.resolveCoachSoundAndChannel(type, msg);
+        if (!playSound) {
+            try { Vibration.vibrate([0, 250, 120, 250, 120, 250]); } catch { }
+        } else if (msg.vibrate) {
             try { Vibration.vibrate([0, 200, 100, 200]); } catch { }
         }
 
@@ -330,8 +390,8 @@ class CoachingNotificationService {
                     title,
                     body,
                     data: { type: 'coaching', subtype: type, ...extraData },
-                    sound: true,
-                    ...(Platform.OS === 'android' ? { channelId: 'coaching' } : {}),
+                    sound: playSound,
+                    ...(Platform.OS === 'android' ? { channelId } : {}),
                 },
                 trigger: null, // Immédiat
             });
@@ -340,7 +400,7 @@ class CoachingNotificationService {
         }
 
         // Tracker les stats + historique
-        await this.trackNotification(type, title, body);
+        await this.trackNotification(type, title, body, undefined, playSound);
     }
 
     /**
@@ -374,7 +434,8 @@ class CoachingNotificationService {
         type: CoachingNotificationType,
         title: string,
         body: string,
-        metadata?: Record<string, any>
+        metadata?: Record<string, any>,
+        soundPlayed = true,
     ): Promise<void> {
         try {
             // Stats existantes
@@ -396,7 +457,7 @@ class CoachingNotificationService {
                 body,
                 timestamp: Date.now(),
                 read: false, // Non lu par défaut
-                soundPlayed: true, // Sonore par défaut
+                soundPlayed,
                 metadata: metadata || {},
             };
 
@@ -482,6 +543,15 @@ class CoachingNotificationService {
         } catch {
             return 0;
         }
+    }
+
+    async removeFromHistory(notificationId: string): Promise<void> {
+        try {
+            const stored = await SafeStorage.getItem(COACHING_HISTORY_KEY).catch(() => null);
+            const history = stored ? JSON.parse(stored) : [];
+            const filtered = (Array.isArray(history) ? history : []).filter((n: any) => n?.id !== notificationId);
+            await SafeStorage.setItem(COACHING_HISTORY_KEY, JSON.stringify(filtered)).catch(() => { });
+        } catch { }
     }
 
     /**

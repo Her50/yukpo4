@@ -1,7 +1,10 @@
 import * as React from 'react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { Text } from 'react-native';
+import { Alert, Text } from 'react-native';
+import * as Location from 'expo-location';
+import i18n from 'i18next';
 import { authApi } from '../services/api';
+import { coachingNotificationService } from '../services/coachingNotificationService';
 import { notificationSoundService } from '../services/notificationSoundService';
 import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
 import { jwtDecode } from '../utils/jwtDecode';
@@ -48,6 +51,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const WELCOME_AUDIO_PREFIX = 'yukpo_welcome_audio_played_user_';
+const BG_LOCATION_PROMPT_KEY = 'yukpo_bg_location_prompt_seen_v1';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -57,6 +61,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [forceRender, setForceRender] = useState(0);
+
+  const ensureBackgroundLocationPromptShown = async (): Promise<void> => {
+    try {
+      const alreadyShown = await SafeStorage.getItem(BG_LOCATION_PROMPT_KEY);
+      if (alreadyShown === 'true') return;
+
+      const fg = await Location.getForegroundPermissionsAsync();
+      const bg = await Location.getBackgroundPermissionsAsync();
+      const needsPrompt = fg.status !== 'granted' || bg.status !== 'granted';
+      if (!needsPrompt) {
+        await SafeStorage.setItem(BG_LOCATION_PROMPT_KEY, 'true');
+        return;
+      }
+
+      await SafeStorage.setItem(BG_LOCATION_PROMPT_KEY, 'true');
+      Alert.alert(
+        i18n.t('navigation.permissionRequired') || 'Autorisation recommandée',
+        i18n.t('navigation.allowLocationWalking') || 'Activer localisation en arrière-plan pour suivi automatique permanent',
+        [
+          { text: 'Plus tard', style: 'cancel' },
+          {
+            text: 'Activer',
+            onPress: async () => {
+              try {
+                await Location.requestForegroundPermissionsAsync();
+                await Location.requestBackgroundPermissionsAsync();
+                PassiveActivityTracker.start().catch(() => { });
+              } catch {
+                // No-op: l’app continuera en mode dégradé selon permissions OS
+              }
+            }
+          }
+        ]
+      );
+    } catch {
+      // No-op: ne bloque jamais l'initialisation auth
+    }
+  };
 
   const playWelcomeAudioOnceForUser = async (userId?: string) => {
     if (!userId) return;
@@ -105,6 +147,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }, 8000); // 8 secondes max
 
         await checkAuthStatus();
+        await ensureBackgroundLocationPromptShown();
+        // Assurer un tracking passif systématique dès que l'app est installée,
+        // indépendamment de l'état de connexion utilisateur.
+        PassiveActivityTracker.start().catch(() => { });
+        // Restaurer les notifications Coach IA selon le flag persistant,
+        // indépendamment de l'état de session auth.
+        coachingNotificationService.restoreFromPersistedFlag().catch(() => { });
       } catch (error) {
         console.error('[AuthContext] Erreur lors de l\'initialisation:', error);
         // En cas d'erreur, continuer sans authentification
@@ -357,9 +406,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      // ✅ Sauvegarder la session en cours et arrêter le tracking passif
+      // ✅ Sauvegarder la session en cours; le tracking passif reste actif
+      // pour conserver la collecte même hors connexion à l'application.
       await PassiveActivityTracker.flushCurrentSession().catch(() => { });
-      await PassiveActivityTracker.stop().catch(() => { });
 
       await authApi.logout();
       await SafeStorage.removeItem('auth_token');

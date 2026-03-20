@@ -4,6 +4,8 @@ import ReactNative from 'react-native';
 import { API_ENDPOINTS } from '../config/api.config';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch } from '../services/api';
+import { coachingNotificationService } from '../services/coachingNotificationService';
+import { notificationUiPreferences } from '../services/notificationUiPreferences';
 import { theme } from '../theme/theme';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 
@@ -20,6 +22,11 @@ interface NotificationItem {
   actionUrl?: string;
   actionText?: string;
   productName?: string;
+  /** api = serveur, coaching = Coach IA local */
+  source?: 'api' | 'coaching';
+  coachingRawId?: string;
+  coachSubtype?: string;
+  backendTypeRaw?: string;
 }
 
 interface NotificationHistoryModalProps {
@@ -44,84 +51,68 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   const loadNotifications = useCallback(async () => {
     setLoading(true);
     try {
-      // ✅ Utilise la configuration centralisée
-      const response = await apiGet(API_ENDPOINTS.NOTIFICATIONS.USER_NOTIFICATIONS(user?.id || ''));
+      let apiMapped: NotificationItem[] = [];
 
-      const rawNotifications = normalizeNotificationsResponse(response);
+      if (user?.id) {
+        const response = await apiGet(API_ENDPOINTS.NOTIFICATIONS.USER_NOTIFICATIONS(user.id));
+        const rawNotifications = normalizeNotificationsResponse(response);
 
-      console.log('[NotificationHistoryModal] 📦 Réponse API complète:', JSON.stringify(response, null, 2));
-      console.log('[NotificationHistoryModal] 🔍 Type de response.data:', typeof response.data);
-      console.log('[NotificationHistoryModal] 🔍 Array?:', Array.isArray(response.data));
-      console.log('[NotificationHistoryModal] 🔍 Longueur normalisée:', rawNotifications.length);
+        if (rawNotifications.length > 0) {
+          apiMapped = rawNotifications.map((notif: any) => {
+            const backendType = notif.notification_type || notif.type || 'system_alert';
+            const rawProductName = notif.data?.product_name
+              || notif.data?.productName
+              || notif.data?.nom_produit
+              || notif.data?.product;
+            const productName = typeof rawProductName === 'string'
+              ? rawProductName
+              : typeof rawProductName === 'object'
+                ? rawProductName?.valeur ?? rawProductName?.name
+                : undefined;
 
-      if (rawNotifications.length > 0) {
-        console.log('[NotificationHistoryModal] ✅ Données valides, mapping en cours...');
-
-        // ✅ Mapper les données du backend vers le format attendu par le frontend
-        const mappedNotifications = rawNotifications.map((notif: any, index: number) => {
-          // ✅ CORRECTION: Le backend retourne notification_type (snake_case), pas type
-          const backendType = notif.notification_type || notif.type || 'system_alert';
-
-          const rawProductName = notif.data?.product_name
-            || notif.data?.productName
-            || notif.data?.nom_produit
-            || notif.data?.product;
-          const productName = typeof rawProductName === 'string'
-            ? rawProductName
-            : typeof rawProductName === 'object'
-              ? rawProductName?.valeur ?? rawProductName?.name
-              : undefined;
-
-          console.log(`[NotificationHistoryModal] 📝 Notif ${index}:`, {
-            id: notif.id,
-            notification_type: notif.notification_type,
-            type: notif.type,
-            title: notif.title,
-            message: notif.message?.substring(0, 50),
-            isRead: notif.is_read || notif.isRead,
-            createdAt: notif.created_at || notif.createdAt
+            return {
+              id: String(notif.id),
+              type: mapNotificationType(backendType),
+              title: notif.title || 'Sans titre',
+              message: notif.message || 'Sans message',
+              timestamp: notif.created_at || notif.createdAt || notif.timestamp || new Date().toISOString(),
+              isRead: notif.is_read || notif.isRead || false,
+              category: mapNotificationCategory(backendType),
+              actionUrl: notif.data?.actionUrl || notif.data?.action_url,
+              actionText: notif.data?.actionText || notif.data?.action_text
+                || (backendType === 'product_shared' ? 'Voir le produit' : undefined)
+                || (backendType === 'user_mention' ? 'Voir la conversation' : undefined),
+              productName,
+              source: 'api' as const,
+              backendTypeRaw: backendType,
+            };
           });
-
-          return {
-            id: String(notif.id),
-            type: mapNotificationType(backendType),
-            title: notif.title || 'Sans titre',
-            message: notif.message || 'Sans message',
-            timestamp: notif.created_at || notif.createdAt || notif.timestamp || new Date().toISOString(),
-            isRead: notif.is_read || notif.isRead || false,
-            category: mapNotificationCategory(backendType),
-            actionUrl: notif.data?.actionUrl || notif.data?.action_url, // ✅ CORRIGÉ : Support des deux formats
-            actionText: notif.data?.actionText || notif.data?.action_text
-              || (backendType === 'product_shared' ? 'Voir le produit' : undefined)
-              || (backendType === 'user_mention' ? 'Voir la conversation' : undefined), // ✅ NOUVEAU: action auto pour partage/mention
-            productName,
-          };
-        });
-
-        console.log('[NotificationHistoryModal] ✅ Notifications mappées:', mappedNotifications.length);
-        console.log('[NotificationHistoryModal] 📊 Détails:', {
-          total: mappedNotifications.length,
-          unread: mappedNotifications.filter(n => !n.isRead).length,
-          types: mappedNotifications.reduce((acc: any, n) => {
-            acc[n.type] = (acc[n.type] || 0) + 1;
-            return acc;
-          }, {})
-        });
-
-        setNotifications(mappedNotifications);
-      } else {
-        console.warn('[NotificationHistoryModal] ⚠️ Format de réponse invalide');
-        console.log('[NotificationHistoryModal] Structure reçue:', {
-          hasData: !!response.data,
-          dataType: typeof response.data,
-          isArray: Array.isArray(response.data),
-          keys: response.data ? Object.keys(response.data) : []
-        });
-        setNotifications([]);
+        }
       }
+
+      const coachHist = await coachingNotificationService.getHistory();
+      const coachMapped: NotificationItem[] = (coachHist || []).map((h: any) => ({
+        id: `coach:${h.id}`,
+        type: 'info' as const,
+        title: h.title || 'Coach IA',
+        message: h.body || '',
+        timestamp: new Date(h.timestamp || Date.now()).toISOString(),
+        isRead: !!h.read,
+        category: 'system' as const,
+        source: 'coaching' as const,
+        coachingRawId: h.id,
+        coachSubtype: h.type,
+      }));
+
+      const merged = [...coachMapped, ...apiMapped].sort((a, b) => {
+        const dateA = typeof a.timestamp === 'string' ? new Date(a.timestamp) : a.timestamp;
+        const dateB = typeof b.timestamp === 'string' ? new Date(b.timestamp) : b.timestamp;
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      setNotifications(merged);
     } catch (error) {
       console.error('[NotificationHistoryModal] ❌ Erreur chargement notifications:', error);
-      // En cas d'erreur API, afficher un tableau vide au lieu de données mockées
       setNotifications([]);
     } finally {
       setLoading(false);
@@ -129,7 +120,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   }, [user?.id]);
 
   useEffect(() => {
-    if (isOpen && user?.id) {
+    if (isOpen) {
       // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
       loadNotifications().catch(error => {
         console.error('[NotificationHistoryModal] Erreur loadNotifications:', error);
@@ -151,9 +142,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         clearInterval(interval);
       };
     }
-    // ✅ CRITIQUE: Retourner explicitement undefined si la condition n'est pas remplie
     return undefined;
-  }, [isOpen, user?.id, loadNotifications]);
+  }, [isOpen, loadNotifications]);
 
   const normalizeNotificationsResponse = (response: any): any[] => {
     if (!response) {
@@ -222,10 +212,13 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
   const markAsRead = async (notificationId: string) => {
     try {
-      // ✅ CORRIGÉ: Utilise PATCH au lieu de GET
-      await apiPatch(API_ENDPOINTS.NOTIFICATIONS.MARK_READ(notificationId), {});
+      const row = notifications.find(n => n.id === notificationId);
+      if (row?.source === 'coaching' && row.coachingRawId) {
+        await coachingNotificationService.markAsRead(row.coachingRawId);
+      } else {
+        await apiPatch(API_ENDPOINTS.NOTIFICATIONS.MARK_READ(notificationId), {});
+      }
 
-      // Mettre à jour le state local
       setNotifications(prev =>
         prev.map(notif =>
           notif.id === notificationId
@@ -248,10 +241,11 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
   const markAllAsRead = async () => {
     try {
-      // ✅ CORRIGÉ: Utilise PATCH au lieu de GET
-      await apiPatch(API_ENDPOINTS.NOTIFICATIONS.MARK_ALL_READ(user?.id || ''), {});
+      if (user?.id) {
+        await apiPatch(API_ENDPOINTS.NOTIFICATIONS.MARK_ALL_READ(user.id), {});
+      }
+      await coachingNotificationService.markAllAsRead();
 
-      // Mettre à jour le state local
       setNotifications(prev =>
         prev.map(notif => ({ ...notif, isRead: true }))
       );
@@ -266,10 +260,13 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
   const deleteNotification = async (notificationId: string) => {
     try {
-      // ✅ CORRIGÉ: Utilise DELETE au lieu de GET
-      await apiDelete(API_ENDPOINTS.NOTIFICATIONS.DELETE(notificationId));
+      const row = notifications.find(n => n.id === notificationId);
+      if (row?.source === 'coaching' && row.coachingRawId) {
+        await coachingNotificationService.removeFromHistory(row.coachingRawId);
+      } else {
+        await apiDelete(API_ENDPOINTS.NOTIFICATIONS.DELETE(notificationId));
+      }
 
-      // Mettre à jour le state local
       setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
       Alert.alert(t('notificationHistoryModal.supprime'), t('notificationHistoryModal.notificationSupprimee'));
 
@@ -277,6 +274,29 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
     } catch (error) {
       console.error('Erreur suppression notification:', error);
       Alert.alert('Erreur', 'Impossible de supprimer la notification');
+    }
+  };
+
+  const muteSoundForNotificationRow = async (notification: NotificationItem) => {
+    try {
+      if (notification.source === 'coaching' && notification.coachSubtype) {
+        await notificationUiPreferences.muteSoundKey(
+          notificationUiPreferences.coachSubtypeKey(notification.coachSubtype),
+        );
+        await coachingNotificationService.refreshScheduleIfActive();
+      } else if (notification.backendTypeRaw) {
+        await notificationUiPreferences.muteSoundKey(
+          notificationUiPreferences.backendTypeKey(notification.backendTypeRaw),
+        );
+      }
+      Alert.alert(
+        t('notificationHistory.muteSoundTitle') || 'Son désactivé',
+        t('notificationHistory.muteSoundBody') || 'Les prochaines notifications de ce type seront sans son (selon les capacités du système).',
+      );
+      onChange?.();
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Erreur', 'Impossible d’enregistrer la préférence');
     }
   };
 
@@ -536,6 +556,16 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                           <Text style={styles.actionButtonText}>Marquer lu</Text>
                         </TouchableOpacity>
                       )}
+
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => muteSoundForNotificationRow(notification)}
+                      >
+                        <Text style={styles.actionIcon}>🔇</Text>
+                        <Text style={styles.actionButtonText}>
+                          {t('notificationHistory.muteSoundThisType') || 'Sans son (ce type)'}
+                        </Text>
+                      </TouchableOpacity>
 
                       <TouchableOpacity
                         style={styles.actionButton}

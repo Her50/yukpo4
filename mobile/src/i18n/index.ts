@@ -31,7 +31,7 @@ export const SUPPORTED_LANGUAGES = [
     { code: 'zu', name: 'isiZulu', flag: '\uD83C\uDDFF\uD83C\uDDE6' },
     { code: 'ig', name: 'Igbo', flag: '\uD83C\uDDF3\uD83C\uDDEC' },
     { code: 'ln', name: 'Lingála', flag: '\uD83C\uDDE8\uD83C\uDDE9' },
-    { code: 'ff', name: 'Fulfulde', flag: '��\uD83C\uDDF3' },
+    { code: 'ff', name: 'Fulfulde', flag: '\uD83C\uDDE8\uD83C\uDDF2' },
     { code: 'rw', name: 'Kinyarwanda', flag: '\uD83C\uDDF7\uD83C\uDDFC' },
     { code: 'sn', name: 'chiShona', flag: '\uD83C\uDDFF\uD83C\uDDFC' },
     { code: 'so', name: 'Soomaali', flag: '\uD83C\uDDF8\uD83C\uDDF4' },

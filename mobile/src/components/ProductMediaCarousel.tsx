@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Dimensions,
     Modal,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -72,6 +73,30 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
     // ✅ NOUVEAU 2026-03-12: Ref pour suivre les vidéos réellement en lecture (pas juste en pause)
     const videoActivePlayingRef = useRef<number | null>(null);
 
+    /**
+     * expo-av: après fin de lecture, playAsync() ne relance souvent pas — il faut replayAsync().
+     * Utilisé au retour sur la slide vidéo après images ou après didJustFinish.
+     */
+    const playVideoFromRef = useCallback(async (videoRef: Video) => {
+        try {
+            const status = await videoRef.getStatusAsync();
+            if (!status.isLoaded) {
+                await videoRef.playAsync();
+                return;
+            }
+            const dur = status.durationMillis ?? 0;
+            const pos = status.positionMillis ?? 0;
+            const atEnd = dur > 0 && pos >= dur - 400;
+            if (atEnd) {
+                await videoRef.replayAsync();
+            } else {
+                await videoRef.playAsync();
+            }
+        } catch {
+            await videoRef.playAsync().catch(() => undefined);
+        }
+    }, []);
+
     // ✅ NOUVEAU 2026-03-12: Fonction pour demander la permission de jouer avec le coordinateur
     const requestVideoPlayWithCoordinator = useCallback((videoIndex: number, playCallback: () => void) => {
         if (onVideoPlaybackRequest) {
@@ -125,10 +150,10 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         const videoRef = videoRefs.current.get(index);
         if (videoRef) {
             requestVideoPlayWithCoordinator(index, () => {
-                videoRef.playAsync().catch(() => undefined);
+                void playVideoFromRef(videoRef);
             });
         }
-    }, [playingVideoIndex, requestVideoPlayWithCoordinator, releaseVideoWithCoordinator]);
+    }, [playingVideoIndex, requestVideoPlayWithCoordinator, releaseVideoWithCoordinator, playVideoFromRef]);
 
     // Combiner toutes les médias avec priorité variantImage
     const allMedia: Array<{ type: 'image' | 'video'; uri: string; index: number }> = [];
@@ -201,28 +226,33 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
         }
     };
 
-    const playVideo = async (index: number) => {
-        if (allMedia[index]?.type === 'video') {
-            // ✅ FIX 2026-03-14: Passer par le coordinateur même pour le tap manuel
-            // Empêche les lectures simultanées quand l'utilisateur tape play sur plusieurs cartes
+    /** Tap sur la zone vidéo : pause si en lecture, sinon lecture (avec replay si fin de piste) */
+    const toggleVideoPlayback = useCallback(
+        (index: number) => {
             const videoRef = videoRefs.current.get(index);
-            if (videoRef) {
-                // Arrêter la vidéo précédente si elle existe
-                if (playingVideoIndex !== null && playingVideoIndex !== index) {
-                    const previousVideoRef = videoRefs.current.get(playingVideoIndex);
-                    if (previousVideoRef) {
-                        previousVideoRef.pauseAsync().catch(() => undefined);
-                    }
-                    releaseVideoWithCoordinator();
-                }
+            if (!videoRef) return;
 
-                requestVideoPlayWithCoordinator(index, () => {
-                    videoRef.setStatusAsync({ shouldPlay: true, isMuted: false }).catch(() => undefined);
-                    videoRef.playAsync().catch(() => undefined);
-                });
+            if (playingVideoIndex === index) {
+                videoRef.pauseAsync().catch(() => undefined);
+                releaseVideoWithCoordinator();
+                return;
             }
-        }
-    };
+
+            if (playingVideoIndex !== null && playingVideoIndex !== index) {
+                const previousVideoRef = videoRefs.current.get(playingVideoIndex);
+                if (previousVideoRef) {
+                    previousVideoRef.pauseAsync().catch(() => undefined);
+                }
+                releaseVideoWithCoordinator();
+            }
+
+            requestVideoPlayWithCoordinator(index, () => {
+                videoRef.setStatusAsync({ shouldPlay: true, isMuted: false }).catch(() => undefined);
+                void playVideoFromRef(videoRef);
+            });
+        },
+        [playingVideoIndex, playVideoFromRef, releaseVideoWithCoordinator, requestVideoPlayWithCoordinator],
+    );
 
     const openFullscreen = (media: { type: 'image' | 'video'; uri: string }) => {
         setPlayingVideoIndex(null);
@@ -297,13 +327,13 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                 const videoRef = videoRefs.current.get(0);
                 if (videoRef && videoPlayingRef.current === null && !isScrolling && isVisible === true) {
                     requestVideoPlayWithCoordinator(0, () => {
-                        videoRef.playAsync().catch(() => undefined);
+                        void playVideoFromRef(videoRef);
                     });
                 }
             }, 600);
             return () => clearTimeout(timer);
         }
-    }, [allMedia.length, isScrolling, isVisible, requestVideoPlayWithCoordinator]);
+    }, [allMedia.length, isScrolling, isVisible, requestVideoPlayWithCoordinator, playVideoFromRef]);
 
     // ✅ FIX 2026-03-14: Auto-scroll continu — NE PAS auto-play les vidéos lors du scroll automatique
     // L'auto-scroll ne fait que défiler visuellement. La lecture vidéo nécessite isVisible + coordinateur ou tap utilisateur.
@@ -331,7 +361,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                         const videoRef = videoRefs.current.get(nextIndex);
                         if (videoRef && !isScrolling && isVisible === true) {
                             requestVideoPlayWithCoordinator(nextIndex, () => {
-                                videoRef.playAsync().catch(() => undefined);
+                                void playVideoFromRef(videoRef);
                             });
                         }
                     }, 400);
@@ -345,7 +375,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
             clearTimeout(initTimer);
             if (autoScrollTimerRef.current) clearInterval(autoScrollTimerRef.current);
         };
-    }, [allMedia.length, isScrolling, isVisible, requestVideoPlayWithCoordinator]);
+    }, [allMedia.length, isScrolling, isVisible, requestVideoPlayWithCoordinator, playVideoFromRef]);
 
     if (allMedia.length === 0) {
         return (
@@ -404,6 +434,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             isLooping={false}
                             isMuted={playingVideoIndex !== index || isVisible === false}
                             useNativeControls={false}
+                            pointerEvents="none"
                             onPlaybackStatusUpdate={(status) => {
                                 // ✅ FIX 2026-03-14: didJustFinish en PREMIER pour poser le sentinel
                                 // avant que le tracking isPlaying ne libère videoActivePlayingRef
@@ -423,6 +454,7 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                                         scrollViewRef.current?.scrollTo({ x: CAROUSEL_WIDTH * nextIndex, animated: true });
                                         setCurrentIndex(nextIndex);
                                         currentIndexRef.current = nextIndex;
+                                        onMediaChange?.(nextIndex, allMedia.length);
 
                                         // Libérer le sentinel après le scroll pour que l'auto-scroll reprenne
                                         setTimeout(() => {
@@ -450,10 +482,21 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                                 videoActivePlayingRef.current = null; // ✅ AJOUT: Libérer aussi la référence active
                             }}
                         />
-                        {/* Overlay sombre + icône quand la vidéo n'est pas en lecture */}
+                        {/* Overlay sombre quand la vidéo n'est pas en lecture */}
                         {playingVideoIndex !== index && (
                             <View style={styles.videoOverlay} pointerEvents="none" />
                         )}
+                        {/* Tap sur toute la zone : pause / lecture (replay si fin) */}
+                        <Pressable
+                            style={styles.videoTapArea}
+                            onPress={() => toggleVideoPlayback(index)}
+                            accessibilityRole="button"
+                            accessibilityLabel={
+                                playingVideoIndex === index
+                                    ? t('productMediaCarousel.pauseVideo')
+                                    : t('productMediaCarousel.playVideo')
+                            }
+                        />
                         <TouchableOpacity
                             style={styles.fullscreenButton}
                             onPress={() => openFullscreen(media)}
@@ -462,26 +505,13 @@ const ProductMediaCarousel: React.FC<ProductMediaCarouselProps> = ({
                             <SafeIcon name="maximize" size={18} color="#FFF" />
                         </TouchableOpacity>
                         {playingVideoIndex !== index ? (
-                            <TouchableOpacity
-                                style={styles.playButton}
-                                onPress={() => playVideo(index)}
-                                activeOpacity={0.8}
-                            >
+                            <View style={styles.playButton} pointerEvents="none">
                                 <SafeIcon name="play" size={48} color="#FFF" />
-                            </TouchableOpacity>
+                            </View>
                         ) : (
-                            <TouchableOpacity
-                                style={styles.pauseButton}
-                                onPress={() => {
-                                    const videoRef = videoRefs.current.get(index);
-                                    if (videoRef) { videoRef.pauseAsync().catch(() => undefined); }
-                                    // Libérer avec le coordinateur
-                                    releaseVideoWithCoordinator();
-                                }}
-                                activeOpacity={0.8}
-                            >
+                            <View style={styles.pauseButton} pointerEvents="none">
                                 <SafeIcon name="pause" size={28} color="#FFF" />
-                            </TouchableOpacity>
+                            </View>
                         )}
                     </View>
                 )}
@@ -655,6 +685,7 @@ const styles = StyleSheet.create({
         height: 60,
         alignItems: 'center',
         justifyContent: 'center',
+        zIndex: 7,
     },
     pauseButton: {
         position: 'absolute',
@@ -666,7 +697,7 @@ const styles = StyleSheet.create({
         height: 36,
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 6,
+        zIndex: 7,
     },
     fullscreenButton: {
         position: 'absolute',
@@ -730,6 +761,10 @@ const styles = StyleSheet.create({
     videoOverlay: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    videoTapArea: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 5,
     },
     placeholder: {
         width: '100%',

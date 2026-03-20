@@ -9,6 +9,7 @@ import {
     Animated,
     Dimensions,
     FlatList,
+    LayoutChangeEvent,
     Modal,
     Platform,
     Pressable,
@@ -308,6 +309,9 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const lastTapRef = useRef<Record<string, number>>({});
     const heartAnim = useRef(new Animated.Value(0)).current;
     const currentIndexRef = useRef(0);
+    /** Hauteur réelle du viewport du feed (onglet + safe area ≠ window height). Doit matcher paging + getItemLayout. */
+    const pageHeightRef = useRef(SCREEN_HEIGHT);
+    const [pageHeight, setPageHeight] = useState(SCREEN_HEIGHT);
 
     const fetchFeed = useCallback(async (isRefresh = false, pageNum = 1) => {
         if (!isRefresh && pageNum === 1) setLoading(true);
@@ -386,6 +390,23 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     useEffect(() => {
         currentIndexRef.current = currentIndex;
     }, [currentIndex]);
+
+    const handleListLayout = useCallback((e: LayoutChangeEvent) => {
+        const h = e.nativeEvent.layout.height;
+        if (h <= 0) return;
+        if (Math.abs(h - pageHeightRef.current) < 1) return;
+        pageHeightRef.current = h;
+        setPageHeight(h);
+    }, []);
+
+    // Recaler le scroll quand la hauteur de page devient correcte (1er layout / rotation)
+    useEffect(() => {
+        if (!flatListRef.current || filteredFeed.length === 0) return;
+        const idx = Math.min(currentIndexRef.current, filteredFeed.length - 1);
+        flatListRef.current.scrollToOffset({ offset: idx * pageHeight, animated: false });
+        // deps: pageHeight seulement — évite un scroll à chaque append pagination
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pageHeight]);
 
     // ✅ Filtrer le feed selon la recherche
     useEffect(() => {
@@ -638,7 +659,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             const clamped = Math.max(0, filteredFeed.length - 1);
             setCurrentIndex(clamped);
             currentIndexRef.current = clamped;
-            flatListRef.current?.scrollToOffset({ offset: clamped * SCREEN_HEIGHT, animated: false });
+            flatListRef.current?.scrollToOffset({ offset: clamped * pageHeightRef.current, animated: false });
         }
     }, [filteredFeed.length, currentIndex, isFocused]);
 
@@ -712,13 +733,13 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         }
     }, []);
 
-    // ✅ Charger les réactions quand la vidéo visible change
+    // ✅ Charger les réactions quand la vidéo visible change (index = filteredFeed, pas feed brut)
     useEffect(() => {
-        const currentItem = feed[currentIndex];
+        const currentItem = filteredFeed[currentIndex];
         if (currentItem?.serviceId) {
             loadReactionsForItem(currentItem);
         }
-    }, [currentIndex, feed, loadReactionsForItem]);
+    }, [currentIndex, filteredFeed, loadReactionsForItem]);
 
     // ✅ CORRIGÉ: handleReaction utilise la même API que ProductCard
     const handleReaction = useCallback(async (item: FeedItem, reactionType: string) => {
@@ -936,11 +957,11 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         const nextIndex = index + 1;
                         if (nextIndex < feedLen) {
                             setTimeout(() => {
+                                const ph = pageHeightRef.current;
                                 try {
                                     flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
                                 } catch (_e) {
-                                    // Fallback: scroll par offset si l'index n'est pas accessible
-                                    flatListRef.current?.scrollToOffset({ offset: nextIndex * SCREEN_HEIGHT, animated: true });
+                                    flatListRef.current?.scrollToOffset({ offset: nextIndex * ph, animated: true });
                                 }
                             }, 800);
                         } else {
@@ -965,12 +986,12 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         const spinRotation = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
         return (
-            <View style={styles.card}>
+            <View style={[styles.card, { height: pageHeight }]}>
                 <Pressable style={styles.videoTouchable} onPress={() => handleTap(item)}>
                     <Video
                         ref={(ref) => registerRef(index, ref)}
-                        style={styles.video}
-                        videoStyle={styles.videoNative}
+                        style={[styles.video, { height: pageHeight }]}
+                        videoStyle={[styles.videoNative, { height: pageHeight }]}
                         source={{ uri: item.videoUrl }}
                         // ✅ FIX 2026-03-14: Désactiver le poster — les thumbnails sont souvent des images produit
                         // qui flashent avant que la vidéo charge. Fond sombre (#111) + spinner = style TikTok/Reels
@@ -1293,7 +1314,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 {/* ✅ SUPPRIMÉ 2026-03-14: Ancien picker horizontal en bas — remplacé par picker flottant au-dessus du coeur */}
             </View>
         );
-    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, spinAnim, filteredFeed.length, navigation, followMap, handleToggleFollow, playCount, expandedDescriptions, toggleDescription, handleDeliveryOrder]);
+    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, spinAnim, filteredFeed.length, navigation, followMap, handleToggleFollow, playCount, expandedDescriptions, toggleDescription, handleDeliveryOrder, pageHeight]);
 
     if (loading) {
         return (
@@ -1372,20 +1393,22 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             <FlatList
                 ref={flatListRef}
                 data={filteredFeed}
+                extraData={pageHeight}
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
                 pagingEnabled
                 showsVerticalScrollIndicator={false}
+                onLayout={handleListLayout}
                 onViewableItemsChanged={handleViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig}
                 getItemLayout={(_, index) => ({
-                    length: SCREEN_HEIGHT,
-                    offset: SCREEN_HEIGHT * index,
+                    length: pageHeight,
+                    offset: pageHeight * index,
                     index,
                 })}
                 windowSize={3}
                 maxToRenderPerBatch={2}
-                removeClippedSubviews={true}
+                removeClippedSubviews={Platform.OS === 'ios'}
                 initialNumToRender={1}
                 decelerationRate="fast"
                 onScrollBeginDrag={() => {
@@ -1397,9 +1420,10 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 }}
                 onMomentumScrollEnd={(event) => {
                     const offsetY = event.nativeEvent.contentOffset.y;
+                    const ph = pageHeightRef.current || 1;
                     const snappedIndex = Math.max(0, Math.min(
                         filteredFeed.length - 1,
-                        Math.round(offsetY / SCREEN_HEIGHT)
+                        Math.round(offsetY / ph)
                     ));
                     if (snappedIndex !== currentIndexRef.current) {
                         setCurrentIndex(snappedIndex);

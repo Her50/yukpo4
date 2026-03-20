@@ -1,62 +1,64 @@
-// ✅ Écran Bourse du Livre MODERNE - Refonte complète avec UX intuitive et rassurante
-// Fonctionnalités : Affichage livres proches, recherche, ajout simplifié (photo → IA → prix)
+// ✅ Écran Bourse du Livre — en-tête (retour + titre + libraire), corps : liste à proximité + seul CTA « Vendre/Troquer » → BookUploadV2
 
 import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     FlatList,
     Image,
-    Modal,
     RefreshControl,
-    ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
-import PaymentMethodPrompt from '../../components/PaymentMethodPrompt';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { usePaymentMethodCheck } from '../../hooks/usePaymentMethodCheck';
-import { BookImageAnalysis, LivreScolaire, livreScolaireService, SearchLivresFilters } from '../../services/livreScolaireService';
+import { apiGet } from '../../services/api';
+import { bourseLivreV2Api } from '../../services/bourseLivreV2Api';
+import { LivreScolaire, livreScolaireService, SearchLivresFilters } from '../../services/livreScolaireService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+
+/** Même logique métier que `getPartnerDashboardScreen` (libraire → LivreScolaireForm). */
+const LIBRAIRE_PARTNER_TYPES = new Set(['librairie', 'libraire', 'livrescolaire', 'livre_scolaire']);
 
 const LivreScolaireHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { t } = useLanguageSafe();
     const { location } = useLocation();
+    const { user } = useAuth();
 
-    // États de recherche
-    const [searchQuery, setSearchQuery] = useState('');
+    const isLibrairePartner = useMemo(() => {
+        const pt = user?.partner_type?.toLowerCase();
+        return pt ? LIBRAIRE_PARTNER_TYPES.has(pt) : false;
+    }, [user?.partner_type]);
+
     const [livres, setLivres] = useState<LivreScolaire[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    // Vérification moyen de paiement
-    const paymentCheck = usePaymentMethodCheck();
-    const [showPaymentPrompt, setShowPaymentPrompt] = useState(false);
-
-    // États pour ajout simplifié
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [selectedImage, setSelectedImage] = useState<string | null>(null);
-    const [imageBase64, setImageBase64] = useState<string | null>(null);
-    const [analyzingImage, setAnalyzingImage] = useState(false);
-    const [bookInfo, setBookInfo] = useState<BookImageAnalysis | null>(null);
-    const [price, setPrice] = useState('');
-    const [saving, setSaving] = useState(false);
+    const [opsLoading, setOpsLoading] = useState(false);
+    const [opsStats, setOpsStats] = useState({
+        achatsEnCours: 0,
+        paquetsARecevoir: 0,
+        paquetsAEnvoyer: 0,
+        besoinsActifs: 0,
+        trocsEnCours: 0,
+    });
 
     // Charger les livres proches à l'ouverture
     useEffect(() => {
         loadNearbyBooks();
+    }, []);
+
+    useEffect(() => {
+        loadOperationsDashboard();
     }, []);
 
     const loadNearbyBooks = useCallback(async () => {
@@ -97,175 +99,42 @@ const LivreScolaireHomeScreen: React.FC = () => {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [location]);
-
-    const handleSearch = useCallback(async () => {
-        if (!searchQuery.trim()) {
-            loadNearbyBooks();
-            return;
-        }
-
-        hapticPress();
-        setLoading(true);
-        setError(null);
-
-        try {
-            const filters: SearchLivresFilters = {
-                limit: 50,
-                offset: 0,
-            };
-
-            // Recherche par titre, auteur, matière
-            // Le backend devrait gérer la recherche textuelle
-            if (location?.coords) {
-                filters.gps_lat = location.coords.latitude;
-                filters.gps_lon = location.coords.longitude;
-                filters.rayon_km = 50;
-            }
-
-            const response = await livreScolaireService.searchLivres(filters);
-
-            const r = response.data as any;
-            if (response.success && r?.livres) {
-                // Filtrer côté client par query (en attendant que le backend le fasse)
-                const filtered = r.livres
-                    .map((item: any) => ({
-                        ...item.livre,
-                        distance_km: item.distance_km,
-                    }))
-                    .filter((livre: LivreScolaire) =>
-                        livre.titre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        livre.auteur?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        livre.matiere.toLowerCase().includes(searchQuery.toLowerCase())
-                    );
-                setLivres(filtered);
-            }
-        } catch (err: any) {
-            console.error('[LivreScolaireHomeScreen] Erreur recherche:', err);
-            setError(err.message || t('livreScolaireHome.erreurLorsDeLaRecherche'));
-        } finally {
-            setLoading(false);
-        }
-    }, [searchQuery, location]);
-
-    const handlePickImage = async () => {
-        hapticPress();
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            Alert.alert(t('livreScolaire.permissionRequired'), t('livreScolaire.allowGalleryAccess'));
-            return;
-        }
-
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 0.8,
-            base64: true,
-        });
-
-        if (!result.canceled && result.assets[0]) {
-            const asset = result.assets[0];
-            setSelectedImage(asset.uri);
-            if (asset.base64) {
-                const base64Image = `data:image/jpeg;base64,${asset.base64}`;
-                setImageBase64(base64Image);
-                await analyzeImage(base64Image);
-            }
-        }
-    };
-
-    const analyzeImage = async (imageBase64: string) => {
-        setAnalyzingImage(true);
-        setBookInfo(null);
-
-        try {
-            const response = await livreScolaireService.analyzeBookImage(
-                imageBase64,
-                location?.coords?.latitude,
-                location?.coords?.longitude
-            );
-
-            const r = response.data as any;
-            if (response.success && r?.book_info) {
-                setBookInfo(r.book_info);
-                setShowAddModal(true);
-            } else {
-                Alert.alert(t('message.error'), t('livreScolaire.cannotAnalyzeImage'));
-            }
-        } catch (err: any) {
-            console.error('[LivreScolaireHomeScreen] Erreur analyse:', err);
-            Alert.alert(t('message.error'), err.message || t('livreScolaire.analysisError'));
-        } finally {
-            setAnalyzingImage(false);
-        }
-    };
-
-    const handleSaveBook = async () => {
-        if (!bookInfo || !price.trim()) {
-            Alert.alert(t('message.error'), t('livreScolaire.enterPrice'));
-            return;
-        }
-
-        // ✅ Vérifier moyen de paiement avant de mettre en vente
-        const needsPayment = await paymentCheck.checkAndPrompt();
-        if (needsPayment) {
-            setShowPaymentPrompt(true);
-            return;
-        }
-
-        hapticPress();
-        setSaving(true);
-
-        try {
-            const livreData = {
-                titre: bookInfo.titre,
-                auteur: bookInfo.auteur || undefined,
-                editeur: bookInfo.editeur || undefined,
-                isbn: bookInfo.isbn || undefined,
-                classe_actuelle: bookInfo.classe_actuelle || t('livreScolaireHome.nonSpecifiee'),
-                classe_souhaitee: bookInfo.classe_souhaitee || t('livreScolaireHome.nonSpecifiee'),
-                matiere: bookInfo.matiere || t('livreScolaireHome.nonSpecifiee'),
-                niveau: bookInfo.niveau || undefined,
-                etat_livre: bookInfo.etat_livre,
-                description_etat: bookInfo.description_etat || undefined,
-                images_urls: imageBase64 ? [imageBase64] : undefined,
-                gps: location?.coords ? `${location.coords.latitude},${location.coords.longitude}` : undefined,
-                ville: undefined, // À compléter si nécessaire
-                quartier: undefined,
-            };
-
-            const response = await livreScolaireService.createLivre(livreData);
-
-            if (response.success) {
-                Alert.alert(t('message.success'), t('livreScolaire.bookAdded'), [
-                    {
-                        text: 'OK',
-                        onPress: () => {
-                            setShowAddModal(false);
-                            setSelectedImage(null);
-                            setImageBase64(null);
-                            setBookInfo(null);
-                            setPrice('');
-                            loadNearbyBooks();
-                        },
-                    },
-                ]);
-            } else {
-                Alert.alert(t('message.error'), t('livreScolaire.cannotAddBook'));
-            }
-        } catch (err: any) {
-            console.error('[LivreScolaireHomeScreen] Erreur sauvegarde:', err);
-            Alert.alert(t('message.error'), err.message || t('livreScolaire.saveError'));
-        } finally {
-            setSaving(false);
-        }
-    };
+    }, [location, t]);
 
     const formatDistance = (distance?: number) => {
         if (!distance) return '';
         if (distance < 1) return `${Math.round(distance * 1000)}m`;
         return `${distance.toFixed(1)} km`;
     };
+
+    const loadOperationsDashboard = useCallback(async () => {
+        setOpsLoading(true);
+        try {
+            const [dashboard, requests, trocsResp] = await Promise.all([
+                bourseLivreV2Api.getUserBookDashboard(),
+                bourseLivreV2Api.getMyDonationRequests(),
+                apiGet('/api/troc-livres/my-trocs'),
+            ]);
+
+            const besoinsActifs = (requests || []).filter((r: any) => r.statut !== 'livre' && r.statut !== 'annule').length;
+            const trocsRaw = (trocsResp as any)?.data?.trocs || (trocsResp as any)?.trocs || [];
+            const trocsEnCours = (trocsRaw || []).filter(
+                (tr: any) => !['complete', 'refuse', 'annule'].includes(String(tr?.statut || '').toLowerCase())
+            ).length;
+
+            setOpsStats({
+                achatsEnCours: dashboard?.achats_en_cours?.length || 0,
+                paquetsARecevoir: dashboard?.paquets_a_recevoir?.length || 0,
+                paquetsAEnvoyer: dashboard?.paquets_a_envoyer?.length || 0,
+                besoinsActifs,
+                trocsEnCours,
+            });
+        } catch (e) {
+            console.warn('[LivreScolaireHomeScreen] dashboard ops error', e);
+        } finally {
+            setOpsLoading(false);
+        }
+    }, []);
 
     const safeNavigate = useCallback((routeName: string, params?: any) => {
         try {
@@ -280,21 +149,22 @@ const LivreScolaireHomeScreen: React.FC = () => {
         }
     }, [navigation, t]);
 
-    const quickActions = [
-        { key: 'upload', icon: 'camera', label: t('livreScolaireHome.envoyerLivres', 'Envoyer livres'), route: 'BookUploadV2', accent: true },
-        { key: 'buyOccasion', icon: 'book-open', label: t('livreScolaireHome.acheterOccasion', 'Acheter occasion'), route: 'LivreScolaireSearch' },
-        { key: 'buyNew', icon: 'shopping-bag', label: t('livreScolaireHome.acheterNeuf', 'Acheter neuf'), route: 'NewBooks' },
-        { key: 'packages', icon: 'package', label: t('livreScolaireHome.mesPaquets'), route: 'BookPackages' },
-        { key: 'myBooks', icon: 'book', label: t('livreScolaireHome.mesLivres'), route: 'MesLivres' },
-        { key: 'needs', icon: 'clipboard', label: t('mesBesoinsLivres.mesBesoins', 'Mes Besoins'), route: 'MesBesoinsLivres' },
-    ];
+    const onLibraireHeaderPress = useCallback(() => {
+        hapticPress();
+        if (isLibrairePartner) {
+            safeNavigate('LivreScolaireForm');
+        } else {
+            safeNavigate('LibrairieRegistration');
+        }
+    }, [isLibrairePartner, safeNavigate]);
 
     return (
         <SafeNativeView style={styles.container}>
-            {/* Header sticky avec recherche */}
             <View style={styles.headerContainer}>
                 <LinearGradient
-                    colors={['#F59E0B', '#FBBF24']}
+                    colors={['#D97706', '#F59E0B', '#FBBF24']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
                     style={styles.headerGradient}
                 >
                     <View style={styles.headerTop}>
@@ -309,109 +179,114 @@ const LivreScolaireHomeScreen: React.FC = () => {
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>{t('livreScolaireHome.bourseDuLivre')}</Text>
-                            <Text style={styles.headerSubtitle}>
-                                {livres.length} livre{livres.length > 1 ? 's' : ''} disponible{livres.length > 1 ? 's' : ''}
-                            </Text>
                         </View>
                         <TouchableOpacity
-                            onPress={() => {
-                                hapticPress();
-                                handlePickImage();
-                            }}
-                            style={styles.addButton}
+                            onPress={onLibraireHeaderPress}
+                            style={styles.libraireHeaderBtn}
+                            activeOpacity={0.88}
                         >
-                            <SafeIcon name="plus" size={24} color="#FFFFFF" type="lucide" />
+                            <SafeIcon
+                                name={isLibrairePartner ? 'layout-dashboard' : 'store'}
+                                size={15}
+                                color="#B45309"
+                                type="lucide"
+                            />
+                            <Text style={styles.libraireHeaderBtnText} numberOfLines={2}>
+                                {isLibrairePartner
+                                    ? t('bourseLivre.maLibrairie', 'Ma librairie')
+                                    : t('bourseLivre.devenirLibraire', 'Devenir libraire')}
+                            </Text>
                         </TouchableOpacity>
                     </View>
-
-                    {/* Barre de recherche */}
-                    <View style={styles.searchContainer}>
-                        <View style={styles.searchBar}>
-                            <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
-                            <TextInput
-                                style={styles.searchInput}
-                                placeholder={t('livreScolaireHome.rechercherUnLivreTitreAuteur')}
-                                placeholderTextColor="#9CA3AF"
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                onSubmitEditing={handleSearch}
-                                returnKeyType="search"
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        setSearchQuery('');
-                                        handleSearch();
-                                    }}
-                                    style={styles.clearButton}
-                                >
-                                    <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </View>
-
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.quickActionsContent}
-                        style={styles.quickActionsWrap}
-                    >
-                        {quickActions.map((action) => (
-                            <TouchableOpacity
-                                key={action.key}
-                                style={[styles.quickActionCard, action.accent && styles.quickActionCardAccent]}
-                                onPress={() => safeNavigate(action.route)}
-                            >
-                                <View style={styles.quickActionIcon}>
-                                    <SafeIcon name={action.icon} size={18} color="#FFFFFF" type="lucide" />
-                                </View>
-                                <Text style={styles.quickActionLabel} numberOfLines={2} ellipsizeMode="tail">
-                                    {action.label}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
                 </LinearGradient>
             </View>
 
-            <View style={styles.insightsRow}>
-                <View style={styles.insightCard}>
-                    <Text style={styles.insightValue}>{livres.length}</Text>
-                    <Text style={styles.insightLabel}>{t('livreScolaireHome.disponibles', 'Disponibles')}</Text>
-                </View>
-                <View style={styles.insightCard}>
-                    <Text style={styles.insightValue}>{location?.coords ? 'GPS' : '--'}</Text>
-                    <Text style={styles.insightLabel}>{t('livreScolaireHome.position', 'Position')}</Text>
-                </View>
+            <View style={styles.primaryActionsRow}>
                 <TouchableOpacity
-                    style={[styles.insightCard, styles.partnerCard]}
-                    onPress={() => safeNavigate('LibrairieRegistration')}
+                    style={[styles.primaryActionButton, styles.primaryActionSell]}
+                    onPress={() => safeNavigate('BookUploadV2')}
+                    activeOpacity={0.9}
                 >
-                    <Text style={styles.partnerCardTitle}>{t('bourseLivre.devenirLibraire', 'Devenir Libraire')}</Text>
-                    <Text style={styles.partnerCardSub}>{t('livreScolaireHome.vendreDesLivresNeufs', 'Publier des livres neufs')}</Text>
+                    <SafeIcon name="camera" size={20} color="#FFFFFF" type="lucide" />
+                    <Text style={styles.primaryActionTitle}>
+                        {t('livreScolaireHome.vendreTroquerTitle', 'Mettez vos livres en circulation')}
+                    </Text>
+                    <Text style={styles.primaryActionSubtitle}>
+                        {t('livreScolaireHome.vendreTroquerSubtitle', 'Vente ou troc rapide, sécurisé et visible immédiatement')}
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.primaryActionButton, styles.primaryActionBuy]}
+                    onPress={() => safeNavigate('MesBesoinsLivres')}
+                    activeOpacity={0.9}
+                >
+                    <SafeIcon name="book-check" size={20} color="#FFFFFF" type="lucide" />
+                    <Text style={styles.primaryActionTitle}>
+                        {t('livreScolaireHome.acheterLivresTitle', 'Trouvez votre liste scolaire en un parcours')}
+                    </Text>
+                    <Text style={styles.primaryActionSubtitle}>
+                        {t('livreScolaireHome.acheterLivresSubtitle', 'Cochez vos besoins et arbitrez entre neuf et occasion')}
+                    </Text>
                 </TouchableOpacity>
             </View>
 
-            <View style={styles.buyNowRow}>
-                <TouchableOpacity
-                    style={[styles.buyNowBtn, styles.buyNowOccasion]}
-                    onPress={() => safeNavigate('LivreScolaireSearch')}
-                >
-                    <SafeIcon name="book-open" size={16} color="#92400E" type="lucide" />
-                    <Text style={styles.buyNowOccasionText} numberOfLines={1}>
-                        {t('livreScolaireHome.payerLivresOccasion', 'Payer un livre d occasion')}
+            <View style={styles.dashboardSection}>
+                <View style={styles.dashboardHeader}>
+                    <Text style={styles.dashboardTitle}>
+                        {t('livreScolaireHome.dashboardOps', 'Dashboard des operations')}
                     </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.buyNowBtn, styles.buyNowNew]}
-                    onPress={() => safeNavigate('NewBooks')}
-                >
-                    <SafeIcon name="shopping-bag" size={16} color="#FFFFFF" type="lucide" />
-                    <Text style={styles.buyNowNewText} numberOfLines={1}>
-                        {t('livreScolaireHome.payerLivresNeufs', 'Payer un livre neuf')}
-                    </Text>
-                </TouchableOpacity>
+                    <View style={styles.dashboardHeaderActions}>
+                        <TouchableOpacity
+                            style={styles.iconHeaderBtn}
+                            onPress={() => safeNavigate('QRCodeShare', { mode: 'scan' })}
+                            activeOpacity={0.8}
+                        >
+                            <SafeIcon name="qr-code" size={16} color="#0F766E" type="lucide" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.iconHeaderBtn} onPress={loadOperationsDashboard} activeOpacity={0.8}>
+                            <SafeIcon name={opsLoading ? 'loader' : 'refresh-cw'} size={16} color="#0F766E" type="lucide" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+                <View style={styles.statsGrid}>
+                    <View style={styles.statCard}>
+                        <Text style={styles.statValue}>{opsStats.achatsEnCours}</Text>
+                        <Text style={styles.statLabel}>{t('livreScolaireHome.statAchatsEnCours', 'Achats en cours')}</Text>
+                    </View>
+                    <View style={styles.statCard}>
+                        <Text style={styles.statValue}>{opsStats.paquetsARecevoir}</Text>
+                        <Text style={styles.statLabel}>{t('livreScolaireHome.statPaquetsRecevoir', 'Paquets à recevoir')}</Text>
+                    </View>
+                    <View style={styles.statCard}>
+                        <Text style={styles.statValue}>{opsStats.paquetsAEnvoyer}</Text>
+                        <Text style={styles.statLabel}>{t('livreScolaireHome.statPaquetsEnvoyer', 'Paquets à envoyer')}</Text>
+                    </View>
+                    <View style={styles.statCard}>
+                        <Text style={styles.statValue}>{opsStats.trocsEnCours}</Text>
+                        <Text style={styles.statLabel}>{t('livreScolaireHome.statTrocsEnCours', 'Trocs en cours')}</Text>
+                    </View>
+                    <View style={styles.statCard}>
+                        <Text style={styles.statValue}>{opsStats.besoinsActifs}</Text>
+                        <Text style={styles.statLabel}>{t('livreScolaireHome.statBesoins', 'Besoins actifs')}</Text>
+                    </View>
+                </View>
+                <View style={styles.trackActionsRow}>
+                    <TouchableOpacity style={styles.trackActionBtn} onPress={() => safeNavigate('BookPackages')}>
+                        <SafeIcon name="package" size={14} color="#1D4ED8" type="lucide" />
+                        <Text style={styles.trackActionText}>{t('livreScolaireHome.suivrePaquets', 'Suivre mes paquets')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.trackActionBtn} onPress={() => safeNavigate('MesTrocs')}>
+                        <SafeIcon name="repeat" size={14} color="#1D4ED8" type="lucide" />
+                        <Text style={styles.trackActionText}>{t('livreScolaireHome.suivreTrocs', 'Suivre mes trocs')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.trackActionBtn} onPress={() => safeNavigate('MesBesoinsLivres')}>
+                        <SafeIcon name="list-checks" size={14} color="#1D4ED8" type="lucide" />
+                        <Text style={styles.trackActionText}>{t('livreScolaireHome.mesBesoins', 'Mes besoins')}</Text>
+                    </TouchableOpacity>
+                </View>
+                <Text style={styles.qrHintText}>
+                    {t('livreScolaireHome.qrHint', 'Scannez le QR du coursier a son arrivee pour valider la livraison.')}
+                </Text>
             </View>
 
             {/* Liste des livres */}
@@ -457,56 +332,10 @@ const LivreScolaireHomeScreen: React.FC = () => {
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="book" size={64} color="#9CA3AF" />
                             <Text style={styles.emptyText}>{t('livreScolaireHome.aucunLivreTrouve')}</Text>
-                            <Text style={styles.emptySubtext}>
-                                {t('livreScolaireHome.conseilModifierCriteres', 'Essayez de modifier vos critères de recherche')}
-                            </Text>
-                            <View style={styles.emptyActions}>
-                                <TouchableOpacity style={styles.emptyActionPrimary} onPress={() => safeNavigate('BookUploadV2')}>
-                                    <SafeIcon name="camera" size={16} color="#FFFFFF" type="lucide" />
-                                    <Text style={styles.emptyActionPrimaryText}>{t('livreScolaireHome.envoyerLivres')}</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.emptyActionSecondary} onPress={() => safeNavigate('LibrairieRegistration')}>
-                                    <SafeIcon name="store" size={16} color="#F59E0B" type="lucide" />
-                                    <Text style={styles.emptyActionSecondaryText}>{t('bourseLivre.devenirLibraire', 'Devenir Libraire')}</Text>
-                                </TouchableOpacity>
-                            </View>
                         </View>
                     }
                 />
             )}
-
-            {/* Modal d'ajout simplifié */}
-            {showAddModal && (
-                <AddBookModal
-                    visible={showAddModal}
-                    onClose={() => {
-                        setShowAddModal(false);
-                        setSelectedImage(null);
-                        setImageBase64(null);
-                        setBookInfo(null);
-                        setPrice('');
-                    }}
-                    selectedImage={selectedImage}
-                    bookInfo={bookInfo}
-                    price={price}
-                    onPriceChange={setPrice}
-                    onSave={handleSaveBook}
-                    saving={saving}
-                    analyzing={analyzingImage}
-                />
-            )}
-
-            {/* Modal pour configurer les moyens de paiement (vente livre) */}
-            <PaymentMethodPrompt
-                visible={showPaymentPrompt}
-                onClose={() => setShowPaymentPrompt(false)}
-                onSaved={() => {
-                    paymentCheck.refresh();
-                    // Relancer la sauvegarde après configuration du moyen de paiement
-                    handleSaveBook();
-                }}
-                context="book_sell"
-            />
         </SafeNativeView>
     );
 };
@@ -576,158 +405,6 @@ const BookCard: React.FC<BookCardProps> = ({ livre, onPress, formatDistance }) =
     );
 };
 
-// Modal d'ajout simplifié
-interface AddBookModalProps {
-    visible: boolean;
-    onClose: () => void;
-    selectedImage: string | null;
-    bookInfo: BookImageAnalysis | null;
-    price: string;
-    onPriceChange: (price: string) => void;
-    onSave: () => void;
-    saving: boolean;
-    analyzing: boolean;
-}
-
-const AddBookModal: React.FC<AddBookModalProps> = ({
-    visible,
-    onClose,
-    selectedImage,
-    bookInfo,
-    price,
-    onPriceChange,
-    onSave,
-    saving,
-    analyzing,
-}) => {
-    const { t } = useLanguageSafe();
-    return (
-        <Modal
-            visible={visible}
-            transparent
-            animationType="slide"
-            onRequestClose={onClose}
-        >
-            <View style={styles.modalOverlay}>
-                <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>{t('livreScolaireHome.ajouterUnLivre')}</Text>
-                        <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-                            <SafeIcon name="x" size={24} color="#111827" type="lucide" />
-                        </TouchableOpacity>
-                    </View>
-
-                    <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
-                        {analyzing ? (
-                            <View style={styles.analyzingContainer}>
-                                <ActivityIndicator size="large" color="#F59E0B" />
-                                <Text style={styles.analyzingText}>
-                                    {t('livreScolaireHome.analyseEnCours', "Analyse de l'image en cours...")}
-                                </Text>
-                                <Text style={styles.analyzingSubtext}>
-                                    {t('livreScolaireHome.iaExtraitCaracteristiques', "L'IA extrait les caractéristiques de votre livre")}
-                                </Text>
-                            </View>
-                        ) : bookInfo ? (
-                            <>
-                                {selectedImage && (
-                                    <Image
-                                        source={{ uri: selectedImage }}
-                                        style={styles.previewImage}
-                                        resizeMode="contain"
-                                    />
-                                )}
-                                <View style={styles.bookInfoContainer}>
-                                    <Text style={styles.bookInfoTitle}>{t('livreScolaireHome.informationsDetectees')}</Text>
-                                    <View style={styles.bookInfoRow}>
-                                        <Text style={styles.bookInfoLabel}>{t('livreScolaireHome.titre', 'Titre')}:</Text>
-                                        <Text style={styles.bookInfoValue}>{bookInfo.titre}</Text>
-                                    </View>
-                                    {bookInfo.auteur && (
-                                        <View style={styles.bookInfoRow}>
-                                            <Text style={styles.bookInfoLabel}>{t('livreScolaireHome.auteur', 'Auteur')}:</Text>
-                                            <Text style={styles.bookInfoValue}>{bookInfo.auteur}</Text>
-                                        </View>
-                                    )}
-                                    {bookInfo.matiere && (
-                                        <View style={styles.bookInfoRow}>
-                                            <Text style={styles.bookInfoLabel}>{t('livreScolaireHome.matiere')}</Text>
-                                            <Text style={styles.bookInfoValue}>{bookInfo.matiere}</Text>
-                                        </View>
-                                    )}
-                                    {bookInfo.classe_actuelle && (
-                                        <View style={styles.bookInfoRow}>
-                                            <Text style={styles.bookInfoLabel}>{t('livreScolaireHome.classe', 'Classe')}:</Text>
-                                            <Text style={styles.bookInfoValue}>
-                                                {bookInfo.classe_actuelle} → {bookInfo.classe_souhaitee || '?'}
-                                            </Text>
-                                        </View>
-                                    )}
-                                    <View style={styles.bookInfoRow}>
-                                        <Text style={styles.bookInfoLabel}>{t('livreScolaireHome.etat')}</Text>
-                                        <Text style={styles.bookInfoValue}>{bookInfo.etat_livre}</Text>
-                                    </View>
-                                    {bookInfo.confidence < 0.7 && (
-                                        <View style={styles.warningBox}>
-                                            <SafeIcon name="alert-triangle" size={16} color="#F59E0B" type="lucide" />
-                                            <Text style={styles.warningText}>
-                                                {t('livreScolaireHome.verificationNecessaire', 'Certaines informations peuvent nécessiter une vérification')}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
-
-                                <View style={styles.priceContainer}>
-                                    <Text style={styles.priceLabel}>{t('livreScolaireHome.prixDeVenteFcfa')}</Text>
-                                    <TextInput
-                                        style={styles.priceInput}
-                                        placeholder="Ex: 5000"
-                                        value={price}
-                                        onChangeText={onPriceChange}
-                                        keyboardType="numeric"
-                                    />
-                                    <Text style={styles.priceHint}>
-                                        {t('livreScolaireHome.indiquezPrix', 'Indiquez le prix auquel vous souhaitez vendre ce livre')}
-                                    </Text>
-                                </View>
-                            </>
-                        ) : (
-                            <View style={styles.errorContainer}>
-                                <SafeIcon name="alert-circle" size={48} color="#EF4444" />
-                                <Text style={styles.errorText}>
-                                    {t('livreScolaireHome.impossibleAnalyser', "Impossible d'analyser l'image")}
-                                </Text>
-                            </View>
-                        )}
-                    </ScrollView>
-
-                    {bookInfo && !analyzing && (
-                        <View style={styles.modalFooter}>
-                            <TouchableOpacity
-                                style={styles.cancelButton}
-                                onPress={onClose}
-                            >
-                                <Text style={styles.cancelButtonText}>{t('livreScolaireHomeScreen.annuler')}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.saveButton, !price.trim() && styles.saveButtonDisabled]}
-                                onPress={onSave}
-                                disabled={!price.trim() || saving}
-                            >
-                                {saving ? (
-                                    <ActivityIndicator color="#FFFFFF" />
-                                ) : (
-                                    <Text style={styles.saveButtonText}>{t('livreScolaireHome.publier', 'Publier')}</Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                </View>
-            </View>
-        </Modal>
-    );
-};
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -750,7 +427,6 @@ const styles = StyleSheet.create({
     headerTop: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
     },
     backButton: {
         marginRight: 12,
@@ -763,159 +439,154 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#FFFFFF',
     },
-    headerSubtitle: {
-        fontSize: 12,
-        color: 'rgba(255, 255, 255, 0.9)',
-        marginTop: 2,
-    },
-    addButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    quickActionsWrap: {
-        marginTop: 14,
-    },
-    quickActionsContent: {
-        paddingRight: 6,
-        gap: 10,
-    },
-    quickActionCard: {
-        width: 102,
-        paddingVertical: 12,
+    libraireHeaderBtn: {
+        maxWidth: 120,
+        minHeight: 44,
+        paddingVertical: 8,
         paddingHorizontal: 8,
         borderRadius: 14,
-        backgroundColor: 'rgba(255, 255, 255, 0.22)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.34)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    quickActionCardAccent: {
-        backgroundColor: 'rgba(5,150,105,0.45)',
-    },
-    quickActionIcon: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.22)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 8,
-    },
-    quickActionLabel: {
-        color: '#FFFFFF',
-        fontSize: 11,
-        fontWeight: '700',
-        textAlign: 'center',
-        lineHeight: 14,
-        minHeight: 28,
-    },
-    searchContainer: {
-        marginTop: 8,
-    },
-    searchBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        gap: 12,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: 16,
-        color: '#111827',
-    },
-    clearButton: {
-        padding: 4,
-    },
-    insightsRow: {
-        flexDirection: 'row',
-        paddingHorizontal: 16,
-        paddingTop: 14,
-        gap: 10,
-        backgroundColor: '#F9FAFB',
-    },
-    insightCard: {
-        flex: 1,
-        minHeight: 66,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        flexDirection: 'column',
+        alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#EEF2F7',
+        gap: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 3,
+        elevation: 3,
     },
-    insightValue: {
-        fontSize: 20,
+    libraireHeaderBtnText: {
+        fontSize: 10,
         fontWeight: '800',
-        color: '#111827',
+        color: '#92400E',
+        textAlign: 'center',
+        lineHeight: 13,
+        maxWidth: 112,
     },
-    insightLabel: {
-        marginTop: 4,
-        fontSize: 12,
-        color: '#6B7280',
-        fontWeight: '600',
-    },
-    partnerCard: {
-        flex: 1.4,
-        backgroundColor: '#FFF7ED',
-        borderColor: '#FED7AA',
-    },
-    partnerCardTitle: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#9A3412',
-    },
-    partnerCardSub: {
-        marginTop: 4,
-        fontSize: 11,
-        color: '#C2410C',
-    },
-    buyNowRow: {
-        flexDirection: 'row',
-        gap: 10,
+    primaryActionsRow: {
         paddingHorizontal: 16,
-        paddingTop: 10,
-        paddingBottom: 6,
+        paddingTop: 12,
+        paddingBottom: 10,
         backgroundColor: '#F9FAFB',
+        gap: 10,
+        flexDirection: 'row',
     },
-    buyNowBtn: {
+    primaryActionButton: {
         flex: 1,
-        minHeight: 44,
-        borderRadius: 10,
+        minHeight: 118,
+        borderRadius: 12,
+        paddingVertical: 14,
         paddingHorizontal: 12,
-        paddingVertical: 10,
+        justifyContent: 'space-between',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.22,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    primaryActionSell: {
+        backgroundColor: '#047857',
+        shadowColor: '#059669',
+    },
+    primaryActionBuy: {
+        backgroundColor: '#2563EB',
+        shadowColor: '#2563EB',
+    },
+    primaryActionTitle: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    primaryActionSubtitle: {
+        color: 'rgba(255,255,255,0.92)',
+        fontSize: 11,
+        lineHeight: 15,
+        marginTop: 6,
+    },
+    dashboardSection: {
+        marginHorizontal: 16,
+        marginTop: 2,
+        marginBottom: 6,
+        padding: 12,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+    },
+    dashboardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    dashboardTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#111827',
+    },
+    dashboardHeaderActions: {
+        flexDirection: 'row',
         gap: 8,
     },
-    buyNowOccasion: {
-        backgroundColor: '#FFEDD5',
+    iconHeaderBtn: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: '#ECFEFF',
+        alignItems: 'center',
+        justifyContent: 'center',
         borderWidth: 1,
-        borderColor: '#FDBA74',
+        borderColor: '#A5F3FC',
     },
-    buyNowNew: {
-        backgroundColor: '#059669',
+    statsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
     },
-    buyNowOccasionText: {
-        color: '#92400E',
+    statCard: {
+        width: '48%',
+        backgroundColor: '#F8FAFC',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+    },
+    statValue: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    statLabel: {
+        fontSize: 11,
+        color: '#64748B',
+        marginTop: 4,
+    },
+    trackActionsRow: {
+        marginTop: 10,
+        gap: 8,
+    },
+    trackActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#EFF6FF',
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+    },
+    trackActionText: {
         fontSize: 12,
-        fontWeight: '700',
-        flexShrink: 1,
+        fontWeight: '600',
+        color: '#1E3A8A',
     },
-    buyNowNewText: {
-        color: '#FFFFFF',
-        fontSize: 12,
-        fontWeight: '700',
-        flexShrink: 1,
+    qrHintText: {
+        marginTop: 10,
+        fontSize: 11,
+        color: '#0F766E',
+        fontWeight: '600',
     },
     centerContainer: {
         flex: 1,
@@ -962,49 +633,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '600',
         color: '#6B7280',
-    },
-    emptySubtext: {
-        marginTop: 8,
-        fontSize: 14,
-        color: '#9CA3AF',
-        textAlign: 'center',
-    },
-    emptyActions: {
-        marginTop: 18,
-        width: '100%',
-        gap: 10,
-    },
-    emptyActionPrimary: {
-        backgroundColor: '#F59E0B',
-        borderRadius: 10,
-        paddingVertical: 12,
-        paddingHorizontal: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-    },
-    emptyActionPrimaryText: {
-        color: '#FFFFFF',
-        fontWeight: '700',
-        fontSize: 14,
-    },
-    emptyActionSecondary: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 10,
-        paddingVertical: 12,
-        paddingHorizontal: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        borderWidth: 1,
-        borderColor: '#FDE68A',
-    },
-    emptyActionSecondaryText: {
-        color: '#B45309',
-        fontWeight: '700',
-        fontSize: 14,
     },
     // Book Card styles
     bookCard: {
@@ -1089,170 +717,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '700',
         color: '#065F46',
-    },
-    // Modal styles
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        maxHeight: '90%',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#111827',
-    },
-    modalCloseButton: {
-        padding: 4,
-    },
-    modalScroll: {
-        flex: 1,
-    },
-    modalScrollContent: {
-        padding: 20,
-    },
-    analyzingContainer: {
-        padding: 32,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    analyzingText: {
-        marginTop: 16,
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111827',
-    },
-    analyzingSubtext: {
-        marginTop: 8,
-        fontSize: 14,
-        color: '#6B7280',
-        textAlign: 'center',
-    },
-    previewImage: {
-        width: '100%',
-        height: 300,
-        borderRadius: 12,
-        marginBottom: 20,
-        backgroundColor: '#F3F4F6',
-    },
-    bookInfoContainer: {
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 20,
-    },
-    bookInfoTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#111827',
-        marginBottom: 12,
-    },
-    bookInfoRow: {
-        flexDirection: 'row',
-        marginBottom: 8,
-    },
-    bookInfoLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#6B7280',
-        width: 100,
-    },
-    bookInfoValue: {
-        flex: 1,
-        fontSize: 14,
-        color: '#111827',
-    },
-    warningBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FEF3C7',
-        borderRadius: 8,
-        padding: 12,
-        marginTop: 12,
-        gap: 8,
-    },
-    warningText: {
-        flex: 1,
-        fontSize: 12,
-        color: '#92400E',
-    },
-    priceContainer: {
-        marginTop: 8,
-    },
-    priceLabel: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#111827',
-        marginBottom: 8,
-    },
-    priceInput: {
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        padding: 16,
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#111827',
-        borderWidth: 2,
-        borderColor: '#E5E7EB',
-    },
-    priceHint: {
-        fontSize: 12,
-        color: '#6B7280',
-        marginTop: 8,
-    },
-    errorContainer: {
-        padding: 32,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    modalFooter: {
-        flexDirection: 'row',
-        padding: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-        gap: 12,
-    },
-    cancelButton: {
-        flex: 1,
-        paddingVertical: 14,
-        borderRadius: 8,
-        backgroundColor: '#F3F4F6',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    cancelButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#6B7280',
-    },
-    saveButton: {
-        flex: 1,
-        paddingVertical: 14,
-        borderRadius: 8,
-        backgroundColor: '#F59E0B',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    saveButtonDisabled: {
-        opacity: 0.5,
-    },
-    saveButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#FFFFFF',
     },
 });
 

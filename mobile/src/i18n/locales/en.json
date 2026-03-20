@@ -250,7 +250,9 @@
         "notificationsPush": "Notifications push",
         "notificationsSms": "Notifications SMS",
         "afficherLaLocalisation": "Afficher the location",
-        "modeCompact": "Mode compact"
+        "modeCompact": "Mode compact",
+        "coachIaNavTitle": "Coach IA — Navigation intelligente",
+        "coachIaNavDesc": "Son des rappels motivation (GPS). Désactivé : notification visible + vibration, sans son."
     },
     "contact": {
         "title": "Contact",
@@ -1790,7 +1792,22 @@
         "typeDeContrat": "type of contract *",
         "lieuDeTravail": "place of travail *",
         "seConnecter": "Log in",
-        "voirLesCandidatures": "view the candidatures"
+        "voirLesCandidatures": "view the candidatures",
+        "publierUneOffre": "Publier une offre",
+        "titreDuPoste": "Titre du poste *",
+        "description": "Description *",
+        "adresse": "Adresse",
+        "gps": "GPS",
+        "salaireMin": "Salaire min (XAF)",
+        "salaireMax": "Salaire max (XAF)",
+        "publierLoffre": "Publier l'offre",
+        "uneFoisOffrePubliee": "Une fois l'offre publiée, vous pourrez :",
+        "voirMesOffres": "Voir mes offres",
+        "gererVosOffresEtCandidatures": "Gérer vos offres et candidatures",
+        "analyserLesCvIa": "Analyser les CV (IA)",
+        "disponibleApresPublication": "Disponible après publication",
+        "matchingCandidats": "Matching candidats",
+        "trouverLesMeilleursProfils": "Trouver les meilleurs profils"
     },
     "immobilierForm": {
         "photosAdded": " Photos added",
@@ -3051,7 +3068,30 @@
         "recordsInfo": "The AI Coach tracks your records automatically.",
         "frequentTripsDesc": "Frequent routes, peak hours",
         "frequentTripsInfo": "The AI Coach identifies your frequent routes.",
-        "startTripToActivate": "Start a trip to activate analysis"
+        "startTripToActivate": "Start a trip to activate analysis",
+        "covoiturage": "Covoiturage",
+        "statsScopeGeneral": "Général",
+        "statsScopeFreeWalk": "Marches libres",
+        "shareFreeWalk": "Partager ma marche libre",
+        "freeWalkShareTitle": "Ma session de marche libre",
+        "sessionWindow": "Période",
+        "installPrompt": "Télécharge Yukpo pour suivre tes marches et stats intelligentes :",
+        "mostVisitedPlaces": "Lieux les plus visités",
+        "noVisitedPlaceForPeriod": "Aucun lieu visité sur cette période",
+        "filteredFreeWalkSession": "Session marche libre filtrée",
+        "fromTimeToTime": "Du {{start}} au {{end}}",
+        "compareVsLast": "vs dernière",
+        "compareVsLast2": "vs 2 dernières",
+        "compareVsMonth": "vs ce mois",
+        "metricDistance": "Distance",
+        "metricDuration": "Durée",
+        "metricCalories": "Calories",
+        "performanceProgression": "Performance & progression",
+        "recentDistanceVsPrevious": "Distance récente: {{current}} km vs {{previous}} km",
+        "notEnoughHistoryForComparison": "Pas assez d’historique pour la comparaison.",
+        "estimatedCo2Saved": "CO2 estimé économisé",
+        "passiveAutoStats": "Statistiques passives (détection auto)",
+        "pendingSessionsCount": "{{count}} sessions en attente de sync"
     },
     "bloodPrompt": {
         "title": "Register your blood type",
@@ -3573,6 +3613,7 @@
         "subtitle": "Exchange your school books easily",
         "filtres": "Filters",
         "devenirLibraire": "Become a Bookseller",
+        "maLibrairie": "My bookstore",
         "recommandationsIA": "AI Recommendations",
         "prixIA": "AI Price",
         "troquer": "Exchange",
@@ -3762,7 +3803,19 @@
         "aucuneSuggestionDisponiblePourLe": "No suggestion available at the moment.",
         "retour": "Back",
         "horairesDouverture": "Opening hours",
-        "assistantVoyageIa": "AI Travel Assistant"
+        "assistantVoyageIa": "AI Travel Assistant",
+        "ouvert": "Ouvert",
+        "appeler": "Appeler",
+        "siteWeb": "Site web",
+        "ouverture": "Ouverture",
+        "fermeture": "Fermeture",
+        "destinations": "Destinations",
+        "compagniesDeBus": "Compagnies de bus",
+        "nouvellesSuggestions": "Nouvelles suggestions",
+        "analyseEnCours": "Analyse en cours...",
+        "obtenirSuggestions": "Obtenir des suggestions de voyage",
+        "autresHoraires": "autres horaires",
+        "contact": "Contact"
     },
     "agenceVoyageForm": {
         "emissionDeTicketsBusActivee": "Bus ticket issuance enabled",
@@ -3875,7 +3928,10 @@
         "rechercheDeTicketsBus": "Bus ticket search",
         "villeD": "City",
         "localisationOptionnelle": "Location (optional)",
-        "optionsDeRecherche": "Search options"
+        "optionsDeRecherche": "Search options",
+        "plusProche": "Plus proche",
+        "billetsDeBus": "Billets de bus",
+        "trouvezAgenceIdeale": "Trouvez l'agence idéale pour organiser votre voyage"
     },
     "agencyAnalyticsDashboard": {
         "evolutionDesRevenus": "Évolution of the revenus",
@@ -4090,7 +4146,33 @@
         "chargementDesFiltresIntelligents": "loading of the filters intelligents...",
         "rechercher": "search",
         "rechercheAutomobile": "search Automobile",
-        "filtresIntelligents": "filters intelligents"
+        "filtresIntelligents": "filters intelligents",
+        "chargementDuCatalogue": "Chargement du catalogue...",
+        "vehiculesDisponibles": "{{count}} véhicule(s) disponible(s)",
+        "recherchesRapides": "Recherches rapides",
+        "toutVoir": "Tout voir",
+        "occasion": "Occasion",
+        "neuf": "Neuf",
+        "moinsCher": "Moins cher",
+        "proche": "Proche",
+        "effacer": "Effacer ({{count}})",
+        "marque": "Marque",
+        "type": "Type",
+        "condition": "État",
+        "prixFcfa": "Prix (FCFA)",
+        "annee": "Année",
+        "depuis": "Depuis",
+        "jusqua": "Jusqu'à",
+        "plusDeFiltres": "Plus de filtres",
+        "masquerFiltresAvances": "Masquer les filtres avancés",
+        "carburant": "Carburant",
+        "transmission": "Transmission",
+        "couleur": "Couleur",
+        "localisation": "Localisation",
+        "villeQuartierAdresse": "Ville, quartier, adresse...",
+        "utiliserMaPositionGps": "Utiliser ma position GPS",
+        "rayon": "Rayon: {{km}} km",
+        "infoFiltres": "Les filtres s'adaptent automatiquement aux véhicules disponibles dans le catalogue."
     },
     "autocompleteGranularEditor": {
         "ajouterCaracteristique": "Add caracteristique",
@@ -4422,7 +4504,11 @@
         "depart": "Departure",
         "arrivee": "Arrival",
         "informationsDeTicketManquantes": "Missing ticket information",
-        "prixParPlace": "Price per seat"
+        "prixParPlace": "Price per seat",
+        "payerMaintenant": "Payer maintenant",
+        "agenceDeVoyage": "Agence de voyage",
+        "nonDisponible": "Non disponible",
+        "placesDisponibles": "{{count}} place(s) disponible(s)"
     },
     "busTicketCard": {
         "reserver": "Book",
@@ -4445,7 +4531,19 @@
         "placesReservees": "Reserved seats:",
         "fraisDeReservation": "Booking fee:",
         "methodeDePaiement": "Payment method",
-        "bientotDisponible": "Coming soon"
+        "bientotDisponible": "Coming soon",
+        "paiement": "Paiement",
+        "prixUnitaire": "Prix unitaire:",
+        "sousTotal": "Sous-total:",
+        "allerRetour": "Aller-retour:",
+        "total": "Total:",
+        "soldeInsuffisant": "Solde insuffisant",
+        "vousAvez": "Vous avez",
+        "vousAvezBesoinDe": "Vous avez besoin de",
+        "solde": "Solde",
+        "soldeInsuffisantRechargez": "Solde insuffisant. Rechargez vos tokens pour continuer.",
+        "payer": "Payer",
+        "infosManquantes": "Informations de ticket manquantes"
     },
     "busTicketQR": {
         "presentezCeQrCodeA": "Present this QR code at boarding",
@@ -4847,7 +4945,16 @@
         "reservationCreeeMaisIdManquant": "Booking created but ID missing",
         "bientotDisponible": "Coming soon",
         "impossibleDeCreerLaReservation": "Unable to create booking",
-        "paiementEchoue": "Payment failed"
+        "paiementEchoue": "Payment failed",
+        "paiement": "Paiement",
+        "soldeInsuffisant": "Solde insuffisant",
+        "soldeInsuffisantMsg": "Votre solde ({{balance}} {{devise}}) est insuffisant. Veuillez recharger.",
+        "walletYukpo": "Wallet Yukpo",
+        "solde": "Solde:",
+        "soldeInsuffisantRechargez": "Solde insuffisant. Rechargez votre wallet.",
+        "places": "Places:",
+        "erreurPaiement": "Une erreur est survenue lors du paiement",
+        "paiementCovoiturage": "Paiement covoiturage - {{count}} place(s)"
     },
     "covoiturageSearch": {
         "rechercherPresDeMoi": "Search near me",
@@ -6113,7 +6220,27 @@
         "ville": "city",
         "zoneDeRecherche": " Zone of search",
         "prixMin": "price min",
-        "prixMax": "price max"
+        "prixMax": "price max",
+        "recommandationsEstimationPrix": "Recommandations IA et estimation de prix",
+        "trouvezLeBienIdeal": "Trouvez le bien idéal selon vos critères",
+        "recherchesRapides": "Recherches rapides",
+        "biensEnVente": "Biens en vente",
+        "plusProche": "Plus proche",
+        "pointGps": "Point GPS",
+        "zoneCarte": "Zone carte",
+        "quartiers": "Quartiers",
+        "selectionnezQuartiers": "Sélectionnez un ou plusieurs quartiers",
+        "quartiersSelectionnes": "quartier(s) sélectionné(s)",
+        "statut": "Statut",
+        "prixFcfa": "Prix (FCFA)",
+        "superficieM2": "Superficie (m²)",
+        "distanceMaximum": "Distance maximum",
+        "rechercheEnCours": "Recherche en cours...",
+        "lancerLaRecherche": "Lancer la recherche",
+        "infoZone": "Utilisez la recherche par zone pour cibler un périmètre précis.",
+        "infoCompareQuartier": "Comparez les prix par quartier pour repérer les opportunités.",
+        "infoAlertesPrix": "Activez des alertes prix pour suivre les nouveaux biens.",
+        "infoVisitesVirtuelles": "Privilégiez les annonces avec visites virtuelles quand disponibles."
     },
     "insuranceQuoteRequest": {
         "scoreDadequation": "Score of adéquation",
@@ -6384,7 +6511,20 @@
         "erreurLorsDeLaRecherche": "Erreur lors of the search",
         "bourseDuLivre": "Bourse of the Livre",
         "envoyerLivres": "send livres",
-        "prixDeVenteFcfa": "price of vente (FCFA) *"
+        "prixDeVenteFcfa": "price of vente (FCFA) *",
+        "acheterOccasion": "Occasion",
+        "acheterNeuf": "Neuf",
+        "payerLivresOccasion": "Payer occasion",
+        "payerLivresNeufs": "Payer neuf",
+        "disponibles": "Dispos",
+        "position": "Position",
+        "vendreDesLivresNeufs": "Vendez des livres neufs",
+        "ecranMomentanementIndisponible": "Écran indisponible pour le moment.",
+        "proximityCount": "{{count}} listing(s) nearby",
+        "decouvrezEchanges": "Swap, used and new books on Yukpo",
+        "catalogueEtFiltres": "Catalog",
+        "rechercheEtTroc": "Search, filters and swap",
+        "conseilParcourirOuPublier": "Browse the catalog or list a book."
     },
     "livresNeufs": {
         "title": "New Books",
@@ -6892,7 +7032,8 @@
         "tous": "All",
         "offreNonTrouvee": "Offer not found",
         "chargement": "Loading...",
-        "salaireNonRenseigne": "Salary not provided"
+        "salaireNonRenseigne": "Salary not provided",
+        "rechercherUnTaxi": "Rechercher un taxi"
     },
     "optimizationSuggestions": {
         "toutesVosCampagnesSontOptimisees": "Toutes your campagnes are optimisées !",
@@ -7006,7 +7147,37 @@
     "orientationScolaireHub": {
         "typesDetablissements": "Types of établissements",
         "creerVotreProfil": " create your profile",
-        "creerMonProfil": "Create mon profil"
+        "creerMonProfil": "Create mon profil",
+        "title": "Orientation Scolaire",
+        "subtitle": "Trouvez l'établissement idéal pour vous ou vos enfants",
+        "primary": "Primaire",
+        "secondary": "Secondaire",
+        "superieur": "Supérieur",
+        "quickActions": "Actions rapides",
+        "quickActionsItems": {
+            "concours": "Concours actifs",
+            "conferences": "Conférences",
+            "programmes": "Programmes",
+            "fournitures": "Fournitures"
+        },
+        "aiSectionTitle": "🤖 Intelligence Artificielle",
+        "creerVotreProfilDesc": "Créez votre profil étudiant pour obtenir des recommandations personnalisées",
+        "profileRequiredTitle": "Profil requis",
+        "profileRequiredMsg": "Veuillez d'abord créer votre profil étudiant",
+        "analyseTerminee": "Analyse terminée",
+        "analyseTermineeMsg": "Votre profil a été analysé avec succès. Consultez les recommandations !",
+        "analysisCardTitle": "Analyse de profil IA",
+        "analysisCardDesc": "Analysez votre profil académique et obtenez des insights personnalisés",
+        "analysisInProgress": "Analyse en cours...",
+        "analyzeMyProfile": "Analyser mon profil",
+        "analysisErrorTitle": "Erreur",
+        "analysisErrorMsg": "Impossible d'analyser le profil",
+        "recommendationsCardTitle": "Recommandations IA",
+        "recommendationsCardDesc": "Obtenez des recommandations personnalisées d'établissements et programmes",
+        "getRecommendations": "Obtenir des recommandations",
+        "compareCardTitle": "Comparer des programmes (IA)",
+        "compareCardDesc": "Comparez deux programmes pour choisir le meilleur selon votre profil",
+        "comparePrograms": "Comparer des programmes"
     },
     "otpVerification": {
         "numeroVerifie": "number vérifié !",
@@ -10447,6 +10618,7 @@
         "partageDeTrajet": "Partage of trajet",
         "transportRapide": "Transport rapide",
         "vehiculesOccasions": "Vehicles, occasions",
+        "bourseDuLivre": "Book exchange",
         "livresScolaires": "Livres scolaires",
         "monMenu": "my menu",
         "offresD": "Offres d\\",
@@ -10599,7 +10771,10 @@
     },
     "notificationHistory": {
         "rechercher": "search...",
-        "chargement": "loading..."
+        "chargement": "loading...",
+        "muteSoundThisType": "Sans son (ce type)",
+        "muteSoundTitle": "Préférence enregistrée",
+        "muteSoundBody": "Les prochaines notifications de ce type seront sans son côté Yukpo (Coach IA : replanification automatique). Les push serveur peuvent encore dépendre des réglages système."
     },
     "partnerDashboardLayout": {
         "chargementDeVotreEspace": "loading of your espace...",
@@ -11188,7 +11363,8 @@
         "tokenNonRecuDuServeur": "Token no receipt of the serveur",
         "bienvenueVousEtesConnecteAvecGoogle": "Bienvenue ! Vous êtes connecté with Google.",
         "uriUtilisee": "URI utilisée:",
-        "connexionEchouee": "Login échouée."
+        "connexionEchouee": "Login échouée.",
+        "pourLesPrestatairesUtilisezUnCompteNormal": "Les prestataires de services doivent créer un compte normal pour accéder à toutes les fonctionnalités prestataire."
     },
     "otpVerificationScreen": {
         "envoyerLeCodeVerifiezVotreConnexion": "invoyer the coof. Check yorr connexion.",
@@ -12567,7 +12743,10 @@
     },
     "hopitalListScreen": {
         "impossibleDeChargerLesHopitaux": "Unabthe of charger the hôpitaux",
-        "trouvehopitauxlength1": "} trouvé{hopitaux.length > 1 ?"
+        "trouvehopitauxlength1": "} trouvé{hopitaux.length > 1 ?",
+        "indisponible": "Indisponible",
+        "essayezDeModifierVosCriteres": "Essayez de modifier vos critères de recherche",
+        "hopitalTrouve": "hôpital(aux) trouvé(s)"
     },
     "hopitalSearchScreen": {
         "serviceMedicalRecherche": "Servithis médical recherché *",
@@ -14250,7 +14429,13 @@
         "debitSuccess": " {{amount}} debited - {{reason}}",
         "debitFailed": " Debit failed: {{reason}}",
         "freeAccess": " Free - {{reason}}",
-        "trialRemaining": " Free trial ({{remaining}} remaining)"
+        "trialRemaining": " Free trial ({{remaining}} remaining)",
+        "freeUntilDate": "Tous les services navigation sont gratuits jusqu’au {{date}}.",
+        "trialActive": "Essai gratuit",
+        "debtWarning": "Dette en cours",
+        "debtAmount": "Dette",
+        "unpaidUses": "impayés",
+        "suspended": "Service suspendu"
     },
     "communityAlert": {
         "newCheckpointTitle": " New checkpoint reported",
@@ -14506,8 +14691,8 @@
         "askNavigation": "Ask for navigation to another screen",
         "tapSuggestedAction": "Tap a suggested action",
         "askHowToTask": "Ask how to perform a task",
-        "welcomeHome": "\ud83d\ude80 Yukpo \u2014 Africa's #1 super-app that digitizes your daily life! Health, transport, delivery, jobs, education, smart GPS\u2026 all in one app. 20+ services, AI that understands you in 62 languages, secure payments. Ask me anything or explore below!",
-        "welcomeHomeUser": "{{name}}, welcome! \ud83d\ude80 I'm your personal AI assistant. Yukpo puts at your fingertips: pharmacies, hospitals, taxis, delivery, jobs, smart GPS, AI video & much more \u2014 all with secure payment. What would you like to do today?",
+        "welcomeHome": "🚀 Yukpo — Africa's #1 super-app that digitizes your daily life! Health, transport, delivery, jobs, education, smart GPS… all in one app. 20+ services, AI that understands you in 62 languages, secure payments. Ask me anything or explore below!",
+        "welcomeHomeUser": "{{name}}, welcome! 🚀 I'm your personal AI assistant. Yukpo puts at your fingertips: pharmacies, hospitals, taxis, delivery, jobs, smart GPS, AI video & much more — all with secure payment. What would you like to do today?",
         "discover": "🚀 Discover Yukpo",
         "discoveryQuery": "What is Yukpo? Show me all features",
         "followUpTitle": "You might also ask:",
@@ -14679,6 +14864,30 @@
             "detailDelivery": "How does parcel and shopping delivery work?",
             "detailGps": "Tell me about smart GPS Navigation",
             "detailBooks": "How does the Book Exchange and Swap work?"
+        },
+        "screenDesc": {
+            "home": "Page d'accueil — accédez à tous les services révolutionnaires de Yukpo.",
+            "search": "Recherchez services et produits. Filtrez, comparez et négociez les prix.",
+            "serviceDetail": "Détails d'un service. Contactez, appelez, négociez ou obtenez l'itinéraire.",
+            "profile": "Votre profil. Gérez vos infos, paramètres et portefeuille.",
+            "pharmacy": "Pharmacies proches avec recherche IA de médicaments et commande en ligne.",
+            "hospital": "Hôpitaux et cliniques. RDV en ligne, triage IA, urgences, spécialistes.",
+            "hotel": "Hôtels et meublés. Recherche, réservation et gestion avec tarification IA.",
+            "taxi": "Taxi à la demande avec tarification IA dynamique et suivi en temps réel.",
+            "delivery": "Livraison de colis et courses avec suivi GPS en temps réel.",
+            "carpooling": "Covoiturage intelligent. Trouvez ou proposez un trajet, économisez !",
+            "jobs": "Emploi : recherche IA, analyse CV, prédiction salaire, matching intelligent.",
+            "orientation": "Orientation scolaire IA. Trouvez l'école idéale pour votre parcours.",
+            "books": "Bourse du Livre : achat, vente et troc intelligent de livres scolaires.",
+            "navigation": "Navigation GPS avec guidage vocal, alertes radars et communautaires.",
+            "recharge": "Rechargez votre solde Yukpo. Bonus jusqu'à +20% sur vos recharges !",
+            "wallet": "Suivi financier détaillé. Solde, crédits, débits, graphiques et historique.",
+            "supermarket": "Supermarché : comparez les prix IA, commandez avec livraison."
+        },
+        "navigation": {
+            "coachNotifBody": "Le **Coach IA** de la Navigation envoie des rappels motivation (matin, midi, soir). Tu peux couper le **son** dans *Réglages → Notifications* (section Coach IA), ou **sans son pour un type** depuis l’historique de la **cloche** sur l’accueil. En mode silencieux : **affichage** + **vibration**.",
+            "openNotifSettings": "Ouvrir les notifications (réglages)",
+            "screenGuide": "Navigation intelligente : itinéraires, alertes communautaires, POI, statistiques, marche libre, Coach IA et notifications de motivation."
         }
     },
     "chatbot": {
@@ -14819,5 +15028,27 @@
         "hospitalAIHelp": "Hospital AI services:\n•  Intelligent triage\n•  Pathology search\n•  Medical history\n• 🆘 Nearby emergencies",
         "screenActions": "On the \"{{screen}}\" screen, here are the available actions:",
         "greeting": "Hello!  I'm your assistant on \"{{screen}}\". How can I help you?"
+    },
+    "deliveryCommissionsAdmin": {
+        "title": "Commissions Livraison",
+        "accessDenied": "Accès refusé",
+        "adminOnly": "Seuls les administrateurs peuvent accéder à cette page",
+        "loadError": "Impossible de charger les commissions",
+        "loading": "Chargement des commissions...",
+        "today": "Aujourd'hui",
+        "thisWeek": "Semaine",
+        "thisMonth": "Mois",
+        "allTime": "Tout",
+        "totalCommissions": "Total commissions",
+        "totalDeliveries": "Livraisons complétées",
+        "avgCommission": "Commission moyenne",
+        "commissionRates": "Taux (produits / livraison)",
+        "commissionsDetail": "Détail des commissions",
+        "merchant": "Marchand",
+        "courier": "Coursier",
+        "productCommission": "Commission produits",
+        "deliveryCommission": "Commission livraison",
+        "total": "Total",
+        "noCommissions": "Aucune commission pour cette période"
     }
 }

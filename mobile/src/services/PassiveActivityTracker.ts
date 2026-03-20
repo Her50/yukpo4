@@ -9,6 +9,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { apiPost } from './api';
@@ -18,6 +19,9 @@ const BACKGROUND_LOCATION_TASK = 'YUKPO_BACKGROUND_LOCATION_TASK';
 const STORAGE_KEY_SESSION = '@yukpo_passive_session';
 const STORAGE_KEY_ENABLED = '@yukpo_passive_tracking_enabled';
 const STORAGE_KEY_PENDING_SESSIONS = '@yukpo_passive_pending_sessions';
+let netInfoUnsubscribe: null | (() => void) = null;
+let wasOnline: boolean | null = null;
+let syncInFlight = false;
 
 // Seuils de détection
 const MIN_MOVEMENT_METERS = 15;       // Mouvement minimum pour compter (évite le bruit GPS)
@@ -144,6 +148,8 @@ const saveSession = async (session: PassiveSession): Promise<void> => {
 
 // ── Retry des sessions en attente (appelé quand le réseau revient) ──
 const retryPendingSessions = async (): Promise<void> => {
+    if (syncInFlight) return;
+    syncInFlight = true;
     try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY_PENDING_SESSIONS);
         if (!raw) return;
@@ -171,7 +177,25 @@ const retryPendingSessions = async (): Promise<void> => {
         }
     } catch (e) {
         console.warn('[PassiveTracker] Erreur retry sessions:', e);
+    } finally {
+        syncInFlight = false;
     }
+};
+
+const ensurePendingSessionsNetworkSync = (): void => {
+    if (netInfoUnsubscribe) return;
+    netInfoUnsubscribe = NetInfo.addEventListener((state) => {
+        const isOnline = !!(state.isConnected && state.isInternetReachable !== false);
+        if (wasOnline === null) {
+            wasOnline = isOnline;
+            return;
+        }
+        if (!wasOnline && isOnline) {
+            console.log('[PassiveTracker] 🌐 Réseau revenu: sync immédiate des sessions pending');
+            retryPendingSessions().catch(() => { });
+        }
+        wasOnline = isOnline;
+    });
 };
 
 // ── Définition de la tâche en arrière-plan ──
@@ -266,6 +290,7 @@ const registerBackgroundTask = () => {
 };
 
 registerBackgroundTask();
+ensurePendingSessionsNetworkSync();
 
 // ── API publique du service ──
 
@@ -366,6 +391,7 @@ export const PassiveActivityTracker = {
      */
     resumeIfEnabled: async (): Promise<void> => {
         try {
+            ensurePendingSessionsNetworkSync();
             const enabled = await AsyncStorage.getItem(STORAGE_KEY_ENABLED);
             if (enabled === 'true') {
                 const isRunning = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK)
@@ -408,6 +434,21 @@ export const PassiveActivityTracker = {
             return raw ? JSON.parse(raw) : null;
         } catch {
             return null;
+        }
+    },
+
+    retryPendingNow: async (): Promise<void> => {
+        await retryPendingSessions();
+    },
+
+    getPendingSessionsCount: async (): Promise<number> => {
+        try {
+            const raw = await AsyncStorage.getItem(STORAGE_KEY_PENDING_SESSIONS);
+            if (!raw) return 0;
+            const pending = JSON.parse(raw);
+            return Array.isArray(pending) ? pending.length : 0;
+        } catch {
+            return 0;
         }
     },
 };

@@ -250,7 +250,9 @@
         "notificationsPush": "Notifications push",
         "notificationsSms": "Notifications SMS",
         "afficherLaLocalisation": "Afficher la localisation",
-        "modeCompact": "Mode compact"
+        "modeCompact": "Mode compact",
+        "coachIaNavTitle": "Coach IA — Navigation intelligente",
+        "coachIaNavDesc": "Son des rappels motivation (GPS). Désactivé : notification visible + vibration, sans son."
     },
     "contact": {
         "title": "Contact",
@@ -3039,6 +3041,8 @@
         "periodWeek": "Semaine",
         "periodMonth": "Mois",
         "periodYear": "Année",
+        "statsScopeGeneral": "Général",
+        "statsScopeFreeWalk": "Marches libres",
         "thisWeek": "Cette semaine",
         "thisMonth": "Ce mois",
         "thisYear": "Cette année",
@@ -3084,12 +3088,32 @@
         "myPositionMarker": "Ma position",
         "stopTracking": "Arrêter le suivi",
         "shareMyStats": "Partager mes statistiques",
+        "shareFreeWalk": "Partager ma marche libre",
+        "freeWalkShareTitle": "Ma session de marche libre",
+        "sessionWindow": "Période",
+        "installPrompt": "Télécharge Yukpo pour suivre tes marches et stats intelligentes :",
         "inviteFriends": "Invite tes amis à rejoindre Yukpo !",
         "bestSession": "Meilleure session",
         "visitedPlaces": "Lieux visités",
+        "mostVisitedPlaces": "Lieux les plus visités",
+        "noVisitedPlaceForPeriod": "Aucun lieu visité sur cette période",
         "visits": "visite(s)",
         "tips": "Conseils",
         "environmentalImpact": "Impact Environnemental",
+        "filteredFreeWalkSession": "Session marche libre filtrée",
+        "fromTimeToTime": "Du {{start}} au {{end}}",
+        "compareVsLast": "vs dernière",
+        "compareVsLast2": "vs 2 dernières",
+        "compareVsMonth": "vs ce mois",
+        "metricDistance": "Distance",
+        "metricDuration": "Durée",
+        "metricCalories": "Calories",
+        "performanceProgression": "Performance & progression",
+        "recentDistanceVsPrevious": "Distance récente: {{current}} km vs {{previous}} km",
+        "notEnoughHistoryForComparison": "Pas assez d’historique pour la comparaison.",
+        "estimatedCo2Saved": "CO2 estimé économisé",
+        "passiveAutoStats": "Statistiques passives (détection auto)",
+        "pendingSessionsCount": "{{count}} sessions en attente de sync",
         "days": "jours",
         "streakRecord": "Record",
         "streakRecordMsg": "Record : {{max}} jours",
@@ -3650,6 +3674,7 @@
         "subtitle": "Échangez vos livres scolaires facilement",
         "filtres": "Filtres",
         "devenirLibraire": "Devenir Libraire",
+        "maLibrairie": "Ma librairie",
         "recommandationsIA": "Recommandations IA",
         "prixIA": "Prix IA",
         "troquer": "Troquer",
@@ -6555,7 +6580,16 @@
         "position": "Position",
         "vendreDesLivresNeufs": "Vendez des livres neufs",
         "ecranMomentanementIndisponible": "Écran indisponible pour le moment.",
-        "prixDeVenteFcfa": "Prix (FCFA) *"
+        "prixDeVenteFcfa": "Prix (FCFA) *",
+        "vendreTroquerTitle": "Mettez vos livres en circulation",
+        "vendreTroquerSubtitle": "Vente ou troc rapide, sécurisé et visible immédiatement",
+        "acheterLivresTitle": "Trouvez votre liste scolaire en un parcours",
+        "acheterLivresSubtitle": "Cochez vos besoins et arbitrez entre neuf et occasion",
+        "proximityCount": "{{count}} offre(s) à proximité",
+        "decouvrezEchanges": "Troc, occasion et neuf sur Yukpo",
+        "catalogueEtFiltres": "Catalogue",
+        "rechercheEtTroc": "Recherche, filtres et troc",
+        "conseilParcourirOuPublier": "Parcourez le catalogue ou proposez un livre."
     },
     "livresNeufs": {
         "title": "Livres Neufs",
@@ -9236,7 +9270,9 @@
     },
     "productMediaCarousel": {
         "aucunMediaDisponible": "Aucun média disponible",
-        "video": "Vidéo"
+        "video": "Vidéo",
+        "playVideo": "Lire la vidéo",
+        "pauseVideo": "Mettre la vidéo en pause"
     },
     "productReactivation": {
         "produitsDesactives": "Produits Désactivés",
@@ -10634,6 +10670,7 @@
         "partageDeTrajet": "Partage de trajet",
         "transportRapide": "Transport rapide",
         "vehiculesOccasions": "Véhicules, occasions",
+        "bourseDuLivre": "Bourse du Livre",
         "livresScolaires": "Livres scolaires",
         "monMenu": "Mon menu",
         "offresD": "Offres d\\",
@@ -10786,7 +10823,10 @@
     },
     "notificationHistory": {
         "rechercher": "Rechercher...",
-        "chargement": "Chargement..."
+        "chargement": "Chargement...",
+        "muteSoundThisType": "Sans son (ce type)",
+        "muteSoundTitle": "Préférence enregistrée",
+        "muteSoundBody": "Les prochaines notifications de ce type seront sans son côté Yukpo (Coach IA : replanification automatique). Les push serveur peuvent encore dépendre des réglages système."
     },
     "partnerDashboardLayout": {
         "chargementDeVotreEspace": "Chargement de votre espace...",
@@ -12323,7 +12363,8 @@
         "boarded": "embarqué(s)",
         "ticketsVendus": "Tickets vendus ({{count}})",
         "donnemoi3RecommandationsConcretesEtCourtes": ")}. Donne-moi 3 recommandations concrètes et courtes pour augmenter mon chiffre d",
-        "selectionnerJours": "Sélectionner jours"
+        "selectionnerJours": "Sélectionner jours",
+        "affairesEtAmeliorerLaSatisfactionClient": "and improve customer satisfaction"
     },
     "agenceVoyageListScreen": {},
     "agenceVoyageSearchScreen": {
@@ -13167,7 +13208,15 @@
         "occupe": "Occupé",
         "creezVotrePremierTaxi": "Créez votre premier taxi",
         "modifier": "Modifier",
-        "impossibleDeMettreAJourLa": "Impossible de mettre à jour la disponibilité"
+        "impossibleDeMettreAJourLa": "Impossible de mettre à jour la disponibilité",
+        "connexionRequise": "Connection required",
+        "veuillezVousConnecter": "Please log in to see your taxis",
+        "erreur": "Error",
+        "impossibleChargerTaxis": "Unable to load your taxis",
+        "tous": "All",
+        "actifs": "Active",
+        "inactifs": "Inactive",
+        "aucunTaxiAvecStatut": "No taxi with status \"{{label}}\""
     },
     "mesTrocsScreen": {
         "accepte": "Accepté",
@@ -14675,6 +14724,11 @@
         "discover": "🚀 Découvrir Yukpo",
         "discoveryQuery": "Qu'est-ce que Yukpo ? Montre-moi toutes les fonctionnalités",
         "followUpTitle": "Vous pourriez aussi demander :",
+        "navigation": {
+            "coachNotifBody": "Le **Coach IA** de la Navigation envoie des rappels motivation (matin, midi, soir). Tu peux couper le **son** dans *Réglages → Notifications* (section Coach IA), ou **sans son pour un type** depuis l’historique de la **cloche** sur l’accueil. En mode silencieux : **affichage** + **vibration**.",
+            "openNotifSettings": "Ouvrir les notifications (réglages)",
+            "screenGuide": "Navigation intelligente : itinéraires, alertes communautaires, POI, statistiques, marche libre, Coach IA et notifications de motivation."
+        },
         "nav": {
             "health": "🏥 Santé",
             "transport": "🚗 Transport",

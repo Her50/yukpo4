@@ -63,7 +63,7 @@ const BookUploadV2Screen: React.FC = () => {
     const { t } = useLanguageSafe();
     const etatLabels: Record<string, string> = {
         bon: t('bookUploadV2Screen.bonEtat'),
-        acceptable: 'Acceptable',
+        acceptable: t('bookUploadV2Screen.acceptable', 'Acceptable'),
         rejete: t('bookUploadV2Screen.rejete'),
     };
 
@@ -200,11 +200,18 @@ const BookUploadV2Screen: React.FC = () => {
             setStep('result');
 
             // Add to list
+            const normalizedEtat = String(result.etat_classification || '').toLowerCase().includes('rej')
+                ? 'rejete'
+                : String(result.etat_classification || '').toLowerCase().includes('bon')
+                    ? 'bon'
+                    : 'acceptable';
+            const safeValue = result.is_rejected ? 0 : Math.max(Math.round(Number(result.valeur_calculee || 0)), 1);
+
             const entry: BookEntry = {
                 id: result.livre?.id || Date.now(),
                 titre: result.analysis?.titre || result.livre?.titre || t('bookUploadV2.livreScolaire'),
-                etat_classification: result.etat_classification,
-                valeur_calculee: result.valeur_calculee,
+                etat_classification: normalizedEtat,
+                valeur_calculee: safeValue,
                 is_rejected: result.is_rejected,
                 classe_actuelle: result.analysis?.classe_actuelle || result.livre?.classe_actuelle,
                 classe_souhaitee: result.analysis?.classe_souhaitee || result.livre?.classe_souhaitee,
@@ -217,14 +224,14 @@ const BookUploadV2Screen: React.FC = () => {
 
             setBooks(prev => [...prev, entry]);
             if (!result.is_rejected) {
-                setTotalValue(prev => prev + result.valeur_calculee);
+                setTotalValue(prev => prev + safeValue);
             }
 
             if (result.is_rejected) {
                 toaster.show(t('bookUploadV2Screen.ceLivreEstRejeteTropDegrade'), 'error');
             } else {
                 toaster.show(
-                    `${entry.titre} — ${etatLabels[result.etat_classification]} — ${Math.round(result.valeur_calculee)} XAF`,
+                    `${entry.titre} — ${etatLabels[normalizedEtat]} — ${Math.round(safeValue)} XAF`,
                     'success'
                 );
             }
@@ -291,8 +298,9 @@ const BookUploadV2Screen: React.FC = () => {
             {gpsCoords ? (
                 <View style={styles.gpsConfirmed}>
                     <SafeIcon name="check-circle" size={24} color="#22c55e" />
-                    <Text style={styles.gpsText}>Position: {gpsCoords.substring(0, 20)}...</Text>
-                    {gpsAddress && <Text style={styles.gpsAddress}>{gpsAddress}</Text>}
+                    <Text style={styles.gpsText}>
+                        {gpsAddress || t('bookUploadV2Screen.lieuDeRecuperationConfirme', 'Lieu de récupération confirmé')}
+                    </Text>
                 </View>
             ) : null}
 

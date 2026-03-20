@@ -320,13 +320,58 @@ export const bourseLivreV2Api = {
             }
         );
         const r = response.data as any;
+        const analysis = r?.analysis || r?.data?.analysis || {};
+        const livre = r?.livre || r?.data?.livre;
+
+        const rawEtat = String(
+            r?.etat_classification ??
+            analysis?.etat_classification ??
+            livre?.etat_livre ??
+            ''
+        ).toLowerCase();
+        const normalizedEtat = rawEtat.includes('rej') ? 'rejete' : rawEtat.includes('bon') ? 'bon' : 'acceptable';
+
+        const isRejected = Boolean(r?.is_rejected ?? r?.rejete ?? analysis?.is_rejected ?? normalizedEtat === 'rejete');
+        const detectedPrice = Number(
+            analysis?.prix_detecte ??
+            analysis?.prix_estime ??
+            livre?.prix_reference ??
+            livre?.prix_neuf ??
+            0
+        );
+        const ETAT_RATIO: Record<string, number> = {
+            bon: 0.7,
+            acceptable: 0.45,
+            rejete: 0,
+        };
+        const businessRatio = ETAT_RATIO[normalizedEtat] ?? 0;
+        const ratioEtat = businessRatio;
+
+        // Règle métier stricte:
+        // - bon        => 70% de la valeur de référence
+        // - acceptable => 45% de la valeur de référence
+        // - rejete     => 0
+        // Si la valeur de référence est absente, on garde la valeur backend seulement si >0.
+        const backendValue = Number(
+            r?.valeur_calculee ??
+            analysis?.valeur_calculee ??
+            livre?.valeur_calculee ??
+            0
+        );
+        const strictCalculatedValue = detectedPrice > 0 ? Math.round(detectedPrice * businessRatio) : 0;
+        const safeValue = isRejected
+            ? 0
+            : strictCalculatedValue > 0
+                ? strictCalculatedValue
+                : Math.max(Math.round(backendValue), 1);
+
         return {
-            livre: r?.livre,
-            analysis: r?.analysis,
-            valeur_calculee: r?.valeur_calculee || 0,
-            ratio_etat: r?.ratio_etat || 0,
-            etat_classification: r?.etat_classification || 'acceptable',
-            is_rejected: r?.is_rejected || false,
+            livre,
+            analysis,
+            valeur_calculee: safeValue,
+            ratio_etat: ratioEtat,
+            etat_classification: normalizedEtat,
+            is_rejected: isRejected,
         };
     },
 

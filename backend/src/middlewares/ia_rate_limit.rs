@@ -6,7 +6,7 @@ use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;
 use axum::{
     body::Body,
-    extract::{Extension, State},
+    extract::State,
     http::{Request, StatusCode},
     middleware::Next,
     response::Response,
@@ -18,11 +18,20 @@ use std::sync::Arc;
 /// Limite : 100 appels/heure, 10 appels/minute par utilisateur
 pub async fn ia_rate_limit(
     State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
     req: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    let user_id = user.id;
+    let request_path = req.uri().path().to_string();
+    let user_id = match req.extensions().get::<AuthenticatedUser>() {
+        Some(user) => user.id,
+        None => {
+            warn!(
+                "[IA Rate Limit] AuthenticatedUser manquant (path={}), bypass rate limit",
+                request_path
+            );
+            return Ok(next.run(req).await);
+        }
+    };
     let minute_key = format!("rate_limit:ia:{}:minute", user_id);
     let hour_key = format!("rate_limit:ia:{}:hour", user_id);
 

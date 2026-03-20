@@ -9,7 +9,6 @@ import SkeletonDeliveryCard from '../../components/delivery/SkeletonDeliveryCard
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
-import BookUserSubDashboard from '../../components/delivery/BookUserSubDashboard';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
@@ -338,9 +337,6 @@ const DeliveryHomeScreen: React.FC = () => {
                             <SkeletonDeliveryCard />
                         </View>
                     )}
-
-                    {/* ✅ PHASE 3: Sous-dashboard Livres Scolaires pour l'utilisateur */}
-                    <BookUserSubDashboard onRefresh={handleRefresh} />
 
                     {/* ✅ NOUVEAU: Section pour créer une nouvelle livraison */}
                     <View style={styles.sectionHeader}>

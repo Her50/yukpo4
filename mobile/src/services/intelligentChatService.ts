@@ -1,6 +1,6 @@
 import { ActionDescriptor, ScreenContext } from '../hooks/useScreenContext';
 import i18n from '../i18n';
-import { apiPost } from './api';
+import { apiCall } from './api';
 
 const t = (key: string, params?: Record<string, any>): string => i18n.t(key, params) as string;
 
@@ -36,6 +36,26 @@ export interface ChatResponse {
 
 class IntelligentChatService {
   private contextCache: Map<string, ScreenContext> = new Map();
+  private static readonly MAX_CONTEXT_PROMPT_LENGTH = 9000;
+
+  private isBackendErrorResponse(data: any, rawResponse?: any): boolean {
+    const status = Number(data?.status ?? rawResponse?.status ?? 0);
+    const success = rawResponse?.success;
+    const text = String(data?.message || data?.error || rawResponse?.error || '').toLowerCase();
+
+    if (success === false) return true;
+    if (status >= 400) return true;
+    if (/(erreur\s*500|internal server error|api openai|erreur de l'?api|api error)/i.test(text)) {
+      return true;
+    }
+    return false;
+  }
+
+  private trimPrompt(prompt: string): string {
+    if (!prompt) return prompt;
+    if (prompt.length <= IntelligentChatService.MAX_CONTEXT_PROMPT_LENGTH) return prompt;
+    return `${prompt.slice(0, IntelligentChatService.MAX_CONTEXT_PROMPT_LENGTH)}\n\n[Context truncated for stability]`;
+  }
 
   /**
    * Générer une réponse contextuelle basée sur l'écran courant
@@ -48,30 +68,48 @@ class IntelligentChatService {
   ): Promise<ChatResponse> {
     try {
       // Construire le contexte pour l'IA
-      const contextPrompt = this.buildContextPrompt(screenContext, conversationHistory, lang);
+      const contextPrompt = this.trimPrompt(
+        this.buildContextPrompt(screenContext, conversationHistory, lang),
+      );
 
       const requestType = this.detectRequestType(userMessage, screenContext);
       // Backend (Rust) exposes AI routes without the `/api` prefix: POST /ai/chat
-      let response = await apiPost<any>('/ai/chat', {
-        message: userMessage,
-        context: {
-          screen: screenContext.screenName,
-          screen_type: screenContext.screenType,
-          available_actions: screenContext.availableActions.map(a => a.label).slice(0, 10),
-          visible_elements: screenContext.visibleElements.map(e => e.label).slice(0, 8),
-          user_role: screenContext.userData?.role || 'guest',
-          service_data: screenContext.serviceData || null,
-          context_prompt: contextPrompt,
-          conversation_history: conversationHistory.slice(-5).map(m => ({
-            role: m.isUser ? 'user' : 'assistant',
-            content: m.text,
-          })),
+      // No retry on /ai/chat: avoids rapid duplicate failures when backend returns 500.
+      let response = await apiCall<any>(
+        '/ai/chat',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            message: userMessage,
+            context: {
+              screen: screenContext.screenName,
+              screen_type: screenContext.screenType,
+              available_actions: screenContext.availableActions.map(a => a.label).slice(0, 10),
+              visible_elements: screenContext.visibleElements.map(e => e.label).slice(0, 8),
+              user_role: screenContext.userData?.role || 'guest',
+              service_data: screenContext.serviceData || null,
+              context_prompt: contextPrompt,
+              conversation_history: conversationHistory.slice(-5).map(m => ({
+                role: m.isUser ? 'user' : 'assistant',
+                content: m.text,
+              })),
+            },
+            type: requestType,
+            language: lang || i18n.language || 'fr',
+          }),
         },
-        type: requestType,
-        language: lang || i18n.language || 'fr',
-      });
+        false,
+      );
 
       const data = response?.data || response;
+      if (this.isBackendErrorResponse(data, response)) {
+        console.warn('[IntelligentChat] Backend AI error detected, using local fallback', {
+          status: data?.status ?? response?.status,
+          message: data?.message ?? response?.error,
+        });
+        return this.generateLocalFallback(userMessage, screenContext, lang);
+      }
+
       if (data?.message) {
         return this.parseAIResponse(data, screenContext);
       }
@@ -662,6 +700,33 @@ RESPONSE FORMAT (JSON):
 
     const actionsByCategory = (cat: string) => availableActions.filter(a => a.category === cat);
     const topActions = (n = 3) => availableActions.filter(a => a.id !== 'home' && a.id !== 'profile' && a.id !== 'services').slice(0, n);
+
+    // === Navigation GPS — Coach IA & notifications ===
+    if (screenName === 'Navigation') {
+      const coachNotifKw = [
+        'coach', 'coaching', 'ia', 'notif', 'notification', 'cloche', 'bell',
+        'son', 'sound', 'silenc', 'mute', 'vibrat', 'vibre', 'parametr', 'reglage',
+      ];
+      if (coachNotifKw.some(k => q.includes(k))) {
+        return {
+          message:
+            t('intelligentChat.navigation.coachNotifBody') ||
+            'Le **Coach IA** de la Navigation envoie des rappels motivation (matin, midi, soir). Tu peux couper le **son** dans *Réglages → Notifications* (section Coach IA), ou **sans son pour un type** depuis l’historique de la **cloche** sur l’accueil. En mode silencieux, tu gardes l’**affichage** et la **vibration**.',
+          type: 'action_suggestion',
+          suggestedActions: [
+            {
+              id: 'open-settings-coach',
+              label: t('intelligentChat.navigation.openNotifSettings') || 'Ouvrir les notifications (réglages)',
+              icon: 'settings',
+              route: 'Settings',
+              params: { initialSection: 'notifications' },
+              category: 'navigation',
+              description: '',
+            },
+          ],
+        };
+      }
+    }
 
     // === CROSS-SCREEN: Product/service data queries ===
     if (matchGroup('product')) {
