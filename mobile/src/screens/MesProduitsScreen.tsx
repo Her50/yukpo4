@@ -42,7 +42,6 @@ import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
 import { getFieldValue } from '../utils/productNormalizer';
 import { generateProductShareMessage, generateSmartShareLink } from '../utils/productShareHelper';
-import { navigateToVideoWizard } from '../utils/videoNavigation';
 
 // ✅ CORRIGÉ: Utiliser getFieldValue standardisé au lieu d'extractValue locale
 const extractValue = (field: any): string | null => {
@@ -599,18 +598,9 @@ const MesProduitsScreen: React.FC = () => {
             return;
         }
 
-        // ✅ AMÉLIORÉ: Utiliser VideoCreationWizard avec validation
-        const success = navigateToVideoWizard(navigation, {
-            serviceId: Number(serviceId),
-            productIndex: Number(productIndex),
-            productName: productName
-        });
-
-        // Si la navigation échoue, fallback vers le modal
-        if (!success) {
-            setVideoCreatorProduct(product);
-            setVideoCreatorVisible(true);
-        }
+        // ✅ Anti-crash homogène: ouvrir directement le flux modal local
+        setVideoCreatorProduct(product);
+        setVideoCreatorVisible(true);
     };
 
     const openVideoCreatorGlobal = () => {

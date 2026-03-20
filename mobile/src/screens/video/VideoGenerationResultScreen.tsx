@@ -12,7 +12,7 @@ import {
 } from '../../types/VideoGeneration';
 import { safeStringDisplay } from '../../utils/displayHelpers';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
-import { navigateToVideoCreationTab } from '../../navigation/mesServicesNavigation';
+import { navigateToMesServicesHub } from '../../navigation/mesServicesNavigation';
 
 interface ResultParams {
     result: GeneratedVideoResponse;
@@ -59,7 +59,18 @@ const VideoGenerationResultScreen: React.FC = () => {
     };
 
     const handleCreateAnother = () => {
-        navigateToVideoCreationTab(navigation as any);
+        // ✅ Anti-crash: repasser par le hub MesServices (flux local modal-first)
+        try {
+            const parent = (navigation as any).getParent?.();
+            navigateToMesServicesHub(parent || (navigation as any));
+            (navigation as any).navigate?.('MainTabs', {
+                screen: 'Services',
+                params: { openVideoSelector: true },
+            });
+        } catch (error) {
+            console.warn('[VideoGenerationResult] fallback navigation vers MesServices', error);
+            (navigation as any).navigate?.('MesServices');
+        }
     };
 
     const handleViewAnalytics = () => {

@@ -1,11 +1,11 @@
 // @ts-nocheck
 // Design moderne inspiré du frontend - Version améliorée UX niveau géant
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, DeviceEventEmitter, Dimensions, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BreadcrumbItem, Breadcrumbs } from '../components/Breadcrumbs';
 import { BulkActionsBar } from '../components/BulkActionsBar';
@@ -36,8 +36,6 @@ import { GeneratedVideoResponse } from '../types/VideoGeneration';
 import { CacheManager, createCacheKey } from '../utils/cache';
 import { extractProductName, extractServiceName } from '../utils/displayHelpers';
 import { logger } from '../utils/logger';
-import { navigateToVideoWizard } from '../utils/videoNavigation';
-import { navigateToVideoCreationTab } from '../navigation/mesServicesNavigation';
 
 const { width } = Dimensions.get('window');
 
@@ -57,6 +55,7 @@ interface Service {
 
 const MesServicesScreen: React.FC = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const { user } = useAuth();
   const { t } = useLanguageSafe();
   const { colors } = useTheme(); // ✅ NOUVEAU: Support thème
@@ -93,6 +92,8 @@ const MesServicesScreen: React.FC = () => {
   const [rawServices, setRawServices] = useState<any[]>([]);
   // ✅ NOUVEAU: État pour la galerie de produits
   const [showProductGallery, setShowProductGallery] = useState(false);
+  // Logs défensifs anti-bruit: garde les signatures déjà logguées
+  const listDiagnosticsSignaturesRef = useRef<Set<string>>(new Set());
 
   // ✅ OPTIMISATION: Fonction pour parser un produit (extrait pour réutilisabilité)
   const parseProduct = useCallback((product: any, index: number, service: any, serviceId: string, serviceTitre: string): Service | null => {
@@ -270,11 +271,16 @@ const MesServicesScreen: React.FC = () => {
       if (!isRefresh) {
         const cached = await CacheManager.get<Service[]>(cacheKey, 5 * 60 * 1000); // 5 minutes
         if (cached) {
-          logger.log('[MesServicesScreen] ✅ Données chargées depuis le cache');
-          setServices(cached);
-          setLoading(false);
-          setRefreshing(false);
-          return;
+          if (Array.isArray(cached)) {
+            logger.log('[MesServicesScreen] ✅ Données chargées depuis le cache');
+            setServices(cached);
+            setLoading(false);
+            setRefreshing(false);
+            return;
+          }
+          // Protection runtime: cache potentiellement corrompu/incompatible
+          logger.warn('[MesServicesScreen] ⚠️ Cache invalide ignoré (attendu: array), purge du cache');
+          await CacheManager.remove(cacheKey);
         }
       }
 
@@ -1026,22 +1032,39 @@ const MesServicesScreen: React.FC = () => {
       ...product
     }));
 
-    // Si un seul produit → Navigation directe
-    if (managedProducts.length === 1) {
-      const product = managedProducts[0];
-      navigateToVideoWizard(navigation, {
-        serviceId: numericServiceId,
-        productIndex: product.product_index || 0,
-        productName: extractProductName(product, 'Produit')
-      });
-      return;
-    }
-
-    // Plusieurs produits → Afficher le modal ProductVideoCreationModal
+    // ✅ Sécurité anti-crash: ouvrir le modal local dans tous les cas
+    // (évite la navigation vers un écran externe potentiellement instable)
     setSelectedServiceForVideo(productItem);
     setProductsForVideoCreation(managedProducts);
     setShowVideoCreationModal(true);
   };
+
+  // ✅ Anti-crash global: ouverture sélecteur vidéo via param de navigation
+  useEffect(() => {
+    try {
+      const params = (route as any)?.params || {};
+      if (!params?.openVideoSelector) return;
+      if (!Array.isArray(services) || services.length === 0) return;
+
+      const products = prepareProductsForSelector();
+      if (!Array.isArray(products) || products.length === 0) {
+        return;
+      }
+
+      setProductsForSelection(products);
+      setProductSelectorMode(null);
+      setShowProductSelector(true);
+
+      // Nettoyer le trigger pour éviter les réouvertures
+      try {
+        (navigation as any).setParams?.({ openVideoSelector: undefined });
+      } catch {
+        // non bloquant
+      }
+    } catch (error) {
+      logger.error('[MesServicesScreen] Erreur ouverture vidéo via param', error);
+    }
+  }, [route, services, prepareProductsForSelector, navigation]);
 
   const handleVideoCreationSuccess = async (result: GeneratedVideoResponse) => {
     logger.log('[MesServicesScreen] ✅ Vidéo créée avec succès:', result);
@@ -1128,10 +1151,13 @@ const MesServicesScreen: React.FC = () => {
     );
   };
 
+  // Source normalisée pour éviter les crashs si une valeur non-tableau arrive depuis le cache/runtime
+  const safeServices = Array.isArray(services) ? services : [];
+
   // Filtrer les services selon le filtre sélectionné
   // ✅ CORRECTION: S'assurer que services est un tableau et filtrer uniquement les services valides
-  const filteredServices = Array.isArray(services)
-    ? services.filter((service) => {
+  const filteredServices = safeServices
+    .filter((service) => {
       // ✅ PROTECTION: Ignorer les services null/undefined
       if (!service) return false;
 
@@ -1140,14 +1166,63 @@ const MesServicesScreen: React.FC = () => {
       if (filter === 'inactif') return service.status === 'inactive';
       return true;
     })
-    : [];
+    ;
+
+  // 🔎 Diagnostic ciblé du rendu liste (preuve par logs sans bruit)
+  useEffect(() => {
+    try {
+      const invalidItems = safeServices.filter((s: any) => !s || typeof s !== 'object');
+      const missingId = safeServices.filter((s: any) =>
+        s && typeof s === 'object' && !(s.id || s.service_id || s.data?.serviceId)
+      );
+      const missingStatus = safeServices.filter((s: any) =>
+        s && typeof s === 'object' && !s.status
+      );
+      const malformedFilterOutput = !Array.isArray(filteredServices);
+
+      if (
+        invalidItems.length === 0 &&
+        missingId.length === 0 &&
+        missingStatus.length === 0 &&
+        !malformedFilterOutput
+      ) {
+        return;
+      }
+
+      const signature = JSON.stringify({
+        total: safeServices.length,
+        invalidItems: invalidItems.length,
+        missingId: missingId.length,
+        missingStatus: missingStatus.length,
+        malformedFilterOutput,
+      });
+
+      // Log une seule fois par signature d'anomalie
+      if (!listDiagnosticsSignaturesRef.current.has(signature)) {
+        listDiagnosticsSignaturesRef.current.add(signature);
+        logger.warn('[MesServicesScreen][list-diagnostics] Anomalie de données détectée', {
+          total: safeServices.length,
+          filteredCount: Array.isArray(filteredServices) ? filteredServices.length : 'not-array',
+          invalidItems: invalidItems.length,
+          missingId: missingId.length,
+          missingStatus: missingStatus.length,
+          sampleInvalidItem: invalidItems[0],
+          sampleMissingId: missingId[0],
+          sampleMissingStatus: missingStatus[0],
+        });
+      }
+    } catch (diagError) {
+      // ne jamais casser le rendu pour un log défensif
+      logger.warn('[MesServicesScreen][list-diagnostics] erreur instrumentation', diagError);
+    }
+  }, [safeServices, filteredServices]);
 
   // ✅ NOUVEAU: Calculer les statistiques pour les cards visuelles
   const stats = useMemo(() => {
-    const totalProducts = services.length;
-    const activeProducts = services.filter(s => s && s.status === 'active').length;
-    const inactiveProducts = services.filter(s => s && s.status === 'inactive').length;
-    const totalViews = services.reduce((sum, s) => sum + (s.views || 0), 0);
+    const totalProducts = safeServices.length;
+    const activeProducts = safeServices.filter(s => s && s.status === 'active').length;
+    const inactiveProducts = safeServices.filter(s => s && s.status === 'inactive').length;
+    const totalViews = safeServices.reduce((sum, s) => sum + (s.views || 0), 0);
 
     return {
       totalProducts,
@@ -1155,7 +1230,7 @@ const MesServicesScreen: React.FC = () => {
       inactiveProducts,
       totalViews,
     };
-  }, [services]);
+  }, [safeServices]);
 
   // ✅ CORRIGÉ: Créer les styles dynamiquement avec le thème AVANT le early return loading
   const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
@@ -1232,9 +1307,16 @@ const MesServicesScreen: React.FC = () => {
                 style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
                 onPress={() => {
                   try {
-                    navigateToVideoCreationTab(navigation as any);
+                    const products = prepareProductsForSelector();
+                    if (!Array.isArray(products) || products.length === 0) {
+                      toaster.warning(t('mesServices.noProductCreated'));
+                      return;
+                    }
+                    setProductsForSelection(products);
+                    setProductSelectorMode(null); // mode vidéo (sélection unique)
+                    setShowProductSelector(true);
                   } catch (error) {
-                    logger.error('[MesServicesScreen] Erreur navigation vers VideoCreationIntro:', error);
+                    logger.error('[MesServicesScreen] Erreur ouverture création vidéo:', error);
                     toaster.error(t('mesServices.cannotCreateVideo'));
                   }
                 }}
@@ -1805,9 +1887,31 @@ const MesServicesScreen: React.FC = () => {
           products={productsForSelection}
           allowMultiple={productSelectorMode !== null} // ✅ Mode multiple pour livraison/équipe
           onSelect={(product) => {
-            // ✅ Mode unique (vidéo)
+            // ✅ Mode unique (vidéo): ouvrir le flux local pour éviter le crash de navigation
             if (!productSelectorMode) {
-              navigateToVideoWizard(navigation, product);
+              const matched = Array.isArray(services)
+                ? services.find((s: any) => {
+                  if (!s) return false;
+                  const sid = Number(s.service_id || s.data?.serviceId || (typeof s.id === 'string' && s.id.includes('_') ? s.id.split('_')[0] : s.id));
+                  const pidx = Number(s.product_index ?? s.data?.product_index ?? 0);
+                  return sid === Number(product.serviceId) && pidx === Number(product.productIndex);
+                })
+                : null;
+
+              handleCreateVideo(
+                matched || {
+                  id: `${product.serviceId}_${product.productIndex}`,
+                  service_id: product.serviceId,
+                  product_index: product.productIndex,
+                  title: product.productName,
+                  data: {
+                    serviceId: product.serviceId,
+                    product_index: product.productIndex,
+                    nom: product.productName,
+                    serviceTitre: product.serviceName,
+                  },
+                }
+              );
             }
             setShowProductSelector(false);
             setProductsForSelection([]);

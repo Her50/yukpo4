@@ -7,10 +7,13 @@
  */
 export function navigateToMesServicesHub(navigation: { navigate: (...args: any[]) => void }): void {
   const nav = navigation as any;
-  const parent = nav?.getParent?.();
-  const grandParent = parent?.getParent?.();
-
-  const navigators = [nav, parent, grandParent].filter(Boolean);
+  const navigators: any[] = [];
+  let cursor = nav;
+  // Monter toute la chaîne des navigateurs disponibles (stack -> tabs -> root)
+  while (cursor && !navigators.includes(cursor)) {
+    navigators.push(cursor);
+    cursor = cursor?.getParent?.();
+  }
   // Cibler explicitement le hub PRODUITS moderne:
   // - onglet "Services" de MainTabs -> MesServicesScreen
   // - fallback stack "MesServices" (même écran)
@@ -42,10 +45,12 @@ export function navigateToVideoCreationTab(
   params?: Record<string, any>
 ): void {
   const nav = navigation as any;
-  const parent = nav?.getParent?.();
-  const grandParent = parent?.getParent?.();
-
-  const navigators = [nav, parent, grandParent].filter(Boolean);
+  const navigators: any[] = [];
+  let cursor = nav;
+  while (cursor && !navigators.includes(cursor)) {
+    navigators.push(cursor);
+    cursor = cursor?.getParent?.();
+  }
   const targets: Array<{ route: string; params?: Record<string, any> }> = [
     { route: 'MainTabs', params: { screen: 'VideoCreationIntro', params } },
     { route: 'Main', params: { screen: 'VideoCreationIntro', params } },

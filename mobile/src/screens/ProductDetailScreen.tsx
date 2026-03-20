@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductCard from '../components/ProductCard';
+import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
 import { NativeButton } from '../components/SafeNativeDesign';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,7 +20,7 @@ import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeStorage from '../utils/safeStorage';
 import { useLanguageSafe } from '../contexts/LanguageContext';
-import { navigateToVideoCreationTab } from '../navigation/mesServicesNavigation';
+import type { GeneratedVideoResponse } from '../types/VideoGeneration';
 
 const PENDING_DEEP_LINK_KEY = '@yukpomnang:pending_deep_link';
 
@@ -33,6 +34,8 @@ const ProductDetailScreen: React.FC = () => {
     const [prestataire, setPrestataire] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showVideoCreationModal, setShowVideoCreationModal] = useState(false);
+    const [productsForVideoCreation, setProductsForVideoCreation] = useState<any[]>([]);
 
     const { productId, serviceId, productIndex } = route.params as any;
 
@@ -294,18 +297,29 @@ const ProductDetailScreen: React.FC = () => {
                     <NativeButton
                         title="🎬 Créer une vidéo immersive"
                         onPress={() => {
-                            console.log('[ProductDetailScreen] 🎬 Navigation vers VideoCreationIntro');
+                            console.log('[ProductDetailScreen] 🎬 Ouverture modal local création vidéo');
                             try {
-                                const params = {
-                                    serviceId,
-                                    productId,
-                                    productIndex: product?._productIndex ?? 0,
-                                    productName: product?.nom || product?.name || product?.title,
+                                const serviceIdValue = Number(product?._serviceId || serviceId || product?.service_id);
+                                if (!Number.isFinite(serviceIdValue) || serviceIdValue <= 0) {
+                                    Alert.alert('Erreur', 'Service invalide pour la création vidéo.');
+                                    return;
+                                }
+
+                                const managedProduct = {
+                                    ...product,
+                                    id: product?.id || `${serviceIdValue}_${product?._productIndex ?? 0}`,
+                                    serviceId: String(serviceIdValue),
+                                    product_index: Number(product?._productIndex ?? productIndex ?? 0),
+                                    nom: product?.nom || product?.name || product?.title || 'Produit',
+                                    serviceTitre: service?.title || service?.data?.titre_service?.valeur || `Service #${serviceIdValue}`,
+                                    is_active: product?.is_active !== false,
                                 };
-                                navigateToVideoCreationTab(navigation as any, params);
-                                console.log('[ProductDetailScreen] ✅ Navigation robuste vers VideoCreationIntro');
+
+                                setProductsForVideoCreation([managedProduct]);
+                                setShowVideoCreationModal(true);
+                                console.log('[ProductDetailScreen] ✅ Modal local création vidéo ouvert');
                             } catch (error) {
-                                console.error('[ProductDetailScreen] ❌ Erreur navigation vers VideoCreationIntro:', error);
+                                console.error('[ProductDetailScreen] ❌ Erreur ouverture modal création vidéo:', error);
                                 Alert.alert('Erreur', 'Impossible d\'ouvrir la création de vidéo.');
                             }
                         }}
@@ -340,6 +354,23 @@ const ProductDetailScreen: React.FC = () => {
                     />
                 </View>
             </ScrollView>
+
+            {showVideoCreationModal && productsForVideoCreation.length > 0 && (
+                <ProductVideoCreationModal
+                    visible={showVideoCreationModal}
+                    primaryProduct={productsForVideoCreation[0]}
+                    products={productsForVideoCreation}
+                    navigation={navigation}
+                    onClose={() => {
+                        setShowVideoCreationModal(false);
+                        setProductsForVideoCreation([]);
+                    }}
+                    onSuccess={async (_result: GeneratedVideoResponse) => {
+                        setShowVideoCreationModal(false);
+                        setProductsForVideoCreation([]);
+                    }}
+                />
+            )}
         </View>
     );
 };

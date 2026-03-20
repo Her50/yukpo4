@@ -150,7 +150,7 @@ const MES_SERVICES_TAB_CONFIG: {
   type: 'dashboard',
   actions: [
     { id: 'ms-sidebar', label: 'Menu latéral (☰)', icon: LUCIDE_ICONS.menu, category: 'action', description: 'SidebarNavigation : créer produit, galerie médias, équipe, stats, pub, vidéos, live, promos, réglages' },
-    { id: 'ms-video-intro', label: 'Créer ma vidéo produit', icon: LUCIDE_ICONS.add, route: 'VideoCreationIntro', category: 'creation', description: 'Premier bouton + du bandeau : parcours vidéo' },
+    { id: 'ms-video-intro', label: 'Créer ma vidéo produit', icon: LUCIDE_ICONS.add, route: 'MesServices', params: { openVideoSelector: true }, category: 'creation', description: 'Premier bouton + du bandeau : ouvre directement le sélecteur vidéo (modal-first)' },
     { id: 'ms-flash-header', label: 'Lancer une promo flash', icon: 'zap', category: 'action', description: 'Sélection produits puis CreateFlashPromo (un ou plusieurs)' },
     { id: 'ms-delivery-header', label: 'Régler la livraison (tous produits)', icon: LUCIDE_ICONS.truck, category: 'action', description: 'Sélection produits → GlobalDeliveryConfigModal' },
     { id: 'ms-bulk', label: 'Gérer plusieurs produits', icon: LUCIDE_ICONS.check, category: 'action', description: 'Mode bulk + BulkActionsBar (activer/désactiver/supprimer en masse)' },
@@ -1299,7 +1299,7 @@ const SCREEN_CONFIGS: Record<string, {
   VideoFeed: {
     type: 'list',
     actions: [
-      { id: 'create-video', label: 'Créer Vidéo', icon: LUCIDE_ICONS.video, route: 'VideoCreationIntro', category: 'creation', description: 'Créer une nouvelle vidéo' },
+      { id: 'create-video', label: 'Créer Vidéo', icon: LUCIDE_ICONS.video, route: 'MesServices', params: { openVideoSelector: true }, category: 'creation', description: 'Créer une nouvelle vidéo (sélecteur modal local)' },
       { id: 'live', label: 'Voir Lives', icon: LUCIDE_ICONS.video, route: 'LivesList', category: 'navigation', description: 'Voir les diffusions en direct' },
     ],
     elements: [
