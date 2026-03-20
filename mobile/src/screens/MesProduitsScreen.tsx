@@ -1,7 +1,6 @@
 // @ts-nocheck
 // ✅ MIGRÉ: Utilise react-native-reanimated pour de meilleures performances
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import * as Haptics from 'expo-haptics';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -24,7 +23,6 @@ import Animated, {
     useSharedValue,
 } from 'react-native-reanimated';
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
-import InternalShareButton from '../components/InternalShareButton';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
@@ -33,7 +31,6 @@ import ServiceMediaGallery from '../components/ServiceMediaGallery';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import config from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiDelete, apiGet, apiPatch, apiPost, mediaApi } from '../services/api';
 import { productsService } from '../services/productsService';
 import { genererSuggestionsService } from '../services/yukpoclient';
@@ -42,6 +39,7 @@ import { ManagedProduct } from '../types/ManagedProduct';
 import { GeneratedVideoResponse } from '../types/VideoGeneration';
 import { getFieldValue } from '../utils/productNormalizer';
 import { generateProductShareMessage, generateSmartShareLink } from '../utils/productShareHelper';
+import { navigateToVideoWizard } from '../utils/videoNavigation';
 
 // ✅ CORRIGÉ: Utiliser getFieldValue standardisé au lieu d'extractValue locale
 const extractValue = (field: any): string | null => {
@@ -246,7 +244,6 @@ const HEADER_HEIGHT = Platform.OS === 'ios' ? 88 : 72;
 const MesProduitsScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
-    const { t } = useLanguageSafe();
     const [products, setProducts] = useState<ManagedProduct[]>([]);
     const [services, setServices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -260,8 +257,6 @@ const MesProduitsScreen: React.FC = () => {
     const [showMenuModal, setShowMenuModal] = useState(false);
     const [showDeliveryConfigModal, setShowDeliveryConfigModal] = useState(false);
     const [deliveryConfigProduct, setDeliveryConfigProduct] = useState<ManagedProduct | null>(null);
-    const [showProductActionsModal, setShowProductActionsModal] = useState(false);
-    const [productActionsTarget, setProductActionsTarget] = useState<ManagedProduct | null>(null);
     const [showMediaGallery, setShowMediaGallery] = useState(false);
     const [selectedServiceForGallery, setSelectedServiceForGallery] = useState<any>(null);
     // ✅ MIGRÉ: Utilise useSharedValue au lieu de Animated.Value
@@ -506,8 +501,8 @@ const MesProduitsScreen: React.FC = () => {
             });
             setProducts([]);
             Alert.alert(
-                t('mesProducts.loadError'),
-                t('mesProducts.loadErrorMsg') + '\n\n' + errorMessage
+                'Erreur de chargement',
+                'Impossible de charger les produits. Veuillez réessayer.\n\n' + errorMessage
             );
         } finally {
             setLoading(false);
@@ -582,8 +577,8 @@ const MesProduitsScreen: React.FC = () => {
         // ✅ Validation améliorée
         if (!serviceId || serviceId === 0) {
             Alert.alert(
-                t('mesProducts.serviceRequired'),
-                t('mesProducts.serviceRequiredMsg'),
+                'Service requis',
+                'Ce produit n\'est associé à aucun service. Veuillez vérifier la configuration du produit.',
                 [{ text: 'OK' }]
             );
             return;
@@ -591,16 +586,25 @@ const MesProduitsScreen: React.FC = () => {
 
         if (productIndex === undefined || productIndex === null || productIndex < 0) {
             Alert.alert(
-                t('mesProducts.invalidIndex'),
-                t('mesProducts.invalidIndexMsg'),
+                'Index produit invalide',
+                'Impossible de déterminer l\'index du produit. Veuillez réessayer ou contacter le support.',
                 [{ text: 'OK' }]
             );
             return;
         }
 
-        // ✅ Anti-crash homogène: ouvrir directement le flux modal local
-        setVideoCreatorProduct(product);
-        setVideoCreatorVisible(true);
+        // ✅ AMÉLIORÉ: Utiliser VideoCreationWizard avec validation
+        const success = navigateToVideoWizard(navigation, {
+            serviceId: Number(serviceId),
+            productIndex: Number(productIndex),
+            productName: productName
+        });
+
+        // Si la navigation échoue, fallback vers le modal
+        if (!success) {
+            setVideoCreatorProduct(product);
+            setVideoCreatorVisible(true);
+        }
     };
 
     const openVideoCreatorGlobal = () => {
@@ -658,12 +662,12 @@ const MesProduitsScreen: React.FC = () => {
         const productIndex = result?.product_index;
 
         Alert.alert(
-            t('mesProducts.videoCreated'),
+            '🎬 Vidéo créée avec succès',
             message,
             [
                 { text: 'OK', style: 'default' },
                 ...(serviceId ? [{
-                    text: t('mesProducts.viewVideo'),
+                    text: '👁️ Voir la vidéo',
                     onPress: () => {
                         try {
                             (navigation as any).navigate('ServiceDetail', {
@@ -673,7 +677,7 @@ const MesProduitsScreen: React.FC = () => {
                             });
                         } catch (error) {
                             console.error('[MesProduitsScreen] Erreur navigation vers ServiceDetail:', error);
-                            Alert.alert('Info', t('mesProducts.videoInGallery'));
+                            Alert.alert('Information', 'La vidéo est disponible dans la galerie de votre produit.');
                         }
                     }
                 }] : [])
@@ -689,8 +693,8 @@ const MesProduitsScreen: React.FC = () => {
 
             if (productIdForToggle === null) {
                 Alert.alert(
-                    t('mesProducts.idNotFound'),
-                    t('mesProducts.cannotToggleId')
+                    'Identifiant introuvable',
+                    'Impossible de déterminer l\'identifiant de ce produit. Veuillez réessayer après actualisation.'
                 );
                 return;
             }
@@ -706,9 +710,9 @@ const MesProduitsScreen: React.FC = () => {
 
                         if (departureDate < now) {
                             Alert.alert(
-                                t('mesProducts.expiredTicket'),
-                                t('mesProducts.expiredTicketMsg'),
-                                [{ text: t('mesProducts.understood') }]
+                                '⚠️ Réactivation impossible',
+                                `Ce ticket de voyage est expiré.\n\nDépart prévu: ${product.dateDepart}\nDate actuelle: ${now.toLocaleDateString('fr-FR')}\n\n🚫 Les tickets expirés ne peuvent pas être réactivés.\n\n✅ Créez un nouveau ticket avec une date future.`,
+                                [{ text: 'Compris' }]
                             );
                             return;
                         }
@@ -723,7 +727,7 @@ const MesProduitsScreen: React.FC = () => {
                 const balanceResponse = await apiGet('/api/users/balance');
 
                 if (!balanceResponse.success || !balanceResponse.data) {
-                    Alert.alert(t('message.error'), t('mesProducts.cannotCheckBalance'));
+                    Alert.alert('Erreur', 'Impossible de vérifier votre solde');
                     return;
                 }
 
@@ -731,23 +735,23 @@ const MesProduitsScreen: React.FC = () => {
 
                 if (currentBalance < activationCost) {
                     Alert.alert(
-                        t('mesProducts.insufficientBalance'),
-                        t('mesProducts.insufficientBalanceMsg', { cost: activationCost.toLocaleString(), balance: currentBalance.toLocaleString() }),
+                        '💰 Solde insuffisant',
+                        `Coût de réactivation: ${activationCost.toLocaleString()} FCFA\nVotre solde: ${currentBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`,
                         [
-                            { text: t('message.cancel'), style: 'cancel' },
-                            { text: t('mesProducts.recharge'), onPress: () => (navigation as any).navigate('RechargeTokens') },
+                            { text: 'Annuler', style: 'cancel' },
+                            { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
                         ]
                     );
                     return;
                 }
 
                 Alert.alert(
-                    t('mesProducts.reactivateProduct'),
-                    t('mesProducts.reactivateCostMsg', { name: product.nom, cost: activationCost.toLocaleString(), after: (currentBalance - activationCost).toLocaleString() }),
+                    '✅ Réactiver le produit',
+                    `"${product.nom}"\n\n💰 Coût: ${activationCost.toLocaleString()} FCFA\nSolde après: ${(currentBalance - activationCost).toLocaleString()} FCFA`,
                     [
-                        { text: t('message.cancel'), style: 'cancel' },
+                        { text: 'Annuler', style: 'cancel' },
                         {
-                            text: t('message.confirm'),
+                            text: 'Confirmer',
                             onPress: async () => {
                                 try {
                                     // Déduire le coût
@@ -757,7 +761,7 @@ const MesProduitsScreen: React.FC = () => {
                                     });
 
                                     if (!deductResponse.success) {
-                                        Alert.alert(t('message.error'), t('mesProducts.cannotDeduct'));
+                                        Alert.alert('Erreur', 'Impossible de déduire le montant');
                                         return;
                                     }
 
@@ -777,11 +781,11 @@ const MesProduitsScreen: React.FC = () => {
                                         );
 
                                         Alert.alert(
-                                            t('mesProducts.productReactivated'),
-                                            t('mesProducts.deductedMsg', { cost: activationCost.toLocaleString(), after: (currentBalance - activationCost).toLocaleString() })
+                                            '✅ Produit réactivé',
+                                            `${activationCost.toLocaleString()} FCFA débités\nNouveau solde: ${(currentBalance - activationCost).toLocaleString()} FCFA`
                                         );
                                     } else {
-                                        Alert.alert(t('message.error'), response.error || t('mesProducts.cannotReactivate'));
+                                        Alert.alert('Erreur', response.error || 'Impossible de réactiver');
                                     }
                                 } catch (error: any) {
                                     // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
@@ -796,9 +800,9 @@ const MesProduitsScreen: React.FC = () => {
                                     const finalErrorMessage = errorMessage;
                                     const is404 = errorMessage.includes('404') || errorMessage.includes('not found');
                                     Alert.alert(
-                                        t('message.error'),
+                                        '❌ Erreur',
                                         is404
-                                            ? t('mesProducts.productNotFound')
+                                            ? 'Produit introuvable. Il a peut-être déjà été supprimé.'
                                             : errorMessage
                                     );
                                     // ✅ CORRECTION: Recharger les produits en cas d'erreur pour restaurer l'état
@@ -811,12 +815,12 @@ const MesProduitsScreen: React.FC = () => {
             } else {
                 // DÉSACTIVATION (actif → inactif) = GRATUIT
                 Alert.alert(
-                    t('mesProducts.deactivateProduct'),
-                    t('mesProducts.deactivateMsg', { name: product.nom }),
+                    '⏸️ Désactiver le produit',
+                    `"${product.nom}"\n\n✅ Désactivation gratuite\n\nLe produit ne sera plus visible dans les recherches.`,
                     [
-                        { text: t('message.cancel'), style: 'cancel' },
+                        { text: 'Annuler', style: 'cancel' },
                         {
-                            text: t('mesProducts.deactivate'),
+                            text: 'Désactiver',
                             onPress: async () => {
                                 try {
                                     const response = await apiPatch(`/api/products/${productIdForToggle}/toggle-status`, {
@@ -833,9 +837,9 @@ const MesProduitsScreen: React.FC = () => {
                                             })
                                         );
 
-                                        Alert.alert(t('message.success'), t('mesProducts.productDeactivated'));
+                                        Alert.alert('✅ Succès', 'Produit désactivé avec succès');
                                     } else {
-                                        Alert.alert(t('message.error'), response.error || t('mesProducts.cannotDeactivate'));
+                                        Alert.alert('Erreur', response.error || 'Impossible de désactiver');
                                     }
                                 } catch (error: any) {
                                     // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
@@ -850,9 +854,9 @@ const MesProduitsScreen: React.FC = () => {
                                     const finalErrorMessage = errorMessage;
                                     const is404 = errorMessage.includes('404') || errorMessage.includes('not found');
                                     Alert.alert(
-                                        t('message.error'),
+                                        '❌ Erreur',
                                         is404
-                                            ? t('mesProducts.productNotFound')
+                                            ? 'Produit introuvable. Il a peut-être déjà été supprimé.'
                                             : errorMessage
                                     );
                                     // ✅ CORRECTION: Recharger les produits en cas d'erreur pour restaurer l'état
@@ -879,12 +883,12 @@ const MesProduitsScreen: React.FC = () => {
     const handleDeleteProduct = async (product: ManagedProduct) => {
         // ✅ CORRECTION: Afficher la confirmation AVANT toute action
         Alert.alert(
-            t('mesProducts.deleteProduct'),
-            t('mesProducts.deleteProductConfirm', { name: product.nom || 'ce produit' }),
+            '🗑️ Supprimer le produit',
+            `Êtes-vous sûr de vouloir supprimer "${product.nom || 'ce produit'}" ?\n\n⚠️ Cette action est irréversible et supprimera définitivement le produit.`,
             [
-                { text: t('message.cancel'), style: 'cancel' },
+                { text: 'Annuler', style: 'cancel' },
                 {
-                    text: t('message.delete'),
+                    text: 'Supprimer',
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -902,8 +906,8 @@ const MesProduitsScreen: React.FC = () => {
                                     product: product
                                 });
                                 Alert.alert(
-                                    t('mesProducts.idNotFound'),
-                                    t('mesProducts.cannotDeleteServiceId')
+                                    '❌ Identifiant introuvable',
+                                    'Impossible de supprimer ce produit car l\'identifiant du service est manquant.'
                                 );
                                 return;
                             }
@@ -917,8 +921,8 @@ const MesProduitsScreen: React.FC = () => {
                                     product: product
                                 });
                                 Alert.alert(
-                                    t('mesProducts.idNotFound'),
-                                    t('mesProducts.cannotDeleteIndex')
+                                    '❌ Identifiant introuvable',
+                                    'Impossible de supprimer ce produit car l\'index du produit est invalide.'
                                 );
                                 return;
                             }
@@ -931,8 +935,8 @@ const MesProduitsScreen: React.FC = () => {
                                     product: product
                                 });
                                 Alert.alert(
-                                    t('mesProducts.idNotFound'),
-                                    t('mesProducts.cannotDeleteServiceInvalid')
+                                    '❌ Identifiant introuvable',
+                                    'Impossible de supprimer ce produit car l\'identifiant du service est invalide.'
                                 );
                                 return;
                             }
@@ -957,13 +961,13 @@ const MesProduitsScreen: React.FC = () => {
                                 // ✅ CORRECTION: Recharger les produits depuis le serveur pour synchronisation
                                 await loadProducts(true);
                                 // ✅ CORRECTION: Afficher le message de succès après rechargement
-                                Alert.alert(t('message.success'), t('mesProducts.productDeleted'));
+                                Alert.alert('✅ Succès', 'Produit supprimé avec succès');
                             } else {
                                 // ✅ CORRECTION: En cas d'erreur, recharger pour restaurer l'état
                                 await loadProducts(true);
                                 Alert.alert(
-                                    t('message.error'),
-                                    response.error || t('mesProducts.cannotDeleteProduct')
+                                    '❌ Erreur',
+                                    response.error || 'Impossible de supprimer le produit. Le produit a été restauré.'
                                 );
                             }
                         } catch (error: any) {
@@ -984,9 +988,9 @@ const MesProduitsScreen: React.FC = () => {
                             const finalErrorMessage = errorMessage;
                             const is404 = finalErrorMessage.includes('404') || finalErrorMessage.includes('not found');
                             Alert.alert(
-                                t('message.error'),
+                                '❌ Erreur',
                                 is404
-                                    ? t('mesProducts.productNotFound')
+                                    ? 'Produit introuvable. Il a peut-être déjà été supprimé.'
                                     : finalErrorMessage
                             );
                         }
@@ -1001,7 +1005,7 @@ const MesProduitsScreen: React.FC = () => {
         const productIdForUpdate = resolveNumericId(product.rawProductId ?? product.id);
 
         if (productIdForUpdate === null) {
-            Alert.alert(t('mesProducts.idNotFound'), t('mesProducts.cannotEditId'));
+            Alert.alert('Identifiant introuvable', 'Impossible de modifier ce produit car son identifiant est manquant.');
             return;
         }
 
@@ -1106,7 +1110,7 @@ const MesProduitsScreen: React.FC = () => {
             } as never);
         } catch (error) {
             console.error('[MesProduitsScreen] ❌ Erreur lors de l\'édition du produit:', error);
-            Alert.alert(t('message.error'), t('mesProducts.cannotLoadEdit'));
+            Alert.alert('Erreur', 'Impossible de charger les données du produit pour l\'édition');
         }
     };
 
@@ -1133,7 +1137,6 @@ const MesProduitsScreen: React.FC = () => {
 
     // Partager un produit
     const handleShareProduct = async (product: ManagedProduct) => {
-        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
         try {
             // ✅ NOUVEAU 2026-01-XX: Utiliser la fonction utilitaire pour générer le message de partage uniforme
             // Extraire la localisation si disponible (depuis les données brutes du produit)
@@ -1174,7 +1177,7 @@ const MesProduitsScreen: React.FC = () => {
             }
         } catch (error) {
             console.error('Erreur partage produit:', error);
-            Alert.alert(t('message.error'), t('mesProducts.cannotShare'));
+            Alert.alert('Erreur', 'Impossible de partager ce produit');
         }
     };
 
@@ -1278,19 +1281,19 @@ const MesProduitsScreen: React.FC = () => {
             } as never);
         } catch (error) {
             console.error('[MesProduitsScreen] ❌ Erreur lors de la duplication du produit:', error);
-            Alert.alert(t('message.error'), t('mesProducts.cannotLoadDuplicate'));
+            Alert.alert('Erreur', 'Impossible de charger les données du produit pour la duplication');
         }
     };
 
     // Promouvoir un produit
     const handlePromoteProduct = (product: ManagedProduct) => {
         Alert.alert(
-            t('mesProducts.promoteProduct'),
-            t('mesProducts.promoteMsg', { name: product.nom }),
+            '🎉 Promouvoir le produit',
+            `Booster "${product.nom}" pour augmenter sa visibilité ?\n\n✨ Votre produit apparaîtra en tête des résultats de recherche.\n\n💰 Coût: À définir`,
             [
-                { text: t('message.cancel'), style: 'cancel' },
+                { text: 'Annuler', style: 'cancel' },
                 {
-                    text: t('mesProducts.promote'),
+                    text: 'Promouvoir ce produit',
                     onPress: () => {
                         navigation.navigate('CreatePublicite' as never, {
                             productId: product.id,
@@ -1341,12 +1344,12 @@ const MesProduitsScreen: React.FC = () => {
 
             if (!servicesResponse.success || !servicesData || servicesData.length === 0) {
                 Alert.alert(
-                    t('mesProducts.noService'),
-                    t('mesProducts.noServiceCreateMsg'),
+                    'Aucun service',
+                    'Vous devez d\'abord créer un service avant de pouvoir ajouter des produits.\n\nVoulez-vous créer un service maintenant ?',
                     [
-                        { text: t('message.cancel'), style: 'cancel' },
+                        { text: 'Annuler', style: 'cancel' },
                         {
-                            text: t('mesProducts.createService'),
+                            text: 'Créer un service',
                             onPress: async () => {
                                 try {
                                     // ✅ CORRECTION: Générer les suggestions IA avant de naviguer (comme dans HomeScreen)
@@ -1417,7 +1420,7 @@ const MesProduitsScreen: React.FC = () => {
                     } as never);
                 } else {
                     console.error('[MesProduitsScreen] handleCreateNewProduct - Service ID introuvable:', service);
-                    Alert.alert(t('message.error'), t('mesProducts.cannotFindServiceId'));
+                    Alert.alert('Erreur', 'Impossible de déterminer l\'ID du service');
                 }
             } else {
                 // Plusieurs services : proposer de choisir
@@ -1440,11 +1443,11 @@ const MesProduitsScreen: React.FC = () => {
                     });
 
                 Alert.alert(
-                    t('mesProducts.chooseService'),
-                    t('mesProducts.chooseServiceMsg'),
+                    '📦 Choisir un service',
+                    'Dans quel service voulez-vous ajouter un nouveau produit ?',
                     [
                         ...serviceOptions.slice(0, 5), // Limiter à 5 services pour éviter un menu trop long
-                        { text: t('message.cancel'), style: 'cancel' }
+                        { text: 'Annuler', style: 'cancel' }
                     ]
                 );
             }
@@ -1457,7 +1460,7 @@ const MesProduitsScreen: React.FC = () => {
                 stack: errorStack,
                 error: error
             });
-            Alert.alert(t('message.error'), t('mesProducts.cannotLoadServices'));
+            Alert.alert('Erreur', 'Impossible de charger vos services');
         }
     };
 
@@ -1469,8 +1472,8 @@ const MesProduitsScreen: React.FC = () => {
     const handleManageMembers = () => {
         if (!services || services.length === 0) {
             Alert.alert(
-                t('mesProducts.noService'),
-                t('mesProducts.noServiceMembers')
+                'Aucun service',
+                'Vous n\'avez pas encore de service pour gérer des membres. Créez un service pour définir les droits d\'accès.'
             );
             return;
         }
@@ -1487,8 +1490,8 @@ const MesProduitsScreen: React.FC = () => {
         // ✅ CORRECTION: Vérifier que serviceId est valide
         if (!serviceId) {
             Alert.alert(
-                t('message.error'),
-                t('mesProducts.cannotManageMembers')
+                'Erreur',
+                'Impossible de gérer les membres : service ID manquant.'
             );
             return;
         }
@@ -1513,8 +1516,8 @@ const MesProduitsScreen: React.FC = () => {
 
             if (!servicesResponse.success || !servicesData || servicesData.length === 0) {
                 Alert.alert(
-                    t('mesProducts.noService'),
-                    t('mesProducts.noServiceEdit'),
+                    'Aucun service',
+                    'Vous n\'avez pas encore de service à éditer.',
                     [{ text: 'OK' }]
                 );
                 return;
@@ -1547,7 +1550,7 @@ const MesProduitsScreen: React.FC = () => {
                 stack: errorStack,
                 error: error
             });
-            Alert.alert(t('message.error'), t('mesProducts.cannotLoadServiceData'));
+            Alert.alert('Erreur', 'Impossible de charger les données du service');
         }
     };
 
@@ -1555,7 +1558,7 @@ const MesProduitsScreen: React.FC = () => {
     const handleViewStats = (product: ManagedProduct) => {
         const numericId = resolveNumericId(product.rawProductId ?? product.id);
         if (numericId === null) {
-            Alert.alert(t('message.error'), t('mesProducts.cannotResolveId'));
+            Alert.alert('Erreur', 'Impossible de résoudre l\'identifiant du produit');
             return;
         }
         navigation.navigate('ProductStats' as never, {
@@ -1586,20 +1589,13 @@ const MesProduitsScreen: React.FC = () => {
     const activeProducts = productsArray.filter((p) => p.is_active).length;
     const inactiveProducts = Math.max(totalProducts - activeProducts, 0);
 
-    // ✅ UX AMÉLIORÉ: Stats enrichies avec vues/partages/favoris totaux
-    const totalViews = productsArray.reduce((sum, p) => sum + (p.views || 0), 0);
-    const totalShares = productsArray.reduce((sum, p) => sum + (p.shares || 0), 0);
-    const totalSaves = productsArray.reduce((sum, p) => sum + (p.saves || 0), 0);
-
     const headerSummary = useMemo(() => (
         [
-            { label: 'Produits', value: totalProducts, accentColor: '#4F46E5', icon: 'package' },
-            { label: 'Actifs', value: activeProducts, accentColor: '#10B981', icon: 'check' },
-            { label: 'Vues', value: totalViews, accentColor: '#3B82F6', icon: 'eye' },
-            { label: 'Partages', value: totalShares, accentColor: '#8B5CF6', icon: 'share-2' },
-            { label: 'Favoris', value: totalSaves, accentColor: '#EF4444', icon: 'heart' },
+            { label: 'Produits', value: totalProducts, accentColor: '#4F46E5' },
+            { label: 'Actifs', value: activeProducts, accentColor: '#10B981' },
+            { label: 'En pause', value: inactiveProducts, accentColor: '#F97316' },
         ]
-    ), [totalProducts, activeProducts, totalViews, totalShares, totalSaves]);
+    ), [totalProducts, activeProducts, inactiveProducts]);
 
     const buildProductPrefill = (product: ManagedProduct) => {
         // ✅ CORRECTION CRITIQUE: Extraire les valeurs depuis les objets structurés si nécessaire
@@ -2154,7 +2150,7 @@ const MesProduitsScreen: React.FC = () => {
                         <Text style={styles.statItemText}>{viewsLabel}</Text>
                     </View>
                     <View style={styles.statItem}>
-                        <SafeIcon name="share" size={14} color="#6B7280" />
+                        <SafeIcon name="share-2" size={14} color="#6B7280" />
                         <Text style={styles.statItemText}>{sharesLabel}</Text>
                     </View>
                     <View style={styles.statItem}>
@@ -2189,39 +2185,44 @@ const MesProduitsScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* ✅ UX AMÉLIORÉ: Menu contextuel labelé au lieu de 6 icônes mystérieuses */}
                 <View style={styles.secondaryActions}>
                     <TouchableOpacity
-                        style={styles.contextMenuRow}
+                        style={styles.iconButton}
                         onPress={() => handleShareProduct(product)}
                     >
-                        <SafeIcon name="share" size={15} color="#3B82F6" />
-                        <Text style={[styles.contextMenuLabel, { color: '#3B82F6' }]}>Partager</Text>
+                        <SafeIcon name="share-2" size={16} color="#3B82F6" />
                     </TouchableOpacity>
-                    {/* ✅ NOUVEAU 2026-03-14: Partage interne produit */}
-                    <InternalShareButton
-                        payload={{
-                            contentType: 'product',
-                            serviceId: product.serviceId,
-                            productIndex: product.product_index ?? product.id,
-                            title: product.nom || 'Produit',
-                            description: product.description || '',
-                        }}
-                        iconSize={15}
-                        iconColor="#8B5CF6"
-                        showLabel
-                        label="Envoyer"
-                        style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}
-                    />
                     <TouchableOpacity
-                        style={styles.contextMenuRow}
-                        onPress={() => {
-                            setProductActionsTarget(product);
-                            setShowProductActionsModal(true);
-                        }}
+                        style={styles.iconButton}
+                        onPress={() => handleDuplicateProduct(product)}
                     >
-                        <SafeIcon name="more-vertical" size={15} color="#6B7280" />
-                        <Text style={[styles.contextMenuLabel, { color: '#6B7280' }]}>Plus</Text>
+                        <SafeIcon name="copy" size={16} color="#8B5CF6" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => handleViewStats(product)}
+                    >
+                        <SafeIcon name="bar-chart-2" size={16} color="#10B981" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => handlePromoteProduct(product)}
+                    >
+                        <SafeIcon name="trending-up" size={16} color="#F59E0B" />
+                    </TouchableOpacity>
+                    {/* ✅ NOUVEAU: Bouton configuration livraison par produit */}
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => handleOpenDeliveryConfig(product)}
+                    >
+                        <SafeIcon name="truck" size={16} color="#6366F1" />
+                    </TouchableOpacity>
+                    {/* ✅ CORRECTION: Bouton suppression toujours visible */}
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => handleDeleteProduct(product)}
+                    >
+                        <SafeIcon name="trash-2" size={16} color="#EF4444" />
                     </TouchableOpacity>
                 </View>
             </NativeCard>
@@ -2236,8 +2237,8 @@ const MesProduitsScreen: React.FC = () => {
 
         if (!serviceId) {
             Alert.alert(
-                t('message.error'),
-                t('mesProducts.cannotDeliveryConfig')
+                'Erreur',
+                'Impossible de configurer la livraison : service ID manquant pour ce produit.'
             );
             return;
         }
@@ -2246,27 +2247,44 @@ const MesProduitsScreen: React.FC = () => {
         setShowDeliveryConfigModal(true);
     };
 
-    // ✅ UX AMÉLIORÉ: Menu regroupant toutes les actions (y compris celles retirées du header)
+    // ✅ Menu regroupant toutes les actions
     const menuActions = [
         {
-            label: 'Créer une vidéo',
-            icon: 'video',
+            label: 'Configuration livraison',
+            icon: 'truck',
             onPress: () => {
                 setShowMenuModal(false);
-                openVideoCreatorGlobal();
+                if (filteredProducts && filteredProducts.length > 0) {
+                    // Prendre le premier produit actif, sinon le premier disponible
+                    const firstProduct = filteredProducts.find(p => p.is_active) || filteredProducts[0];
+                    handleOpenDeliveryConfig(firstProduct);
+                } else {
+                    Alert.alert('Aucun produit', 'Vous devez d\'abord créer un produit pour configurer la livraison.');
+                }
             },
         },
         {
-            label: 'Galerie médias',
-            icon: 'image',
+            label: 'Membres',
+            icon: 'users',
             onPress: () => {
                 setShowMenuModal(false);
-                if (services && services.length > 0) {
-                    setSelectedServiceForGallery(services[0]);
-                    setShowMediaGallery(true);
-                } else {
-                    Alert.alert(t('mesProducts.noService'), t('mesProducts.noServiceGallery'));
-                }
+                handleManageMembers();
+            },
+        },
+        {
+            label: 'Mes videos',
+            icon: 'video',
+            onPress: () => {
+                setShowMenuModal(false);
+                (navigation as any).navigate('VideoFeed');
+            },
+        },
+        {
+            label: 'Analytics des videos',
+            icon: 'bar-chart-2',
+            onPress: () => {
+                setShowMenuModal(false);
+                (navigation as any).navigate('VideoAnalytics');
             },
         },
         {
@@ -2278,60 +2296,19 @@ const MesProduitsScreen: React.FC = () => {
             },
         },
         {
-            label: 'Flash Promo',
-            icon: 'zap',
+            label: 'Nouvelle Publicité',
+            icon: 'plus-circle',
             onPress: () => {
                 setShowMenuModal(false);
-                if (!products || products.length === 0) {
-                    Alert.alert(t('mesProducts.noService'), t('mesProducts.noProductFlash'));
-                    return;
-                }
-                const firstProduct = products.find(p => p.is_active) || products[0];
-                if (firstProduct && firstProduct.serviceId) {
-                    (navigation as any).navigate('CreateFlashPromo', {
-                        serviceId: parseInt(String(firstProduct.serviceId), 10),
-                        productIndex: firstProduct.product_index ?? 0,
-                    });
-                } else {
-                    Alert.alert(t('message.error'), t('mesProducts.cannotFlashPromo'));
-                }
+                (navigation as any).navigate('CreatePublicite');
             },
         },
         {
-            label: 'Promo Black Friday',
-            icon: 'gift',
+            label: 'Statistiques',
+            icon: 'trending-up',
             onPress: () => {
                 setShowMenuModal(false);
-                (navigation as any).navigate('GlobalPromoSubmission');
-            },
-        },
-        {
-            label: 'Configuration livraison',
-            icon: 'truck',
-            onPress: () => {
-                setShowMenuModal(false);
-                if (filteredProducts && filteredProducts.length > 0) {
-                    const firstProduct = filteredProducts.find(p => p.is_active) || filteredProducts[0];
-                    handleOpenDeliveryConfig(firstProduct);
-                } else {
-                    Alert.alert('Aucun produit', 'Vous devez d\'abord créer un produit pour configurer la livraison.');
-                }
-            },
-        },
-        {
-            label: 'Gérer les membres',
-            icon: 'users',
-            onPress: () => {
-                setShowMenuModal(false);
-                handleManageMembers();
-            },
-        },
-        {
-            label: 'Mes vidéos',
-            icon: 'play-circle',
-            onPress: () => {
-                setShowMenuModal(false);
-                (navigation as any).navigate('VideoFeed');
+                handleViewGlobalStats();
             },
         },
         {
@@ -2372,19 +2349,64 @@ const MesProduitsScreen: React.FC = () => {
                             subtitle={`${filteredProducts.length} produit${filteredProducts.length > 1 ? 's' : ''}`}
                             rightSlot={(
                                 <View style={styles.headerActions}>
-                                    {/* ✅ UX AMÉLIORÉ: Seulement 3 boutons — ajouter, stats, menu */}
+                                    {/* ✅ ORDRE CORRIGÉ : Vidéo → Galerie médias → Black Friday → Menu (trois points) */}
                                     <TouchableOpacity
-                                        style={[styles.headerIconButton, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }]}
-                                        onPress={handleCreateNewProduct}
+                                        style={styles.headerIconButton}
+                                        onPress={openVideoCreatorGlobal}
                                     >
-                                        <SafeIcon name="plus" size={20} color={modernColors.primary} />
+                                        <SafeIcon name="video" size={18} color={modernColors.primary} />
                                     </TouchableOpacity>
+                                    {/* ✅ NOUVEAU : Bouton galerie médias des produits */}
                                     <TouchableOpacity
-                                        style={[styles.headerIconButton, { backgroundColor: 'rgba(99, 102, 241, 0.12)', borderColor: 'rgba(99, 102, 241, 0.25)' }]}
+                                        style={styles.headerIconButton}
+                                        onPress={() => {
+                                            if (services && services.length > 0) {
+                                                setSelectedServiceForGallery(services[0]);
+                                                setShowMediaGallery(true);
+                                            } else {
+                                                Alert.alert('Aucun service', 'Vous devez d\'abord créer un service pour accéder à la galerie médias.');
+                                            }
+                                        }}
+                                    >
+                                        <SafeIcon name="image" size={18} color={modernColors.primary} />
+                                    </TouchableOpacity>
+                                    {/* ✅ NOUVEAU : Bouton participation Black Friday */}
+                                    <TouchableOpacity
+                                        style={styles.headerBlackFridayButton}
+                                        onPress={() => (navigation as any).navigate('GlobalPromoSubmission')}
+                                    >
+                                        <Text style={styles.headerBlackFridayIcon}>🔥</Text>
+                                    </TouchableOpacity>
+                                    {/* ✅ NOUVEAU : Bouton Configuration Flash Promo */}
+                                    <TouchableOpacity
+                                        style={[styles.headerIconButton, { backgroundColor: 'rgba(245, 158, 11, 0.15)', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.3)' }]}
+                                        onPress={() => {
+                                            if (!products || products.length === 0) {
+                                                Alert.alert('Aucun produit', 'Vous devez d\'abord créer des produits avant de créer un flash promo.');
+                                                return;
+                                            }
+                                            // Prendre le premier produit actif, sinon le premier disponible
+                                            const firstProduct = products.find(p => p.is_active) || products[0];
+                                            if (firstProduct && firstProduct.serviceId) {
+                                                (navigation as any).navigate('CreateFlashPromo', {
+                                                    serviceId: parseInt(String(firstProduct.serviceId), 10),
+                                                    productIndex: firstProduct.product_index ?? 0,
+                                                });
+                                            } else {
+                                                Alert.alert('Erreur', 'Impossible de créer un flash promo : service ID manquant.');
+                                            }
+                                        }}
+                                    >
+                                        <SafeIcon name="zap" size={18} color="#F59E0B" type="lucide" />
+                                    </TouchableOpacity>
+                                    {/* ✅ NOUVEAU 2026-03-03: Bouton Dashboard stats global */}
+                                    <TouchableOpacity
+                                        style={[styles.headerIconButton, { backgroundColor: 'rgba(99, 102, 241, 0.12)', borderWidth: 1, borderColor: 'rgba(99, 102, 241, 0.25)' }]}
                                         onPress={handleViewGlobalStats}
                                     >
                                         <SafeIcon name="bar-chart-2" size={18} color="#6366F1" />
                                     </TouchableOpacity>
+                                    {/* ✅ Menu (trois points) à la fin */}
                                     <TouchableOpacity
                                         style={styles.headerMenuButton}
                                         onPress={() => setShowMenuModal(true)}
@@ -2402,9 +2424,8 @@ const MesProduitsScreen: React.FC = () => {
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={styles.statsRowContent}
                         >
-                            {(headerSummary || []).map((item: any) => (
+                            {(headerSummary || []).map((item) => (
                                 <View key={item.label} style={styles.miniStatCard}>
-                                    <SafeIcon name={item.icon} size={14} color={item.accentColor} />
                                     <Text
                                         style={[
                                             styles.miniStatValue,
@@ -2434,8 +2455,8 @@ const MesProduitsScreen: React.FC = () => {
                                         styles.filterChipText,
                                         filter === filterOption && styles.filterChipTextActive
                                     ]}>
-                                        {filterOption === 'tous' ? `Tous (${totalProducts})` :
-                                            filterOption === 'actif' ? `Actifs (${activeProducts})` : `En pause (${inactiveProducts})`}
+                                        {filterOption === 'tous' ? '📦 Tous' :
+                                            filterOption === 'actif' ? '✅ Actifs' : '⏸️ Inactifs'}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -2587,121 +2608,6 @@ const MesProduitsScreen: React.FC = () => {
                                 <Text style={styles.menuActionText}>{action.label}</Text>
                             </TouchableOpacity>
                         ))}
-                    </View>
-                </TouchableOpacity>
-            </Modal>
-
-            {/* ✅ FIX: Modal actions produit (remplace Alert.alert qui bloquait sur Android avec >3 boutons) */}
-            <Modal
-                visible={showProductActionsModal}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setShowProductActionsModal(false)}
-            >
-                <TouchableOpacity
-                    style={styles.productActionsOverlay}
-                    activeOpacity={1}
-                    onPress={() => setShowProductActionsModal(false)}
-                >
-                    <View style={styles.productActionsSheet} onStartShouldSetResponder={() => true}>
-                        {/* Handle bar */}
-                        <View style={styles.productActionsHandle} />
-
-                        <Text style={styles.productActionsTitle}>
-                            {productActionsTarget?.nom || 'Produit'}
-                        </Text>
-
-                        {/* Actions */}
-                        <TouchableOpacity
-                            style={styles.productActionRow}
-                            onPress={() => {
-                                setShowProductActionsModal(false);
-                                if (productActionsTarget) handlePromoteProduct(productActionsTarget);
-                            }}
-                        >
-                            <View style={[styles.productActionIconBg, { backgroundColor: '#FEF3C7' }]}>
-                                <SafeIcon name="trending-up" size={18} color="#D97706" />
-                            </View>
-                            <View style={styles.productActionTextCol}>
-                                <Text style={styles.productActionLabel}>Promouvoir</Text>
-                                <Text style={styles.productActionHint}>Booster la visibilité</Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.productActionRow}
-                            onPress={() => {
-                                setShowProductActionsModal(false);
-                                if (productActionsTarget) handleViewStats(productActionsTarget);
-                            }}
-                        >
-                            <View style={[styles.productActionIconBg, { backgroundColor: '#EEF2FF' }]}>
-                                <SafeIcon name="bar-chart-2" size={18} color="#6366F1" />
-                            </View>
-                            <View style={styles.productActionTextCol}>
-                                <Text style={styles.productActionLabel}>Statistiques</Text>
-                                <Text style={styles.productActionHint}>Vues, clics, conversions</Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.productActionRow}
-                            onPress={() => {
-                                setShowProductActionsModal(false);
-                                if (productActionsTarget) handleDuplicateProduct(productActionsTarget);
-                            }}
-                        >
-                            <View style={[styles.productActionIconBg, { backgroundColor: '#F0FDF4' }]}>
-                                <SafeIcon name="copy" size={18} color="#16A34A" />
-                            </View>
-                            <View style={styles.productActionTextCol}>
-                                <Text style={styles.productActionLabel}>Dupliquer</Text>
-                                <Text style={styles.productActionHint}>Créer une copie</Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.productActionRow}
-                            onPress={() => {
-                                setShowProductActionsModal(false);
-                                if (productActionsTarget) handleOpenDeliveryConfig(productActionsTarget);
-                            }}
-                        >
-                            <View style={[styles.productActionIconBg, { backgroundColor: '#EFF6FF' }]}>
-                                <SafeIcon name="truck" size={18} color="#3B82F6" />
-                            </View>
-                            <View style={styles.productActionTextCol}>
-                                <Text style={styles.productActionLabel}>Livraison</Text>
-                                <Text style={styles.productActionHint}>Configurer la livraison</Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        {/* Séparateur avant action destructive */}
-                        <View style={styles.productActionSeparator} />
-
-                        <TouchableOpacity
-                            style={styles.productActionRow}
-                            onPress={() => {
-                                setShowProductActionsModal(false);
-                                if (productActionsTarget) handleDeleteProduct(productActionsTarget);
-                            }}
-                        >
-                            <View style={[styles.productActionIconBg, { backgroundColor: '#FEF2F2' }]}>
-                                <SafeIcon name="trash-2" size={18} color="#DC2626" />
-                            </View>
-                            <View style={styles.productActionTextCol}>
-                                <Text style={[styles.productActionLabel, { color: '#DC2626' }]}>Supprimer</Text>
-                                <Text style={styles.productActionHint}>Supprimer définitivement</Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        {/* Bouton Annuler */}
-                        <TouchableOpacity
-                            style={styles.productActionCancel}
-                            onPress={() => setShowProductActionsModal(false)}
-                        >
-                            <Text style={styles.productActionCancelText}>Annuler</Text>
-                        </TouchableOpacity>
                     </View>
                 </TouchableOpacity>
             </Modal>
@@ -2866,77 +2772,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: modernColors.text,
         flex: 1,
-    },
-    // ✅ FIX: Styles pour le modal actions produit (remplace Alert.alert)
-    productActionsOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.45)',
-        justifyContent: 'flex-end',
-    },
-    productActionsSheet: {
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-        paddingHorizontal: 20,
-    },
-    productActionsHandle: {
-        width: 40,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#D1D5DB',
-        alignSelf: 'center',
-        marginTop: 12,
-        marginBottom: 16,
-    },
-    productActionsTitle: {
-        fontSize: 17,
-        fontWeight: '700',
-        color: '#1F2937',
-        marginBottom: 16,
-    },
-    productActionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 13,
-        gap: 14,
-    },
-    productActionIconBg: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    productActionTextCol: {
-        flex: 1,
-    },
-    productActionLabel: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#1F2937',
-    },
-    productActionHint: {
-        fontSize: 12,
-        color: '#9CA3AF',
-        marginTop: 1,
-    },
-    productActionSeparator: {
-        height: 1,
-        backgroundColor: '#F3F4F6',
-        marginVertical: 4,
-    },
-    productActionCancel: {
-        marginTop: 12,
-        paddingVertical: 14,
-        alignItems: 'center',
-        backgroundColor: '#F3F4F6',
-        borderRadius: 14,
-    },
-    productActionCancelText: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#6B7280',
     },
     filtersContainer: {
         backgroundColor: '#FFFFFF',
@@ -3187,28 +3022,13 @@ const styles = StyleSheet.create({
     },
     secondaryActions: {
         flexDirection: 'row',
-        justifyContent: 'flex-start',
+        justifyContent: 'space-around',
         alignItems: 'center',
         marginTop: 12,
         paddingTop: 12,
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
-        gap: 16,
-    },
-    contextMenuRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: 20,
-        backgroundColor: '#F9FAFB',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    contextMenuLabel: {
-        fontSize: 13,
-        fontWeight: '600',
+        gap: 4,
     },
     iconButton: {
         width: 34,

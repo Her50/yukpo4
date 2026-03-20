@@ -23,7 +23,6 @@ import type { GeneratedVideoResponse } from '../../types/VideoGeneration';
 import { extractProductName, extractServiceName } from '../../utils/displayHelpers';
 import { normalizeServiceProducts } from '../../utils/productNormalizer';
 import SafeStorage from '../../utils/safeStorage';
-import { navigateToMesServicesHub } from '../../navigation/mesServicesNavigation';
 
 interface VideoCreationIntroParams {
     serviceId?: number;
@@ -176,8 +175,8 @@ const VideoCreationIntroScreen: React.FC = () => {
                     // ✅ AMÉLIORATION: Afficher une alerte si la réponse est invalide
                     if (response.success === false) {
                         Alert.alert(
-                            t('videoIntro.loadError'),
-                            t('videoIntro.cannotLoadServices'),
+                            'Erreur de chargement',
+                            'Impossible de charger vos services. Veuillez réessayer.',
                             [{ text: 'OK' }]
                         );
                     } else if (response.data && !Array.isArray(response.data)) {
@@ -200,8 +199,8 @@ const VideoCreationIntroScreen: React.FC = () => {
                         } else {
                             console.error('[VideoCreationIntroScreen] ❌ Impossible d\'extraire les données');
                             Alert.alert(
-                                t('videoIntro.invalidDataFormat'),
-                                t('videoIntro.invalidDataFormatMsg'),
+                                'Format de données invalide',
+                                'Les données reçues ne sont pas dans le format attendu. Veuillez réessayer.',
                                 [{ text: 'OK' }]
                             );
                         }
@@ -211,23 +210,23 @@ const VideoCreationIntroScreen: React.FC = () => {
                 console.error('[VideoCreationIntroScreen] ❌ Erreur chargement services:', error);
                 // ✅ CORRIGÉ: Gérer les erreurs de timeout et réseau de manière plus spécifique
                 const errorMessage = error?.message || error?.error || '';
-                if (errorMessage.includes('Timeout') || errorMessage.includes(t('videoCreationIntroScreen.expire')) || errorMessage.includes('timeout')) {
+                if (errorMessage.includes('Timeout') || errorMessage.includes('expiré') || errorMessage.includes('timeout')) {
                     Alert.alert(
-                        t('videoIntro.slowLoading'),
-                        t('videoIntro.slowLoadingMsg'),
+                        'Chargement lent',
+                        'Le chargement prend plus de temps que prévu. Vérifiez votre connexion internet.',
                         [{ text: 'OK' }]
                     );
                 } else if (errorMessage.includes('réseau') || errorMessage.includes('connexion') || errorMessage.includes('Network')) {
                     Alert.alert(
-                        t('videoIntro.connectionProblem'),
-                        t('videoIntro.connectionProblemMsg'),
+                        'Problème de connexion',
+                        'Impossible de se connecter au serveur. Vérifiez votre connexion internet.',
                         [{ text: 'OK' }]
                     );
                 } else {
                     // ✅ AMÉLIORATION: Afficher une alerte pour les autres erreurs
                     Alert.alert(
-                        t('videoIntro.loadError'),
-                        errorMessage || t('videoIntro.cannotLoadServicesLater'),
+                        'Erreur de chargement',
+                        errorMessage || 'Impossible de charger vos services. Veuillez réessayer plus tard.',
                         [{ text: 'OK' }]
                     );
                 }
@@ -307,7 +306,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             );
 
             if (!service) {
-                Alert.alert(t('message.error'), t('videoIntro.serviceNotFound'));
+                Alert.alert('Erreur', 'Service introuvable');
                 return;
             }
 
@@ -316,7 +315,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             const produits = normalizeServiceProducts(produitsRaw);
 
             if (!Array.isArray(produits) || produits.length === 0) {
-                Alert.alert(t('message.error'), t('videoIntro.noProductsFound'));
+                Alert.alert('Erreur', 'Aucun produit trouvé dans ce service');
                 return;
             }
 
@@ -326,7 +325,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                 .filter((p): p is ManagedProduct => p !== null);
 
             if (managedProducts.length === 0) {
-                Alert.alert(t('message.error'), t('videoIntro.cannotLoadProducts'));
+                Alert.alert('Erreur', 'Impossible de charger les produits');
                 return;
             }
 
@@ -349,7 +348,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             setShowVideoCreationModal(true);
         } catch (error) {
             console.error('[VideoCreationIntroScreen] Erreur ouverture modal:', error);
-            Alert.alert(t('message.error'), t('videoIntro.cannotOpenEditor'));
+            Alert.alert('Erreur', 'Impossible d\'ouvrir l\'éditeur de vidéo');
         }
     };
 
@@ -501,15 +500,19 @@ const VideoCreationIntroScreen: React.FC = () => {
 
             if (allProducts.length === 0) {
                 Alert.alert(
-                    t('videoIntro.productRequired'),
-                    t('videoIntro.productRequiredMsg'),
+                    'Produit requis',
+                    'Vous n\'avez pas encore de produit. Créez d\'abord un produit pour pouvoir créer une vidéo.',
                     [
-                        { text: t('common.cancel'), style: 'cancel' },
+                        { text: 'Annuler', style: 'cancel' },
                         {
-                            text: t('videoCreationIntro.allerAMesServices'),
+                            text: 'Aller à Mes Services',
                             onPress: () => {
-                                const parent = (navigation as any).getParent?.();
-                                navigateToMesServicesHub(parent || navigation);
+                                const parent = (navigation as any).getParent();
+                                if (parent) {
+                                    parent.navigate('Services');
+                                } else {
+                                    navigation.navigate('Services' as never);
+                                }
                             }
                         }
                     ]
@@ -526,15 +529,19 @@ const VideoCreationIntroScreen: React.FC = () => {
 
         // Pas de services → Rediriger vers MesServices
         Alert.alert(
-            t('videoIntro.serviceRequired'),
-            t('videoIntro.serviceRequiredMsg'),
+            'Service requis',
+            'Pour créer une vidéo, vous devez d\'abord créer un service avec au moins un produit.',
             [
-                { text: t('common.cancel'), style: 'cancel' },
+                { text: 'Annuler', style: 'cancel' },
                 {
-                    text: t('videoCreationIntro.allerAMesServices'),
+                    text: 'Aller à Mes Services',
                     onPress: () => {
-                        const parent = (navigation as any).getParent?.();
-                        navigateToMesServicesHub(parent || navigation);
+                        const parent = (navigation as any).getParent();
+                        if (parent) {
+                            parent.navigate('Services');
+                        } else {
+                            navigation.navigate('Services' as never);
+                        }
                     }
                 }
             ]
@@ -612,7 +619,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                 {loadingServices ? (
                     <View style={styles.servicesInfo}>
                         <ActivityIndicator size="small" color={modernColors.primary} />
-                        <Text style={styles.servicesInfoText}>{t('videoCreationIntro.chargementDeVosServices')}</Text>
+                        <Text style={styles.servicesInfoText}>Chargement de vos services...</Text>
                     </View>
                 ) : userServices.length > 0 && (
                     <Animated.View style={[styles.servicesInfo, contentAnimatedStyle]}>

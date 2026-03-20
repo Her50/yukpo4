@@ -1,11 +1,10 @@
 // @ts-nocheck
 // Design moderne inspiré du frontend - Version améliorée UX niveau géant
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
-import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, DeviceEventEmitter, Dimensions, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BreadcrumbItem, Breadcrumbs } from '../components/Breadcrumbs';
 import { BulkActionsBar } from '../components/BulkActionsBar';
@@ -24,7 +23,6 @@ import { SkeletonLoader } from '../components/SkeletonLoader';
 import { StatsCard } from '../components/StatsCard';
 import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
 import { useDeviceType } from '../hooks/useDeviceType';
@@ -36,6 +34,7 @@ import { GeneratedVideoResponse } from '../types/VideoGeneration';
 import { CacheManager, createCacheKey } from '../utils/cache';
 import { extractProductName, extractServiceName } from '../utils/displayHelpers';
 import { logger } from '../utils/logger';
+import { navigateToVideoWizard } from '../utils/videoNavigation';
 
 const { width } = Dimensions.get('window');
 
@@ -55,9 +54,7 @@ interface Service {
 
 const MesServicesScreen: React.FC = () => {
   const navigation = useNavigation();
-  const route = useRoute();
   const { user } = useAuth();
-  const { t } = useLanguageSafe();
   const { colors } = useTheme(); // ✅ NOUVEAU: Support thème
   const toaster = useToaster(); // ✅ NOUVEAU: Toast notifications au lieu de Alert
   const deviceType = useDeviceType(); // ✅ NOUVEAU: Responsive design
@@ -92,8 +89,6 @@ const MesServicesScreen: React.FC = () => {
   const [rawServices, setRawServices] = useState<any[]>([]);
   // ✅ NOUVEAU: État pour la galerie de produits
   const [showProductGallery, setShowProductGallery] = useState(false);
-  // Logs défensifs anti-bruit: garde les signatures déjà logguées
-  const listDiagnosticsSignaturesRef = useRef<Set<string>>(new Set());
 
   // ✅ OPTIMISATION: Fonction pour parser un produit (extrait pour réutilisabilité)
   const parseProduct = useCallback((product: any, index: number, service: any, serviceId: string, serviceTitre: string): Service | null => {
@@ -117,14 +112,14 @@ const MesServicesScreen: React.FC = () => {
           if (lastNumericIndex > 2) {
             productDescription = parts.slice(2, lastNumericIndex).join(', ').trim();
           } else if (parts.length >= 3) {
-            productDescription = parts[2] || t('mesServices.noDescription');
+            productDescription = parts[2] || 'Aucune description';
           } else {
-            productDescription = parts[1] || t('mesServices.noDescription');
+            productDescription = parts[1] || 'Aucune description';
           }
         } else if (parts.length === 2) {
-          productDescription = parts[1] || t('mesServices.noDescription');
+          productDescription = parts[1] || 'Aucune description';
         } else {
-          productDescription = t('mesServices.noDescription');
+          productDescription = 'Aucune description';
         }
       } else if (product && typeof product === 'object') {
         productTitle = product.nom ||
@@ -143,10 +138,10 @@ const MesServicesScreen: React.FC = () => {
           product.description_produit ||
           (typeof product.description_produit === 'object' && product.description_produit?.valeur) ||
           (typeof product.description_produit === 'string' && product.description_produit) ||
-          t('mesServices.noDescription');
+          'Aucune description';
       } else {
         productTitle = `Produit ${index + 1}`;
-        productDescription = t('mesServices.noDescription');
+        productDescription = 'Aucune description';
       }
 
       const productIndex = typeof product.product_index === 'number' ? product.product_index : index;
@@ -271,16 +266,11 @@ const MesServicesScreen: React.FC = () => {
       if (!isRefresh) {
         const cached = await CacheManager.get<Service[]>(cacheKey, 5 * 60 * 1000); // 5 minutes
         if (cached) {
-          if (Array.isArray(cached)) {
-            logger.log('[MesServicesScreen] ✅ Données chargées depuis le cache');
-            setServices(cached);
-            setLoading(false);
-            setRefreshing(false);
-            return;
-          }
-          // Protection runtime: cache potentiellement corrompu/incompatible
-          logger.warn('[MesServicesScreen] ⚠️ Cache invalide ignoré (attendu: array), purge du cache');
-          await CacheManager.remove(cacheKey);
+          logger.log('[MesServicesScreen] ✅ Données chargées depuis le cache');
+          setServices(cached);
+          setLoading(false);
+          setRefreshing(false);
+          return;
         }
       }
 
@@ -489,10 +479,10 @@ const MesServicesScreen: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'active': return t('mesServices.statusActive');
-      case 'inactive': return t('mesServices.statusInactive');
-      case 'pending': return t('mesServices.statusPending');
-      default: return t('mesServices.statusUnknown');
+      case 'active': return 'Actif';
+      case 'inactive': return 'Inactif';
+      case 'pending': return 'En attente';
+      default: return 'Inconnu';
     }
   };
 
@@ -579,7 +569,7 @@ const MesServicesScreen: React.FC = () => {
       });
     } catch (error) {
       logger.error('[MesServicesScreen] Erreur handleAddProduct:', error);
-      toaster.error(t('mesServices.cannotOpenForm'));
+      toaster.error('Impossible d\'ouvrir le formulaire d\'ajout de produit');
     }
   }, [rawServices, services, navigation, loading, loadServices]);
 
@@ -602,7 +592,7 @@ const MesServicesScreen: React.FC = () => {
       });
     } catch (error) {
       logger.error('Erreur navigation modification:', error);
-      toaster.error(t('mesServices.cannotOpenEdit'));
+      toaster.error('Impossible d\'ouvrir la modification du service');
     }
   };
 
@@ -624,12 +614,11 @@ const MesServicesScreen: React.FC = () => {
       });
     } catch (error) {
       logger.error('Erreur navigation visualisation:', error);
-      toaster.error(t('mesServices.cannotOpenView'));
+      toaster.error('Impossible d\'ouvrir la visualisation du service');
     }
   };
 
   const handleShareService = async (service: any) => {
-    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
     try {
       // Implémentation du partage avec deep linking
       const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service Yukpo';
@@ -638,7 +627,7 @@ const MesServicesScreen: React.FC = () => {
       const localisation = service.data?.localisation?.valeur || service.localisation;
 
       // ✅ CORRIGÉ: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
-      const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
+      const serviceUrl = `https://yukpo-backend-376093909298.europe-west1.run.app/service/${service.id}`;
 
       let shareText = `🛍️ ${titre}\n\n${description}`;
 
@@ -661,11 +650,11 @@ const MesServicesScreen: React.FC = () => {
 
       if (result.action === Share.sharedAction) {
         logger.log('[MesServicesScreen] Service partagé:', serviceUrl);
-        toaster.success(t('mesServices.serviceShared'));
+        toaster.success('Service partagé avec succès !');
       }
     } catch (error) {
       logger.error('Erreur lors du partage:', error);
-      toaster.error(t('mesServices.cannotShare'));
+      toaster.error('Impossible de partager le service');
     }
   };
 
@@ -709,13 +698,8 @@ const MesServicesScreen: React.FC = () => {
               return newMap;
             });
 
-            Alert.alert(
-              `💸 ${t('mesServices.insufficientBalance')}`,
-              t('mesServices.reactivationCost', { cost: activationCost.toLocaleString(), balance: currentBalance.toLocaleString() }),
-              [
-                { text: t('mesServices.cancel'), style: 'cancel' },
-                { text: t('mesServices.recharge'), onPress: () => (navigation as any).navigate('RechargeTokens') },
-              ]
+            toaster.error(
+              `Solde insuffisant (${currentBalance} FCFA). Coût: ${activationCost} FCFA`
             );
             return;
           }
@@ -728,7 +712,7 @@ const MesServicesScreen: React.FC = () => {
 
           if (deductResponse.success) {
             const newBalance = currentBalance - activationCost;
-            toaster.success(t('mesServices.serviceReactivated', { cost: activationCost, balance: newBalance }));
+            toaster.success(`Service réactivé ! Coût: ${activationCost} FCFA (Solde: ${newBalance} FCFA)`);
             loadServices(true);
           } else {
             // Rollback
@@ -737,7 +721,7 @@ const MesServicesScreen: React.FC = () => {
                 s.id === service.id ? previousState : s
               )
             );
-            toaster.error(t('mesServices.reactivationError'));
+            toaster.error('Erreur lors de la réactivation');
           }
         }
       }
@@ -755,7 +739,7 @@ const MesServicesScreen: React.FC = () => {
         });
 
         if (currentStatus) {
-          toaster.success(t('mesServices.serviceDeactivated'));
+          toaster.success('Service désactivé avec succès');
         }
         // Rafraîchir la liste des services
         loadServices(true);
@@ -773,7 +757,7 @@ const MesServicesScreen: React.FC = () => {
         });
 
         logger.error('[MesServicesScreen] Erreur API toggle status:', response.status);
-        toaster.error(t('mesServices.cannotChangeStatus'));
+        toaster.error(`Impossible de changer le statut (Code: ${response.status})`);
       }
     } catch (error: any) {
       // ✅ ROLLBACK en cas d'exception
@@ -790,19 +774,19 @@ const MesServicesScreen: React.FC = () => {
       });
 
       logger.error('[MesServicesScreen] Erreur toggle status:', error);
-      toaster.error(error.message || t('mesServices.cannotChangeStatus'));
+      toaster.error(error.message || 'Impossible de changer le statut du service');
     }
   };
 
   const handleDeleteService = async (service: any) => {
     // Confirmation avant suppression comme dans le frontend
     Alert.alert(
-      t('mesServices.deleteTitle'),
-      t('mesServices.deleteConfirm', { title: service.title }),
+      'Supprimer le service',
+      `Êtes-vous sûr de vouloir supprimer définitivement le service "${service.title}" ?\n\nCette action est irréversible.`,
       [
-        { text: t('mesServices.cancel'), style: 'cancel' },
+        { text: 'Annuler', style: 'cancel' },
         {
-          text: t('mesServices.delete'),
+          text: 'Supprimer',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -815,7 +799,7 @@ const MesServicesScreen: React.FC = () => {
               const deleteData = (response?.data || response) as any;
 
               if (response.success) {
-                toaster.success(t('mesServices.serviceDeleted'));
+                toaster.success('Service supprimé avec succès');
                 // Déclencher un rafraîchissement pour mettre à jour l'interface
                 loadServices(true);
               } else {
@@ -826,7 +810,9 @@ const MesServicesScreen: React.FC = () => {
                 const errorMsg = deleteData?.message || response.error || '';
 
                 if (errorMsg.includes('2 or more products')) {
-                  toaster.warning(t('mesServices.deleteBlockedMultiple'));
+                  toaster.warning(
+                    'Ce service contient 2 produits ou plus. Supprimez-les individuellement d\'abord.'
+                  );
                 } else {
                   throw new Error(errorMsg || 'Erreur lors de la suppression');
                 }
@@ -842,7 +828,7 @@ const MesServicesScreen: React.FC = () => {
               // ✅ AMÉLIORATION: Message d'erreur plus précis avec Toast
               const message = error.response?.data?.message ||
                 error.message ||
-                t('mesServices.cannotDelete');
+                'Impossible de supprimer le service. Vérifiez votre connexion.';
               toaster.error(message);
             }
           }
@@ -920,7 +906,7 @@ const MesServicesScreen: React.FC = () => {
         serviceId = parts[0];
       } else {
         logger.error('[MesServicesScreen] ❌ Format ID produit invalide:', productItem.id);
-        toaster.error(t('mesServices.cannotDetermineService'));
+        toaster.error('Impossible de déterminer le service pour ce produit');
         return;
       }
     }
@@ -934,7 +920,7 @@ const MesServicesScreen: React.FC = () => {
         service_id: productItem.service_id,
         data_serviceId: productItem.data?.serviceId
       });
-      toaster.error(t('mesServices.cannotDetermineService'));
+      toaster.error('Impossible de déterminer le service pour ce produit');
       return;
     }
 
@@ -942,7 +928,7 @@ const MesServicesScreen: React.FC = () => {
     const numericServiceId = Number(serviceId);
     if (!Number.isFinite(numericServiceId) || numericServiceId <= 0) {
       logger.error('[MesServicesScreen] ❌ serviceId invalide:', serviceId);
-      toaster.error(t('mesServices.invalidService'));
+      toaster.error('Service invalide pour ce produit');
       return;
     }
 
@@ -950,7 +936,7 @@ const MesServicesScreen: React.FC = () => {
 
     // ✅ CORRECTION: S'assurer que services est un tableau avant filter
     if (!Array.isArray(services)) {
-      toaster.error(t('mesServices.cannotCreateVideo'));
+      toaster.error('Impossible de créer une vidéo : données de services invalides');
       return;
     }
 
@@ -996,12 +982,12 @@ const MesServicesScreen: React.FC = () => {
     if (produitsDuService.length === 0) {
       // Utiliser Alert pour confirmation avec actions multiples
       Alert.alert(
-        t('mesServices.productRequired'),
-        t('mesServices.noProductForVideo'),
+        'Produit requis',
+        'Aucun produit trouvé pour ce service. Créez d\'abord un produit pour pouvoir créer une vidéo.',
         [
-          { text: t('mesServices.cancel'), style: 'cancel' },
+          { text: 'Annuler', style: 'cancel' },
           {
-            text: t('mesServices.createAProduct'),
+            text: 'Créer un produit',
             onPress: () => {
               handleAddProduct(numericServiceId);
             }
@@ -1013,7 +999,7 @@ const MesServicesScreen: React.FC = () => {
 
     // ✅ CORRECTION: S'assurer que produitsDuService est un tableau avant map
     if (!Array.isArray(produitsDuService) || produitsDuService.length === 0) {
-      toaster.error(t('mesServices.noProductFound'));
+      toaster.error('Aucun produit trouvé pour ce service');
       return;
     }
 
@@ -1032,46 +1018,29 @@ const MesServicesScreen: React.FC = () => {
       ...product
     }));
 
-    // ✅ Sécurité anti-crash: ouvrir le modal local dans tous les cas
-    // (évite la navigation vers un écran externe potentiellement instable)
+    // Si un seul produit → Navigation directe
+    if (managedProducts.length === 1) {
+      const product = managedProducts[0];
+      navigateToVideoWizard(navigation, {
+        serviceId: numericServiceId,
+        productIndex: product.product_index || 0,
+        productName: extractProductName(product, 'Produit')
+      });
+      return;
+    }
+
+    // Plusieurs produits → Afficher le modal ProductVideoCreationModal
     setSelectedServiceForVideo(productItem);
     setProductsForVideoCreation(managedProducts);
     setShowVideoCreationModal(true);
   };
-
-  // ✅ Anti-crash global: ouverture sélecteur vidéo via param de navigation
-  useEffect(() => {
-    try {
-      const params = (route as any)?.params || {};
-      if (!params?.openVideoSelector) return;
-      if (!Array.isArray(services) || services.length === 0) return;
-
-      const products = prepareProductsForSelector();
-      if (!Array.isArray(products) || products.length === 0) {
-        return;
-      }
-
-      setProductsForSelection(products);
-      setProductSelectorMode(null);
-      setShowProductSelector(true);
-
-      // Nettoyer le trigger pour éviter les réouvertures
-      try {
-        (navigation as any).setParams?.({ openVideoSelector: undefined });
-      } catch {
-        // non bloquant
-      }
-    } catch (error) {
-      logger.error('[MesServicesScreen] Erreur ouverture vidéo via param', error);
-    }
-  }, [route, services, prepareProductsForSelector, navigation]);
 
   const handleVideoCreationSuccess = async (result: GeneratedVideoResponse) => {
     logger.log('[MesServicesScreen] ✅ Vidéo créée avec succès:', result);
     setShowVideoCreationModal(false);
     setProductsForVideoCreation([]);
     setSelectedServiceForVideo(null);
-    toaster.success(t('mesServices.videoCreated'));
+    toaster.success('Votre vidéo a été créée avec succès !');
   };
 
   const handlePromotionService = (service: any) => {
@@ -1079,12 +1048,12 @@ const MesServicesScreen: React.FC = () => {
 
     // Afficher un modal de gestion des promotions comme dans le frontend
     Alert.alert(
-      `📢 ${t('mesServices.promotionTitle')}`,
-      t('mesServices.promotionQuestion', { title: titre }),
+      '📢 Promotion du service',
+      `Service: ${titre}\n\nQue souhaitez-vous faire ?`,
       [
-        { text: t('mesServices.cancel'), style: 'cancel' },
+        { text: 'Annuler', style: 'cancel' },
         {
-          text: `⚡ ${t('mesServices.createFlashPromo')}`,
+          text: '⚡ Créer un flash promotionnel',
           onPress: () => {
             try {
               // Navigation vers l'écran de création de flash promotionnel
@@ -1095,12 +1064,12 @@ const MesServicesScreen: React.FC = () => {
               });
             } catch (error) {
               logger.error('Erreur navigation flash promo:', error);
-              Alert.alert(t('message.error'), t('mesServices.cannotOpenFlashPromo'));
+              Alert.alert('Erreur', 'Impossible d\'ouvrir la création de flash promotionnel');
             }
           }
         },
         {
-          text: `🎉 ${t('mesServices.createPromotion')}`,
+          text: '🎉 Créer une promotion',
           onPress: () => {
             try {
               // Navigation vers l'écran de modification pour créer une promotion
@@ -1119,12 +1088,12 @@ const MesServicesScreen: React.FC = () => {
               });
             } catch (error) {
               logger.error('Erreur navigation promotion:', error);
-              Alert.alert(t('message.error'), t('mesServices.cannotOpenPromotion'));
+              Alert.alert('Erreur', 'Impossible d\'ouvrir la gestion des promotions');
             }
           }
         },
         {
-          text: t('mesServices.editPromotion'),
+          text: 'Modifier la promotion',
           onPress: () => {
             try {
               // Navigation vers l'écran de modification pour modifier la promotion
@@ -1143,7 +1112,7 @@ const MesServicesScreen: React.FC = () => {
               });
             } catch (error) {
               logger.error('Erreur navigation promotion:', error);
-              Alert.alert(t('message.error'), t('mesServices.cannotOpenPromotion'));
+              Alert.alert('Erreur', 'Impossible d\'ouvrir la gestion des promotions');
             }
           }
         }
@@ -1151,13 +1120,10 @@ const MesServicesScreen: React.FC = () => {
     );
   };
 
-  // Source normalisée pour éviter les crashs si une valeur non-tableau arrive depuis le cache/runtime
-  const safeServices = Array.isArray(services) ? services : [];
-
   // Filtrer les services selon le filtre sélectionné
   // ✅ CORRECTION: S'assurer que services est un tableau et filtrer uniquement les services valides
-  const filteredServices = safeServices
-    .filter((service) => {
+  const filteredServices = Array.isArray(services)
+    ? services.filter((service) => {
       // ✅ PROTECTION: Ignorer les services null/undefined
       if (!service) return false;
 
@@ -1166,63 +1132,14 @@ const MesServicesScreen: React.FC = () => {
       if (filter === 'inactif') return service.status === 'inactive';
       return true;
     })
-    ;
-
-  // 🔎 Diagnostic ciblé du rendu liste (preuve par logs sans bruit)
-  useEffect(() => {
-    try {
-      const invalidItems = safeServices.filter((s: any) => !s || typeof s !== 'object');
-      const missingId = safeServices.filter((s: any) =>
-        s && typeof s === 'object' && !(s.id || s.service_id || s.data?.serviceId)
-      );
-      const missingStatus = safeServices.filter((s: any) =>
-        s && typeof s === 'object' && !s.status
-      );
-      const malformedFilterOutput = !Array.isArray(filteredServices);
-
-      if (
-        invalidItems.length === 0 &&
-        missingId.length === 0 &&
-        missingStatus.length === 0 &&
-        !malformedFilterOutput
-      ) {
-        return;
-      }
-
-      const signature = JSON.stringify({
-        total: safeServices.length,
-        invalidItems: invalidItems.length,
-        missingId: missingId.length,
-        missingStatus: missingStatus.length,
-        malformedFilterOutput,
-      });
-
-      // Log une seule fois par signature d'anomalie
-      if (!listDiagnosticsSignaturesRef.current.has(signature)) {
-        listDiagnosticsSignaturesRef.current.add(signature);
-        logger.warn('[MesServicesScreen][list-diagnostics] Anomalie de données détectée', {
-          total: safeServices.length,
-          filteredCount: Array.isArray(filteredServices) ? filteredServices.length : 'not-array',
-          invalidItems: invalidItems.length,
-          missingId: missingId.length,
-          missingStatus: missingStatus.length,
-          sampleInvalidItem: invalidItems[0],
-          sampleMissingId: missingId[0],
-          sampleMissingStatus: missingStatus[0],
-        });
-      }
-    } catch (diagError) {
-      // ne jamais casser le rendu pour un log défensif
-      logger.warn('[MesServicesScreen][list-diagnostics] erreur instrumentation', diagError);
-    }
-  }, [safeServices, filteredServices]);
+    : [];
 
   // ✅ NOUVEAU: Calculer les statistiques pour les cards visuelles
   const stats = useMemo(() => {
-    const totalProducts = safeServices.length;
-    const activeProducts = safeServices.filter(s => s && s.status === 'active').length;
-    const inactiveProducts = safeServices.filter(s => s && s.status === 'inactive').length;
-    const totalViews = safeServices.reduce((sum, s) => sum + (s.views || 0), 0);
+    const totalProducts = services.length;
+    const activeProducts = services.filter(s => s && s.status === 'active').length;
+    const inactiveProducts = services.filter(s => s && s.status === 'inactive').length;
+    const totalViews = services.reduce((sum, s) => sum + (s.views || 0), 0);
 
     return {
       totalProducts,
@@ -1230,25 +1147,7 @@ const MesServicesScreen: React.FC = () => {
       inactiveProducts,
       totalViews,
     };
-  }, [safeServices]);
-
-  // ✅ CORRIGÉ: Créer les styles dynamiquement avec le thème AVANT le early return loading
-  const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
-
-  // ✅ NOUVEAU: Breadcrumbs navigation (doit rester avant tout return conditionnel)
-  // pour garantir un ordre de hooks stable entre les rendus.
-  const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
-    const items: BreadcrumbItem[] = [
-      {
-        label: t('mesServices.home'),
-        onPress: () => navigation.navigate('Home' as never),
-      },
-      {
-        label: t('mesServices.products'),
-      },
-    ];
-    return items;
-  }, [navigation, t]);
+  }, [services]);
 
   if (loading && services.length === 0) {
     return (
@@ -1262,7 +1161,7 @@ const MesServicesScreen: React.FC = () => {
               <View style={dynamicStyles.logoContainer}>
                 <SafeIcon name="briefcase" size={18} color="#fff" />
                 <View style={dynamicStyles.titleContainer}>
-                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">{t('mesServices.products')}</Text>
+                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Produits</Text>
                 </View>
               </View>
             </View>
@@ -1275,6 +1174,23 @@ const MesServicesScreen: React.FC = () => {
       </View>
     );
   }
+
+  // ✅ NOUVEAU: Créer les styles dynamiquement avec le thème
+  const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
+
+  // ✅ NOUVEAU: Breadcrumbs navigation
+  const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
+    const items: BreadcrumbItem[] = [
+      {
+        label: 'Accueil',
+        onPress: () => navigation.navigate('Home' as never),
+      },
+      {
+        label: 'Produits',
+      },
+    ];
+    return items;
+  }, [navigation]);
 
   return (
     <ErrorBoundaryWithRetry
@@ -1307,20 +1223,13 @@ const MesServicesScreen: React.FC = () => {
                 style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
                 onPress={() => {
                   try {
-                    const products = prepareProductsForSelector();
-                    if (!Array.isArray(products) || products.length === 0) {
-                      toaster.warning(t('mesServices.noProductCreated'));
-                      return;
-                    }
-                    setProductsForSelection(products);
-                    setProductSelectorMode(null); // mode vidéo (sélection unique)
-                    setShowProductSelector(true);
+                    (navigation as any).navigate('VideoCreationIntro');
                   } catch (error) {
-                    logger.error('[MesServicesScreen] Erreur ouverture création vidéo:', error);
-                    toaster.error(t('mesServices.cannotCreateVideo'));
+                    logger.error('[MesServicesScreen] Erreur navigation vers VideoCreationIntro:', error);
+                    toaster.error('Impossible d\'ouvrir la création de vidéo');
                   }
                 }}
-                accessibilityLabel={t('mesServices.createProduct')}
+                accessibilityLabel="Créer une vidéo"
                 accessibilityRole="button"
               >
                 <SafeIcon name="plus" size={20} color="#fff" type="lucide" />
@@ -1338,7 +1247,7 @@ const MesServicesScreen: React.FC = () => {
                   setProductSelectorMode('flash-promo');
                   setShowProductSelector(true);
                 }}
-                accessibilityLabel={t('mesServices.createFlash')}
+                accessibilityLabel="Configuration Flash Promo"
                 accessibilityRole="button"
               >
                 <SafeIcon name="zap" size={20} color="#fff" type="lucide" />
@@ -1349,7 +1258,7 @@ const MesServicesScreen: React.FC = () => {
                 onPress={() => {
                   const productsList = prepareProductsForSelector();
                   if (productsList.length === 0) {
-                    toaster.warning(t('mesServices.createProductsFirst'));
+                    toaster.warning('Vous devez d\'abord créer des produits avant de configurer la livraison.');
                     return;
                   }
                   setProductsForSelection(productsList);
@@ -1399,7 +1308,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="image" size={18} color={colors.success} />
-                <Text style={[dynamicStyles.menuItemText, { color: colors.success }]}>{t('mesServices.mediaGallery')}</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: colors.success }]}>Galerie Médias</Text>
               </TouchableOpacity>
 
               {/* ✅ Bouton Membres existant - amélioré pour sélection produits/services */}
@@ -1410,7 +1319,7 @@ const MesServicesScreen: React.FC = () => {
                   // ✅ Préparer la liste des produits et ouvrir le sélecteur
                   const productsList = prepareProductsForSelector();
                   if (productsList.length === 0) {
-                    toaster.warning(t('mesServices.createProductsFirstTeam'));
+                    toaster.warning('Vous devez d\'abord créer des produits avant de gérer l\'équipe.');
                     return;
                   }
                   setProductsForSelection(productsList);
@@ -1419,7 +1328,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="users" size={18} color="#6366F1" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.members')}</Text>
+                <Text style={dynamicStyles.menuItemText}>Membres</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1430,7 +1339,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="plus-circle" size={18} color="#10B981" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.createProduct')}</Text>
+                <Text style={dynamicStyles.menuItemText}>Créer produit</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1441,7 +1350,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="tablet" size={18} color="#3B82F6" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.statistics')}</Text>
+                <Text style={dynamicStyles.menuItemText}>Statistiques</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1452,7 +1361,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="megaphone" size={18} color="#8B5CF6" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.myAds')}</Text>
+                <Text style={dynamicStyles.menuItemText}>Mes Publicités</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1463,7 +1372,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="plus-circle" size={18} color="#EC4899" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.newAd')}</Text>
+                <Text style={dynamicStyles.menuItemText}>Nouvelle Publicité</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Créer Flash Promo - Sélection multiple de produits */}
@@ -1474,7 +1383,7 @@ const MesServicesScreen: React.FC = () => {
                   // Préparer la liste des produits et ouvrir le sélecteur
                   const productsList = prepareProductsForSelector();
                   if (productsList.length === 0) {
-                    toaster.warning(t('mesServices.createProductsFirstFlash'));
+                    toaster.warning('Vous devez d\'abord créer des produits avant de créer un flash promo.');
                     return;
                   }
                   setProductsForSelection(productsList);
@@ -1483,7 +1392,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <Text style={{ fontSize: 18, marginRight: 8 }}>⚡</Text>
-                <Text style={[dynamicStyles.menuItemText, { color: '#F59E0B', fontWeight: '700' }]}>{t('mesServices.createFlash')}</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: '#F59E0B', fontWeight: '700' }]}>Créer Flash Promo</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Voir Flash Promotionnels actifs */}
@@ -1500,7 +1409,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="zap" size={18} color="#F59E0B" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.viewActiveFlash')}</Text>
+                <Text style={dynamicStyles.menuItemText}>Voir Flash Actifs</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Mes Vidéos - Créées */}
@@ -1522,7 +1431,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="video" size={18} color={colors.primary} />
-                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>{t('mesServices.myCreatedVideos')}</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>Mes Vidéos Créées</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Démarrer un Live */}
@@ -1531,7 +1440,7 @@ const MesServicesScreen: React.FC = () => {
                 onPress={() => (navigation as any).navigate('StartLive')}
               >
                 <SafeIcon name="radio" size={18} color="#DC2626" />
-                <Text style={[dynamicStyles.menuItemText, { color: '#DC2626' }]}>🎥 {t('mesServices.startLive')}</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: '#DC2626' }]}>🎥 Démarrer un Live</Text>
               </TouchableOpacity>
 
               {/* ✅ NOUVEAU: Analytiques Vidéos */}
@@ -1553,7 +1462,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="bar-chart" size={18} color={colors.primary} />
-                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>{t('mesServices.videoAnalytics')}</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>Analytiques Vidéos</Text>
               </TouchableOpacity>
 
               {/* ✅ Bouton Paramètres */}
@@ -1565,7 +1474,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="settings" size={18} color="#6B7280" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.settings')}</Text>
+                <Text style={dynamicStyles.menuItemText}>Paramètres</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1576,7 +1485,7 @@ const MesServicesScreen: React.FC = () => {
                 }}
               >
                 <SafeIcon name="refresh-cw" size={18} color="#6B7280" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.refresh')}</Text>
+                <Text style={dynamicStyles.menuItemText}>Actualiser</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -1603,14 +1512,14 @@ const MesServicesScreen: React.FC = () => {
                 <StatsCard
                   icon="package"
                   value={stats.totalProducts}
-                  label={t('mesServices.totalProducts')}
+                  label="Produits totaux"
                   gradient={modernColors.primaryGradient}
                   onPress={() => setFilter('tous')}
                 />
                 <StatsCard
                   icon="check-circle"
                   value={stats.activeProducts}
-                  label={t('mesServices.active')}
+                  label="Actifs"
                   color={modernColors.success}
                   onPress={() => setFilter('actif')}
                 />
@@ -1619,7 +1528,7 @@ const MesServicesScreen: React.FC = () => {
                 <StatsCard
                   icon="pause-circle"
                   value={stats.inactiveProducts}
-                  label={t('mesServices.inactive')}
+                  label="Inactifs"
                   color={modernColors.warning}
                   onPress={() => setFilter('inactif')}
                 />
@@ -1627,7 +1536,7 @@ const MesServicesScreen: React.FC = () => {
                   <StatsCard
                     icon="eye"
                     value={stats.totalViews.toLocaleString()}
-                    label={t('mesServices.totalViews')}
+                    label="Vues totales"
                     color={modernColors.secondary}
                   />
                 )}
@@ -1643,21 +1552,21 @@ const MesServicesScreen: React.FC = () => {
               <StatsCard
                 icon="package"
                 value={stats.totalProducts}
-                label={t('mesServices.totalProducts')}
+                label="Produits totaux"
                 gradient={modernColors.primaryGradient}
                 onPress={() => setFilter('tous')}
               />
               <StatsCard
                 icon="check-circle"
                 value={stats.activeProducts}
-                label={t('mesServices.active')}
+                label="Actifs"
                 color={modernColors.success}
                 onPress={() => setFilter('actif')}
               />
               <StatsCard
                 icon="pause-circle"
                 value={stats.inactiveProducts}
-                label={t('mesServices.inactive')}
+                label="Inactifs"
                 color={modernColors.warning}
                 onPress={() => setFilter('inactif')}
               />
@@ -1665,7 +1574,7 @@ const MesServicesScreen: React.FC = () => {
                 <StatsCard
                   icon="eye"
                   value={stats.totalViews.toLocaleString()}
-                  label={t('mesServices.totalViews')}
+                  label="Vues totales"
                   color={modernColors.secondary}
                 />
               )}
@@ -1697,7 +1606,7 @@ const MesServicesScreen: React.FC = () => {
                 dynamicStyles.filterChipText,
                 filter === 'tous' && dynamicStyles.filterChipTextActive
               ]}>
-                {t('mesServices.all')} ({services.length})
+                Tous ({services.length})
               </Text>
             </TouchableOpacity>
 
@@ -1717,7 +1626,7 @@ const MesServicesScreen: React.FC = () => {
                 dynamicStyles.filterChipText,
                 filter === 'actif' && dynamicStyles.filterChipTextActive
               ]}>
-                {t('mesServices.active')} ({Array.isArray(services) ? services.filter(s => s && s.status === 'active').length : 0})
+                Actifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'active').length : 0})
               </Text>
             </TouchableOpacity>
 
@@ -1737,7 +1646,7 @@ const MesServicesScreen: React.FC = () => {
                 dynamicStyles.filterChipText,
                 filter === 'inactif' && dynamicStyles.filterChipTextActive
               ]}>
-                {t('mesServices.inactive')} ({Array.isArray(services) ? services.filter(s => s && s.status === 'inactive').length : 0})
+                Inactifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'inactive').length : 0})
               </Text>
             </TouchableOpacity>
 
@@ -1748,16 +1657,16 @@ const MesServicesScreen: React.FC = () => {
             <View style={dynamicStyles.emptyContainer}>
               <SafeIcon name="briefcase" size={64} color={colors.textSecondary} />
               <Text style={dynamicStyles.emptyTitle}>
-                {filter === 'tous' ? t('mesServices.noProductCreated') : t('mesServices.noProductFilter', { filter })}
+                {filter === 'tous' ? 'Aucun produit créé' : `Aucun produit ${filter}`}
               </Text>
               <Text style={dynamicStyles.emptyText}>
                 {filter === 'tous'
-                  ? t('mesServices.createFirstProduct')
-                  : t('mesServices.noProductForNow', { filter })
+                  ? 'Créez votre premier produit pour commencer à proposer vos produits.'
+                  : `Aucun produit ${filter} pour le moment.`
                 }
               </Text>
               <NativeButton
-                title={`➕ ${t('mesServices.createNewProduct')}`}
+                title="➕ Créer un nouveau produit"
                 onPress={() => handleAddProduct()}
                 variant="primary"
                 size="medium"
@@ -1814,21 +1723,21 @@ const MesServicesScreen: React.FC = () => {
               ListFooterComponent={
                 <View style={dynamicStyles.footerContainer}>
                   <NativeButton
-                    title={`📊 ${t('mesServices.statistics')}`}
+                    title="📊 Analytics Dashboard"
                     onPress={() => (navigation as any).navigate('AnalyticsDashboard')}
                     variant="primary"
                     size="large"
                     style={dynamicStyles.analyticsFooterButton}
                   />
                   <NativeButton
-                    title={`📦 ${t('mesServices.manageProducts')}`}
+                    title="📦 Gérer mes produits"
                     onPress={() => navigation.navigate('MesProduits' as never)}
                     variant="outline"
                     size="large"
                     style={dynamicStyles.productsButton}
                   />
                   <NativeButton
-                    title={`🏠 ${t('mesServices.backToHome')}`}
+                    title="🏠 Retour à l'accueil"
                     onPress={() => navigation.navigate('Home' as never)}
                     variant="outline"
                     size="large"
@@ -1840,10 +1749,10 @@ const MesServicesScreen: React.FC = () => {
                 <View style={dynamicStyles.emptyContainer}>
                   <SafeIcon name="briefcase" size={64} color={colors.textSecondary} />
                   <Text style={dynamicStyles.emptyTitle}>
-                    {filter === 'tous' ? t('mesServices.noProductCreated') : t('mesServices.noProductFilter', { filter })}
+                    {filter === 'tous' ? 'Aucun produit créé' : `Aucun produit ${filter}`}
                   </Text>
                   <NativeButton
-                    title={`➕ ${t('mesServices.createNewProduct')}`}
+                    title="➕ Créer un nouveau produit"
                     onPress={() => handleAddProduct()}
                     variant="primary"
                     size="medium"
@@ -1887,31 +1796,9 @@ const MesServicesScreen: React.FC = () => {
           products={productsForSelection}
           allowMultiple={productSelectorMode !== null} // ✅ Mode multiple pour livraison/équipe
           onSelect={(product) => {
-            // ✅ Mode unique (vidéo): ouvrir le flux local pour éviter le crash de navigation
+            // ✅ Mode unique (vidéo)
             if (!productSelectorMode) {
-              const matched = Array.isArray(services)
-                ? services.find((s: any) => {
-                  if (!s) return false;
-                  const sid = Number(s.service_id || s.data?.serviceId || (typeof s.id === 'string' && s.id.includes('_') ? s.id.split('_')[0] : s.id));
-                  const pidx = Number(s.product_index ?? s.data?.product_index ?? 0);
-                  return sid === Number(product.serviceId) && pidx === Number(product.productIndex);
-                })
-                : null;
-
-              handleCreateVideo(
-                matched || {
-                  id: `${product.serviceId}_${product.productIndex}`,
-                  service_id: product.serviceId,
-                  product_index: product.productIndex,
-                  title: product.productName,
-                  data: {
-                    serviceId: product.serviceId,
-                    product_index: product.productIndex,
-                    nom: product.productName,
-                    serviceTitre: product.serviceName,
-                  },
-                }
-              );
+              navigateToVideoWizard(navigation, product);
             }
             setShowProductSelector(false);
             setProductsForSelection([]);
@@ -2061,7 +1948,7 @@ const MesServicesScreen: React.FC = () => {
         <SidebarNavigation
           visible={showSidebar}
           onClose={() => setShowSidebar(false)}
-          currentRoute="Services"
+          currentRoute="MesServices"
           items={[
             {
               id: 'create-product',
@@ -2268,9 +2155,9 @@ const MesServicesScreen: React.FC = () => {
                   'Supprimer plusieurs produits',
                   `Êtes-vous sûr de vouloir supprimer ${selectedCount} produit(s) ?\n\nCette action est irréversible.`,
                   [
-                    { text: t('common.cancel'), style: 'cancel' },
+                    { text: 'Annuler', style: 'cancel' },
                     {
-                      text: t('common.delete'),
+                      text: 'Supprimer',
                       style: 'destructive',
                       onPress: async () => {
                         const promises = Array.from(selectedItems).map(id => {
