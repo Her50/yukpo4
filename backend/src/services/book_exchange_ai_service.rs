@@ -1818,7 +1818,7 @@ Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, cla
             tokens
         );
 
-        let response_json = sanitize_recto_verso_llm_json(&response);
+        let response_json = Self::sanitize_recto_verso_llm_json(&response);
         let analysis: BookRectoVersoAnalysis = match serde_json::from_str(&response_json) {
             Ok(a) => a,
             Err(e) => {
@@ -1854,7 +1854,7 @@ Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, cla
         // ou si classe_souhaitee est incorrecte, on la recalcule en tenant compte du système scolaire détecté
         let mut analysis = analysis;
         analysis.etat_classification =
-            normalize_etat_classification_llm(&analysis.etat_classification);
+            Self::normalize_etat_classification_llm(&analysis.etat_classification);
         if let Some(ref classe_act) = analysis.classe_actuelle {
             if is_classe_terminale(classe_act) {
                 // Dernière classe du système (Terminale, Upper Sixth, SSS 3, etc.)

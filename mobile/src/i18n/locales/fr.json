@@ -15000,7 +15000,8 @@
         "screenDesc": {
             "home": "Accueil Yukpo : recherche IA (ChatInputMobile → ResultatBesoin), mode Créer (Formulaire ou Ajouter produit), grille services, promos, raccourcis Navigation/Livraison, conversations et notifications.",
             "servicesTab": "Onglet Mes services (route Services) : tableau de bord produits moderne — cartes, stats, livraison globale, flash promos, vidéos, équipe. Complété par l’écran MesProduits pour le détail catalogue.",
-            "search": "Recherchez services et produits. Filtrez, comparez et négociez les prix.",
+            "search": "Résultats recherche Yukpo (alias RechercheBesoin = ResultatBesoin) : affiner avec ChatInputMobile et rechercherServices, filtres catégorie, tri ; ouverture fiche → PrestataireBoutique ; chat modal.",
+            "resultatBesoin": "Résultats IA (ResultatBesoinScreen) : GET /api/services/:id et /products, tri pertinence et proximité, scoring produits ; pas de carte résultats ; cartes → PrestataireBoutique.",
             "serviceDetail": "Détails d'un service. Contactez, appelez, négociez ou obtenez l'itinéraire.",
             "profile": "Votre profil. Gérez vos infos, paramètres et portefeuille.",
             "pharmacy": "Pharmacies proches avec recherche IA de médicaments et commande en ligne.",
@@ -15026,7 +15027,10 @@
             "declarationSinistre": "Déclaration sinistre : police reçue en paramètre (depuis Mes polices) ; 3 étapes ; description min. 20 caractères ; POST /api/assurance/claims.",
             "suiviSinistre": "Suivi sinistres (assuré) : GET /api/assurance/claims/client ; filtre optionnel par police ; consultation et historique — pas d’actions assureur.",
             "courierDashboard": "Coursier : livraisons GET /api/deliveries/active, stats GET /api/delivery/courier/stats, Bourse du livre (bourseLivreV2Api), suivi DeliveryShoppingTracking, code CourierVerificationCode, portefeuille — pas d’écran « historique livreur » ici.",
-            "fleetDashboard": "Partenaire flotte livraison (FleetDashboard) : onglets Aperçu / coursiers / candidatures / Analytics ; GET /api/partners/me/fleet/stats|couriers|applications ; approve, reject (motif), toggle suspend|activate ; revenus mois en XAF (centimes÷100) ; pas de suivi course coursier sur cet écran."
+            "fleetDashboard": "Partenaire flotte livraison (FleetDashboard) : onglets Aperçu / coursiers / candidatures / Analytics ; GET /api/partners/me/fleet/stats|couriers|applications ; approve, reject (motif), toggle suspend|activate ; revenus mois en XAF (centimes÷100) ; pas de suivi course coursier sur cet écran.",
+            "automobileDashboard": "Partenaire automobile (AutomobileDashboard) : GET /api/specialized-services/user?type=automobile, onglets accueil/véhicules/Stats ; ajout véhicule = Alert vers formulaire intelligent ; pièces = catégorie pieces_auto ailleurs (Mes produits).",
+            "autoServicesSearch": "Recherche catalogue auto : GET /api/auto/filters, filtres et recherches rapides, navigation vers résultats ; géo efficace = GPS+rayon (ville saisie non transmise à /api/auto/search dans le client actuel).",
+            "autoServicesResults": "Résultats GET /api/auto/search (page, limit 20, tri), fiche ServiceDetail, chat/WhatsApp/appel, avis ProductCommentsSection ; pièces possibles si backend classe l’annonce auto."
         }
     },
     "chatbot": {

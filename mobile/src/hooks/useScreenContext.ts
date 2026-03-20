@@ -290,32 +290,48 @@ const SCREEN_CONFIGS: Record<string, {
     guide: 'Écran legacy **ServicesScreen** (route pile `ServicesActivity`). Le hub enrichi pour gérer produits, promos, vidéos et stats est **MesServicesScreen** (`MesServices` ou onglet **Services**).',
   },
 
+  /** Alias pile = **ResultatBesoinScreen** (voir **ResultatBesoin**). */
   RechercheBesoin: {
     type: 'search',
     actions: [
-      { id: 'filter-results', label: 'Filtrer', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Affiner les résultats de recherche' },
-      { id: 'negotiate', label: 'Négocier Prix', icon: LUCIDE_ICONS.tag, category: 'action', description: 'Négocier le prix d\'un service' },
-      { id: 'sort-results', label: 'Trier', icon: LUCIDE_ICONS.list, category: 'action', description: 'Trier par prix, distance ou pertinence' },
+      { id: 'refine-search', label: 'Affiner la recherche', icon: LUCIDE_ICONS.search, category: 'search', description: 'ChatInputMobile → rechercherServices (texte, médias, GPS) — connexion requise' },
+      { id: 'gps-modal', label: 'GPS (modal)', icon: LUCIDE_ICONS.location, category: 'action', description: 'ModernGPSModal depuis ChatInputMobile ; alimente selectedLocation pour les recherches suivantes' },
+      { id: 'category-filters', label: 'Filtres catégorie', icon: LUCIDE_ICONS.filter, category: 'action', description: 'CategoryFilters (dominantCategory / categoryConfig)' },
+      { id: 'sort-chips', label: 'Tri', icon: LUCIDE_ICONS.list, category: 'action', description: 'Pertinence, prix asc/desc, distance ; puce Date si terminology — tri date non implémenté dans filterAndSortServices' },
+      { id: 'pull-refresh', label: 'Tirer pour rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'RefreshControl : retri pertinence/proximité + recharge services' },
+      { id: 'card-chat', label: 'Chat prestataire', icon: LUCIDE_ICONS.message, category: 'action', description: 'ProductCard → ChatModalMobile ; notification optionnelle POST /api/notifications/create' },
+      { id: 'open-boutique', label: 'Ouvrir la boutique', icon: LUCIDE_ICONS.store, category: 'navigation', description: 'Tap carte → PrestataireBoutique (pas ServiceDetail par défaut)' },
     ],
     elements: [
-      { id: 'search-input', type: 'input', label: 'Recherche', actionable: true },
-      { id: 'filter-button', type: 'button', label: 'Filtres', icon: LUCIDE_ICONS.filter, actionable: true },
-      { id: 'results-list', type: 'card', label: 'Résultats', actionable: true },
+      { id: 'header-back', type: 'button', label: 'Retour', actionable: true },
+      { id: 'chat-input-refine', type: 'input', label: 'ChatInputMobile — Affiner votre recherche…', actionable: true },
+      { id: 'filter-badge', type: 'button', label: 'Badge filtres (nombre)', icon: LUCIDE_ICONS.filter, actionable: true },
+      { id: 'sort-scroll', type: 'card', label: 'Chips de tri horizontaux', actionable: true },
+      { id: 'results-flatlist', type: 'card', label: 'Liste ProductCard (produits + services sans produits extraits)', actionable: true },
+      { id: 'gps-live-warning', type: 'card', label: 'Bandeau GPS temps réel créateur', actionable: false },
     ],
-    guide: 'Recherche de services et produits. Filtrez par catégorie, prix, distance. Négociez directement les prix avec les prestataires.',
+    guide: '**ResultatBesoinScreen** : résultats après **rechercherServices**. Route **RechercheBesoin** = alias de **ResultatBesoin** (même composant). Chargement : tri score + proximité (**LocationContext**), **GET /api/services/:id** + **/products**, scoring produit (stop words FR). Pas de carte des résultats. Pas de panneau prix min/max exposé (état priceFilter non relié à l’UI). Carte → **PrestataireBoutique** ; chat → **ChatModalMobile**. Vidéos : max 1 lecture, visibilité FlatList. **useServicesBatchData** appelé mais batchData non passé aux cartes dans ce fichier.',
   },
   ResultatBesoin: {
     type: 'search',
     actions: [
-      { id: 'filter-results', label: 'Filtrer', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Affiner les résultats' },
-      { id: 'negotiate', label: 'Négocier Prix', icon: LUCIDE_ICONS.tag, category: 'action', description: 'Négocier le prix' },
-      { id: 'contact-provider', label: 'Contacter', icon: LUCIDE_ICONS.message, category: 'action', description: 'Envoyer un message au prestataire' },
+      { id: 'refine-search', label: 'Affiner la recherche', icon: LUCIDE_ICONS.search, category: 'search', description: 'ChatInputMobile → rechercherServices (texte, médias, GPS) — connexion requise' },
+      { id: 'gps-modal', label: 'GPS (modal)', icon: LUCIDE_ICONS.location, category: 'action', description: 'ModernGPSModal depuis ChatInputMobile ; alimente selectedLocation pour les recherches suivantes' },
+      { id: 'category-filters', label: 'Filtres catégorie', icon: LUCIDE_ICONS.filter, category: 'action', description: 'CategoryFilters (dominantCategory / categoryConfig)' },
+      { id: 'sort-chips', label: 'Tri', icon: LUCIDE_ICONS.list, category: 'action', description: 'Pertinence, prix asc/desc, distance ; puce Date si terminology — tri date non implémenté dans filterAndSortServices' },
+      { id: 'pull-refresh', label: 'Tirer pour rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'RefreshControl : retri pertinence/proximité + recharge services' },
+      { id: 'card-chat', label: 'Chat prestataire', icon: LUCIDE_ICONS.message, category: 'action', description: 'ProductCard → ChatModalMobile ; notification optionnelle POST /api/notifications/create' },
+      { id: 'open-boutique', label: 'Ouvrir la boutique', icon: LUCIDE_ICONS.store, category: 'navigation', description: 'Tap carte → PrestataireBoutique (pas ServiceDetail par défaut)' },
     ],
     elements: [
-      { id: 'results-list', type: 'card', label: 'Résultats', actionable: true },
-      { id: 'map-toggle', type: 'button', label: 'Voir sur la carte', icon: LUCIDE_ICONS.map, actionable: true },
+      { id: 'header-back', type: 'button', label: 'Retour', actionable: true },
+      { id: 'chat-input-refine', type: 'input', label: 'ChatInputMobile — Affiner votre recherche…', actionable: true },
+      { id: 'filter-badge', type: 'button', label: 'Badge filtres (nombre)', icon: LUCIDE_ICONS.filter, actionable: true },
+      { id: 'sort-scroll', type: 'card', label: 'Chips de tri horizontaux', actionable: true },
+      { id: 'results-flatlist', type: 'card', label: 'Liste ProductCard (produits + services sans produits extraits)', actionable: true },
+      { id: 'gps-live-warning', type: 'card', label: 'Bandeau GPS temps réel créateur', actionable: false },
     ],
-    guide: 'Résultats de recherche. Consultez les détails, contactez les prestataires, négociez les prix ou filtrez davantage.',
+    guide: '**ResultatBesoinScreen** : résultats après **rechercherServices**. Route **RechercheBesoin** = alias de **ResultatBesoin** (même composant). Chargement : tri score + proximité (**LocationContext**), **GET /api/services/:id** + **/products**, scoring produit (stop words FR). Pas de carte des résultats. Pas de panneau prix min/max exposé (état priceFilter non relié à l’UI). Carte → **PrestataireBoutique** ; chat → **ChatModalMobile**. Vidéos : max 1 lecture, visibilité FlatList. **useServicesBatchData** appelé mais batchData non passé aux cartes dans ce fichier.',
   },
 
   ServiceDetail: {
@@ -910,12 +926,51 @@ const SCREEN_CONFIGS: Record<string, {
   AutomobileDashboard: {
     type: 'dashboard',
     actions: [
-      { id: 'search-auto', label: 'Chercher Service Auto', icon: LUCIDE_ICONS.search, route: 'AutoServicesSearch', category: 'search', description: 'Rechercher un service automobile' },
+      { id: 'tab-overview', label: 'Onglet Accueil', icon: LUCIDE_ICONS.home, category: 'action', description: '**overview** — stats 4 cartes, actions rapides, grille par type, véhicules récents' },
+      { id: 'tab-vehicles', label: 'Onglet Véhicules', icon: LUCIDE_ICONS.car, category: 'action', description: '**vehicles** — liste **GET** `/api/specialized-services/user?type=automobile` ; **Ajouter** → **Alert** (formulaire intelligent, pas de navigation)' },
+      { id: 'tab-stats', label: 'Onglet Stats', icon: LUCIDE_ICONS.activity, category: 'action', description: '**analytics** — libellé onglet **Stats** en dur ; résumé stock (mêmes agrégats)' },
+      { id: 'quick-search-market', label: 'Recherche marché auto', icon: LUCIDE_ICONS.search, route: 'AutoServicesSearch', category: 'search', description: 'Action rapide → **AutoServicesSearch** (client)' },
+      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS['credit-card'], route: 'WalletFinancial', category: 'navigation', description: '**WalletFinancial**' },
+      { id: 'logout', label: 'Déconnexion', icon: 'log-out', category: 'action', description: '**Alert** + **logout**' },
     ],
     elements: [
-      { id: 'auto-services', type: 'card', label: 'Services automobiles', actionable: true },
+      { id: 'tabs', type: 'tab', label: 'Onglets: overview | vehicles | analytics (Stats)', actionable: true },
+      { id: 'types-grid', type: 'card', label: 'Par type (berline, suv, pickup, utilitaire, moto, camion) — comptage local', actionable: false },
     ],
-    guide: 'Services automobiles. Trouvez des garages, concessionnaires et services de maintenance.',
+    guide: '**AutomobileDashboardScreen** — **getPartnerDashboardScreen(automobile)**. **loadData** : **GET** `/api/specialized-services/user?type=automobile` → `data.services` ; stats **client** (actifs, occasion, neuf). **Pas** d’édition liste ni d’ajout direct : **Alert** vers formulaire intelligent. **Pièces auto** : catégorie **pieces_auto** dans **MesProduits** / formulaire produit — pas cet écran.',
+  },
+
+  AutoServicesSearch: {
+    type: 'search',
+    actions: [
+      { id: 'run-search', label: 'Lancer la recherche', icon: LUCIDE_ICONS.search, category: 'search', description: '**handleSearch** → **AutoServicesResults** `{ filters }` (q, marque, type, état, prix, année, GPS+rayon…)' },
+      { id: 'quick-all', label: 'Recherches rapides', icon: LUCIDE_ICONS.list, category: 'action', description: 'Tout voir / Occasion / Neuf / Moins cher / Proche (GPS+10 km + sort distance)' },
+      { id: 'gps-modal', label: 'GPS (modal)', icon: LUCIDE_ICONS.location, category: 'action', description: '**ModernGPSModal** ; **LocationContext** préremplit coords' },
+      { id: 'reset-filters', label: 'Effacer filtres', icon: LUCIDE_ICONS.x, category: 'action', description: '**resetFilters** (champs principaux ; pas GPS dans reset)' },
+    ],
+    elements: [
+      { id: 'filters-api', type: 'card', label: 'Facettes GET /api/auto/filters', actionable: false },
+      { id: 'advanced', type: 'tab', label: 'Filtres avancés (carburant, transmission, couleur, ville, GPS, rayon)', actionable: true },
+    ],
+    guide: '**AutoServicesSearchScreen** : **GET** `/api/auto/filters` ; recherches rapides → résultats avec presets ; **Attention** : **ville**/**quartier** dans `filters` ne sont **pas** envoyés à `/api/auto/search` par **AutoServicesResultsScreen** (voir chat). Géo utile : **gps_lat**, **gps_lon**, **rayon_km**.',
+  },
+
+  AutoServicesResults: {
+    type: 'list',
+    actions: [
+      { id: 'open-detail', label: 'Fiche véhicule / service', icon: LUCIDE_ICONS.car, route: 'ServiceDetail', category: 'navigation', description: 'Carte → **ServiceDetail** `serviceId`' },
+      { id: 'sort', label: 'Tri', icon: LUCIDE_ICONS.filter, category: 'action', description: '**recent** | **price_asc** | **price_desc** | **year_desc** → **GET** `/api/auto/search` + `sort`' },
+      { id: 'chat-seller', label: 'Chat vendeur', icon: LUCIDE_ICONS.message, category: 'navigation', description: '**ServiceDetail** `openChat: true` (connecté)' },
+      { id: 'whatsapp', label: 'WhatsApp', icon: LUCIDE_ICONS.message, category: 'action', description: '**Linking** whatsapp:// + notif best-effort **POST** `/api/notifications`' },
+      { id: 'call', label: 'Appeler', icon: LUCIDE_ICONS.call, category: 'action', description: '**tel:** + notif best-effort' },
+      { id: 'share', label: 'Partager', icon: LUCIDE_ICONS.share, category: 'action', description: '**Share** + **generateSmartShareLink**' },
+      { id: 'boutique', label: 'Boutique vendeur', icon: LUCIDE_ICONS.users, route: 'PrestataireBoutique', category: 'navigation', description: 'Si **vendeur_user_id**' },
+    ],
+    elements: [
+      { id: 'list', type: 'card', label: 'FlatList — GET /api/auto/search?page&limit=20', actionable: true },
+      { id: 'comments', type: 'card', label: 'ProductCommentsSection (inline, repliable)', actionable: true },
+    ],
+    guide: '**AutoServicesResultsScreen** : **route.params.filters** figé dans `initialFilters` ; **loadResults** construit query (**pas** ville/quartier). Pagination **page++** si ≥20 résultats. Vide : retour modifier filtres ou **Voir tous** (appel sans filtres texte).',
   },
 
   // === OFFRES D\'EMPLOI ===
@@ -983,19 +1038,45 @@ const SCREEN_CONFIGS: Record<string, {
   },
 
   // === ORIENTATION SCOLAIRE ===
+  OrientationScolaireHub: {
+    type: 'specialized',
+    actions: [
+      { id: 'type-primaire', label: 'Primaire', icon: LUCIDE_ICONS.book, route: 'EtablissementSearch', category: 'navigation', description: 'Navigate avec params.type primaire' },
+      { id: 'type-secondaire', label: 'Secondaire', icon: LUCIDE_ICONS.book, route: 'EtablissementSearch', category: 'navigation', description: 'Navigate avec params.type secondaire' },
+      { id: 'type-superieur', label: 'Supérieur', icon: LUCIDE_ICONS.book, route: 'EtablissementSearch', category: 'navigation', description: 'Navigate avec params.type superieur' },
+      { id: 'quick-concours', label: 'Concours', icon: LUCIDE_ICONS.award, route: 'ConcoursList', category: 'navigation', description: 'Alias → ConcoursEntree' },
+      { id: 'quick-conferences', label: 'Conférences', icon: LUCIDE_ICONS.video, route: 'ConferencesList', category: 'navigation', description: 'Alias → ConferencesLives' },
+      { id: 'quick-programmes', label: 'Programmes', icon: LUCIDE_ICONS['list-checks'], route: 'ProgrammesList', category: 'navigation', description: 'Alias → ProgrammesScolaires' },
+      { id: 'quick-fournitures', label: 'Fournitures', icon: LUCIDE_ICONS.package, route: 'FournituresList', category: 'navigation', description: 'Alias → FournituresScolaires' },
+      { id: 'create-profile', label: 'Créer mon profil', icon: LUCIDE_ICONS.user, route: 'ProfilEtudiant', category: 'creation', description: 'Si pas de profil (GET /api/orientation/my-profile)' },
+      { id: 'ai-analyze', label: 'Analyser mon profil (IA)', icon: LUCIDE_ICONS.activity, category: 'help', description: 'POST /api/orientation/ai/analyze-profile { profile_id } — Alert succès' },
+      { id: 'ai-reco-nav', label: 'Recommandations', icon: LUCIDE_ICONS.activity, category: 'navigation', description: 'Si profil → EtablissementSearch (pas POST direct)' },
+      { id: 'ai-compare', label: 'Comparer programmes IA', icon: LUCIDE_ICONS.activity, route: 'OrientationAIComparePrograms', category: 'help', description: 'Si profil' },
+    ],
+    elements: [
+      { id: 'grid-types', type: 'card', label: 'Grille types d’établissements (3 tuiles)', actionable: true },
+      { id: 'grid-quick', type: 'card', label: 'Grille actions rapides (4 tuiles)', actionable: true },
+    ],
+    guide: 'OrientationScolaireHubScreen : entrée par niveau (→ EtablissementSearch + type) ; raccourcis ConcoursList / ConferencesList / ProgrammesList / FournituresList ; carte profil + IA (GET my-profile ; analyse = POST analyze-profile ; recommandations = navigation EtablissementSearch ; comparaison → OrientationAIComparePrograms).',
+  },
+
   OrientationScolaireHome: {
     type: 'specialized',
     actions: [
-      { id: 'search-school', label: 'Chercher Établissement', icon: LUCIDE_ICONS.search, route: 'EtablissementSearch', category: 'search', description: 'Rechercher un établissement' },
-      { id: 'ai-profile', label: 'Analyse Profil IA', icon: LUCIDE_ICONS.activity, route: 'OrientationAIProfileAnalysis', category: 'help', description: 'Analyser votre profil avec l\'IA' },
-      { id: 'ai-reco', label: 'Recommandations IA', icon: LUCIDE_ICONS.activity, route: 'OrientationAIRecommendations', category: 'help', description: 'Recommandations IA de filières' },
-      { id: 'concours', label: 'Concours d\'Entrée', icon: LUCIDE_ICONS.award, route: 'ConcoursEntree', category: 'navigation', description: 'Concours et examens d\'entrée' },
-      { id: 'fournitures', label: 'Fournitures', icon: LUCIDE_ICONS.package, route: 'FournituresScolaires', category: 'navigation', description: 'Fournitures scolaires' },
+      { id: 'tab-etab', label: 'Onglet Établissements', icon: LUCIDE_ICONS.graduation, category: 'search', description: 'GET /api/orientation-scolaire/etablissements/search + partner_type etablissementscolaire, GPS rayon 50 km, search texte' },
+      { id: 'tab-prog', label: 'Onglet Programmes', icon: LUCIDE_ICONS['book-open'], category: 'search', description: 'orientationScolaireService.searchProgrammes (page 1, 20)' },
+      { id: 'tab-concours', label: 'Onglet Concours', icon: LUCIDE_ICONS.award, category: 'navigation', description: 'listConcoursActifs' },
+      { id: 'tab-conf', label: 'Onglet Conférences', icon: LUCIDE_ICONS.video, category: 'navigation', description: 'listConferencesProgrammees' },
+      { id: 'tab-four', label: 'Onglet Fournitures', icon: LUCIDE_ICONS.package, category: 'navigation', description: 'searchFournitures' },
+      { id: 'run-search', label: 'Lancer recherche (onglet courant)', icon: LUCIDE_ICONS.search, category: 'search', description: 'Bouton loupe — recharge l’onglet actif' },
+      { id: 'ai-modal', label: 'IA (en-tête / modal)', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Analyse profil, recommandations POST /api/orientation/ai/recommendations, Q&R académique academic-search + useAIWithFallback' },
+      { id: 'profil-shortcut', label: 'Profil étudiant', icon: LUCIDE_ICONS.user, route: 'ProfilEtudiant', category: 'creation', description: 'Alertes « profil requis »' },
     ],
     elements: [
-      { id: 'school-search', type: 'input', label: 'Recherche établissement', actionable: true },
+      { id: 'tabs-five', type: 'tab', label: '5 onglets: établissements | programmes | concours | conférences | fournitures', actionable: true },
+      { id: 'search-input', type: 'input', label: 'Recherche (placeholder selon onglet)', actionable: true },
     ],
-    guide: 'Orientation scolaire. Trouvez un établissement, l\'IA analyse votre profil et recommande des filières. Accédez aux concours et fournitures.',
+    guide: 'OrientationScolaireHomeScreen : 5 onglets catalogue ; établissements = search + filtre partenaire etablissementscolaire + GPS 50 km ; IA intégrée (analyze-profile, recommendations, academic-search avec fallback). Distinct du hub (OrientationScolaireHub) et de la recherche filtrée EtablissementSearch (sans partner_type du Home).',
   },
 
   // === LIVRES SCOLAIRES / BOURSE DU LIVRE ===
@@ -1569,32 +1650,41 @@ const SCREEN_CONFIGS: Record<string, {
   FleetDashboard: {
     type: 'dashboard',
     actions: [
-      { id: 'tab-overview', label: 'Onglet Vue d’ensemble', icon: LUCIDE_ICONS.list, category: 'action', description: '**overview** : stats grille, alerte candidatures, raccourcis, top coursiers' },
-      { id: 'tab-couriers', label: 'Onglet Coursiers', icon: LUCIDE_ICONS.users, category: 'action', description: '**couriers** : liste **GET** `/api/partners/me/fleet/couriers` — **Suspendre** / **Reactiver** → **POST** `.../couriers/{id}/toggle`' },
-      { id: 'tab-applications', label: 'Onglet Candidatures', icon: LUCIDE_ICONS['user-plus'], category: 'action', description: '**applications** : filtres **submitted|approved|rejected|all** — **POST** approve / reject (modal motif)' },
-      { id: 'tab-analytics', label: 'Onglet Analytics', icon: LUCIDE_ICONS.activity, category: 'action', description: '**analytics** : métriques depuis `stats` + `couriers` (pas d’API analytics dédiée dans l’écran)' },
-      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS['credit-card'], route: 'WalletFinancial', category: 'navigation', description: 'Action rapide **WalletFinancial**' },
-      { id: 'logout', label: 'Déconnexion', icon: 'log-out', category: 'action', description: '**Alert** + **logout** (AuthContext)' },
+      { id: 'header-refresh', label: 'Rafraîchir (header)', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Icône refresh-cw → loadAll(true) comme pull-to-refresh' },
+      { id: 'tab-overview', label: 'Onglet Apercu', icon: LUCIDE_ICONS.list, category: 'action', description: '**overview** : 4 stats + 2 cartes (note, revenus XAF cents/100), bandeau candidatures, actions rapides, top 3 coursiers' },
+      { id: 'tab-couriers', label: 'Onglet Coursiers', icon: LUCIDE_ICONS.users, category: 'action', description: '**couriers** : libellé onglet = fleetLabel ; **GET** `/api/partners/me/fleet/couriers` — **Suspendre** / **Reactiver** → **POST** `.../couriers/{id}/toggle` { action: suspend|activate }' },
+      { id: 'tab-applications', label: 'Onglet Candidatures', icon: LUCIDE_ICONS['user-plus'], category: 'action', description: '**applications** : badge pending sur tab ; filtres **submitted|approved|rejected|all** ; approve **POST** `{}` ; reject + reason modal' },
+      { id: 'tab-analytics', label: 'Onglet Analytics', icon: LUCIDE_ICONS.activity, category: 'action', description: '**analytics** : réutilise stats + top 5 coursiers (barres), pas d’API supplémentaire' },
+      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS['credit-card'], route: 'WalletFinancial', category: 'navigation', description: 'Action rapide overview' },
+      { id: 'logout', label: 'Déconnexion', icon: 'log-out', category: 'action', description: '**Alert** + **logout**' },
     ],
     elements: [
-      { id: 'tab-bar', type: 'tab', label: 'Onglets: overview | couriers | applications | analytics', actionable: true },
+      { id: 'tab-bar', type: 'tab', label: 'Onglets: Apercu | fleetLabel | Candidatures | Analytics', actionable: true },
       { id: 'fleet-stats-api', type: 'card', label: 'Stats flotte (GET /api/partners/me/fleet/stats)', actionable: false },
       { id: 'couriers-list', type: 'card', label: 'Liste coursiers (toggle statut)', actionable: true },
       { id: 'applications-filter', type: 'input', label: 'Filtre candidatures (chips)', actionable: true },
     ],
-    guide: '**FleetDashboardScreen** (**FleetDashboard**) : **partner_type** → libellé flotte ; **loadAll** = stats + coursiers + candidatures ; **GET** `/api/partners/me/fleet/stats`, `/fleet/couriers`, `/fleet/applications?status=` ; **POST** `applications/{id}/approve|reject`, `couriers/{id}/toggle` ; modale rejet avec **reason** optionnelle. **Pas** de liste livraisons actives type coursier (**CourierDashboard**).',
+    guide: '**FleetDashboardScreen** (**FleetDashboard**) : gérant **flotte livraison / transport** (coursiers). **getPartnerDashboardScreen** → FleetDashboard pour chauffeur, fleet, livraison, livraison_courses_marche, demenagement, transport. **fleetLabel** = PARTNER_TYPE_LABELS[partner_type] ou **« Flotte »** si absent (**ex. partner_type fleet** sans entrée dans la map). **loadAll** = GET stats, couriers, applications. Revenus mois = monthly_revenue_cents / 100 en XAF. **≠** **AutomobileDashboard** (partner automobile). **≠** **CourierDashboard** (livraisons actives).',
   },
 
   OrientationPartnerDashboard: {
     type: 'dashboard',
     actions: [
-      { id: 'manage-programs', label: 'Programmes', icon: LUCIDE_ICONS.book, category: 'action', description: 'Gérer les programmes scolaires' },
-      { id: 'manage-students', label: 'Étudiants', icon: LUCIDE_ICONS.users, category: 'action', description: 'Gérer les inscriptions étudiants' },
-      { id: 'events', label: 'Événements', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Gérer les événements (portes ouvertes, etc.)' },
-      { id: 'analytics', label: 'Statistiques', icon: LUCIDE_ICONS.activity, category: 'navigation', description: 'Statistiques de l\'établissement' },
+      { id: 'tab-overview', label: 'Onglet Accueil', icon: LUCIDE_ICONS.home, category: 'action', description: 'Stats (programmes, actifs, places, inscriptions) + actions rapides' },
+      { id: 'tab-programs', label: 'Onglet Programmes', icon: LUCIDE_ICONS['book-open'], category: 'action', description: 'Liste programmes depuis GET /api/orientation/etablissements/mine ; ajout → CreateEtablissement tab programs' },
+      { id: 'tab-students', label: 'Onglet Étudiants', icon: LUCIDE_ICONS.users, category: 'action', description: 'Vue étudiants / inscriptions (voir implémentation écran)' },
+      { id: 'tab-analytics', label: 'Onglet Stats', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Statistiques partenaire (voir implémentation écran)' },
+      { id: 'edit-etab', label: 'Modifier établissement', icon: LUCIDE_ICONS.edit, route: 'CreateEtablissement', category: 'navigation', description: 'params mode edit' },
+      { id: 'hub-orientation', label: 'Hub Orientation', icon: LUCIDE_ICONS.map, route: 'OrientationScolaireHub', category: 'navigation', description: 'Même hub que parcours élève' },
+      { id: 'ia-reco', label: 'IA Recommandations', icon: LUCIDE_ICONS.activity, route: 'OrientationAIRecommendations', category: 'help', description: 'Écran recommandations profil élève' },
+      { id: 'programmes-list', label: 'Programmes (liste)', icon: LUCIDE_ICONS.list, route: 'ProgrammesList', category: 'navigation', description: 'Raccourci catalogue' },
+      { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS['credit-card'], route: 'WalletFinancial', category: 'navigation', description: 'Action rapide' },
     ],
-    elements: [],
-    guide: 'Dashboard Établissement scolaire. Gérez vos programmes, inscriptions, événements et statistiques.',
+    elements: [
+      { id: 'stats-grid', type: 'card', label: 'Grille 4 cartes stats (chargement GET .../etablissements/mine)', actionable: false },
+      { id: 'quick-row', type: 'card', label: 'Actions rapides (scroll horizontal)', actionable: true },
+    ],
+    guide: 'OrientationPartnerDashboardScreen : GET /api/orientation/etablissements/mine (programs / formations, inscriptions_count) ; onglets overview | programs | students | analytics ; actions rapides CreateEtablissement, Hub public OrientationScolaireHub, OrientationAIRecommendations, ProgrammesList, WalletFinancial. ≠ OrientationScolaireHome (catalogue élève).',
   },
 
   LaboratoireForm: {

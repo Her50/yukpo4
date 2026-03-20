@@ -218,6 +218,11 @@ class IntelligentChatService {
 
     const onCourierDashboard = screenName === 'CourierDashboard';
     const onFleetDashboard = screenName === 'FleetDashboard';
+    /** Partenaire **automobile** (stock véhicules / annonces) — **≠** **FleetDashboard** (coursiers). */
+    const onAutomobilePartnerDashboard = screenName === 'AutomobileDashboard';
+    const onAutoServicesSearch = screenName === 'AutoServicesSearch';
+    const onAutoServicesResults = screenName === 'AutoServicesResults';
+    const onAutoMarketplaceModule = onAutoServicesSearch || onAutoServicesResults;
 
     const mobilityDriverValidated = (ud: any, role: string): boolean => {
       const pt = String(ud?.partner_type || '').toLowerCase().trim();
@@ -257,6 +262,9 @@ class IntelligentChatService {
       screenName === 'PharmacyAnalytics' ||
       screenName === 'PharmacyAIInteractions';
 
+    /** Résultats recherche Yukpo globale — **ResultatBesoinScreen** ; **RechercheBesoin** = même composant (alias navigateur). */
+    const onSearchResultsScreen = screenName === 'ResultatBesoin' || screenName === 'RechercheBesoin';
+
     const onImmobilierModule =
       screenName === 'ImmobilierHome' ||
       screenName === 'ImmobilierSearch' ||
@@ -279,6 +287,31 @@ class IntelligentChatService {
       screenName === 'ShoppingList' ||
       screenName === 'FamilyProfile' ||
       screenName === 'RecipeSearch';
+
+    /** Parcours élève / famille — **sans** **OrientationPartnerDashboard** (traité à part). Inclut alias navigateur + **CreateEtablissement** (partagé avec partenaires). */
+    const ORIENTATION_STUDENT_ROUTE_NAMES = new Set([
+      'OrientationScolaireHub',
+      'OrientationScolaireHome',
+      'ProfilEtudiant',
+      'OrientationAIProfileAnalysis',
+      'OrientationAIRecommendations',
+      'OrientationAIComparePrograms',
+      'EtablissementSearch',
+      'EtablissementDetails',
+      'ProgrammesScolaires',
+      'ProgrammesList',
+      'ConcoursEntree',
+      'ConcoursList',
+      'ConferencesLives',
+      'ConferencesList',
+      'FournituresScolaires',
+      'FournituresList',
+      'ExperiencesEtudiants',
+      'ExperiencesList',
+      'CreateEtablissement',
+    ]);
+    const onOrientationStudentModule = ORIENTATION_STUDENT_ROUTE_NAMES.has(screenName);
+    const onOrientationPartnerDashboard = screenName === 'OrientationPartnerDashboard';
 
     const yukpoCatalogBlock = onNavigationScreen
       ? `YUKPO (brief reminder only — detailed UI is in NAVIGATION_GPS_DETAIL below):
@@ -328,6 +361,12 @@ Livraison — **coursier individuel** (**CourierDashboard** / **CourierDashboard
                             : onFleetDashboard
                               ? `YUKPO (brief reminder only — detailed UI is in FLEET_PARTNER_DASHBOARD_DETAIL below):
 Livraison & mobilité — **dashboard partenaire gérant une flotte** (**FleetDashboard** / **FleetDashboardScreen**) : entreprises de **livraison**, **transport**, **chauffeurs**, **déménagement**, **courses marché** (types **getPartnerDashboardScreen**). Prioritize **FLEET_PARTNER_DASHBOARD_DETAIL**; **ne pas** décrire **CourierDashboard** (coursier **solo** / livraisons actives) sauf demande explicite.`
+                            : onAutomobilePartnerDashboard
+                              ? `YUKPO (brief reminder only — detailed UI is in AUTOMOBILE_PARTNER_DASHBOARD_DETAIL below):
+Automobile — **dashboard partenaire véhicules** (**AutomobileDashboard**) : **GET /api/specialized-services/user?type=automobile** ; ajout = **Alert** → formulaire intelligent. Prioritize **AUTOMOBILE_PARTNER_DASHBOARD_DETAIL**; **ne pas** confondre avec **AutoServicesSearch** (client) ni **FleetDashboard** (coursiers).`
+                              : onAutoMarketplaceModule
+                                ? `YUKPO (brief reminder only — detailed UI is in AUTO_MARKETPLACE_MODULE_DETAIL below):
+Automobile — **catalogue client** (**AutoServicesSearch** / **AutoServicesResults**) : **GET /api/auto/filters** + **GET /api/auto/search**. Prioritize **AUTO_MARKETPLACE_MODULE_DETAIL**; UI **véhicule** ; **pièces** via **q** ou règles SQL backend — pas d’onglet pièces dédié.`
                           : onHealthServicesHubScreen
                             ? `YUKPO (brief reminder only — detailed UI is in HEALTH_SERVICES_HUB_DETAIL below):
 Cross-health **launcher** (pharmacy, hospital, lab, blood bank) + unified search. Prioritize **HEALTH_SERVICES_HUB_DETAIL**; do not collapse to one vertical.`
@@ -340,10 +379,19 @@ Hospitals & clinics — **patient**: **HopitalHome**, **HopitalSearch**, **Hopit
                               : onMenuPlanningModule
                                 ? `YUKPO (brief reminder only — detailed UI is in MENU_PLANNING_MODULE_DETAIL below):
 Alimentation & foyer — **menus IA, profil famille, calendrier, liste de courses** (**MenuPlanningHub** et écrans liés). Prioritize **MENU_PLANNING_MODULE_DETAIL**; **do not** describe **SupermarketHome** (retail catalog) as this module.`
+                              : onOrientationPartnerDashboard
+                                ? `YUKPO (brief reminder only — detailed UI is in ORIENTATION_PARTNER_DASHBOARD_DETAIL below):
+Éducation — **dashboard partenaire établissement scolaire** (**OrientationPartnerDashboard**). Prioritize **ORIENTATION_PARTNER_DASHBOARD_DETAIL**; **ne pas** confondre avec **OrientationScolaireHub** / **OrientationScolaireHome** (parcours **élève / famille**).`
+                              : onOrientationStudentModule
+                                ? `YUKPO (brief reminder only — detailed UI is in ORIENTATION_SCOLAIRE_MODULE_DETAIL below):
+Éducation — **orientation scolaire** (élève / famille) : hub, catalogue, profil, IA. Prioritize **ORIENTATION_SCOLAIRE_MODULE_DETAIL**; **ne pas** décrire **OrientationPartnerDashboard** sauf demande explicite.`
                               : onPharmacyModule
                               ? `YUKPO (brief reminder only — detailed UI is in PHARMACY_MODULE_DETAIL below):
 Santé Yukpo couvre pharmacies, hôpitaux, laboratoires… L'utilisateur est dans le **module Pharmacie** (catalogue produits et/ou fiches officines). Prioritize **PHARMACY_MODULE_DETAIL**; do not replace it with a generic super-app pitch.`
-                              : `YUKPO — THE DIGITAL REVOLUTION:
+                              : onSearchResultsScreen
+                                ? `YUKPO (brief reminder only — detailed UI is in RESULTAT_BESOIN_DETAIL below):
+Global **AI search results** (**ResultatBesoinScreen**). Stack routes **ResultatBesoin** and **RechercheBesoin** point to the **same** screen. Prioritize **RESULTAT_BESOIN_DETAIL**; **do not** describe a dedicated **map of results** on this screen, and **do not** claim **ServiceDetail** as the default card tap target (cards open **PrestataireBoutique**).`
+                                : `YUKPO — THE DIGITAL REVOLUTION:
 Yukpo is the FIRST all-in-one super-app that digitalizes daily life across Africa and beyond:
 • 🏥 Health: Pharmacies (stock search, ordering), Hospitals (AI triage, appointments), Labs, Blood banks
 • 🏨 Real Estate: Hotels, furnished rentals, property management with AI pricing
@@ -454,6 +502,19 @@ FLEET_PARTNER_DASHBOARD_MODE:
 - **APIs:** **GET** \`/api/partners/me/fleet/stats\`, **/couriers**, **/applications?status=\`submitted|approved|rejected|all\`** ; **POST** \`.../applications/{id}/approve\` (\`{}\`), **reject** (\`reason\` optionnel), **couriers/{id}/toggle** \`{ action: 'suspend' | 'activate' }\`.
 - **Hors scope écran:** pas de **GET /api/deliveries/active**, pas de **DeliveryShoppingTracking** depuis ce dashboard.
 ` : ''}
+${onAutomobilePartnerDashboard ? `
+AUTOMOBILE_PARTNER_DASHBOARD_MODE:
+- **Prioritize** **AUTOMOBILE_PARTNER_DASHBOARD_DETAIL** below.
+- **Données** : **GET** \`/api/specialized-services/user?type=automobile\` → annonces **véhicules** du partenaire ; **pas** de CRUD inline (bouton ajout = **Alert** → formulaire intelligent).
+- **Pièces détachées** : publication **e-commerce** (**catégorie \`pieces_auto\`**, **MesProduits** / **FormulaireYukpoIntelligent**) — **pas** ce dashboard ; peuvent toutefois apparaître dans **/api/auto/search** si le **service** correspond aux règles backend (**pièces auto**, etc.).
+` : ''}
+${onAutoMarketplaceModule ? `
+AUTO_MARKETPLACE_MODULE_MODE:
+- **Prioritize** **AUTO_MARKETPLACE_MODULE_DETAIL** below (sections **Search** vs **Results** selon l’écran).
+- **Filtres** : **GET** \`/api/auto/filters\` ; résultats : **GET** \`/api/auto/search\` (**pagination** \`page\`, \`limit\` 20).
+- **Pièces / accessoires** : pas d’onglet « pièces » dédié dans l’UI — recherche texte **\`q\`** + produits dont catégorie service / produit matche l’auto (backend inclut **pièces auto** dans certains **LIKE**).
+- **Limite connue** : **ville / quartier** saisis sur **AutoServicesSearch** ne sont **pas** envoyés dans la query **/api/auto/search** par **AutoServicesResultsScreen** (le **backend** **AutoSearchQuery** n’expose pas non plus \`ville\` / \`quartier\` en query) — le **géofiltre** utile = **GPS + rayon**.
+` : ''}
 ${onHospitalPartnerDashboard ? `
 HOSPITAL_PARTNER_DASHBOARD_MODE:
 - **Prioritize** **HOSPITAL_PARTNER_DASHBOARD_DETAIL** below.
@@ -474,6 +535,17 @@ MENU_PLANNING_MODULE_MODE:
 - **Prioritize** **MENU_PLANNING_MODULE_DETAIL** below over generic “meal app” talk.
 - **Health / nutrition:** IA + profils = **aide à la planification** — **not** a substitute for a **dietitian or doctor** for medical diets, severe allergies, or therapeutic nutrition; encourage professional advice when in doubt.
 - **MenuWeekCalendar** expects **\`route.params.menu\`** (\`WeeklyMenu\`). If the user sees endless “Chargement du menu…”, they likely opened the calendar **without** that object (e.g. history row from the Hub only passes \`weekStart\` today).
+` : ''}
+${onOrientationPartnerDashboard ? `
+ORIENTATION_PARTNER_DASHBOARD_MODE:
+- **Prioritize** **ORIENTATION_PARTNER_DASHBOARD_DETAIL** below.
+- **Métier:** gestionnaire d’**établissement scolaire** partenaire — **pas** le parcours recherche élève (**EtablissementSearch**).
+` : ''}
+${onOrientationStudentModule ? `
+ORIENTATION_SCOLAIRE_MODULE_MODE:
+- **Prioritize** **ORIENTATION_SCOLAIRE_MODULE_DETAIL** below over generic “education app” bullets.
+- **IA orientation:** aide à la réflexion — **pas** décision d’inscription, pas substitut à un **conseiller d’orientation** ou à l’administration d’un établissement ; en cas de doute médical / handicap scolaire, orienter vers des professionnels.
+- **Deux familles d’API:** catalogue **\`/api/orientation-scolaire/*\`** vs profil / IA **\`/api/orientation/*\`** (voir détail).
 ` : ''}
 ${onPharmacyModule ? `
 PHARMACY_MODULE_MODE:
@@ -1018,11 +1090,10 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 - Bouton **refresh-cw** : même **loadAll(true)** que le pull.
 
 ### Barre d’onglets (4)
-| key | Libellé onglet | Icône | Détail |
-| **overview** | **Apercu** (sans accent, texte en dur) | layout-dashboard | — |
-| **couriers** | **fleetLabel** | users | — |
-| **applications** | **Candidatures** | user-plus | **Badge** si \`stats.pending_applications > 0\` : pastille **\`#ef4444\`**, texte = nombre |
-| **analytics** | **Analytics** | bar-chart-2 | — |
+- **overview** — libellé **Apercu** (sans accent, en dur), icône **layout-dashboard**.
+- **couriers** — libellé = **fleetLabel**, icône **users**.
+- **applications** — **Candidatures**, icône **user-plus** ; si \`stats.pending_applications > 0\` : badge **\`#ef4444\`** avec le nombre.
+- **analytics** — **Analytics**, icône **bar-chart-2**.
 
 ### Onglet **overview**
 - Titre section **en dur** : **« Tableau de bord — {fleetLabel} »**.
@@ -1048,6 +1119,74 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 - **Aucune route analytics dédiée** : **même** \`stats\` + **top 5** coursiers (\`deliveries_30d\`), barres proportionnelles, carte revenus, **Metriques cles** (libellés **en dur** : *Livraisons (30j)*, etc.).
 
 **Hard rules:** Ne pas décrire **CourierDashboard** (livraisons actives, **deliveryApi** liste coursier) comme cet écran. Ne pas inventer d’API ou filtres hors **submitted / approved / rejected / all**. **PARTNER_TYPE_LABELS** ne contient **pas** la clé **fleet** : dire **« Flotte »** pour ce cas. Pas de **FAB** chat dans **FleetDashboardScreen.tsx** (chat accessible ailleurs dans l’app).
+`;
+    }
+
+    if (onAutomobilePartnerDashboard) {
+      prompt += `
+
+=== AUTOMOBILE_PARTNER_DASHBOARD_DETAIL (authoritative — **AutomobileDashboardScreen**, route **AutomobileDashboard**) ===
+
+**Rôle:** tableau de bord **partenaire** vente / stock **véhicules** (concessionnaire, garage catalogue). **Entrée:** **\`getPartnerDashboardScreen('automobile')\`** → **AutomobileDashboard** (**AppNavigator.optimized.tsx** — **PartnerDashboardTab**). **≠** parcours **client** **AutoServicesSearch** / **AutoServicesResults**.
+
+### Données
+- **\`loadData\`** (**\`useFocusEffect\`**) : **GET** \`/api/specialized-services/user?type=automobile\` ; liste **\`(resp as any).data.services\`** → état **\`vehicles\`**.
+- **Stats** (calcul **client** sur le tableau) : **total** ; **active** = \`is_active !== false\` ; **occasion** = \`is_occasion === true\` ; **neuf** = \`is_occasion !== true\`.
+- **Devise affichée** : **\`getCurrencyIntelligently()\`** ou **\`FCFA\`**.
+
+### Structure UI
+- **Header** gradient orange : retour **goBack** ; titre / sous-titre i18n **automobileDashboard** + nom utilisateur.
+- **3 onglets** (\`TabType\`) : **overview** (libellé i18n accueil), **vehicles** (i18n véhicules), **analytics** (libellé **en dur** **« Stats »** dans **TABS**).
+
+### Onglet **overview**
+- **4 cartes stats** : total véhicules, en ligne, **Occasion** / **Neufs** (libellés **Occasion** / **Neufs** **en dur** pour deux d’entre elles).
+- **Actions rapides** : **Ajouter véhicule** → **setActiveTab('vehicles')** ; **Recherche** → **navigate('AutoServicesSearch')** ; **Statistiques** → onglet analytics ; **Portefeuille** → **WalletFinancial** ; **Sortir** → **Alert** + **logout**.
+- **« Par type »** : grille **\`TYPES_VEHICULE\`** (berline, suv, pickup, utilitaire, moto, camion) — comptage **\`vehicles.filter(v => v.type_vehicule === key).length\`** (**affichage seulement**, pas de navigation par type).
+- **Véhicules récents** : **slice(0, 4)** ; **Tout voir** → onglet **vehicles**. Carte : marque, modèle, année, occasion/neuf, prix ; point vert/rouge **\`is_active\`**.
+
+### Onglet **vehicles**
+- Bouton **« Ajouter un véhicule »** : **\`Alert.alert('Info', …)\`** (i18n **automobileDashboardScreen.utilisezLeFormulaireIntelligentPourAjouter**) — **aucune** navigation vers **FormulaireYukpoIntelligent** depuis ce handler.
+- Liste : même carte info + statut ; **pas** de bouton éditer / désactiver / supprimer dans ce fichier.
+
+### Onglet **analytics**
+- Carte **résumé du stock** (i18n titre) : mêmes 4 agrégats que l’accueil.
+
+**Pièces détachées:** la catégorie produit **\`pieces_auto\`** (champs référence, compatibilité, etc.) vit dans le **flux e-commerce général** (**ProductManagerMobile**, **MesProduits**, **FormulaireYukpoIntelligent**) — **pas** dans **AutomobileDashboardScreen**. Le **marché auto** public (**/api/auto/search**) peut toutefois **inclure** des annonces pièces si **service** ou métadonnées matchent les motifs SQL backend (**pièces auto**, **accessoires auto**, etc.).
+
+**Hard rules:** Ne pas promettre d’**ajout véhicule** complet depuis ce dashboard (seulement **Alert** + renvoi conceptuel vers formulaire intelligent). Ne pas décrire **GET /api/auto/search** comme source du stock partenaire ici (**source = specialized-services user**).
+`;
+    }
+
+    if (onAutoServicesSearch || onAutoServicesResults) {
+      prompt += `
+
+=== AUTO_MARKETPLACE_MODULE_DETAIL (authoritative — **AutoServicesSearchScreen** / **AutoServicesResultsScreen**) ===
+
+**Contexte:** parcours **acheteur / chercheur** de **véhicules** et d’**annonces cataloguées** par le moteur **auto** backend. L’UI est **orientée véhicule** (marque, type, année, carburant…). Les **pièces détachées** et accessoires peuvent **remonter** dans les résultats si le **backend** les classe comme produits auto (ex. catégories service **pièces auto** — voir **\`auto_search_routes.rs\`**).
+
+### A) **AutoServicesSearch** (route **AutoServicesSearch**)
+- **GET** \`/api/auto/filters\` → facettes **marques**, **types_vehicule**, **carburants**, **transmissions**, **couleurs**, **etats**, plages **prix** / **année**, **total_products**.
+- **Barre recherche** : texte **\`q\`** (soumission **handleSearch** ou bouton flèche).
+- **Recherches rapides** → **navigate('AutoServicesResults', { filters })** : **tout voir** \`{}\` ; **Occasion** \`{ etat: 'Occasion' }\` ; **Neuf** \`{ etat: 'Neuf' }\` ; **moins cher** \`{ sort: 'price_asc' }\` ; **proche** (si **GPS**) \`{ gps_lat, gps_lon, rayon_km: 10, sort: 'distance' }\`.
+- **Filtres principaux** : chips dynamiques + **prix min/max**, **année min/max** ; section **avancée** (dépliable) : carburant, transmission, couleur, **LocationSelector** « ville », **ModernGPSModal**, **rayon** 5 / 10 / 20 / 50 km si **gpsData**.
+- **Bouton recherche** : **\`handleSearch\`** construit **\`SearchFilters\`** (inclut **ville** / **quartier** / **gps** / **rayon** quand renseignés) → **navigation** vers **AutoServicesResults**.
+
+**Écart d’implémentation (à respecter pour l’IA):** **AutoServicesResultsScreen** **n’ajoute pas** \`ville\`, \`quartier\` (ni **km_max** du search si jamais ajouté) aux **query params** de **GET /api/auto/search** dans **\`loadResults\`** — seuls **q, marque, type_vehicule, carburant, transmission, couleur, etat, prix_*, annee_*, gps_*, rayon_km, sort, page, limit** sont passés tels que dans le code client. Le struct **\`AutoSearchQuery\`** côté **Rust** **ne définit pas** \`ville\` / \`quartier\`. Pour filtrer **géographiquement**, utiliser **GPS + rayon** (et **tri distance** côté quick search).
+
+### B) **AutoServicesResults** (route **AutoServicesResults**)
+- **Params** : **\`route.params.filters\`** (objet initial figé dans **\`initialFilters\`** via **\`useRoute\`** — changement de filtres **sans** nouveau navigate **ne** met **pas** à jour **\`initialFilters\`**).
+- **GET** \`/api/auto/search?\` + **\`page\`** (0-based), **\`limit\` = 20**, **\`sort\`** = **\`currentSort\`** (défaut **\`initialFilters.sort\`** ou **\`recent\`**).
+- **Tris UI** (**\`SORT_OPTIONS\`**) : **recent**, **price_asc**, **price_desc**, **year_desc** — le **backend** accepte aussi **year_asc** et **distance** (si GPS) même s’ils ne sont pas tous dans le menu.
+- **Liste** : **FlatList** ; **infinite scroll** **\`page+1\`** si **\`hasMore\`** (\`newProducts.length >= 20\`).
+- **Carte produit** : tap → **ServiceDetail** \`{ serviceId }\` ; nom vendeur → **PrestataireBoutique** si **\`vendeur_user_id\`**.
+- **Communication** : **Chat** → **ServiceDetail** \`openChat: true\` (connexion requise) ; **WhatsApp** / **Appel** → **Linking** + **POST** \`/api/notifications\` best-effort ; **Partager** → **Share** + **generateSmartShareLink**.
+- **Avis** : section repliable **ProductCommentsSection** (mode inline) ; **onOpenChat** repasse par **ServiceDetail** avec chat.
+
+### C) Lien avec **pièces détachées**
+- **Vendeur** : créer une fiche **pièce** = flux **produit** Yukpo (**\`pieces_auto\`**, etc.), pas **AutomobileDashboard**.
+- **Acheteur** : pas d’écran **« uniquement pièces »** dans l’app ; utiliser **recherche texte** sur **AutoServicesSearch** ou filtres **marque** si la donnée est exposée en facettes.
+
+**Hard rules:** Ne pas affirmer que **ville** / **quartier** du formulaire de recherche **filtrent** l’API **telle qu’implémentée** (mobile + query Rust). Ne pas présenter **AutomobileDashboard** comme le même écran que **AutoServicesSearch**.
 `;
     }
 
@@ -1210,6 +1349,75 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 - Standalone recipe search: **generateRecipe** with client **~95s** timeout; recipe detail modal + recipe PDF helpers — **different** resilience story than Hub (no \`useAIWithFallback\`).
 
 **Hard rules:** Do **not** merge this module with **SupermarketHome** / product catalog. Do **not** claim **2-week / 1-month** plans change the **generate-week** API contract until the app sends a period field. Mention **suggest-recipes** only as **unused** in UI today. For medical nutrition or severe allergy management, stay **informational** and recommend a **health professional**.
+`;
+    }
+
+    if (onOrientationStudentModule) {
+      prompt += `
+
+=== ORIENTATION_SCOLAIRE_MODULE_DETAIL (authoritative — élève / famille ; **CURRENT SCREEN** name) ===
+
+**Service client catalogue:** \`orientationScolaireService\` (\`mobile/src/services/orientationScolaireService.ts\`) → préfixe **\`/api/orientation-scolaire/\`**. **Profil / IA / analytics** : **\`/api/orientation/my-profile\`**, **\`/api/orientation/ai/*\`**, **\`/api/orientation/analytics\`**. L’écran **OrientationAIRecommendations** utilise en parallèle **\`orientationScolaireApi\`** (\`orientationScolaireApi.ts\`) pour profil + recommandations — mêmes concepts, couche API différente.
+
+### Catalogue (endpoints alignés code)
+- **Établissements:** **GET** \`/api/orientation-scolaire/etablissements/search\` (params: \`type_etablissement\`, \`ville\`, \`region\`, \`filiere\`, \`search\`, \`gps_lat\` / \`gps_lon\`, \`rayon_km\`, pagination) ; **GET** \`.../suggest\` ; **GET** \`.../{id}\` ; **GET** \`.../{id}/programmes\` ; **GET** \`.../{id}/fournitures\`.
+- **Programmes:** **GET** \`/api/orientation-scolaire/programmes/search\` ; liste par établissement via route ci-dessus.
+- **Concours:** **GET** \`/api/orientation-scolaire/concours/actifs\` ; **GET** \`/api/orientation-scolaire/concours/search\` ; **GET** \`.../concours/{id}\`.
+- **Conférences:** **GET** \`/api/orientation-scolaire/conferences/programmees\` ; **GET** \`.../conferences/search\` ; **GET** \`.../conferences/{id}\`.
+- **Rejoindre une conférence:** le **service** expose **POST** \`/api/orientation-scolaire/conferences/{id}/join\` (\`joinConference\`) ; l’écran **ConferencesLives** appelle en pratique **GET** \`.../conferences/{id}/join\` — ne pas affirmer une seule méthode sans vérifier l’écran.
+- **Fournitures:** **GET** \`/api/orientation-scolaire/fournitures/search\` ; **GET** \`.../etablissements/{id}/fournitures\`.
+
+### Profil étudiant
+- **GET** \`/api/orientation/my-profile\` — **OrientationScolaireHub** (\`apiGet\`) et **ProfilEtudiant** / **Home** via \`getMyProfile\`.
+- **POST** \`/api/orientation/my-profile\` — persistance profil : méthode exportée **\`createOrUpdateMyProfile\`** dans le service ; **ProfilEtudiantScreen** invoque encore **\`createOrUpdateProfile\`** via cast (\`(orientationScolaireService as any)\`) — même endpoint métier, nom legacy côté écran.
+
+### IA orientation (backend \`/api/orientation/ai/\`)
+- **POST** \`analyze-profile\` — body \`{ profile_id }\` (**Hub** et écrans qui passent l’id chargé).
+- **POST** \`recommendations\` — **Home** : \`student_profile_id\`, \`type_etablissement\` (dérivé de \`selectedType\` ou défaut **superieur**), filtres optionnels budget / localisation.
+- **POST** \`compare-programs\` — **OrientationAIComparePrograms** (deux établissements + filières / spécialités).
+- **POST** \`academic-search\` — **Home** : question libre + contexte ; **useAIWithFallback** (\`orientation_academic\`) avec repli texte local si IA indisponible.
+- **POST** \`generate-recommendation\` — appelé depuis **ProfilEtudiantScreen** après saisie (flux distinct des autres écrans).
+
+### OrientationScolaireHub (**OrientationScolaireHubScreen**)
+- **Profil:** **GET** \`/api/orientation/my-profile\` au focus ; cartes IA **analyse** → **POST** \`/api/orientation/ai/analyze-profile\` (succès → **Alert**).
+- **Recommandations** (bouton) : **pas** d’appel API direct — navigation vers **EtablissementSearch** si profil présent.
+- **Comparer** → **OrientationAIComparePrograms** si profil.
+- Tuiles **primaire / secondaire / supérieur** → **EtablissementSearch** avec \`params.type\`.
+- Raccourcis **ConcoursList** / **ConferencesList** / **ProgrammesList** / **FournituresList** (= alias vers **ConcoursEntree**, **ConferencesLives**, **ProgrammesScolaires**, **FournituresScolaires**).
+
+### OrientationScolaireHome (**OrientationScolaireHomeScreen**)
+- **5 onglets:** \`etablissements\` | \`programmes\` | \`concours\` | \`conferences\` | \`fournitures\` — chaque onglet recharge via le service (search / listes).
+- **Onglet établissements:** **GET** \`.../etablissements/search\` avec **\`partner_type: 'etablissementscolaire'\`**, \`search\` texte optionnel, **GPS** → \`rayon_km: 50\` quand position dispo.
+- **Modal / en-tête IA:** analyse profil, recommandations (**POST** recommendations), comparaison (navigation ou modal selon UI), **recherche académique** (**academicSearch** + fallback).
+- **Transcription audio profil:** **ProfilEtudiant** → **POST** \`/api/ia/transcribe\` (hors module orientation pur).
+
+### EtablissementSearch (**EtablissementSearchScreen**)
+- **GET** \`/api/orientation-scolaire/etablissements/search\` avec query params (\`type_etablissement\` depuis \`route.params.type\`, ville, région, filière, pagination) — **sans** le filtre \`partner_type\` du **Home** (parcours hub / type scolaire).
+
+### CreateEtablissement (**CreateEtablissementScreen**)
+- **Écran partagé:** parcours **partenaire** (ex. depuis **OrientationPartnerDashboard**) **et** création fiche établissement côté orientation ; décrire les **actions visibles** plutôt que « uniquement élève » ou « uniquement partenaire ».
+
+**Hard rules:** **Ne pas** confondre **OrientationPartnerDashboard** avec ce module. **Ne pas** prétendre que le hub envoie **POST recommendations** sur le bouton « recommandations » — c’est une **navigation**. Pour **join** conférence, citer la **dualité GET écran / POST service** si l’utilisateur parle d’API.
+`;
+    }
+
+    if (onOrientationPartnerDashboard) {
+      prompt += `
+
+=== ORIENTATION_PARTNER_DASHBOARD_DETAIL (authoritative — partenaire établissement scolaire) ===
+
+**Écran:** **OrientationPartnerDashboardScreen**, route **OrientationPartnerDashboard** (\`AppNavigator.optimized.tsx\` — partenaire \`etablissementscolaire\` / alias config).
+
+### Données
+- **GET** \`/api/orientation/etablissements/mine\` — corps réponse attendu : programmes (\`programs\` ou \`formations\`), **\`inscriptions_count\`** pour la tuile inscriptions.
+
+### UI (code)
+- **Onglets:** **overview** | **programs** | **students** | **analytics** (libellés FR dans l’UI : accueil, Programmes, Étudiants, Stats).
+- **Overview:** grille stats (nombre de programmes, actifs, places disponibles agrégées, inscriptions) ; **actions rapides** — **CreateEtablissement** (\`mode: 'edit'\` ou création), **OrientationScolaireHub** (hub **public / élève**), **OrientationAIRecommendations**, **ProgrammesList**, **WalletFinancial**, déconnexion.
+- **Programs:** liste des programmes retournés par **mine** ; bouton ajout → **CreateEtablissement** avec \`tab: 'programs'\`.
+- **Students / Analytics:** onglets présents dans le fichier ; détail des API dédiées = vérifier l’implémentation écran si l’utilisateur pose une question précise (ne pas inventer d’endpoints non lus dans le code).
+
+**Hard rule:** Le hub **OrientationScolaireHub** ouvert depuis ce dashboard reste le **même écran** que pour un élève — l’utilisateur **change de contexte de navigation**, pas de « mode partenaire » automatique sur le hub.
 `;
     }
 
@@ -1642,26 +1850,8 @@ ${isEmployer ? `EMPLOYER / RECRUTEUR (APIs):
 ${onOffresEmploiHome ? `**Current screen:** prioritize **OFFRES_EMPLOI_HOME_DETAIL** above.` : ''}${onOffresEmploiHub ? `**Current screen:** prioritize **OFFRES_EMPLOI_HUB_DETAIL** above.` : ''}`;
     }
 
-    // Menu planning: full code-aligned block is MENU_PLANNING_MODULE_DETAIL + MENU_PLANNING_MODULE_MODE (onMenuPlanningModule).
-
-    // Orientation scolaire context
-    const orientationScreens = ['OrientationScolaireHub', 'OrientationScolaireHome', 'ProfilEtudiant', 'OrientationAIProfileAnalysis', 'OrientationAIRecommendations', 'OrientationAIComparePrograms', 'OrientationAICompareProgramsScreen', 'OrientationAIRecommendationsScreen', 'OrientationAIProfileAnalysisScreen'];
-    if (orientationScreens.some(s => screenName.includes(s) || screenName.includes('Orientation'))) {
-      prompt += `\n\nSCHOOL ORIENTATION SERVICE CONTEXT:
-Goal: help students/parents find schools, programs, entrance exams (concours), conferences, supplies, and use AI for profile analysis and guidance.
-Key screens:
-- OrientationScolaireHub: quick entry by school type + AI shortcuts.
-- OrientationScolaireHome: tabs (schools/programs/concours/conferences/supplies) + search + AI academic Q&A.
-Main backend endpoints:
-- GET /api/orientation-scolaire/etablissements/search|suggest|{id}|{id}/programmes|{id}/fournitures
-- GET /api/orientation-scolaire/programmes/search
-- GET /api/orientation-scolaire/concours/actifs|search|{id}
-- GET /api/orientation-scolaire/conferences/programmees|search|{id}
-- POST /api/orientation-scolaire/conferences/{id}/join
-- GET/POST /api/orientation/my-profile, GET /api/orientation/analytics
-- POST /api/orientation/ai/analyze-profile|recommendations|compare-programs|academic-search
-AI features: profile analysis, recommendations, program comparison, academic search Q&A (with local fallback when AI is down).`;
-    }
+    // Menu planning: MENU_PLANNING_MODULE_DETAIL + MENU_PLANNING_MODULE_MODE (onMenuPlanningModule).
+    // Orientation scolaire: ORIENTATION_SCOLAIRE_MODULE_* (onOrientationStudentModule) + ORIENTATION_PARTNER_DASHBOARD_* (onOrientationPartnerDashboard).
 
     // Hotel/Meublé-specific context for partner AND user
     const hotelScreens = ['HotelDashboard', 'HotelMeubleHome', 'HotelSearch', 'MeubleSearch', 'HotelBooking', 'HotelBookingPayment', 'HotelQRScanner', 'HotelReservationQR', 'ImmobilierForm', 'ImmobilierDetails', 'ImmobilierSearch'];
@@ -2478,7 +2668,8 @@ Commencez dès maintenant ! 👇`
     { keywords: ['restaurant', 'mkahawa'], action: { id: 'restaurant', label: 'Restaurant', icon: 'utensils', route: 'RestaurantDashboard', category: 'navigation', description: '' } },
     { keywords: ['agence', 'voyage', 'travel', 'safari'], action: { id: 'agence', label: 'Agence de Voyage', icon: 'plane', route: 'AgenceVoyageSearch', category: 'navigation', description: '' } },
     { keywords: ['ticket', 'billet', 'tikiti'], action: { id: 'bus-ticket', label: 'Tickets Bus', icon: 'bus', route: 'BusTicketSearch', category: 'navigation', description: '' } },
-    { keywords: ['automobile', 'voiture', 'car', 'gari'], action: { id: 'auto', label: 'Automobile', icon: 'car', route: 'AutoServicesSearch', category: 'navigation', description: '' } },
+    { keywords: ['automobile', 'voiture', 'car', 'gari', 'véhicule', 'vehicule', 'occasion auto'], action: { id: 'auto', label: 'Recherche auto', icon: 'car', route: 'AutoServicesSearch', category: 'navigation', description: 'Catalogue client : /api/auto/filters + /api/auto/search — pas le dashboard partenaire' } },
+    { keywords: ['pièce auto', 'pieces auto', 'pièces détachées', 'spare parts', 'accessoires auto'], action: { id: 'auto-parts', label: 'Recherche auto (pièces)', icon: 'wrench', route: 'AutoServicesSearch', category: 'navigation', description: 'Pas d’écran pièces seul : recherche texte + moteur /api/auto/search (backend inclut pièces auto)' } },
     { keywords: ['recette', 'recipe', 'mapishi'], action: { id: 'recipe', label: 'Recettes', icon: 'book-open', route: 'RecipeSearch', category: 'navigation', description: '' } },
     { keywords: ['bayam', 'marche', 'market', 'soko', 'kasuwa'], action: { id: 'bayam', label: 'BayamSelam', icon: 'tag', route: 'BayamSelamSearch', category: 'navigation', description: '' } },
     { keywords: ['favoris', 'favorites', 'vipendwa'], action: { id: 'favs', label: 'Favoris', icon: 'heart', route: 'MyFavorites', category: 'navigation', description: '' } },
@@ -2552,6 +2743,62 @@ Commencez dès maintenant ! 👇`
       'SuiviSinistre': t('intelligentChat.screenDesc.suiviSinistre') || 'Suivi sinistres client : GET claims/client, lecture seule.',
       'CourierDashboard': t('intelligentChat.screenDesc.courierDashboard') || 'Coursier : livraisons actives (GET /api/deliveries/active), stats, bourse du livre coursier, portefeuille.',
       'FleetDashboard': t('intelligentChat.screenDesc.fleetDashboard') || 'Partenaire flotte : stats GET /api/partners/me/fleet/*, coursiers, candidatures, analytics (données locales).',
+      'AutomobileDashboard': t('intelligentChat.screenDesc.automobileDashboard') || 'Partenaire auto : stock GET /api/specialized-services/user?type=automobile ; ajout = Alert formulaire intelligent.',
+      'AutoServicesSearch': t('intelligentChat.screenDesc.autoServicesSearch') || 'Recherche véhicules : GET /api/auto/filters, puis résultats /api/auto/search (GPS+rayon ; ville non envoyée au backend).',
+      'AutoServicesResults': t('intelligentChat.screenDesc.autoServicesResults') || 'Liste auto : GET /api/auto/search, ServiceDetail, chat/WhatsApp/appel, avis inline.',
+    };
+    return descriptions[screenName] || t('intelligentChat.fallback.genericHelp', { screen: screenName }) || `Écran « ${screenName} ». Je peux vous guider ici.`;
+  }
+
+  /**
+   * Mettre en cache le contexte d'écran
+   */
+  cacheScreenContext(route: string, context: ScreenContext): void {
+    this.contextCache.set(route, context);
+  }
+
+  /**
+   * Obtenir le contexte mis en cache
+   */
+  getCachedContext(route: string): ScreenContext | undefined {
+    return this.contextCache.get(route);
+  }
+
+  /**
+   * Nettoyer le cache
+   */
+  clearCache(): void {
+    this.contextCache.clear();
+  }
+}
+
+export const intelligentChatService = new IntelligentChatService();
+export default intelligentChatService;
+     'PharmacieHome': t('intelligentChat.screenDesc.pharmacy') || 'Pharmacies et médicaments proches.',
+      'HopitalHome': t('intelligentChat.screenDesc.hospital') || 'Hôpitaux, cliniques, RDV, IA triage.',
+      'HotelDashboard': t('intelligentChat.screenDesc.hotel') || 'Gestion hôtel : chambres, réservations, tarifs.',
+      'TaxiHome': t('intelligentChat.screenDesc.taxi') || 'Taxi avec tarification IA dynamique.',
+      'DeliveryHome': t('intelligentChat.screenDesc.delivery') || 'Colis et courses avec livraison.',
+      'CovoiturageHome': t('intelligentChat.screenDesc.carpooling') || 'Covoiturage : trouvez ou proposez.',
+      'OffresEmploiHome': t('intelligentChat.screenDesc.jobs') || 'Emplois : recherche et publication.',
+      'OrientationScolaireHome': t('intelligentChat.screenDesc.orientation') || 'Orientation scolaire avec IA.',
+      'LivreScolaireHome': t('intelligentChat.screenDesc.books') || 'Livres scolaires : achat, vente, troc.',
+      'Navigation': t('intelligentChat.screenDesc.navigation') || 'GPS avec guidage vocal et alertes.',
+      'RechargeTokens': t('intelligentChat.screenDesc.recharge') || 'Rechargez votre solde. Bonus jusqu\'à +20%.',
+      'WalletFinancial': t('intelligentChat.screenDesc.wallet') || 'Suivi financier détaillé.',
+      'SupermarketHome': t('intelligentChat.screenDesc.supermarket') || 'Supermarché : magasins, produits, comparaison IA.',
+      'AssuranceDashboard': t('intelligentChat.screenDesc.assurancePartner') || 'Partenaire assurance : produits, polices, sinistres, stats ; loupe = marché utilisateur.',
+      'InsuranceServicesSearch': t('intelligentChat.screenDesc.insuranceSearch') || 'Recherche / catalogue assurance utilisateur (API search, devis IA).',
+      'InsuranceServicesResults': t('intelligentChat.screenDesc.insuranceResults') || 'Résultats GET /api/assurance/search ; carte → ServiceDetail.',
+      'InsuranceQuoteRequest': t('intelligentChat.screenDesc.insuranceQuoteUser') || 'Devis IA : POST /api/assurance/ai/quote (type obligatoire).',
+      'MesPolicesAssurance': t('intelligentChat.screenDesc.mesPolicesAssurance') || 'Polices client : GET /api/assurance/policies/client.',
+      'DeclarationSinistre': t('intelligentChat.screenDesc.declarationSinistre') || 'Déclaration sinistre : policy requise, createClaim.',
+      'SuiviSinistre': t('intelligentChat.screenDesc.suiviSinistre') || 'Suivi sinistres client : GET claims/client, lecture seule.',
+      'CourierDashboard': t('intelligentChat.screenDesc.courierDashboard') || 'Coursier : livraisons actives (GET /api/deliveries/active), stats, bourse du livre coursier, portefeuille.',
+      'FleetDashboard': t('intelligentChat.screenDesc.fleetDashboard') || 'Partenaire flotte : stats GET /api/partners/me/fleet/*, coursiers, candidatures, analytics (données locales).',
+      'AutomobileDashboard': t('intelligentChat.screenDesc.automobileDashboard') || 'Partenaire auto : stock GET /api/specialized-services/user?type=automobile ; ajout = Alert formulaire intelligent.',
+      'AutoServicesSearch': t('intelligentChat.screenDesc.autoServicesSearch') || 'Recherche véhicules : GET /api/auto/filters, puis résultats /api/auto/search (GPS+rayon ; ville non envoyée au backend).',
+      'AutoServicesResults': t('intelligentChat.screenDesc.autoServicesResults') || 'Liste auto : GET /api/auto/search, ServiceDetail, chat/WhatsApp/appel, avis inline.',
     };
     return descriptions[screenName] || t('intelligentChat.fallback.genericHelp', { screen: screenName }) || `Écran « ${screenName} ». Je peux vous guider ici.`;
   }
