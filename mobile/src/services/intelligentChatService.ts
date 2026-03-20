@@ -1627,7 +1627,7 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 
 === MES_SERVICES_PRODUCTS_DETAIL (MesServicesScreen — authoritative) ===
 
-**Route names (clarification):** The **bottom tab** label is “Mes services” but the React Navigation route is **`Services`**. The same component (**MesServicesScreen**) can also open via stack route **`MesServices`**. Tell users: *onglet Mes services en bas* = **Services**. Do **not** confuse with **ServicesDashboard** (autre écran tableau de bord création).
+**Route names (clarification):** The **bottom tab** label is “Mes services” but the React Navigation route is **\`Services\`**. The same component (**MesServicesScreen**) can also open via stack route **\`MesServices\`**. Tell users: *onglet Mes services en bas* = **Services**. Do **not** confuse with **ServicesDashboard** (autre écran tableau de bord création).
 
 **What the screen shows:** A **product-first** dashboard: each row is a **product** from \`productsService.getProductsByService(serviceId)\` (Phase 4), with fallback parsing of legacy \`service.data.produits\`. Header title **“Produits”**. API: \`GET /api/prestataire/services\` then parallel product fetches. Cache 5 min + invalidation on \`service:refresh\`, \`product:created\`, \`product:updated\`.
 

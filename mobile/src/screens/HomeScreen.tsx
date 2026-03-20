@@ -26,6 +26,7 @@ import {
 } from 'react-native';
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
+import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
 import ModernGPSModal from '../components/ModernGPSModal';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import SafeIcon from '../components/SafeIcon';
@@ -695,12 +696,13 @@ const HomeScreen: React.FC = () => {
                 </View>
             </View>
 
-            <ScrollView
+            <KeyboardAwareScreen
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
-                // ✅ CRITIQUE: S'assurer que le ScrollView respecte le paddingTop du SafeNativeView
-                contentInsetAdjustmentBehavior="automatic"
+                viewIsInsideTabBar={true}
+                extraScrollHeight={140}
+                keyboardDismissMode="interactive"
             >
                 {/* ✅ ESPACE POUR COMPENSER L'ENTÊTE FIXE - RÉDUIT */}
                 <View style={{ height: headerTotalHeight - 8 }} />
@@ -833,7 +835,7 @@ const HomeScreen: React.FC = () => {
                     </View>
                 </View>
 
-            </ScrollView>
+            </KeyboardAwareScreen>
 
             {/* Modal GPS */}
             {showGPSModal && (

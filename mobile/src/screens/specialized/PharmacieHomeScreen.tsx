@@ -722,7 +722,7 @@ const PharmacieHomeScreen: React.FC = () => {
                             <KeyboardAwareScreen
                                 style={styles.aiChatScrollView}
                                 contentContainerStyle={styles.aiChatScrollContent}
-                                extraScrollHeight={150}
+                                extraScrollHeight={220}
                                 keyboardShouldPersistTaps="handled"
                                 keyboardDismissMode="interactive"
                                 enableOnAndroid={true}
@@ -796,7 +796,32 @@ const PharmacieHomeScreen: React.FC = () => {
                                     </View>
                                 )}
 
-                                {/* Champ de question IA - Fixé en bas avec KeyboardAvoidingView */}
+                                {/* Réponse IA (avant le champ : le composer reste en bas du scroll pour le clavier) */}
+                                {aiResponse && (
+                                    <View style={styles.aiResponseContainer}>
+                                        <View style={styles.aiResponseHeader}>
+                                            <SafeIcon name="brain" size={16} color="#059669" type="lucide" />
+                                            <Text style={styles.aiResponseTitle}>{t('pharmacieHome.reponseIa')}</Text>
+                                        </View>
+                                        <ScrollView
+                                            style={styles.aiResponseTextScroll}
+                                            nestedScrollEnabled={true}
+                                        >
+                                            <Text style={styles.aiResponseText}>{aiResponse}</Text>
+                                        </ScrollView>
+                                        <TouchableOpacity
+                                            style={styles.aiClearButton}
+                                            onPress={() => {
+                                                hapticPress();
+                                                setAiResponse(null);
+                                                setAiQuestion('');
+                                            }}
+                                        >
+                                            <Text style={styles.aiClearButtonText}>{t('pharmacieHome.nouvelleQuestion')}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+
                                 <View style={styles.aiInputWrapper}>
                                     <View style={styles.aiInputContainer}>
                                         <TextInput
@@ -826,32 +851,6 @@ const PharmacieHomeScreen: React.FC = () => {
                                         </TouchableOpacity>
                                     </View>
                                 </View>
-
-                                {/* Réponse IA */}
-                                {aiResponse && (
-                                    <View style={styles.aiResponseContainer}>
-                                        <View style={styles.aiResponseHeader}>
-                                            <SafeIcon name="brain" size={16} color="#059669" type="lucide" />
-                                            <Text style={styles.aiResponseTitle}>{t('pharmacieHome.reponseIa')}</Text>
-                                        </View>
-                                        <ScrollView
-                                            style={styles.aiResponseTextScroll}
-                                            nestedScrollEnabled={true}
-                                        >
-                                            <Text style={styles.aiResponseText}>{aiResponse}</Text>
-                                        </ScrollView>
-                                        <TouchableOpacity
-                                            style={styles.aiClearButton}
-                                            onPress={() => {
-                                                hapticPress();
-                                                setAiResponse(null);
-                                                setAiQuestion('');
-                                            }}
-                                        >
-                                            <Text style={styles.aiClearButtonText}>{t('pharmacieHome.nouvelleQuestion')}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
                             </KeyboardAwareScreen>
                         </Animated.View>
                     )}

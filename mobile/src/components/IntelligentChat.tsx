@@ -5,7 +5,6 @@ import {
   Dimensions,
   Easing,
   FlatList,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   SafeAreaView,
@@ -16,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useKeyboardBottomInset } from '../hooks/useKeyboardBottomInset';
 import { useScreenContext } from '../hooks/useScreenContext';
 import { ChatMessage, ChatResponse, intelligentChatService, VisualElement } from '../services/intelligentChatService';
 import { modernColors } from '../theme/modernTheme';
@@ -169,6 +169,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
 }) => {
   const navigation = useNavigation();
   const { t, language } = useLanguageSafe();
+  const keyboardBottomInset = useKeyboardBottomInset();
   const navState = navigation.getState?.();
   const route = navState?.routes?.[navState?.index ?? 0];
   const leaf = getLeafRouteFromState(navState);
@@ -233,6 +234,14 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
   const [suggestedActions, setSuggestedActions] = useState<any[]>([]);
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    if (keyboardBottomInset <= 0) return;
+    const id = requestAnimationFrame(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [keyboardBottomInset]);
 
   useEffect(() => {
     if (!visible || !__DEV__) return;
@@ -532,10 +541,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     <Modal visible={visible} animationType="none" transparent presentationStyle="overFullScreen">
       <Animated.View style={[styles.safeArea, { transform: [{ translateY: slideAnim }] }]}>
         <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          style={styles.container}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
+        <View style={[styles.container, { paddingBottom: keyboardBottomInset }]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
               <SafeIcon name="x" size={22} color={modernColors.text} />
@@ -564,6 +570,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
             style={styles.messagesList}
             contentContainerStyle={styles.messagesContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
             ListFooterComponent={loading ? <TypingIndicator /> : null}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
           />
@@ -598,7 +606,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
               <SafeIcon name="send" size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+        </View>
         </SafeAreaView>
       </Animated.View>
     </Modal>

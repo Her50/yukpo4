@@ -3,9 +3,7 @@ import * as React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +13,7 @@ import {
 } from 'react-native';
 import { Avatar, IconButton, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
+import { useKeyboardBottomInset } from '../hooks/useKeyboardBottomInset';
 import { apiGet } from '../services/api';
 import { theme } from '../theme/theme';
 import ChatModalMobile from './ChatModalMobile';
@@ -75,6 +74,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
   const [sendingMessage, setSendingMessage] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
+  const keyboardBottomInset = useKeyboardBottomInset();
 
   const loadChatHistories = useCallback(async () => {
     setLoading(true);
@@ -383,10 +383,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
           onClose();
         }}
       >
-        <KeyboardAvoidingView
-          style={styles.chatContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
+        <View style={[styles.chatContainer, { paddingBottom: keyboardBottomInset }]}>
           {/* Chat Header */}
           <View style={styles.chatHeader}>
             <TouchableOpacity
@@ -431,6 +428,8 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
             ref={scrollViewRef}
             style={styles.messagesContainer}
             contentContainerStyle={styles.messagesContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           >
             {chatMessages.map((message) => (
               <View
@@ -482,7 +481,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
               <Text style={styles.sendIcon}>📤</Text>
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     );
   }
@@ -494,7 +493,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingBottom: keyboardBottomInset }]}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>

@@ -30,7 +30,7 @@
 import React, { ReactNode, Ref } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useKeyboardBottomInset } from '../hooks/useKeyboardBottomInset';
 
 interface KeyboardAwareScreenProps {
   children: ReactNode;
@@ -69,6 +69,8 @@ interface KeyboardAwareScreenProps {
   keyboardDismissMode?: string;
   enableOnAndroid?: boolean;
   enableAutomaticScroll?: boolean;
+  /** À activer sur l’onglet Accueil / écrans avec barre d’onglets (offset clavier). */
+  viewIsInsideTabBar?: boolean;
 }
 
 /**
@@ -83,11 +85,17 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
   style,
   contentContainerStyle,
   showsVerticalScrollIndicator = false,
+  keyboardDismissMode = 'none',
+  enableOnAndroid,
+  enableAutomaticScroll,
+  viewIsInsideTabBar = false,
 }) => {
+  const keyboardBottomInset = useKeyboardBottomInset();
+
   // Si le scroll est désactivé, utiliser un simple View avec KeyboardAvoidingView
   if (disableScroll) {
     return (
-      <View style={[styles.container, style]}>
+      <View style={[styles.container, style, keyboardBottomInset > 0 ? { paddingBottom: keyboardBottomInset } : null]}>
         {children}
       </View>
     );
@@ -97,11 +105,15 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
     <KeyboardAwareScrollView
       ref={innerRef}
       style={[styles.scrollView, style]}
-      contentContainerStyle={[styles.contentContainer, contentContainerStyle]}
+      contentContainerStyle={[
+        styles.contentContainer,
+        contentContainerStyle,
+        ...(keyboardBottomInset > 0 ? [{ paddingBottom: keyboardBottomInset + 120 }] : []),
+      ]}
       // ✅ CORRIGÉ 2026-03-06: Configuration optimisée pour les formulaires avec variations de prix
-      enableOnAndroid={true}
+      enableOnAndroid={enableOnAndroid !== false}
       // ✅ CORRIGÉ: Activer le scroll automatique pour que l'écran monte avec le clavier
-      enableAutomaticScroll={true}
+      enableAutomaticScroll={enableAutomaticScroll !== false}
       // ✅ CORRIGÉ: Augmenter les valeurs pour que l'écran monte suffisamment au-dessus du clavier
       // extraHeight: espace supplémentaire au-dessus du clavier (Android)
       extraHeight={Platform.OS === 'android' ? 250 : 0} // ✅ AUGMENTÉ: 250px pour Android pour les formulaires complexes
@@ -117,10 +129,9 @@ export const KeyboardAwareScreen: React.FC<KeyboardAwareScreenProps> = ({
       bounces={Platform.OS === 'ios'}
       // ✅ Désactiver le padding automatique sur Android (géré par extraHeight)
       contentInsetAdjustmentBehavior="never"
-      // ✅ CORRIGÉ: Ne pas fermer le clavier lors du scroll pour permettre la saisie
-      keyboardDismissMode="none"
+      keyboardDismissMode={keyboardDismissMode as 'none' | 'interactive' | 'on-drag'}
       // ✅ CORRIGÉ: Désactiver scrollToOverflowEnabled pour éviter le scroll excessif
-      viewIsInsideTabBar={false}
+      viewIsInsideTabBar={viewIsInsideTabBar}
       scrollToOverflowEnabled={false}
     >
       {children}

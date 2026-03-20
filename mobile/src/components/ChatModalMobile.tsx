@@ -10,7 +10,6 @@ import {
     Animated,
     Easing,
     Image,
-    KeyboardAvoidingView,
     Linking,
     Modal,
     Platform,
@@ -22,6 +21,7 @@ import {
     View
 } from 'react-native';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useKeyboardBottomInset } from '../hooks/useKeyboardBottomInset';
 import { useScreenContext } from '../hooks/useScreenContext';
 import { useWebSocketChat } from '../hooks/useWebSocketChat';
 import { apiGet, apiPost } from '../services/api';
@@ -71,6 +71,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 }) => {
     const navigation = useNavigation();
     const { t, language } = useLanguageSafe();
+    const keyboardBottomInset = useKeyboardBottomInset();
     // ✅ FIX BUG 1: Use full contextual screen awareness for the chatbot panel
     const screenContext = useScreenContext('ChatModalMobile');
     const [newMessage, setNewMessage] = useState('');
@@ -154,6 +155,16 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        if (keyboardBottomInset <= 0) return;
+        requestAnimationFrame(() => {
+            scrollViewRef.current?.scrollToEnd?.({ animated: true });
+            if (showChatbotPanel) {
+                chatbotScrollRef.current?.scrollToEnd?.({ animated: true });
+            }
+        });
+    }, [keyboardBottomInset, showChatbotPanel]);
 
     // ✅ NOUVEAU : Utiliser conversationId si conversation privée, sinon service.id
     const parsedConversationId = privateConversationId ? Number(privateConversationId) : NaN;
@@ -985,9 +996,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             presentationStyle="pageSheet"
             onRequestClose={onClose}
         >
-            <KeyboardAvoidingView
-                style={styles.container}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            <View
+                style={[styles.container, { paddingBottom: keyboardBottomInset }]}
             >
                 {/* Header */}
                 <View style={styles.header}>
@@ -1142,6 +1152,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     style={styles.messagesContainer}
                     contentContainerStyle={styles.messagesContent}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="interactive"
                 >
                     {messages.map((message) => (
                         <View
@@ -1765,7 +1777,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         </View>
                     </View>
                 </View>
-            </KeyboardAvoidingView>
+            </View>
 
             {/* ✅ Modal de sélection de médias de la galerie produit */}
             <ProductGalleryPickerModal
@@ -1959,7 +1971,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
             {/* Panneau chatbot IA inline */}
             {showChatbotPanel && (
-                <View style={styles.chatbotOverlay}>
+                <View style={[styles.chatbotOverlay, { bottom: keyboardBottomInset }]}>
                     <View style={styles.chatbotPanel}>
                         {/* Header du chatbot */}
                         <View style={styles.chatbotHeader}>
@@ -1979,6 +1991,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             ref={chatbotScrollRef}
                             style={styles.chatbotMessages}
                             contentContainerStyle={styles.chatbotMessagesContent}
+                            keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="interactive"
                             onContentSizeChange={() => chatbotScrollRef.current?.scrollToEnd({ animated: true })}
                         >
                             {chatbotMessages.map((msg) => (
