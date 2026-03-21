@@ -336,22 +336,21 @@ const checkpointTypeToCommunityAlert = (checkpointType: string): Parameters<type
 
 let communityNotificationPermissionEnsured = false;
 
-// ✅ AMÉLIORÉ 2026-03-18: Alerte contextuelle son + TTS + haptic (toujours audio)
 const playContextualAlert = async (
     checkpointType: string, distanceMeters: number, speedLimit?: number,
     options?: { alertMode?: 'sound' | 'visual'; lang?: string; t?: (key: string, opts?: any) => string }
 ) => {
-    const mode: 'sound' = 'sound';
     const lang = options?.lang || 'fr';
     const tFn = options?.t;
+    console.log(`[NavigationScreen] playContextualAlert: type=${checkpointType} dist=${distanceMeters}m`);
 
-    // 1. Haptic/vibration immédiat (TOUJOURS, quel que soit le mode)
+    // 1. Haptic/vibration immédiat
     try {
         const { Vibration } = require('react-native');
         Vibration.vibrate([0, 300, 100, 300]);
     } catch { }
 
-    // 1.5 Notifications locales (expo-notifications) — pour fiabiliser en arrière-plan
+    // 1.5 Notification locale (fonctionne même en arrière-plan)
     try {
         const alertType = checkpointTypeToCommunityAlert(checkpointType);
         if (alertType) {
@@ -368,60 +367,72 @@ const playContextualAlert = async (
                 limit: speedLimit ?? '',
                 description: '',
             };
-            // On n'ajoute pas de facturation ici: le micro-feature de l'écran navigation reste la source de la logique payante.
-            // On évite aussi la double vibration: playContextualAlert gère déjà le haptique.
             void communityAlertSoundService
-                .sendFreeAlertSound(alertType, extraData, { sound: mode === 'sound', vibrate: false })
+                .sendFreeAlertSound(alertType, extraData, { sound: true, vibrate: false })
                 .catch(() => { });
         }
     } catch { }
     try { const h = await import('expo-haptics'); await h.notificationAsync(h.NotificationFeedbackType.Warning); } catch { }
 
-    // 2. Son d'alerte + TTS (UNIQUEMENT en mode 'sound')
-    if (mode === 'sound') {
-        try {
-            await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: true });
-            const soundUrl = CHECKPOINT_SOUND_URLS[checkpointType] || CHECKPOINT_SOUND_URLS.danger;
-            const { sound } = await Audio.Sound.createAsync(
-                { uri: soundUrl },
-                { shouldPlay: true, volume: 1.0 }
-            );
-            sound.setOnPlaybackStatusUpdate((status) => {
-                if ('didJustFinish' in status && status.didJustFinish) { sound.unloadAsync(); }
-            });
-        } catch { }
-        // TTS multilingue
-        try {
-            const distText = formatDistanceText(distanceMeters, tFn);
-            // Construire le message vocal dans la langue de l'utilisateur via i18n
-            const typeKey = `navigation.voice_${checkpointType}`;
-            let message = tFn ? tFn(typeKey, { distance: distText, speedLimit }) : '';
-            // Fallback si clé i18n manquante (retourne la clé elle-même)
-            if (!message || message === typeKey) {
-                const msgFn = CHECKPOINT_VOICE_MESSAGES[checkpointType];
-                message = msgFn ? msgFn(distText, speedLimit) : `Attention, alerte à ${distText}. Soyez prudent.`;
-            }
-            Speech.stop();
-            // Mapper la langue i18n vers un code BCP-47 pour le TTS
-            const ttsLangMap: Record<string, string> = {
-                fr: 'fr-FR', en: 'en-US', es: 'es-ES', de: 'de-DE', pt: 'pt-BR',
-                ar: 'ar-SA', sw: 'sw-KE', ha: 'ha-NG', wo: 'wo-SN', yo: 'yo-NG',
-                ig: 'ig-NG', am: 'am-ET', zu: 'zu-ZA', rw: 'rw-RW', mg: 'mg-MG',
-                zh: 'zh-CN', hi: 'hi-IN', ja: 'ja-JP', ko: 'ko-KR', ru: 'ru-RU',
-                it: 'it-IT', nl: 'nl-NL', tr: 'tr-TR', pl: 'pl-PL', uk: 'uk-UA',
-            };
-            const ttsLang = ttsLangMap[lang] || `${lang}-${lang.toUpperCase()}`;
-            Speech.speak(message, {
-                language: ttsLang,
-                rate: 0.95,
-                pitch: 1.0,
-                onError: (e) => console.warn('[NavigationScreen] TTS error:', e),
-            });
-            console.log(`[NavigationScreen] 🔊 TTS (${ttsLang}): ${message}`);
-        } catch (e) { console.warn('[NavigationScreen] TTS fallback error:', e); }
-    } else {
-        console.log(`[NavigationScreen] 📳 Visual-only alert: ${checkpointType} at ${distanceMeters}m (vibration sent)`);
+    // 2. Son d'alerte audio
+    let soundPlayed = false;
+    try {
+        await Audio.setAudioModeAsync({
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: true,
+            shouldDuckAndroid: true,
+        });
+        const soundUrl = CHECKPOINT_SOUND_URLS[checkpointType] || CHECKPOINT_SOUND_URLS.danger;
+        const { sound } = await Audio.Sound.createAsync(
+            { uri: soundUrl },
+            { shouldPlay: true, volume: 1.0 }
+        );
+        soundPlayed = true;
+        sound.setOnPlaybackStatusUpdate((status) => {
+            if ('didJustFinish' in status && status.didJustFinish) { sound.unloadAsync(); }
+        });
+    } catch (e) {
+        console.warn('[NavigationScreen] Audio.Sound failed, using notification fallback:', e);
+        // Fallback: envoyer une notification avec son système si le son audio a échoué
+        if (!soundPlayed) {
+            try {
+                await Notifications.scheduleNotificationAsync({
+                    content: { title: `${CHECKPOINT_LABELS[checkpointType]?.icon || '⚠️'} Alerte`, body: `${checkpointType} à ${Math.round(distanceMeters)}m`, sound: true, ...(Platform.OS === 'android' ? { channelId: 'community_alerts' } : {}) },
+                    trigger: null,
+                });
+            } catch { }
+        }
     }
+
+    // 3. Attendre que le son d'alerte joue avant de lancer le TTS
+    await new Promise(r => setTimeout(r, soundPlayed ? 1500 : 300));
+
+    // 4. TTS multilingue
+    try {
+        const distText = formatDistanceText(distanceMeters, tFn);
+        const typeKey = `navigation.voice_${checkpointType}`;
+        let message = tFn ? tFn(typeKey, { distance: distText, speedLimit }) : '';
+        if (!message || message === typeKey) {
+            const msgFn = CHECKPOINT_VOICE_MESSAGES[checkpointType];
+            message = msgFn ? msgFn(distText, speedLimit) : `Attention, alerte à ${distText}. Soyez prudent.`;
+        }
+        Speech.stop();
+        const ttsLangMap: Record<string, string> = {
+            fr: 'fr-FR', en: 'en-US', es: 'es-ES', de: 'de-DE', pt: 'pt-BR',
+            ar: 'ar-SA', sw: 'sw-KE', ha: 'ha-NG', wo: 'wo-SN', yo: 'yo-NG',
+            ig: 'ig-NG', am: 'am-ET', zu: 'zu-ZA', rw: 'rw-RW', mg: 'mg-MG',
+            zh: 'zh-CN', hi: 'hi-IN', ja: 'ja-JP', ko: 'ko-KR', ru: 'ru-RU',
+            it: 'it-IT', nl: 'nl-NL', tr: 'tr-TR', pl: 'pl-PL', uk: 'uk-UA',
+        };
+        const ttsLang = ttsLangMap[lang] || `${lang}-${lang.toUpperCase()}`;
+        Speech.speak(message, {
+            language: ttsLang,
+            rate: 0.95,
+            pitch: 1.0,
+            onError: (e) => console.warn('[NavigationScreen] TTS error:', e),
+        });
+        console.log(`[NavigationScreen] TTS (${ttsLang}): ${message}`);
+    } catch (e) { console.warn('[NavigationScreen] TTS fallback error:', e); }
 };
 
 const SHARE_BASE_URL = 'https://yukpomnang.com';
@@ -509,6 +520,7 @@ const NavigationScreen: React.FC = () => {
     const checkpointsRef = useRef(checkpoints);
     checkpointsRef.current = checkpoints;
     const checkpointRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const loadCheckpointsSafelyRef = useRef<() => Promise<void>>(async () => { });
     const trackingUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const trackingStartTimeRef = useRef<string | null>(null);
     const speedSamplesRef = useRef<number[]>([]);
@@ -1055,6 +1067,15 @@ const NavigationScreen: React.FC = () => {
             setLoadingCheckpoints(false);
         }
     }, [selectedRoute, destinationCoords, getCurrentPosition, isFreeWalking, isTracking]);
+    loadCheckpointsSafelyRef.current = loadCheckpointsSafely;
+
+    // Charger les checkpoints dès que isFreeWalking/isTracking change (évite la closure périmée)
+    useEffect(() => {
+        if (!isFreeWalking && !isTracking) return;
+        loadCheckpointsSafely();
+        const interval = setInterval(() => { loadCheckpointsSafelyRef.current(); }, 60000);
+        return () => clearInterval(interval);
+    }, [isFreeWalking, isTracking, loadCheckpointsSafely]);
 
     const startNavigation = useCallback(async (route: RouteOption) => {
         if (!route || !destinationCoords) return;
@@ -1416,7 +1437,7 @@ const NavigationScreen: React.FC = () => {
         }
     }, [showConfirmationToast, loadAlertHistory]);
 
-    /** Ouvre uniquement Google Maps / Apple Plans — pas de second écran de suivi in-app (au retour : écran principal). */
+    /** Ouvre Google Maps / Apple Plans ET démarre le suivi in-app (checkpoints + alertes). */
     const startTracking = useCallback(async () => {
         if (!selectedRoute || isTracking) return;
         if (!selectedRoute.distance_meters || !selectedRoute.duration_seconds) { Alert.alert(t('message.error'), t('navigation.invalidRoute')); return; }
@@ -1424,6 +1445,32 @@ const NavigationScreen: React.FC = () => {
         if (!dest) { Alert.alert(t('message.error'), t('navigation.positionUnavailable')); return; }
 
         const gmMode = travelMode === 'walking' ? 'walking' : travelMode === 'bicycling' ? 'bicycling' : travelMode === 'transit' ? 'transit' : 'driving';
+
+        // Activer le suivi in-app pour la détection de proximité checkpoints
+        trackingStartTimeRef.current = new Date().toISOString();
+        speedSamplesRef.current = []; maxSpeedRef.current = 0; distanceTraveledRef.current = 0;
+        lastPositionRef.current = null; checkpointsReportedRef.current = 0;
+        checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false;
+        encounteredCheckpointIdsRef.current = new Map();
+        setIsTracking(true);
+
+        // Démarrer la souscription GPS pour mettre à jour livePosition
+        try {
+            locationSubscriptionRef.current = await Location.watchPositionAsync(
+                { accuracy: Location.Accuracy.High, distanceInterval: 50, timeInterval: 5000 },
+                (loc) => {
+                    const pos = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+                    setLivePosition(pos);
+                    if (lastPositionRef.current) {
+                        const d = haversineDistance(lastPositionRef.current.lat, lastPositionRef.current.lng, pos.lat, pos.lng);
+                        if (d > 2 && d < 500) distanceTraveledRef.current += d;
+                    }
+                    lastPositionRef.current = pos;
+                    const spd = (loc.coords.speed ?? 0) * 3.6;
+                    if (spd >= 0) { setCurrentSpeed(spd); speedSamplesRef.current.push(spd); if (spd > maxSpeedRef.current) maxSpeedRef.current = spd; }
+                }
+            );
+        } catch (e) { console.warn('[Navigation] watchPositionAsync failed:', e); }
 
         try {
             const origin = await getCurrentPosition();
@@ -1451,7 +1498,7 @@ const NavigationScreen: React.FC = () => {
             console.warn('[Navigation] Open external maps failed:', e);
             Alert.alert(t('message.error'), t('navigation.cannotOpenNav'));
         }
-    }, [selectedRoute, isTracking, destinationCoords, getCurrentPosition, travelMode, waypoints, t]);
+    }, [selectedRoute, isTracking, destinationCoords, getCurrentPosition, travelMode, waypoints, haversineDistance, t]);
 
     // ── MARCHE LIBRE : session persistante en arrière-plan ──
     const startFreeWalking = useCallback(async () => {
@@ -1474,12 +1521,11 @@ const NavigationScreen: React.FC = () => {
             setIsFreeWalking(true); setIsTracking(true); setTravelMode('walking');
             setFreeWalkTick((x) => x + 1);
             showToast(`🚶 ${t('navigation.freeWalkStarted') || 'Marche libre démarrée !'} `);
-            loadCheckpointsSafely();
-            checkpointRefreshRef.current = setInterval(() => { loadCheckpointsSafely(); }, 60000);
+            // Checkpoint loading is now handled by the useEffect that reacts to isFreeWalking/isTracking changes
         } finally {
             setFreeWalkStarting(false);
         }
-    }, [isTracking, isFreeWalking, selectedRoute, loadCheckpointsSafely, t]);
+    }, [isTracking, isFreeWalking, selectedRoute, t]);
 
     const stopFreeWalking = useCallback(async () => {
         if (checkpointRefreshRef.current) { clearInterval(checkpointRefreshRef.current); checkpointRefreshRef.current = null; }

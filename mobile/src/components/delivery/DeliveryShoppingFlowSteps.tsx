@@ -64,6 +64,7 @@ export const SupermarketSelectionStep: React.FC<{
     error,
     onViewProducts,
 }) => {
+        const { t } = useLanguageSafe();
         const filtered = React.useMemo(() => {
             let filtered = supermarkets;
             if (searchQuery.trim()) {
@@ -240,6 +241,7 @@ export const BasketCompositionStep: React.FC<{
     error,
     detectedCurrency = 'XAF', // ✅ Valeur par défaut pour éviter les erreurs
 }) => {
+        const { t } = useLanguageSafe();
         const total = React.useMemo(() => {
             return basketItems.reduce((sum, item) => sum + (item.estimatedPrice || 0) * item.quantity, 0);
         }, [basketItems]);
@@ -368,6 +370,7 @@ export const DeliveryAddressStep: React.FC<{
     estimatedDistance,
     error,
 }) => {
+        const { t } = useLanguageSafe();
         // Handler pour sélection d'adresse sauvegardée
         const handleSavedAddressSelect = (address: UserSavedAddress | LocationObject) => {
             if (onSelectSavedAddress) {

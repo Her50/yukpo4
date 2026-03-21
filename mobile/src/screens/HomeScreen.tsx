@@ -27,6 +27,7 @@ import {
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
 import { KeyboardAwareScreen } from '../components/KeyboardAwareScreen';
+import HomeIntelligentChat from '../components/HomeIntelligentChat';
 import ModernGPSModal from '../components/ModernGPSModal';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import SafeIcon from '../components/SafeIcon';
