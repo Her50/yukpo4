@@ -153,7 +153,6 @@ const HomeScreen: React.FC = () => {
             };
         }, [])
     );
-    const [showChatModal, setShowChatModal] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
     // ✅ NOUVEAU: Nombre de notifications non lues
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);

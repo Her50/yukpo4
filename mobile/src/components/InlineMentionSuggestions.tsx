@@ -1,6 +1,6 @@
 // Composant dropdown inline pour suggestions de mentions (@mention)
 // S'affiche directement sous le TextInput quand l'utilisateur tape @
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -52,7 +52,7 @@ const InlineMentionSuggestions: React.FC<InlineMentionSuggestionsProps> = ({
         }
     };
 
-    const searchUsers = async (q: string) => {
+    const searchUsers = useCallback(async (q: string) => {
         if (!q.trim()) {
             setResults([]);
             setLoading(false);
