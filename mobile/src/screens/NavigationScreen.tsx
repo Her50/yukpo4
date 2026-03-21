@@ -1,8 +1,8 @@
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as Location from 'expo-location';
-import * as Speech from 'expo-speech';
 import * as Notifications from 'expo-notifications';
+import * as Speech from 'expo-speech';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator, Alert, Animated, BackHandler,
@@ -24,17 +24,16 @@ import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useLocationSafe } from '../contexts/LocationContext';
 import { useNavigationPayment } from '../hooks/useNavigationPayment';
 import { apiGet, apiPost } from '../services/api';
+import { coachingNotificationService } from '../services/coachingNotificationService';
+import { communityAlertSoundService } from '../services/communityAlertSoundService';
 import { FreeWalkSessionService } from '../services/FreeWalkSessionService';
 import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
-import { coachingNotificationService } from '../services/coachingNotificationService';
 import { socialSharing } from '../services/socialSharing';
-import { communityAlertSoundService } from '../services/communityAlertSoundService';
 import { modernColors } from '../theme/modernTheme';
-import SafeStorage from '../utils/safeStorage';
 
 const { width, height } = Dimensions.get('window');
 
-type ActivityPeriodKey = 'week' | 'month' | 'quarter' | 'semester' | 'year';
+type ActivityPeriodKey = 'today' | 'week' | 'month' | 'quarter' | 'semester' | 'year';
 type StatsModality = 'all' | 'auto' | 'freewalk';
 
 function isPassiveActivityRow(a: any): boolean {
@@ -736,6 +735,7 @@ const NavigationScreen: React.FC = () => {
     }, [t]);
     const statsPeriodMenuLabel = useMemo(() => {
         switch (activityPeriod) {
+            case 'today': return tr('navigation.periodToday', "Aujourd'hui");
             case 'week': return t('navigation.periodWeek') || 'Semaine';
             case 'month': return t('navigation.periodMonth') || 'Mois';
             case 'quarter': return tr('navigation.periodQuarter', 'Trimestre');
@@ -751,6 +751,7 @@ const NavigationScreen: React.FC = () => {
     }, [statsModality, tr]);
     const shareStatsPeriodPhrase = useMemo(() => {
         switch (activityPeriod) {
+            case 'today': return tr('navigation.today', "aujourd'hui");
             case 'week': return t('navigation.thisWeek') || 'cette semaine';
             case 'month': return t('navigation.thisMonth') || 'ce mois';
             case 'quarter': return tr('navigation.thisQuarter', 'ce trimestre');
@@ -1174,18 +1175,18 @@ const NavigationScreen: React.FC = () => {
             await payMicroFeature(
                 'ai_coach',
                 async () => {
-                try {
-                    const ar = await apiGet(`/api/navigation/activity/ai-insights?period=${period}`) as any;
-                    console.log('[Navigation] AI insights response:', ar?.data);
-                    if (ar?.data?.success) {
-                        console.log('[Navigation] Setting AI insights:', ar.data);
-                        setAiInsights(ar.data);
-                    } else {
-                        console.log('[Navigation] AI insights not successful or missing');
+                    try {
+                        const ar = await apiGet(`/api/navigation/activity/ai-insights?period=${period}`) as any;
+                        console.log('[Navigation] AI insights response:', ar?.data);
+                        if (ar?.data?.success) {
+                            console.log('[Navigation] Setting AI insights:', ar.data);
+                            setAiInsights(ar.data);
+                        } else {
+                            console.log('[Navigation] AI insights not successful or missing');
+                        }
+                    } catch (e) {
+                        console.error('[Navigation] Error loading AI insights:', e);
                     }
-                } catch (e) {
-                    console.error('[Navigation] Error loading AI insights:', e);
-                }
                 },
                 () => redirectToRecharge('Navigation')
             );
@@ -1511,16 +1512,67 @@ const NavigationScreen: React.FC = () => {
                 setFreeWalkFilterRange({ start: st || endedAtIso, end: endedAtIso });
                 setFreeWalkCompareMode('last');
                 setStatsModality('freewalk');
+                setActivityPeriod('today');
                 setShowActivityStats(true);
                 setShowAlertHistory(false);
-                await loadActivityStats(activityPeriod);
+                await loadActivityStats('today');
                 showToast(`🚶 ${t('navigation.walkingDone') || 'Marche terminée'} · ${dKm.toFixed(1)} km`);
+                setTimeout(() => scrollViewRef.current?.scrollTo({ y: 0, animated: true }), 200);
+
+                // ── TTS audio contextuel : performance vs dernière + vs meilleure ──
+                try {
+                    const prevWalks = [...walkingHistory]
+                        .filter((a: any) => {
+                            const ts = new Date(a?.date || '').getTime();
+                            const startMs = new Date(st || endedAtIso).getTime();
+                            return Number.isFinite(ts) && ts < startMs && isFreeWalkLikeActivity(a);
+                        })
+                        .sort((a: any, b: any) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime());
+                    const lastWalk = prevWalks[0];
+                    const bestSession = activitySummary?.best_session;
+                    const bestIsFw = bestSessionLooksLikeFreeWalk(bestSession);
+                    let ttsMsg = `${tr('navigation.ttsWalkDone', 'Marche libre terminée.')} `;
+                    ttsMsg += `${tr('navigation.ttsDistance', 'Distance')}: ${dKm.toFixed(1)} ${tr('navigation.ttsKm', 'kilomètres')}. `;
+                    ttsMsg += `${tr('navigation.ttsDuration', 'Durée')}: ${Math.round(dMin)} ${tr('navigation.ttsMinutes', 'minutes')}. `;
+                    ttsMsg += `${tr('navigation.ttsCalories', 'Calories')}: ${Math.round(cal)}. `;
+                    if (lastWalk) {
+                        const lDist = Number(lastWalk.distance_km) || 0;
+                        const lDur = Number(lastWalk.duration_minutes) || 0;
+                        const lCal = Number(lastWalk.calories) || 0;
+                        const distDelta = lDist > 0 ? ((dKm - lDist) / lDist * 100) : 0;
+                        const durDelta = lDur > 0 ? ((dMin - lDur) / lDur * 100) : 0;
+                        const calDelta = lCal > 0 ? ((cal - lCal) / lCal * 100) : 0;
+                        ttsMsg += `${tr('navigation.ttsVsLast', 'Par rapport à votre dernière marche')} : `;
+                        ttsMsg += distDelta >= 0
+                            ? `${tr('navigation.ttsMoreDistance', 'plus')} ${Math.abs(distDelta).toFixed(0)}% ${tr('navigation.ttsOnDistance', 'de distance')}. `
+                            : `${tr('navigation.ttsLessDistance', 'moins')} ${Math.abs(distDelta).toFixed(0)}% ${tr('navigation.ttsOnDistance', 'de distance')}. `;
+                        ttsMsg += calDelta >= 0
+                            ? `${tr('navigation.ttsMoreCalories', 'plus')} ${Math.abs(calDelta).toFixed(0)}% ${tr('navigation.ttsOnCalories', 'de calories brûlées')}. `
+                            : `${tr('navigation.ttsLessCalories', 'moins')} ${Math.abs(calDelta).toFixed(0)}% ${tr('navigation.ttsOnCalories', 'de calories brûlées')}. `;
+                    }
+                    if (bestSession && bestIsFw) {
+                        const bDist = Number(bestSession.distance_km) || 0;
+                        const bQual = Number(bestSession.quality_score) || 0;
+                        if (dKm >= bDist && bDist > 0) {
+                            ttsMsg += `${tr('navigation.ttsNewRecord', 'Félicitations, nouveau record de distance !')} `;
+                        } else if (bDist > 0) {
+                            const gap = ((bDist - dKm) / bDist * 100).toFixed(0);
+                            ttsMsg += `${tr('navigation.ttsGapToBest', 'Écart avec votre meilleure session')}: ${gap}% ${tr('navigation.ttsOnDistance', 'de distance')}. `;
+                        }
+                        if (qual >= bQual && bQual > 0) {
+                            ttsMsg += `${tr('navigation.ttsBestQuality', 'Meilleur score de qualité !')} `;
+                        }
+                    }
+                    ttsMsg += `${tr('navigation.ttsKeepGoing', 'Continuez comme ça !')}`;
+                    Speech.speak(ttsMsg, { language: 'fr-FR', rate: 0.95, pitch: 1.0 });
+                } catch (ttsErr) { console.warn('[Navigation] TTS performance recap error:', ttsErr); }
+
             } catch (e) { console.warn('[Navigation] Erreur log marche libre:', e); }
         } else {
             showToast(`🚶 ${t('navigation.walkTooShort') || 'Marche trop courte pour être enregistrée (min 30s / 10m)'}`);
         }
         setIsFreeWalking(false); setIsTracking(false); setNearbyCheckpoint(null); setLivePosition(null);
-    }, [livePosition, estimateCalories, computeQualityScore, activityPeriod, loadActivityStats]);
+    }, [livePosition, estimateCalories, computeQualityScore, loadActivityStats, walkingHistory, activitySummary, tr]);
 
     const stopTracking = useCallback(async () => {
         if (locationSubscriptionRef.current) { locationSubscriptionRef.current.remove(); locationSubscriptionRef.current = null; }
@@ -1975,18 +2027,19 @@ const NavigationScreen: React.FC = () => {
                                     <Pressable style={StyleSheet.absoluteFill} onPress={() => setStatsPeriodMenuOpen(false)} />
                                     <View style={st.statsMenuSheet}>
                                         <Text style={st.statsMenuTitle}>{tr('navigation.choosePeriod', 'Période')}</Text>
-                                        {(['week', 'month', 'quarter', 'semester', 'year'] as ActivityPeriodKey[]).map((p) => (
+                                        {(['today', 'week', 'month', 'quarter', 'semester', 'year'] as ActivityPeriodKey[]).map((p) => (
                                             <Pressable
                                                 key={p}
                                                 style={[st.statsMenuItem, activityPeriod === p && st.statsMenuItemActive]}
                                                 onPress={() => { setActivityPeriod(p); setStatsPeriodMenuOpen(false); loadActivityStats(p); }}
                                             >
                                                 <Text style={[st.statsMenuItemText, activityPeriod === p && st.statsMenuItemTextActive]}>
-                                                    {p === 'week' ? (t('navigation.periodWeek') || 'Semaine')
-                                                        : p === 'month' ? (t('navigation.periodMonth') || 'Mois')
-                                                            : p === 'quarter' ? tr('navigation.periodQuarter', 'Trimestre')
-                                                                : p === 'semester' ? tr('navigation.periodSemester', 'Semestre')
-                                                                    : (t('navigation.periodYear') || 'Année')}
+                                                    {p === 'today' ? tr('navigation.periodToday', "Aujourd'hui")
+                                                        : p === 'week' ? (t('navigation.periodWeek') || 'Semaine')
+                                                            : p === 'month' ? (t('navigation.periodMonth') || 'Mois')
+                                                                : p === 'quarter' ? tr('navigation.periodQuarter', 'Trimestre')
+                                                                    : p === 'semester' ? tr('navigation.periodSemester', 'Semestre')
+                                                                        : (t('navigation.periodYear') || 'Année')}
                                                 </Text>
                                             </Pressable>
                                         ))}
@@ -2092,6 +2145,59 @@ const NavigationScreen: React.FC = () => {
                                             ))}
                                         </View>
                                     </NativeCard>
+                                    {/* ── Évolution détaillée : actuelle vs dernière vs meilleure (mode marche libre) ── */}
+                                    {freeWalkFilterRange && freeWalkComparisons?.baseline && statsDashboardSummary.best_session && (() => {
+                                        const bs = statsDashboardSummary.best_session;
+                                        const bDist = Number(bs.distance_km) || 0;
+                                        const bDur = Number(bs.duration_minutes) || 0;
+                                        const bQual = Number(bs.quality_score) || 0;
+                                        const cDist = freeWalkComparisons.current.total_distance_km || 0;
+                                        const cDur = freeWalkComparisons.current.total_duration_minutes || 0;
+                                        const cQual = freeWalkComparisons.current.avg_quality_score || 0;
+                                        const lDist = freeWalkComparisons.baseline.total_distance_km || 0;
+                                        const lDur = freeWalkComparisons.baseline.total_duration_minutes || 0;
+                                        const rows = [
+                                            { label: tr('navigation.metricDistance', 'Distance'), curr: cDist, last: lDist, best: bDist, unit: ' km', fmt: (v: number) => v.toFixed(1) },
+                                            { label: tr('navigation.metricDuration', 'Durée'), curr: cDur, last: lDur, best: bDur, unit: ' min', fmt: (v: number) => Math.round(v).toString() },
+                                            { label: tr('navigation.metricQuality', 'Qualité'), curr: cQual, last: freeWalkComparisons.baseline.avg_quality_score || 0, best: bQual, unit: '/100', fmt: (v: number) => Math.round(v).toString() },
+                                        ];
+                                        return (
+                                            <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#3B82F6' }]}>
+                                                <Text style={st.secTitle}>📊 {tr('navigation.evolutionTitle', 'Évolution détaillée')}</Text>
+                                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: modernColors.border }}>
+                                                    <Text style={{ flex: 2, fontSize: 11, fontWeight: '700', color: modernColors.textSecondary }}> </Text>
+                                                    <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: modernColors.primary, textAlign: 'center' as any }}>🏃 {tr('navigation.colCurrent', 'Actuelle')}</Text>
+                                                    <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: modernColors.textSecondary, textAlign: 'center' as any }}>⏪ {tr('navigation.colLast', 'Dernière')}</Text>
+                                                    <Text style={{ flex: 1, fontSize: 11, fontWeight: '700', color: '#F59E0B', textAlign: 'center' as any }}>🏅 {tr('navigation.colBest', 'Record')}</Text>
+                                                </View>
+                                                {rows.map((r, i) => {
+                                                    const vsLastDelta = r.last > 0 ? ((r.curr - r.last) / r.last) * 100 : 0;
+                                                    const vsBestDelta = r.best > 0 ? ((r.curr - r.best) / r.best) * 100 : 0;
+                                                    const vsLastColor = vsLastDelta > 1 ? '#10B981' : vsLastDelta < -1 ? '#EF4444' : modernColors.textSecondary;
+                                                    const vsBestColor = vsBestDelta >= 0 ? '#10B981' : '#EF4444';
+                                                    return (
+                                                        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, borderBottomWidth: i < rows.length - 1 ? 1 : 0, borderBottomColor: modernColors.borderLight }}>
+                                                            <Text style={{ flex: 2, fontSize: 12, color: modernColors.textSecondary }}>{r.label}</Text>
+                                                            <Text style={{ flex: 1, fontSize: 13, fontWeight: '800', color: modernColors.primary, textAlign: 'center' as any }}>{r.fmt(r.curr)}{r.unit}</Text>
+                                                            <View style={{ flex: 1, alignItems: 'center' }}>
+                                                                <Text style={{ fontSize: 11, color: modernColors.textSecondary }}>{r.fmt(r.last)}{r.unit}</Text>
+                                                                {r.last > 0 && <Text style={{ fontSize: 10, fontWeight: '700', color: vsLastColor }}>{vsLastDelta >= 0 ? '↑' : '↓'}{Math.abs(vsLastDelta).toFixed(0)}%</Text>}
+                                                            </View>
+                                                            <View style={{ flex: 1, alignItems: 'center' }}>
+                                                                <Text style={{ fontSize: 11, color: '#F59E0B' }}>{r.fmt(r.best)}{r.unit}</Text>
+                                                                {r.best > 0 && <Text style={{ fontSize: 10, fontWeight: '700', color: vsBestColor }}>{vsBestDelta >= 0 ? '↑' : '↓'}{Math.abs(vsBestDelta).toFixed(0)}%</Text>}
+                                                            </View>
+                                                        </View>
+                                                    );
+                                                })}
+                                                {cDist >= bDist && bDist > 0 && (
+                                                    <View style={{ marginTop: 10, backgroundColor: '#ECFDF5', borderRadius: 8, padding: 10, alignItems: 'center' }}>
+                                                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#10B981' }}>🎉 {tr('navigation.newRecordBanner', 'Nouveau record de distance !')}</Text>
+                                                    </View>
+                                                )}
+                                            </NativeCard>
+                                        );
+                                    })()}
                                     {/* Best session */}
                                     {!freeWalkFilterRange && statsDashboardSummary.best_session && (() => {
                                         const bs = statsDashboardSummary.best_session;
@@ -2188,9 +2294,30 @@ const NavigationScreen: React.FC = () => {
                                                 `🎯 ${sess} session${sess > 1 ? 's' : ''}`;
                                             if (freeWalkFilterRange) {
                                                 msg += `\n🕒 ${t('navigation.sessionWindow') || 'Période'}: ${new Date(freeWalkFilterRange.start).toLocaleTimeString()} → ${new Date(freeWalkFilterRange.end).toLocaleTimeString()}`;
+                                                if (freeWalkComparisons?.baseline) {
+                                                    const cD = freeWalkComparisons.current.total_distance_km || 0;
+                                                    const bD = freeWalkComparisons.baseline.total_distance_km || 0;
+                                                    const cC = freeWalkComparisons.current.total_calories || 0;
+                                                    const bC = freeWalkComparisons.baseline.total_calories || 0;
+                                                    const distPct = bD > 0 ? ((cD - bD) / bD * 100) : 0;
+                                                    const calPct = bC > 0 ? ((cC - bC) / bC * 100) : 0;
+                                                    msg += `\n\n📊 ${tr('navigation.shareEvolution', 'Évolution vs dernière marche')} :`;
+                                                    msg += `\n  📏 ${distPct >= 0 ? '↑' : '↓'} ${Math.abs(distPct).toFixed(0)}% distance`;
+                                                    msg += `\n  🔥 ${calPct >= 0 ? '↑' : '↓'} ${Math.abs(calPct).toFixed(0)}% calories`;
+                                                }
+                                                if (best && bestSessionLooksLikeFreeWalk(best)) {
+                                                    const bDist = Number(best.distance_km) || 0;
+                                                    const cDist = statsDashboardSummary.total_distance_km || 0;
+                                                    if (cDist >= bDist && bDist > 0) {
+                                                        msg += `\n🎉 ${tr('navigation.shareNewRecord', 'Nouveau record de distance !')}`;
+                                                    } else if (bDist > 0) {
+                                                        const gap = ((bDist - cDist) / bDist * 100).toFixed(0);
+                                                        msg += `\n🏅 ${tr('navigation.shareGapToBest', 'Écart record')}: ${gap}%`;
+                                                    }
+                                                }
                                             }
                                             if (hs?.score) msg += `\n🫀 ${t('navigation.healthScoreLabel') || 'Score santé'} : ${hs.score}/100 (${hs.label || ''})`;
-                                            if (best) {
+                                            if (!freeWalkFilterRange && best) {
                                                 const dStr = best.date ? new Date(`${best.date}T12:00:00`).toLocaleDateString() : '';
                                                 msg += `\n🏅 ${t('navigation.bestSession') || 'Meilleure session'}${dStr ? ` (${dStr})` : ''} : ${best.distance_km?.toFixed(1)} km / ${Math.round(best.duration_minutes || 0)} min`;
                                                 if (bestSessionLooksLikeFreeWalk(best)) msg += ` 🚶`;
@@ -2437,7 +2564,7 @@ const NavigationScreen: React.FC = () => {
                                                         <Text style={st.secTitle}>🌍 {t('navigation.environmentalImpact') || 'Impact Environnemental'}</Text>
                                                         <TouchableOpacity
                                                             style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#10B98115' }}
-                                                        onPress={async () => {
+                                                            onPress={async () => {
                                                                 const co2 = aiInsights.co2_impact;
                                                                 const curr = co2?.currency_symbol || aiInsights.geo_context?.currency_symbol || 'FCFA';
                                                                 const emittedKg = co2KgFromImpact(co2, 'emitted');
@@ -2730,58 +2857,58 @@ const NavigationScreen: React.FC = () => {
                                         </Text>
                                     ) : null}
                                     {statsModality === 'all' && !freeWalkFilterRange ? (
-                                    <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#7C3AED' }]}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                                            <Text style={st.secTitle}>📝 Historique Coach IA</Text>
-                                            {coachingNotifHistory.some(n => !n.read) && (
-                                                <TouchableOpacity
-                                                    onPress={async () => {
-                                                        await coachingNotificationService.markAllAsRead();
-                                                        await loadCoachingNotificationHistory();
-                                                    }}
-                                                    style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#7C3AED15' }}
-                                                    activeOpacity={0.7}
-                                                >
-                                                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#7C3AED' }}>Tout lu</Text>
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
-                                        {loadingCoachingHistory ? (
-                                            <View style={{ alignItems: 'center', paddingVertical: 10 }}>
-                                                <ActivityIndicator color={modernColors.primary} />
-                                                <Text style={{ marginTop: 6, fontSize: 12, color: modernColors.textSecondary }}>Chargement historique...</Text>
+                                        <NativeCard style={[st.secCard, { borderLeftWidth: 4, borderLeftColor: '#7C3AED' }]}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                                <Text style={st.secTitle}>📝 Historique Coach IA</Text>
+                                                {coachingNotifHistory.some(n => !n.read) && (
+                                                    <TouchableOpacity
+                                                        onPress={async () => {
+                                                            await coachingNotificationService.markAllAsRead();
+                                                            await loadCoachingNotificationHistory();
+                                                        }}
+                                                        style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#7C3AED15' }}
+                                                        activeOpacity={0.7}
+                                                    >
+                                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#7C3AED' }}>Tout lu</Text>
+                                                    </TouchableOpacity>
+                                                )}
                                             </View>
-                                        ) : coachingNotifHistory.length === 0 ? (
-                                            <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>
-                                                Aucune notification Coach IA enregistrée pour le moment.
-                                            </Text>
-                                        ) : (
-                                            coachingNotifHistory.slice(0, 8).map((item) => (
-                                                <TouchableOpacity
-                                                    key={item.id}
-                                                    style={{ paddingVertical: 9, borderTopWidth: 1, borderTopColor: modernColors.border }}
-                                                    activeOpacity={0.7}
-                                                    onPress={async () => {
-                                                        await coachingNotificationService.markAsRead(item.id);
-                                                        await loadCoachingNotificationHistory();
-                                                    }}
-                                                >
-                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                                        {!item.read && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#7C3AED' }} />}
-                                                        <Text style={{ flex: 1, fontSize: 13, fontWeight: item.read ? '600' : '800', color: modernColors.text }} numberOfLines={1}>
-                                                            {item.title}
+                                            {loadingCoachingHistory ? (
+                                                <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+                                                    <ActivityIndicator color={modernColors.primary} />
+                                                    <Text style={{ marginTop: 6, fontSize: 12, color: modernColors.textSecondary }}>Chargement historique...</Text>
+                                                </View>
+                                            ) : coachingNotifHistory.length === 0 ? (
+                                                <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>
+                                                    Aucune notification Coach IA enregistrée pour le moment.
+                                                </Text>
+                                            ) : (
+                                                coachingNotifHistory.slice(0, 8).map((item) => (
+                                                    <TouchableOpacity
+                                                        key={item.id}
+                                                        style={{ paddingVertical: 9, borderTopWidth: 1, borderTopColor: modernColors.border }}
+                                                        activeOpacity={0.7}
+                                                        onPress={async () => {
+                                                            await coachingNotificationService.markAsRead(item.id);
+                                                            await loadCoachingNotificationHistory();
+                                                        }}
+                                                    >
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                            {!item.read && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#7C3AED' }} />}
+                                                            <Text style={{ flex: 1, fontSize: 13, fontWeight: item.read ? '600' : '800', color: modernColors.text }} numberOfLines={1}>
+                                                                {item.title}
+                                                            </Text>
+                                                            <Text style={{ fontSize: 10, color: modernColors.textSecondary }}>
+                                                                {new Date(item.timestamp).toLocaleString()}
+                                                            </Text>
+                                                        </View>
+                                                        <Text style={{ marginTop: 3, marginLeft: item.read ? 0 : 16, fontSize: 12, color: modernColors.textSecondary }} numberOfLines={2}>
+                                                            {item.body}
                                                         </Text>
-                                                        <Text style={{ fontSize: 10, color: modernColors.textSecondary }}>
-                                                            {new Date(item.timestamp).toLocaleString()}
-                                                        </Text>
-                                                    </View>
-                                                    <Text style={{ marginTop: 3, marginLeft: item.read ? 0 : 16, fontSize: 12, color: modernColors.textSecondary }} numberOfLines={2}>
-                                                        {item.body}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            ))
-                                        )}
-                                    </NativeCard>
+                                                    </TouchableOpacity>
+                                                ))
+                                            )}
+                                        </NativeCard>
                                     ) : null}
                                 </>
                             ) : null}
@@ -3207,7 +3334,7 @@ const NavigationScreen: React.FC = () => {
                                             <View style={st.healthPreviewStats}>
                                                 {aiInsights.health_score && <Text style={[st.healthPreviewStat, { color: aiInsights.health_score.score >= 80 ? '#10B981' : '#F59E0B' }]}>❤️ {aiInsights.health_score.score}/100</Text>}
                                                 {aiInsights.gamification && <Text style={st.healthPreviewStat}>🔥 {aiInsights.gamification.current_streak}j</Text>}
-                                {aiInsights.co2_impact && <Text style={st.healthPreviewStat}>🌿 {co2KgFromImpact(aiInsights.co2_impact, 'saved').toFixed(1)} kg</Text>}
+                                                {aiInsights.co2_impact && <Text style={st.healthPreviewStat}>🌿 {co2KgFromImpact(aiInsights.co2_impact, 'saved').toFixed(1)} kg</Text>}
                                             </View>
                                         </View>
                                         <SafeIcon name="ChevronRight" size={20} color="#7C3AED" />
