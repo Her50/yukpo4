@@ -675,7 +675,7 @@ const NavigationScreen: React.FC = () => {
         const mid = Math.floor(trend.length / 2);
         const prev = trend.slice(0, mid);
         const curr = trend.slice(mid);
-        const sumDist = (arr: any[]) => arr.reduce((s: number, d: any) => s + (Number(d?.distance_meters) || 0), 0) / 1000;
+        const sumDist = (arr: any[]) => arr.reduce((s: number, d: any) => s + (Number(d?.distance_km) || 0), 0);
         const prevDist = sumDist(prev);
         const currDist = sumDist(curr);
         const delta = prevDist > 0 ? ((currDist - prevDist) / prevDist) * 100 : 0;

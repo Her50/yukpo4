@@ -1520,6 +1520,10 @@ struct ActivityHistoryQuery {
 /// Borne basse de dates pour l’historique (None = pas de filtre temporel).
 fn activity_history_period_since(period: &str) -> Option<chrono::DateTime<chrono::Utc>> {
     match period {
+        "today" => {
+            let now = chrono::Utc::now();
+            Some(now.date_naive().and_hms_opt(0, 0, 0).unwrap().and_utc())
+        }
         "week" => Some(chrono::Utc::now() - chrono::Duration::days(7)),
         "month" => Some(chrono::Utc::now() - chrono::Duration::days(30)),
         "quarter" => Some(chrono::Utc::now() - chrono::Duration::days(90)),
@@ -1629,6 +1633,10 @@ async fn get_activity_summary(
 ) -> AppResult<Json<serde_json::Value>> {
     let period = params.period.unwrap_or_else(|| "week".to_string());
     let since = match period.as_str() {
+        "today" => {
+            let now = chrono::Utc::now();
+            now.date_naive().and_hms_opt(0, 0, 0).unwrap().and_utc()
+        }
         "week" => chrono::Utc::now() - chrono::Duration::days(7),
         "month" => chrono::Utc::now() - chrono::Duration::days(30),
         "quarter" => chrono::Utc::now() - chrono::Duration::days(90),
