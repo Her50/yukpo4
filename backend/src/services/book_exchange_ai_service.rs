@@ -1776,15 +1776,18 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE:
 2. CLASSE SUPÉRIEURE (OBLIGATOIRE): L'élève a DÉJÀ UTILISÉ ce livre → il passe en classe supérieure.
    classe_souhaitee = classe IMMÉDIATEMENT SUPÉRIEURE selon la hiérarchie ci-dessus.
    Si c'est la dernière classe → classe_souhaitee=null.
-3. PRIX & DEVISE: Chercher le prix imprimé, identifier la devise ({currency} par défaut)
-4. ÉTAT: "bon", "acceptable" ou "rejete"
+3. PRIX & DEVISE (CRITIQUE — le prix détermine la valeur de troc/vente):
+   Priorité 1: Lire le prix IMPRIMÉ sur le livre — VERSO (4ème de couverture, code-barres, bandeau prix, autocollant éditeur). Formats: "3 500 FCFA", "Prix: 4500 F", "N 2,500".
+   Priorité 2: Si aucun prix visible MAIS tu reconnais le livre (titre+auteur+éditeur), utilise TA CONNAISSANCE pour donner le prix réel en librairie. Ex: "CIAM Maths 3ème" = ~4200 FCFA. Ajoute "prix_estime_par_ia" dans notes.
+   Priorité 3: Si tu ne reconnais pas le livre, estime un prix médian selon le niveau (primaire ~3000, collège ~4500, lycée ~6000 {currency}). Ajoute "prix_estime_generique" dans notes.
+   NE PAS laisser prix_detecte à null sauf livre totalement illisible. Devise par défaut: {currency}
+4. ÉTAT: "bon", "acceptable" ou "rejete" (minuscules sans accent, décision VISUELLE obligatoire)
 5. PROGRAMME SCOLAIRE: {programmes}
 
 ADAPTATION INTELLIGENTE:
 - Si le livre utilise des appellations différentes du système détecté, ADAPTE-TOI.
-  Ex: un livre "Year 7" au Kenya = "Form 1", un livre "Classe de 6ème" au Sénégal = même que "6ème" au Cameroun.
 - Utilise ta connaissance des systèmes éducatifs africains pour faire la correspondance.
-- Si tu détectes que le livre vient d'un système DIFFÉRENT de celui de l'utilisateur, signale-le dans les notes.
+- Si tu détectes que le livre vient d'un système DIFFÉRENT, signale-le dans les notes.
 
 Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, classe_souhaitee, matiere, niveau, prix_detecte, devise_detectee, etat_classification, etat_description, est_au_programme, programme_scolaire_id, programme_match_details, confidence, notes."#,
                 lat = lat,

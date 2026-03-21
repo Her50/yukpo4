@@ -95,33 +95,30 @@ class AppUpdateService {
   }
 
   /**
-   * Détecte la source d'installation de l'application
+   * Detecte la source d'installation de l'application.
+   * Le backend decide du lien a retourner via ses flags
+   * ANDROID_ON_PLAY_STORE / IOS_ON_APP_STORE.
+   * Cette info cote mobile sert uniquement d'indication supplementaire.
    */
   private async detectInstallSource(): Promise<string> {
     try {
       if (Platform.OS === 'android') {
-        const buildNumber = Application.nativeBuildVersion || '1';
-        const versionCode = parseInt(buildNumber) || 1;
-
-        // Convention: versions Play Store >= 1000, versions directes < 1000
-        if (versionCode >= 1000) {
-          return 'play_store';
-        } else {
-          return 'direct_apk';
+        // Tenter de detecter le store installateur via expo-application
+        try {
+          const storeUrl = await Application.getInstallReferrerAsync?.();
+          if (storeUrl && storeUrl.includes('play.google.com')) {
+            return 'play_store';
+          }
+        } catch (_) {
+          // API non disponible, fallback
         }
+        return 'direct_apk';
       } else if (Platform.OS === 'ios') {
-        // iOS peut être App Store ou Test Flight
-        const bundleId = Application.applicationId;
-        if (bundleId?.includes('testflight')) {
-          return 'test_flight';
-        } else {
-          return 'app_store';
-        }
+        return 'app_store';
       }
-
       return 'unknown';
     } catch (error) {
-      console.warn('[AppUpdate] Erreur détection source:', error);
+      console.warn('[AppUpdate] Erreur detection source:', error);
       return 'unknown';
     }
   }

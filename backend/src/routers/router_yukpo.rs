@@ -1118,7 +1118,73 @@ async fn handle_creation_service_direct(
     let app_ia = state.ia.clone();
 
     // Construire le prompt de création de service
-    let user_text = input.texte.clone().unwrap_or_default();
+    let mut user_text = input.texte.clone().unwrap_or_default();
+    let has_text = !user_text.trim().is_empty();
+
+    // ✅ CORRECTION 2026-03-21: Transcrire l'audio AVANT de construire le prompt
+    // Sans cela, un envoi audio-only produit un prompt vide → suggestions vides → formulaire fallback
+    if has_audios {
+        use crate::services::audio_transcription_service::AudioTranscriptionService;
+
+        log::info!("[handle_creation_service_direct] 🎤 Audio détecté - Transcription en cours...");
+
+        let audios = input.audio_base64.as_ref().unwrap();
+        let first_audio = &audios[0];
+
+        match AudioTranscriptionService::transcribe_audio_base64_with_cache(&state.pg, first_audio)
+            .await
+        {
+            Ok(transcription) => {
+                let transcribed_text = transcription.text.trim();
+                log::info!(
+                    "[handle_creation_service_direct] ✅ Audio transcrit: '{}' (langue: {:?}, confiance: {:?})",
+                    &transcribed_text.chars().take(200).collect::<String>(),
+                    transcription.language,
+                    transcription.confidence
+                );
+
+                let is_error_message = transcribed_text.starts_with("[Audio non transcrit")
+                    || transcribed_text.starts_with("[Erreur transcription")
+                    || transcribed_text.is_empty();
+
+                if !is_error_message {
+                    if has_text {
+                        user_text = format!("{} {}", user_text, transcribed_text);
+                        log::info!("[handle_creation_service_direct] Texte combiné (texte original + transcription audio)");
+                    } else {
+                        user_text = transcribed_text.to_string();
+                        log::info!("[handle_creation_service_direct] Utilisation de la transcription audio comme texte de création");
+                    }
+                } else {
+                    log::warn!(
+                        "[handle_creation_service_direct] ⚠️ Transcription audio échouée: '{}'",
+                        transcribed_text
+                    );
+                    if !has_text {
+                        let error_message = if transcribed_text.contains("API non configurée") {
+                            "La transcription audio n'est pas configurée. Veuillez configurer OPENAI_API_KEY ou décrire votre produit par texte."
+                        } else {
+                            "Impossible de transcrire l'audio. Veuillez réessayer ou décrire votre produit par texte."
+                        };
+                        return Err(AppError::BadRequest(error_message.to_string()));
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!(
+                    "[handle_creation_service_direct] ❌ Erreur transcription audio: {:?}",
+                    e
+                );
+                if !has_text {
+                    return Err(AppError::BadRequest(format!(
+                        "Erreur lors de la transcription audio: {}. Veuillez décrire votre produit par texte.",
+                        e
+                    )));
+                }
+                log::info!("[handle_creation_service_direct] Erreur transcription, utilisation du texte original uniquement");
+            }
+        }
+    }
 
     // ?? UTILISER LE PROMPT SPÉCIFIQUE EXISTANT depuis le fichier .md
     let prompt_content = match std::fs::read_to_string("ia_prompts/creation_service_prompt.md") {

@@ -10,7 +10,6 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
@@ -103,11 +102,10 @@ const BookRecapV2Screen: React.FC = () => {
         checkProgrammes();
     }, [initialBooks]);
 
-    // Grouper les livres par classe
     const booksByClass = useMemo(() => {
         const groups: Record<string, BookEntry[]> = {};
         initialBooks.forEach(book => {
-            if (book.is_rejected) return; // Skip rejected books
+            if (book.is_rejected) return;
             const classe = book.classe_actuelle || t('bookRecapV2.nonClasse');
             if (!groups[classe]) groups[classe] = [];
             groups[classe].push(book);
@@ -119,6 +117,10 @@ const BookRecapV2Screen: React.FC = () => {
     const rejectedBooks = useMemo(() => initialBooks.filter(b => b.is_rejected), [initialBooks]);
 
     const acceptedCount = initialBooks.filter((b) => !b.is_rejected).length;
+    const computedTotalValue = useMemo(() =>
+        initialBooks.filter(b => !b.is_rejected).reduce((s, b) => s + b.valeur_calculee, 0),
+        [initialBooks]
+    );
 
     const modeCounts = useMemo(() => {
         const c = { troc: 0, vente: 0, don: 0 };
@@ -132,13 +134,11 @@ const BookRecapV2Screen: React.FC = () => {
         return c;
     }, [initialBooks, bookModes]);
 
-    // Livres filtrés par classe sélectionnée
     const displayedBooks = useMemo(() => {
         if (!selectedClassFilter) return initialBooks.filter(b => !b.is_rejected);
         return booksByClass[selectedClassFilter] || [];
     }, [selectedClassFilter, booksByClass, initialBooks]);
 
-    // Stats par classe
     const classStats = useMemo(() => {
         const stats: Record<string, { count: number; value: number }> = {};
         initialBooks.forEach(book => {
@@ -149,7 +149,7 @@ const BookRecapV2Screen: React.FC = () => {
             stats[classe].value += book.valeur_calculee;
         });
         return stats;
-    }, [initialBooks]);
+    }, [initialBooks, getEffectiveValue]);
 
     const handleModeChange = useCallback((bookId: number, mode: string) => {
         hapticPress();
@@ -351,7 +351,7 @@ const BookRecapV2Screen: React.FC = () => {
                     </View>
                     <View style={styles.statBox}>
                         <Text style={[styles.statValue, { color: modernColors.primary }]}>
-                            {Math.round(totalValue)} XAF
+                            {Math.round(computedTotalValue)} XAF
                         </Text>
                         <Text style={styles.statLabel}>{t('bookRecapV2Screen.valeurTotale', 'Valeur totale')}</Text>
                     </View>

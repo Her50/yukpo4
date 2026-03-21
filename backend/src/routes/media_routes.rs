@@ -27,9 +27,15 @@ use crate::state::AppState;
 
 pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
-        .route("/api/media/upload/{service_id}", post(upload_media))
+        .route(
+            "/api/media/upload/{service_id}",
+            post(upload_media).layer(axum::extract::DefaultBodyLimit::max(200_000_000)),
+        )
         // ✅ Alias pour compatibilité avec frontend (utilisé par CreationService.tsx)
-        .route("/api/prestataire/upload/{service_id}", post(upload_media))
+        .route(
+            "/api/prestataire/upload/{service_id}",
+            post(upload_media).layer(axum::extract::DefaultBodyLimit::max(200_000_000)),
+        )
         .route("/media/delete/{media_id}", delete(delete_media))
         // ✅ PHASE 2: Endpoint pour servir la vidéo exemple (publique, pas d'auth)
         .route(
