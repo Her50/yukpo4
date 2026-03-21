@@ -158,20 +158,27 @@ CV analysis and salary prediction, community navigation alerts, AI prescription 
 Yukpo supports 60+ languages and payments via MTN MoMo, Orange Money, Visa/Mastercard, and Cash on delivery. \
 Available on Android and iOS.\n\n\
 === HOW TO CREATE A SERVICE ===\n\
-Method 1 — From Mes Services:\n\
-1. Open 'Mes Services' (tab bottom or GestionServicesSpecialises)\n\
-2. Tap '+' or 'Ajouter un service'\n\
-3. Choose your service category (santé, transport, livraison, hôtel, etc.)\n\
-4. Fill the form: name, description, price, category, location, photos\n\
-5. Tap 'Publier' → your service appears in search results\n\
-Method 2 — From Home:\n\
-1. Go to Home → tap 'Recherche' search bar\n\
-2. Tap 'Créer un service' from the suggestions\n\
-3. Follow the same form flow as above\n\
-Route: GestionServicesSpecialises → CreateService → form → publish\n\n\
+Primary — Mes Services (modern provider hub):\n\
+1. Open **Mes Services**: bottom tab **Services** OR stack route **MesServices** (same UI: MesServicesScreen).\n\
+2. Add product/service via **+**, sidebar, or cards → **AjouterProduitSimple** (if a service already exists) or **FormulaireYukpoIntelligent** (first business / full form).\n\
+3. Do **not** present **ServicesActivity** (legacy) or **ServicesDashboard** as the main 'Mes services' experience.\n\
+Recommended — From Home (AI-guided):\n\
+1. On **Home**, switch to **Create** mode (toggle beside Search).\n\
+2. Use **ChatInputMobile** (text/photo/media) → AI suggestions → **FormulaireYukpoIntelligent** (no service yet) or **AjouterProduitSimple** (service exists).\n\
+3. Global search from Home uses **ResultatBesoin** after **rechercherServices** — that is separate from publishing a service.\n\
+**MesServices vs GestionServicesSpecialises:** **MesServices** = default **product / general prestation** hub for most sellers. **GestionServicesSpecialises** = **different, fully supported screen** for **specialized partner verticals** (pharmacy, hospital, lab, travel agency, carpooling, taxi). Calling it “secondary” only means **routing priority** for generic “where is my catalog?” — **never** downgrade answer quality when the user is on or asks about **GestionServicesSpecialises**.\n\n\
+=== PARTNER SCREEN: GESTION SERVICES SPÉCIALISÉS (route GestionServicesSpecialises) ===\n\
+**Role:** List and manage **typed specialized partner services** — **not** the same UI as **MesServices** (e-commerce product cards).\n\
+**API:** **GET** `/api/specialized-services/user` with query params: `type_filter` (e.g. partner_type), `status`, `sort_by`, `sort_direction`.\n\
+**UI:** Chips **Tous / Santé / Transport**; search; **card vs list** view; **advanced filters** modal; **sort**; pull-to-refresh; **offline** cache + sync indicator + conflict modal; **notification preferences** modal.\n\
+**Edit:** Opens the correct form by type — **PharmacieForm**, **HopitalForm**, **LaboratoireForm**, **AgenceVoyageForm**, **CovoiturageForm**, **TaxiForm** with `serviceId`, `specializedServiceId`, `mode: 'edit'`.\n\
+**Status:** Toggle activate/deactivate per service (API patch).\n\
+**Empty state:** Primary CTA depends on **partner_type** (e.g. pharmacie → PharmacieForm); alternative **SpecializedServicesHub** to explore.\n\
+**Context shortcuts (when shown):** e.g. **ServicesDashboard**, **AgencyTicketManagement**, **ManageAgencySchedules**, **MesReservations**, **PrestataireReservations**.\n\
+**Assistant rule:** If the question is about **this** screen, describe **these** controls and routes — do **not** replace with **MesServices** unless the user clearly means the **general product catalog**.\n\n\
 === HOW TO CREATE A PRODUCT ===\n\
 Method 1 — AI Photo Creation (recommended):\n\
-1. Go to your service dashboard or AjouterProduitSimple\n\
+1. From **MesServices** / **MesProduits** or **AjouterProduitSimple**\n\
 2. Tap 'Ajouter un produit'\n\
 3. Take a photo of your product or select from gallery\n\
 4. The AI automatically extracts: title, category, description, and price estimate from the image\n\
@@ -179,14 +186,14 @@ Method 1 — AI Photo Creation (recommended):\n\
 6. Set stock quantity, add extra photos if needed\n\
 7. Tap 'Publier' → product appears in your catalog\n\
 Method 2 — Manual:\n\
-1. Go to your service dashboard → Catalog/Produits section\n\
+1. Open **MesServices** or **MesProduits** → add or edit product\n\
 2. Tap '+' or 'Nouveau produit'\n\
 3. Fill: title, description, price, category, stock quantity\n\
 4. Add photos (up to 5)\n\
 5. Tap 'Publier'\n\
-Routes: MesProduitsScreen, AjouterProduitSimpleScreen, ProductManagerMobile\n\n\
+Routes: MesProduits, AjouterProduitSimple, FormulaireYukpoIntelligent, ProductManagerMobile\n\n\
 === HOW TO MANAGE PRODUCTS ===\n\
-General dashboard: GestionServicesSpecialises → select your service → Catalog/Produits section\n\
+Main hubs: **MesServices** (tab **Services** or route **MesServices**) for the product-first dashboard; **MesProduits** for the detailed per-product catalog (filters, cards, bulk actions).\n\
 Actions available:\n\
 - View all products in your catalog (list or grid view)\n\
 - Edit product: tap product → modify title, price, description, photos, stock\n\
@@ -200,7 +207,7 @@ Specialized dashboards:\n\
 - Pharmacy: PharmaciePartnerDashboard → médicaments, commandes, pharmacie de garde, IA dosage, gestion ordonnances\n\
 - Restaurant: RestaurantDashboard → menu, plats, commandes, horaires d'ouverture, statistiques\n\
 - Hotel: HotelDashboard → chambres, tarifs, réservations, check-in/check-out QR, gestion équipe\n\
-Routes: MesProduitsScreen, ProductDetailScreen, ProductManagerMobile, ProductStatsScreen\n\n\
+Routes: MesProduits, MesServices, ProductDetail, ProductManagerMobile, ProductStats, AnalyticsDashboard\n\n\
 === HOW TO CREATE A VIDEO ===\n\
 Step by step:\n\
 1. Go to Video tab (bottom) or VideoCreationIntro screen\n\
@@ -342,7 +349,7 @@ Features: plan weekly meals, search recipes, generate shopping lists from meal p
 Routes: MenuPlanningHub, MenuWeekCalendar, RecipeSearch, ShoppingList\n\n\
 === ONLINE SALES SYSTEM — DETAILED ===\n\
 How online sales work on Yukpo:\n\
-1. SELLER sets up: Create a service → add products to catalog with photos, prices, stock\n\
+1. SELLER sets up: **MesServices** (tab **Services** / route **MesServices**) or Home **Create** mode → create service + products with photos, prices, stock\n\
 2. BUYER discovers: Search (RechercheBesoin) → browse results → view product details\n\
 3. BUYER contacts: Open chat with seller (ChatModalMobile) → ask questions about products\n\
 4. ORDER: In chat → tap product from gallery → 'Commander avec livraison' → set delivery address → confirm\n\
@@ -482,8 +489,9 @@ Main screens and their navigation names:\n\
 - Recipes → RecipeSearch\n\
 - Troc/Exchange → TrocMatching\n\
 - Price Comparison → BayamSelamSearch\n\
-- My Services → GestionServicesSpecialises\n\
-- My Products → MesProduitsScreen\n\
+- Mes Services (hub produits / prestations générales) → **MesServices** (onglet **Services**)\n\
+- Mes produits (catalogue détaillé) → **MesProduits**\n\
+- Services spécialisés partenaire (pharmacie, hôpital, labo, agence voyage, covoit, taxi) → **GestionServicesSpecialises** (écran dédié, pas un simple “fallback”)\n\
 - Profile → Profile\n\
 - Settings → EnhancedSettings\n\
 - Wallet → WalletFinancialScreen\n\

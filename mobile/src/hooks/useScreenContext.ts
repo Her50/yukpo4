@@ -1757,12 +1757,19 @@ const SCREEN_CONFIGS: Record<string, {
   GestionServicesSpecialises: {
     type: 'dashboard',
     actions: [
-      { id: 'add-service', label: 'Ajouter Service', icon: LUCIDE_ICONS.add, route: 'CreationService', category: 'creation', description: 'Créer un nouveau service' },
-      { id: 'filter-services', label: 'Filtrer', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Filtrer mes services par catégorie' },
-      { id: 'map-view', label: 'Vue Carte', icon: LUCIDE_ICONS.map, category: 'action', description: 'Voir mes services sur la carte' },
+      { id: 'filter-chips', label: 'Filtres Tous / Santé / Transport', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Chips catégorie + recherche texte + modal filtres avancés (type, statut, période)' },
+      { id: 'view-toggle', label: 'Vue cartes ou liste', icon: LUCIDE_ICONS.list, category: 'action', description: 'Préférence persistée SafeStorage' },
+      { id: 'sort-bar', label: 'Tri (ServiceSortSearchBar)', icon: LUCIDE_ICONS.list, category: 'action', description: 'sort_by / sort_direction envoyés à GET /api/specialized-services/user' },
+      { id: 'edit-service', label: 'Modifier (carte)', icon: LUCIDE_ICONS.edit, category: 'action', description: 'Selon type → PharmacieForm, HopitalForm, LaboratoireForm, AgenceVoyageForm, CovoiturageForm, TaxiForm (serviceId, specializedServiceId, mode edit)' },
+      { id: 'toggle-active', label: 'Activer / désactiver', icon: LUCIDE_ICONS.check, category: 'action', description: 'PATCH statut service' },
+      { id: 'empty-cta-partner', label: 'Créer selon partner_type', icon: LUCIDE_ICONS.add, category: 'creation', description: 'État vide : CTA vers formulaire métier (ex. PharmacieForm) ou SpecializedServicesHub' },
+      { id: 'services-dashboard', label: 'ServicesDashboard', icon: LUCIDE_ICONS.clipboard, route: 'ServicesDashboard', category: 'navigation', description: 'Raccourci header selon contexte' },
+      { id: 'sync-offline', label: 'Sync / hors ligne', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Cache offlineStorage, file d’attente sync, modal conflits' },
     ],
-    elements: [],
-    guide: 'Liste de vos services spécialisés. Filtrez, triez et gérez tous vos services. Mode carte ou liste.',
+    elements: [
+      { id: 'gss-list', type: 'card', label: 'FlatList services spécialisés (carte ou liste)', actionable: true },
+    ],
+    guide: '**GestionServicesSpecialisesScreen** : tableau de bord **services spécialisés** partenaire (≠ **MesServices** e-commerce). Données **GET /api/specialized-services/user** (filtres query). Filtres santé/transport, recherche, tri, cartes/liste, refresh, mode hors ligne. Édition = formulaire **métier** selon le type. Réponses assistant : décrire **cet** écran précisément si l’utilisateur pose des questions dessus.',
   },
 
   // =========================================================================
