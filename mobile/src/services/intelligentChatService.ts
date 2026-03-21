@@ -416,7 +416,7 @@ class IntelligentChatService {
 
       // ═══ 4. Construire le contexte complet pour l'IA ═══
       const contextPrompt = this.trimPrompt(
-        this.buildContextPrompt(screenContext, conversationHistory, lang),
+        this.buildContextPrompt(screenContext, conversationHistory, lang, userMessage),
       );
 
       const requestType = this.detectRequestType(userMessage, screenContext);
@@ -555,7 +555,7 @@ class IntelligentChatService {
   /**
    * Construire le prompt de contexte pour l'IA
    */
-  private buildContextPrompt(screenContext: ScreenContext, history: ChatMessage[], lang?: string): string {
+  private buildContextPrompt(screenContext: ScreenContext, history: ChatMessage[], lang?: string, userMessage?: string): string {
     const { screenName, screenType, userData, serviceData, guideText } = screenContext;
     const availableActions = Array.isArray(screenContext.availableActions) ? screenContext.availableActions : [];
     const visibleElements = Array.isArray(screenContext.visibleElements) ? screenContext.visibleElements : [];
@@ -2633,6 +2633,224 @@ RESPONSE FORMAT (JSON):
   "next_steps": ["Anticipated follow-up question 1?", "Anticipated follow-up question 2?", "Anticipated follow-up question 3?"],
   "confidence": 0.95
 }`;
+
+    // ═══ CROSS-SCREEN CONTEXT INJECTION ═══
+    // When the user asks about a specific module from ANY screen, inject that module's
+    // context so the AI can answer precisely — even from HomeScreen or unrelated screens.
+    const crossScreenQuery = (userMessage || '') + ' ' + history.slice(-3).map(m => m.isUser ? m.text : '').join(' ');
+    const cq = crossScreenQuery.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const injectedScreens = new Set<string>();
+    // Track which screens already have their DETAIL block injected
+    if (onNavigationScreen) injectedScreens.add('Navigation');
+    if (onProductHubScreen) injectedScreens.add('MesServices');
+    if (onMesProduitsScreen) injectedScreens.add('MesProduits');
+    if (onBookExchangeHome) injectedScreens.add('BourseLivre');
+    if (onTicketVoyageHome) injectedScreens.add('TicketVoyage');
+    if (onCovoiturageHome) injectedScreens.add('Covoiturage');
+    if (onTaxiHome) injectedScreens.add('Taxi');
+    if (onSupermarketHome) injectedScreens.add('Supermarket');
+    if (onOffresEmploiHome || onOffresEmploiHub) injectedScreens.add('Emploi');
+    if (onBloodTransfusionScreen) injectedScreens.add('BloodBank');
+    if (onLaboratoryModule) injectedScreens.add('Laboratory');
+    if (onHospitalModule || onHospitalPartnerDashboard) injectedScreens.add('Hospital');
+    if (onPharmacyModule) injectedScreens.add('Pharmacy');
+    if (onDeliveryOrderModule) injectedScreens.add('Delivery');
+    if (onCourierDashboard) injectedScreens.add('Courier');
+    if (onMenuPlanningModule) injectedScreens.add('MenuPlanning');
+    if (onOrientationStudentModule || onOrientationPartnerDashboard) injectedScreens.add('Orientation');
+    if (onAutoMarketplaceModule || onAutomobilePartnerDashboard) injectedScreens.add('Auto');
+    if (onFleetDashboard) injectedScreens.add('Fleet');
+    if (onSearchResultsScreen) injectedScreens.add('SearchResults');
+
+    // Keyword → screen mapping for cross-screen detection
+    const CROSS_SCREEN_RULES: Array<{ keywords: string[]; screen: string; label: string }> = [
+      { keywords: ['navigation', 'gps', 'itineraire', 'marche libre', 'free walk', 'marche', 'walking', 'statistiques marche', 'stats marche', 'calories', 'coach ia', 'health score', 'score sante', 'fitness', 'checkpoint', 'radar', 'alerte communautaire', 'poi', 'vitesse', 'km parcourus', 'sessions marche'], screen: 'Navigation', label: 'Navigation GPS & Fitness' },
+      { keywords: ['mes services', 'mes produits', 'produit', 'service', 'vendre', 'prestataire', 'ajouter produit', 'flash promo', 'promo', 'publicite', 'video creation', 'galerie media'], screen: 'MesServices', label: 'Mes Services / Produits' },
+      { keywords: ['catalogue produit', 'gerer produits', 'mes produits', 'dupliquer produit', 'livraison produit'], screen: 'MesProduits', label: 'Catalogue Produits' },
+      { keywords: ['livre scolaire', 'bourse du livre', 'troc livre', 'manuel scolaire', 'programme scolaire', 'librairie'], screen: 'BourseLivre', label: 'Bourse du Livre' },
+      { keywords: ['bus', 'billet', 'ticket voyage', 'agence voyage', 'trajet bus', 'voyage interurbain'], screen: 'TicketVoyage', label: 'Tickets Voyage' },
+      { keywords: ['covoiturage', 'trajet partage', 'partager trajet', 'conducteur covoiturage'], screen: 'Covoiturage', label: 'Covoiturage' },
+      { keywords: ['taxi', 'commander taxi', 'course taxi', 'chauffeur taxi'], screen: 'Taxi', label: 'Taxi' },
+      { keywords: ['supermarche', 'bayamselam', 'courses marche', 'comparer prix', 'catalogue supermarche'], screen: 'Supermarket', label: 'Supermarchés' },
+      { keywords: ['emploi', 'offre emploi', 'cv', 'salaire', 'formation', 'recrutement', 'candidature', 'embauche'], screen: 'Emploi', label: 'Offres Emploi' },
+      { keywords: ['sang', 'don de sang', 'transfusion', 'banque de sang', 'groupe sanguin', 'donneur'], screen: 'BloodBank', label: 'Banque de Sang' },
+      { keywords: ['laboratoire', 'analyse', 'examen medical', 'imagerie', 'prise de sang', 'resultats labo'], screen: 'Laboratory', label: 'Laboratoires' },
+      { keywords: ['hopital', 'clinique', 'medecin', 'rendez-vous medical', 'consultation', 'urgence', 'triage'], screen: 'Hospital', label: 'Hôpitaux' },
+      { keywords: ['pharmacie', 'medicament', 'ordonnance', 'garde pharmacie', 'stock medicament'], screen: 'Pharmacy', label: 'Pharmacies' },
+      { keywords: ['livraison', 'colis', 'envoyer colis', 'suivi livraison', 'course commission', 'panier courses'], screen: 'Delivery', label: 'Livraison' },
+      { keywords: ['coursier', 'dashboard coursier', 'livraisons actives', 'devenir coursier'], screen: 'Courier', label: 'Dashboard Coursier' },
+      { keywords: ['menu', 'repas', 'recette', 'planifier repas', 'liste de courses', 'regime', 'nutrition', 'famille repas'], screen: 'MenuPlanning', label: 'Menu Planning' },
+      { keywords: ['orientation', 'ecole', 'inscription scolaire', 'choix ecole', 'etablissement scolaire', 'filiere'], screen: 'Orientation', label: 'Orientation Scolaire' },
+      { keywords: ['automobile', 'voiture', 'vehicule', 'acheter voiture', 'piece auto', 'parking', 'garage'], screen: 'Auto', label: 'Automobile' },
+      { keywords: ['flotte', 'gerer flotte', 'fleet', 'chauffeurs', 'demenagement'], screen: 'Fleet', label: 'Gestion Flotte' },
+    ];
+
+    const detectedCrossScreens: string[] = [];
+    for (const rule of CROSS_SCREEN_RULES) {
+      if (injectedScreens.has(rule.screen)) continue;
+      if (rule.keywords.some(kw => cq.includes(kw))) {
+        detectedCrossScreens.push(rule.screen);
+        injectedScreens.add(rule.screen);
+      }
+    }
+
+    if (detectedCrossScreens.length > 0) {
+      prompt += `
+
+=== CROSS-SCREEN CONTEXT (the user is asking about modules they are NOT currently on — use these DETAIL blocks to answer precisely) ===
+NOTE: The user is currently on **${screenName}** but their question relates to: ${detectedCrossScreens.join(', ')}. Use the relevant DETAIL block(s) below to give a precise, authoritative answer as if you were on that screen. If the module has specific UI elements, buttons, or flows, describe them accurately. Also mention HOW to navigate to that screen from the current one.
+`;
+
+      if (detectedCrossScreens.includes('Navigation') && screenName !== 'Navigation') {
+        prompt += `
+=== NAVIGATION_GPS_DETAIL (cross-screen — user asked about Navigation/GPS/Fitness from ${screenName}) ===
+**What this screen is:** Intelligent GPS inside Yukpo with route planning, community alerts, POI, Statistics & Fitness Dashboard, and free walk GPS sessions.
+**How to access:** Tab bar → or search "Navigation" → NavigationScreen.
+**2 access points to Stats:** (1) BarChart3 icon in header, (2) Coach IA preview card on main scroll.
+**Period filters:** Aujourd'hui, Semaine, Mois, Trimestre, Semestre, Année.
+**Modality filters:** Tout combiné (all modes), Détection auto (passive tracking), Marche libre (free walk only).
+**Stats sections:** Summary tiles (km, sessions, cal, min) → Filtered session card (after free walk, with comparison chips: vs dernière, vs 2 dernières, vs ce mois) → Évolution détaillée table (Actuelle vs Dernière vs Record with % gaps) → Best session 🏅 → By travel mode → Performance & progression → Share button → Top visited places → Coach IA (health score, tips, gamification, records, challenges).
+**Free walk end-of-session:** Auto-opens dashboard (period=Aujourd'hui, modality=Marche libre), shows evolution table, plays TTS audio recap (distance/duration/calories + comparison vs last + gap to best), share button prominent.
+**Reading stats:** ↑ green = improvement, ↓ red = decline, → grey = stable. % deltas compare current vs baseline.
+`;
+      }
+
+      if (detectedCrossScreens.includes('MesServices') && screenName !== 'Services' && screenName !== 'MesServices') {
+        prompt += `
+=== MES_SERVICES_PRODUCT_HUB_DETAIL (cross-screen — user asked about products/services from ${screenName}) ===
+**What this screen is:** Prestataire hub to manage products/offers. ServiceCardModern list, stats (totals, actifs, inactifs, vues), filters (Tous/Actif/Inactif).
+**How to access:** Tab bar "Services" or navigate to MesServices.
+**Key actions:** Menu ☰ (sidebar with all options), + buttons (video, flash promo, delivery, bulk), add product (auto-detect if service exists).
+**Product cards:** edit, promote, share, activate/deactivate, delete. Promotion creates flash promos or standard promotions.
+`;
+      }
+
+      if (detectedCrossScreens.includes('MesProduits') && screenName !== 'MesProduits') {
+        prompt += `
+=== MES_PRODUITS_DETAIL (cross-screen — user asked about product catalog from ${screenName}) ===
+**What this screen is:** Detailed product catalog for prestataire. Mini stats, filters (Tous/Actifs/En pause), action cards.
+**How to access:** From MesServices footer → "Gérer mes produits" or via navigation.
+**Per-card actions:** Modifier, Activer/Pause, Partager, Envoyer (interne), Plus → Promouvoir, Statistiques, Dupliquer, Livraison, Supprimer.
+`;
+      }
+
+      if (detectedCrossScreens.includes('BourseLivre')) {
+        prompt += `
+=== BOURSE_DU_LIVRE_DETAIL (cross-screen — user asked about book exchange from ${screenName}) ===
+**What this screen is:** Hub Bourse du Livre: sell/trade/donate school books, find official program lists.
+**How to access:** Navigate to LivreScolaireHome or BourseLivre.
+**Key flows:** (1) Green card "Mettez vos livres en circulation" → BookUploadV2, (2) Blue card "Trouvez votre liste scolaire" → ProgrammeBesoinsSelector.
+**Dashboard:** track purchases, packages, trades, needs. QR scan for courier delivery validation.
+`;
+      }
+
+      if (detectedCrossScreens.includes('Emploi')) {
+        prompt += `
+=== OFFRES_EMPLOI_DETAIL (cross-screen — user asked about jobs from ${screenName}) ===
+**What this screen is:** Job search (candidate view) with AI-powered matching, CV analysis, salary prediction, training suggestions.
+**How to access:** Navigate to OffresEmploiHome or OffresEmploiHub.
+**Key features:** Search offers, AI matching score, apply, AI CV Analysis, AI Salary Prediction, AI Training Suggestions.
+`;
+      }
+
+      if (detectedCrossScreens.includes('Delivery')) {
+        prompt += `
+=== DELIVERY_DETAIL (cross-screen — user asked about delivery from ${screenName}) ===
+**What this screen is:** Order and track deliveries (parcels or shopping commissions).
+**How to access:** Navigate to DeliveryHome.
+**Flows:** Parcel delivery (DeliveryParcelFlowNew), Shopping commission (DeliveryShoppingFlowNew), real-time tracking, proof of delivery.
+`;
+      }
+
+      if (detectedCrossScreens.includes('MenuPlanning')) {
+        prompt += `
+=== MENU_PLANNING_DETAIL (cross-screen — user asked about meal planning from ${screenName}) ===
+**What this screen is:** AI-powered meal planning for families: menus, recipes, shopping lists, dietary profiles.
+**How to access:** Navigate to MenuPlanningHub.
+**Key features:** Family profile setup, AI menu generation, recipe details, shopping list generation, budget optimization.
+`;
+      }
+
+      if (detectedCrossScreens.includes('Hospital')) {
+        prompt += `
+=== HOSPITAL_DETAIL (cross-screen — user asked about hospitals from ${screenName}) ===
+**What this screen is:** Hospital/clinic module: search, AI triage, book appointments, consultations history, AI recommendations.
+**How to access:** Navigate to HopitalSearch or HopitalHome.
+`;
+      }
+
+      if (detectedCrossScreens.includes('Pharmacy')) {
+        prompt += `
+=== PHARMACY_DETAIL (cross-screen — user asked about pharmacies from ${screenName}) ===
+**What this screen is:** Pharmacy module: search pharmacies, check stock, order medications, find pharmacies de garde.
+**How to access:** Navigate to PharmacieSearch or PharmacieHome.
+`;
+      }
+
+      if (detectedCrossScreens.includes('Taxi')) {
+        prompt += `
+=== TAXI_DETAIL (cross-screen — user asked about taxi from ${screenName}) ===
+**What this screen is:** Taxi booking with AI dynamic pricing, GPS pre-filled origin, demand prediction.
+**How to access:** Navigate to TaxiSearch or TaxiHome.
+`;
+      }
+
+      if (detectedCrossScreens.includes('Covoiturage')) {
+        prompt += `
+=== COVOITURAGE_DETAIL (cross-screen — user asked about carpooling from ${screenName}) ===
+**What this screen is:** Carpooling: search/offer rides, LocationSelector, publish via CovoiturageForm.
+**How to access:** Navigate to CovoiturageSearch or CovoiturageHome.
+`;
+      }
+
+      if (detectedCrossScreens.includes('Supermarket')) {
+        prompt += `
+=== SUPERMARKET_DETAIL (cross-screen — user asked about supermarkets from ${screenName}) ===
+**What this screen is:** Supermarket catalog: 4 modes (stores, products, compare prices, promos).
+**How to access:** Navigate to SupermarketHome or BayamSelamSearch.
+`;
+      }
+
+      if (detectedCrossScreens.includes('BloodBank')) {
+        prompt += `
+=== BLOOD_BANK_DETAIL (cross-screen — user asked about blood bank from ${screenName}) ===
+**What this screen is:** Blood donation & transfusion: search blood banks, register as donor, request blood, match donors.
+**How to access:** Navigate to BanqueSangSearch.
+`;
+      }
+
+      if (detectedCrossScreens.includes('Laboratory')) {
+        prompt += `
+=== LABORATORY_DETAIL (cross-screen — user asked about labs from ${screenName}) ===
+**What this screen is:** Medical labs: search labs, book analyses, track results, AI analysis interpretation.
+**How to access:** Navigate to LaboratoireSearch or LaboratoireHome.
+`;
+      }
+
+      if (detectedCrossScreens.includes('Orientation')) {
+        prompt += `
+=== ORIENTATION_DETAIL (cross-screen — user asked about school orientation from ${screenName}) ===
+**What this screen is:** School orientation AI: student profile, school catalog, AI recommendations, compare schools.
+**How to access:** Navigate to OrientationScolaireHub or OrientationScolaireHome.
+`;
+      }
+
+      if (detectedCrossScreens.includes('Auto')) {
+        prompt += `
+=== AUTO_DETAIL (cross-screen — user asked about automobile from ${screenName}) ===
+**What this screen is:** Auto marketplace: search vehicles, parts, compare, filters (brand, price, type).
+**How to access:** Navigate to AutoServicesSearch.
+`;
+      }
+
+      if (detectedCrossScreens.includes('TicketVoyage')) {
+        prompt += `
+=== TICKET_VOYAGE_DETAIL (cross-screen — user asked about bus tickets from ${screenName}) ===
+**What this screen is:** Bus ticket search & booking: LocationSelector, seat selection, QR boarding pass.
+**How to access:** Navigate to TicketVoyageHome or BusTicketSearch.
+`;
+      }
+    }
 
     return prompt;
   }
