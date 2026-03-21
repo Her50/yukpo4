@@ -9,11 +9,11 @@ Cargo.toml text eol=lf
 Cargo.lock text eol=lf
 rustfmt.toml text eol=lf
 
-# Fichiers TypeScript/JavaScript : toujours LF
-*.ts text eol=lf
-*.tsx text eol=lf
-*.js text eol=lf
-*.jsx text eol=lf
+# Fichiers TypeScript/JavaScript : toujours LF, toujours UTF-8
+*.ts text eol=lf working-tree-encoding=UTF-8
+*.tsx text eol=lf working-tree-encoding=UTF-8
+*.js text eol=lf working-tree-encoding=UTF-8
+*.jsx text eol=lf working-tree-encoding=UTF-8
 
 # Fichiers JSON : toujours LF
 *.json text eol=lf
