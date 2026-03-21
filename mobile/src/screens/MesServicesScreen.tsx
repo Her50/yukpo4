@@ -22,7 +22,9 @@ import ServiceTeamManager from '../components/ServiceTeamManager';
 import { SidebarNavigation } from '../components/SidebarNavigation';
 import { SkeletonCard, SkeletonStats } from '../components/SkeletonLoader';
 import { StatsCard } from '../components/StatsCard';
+import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
 import { useDeviceType } from '../hooks/useDeviceType';
@@ -55,6 +57,7 @@ interface Service {
 const MesServicesScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { t } = useLanguageSafe();
   const { colors } = useTheme(); // ✅ NOUVEAU: Support thème
   const toaster = useToaster(); // ✅ NOUVEAU: Toast notifications au lieu de Alert
   const deviceType = useDeviceType(); // ✅ NOUVEAU: Responsive design

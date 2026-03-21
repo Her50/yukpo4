@@ -58,6 +58,314 @@ class IntelligentChatService {
   }
 
   /**
+   * Détecter si l'utilisateur corrige ou recadre une réponse précédente
+   */
+  private detectCorrectionOrRecadrage(userMessage: string, history: ChatMessage[]): {
+    isCorrection: boolean;
+    isRecadrage: boolean;
+    lastAssistantMessage?: ChatMessage;
+    confidence: number;
+    emotion?: 'frustration' | 'gratitude' | 'confusion' | 'excitement' | 'neutral';
+    emotionConfidence: number;
+  } {
+    const q = userMessage.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // Toujours détecter les émotions, même sans historique
+    const emotionResult = this.detectEmotion(q);
+
+    // Pour la correction/recadrage, il faut au moins 2 messages
+    const lastAssistantMsg = history.length >= 2
+      ? history.slice().reverse().find(m => !m.isUser)
+      : undefined;
+    if (!lastAssistantMsg) {
+      return {
+        isCorrection: false, isRecadrage: false, confidence: 0,
+        emotion: emotionResult.emotion, emotionConfidence: emotionResult.confidence,
+        lastAssistantMessage: undefined,
+      };
+    }
+
+    // Mots-clés de correction
+    const CORRECTION_KEYWORDS = [
+      'non', 'pas', 'ce n\'est pas', 'ce nest pas', 'incorrect', 'faux', 'erreur', 'trompé',
+      'mauvais', 'c\'est faux', 'ce n\'est pas ça', 'ce n\'est pas cela', 'pas ça',
+      'wrong', 'incorrect', 'mistake', 'not right', 'no', 'that\'s wrong', 'incorrect',
+      'non, ce n\'est pas', 'non pas', 'ce n\'est pas du tout', 'absolument pas',
+      'tu te trompes', 'vous vous trompez', 't\'as tort', 'tu as tort',
+      'sorry', 'pardon', 'excuse', 'désolé', 'dommage', 'non non',
+    ];
+
+    // Mots-clés de recadrage
+    const RECADRAGE_KEYWORDS = [
+      'en fait', 'plutôt', 'je voulais dire', 'je veux dire', 'ce que je veux',
+      'plus précisément', 'pour être clair', 'clarifions', 'précisons',
+      'en réalité', 'en vérité', 'pour info', 'information',
+      'actually', 'rather', 'i mean', 'to be clear', 'clarify', 'precisely',
+      'let me clarify', 'what i meant was', 'to clarify', 'more specifically',
+      'ce que je cherche', 'mon objectif est', 'ce dont j\'ai besoin',
+    ];
+
+    const matchCorrection = CORRECTION_KEYWORDS.some(k => q.includes(k));
+    const matchRecadrage = RECADRAGE_KEYWORDS.some(k => q.includes(k));
+
+    // Calcul de confiance correction/recadrage
+    let confidence = 0;
+    if (matchCorrection) confidence += 0.7;
+    if (matchRecadrage) confidence += 0.6;
+    if (q.match(/^(non|pas|ce n'est|ce nest|wrong|incorrect|no)/)) confidence += 0.3;
+    if (q.includes('ta reponse') || q.includes('votre reponse') || q.includes('your answer')) confidence += 0.2;
+
+    return {
+      isCorrection: matchCorrection,
+      isRecadrage: matchRecadrage,
+      lastAssistantMessage: lastAssistantMsg,
+      confidence: Math.min(confidence, 1),
+      emotion: emotionResult.emotion,
+      emotionConfidence: emotionResult.confidence,
+    };
+  }
+
+  /**
+   * Détecter l'émotion dominante dans un texte normalisé (lowercase, sans accents).
+   * Retourne l'émotion et un score de confiance [0–1].
+   */
+  private detectEmotion(normalizedText: string): {
+    emotion: 'frustration' | 'gratitude' | 'confusion' | 'excitement' | 'neutral';
+    confidence: number;
+  } {
+    const EMOTION_KEYWORDS: Record<string, string[]> = {
+      frustration: [
+        'frustre', 'enerve', 'agace', 'marre', 'ras le bol', 'ca marche pas', 'incomprehensible',
+        'je suis perdu', 'je comprends pas', 'c\'est pas clair', 's\'il vous plait aidez',
+        'frustrating', 'annoying', 'confusing', 'i don\'t understand', 'help me', 'nothing works',
+        'ca ne marche pas', 'ca fonctionne pas', 'impossible', 'nul', 'horrible',
+        'galere', 'c\'est comment', 'on fait comment', 'ca va pas', 'relou', 'chaud', 'c\'est grave',
+      ],
+      gratitude: [
+        'merci', 'bravo', 'genial', 'parfait', 'excellent', 'bien fait', 'helpful',
+        'c\'est gentil', 'je vous remercie', 'merci beaucoup', 'awesome', 'great', 'thank you',
+        'thanks', 'perfect', 'well done', 'appreciate', 'formidable', 'magnifique',
+        'chapeau', 'top', 'nickel', 'impeccable',
+        'dieu merci', 'walahi', 'trop fort', 'c\'est bon', 'la force', 'on est ensemble',
+      ],
+      confusion: [
+        'je comprends pas', 'c\'est pas clair', 'comment faire', 'perdu', 'ou trouver',
+        'je ne vois pas', 'expliquez moi', 'i don\'t get it',
+        'how to', 'where is', 'explain', 'unclear', 'confused', 'c\'est quoi',
+        'je suis confus', 'pas compris', 'pas clair',
+        'je capte pas', 'j\'ai pas compris', 'c\'est flou', 'ca veut dire quoi',
+      ],
+      excitement: [
+        'genial', 'wow', 'incroyable', 'fantastique', 'trop bien', 'excellent',
+        'amazing', 'fantastic', 'cool', 'awesome', 'love it', 'wahou',
+        'enorme', 'dingue', 'ouf', 'exceptionnel',
+        'c\'est chaud', 'grave bien', 'trop trop bien', 'la classe', 'magique',
+      ],
+    };
+
+    let bestEmotion: 'frustration' | 'gratitude' | 'confusion' | 'excitement' | 'neutral' = 'neutral';
+    let bestScore = 0;
+
+    for (const [emotion, keywords] of Object.entries(EMOTION_KEYWORDS)) {
+      const matches = keywords.filter(k => normalizedText.includes(k)).length;
+      if (matches > bestScore) {
+        bestScore = matches;
+        bestEmotion = emotion as any;
+      }
+    }
+
+    return { emotion: bestEmotion, confidence: Math.min(bestScore * 0.3, 1) };
+  }
+
+  /**
+   * Générer un préfixe émotionnel adapté au sentiment détecté dans le message
+   * Couvre: correction, recadrage, frustration, gratitude, confusion, excitement, follow-up
+   */
+  private generateEmotionalPrefix(
+    sentiment: 'correction' | 'recadrage' | 'frustration' | 'gratitude' | 'confusion' | 'excitement' | 'follow_up' | 'neutral',
+    lang: string
+  ): string {
+    if (sentiment === 'neutral') return '';
+    const activeLang = lang || 'fr';
+
+    const prefixes: Record<string, Record<string, string[]>> = {
+      fr: {
+        correction: [
+          "Toutes mes excuses, vous avez raison. ",
+          "Merci pour la correction, j'étais dans l'erreur. ",
+          "Vous avez tout à fait raison, désolé pour la confusion. ",
+          "Au temps pour moi, merci de m'avoir corrigé. ",
+          "Effectivement, je me suis trompé. Merci pour votre précision. ",
+        ],
+        recadrage: [
+          "Je vois mieux maintenant ce que vous cherchez. ",
+          "Merci pour cette précision, c'est plus clair. ",
+          "Ah je comprends mieux votre besoin. ",
+          "Merci de clarifier, je vais ajuster ma réponse. ",
+          "C'est plus clair maintenant, laissez-moi vous aider correctement. ",
+        ],
+        frustration: [
+          "Je comprends votre frustration et je m'en excuse. Reprenons calmement. ",
+          "Désolé pour le désagrément, je vais faire mieux. ",
+          "Je vois que ce n'est pas clair, prenons les choses étape par étape. ",
+          "Pardon pour la confusion. Laissez-moi simplifier. ",
+          "Je comprends que c'est agaçant, je vais être plus précis cette fois. ",
+        ],
+        gratitude: [
+          "Merci beaucoup, ça me fait plaisir d'aider ! 😊 ",
+          "C'est gentil ! Ravi de pouvoir vous accompagner. ",
+          "Merci pour vos encouragements ! N'hésitez pas à me solliciter. ",
+          "Content que ça vous aide ! ",
+          "Avec plaisir ! Je suis là pour ça. 😊 ",
+        ],
+        confusion: [
+          "Pas de souci, je vais réexpliquer plus simplement. ",
+          "C'est normal, laissez-moi détailler étape par étape. ",
+          "Je vais essayer d'être plus clair cette fois. ",
+          "Bonne question ! Voici comment ça fonctionne. ",
+          "Je comprends la confusion. Voici une explication simplifiée. ",
+        ],
+        excitement: [
+          "Super, vous avez raison d'être enthousiaste ! 🎉 ",
+          "Génial ! Content de voir votre enthousiasme ! ",
+          "C'est effectivement impressionnant ! ",
+          "Trop bien, n'est-ce pas ? 😄 ",
+          "Oui c'est une fonctionnalité vraiment top ! ",
+        ],
+        follow_up: [
+          "Pour revenir sur ce dont on parlait, ",
+          "Suite à notre échange précédent, ",
+          "En continuant sur le même sujet, ",
+          "Pour approfondir ce point, ",
+          "Bonne question de suivi ! ",
+        ],
+      },
+      en: {
+        correction: [
+          "My apologies, you're absolutely right. ",
+          "Thank you for the correction, I was mistaken. ",
+          "You're completely right, sorry for the confusion. ",
+          "My mistake, thank you for correcting me. ",
+          "Indeed, I got that wrong. Thanks for your precision. ",
+        ],
+        recadrage: [
+          "I see better now what you're looking for. ",
+          "Thank you for this clarification, it's much clearer. ",
+          "Ah, I better understand your need now. ",
+          "Thanks for clarifying, let me adjust my response. ",
+          "It's clearer now, let me help you properly. ",
+        ],
+        frustration: [
+          "I understand your frustration, and I apologize. Let's go step by step. ",
+          "Sorry about the inconvenience, I'll do better. ",
+          "I see it's not clear, let me simplify things. ",
+          "My apologies for the confusion. Let me break it down. ",
+          "I get that it's frustrating, I'll be more precise this time. ",
+        ],
+        gratitude: [
+          "Thank you so much, happy to help! 😊 ",
+          "That's kind of you! Glad I could help. ",
+          "Thanks for the kind words! Don't hesitate to ask more. ",
+          "Glad that was helpful! ",
+          "My pleasure! That's what I'm here for. 😊 ",
+        ],
+        confusion: [
+          "No worries, let me explain it more simply. ",
+          "That's totally normal, let me walk you through it step by step. ",
+          "I'll try to be clearer this time. ",
+          "Great question! Here's how it works. ",
+          "I understand the confusion. Here's a simpler explanation. ",
+        ],
+        excitement: [
+          "Awesome, right?! 🎉 ",
+          "Great to see your enthusiasm! ",
+          "It's really impressive, isn't it? ",
+          "I know, it's amazing! 😄 ",
+          "Yes, that feature is truly fantastic! ",
+        ],
+        follow_up: [
+          "Going back to what we were discussing, ",
+          "Following up on our previous exchange, ",
+          "To continue on the same topic, ",
+          "To dig deeper on that point, ",
+          "Great follow-up question! ",
+        ],
+      },
+    };
+
+    const langPrefixes = prefixes[activeLang] || prefixes.fr;
+    const pool = langPrefixes[sentiment] || [];
+    if (pool.length === 0) return '';
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  /**
+   * Construire un résumé compact des messages précédents pour donner
+   * de la mémoire à l'IA au-delà de la fenêtre glissante de 5 messages.
+   * Format court pour ne pas gonfler le prompt.
+   */
+  private buildConversationSummary(history: ChatMessage[]): string {
+    if (history.length <= 6) return '';
+
+    const olderMessages = history.slice(0, -5);
+    const topics = new Set<string>();
+    const userQuestions: string[] = [];
+
+    for (const msg of olderMessages) {
+      if (msg.isUser) {
+        const shortText = msg.text.length > 80
+          ? msg.text.substring(0, 80) + '...'
+          : msg.text;
+        userQuestions.push(shortText);
+
+        const q = msg.text.toLowerCase();
+        if (q.includes('prix') || q.includes('price') || q.includes('coût') || q.includes('tarif')) topics.add('pricing');
+        if (q.includes('comment') || q.includes('how')) topics.add('how-to');
+        if (q.includes('pourquoi') || q.includes('why')) topics.add('explanation');
+        if (q.includes('itinéraire') || q.includes('route') || q.includes('gps')) topics.add('navigation');
+        if (q.includes('livraison') || q.includes('delivery')) topics.add('delivery');
+        if (q.includes('produit') || q.includes('product')) topics.add('products');
+        if (q.includes('paiement') || q.includes('payment') || q.includes('wallet')) topics.add('payment');
+      }
+    }
+
+    const parts: string[] = [];
+    if (topics.size > 0) {
+      parts.push(`Topics discussed earlier: ${Array.from(topics).join(', ')}`);
+    }
+    if (userQuestions.length > 0) {
+      const recent3 = userQuestions.slice(-3);
+      parts.push(`Earlier user questions: ${recent3.map(q => `"${q}"`).join(' → ')}`);
+    }
+
+    return parts.length > 0
+      ? `\nCONVERSATION MEMORY (older messages summary):\n${parts.join('\n')}\n`
+      : '';
+  }
+
+  /**
+   * Détecter si l'utilisateur demande à approfondir ou continuer un sujet précédent
+   */
+  private detectFollowUp(userMessage: string, history: ChatMessage[]): boolean {
+    if (history.length < 2) return false;
+    const q = userMessage.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    const FOLLOW_UP_KEYWORDS = [
+      'et aussi', 'de plus', 'en plus', 'encore', 'aussi', 'donne moi plus',
+      'plus de details', 'approfondi', 'approfondis', 'continue', 'vas-y',
+      'detaille', 'detailles', 'explique encore', 'dis m\'en plus', 'elabore',
+      'par rapport a', 'concernant', 'a propos de', 'sur ce point', 'reviens sur',
+      'and also', 'furthermore', 'moreover', 'tell me more', 'go on',
+      'elaborate', 'more details', 'expand on', 'about that', 'regarding',
+      'can you explain more', 'what about', 'how about',
+      'tu disais', 'vous disiez', 'comme tu as dit', 'comme vous avez dit',
+      'you mentioned', 'you said', 'as you said', 'going back to',
+    ];
+
+    return FOLLOW_UP_KEYWORDS.some(k => q.includes(k));
+  }
+
+  /**
    * Générer une réponse contextuelle basée sur l'écran courant
    */
   async generateContextualResponse(
@@ -67,12 +375,51 @@ class IntelligentChatService {
     lang?: string,
   ): Promise<ChatResponse> {
     try {
-      // Construire le contexte pour l'IA
+      const activeLang = lang || i18n.language || 'fr';
+
+      // ═══ 1. Analyse sentimentale complète du message ═══
+      const correction = this.detectCorrectionOrRecadrage(userMessage, conversationHistory);
+      const isFollowUp = this.detectFollowUp(userMessage, conversationHistory);
+
+      // Déterminer le sentiment dominant pour le préfixe émotionnel
+      let dominantSentiment: 'correction' | 'recadrage' | 'frustration' | 'gratitude' | 'confusion' | 'excitement' | 'follow_up' | 'neutral' = 'neutral';
+      if (correction.confidence > 0.6 && correction.isCorrection) {
+        dominantSentiment = 'correction';
+      } else if (correction.confidence > 0.6 && correction.isRecadrage) {
+        dominantSentiment = 'recadrage';
+      } else if (correction.emotionConfidence > 0.2 && correction.emotion && correction.emotion !== 'neutral') {
+        dominantSentiment = correction.emotion;
+      } else if (isFollowUp) {
+        dominantSentiment = 'follow_up';
+      }
+
+      // ═══ 2. Générer le préfixe émotionnel (excuses, remerciements, empathie…) ═══
+      const emotionalPrefix = this.generateEmotionalPrefix(dominantSentiment, activeLang);
+
+      // Le message envoyé au backend inclut le préfixe pour guider le ton de la réponse
+      const contextualUserMessage = emotionalPrefix
+        ? `[ASSISTANT_TONE_PREFIX: ${emotionalPrefix.trim()}]\n${userMessage}`
+        : userMessage;
+
+      console.log('[IntelligentChat] Sentiment analysis:', {
+        dominant: dominantSentiment,
+        correctionConf: correction.confidence,
+        emotion: correction.emotion,
+        emotionConf: correction.emotionConfidence,
+        isFollowUp,
+        prefix: emotionalPrefix.trim() || '(none)',
+      });
+
+      // ═══ 3. Construire la mémoire conversationnelle (résumé des anciens messages) ═══
+      const conversationSummary = this.buildConversationSummary(conversationHistory);
+
+      // ═══ 4. Construire le contexte complet pour l'IA ═══
       const contextPrompt = this.trimPrompt(
         this.buildContextPrompt(screenContext, conversationHistory, lang),
       );
 
       const requestType = this.detectRequestType(userMessage, screenContext);
+
       // Backend (Rust) exposes AI routes without the `/api` prefix: POST /ai/chat
       // No retry on /ai/chat: avoids rapid duplicate failures when backend returns 500.
       let response = await apiCall<any>(
@@ -80,22 +427,35 @@ class IntelligentChatService {
         {
           method: 'POST',
           body: JSON.stringify({
-            message: userMessage,
+            message: contextualUserMessage,
             context: {
               screen: screenContext.screenName,
               screen_type: screenContext.screenType,
-              available_actions: screenContext.availableActions.map(a => a.label).slice(0, 10),
-              visible_elements: screenContext.visibleElements.map(e => e.label).slice(0, 8),
+              available_actions: (Array.isArray(screenContext.availableActions) ? screenContext.availableActions : []).map(a => a.label).slice(0, 10),
+              visible_elements: (Array.isArray(screenContext.visibleElements) ? screenContext.visibleElements : []).map(e => e.label).slice(0, 8),
               user_role: screenContext.userData?.role || 'guest',
               service_data: screenContext.serviceData || null,
               context_prompt: contextPrompt,
-              conversation_history: conversationHistory.slice(-5).map(m => ({
+              conversation_summary: conversationSummary || undefined,
+              conversation_history: conversationHistory.slice(-8).map(m => ({
                 role: m.isUser ? 'user' : 'assistant',
                 content: m.text,
               })),
+              sentiment_context: {
+                dominant_sentiment: dominantSentiment,
+                is_correction: correction.isCorrection,
+                is_recadrage: correction.isRecadrage,
+                correction_confidence: correction.confidence,
+                emotion: correction.emotion,
+                emotion_confidence: correction.emotionConfidence,
+                is_follow_up: isFollowUp,
+                emotional_prefix: emotionalPrefix.trim() || null,
+                last_assistant_message: correction.lastAssistantMessage?.text || null,
+                conversation_turn_count: conversationHistory.length,
+              },
             },
             type: requestType,
-            language: lang || i18n.language || 'fr',
+            language: activeLang,
           }),
         },
         false,
@@ -107,18 +467,53 @@ class IntelligentChatService {
           status: data?.status ?? response?.status,
           message: data?.message ?? response?.error,
         });
-        return this.generateLocalFallback(userMessage, screenContext, lang);
+        return this.generateEmotionalLocalFallback(userMessage, screenContext, dominantSentiment, activeLang);
       }
 
       if (data?.message) {
-        return this.parseAIResponse(data, screenContext);
+        const parsed = this.parseAIResponse(data, screenContext);
+        // Ne PAS doubler le préfixe : le backend reçoit déjà le tone hint via
+        // [ASSISTANT_TONE_PREFIX] et le sentiment_context — il intègre le ton
+        // dans sa réponse. On ne prépend que si la réponse est très courte
+        // (fallback basique sans ton) et que le sentiment est fort.
+        if (
+          emotionalPrefix &&
+          parsed.message &&
+          dominantSentiment !== 'neutral' &&
+          dominantSentiment !== 'follow_up' &&
+          parsed.message.length < 60 &&
+          !parsed.message.startsWith(emotionalPrefix.trim().substring(0, 8))
+        ) {
+          parsed.message = emotionalPrefix + parsed.message;
+        }
+        return parsed;
       }
 
-      return this.generateLocalFallback(userMessage, screenContext, lang);
+      return this.generateEmotionalLocalFallback(userMessage, screenContext, dominantSentiment, activeLang);
     } catch (error) {
       console.error('[IntelligentChat] Erreur génération réponse:', error);
-      return this.generateLocalFallback(userMessage, screenContext, lang);
+      return this.generateEmotionalLocalFallback(userMessage, screenContext, 'neutral', lang || i18n.language || 'fr');
     }
+  }
+
+  /**
+   * Fallback local enrichi avec intelligence émotionnelle.
+   * Préfixe la réponse du fallback classique avec le ton adapté au sentiment.
+   */
+  private generateEmotionalLocalFallback(
+    userMessage: string,
+    screenContext: ScreenContext,
+    sentiment: 'correction' | 'recadrage' | 'frustration' | 'gratitude' | 'confusion' | 'excitement' | 'follow_up' | 'neutral',
+    lang: string,
+  ): ChatResponse {
+    const baseFallback = this.generateLocalFallback(userMessage, screenContext, lang);
+    const prefix = this.generateEmotionalPrefix(sentiment, lang);
+
+    if (prefix && baseFallback.message) {
+      baseFallback.message = prefix + baseFallback.message;
+    }
+
+    return baseFallback;
   }
 
   private detectRequestType(userMessage: string, context: ScreenContext): string {
@@ -160,12 +555,77 @@ class IntelligentChatService {
    * Construire le prompt de contexte pour l'IA
    */
   private buildContextPrompt(screenContext: ScreenContext, history: ChatMessage[], lang?: string): string {
-    const { screenName, screenType, availableActions, visibleElements, userData, serviceData, guideText } = screenContext;
+    const { screenName, screenType, userData, serviceData, guideText } = screenContext;
+    const availableActions = Array.isArray(screenContext.availableActions) ? screenContext.availableActions : [];
+    const visibleElements = Array.isArray(screenContext.visibleElements) ? screenContext.visibleElements : [];
 
     const activeLang = lang || i18n.language || 'fr';
     const langInstr = `MANDATORY: Respond ONLY in the user's language (code: ${activeLang}). Adapt tone and expressions to that language/culture.`;
     const userRole = userData?.role || 'guest';
     const userName = userData?.name || userData?.email?.split('@')[0] || '';
+
+    // Résumé mémoire conversationnelle (messages au-delà de la fenêtre glissante)
+    const conversationMemory = this.buildConversationSummary(history);
+
+    // Nombre de tours de conversation pour adapter le ton
+    const turnCount = history.length;
+    const conversationPhase = turnCount === 0 ? 'first_message'
+      : turnCount <= 2 ? 'opening'
+        : turnCount <= 8 ? 'mid_conversation'
+          : 'long_conversation';
+
+    // Instructions de continuité conversationnelle
+    const continuityInstructions = `
+CONVERSATION CONTINUITY & EMOTIONAL INTELLIGENCE:
+
+1. MEMORY & CONTEXT:
+- This is turn #${turnCount + 1} of the conversation (phase: ${conversationPhase})
+- ALWAYS reference and build upon previous exchanges — never answer as if this is the first message
+- If user references something discussed earlier, acknowledge it ("Comme on en parlait...", "Pour revenir à votre question sur...")
+- When the conversation is long (8+ turns), periodically summarize what was covered to show you remember
+${conversationMemory}
+
+2. CORRECTION & RECADRAGE HANDLING:
+- If user corrects you: START with a sincere apology, THEN give the corrected answer. Never skip the apology.
+- If user recadrages: START with acknowledgment ("Je comprends mieux..."), THEN adjust
+- NEVER repeat the same wrong information after being corrected
+- If uncertain after correction, ask a clarifying question rather than guessing again
+
+3. EMOTIONAL RESPONSE (adapt tone to user sentiment):
+- **Frustration/Anger** ("frustré", "marre", "ça marche pas", "incompréhensible"): 
+  → Acknowledge feelings, apologize sincerely, simplify into numbered steps, offer specific action
+- **Gratitude/Compliments** ("merci", "bravo", "super", "génial", "parfait", "excellent"):
+  → Respond warmly, show genuine appreciation, encourage further exploration of features
+- **Confusion** ("je comprends pas", "c'est pas clair", "perdu", "comment"):
+  → Empathize, re-explain with numbered steps, use analogies, offer to break down further
+- **Excitement** ("wow!", "incroyable", "trop bien", "génial!"):
+  → Match their enthusiasm, share energy, suggest related amazing features
+- **Follow-up** ("et aussi", "dis m'en plus", "détaille", "continue", "approfondi"):
+  → Acknowledge continuity ("Pour approfondir ce point..."), expand without repeating what was said
+- **Neutral**: respond naturally with your warm Yukpo Assistant personality
+
+4. TONE PROGRESSION:
+- First message: welcoming, introduce yourself briefly
+- Opening (turns 1-2): helpful, set expectations
+- Mid-conversation (turns 3-8): more familiar, reference previous answers, deeper details
+- Long conversation (8+): conversational, use "on" / "nous" / "we", summarize progress
+
+5. EXAMPLES:
+User: "Non, ce n'est pas ça"
+→ "Toutes mes excuses, je comprends mieux maintenant. Ce que vous cherchez est..."
+
+User: "Merci beaucoup!"
+→ "Avec plaisir ! 😊 Si vous voulez explorer d'autres fonctionnalités, je suis là."
+
+User: "Je comprends rien, c'est trop compliqué"
+→ "Je comprends votre frustration, et je m'en excuse. Reprenons étape par étape : 1. ..."
+
+User: "Dis m'en plus sur ce dont on parlait"
+→ "Bonne question de suivi ! Pour approfondir ce qu'on disait sur [topic]..."
+
+User: "Wow c'est génial cette fonctionnalité!"
+→ "Content que ça vous plaise ! 🎉 Et vous n'avez pas encore vu [related feature]..."
+`;
 
     const onNavigationScreen = screenName === 'Navigation';
     const onProductHubScreen = screenName === 'Services' || screenName === 'MesServices';
@@ -355,55 +815,55 @@ Emploi — **recherche d’emploi** (vue candidat). The user is on **OffresEmplo
                         : onOffresEmploiHub
                           ? `YUKPO (brief reminder only — detailed UI is in OFFRES_EMPLOI_HUB_DETAIL below):
 Emploi — **hub** (**OffresEmploiHub** / **OffresEmploiHubScreen**): dashboard stats + actions (employeur vs candidat). Prioritize **OFFRES_EMPLOI_HUB_DETAIL**.`
-                    : onBloodTransfusionScreen
-                      ? `YUKPO (brief reminder only — detailed UI is in BLOOD_TRANSFUSION_MODULE_DETAIL below):
+                          : onBloodTransfusionScreen
+                            ? `YUKPO (brief reminder only — detailed UI is in BLOOD_TRANSFUSION_MODULE_DETAIL below):
 Santé — **banque de sang / transfusion / don**. The user is in the **blood transfusion module**. Prioritize **BLOOD_TRANSFUSION_MODULE_DETAIL**; do not substitute a generic “health app” pitch.`
-                      : onLaboratoryModule
-                        ? `YUKPO (brief reminder only — detailed UI is in LABORATORY_MODULE_DETAIL below):
+                            : onLaboratoryModule
+                              ? `YUKPO (brief reminder only — detailed UI is in LABORATORY_MODULE_DETAIL below):
 Santé — **laboratoires d’analyses & imagerie**. The user is in the **laboratory vertical**. Prioritize **LABORATORY_MODULE_DETAIL**; do not describe **Pharmacie** or **Hôpital** flows unless the user explicitly asks to switch.`
-                        : onTravelAgencyPartnerModule
-                          ? `YUKPO (brief reminder only — detailed UI is in TRAVEL_AGENCY_PARTNER_DETAIL below):
+                              : onTravelAgencyPartnerModule
+                                ? `YUKPO (brief reminder only — detailed UI is in TRAVEL_AGENCY_PARTNER_DETAIL below):
 Transport — **dashboard partenaire agence de voyage** (**AgenceVoyageForm**) ou **scanner QR bus** (**BusTicketQRScanner**). Prioritize **TRAVEL_AGENCY_PARTNER_DETAIL**; do not describe **TicketVoyageHome** / **BusTicketSearch** (flux **client** billet) sauf si l’utilisateur demande explicitement l’entrée voyageur.`
-                          : onCourierDashboard
-                            ? `YUKPO (brief reminder only — detailed UI is in COURIER_DASHBOARD_DETAIL below):
+                                : onCourierDashboard
+                                  ? `YUKPO (brief reminder only — detailed UI is in COURIER_DASHBOARD_DETAIL below):
 Livraison — **coursier individuel** (**CourierDashboard** / **CourierDashboardScreen**) : livraisons actives, stats API, sous-dashboard **Bourse du livre** coursier. Prioritize **COURIER_DASHBOARD_DETAIL**; **ne pas** décrire **FleetDashboard** (gérant de flotte) sauf demande explicite.`
-                            : onDeliveryOrderModule
-                              ? `YUKPO (brief reminder only — detailed UI is in DELIVERY_ORDER_MODULE_DETAIL below):
+                                  : onDeliveryOrderModule
+                                    ? `YUKPO (brief reminder only — detailed UI is in DELIVERY_ORDER_MODULE_DETAIL below):
 Livraison — **commande et suivi** (colis / courses). The user is in a delivery ordering/tracking screen. Prioritize **DELIVERY_ORDER_MODULE_DETAIL** with real steps and practical guidance.`
-                            : onFleetDashboard
-                              ? `YUKPO (brief reminder only — detailed UI is in FLEET_PARTNER_DASHBOARD_DETAIL below):
+                                    : onFleetDashboard
+                                      ? `YUKPO (brief reminder only — detailed UI is in FLEET_PARTNER_DASHBOARD_DETAIL below):
 Livraison & mobilité — **dashboard partenaire gérant une flotte** (**FleetDashboard** / **FleetDashboardScreen**) : entreprises de **livraison**, **transport**, **chauffeurs**, **déménagement**, **courses marché** (types **getPartnerDashboardScreen**). Prioritize **FLEET_PARTNER_DASHBOARD_DETAIL**; **ne pas** décrire **CourierDashboard** (coursier **solo** / livraisons actives) sauf demande explicite.`
-                            : onAutomobilePartnerDashboard
-                              ? `YUKPO (brief reminder only — detailed UI is in AUTOMOBILE_PARTNER_DASHBOARD_DETAIL below):
+                                      : onAutomobilePartnerDashboard
+                                        ? `YUKPO (brief reminder only — detailed UI is in AUTOMOBILE_PARTNER_DASHBOARD_DETAIL below):
 Automobile — **dashboard partenaire véhicules** (**AutomobileDashboard**) : **GET /api/specialized-services/user?type=automobile** ; ajout = **Alert** → formulaire intelligent. Prioritize **AUTOMOBILE_PARTNER_DASHBOARD_DETAIL**; **ne pas** confondre avec **AutoServicesSearch** (client) ni **FleetDashboard** (coursiers).`
-                              : onAutoMarketplaceModule
-                                ? `YUKPO (brief reminder only — detailed UI is in AUTO_MARKETPLACE_MODULE_DETAIL below):
+                                        : onAutoMarketplaceModule
+                                          ? `YUKPO (brief reminder only — detailed UI is in AUTO_MARKETPLACE_MODULE_DETAIL below):
 Automobile — **catalogue client** (**AutoServicesSearch** / **AutoServicesResults**) : **GET /api/auto/filters** + **GET /api/auto/search**. Prioritize **AUTO_MARKETPLACE_MODULE_DETAIL**; UI **véhicule** ; **pièces** via **q** ou règles SQL backend — pas d’onglet pièces dédié.`
-                          : onHealthServicesHubScreen
-                            ? `YUKPO (brief reminder only — detailed UI is in HEALTH_SERVICES_HUB_DETAIL below):
+                                          : onHealthServicesHubScreen
+                                            ? `YUKPO (brief reminder only — detailed UI is in HEALTH_SERVICES_HUB_DETAIL below):
 Cross-health **launcher** (pharmacy, hospital, lab, blood bank) + unified search. Prioritize **HEALTH_SERVICES_HUB_DETAIL**; do not collapse to one vertical.`
-                          : onHospitalPartnerDashboard
-                            ? `YUKPO (brief reminder only — detailed UI is in HOSPITAL_PARTNER_DASHBOARD_DETAIL below):
+                                            : onHospitalPartnerDashboard
+                                              ? `YUKPO (brief reminder only — detailed UI is in HOSPITAL_PARTNER_DASHBOARD_DETAIL below):
 Santé — **dashboard partenaire hôpital / clinique** (**HopitalForm**). Prioritize **HOSPITAL_PARTNER_DASHBOARD_DETAIL**; do not describe **HopitalHome** / **HopitalSearch** (parcours **patient**) sauf demande explicite.`
-                            : onHospitalModule
-                              ? `YUKPO (brief reminder only — detailed UI is in HOSPITAL_MODULE_DETAIL below):
+                                              : onHospitalModule
+                                                ? `YUKPO (brief reminder only — detailed UI is in HOSPITAL_MODULE_DETAIL below):
 Hospitals & clinics — **patient**: **HopitalHome**, **HopitalSearch**, **HopitalList**, **HopitalDetails**, **BookAppointment**, **MyConsultations**, **HospitalAIRecommendations**, **HospitalAnalytics**. Prioritize **HOSPITAL_MODULE_DETAIL**.`
-                              : onMenuPlanningModule
-                                ? `YUKPO (brief reminder only — detailed UI is in MENU_PLANNING_MODULE_DETAIL below):
+                                                : onMenuPlanningModule
+                                                  ? `YUKPO (brief reminder only — detailed UI is in MENU_PLANNING_MODULE_DETAIL below):
 Alimentation & foyer — **menus IA, profil famille, calendrier, liste de courses** (**MenuPlanningHub** et écrans liés). Prioritize **MENU_PLANNING_MODULE_DETAIL**; **do not** describe **SupermarketHome** (retail catalog) as this module.`
-                              : onOrientationPartnerDashboard
-                                ? `YUKPO (brief reminder only — detailed UI is in ORIENTATION_PARTNER_DASHBOARD_DETAIL below):
+                                                  : onOrientationPartnerDashboard
+                                                    ? `YUKPO (brief reminder only — detailed UI is in ORIENTATION_PARTNER_DASHBOARD_DETAIL below):
 Éducation — **dashboard partenaire établissement scolaire** (**OrientationPartnerDashboard**). Prioritize **ORIENTATION_PARTNER_DASHBOARD_DETAIL**; **ne pas** confondre avec **OrientationScolaireHub** / **OrientationScolaireHome** (parcours **élève / famille**).`
-                              : onOrientationStudentModule
-                                ? `YUKPO (brief reminder only — detailed UI is in ORIENTATION_SCOLAIRE_MODULE_DETAIL below):
+                                                    : onOrientationStudentModule
+                                                      ? `YUKPO (brief reminder only — detailed UI is in ORIENTATION_SCOLAIRE_MODULE_DETAIL below):
 Éducation — **orientation scolaire** (élève / famille) : hub, catalogue, profil, IA. Prioritize **ORIENTATION_SCOLAIRE_MODULE_DETAIL**; **ne pas** décrire **OrientationPartnerDashboard** sauf demande explicite.`
-                              : onPharmacyModule
-                              ? `YUKPO (brief reminder only — detailed UI is in PHARMACY_MODULE_DETAIL below):
+                                                      : onPharmacyModule
+                                                        ? `YUKPO (brief reminder only — detailed UI is in PHARMACY_MODULE_DETAIL below):
 Santé Yukpo couvre pharmacies, hôpitaux, laboratoires… L'utilisateur est dans le **module Pharmacie** (catalogue produits et/ou fiches officines). Prioritize **PHARMACY_MODULE_DETAIL**; do not replace it with a generic super-app pitch.`
-                              : onSearchResultsScreen
-                                ? `YUKPO (brief reminder only — detailed UI is in RESULTAT_BESOIN_DETAIL below):
+                                                        : onSearchResultsScreen
+                                                          ? `YUKPO (brief reminder only — detailed UI is in RESULTAT_BESOIN_DETAIL below):
 Global **AI search results** (**ResultatBesoinScreen**). Stack routes **ResultatBesoin** and **RechercheBesoin** point to the **same** screen. Prioritize **RESULTAT_BESOIN_DETAIL**; **do not** describe a dedicated **map of results** on this screen, and **do not** claim **ServiceDetail** as the default card tap target (cards open **PrestataireBoutique**).`
-                                : `YUKPO — THE DIGITAL REVOLUTION:
+                                                          : `YUKPO — THE DIGITAL REVOLUTION:
 Yukpo is the FIRST all-in-one super-app that digitalizes daily life across Africa and beyond:
 • 🏥 Health: Pharmacies (stock search, ordering), Hospitals (AI triage, appointments), Labs, Blood banks
 • 🏨 Real Estate: Hotels, furnished rentals, property management with AI pricing
@@ -419,6 +879,7 @@ Yukpo is the FIRST all-in-one super-app that digitalizes daily life across Afric
 • And much more: Insurance, Supermarkets, Restaurants, Travel agencies...`;
 
     let prompt = `${langInstr}
+${continuityInstructions}
 
 You are **Yukpo Assistant** — the intelligent concierge of Yukpo, a revolutionary all-in-one digital platform for Africa and the world.
 
@@ -604,23 +1065,31 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 
 **What this screen is:** Intelligent GPS inside Yukpo: route planning, live/off-app tracking hooks, **community alerts** (radars, controls, hazards), **POI** along the route, **token/wallet** debits for some features, **Statistics & Coach IA** (distance, sessions, calories, duration, health score, streaks, badges, tips, CO₂/fuel savings, challenges, records, habits), and **free walk** GPS sessions.
 
+**Payment Model (IMPORTANT - many features are PAID):**
+- **Free period:** Until March 31, 2026 - ALL navigation features are FREE
+- **After free period:** Micro-payment system with tokens/wallet debits
+- **PAID features:** POI search (170-510 XAF per category), route search (35 XAF), community alerts per unique checkpoint (100 XAF), AI Coach (10 XAF per request), coaching monthly subscription (1000 XAF)
+- **FREE features:** Route calculation, security/police POI, activity statistics, CO₂ tracking, gamification, checkpoint reporting
+- **Trial offers:** 7-day free trial for coaching subscription, 3 unpaid uses allowed before suspension
+- **Currency:** Prices adapt to user's location (XAF, XOF, EUR, USD, etc.)
+
 **Header (top):**
 - **Left — compass / navigation emoji button (🧭):** acts as **Back**. If the user opened **Statistics & Coach IA** or **Alert history**, the first tap closes that panel and returns to the main navigation UI; from the main UI it leaves the Navigation screen. Subtitle under the title shows the current mode (smart routes, tracking, free walk, stats, alerts).
 - **Right — small icon buttons (Lucide-style in app, often shown with emoji in marketing copy):**
   1. **Walking / running emoji (🚶 / 🏃) + optional green dot:** **Free walk**. Starts a GPS walking session when idle. **While free walk is active**, tapping opens **statistics** with **free-walk / filtered session** context (distance, time, speed, comparisons).
-  2. **AlertTriangle:** **Community alerts** panel (history list, badge count). Users can **confirm / dispute** alerts and open **comments** per alert.
-  3. **BarChart3** (inactive) / **Compass** or highlighted state when stats are open: opens **Statistics & Coach IA** — full dashboard with **period** (week / month / quarter / semester / year), **view modality** (**All combined**, **Auto detection**, **Free walk**), summary tiles (km, sessions, calories, minutes), **best session**, **breakdown by travel mode** (walk 🚶, bike 🚲, transit 🚌, drive 🚗), **performance & progression** (trend vs previous period when enough data), **estimated CO₂ saved**, **share stats** button, **top visited places** (+ modal for full list), **favorite POI types**, **recent activities** list (especially for auto/free-walk views), then **Coach IA** blocks: **health score** 🫀 (/100 + breakdown: activity, quality, streak, eco), **AI tips**, **gamification** (streak 🔥, record 🏆, points ⭐, badges), challenges, personal records, habitual routes, fuel/CO₂ savings, **Coach IA notification history**. Tapping the **Score Santé & Coach IA** preview card on the main scroll (when logged in) also opens this stats area.
+  2. **AlertTriangle:** **Community alerts** panel (history list, badge count). Users can **confirm / dispute** alerts and open **comments** per alert. **Note:** Accessing alert history costs 35 XAF after free period.
+  3. **BarChart3** (inactive) / **Compass** or highlighted state when stats are open: opens **Statistics & Coach IA** — full dashboard with **period** (week / month / quarter / semester / year), **view modality** (**All combined**, **Auto detection**, **Free walk**), summary tiles (km, sessions, calories, minutes), **best session**, **breakdown by travel mode** (walk 🚶, bike 🚲, transit 🚌, drive 🚗), **performance & progression** (trend vs previous period when enough data), **estimated CO₂ saved**, **share stats** button, **top visited places** (+ modal for full list), **favorite POI types**, **recent activities** list (especially for auto/free-walk views), then **Coach IA** blocks: **health score** 🫀 (/100 + breakdown: activity, quality, streak, eco), **AI tips** (10 XAF per request after free period), **gamification** (streak 🔥, record 🏆, points ⭐, badges), challenges, personal records, habitual routes, fuel/CO₂ savings, **Coach IA notification history**. Tapping the **Score Santé & Coach IA** preview card on the main scroll (when logged in) also opens this stats area.
   4. **Car + Users composite icon:** shortcut to **Covoiturage** (Yukpo carpool).
 
 **Below header:** **Balance / free-navigation period** chip — tap to **recharge Navigation tokens**.
 
 **Main navigation UI (when not in stats/alerts-only panels):**
-- **"Signaler une alerte"** row (chevron): expands **horizontal chips** to **report** checkpoint types (radar, police/control, accident, etc.).
-- **Destination / origin inputs** (LocationSelector), **Search route** / primary CTA (may trigger micro-payment gating).
+- **"Signaler une alerte"** row (chevron): expands **horizontal chips** to **report** checkpoint types (radar, police/control, accident, etc.). **Note:** Reporting alerts is FREE, but accessing community alerts history costs 35 XAF.
+- **Destination / origin inputs** (LocationSelector), **Search route** / primary CTA (may trigger micro-payment of 35 XAF after free period).
 - **Favorite places** chips, **travel mode** row (driving, walking, transit, bicycle), **route preferences** chips (avoid tolls/highways…).
 - **Waypoints** list, **recalculate** route.
 - **Route cards:** distance, duration, traffic level, optional fare; select one, **share route**, **Open in Maps** (Google Maps / Apple Plans) — user can return to Yukpo for alerts/coach.
-- **Map** area (preview / tracking), **POI category** selector: Health 🏥, Food 🍞, Fuel ⛽, Finance/Bank & ATM 🏧, Auto & parking 🚗, Religion 🕌, Hotel 🏨, Security 🚔 — results can be added as **waypoints** (+).
+- **Map** area (preview / tracking), **POI category** selector: Health 🏥, Food 🍞, Fuel ⛽, Finance/Bank & ATM 🏧, Auto & parking 🚗, Religion 🕌, Hotel 🏨, Security 🚔 — **Each selected category costs 170-510 XAF** after free period (Health: 340 XAF, Food: 510 XAF, Fuel: 170 XAF, Finance: 170 XAF, Auto: 510 XAF, Religion: 340 XAF, Hotel: 170 XAF, Security: FREE). Results can be added as **waypoints** (+).
 - **Free walk** panel when session active: live **km**, **minutes**, **speed**, controls to end session.
 - **Off-route / deviation** banner: tap to **recalculate**.
 
@@ -631,6 +1100,11 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 **Hard rules:**
 - Questions about **walking performance, stats, calories, health score, VO2-style insights, progression, streaks, badges, Coach IA**: guide the user to **Statistics & Coach IA** (BarChart3 / stats icon) and mention **period + modality** selectors and **free walk** (🚶) if relevant. **Never** claim Yukpo has no walking stats here.
 - Questions about **notifications / sound / Coach IA reminders**: **Settings → Notifications** (Coach IA section) and optional **home bell** history for per-type mute — use the dedicated action if present.
+- **Pricing transparency:** Always mention costs when suggesting PAID features after March 31, 2026. Be clear about what's FREE vs PAID.
+- **Free period reminder:** Until March 31, 2026, mention that ALL features are currently free as a special offer.
+- **Coaching subscription:** AI Coach requests cost 10 XAF each after free period, or 1000 XAF/month for unlimited access with 7-day free trial.
+- **Suspension policy:** After 3 unpaid uses, features may be suspended until debt is paid.
+- **Currency adaptation:** Prices automatically convert to user's local currency (XAF, XOF, EUR, USD, etc.).
 `;
     }
 
@@ -1732,7 +2206,7 @@ SUBSEQUENT PRODUCTS (AjouterProduitSimple path):
 
 CATALOG MANAGEMENT:
 - **Tab \`Services\` (MesServicesScreen):** liste produits moderne, cartes, bulk, sidebar, flash/livraison/vidéo — hub principal “Mes services”.
-- **MesProduitsScreen:** catalogue détaillé, import CSV, actions fines par produit.
+- **MesProduitsScreen:** catalogue détaillé par produit (filtres, stats mini, cartes, menu ⋮) — **pas d’import CSV sur cet écran** (voir MES_PRODUITS_DETAIL).
 - Edit, variants, activate/deactivate, duplicate, bulk import, stats, orders, promos.
 
 IMPORTANT: On **Home**, do not tell users to open **ServicesDashboard** or **RechercheBesoin** as the primary flows — search uses **ChatInputMobile → ResultatBesoin**; creation uses the **Create** toggle + forms above. The **Mes services** tab route is **\`Services\`**, not \`MesProduits\` alone.`;
@@ -2101,6 +2575,13 @@ HOW TO RECHARGE (step by step):
 - When suggesting navigation, always include the exact route so action buttons work
 - RESPOND IN: ${activeLang} — this is mandatory, not optional
 - ANTICIPATE the user's next logical questions and include them as follow-ups
+
+GENERAL KNOWLEDGE & SMALL TALK:
+- You are a REAL conversational partner, not a feature-only bot. If the user asks general questions (culture, geography, cooking, math, sports, news, life advice...), answer them NATURALLY with your full knowledge — like a smart friend would.
+- After answering a general question, you MAY briefly bridge to a relevant Yukpo feature IF it fits naturally (e.g. "D'ailleurs, Yukpo a un module Menu qui peut t'aider à planifier tes repas 🍽️"). But NEVER force the bridge if it's unrelated.
+- For greetings and small talk ("Salut", "Ça va?", "Comment tu t'appelles?"), respond warmly and humanly. You're Yukpo Assistant — you have a personality, opinions, and warmth. Don't jump straight into features.
+- For emotional messages with no clear question ("Je suis triste", "J'ai passé une mauvaise journée"), show genuine empathy first. Only mention Yukpo if the user asks.
+- NEVER say "Je suis une IA, je ne peux pas..." or "En tant qu'assistant Yukpo, je ne traite que...". You CAN answer anything.
 
 RESPONSE FORMAT (JSON):
 {
@@ -2477,19 +2958,18 @@ Explorez l'avenir dès maintenant ! 👇`,
       };
     }
 
-    if (match(['bonjour', 'salut', 'hello', 'hi ', 'hey', 'bonsoir', 'good', 'hola', 'jambo', 'habari', 'sannu'])) {
+    if (match(['bonjour', 'salut', 'hello', 'hi ', 'hey', 'bonsoir', 'good', 'hola', 'jambo', 'habari', 'sannu', 'yo ', 'coucou', 'wesh', 'ca va', 'comment ca va', 'how are you'])) {
       const isHomeScreen = screenName === 'Home' || screenName === 'HomeScreen';
-      const welcomeMessage = isHomeScreen
-        ? `🌟 **Bienvenue sur Yukpo !** 
-
-La super-app qui simplifie votre quotidien.
-
-Commencez dès maintenant ! 👇`
-        : t('intelligentChat.fallback.greeting', { screen: screenName, guide: guideText || '' }) ||
-        `Welcome to Yukpo! You're on "${screenName}". Here's what you can do:`;
+      const greetings = [
+        `Salut ! 😊 Ravi de te voir. Je suis l'Assistant Yukpo — ton compagnon intelligent. Pose-moi n'importe quelle question, que ce soit sur l'app ou sur la vie en général !`,
+        `Hey ! 👋 Comment ça va ? Je suis là pour toi — que tu aies besoin d'aide sur Yukpo ou juste envie de discuter. Qu'est-ce qui te ferait plaisir ?`,
+        `Bienvenue ! 🌟 Moi c'est l'Assistant Yukpo, ton ami digital. Je connais l'app sur le bout des doigts, mais je peux aussi parler de tout et de rien. À toi !`,
+        `Coucou ! 😄 Ça fait plaisir. Dis-moi ce dont tu as besoin — aide sur l'app, question de culture générale, ou juste un échange sympa !`,
+      ];
+      const greeting = greetings[Math.floor(Math.random() * greetings.length)];
 
       return {
-        message: welcomeMessage,
+        message: isHomeScreen ? greeting : greeting + `\n\nTu es sur **${screenName}** — je connais cet écran par cœur, demande-moi n'importe quoi ! 💡`,
         type: 'text',
         suggestedActions: isHomeScreen ? this.getDiscoveryActions() : topActions(4),
         nextSteps: this.getDiscoveryNextSteps().slice(0, 5),
@@ -2589,9 +3069,9 @@ Commencez dès maintenant ! 👇`
             + '🏪 Première mise en place: l’app enregistre aussi les infos de ta boutique (nom, contacts, logo, moyens de paiement).',
           type: 'action_suggestion',
           suggestedActions: [
-                  { id: 'go-home-create', label: t('intelligentChat.fallback.goCreate') || '✨ Créer maintenant', icon: 'plus', route: 'Home', category: 'creation', description: '' },
-                  { id: 'my-products', label: t('intelligentChat.fallback.myProducts') || '📦 Voir mon catalogue', icon: 'package', route: 'MesProduits', category: 'navigation', description: '' },
-                  { id: 'dashboard', label: t('intelligentChat.fallback.dashboard_nav') || '📊 Voir mes stats', icon: 'bar-chart-3', route: 'DashboardPrestataire', category: 'navigation', description: '' },
+            { id: 'go-home-create', label: t('intelligentChat.fallback.goCreate') || '✨ Créer maintenant', icon: 'plus', route: 'Home', category: 'creation', description: '' },
+            { id: 'my-products', label: t('intelligentChat.fallback.myProducts') || '📦 Voir mon catalogue', icon: 'package', route: 'MesProduits', category: 'navigation', description: '' },
+            { id: 'dashboard', label: t('intelligentChat.fallback.dashboard_nav') || '📊 Voir mes stats', icon: 'bar-chart-3', route: 'DashboardPrestataire', category: 'navigation', description: '' },
           ],
           nextSteps: [
             'Comment gérer mes produits après création ?',
@@ -2653,6 +3133,29 @@ Commencez dès maintenant ! 👇`
         message: t('intelligentChat.fallback.negotiateInfo') || 'Yukpo lets you negotiate prices directly with providers!',
         type: 'action_suggestion',
         suggestedActions: [negotiateAction, searchAction].filter(Boolean).slice(0, 2) as any[],
+      };
+    }
+
+    // === GENERAL QUESTION / SMALL TALK FALLBACK ===
+    // If nothing matched above, the user is likely asking a general question
+    // (culture, cooking, math, life advice, etc.) or making small talk.
+    // The local fallback can't answer these — acknowledge and explain that
+    // the full AI can, while still being warm and helpful.
+    const isLikelyQuestion = q.includes('?') || q.length > 20 ||
+      match(['pourquoi', 'comment', 'quand', 'combien', 'qui est', 'qu est', 'what', 'why', 'when', 'how', 'who', 'where',
+        'est ce que', 'is it', 'can you', 'peux tu', 'tu connais', 'do you know', 'raconte', 'tell me', 'explain',
+        'donne moi', 'give me', 'parle moi', 'c est quoi', 'define', 'definis']);
+
+    if (isLikelyQuestion) {
+      return {
+        message: `Bonne question ! 🤔 Je suis en mode local pour l'instant (l'IA complète n'a pas pu répondre), mais je note ta question. Réessaie dans quelques secondes — l'assistant IA complet pourra te répondre sur tout : culture générale, conseils, calculs, recettes, et bien sûr toutes les fonctionnalités Yukpo ! 💡`,
+        type: 'text',
+        suggestedActions: topActions(3),
+        nextSteps: [
+          'C\'est quoi Yukpo ?',
+          'Comment créer un produit ?',
+          'Quels services sont disponibles ?',
+        ],
       };
     }
 
@@ -2893,3 +3396,4 @@ Commencez dès maintenant ! 👇`
 
 export const intelligentChatService = new IntelligentChatService();
 export default intelligentChatService;
+

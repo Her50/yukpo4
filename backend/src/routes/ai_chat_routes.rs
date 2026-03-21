@@ -531,7 +531,9 @@ fn build_system_prompt_for_mode(
 
     let mode = ctx.get("mode").and_then(|v| v.as_str()).unwrap_or("");
     let context_prompt = ctx.get("context_prompt").and_then(|v| v.as_str()).unwrap_or("");
-    let context_prompt = truncate_for_prompt(context_prompt, 4000);
+    // Align with mobile `intelligentChatService` MAX_CONTEXT_PROMPT_LENGTH (9000) so
+    // screen-specific blocks (e.g. HOME_SCREEN_DETAIL, NAVIGATION_GPS_DETAIL) are not cut off.
+    let context_prompt = truncate_for_prompt(context_prompt, 9000);
     let screen = ctx.get("screen").and_then(|v| v.as_str()).unwrap_or("");
     let screen_type = ctx.get("screen_type").and_then(|v| v.as_str()).unwrap_or("");
     let category = ctx.get("category").and_then(|v| v.as_str()).unwrap_or("");
@@ -662,7 +664,8 @@ fn build_system_prompt_for_mode(
         - When the user asks about a service (pharmacy, taxi, etc.), explain what Yukpo offers for it\n\
         - For providers/partners: focus on dashboard features (stock, orders, analytics, promotions)\n\
         - For regular users: focus on discovery, search, booking, ordering\n\
-        - Be warm, practical, and concise: 2-4 sentences then actionable suggestions\n\n\
+        - Be warm, practical, and concise: 2-4 sentences then actionable suggestions\n\
+        - Tone: professional with light marketing energy (value, benefits); use 1-3 tasteful emojis per reply when it fits the language\n\n\
         RESPONSE FORMAT (strict JSON):\n\
         {{\"message\": \"your helpful response\", \
         \"type\": \"text|action_suggestion|navigation_help|visual_guide\", \

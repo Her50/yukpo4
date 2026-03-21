@@ -354,7 +354,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
 
       const contextActions = isHomeScreen
         ? welcomeActions
-        : screenContext.availableActions
+        : (Array.isArray(screenContext.availableActions) ? screenContext.availableActions : [])
           .filter((a: any) => a.id !== 'home' && a.id !== 'profile' && a.id !== 'services')
           .slice(0, 6);
       setSuggestedActions(dedupeActions(contextActions));

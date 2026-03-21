@@ -1,14 +1,13 @@
 // ✅ CORRIGÉ: Utiliser SafeStorage pour éviter les erreurs "Driver not found"
 // ✅ MIGRÉ: Utilise react-native-reanimated pour de meilleures performances
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
-import ProductVideoCreationModal from '../../components/ProductVideoCreationModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
@@ -23,6 +22,8 @@ import type { GeneratedVideoResponse } from '../../types/VideoGeneration';
 import { extractProductName, extractServiceName } from '../../utils/displayHelpers';
 import { normalizeServiceProducts } from '../../utils/productNormalizer';
 import SafeStorage from '../../utils/safeStorage';
+
+const ProductVideoCreationModal = React.lazy(() => import('../../components/ProductVideoCreationModal'));
 
 interface VideoCreationIntroParams {
     serviceId?: number;
@@ -680,23 +681,28 @@ const VideoCreationIntroScreen: React.FC = () => {
 
             {/* ✅ UNIFIÉ: Modal de création vidéo (même que dans MesServicesScreen) */}
             {showVideoCreationModal && productsForVideoCreation.length > 0 && (
-                <ProductVideoCreationModal
-                    visible={showVideoCreationModal}
-                    primaryProduct={productsForVideoCreation[0]}
-                    products={productsForVideoCreation}
-                    navigation={navigation} // ✅ AJOUTÉ: Navigation pour la redirection
-                    onClose={() => {
-                        setShowVideoCreationModal(false);
-                        setProductsForVideoCreation([]);
-                    }}
-                    onSuccess={async (result: GeneratedVideoResponse) => {
-                        console.log('[VideoCreationIntroScreen] ✅ Vidéo créée avec succès:', result);
-                        setShowVideoCreationModal(false);
-                        setProductsForVideoCreation([]);
-                        // ✅ Optionnel: Naviguer vers l'écran de résultat
-                        // (navigation as any).navigate('VideoGenerationResult', { videoId: result.video_id });
-                    }}
-                />
+                <Suspense fallback={(
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.35)' }}>
+                        <ActivityIndicator size="large" color={modernColors.primary} />
+                    </View>
+                )}
+                >
+                    <ProductVideoCreationModal
+                        visible={showVideoCreationModal}
+                        primaryProduct={productsForVideoCreation[0]}
+                        products={productsForVideoCreation}
+                        navigation={navigation}
+                        onClose={() => {
+                            setShowVideoCreationModal(false);
+                            setProductsForVideoCreation([]);
+                        }}
+                        onSuccess={async (result: GeneratedVideoResponse) => {
+                            console.log('[VideoCreationIntroScreen] ✅ Vidéo créée avec succès:', result);
+                            setShowVideoCreationModal(false);
+                            setProductsForVideoCreation([]);
+                        }}
+                    />
+                </Suspense>
             )}
 
             {/* ✅ PHASE 2: Modal exemple vidéo */}

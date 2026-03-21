@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Alert, Linking, Modal, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Modal, Pressable, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { apiPost } from '../services/api';
 import UserMentionPicker from './UserMentionPicker';
 
@@ -22,6 +22,8 @@ interface GlobalShareModalProps {
 const GlobalShareModal: React.FC<GlobalShareModalProps> = ({ visible, onClose, payload }) => {
   const [showPicker, setShowPicker] = useState(false);
   const [sendingInternal, setSendingInternal] = useState(false);
+  const [showYukpoOption, setShowYukpoOption] = useState(false);
+  const nativeShareTriggered = useRef(false);
 
   const shareText = useMemo(() => {
     if (!payload) return '';
@@ -31,29 +33,38 @@ const GlobalShareModal: React.FC<GlobalShareModalProps> = ({ visible, onClose, p
     return text;
   }, [payload]);
 
-  const handleExternalShare = async (platform: 'whatsapp' | 'facebook' | 'telegram' | 'email' | 'native') => {
+  useEffect(() => {
+    if (visible && payload && !nativeShareTriggered.current) {
+      nativeShareTriggered.current = true;
+      triggerNativeShare();
+    }
+    if (!visible) {
+      nativeShareTriggered.current = false;
+      setShowYukpoOption(false);
+    }
+  }, [visible, payload]);
+
+  const triggerNativeShare = async () => {
     if (!payload) return;
     try {
-      if (platform === 'native') {
-        await Share.share({ message: shareText, title: payload.title, url: payload.shareUrl });
-        return;
-      }
-
-      let url = '';
-      if (platform === 'whatsapp') url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-      if (platform === 'facebook') url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(payload.shareUrl)}`;
-      if (platform === 'telegram') url = `https://t.me/share/url?url=${encodeURIComponent(payload.shareUrl)}&text=${encodeURIComponent(payload.title)}`;
-      if (platform === 'email') url = `mailto:?subject=${encodeURIComponent(payload.title)}&body=${encodeURIComponent(shareText)}`;
-
-      const can = await Linking.canOpenURL(url);
-      if (!can) {
-        Alert.alert('Erreur', 'Application de partage indisponible');
-        return;
-      }
-      await Linking.openURL(url);
+      await Share.share({
+        message: shareText,
+        title: payload.title,
+        url: payload.shareUrl,
+      });
     } catch (e) {
-      Alert.alert('Erreur', 'Partage impossible');
+      console.log('[GlobalShareModal] Native share dismissed or error');
     }
+    setShowYukpoOption(true);
+  };
+
+  const handleReshare = async () => {
+    nativeShareTriggered.current = false;
+    setShowYukpoOption(false);
+    setTimeout(() => {
+      nativeShareTriggered.current = true;
+      triggerNativeShare();
+    }, 100);
   };
 
   const handleSelectUser = async (user: any) => {
@@ -87,39 +98,55 @@ const GlobalShareModal: React.FC<GlobalShareModalProps> = ({ visible, onClose, p
     }
   };
 
+  const handleClose = () => {
+    setShowYukpoOption(false);
+    setShowPicker(false);
+    onClose();
+  };
+
   if (!visible || !payload) return null;
+
+  if (!showYukpoOption) return null;
 
   return (
     <>
-      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-        <View style={styles.overlay}>
-          <View style={styles.card}>
-            <Text style={styles.title}>Partager</Text>
-            <TouchableOpacity style={[styles.btn, styles.yukpoTop]} onPress={() => setShowPicker(true)} disabled={sendingInternal}>
-              <Text style={styles.btnText}>Yukpo</Text>
+      <Modal visible={showYukpoOption} transparent animationType="slide" onRequestClose={handleClose}>
+        <Pressable style={styles.overlay} onPress={handleClose}>
+          <View style={styles.bottomSheet} onStartShouldSetResponder={() => true}>
+            <View style={styles.handle} />
+            <Text style={styles.title}>Partager sur Yukpo</Text>
+
+            <TouchableOpacity
+              style={styles.yukpoRow}
+              onPress={() => setShowPicker(true)}
+              disabled={sendingInternal}
+              activeOpacity={0.7}
+            >
+              <View style={styles.yukpoIcon}>
+                <Text style={styles.yukpoIconText}>YP</Text>
+              </View>
+              <View style={styles.yukpoTextContainer}>
+                <Text style={styles.yukpoLabel}>Yukpo</Text>
+                <Text style={styles.yukpoSub}>Envoyer à un ami dans l'app</Text>
+              </View>
             </TouchableOpacity>
-            <View style={styles.grid}>
-              <TouchableOpacity style={[styles.btn, styles.whatsapp]} onPress={() => handleExternalShare('whatsapp')}>
-                <Text style={styles.btnText}>WhatsApp</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.btn, styles.facebook]} onPress={() => handleExternalShare('facebook')}>
-                <Text style={styles.btnText}>Facebook</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.btn, styles.telegram]} onPress={() => handleExternalShare('telegram')}>
-                <Text style={styles.btnText}>Telegram</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.btn, styles.email]} onPress={() => handleExternalShare('email')}>
-                <Text style={styles.btnText}>Email</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.btn, styles.more]} onPress={() => handleExternalShare('native')}>
-                <Text style={styles.btnText}>Plus...</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity style={styles.close} onPress={onClose}>
-              <Text style={styles.closeText}>Fermer</Text>
+
+            <View style={styles.separator} />
+
+            <TouchableOpacity
+              style={styles.reshareRow}
+              onPress={handleReshare}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.reshareIcon}>📤</Text>
+              <Text style={styles.reshareLabel}>Autres applications...</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.closeBtn} onPress={handleClose} activeOpacity={0.7}>
+              <Text style={styles.closeBtnText}>Fermer</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Pressable>
       </Modal>
 
       <UserMentionPicker
@@ -133,21 +160,98 @@ const GlobalShareModal: React.FC<GlobalShareModalProps> = ({ visible, onClose, p
 };
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  card: { width: '100%', maxWidth: 420, backgroundColor: '#111827', borderRadius: 16, padding: 16 },
-  title: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 12 },
-  yukpoTop: { width: '100%', marginBottom: 8, backgroundColor: '#7C3AED' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  btn: { width: '31%', minHeight: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  whatsapp: { backgroundColor: '#25D366' },
-  facebook: { backgroundColor: '#1877F2' },
-  telegram: { backgroundColor: '#0088CC' },
-  email: { backgroundColor: '#6B7280' },
-  more: { backgroundColor: '#374151' },
-  btnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  close: { marginTop: 12, alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 10 },
-  closeText: { color: '#E5E7EB', fontWeight: '600' },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheet: {
+    backgroundColor: '#1F2937',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    paddingTop: 12,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#4B5563',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    color: '#F9FAFB',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  yukpoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#374151',
+    borderRadius: 14,
+    padding: 14,
+  },
+  yukpoIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#7C3AED',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  yukpoIconText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  yukpoTextContainer: {
+    marginLeft: 14,
+    flex: 1,
+  },
+  yukpoLabel: {
+    color: '#F9FAFB',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  yukpoSub: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#374151',
+    marginVertical: 12,
+  },
+  reshareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  reshareIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  reshareLabel: {
+    color: '#D1D5DB',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  closeBtn: {
+    marginTop: 8,
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+  },
+  closeBtnText: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
 
 export default GlobalShareModal;
-

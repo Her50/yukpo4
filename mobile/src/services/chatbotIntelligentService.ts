@@ -19,13 +19,58 @@ const t = (key: string, params?: Record<string, any>): string => i18n.t(key, par
 
 class ChatbotIntelligentService {
 
-  private buildServicePrompt(service: any, lang: string): string {
+  /**
+   * Détecter l'émotion dominante dans un message (version légère pour le fallback)
+   */
+  private detectEmotion(text: string): 'frustration' | 'gratitude' | 'confusion' | 'excitement' | 'correction' | 'neutral' {
+    const q = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const kw: Record<string, string[]> = {
+      correction: ['non', 'pas ca', 'ce nest pas', 'faux', 'erreur', 'trompe', 'wrong', 'incorrect', 'mistake', 'tu te trompes'],
+      frustration: ['frustre', 'enerve', 'marre', 'ras le bol', 'ca marche pas', 'incomprehensible', 'nul', 'horrible', 'impossible'],
+      gratitude: ['merci', 'bravo', 'genial', 'parfait', 'excellent', 'top', 'nickel', 'chapeau', 'thank', 'awesome', 'great'],
+      confusion: ['je comprends pas', 'pas clair', 'comment faire', 'perdu', 'expliquez', 'confused', 'unclear'],
+      excitement: ['wow', 'incroyable', 'trop bien', 'genial', 'amazing', 'fantastic', 'dingue', 'wahou'],
+    };
+    let best: 'frustration' | 'gratitude' | 'confusion' | 'excitement' | 'correction' | 'neutral' = 'neutral';
+    let bestN = 0;
+    for (const [emo, words] of Object.entries(kw)) {
+      const n = words.filter(w => q.includes(w)).length;
+      if (n > bestN) { bestN = n; best = emo as any; }
+    }
+    return best;
+  }
+
+  /**
+   * Générer un préfixe émotionnel court pour le fallback local
+   */
+  private emotionalPrefix(emotion: string, lang: string): string {
+    if (emotion === 'neutral') return '';
+    const fr: Record<string, string[]> = {
+      correction: ["Toutes mes excuses, vous avez raison. ", "Au temps pour moi. ", "Merci de me corriger. "],
+      frustration: ["Je comprends votre frustration, désolé. ", "Pardon pour la confusion. Reprenons. ", "Je m'excuse, simplifions. "],
+      gratitude: ["Merci beaucoup ! 😊 ", "C'est un plaisir ! ", "Ravi d'aider ! "],
+      confusion: ["Pas de souci, je réexplique. ", "Laissez-moi clarifier. ", "Bonne question ! "],
+      excitement: ["Super, content que ça vous plaise ! 🎉 ", "Génial n'est-ce pas ! ", "Oui c'est top ! "],
+    };
+    const en: Record<string, string[]> = {
+      correction: ["My apologies, you're right. ", "My mistake. ", "Thanks for the correction. "],
+      frustration: ["I understand your frustration, sorry. ", "Apologies for the confusion. Let's retry. ", "Sorry, let me simplify. "],
+      gratitude: ["Thank you! 😊 ", "Happy to help! ", "Glad I could assist! "],
+      confusion: ["No worries, let me re-explain. ", "Let me clarify. ", "Great question! "],
+      excitement: ["Awesome, glad you like it! 🎉 ", "Amazing right?! ", "Yes it's great! "],
+    };
+    const pool = (lang === 'en' ? en : fr)[emotion] || [];
+    return pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : '';
+  }
+
+  private buildServicePrompt(service: any, lang: string, recentMessages: any[] = []): string {
     const name = this.getServiceName(service);
     const price = this.getServicePrice(service);
     const desc = this.getServiceDescription(service);
     const products = this.getProducts(service);
     const category = service?.category || service?.categorie || 'general';
     const activeLang = lang || i18n.language || 'fr';
+    const turnCount = recentMessages.length;
 
     return `You are the AI sales assistant for "${name || 'this service'}" on Yukpo, Africa's #1 super-app.
 
@@ -49,6 +94,17 @@ CHAT FEATURES YOU CAN GUIDE USERS TO:
 - 📍 Get directions to provider
 - 📸 Send product gallery photos
 - @ Mention participants
+
+CONVERSATION CONTINUITY & EMOTIONAL INTELLIGENCE:
+- This is message #${turnCount + 1} of the conversation. ALWAYS build on previous messages.
+- If user corrects you ("non", "pas", "wrong"): START with a sincere apology, THEN give corrected answer.
+- If user thanks you ("merci", "bravo", "super"): respond warmly, show appreciation, suggest next actions.
+- If user is frustrated ("marre", "ça marche pas"): acknowledge feelings, apologize, simplify into steps.
+- If user is confused ("je comprends pas", "comment"): empathize, re-explain with numbered steps.
+- If user is excited ("wow", "génial!"): match their energy, suggest related features.
+- If user says "dis m'en plus", "continue", "détaille": expand WITHOUT repeating previous content.
+- NEVER answer as if the conversation just started — reference previous exchanges.
+- Adapt tone: more formal when user is frustrated, more casual when user is happy.
 
 RULES:
 - Be CONCISE (2-4 sentences max), then suggest quick actions
@@ -74,9 +130,16 @@ RULES:
       const productsSummary = products.slice(0, 5).map((p: any) => `${p.nom || p.name || '?'}${p.prix ? ` (${p.prix} FCFA)` : ''}`).join(', ');
       const activeLang = lang || i18n.language || 'fr';
 
+      // Détection émotionnelle du message utilisateur
+      const emotion = this.detectEmotion(query);
+      const prefix = this.emotionalPrefix(emotion, activeLang);
+      const contextualMessage = prefix
+        ? `[ASSISTANT_TONE_PREFIX: ${prefix.trim()}]\n${query}`
+        : query;
+
       // Backend expose AI routes sans préfixe `/api` : POST /ai/chat
       const res = await apiPost<any>('/ai/chat', {
-        message: query,
+        message: contextualMessage,
         context: {
           category: service?.category || service?.categorie || 'general',
           service_name: serviceName,
@@ -84,12 +147,17 @@ RULES:
           service_description: serviceDesc?.substring(0, 300),
           products_summary: productsSummary,
           products_count: products.length,
-          recent_messages: recentMessages.slice(-5).map((m: any) => ({
+          recent_messages: recentMessages.slice(-8).map((m: any) => ({
             role: m.isUser ? 'user' : 'assistant',
             content: m.text || m.content || '',
           })),
           mode: 'chatbot_service',
-          system_prompt: this.buildServicePrompt(service, activeLang),
+          system_prompt: this.buildServicePrompt(service, activeLang, recentMessages),
+          sentiment_context: {
+            emotion,
+            emotional_prefix: prefix.trim() || null,
+            conversation_turn_count: recentMessages.length,
+          },
         },
         type: 'chatbot',
         language: activeLang,
@@ -97,17 +165,22 @@ RULES:
 
       const data = res?.data || res;
       if (data?.message) {
+        let message = data.message;
+        // Prépendre le préfixe émotionnel si le backend ne l'a pas intégré
+        if (prefix && message && !message.startsWith(prefix.trim().substring(0, 10))) {
+          message = prefix + message;
+        }
         return {
-          message: data.message,
+          message,
           icons: data.icons || [],
           quickReplies: data.quick_replies || data.suggestions || [],
           suggestedActions: data.suggested_actions || [],
           nextSteps: data.next_steps || data.nextSteps || [],
         };
       }
-      return this.localFallback(query, service);
+      return this.localFallback(query, service, activeLang);
     } catch {
-      return this.localFallback(query, service);
+      return this.localFallback(query, service, lang || i18n.language || 'fr');
     }
   }
 
@@ -147,7 +220,7 @@ RULES:
     return lines.join('\n') + more;
   }
 
-  private localFallback(query: string, service: any): ChatbotResponse {
+  private localFallback(query: string, service: any, lang?: string): ChatbotResponse {
     const q = query.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const name = this.getServiceName(service);
     const price = this.getServicePrice(service);
@@ -155,10 +228,15 @@ RULES:
     const productsSummary = this.getProductsSummary(service);
     const match = (kws: string[]) => kws.some(k => q.includes(k));
 
+    // Détecter l'émotion et préparer un préfixe pour les réponses fallback
+    const emotion = this.detectEmotion(query);
+    const prefix = this.emotionalPrefix(emotion, lang || 'fr');
+    const prefixMsg = (msg: string) => prefix ? prefix + msg : msg;
+
     if (match(['produit', 'product', 'article', 'item', 'catalogue', 'stock', 'producto', 'produkt', 'bidhaa', 'kayan', 'mazao', 'kayayyaki', 'oja', 'umkhiqizo', 'prodotto', 'produto', 'produk', 'товар'])) {
       if (productsSummary) {
         return {
-          message: t('chatbot.productsAvailable', { name, list: productsSummary }),
+          message: prefixMsg(t('chatbot.productsAvailable', { name, list: productsSummary })),
           icons: [
             { icon: 'package', label: t('chatbot.products') || 'Products', color: '#6366f1' },
             { icon: 'truck', label: t('chatbot.delivery') || 'Delivery', color: '#10b981' },
@@ -168,7 +246,7 @@ RULES:
         };
       }
       return {
-        message: t('chatbot.noProductCatalog', { name }),
+        message: prefixMsg(t('chatbot.noProductCatalog', { name })),
         icons: [{ icon: 'message-circle', label: t('chatbot.contact') || 'Contact', color: '#6366f1' }],
         quickReplies: [t('chatbot.contactProvider') || 'Contact provider'],
         nextSteps: [t('chatbot.askAboutService') || 'Tell me about this service', t('chatbot.askHowToCall') || 'How do I call the provider?'],
@@ -180,7 +258,7 @@ RULES:
         ? t('chatbot.priceShown', { name, price })
         : t('chatbot.noPriceShown', { name });
       return {
-        message: `${priceInfo}\n\n${t('chatbot.canNegotiate')}`,
+        message: prefixMsg(`${priceInfo}\n\n${t('chatbot.canNegotiate')}`),
         icons: [
           { icon: 'tag', label: t('chatbot.negotiate') || 'Negotiate', color: '#f59e0b' },
           { icon: 'credit-card', label: t('chatbot.payment') || 'Payment', color: '#6366f1' },
@@ -192,7 +270,7 @@ RULES:
 
     if (match(['negoci', 'negoti', 'rabais', 'discount', 'marchander', 'bargain', 'descuento', 'verhandeln', 'punguza'])) {
       return {
-        message: t('chatbot.negotiateSteps', { name }),
+        message: prefixMsg(t('chatbot.negotiateSteps', { name })),
         icons: [{ icon: 'tag', label: t('chatbot.negotiate') || 'Negotiate', color: '#f59e0b' }],
         quickReplies: [t('chatbot.currentPrice') || 'Current price', t('chatbot.contactProvider') || 'Contact'],
       };
@@ -200,7 +278,7 @@ RULES:
 
     if (match(['appel', 'call', 'telephone', 'phone', 'llamar', 'anrufen', 'piga simu', 'kira', 'telefonar', 'chiamare', 'bellen', 'simu', 'waya', 'fonou', 'rele', 'звонить'])) {
       return {
-        message: t('chatbot.callSteps'),
+        message: prefixMsg(t('chatbot.callSteps')),
         icons: [
           { icon: 'phone', label: t('chatbot.audioCall') || 'Audio call', color: '#10b981' },
           { icon: 'video', label: t('chatbot.videoCall') || 'Video call', color: '#3b82f6' },
@@ -211,7 +289,7 @@ RULES:
 
     if (match(['livr', 'deliver', 'command', 'order', 'ship', 'suivi', 'tracking', 'pedido', 'lieferung', 'oda', 'entrega', 'consegna', 'bezorging', 'peleka', 'aika', 'jigilar', 'firansu', 'доставка'])) {
       return {
-        message: t('chatbot.deliverySteps'),
+        message: prefixMsg(t('chatbot.deliverySteps')),
         icons: [
           { icon: 'truck', label: t('chatbot.delivery') || 'Delivery', color: '#10b981' },
           { icon: 'map-pin', label: t('chatbot.tracking') || 'Tracking', color: '#3b82f6' },
@@ -226,7 +304,7 @@ RULES:
 
     if (match(['video', 'vidéo', 'reel', 'tiktok', 'story', 'pub video', 'publicite video', 'publicité vidéo'])) {
       return {
-        message: t('chatbot.productVideoSteps', { name: name || 'this product' }),
+        message: prefixMsg(t('chatbot.productVideoSteps', { name: name || 'this product' })),
         icons: [
           { icon: 'video', label: t('chatbot.videoCreation') || 'Video', color: '#3b82f6' },
           { icon: 'sparkles', label: t('chatbot.aiAssistant') || 'AI', color: '#6366f1' },
@@ -241,7 +319,7 @@ RULES:
 
     if (match(['paiement', 'payment', 'payer', 'pay', 'momo', 'orange money', 'carte', 'credit card', 'pago', 'zahlung', 'malipo', 'biya', 'sisan', 'sara', 'kufuta', 'pagamento', 'betaling', 'bayar', 'оплата'])) {
       return {
-        message: t('chatbot.paymentInfo'),
+        message: prefixMsg(t('chatbot.paymentInfo')),
         icons: [
           { icon: 'credit-card', label: t('chatbot.card') || 'Card', color: '#6366f1' },
           { icon: 'smartphone', label: 'Mobile Money', color: '#f59e0b' },
@@ -252,7 +330,7 @@ RULES:
 
     if (match(['localis', 'locat', 'itineraire', 'direction', 'adresse', 'address', 'where is', 'gps', 'carte', 'map', 'donde', 'mahali', 'ina wapi', 'ramani', 'taswirar', 'mapa', 'kaart', 'peta', 'карта'])) {
       return {
-        message: t('chatbot.locationSteps'),
+        message: prefixMsg(t('chatbot.locationSteps')),
         icons: [
           { icon: 'map-pin', label: t('chatbot.locate') || 'Locate', color: '#ef4444' },
           { icon: 'navigation', label: t('chatbot.directions') || 'Directions', color: '#3b82f6' },
@@ -296,9 +374,9 @@ RULES:
     parts.push(t('chatbot.howCanIHelp') || 'How can I help?');
 
     return {
-      message: parts.length > 1
+      message: prefixMsg(parts.length > 1
         ? `${t('chatbot.defaultAssistant', { name: serviceName })}\n${parts.join('\n')}`
-        : t('chatbot.defaultAssistant', { name: serviceName }),
+        : t('chatbot.defaultAssistant', { name: serviceName })),
       icons: name ? [
         { icon: 'info', label: t('chatbot.details') || 'Details', color: '#6366f1' },
         { icon: 'message-circle', label: t('chatbot.contact') || 'Contact', color: '#10b981' },

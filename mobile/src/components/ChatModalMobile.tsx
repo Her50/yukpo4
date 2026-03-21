@@ -428,9 +428,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         } catch (error) {
             console.error('[ChatModalMobile] intelligentChatService failed, trying fallback:', error);
 
-            // ✅ FALLBACK: Use chatbotIntelligentService for service-specific queries
+            // ✅ FALLBACK: Use chatbotIntelligentService with chatbot history (not P2P messages)
             try {
-                const recentMsgs = messages.slice(-5).map((m: any) => ({
+                const recentMsgs = [...chatbotMessages, userMsg].slice(-8).map((m: any) => ({
                     isUser: m.isUser ?? (m.from === 'client'),
                     text: m.text || m.content || '',
                 }));
