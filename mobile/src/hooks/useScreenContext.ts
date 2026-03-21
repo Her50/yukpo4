@@ -13,6 +13,7 @@ export interface ActionDescriptor {
   category: 'navigation' | 'action' | 'creation' | 'help' | 'search';
   description?: string;
   screenTarget?: string;
+  color?: string; // Ajout de la propriété color pour les actions contextuelles
 }
 
 export interface UIElement {
@@ -228,11 +229,11 @@ const SCREEN_CONFIGS: Record<string, {
   Home: {
     type: 'home',
     actions: [
-    { id: 'home-ai-search', label: 'Trouver un client / service', icon: LUCIDE_ICONS.search, category: 'search', description: 'Mode 🔍 Rechercher : saisie texte + médias optionnels ; envoi → API rechercherServices puis écran ResultatBesoin (pas l’écran RechercheBesoin). Connexion requise.' },
-    { id: 'home-create-mode', label: 'Créer mon produit / ma prestation', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Basculer sur le mode Création puis envoyer photo/texte dans ChatInputMobile. Si le prestataire a déjà un service → AjouterProduitSimple + suggestion IA ; sinon → FormulaireYukpoIntelligent (création complète).' },
+      { id: 'home-ai-search', label: 'Trouver un client / service', icon: LUCIDE_ICONS.search, category: 'search', description: 'Mode 🔍 Rechercher : saisie texte + médias optionnels ; envoi → API rechercherServices puis écran ResultatBesoin (pas l’écran RechercheBesoin). Connexion requise.' },
+      { id: 'home-create-mode', label: 'Créer mon produit / ma prestation', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Basculer sur le mode Création puis envoyer photo/texte dans ChatInputMobile. Si le prestataire a déjà un service → AjouterProduitSimple + suggestion IA ; sinon → FormulaireYukpoIntelligent (création complète).' },
       { id: 'home-gps-modal', label: 'GPS / zone (modal)', icon: LUCIDE_ICONS.location, category: 'action', description: 'Bouton localisation sur ChatInputMobile ou en-tête : ModernGPSModal (point ou zone), alimente la recherche / création et la météo du menu avatar.' },
       { id: 'header-navigation', label: 'Navigation GPS', icon: LUCIDE_ICONS.map, route: 'Navigation', category: 'navigation', description: 'Icône navigation à gauche : écran Navigation Yukpo.' },
-    { id: 'header-delivery', label: 'Commander une livraison', icon: LUCIDE_ICONS.truck, route: 'Delivery', category: 'navigation', description: 'Icône vélo/livraison à droite : module Livraison (Delivery).' },
+      { id: 'header-delivery', label: 'Commander une livraison', icon: LUCIDE_ICONS.truck, route: 'Delivery', category: 'navigation', description: 'Icône vélo/livraison à droite : module Livraison (Delivery).' },
       { id: 'header-chat-list', label: 'Mes conversations', icon: LUCIDE_ICONS.message, category: 'action', description: 'Bulles message : ChatHistoryModal (liste puis ouverture ChatModalMobile). Badge = messages non lus (API conversations).' },
       { id: 'header-notifications', label: 'Notifications', icon: LUCIDE_ICONS.bell, category: 'action', description: 'Cloche : NotificationHistoryModal. Badge = non lues API + compteur Coach IA local.' },
       { id: 'header-avatar-menu', label: 'Menu profil (avatar)', icon: LUCIDE_ICONS.profile, category: 'navigation', description: 'UserAvatarMenu : profil, solde crédits, raccourcis navigation, météo si position choisie.' },
@@ -256,7 +257,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'svc-immo', label: 'Immobilier', icon: LUCIDE_ICONS.building2, route: 'ImmobilierSearch', category: 'navigation', description: 'ImmobilierSearch.' },
       { id: 'svc-hotel', label: 'Hôtels', icon: LUCIDE_ICONS.hotel, route: 'HotelSearch', params: { mode: 'hotel' }, category: 'navigation', description: 'HotelSearch mode=hôtel.' },
       { id: 'svc-meuble', label: 'Meublés', icon: LUCIDE_ICONS.building2, route: 'MeubleSearch', params: { mode: 'meuble' }, category: 'navigation', description: 'MeubleSearch mode=meublé.' },
-    { id: 'tab-services', label: 'Ouvrir mon hub Mes services', icon: LUCIDE_ICONS.briefcase, route: 'MesServices', category: 'navigation', description: 'Barre d’onglets : nom interne **Services** → composant MesServicesScreen ; navigation explicite **MesServices** (éviter **ServicesActivity** = ancien écran).' },
+      { id: 'tab-services', label: 'Ouvrir mon hub Mes services', icon: LUCIDE_ICONS.briefcase, route: 'MesServices', category: 'navigation', description: 'Barre d’onglets : nom interne **Services** → composant MesServicesScreen ; navigation explicite **MesServices** (éviter **ServicesActivity** = ancien écran).' },
     ],
     elements: [
       { id: 'header-brand', type: 'card', label: 'Logo Yukpo (Yuk / po)', actionable: false },

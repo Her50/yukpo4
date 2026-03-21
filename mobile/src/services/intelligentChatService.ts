@@ -12,6 +12,7 @@ export interface ChatMessage {
   type: 'text' | 'action_suggestion' | 'navigation_help' | 'visual_guide';
   suggestedActions?: ActionDescriptor[];
   visualElements?: VisualElement[];
+  nextSteps?: string[];
   metadata?: any;
 }
 
@@ -3421,8 +3422,730 @@ Explorez l'avenir dès maintenant ! 👇`,
   clearCache(): void {
     this.contextCache.clear();
   }
+
+  /**
+   * Détecter si une question du HomeScreen est contextuelle et doit déléguer à un module spécialisé
+   * Retourne le contexte cible ou null si la question reste générale
+   */
+  detectContextualDelegation(userMessage: string): {
+    targetScreen: string;
+    confidence: number;
+    contextualPrompt: string;
+    suggestedActions: ActionDescriptor[];
+  } | null {
+    const q = userMessage.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // Mots-clés par module avec seuil de confiance
+    const contextualKeywords = [
+      {
+        screen: 'Navigation',
+        keywords: [
+          'itineraire', 'itinéraire', 'route', 'chemin', 'direction', 'gps', 'navigation', 'marche', 'sport', 'coach',
+          'alerte', 'point', 'interet', 'poi', 'adresse', 'destination', 'origine', 'distance', 'temps',
+          'walking', 'running', 'cycling', 'velo', 'step', 'fitness', 'activite', 'statistique', 'calories'
+        ],
+        contextualPrompt: 'Navigation intelligente : itinéraires GPS, alertes communautaires, points d\'intérêt, marche libre, coaching sportif et statistiques d\'activité.',
+        suggestedActions: [
+          { id: 'nav-route', label: 'Calculer itinéraire', icon: 'map', route: 'Navigation', category: 'navigation' as const, description: 'Obtenir un itinéraire GPS' },
+          { id: 'nav-poi', label: 'Points d\'intérêt', icon: 'map-pin', route: 'Navigation', category: 'navigation' as const, description: 'Trouver des lieux à proximité' },
+          { id: 'nav-walk', label: 'Marche libre', icon: 'activity', route: 'Navigation', category: 'navigation' as const, description: 'Commencer une marche' }
+        ]
+      },
+      {
+        screen: 'MesServices',
+        keywords: [
+          'mes services', 'mon service', 'produit', 'catalogue', 'vendre', 'ajouter produit', 'gestion',
+          'mes produits', 'vendeur', 'prestataire', 'mon catalogue', 'modifier produit', 'supprimer produit'
+        ],
+        contextualPrompt: 'Gestion produits : catalogue vendeur, ajout/modification/suppression de produits, statistiques ventes, configuration service.',
+        suggestedActions: [
+          { id: 'services-add', label: 'Ajouter produit', icon: 'plus', route: 'MesServices', category: 'action' as const, description: 'Ajouter un nouveau produit' },
+          { id: 'services-manage', label: 'Gérer catalogue', icon: 'briefcase', route: 'MesServices', category: 'action' as const, description: 'Voir tous mes produits' },
+          { id: 'services-stats', label: 'Statistiques', icon: 'bar-chart-3', route: 'MesServices', category: 'action' as const, description: 'Voir les performances' }
+        ]
+      },
+      {
+        screen: 'PharmacieHome',
+        keywords: [
+          'medicament', 'pharmacie', 'ordonnance', 'dosage', 'traitement', 'medic', 'pharma',
+          'sante', 'maladie', 'symptome', 'ordonnance', 'posologie', 'effet secondaire'
+        ],
+        contextualPrompt: 'Pharmacie : recherche médicaments, ordonnances IA, dosage recommandé, effets secondaires, pharmacies de garde.',
+        suggestedActions: [
+          { id: 'pharma-search', label: 'Rechercher médicament', icon: 'pill', route: 'PharmacieHome', category: 'navigation' as const, description: 'Trouver un médicament' },
+          { id: 'pharma-nearby', label: 'Pharmacies nearby', icon: 'map-pin', route: 'PharmacieHome', category: 'navigation' as const, description: 'Pharmacies à proximité' },
+          { id: 'pharma-ia', label: 'Analyse ordonnance', icon: 'scan', route: 'PharmacieHome', category: 'action' as const, description: 'Scanner une ordonnance' }
+        ]
+      },
+      {
+        screen: 'HopitalHome',
+        keywords: [
+          'hopital', 'hospital', 'clinique', 'urgence', 'medecin', 'docteur', 'consultation',
+          'rdv', 'rendez-vous', 'sante', 'maladie', 'symptome', 'triage', 'analyse'
+        ],
+        contextualPrompt: 'Hôpital : urgences, rendez-vous, IA triage médical, spécialistes, consultations, analyses de laboratoire.',
+        suggestedActions: [
+          { id: 'hosp-urgent', label: 'Urgences', icon: 'alert-triangle', route: 'HopitalHome', category: 'navigation' as const, description: 'Trouver les urgences' },
+          { id: 'hosp-rdv', label: 'Prendre RDV', icon: 'calendar', route: 'HopitalHome', category: 'action' as const, description: 'Rendez-vous médical' },
+          { id: 'hosp-ia', label: 'IA Triage', icon: 'stethoscope', route: 'HopitalHome', category: 'action' as const, description: 'Analyse symptômes' }
+        ]
+      },
+      {
+        screen: 'OffresEmploiHome',
+        keywords: [
+          'emploi', 'travail', 'job', 'cv', 'recrutement', 'postuler', 'salaire', 'entretien',
+          'carriere', 'professionnel', 'embauche', 'chercheur', 'candidat', 'entreprise'
+        ],
+        contextualPrompt: 'Emploi : offres d\'emploi, CV IA, salaire estimé, entretiens, carrières, recrutement intelligent.',
+        suggestedActions: [
+          { id: 'job-search', label: 'Rechercher emploi', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation' as const, description: 'Trouver un emploi' },
+          { id: 'job-cv', label: 'Analyser CV', icon: 'file-text', route: 'OffresEmploiHome', category: 'action' as const, description: 'Optimiser mon CV' },
+          { id: 'job-salary', label: 'Estimer salaire', icon: 'dollar-sign', route: 'OffresEmploiHome', category: 'action' as const, description: 'Estimation salaire' }
+        ]
+      },
+      {
+        screen: 'LivreScolaireHome',
+        keywords: [
+          'livre', 'ecole', 'education', 'etude', 'cours', 'manuel', 'bourse', 'troc', 'achat',
+          'eleve', 'etudiant', 'classe', 'matiere', 'scolaire', 'universitaire'
+        ],
+        contextualPrompt: 'Bourse du livre : troc intelligent, analyse livres IA, programmes scolaires, estimation prix, livraison.',
+        suggestedActions: [
+          { id: 'book-exchange', label: 'Troc livres', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation' as const, description: 'Échanger des livres' },
+          { id: 'book-scan', label: 'Analyser livre', icon: 'scan', route: 'LivreScolaireHome', category: 'action' as const, description: 'Scanner un livre' },
+          { id: 'book-price', label: 'Estimer prix', icon: 'tag', route: 'LivreScolaireHome', category: 'action' as const, description: 'Estimer la valeur' }
+        ]
+      }
+    ];
+
+    // Calculer le score pour chaque contexte
+    let bestMatch: typeof contextualKeywords[0] | null = null;
+    let bestScore = 0;
+    let matchedKeywords: string[] = [];
+
+    for (const context of contextualKeywords) {
+      let score = 0;
+      let contextMatches: string[] = [];
+
+      for (const keyword of context.keywords) {
+        const normalizedKeyword = keyword.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+        // Recherche exacte
+        if (q.includes(normalizedKeyword)) {
+          score += 3;
+          contextMatches.push(keyword);
+        }
+        // Recherche partielle (mot complet)
+        else if (q.split(' ').some(word => word.length >= 3 && normalizedKeyword.includes(word))) {
+          score += 1;
+          contextMatches.push(keyword);
+        }
+        // Similarité approximative
+        else if (this.calculateSimilarity(q, normalizedKeyword) > 0.7) {
+          score += 2;
+          contextMatches.push(keyword);
+        }
+      }
+
+      // Ajustement du score basé sur la longueur et la spécificité
+      if (contextMatches.length > 0) {
+        score = score / Math.sqrt(context.keywords.length); // Normaliser par la taille du dictionnaire
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = context;
+          matchedKeywords = contextMatches;
+        }
+      }
+    }
+
+    // Seuil de confiance minimum pour déléguer
+    if (bestMatch && bestScore >= 1.5) {
+      return {
+        targetScreen: bestMatch.screen,
+        confidence: Math.min(bestScore / 3, 1), // Normaliser entre 0 et 1
+        contextualPrompt: bestMatch.contextualPrompt,
+        suggestedActions: bestMatch.suggestedActions
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Calculer la similarité entre deux chaînes (algorithme de Jaccard simplifié)
+   */
+  private calculateSimilarity(str1: string, str2: string): number {
+    const words1 = str1.split(' ').filter(w => w.length >= 2);
+    const words2 = str2.split(' ').filter(w => w.length >= 2);
+
+    const set1 = new Set(words1);
+    const set2 = new Set(words2);
+
+    const intersection = new Set(Array.from(set1).filter(x => set2.has(x)));
+    const union = new Set([...Array.from(set1), ...Array.from(set2)]);
+
+    return union.size > 0 ? intersection.size / union.size : 0;
+  }
+
+  /**
+   * Générer une réponse de délégation contextuelle pour le HomeScreen
+   */
+  generateContextualDelegationResponse(
+    userMessage: string,
+    delegation: ReturnType<typeof this.detectContextualDelegation>
+  ): ChatResponse {
+    if (!delegation) {
+      return this.generateFallbackResponse(userMessage);
+    }
+
+    const t = (key: string, params?: Record<string, any>): string => i18n.t(key, params) as string;
+
+    return {
+      message: `${t('intelligentChat.contextual.prefix') || 'Je vois que votre question concerne'} **${delegation.targetScreen}**. ${delegation.contextualPrompt}`,
+      type: 'action_suggestion',
+      suggestedActions: delegation.suggestedActions,
+      nextSteps: [
+        t('intelligentChat.contextual.action1') || 'Naviguer vers le module spécialisé',
+        t('intelligentChat.contextual.action2') || 'Utiliser le chat contextuel du module',
+        t('intelligentChat.contextual.action3') || 'Revenir ici pour d\'autres questions'
+      ],
+      confidence: delegation.confidence
+    };
+  }
+
+  /**
+   * Générer une réponse de fallback pour les questions générales
+   */
+  generateFallbackResponse(userMessage: string): ChatResponse {
+    const t = (key: string, params?: Record<string, any>): string => i18n.t(key, params) as string;
+
+    return {
+      message: t('intelligentChat.fallback.general') || 'Je suis votre assistant IA sur l\'accueil. Je peux vous aider avec la recherche de services, la création de votre activité, ou vous orienter vers les modules spécialisés. Que souhaitez-vous faire ?',
+      type: 'action_suggestion',
+      suggestedActions: [
+        { id: 'search', label: 'Rechercher un service', icon: 'search', route: 'Home', category: 'navigation' as const, description: 'Trouver des services ou produits' },
+        { id: 'create', label: 'Créer un service', icon: 'plus', route: 'Home', category: 'action' as const, description: 'Démarrer votre activité' },
+        { id: 'discover', label: 'Découvrir Yukpo', icon: 'rocket', route: 'Home', category: 'help' as const, description: 'Explorer toutes les fonctionnalités' }
+      ],
+      confidence: 0.5
+    };
+  }
+
+  /**
+   * Obtenir une réponse contextuelle (pour compatibilité avec HomeIntelligentChat)
+   */
+  async getContextualResponse(
+    userMessage: string,
+    screenName: string,
+    screenType: string,
+    history: ChatMessage[],
+    user: any
+  ): Promise<ChatResponse> {
+    // Pour le HomeScreen, détecter et utiliser les contextes spécialisés
+    if (screenName === 'Home') {
+      const delegation = this.detectContextualDelegation(userMessage);
+      if (delegation) {
+        // 🎯 NOUVEAU: Utiliser directement le contexte du module spécialisé
+        return this.getContextualResponseFromModule(userMessage, delegation.targetScreen, history, user);
+      }
+    }
+
+    // Sinon, utiliser la logique existante ou le fallback
+    try {
+      return this.generateFallbackResponse(userMessage);
+    } catch (error) {
+      console.error('[IntelligentChatService] Erreur dans getContextualResponse:', error);
+      return this.generateFallbackResponse(userMessage);
+    }
+  }
+
+  /**
+   * 🎯 NOUVEAU: Obtenir une réponse contextuelle COMME SI on était dans le module spécialisé
+   */
+  private async getContextualResponseFromModule(
+    userMessage: string,
+    targetScreen: string,
+    history: ChatMessage[],
+    user: any
+  ): Promise<ChatResponse> {
+    const t = (key: string, params?: Record<string, any>): string => i18n.t(key, params) as string;
+
+    console.log(`[IntelligentChatService] 🎯 Contextual response from ${targetScreen} for HomeScreen`);
+
+    try {
+      // Simuler le contexte du module spécialisé
+      const moduleContext = this.getModuleContext(targetScreen);
+
+      // Utiliser l'API backend avec le contexte du module
+      const response = await this.callBackendWithContext(userMessage, moduleContext, user);
+
+      // Enrichir la réponse avec les actions du module
+      return {
+        ...response,
+        suggestedActions: this.getModuleActions(targetScreen)
+      };
+
+    } catch (error) {
+      console.error(`[IntelligentChatService] Erreur contexte ${targetScreen}:`, error);
+
+      // Fallback au contexte spécialisé local
+      return this.getSpecializedFallback(userMessage, targetScreen);
+    }
+  }
+
+  /**
+   * 🎯 NOUVEAU: Obtenir le contexte d'un module spécialisé
+   */
+  private getModuleContext(screenName: string): {
+    screenName: string;
+    screenType: string;
+    contextData: any;
+    availableFeatures: string[];
+  } {
+    const contexts: Record<string, any> = {
+      'Navigation': {
+        screenName: 'Navigation',
+        screenType: 'specialized',
+        contextData: {
+          features: ['gps', 'itineraires', 'alertes', 'poi', 'marche', 'sport', 'coach_ia'],
+          userLocation: 'current', // Le backend récupérera la position réelle
+          preferences: 'driving' // Mode par défaut
+        },
+        availableFeatures: ['route_planning', 'poi_search', 'community_alerts', 'free_walk', 'ai_coach']
+      },
+      'PharmacieHome': {
+        screenName: 'PharmacieHome',
+        screenType: 'specialized',
+        contextData: {
+          features: ['medicaments', 'ordonnances', 'dosage', 'pharmacies', 'ia_scan'],
+          userLocation: 'current',
+          searchType: 'medicament'
+        },
+        availableFeatures: ['medicament_search', 'ordonnance_scan', 'dosage_checker', 'pharmacy_finder']
+      },
+      'HopitalHome': {
+        screenName: 'HopitalHome',
+        screenType: 'specialized',
+        contextData: {
+          features: ['urgences', 'rendez_vous', 'specialistes', 'triage_ia'],
+          userLocation: 'current',
+          medicalHistory: 'available'
+        },
+        availableFeatures: ['emergency_finder', 'appointment_booking', 'specialist_search', 'ai_triage']
+      },
+      'OffresEmploiHome': {
+        screenName: 'OffresEmploiHome',
+        screenType: 'specialized',
+        contextData: {
+          features: ['offres', 'cv_ia', 'salaire', 'entretiens', 'carriere'],
+          userProfile: 'candidate', // ou 'employer'
+          location: 'current'
+        },
+        availableFeatures: ['job_search', 'cv_analysis', 'salary_prediction', 'interview_prep']
+      },
+      'LivreScolaireHome': {
+        screenName: 'LivreScolaireHome',
+        screenType: 'specialized',
+        contextData: {
+          features: ['troc', 'vente', 'scan_livre', 'programmes', 'estimation'],
+          educationLevel: 'all', // primaire, secondaire, supérieur
+          location: 'current'
+        },
+        availableFeatures: ['book_exchange', 'book_scan', 'price_estimation', 'program_check']
+      },
+      'MesServices': {
+        screenName: 'MesServices',
+        screenType: 'dashboard',
+        contextData: {
+          features: ['catalogue', 'produits', 'statistiques', 'commandes'],
+          userRole: 'prestataire',
+          hasProducts: true // Le backend vérifiera
+        },
+        availableFeatures: ['product_management', 'catalog_view', 'sales_stats', 'order_tracking']
+      }
+    };
+
+    return contexts[screenName] || {
+      screenName: 'Home',
+      screenType: 'home',
+      contextData: {},
+      availableFeatures: []
+    };
+  }
+
+  /**
+   * 🎯 NOUVEAU: Appeler le backend avec le contexte du module
+   */
+  private async callBackendWithContext(
+    userMessage: string,
+    moduleContext: any,
+    user: any
+  ): Promise<ChatResponse> {
+    const t = (key: string, params?: Record<string, any>): string => i18n.t(key, params) as string;
+
+    try {
+      // Appeler l'API backend avec le contexte enrichi
+      const prompt = this.buildContextualPrompt(userMessage, moduleContext);
+
+      // Simulation de réponse backend (remplacer par vrai appel API)
+      const backendResponse = await this.simulateBackendResponse(prompt, moduleContext);
+
+      return backendResponse;
+
+    } catch (error) {
+      console.error('[IntelligentChatService] Erreur appel backend contextuel:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 🎯 NOUVEAU: Construire un prompt contextuel pour le backend
+   */
+  private buildContextualPrompt(userMessage: string, moduleContext: any): string {
+    const contextInfo = `
+Contexte: ${moduleContext.screenName} (${moduleContext.screenType})
+Fonctionnalités disponibles: ${moduleContext.availableFeatures.join(', ')}
+Données utilisateur: ${JSON.stringify(moduleContext.contextData)}
+
+Question utilisateur: "${userMessage}"
+
+Répondez COMME SI vous étiez l'assistant spécialisé du module ${moduleContext.screenName}.
+Soyez précis, utilisez les fonctionnalités disponibles, et donnez des réponses pratiques.
+    `.trim();
+
+    return contextInfo;
+  }
+
+  /**
+   * 🎯 NOUVEAU: Simuler une réponse backend contextuelle (remplacer par vrai appel API)
+   */
+  private async simulateBackendResponse(prompt: string, moduleContext: any): Promise<ChatResponse> {
+    const t = (key: string, params?: Record<string, any>): string => i18n.t(key, params) as string;
+    const screenName = moduleContext.screenName;
+
+    // Simuler un délai réseau
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    // Réponses contextuelles précises selon le module
+    const contextualResponses: Record<string, (prompt: string) => ChatResponse> = {
+      'Navigation': (p) => ({
+        message: this.getNavigationResponse(p),
+        type: 'action_suggestion',
+        suggestedActions: this.getNavigationActions(),
+        confidence: 0.9
+      }),
+      'PharmacieHome': (p) => ({
+        message: this.getPharmacyResponse(p),
+        type: 'action_suggestion',
+        suggestedActions: this.getPharmacyActions(),
+        confidence: 0.9
+      }),
+      'HopitalHome': (p) => ({
+        message: this.getHospitalResponse(p),
+        type: 'action_suggestion',
+        suggestedActions: this.getHospitalActions(),
+        confidence: 0.9
+      }),
+      'OffresEmploiHome': (p) => ({
+        message: this.getEmploiResponse(p),
+        type: 'action_suggestion',
+        suggestedActions: this.getEmploiActions(),
+        confidence: 0.9
+      }),
+      'LivreScolaireHome': (p) => ({
+        message: this.getLivreResponse(p),
+        type: 'action_suggestion',
+        suggestedActions: this.getLivreActions(),
+        confidence: 0.9
+      }),
+      'MesServices': (p) => ({
+        message: this.getServicesResponse(p),
+        type: 'action_suggestion',
+        suggestedActions: this.getServicesActions(),
+        confidence: 0.9
+      })
+    };
+
+    const responseGenerator = contextualResponses[screenName];
+    if (responseGenerator) {
+      return responseGenerator(prompt);
+    }
+
+    // Fallback générique
+    return {
+      message: t('intelligentChat.fallback.genericHelp', { screen: screenName }) || `Je suis l'assistant spécialisé pour ${screenName}. Comment puis-je vous aider ?`,
+      type: 'text',
+      confidence: 0.5
+    };
+  }
+
+  /**
+   * 🎯 Réponses contextuelles Navigation
+   */
+  private getNavigationResponse(prompt: string): string {
+    const q = prompt.toLowerCase();
+
+    if (q.includes('itinéraire') || q.includes('route') || q.includes('chemin')) {
+      return "🗺️ **Calcul d'itinéraire intelligent**\n\nJe peux calculer le meilleur itinéraire pour vous en tenant compte du trafic, des alertes communautaires et de votre mode de transport préféré.\n\n**Comment procéder :**\n1. Dites-moi votre destination (ex: \"itinéraire vers Douala\")\n2. Choisissez le mode : 🚗 Voiture, 🚶 Marche, 🚌 Transport, 🚴 Vélo\n3. Je vous donnerai le trajet optimal avec temps réel\n\n**Fonctionnalités disponibles :**\n• ⚡ Itinéraires en temps réel\n• ⚠️ Alertes sécurité et radars\n• 📍 Points d'intérêt sur le trajet\n• 🎯 Coach IA pour optimiser votre parcours";
+    }
+
+    if (q.includes('marche') || q.includes('sport') || q.includes('coach')) {
+      return "🏃‍♂️ **Coach IA Sport et Marche**\n\nJe suis votre coach personnel pour optimiser vos activités physiques et vos déplacements à pied.\n\n**Ce que je peux faire :**\n• 📊 Analyser vos performances (distance, calories, rythme)\n• 🎯 Fixer des objectifs personnalisés\n• 💡 Donner des conseils d'entraînement\n• 🗺️ Suggérer des itinéraires de marche sécurisés\n• 📈 Suivre vos progrès sur la semaine/mois/année\n\n**Pour commencer :** Dites-moi \"commencer une marche\" ou \"voir mes statistiques\"";
+    }
+
+    if (q.includes('alerte') || q.includes('sécurité') || q.includes('danger')) {
+      return "⚠️ **Alertes Communautaires et Sécurité**\n\nJe vous informe en temps réel des dangers et points d'intérêt sur votre parcours grâce à la communauté Yukpo.\n\n**Types d'alertes :**\n• 🚔 Contrôles routiers et radars\n• ⚠️ Zones dangereuses ou travaux\n• 🏥 Urgences et services médicaux\n• 🛡️ Points de sécurité recommandés\n• 📍 Lieux sûrs pour pause/repos\n\n**Signalement :** Vous pouvez aussi signaler des alertes pour aider la communauté. Dites \"signaler alerte [description]\"";
+    }
+
+    return "🧭 **Navigation Intelligente Yukpo**\n\nJe suis votre assistant GPS IA pour tous vos déplacements au Cameroun et en Afrique.\n\n**Mes fonctionnalités :**\n• 🗺️ Itinéraires optimisés avec trafic réel\n• 🚶‍♂️ Coach sportif personnel\n• ⚠️ Alertes sécurité communautaires\n• 📍 Points d'intérêt (pharmacies, hôpitaux, stations-service)\n• 📊 Statistiques détaillées de vos déplacements\n\n**Comment puis-je vous aider aujourd'hui ?**\n• Calculer un itinéraire ?\n• Commencer une marche ?\n• Trouver un lieu à proximité ?\n• Voir vos statistiques ?";
+  }
+
+  /**
+   * 🎯 Actions contextuelles Navigation
+   */
+  private getNavigationActions(): ActionDescriptor[] {
+    return [
+      { id: 'nav-plan-route', label: 'Calculer itinéraire', icon: 'map', route: 'Navigation', category: 'action', description: 'Obtenir un itineraire GPS optimise' },
+      { id: 'nav-start-walk', label: 'Commencer marche', icon: 'activity', route: 'Navigation', category: 'action', description: 'Demarrer une marche avec coach IA' },
+      { id: 'nav-find-poi', label: 'Points d interet', icon: 'map-pin', route: 'Navigation', category: 'action', description: 'Trouver des lieux a proximite' },
+      { id: 'nav-alerts', label: 'Voir alertes', icon: 'alert-triangle', route: 'Navigation', category: 'action', description: 'Consulter les alertes securite' },
+      { id: 'nav-stats', label: 'Statistiques', icon: 'bar-chart-3', route: 'Navigation', category: 'action', description: 'Voir vos performances' }
+    ];
+  }
+
+  /**
+   * 🎯 Réponses contextuelles Pharmacie
+   */
+  private getPharmacyResponse(prompt: string): string {
+    const q = prompt.toLowerCase();
+
+    if (q.includes('médicament') || q.includes('medicament') || q.includes('traitement')) {
+      return "💊 **Recherche de Médicaments**\n\nJe peux vous aider à trouver rapidement les médicaments dont vous avez besoin avec informations complètes.\n\n**Recherche disponible :**\n• 🔍 Par nom de médicament (ex: \"paracétamol\")\n• 🏪 Disponibilité en pharmacies proches\n• 💰 Prix comparés entre pharmacies\n• ⚠️ Contre-indications et effets secondaires\n• 📋 Posologie recommandée\n\n**Comment utiliser :** Dites-moi le nom du médicament ou votre symptôme (ex: \"trouver paracétamol\" ou \"mal de tête\")";
+    }
+
+    if (q.includes('ordonnance') || q.includes('ordonnance') || q.includes('prescription')) {
+      return "📋 **Analyse d'Ordonnance par IA**\n\nScannez votre ordonnance et je vous aide à comprendre et gérer votre traitement.\n\n**Fonctionnalités IA :**\n• 📸 Scan automatique des médicaments\n• 💊 Vérification des interactions médicamenteuses\n• ⏰ Rappels de prise automatiques\n• 🏪 Pharmacies avec stock disponible\n• 💰 Estimation du coût total\n\n**Pour commencer :** Prenez une photo de votre ordonnance ou dites \"scanner ordonnance\"";
+    }
+
+    if (q.includes('pharmacie') || q.includes('pharmacie') || q.includes('garde')) {
+      return "🏥 **Pharmacies de Garde et Proches**\n\nJe vous trouve les pharmacies ouvertes 24/7 et les plus proches de votre position.\n\n**Informations disponibles :**\n• ⏰ Horaires d'ouverture (y compris de garde)\n• 📍 Distance et temps de trajet\n• 📞 Numéro de téléphone\n• 💰 Services disponibles (livraison, ordonnances)\n• ⭐ Avis et notes des patients\n\n**Recherche :** Dites-moi \"pharmacie proche\" ou \"pharmacie de garde\"";
+    }
+
+    return "🏥 **Assistant Pharmacie Yukpo**\n\nJe suis votre spécialiste de la santé pour tous vos besoins pharmaceutiques.\n\n**Services disponibles :**\n• 💊 Recherche de médicaments\n• 📋 Analyse IA d'ordonnances\n• 🏪 Pharmacies de garde et proches\n• 💡 Conseils posologie et interactions\n• 🚗 Livraison à domicile\n\n**Comment puis-je vous aider ?**\n• Trouver un médicament ?\n• Scanner une ordonnance ?\n• Pharmacie de garde ?";
+  }
+
+  /**
+   * 🎯 Actions contextuelles Pharmacie
+   */
+  private getPharmacyActions(): ActionDescriptor[] {
+    return [
+      { id: 'pharma-search', label: 'Rechercher medicament', icon: 'pill', route: 'PharmacieHome', category: 'action', description: 'Trouver un medicament specifique' },
+      { id: 'pharma-scan', label: 'Scanner ordonnance', icon: 'scan', route: 'PharmacieHome', category: 'action', description: 'Analyser une ordonnance avec IA' },
+      { id: 'pharma-nearby', label: 'Pharmacies proches', icon: 'map-pin', route: 'PharmacieHome', category: 'action', description: 'Trouver pharmacies autour' },
+      { id: 'pharma-garde', label: 'Pharmacies de garde', icon: 'clock', route: 'PharmacieHome', category: 'action', description: 'Pharmacies ouvertes 24/7' },
+      { id: 'pharma-delivery', label: 'Livraison', icon: 'truck', route: 'PharmacieHome', category: 'action', description: 'Livraison a domicile' }
+    ];
+  }
+
+  /**
+   * 🎯 Réponses contextuelles Hôpital
+   */
+  private getHospitalResponse(prompt: string): string {
+    const q = prompt.toLowerCase();
+
+    if (q.includes('urgence') || q.includes('urgence') || q.includes('emergency')) {
+      return "🚨 **Urgences Médicales**\n\nJe vous aide rapidement à trouver les services d'urgence les plus proches et adaptés à votre situation.\n\n**Services d'urgence :**\n• 🏥 Hôpitaux avec urgences 24/7\n• 🚑 SAMU et numéros d'urgence\n• ⚠️ Temps d'attente estimé\n• 📍 Distance et itinéraire le plus rapide\n• 📞 Contact direct des services\n\n**En cas d'urgence vitale :** Appelez le 1510 (SAMU) ou dites \"urgence vitale\" pour les coordonnées immédiates.";
+    }
+
+    if (q.includes('rendez-vous') || q.includes('rdv') || q.includes('consultation')) {
+      return "📅 **Prise de Rendez-vous Médical**\n\nJe vous aide à prendre rendez-vous avec les spécialistes et services médicaux disponibles.\n\n**Disponibilités :**\n• 👨‍⚕️ Médecins généralistes et spécialistes\n• 🏥 Hôpitaux et cliniques\n• ⏰ Créneaux disponibles en temps réel\n• 📋 Préparation automatique des documents\n• 🔔 Rappels de rendez-vous\n\n**Comment procéder :** Dites-moi le type de consultation (ex: \"rendez-vous cardiologue\")";
+    }
+
+    if (q.includes('symptôme') || q.includes('symptome') || q.includes('maladie')) {
+      return "🔬 **Triage IA et Analyse de Symptômes**\n\nDécrivez vos symptômes et je vous aide à évaluer la gravité et à orienter vers le bon service.\n\n**Fonctionnalités IA :**\n• 🤖 Analyse intelligente des symptômes\n• ⚠️ Évaluation du niveau d'urgence\n• 🏥 Orientation vers le service approprié\n• 📋 Questions complémentaires si besoin\n• 🚨 Alertes si urgence détectée\n\n**Confidentialité :** Vos données médicales sont protégées et ne sont partagées qu'avec votre consentement.";
+    }
+
+    return "🏥 **Assistant Hôpital Yukpo**\n\nJe suis votre guide médical pour tous vos besoins de santé.\n\n**Services disponibles :**\n• 🚨 Urgences 24/7\n• 📅 Prise de rendez-vous\n• 🔬 Triage IA des symptômes\n• 👨‍⚕️ Répertoire des spécialistes\n• 📊 Historique médical\n\n**Comment puis-je vous aider ?**\n• Urgence médicale ?\n• Prendre rendez-vous ?\n• Analyser des symptômes ?";
+  }
+
+  /**
+   * 🎯 Actions contextuelles Hôpital
+   */
+  private getHospitalActions(): ActionDescriptor[] {
+    return [
+      { id: 'hosp-urgent', label: 'Urgences', icon: 'alert-triangle', route: 'HopitalHome', category: 'action', description: 'Services d urgence 24/7' },
+      { id: 'hosp-rdv', label: 'Prendre RDV', icon: 'calendar', route: 'HopitalHome', category: 'action', description: 'Rendez-vous medical' },
+      { id: 'hosp-triage', label: 'IA Triage', icon: 'stethoscope', route: 'HopitalHome', category: 'action', description: 'Analyser symptomes' },
+      { id: 'hosp-specialists', label: 'Specialistes', icon: 'users', route: 'HopitalHome', category: 'action', description: 'Trouver un specialiste' },
+      { id: 'hosp-history', label: 'Historique', icon: 'file-text', route: 'HopitalHome', category: 'action', description: 'Voir historique medical' }
+    ];
+  }
+
+  /**
+   * 🎯 Réponses contextuelles Emploi
+   */
+  private getEmploiResponse(prompt: string): string {
+    const q = prompt.toLowerCase();
+
+    if (q.includes('cv') || q.includes('cv') || q.includes('resume')) {
+      return "📄 **Analyse et Optimisation de CV par IA**\n\nJe vous aide à créer un CV parfait qui vous démarquera auprès des recruteurs.\n\n**Fonctionnalités IA :**\n• 📝 Analyse automatique de votre CV\n• 💡 Suggestions d'amélioration personnalisées\n• 🎯 Optimisation pour chaque offre d'emploi\n• 📊 Score de matching avec les offres\n• 🔄 Génération de plusieurs versions\n\n**Comment utiliser :** Uploadez votre CV ou dites \"analyser mon CV\" pour commencer.";
+    }
+
+    if (q.includes('salaire') || q.includes('salaire') || q.includes('revenu')) {
+      return "💰 **Estimation de Salaire par IA**\n\nJ'estime votre salaire potentiel selon votre profil, expérience et le marché actuel.\n\n**Facteurs analysés :**\n• 🎓 Formation et compétences\n• 💼 Expérience professionnelle\n• 📍 Localisation géographique\n• 🏢 Secteur d'activité\n• 📈 Tendances du marché\n\n**Précision :** Mes estimations sont basées sur des milliers d'offres réelles et sont mises à jour en temps réel.";
+    }
+
+    if (q.includes('entretien') || q.includes('entretien') || q.includes('interview')) {
+      return "🎯 **Préparation aux Entretiens**\n\nJe vous prépare à réussir vos entretiens avec des simulations et conseils personnalisés.\n\n**Préparation complète :**\n• ❓ Questions fréquentes par secteur\n• 🎭 Simulation d'entretien IA\n• 💡 Conseils de présentation\n• 📝 Réponses types à adapter\n• 🏢 Culture d'entreprise\n\n**Secteurs couverts :** Tech, santé, finance, commerce, et bien d'autres.";
+    }
+
+    return "💼 **Assistant Emploi Yukpo**\n\nJe suis votre coach carrière pour trouver l'emploi parfait et optimiser votre profil.\n\n**Services disponibles :**\n• 🔍 Recherche d'offres intelligentes\n• 📄 Analyse IA de CV\n• 💰 Estimation de salaire\n• 🎯 Préparation entretiens\n• 📊 Suivi des candidatures\n\n**Comment puis-je vous aider ?**\n• Trouver un emploi ?\n• Analyser votre CV ?\n• Estimer votre salaire ?";
+  }
+
+  /**
+   * 🎯 Actions contextuelles Emploi
+   */
+  private getEmploiActions(): ActionDescriptor[] {
+    return [
+      { id: 'job-search', label: 'Rechercher emploi', icon: 'briefcase', route: 'OffresEmploiHome', category: 'action', description: 'Trouver des offres d emploi' },
+      { id: 'job-cv', label: 'Analyser CV', icon: 'file-text', route: 'OffresEmploiHome', category: 'action', description: 'Optimiser votre CV avec IA' },
+      { id: 'job-salary', label: 'Estimer salaire', icon: 'dollar-sign', route: 'OffresEmploiHome', category: 'action', description: 'Calculer votre salaire potentiel' },
+      { id: 'job-interview', label: 'Preparer entretien', icon: 'users', route: 'OffresEmploiHome', category: 'action', description: 'Simulation d entretien IA' },
+      { id: 'job-applications', label: 'Mes candidatures', icon: 'list', route: 'OffresEmploiHome', category: 'action', description: 'Suivre vos candidatures' }
+    ];
+  }
+
+  /**
+   * 🎯 Réponses contextuelles Livres
+   */
+  private getLivreResponse(prompt: string): string {
+    const q = prompt.toLowerCase();
+
+    if (q.includes('troc') || q.includes('troc') || q.includes('échange')) {
+      return "🔄 **Troc Intelligent de Livres Scolaires**\n\nJe vous aide à trouver le partenaire de troc parfait pour vos livres scolaires avec notre algorithme DAG.\n\n**Comment ça marche :**\n• 📸 Scannez vos livres (recto/verso)\n• 🤖 IA analyse état et valeur\n• 🔗 Chainage intelligent avec d'autres utilisateurs\n• 📦 Livraison sécurisée par coursiers\n• ✅ Validation à réception\n\n**Avantages :** Économisez jusqu'à 80% sur les livres scolaires !";
+    }
+
+    if (q.includes('scan') || q.includes('scanner') || q.includes('photo')) {
+      return "📸 **Scan et Analyse de Livres par IA**\n\nScannez vos livres et je vous donne instantanément toutes les informations.\n\n**Fonctionnalités IA :**\n• 📖 Reconnaissance automatique du titre/auteur\n• 🎓 Détection du niveau scolaire\n• 💰 Estimation précise de la valeur\n• 📊 État du livre (bon/acceptable/rejeté)\n• 🔍 Vérification des programmes scolaires\n\n**Qualité garantie :** 95% de précision sur les livres standards camerounais.";
+    }
+
+    if (q.includes('prix') || q.includes('valeur') || q.includes('coût')) {
+      return "💰 **Estimation de Prix de Livres**\n\nJ'estime la valeur de vos livres selon l'état, la demande et les prix du marché.\n\n**Facteurs d'estimation :**\n• 📚 Éat général (bon/acceptable/rejeté)\n• 🎓 Niveau scolaire et matière\n• 📅 Année d'édition\n• 🏪 Demande du marché local\n• 📊 Prix moyens des librairies\n\n**Précision :** Mes estimations vous permettent de vendre au meilleur prix ou trouver les meilleures offres de troc.";
+    }
+
+    return "📚 **Bourse du Livre Yukpo**\n\nJe suis votre spécialiste pour tous vos besoins en livres scolaires.\n\n**Services disponibles :**\n• 🔄 Troc intelligent avec algorithmes DAG\n• 📸 Scan IA de livres\n• 💰 Estimation de prix précise\n• 📦 Livraison par coursiers\n• 🎓 Vérification programmes scolaires\n\n**Comment puis-je vous aider ?**\n• Troquer des livres ?\n• Scanner un livre ?\n• Estimer la valeur ?";
+  }
+
+  /**
+   * 🎯 Actions contextuelles Livres
+   */
+  private getLivreActions(): ActionDescriptor[] {
+    return [
+      { id: 'book-exchange', label: 'Troc livres', icon: 'book-open', route: 'LivreScolaireHome', category: 'action', description: 'Echanger des livres scolaires' },
+      { id: 'book-scan', label: 'Scanner livre', icon: 'scan', route: 'LivreScolaireHome', category: 'action', description: 'Analyser un livre avec IA' },
+      { id: 'book-price', label: 'Estimer prix', icon: 'tag', route: 'LivreScolaireHome', category: 'action', description: 'Connaitre la valeur d un livre' },
+      { id: 'book-delivery', label: 'Livraison', icon: 'truck', route: 'LivreScolaireHome', category: 'action', description: 'Livraison par coursiers' },
+      { id: 'book-program', label: 'Verifier programme', icon: 'graduation-cap', route: 'LivreScolaireHome', category: 'action', description: 'Verifier programme scolaire' }
+    ];
+  }
+
+  /**
+   * 🎯 Réponses contextuelles MesServices
+   */
+  private getServicesResponse(prompt: string): string {
+    const q = prompt.toLowerCase();
+
+    if (q.includes('produit') || q.includes('ajout') || q.includes('cré')) {
+      return "📦 **Gestion de Produits et Catalogue**\n\nJe vous aide à gérer votre catalogue de produits de manière intelligente.\n\n**Fonctionnalités :**\n• ➕ Ajout rapide avec suggestions IA\n• 📝 Modification en masse\n• 📊 Statistiques de ventes\n• 🏷️ Gestion des prix et promotions\n• 📸 Photos et descriptions optimisées\n\n**Comment ajouter :** Dites \"ajouter produit [nom]\" ou utilisez le formulaire IA pour des suggestions automatiques.";
+    }
+
+    if (q.includes('statistique') || q.includes('vente') || q.includes('performance')) {
+      return "📊 **Statistiques et Performance**\n\nJe vous donne une vue complète de vos performances commerciales.\n\n**Métriques disponibles :**\n• 💰 Chiffre d'affaires par période\n• 📈 Tendance des ventes\n• 🏆 Produits les plus vendus\n• 👥 Profil des clients\n• 🎯 Objectifs et prévisions\n\n**Périodes :** Jour, semaine, mois, année avec comparatifs.";
+    }
+
+    if (q.includes('commande') || q.includes('livraison') || q.includes('client')) {
+      return "🛒 **Gestion des Commandes et Livraisons**\n\nJe vous aide à suivre et optimiser vos ventes.\n\n**Suivi complet :**\n• 📋 Statut des commandes en temps réel\n• 🚦 Tracking des livraisons\n• 👥 Communication avec clients\n• ⭐ Gestion des avis\n• 💰 Paiements et facturation\n\n**Automatisation :** Notifications automatiques pour chaque étape de la commande.";
+    }
+
+    return "🏪 **Assistant Services Yukpo**\n\nJe suis votre gestionnaire commercial intelligent.\n\n**Services disponibles :**\n• 📦 Gestion complète du catalogue\n• 📊 Statistiques et performances\n• 🛒 Suivi des commandes\n• 🤖 IA pour optimiser vos ventes\n• 💰 Gestion des revenus\n\n**Comment puis-je vous aider ?**\n• Ajouter un produit ?\n• Voir les statistiques ?\n• Suivre une commande ?";
+  }
+
+  /**
+   * 🎯 Actions contextuelles MesServices
+   */
+  private getServicesActions(): ActionDescriptor[] {
+    return [
+      { id: 'services-add', label: 'Ajouter produit', icon: 'plus', route: 'MesServices', category: 'action', description: 'Ajouter un nouveau produit' },
+      { id: 'services-catalog', label: 'Voir catalogue', icon: 'briefcase', route: 'MesServices', category: 'action', description: 'Gerer tous vos produits' },
+      { id: 'services-stats', label: 'Statistiques', icon: 'bar-chart-3', route: 'MesServices', category: 'action', description: 'Voir vos performances' },
+      { id: 'services-orders', label: 'Commandes', icon: 'shopping-cart', route: 'MesServices', category: 'action', description: 'Suivre les commandes' },
+      { id: 'services-promo', label: 'Promotions', icon: 'tag', route: 'MesServices', category: 'action', description: 'Creer des promotions' }
+    ];
+  }
+
+  /**
+   * 🎯 Fallback spécialisé si le backend échoue
+   */
+  private getSpecializedFallback(userMessage: string, targetScreen: string): ChatResponse {
+    const fallbacks: Record<string, ChatResponse> = {
+      'Navigation': {
+        message: "🧭 Je suis votre assistant Navigation. Je peux vous aider avec les itinéraires GPS, les alertes sécurité, et le coach sportif. Dites-moi ce que vous cherchez !",
+        type: 'text',
+        suggestedActions: this.getNavigationActions(),
+        confidence: 0.7
+      },
+      'PharmacieHome': {
+        message: "💊 Je suis votre assistant Pharmacie. Je peux trouver des médicaments, analyser des ordonnances, et localiser les pharmacies. Comment puis-je vous aider ?",
+        type: 'text',
+        suggestedActions: this.getPharmacyActions(),
+        confidence: 0.7
+      },
+      'HopitalHome': {
+        message: "🏥 Je suis votre assistant Hôpital. Je peux aider avec les urgences, prendre rendez-vous, et analyser les symptômes. Que souhaitez-vous savoir ?",
+        type: 'text',
+        suggestedActions: this.getHospitalActions(),
+        confidence: 0.7
+      },
+      'OffresEmploiHome': {
+        message: "💼 Je suis votre coach Emploi. Je peux analyser votre CV, estimer votre salaire, et préparer les entretiens. Comment puis-je vous aider ?",
+        type: 'text',
+        suggestedActions: this.getEmploiActions(),
+        confidence: 0.7
+      },
+      'LivreScolaireHome': {
+        message: "📚 Je suis votre spécialiste Livres. Je peux aider avec le troc, scanner des livres, et estimer leur valeur. Que cherchez-vous ?",
+        type: 'text',
+        suggestedActions: this.getLivreActions(),
+        confidence: 0.7
+      },
+      'MesServices': {
+        message: "🏪 Je suis votre gestionnaire Services. Je peux aider avec les produits, les statistiques, et les commandes. Comment puis-je vous aider ?",
+        type: 'text',
+        suggestedActions: this.getServicesActions(),
+        confidence: 0.7
+      }
+    };
+
+    return fallbacks[targetScreen] || this.generateFallbackResponse(userMessage);
+  }
+
+  /**
+   * 🎯 Obtenir les actions d'un module spécialisé
+   */
+  private getModuleActions(screenName: string): ActionDescriptor[] {
+    const actions: Record<string, ActionDescriptor[]> = {
+      'Navigation': this.getNavigationActions(),
+      'PharmacieHome': this.getPharmacyActions(),
+      'HopitalHome': this.getHospitalActions(),
+      'OffresEmploiHome': this.getEmploiActions(),
+      'LivreScolaireHome': this.getLivreActions(),
+      'MesServices': this.getServicesActions()
+    };
+
+    return actions[screenName] || [];
+  }
 }
 
 export const intelligentChatService = new IntelligentChatService();
 export default intelligentChatService;
-

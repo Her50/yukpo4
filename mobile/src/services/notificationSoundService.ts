@@ -240,7 +240,7 @@ class NotificationSoundService {
             rw: 'Murakaza neza kuri Yukpo. Ndi hano kugufasha.',
             sn: 'Mauya kuYukpo. Ndiri pano kukubatsiridza.',
             so: 'Ku soo dhawoow Yukpo. Waan halkan kaa caawin lahayada.',
-            mg: 'Tongasoa eto amin'i Yukpo.Eto no hanampy anao.',
+            mg: 'Tongasoa eto amin\'i Yukpo. Eto no hanampy anao.',
             ht: 'Byenveni sou Yukpo. Mwen la pou ede w.',
         };
         return messages[key] || messages['en'];

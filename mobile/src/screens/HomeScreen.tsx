@@ -126,6 +126,8 @@ const HomeScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
+    const [showChatModal, setShowChatModal] = useState(false);
+    const [showIntelligentChat, setShowIntelligentChat] = useState(false);
 
     // ✅ NOUVEAU: Réinitialiser le mode sur "recherche" à chaque fois que l'écran reçoit le focus
     // ✅ AMÉLIORÉ: Garantir que le bouton "recherche" est toujours sélectionné par défaut
@@ -877,7 +879,25 @@ const HomeScreen: React.FC = () => {
                 />
             )}
 
-            {/* FAB déplacé dans AppNavigator.optimized.tsx */}
+            {/* FAB Chat Intelligent HomeScreen */}
+            <TouchableOpacity
+                style={styles.intelligentChatFab}
+                onPress={() => setShowIntelligentChat(true)}
+                activeOpacity={0.8}
+            >
+                <SafeIcon name="message-circle" size={24} color="#FFFFFF" />
+                {unreadChatCount > 0 && (
+                    <View style={styles.chatBadge}>
+                        <Text style={styles.chatBadgeText}>{unreadChatCount > 99 ? '99+' : unreadChatCount}</Text>
+                    </View>
+                )}
+            </TouchableOpacity>
+
+            {/* Modal Chat Intelligent HomeScreen */}
+            <HomeIntelligentChat
+                visible={showIntelligentChat}
+                onClose={() => setShowIntelligentChat(false)}
+            />
 
         </SafeNativeView>
     );
@@ -1247,6 +1267,43 @@ const styles = StyleSheet.create({
         color: '#111827',
         marginBottom: 12, // ✅ AUGMENTÉ: De 8 à 12 pour plus d'espace
         marginTop: 4, // ✅ AJOUTÉ: Marge en haut pour séparation
+    },
+    // FAB Chat Intelligent
+    intelligentChatFab: {
+        position: 'absolute',
+        bottom: 90, // Au-dessus de la barre de navigation
+        right: 20,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: modernColors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        zIndex: 1000,
+    },
+    chatBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: '#EF4444',
+        borderRadius: 12,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    chatBadgeText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+        paddingHorizontal: 4,
     },
 });
 
