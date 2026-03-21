@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Application from 'expo-application';
 import { Alert, Linking, Platform } from 'react-native';
-import { DeviceInfo } from 'react-native-device-info';
 import { apiCall } from './api';
 
 export interface UpdateCheckRequest {
@@ -66,8 +66,8 @@ class AppUpdateService {
    */
   private async performUpdateCheck(): Promise<boolean> {
     try {
-      const currentVersion = await DeviceInfo.getVersion();
-      const buildNumber = await DeviceInfo.getBuildNumber();
+      const currentVersion = Application.nativeApplicationVersion || '1.0.0';
+      const buildNumber = Application.nativeBuildVersion || '1';
 
       // Détecter la source d'installation
       const installSource = await this.detectInstallSource();
@@ -99,7 +99,7 @@ class AppUpdateService {
   private async detectInstallSource(): Promise<string> {
     try {
       if (Platform.OS === 'android') {
-        const buildNumber = await DeviceInfo.getBuildNumber();
+        const buildNumber = Application.nativeBuildVersion || '1';
         const versionCode = parseInt(buildNumber) || 1;
 
         // Convention: versions Play Store >= 1000, versions directes < 1000
@@ -110,7 +110,7 @@ class AppUpdateService {
         }
       } else if (Platform.OS === 'ios') {
         // iOS peut être App Store ou Test Flight
-        const bundleId = await DeviceInfo.getBundleId();
+        const bundleId = Application.applicationId;
         if (bundleId?.includes('testflight')) {
           return 'test_flight';
         } else {
@@ -140,7 +140,7 @@ class AppUpdateService {
       `📦 Taille: ${(updateInfo.size_bytes / (1024 * 1024)).toFixed(1)} MB\n` +
       `🔗 Source: ${downloadTypeText}`;
 
-    const buttons = [
+    const buttons: { text: string; onPress: () => void; style?: 'default' | 'cancel' | 'destructive' }[] = [
       {
         text: updateInfo.mandatory ? 'Mettre à jour' : 'Plus tard',
         onPress: () => {
@@ -148,7 +148,7 @@ class AppUpdateService {
             this.downloadUpdate(updateInfo.download_url, updateInfo.download_type);
           }
         },
-        style: updateInfo.mandatory ? 'default' : 'cancel',
+        style: updateInfo.mandatory ? 'default' as const : 'cancel' as const,
       },
     ];
 
@@ -156,7 +156,7 @@ class AppUpdateService {
       buttons.push({
         text: 'Mettre à jour maintenant',
         onPress: () => this.downloadUpdate(updateInfo.download_url, updateInfo.download_type),
-        style: 'default',
+        style: 'default' as const,
       });
     }
 
@@ -222,7 +222,7 @@ class AppUpdateService {
    */
   async isCurrentVersionSupported(): Promise<boolean> {
     try {
-      const buildNumber = await DeviceInfo.getBuildNumber();
+      const buildNumber = Application.nativeBuildVersion || '1';
       const currentVersion = parseInt(buildNumber) || 1;
 
       const response = await apiCall<AppVersionInfo>('/app/update/info');

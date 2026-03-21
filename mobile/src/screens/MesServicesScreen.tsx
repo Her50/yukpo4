@@ -20,7 +20,7 @@ import ServiceCardModern from '../components/ServiceCardModern';
 import ServiceProductSelector from '../components/ServiceProductSelector';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import { SidebarNavigation } from '../components/SidebarNavigation';
-import { SkeletonLoader } from '../components/SkeletonLoader';
+import SkeletonLoader from '../components/SkeletonLoader';
 import { StatsCard } from '../components/StatsCard';
 import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
@@ -1687,7 +1687,6 @@ const MesServicesScreen: React.FC = () => {
               estimatedItemSize={200}
               numColumns={deviceType.isTablet ? deviceType.columns : 1}
               // Ô£à NOUVEAU: Responsive design - Grid layout pour tablette/desktop
-              columnWrapperStyle={deviceType.isTablet && deviceType.columns > 1 ? { gap: 16, paddingHorizontal: 16 } : undefined}
               renderItem={({ item: service }) => {
                 const serviceId = service?.id?.toString() || '';
                 const isSelected = selectedItems.has(serviceId);
