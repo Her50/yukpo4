@@ -86,7 +86,7 @@
 
 [[redirects]]
   from = "/download"
-  to = "https://storage.googleapis.com/yukpo-project-yukpo-backend-media/yukpomnang-latest.apk"
+  to = "https://storage.googleapis.com/yukpo-project-yukpo-backend-media/yukpomnang-latest.apk?v=20260321023934"
   status = 302
   force = true
 

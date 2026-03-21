@@ -737,7 +737,14 @@ function MainTabNavigator() {
           name="Home"
           getComponent={() => loadScreen('../screens/HomeScreen', 'Home')}
           options={{
-            tabBarLabel: t('tabs.home'),
+            tabBarLabel: (() => {
+              try {
+                const { t } = require('../contexts/LanguageContext').useLanguageSafe();
+                return t('tabs.home') || 'Accueil';
+              } catch {
+                return 'Accueil';
+              }
+            })(),
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon name="home" size={size} color={focused ? modernColors.primary : color} type="lucide" />
             ),
@@ -751,8 +758,22 @@ function MainTabNavigator() {
           name="GestionServicesSpecialises"
           component={PartnerDashboardTab}
           options={{
-            tabBarLabel: t('tabs.partnerSpace') || 'Mon Espace',
-            title: t('tabs.partnerSpace') || 'Mon Espace Partenaire',
+            tabBarLabel: (() => {
+              try {
+                const { t } = require('../contexts/LanguageContext').useLanguageSafe();
+                return t('tabs.partnerSpace') || 'Mon Espace';
+              } catch {
+                return 'Mon Espace';
+              }
+            })(),
+            title: (() => {
+              try {
+                const { t } = require('../contexts/LanguageContext').useLanguageSafe();
+                return t('tabs.partnerSpace') || 'Mon Espace Partenaire';
+              } catch {
+                return 'Mon Espace Partenaire';
+              }
+            })(),
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon name="briefcase" size={size} color={focused ? modernColors.primary : color} type="lucide" />
             ),
@@ -763,7 +784,14 @@ function MainTabNavigator() {
           name="Services"
           component={S['MesServices'] || loadScreen('../screens/MesServicesScreen', 'MesServices')}
           options={{
-            tabBarLabel: t('tabs.services'),
+            tabBarLabel: (() => {
+              try {
+                const { t } = require('../contexts/LanguageContext').useLanguageSafe();
+                return t('tabs.services') || 'Mes Services';
+              } catch {
+                return 'Mes Services';
+              }
+            })(),
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon name="shopping-bag" size={size} color={focused ? modernColors.primary : color} type="lucide" />
             ),
@@ -777,7 +805,14 @@ function MainTabNavigator() {
           name="VideoCreationIntro"
           component={S['VideoCreationIntro'] || loadScreen('../screens/video/VideoCreationIntroScreen', 'VideoCreationIntro')}
           options={{
-            tabBarLabel: t('tabs.create') || 'Créer',
+            tabBarLabel: (() => {
+              try {
+                const { t } = require('../contexts/LanguageContext').useLanguageSafe();
+                return t('tabs.create') || 'Créer';
+              } catch {
+                return 'Créer';
+              }
+            })(),
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon name="plus" size={size} color={focused ? modernColors.primary : color} type="lucide" />
             ),
@@ -790,7 +825,14 @@ function MainTabNavigator() {
         name="Videos"
         component={S['VideoFeed'] || loadScreen('../screens/MesInteractionsScreen', 'MesInteractions')}
         options={{
-          tabBarLabel: t('tabs.videos') || 'Vidéos',
+          tabBarLabel: (() => {
+            try {
+              const { t } = require('../contexts/LanguageContext').useLanguageSafe();
+              return t('tabs.videos') || 'Vidéos';
+            } catch {
+              return 'Vidéos';
+            }
+          })(),
           tabBarIcon: ({ focused, color, size }) => (
             <SafeIcon name="play" size={size} color={focused ? modernColors.primary : color} type="lucide" />
           ),
@@ -803,7 +845,14 @@ function MainTabNavigator() {
           name="CourierDashboard"
           component={S['CourierDashboard'] || loadScreen('../screens/delivery/CourierDashboardScreen', 'CourierDashboard')}
           options={{
-            tabBarLabel: t('tabs.myCourses') || 'Mes Courses',
+            tabBarLabel: (() => {
+              try {
+                const { t } = require('../contexts/LanguageContext').useLanguageSafe();
+                return t('tabs.myCourses') || 'Mes Courses';
+              } catch {
+                return 'Mes Courses';
+              }
+            })(),
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon name="truck" size={size} color={focused ? modernColors.primary : color} type="lucide" />
             ),
@@ -816,7 +865,14 @@ function MainTabNavigator() {
         name="Profile"
         getComponent={() => loadScreen('../screens/ProfileScreen', 'Profile')}
         options={{
-          tabBarLabel: t('tabs.account'),
+          tabBarLabel: (() => {
+            try {
+              const { t } = require('../contexts/LanguageContext').useLanguageSafe();
+              return t('tabs.account') || 'Compte';
+            } catch {
+              return 'Compte';
+            }
+          })(),
           tabBarIcon: ({ focused, color, size }) => (
             <SafeIcon name="user" size={size} color={focused ? modernColors.primary : color} type="lucide" />
           ),

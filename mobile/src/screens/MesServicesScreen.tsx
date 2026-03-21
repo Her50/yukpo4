@@ -257,6 +257,14 @@ const MesServicesScreen: React.FC = () => {
   }, []);
 
   const loadServices = useCallback(async (isRefresh = false) => {
+    // ✅ AJOUT: Guard d'authentification
+    if (!user) {
+      console.warn('[MesServicesScreen] ⚠️ Utilisateur non connecté');
+      toaster.error('Veuillez vous reconnecter');
+      navigation.navigate('Login');
+      return;
+    }
+
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -399,7 +407,7 @@ const MesServicesScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id, parseProduct, extractProduits]);
+  }, [user, navigation, toaster, parseProduct, extractProduits]);
 
   useEffect(() => {
     // ✅ CORRIGÉ: Pas de dépendance à loadServices pour éviter la boucle infinie
