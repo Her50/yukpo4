@@ -341,17 +341,12 @@ export const bourseLivreV2Api = {
         );
         const ETAT_RATIO: Record<string, number> = {
             bon: 0.7,
-            acceptable: 0.45,
+            acceptable: 0.40,
             rejete: 0,
         };
         const businessRatio = ETAT_RATIO[normalizedEtat] ?? 0;
         const ratioEtat = businessRatio;
 
-        // Règle métier stricte:
-        // - bon        => 70% de la valeur de référence
-        // - acceptable => 45% de la valeur de référence
-        // - rejete     => 0
-        // Si la valeur de référence est absente, on garde la valeur backend seulement si >0.
         const backendValue = Number(
             r?.valeur_calculee ??
             analysis?.valeur_calculee ??
@@ -363,7 +358,7 @@ export const bourseLivreV2Api = {
             ? 0
             : strictCalculatedValue > 0
                 ? strictCalculatedValue
-                : Math.max(Math.round(backendValue), 1);
+                : Math.max(Math.round(backendValue), 0);
 
         return {
             livre,

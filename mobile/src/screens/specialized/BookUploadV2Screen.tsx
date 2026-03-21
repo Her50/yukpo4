@@ -219,7 +219,7 @@ const BookUploadV2Screen: React.FC = () => {
                 : String(result.etat_classification || '').toLowerCase().includes('bon')
                     ? 'bon'
                     : 'acceptable';
-            const safeValue = result.is_rejected ? 0 : Math.max(Math.round(Number(result.valeur_calculee || 0)), 1);
+            const safeValue = result.is_rejected ? 0 : Math.max(Math.round(Number(result.valeur_calculee || 0)), 0);
 
             const entry: BookEntry = {
                 id: result.livre?.id || Date.now(),
@@ -251,7 +251,10 @@ const BookUploadV2Screen: React.FC = () => {
                         : normalizedEtat === 'rejete'
                           ? t('bookUploadV2Screen.rejete')
                           : t('bookUploadV2Screen.acceptable', 'Acceptable');
-                toaster.show(`${entry.titre} — ${etatLabel} — ${Math.round(safeValue)} XAF`, 'success');
+                const valueDisplay = safeValue > 0
+                    ? `${Math.round(safeValue)} XAF`
+                    : t('bookUploadV2.prixNonDetecte', 'Prix non détecté');
+                toaster.show(`${entry.titre} — ${etatLabel} — ${valueDisplay}`, 'success');
             }
         } catch (error: any) {
             console.error('[BookUploadV2] Erreur analyse:', error);
@@ -510,18 +513,25 @@ const BookUploadV2Screen: React.FC = () => {
                     {analysis?.classe_souhaitee && (
                         <DetailRow icon="arrow-up-circle" label={t('bookUploadV2.classeVisee')} value={analysis.classe_souhaitee} highlight />
                     )}
-                    {analysis?.prix_detecte != null && (
+                    {analysis?.prix_detecte != null && Number(analysis.prix_detecte) > 0 ? (
                         <DetailRow
                             icon="tag"
                             label={t('bookUploadV2.prixDetecte')}
                             value={`${analysis.prix_detecte} ${analysis.devise_detectee || 'XAF'}`}
                         />
-                    )}
+                    ) : !is_rejected ? (
+                        <View style={styles.prixInconnuBanner}>
+                            <SafeIcon name="alert-triangle" size={14} color="#92400e" />
+                            <Text style={styles.prixInconnuText}>
+                                {t('bookUploadV2.prixNonDetecte', 'Prix non lisible sur les photos — vous pourrez le saisir dans le récap')}
+                            </Text>
+                        </View>
+                    ) : null}
                     <DetailRow
                         icon="dollar-sign"
                         label={t('bookUploadV2.valeurCalculee')}
-                        value={is_rejected ? '0 XAF' : `${Math.round(valeur_calculee)} XAF`}
-                        highlight={!is_rejected}
+                        value={is_rejected ? '0 XAF' : valeur_calculee > 0 ? `${Math.round(valeur_calculee)} XAF` : t('bookUploadV2.aDefinir', 'À définir')}
+                        highlight={!is_rejected && valeur_calculee > 0}
                     />
                     {analysis?.est_au_programme && (
                         <DetailRow icon="award" label="Programme" value="Au programme scolaire officiel" highlight />
@@ -589,8 +599,8 @@ const BookUploadV2Screen: React.FC = () => {
                                             item.mode_listing}
                                     </Text>
                                 </View>
-                                <Text style={styles.bookValue}>
-                                    {item.is_rejected ? '0' : Math.round(item.valeur_calculee)} XAF
+                                <Text style={[styles.bookValue, !item.is_rejected && item.valeur_calculee === 0 && styles.bookValueUnknown]}>
+                                    {item.is_rejected ? '0 XAF' : item.valeur_calculee > 0 ? `${Math.round(item.valeur_calculee)} XAF` : t('bookUploadV2.prixInconnu', 'Prix ?')}
                                 </Text>
                             </View>
                         </View>
@@ -776,6 +786,12 @@ const styles = StyleSheet.create({
     etatDot: { width: 8, height: 8, borderRadius: 4 },
     etatText: { fontSize: 12, color: '#6b7280' },
     bookValue: { fontSize: 13, fontWeight: '700', color: '#1f2937', marginLeft: 'auto' },
+    bookValueUnknown: { color: '#f59e0b', fontStyle: 'italic' },
+    prixInconnuBanner: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        backgroundColor: '#fef3c7', borderRadius: 8, padding: 10, marginTop: 8,
+    },
+    prixInconnuText: { flex: 1, fontSize: 12, color: '#92400e', lineHeight: 17 },
     listActions: { flexDirection: 'row', gap: 12, marginTop: 12, paddingBottom: 20 },
 });
 

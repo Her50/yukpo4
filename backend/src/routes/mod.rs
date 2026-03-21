@@ -3,6 +3,7 @@ pub mod advanced_analytics_routes;
 pub mod advanced_timeline_routes;
 pub mod ai_chat_routes;
 pub mod analytics_routes;
+pub mod app_update_routes;
 pub mod appliance_model_routes; // ✅ Routes pour modèles d'appareils électroménagers
 pub mod ar_routes;
 pub mod assurance_routes; // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)

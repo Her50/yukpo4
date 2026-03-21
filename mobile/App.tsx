@@ -72,6 +72,15 @@ export default function App() {
     }
   }, []);
 
+  const AppUpdateChecker = React.useMemo(() => {
+    try {
+      return require('./src/components/AppUpdateChecker').default;
+    } catch (error) {
+      console.warn('[App] ⚠️ AppUpdateChecker indisponible:', error);
+      return () => null;
+    }
+  }, []);
+
   // ✅ SÉCURITÉ: Envelopper dans try-catch pour éviter crash au démarrage
   try {
     console.log('[App] 🚀 Yukpomnang - Démarrage avec Deep Linking');
@@ -150,6 +159,7 @@ export default function App() {
                     <LocationProvider>
                       <AuthProvider>
                         <RemoteLoggingInitializer />
+                        <AppUpdateChecker />
                         {/* ✅ DIAGNOSTIC: WebSocketProvider réactivé pour test */}
                         <WebSocketProvider>
                           <FeatureFlagProvider>

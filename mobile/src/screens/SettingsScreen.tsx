@@ -9,7 +9,8 @@ import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { apiPatch, apiPost } from '../services/api'; // ✅ NOUVEAU 2026-02-06: Ajouter apiPost pour changement de mot de passe
+import { apiPatch, apiPost } from '../services/api';
+import { appUpdateService } from '../services/appUpdateService';
 import { coachingNotificationService } from '../services/coachingNotificationService';
 import { notificationUiPreferences } from '../services/notificationUiPreferences';
 import { theme } from '../theme/theme';
@@ -65,6 +66,7 @@ const SettingsScreen: React.FC = () => {
     confirmPassword: ''
   });
   const [changingPassword, setChangingPassword] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [settings, setSettings] = useState<UserSettings>({
     // Profil
     firstName: user?.name?.split(' ')[0] || '',
@@ -232,6 +234,24 @@ const SettingsScreen: React.FC = () => {
         }
       ]
     );
+  };
+
+  const handleCheckForUpdates = async () => {
+    setCheckingUpdate(true);
+    try {
+      const hasUpdate = await appUpdateService.checkForUpdatesManually();
+      if (!hasUpdate) {
+        Alert.alert(
+          t('settings.aJour') || 'Application a jour',
+          t('settings.appAJour') || 'Vous utilisez la derniere version de Yukpomnang.'
+        );
+      }
+    } catch (error) {
+      console.error('[Settings] Erreur verification MAJ:', error);
+      Alert.alert('Erreur', 'Impossible de verifier les mises a jour.');
+    } finally {
+      setCheckingUpdate(false);
+    }
   };
 
   const updateSetting = (key: keyof UserSettings, value: any) => {
@@ -671,6 +691,16 @@ const SettingsScreen: React.FC = () => {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {renderSection()}
+
+        <TouchableOpacity
+          style={styles.updateButton}
+          onPress={handleCheckForUpdates}
+          disabled={checkingUpdate}
+        >
+          <Text style={styles.updateButtonText}>
+            {checkingUpdate ? '⏳ Verification...' : '🔄 Verifier les mises a jour'}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -924,7 +954,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'white',
   },
-  // ✅ NOUVEAU 2026-02-06: Styles pour le changement de mot de passe
+  updateButton: {
+    backgroundColor: '#e8f5e9',
+    borderWidth: 1,
+    borderColor: '#4caf50',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  updateButtonText: {
+    color: '#2e7d32',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   passwordButton: {
     backgroundColor: theme.colors.primary,
     padding: 15,

@@ -759,18 +759,19 @@ async fn get_points_of_interest(
 
     // Points de recherche: soit les vrais steps du trajet, soit fallback linéaire
     let search_points: Vec<(f64, f64)> = if route_step_points.len() >= 3 {
-        // Échantillonner ~5 points répartis le long des vrais steps
         let step_count = route_step_points.len();
         let mut sampled = Vec::new();
-        let sample_indices = if step_count <= 5 {
-            (0..step_count).collect::<Vec<_>>()
+        let num_samples = 8usize;
+        let sample_indices: Vec<usize> = if step_count <= num_samples {
+            (0..step_count).collect()
         } else {
-            vec![
-                step_count / 5,
-                2 * step_count / 5,
-                3 * step_count / 5,
-                4 * step_count / 5,
-            ]
+            let mut idxs = Vec::with_capacity(num_samples);
+            for i in 0..num_samples {
+                idxs.push(i * (step_count - 1) / (num_samples - 1));
+            }
+            idxs.sort();
+            idxs.dedup();
+            idxs
         };
         for idx in sample_indices {
             sampled.push(route_step_points[idx]);
@@ -944,8 +945,7 @@ async fn get_points_of_interest(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    // Limiter à 40 POI les plus proches (élargi pour couvrir plus de catégories)
-    all_pois.truncate(40);
+    all_pois.truncate(60);
 
     // ✅ DEBUG: Log POI names to verify structure
     log::info!("[POI] Returning {} POIs", all_pois.len());

@@ -81,8 +81,9 @@ class AppUpdateService {
         }),
       });
 
-      if (response?.has_update && response?.update_info) {
-        await this.showUpdateDialog(response.update_info);
+      const updateData = response?.data;
+      if (updateData?.has_update && updateData?.update_info) {
+        await this.showUpdateDialog(updateData.update_info);
         return true;
       }
 
@@ -227,7 +228,7 @@ class AppUpdateService {
 
       const response = await apiCall<AppVersionInfo>('/app/update/info');
 
-      return currentVersion >= response.min_supported_version;
+      return currentVersion >= (response?.data?.min_supported_version ?? 1);
     } catch (error) {
       console.error('[AppUpdate] Erreur vérification support:', error);
       return true; // Par défaut, on considère que c'est supporté

@@ -225,55 +225,42 @@ const registerBackgroundTask = () => {
     }
     if (!data?.locations?.length) return;
 
-    const location = data.locations[data.locations.length - 1]; // Dernière position
-    const { latitude, longitude, speed } = location.coords;
-    const spdKmh = Math.max(0, (speed || 0) * 3.6);
-    const now = new Date().toISOString();
-
     try {
-        // Charger la session en cours depuis AsyncStorage
         const raw = await AsyncStorage.getItem(STORAGE_KEY_SESSION);
         let session: PassiveSession | null = raw ? JSON.parse(raw) : null;
 
-        if (session) {
-            const timeSinceLastUpdate = Date.now() - new Date(session.lastUpdateAt).getTime();
-            const dist = haversine(session.lastLat, session.lastLng, latitude, longitude);
+        for (const location of data.locations) {
+            const { latitude, longitude, speed } = location.coords;
+            const spdKmh = Math.max(0, (speed || 0) * 3.6);
+            const ts = location.timestamp || Date.now();
+            const now = new Date(ts).toISOString();
 
-            // Si immobile trop longtemps → terminer la session
-            if (timeSinceLastUpdate > STATIONARY_TIMEOUT_MS) {
-                console.log('[PassiveTracker] Immobile >3min → fin de session');
-                await saveSession(session);
-                await AsyncStorage.removeItem(STORAGE_KEY_SESSION);
-                return;
+            if (session) {
+                const timeSinceLastUpdate = ts - new Date(session.lastUpdateAt).getTime();
+                const dist = haversine(session.lastLat, session.lastLng, latitude, longitude);
+
+                if (timeSinceLastUpdate > STATIONARY_TIMEOUT_MS) {
+                    await saveSession(session);
+                    session = null;
+                } else if (dist > MAX_SINGLE_JUMP_M) {
+                    session.lastUpdateAt = now;
+                    continue;
+                } else {
+                    if (dist > MIN_MOVEMENT_METERS) {
+                        session.totalDistance += dist;
+                        session.lastLat = latitude;
+                        session.lastLng = longitude;
+                        session.speedSamples.push(spdKmh);
+                        if (spdKmh > session.maxSpeed) session.maxSpeed = spdKmh;
+                        session.pointCount += 1;
+                    }
+                    session.lastUpdateAt = now;
+                    continue;
+                }
             }
 
-            // Ignorer les sauts GPS aberrants
-            if (dist > MAX_SINGLE_JUMP_M) {
-                console.log('[PassiveTracker] Saut GPS ignoré:', dist.toFixed(0), 'm');
-                session.lastUpdateAt = now;
-                await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
-                return;
-            }
-
-            // Mouvement significatif → accumuler
-            if (dist > MIN_MOVEMENT_METERS) {
-                session.totalDistance += dist;
-                session.lastLat = latitude;
-                session.lastLng = longitude;
-                session.lastUpdateAt = now;
-                session.speedSamples.push(spdKmh);
-                if (spdKmh > session.maxSpeed) session.maxSpeed = spdKmh;
-                session.pointCount += 1;
-                await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
-            } else {
-                // Pas de mouvement, juste mettre à jour le timestamp
-                session.lastUpdateAt = now;
-                await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
-            }
-        } else {
-            // Pas de session en cours → démarrer si mouvement détecté
-            if (spdKmh > 1.5) {
-                const newSession: PassiveSession = {
+            if (!session && spdKmh > 1.5) {
+                session = {
                     startedAt: now,
                     lastUpdateAt: now,
                     totalDistance: 0,
@@ -285,12 +272,16 @@ const registerBackgroundTask = () => {
                     lastLng: longitude,
                     pointCount: 1,
                 };
-                await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(newSession));
-                console.log('[PassiveTracker] \uD83D\uDE80 Nouvelle session détectée (vitesse:', spdKmh.toFixed(1), 'km/h)');
             }
         }
+
+        if (session) {
+            await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
+        } else {
+            await AsyncStorage.removeItem(STORAGE_KEY_SESSION);
+        }
     } catch (e) {
-        console.warn('[PassiveTracker] Erreur traitement position:', e);
+        console.warn('[PassiveTracker] Erreur traitement positions:', e);
     }
     });
   } catch (e) {

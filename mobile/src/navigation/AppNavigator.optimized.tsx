@@ -460,6 +460,7 @@ reg('NewBooks', () => import('../screens/specialized/NewBooksScreen'));
 reg('ProgrammeBesoinsSelector', () => import('../screens/specialized/ProgrammeBesoinsSelectorScreen'));
 reg('MesBesoinsLivres', () => import('../screens/specialized/MesBesoinsLivresScreen'));
 reg('AdminDonations', () => import('../screens/specialized/AdminDonationsScreen'));
+reg('EtablissementScolaire', () => import('../screens/specialized/EtablissementScolaireScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Menu / Recettes (4)

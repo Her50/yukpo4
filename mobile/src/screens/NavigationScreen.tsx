@@ -85,19 +85,20 @@ function aggregateActivitiesSummary(list: any[]): Record<string, any> {
         .sort((x, y) => y[1] - x[1])
         .slice(0, 32)
         .map(([name, visit_count]) => ({ name, visit_count }));
-    const modeCounts = new Map<string, { count: number; distance_km: number }>();
+    const modeCounts = new Map<string, { count: number; distance_km: number; duration_minutes: number }>();
     for (const a of list) {
         const m = String(a?.travel_mode || 'unknown');
-        const cur = modeCounts.get(m) || { count: 0, distance_km: 0 };
+        const cur = modeCounts.get(m) || { count: 0, distance_km: 0, duration_minutes: 0 };
         cur.count += 1;
         cur.distance_km += Number(a?.distance_km) || 0;
+        cur.duration_minutes += Number(a?.duration_minutes) || 0;
         modeCounts.set(m, cur);
     }
     const by_mode = [...modeCounts.entries()].map(([mode, v]) => ({
         mode,
         count: v.count,
         distance_km: v.distance_km,
-        duration_minutes: 0,
+        duration_minutes: v.duration_minutes,
     }));
     return {
         total_distance_km: totalDistanceKm,
@@ -946,14 +947,15 @@ const NavigationScreen: React.FC = () => {
     useEffect(() => { searchRoutesRef.current = searchRoutes; }, [searchRoutes]);
 
     // ── POI interne (sans gate de paiement) ──
-    const _loadPOIInternal = useCallback(async (route: RouteOption) => {
+    const _loadPOIInternal = useCallback(async (route: RouteOption, requestedTypes?: string[]) => {
         if (!route || !destinationCoords) { setPointsOfInterest([]); return; }
         setLoadingPOI(true); setPointsOfInterest([]);
         try {
             const origin = await getCurrentPosition(); if (!origin) { setLoadingPOI(false); return; }
             if (!route.id || !route.steps?.length) { setLoadingPOI(false); return; }
             const stepsP = route.steps.length > 0 ? `&route_steps=${encodeURIComponent(JSON.stringify(route.steps.map(s => ({ lat: s.location?.lat || 0, lng: s.location?.lng || 0 }))))}` : '';
-            const r = await apiGet(`/api/navigation/points-of-interest?route_id=${route.id}&origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}${stepsP}&lang=${encodeURIComponent(activeLang)}`) as any;
+            const typesP = requestedTypes && requestedTypes.length > 0 ? `&types=${encodeURIComponent(requestedTypes.join(','))}` : '';
+            const r = await apiGet(`/api/navigation/points-of-interest?route_id=${route.id}&origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}${stepsP}${typesP}&lang=${encodeURIComponent(activeLang)}`) as any;
             console.log('[Navigation] POI Response:', JSON.stringify(r, null, 2));
             if (r?.data?.pois && Array.isArray(r.data.pois)) {
                 console.log('[Navigation] Raw POIs:', r.data.pois);
@@ -975,9 +977,11 @@ const NavigationScreen: React.FC = () => {
                 });
                 console.log('[Navigation] Validated POIs:', vp);
                 setPointsOfInterest(vp);
-                // Catégories fermées par défaut: ouverture uniquement manuelle.
                 const reset: Record<string, boolean> = {};
-                Object.keys(POI_CATEGORIES).forEach(k => reset[k] = false);
+                const vpSet = new Set(vp.map((p: any) => normalizePoiType(p.type)));
+                Object.entries(POI_CATEGORIES).forEach(([k, cat]) => {
+                    reset[k] = cat.types.some(t => vpSet.has(t));
+                });
                 setExpandedCategories(reset);
                 setPoiShowAll({});
             }
@@ -1005,7 +1009,8 @@ const NavigationScreen: React.FC = () => {
             catLabels,
             () => {
                 setPoiRequested(true);
-                _loadPOIInternal(route);
+                const types = categories.flatMap(k => (POI_CATEGORIES as any)[k]?.types || []);
+                _loadPOIInternal(route, types);
             },
             () => {
                 setPoiRequested(false);
@@ -1015,27 +1020,32 @@ const NavigationScreen: React.FC = () => {
     }, [destinationCoords, _loadPOIInternal, payForPoi, t]);
 
     const loadCheckpointsSafely = useCallback(async () => {
-        if (!selectedRoute || !destinationCoords) return;
+        const origin = await getCurrentPosition(); if (!origin) return;
+        let oLat: number, oLng: number, dLat: number, dLng: number;
+
+        if (selectedRoute && destinationCoords) {
+            oLat = origin.lat; oLng = origin.lng;
+            dLat = destinationCoords.lat; dLng = destinationCoords.lng;
+        } else if (isFreeWalking || isTracking) {
+            oLat = origin.lat - 0.04; oLng = origin.lng - 0.04;
+            dLat = origin.lat + 0.04; dLng = origin.lng + 0.04;
+        } else {
+            return;
+        }
+
         setLoadingCheckpoints(true);
-        const origin = await getCurrentPosition(); if (!origin) { setLoadingCheckpoints(false); return; }
         try {
-            const r = await apiGet(`/api/navigation/checkpoints/along-route?origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}`);
-            console.log('[Navigation] Checkpoints raw response:', JSON.stringify(r, null, 2));
-            // ✅ CORRIGÉ: apiGet wraps response → r.data contains backend JSON
+            const r = await apiGet(`/api/navigation/checkpoints/along-route?origin_lat=${oLat}&origin_lng=${oLng}&dest_lat=${dLat}&dest_lng=${dLng}`);
             const backendResp = r.data as any;
-            console.log('[Navigation] Backend response:', JSON.stringify(backendResp, null, 2));
             const checkpointsArray = Array.isArray(backendResp?.data?.checkpoints)
                 ? backendResp.data.checkpoints
                 : Array.isArray(backendResp?.checkpoints)
                     ? backendResp.checkpoints
                     : [];
-            console.log('[Navigation] Extracted checkpoints array:', JSON.stringify(checkpointsArray, null, 2));
             if (checkpointsArray.length > 0) {
                 const filtered = checkpointsArray.filter((c: any) => c && validateCoords(c.latitude, c.longitude));
-                console.log('[Navigation] Filtered checkpoints:', JSON.stringify(filtered, null, 2));
                 setCheckpoints(filtered);
             } else {
-                console.log('[Navigation] No checkpoints found in array');
                 setCheckpoints([]);
             }
         } catch (error) {
@@ -1044,7 +1054,7 @@ const NavigationScreen: React.FC = () => {
         } finally {
             setLoadingCheckpoints(false);
         }
-    }, [selectedRoute, destinationCoords, getCurrentPosition]);
+    }, [selectedRoute, destinationCoords, getCurrentPosition, isFreeWalking, isTracking]);
 
     const startNavigation = useCallback(async (route: RouteOption) => {
         if (!route || !destinationCoords) return;
@@ -1615,6 +1625,44 @@ const NavigationScreen: React.FC = () => {
         const timer = setInterval(sync, 3000);
         return () => clearInterval(timer);
     }, [isFreeWalking]);
+
+    // ── Détection de proximité des checkpoints → alertes sonores/TTS ──
+    useEffect(() => {
+        if (!isTracking && !isFreeWalking) return;
+        if (!livePosition) return;
+        const cps = checkpointsRef.current;
+        if (!cps || cps.length === 0) return;
+
+        const encountered = encounteredCheckpointIdsRef.current;
+        let nearest: { id: string; checkpoint_type: string; distance: number; speed_limit?: number } | null = null;
+
+        for (const cp of cps) {
+            if (!cp?.latitude || !cp?.longitude || !cp?.id) continue;
+            const dist = haversineDistance(livePosition.lat, livePosition.lng, cp.latitude, cp.longitude);
+            const alertDist = CHECKPOINT_ALERT_DISTANCE[cp.checkpoint_type] || 2000;
+            if (dist > alertDist) continue;
+
+            const thresholds = CHECKPOINT_ALERT_THRESHOLDS[cp.checkpoint_type] || [2000, 500];
+            const lastAlertedThreshold = encountered.get(cp.id) ?? Infinity;
+            let currentThreshold = Infinity;
+            for (const th of thresholds) {
+                if (dist <= th && th < currentThreshold) currentThreshold = th;
+            }
+            if (currentThreshold === Infinity) currentThreshold = thresholds[thresholds.length - 1];
+
+            if (currentThreshold < lastAlertedThreshold) {
+                encountered.set(cp.id, currentThreshold);
+                checkpointsEncounteredRef.current += 1;
+                playContextualAlert(cp.checkpoint_type, Math.round(dist), cp.speed_limit, { lang: activeLang, t });
+            }
+
+            if (!nearest || dist < nearest.distance) {
+                nearest = { id: cp.id, checkpoint_type: cp.checkpoint_type, distance: Math.round(dist), speed_limit: cp.speed_limit };
+            }
+        }
+
+        setNearbyCheckpoint(nearest);
+    }, [livePosition, isTracking, isFreeWalking, haversineDistance, activeLang, t]);
 
     // Réattacher la session marche libre si active (retour écran / app relancée)
     useEffect(() => {
@@ -3017,6 +3065,17 @@ const NavigationScreen: React.FC = () => {
                                         onFocusChange={(focused: boolean) => setIsLocationSelectorFocused(focused)}
                                     />
                                 </View>
+                                <View style={st.modeSelector}>
+                                    {TRAVEL_MODES.map(m => (
+                                        <TouchableOpacity key={m.key} style={[st.modeBtn, travelMode === m.key && { backgroundColor: m.color + '15', borderColor: m.color }]}
+                                            onPress={() => { setTravelMode(m.key); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 100); }}>
+                                            <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
+                                            <Text style={[st.modeBtnLbl, travelMode === m.key && { color: m.color, fontWeight: '700' as any }]} numberOfLines={1}>
+                                                {m.label?.labelKey ? (t(m.label.labelKey) || m.label.fallback) : (m.label?.fallback || '')}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
                                 <TouchableOpacity style={[st.searchBtn, loading && { opacity: 0.6 }]} onPress={searchRoutes} disabled={loading || (!destination.trim() && !selectedLocation)}>
                                     {loading ?
                                         <><ActivityIndicator color="white" size="small" /><Text style={st.searchBtnTxt}> Recherche...</Text></>
@@ -3055,19 +3114,6 @@ const NavigationScreen: React.FC = () => {
                                     <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700' }}>Suivi automatique actif</Text>
                                 </View>
                             )}
-
-                            {/* Travel modes */}
-                            <View style={st.modeSelector}>
-                                {TRAVEL_MODES.map(m => (
-                                    <TouchableOpacity key={m.key} style={[st.modeBtn, travelMode === m.key && { backgroundColor: m.color + '15', borderColor: m.color }]}
-                                        onPress={() => { setTravelMode(m.key); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 100); }}>
-                                        <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
-                                        <Text style={[st.modeBtnLbl, travelMode === m.key && { color: m.color, fontWeight: '700' as any }]} numberOfLines={1}>
-                                            {m.label?.labelKey ? (t(m.label.labelKey) || m.label.fallback) : (m.label?.fallback || '')}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
 
                             {/* Favorites */}
                             {savedDestinations.length > 0 && !destination && (

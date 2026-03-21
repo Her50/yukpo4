@@ -66,7 +66,13 @@ const persistWalkLocation = async (latitude: number, longitude: number, speed: n
     }
 
     const d = haversine(session.lastLat, session.lastLng, latitude, longitude);
-    if (d > 0) session.totalDistance += d;
+    if (d >= 500) {
+      session.lastUpdateAt = now;
+      session.currentSpeedKmh = speedKmh;
+      await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
+      return;
+    }
+    if (d > 2) session.totalDistance += d;
     session.lastLat = latitude;
     session.lastLng = longitude;
     session.lastUpdateAt = now;
@@ -83,6 +89,54 @@ const persistWalkLocation = async (latitude: number, longitude: number, speed: n
 /** Repli si startLocationUpdatesAsync échoue (FGS Android, config, etc.) — même persistance AsyncStorage */
 let foregroundWalkSubscription: Location.LocationSubscription | null = null;
 
+/** Traitement batch : une seule lecture/écriture AsyncStorage pour N positions */
+const persistWalkLocationsBatch = async (
+  locations: Array<{ latitude: number; longitude: number; speed: number | null }>
+) => {
+  if (locations.length === 0) return;
+  const now = new Date().toISOString();
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY_SESSION);
+    let session: FreeWalkSession | null = raw ? JSON.parse(raw) : null;
+
+    for (const loc of locations) {
+      const speedKmh = Math.max(0, (loc.speed || 0) * 3.6);
+
+      if (!session) {
+        session = {
+          startedAt: now,
+          lastUpdateAt: now,
+          totalDistance: 0,
+          maxSpeedKmh: speedKmh,
+          speedSampleCount: 1,
+          speedSampleSum: speedKmh,
+          lastLat: loc.latitude,
+          lastLng: loc.longitude,
+          currentSpeedKmh: speedKmh,
+        };
+        continue;
+      }
+
+      const d = haversine(session.lastLat, session.lastLng, loc.latitude, loc.longitude);
+      if (d >= 500) continue;
+      if (d > 2) session.totalDistance += d;
+      session.lastLat = loc.latitude;
+      session.lastLng = loc.longitude;
+      session.lastUpdateAt = now;
+      session.currentSpeedKmh = speedKmh;
+      session.speedSampleCount += 1;
+      session.speedSampleSum += speedKmh;
+      if (speedKmh > session.maxSpeedKmh) session.maxSpeedKmh = speedKmh;
+    }
+
+    if (session) {
+      await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
+    }
+  } catch {
+    // noop
+  }
+};
+
 const registerTask = () => {
   try {
     if (TaskManager.isTaskDefined(FREE_WALK_TASK)) return;
@@ -93,9 +147,13 @@ const registerTask = () => {
   try {
     TaskManager.defineTask(FREE_WALK_TASK, async ({ data, error }: any) => {
       if (error || !data?.locations?.length) return;
-      const latest = data.locations[data.locations.length - 1];
-      const { latitude, longitude, speed } = latest.coords;
-      await persistWalkLocation(latitude, longitude, speed);
+      await persistWalkLocationsBatch(
+        data.locations.map((l: any) => ({
+          latitude: l.coords.latitude,
+          longitude: l.coords.longitude,
+          speed: l.coords.speed,
+        }))
+      );
     });
   } catch {
     // noop

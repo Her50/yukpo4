@@ -31,6 +31,7 @@ use crate::routes::{
     // Routes déjà dans router_yukpo mais ajoutées ici pour être explicite
     // ai_chat_routes::ai_chat_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     analytics_routes::analytics_routes,
+    app_update_routes::app_update_routes,
     // appliance_model_routes::appliance_model_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     ar_routes::ar_routes, // ✅ NOUVEAU Phase 3.2: Routes pour preview AR/VR
     assurance_routes::assurance_routes, // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
@@ -381,6 +382,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ NOUVEAU: Routes pour page de téléchargement APK test
     let test_routes = crate::routes::test_routes::create_test_routes(state.clone());
 
+    let app_update = app_update_routes(state.clone());
+
     let app = Router::new()
         .route("/healthz", get(healthz))
         .route("/health", get(healthz)) // ✅ Route pour ALB health checks
@@ -481,6 +484,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(multilingue)
         .merge(exchange_rates) // ✅ 2026-03-18: Routes taux de change live (ExchangeRate-API)
         .merge(test_routes) // ✅ NOUVEAU: Routes pour page de téléchargement APK test
+        .merge(app_update) // ✅ NOUVEAU 2026-03-21: Routes vérification mises à jour APK
         .merge(mobile_logs)
         .merge(navigation) // ✅ NOUVEAU: Routes navigation intelligente
         .merge(phone_verification) // ✅ NOUVEAU 2026-02-25: Routes vérification OTP téléphone

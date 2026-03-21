@@ -20,7 +20,7 @@ import ServiceCardModern from '../components/ServiceCardModern';
 import ServiceProductSelector from '../components/ServiceProductSelector';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import { SidebarNavigation } from '../components/SidebarNavigation';
-import SkeletonLoader from '../components/SkeletonLoader';
+import { SkeletonList, SkeletonStats } from '../components/SkeletonLoader';
 import { StatsCard } from '../components/StatsCard';
 import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
@@ -1193,8 +1193,8 @@ const MesServicesScreen: React.FC = () => {
           </View>
         </LinearGradient>
         <View style={dynamicStyles.scrollView}>
-          <SkeletonLoader type="stats" count={4} />
-          <SkeletonLoader type="card" count={3} />
+          <SkeletonStats count={4} />
+          <SkeletonList count={3} />
         </View>
       </View>
     );
