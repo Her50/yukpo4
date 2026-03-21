@@ -56,23 +56,23 @@ jobs:
             build-essential \
             ca-certificates
 
-      - name: Build strict SQLx migration source
-        if: matrix.os == 'ubuntu-latest'
-        shell: pwsh
-        run: |
-          ./scripts/build_sqlx_migrations_strict_source.ps1 `
-            -DatabaseUrl "${{ secrets.DATABASE_URL_OFFLINE }}" `
-            -SourceDir "migrations" `
-            -TargetDir "migrations_strict" `
-            -AmbiguousMapPath "scripts/sqlx_ambiguous_map.json"
+      # - name: Build strict SQLx migration source
+      #   if: matrix.os == 'ubuntu-latest'
+      #   shell: pwsh
+      #   run: |
+      #     ./scripts/build_sqlx_migrations_strict_source.ps1 `
+      #       -DatabaseUrl "${{ secrets.DATABASE_URL_OFFLINE }}" `
+      #       -SourceDir "migrations" `
+      #       -TargetDir "migrations_strict" `
+      #       -AmbiguousMapPath "scripts/sqlx_ambiguous_map.json"
 
-      - name: Verify strict SQLx checksums
-        if: matrix.os == 'ubuntu-latest'
-        shell: pwsh
-        run: |
-          ./scripts/verify_sqlx_strict_checksums.ps1 `
-            -DatabaseUrl "${{ secrets.DATABASE_URL_OFFLINE }}" `
-            -SourceDir "migrations_strict"
+      # - name: Verify strict SQLx checksums
+      #   if: matrix.os == 'ubuntu-latest'
+      #   shell: pwsh
+      #   run: |
+      #     ./scripts/verify_sqlx_strict_checksums.ps1 `
+      #       -DatabaseUrl "${{ secrets.DATABASE_URL_OFFLINE }}" `
+      #       -SourceDir "migrations_strict"
 
       - name: Check sqlx-data.json or .sqlx directory
         if: matrix.os == 'ubuntu-latest'

@@ -1,8 +1,8 @@
+import * as Location from 'expo-location';
+import i18n from 'i18next';
 import * as React from 'react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { Alert, Text } from 'react-native';
-import * as Location from 'expo-location';
-import i18n from 'i18next';
 import { authApi } from '../services/api';
 import { coachingNotificationService } from '../services/coachingNotificationService';
 import { notificationSoundService } from '../services/notificationSoundService';
@@ -113,12 +113,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // On marque avant la lecture pour éviter les doublons en cas de remount/re-render.
       await SafeStorage.setItem(key, 'true');
 
-      // Délai court: laisse le premier frame UI se stabiliser sans retarder l'accueil.
+      // Précharger les sons pour un démarrage instantané
+      await notificationSoundService.preloadAllSounds();
+
+      // Délai ultra-court: laisse le premier frame UI se stabiliser (50ms)
       setTimeout(() => {
         notificationSoundService.playWelcomeMessage().catch((error) => {
           console.warn('[AuthContext] ⚠️ Lecture audio bienvenue échouée:', error);
         });
-      }, 250);
+      }, 50);
     } catch (error) {
       console.warn('[AuthContext] ⚠️ Impossible de gérer le flag audio bienvenue:', error);
     }
