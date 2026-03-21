@@ -162,6 +162,27 @@ async fn serve_apple_association(
         Err(_) => Err(axum::http::StatusCode::NOT_FOUND),
     }
 }
+// ✅ Handler pour servir le logo Yukpo comme favicon
+async fn serve_favicon(
+) -> Result<axum::response::Response<axum::body::Body>, axum::http::StatusCode> {
+    use axum::body::Body;
+    use axum::response::Response;
+    use std::fs;
+
+    match fs::read("public/logo.png") {
+        Ok(content) => {
+            let response = Response::builder()
+                .status(200)
+                .header("Content-Type", "image/png")
+                .header("Cache-Control", "public, max-age=604800")
+                .body(Body::from(content))
+                .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+            Ok(response)
+        }
+        Err(_) => Err(axum::http::StatusCode::NOT_FOUND),
+    }
+}
+
 pub fn init_logging() {
     let log_format = std::env::var("LOG_FORMAT").unwrap_or_else(|_| "plain".to_string());
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
@@ -374,6 +395,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/.well-known",
             ServeDir::new("public/.well-known").precompressed_gzip().precompressed_br(),
         )
+        // ✅ NOUVEAU: Servir le logo Yukpo pour favicon, og:image fallback, et branding partage
+        .nest_service("/logo.png", ServeDir::new("public/logo.png"))
+        .route("/favicon.ico", get(serve_favicon))
         .nest("/api", auth)
         .merge(users)
         .merge(admin_users) // ✅ NOUVEAU: Routes admin gestion des rôles

@@ -66,7 +66,7 @@ const persistWalkLocation = async (latitude: number, longitude: number, speed: n
     }
 
     const d = haversine(session.lastLat, session.lastLng, latitude, longitude);
-    if (d > 0 && d < 500) session.totalDistance += d;
+    if (d > 0) session.totalDistance += d;
     session.lastLat = latitude;
     session.lastLng = longitude;
     session.lastUpdateAt = now;

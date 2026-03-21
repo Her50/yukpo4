@@ -180,23 +180,40 @@ const LivreScolaireHomeScreen: React.FC = () => {
                         <View style={styles.headerTitleContainer}>
                             <Text style={styles.headerTitle}>{t('livreScolaireHome.bourseDuLivre')}</Text>
                         </View>
-                        <TouchableOpacity
-                            onPress={onLibraireHeaderPress}
-                            style={styles.libraireHeaderBtn}
-                            activeOpacity={0.88}
-                        >
-                            <SafeIcon
-                                name={isLibrairePartner ? 'layout-dashboard' : 'store'}
-                                size={15}
-                                color="#B45309"
-                                type="lucide"
-                            />
-                            <Text style={styles.libraireHeaderBtnText} numberOfLines={2}>
-                                {isLibrairePartner
-                                    ? t('bourseLivre.maLibrairie', 'Ma librairie')
-                                    : t('bourseLivre.devenirLibraire', 'Devenir libraire')}
-                            </Text>
-                        </TouchableOpacity>
+                        <View style={styles.headerButtonsContainer}>
+                            <TouchableOpacity
+                                onPress={onLibraireHeaderPress}
+                                style={styles.libraireHeaderBtn}
+                                activeOpacity={0.88}
+                            >
+                                <SafeIcon
+                                    name={isLibrairePartner ? 'layout-dashboard' : 'store'}
+                                    size={15}
+                                    color="#B45309"
+                                    type="lucide"
+                                />
+                                <Text style={styles.libraireHeaderBtnText} numberOfLines={2}>
+                                    {isLibrairePartner
+                                        ? t('bourseLivre.maLibrairie', 'Ma librairie')
+                                        : t('bourseLivre.devenirLibraire', 'Devenir libraire')}
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => safeNavigate('EtablissementScolaire')}
+                                style={styles.etablissementHeaderBtn}
+                                activeOpacity={0.88}
+                            >
+                                <SafeIcon
+                                    name="school"
+                                    size={15}
+                                    color="#059669"
+                                    type="lucide"
+                                />
+                                <Text style={styles.etablissementHeaderBtnText} numberOfLines={2}>
+                                    {t('bourseLivre.etablissementScolaire', 'Établissement scolaire')}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </LinearGradient>
             </View>

@@ -1383,6 +1383,8 @@ pub async fn share_product_redirect(
     html.push_str(&escaped_product_name);
     html.push_str(
         r#" - Yukpomnang</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
     <meta name="description" content=""#,
     );
     html.push_str(&escaped_product_description);
@@ -1521,7 +1523,12 @@ pub async fn share_product_redirect(
             background: #10b981; margin-top: 8px;
         }
         .store-badges { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
-        .store-badge { height: 40px; }"#);
+        .store-badge { height: 40px; }
+        .brand-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
+        .brand-logo { width: 44px; height: 44px; border-radius: 10px; object-fit: contain; }
+        .brand-info { display: flex; flex-direction: column; }
+        .brand-name { font-size: 18px; font-weight: 700; background: linear-gradient(135deg, #3B82F6, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .brand-tagline { font-size: 12px; color: #9ca3af; letter-spacing: 1px; text-transform: uppercase; }"#);
     html.push_str(media_gallery_css());
     html.push_str(
         r#"
@@ -1529,13 +1536,17 @@ pub async fn share_product_redirect(
 </head>
 <body>
     <div class="container">
+        <div class="brand-header">
+            <img src="/logo.png" alt="Yukpo" class="brand-logo" onerror="this.style.display='none'" />
+            <div class="brand-info">
+                <span class="brand-name">YUKPO</span>
+                <span class="brand-tagline">Connect. Create. Solve</span>
+            </div>
+        </div>
         <h1>"#,
     );
     html.push_str(&escaped_product_name);
-    html.push_str(
-        r#"</h1>
-        "#,
-    );
+    html.push_str("</h1>\n        ");
     html.push_str(&price_html);
     html.push_str(&media_gallery_html);
     // ✅ NOUVEAU 2026-03-11: Afficher les variations de prix (scrollables horizontalement)
@@ -1964,15 +1975,20 @@ pub async fn share_service_redirect(
         .or_else(|_| std::env::var("BACKEND_URL"))
         .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
 
-    // ✅ CORRIGÉ: og:image uniquement si une vraie image existe (pas SVG placeholder)
-    let og_image_url: Option<String> = all_service_images.first().cloned();
-    let _display_image_url = all_service_images.first().cloned().unwrap_or_else(|| {
-        format!(
-            "{}/api/og-placeholder?name={}",
-            &share_base_url,
-            urlencoding::encode(&service_titre)
-        )
-    });
+    // ✅ AMÉLIORÉ 2026-03-21: og:image avec fallback logo Yukpo quand aucune image service n'existe
+    // Priorité: 1) Image du service, 2) Placeholder OG dynamique avec branding Yukpo, 3) Logo statique
+    let og_image_url: Option<String> =
+        Some(all_service_images.first().cloned().unwrap_or_else(|| {
+            format!(
+                "{}/api/og-placeholder?name={}",
+                &share_base_url,
+                urlencoding::encode(&service_titre)
+            )
+        }));
+    let _display_image_url = all_service_images
+        .first()
+        .cloned()
+        .unwrap_or_else(|| format!("{}/logo.png", &share_base_url));
     let share_url = format!("{}/service/{}", &share_base_url, service_id);
     let deep_link = format!("yukpomnang://service/{}", service_id);
     let android_intent_url = format!(
@@ -2018,6 +2034,8 @@ pub async fn share_service_redirect(
     html.push_str(&escaped_service_titre);
     html.push_str(
         r#" - Yukpomnang</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
     <meta name="description" content=""#,
     );
     html.push_str(&escaped_service_description);
@@ -2118,7 +2136,12 @@ pub async fn share_service_redirect(
         }
         .button:hover { transform: translateY(-2px); }
         .button-secondary { background: #10b981; margin-top: 8px; }
-        .store-badges { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }"#);
+        .store-badges { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+        .brand-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; }
+        .brand-logo { width: 44px; height: 44px; border-radius: 10px; object-fit: contain; }
+        .brand-info { display: flex; flex-direction: column; }
+        .brand-name { font-size: 18px; font-weight: 700; background: linear-gradient(135deg, #3B82F6, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .brand-tagline { font-size: 12px; color: #9ca3af; letter-spacing: 1px; text-transform: uppercase; }"#);
     html.push_str(media_gallery_css());
     html.push_str(
         r#"
@@ -2126,6 +2149,13 @@ pub async fn share_service_redirect(
 </head>
 <body>
     <div class="container">
+        <div class="brand-header">
+            <img src="/logo.png" alt="Yukpo" class="brand-logo" onerror="this.style.display='none'" />
+            <div class="brand-info">
+                <span class="brand-name">YUKPO</span>
+                <span class="brand-tagline">Connect. Create. Solve</span>
+            </div>
+        </div>
         <h1>"#,
     );
     html.push_str(&html_attr_escape(&service_titre));
@@ -2698,14 +2728,32 @@ pub async fn og_placeholder_image(
         r#"<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#667eea"/>
-      <stop offset="100%" style="stop-color:#764ba2"/>
+      <stop offset="0%" style="stop-color:#3B82F6"/>
+      <stop offset="50%" style="stop-color:#6366F1"/>
+      <stop offset="100%" style="stop-color:#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="logo-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.2)"/>
+      <stop offset="100%" style="stop-color:rgba(255,255,255,0.08)"/>
     </linearGradient>
   </defs>
   <rect width="1200" height="630" fill="url(#bg)"/>
-  <text x="600" y="240" font-family="Arial, Helvetica, sans-serif" font-size="120" font-weight="bold" fill="white" text-anchor="middle" opacity="0.9">Y</text>
-  <text x="600" y="340" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="white" text-anchor="middle" opacity="0.8">{}</text>
-  <text x="600" y="520" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="white" text-anchor="middle" opacity="0.6">yukpo.com</text>
+  <!-- Logo YP monogram circle -->
+  <circle cx="600" cy="200" r="80" fill="url(#logo-bg)" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+  <text x="600" y="225" font-family="Arial, Helvetica, sans-serif" font-size="72" font-weight="bold" fill="white" text-anchor="middle" letter-spacing="4">YP</text>
+  <!-- Brand name -->
+  <text x="600" y="320" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="bold" fill="white" text-anchor="middle" letter-spacing="6">YUKPO</text>
+  <!-- Tagline -->
+  <text x="600" y="360" font-family="Arial, Helvetica, sans-serif" font-size="16" fill="white" text-anchor="middle" opacity="0.7" letter-spacing="3">CONNECT · CREATE · SOLVE</text>
+  <!-- Separator line -->
+  <line x1="450" y1="390" x2="750" y2="390" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+  <!-- Product/Service name -->
+  <text x="600" y="440" font-family="Arial, Helvetica, sans-serif" font-size="32" fill="white" text-anchor="middle" opacity="0.95">{}</text>
+  <!-- Call to action -->
+  <rect x="420" y="490" width="360" height="50" rx="25" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+  <text x="600" y="522" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="white" text-anchor="middle" font-weight="600">Découvrir sur Yukpo</text>
+  <!-- Footer -->
+  <text x="600" y="600" font-family="Arial, Helvetica, sans-serif" font-size="14" fill="white" text-anchor="middle" opacity="0.5">yukpomnang.com</text>
 </svg>"#,
         safe_name
     );
