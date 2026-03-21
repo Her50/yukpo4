@@ -39,7 +39,7 @@ class NotificationSoundService {
     }
 
     /**
-     * Charge un son de notification
+     * Charge un son de notification avec fallback en ligne si le fichier local manque
      */
     private async loadSound(type: NotificationSoundType): Promise<Audio.Sound | null> {
         // Vérifier si le son est déjà chargé
@@ -50,35 +50,37 @@ class NotificationSoundService {
         try {
             await this.initialize();
 
-            // Déterminer la source du son
-            // ✅ FIX 2026-03-03: Utiliser delivery_alert.mp3 (seul fichier existant) comme source principale
-            // pour tous les types de notifications, avec fallback en ligne
             let soundSource: any;
 
-            // ✅ FIX CRASH 2026-03-18: Utiliser delivery_alert.mp3 (seul fichier existant) pour tous les types
-            // Les require() pour assets sont résolus STATIQUEMENT par Metro au build.
-            // Un require() vers un fichier inexistant crash l'app au runtime même dans un try/catch.
-            soundSource = require('../../assets/sounds/delivery_alert.mp3');
+            try {
+                // Essayer de charger le fichier local d'abord
+                soundSource = require('../../assets/sounds/delivery_alert.mp3');
+            } catch (localError) {
+                // Fallback: utiliser une URL en ligne (son plus court et instantané)
+                console.warn('[NotificationSoundService] ⚠️ Fichier local absent, fallback en ligne');
+                soundSource = {
+                    uri: 'https://actions.google.com/sounds/v1/notifications/notification_simple.ogg'
+                };
+            }
 
-            // Créer le son
+            // Créer le son avec volume plus élevé pour la bienvenue
             const { sound } = await Audio.Sound.createAsync(
                 soundSource,
                 {
                     shouldPlay: false,
-                    volume: 0.7, // Volume modéré
+                    volume: type === 'ready' ? 0.8 : 0.7, // Volume plus élevé pour bienvenue
                     isLooping: false,
                 },
                 (status) => {
                     if (status.isLoaded && status.didJustFinish) {
-                        // Son terminé, nettoyer si nécessaire
-                        sound.unloadAsync().catch(() => {
-                            // Ignorer les erreurs de nettoyage
-                        });
+                        // Son terminé, replacer au début pour prochaine utilisation
+                        sound.setPositionAsync(0).catch(() => { });
                     }
                 }
             );
 
             this.sounds.set(type, sound);
+            console.log(`[NotificationSoundService] ✅ Son ${type} chargé avec succès`);
             return sound;
         } catch (error) {
             console.error(`[NotificationSoundService] ❌ Erreur chargement son ${type}:`, error);
@@ -148,7 +150,7 @@ class NotificationSoundService {
     }
 
     /**
-     * Précharge tous les sons pour une lecture plus rapide
+     * Précharge tous les sons pour une lecture plus rapide + préchauffage TTS
      */
     async preloadAllSounds(): Promise<void> {
         try {
@@ -159,7 +161,11 @@ class NotificationSoundService {
                 this.loadSound('ready'),
                 this.loadSound('delivery_request'),
             ]);
-            console.log('[NotificationSoundService] ✅ Tous les sons préchargés');
+
+            // Préchauffer TTS pour un démarrage instantané de la bienvenue
+            await this.warmupTTS();
+
+            console.log('[NotificationSoundService] ✅ Tous les sons préchargés + TTS prêt');
         } catch (error) {
             console.error('[NotificationSoundService] ❌ Erreur préchargement:', error);
         }
@@ -206,38 +212,57 @@ class NotificationSoundService {
         const key = fallbackAlias[normalized] || normalized;
 
         const messages: Record<string, string> = {
-            fr: 'Bienvenue sur Yukpo — tout l’essentiel de votre quotidien, réuni dans une seule app. Un doute, une question ? Touchez l’icône du tchat en bas à droite : je suis là pour vous accompagner, simplement et à votre rythme.',
-            en: 'Welcome to Yukpo, your intelligent super-app. First, create your account, then tap the chat icon at the bottom right: your intelligent guide helps you quickly access your essential services.',
-            de: 'Willkommen bei Yukpo. Sobald Ihr Konto erstellt ist, bleibt Ihr intelligenter Assistent immer verfügbar, um Sie zu begleiten. Bei Fragen zu Funktionen öffnen Sie den intelligenten Chat und stellen Sie einfach Ihre Frage.',
-            es: 'Bienvenido a Yukpo. Una vez creada su cuenta, su asistente inteligente estará siempre disponible para guiarle. Para cualquier duda sobre funciones, abra el chat inteligente y haga su pregunta.',
-            pt: 'Bem-vindo ao Yukpo. Depois de criar sua conta, seu assistente inteligente estará sempre disponível para orientar você. Para qualquer dúvida sobre funcionalidades, abra o chat inteligente e envie sua pergunta.',
-            it: 'Benvenuto su Yukpo. Dopo aver creato il tuo account, il tuo assistente intelligente sarà sempre disponibile per guidarti. Per qualsiasi domanda sulle funzionalità, apri la chat intelligente e fai la tua domanda.',
-            nl: 'Welkom bij Yukpo. Zodra je account is aangemaakt, blijft je intelligente assistent altijd beschikbaar om je te begeleiden. Voor vragen over functies open je de intelligente chat en stel je je vraag.',
-            pl: 'Witamy w Yukpo. Po utworzeniu konta Twój inteligentny asystent zawsze będzie dostępny, aby Cię prowadzić. W razie pytań o funkcje otwórz inteligentny czat i zadaj pytanie.',
-            uk: 'Ласкаво просимо до Yukpo. Після створення облікового запису ваш інтелектуальний помічник завжди поруч, щоб вас супроводжувати. Для будь-яких питань щодо функцій відкрийте інтелектуальний чат і поставте запитання.',
-            tr: 'Yukpo\'ya hoş geldiniz. Hesabınız oluşturulduktan sonra akıllı asistanınız size her adımda rehberlik etmek için her zaman hazırdır. Özelliklerle ilgili sorular için akıllı sohbeti açın ve sorunuzu yazın.',
-            ru: 'Добро пожаловать в Yukpo. После создания аккаунта ваш интеллектуальный помощник всегда рядом, чтобы направлять вас. По любому вопросу о функциях откройте умный чат и задайте вопрос.',
-            zh: '欢迎来到Yukpo。创建账户后，您的智能助手会始终陪伴并引导您。对任何功能有疑问时，打开智能聊天并直接提问即可。',
-            ja: 'Yukpoへようこそ。アカウント作成後は、インテリジェントアシスタントが常にあなたをサポートします。機能について質問があれば、インテリジェントチャットを開いてそのまま質問してください。',
-            ko: 'Yukpo에 오신 것을 환영합니다. 계정을 만든 후에는 지능형 어시스턴트가 항상 함께하며 안내합니다. 기능에 대한 질문이 있으면 지능형 채팅을 열고 바로 물어보세요.',
-            hi: 'Yukpo में आपका स्वागत है। खाता बन जाने के बाद आपका बुद्धिमान सहायक हमेशा आपकी मदद के लिए उपलब्ध रहेगा। किसी भी फीचर या समस्या के लिए इंटेलिजेंट चैट खोलें और अपना प्रश्न पूछें।',
-            ar: 'مرحبًا بك في Yukpo. بعد إنشاء حسابك سيبقى مساعدك الذكي متاحًا دائمًا لإرشادك. لأي سؤال حول الميزات، افتح الدردشة الذكية واسأل مباشرة.',
-            sw: 'Karibu Yukpo. Baada ya kuunda akaunti yako, msaidizi wako mahiri atakuwa nawe kila wakati kukuongoza. Kwa swali lolote kuhusu vipengele, fungua chat mahiri na uliza moja kwa moja.',
-            ha: 'Barka da zuwa Yukpo. Bayan ka ƙirƙiri asusunka, mataimakinka mai wayo zai kasance a tare da kai koyaushe don jagora. Duk tambaya game da fasali, ka buɗe chat mai wayo ka yi tambaya kai tsaye.',
-            yo: 'Kaabo si Yukpo. Lẹ́yìn tí o bá dá àkọọlẹ rẹ sílẹ̀, olùrànlọ́wọ́ ọlọ́gbọ́n rẹ máa wà pẹ̀lú rẹ ní gbogbo ìgbà láti tọ́ ọ sọ́nà. Fun ìbéèrè kankan nípa iṣẹ́, ṣí chat ọlọ́gbọ́n kí o sì béèrè taara.',
-            ig: 'Nnọọ na Yukpo. Mgbe emechara mepụta akaụntụ gị, onye enyemaka gị nwere ọgụgụ isi ga-anọnyere gị mgbe niile iji duzie gị. Maka ajụjụ ọ bụla gbasara atụmatụ, mepee chat ọgụgụ isi ma jụọ ozugbo.',
-            am: 'ወደ Yukpo እንኳን ደህና መጡ። መለያዎ ከተፈጠረ በኋላ ብልህ አጋዥዎ ሁልጊዜ እዚያ ይሆናል ለመመራት። ስለ ማንኛውም ባህሪ ጥያቄ ካለ ብልህ ቻትን ይክፈቱ እና በቀጥታ ይጠይቁ።',
-            zu: 'Siyakwamukela ku-Yukpo. Ngemuva kokudala i-akhawunti yakho, umsizi wakho ohlakaniphile uzohlala ekhona ukuze akuqondise. Noma yimuphi umbuzo ngezici, vula ingxoxo ehlakaniphile ubuze ngqo.',
-            wo: 'Dalal ak jàmm ci Yukpo. Bu sa kont bi amee, sa ndimbal bu xel dina nekk ak yow ngir gindi la. Su fekkee am nga laaj ci benn liggéey, ubbi chat bu xel bi te laaj.',
-            ln: 'Boyei malamu na Yukpo. Sima kont na yo esalemi, mosungi na yo ya mayele akozala ntango nyonso mpo na kokamba yo. Soki ozali na motuna na likambo ya ba fonctionnalités, fungola chat ya mayele mpe tuna mbala moko.',
-            ff: 'A jaaraama e Yukpo. Caggal kont maa taggi, ballo maa keewuɗo maa ɗon e ma ngam yillaade ma. Kala ɗum ko cuɓoraaɗe, uddit chat keewuɗo ɗaa ƴama.',
-            rw: 'Murakaza neza kuri Yukpo. Konti yawe nimara gukorwa, umufasha wawe w’ubwenge azahora ahari akuyobore. Ku kibazo icyo ari cyo cyose ku mikorere, fungura chat y’ubwenge ubaze ako kanya.',
-            sn: 'Mauya kuYukpo. Kana wagadzira account yako, mubatsiri wako akangwara anogara aripo kukutungamirira. Kana uine mubvunzo nezvemaficha, vhura intelligent chat wobvunza zvakananga.',
-            so: 'Ku soo dhawoow Yukpo. Marka akoonkaaga la sameeyo, kaaliyahaaga caqliga leh had iyo jeer wuu kula jiri doonaa si uu kuu hago. Su’aal kasta oo ku saabsan adeegyada, fur chat-ka caqliga leh oo si toos ah u weydii.',
-            mg: 'Tongasoa eto amin’i Yukpo. Rehefa voaforona ny kaontinao, ny mpanampy manan-tsaina dia ho eo foana hitari-dalana anao. Raha manana fanontaniana momba ny fiasa ianao dia sokafy ny chat manan-tsaina ary anontanio mivantana.',
-            ht: 'Byenveni sou Yukpo. Apre ou fin kreye kont ou, asistan entelijan ou ap toujou la pou gide ou. Pou nenpòt kesyon sou fonksyonalite yo, louvri chat entelijan an epi poze kesyon ou dirèkteman.',
+            fr: 'Bienvenue sur Yukpo. Je suis là pour vous aider.',
+            en: 'Welcome to Yukpo. I am here to help you.',
+            de: 'Willkommen bei Yukpo. Ich bin hier, um zu helfen.',
+            es: 'Bienvenido a Yukpo. Estoy aquí para ayudarte.',
+            pt: 'Bem-vindo ao Yukpo. Estou aqui para ajudar.',
+            it: 'Benvenuto su Yukpo. Sono qui per aiutarti.',
+            nl: 'Welkom bij Yukpo. Ik ben hier om te helpen.',
+            pl: 'Witamy w Yukpo. Jestem tutaj, aby pomóc.',
+            uk: 'Ласкаво просимо до Yukpo. Я тут, щоб допомогти.',
+            tr: 'Yukpo\'ya hoş geldiniz. Yardım etmek için buradayım.',
+            ru: 'Добро пожаловать в Yukpo. Я здесь, чтобы помочь.',
+            zh: '欢迎来到Yukpo。我在这里帮助您。',
+            ja: 'Yukpoへようこそ。お手伝いするためにここにいます。',
+            ko: 'Yukpo에 오신 것을 환영합니다. 도와드리기 위해 여기에 있습니다.',
+            hi: 'Yukpo में आपका स्वागत है। मैं आपकी मदद के लिए यहाँ हूँ।',
+            ar: 'مرحبًا بك في Yukpo. أنا هنا لمساعدتك.',
+            sw: 'Karibu Yukpo. Niko hapa kukusaidia.',
+            ha: 'Barka da zuwa Yukpo. Ina nan taimaka muku.',
+            yo: 'Kaabo si Yukpo. Wa nibi lati ran lowọ ẹ.',
+            ig: 'Nnọọ na Yukpo. A m ebe a iji nyere gị aka.',
+            am: 'ወደ Yukpo እንኳን ደህና መጡ። እኔ እርዳታ ለመስጠን እዚህ ነኝ።',
+            zu: 'Siyakwamukela ku-Yukpo. Ngingakho ukukusiza.',
+            wo: 'Dalal ak jàmm ci Yukpo. Ma ngi nii ngir leeral sa.',
+            ln: 'Boyei malamu na Yukpo. Nazali wana kokamba yo.',
+            ff: 'A jaaraama e Yukpo. Mi nan e ngam wallude ma.',
+            rw: 'Murakaza neza kuri Yukpo. Ndi hano kugufasha.',
+            sn: 'Mauya kuYukpo. Ndiri pano kukubatsiridza.',
+            so: 'Ku soo dhawoow Yukpo. Waan halkan kaa caawin lahayada.',
+            mg: 'Tongasoa eto amin'i Yukpo.Eto no hanampy anao.',
+            ht: 'Byenveni sou Yukpo. Mwen la pou ede w.',
         };
         return messages[key] || messages['en'];
+    }
+
+    /**
+     * Préchauffe le moteur TTS pour un démarrage instantané
+     */
+    async warmupTTS(): Promise<void> {
+        try {
+            // Préchauffage TTS avec un message très court
+            await Speech.speak('', {
+                language: this.getTTSLanguage(),
+                pitch: 1.0,
+                rate: 1.0,
+                volume: 0.0, // Volume muet pour le préchauffage
+            });
+            console.log('[NotificationSoundService] 🔥 TTS préchauffé');
+        } catch (error) {
+            // Le préchauffage peut échouer, ce n'est pas critique
+            console.log('[NotificationSoundService] ⚠️ Préchauffage TTS ignoré');
+        }
     }
 
     /**
@@ -248,25 +273,28 @@ class NotificationSoundService {
         try {
             await this.initialize();
 
-            console.log('[NotificationSoundService] \uD83C\uDF89 Lecture message de bienvenue');
+            console.log('[NotificationSoundService] 🎉 Lecture message de bienvenue');
 
-            // 1. Jouer un son de bienvenue (réutilise le son 'ready' comme chime)
+            // 1. Préchauffer TTS PENDANT le son de bienvenue
+            this.warmupTTS(); // Non bloquant
+
+            // 2. Jouer un son de bienvenue (réutilise le son 'ready' comme chime)
             await this.playSound('ready').catch(() => { });
 
-            // 2. Attendre que le son finisse, puis parler le message de bienvenue
+            // 3. Message TTS très court pour démarrage instantané
             const lang = i18n.language || 'fr';
             const message = this.getWelcomeMessage(lang);
             const ttsLang = this.getTTSLanguage();
 
-            setTimeout(() => {
-                Speech.speak(message, {
-                    language: ttsLang,
-                    pitch: 1.05,
-                    rate: 0.85,
-                    onError: (e) => console.warn('[NotificationSoundService] TTS bienvenue erreur:', e),
-                    onDone: () => console.log('[NotificationSoundService] ✅ Message de bienvenue terminé'),
-                });
-            }, 300);
+            // Démarrer TTS immédiatement après le son (pas d'attente)
+            Speech.speak(message, {
+                language: ttsLang,
+                pitch: 1.05,
+                rate: 0.85, // Légèrement plus lent pour la bienvenue
+                volume: 0.8, // Volume plus clair pour la bienvenue
+                onError: (e) => console.warn('[NotificationSoundService] TTS bienvenue erreur:', e),
+                onDone: () => console.log('[NotificationSoundService] ✅ Message de bienvenue terminé'),
+            });
         } catch (error) {
             console.error('[NotificationSoundService] ❌ Erreur message bienvenue:', error);
         }

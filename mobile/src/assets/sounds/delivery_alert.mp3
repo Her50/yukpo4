@@ -1,9 +1,0 @@
-🔔 Fichier audio de bienvenue - Son d'accueil chaleureux
-
-Ce fichier est utilisé pour la notification de bienvenue lors de la première connexion.
-Format: MP3, Durée: ~2 secondes, Volume: normalisé
-
-Si ce fichier est absent, l'application utilisera un son de secours en ligne.
-Pour une expérience optimale, gardez ce fichier dans le dossier assets/sounds/
-
-Usage: notificationSoundService.playWelcomeMessage()

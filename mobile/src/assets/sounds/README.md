@@ -1,16 +1,34 @@
-# 🔔 Fichiers audio pour les sonneries d'appel
+# 🔔 Fichiers audio pour les notifications
+
+## 📋 Usage des fichiers audio
+
+Les fichiers dans ce dossier sont utilisés pour :
+- **Sonneries d'appel WebRTC** (ringtone.mp3)
+- **Notifications système** (delivery_alert.mp3)
+- **Alertes livraison** (sons courts)
+
+## 🗣️ Message de bienvenue - TTS (Text-to-Speech)
+
+**Important** : Le message de bienvenue n'utilise AUCUN fichier audio !
+- Il est généré par **TTS (Text-to-Speech)** d'Expo
+- Message court dans la langue de l'utilisateur
+- Aucun fichier audio requis pour la bienvenue
 
 ## Fichiers requis
 
-Pour que les sonneries d'appel fonctionnent correctement, vous devez placer un fichier audio dans ce dossier :
-
-### `ringtone.mp3`
+### `ringtone.mp3` (optionnel)
 - **Usage** : Sonnerie pour les appels WebRTC (audio et vidéo)
 - **Format** : MP3
 - **Durée recommandée** : 5-10 secondes (en boucle)
 - **Volume** : Normalisé (le code ajuste automatiquement)
 
-## Où trouver des sonneries gratuites ?
+### `delivery_alert.mp3` (optionnel)
+- **Usage** : Notifications de livraison et commandes
+- **Format** : MP3
+- **Durée recommandée** : 1-2 secondes
+- **Volume** : Normalisé
+
+## Où trouver des sons gratuits ?
 
 ### Sources recommandées :
 1. **Zedge** : https://www.zedge.net/ringtones
@@ -19,28 +37,27 @@ Pour que les sonneries d'appel fonctionnent correctement, vous devez placer un f
 
 ## Fallback
 
-Si le fichier `ringtone.mp3` n'est pas présent, l'application utilise un son de secours en ligne :
-- URL : https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg
+Si les fichiers locaux manquent, l'application utilise des URLs en ligne :
+- Ringtone : https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg
+- Notification : https://actions.google.com/sounds/v1/notifications/notification_simple.ogg
 - ⚠️ Nécessite une connexion internet
 
-## Comment ajouter la sonnerie
+## Comment ajouter des sons
 
-1. Téléchargez un fichier audio MP3
-2. Renommez-le en `ringtone.mp3`
-3. Placez-le dans ce dossier (`mobile/src/assets/sounds/`)
-4. Rebuild l'application
+1. Téléchargez des fichiers audio MP3
+2. Placez-les dans ce dossier (`mobile/src/assets/sounds/`)
+3. Rebuild l'application
 
 ## Test
 
-Pour tester la sonnerie :
-1. Lancez un appel depuis un appareil
-2. La sonnerie devrait se jouer automatiquement :
-   - **Émetteur** : Sonnerie d'attente (volume 50%)
-   - **Destinataire** : Sonnerie d'appel entrant (volume 100%)
+Pour tester les sons :
+1. Déclenchez une notification de livraison
+2. Lancez un appel WebRTC
+3. Les sons devraient jouer automatiquement avec le bon volume
 
 ## Notes techniques
 
-- La sonnerie joue en boucle jusqu'à ce que l'appel soit accepté/refusé
-- Elle fonctionne même si le téléphone est en mode silencieux
-- Le volume est ajusté automatiquement selon le type d'appel
+- Les sons fonctionnent même si le téléphone est en mode silencieux
+- Le volume est ajusté automatiquement selon le type de notification
+- Le TTS de bienvenue est optimisé pour un démarrage instantané
 

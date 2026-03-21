@@ -582,15 +582,18 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     };
 
     const handleTyping = (text: string) => {
+        console.log('[DEBUG MENTION] handleTyping appelé avec:', text);
         setNewMessage(text);
 
         const activeQuery = extractActiveMentionQuery(text);
+        console.log('[DEBUG MENTION] activeQuery extrait:', activeQuery);
         if (activeQuery) {
             setMentionQuery(activeQuery);
             setShowMentionPicker(true);
-            console.log('[ChatModalMobile] @ détecté, query:', activeQuery);
+            console.log('[DEBUG MENTION] @ détecté, query:', activeQuery, 'showMentionPicker:', true);
         } else {
             setShowMentionPicker(false);
+            console.log('[DEBUG MENTION] Pas de @ détecté, showMentionPicker:', false);
         }
 
         // Simuler l'indication de frappe

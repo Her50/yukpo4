@@ -78,66 +78,36 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
     };
 
     const searchUsers = async (query: string) => {
-        if (!query || query.trim().length < 1) {
+        if (!query.trim()) {
             setSearchResults([]);
+            setLoading(false);
             return;
         }
 
-        setLoading(true);
+        console.log('[DEBUG MENTION] UserMentionPicker.searchUsers appelé avec query:', query);
+
         try {
-            // Recherche améliorée : nom, email, et recherche partielle
+            setLoading(true);
             const response = await apiGet<{ success: boolean; data: User[]; count: number }>(
                 `/api/conversations/search-users?query=${encodeURIComponent(query)}&limit=20&search_type=all`
             );
+
+            console.log('[DEBUG MENTION] UserMentionPicker réponse API:', response);
 
             if (response.success && response.data) {
                 // response.data = backend JSON = { success, data: User[], count }
                 const backendResp = response.data as any;
                 const users: User[] = backendResp?.data || (Array.isArray(backendResp) ? backendResp : []);
-                console.log('[UserMentionPicker] searchUsers résultats:', users.length);
 
-                // Tri intelligent : exact matches d'abord, puis partiels
-                const sortedUsers = users.sort((a, b) => {
-                    const queryLower = query.toLowerCase();
-                    const aName = (a.nom_complet || '').toLowerCase();
-                    const bName = (b.nom_complet || '').toLowerCase();
-                    const aEmail = (a.email || '').toLowerCase();
-                    const bEmail = (b.email || '').toLowerCase();
-
-                    // Priorité aux correspondances exactes
-                    const aExactName = aName === queryLower;
-                    const bExactName = bName === queryLower;
-                    const aExactEmail = aEmail === queryLower;
-                    const bExactEmail = bEmail === queryLower;
-
-                    if (aExactName || aExactEmail) return -1;
-                    if (bExactName || bExactEmail) return 1;
-
-                    // Puis aux correspondances qui commencent par la query
-                    const aStartsWithName = aName.startsWith(queryLower);
-                    const bStartsWithName = bName.startsWith(queryLower);
-                    const aStartsWithEmail = aEmail.startsWith(queryLower);
-                    const bStartsWithEmail = bEmail.startsWith(queryLower);
-
-                    if (aStartsWithName || aStartsWithEmail) return -1;
-                    if (bStartsWithName || bStartsWithEmail) return 1;
-
-                    // Enfin les correspondances partielles
-                    const aContainsName = aName.includes(queryLower);
-                    const bContainsName = bName.includes(queryLower);
-                    const aContainsEmail = aEmail.includes(queryLower);
-                    const bContainsEmail = bEmail.includes(queryLower);
-
-                    if (aContainsName || aContainsEmail) return -1;
-                    if (bContainsName || bContainsEmail) return 1;
-
-                    return 0;
-                });
-
-                setSearchResults(sortedUsers);
+                console.log('[DEBUG MENTION] UserMentionPicker utilisateurs parsés:', users.length, users);
+                setSearchResults(users);
+            } else {
+                console.log('[DEBUG MENTION] UserMentionPicker réponse invalide, résultats vidés');
+                setSearchResults([]);
             }
         } catch (error) {
-            console.error('[UserMentionPicker] Erreur recherche:', error);
+            console.error('[DEBUG MENTION] UserMentionPicker erreur API:', error);
+            setSearchResults([]);
         } finally {
             setLoading(false);
         }

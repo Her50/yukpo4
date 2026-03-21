@@ -3,14 +3,14 @@ import { useNavigation } from "@react-navigation/native";
 import * as React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLanguageSafe } from '../contexts/LanguageContext';
-import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 
 const HeroBanner: React.FC = () => {
   const navigation = useNavigation();
-    const { t } = useLanguageSafe();
+  const { t } = useLanguageSafe();
 
   const handlePress = () => {
-    navigateToMesServicesHub(navigation as any);
+    // ✅ CORRECTION: Au lieu de pointer vers MesServicesScreen, ouvrir le chat intelligent pour guider l'utilisateur
+    (navigation as any).navigate('ChatModal');
   };
 
   return (
@@ -28,7 +28,7 @@ const HeroBanner: React.FC = () => {
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={styles.button} onPress={handlePress}>
-            <Text style={styles.buttonText}>Explorer les services</Text>
+            <Text style={styles.buttonText}>Demander à l'assistant</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -22,23 +22,15 @@ Write-Host "📅 Timestamp: $timestamp"
 Write-Host "📤 Upload du nouvel APK..."
 gcloud storage cp $ApkPath gs://yukpo-project-yukpo-backend-media/yukpomnang-latest.apk
 
-# 2. Mettre à jour netlify.toml avec le nouveau timestamp
-$netlifyPath = "c:\Users\23767\yukpomnang2\netlify.toml"
-$backupPath = "c:\Users\23767\yukpomnang2\netlify.toml.backup"
+# 2. Mettre à jour le Worker Cloudflare avec le nouveau timestamp
+Write-Host "☁️  Mise à jour du Worker Cloudflare..."
+# Note: Vous devrez déployer manuellement le Worker mis à jour via Cloudflare Dashboard
 
-# Backup
-Copy-Item $netlifyPath $backupPath
-
-# Mettre à jour la redirection
-$content = Get-Content $netlifyPath
-$newContent = $content -replace 'yukpomnang-latest\.apk\?v=\d+', "yukpomnang-latest.apk?v=$timestamp"
-Set-Content $netlifyPath $newContent
-
-# 4. Appliquer les headers anti-cache
+# 3. Appliquer les headers anti-cache
 Write-Host "⚙️  Configuration des headers anti-cache..."
 gcloud storage objects update gs://yukpo-project-yukpo-backend-media/yukpomnang-latest.apk --cache-control="no-cache, no-store, must-revalidate"
 
-# 5. Vérifier la configuration finale
+# 4. Vérifier la configuration finale
 Write-Host "✅ APK mis à jour avec succès !"
 Write-Host "🔗 Lien: https://yukpomnang.com/download"
 Write-Host "🆔 Version: $timestamp"

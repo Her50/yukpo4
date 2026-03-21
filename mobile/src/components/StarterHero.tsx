@@ -4,16 +4,16 @@ import * as React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguageSafe } from '../contexts/LanguageContext';
-import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 
 const StarterHero: React.FC = () => {
   const { user } = useAuth();
   const navigation = useNavigation();
-    const { t } = useLanguageSafe();
+  const { t } = useLanguageSafe();
 
   const handlePress = () => {
     if (user) {
-      navigateToMesServicesHub(navigation as any);
+      // ✅ CORRECTION: Au lieu de pointer vers MesServicesScreen, ouvrir le chat intelligent pour guider l'utilisateur
+      (navigation as any).navigate('ChatModal');
     } else {
       (navigation as any).navigate('Register');
     }
@@ -28,7 +28,7 @@ const StarterHero: React.FC = () => {
         </Text>
 
         <TouchableOpacity style={styles.button} onPress={handlePress}>
-          <Text style={styles.buttonText}>Explorer les services</Text>
+          <Text style={styles.buttonText}>Demander à l'assistant</Text>
         </TouchableOpacity>
       </View>
     </View>

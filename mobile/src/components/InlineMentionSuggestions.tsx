@@ -52,49 +52,35 @@ const InlineMentionSuggestions: React.FC<InlineMentionSuggestionsProps> = ({
         }
     };
 
-    const searchUsers = useCallback(async (q: string) => {
-        if (!q || q.trim().length < 1) {
+    const searchUsers = async (q: string) => {
+        if (!q.trim()) {
             setResults([]);
+            setLoading(false);
             return;
         }
 
-        setLoading(true);
+        console.log('[DEBUG MENTION] InlineMentionSuggestions.searchUsers appelé avec query:', q);
+
         try {
+            setLoading(true);
             const response = await apiGet<any>(
                 `/api/conversations/search-users?query=${encodeURIComponent(q.trim())}&limit=12&search_type=all`
             );
+
+            console.log('[DEBUG MENTION] InlineMentionSuggestions réponse API:', response);
 
             if (response.success && response.data) {
                 const backendResp = response.data as any;
                 const users: MentionSuggestion[] = backendResp?.data || (Array.isArray(backendResp) ? backendResp : []);
 
-                const queryLower = normalizeForSearch(q);
-                const score = (user: MentionSuggestion): number => {
-                    const name = normalizeForSearch(user.nom_complet);
-                    const email = normalizeForSearch(user.email);
-
-                    if (name === queryLower || email === queryLower) return 100;
-                    if (name.startsWith(queryLower) || email.startsWith(queryLower)) return 80;
-                    if (name.includes(queryLower) || email.includes(queryLower)) return 60;
-                    return 0;
-                };
-
-                // Fallback local pour fiabiliser l'affichage même si backend renvoie large.
-                const filtered = users.filter((user) => {
-                    const name = normalizeForSearch(user.nom_complet);
-                    const email = normalizeForSearch(user.email);
-                    return name.includes(queryLower) || email.includes(queryLower);
-                });
-
-                const source = filtered.length > 0 ? filtered : users;
-                const sorted = source.sort((a, b) => score(b) - score(a));
-
-                setResults(sorted);
+                console.log('[DEBUG MENTION] InlineMentionSuggestions utilisateurs parsés:', users.length, users);
+                setResults(users);
             } else {
+                console.log('[DEBUG MENTION] InlineMentionSuggestions réponse invalide, résultats vidés');
                 setResults([]);
             }
         } catch (error) {
-            console.error('[InlineMentionSuggestions] search error:', error);
+            console.error('[DEBUG MENTION] InlineMentionSuggestions erreur API:', error);
             setResults([]);
         } finally {
             setLoading(false);

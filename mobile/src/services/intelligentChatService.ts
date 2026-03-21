@@ -985,7 +985,7 @@ ${onAutomobilePartnerDashboard ? `
 AUTOMOBILE_PARTNER_DASHBOARD_MODE:
 - **Prioritize** **AUTOMOBILE_PARTNER_DASHBOARD_DETAIL** below.
 - **Données** : **GET** \`/api/specialized-services/user?type=automobile\` → annonces **véhicules** du partenaire ; **pas** de CRUD inline (bouton ajout = **Alert** → formulaire intelligent).
-- **Pièces détachées** : publication **e-commerce** (**catégorie \`pieces_auto\`**, **MesProduits** / **FormulaireYukpoIntelligent**) — **pas** ce dashboard ; peuvent toutefois apparaître dans **/api/auto/search** si le **service** correspond aux règles backend (**pièces auto**, etc.).
+- **Pièces détachées** : publication **e-commerce** (**catégorie \`pieces_auto\`**, **catalogue produits** / **formulaire intelligent**) — **pas** ce dashboard ; peuvent toutefois apparaître dans **/api/auto/search** si le **service** correspond aux règles backend (**pièces auto**, etc.).
 ` : ''}
 ${onAutoMarketplaceModule ? `
 AUTO_MARKETPLACE_MODULE_MODE:
@@ -1118,12 +1118,12 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
 **Header / bandeau:**
 - **Menu ☰ (SidebarNavigation):** création produit, galerie médias, équipe (par service), stats, mes pubs, nouvelle pub, création vidéo, flash promo, promos actives, live, analytiques vidéo, réglages, rafraîchir — aligné sur les entrées du menu latéral dans le code.
 - **Boutons + rapides:** intro **vidéo**, **Flash promo** (sélection produits → CreateFlashPromo), **livraison globale** (sélection → GlobalDeliveryConfigModal), **sélection multiple** + barre d’actions bulk (activer/désactiver/supprimer).
-- **Ajouter un produit:** si un service existe → **AjouterProduitSimple** ; sinon → **FormulaireYukpoIntelligent** (création service + produits).
+- **Ajouter un produit:** si un service existe → **formulaire d'ajout rapide avec suggestions IA** ; sinon → **formulaire intelligent complet** pour créer votre activité et vos produits.
 - **Fil d’Ariane / accueil:** retour **Home** selon UI.
 
-**Cartes produit (ServiceCardModern):** modifier fiche service (**FormulaireYukpoIntelligent**), promos (flash / promotion), **partage** (lien yukpomnang.com/service/{id}), **activer/désactiver** (coût éventuel réactivation **jetons** / solde — messaging UI), **suppression** (bloquée côté API si plusieurs produits selon règles métier).
+**Cartes produit (ServiceCardModern):** modifier fiche service (**formulaire intelligent complet**), promos (flash / promotion), **partage** (lien yukpomnang.com/service/{id}), **activer/désactiver** (coût éventuel réactivation **jetons** / solde — messaging UI), **suppression** (bloquée côté API si plusieurs produits selon règles métier).
 
-**Pied de liste / cartes vides:** accès **MesProduits** (vue catalogue détaillée), **statistiques** (**AnalyticsDashboard**), **retour accueil**.
+**Pied de liste / cartes vides:** accès **catalogue détaillé produits**, **statistiques avancées**, **retour accueil**.
 
 **Hard rules:**
 - To open this hub from code or deep links, use **MesServices** or the tab **Services**, **never** confuse with **ServicesActivity** (legacy ServicesScreen).
@@ -2189,24 +2189,24 @@ ${availableActions.map(action => `- "${action.label}" → ${action.description |
     }
 
     // Creation / management (Home-specific onboarding is in HOME_SCREEN_DETAIL — keep this for form & catalog screens)
-    const homeCreationScreens = ['FormulaireYukpoIntelligent', 'AjouterProduitSimple', 'MesProduits', 'Services', 'MesServices', 'DashboardPrestataire', 'ProductManagerMobile', 'HomeScreen'];
+    const homeCreationScreens = ['formulaire intelligent', 'ajout rapide produit', 'catalogue produits', 'services', 'mes services', 'dashboard prestataire', 'gestion produits', 'accueil'];
     if (homeCreationScreens.some(s => screenName.includes(s))) {
       prompt += `\n\nPRODUCT/SERVICE CREATION & MANAGEMENT CONTEXT:
 
 FROM HOME (summary — details in HOME_SCREEN_DETAIL if screen is Home):
-- Toggle **Create** mode → **ChatInputMobile** → AI suggestions → either **FormulaireYukpoIntelligent** (first business) or **AjouterProduitSimple** (existing service).
+- Toggle **Create** mode → **ChatInputMobile** → AI suggestions → either **formulaire intelligent complet** (first business) or **formulaire d'ajout rapide** (existing service).
 - This HomeScreen flow is the **recommended default** for users because it guides form filling more intelligently and simply.
 
-FIRST-TIME BUSINESS (FormulaireYukpoIntelligent path):
+FIRST-TIME BUSINESS (formulaire intelligent complet):
 - Google Business auto-import when available; multi-step intelligent form: general info → contacts → GPS → products (variants) → visual identity (logo/banner) → payment methods (MoMo, Orange Money, card, cash…).
 
-SUBSEQUENT PRODUCTS (AjouterProduitSimple path):
+SUBSEQUENT PRODUCTS (formulaire d'ajout rapide):
 - Photo/text → AI pre-fill; variants supported.
 - Promote **\`variation_prix\`** (weight, volume, shoe size, packaging, etc.) to manage variants without duplicating products.
 
 CATALOG MANAGEMENT:
-- **Tab \`Services\` (MesServicesScreen):** liste produits moderne, cartes, bulk, sidebar, flash/livraison/vidéo — hub principal “Mes services”.
-- **MesProduitsScreen:** catalogue détaillé par produit (filtres, stats mini, cartes, menu ⋮) — **pas d’import CSV sur cet écran** (voir MES_PRODUITS_DETAIL).
+- **Onglet Services (hub produits moderne):** liste produits moderne, cartes, bulk, sidebar, flash/livraison/vidéo — hub principal "Mes services".
+- **Catalogue détaillé par produit:** catalogue détaillé par produit (filtres, stats mini, cartes, menu ⋮) — **pas d’import CSV sur cet écran**.
 - Edit, variants, activate/deactivate, duplicate, bulk import, stats, orders, promos.
 
 IMPORTANT: On **Home**, do not tell users to open **ServicesDashboard** or **RechercheBesoin** as the primary flows — search uses **ChatInputMobile → ResultatBesoin**; creation uses the **Create** toggle + forms above. The **Mes services** tab route is **\`Services\`**, not \`MesProduits\` alone.`;
@@ -2789,12 +2789,34 @@ RESPONSE FORMAT (JSON):
           suggestedActions: [],
         };
       }
-      const homeCreateKw = ['creer un service', 'creer un produit', 'publier un produit', 'vendre sur', 'devenir prestataire', 'ajouter un produit', 'nouveau produit'];
+      // ✅ PRIORITÉ HAUTE: Création de produit/service - TOUJOURS recommander HomeScreen Create mode en premier
+      const homeCreateKw = [
+        'creer un service', 'creer un produit', 'publier un produit', 'vendre sur',
+        'devenir prestataire', 'ajouter un produit', 'nouveau produit', 'créer une prestation',
+        'ajouter une prestation', 'nouvelle prestation', 'proposer un service',
+        'offrir un service', 'mettre en vente', 'vendre mes produits', 'créer ma boutique',
+        'lancer mon activité', 'commencer à vendre', 'devenir vendeur'
+      ];
       if (homeCreateKw.some(k => q.includes(k))) {
         return {
-          message: t('intelligentChat.home.createHint') || '',
+          message:
+            '🚀 **La façon la plus simple** : reste sur l\'**accueil**, passe en mode **📝 Créer** (le bouton en haut du champ), décris ton produit/service avec texte ou photo, puis envoie.\n\n' +
+            '🤖 L\'IA va te guider étape par étape :\n' +
+            '• Si tu as déjà une boutique → **Ajouter un produit** avec suggestions IA\n' +
+            '• Si c\'est ton premier service → **Formulaire intelligent** complet\n\n' +
+            '💡 **Conseil** : Utilise `variation_prix` pour les variantes (poids, taille, durée, etc.) et évite de créer plusieurs fiches similaires.\n\n' +
+            '📋 **Alternative** : Si tu préfères gérer un catalogue existant, tu peux aussi aller dans l\'onglet **Services** en bas.',
           type: 'navigation_help',
-          suggestedActions: [],
+          suggestedActions: [
+            {
+              id: 'switch-to-create-mode',
+              label: '📝 Passer en mode Créer',
+              icon: 'plus-circle',
+              category: 'action',
+              description: 'Bascule automatiquement en mode création sur l\'accueil'
+            },
+            getMesServicesAction() // Option 2 : gestion catalogue
+          ],
         };
       }
       const homeManageProductsKw = [
@@ -2812,7 +2834,13 @@ RESPONSE FORMAT (JSON):
       if (homeManageProductsKw.some(k => q.includes(k))) {
         return {
           message:
-            'Pour gérer tes produits, vidéos, publicités et stats, ouvre **Mes services** (hub moderne `MesServicesScreen`). C\'est l\'onglet du bas **Services**.',
+            'Pour **gérer** tes produits existants, vidéos, publicités et voir tes stats, ouvre **Mes services** (hub moderne `MesServicesScreen`). C\'est l\'onglet du bas **Services**.\n\n' +
+            '📊 **Ce que tu peux faire là** :\n' +
+            '• Modifier, activer/mettre en pause tes produits\n' +
+            '• Voir les statistiques et les vues\n' +
+            '• Gérer tes publicités et vidéos\n' +
+            '• Accéder aux paramètres avancés\n\n' +
+            '💡 **Pour créer un NOUVEAU produit** : utilise plutôt le mode **📝 Créer** sur l\'accueil, c\'est plus simple !',
           type: 'navigation_help',
           suggestedActions: [getMesServicesAction()],
         };
@@ -3262,10 +3290,11 @@ Explorez l'avenir dès maintenant ! 👇`,
     { keywords: ['taxi', 'cab', 'teksi'], action: { id: 'taxi', label: 'Taxi', icon: 'car', route: 'TaxiHome', category: 'navigation', description: '' } },
     { keywords: ['covoiturage', 'carpooling', 'ride share', 'kushiriki safari'], action: { id: 'covoit', label: 'Covoiturage', icon: 'users', route: 'CovoiturageHome', category: 'navigation', description: '' } },
     { keywords: ['livraison', 'delivery', 'entrega', 'lieferung', 'uwasilishaji', 'isarwa'], action: { id: 'delivery', label: 'Livraison', icon: 'truck', route: 'DeliveryHome', category: 'navigation', description: '' } },
-    { keywords: ['emploi', 'travail', 'job', 'work', 'kazi', 'aiki'], action: { id: 'emploi', label: 'Emploi', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: '' } },
-    { keywords: ['orientation', 'ecole', 'school', 'shule', 'makaranta'], action: { id: 'orientation', label: 'Orientation scolaire', icon: 'graduation-cap', route: 'OrientationScolaireHome', category: 'navigation', description: '' } },
-    { keywords: ['livre', 'book', 'kitabu', 'littafi'], action: { id: 'livres', label: 'Livres', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation', description: '' } },
-    { keywords: ['mes services', 'my services', 'gestion produits', 'catalogue prestataire', 'mes produits vendeur', 'onglet services'], action: { id: 'services-tab', label: 'Mes services (Produits)', icon: 'briefcase', route: 'MesServices', category: 'navigation', description: '' } },
+    { keywords: ['emploi', 'travail', 'job', 'work', 'kazi', 'aiki'], action: { id: 'emploi', label: 'Emploi', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: 'Offres d\'emploi et CV IA' } },
+    { keywords: ['orientation', 'ecole', 'school', 'shule', 'makaranta'], action: { id: 'orientation', label: 'Orientation scolaire', icon: 'graduation-cap', route: 'OrientationScolaireHome', category: 'navigation', description: 'Orientation et établissements' } },
+    { keywords: ['livre', 'book', 'kitabu', 'littafi'], action: { id: 'livres', label: 'Livres', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation', description: 'Bourse du livre et école' } },
+    { keywords: ['navigation', 'gps', 'itineraire', 'route', 'chemin', 'marche', 'sport', 'coach ia', 'statistique'], action: { id: 'navigation', label: 'Navigation intelligente', icon: 'map', route: 'Navigation', category: 'navigation', description: 'GPS IA + Coach sport + Alertes' } },
+    { keywords: ['mes services', 'my services', 'gestion produits', 'catalogue prestataire', 'mes produits vendeur', 'onglet services'], action: { id: 'services-tab', label: 'Mes services (Produits)', icon: 'briefcase', route: 'MesServices', category: 'navigation', description: 'Gestion produits et catalogue' } },
     { keywords: ['profil', 'profile', 'wasifu', 'bayanan'], action: { id: 'profile', label: 'Profil', icon: 'user', route: 'Profile', category: 'navigation', description: '' } },
     { keywords: ['parametre', 'reglage', 'settings', 'mipangilio'], action: { id: 'settings', label: 'Paramètres', icon: 'settings', route: 'EnhancedSettings', category: 'navigation', description: '' } },
     { keywords: ['immobilier', 'real estate', 'mali isiyohamishika'], action: { id: 'immo', label: 'Immobilier', icon: 'building-2', route: 'ImmobilierHome', category: 'navigation', description: '' } },
