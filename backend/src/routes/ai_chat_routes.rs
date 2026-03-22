@@ -1514,6 +1514,7 @@ pub async fn contextual_chat(
 pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     use crate::middlewares::ia_rate_limit::ia_rate_limit;
     use crate::middlewares::jwt::jwt_auth;
+    use crate::middlewares::yukpo_gdpr_rate_limit::yukpo_gdpr_sensitive_rate_limit;
 
     let metrics_ops = Router::new()
         .route("/ai/metrics/yukpo-ia", get(yukpo_ia_metrics_overview))
@@ -1563,6 +1564,10 @@ pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             ia_rate_limit,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            yukpo_gdpr_sensitive_rate_limit,
         ))
         .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)

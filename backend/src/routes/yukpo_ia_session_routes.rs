@@ -2,11 +2,11 @@
 
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::Json as ResponseJson,
     Json,
 };
-use log::error;
+use log::{error, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Instant;
@@ -15,6 +15,26 @@ use uuid::Uuid;
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::services::yukpo_ia_session_store;
 use crate::state::AppState;
+
+fn header_first(headers: &HeaderMap, key: &str) -> Option<String> {
+    headers.get(key)?.to_str().ok().map(str::to_string)
+}
+
+fn client_ip_from_headers(headers: &HeaderMap) -> Option<String> {
+    if let Some(xff) = header_first(headers, "x-forwarded-for") {
+        if let Some(first) = xff.split(',').next() {
+            let t = first.trim();
+            if !t.is_empty() {
+                return Some(t.chars().take(64).collect());
+            }
+        }
+    }
+    header_first(headers, "x-real-ip").map(|s| s.chars().take(64).collect())
+}
+
+fn user_agent_from_headers(headers: &HeaderMap) -> Option<String> {
+    header_first(headers, "user-agent").map(|s| s.chars().take(2000).collect())
+}
 
 #[derive(Debug, Deserialize)]
 pub struct CreateSessionBody {
@@ -247,6 +267,7 @@ pub async fn patch_yukpo_ia_preferences(
 pub async fn get_yukpo_ia_gdpr_export(
     State(state): State<Arc<AppState>>,
     axum::Extension(user): axum::Extension<AuthenticatedUser>,
+    headers: HeaderMap,
 ) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
     let start = Instant::now();
     let json = match yukpo_ia_session_store::gdpr_export_user_data_json(&state.pg, user.id).await {
@@ -262,6 +283,19 @@ pub async fn get_yukpo_ia_gdpr_export(
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
+    let ip = client_ip_from_headers(&headers);
+    let ua = user_agent_from_headers(&headers);
+    if let Err(e) = yukpo_ia_session_store::log_gdpr_audit(
+        &state.pg,
+        user.id,
+        "export",
+        ip.as_deref(),
+        ua.as_deref(),
+    )
+    .await
+    {
+        warn!("[YukpoIA sessions] gdpr audit export log: {}", e);
+    }
     state.yukpo_ia_metrics.record(
         "GET /ai/sessions/gdpr/export-my-data",
         user.id,
@@ -274,6 +308,7 @@ pub async fn get_yukpo_ia_gdpr_export(
 pub async fn post_yukpo_ia_gdpr_delete(
     State(state): State<Arc<AppState>>,
     axum::Extension(user): axum::Extension<AuthenticatedUser>,
+    headers: HeaderMap,
     Json(body): Json<GdprDeleteBody>,
 ) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
     if !body.confirm {
@@ -292,6 +327,19 @@ pub async fn post_yukpo_ia_gdpr_delete(
             );
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
+    let ip = client_ip_from_headers(&headers);
+    let ua = user_agent_from_headers(&headers);
+    if let Err(e) = yukpo_ia_session_store::log_gdpr_audit(
+        &state.pg,
+        user.id,
+        "delete",
+        ip.as_deref(),
+        ua.as_deref(),
+    )
+    .await
+    {
+        warn!("[YukpoIA sessions] gdpr audit delete log: {}", e);
+    }
     state.yukpo_ia_metrics.record(
         "POST /ai/sessions/gdpr/delete-my-data",
         user.id,

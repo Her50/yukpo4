@@ -16,7 +16,6 @@ import {
   Text,
   TextInput,
   Pressable,
-  Share,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -26,7 +25,7 @@ import { useScreenContext } from '../hooks/useScreenContext';
 import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 import { ChatMessage, ChatResponse, intelligentChatService, VisualElement } from '../services/intelligentChatService';
 import { modernColors } from '../theme/modernTheme';
-import { exportChatTextAsFile, openOrDownloadRemoteFile, stripSimpleMarkdownForExport } from '../utils/chatExportUtils';
+import { exportChatTextAsFile, exportJsonObjectAsFile, openOrDownloadRemoteFile, stripSimpleMarkdownForExport } from '../utils/chatExportUtils';
 import SafeStorage from '../utils/safeStorage';
 import {
   cancelAudioRecording,
@@ -773,10 +772,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
               const data = await intelligentChatService.exportGdprYukpoIaData();
               if (data) {
                 try {
-                  await Share.share({
-                    message: JSON.stringify(data, null, 2),
-                    title: 'yukpo-ia-export.json',
-                  });
+                  await exportJsonObjectAsFile(data, 'yukpo-ia-export');
                 } catch {
                   /* utilisateur a annulé le partage */
                 }

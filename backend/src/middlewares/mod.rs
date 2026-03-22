@@ -14,6 +14,7 @@ pub mod monitoring;
 pub mod rate_limit;
 pub mod request_size_limit;
 pub mod service_interaction;
+pub mod yukpo_gdpr_rate_limit; // YukpoIA — rate limit export / suppression RGPD
 
 pub use anti_bruteforce::anti_bruteforce;
 pub use audit_log::audit_log;

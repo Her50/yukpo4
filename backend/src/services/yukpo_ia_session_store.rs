@@ -461,6 +461,29 @@ pub async fn gdpr_delete_all_yukpo_ia_user_data(
     })
 }
 
+/// Journal d’audit pour export / suppression RGPD YukpoIA (IP + user-agent, traçabilité).
+pub async fn log_gdpr_audit(
+    pool: &PgPool,
+    user_id: i32,
+    action: &str,
+    client_ip: Option<&str>,
+    user_agent: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        INSERT INTO yukpo_ia_gdpr_audit (user_id, action, client_ip, user_agent)
+        VALUES ($1, $2, $3, $4)
+        "#,
+    )
+    .bind(user_id)
+    .bind(action)
+    .bind(client_ip)
+    .bind(user_agent)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 pub async fn load_user_memory_text(pool: &PgPool, user_id: i32) -> Result<String, sqlx::Error> {
     if !user_long_term_memory_active(pool, user_id).await.unwrap_or(false) {
         return Ok(String::new());

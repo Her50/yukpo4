@@ -18,6 +18,35 @@ export type ChatExportFormat = 'txt' | 'md' | 'csv';
 /**
  * Exporte le texte de la réponse dans un fichier local puis ouvre le partage système (expo-sharing).
  */
+/**
+ * Écrit un objet JSON dans un fichier `.json` dans le cache puis partage (expo-sharing).
+ * Préférable au partage texte seul pour les exports RGPD volumineux.
+ */
+export async function exportJsonObjectAsFile(
+  obj: unknown,
+  baseName = 'yukpo-ia-export',
+): Promise<void> {
+  const body = JSON.stringify(obj, null, 2);
+  const fileName = `${baseName}-${Date.now()}.json`;
+  const uri = `${FileSystem.cacheDirectory}${fileName}`;
+
+  await FileSystem.writeAsStringAsync(uri, body, {
+    encoding: FileSystem.EncodingType.UTF8,
+  });
+
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(uri, {
+      mimeType: 'application/json',
+      dialogTitle: 'Export YukpoIA',
+    });
+  } else {
+    await Share.share({
+      message: body,
+      title: fileName,
+    });
+  }
+}
+
 export async function exportChatTextAsFile(
   text: string,
   format: ChatExportFormat,
