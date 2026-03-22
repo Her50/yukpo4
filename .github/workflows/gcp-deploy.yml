@@ -350,10 +350,10 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          # Sonde TCP sur le port conteneur (écoute = prêt) — plus fiable que HTTP si le stack réseau est lent.
+          # Sonde HTTP /health (timeout < period, requis par Cloud Run). Le backend réécoute sur PORT sans trou après swap serveur minimal.
           # Ne jamais lancer `gcloud run services update` seul avant ce déploiement (révision sans secrets / DB).
-          STARTUP_PROBE='timeoutSeconds=5,periodSeconds=10,initialDelaySeconds=30,failureThreshold=60,tcpSocket.port=8080'
-          echo "🔖 workflow=gcp-deploy.yml probe=tcp:8080 rev=2026-03-23 SHA=${{ github.sha }}"
+          STARTUP_PROBE='timeoutSeconds=5,periodSeconds=10,initialDelaySeconds=20,failureThreshold=60,httpGet.port=8080,httpGet.path=/health'
+          echo "🔖 workflow=gcp-deploy.yml probe=http:/health rev=2026-03-23-v2 SHA=${{ github.sha }}"
           echo "Déploiement vers Cloud Run..."
           
           # Utiliser la variable d'environnement définie dans l'étape précédente

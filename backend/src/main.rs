@@ -3485,21 +3485,64 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
-    // ✅ CORRIGÉ 2026-03-19: Arrêt serveur minimal + rebind avec retry loop
-    // Le problème: 500ms n'est pas toujours suffisant pour libérer le port TCP
-    // Solution: Retry loop avec backoff au lieu d'un seul sleep
+    // ✅ CRITIQUE 2026-03-23: Rebind IMMÉDIAT après arrêt du serveur minimal.
+    // Avant: diagnostics + logs s'exécutaient AVANT TcpListener::bind → fenêtre sans écoute sur PORT
+    // → Cloud Run: "failed to start and listen on PORT within timeout".
     if let Some(handle) = health_server_handle {
         eprintln!("[MAIN] 🛑 Arrêt du serveur HTTP minimal avant démarrage serveur complet...");
         log::info!("🛑 Arrêt du serveur HTTP minimal avant démarrage serveur complet...");
         handle.abort();
-        // Attendre un peu que le task soit bien arrêté
         tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        // Drop explicite du handle pour libérer les ressources
         drop(handle);
-        eprintln!("[MAIN] ⏳ Attente libération du port (retry loop)...");
     }
 
-    // ✅ Diagnostic des services externes au démarrage
+    eprintln!(
+        "[MAIN] 🔌 Bind immédiat sur {}:{} (retry) — aucune autre étape avant...",
+        host, port
+    );
+    let mut listener_opt = None;
+    for attempt in 1..=40u32 {
+        match tokio::net::TcpListener::bind(addr).await {
+            Ok(l) => {
+                eprintln!(
+                    "[MAIN] ✅ Bind réussi sur {}:{} (tentative {})",
+                    host, port, attempt
+                );
+                log::info!(
+                    "✅ Bind réussi sur {}:{} (tentative {})",
+                    host,
+                    port,
+                    attempt
+                );
+                listener_opt = Some(l);
+                break;
+            }
+            Err(e) => {
+                if attempt < 40 {
+                    eprintln!(
+                        "[MAIN] ⏳ Port {} occupé (tentative {}/40), attente 200ms... ({})",
+                        port, attempt, e
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                } else {
+                    eprintln!(
+                        "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} après 40 tentatives - {}",
+                        host, port, e
+                    );
+                    log::error!(
+                        "❌ Impossible de bind sur {}:{} après 40 tentatives - {}",
+                        host,
+                        port,
+                        e
+                    );
+                    return Err(format!("Impossible de bind sur {}:{} - {}", host, port, e).into());
+                }
+            }
+        }
+    }
+    let listener = listener_opt.expect("listener should be set after retry loop");
+
+    // Diagnostic des services externes (après réécoute sur PORT — pas de trou pour Cloud Run)
     {
         let has_google_maps =
             std::env::var("GOOGLE_MAPS_API_KEY").ok().filter(|k| !k.is_empty()).is_some();
@@ -3562,56 +3605,8 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
 
     log::info!("✅ Serveur lance sur http://{}:{}", host, port);
     println!("✅ Serveur lance sur http://{}:{}", host, port);
-
-    // ✅ CORRIGÉ 2026-03-19: Retry loop pour le bind du port (race condition avec serveur minimal)
     eprintln!(
-        "[MAIN] 🔌 Début du bind sur {}:{} (retry loop)...",
-        host, port
-    );
-    let mut listener_opt = None;
-    for attempt in 1..=15u32 {
-        match tokio::net::TcpListener::bind(addr).await {
-            Ok(l) => {
-                eprintln!(
-                    "[MAIN] ✅ Bind réussi sur {}:{} (tentative {})",
-                    host, port, attempt
-                );
-                log::info!(
-                    "✅ Bind réussi sur {}:{} (tentative {})",
-                    host,
-                    port,
-                    attempt
-                );
-                listener_opt = Some(l);
-                break;
-            }
-            Err(e) => {
-                if attempt < 15 {
-                    eprintln!(
-                        "[MAIN] ⏳ Port {} occupé (tentative {}/15), attente 500ms... ({})",
-                        port, attempt, e
-                    );
-                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                } else {
-                    eprintln!(
-                        "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} après 15 tentatives - {}",
-                        host, port, e
-                    );
-                    log::error!(
-                        "❌ Impossible de bind sur {}:{} après 15 tentatives - {}",
-                        host,
-                        port,
-                        e
-                    );
-                    return Err(format!("Impossible de bind sur {}:{} - {}", host, port, e).into());
-                }
-            }
-        }
-    }
-    let listener = listener_opt.expect("listener should be set after retry loop");
-    eprintln!("[MAIN] ✅ Bind réussi, démarrage du serveur HTTP complet...");
-    eprintln!(
-        "[MAIN] 🚀 Serveur HTTP complet démarre sur http://{}:{}",
+        "[MAIN] 🚀 Démarrage axum::serve sur http://{}:{} ...",
         host, port
     );
     serve(listener, app).await.map_err(|e| {
