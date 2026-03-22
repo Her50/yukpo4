@@ -3542,7 +3542,17 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let listener = listener_opt.expect("listener should be set after retry loop");
 
-    // Diagnostic des services externes (après réécoute sur PORT — pas de trou pour Cloud Run)
+    // ✅ CRITIQUE 2026-03-23: Démarrer axum::serve AVANT tout autre travail synchrone.
+    // Sinon le socket est bind mais personne n'appelle accept() → la sonde HTTP GET /health de Cloud Run
+    // expire (startup probe failed) pendant les logs de diagnostic.
+    eprintln!(
+        "[MAIN] 🚀 axum::serve en tâche parallèle sur http://{}:{} (accept immédiat)",
+        host, port
+    );
+    let serve_task = tokio::spawn(async move { serve(listener, app).await });
+    tokio::task::yield_now().await;
+
+    // Diagnostic des services externes (le serveur accepte déjà /health en parallèle)
     {
         let has_google_maps =
             std::env::var("GOOGLE_MAPS_API_KEY").ok().filter(|k| !k.is_empty()).is_some();
@@ -3605,16 +3615,15 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
 
     log::info!("✅ Serveur lance sur http://{}:{}", host, port);
     println!("✅ Serveur lance sur http://{}:{}", host, port);
-    eprintln!(
-        "[MAIN] 🚀 Démarrage axum::serve sur http://{}:{} ...",
-        host, port
-    );
-    serve(listener, app).await.map_err(|e| {
-        eprintln!("[MAIN] ❌ ERREUR CRITIQUE: Le serveur HTTP a échoué: {}", e);
-        e
-    })?;
 
-    Ok(())
+    match serve_task.await {
+        Ok(Ok(())) => Ok(()),
+        Ok(Err(e)) => {
+            eprintln!("[MAIN] ❌ ERREUR CRITIQUE: Le serveur HTTP a échoué: {}", e);
+            Err(e.into())
+        }
+        Err(e) => Err(format!("serve task paniquée ou annulée: {}", e).into()),
+    }
 }
 
 /// Valide le format d'une URL Redis

@@ -358,16 +358,35 @@ export function useNavigationPayment() {
         const totalCost = estimatePoiCost(selectedCategories);
         const supplemental = options?.supplemental === true;
 
-        // Période de lancement : pas de débit, mais transparence sur le coût indicatif (toast)
+        // Période offerte : confirmation comme après le lancement, mais aucun prélèvement (message dans la boîte)
         if (isNavigationFreePeriod) {
-            if (totalCost > 0) {
-                const msg = (t('navPayment.poiLaunchFreeEstimate') ||
-                    'Recherche POI gratuite jusqu’au {{date}}. Coût indicatif après cette date : {{cost}} (tarif basé sur l’usage API).')
-                    .replace('{{date}}', NAVIGATION_FREE_UNTIL_LABEL)
-                    .replace('{{cost}}', formatPriceInCurrency(totalCost, userCurrency));
-                toaster.info(msg);
+            if (totalCost <= 0) {
+                onSuccess();
+                return;
             }
-            onSuccess();
+            const categoryLines = selectedCategories
+                .map((cat) => `  • ${categoryLabels[cat] || cat}: ${formatPriceInCurrency(estimatePoiCost([cat]), userCurrency)}`)
+                .join('\n');
+            const freeBody = (t('navPayment.poiConfirmFreeMsg') ||
+                'Catégories :\n{{categories}}\n\nTarif indicatif après le {{date}} (TTC) : {{total}}\n\nAucun prélèvement pendant la période offerte (jusqu’au {{date}}).')
+                .replace('{{categories}}', categoryLines)
+                .replace('{{total}}', formatPriceInCurrency(totalCost, userCurrency))
+                .replace(/\{\{date\}\}/g, NAVIGATION_FREE_UNTIL_LABEL);
+
+            Alert.alert(
+                t('navPayment.poiConfirmFreeTitle') || 'Recherche de points d’intérêt',
+                freeBody,
+                [
+                    { text: t('common.cancel') || 'Annuler', style: 'cancel', onPress: onCancel },
+                    {
+                        text: t('navPayment.poiConfirmFreeAction') || 'Lancer la recherche',
+                        style: 'default',
+                        onPress: () => {
+                            onSuccess();
+                        },
+                    },
+                ],
+            );
             return;
         }
 

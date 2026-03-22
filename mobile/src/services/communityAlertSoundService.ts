@@ -128,14 +128,9 @@ class CommunityAlertSoundService {
         const costFormatted = formatPriceInCurrency(cost, userCurrency);
 
         // Facturer UNIQUEMENT si c'est la première notification pour ce checkpoint
+        // Ne pas pré-vérifier hasEnoughBalance : useNavigationPayment.debitAccount réussit aussi
+        // pendant la période de gratuité navigation (solde 0 autorisé) — un pré-check bloquerait le son à tort.
         if (paymentHook && cost > 0 && !alreadyBilled) {
-            const hasEnoughBalance = paymentHook.hasEnoughBalance(cost);
-            if (!hasEnoughBalance) {
-                console.warn('[CommunityAlertSound] ⚠️ Solde insuffisant pour alerte sonore');
-                return false;
-            }
-
-            // Débiter le compte (une seule fois par checkpoint)
             const debitResult = await paymentHook.debitAccount(cost, `Alerte communautaire: ${type}`);
             if (!debitResult.success) {
                 console.warn('[CommunityAlertSound] ❌ Échec débit compte pour alerte sonore');

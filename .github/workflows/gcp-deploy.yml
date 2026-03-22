@@ -350,10 +350,9 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          # Sonde HTTP /health (timeout < period, requis par Cloud Run). Le backend réécoute sur PORT sans trou après swap serveur minimal.
-          # Ne jamais lancer `gcloud run services update` seul avant ce déploiement (révision sans secrets / DB).
-          STARTUP_PROBE='timeoutSeconds=5,periodSeconds=10,initialDelaySeconds=20,failureThreshold=60,httpGet.port=8080,httpGet.path=/health'
-          echo "🔖 workflow=gcp-deploy.yml probe=http:/health rev=2026-03-23-v2 SHA=${{ github.sha }}"
+          # Pas de --startup-probe custom : Cloud Run vérifie que le conteneur écoute sur PORT (défaut).
+          # Le backend lance axum::serve en spawn immédiatement après bind pour que accept() soit actif avant les logs.
+          echo "🔖 workflow=gcp-deploy.yml rev=2026-03-23-v3-spawn-serve SHA=${{ github.sha }}"
           echo "Déploiement vers Cloud Run..."
           
           # Utiliser la variable d'environnement définie dans l'étape précédente
@@ -386,7 +385,6 @@ jobs:
                 --region ${{ env.REGION }} \
                 --allow-unauthenticated \
                 --port 8080 \
-                --startup-probe="$STARTUP_PROBE" \
                 --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
                 --update-env-vars="^;^$ENV_VARS" \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
@@ -410,7 +408,6 @@ jobs:
                 --region ${{ env.REGION }} \
                 --allow-unauthenticated \
                 --port 8080 \
-                --startup-probe="$STARTUP_PROBE" \
                 --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
                 --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
@@ -438,7 +435,6 @@ jobs:
               --region ${{ env.REGION }} \
               --allow-unauthenticated \
               --port 8080 \
-              --startup-probe="$STARTUP_PROBE" \
               --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
               --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \

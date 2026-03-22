@@ -668,7 +668,14 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
       context_screen: effectiveRouteName,
       context_type: screenContext.screenType || 'general',
     });
-    if (!created?.id) return;
+    if (!created?.id) {
+      Alert.alert(
+        (t('intelligentChat.newSessionErrorTitle') as string) || 'Conversation',
+        (t('intelligentChat.newSessionErrorBody') as string) ||
+          'Impossible de créer une conversation. Vérifiez votre connexion et que vous êtes connecté.',
+      );
+      return;
+    }
     setActiveSessionId(created.id);
     await SafeStorage.setItem(YUKPO_IA_SESSION_STORAGE_KEY, created.id);
     setSessionsModalVisible(false);
@@ -1149,17 +1156,25 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                 <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                   <SafeIcon name="x" size={22} color={modernColors.text} />
                 </TouchableOpacity>
-                <View style={styles.headerContent}>
+                <View style={styles.headerContent} pointerEvents="box-none">
                   <View style={styles.headerTitleRow}>
                     <View style={styles.headerAiIconWrap}>
                       <SafeIcon name="sparkles" size={18} color="#6366f1" />
                       <View style={styles.headerAiDot} />
                     </View>
-                    <Text style={styles.headerTitle}>{t('yukpoIa.brandName') || t('intelligentChat.title') || 'YukpoIA'}</Text>
+                    <Text
+                      style={styles.headerTitle}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {t('yukpoIa.brandName') || t('intelligentChat.title') || 'YukpoIA'}
+                    </Text>
                   </View>
                   <View style={styles.headerStatusRow}>
                     <View style={styles.onlineDot} />
-                    <Text style={styles.headerSubtitle}>{humanizeScreenName(screenContext.screenName)}</Text>
+                    <Text style={styles.headerSubtitle} numberOfLines={1} ellipsizeMode="tail">
+                      {humanizeScreenName(screenContext.screenName)}
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.headerRightActions}>
@@ -1167,6 +1182,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                     onPress={() => void openSessionsModal()}
                     style={styles.headerIconBtn}
                     accessibilityLabel="Conversations"
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   >
                     <SafeIcon name="layers" size={20} color={modernColors.text} />
                   </TouchableOpacity>
@@ -1174,6 +1190,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                     onPress={() => void startNewSession()}
                     style={styles.headerIconBtn}
                     accessibilityLabel="Nouvelle conversation"
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   >
                     <SafeIcon name="plus-circle" size={20} color="#6366f1" />
                   </TouchableOpacity>
@@ -1298,28 +1315,15 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                   </TouchableOpacity>
                 </View>
               </View>
-            </View>
-          </SafeAreaView>
-        </Animated.View>
-      </Modal>
-      <GlobalShareModal
-        visible={shareModalVisible}
-        onClose={() => {
-          setShareModalVisible(false);
-          setSharePayload(null);
-        }}
-        payload={sharePayload}
-      />
 
-      <Modal
-        visible={sessionsModalVisible}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setSessionsModalVisible(false)}
-      >
-        <View style={styles.sessionModalOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setSessionsModalVisible(false)} />
-          <View style={styles.sessionModalCard}>
+              {sessionsModalVisible ? (
+                <View style={styles.sessionsOverlayRoot} pointerEvents="box-none">
+                  <Pressable
+                    style={StyleSheet.absoluteFillObject}
+                    onPress={() => setSessionsModalVisible(false)}
+                    accessibilityLabel={t('message.close') as string}
+                  />
+                  <View style={styles.sessionModalCard}>
             <Text style={styles.sessionModalTitle}>
               {t('intelligentChat.sessionsTitle') || 'Conversations YukpoIA'}
             </Text>
@@ -1405,9 +1409,21 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
             <TouchableOpacity style={styles.sessionModalClose} onPress={() => setSessionsModalVisible(false)}>
               <Text style={styles.sessionModalCloseText}>{t('message.close') || 'Fermer'}</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+          </SafeAreaView>
+        </Animated.View>
       </Modal>
+      <GlobalShareModal
+        visible={shareModalVisible}
+        onClose={() => {
+          setShareModalVisible(false);
+          setSharePayload(null);
+        }}
+        payload={sharePayload}
+      />
     </>
   );
 };
@@ -1416,6 +1432,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: modernColors.background,
+    position: 'relative',
   },
   header: {
     flexDirection: 'row',
@@ -1432,6 +1449,8 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
     alignItems: 'center',
+    minWidth: 0,
+    marginHorizontal: 4,
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -1478,16 +1497,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    flexShrink: 0,
+    zIndex: 20,
+    ...(Platform.OS === 'android' ? { elevation: 12 } : {}),
   },
   headerIconBtn: {
     padding: 8,
   },
-  sessionModalOverlay: {
-    flex: 1,
+  sessionsOverlayRoot: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     padding: 20,
-    position: 'relative',
+    zIndex: 100,
+    elevation: 32,
   },
   sessionModalCard: {
     backgroundColor: modernColors.card,

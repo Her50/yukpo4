@@ -1738,7 +1738,7 @@ const NavigationScreen: React.FC = () => {
                         }
                     }
                     ttsMsg += `${tr('navigation.ttsKeepGoing', 'Continuez comme ça !')}`;
-                    Speech.speak(ttsMsg, { language: 'fr-FR', rate: 0.95, pitch: 1.0 });
+                    Speech.speak(ttsMsg, { language: getTtsLang(activeLang), rate: 0.95, pitch: 1.0 });
                 } catch (ttsErr) { console.warn('[Navigation] TTS performance recap error:', ttsErr); }
 
             } catch (e) { console.warn('[Navigation] Erreur log marche libre:', e); }
@@ -1746,7 +1746,7 @@ const NavigationScreen: React.FC = () => {
             showToast(`🚶 ${t('navigation.walkTooShort') || 'Marche trop courte pour être enregistrée (min 30s / 10m)'}`);
         }
         setIsFreeWalking(false); setIsTracking(false); setNearbyCheckpoint(null); setLivePosition(null);
-    }, [livePosition, estimateCalories, computeQualityScore, loadActivityStats, walkingHistory, activitySummary, tr]);
+    }, [livePosition, estimateCalories, computeQualityScore, loadActivityStats, walkingHistory, activitySummary, tr, activeLang]);
 
     const stopTracking = useCallback(async () => {
         if (locationSubscriptionRef.current) { locationSubscriptionRef.current.remove(); locationSubscriptionRef.current = null; }
@@ -2117,28 +2117,64 @@ const NavigationScreen: React.FC = () => {
                                                         {timeAgo ? <Text style={st.alertHistTime}>🕒 {timeAgo}</Text> : null}
                                                         {alert.speed_limit ? <Text style={st.alertHistSpd}>🚦 {alert.speed_limit} km/h</Text> : null}
                                                     </View>
-                                                    {/* ✅ Boutons confirmer / infirmer l'alerte + compteurs agrégés (clusters) */}
+                                                    {/* ✅ Confirmer / Infirmer sur une ligne ; commentaires en pleine largeur (icône + badge visibles) */}
                                                     <View style={st.voteRow}>
-                                                        <TouchableOpacity style={st.voteBtn} onPress={() => voteCheckpoint(alert.id, 'up')} activeOpacity={0.7}>
-                                                            <Text style={{ fontSize: 14 }}>👍</Text>
-                                                            <Text style={st.voteBtnTxt}>{t('message.confirm') || 'Confirmer'}</Text>
-                                                            <Text style={st.voteStatTxt}>{typeof (alert as any).upvotes === 'number' ? (alert as any).upvotes : 0}</Text>
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity style={[st.voteBtn, st.voteBtnDown]} onPress={() => voteCheckpoint(alert.id, 'down')} activeOpacity={0.7}>
-                                                            <Text style={{ fontSize: 14 }}>👎</Text>
-                                                            <Text style={[st.voteBtnTxt, { color: '#EF4444' }]}>{t('navigation.dispute') || 'Infirmer'}</Text>
-                                                            <Text style={st.voteStatTxt}>{typeof (alert as any).downvotes === 'number' ? (alert as any).downvotes : 0}</Text>
-                                                        </TouchableOpacity>
+                                                        <View style={st.voteRowPair}>
+                                                            <TouchableOpacity style={st.voteBtn} onPress={() => voteCheckpoint(alert.id, 'up')} activeOpacity={0.7}>
+                                                                <Text style={{ fontSize: 16 }}>👍</Text>
+                                                                <Text style={st.voteBtnTxt} numberOfLines={1}>
+                                                                    {t('message.confirm') || 'Confirmer'}
+                                                                </Text>
+                                                                <View style={st.voteStatPill}>
+                                                                    <Text style={st.voteStatPillTxt}>
+                                                                        {typeof (alert as any).upvotes === 'number' ? (alert as any).upvotes : 0}
+                                                                    </Text>
+                                                                </View>
+                                                            </TouchableOpacity>
+                                                            <TouchableOpacity style={[st.voteBtn, st.voteBtnDown]} onPress={() => voteCheckpoint(alert.id, 'down')} activeOpacity={0.7}>
+                                                                <Text style={{ fontSize: 16 }}>👎</Text>
+                                                                <Text style={[st.voteBtnTxt, { color: '#EF4444' }]} numberOfLines={1}>
+                                                                    {t('navigation.dispute') || 'Infirmer'}
+                                                                </Text>
+                                                                <View style={[st.voteStatPill, st.voteStatPillDown]}>
+                                                                    <Text style={st.voteStatPillTxt}>
+                                                                        {typeof (alert as any).downvotes === 'number' ? (alert as any).downvotes : 0}
+                                                                    </Text>
+                                                                </View>
+                                                            </TouchableOpacity>
+                                                        </View>
                                                         <TouchableOpacity
-                                                            style={[st.voteBtn, expandedCommentsId === alert.id && { backgroundColor: '#DBEAFE', borderColor: '#93C5FD' }]}
-                                                            onPress={() => setExpandedCommentsId(prev => prev === alert.id ? null : alert.id)}
+                                                            style={[
+                                                                st.voteBtnComment,
+                                                                expandedCommentsId === alert.id && st.voteBtnCommentActive,
+                                                            ]}
+                                                            onPress={() => setExpandedCommentsId(prev => (prev === alert.id ? null : alert.id))}
                                                             activeOpacity={0.7}
                                                         >
-                                                            <SafeIcon name="message-circle" size={14} color={expandedCommentsId === alert.id ? '#2563EB' : '#6B7280'} />
-                                                            <Text style={[st.voteBtnTxt, { color: expandedCommentsId === alert.id ? '#2563EB' : '#6B7280' }]}>
-                                                                {t('navigation.comment') || 'Commenter'}
-                                                            </Text>
-                                                            <Text style={st.voteStatTxt}>{typeof (alert as any).comments_count === 'number' ? (alert as any).comments_count : 0}</Text>
+                                                            <SafeIcon
+                                                                name="message-circle"
+                                                                size={22}
+                                                                color={expandedCommentsId === alert.id ? '#1D4ED8' : '#475569'}
+                                                            />
+                                                            <View style={st.voteBtnCommentTextWrap}>
+                                                                <Text
+                                                                    style={[
+                                                                        st.voteBtnCommentLabel,
+                                                                        expandedCommentsId === alert.id && { color: '#1D4ED8' },
+                                                                    ]}
+                                                                    numberOfLines={1}
+                                                                >
+                                                                    {t('navigation.commentsSection') || 'Commentaires'}
+                                                                </Text>
+                                                                <Text style={st.voteBtnCommentHint} numberOfLines={1}>
+                                                                    {t('navigation.tapToReadComments') || 'Lire ou ajouter un message'}
+                                                                </Text>
+                                                            </View>
+                                                            <View style={st.voteCommentCountBadge}>
+                                                                <Text style={st.voteCommentCountBadgeTxt}>
+                                                                    {typeof (alert as any).comments_count === 'number' ? (alert as any).comments_count : 0}
+                                                                </Text>
+                                                            </View>
                                                         </TouchableOpacity>
                                                     </View>
                                                     {/* ✅ Section commentaires (expandable) */}
@@ -3463,9 +3499,11 @@ const NavigationScreen: React.FC = () => {
                                             {tr('navigation.poiCategoriesHint', 'Vous pouvez modifier les catégories et relancer la recherche sur le même trajet.')}
                                         </Text>
                                         {isNavigationFreePeriod ? (
-                                            <Text style={{ fontSize: 11, color: '#047857', marginBottom: 8, lineHeight: 16, fontWeight: '600' }}>
-                                                {(tr('navigation.poiFreePeriodNotice', 'Chaque catégorie POI est un service payant (tarif indicatif sur les pastilles). Après le {{date}}, le montant sera débité de votre solde Yukpo — pour l’instant la recherche est gratuite jusqu’au {{date}}.')).replace(/\{\{date\}\}/g, navigationFreeUntilLabel)}
-                                            </Text>
+                                            <View style={{ alignSelf: 'flex-start', backgroundColor: '#ECFDF5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8, borderWidth: 1, borderColor: '#A7F3D0' }}>
+                                                <Text style={{ fontSize: 11, color: '#047857', fontWeight: '700' }}>
+                                                    {tr('navigation.poiFreeBadge', 'Offert jusqu’au {{date}}').replace('{{date}}', navigationFreeUntilLabel)}
+                                                </Text>
+                                            </View>
                                         ) : null}
                                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                                             {(() => {
@@ -3508,7 +3546,11 @@ const NavigationScreen: React.FC = () => {
                                                 <Text style={{ fontSize: 12, color: allPaid ? '#16A34A' : modernColors.textSecondary, marginBottom: 8, textAlign: 'center', fontWeight: '600' }}>
                                                     {allPaid
                                                         ? (t('navigation.poiAllPaid') || 'Toutes les catégories sélectionnées sont déjà payées')
-                                                        : (t('navigation.poiEstimatedTotal') || 'Coût estimé : {{total}}').replace('{{total}}', fmtPrice(totalCostXAF, userCurrency))}
+                                                        : isNavigationFreePeriod
+                                                            ? (tr('navigation.poiIndicativeAfterFree', 'Indicatif après le {{date}} : {{total}}')
+                                                                .replace('{{date}}', navigationFreeUntilLabel)
+                                                                .replace('{{total}}', fmtPrice(totalCostXAF, userCurrency)))
+                                                            : (t('navigation.poiEstimatedTotal') || 'Coût estimé : {{total}}').replace('{{total}}', fmtPrice(totalCostXAF, userCurrency))}
                                                 </Text>
                                             );
                                         })()}
@@ -4021,12 +4063,66 @@ const st = StyleSheet.create({
     peakBdg: { alignItems: 'center', backgroundColor: '#EEF2FF', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6 },
     peakHr: { fontSize: 15, fontWeight: '800', color: '#6366F1' },
 
-    // Vote buttons (alert history)
-    voteRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-    voteBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#DCFCE7', borderWidth: 1, borderColor: '#BBF7D0' },
+    // Vote + commentaires (alert history) — deux lignes pour éviter de masquer l’icône / les stats
+    voteRow: { marginTop: 10, gap: 10 },
+    voteRowPair: { flexDirection: 'row', gap: 8 },
+    voteBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexWrap: 'wrap',
+        gap: 6,
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+        minHeight: 44,
+        borderRadius: 10,
+        backgroundColor: '#DCFCE7',
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+    },
     voteBtnDown: { backgroundColor: '#FEE2E2', borderColor: '#FECACA' },
-    voteBtnTxt: { fontSize: 11, fontWeight: '700', color: '#16A34A' },
-    voteStatTxt: { fontSize: 10, fontWeight: '800', color: '#374151', marginLeft: 4, minWidth: 16, textAlign: 'right' as const },
+    voteBtnTxt: { fontSize: 11, fontWeight: '700', color: '#16A34A', flexShrink: 1 },
+    voteStatPill: {
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+        minWidth: 28,
+        alignItems: 'center',
+    },
+    voteStatPillDown: { borderColor: '#FECACA' },
+    voteStatPillTxt: { fontSize: 12, fontWeight: '800', color: '#111827' },
+    voteBtnComment: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+    },
+    voteBtnCommentActive: {
+        backgroundColor: '#EFF6FF',
+        borderColor: '#93C5FD',
+    },
+    voteBtnCommentTextWrap: { flex: 1, minWidth: 0, justifyContent: 'center' },
+    voteBtnCommentLabel: { fontSize: 14, fontWeight: '800', color: '#0F172A' },
+    voteBtnCommentHint: { fontSize: 11, color: '#64748B', marginTop: 2, fontWeight: '600' },
+    voteCommentCountBadge: {
+        minWidth: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#2563EB',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 10,
+    },
+    voteCommentCountBadgeTxt: { fontSize: 15, fontWeight: '900', color: '#FFFFFF' },
 
     // LocationSelector override
     locationSelector: { marginTop: 4 },
