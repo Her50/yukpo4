@@ -15497,7 +15497,7 @@
         "attachImage": "Image",
         "attachFile": "File",
         "attachAudio": "Audio",
-        "analyzeThis": "(Multimedia analysis — add a description or send as is)",
+        "analyzeThis": "(Image attached — describe your question or send as-is for Yukpo UI / screenshot analysis)",
         "billingNoticeFree": "YukpoIA: {{charged}} unit(s) from free quota ({{remaining}} left).",
         "billingNoticePaid": "YukpoIA: {{charged}} unit(s) charged from balance ({{balance}} left).",
         "billingNoticeGeneric": "YukpoIA: {{charged}} unit(s) consumed."

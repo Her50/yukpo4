@@ -15543,7 +15543,7 @@
         "attachImage": "Image",
         "attachFile": "Fichier",
         "attachAudio": "Audio",
-        "analyzeThis": "(Analyse multimédia — décrivez votre besoin ou envoyez tel quel)",
+        "analyzeThis": "(Image jointe — décrivez votre question ou envoyez tel quel pour analyse de la capture / de l’écran Yukpo)",
         "billingNoticeFree": "YukpoIA : {{charged}} unité(s) sur le quota gratuit (reste {{remaining}}).",
         "billingNoticePaid": "YukpoIA : {{charged}} unité(s) facturée(s) sur votre solde (reste {{balance}}).",
         "billingNoticeGeneric": "YukpoIA : {{charged}} unité(s) consommée(s)."

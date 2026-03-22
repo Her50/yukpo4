@@ -16,10 +16,17 @@ const parseKeys = (raw: string | null): string[] => {
 };
 
 export const notificationUiPreferences = {
+    /**
+     * Son des notifs Coach IA (navigation) : **true** par défaut (pas de clé = son activé).
+     * Désinstallation de l’app → AsyncStorage vidé → retour à ce défaut.
+     */
     async getCoachIaSoundFull(): Promise<boolean> {
         const v = await SafeStorage.getItem(COACH_IA_SOUND_FULL_KEY).catch(() => null);
         if (v === null || v === undefined) return true;
-        return v !== 'false';
+        const s = String(v).trim().toLowerCase();
+        if (s === '' || s === 'true' || s === '1') return true;
+        if (s === 'false' || s === '0') return false;
+        return true;
     },
 
     async setCoachIaSoundFull(enabled: boolean): Promise<void> {

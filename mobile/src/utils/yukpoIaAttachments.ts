@@ -35,6 +35,22 @@ export async function pickImageForYukpoIa(): Promise<YukpoIaAttachmentPayload | 
   return { kind: 'image', mime, data_base64: a.base64 };
 }
 
+/** Photo directe depuis l’appareil photo (chat Yukpo IA). */
+export async function takePhotoForYukpoIa(): Promise<YukpoIaAttachmentPayload | null> {
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) return null;
+  const res = await ImagePicker.launchCameraAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    quality: 0.82,
+    base64: true,
+  });
+  if (res.canceled || !res.assets?.[0]) return null;
+  const a = res.assets[0];
+  const mime = a.mimeType || 'image/jpeg';
+  if (!a.base64) return null;
+  return { kind: 'image', mime, data_base64: a.base64, name: `photo_${Date.now()}.jpg` };
+}
+
 export async function pickDocumentForYukpoIa(): Promise<YukpoIaAttachmentPayload | null> {
   const res = await DocumentPicker.getDocumentAsync({
     type: '*/*',

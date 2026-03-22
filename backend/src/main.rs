@@ -177,13 +177,25 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
 
         let health_listener = health_listener.expect("health_listener should be set");
 
+        // Canal pour arrêt propre (abort() laissait le port en TIME_WAIT → échecs de rebind → crash du conteneur)
+        let (health_shutdown_tx, health_shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+
         // Lancer le serveur minimal en arrière-plan
         eprintln!("[MAIN] 🚀 Lancement du serveur HTTP minimal en arrière-plan...");
 
         let handle = tokio::spawn(async move {
             eprintln!("[HEALTH_SERVER] 🚀 Serveur minimal démarré, en attente de requêtes...");
 
-            if let Err(e) = axum::serve(health_listener, health_app).await {
+            let serve_result = axum::serve(health_listener, health_app)
+                .with_graceful_shutdown(async {
+                    let _ = health_shutdown_rx.await;
+                    eprintln!(
+                        "[HEALTH_SERVER] 🛑 Arrêt gracieux demandé, fermeture du listener..."
+                    );
+                })
+                .await;
+
+            if let Err(e) = serve_result {
                 eprintln!("[HEALTH_SERVER] ❌ Erreur serveur minimal: {}", e);
             } else {
                 eprintln!("[HEALTH_SERVER] ✅ Serveur minimal arrêté proprement");
@@ -216,7 +228,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        Some(handle)
+        Some((handle, health_shutdown_tx))
     };
 
     // Maintenant initialiser dotenv et logging (APRÈS le serveur minimal)
@@ -3485,15 +3497,25 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
-    // ✅ CRITIQUE 2026-03-23: Rebind IMMÉDIAT après arrêt du serveur minimal.
-    // Avant: diagnostics + logs s'exécutaient AVANT TcpListener::bind → fenêtre sans écoute sur PORT
-    // → Cloud Run: "failed to start and listen on PORT within timeout".
-    if let Some(handle) = health_server_handle {
-        eprintln!("[MAIN] 🛑 Arrêt du serveur HTTP minimal avant démarrage serveur complet...");
-        log::info!("🛑 Arrêt du serveur HTTP minimal avant démarrage serveur complet...");
-        handle.abort();
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        drop(handle);
+    // ✅ CRITIQUE 2026-03-23: Arrêt gracieux du serveur minimal (pas abort) pour libérer le port proprement.
+    if let Some((handle, shutdown_tx)) = health_server_handle {
+        eprintln!(
+            "[MAIN] 🛑 Arrêt gracieux du serveur HTTP minimal avant rebind du serveur complet..."
+        );
+        log::info!("🛑 Arrêt gracieux du serveur HTTP minimal avant rebind du serveur complet...");
+        let _ = shutdown_tx.send(());
+        match tokio::time::timeout(std::time::Duration::from_secs(15), handle).await {
+            Ok(Ok(())) => {
+                eprintln!("[MAIN] ✅ Tâche serveur minimal terminée");
+            }
+            Ok(Err(e)) => {
+                eprintln!("[MAIN] ⚠️ Join serveur minimal: {}", e);
+            }
+            Err(_) => {
+                eprintln!("[MAIN] ⚠️ Timeout 15s en attendant l'arrêt du serveur minimal — on tente quand même le rebind");
+            }
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
 
     eprintln!(
@@ -3501,7 +3523,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         host, port
     );
     let mut listener_opt = None;
-    for attempt in 1..=40u32 {
+    for attempt in 1..=80u32 {
         match tokio::net::TcpListener::bind(addr).await {
             Ok(l) => {
                 eprintln!(
@@ -3518,19 +3540,19 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             }
             Err(e) => {
-                if attempt < 40 {
+                if attempt < 80 {
                     eprintln!(
-                        "[MAIN] ⏳ Port {} occupé (tentative {}/40), attente 200ms... ({})",
+                        "[MAIN] ⏳ Port {} occupé (tentative {}/80), attente 150ms... ({})",
                         port, attempt, e
                     );
-                    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
                 } else {
                     eprintln!(
-                        "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} après 40 tentatives - {}",
+                        "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} après 80 tentatives - {}",
                         host, port, e
                     );
                     log::error!(
-                        "❌ Impossible de bind sur {}:{} après 40 tentatives - {}",
+                        "❌ Impossible de bind sur {}:{} après 80 tentatives - {}",
                         host,
                         port,
                         e

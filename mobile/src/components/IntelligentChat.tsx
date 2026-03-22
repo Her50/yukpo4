@@ -8,9 +8,12 @@ import {
   Dimensions,
   Easing,
   FlatList,
+  Image,
   Modal,
+  ScrollView,
   Platform,
   SafeAreaView,
+  Share,
   StyleSheet,
   Switch,
   Text,
@@ -25,12 +28,13 @@ import { useScreenContext } from '../hooks/useScreenContext';
 import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 import { ChatMessage, ChatResponse, intelligentChatService, VisualElement } from '../services/intelligentChatService';
 import { modernColors } from '../theme/modernTheme';
-import { exportChatTextAsFile, exportJsonObjectAsFile, openOrDownloadRemoteFile, stripSimpleMarkdownForExport } from '../utils/chatExportUtils';
+import { appendYukpoIaShareFooter, exportChatTextAsFile, exportJsonObjectAsFile, openOrDownloadRemoteFile, stripSimpleMarkdownForExport } from '../utils/chatExportUtils';
 import SafeStorage from '../utils/safeStorage';
 import {
   cancelAudioRecording,
   pickDocumentForYukpoIa,
   pickImageForYukpoIa,
+  takePhotoForYukpoIa,
   startAudioRecordingForYukpoIa,
   stopAudioRecordingForYukpoIa,
   type YukpoIaAttachmentPayload
@@ -500,9 +504,10 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
 
   const openShareForAssistantMessage = useCallback(
     (item: ChatMessage) => {
+      const body = stripSimpleMarkdownForExport(item.text).slice(0, 12000);
       setSharePayload({
-        title: (t('intelligentChat.shareTitle') as string) || 'Réponse Yukpo',
-        description: stripSimpleMarkdownForExport(item.text).slice(0, 4000),
+        title: (t('intelligentChat.shareTitle') as string) || 'Réponse Yukpo IA',
+        description: body,
         shareUrl: DEFAULT_SHARE_WEB,
         contentType: 'chat_message',
         extraData: { source: 'intelligent_chat', messageId: item.id },
@@ -514,13 +519,37 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
 
   const promptExportAssistantMessage = useCallback(
     (item: ChatMessage) => {
+      const signed = appendYukpoIaShareFooter(stripSimpleMarkdownForExport(item.text));
       Alert.alert(
-        (t('intelligentChat.exportTitle') as string) || 'Exporter',
-        (t('intelligentChat.exportSubtitle') as string) || '',
+        (t('intelligentChat.exportTitle') as string) || 'Partager la réponse',
+        (t('intelligentChat.exportSubtitle') as string) || 'Texte signé Yukpo IA pour usage externe.',
         [
-          { text: 'TXT', onPress: () => { void exportChatTextAsFile(item.text, 'txt'); } },
-          { text: 'Markdown', onPress: () => { void exportChatTextAsFile(item.text, 'md'); } },
-          { text: 'CSV', onPress: () => { void exportChatTextAsFile(item.text, 'csv'); } },
+          {
+            text: (t('intelligentChat.sharePlainText') as string) || 'Partager le texte',
+            onPress: () => {
+              void Share.share({
+                message: signed,
+                title: (t('intelligentChat.shareTitle') as string) || 'Yukpo IA',
+              });
+            },
+          },
+          {
+            text: (t('intelligentChat.copyPlainText') as string) || 'Copier',
+            onPress: () => {
+              void (async () => {
+                try {
+                  const Clipboard = await import('expo-clipboard');
+                  await Clipboard.setStringAsync(signed);
+                } catch { /* noop */ }
+              })();
+            },
+          },
+          {
+            text: (t('intelligentChat.saveTxt') as string) || 'Fichier .txt',
+            onPress: () => {
+              void exportChatTextAsFile(item.text, 'txt', 'yukpo-ia-reponse', { withYukpoIaFooter: true });
+            },
+          },
           { text: (t('message.cancel') as string) || 'Annuler', style: 'cancel' },
         ],
       );
@@ -555,6 +584,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
       isUser: true,
       timestamp: new Date(),
       type: 'text',
+      userAttachments: atts.length ? atts : undefined,
     };
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
@@ -976,6 +1006,42 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
               })}
             </View>
 
+            {isUser && item.userAttachments && item.userAttachments.length > 0 && (
+              <View style={styles.userAttachmentsRow}>
+                {item.userAttachments.map((att, idx) => {
+                  if (att.kind === 'image' && att.data_base64) {
+                    const uri = `data:${att.mime || 'image/jpeg'};base64,${att.data_base64}`;
+                    return (
+                      <Image
+                        key={`${item.id}-ua-${idx}`}
+                        source={{ uri }}
+                        style={styles.userAttachmentImage}
+                        resizeMode="cover"
+                      />
+                    );
+                  }
+                  if (att.kind === 'audio') {
+                    return (
+                      <View key={`${item.id}-ua-${idx}`} style={styles.userAttachmentBadge}>
+                        <SafeIcon name="mic" size={14} color="#6366f1" />
+                        <Text style={styles.userAttachmentBadgeText} numberOfLines={1}>
+                          {att.name || 'Audio'}
+                        </Text>
+                      </View>
+                    );
+                  }
+                  return (
+                    <View key={`${item.id}-ua-${idx}`} style={styles.userAttachmentBadge}>
+                      <SafeIcon name="paperclip" size={14} color="#6366f1" />
+                      <Text style={styles.userAttachmentBadgeText} numberOfLines={1}>
+                        {att.name || 'Fichier'}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
             {!isUser && item.metadata?.billing?.enabled && item.metadata?.billing?.tokens_charged > 0 && !item.metadata?.billing?.insufficient_balance && (
               <Text style={styles.billingChip}>
                 {item.metadata.billing.from_free_quota
@@ -1242,9 +1308,27 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
 
               <View style={styles.inputContainer}>
                 {pendingAttachments.length > 0 && (
-                  <Text style={styles.pendingAttHint}>
-                    📎 {pendingAttachments.length} — {t('yukpoIa.billingLabel')}
-                  </Text>
+                  <View style={styles.pendingAttWrap}>
+                    <Text style={styles.pendingAttHint}>
+                      📎 {pendingAttachments.length} — {t('yukpoIa.billingLabel')}
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pendingAttScroll}>
+                      {pendingAttachments.map((att, i) =>
+                        att.kind === 'image' && att.data_base64 ? (
+                          <Image
+                            key={`pend-${i}`}
+                            source={{ uri: `data:${att.mime || 'image/jpeg'};base64,${att.data_base64}` }}
+                            style={styles.pendingThumb}
+                          />
+                        ) : (
+                          <View key={`pend-${i}`} style={styles.pendingBadge}>
+                            <SafeIcon name={att.kind === 'audio' ? 'mic' : 'paperclip'} size={14} color="#6366f1" />
+                            <Text numberOfLines={1} style={styles.pendingBadgeTxt}>{att.name || att.kind}</Text>
+                          </View>
+                        ),
+                      )}
+                    </ScrollView>
+                  </View>
                 )}
                 <View style={styles.mediaToolbar}>
                   <TouchableOpacity
@@ -1254,8 +1338,20 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                       if (a) setPendingAttachments((p) => [...p, a]);
                     }}
                     disabled={loading}
+                    accessibilityLabel="Galerie"
                   >
                     <SafeIcon name="image" size={20} color="#6366f1" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.mediaToolBtn}
+                    onPress={async () => {
+                      const a = await takePhotoForYukpoIa();
+                      if (a) setPendingAttachments((p) => [...p, a]);
+                    }}
+                    disabled={loading}
+                    accessibilityLabel="Prendre une photo"
+                  >
+                    <SafeIcon name="camera" size={20} color="#6366f1" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.mediaToolBtn}
@@ -1298,7 +1394,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                     placeholder={t('intelligentChat.placeholder') || 'Posez votre question...'}
                     placeholderTextColor={modernColors.textSecondary}
                     multiline
-                    maxLength={500}
+                    maxLength={4000}
                     editable={!loading}
                     onSubmitEditing={() => handleSendMessage()}
                     returnKeyType="send"
@@ -1680,6 +1776,34 @@ const styles = StyleSheet.create({
     marginTop: 3,
     marginHorizontal: 4,
   },
+  userAttachmentsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+    justifyContent: 'flex-end',
+  },
+  userAttachmentImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 12,
+    backgroundColor: '#e5e7eb',
+  },
+  userAttachmentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: 200,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    gap: 6,
+  },
+  userAttachmentBadgeText: {
+    fontSize: 12,
+    color: modernColors.text,
+    flex: 1,
+  },
   attachmentsContainer: {
     marginTop: 8,
     gap: 6,
@@ -1900,9 +2024,38 @@ const styles = StyleSheet.create({
     backgroundColor: modernColors.card,
     gap: 8,
   },
+  pendingAttWrap: {
+    gap: 6,
+  },
   pendingAttHint: {
     fontSize: 12,
     color: modernColors.textSecondary,
+  },
+  pendingAttScroll: {
+    maxHeight: 72,
+  },
+  pendingThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    marginRight: 8,
+    backgroundColor: '#e5e7eb',
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderRadius: 10,
+    backgroundColor: modernColors.background,
+    maxWidth: 160,
+    gap: 6,
+  },
+  pendingBadgeTxt: {
+    fontSize: 11,
+    color: modernColors.text,
+    flex: 1,
   },
   mediaToolbar: {
     flexDirection: 'row',

@@ -41,6 +41,9 @@ const GlobalShareModal: React.FC<GlobalShareModalProps> = ({ visible, onClose, p
     let text = payload.title;
     if (payload.description) text += `\n\n${payload.description}`;
     text += `\n\n${payload.shareUrl}`;
+    if (payload.contentType === 'chat_message') {
+      text += '\n\n—\nRéponse générée par Yukpo IA · https://yukpomnang.com';
+    }
     return text;
   }, [payload]);
 
@@ -49,7 +52,7 @@ const GlobalShareModal: React.FC<GlobalShareModalProps> = ({ visible, onClose, p
     if (key === 'copy') {
       try {
         const Clipboard = await import('expo-clipboard');
-        await Clipboard.setStringAsync(payload.shareUrl);
+        await Clipboard.setStringAsync(shareText);
         setCopiedFeedback(true);
         setTimeout(() => setCopiedFeedback(false), 2000);
       } catch { Alert.alert('Erreur', 'Copie impossible'); }

@@ -2,7 +2,7 @@
 // Architecture: Push local planifié (expo-notifications) — pas de bouton manuel
 // Fréquence: 3 notifications/jour (matin, midi, soir) + 1 résumé hebdomadaire
 // Son + vibration + texte contextuel dans la langue de l'utilisateur
-// Conditionné par l'abonnement coaching mensuel actif (500 XAF/mois)
+// Conditionné par l'abonnement coaching mensuel actif (prix défaut ~1000 FCFA dans navigationPricing.coaching_monthly)
 
 import * as Notifications from 'expo-notifications';
 import i18n from 'i18next';

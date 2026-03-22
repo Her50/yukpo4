@@ -3,6 +3,8 @@ import i18n from '../i18n';
 import type { YukpoIaAttachmentPayload } from '../utils/yukpoIaAttachments';
 import { apiCall } from './api';
 
+export type { YukpoIaAttachmentPayload };
+
 const t = (key: string, params?: Record<string, any>): string => i18n.t(key, params) as string;
 
 /** Backend / LLM peut renvoyer label comme string ou { labelKey, fallback } — toujours produire une chaîne pour React */
@@ -52,6 +54,8 @@ export interface ChatMessage {
   nextSteps?: string[];
   /** Fichiers générés côté serveur / IA (optionnel) */
   attachments?: ChatAttachment[];
+  /** Médias / fichiers envoyés par l’utilisateur (aperçu local ; l’historique serveur ne les restitue pas toujours) */
+  userAttachments?: YukpoIaAttachmentPayload[];
   metadata?: any;
 }
 
@@ -1431,6 +1435,8 @@ When the user taps **"Arrêter la marche"** (stop button):
 
 === MES_SERVICES_PRODUCT_HUB_DETAIL (authoritative — MesServicesScreen, routes **Services** tab or **MesServices** stack) ===
 
+**CRITICAL — Réponses « comment créer un produit / une offre » (même si l’utilisateur est sur cet écran):** présenter **deux parcours** dans cet ordre — **(1) RECOMMANDÉ : Accueil (HomeScreen) → mode « Créer » → ChatInputMobile** (même barre de saisie / famille que ChatInputModal sur l’accueil) pour le guidage IA ; **(2) ALTERNATIVE : cet écran MesServicesScreen** (hub catalogue, +, menu ☰, cartes). Ne jamais **omettre** le parcours (1) ; ne jamais présenter **uniquement** le parcours Mes services ni le mettre en « recommandé » pour une première création.
+
 **What this screen is:** Prestataire hub to manage **products/offers** tied to **GET /api/prestataire/services**, with **ServiceCardModern** list, **stats** (totals, actifs, inactifs, vues), **filters** (Tous / Actif / Inactif), **pull to refresh**, and **DeviceEventEmitter** refresh on \`service:refresh\`, \`product:created\`, \`product:updated\`.
 
 **Header / bandeau:**
@@ -2403,6 +2409,8 @@ When the user taps **"Arrêter la marche"** (stop button):
 
 === HOME_SCREEN_DETAIL (authoritative for Yukpo Home / Accueil) ===
 
+**Nommage:** la barre de création/recherche est **ChatInputMobile** sur cet écran ; les utilisateurs disent parfois **ChatInputModal** — c’est le **même** flux (mode **Créer** vs **Rechercher**).
+
 **Role of this screen:** Central hub for **AI search** (needs login), **creating products/services** as a provider (photo/text via AI), **quick entry to every specialized service** (always **user** flows: Search / Hub / Home — never partner Form/Dashboard from here), **promotions**, and shortcuts in the header.
 
 **Header (fixed):**
@@ -2453,6 +2461,7 @@ When the user taps **"Arrêter la marche"** (stop button):
 **Related screen:** **MesProduits** = **MesProduitsScreen** — deeper per-product tools (gallery, delivery modal, etc.). It **complements** this tab; the **primary** “Mes services” hub is here.
 
 **Creation priority rule (very important):**
+- For « how do I create / publish a product? », state **two paths** in order: **(1) RECOMMENDED — HomeScreen → Create mode → ChatInputMobile** (same bar as on Home; users may say ChatInputModal); **(2) ALTERNATIVE — this MesServicesScreen** (+, ☰, cards). Never only describe path (2).
 - For creating a new product/service, guide users first to **HomeScreen** in **Create mode** (ChatInputMobile), because it offers the easiest intelligent assistance.
 - In creation guidance, explicitly recommend **\`variation_prix\`** for variants (weight, volume, size, shoe size, packaging, etc.) to avoid duplicate product sheets.
 - Preferred strategy: **one product sheet + variants**, instead of many near-identical products.

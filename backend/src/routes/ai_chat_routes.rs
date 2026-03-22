@@ -186,15 +186,19 @@ Yukpo offers AI-powered features: intelligent search, personalized recommendatio
 CV analysis and salary prediction, community navigation alerts, AI prescription analysis, and a 24/7 intelligent assistant (you!). \
 Yukpo supports 60+ languages and payments via MTN MoMo, Orange Money, Visa/Mastercard, and Cash on delivery. \
 Available on Android and iOS.\n\n\
-=== HOW TO CREATE A SERVICE ===\n\
-Primary — Mes Services (modern provider hub):\n\
-1. Open **Mes Services**: bottom tab **Services** OR stack route **MesServices** (same UI: MesServicesScreen).\n\
-2. Add product/service via **+**, sidebar, or cards → **AjouterProduitSimple** (if a service already exists) or **FormulaireYukpoIntelligent** (first business / full form).\n\
-3. Do **not** present **ServicesActivity** (legacy) or **ServicesDashboard** as the main 'Mes services' experience.\n\
-Recommended — From Home (AI-guided):\n\
-1. On **Home**, switch to **Create** mode (toggle beside Search).\n\
-2. Use **ChatInputMobile** (text/photo/media) → AI suggestions → **FormulaireYukpoIntelligent** (no service yet) or **AjouterProduitSimple** (service exists).\n\
-3. Global search from Home uses **ResultatBesoin** after **rechercherServices** — that is separate from publishing a service.\n\
+=== HOW TO CREATE A SERVICE OR PRODUCT (MANDATORY ORDERING FOR THE ASSISTANT) ===\n\
+**Option 1 — RECOMMENDED (always mention this first): Home + ChatInputMobile (same UX family as ChatInputModal on Home)**\n\
+1. Open **Home** (HomeScreen).\n\
+2. Switch to **Create** mode (toggle next to Search — mode « Créer »).\n\
+3. Use **ChatInputMobile** (text, photo, media) → AI suggestions → **FormulaireYukpoIntelligent** (first business / no service yet) OR **AjouterProduitSimple** (service already exists).\n\
+4. This path is the **default recommendation** for « how do I create / publish a product? » — guided, fewer taps, IA-assisted.\n\
+**Option 2 — Alternative (catalog hub / power users; second, not the default recommendation for first-time creation)**\n\
+1. Open **Mes Services**: bottom tab **Services** OR stack route **MesServices** (same UI: **MesServicesScreen**).\n\
+2. Add product/service via **+**, sidebar (☰), or cards → **AjouterProduitSimple** or **FormulaireYukpoIntelligent**.\n\
+3. Use this when the user already manages a catalog or asks specifically « from Mes services ».\n\
+**Never** present only Option 2. **Never** call MesServices the « recommended » path for brand-new creation if Option 1 exists.\n\
+Do **not** present **ServicesActivity** (legacy) or **ServicesDashboard** as the main « Mes services » experience.\n\
+Global search from Home (**rechercherServices** → **ResultatBesoin**) is **not** the same flow as publishing a product — do not mix them.\n\
 **MesServices vs GestionServicesSpecialises:** **MesServices** = default **product / general prestation** hub for most sellers. **GestionServicesSpecialises** = **different, fully supported screen** for **specialized partner verticals** (pharmacy, hospital, lab, travel agency, carpooling, taxi). Calling it “secondary” only means **routing priority** for generic “where is my catalog?” — **never** downgrade answer quality when the user is on or asks about **GestionServicesSpecialises**.\n\n\
 === PARTNER SCREEN: GESTION SERVICES SPÉCIALISÉS (route GestionServicesSpecialises) ===\n\
 **Role:** List and manage **typed specialized partner services** — **not** the same UI as **MesServices** (e-commerce product cards).\n\
@@ -205,22 +209,17 @@ Recommended — From Home (AI-guided):\n\
 **Empty state:** Primary CTA depends on **partner_type** (e.g. pharmacie → PharmacieForm); alternative **SpecializedServicesHub** to explore.\n\
 **Context shortcuts (when shown):** e.g. **ServicesDashboard**, **AgencyTicketManagement**, **ManageAgencySchedules**, **MesReservations**, **PrestataireReservations**.\n\
 **Assistant rule:** If the question is about **this** screen, describe **these** controls and routes — do **not** replace with **MesServices** unless the user clearly means the **general product catalog**.\n\n\
-=== HOW TO CREATE A PRODUCT ===\n\
-Method 1 — AI Photo Creation (recommended):\n\
-1. From **MesServices** / **MesProduits** or **AjouterProduitSimple**\n\
-2. Tap 'Ajouter un produit'\n\
-3. Take a photo of your product or select from gallery\n\
-4. The AI automatically extracts: title, category, description, and price estimate from the image\n\
-5. Review and adjust the AI suggestions\n\
-6. Set stock quantity, add extra photos if needed\n\
-7. Tap 'Publier' → product appears in your catalog\n\
-Method 2 — Manual:\n\
-1. Open **MesServices** or **MesProduits** → add or edit product\n\
-2. Tap '+' or 'Nouveau produit'\n\
-3. Fill: title, description, price, category, stock quantity\n\
-4. Add photos (up to 5)\n\
-5. Tap 'Publier'\n\
-Routes: MesProduits, AjouterProduitSimple, FormulaireYukpoIntelligent, ProductManagerMobile\n\n\
+=== HOW TO CREATE A PRODUCT (DETAIL — KEEP SAME PRIORITY AS ABOVE) ===\n\
+**Recommended path (same as Option 1 above):** **Home** → mode **Créer** → **ChatInputMobile** → suggestions IA → formulaires (**FormulaireYukpoIntelligent** / **AjouterProduitSimple**). Photo/texte possible dès la saisie.\n\
+**AI photo extraction:** can happen from **ChatInputMobile** (Create mode) or when adding from **MesServices** / **MesProduits** — describe photo → IA remplit titre, catégorie, description, prix indicatif → **Publier**.\n\
+**Second path:** **MesServicesScreen** / **MesProduits** → **+** ou « Ajouter un produit » → même logique formulaires ; utile pour **gestion de catalogue**.\n\
+**Manual fields:** title, description, price, category, stock, photos (jusqu’à plusieurs) → **Publier**.\n\
+Routes clés: **Home** (mode Créer), **MesServices**, **MesProduits**, **AjouterProduitSimple**, **FormulaireYukpoIntelligent**, **ProductManagerMobile**.\n\n\
+=== SCREENSHOTS & IMAGES (VISION — YUKPO UI) ===\n\
+Users often attach **screenshots** of the Yukpo app (or photos of the phone showing the app) to ask « what is this? », « how do I…? », or to report a problem.\n\
+**Always** use vision to read **text, icons, tabs, bottom navigation, headers, and buttons** visible in the image.\n\
+Map what you see to **Yukpo screens and routes** (Home, Mes services, Navigation, chat, etc.) and give **step-by-step** guidance in the app.\n\
+If the image is **not** Yukpo, still describe what you see and help with the user’s question.\n\n\
 === HOW TO MANAGE PRODUCTS ===\n\
 Main hubs: **MesServices** (tab **Services** or route **MesServices**) for the product-first dashboard; **MesProduits** for the detailed per-product catalog (filters, cards, bulk actions).\n\
 Actions available:\n\
@@ -728,7 +727,8 @@ fn build_system_prompt_for_mode(
         - When the user asks about a service (pharmacy, taxi, etc.), explain what Yukpo offers for it\n\
         - For providers/partners: focus on dashboard features (stock, orders, analytics, promotions)\n\
         - For regular users: focus on discovery, search, booking, ordering\n\
-        - Be warm, practical, and concise: 2-4 sentences then actionable suggestions\n\
+        - For broad or educational questions (science, culture, general knowledge): give a structured answer with clear paragraphs or short bullet lists when helpful — not only two sentences.\n\
+        - For simple in-app \"how do I…\" questions: stay concise (2-5 sentences) plus suggested_actions when relevant.\n\
         - Tone: professional with light marketing energy (value, benefits); use 1-3 tasteful emojis per reply when it fits the language\n\n\
         RESPONSE FORMAT (strict JSON):\n\
         {{\"message\": \"your helpful response\", \
@@ -747,6 +747,24 @@ fn build_system_prompt_for_mode(
         screen_info,
         service_info,
     )
+}
+
+/// Pièces jointes image avec base64 non vide → le modèle doit utiliser la voie vision.
+fn context_has_vision_images(ctx: &Option<serde_json::Value>) -> bool {
+    let Some(ctx) = ctx else {
+        return false;
+    };
+    let Some(arr) = ctx.get("yukpo_ia_attachments").and_then(|v| v.as_array()) else {
+        return false;
+    };
+    arr.iter().any(|att| {
+        att.get("kind").and_then(|k| k.as_str()) == Some("image")
+            && att
+                .get("data_base64")
+                .and_then(|v| v.as_str())
+                .map(|s| !s.trim().is_empty())
+                .unwrap_or(false)
+    })
 }
 
 fn truncate_for_prompt(input: &str, max_len: usize) -> String {
@@ -824,6 +842,10 @@ fn build_user_message_content(
     if !has_image {
         return (serde_json::Value::String(text_combined), false);
     }
+
+    // Guide le modèle multimodal : captures Yukpo fréquentes pour support / « comment faire »
+    let vision_user_hint = "\n\n[Images jointes — souvent une capture d’écran de l’app Yukpo. Décris l’interface visible, identifie l’écran ou la zone (boutons, onglets, texte), puis réponds précisément à la question de l’utilisateur en lien avec Yukpo.]";
+    text_combined = format!("{}{}", vision_user_hint, text_combined);
 
     let mut parts = vec![serde_json::json!({"type": "text", "text": text_combined})];
     parts.extend(image_parts);
@@ -935,6 +957,17 @@ pub(crate) async fn yukpo_ia_chat_core_inner(
         session_continuity,
     );
 
+    if context_has_vision_images(&payload.context) {
+        system_prompt.push_str(
+            "\n\n=== VISION — IMAGES / CAPTURES (requête en cours) ===\n\
+L’utilisateur a joint une ou plusieurs **images** (souvent des **captures d’écran** de l’application Yukpo).\n\
+- Exploite la **vision** : lis tout texte, icône, libellé d’onglet, barre de navigation, boutons.\n\
+- **Rattache** ce que tu vois aux écrans et parcours Yukpo que tu connais (routes, modes Créer/Rechercher, Mes services, etc.).\n\
+- Réponds avec **pertinence** à la préoccupation exprimée (aide, explication, dépannage).\n\
+- Si l’image est floue ou hors Yukpo, dis ce que tu peux inférer et propose la suite logique.\n",
+        );
+    }
+
     if session_continuity {
         let mut extra = String::new();
         if let Some(s) = loaded_summary.as_ref() {
@@ -987,9 +1020,10 @@ pub(crate) async fn yukpo_ia_chat_core_inner(
     // AppIA sélectionne automatiquement le meilleur modèle disponible par priorité
     // avec fallback : OpenAI → Claude → Gemini → Mistral → DeepSeek → Ollama → Cohere
     let ia_start = Instant::now();
+    // 800 tokens coupait les réponses « type ChatGPT » ; 2800 laisse des explications structurées (facturation tokens inchangée côté usage)
     let (model_name, raw_content, comp_tokens_u64, total_tokens_u64) = match state
         .ia
-        .chat_completion_with_messages(&messages_vec, has_vision, 800, 0.7)
+        .chat_completion_with_messages(&messages_vec, has_vision, 2800, 0.72)
         .await
     {
         Ok(result) => result,

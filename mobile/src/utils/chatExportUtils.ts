@@ -2,6 +2,17 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Alert, Linking, Platform, Share } from 'react-native';
 
+/** Signature obligatoire pour tout partage / export de contenu Yukpo IA vers l’extérieur */
+export const YUKPO_IA_SHARE_FOOTER =
+  '\n\n—\nRéponse générée par Yukpo IA · https://yukpomnang.com';
+
+export function appendYukpoIaShareFooter(body: string): string {
+  const t = String(body || '').trimEnd();
+  if (!t) return `Yukpo IA${YUKPO_IA_SHARE_FOOTER}`;
+  if (t.includes('Yukpo IA') && t.includes('yukpomnang.com')) return t;
+  return `${t}${YUKPO_IA_SHARE_FOOTER}`;
+}
+
 /**
  * Retire un markdown léger (**gras**, listes) pour export texte brut.
  */
@@ -51,7 +62,9 @@ export async function exportChatTextAsFile(
   text: string,
   format: ChatExportFormat,
   baseName = 'yukpo-reponse',
+  options?: { withYukpoIaFooter?: boolean },
 ): Promise<void> {
+  const withFooter = options?.withYukpoIaFooter !== false;
   const plain = format === 'md' ? String(text || '') : stripSimpleMarkdownForExport(text);
   const ext = format === 'csv' ? 'csv' : format === 'md' ? 'md' : 'txt';
   const mime =
@@ -61,6 +74,11 @@ export async function exportChatTextAsFile(
   if (format === 'csv') {
     const cell = plain.replace(/"/g, '""');
     body = `"Yukpo — réponse assistant"\n"${cell}"`;
+  }
+  if (withFooter && format !== 'csv') {
+    body = appendYukpoIaShareFooter(body);
+  } else if (withFooter && format === 'csv') {
+    body = `${body}\n"Signature","Yukpo IA — https://yukpomnang.com"`;
   }
 
   const fileName = `${baseName}-${Date.now()}.${ext}`;
