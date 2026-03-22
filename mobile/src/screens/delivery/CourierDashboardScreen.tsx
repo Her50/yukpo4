@@ -190,13 +190,13 @@ const CourierDashboardScreen: React.FC = () => {
                                             <View style={styles.deliveryRow}>
                                                 <SafeIcon name="map-pin" size={16} color={modernColors.textSecondary} />
                                                 <Text style={styles.deliveryText}>
-                                                    {delivery.pickup?.label || 'Pickup'}
+                                                    {delivery.pickup?.label || t('courierDashboard.pickup')}
                                                 </Text>
                                             </View>
                                             <View style={styles.deliveryRow}>
                                                 <SafeIcon name="navigation" size={16} color={modernColors.textSecondary} />
                                                 <Text style={styles.deliveryText}>
-                                                    {delivery.dropoff?.label || 'Dropoff'}
+                                                    {delivery.dropoff?.label || t('courierDashboard.dropoff')}
                                                 </Text>
                                             </View>
                                         </View>
@@ -221,23 +221,22 @@ const CourierDashboardScreen: React.FC = () => {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>{t('courierDashboard.quickActions', 'Actions rapides')}</Text>
                         <NativeButton
-                            title="📊 Voir mes statistiques"
+                            title={`📊 ${t('courierDashboard.voirStatistiques')}`}
                             variant="outline"
                             onPress={() => {
-                                // ✅ FIX 2026-03-14: Afficher les statistiques détaillées avec les données déjà chargées
                                 Alert.alert(
                                     t('courierDashboard.detailedStats', 'Statistiques détaillées'),
-                                    `Livraisons complétées: ${safeStats.completedDeliveries}\n` +
-                                    `Taux de réussite: ${safeStats.successRate.toFixed(1)}%\n` +
-                                    `Temps moyen: ${safeStats.avgDeliveryTime.toFixed(0)} min\n` +
-                                    `Gains totaux: ${safeStats.totalEarnings.toFixed(0)} XAF\n` +
-                                    `Gains ce mois: ${safeStats.currentMonthEarnings.toFixed(0)} XAF`,
-                                    [{ text: 'OK' }]
+                                    `${t('courierDashboard.livraisonsCompletees')}: ${safeStats.completedDeliveries}\n` +
+                                    `${t('courierDashboard.tauxReussite')}: ${safeStats.successRate.toFixed(1)}%\n` +
+                                    `${t('courierDashboard.tempsMoyen')}: ${safeStats.avgDeliveryTime.toFixed(0)} min\n` +
+                                    `${t('courierDashboard.gainsTotaux')}: ${safeStats.totalEarnings.toFixed(0)} XAF\n` +
+                                    `${t('courierDashboard.gainsCeMois')}: ${safeStats.currentMonthEarnings.toFixed(0)} XAF`,
+                                    [{ text: t('common.ok') }]
                                 );
                             }}
                         />
                         <NativeButton
-                            title="💰 Mon portefeuille"
+                            title={`💰 ${t('courierDashboard.monPortefeuille')}`}
                             variant="outline"
                             onPress={() => {
                                 (navigation as any).navigate('WalletFinancial');

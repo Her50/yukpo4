@@ -79,7 +79,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} تفاعل(ات)",
+        "favoriteCount": "{{count}} مفضل(ة)",
+        "period7d": "7ي",
+        "period30d": "30ي",
+        "period90d": "90ي"
     },
     "account": {
         "title": "حسابي"
@@ -172,7 +177,25 @@
         "envoyerLeMessage": " أرسل رسالة",
         "contactRapide": " اتصال سريع",
         "informations": "ℹ معلومات",
-        "supportTechnique": "الدعم الفني:"
+        "supportTechnique": "الدعم الفني:",
+        "erreur": "خطأ",
+        "remplirTousChamps": "يرجى ملء جميع الحقول",
+        "impossibleEnvoyer": "تعذر إرسال الرسالة",
+        "impossibleOuvrirLien": "تعذر فتح هذا الرابط",
+        "contactezNous": "اتصل بنا",
+        "nousSommesLa": "نحن هنا لمساعدتك! لا تتردد في الاتصال بنا.",
+        "envoyezMessage": "أرسل لنا رسالة",
+        "emailLabel": "البريد الإلكتروني *",
+        "emailPlaceholder": "بريدك@email.com",
+        "sujetLabel": "الموضوع *",
+        "sujetPlaceholder": "موضوع رسالتك",
+        "messageLabel": "الرسالة *",
+        "emailTitle": "البريد الإلكتروني",
+        "chatDirect": "محادثة مباشرة",
+        "heuresOuverture": "ساعات العمل:",
+        "heuresOuvertureValeur": "8:00 - 18:00 (الإثنين-الجمعة)",
+        "tempsReponseValeur": "أقل من 24 ساعة",
+        "supportValeur": "متاح 7 أيام في الأسبوع"
     },
     "tokens": {
         "recharge": "شحن الرموز",
@@ -1854,7 +1877,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "لوحة قصة AI",
+            "storyboardFailedMessage": "تعذر إنشاء لوحة القصة.",
+            "previewShortNoSessionTitle": "معاينة سريعة",
+            "previewShortNoSessionMessage": "أنشئ لوحة قصة AI أو جلسة Studio أولاً.",
+            "previewShortNoUrlTitle": "معاينة سريعة",
+            "previewShortNoUrlMessage": "تعذر الحصول على رابط المعاينة.",
+            "previewShortFailedTitle": "معاينة سريعة",
+            "previewShortFailedMessage": "تعذر بدء المعاينة القصيرة."
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1883,12 +1914,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "معاينة سريعة"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "الإعداد",
+            "step2": "الوسائط",
+            "step3": "الملخص"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1916,7 +1951,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "معاينة…",
+            "previewShort": "معاينة 3 ثوانٍ"
         },
         "summary": {
             "service": "الخدمة",
@@ -1934,7 +1971,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "مشهد {{index}}",
+            "sceneMediaNone": "دع Yukpo يختار تلقائياً",
+            "sceneMediaNoneShort": "تلقائي",
+            "optionalScene": "مشهد اختياري",
+            "sceneMediaHint": "اختر وسائط لهذا المشهد أو دع Yukpo يقرر.",
+            "sceneDefaultHint": "(مشهد فارغ)",
+            "noScenes": "لا توجد مشاهد محددة"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "حسناً",
+        "error": "خطأ",
+        "cancel": "إلغاء",
+        "goToMyServices": "الذهاب إلى خدماتي",
+        "productFallback": "منتج",
+        "serviceWithId": "خدمة #{{id}}",
+        "productWithIndex": "منتج {{index}}",
+        "helpLabel": "مساعدة",
+        "helpHint": "فتح دليل إنشاء الفيديو",
+        "loadingServices": "جاري تحميل خدماتك…",
+        "servicesAvailable": "{{count}} خدمة(خدمات) متاحة",
+        "loading": "جاري التحميل…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "لوحة القيادة ساعي"
+        "tableauDeBordCoursier": "لوحة القيادة ساعي",
+        "pickup": "نقطة الاستلام",
+        "dropoff": "نقطة التسليم",
+        "voirStatistiques": "عرض إحصائياتي",
+        "livraisonsCompletees": "التوصيلات المكتملة",
+        "tauxReussite": "معدل النجاح",
+        "tempsMoyen": "الوقت المتوسط",
+        "gainsTotaux": "الأرباح الإجمالية",
+        "gainsCeMois": "أرباح هذا الشهر"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "إجمالي الخدمات",
         "servicesActifs": "خدمات نشطة",
         "noteMoyenne": "متوسط التقييم",
-        "servicesLesMieuxPerformants": "أفضل الخدمات أداءً"
+        "servicesLesMieuxPerformants": "أفضل الخدمات أداءً",
+        "erreur": "خطأ",
+        "impossibleChargerDonnees": "تعذر تحميل بيانات لوحة التحكم",
+        "actif": "نشط",
+        "inactif": "غير نشط",
+        "enAttente": "قيد الانتظار",
+        "inconnu": "غير معروف",
+        "reessayer": "إعادة المحاولة",
+        "septJours": "7 أيام",
+        "trenteJours": "30 يوم",
+        "quatreVingtDixJours": "90 يوم",
+        "vuesTotales": "إجمالي المشاهدات",
+        "interactions": "التفاعلات",
+        "actionsRapides": "إجراءات سريعة",
+        "nouvelle": "جديد",
+        "analytics": "التحليلات",
+        "viewsCount": "{{count}} مشاهدة",
+        "messagesCount": "{{count}} رسالة",
+        "callsCount": "{{count}} مكالمة",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "مشاهدة",
+        "message": "رسالة",
+        "appel": "مكالمة",
+        "activite": "نشاط",
+        "surService": "على {{service}}",
+        "ilYA": "منذ {{time}}"
     },
     "debugOverlay": {
         "logsRecents": "السجلات الأخيرة:",
@@ -6844,7 +6934,26 @@
         "nonDefinie": "غير محدد",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "لم تسجل بعد؟",
-        "ouiJeSuisPartenaire": "نعم أنا شريك"
+        "ouiJeSuisPartenaire": "نعم أنا شريك",
+        "consultezLeGuide": "يرجى الاطلاع على الدليل: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "مستخدم",
+        "erreurOauth": "خطأ OAuth",
+        "erreur": "خطأ",
+        "configOauthAndroidManquante": "إعداد OAuth لأندرويد مفقود.\n\n",
+        "consultezGuideOauth": "انظر: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "الإعداد مطلوب",
+        "erreurDeConnexion": "خطأ في تسجيل الدخول",
+        "emailOuMotDePasseIncorrect": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+        "continuerAvec": "متابعة مع {{label}}",
+        "connectezVousAvecVotreCompte": "سجّل الدخول بحسابك",
+        "ou": "أو",
+        "ouUtilisezVosIdentifiants": "أو استخدم بيانات الاعتماد الخاصة بك:",
+        "connexionEnCours": "جاري تسجيل الدخول...",
+        "seConnecter": "تسجيل الدخول",
+        "inscriptionPartenaire": "⚠️ تسجيل شريك",
+        "devenirPartenaire": "🏢 كن شريكاً",
+        "supportContact": "في حال وجود مشكلة، تواصل مع الدعم على support@yukpo.com",
+        "important": "⚠️ مهم:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9988,7 +10097,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "إحصائيات لوحة القيادة",
-        "hopital": "مستشفى"
+        "hopital": "مستشفى",
+        "emptyText": "أنشئ خدمات متخصصة لعرض إحصائياتك",
+        "pharmacie": "صيدلية",
+        "laboratoire": "مختبر",
+        "banqueSang": "بنك الدم",
+        "agence": "وكالة",
+        "covoiturage": "مشاركة الركوب",
+        "taxi": "سيارة أجرة",
+        "total": "الإجمالي",
+        "actifs": "نشط",
+        "inactifs": "غير نشط",
+        "last7Days": "آخر 7 أيام",
+        "last30Days": "آخر 30 يوم",
+        "thisMonth": "هذا الشهر",
+        "pharmacieDetail": "💊 صيدلية",
+        "hopitalDetail": "🏥 مستشفى",
+        "laboratoireDetail": "🔬 مختبر",
+        "banqueSangDetail": "🩸 بنك الدم",
+        "agenceDetail": "🚌 وكالة",
+        "covoiturageDetail": "🚗 مشاركة الركوب",
+        "taxiDetail": "🚕 سيارة أجرة"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11078,7 +11207,22 @@
         "senegal": "🇸🇳 السنغال",
         "guinee": "🇬🇳 غينيا",
         "nonDefinie": "غير محدد",
-        "coteDivoire": "🇨🇮 ساحل العاج"
+        "coteDivoire": "🇨🇮 ساحل العاج",
+        "cameroun": "الكاميرون",
+        "rdCongo": "جمهورية الكونغو الديمقراطية",
+        "gabon": "الغابون",
+        "burkinaFaso": "بوركينا فاسو",
+        "mali": "مالي",
+        "tchad": "تشاد",
+        "congo": "الكونغو",
+        "france": "فرنسا",
+        "belgique": "بلجيكا",
+        "consultezGuide": "يرجى الرجوع إلى دليل تكوين OAuth",
+        "utilisateur": "مستخدم",
+        "erreurOauth": "خطأ OAuth",
+        "configOauthManquante": "تكوين OAuth لأندرويد مفقود.",
+        "configurationRequise": "التكوين مطلوب",
+        "erreurInscription": "خطأ في التسجيل"
     },
     "bookBuyDirect": {
         "especes": "الأنواع"

@@ -213,7 +213,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}}개 인터랙션",
+        "favoriteCount": "{{count}}개 즐겨찾기",
+        "period7d": "7일",
+        "period30d": "30일",
+        "period90d": "90일"
     },
     "account": {
         "title": "My Account"
@@ -306,7 +311,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "오류",
+        "remplirTousChamps": "모든 필드를 입력하세요",
+        "impossibleEnvoyer": "메시지를 보낼 수 없습니다",
+        "impossibleOuvrirLien": "이 링크를 열 수 없습니다",
+        "contactezNous": "문의하기",
+        "nousSommesLa": "도움이 필요하시면 연락하세요!",
+        "envoyezMessage": "메시지 보내기",
+        "emailLabel": "이메일 *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "제목 *",
+        "sujetPlaceholder": "메시지 제목",
+        "messageLabel": "메시지 *",
+        "emailTitle": "이메일",
+        "chatDirect": "직접 채팅",
+        "heuresOuverture": "영업 시간:",
+        "heuresOuvertureValeur": "8:00 - 18:00 (월-금)",
+        "tempsReponseValeur": "24시간 이내",
+        "supportValeur": "주 7일 이용 가능"
     },
     "tokens": {
         "recharge": "Recharge Tokens",
@@ -1473,7 +1496,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "AI 스토리보드",
+            "storyboardFailedMessage": "스토리보드를 생성할 수 없습니다.",
+            "previewShortNoSessionTitle": "빠른 미리보기",
+            "previewShortNoSessionMessage": "먼저 AI 스토리보드 또는 Studio 세션을 생성하세요.",
+            "previewShortNoUrlTitle": "빠른 미리보기",
+            "previewShortNoUrlMessage": "미리보기 URL을 가져올 수 없습니다.",
+            "previewShortFailedTitle": "빠른 미리보기",
+            "previewShortFailedMessage": "짧은 미리보기를 시작할 수 없습니다."
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1502,12 +1533,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "빠른 미리보기"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "설정",
+            "step2": "미디어",
+            "step3": "요약"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1535,7 +1570,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "미리보기…",
+            "previewShort": "3초 미리보기"
         },
         "summary": {
             "service": "Service",
@@ -1553,7 +1590,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "장면 {{index}}",
+            "sceneMediaNone": "Yukpo가 자동으로 선택하도록 허용",
+            "sceneMediaNoneShort": "자동",
+            "optionalScene": "선택적 장면",
+            "sceneMediaHint": "이 장면의 미디어를 선택하거나 Yukpo가 결정하게 하세요.",
+            "sceneDefaultHint": "(빈 장면)",
+            "noScenes": "정의된 장면 없음"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "확인",
+        "error": "오류",
+        "cancel": "취소",
+        "goToMyServices": "내 서비스로 이동",
+        "productFallback": "제품",
+        "serviceWithId": "서비스 #{{id}}",
+        "productWithIndex": "제품 {{index}}",
+        "helpLabel": "도움말",
+        "helpHint": "동영상 제작 튜토리얼 열기",
+        "loadingServices": "서비스를 불러오는 중…",
+        "servicesAvailable": "{{count}}개 서비스 이용 가능",
+        "loading": "로딩 중…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "픽업 지점",
+        "dropoff": "배달 지점",
+        "voirStatistiques": "내 통계 보기",
+        "livraisonsCompletees": "완료된 배달",
+        "tauxReussite": "성공률",
+        "tempsMoyen": "평균 시간",
+        "gainsTotaux": "총 수입",
+        "gainsCeMois": "이번 달 수입"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "오류",
+        "impossibleChargerDonnees": "대시보드 데이터를 불러올 수 없습니다",
+        "actif": "활성",
+        "inactif": "비활성",
+        "enAttente": "대기 중",
+        "inconnu": "알 수 없음",
+        "reessayer": "재시도",
+        "septJours": "7일",
+        "trenteJours": "30일",
+        "quatreVingtDixJours": "90일",
+        "vuesTotales": "총 조회수",
+        "interactions": "상호작용",
+        "actionsRapides": "빠른 작업",
+        "nouvelle": "새로 만들기",
+        "analytics": "분석",
+        "viewsCount": "{{count}} 조회",
+        "messagesCount": "{{count}} 메시지",
+        "callsCount": "{{count}} 통화",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "조회",
+        "message": "메시지",
+        "appel": "통화",
+        "activite": "활동",
+        "surService": "{{service}}에서",
+        "ilYA": "{{time}} 전"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "가이드를 참조하세요: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "사용자",
+        "erreurOauth": "OAuth 오류",
+        "erreur": "오류",
+        "configOauthAndroidManquante": "Android OAuth 설정 누락.\n\n",
+        "consultezGuideOauth": "참조: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "설정 필요",
+        "erreurDeConnexion": "로그인 오류",
+        "emailOuMotDePasseIncorrect": "이메일 또는 비밀번호가 잘못되었습니다",
+        "continuerAvec": "{{label}}(으)로 계속",
+        "connectezVousAvecVotreCompte": "계정으로 로그인",
+        "ou": "또는",
+        "ouUtilisezVosIdentifiants": "또는 자격 증명 사용:",
+        "connexionEnCours": "로그인 중...",
+        "seConnecter": "로그인",
+        "inscriptionPartenaire": "⚠️ 파트너 등록",
+        "devenirPartenaire": "🏢 파트너 되기",
+        "supportContact": "문제가 있으시면 support@yukpo.com으로 문의하세요",
+        "important": "⚠️ 중요:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "통계를 보려면 전문 서비스를 만드세요",
+        "pharmacie": "약국",
+        "laboratoire": "실험실",
+        "banqueSang": "혈액은행",
+        "agence": "에이전시",
+        "covoiturage": "카풀",
+        "taxi": "택시",
+        "total": "전체",
+        "actifs": "활성",
+        "inactifs": "비활성",
+        "last7Days": "최근 7일",
+        "last30Days": "최근 30일",
+        "thisMonth": "이번 달",
+        "pharmacieDetail": "💊 약국",
+        "hopitalDetail": "🏥 병원",
+        "laboratoireDetail": "🔬 실험실",
+        "banqueSangDetail": "🩸 혈액은행",
+        "agenceDetail": "🚌 에이전시",
+        "covoiturageDetail": "🚗 카풀",
+        "taxiDetail": "🚕 택시"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "카메룬",
+        "rdCongo": "콩고민주공화국",
+        "gabon": "가봉",
+        "burkinaFaso": "부르키나파소",
+        "mali": "말리",
+        "tchad": "차드",
+        "congo": "콩고",
+        "france": "프랑스",
+        "belgique": "벨기에",
+        "consultezGuide": "OAuth 구성 가이드를 참조하세요",
+        "utilisateur": "사용자",
+        "erreurOauth": "OAuth 오류",
+        "configOauthManquante": "Android OAuth 구성이 없습니다.",
+        "configurationRequise": "구성 필요",
+        "erreurInscription": "등록 오류"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

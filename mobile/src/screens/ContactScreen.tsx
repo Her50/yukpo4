@@ -22,7 +22,7 @@ const [name, setName] = useState('');
 
   const handleSubmit = async () => {
     if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+      Alert.alert(t('contact.erreur'), t('contact.remplirTousChamps'));
       return;
     }
 
@@ -39,7 +39,7 @@ const [name, setName] = useState('');
       setSubject('');
       setMessage('');
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'envoyer le message');
+      Alert.alert(t('contact.erreur'), t('contact.impossibleEnvoyer'));
     }
   };
 
@@ -49,10 +49,10 @@ const [name, setName] = useState('');
       if (supported) {
         await Linking.openURL(url);
       } else {
-        Alert.alert('Erreur', 'Impossible d\'ouvrir ce lien');
+        Alert.alert(t('contact.erreur'), t('contact.impossibleOuvrirLien'));
       }
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'ouvrir ce lien');
+      Alert.alert(t('contact.erreur'), t('contact.impossibleOuvrirLien'));
     }
   };
 
@@ -60,15 +60,15 @@ const [name, setName] = useState('');
     <SafeNativeView style={styles.container}>
       <KeyboardAwareScreen contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.title}>📞 Contactez-nous</Text>
+          <Text style={styles.title}>📞 {t('contact.contactezNous')}</Text>
           <Text style={styles.subtitle}>
-            Nous sommes là pour vous aider ! N'hésitez pas à nous contacter.
+            {t('contact.nousSommesLa')}
           </Text>
         </View>
 
         {/* Formulaire de contact */}
         <View style={styles.formContainer}>
-          <Text style={styles.formTitle}>✉️ Envoyez-nous un message</Text>
+          <Text style={styles.formTitle}>✉️ {t('contact.envoyezMessage')}</Text>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>{t('contact.nomComplet')}</Text>
@@ -82,12 +82,12 @@ const [name, setName] = useState('');
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email *</Text>
+            <Text style={styles.label}>{t('contact.emailLabel')}</Text>
             <TextInput
               style={styles.input}
               value={email}
               onChangeText={setEmail}
-              placeholder="votre@email.com"
+              placeholder={t('contact.emailPlaceholder')}
               placeholderTextColor="#999"
               keyboardType="email-address"
               autoCapitalize="none"
@@ -95,18 +95,18 @@ const [name, setName] = useState('');
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Sujet *</Text>
+            <Text style={styles.label}>{t('contact.sujetLabel')}</Text>
             <TextInput
               style={styles.input}
               value={subject}
               onChangeText={setSubject}
-              placeholder="Sujet de votre message"
+              placeholder={t('contact.sujetPlaceholder')}
               placeholderTextColor="#999"
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Message *</Text>
+            <Text style={styles.label}>{t('contact.messageLabel')}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               value={message}
@@ -134,7 +134,7 @@ const [name, setName] = useState('');
           >
             <Text style={styles.contactIcon}>📧</Text>
             <View style={styles.contactInfo}>
-              <Text style={styles.contactTitle}>Email</Text>
+              <Text style={styles.contactTitle}>{t('contact.emailTitle')}</Text>
               <Text style={styles.contactValue}>contact@yukpomnang.com</Text>
             </View>
           </TouchableOpacity>
@@ -157,7 +157,7 @@ const [name, setName] = useState('');
             <Text style={styles.contactIcon}>💬</Text>
             <View style={styles.contactInfo}>
               <Text style={styles.contactTitle}>WhatsApp</Text>
-              <Text style={styles.contactValue}>Chat direct</Text>
+              <Text style={styles.contactValue}>{t('contact.chatDirect')}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -167,13 +167,13 @@ const [name, setName] = useState('');
           <Text style={styles.infoTitle}>{t('contact.informations')}</Text>
           <View style={styles.infoCard}>
             <Text style={styles.infoText}>
-              • <Text style={styles.bold}>Heures d'ouverture :</Text> 8h00 - 18h00 (Lun-Ven)
+              • <Text style={styles.bold}>{t('contact.heuresOuverture')}</Text> {t('contact.heuresOuvertureValeur')}
             </Text>
             <Text style={styles.infoText}>
-              • <Text style={styles.bold}>{t('contact.tempsDeReponse')}</Text> Moins de 24h
+              • <Text style={styles.bold}>{t('contact.tempsDeReponse')}</Text> {t('contact.tempsReponseValeur')}
             </Text>
             <Text style={styles.infoText}>
-              • <Text style={styles.bold}>{t('contact.supportTechnique')}</Text> Disponible 7j/7
+              • <Text style={styles.bold}>{t('contact.supportTechnique')}</Text> {t('contact.supportValeur')}
             </Text>
           </View>
         </View>

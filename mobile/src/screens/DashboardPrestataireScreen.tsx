@@ -128,7 +128,7 @@ const DashboardPrestataireScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('[DashboardPrestataireScreen] Erreur chargement donn�es:', error);
-      Alert.alert('Erreur', 'Impossible de charger les donn�es du dashboard');
+      Alert.alert(t('dashboardPrestataire.erreur'), t('dashboardPrestataire.impossibleChargerDonnees'));
     } finally {
       setLoading(false);
     }
@@ -159,10 +159,10 @@ const DashboardPrestataireScreen: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'active': return 'Actif';
-      case 'inactive': return 'Inactif';
-      case 'pending': return 'En attente';
-      default: return 'Inconnu';
+      case 'active': return t('dashboardPrestataire.actif');
+      case 'inactive': return t('dashboardPrestataire.inactif');
+      case 'pending': return t('dashboardPrestataire.enAttente');
+      default: return t('dashboardPrestataire.inconnu');
     }
   };
 
@@ -181,7 +181,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <SafeIcon name="inbox" size={48} color="#D1D5DB" />
         <Text style={styles.errorText}>{t('dashboardPrestataire.aucuneDonneDisponible')}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={loadDashboardData}>
-          <Text style={styles.retryButtonText}>R�essayer</Text>
+          <Text style={styles.retryButtonText}>{t('dashboardPrestataire.reessayer')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -208,7 +208,7 @@ const DashboardPrestataireScreen: React.FC = () => {
                 styles.periodButtonText,
                 selectedPeriod === period && styles.periodButtonTextActive
               ]}>
-                {period === '7d' ? '7 jours' : period === '30d' ? '30 jours' : '90 jours'}
+                {period === '7d' ? t('dashboardPrestataire.septJours') : period === '30d' ? t('dashboardPrestataire.trenteJours') : t('dashboardPrestataire.quatreVingtDixJours')}
               </Text>
             </TouchableOpacity>
           ))}
@@ -243,7 +243,7 @@ const DashboardPrestataireScreen: React.FC = () => {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{formatNumber(dashboardData.totalViews)}</Text>
-            <Text style={styles.statLabel}>Vues totales</Text>
+            <Text style={styles.statLabel}>{t('dashboardPrestataire.vuesTotales')}</Text>
           </View>
         </View>
 
@@ -253,7 +253,7 @@ const DashboardPrestataireScreen: React.FC = () => {
           </View>
           <View style={styles.statContent}>
             <Text style={styles.statNumber}>{formatNumber(dashboardData.totalInteractions)}</Text>
-            <Text style={styles.statLabel}>Interactions</Text>
+            <Text style={styles.statLabel}>{t('dashboardPrestataire.interactions')}</Text>
           </View>
         </View>
 
@@ -280,7 +280,7 @@ const DashboardPrestataireScreen: React.FC = () => {
 
       {/* Actions rapides */}
       <View style={styles.actionsSection}>
-        <Text style={styles.sectionTitle}>Actions rapides</Text>
+        <Text style={styles.sectionTitle}>{t('dashboardPrestataire.actionsRapides')}</Text>
         <View style={styles.actionsGrid}>
           <TouchableOpacity
             style={styles.actionButton}
@@ -290,7 +290,7 @@ const DashboardPrestataireScreen: React.FC = () => {
             <View style={[styles.actionButtonIcon, { backgroundColor: '#D1FAE5' }]}>
               <SafeIcon name="plus-circle" size={28} color="#10B981" />
             </View>
-            <Text style={styles.actionButtonTitle}>Nouvelle</Text>
+            <Text style={styles.actionButtonTitle}>{t('dashboardPrestataire.nouvelle')}</Text>
             <Text style={styles.actionButtonSubtitle}>{t('dashboardPrestataire.publicite')}</Text>
             <View style={styles.actionButtonArrow}>
               <SafeIcon name="chevron-right" size={16} color="#10B981" />
@@ -305,7 +305,7 @@ const DashboardPrestataireScreen: React.FC = () => {
             <View style={[styles.actionButtonIcon, { backgroundColor: '#DBEAFE' }]}>
               <SafeIcon name="bar-chart-2" size={28} color="#6366F1" />
             </View>
-            <Text style={styles.actionButtonTitle}>Analytics</Text>
+            <Text style={styles.actionButtonTitle}>{t('dashboardPrestataire.analytics')}</Text>
             <Text style={styles.actionButtonSubtitle}>{t('dashboardPrestataire.videos')}</Text>
             <View style={styles.actionButtonArrow}>
               <SafeIcon name="chevron-right" size={16} color="#6366F1" />
@@ -331,16 +331,16 @@ const DashboardPrestataireScreen: React.FC = () => {
 
             <View style={styles.serviceStats}>
               <View style={styles.serviceStat}>
-                <Text style={styles.serviceStatText}>{formatNumber(service.views)} vues</Text>
+                <Text style={styles.serviceStatText}>{t('dashboardPrestataire.viewsCount', { count: formatNumber(service.views) })}</Text>
               </View>
               <View style={styles.serviceStat}>
-                <Text style={styles.serviceStatText}>{service.messages} msg</Text>
+                <Text style={styles.serviceStatText}>{t('dashboardPrestataire.messagesCount', { count: service.messages })}</Text>
               </View>
               <View style={styles.serviceStat}>
-                <Text style={styles.serviceStatText}>{service.calls} appels</Text>
+                <Text style={styles.serviceStatText}>{t('dashboardPrestataire.callsCount', { count: service.calls })}</Text>
               </View>
               <View style={styles.serviceStat}>
-                <Text style={styles.serviceStatText}>{service.rating} / 5</Text>
+                <Text style={styles.serviceStatText}>{t('dashboardPrestataire.ratingOutOf5', { rating: service.rating })}</Text>
               </View>
             </View>
           </View>
@@ -366,11 +366,11 @@ const DashboardPrestataireScreen: React.FC = () => {
             </View>
             <View style={styles.activityContent}>
               <Text style={styles.activityText}>
-                {activity.type === 'view' ? 'Vue' :
-                  activity.type === 'message' ? 'Message' :
-                    activity.type === 'call' ? 'Appel' : t('dashboardPrestataireScreen.activite')} sur {activity.service}
+                {activity.type === 'view' ? t('dashboardPrestataire.vue') :
+                  activity.type === 'message' ? t('dashboardPrestataire.message') :
+                    activity.type === 'call' ? t('dashboardPrestataire.appel') : t('dashboardPrestataire.activite')} {t('dashboardPrestataire.surService', { service: activity.service })}
               </Text>
-              <Text style={styles.activityTime}>Il y a {activity.time}</Text>
+              <Text style={styles.activityTime}>{t('dashboardPrestataire.ilYA', { time: activity.time })}</Text>
             </View>
           </View>
         ))}
@@ -378,7 +378,7 @@ const DashboardPrestataireScreen: React.FC = () => {
 
       {/* Actions rapides */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Actions rapides</Text>
+        <Text style={styles.sectionTitle}>{t('dashboardPrestataire.actionsRapides')}</Text>
 
         <TouchableOpacity style={styles.actionButton} onPress={loadDashboardData}>
           <Text style={styles.actionButtonText}>{t('dashboardPrestataire.actualiserLesDonnees')}</Text>

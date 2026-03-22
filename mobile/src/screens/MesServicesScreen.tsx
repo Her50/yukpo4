@@ -178,7 +178,7 @@ const MesServicesScreen: React.FC = () => {
       logger.error('[MesServicesScreen] Erreur parsing produit:', error);
       return null;
     }
-  }, []);
+  }, [t]);
 
   // Ô£à CORRECTION 2025-11-28: Fonction pour extraire les produits d'un service (tous formats)
   const extractProduits = useCallback((service: any): any[] => {
@@ -399,17 +399,9 @@ const MesServicesScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id, parseProduct, extractProduits]);
+  }, [user?.id, parseProduct, extractProduits, t, toaster]);
 
-  useEffect(() => {
-    // Ô£à CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
-    loadServices().catch(error => {
-      console.error('[MesServicesScreen] Erreur loadServices:', error);
-    });
-    // Ô£à CRITIQUE: Retourner explicitement undefined (pas de cleanup n├®cessaire ici)
-    return undefined;
-  }, [loadServices]);
-
+  // Un seul chargement à l'entrée sur l'onglet (évite double appel concurrent useEffect + focus → crash / état corrompu)
   useFocusEffect(
     useCallback(() => {
       loadServices(true);
@@ -1687,9 +1679,11 @@ const MesServicesScreen: React.FC = () => {
               estimatedItemSize={200}
               numColumns={deviceType.isTablet ? deviceType.columns : 1}
               // Ô£à NOUVEAU: Responsive design - Grid layout pour tablette/desktop
-              renderItem={({ item: service }) => {
+              extraData={{ bulkMode, selected: selectedItems.size, n: filteredServices.length }}
+              renderItem={({ item: service, index }) => {
                 const serviceId = service?.id?.toString() || '';
                 const isSelected = selectedItems.has(serviceId);
+                const stableKey = service?.id != null ? String(service.id) : `row-${index}`;
 
                 return (
                   <View style={[
@@ -1698,7 +1692,7 @@ const MesServicesScreen: React.FC = () => {
                     deviceType.isTablet && deviceType.columns > 1 && { flex: 1, marginHorizontal: 8 }
                   ]}>
                     <ServiceCardModern
-                      key={service?.id || `service-${Math.random()}`}
+                      key={stableKey}
                       service={service}
                       onEdit={handleEditService}
                       onView={handleViewService}
@@ -1722,7 +1716,7 @@ const MesServicesScreen: React.FC = () => {
                   </View>
                 );
               }}
-              keyExtractor={(item) => item?.id?.toString() || `service-${Math.random()}`}
+              keyExtractor={(item, index) => (item?.id != null ? String(item.id) : `service-${index}`)}
               contentContainerStyle={dynamicStyles.flashListContent}
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />

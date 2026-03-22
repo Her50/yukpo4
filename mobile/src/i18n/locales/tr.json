@@ -213,7 +213,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} etkileşim",
+        "favoriteCount": "{{count}} favori",
+        "period7d": "7g",
+        "period30d": "30g",
+        "period90d": "90g"
     },
     "account": {
         "title": "My Account"
@@ -306,7 +311,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "Hata",
+        "remplirTousChamps": "Lütfen tüm alanları doldurun",
+        "impossibleEnvoyer": "Mesaj gönderilemedi",
+        "impossibleOuvrirLien": "Bu bağlantı açılamıyor",
+        "contactezNous": "Bize ulaşın",
+        "nousSommesLa": "Size yardımcı olmak için buradayız!",
+        "envoyezMessage": "Bize mesaj gönderin",
+        "emailLabel": "E-posta *",
+        "emailPlaceholder": "sizin@email.com",
+        "sujetLabel": "Konu *",
+        "sujetPlaceholder": "Mesajınızın konusu",
+        "messageLabel": "Mesaj *",
+        "emailTitle": "E-posta",
+        "chatDirect": "Doğrudan sohbet",
+        "heuresOuverture": "Çalışma saatleri:",
+        "heuresOuvertureValeur": "8:00 - 18:00 (Pzt-Cum)",
+        "tempsReponseValeur": "24 saatten az",
+        "supportValeur": "Haftanın 7 günü mevcut"
     },
     "tokens": {
         "recharge": "Recharge Tokens",
@@ -1473,7 +1496,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "AI Storyboard",
+            "storyboardFailedMessage": "Storyboard oluşturulamadı.",
+            "previewShortNoSessionTitle": "Hızlı önizleme",
+            "previewShortNoSessionMessage": "Önce bir AI storyboard veya Studio oturumu oluştur.",
+            "previewShortNoUrlTitle": "Hızlı önizleme",
+            "previewShortNoUrlMessage": "Önizleme URL alınamadı.",
+            "previewShortFailedTitle": "Hızlı önizleme",
+            "previewShortFailedMessage": "Kısa önizleme başlatılamadı."
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1502,12 +1533,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "Hızlı önizleme"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "Yapılandırma",
+            "step2": "Medya",
+            "step3": "Özet"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1535,7 +1570,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "Önizleme…",
+            "previewShort": "3s önizleme"
         },
         "summary": {
             "service": "Service",
@@ -1553,7 +1590,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "Sahne {{index}}",
+            "sceneMediaNone": "Yukpo'nun otomatik seçmesine izin ver",
+            "sceneMediaNoneShort": "Otomatik",
+            "optionalScene": "İsteğe bağlı sahne",
+            "sceneMediaHint": "Bu sahne için medya seç veya Yukpo'nun karar vermesine izin ver.",
+            "sceneDefaultHint": "(Boş sahne)",
+            "noScenes": "Tanımlı sahne yok"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "Tamam",
+        "error": "Hata",
+        "cancel": "İptal",
+        "goToMyServices": "Hizmetlerime Git",
+        "productFallback": "Ürün",
+        "serviceWithId": "Hizmet #{{id}}",
+        "productWithIndex": "Ürün {{index}}",
+        "helpLabel": "Yardım",
+        "helpHint": "Video oluşturma eğitimini aç",
+        "loadingServices": "Hizmetleriniz yükleniyor…",
+        "servicesAvailable": "{{count}} hizmet mevcut",
+        "loading": "Yükleniyor…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "Teslim alma noktası",
+        "dropoff": "Teslimat noktası",
+        "voirStatistiques": "İstatistiklerimi gör",
+        "livraisonsCompletees": "Tamamlanan teslimatlar",
+        "tauxReussite": "Başarı oranı",
+        "tempsMoyen": "Ortalama süre",
+        "gainsTotaux": "Toplam kazanç",
+        "gainsCeMois": "Bu ay kazanç"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "Hata",
+        "impossibleChargerDonnees": "Gösterge paneli verileri yüklenemedi",
+        "actif": "Aktif",
+        "inactif": "Pasif",
+        "enAttente": "Beklemede",
+        "inconnu": "Bilinmiyor",
+        "reessayer": "Tekrar dene",
+        "septJours": "7 gün",
+        "trenteJours": "30 gün",
+        "quatreVingtDixJours": "90 gün",
+        "vuesTotales": "Toplam görüntüleme",
+        "interactions": "Etkileşimler",
+        "actionsRapides": "Hızlı işlemler",
+        "nouvelle": "Yeni",
+        "analytics": "Analiz",
+        "viewsCount": "{{count}} görüntüleme",
+        "messagesCount": "{{count}} mesaj",
+        "callsCount": "{{count}} arama",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "Görüntüleme",
+        "message": "Mesaj",
+        "appel": "Arama",
+        "activite": "Etkinlik",
+        "surService": "{{service}} üzerinde",
+        "ilYA": "{{time}} önce"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "Lütfen kılavuza bakın: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "Kullanıcı",
+        "erreurOauth": "OAuth Hatası",
+        "erreur": "Hata",
+        "configOauthAndroidManquante": "Android OAuth yapılandırması eksik.\n\n",
+        "consultezGuideOauth": "Bakınız: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "Yapılandırma gerekli",
+        "erreurDeConnexion": "Giriş hatası",
+        "emailOuMotDePasseIncorrect": "E-posta veya şifre yanlış",
+        "continuerAvec": "{{label}} ile devam et",
+        "connectezVousAvecVotreCompte": "Hesabınızla giriş yapın",
+        "ou": "veya",
+        "ouUtilisezVosIdentifiants": "veya kimlik bilgilerinizi kullanın:",
+        "connexionEnCours": "Giriş yapılıyor...",
+        "seConnecter": "Giriş yap",
+        "inscriptionPartenaire": "⚠️ Ortak Kaydı",
+        "devenirPartenaire": "🏢 Ortak ol",
+        "supportContact": "Sorun olursa destek ekibimize yazın: support@yukpo.com",
+        "important": "⚠️ Önemli:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "İstatistiklerinizi görmek için özel hizmetler oluşturun",
+        "pharmacie": "Eczane",
+        "laboratoire": "Laboratuvar",
+        "banqueSang": "Kan bankası",
+        "agence": "Acente",
+        "covoiturage": "Araç paylaşımı",
+        "taxi": "Taksi",
+        "total": "Toplam",
+        "actifs": "Aktif",
+        "inactifs": "Pasif",
+        "last7Days": "Son 7 gün",
+        "last30Days": "Son 30 gün",
+        "thisMonth": "Bu ay",
+        "pharmacieDetail": "💊 Eczane",
+        "hopitalDetail": "🏥 Hastane",
+        "laboratoireDetail": "🔬 Laboratuvar",
+        "banqueSangDetail": "🩸 Kan bankası",
+        "agenceDetail": "🚌 Acente",
+        "covoiturageDetail": "🚗 Araç paylaşımı",
+        "taxiDetail": "🚕 Taksi"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "Kamerun",
+        "rdCongo": "Kongo DC",
+        "gabon": "Gabon",
+        "burkinaFaso": "Burkina Faso",
+        "mali": "Mali",
+        "tchad": "Çad",
+        "congo": "Kongo",
+        "france": "Fransa",
+        "belgique": "Belçika",
+        "consultezGuide": "OAuth yapılandırma kılavuzuna bakın",
+        "utilisateur": "Kullanıcı",
+        "erreurOauth": "OAuth Hatası",
+        "configOauthManquante": "Android OAuth yapılandırması eksik.",
+        "configurationRequise": "Yapılandırma gerekli",
+        "erreurInscription": "Kayıt hatası"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

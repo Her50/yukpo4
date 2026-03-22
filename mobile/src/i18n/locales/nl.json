@@ -213,7 +213,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} interaction(s)",
+        "favoriteCount": "{{count}} favorite(s)",
+        "period7d": "7d",
+        "period30d": "30d",
+        "period90d": "90d"
     },
     "account": {
         "title": "My Account"
@@ -306,7 +311,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "Error",
+        "remplirTousChamps": "Please fill in all fields",
+        "impossibleEnvoyer": "Unable to send the message",
+        "impossibleOuvrirLien": "Unable to open this link",
+        "contactezNous": "Contact us",
+        "nousSommesLa": "We are here to help! Feel free to contact us.",
+        "envoyezMessage": "Send us a message",
+        "emailLabel": "Email *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "Subject *",
+        "sujetPlaceholder": "Subject of your message",
+        "messageLabel": "Message *",
+        "emailTitle": "Email",
+        "chatDirect": "Direct chat",
+        "heuresOuverture": "Business hours:",
+        "heuresOuvertureValeur": "8:00 AM - 6:00 PM (Mon-Fri)",
+        "tempsReponseValeur": "Less than 24h",
+        "supportValeur": "Available 7 days a week"
     },
     "tokens": {
         "recharge": "Recharge Tokens",
@@ -1473,7 +1496,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "AI Storyboard",
+            "storyboardFailedMessage": "Kan storyboard niet genereren.",
+            "previewShortNoSessionTitle": "Snelle preview",
+            "previewShortNoSessionMessage": "Genereer eerst een AI-storyboard of een Studio-sessie.",
+            "previewShortNoUrlTitle": "Snelle preview",
+            "previewShortNoUrlMessage": "Kan de preview-URL niet ophalen.",
+            "previewShortFailedTitle": "Snelle preview",
+            "previewShortFailedMessage": "Kan korte preview niet starten."
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1502,12 +1533,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "Snelle preview"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "Configuratie",
+            "step2": "Media",
+            "step3": "Samenvatting"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1535,7 +1570,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "Preview…",
+            "previewShort": "3s preview"
         },
         "summary": {
             "service": "Service",
@@ -1553,7 +1590,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "Scène {{index}}",
+            "sceneMediaNone": "Yukpo automatisch laten kiezen",
+            "sceneMediaNoneShort": "Auto",
+            "optionalScene": "Optionele scène",
+            "sceneMediaHint": "Kies een medium voor deze scène of laat Yukpo beslissen.",
+            "sceneDefaultHint": "(Lege scène)",
+            "noScenes": "Geen scènes gedefinieerd"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "OK",
+        "error": "Fout",
+        "cancel": "Annuleren",
+        "goToMyServices": "Ga naar Mijn Diensten",
+        "productFallback": "Product",
+        "serviceWithId": "Dienst #{{id}}",
+        "productWithIndex": "Product {{index}}",
+        "helpLabel": "Hulp",
+        "helpHint": "Open de tutorial voor het maken van video's",
+        "loadingServices": "Je diensten laden…",
+        "servicesAvailable": "{{count}} dienst(en) beschikbaar",
+        "loading": "Laden…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "Pickup point",
+        "dropoff": "Drop-off point",
+        "voirStatistiques": "View my statistics",
+        "livraisonsCompletees": "Completed deliveries",
+        "tauxReussite": "Success rate",
+        "tempsMoyen": "Average time",
+        "gainsTotaux": "Total earnings",
+        "gainsCeMois": "Earnings this month"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "Fout",
+        "impossibleChargerDonnees": "Kan dashboardgegevens niet laden",
+        "actif": "Actief",
+        "inactif": "Inactief",
+        "enAttente": "In afwachting",
+        "inconnu": "Onbekend",
+        "reessayer": "Opnieuw proberen",
+        "septJours": "7 dagen",
+        "trenteJours": "30 dagen",
+        "quatreVingtDixJours": "90 dagen",
+        "vuesTotales": "Totaal weergaven",
+        "interactions": "Interacties",
+        "actionsRapides": "Snelle acties",
+        "nouvelle": "Nieuw",
+        "analytics": "Analyse",
+        "viewsCount": "{{count}} weergaven",
+        "messagesCount": "{{count}} ber.",
+        "callsCount": "{{count}} oproepen",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "Weergave",
+        "message": "Bericht",
+        "appel": "Oproep",
+        "activite": "Activiteit",
+        "surService": "op {{service}}",
+        "ilYA": "{{time}} geleden"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "Raadpleeg de gids: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "Gebruiker",
+        "erreurOauth": "OAuth-fout",
+        "erreur": "Fout",
+        "configOauthAndroidManquante": "Android OAuth-configuratie ontbreekt.\n\n",
+        "consultezGuideOauth": "Zie: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "Configuratie vereist",
+        "erreurDeConnexion": "Inlogfout",
+        "emailOuMotDePasseIncorrect": "Onjuist e-mailadres of wachtwoord",
+        "continuerAvec": "Doorgaan met {{label}}",
+        "connectezVousAvecVotreCompte": "Log in met uw account",
+        "ou": "of",
+        "ouUtilisezVosIdentifiants": "of gebruik uw inloggegevens:",
+        "connexionEnCours": "Inloggen...",
+        "seConnecter": "Inloggen",
+        "inscriptionPartenaire": "⚠️ Partnerregistratie",
+        "devenirPartenaire": "🏢 Partner worden",
+        "supportContact": "Bij problemen kunt u contact opnemen met support@yukpo.com",
+        "important": "⚠️ Belangrijk:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "Maak gespecialiseerde diensten aan om uw statistieken te bekijken",
+        "pharmacie": "Apotheek",
+        "laboratoire": "Laboratorium",
+        "banqueSang": "Bloedbank",
+        "agence": "Agentschap",
+        "covoiturage": "Carpoolen",
+        "taxi": "Taxi",
+        "total": "Totaal",
+        "actifs": "Actief",
+        "inactifs": "Inactief",
+        "last7Days": "Laatste 7 dagen",
+        "last30Days": "Laatste 30 dagen",
+        "thisMonth": "Deze maand",
+        "pharmacieDetail": "💊 Apotheek",
+        "hopitalDetail": "🏥 Ziekenhuis",
+        "laboratoireDetail": "🔬 Laboratorium",
+        "banqueSangDetail": "🩸 Bloedbank",
+        "agenceDetail": "🚌 Agentschap",
+        "covoiturageDetail": "🚗 Carpoolen",
+        "taxiDetail": "🚕 Taxi"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "Cameroon",
+        "rdCongo": "DR Congo",
+        "gabon": "Gabon",
+        "burkinaFaso": "Burkina Faso",
+        "mali": "Mali",
+        "tchad": "Chad",
+        "congo": "Congo",
+        "france": "France",
+        "belgique": "Belgium",
+        "consultezGuide": "Please refer to the OAuth configuration guide",
+        "utilisateur": "User",
+        "erreurOauth": "OAuth Error",
+        "configOauthManquante": "Android OAuth configuration missing.",
+        "configurationRequise": "Configuration required",
+        "erreurInscription": "Registration error"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

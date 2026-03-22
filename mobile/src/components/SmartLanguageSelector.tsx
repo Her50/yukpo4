@@ -26,6 +26,7 @@ import { SUPPORTED_LANGUAGES } from '../i18n';
 import {
     detectGeoLanguageContext,
     GeoLanguage,
+    getLocalizedLanguageName,
 } from '../services/geoLanguageService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -99,7 +100,7 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
     // Toutes les langues supportées (pour le mode "voir tout")
     const allLanguages = SUPPORTED_LANGUAGES.map(l => ({
         code: l.code,
-        name: l.name,
+        name: getLocalizedLanguageName(l.code, language) || l.name,
         nativeName: l.name,
         flag: l.flag,
         isOfficial: false,
@@ -216,6 +217,9 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
 
     function renderLanguageItem(lang: GeoLanguage, showBadges: boolean) {
         const isActive = lang.code === language;
+        const localizedName = getLocalizedLanguageName(lang.code, language);
+        const displayName = localizedName || lang.nativeName || lang.name;
+        const subtitle = localizedName ? lang.nativeName : (lang.name !== lang.nativeName ? lang.name : null);
         return (
             <TouchableOpacity
                 key={lang.code}
@@ -227,7 +231,7 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                 <View style={styles.langInfo}>
                     <View style={styles.langNameRow}>
                         <Text style={[styles.langName, isActive && styles.langNameActive]}>
-                            {lang.nativeName || lang.name}
+                            {displayName}
                         </Text>
                         {showBadges && lang.isOfficial && (
                             <View style={styles.badgeOfficial}>
@@ -240,8 +244,8 @@ const SmartLanguageSelector: React.FC<SmartLanguageSelectorProps> = ({
                             </View>
                         )}
                     </View>
-                    {lang.name !== lang.nativeName && (
-                        <Text style={styles.langSubtitle}>{lang.name}</Text>
+                    {subtitle && (
+                        <Text style={styles.langSubtitle}>{subtitle}</Text>
                     )}
                 </View>
                 {isActive && <Text style={styles.checkMark}>✓</Text>}

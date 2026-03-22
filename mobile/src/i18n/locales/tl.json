@@ -213,7 +213,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} interaction(s)",
+        "favoriteCount": "{{count}} favorite(s)",
+        "period7d": "7d",
+        "period30d": "30d",
+        "period90d": "90d"
     },
     "account": {
         "title": "My Account"
@@ -306,7 +311,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "Error",
+        "remplirTousChamps": "Please fill in all fields",
+        "impossibleEnvoyer": "Unable to send the message",
+        "impossibleOuvrirLien": "Unable to open this link",
+        "contactezNous": "Contact us",
+        "nousSommesLa": "We are here to help! Feel free to contact us.",
+        "envoyezMessage": "Send us a message",
+        "emailLabel": "Email *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "Subject *",
+        "sujetPlaceholder": "Subject of your message",
+        "messageLabel": "Message *",
+        "emailTitle": "Email",
+        "chatDirect": "Direct chat",
+        "heuresOuverture": "Business hours:",
+        "heuresOuvertureValeur": "8:00 AM - 6:00 PM (Mon-Fri)",
+        "tempsReponseValeur": "Less than 24h",
+        "supportValeur": "Available 7 days a week"
     },
     "tokens": {
         "recharge": "Recharge Tokens",
@@ -1473,7 +1496,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "AI Storyboard",
+            "storyboardFailedMessage": "Hindi malikha ang storyboard.",
+            "previewShortNoSessionTitle": "Mabilisang preview",
+            "previewShortNoSessionMessage": "Lumikha muna ng AI storyboard o Studio session.",
+            "previewShortNoUrlTitle": "Mabilisang preview",
+            "previewShortNoUrlMessage": "Hindi makuha ang preview URL.",
+            "previewShortFailedTitle": "Mabilisang preview",
+            "previewShortFailedMessage": "Hindi masimulan ang maikling preview."
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1502,12 +1533,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "Mabilisang preview"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "Pagsasaayos",
+            "step2": "Media",
+            "step3": "Buod"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1535,7 +1570,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "Preview…",
+            "previewShort": "Preview 3s"
         },
         "summary": {
             "service": "Service",
@@ -1553,7 +1590,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "Eksena {{index}}",
+            "sceneMediaNone": "Hayaang pumili ang Yukpo nang awtomatiko",
+            "sceneMediaNoneShort": "Auto",
+            "optionalScene": "Opsyonal na eksena",
+            "sceneMediaHint": "Pumili ng media para sa eksenang ito o hayaan ang Yukpo.",
+            "sceneDefaultHint": "(Walang laman na eksena)",
+            "noScenes": "Walang natukoy na eksena"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "OK",
+        "error": "Error",
+        "cancel": "Kanselahin",
+        "goToMyServices": "Pumunta sa Aking Mga Serbisyo",
+        "productFallback": "Produkto",
+        "serviceWithId": "Serbisyo #{{id}}",
+        "productWithIndex": "Produkto {{index}}",
+        "helpLabel": "Tulong",
+        "helpHint": "Buksan ang tutorial sa paggawa ng video",
+        "loadingServices": "Naglo-load ng iyong mga serbisyo…",
+        "servicesAvailable": "{{count}} serbisyo ang available",
+        "loading": "Naglo-load…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "Pickup point",
+        "dropoff": "Drop-off point",
+        "voirStatistiques": "View my statistics",
+        "livraisonsCompletees": "Completed deliveries",
+        "tauxReussite": "Success rate",
+        "tempsMoyen": "Average time",
+        "gainsTotaux": "Total earnings",
+        "gainsCeMois": "Earnings this month"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "Error",
+        "impossibleChargerDonnees": "Hindi ma-load ang data ng dashboard",
+        "actif": "Aktibo",
+        "inactif": "Hindi aktibo",
+        "enAttente": "Naghihintay",
+        "inconnu": "Hindi alam",
+        "reessayer": "Subukan muli",
+        "septJours": "7 araw",
+        "trenteJours": "30 araw",
+        "quatreVingtDixJours": "90 araw",
+        "vuesTotales": "Kabuuang mga view",
+        "interactions": "Mga interaksyon",
+        "actionsRapides": "Mabilis na aksyon",
+        "nouvelle": "Bago",
+        "analytics": "Analytics",
+        "viewsCount": "{{count}} view",
+        "messagesCount": "{{count}} mensahe",
+        "callsCount": "{{count}} tawag",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "View",
+        "message": "Mensahe",
+        "appel": "Tawag",
+        "activite": "Aktibidad",
+        "surService": "sa {{service}}",
+        "ilYA": "{{time}} na ang nakalipas"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "Pakitingnan ang gabay: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "Gumagamit",
+        "erreurOauth": "Error sa OAuth",
+        "erreur": "Error",
+        "configOauthAndroidManquante": "Nawawalang Android OAuth configuration.\n\n",
+        "consultezGuideOauth": "Tingnan: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "Kailangan ng configuration",
+        "erreurDeConnexion": "Error sa pag-login",
+        "emailOuMotDePasseIncorrect": "Mali ang email o password",
+        "continuerAvec": "Magpatuloy sa {{label}}",
+        "connectezVousAvecVotreCompte": "Mag-sign in gamit ang iyong account",
+        "ou": "o",
+        "ouUtilisezVosIdentifiants": "o gamitin ang iyong mga kredensyal:",
+        "connexionEnCours": "Nagla-login...",
+        "seConnecter": "Mag-sign in",
+        "inscriptionPartenaire": "⚠️ Pagpaparehistro ng Partner",
+        "devenirPartenaire": "🏢 Maging partner",
+        "supportContact": "Kung may problema, makipag-ugnayan sa support@yukpo.com",
+        "important": "⚠️ Mahalaga:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "Gumawa ng mga espesyalisadong serbisyo upang makita ang iyong mga istatistika",
+        "pharmacie": "Parmasya",
+        "laboratoire": "Laboratoryo",
+        "banqueSang": "Blood bank",
+        "agence": "Ahensya",
+        "covoiturage": "Carpool",
+        "taxi": "Taksi",
+        "total": "Kabuuan",
+        "actifs": "Aktibo",
+        "inactifs": "Hindi aktibo",
+        "last7Days": "Huling 7 araw",
+        "last30Days": "Huling 30 araw",
+        "thisMonth": "Ngayong buwan",
+        "pharmacieDetail": "💊 Parmasya",
+        "hopitalDetail": "🏥 Ospital",
+        "laboratoireDetail": "🔬 Laboratoryo",
+        "banqueSangDetail": "🩸 Blood bank",
+        "agenceDetail": "🚌 Ahensya",
+        "covoiturageDetail": "🚗 Carpool",
+        "taxiDetail": "🚕 Taksi"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "Cameroon",
+        "rdCongo": "DR Congo",
+        "gabon": "Gabon",
+        "burkinaFaso": "Burkina Faso",
+        "mali": "Mali",
+        "tchad": "Chad",
+        "congo": "Congo",
+        "france": "France",
+        "belgique": "Belgium",
+        "consultezGuide": "Please refer to the OAuth configuration guide",
+        "utilisateur": "User",
+        "erreurOauth": "OAuth Error",
+        "configOauthManquante": "Android OAuth configuration missing.",
+        "configurationRequise": "Configuration required",
+        "erreurInscription": "Registration error"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

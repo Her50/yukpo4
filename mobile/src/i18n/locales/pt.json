@@ -79,7 +79,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} interação(ões)",
+        "favoriteCount": "{{count}} favorito(s)",
+        "period7d": "7d",
+        "period30d": "30d",
+        "period90d": "90d"
     },
     "account": {
         "title": "Minha Conta"
@@ -172,7 +177,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "Erro",
+        "remplirTousChamps": "Por favor preencha todos os campos",
+        "impossibleEnvoyer": "Impossível enviar a mensagem",
+        "impossibleOuvrirLien": "Impossível abrir este link",
+        "contactezNous": "Contacte-nos",
+        "nousSommesLa": "Estamos aqui para ajudar! Não hesite em contactar-nos.",
+        "envoyezMessage": "Envie-nos uma mensagem",
+        "emailLabel": "Email *",
+        "emailPlaceholder": "seu@email.com",
+        "sujetLabel": "Assunto *",
+        "sujetPlaceholder": "Assunto da sua mensagem",
+        "messageLabel": "Mensagem *",
+        "emailTitle": "Email",
+        "chatDirect": "Chat direto",
+        "heuresOuverture": "Horário:",
+        "heuresOuvertureValeur": "8:00 - 18:00 (Seg-Sex)",
+        "tempsReponseValeur": "Menos de 24h",
+        "supportValeur": "Disponível 7 dias por semana"
     },
     "tokens": {
         "recharge": "Recarregar Tokens",
@@ -1854,7 +1877,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "Storyboard IA",
+            "storyboardFailedMessage": "Não foi possível gerar o storyboard.",
+            "previewShortNoSessionTitle": "Pré-visualização rápida",
+            "previewShortNoSessionMessage": "Gere primeiro um storyboard IA ou uma sessão Studio.",
+            "previewShortNoUrlTitle": "Pré-visualização rápida",
+            "previewShortNoUrlMessage": "Não foi possível obter o URL da pré-visualização.",
+            "previewShortFailedTitle": "Pré-visualização rápida",
+            "previewShortFailedMessage": "Não foi possível iniciar a pré-visualização curta."
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1883,12 +1914,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "Pré-visualização rápida"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "Configuração",
+            "step2": "Mídias",
+            "step3": "Resumo"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1916,7 +1951,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "Pré-visualizando…",
+            "previewShort": "Pré-visualizar 3s"
         },
         "summary": {
             "service": "Service",
@@ -1934,7 +1971,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "Cena {{index}}",
+            "sceneMediaNone": "Deixar o Yukpo escolher automaticamente",
+            "sceneMediaNoneShort": "Auto",
+            "optionalScene": "Cena opcional",
+            "sceneMediaHint": "Escolha uma mídia para esta cena ou deixe o Yukpo decidir.",
+            "sceneDefaultHint": "(Cena vazia)",
+            "noScenes": "Nenhuma cena definida"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "OK",
+        "error": "Erro",
+        "cancel": "Cancelar",
+        "goToMyServices": "Ir para Meus Serviços",
+        "productFallback": "Produto",
+        "serviceWithId": "Serviço #{{id}}",
+        "productWithIndex": "Produto {{index}}",
+        "helpLabel": "Ajuda",
+        "helpHint": "Abrir tutorial de criação de vídeo",
+        "loadingServices": "Carregando seus serviços…",
+        "servicesAvailable": "{{count}} serviço(s) disponível(is)",
+        "loading": "Carregando…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "Ponto de recolha",
+        "dropoff": "Ponto de entrega",
+        "voirStatistiques": "Ver as minhas estatísticas",
+        "livraisonsCompletees": "Entregas concluídas",
+        "tauxReussite": "Taxa de sucesso",
+        "tempsMoyen": "Tempo médio",
+        "gainsTotaux": "Ganhos totais",
+        "gainsCeMois": "Ganhos este mês"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "Erro",
+        "impossibleChargerDonnees": "Não foi possível carregar os dados do painel",
+        "actif": "Ativo",
+        "inactif": "Inativo",
+        "enAttente": "Pendente",
+        "inconnu": "Desconhecido",
+        "reessayer": "Tentar novamente",
+        "septJours": "7 dias",
+        "trenteJours": "30 dias",
+        "quatreVingtDixJours": "90 dias",
+        "vuesTotales": "Visualizações totais",
+        "interactions": "Interações",
+        "actionsRapides": "Ações rápidas",
+        "nouvelle": "Nova",
+        "analytics": "Analíticas",
+        "viewsCount": "{{count}} visualizações",
+        "messagesCount": "{{count}} msg",
+        "callsCount": "{{count}} chamadas",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "Visualização",
+        "message": "Mensagem",
+        "appel": "Chamada",
+        "activite": "Atividade",
+        "surService": "em {{service}}",
+        "ilYA": "Há {{time}}"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "Consulte o guia: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "Utilizador",
+        "erreurOauth": "Erro OAuth",
+        "erreur": "Erro",
+        "configOauthAndroidManquante": "Configuração OAuth Android em falta.\n\n",
+        "consultezGuideOauth": "Consulte: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "Configuração necessária",
+        "erreurDeConnexion": "Erro de ligação",
+        "emailOuMotDePasseIncorrect": "Email ou palavra-passe incorretos",
+        "continuerAvec": "Continuar com {{label}}",
+        "connectezVousAvecVotreCompte": "Inicie sessão com a sua conta",
+        "ou": "ou",
+        "ouUtilisezVosIdentifiants": "ou use as suas credenciais:",
+        "connexionEnCours": "A ligar...",
+        "seConnecter": "Iniciar sessão",
+        "inscriptionPartenaire": "⚠️ Registo de parceiro",
+        "devenirPartenaire": "🏢 Tornar-se parceiro",
+        "supportContact": "Em caso de problema, contacte o nosso suporte em support@yukpo.com",
+        "important": "⚠️ Importante:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "Crie serviços especializados para ver suas estatísticas",
+        "pharmacie": "Farmácia",
+        "laboratoire": "Laboratório",
+        "banqueSang": "Banco de Sangue",
+        "agence": "Agência",
+        "covoiturage": "Carona",
+        "taxi": "Táxi",
+        "total": "Total",
+        "actifs": "Ativos",
+        "inactifs": "Inativos",
+        "last7Days": "Últimos 7 dias",
+        "last30Days": "Últimos 30 dias",
+        "thisMonth": "Este mês",
+        "pharmacieDetail": "💊 Farmácia",
+        "hopitalDetail": "🏥 Hospital",
+        "laboratoireDetail": "🔬 Laboratório",
+        "banqueSangDetail": "🩸 Banco de Sangue",
+        "agenceDetail": "🚌 Agência",
+        "covoiturageDetail": "🚗 Carona",
+        "taxiDetail": "🚕 Táxi"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "Camarões",
+        "rdCongo": "RD Congo",
+        "gabon": "Gabão",
+        "burkinaFaso": "Burkina Faso",
+        "mali": "Mali",
+        "tchad": "Chade",
+        "congo": "Congo",
+        "france": "França",
+        "belgique": "Bélgica",
+        "consultezGuide": "Consulte o guia de configuração OAuth",
+        "utilisateur": "Utilizador",
+        "erreurOauth": "Erro OAuth",
+        "configOauthManquante": "Configuração OAuth Android ausente.",
+        "configurationRequise": "Configuração necessária",
+        "erreurInscription": "Erro no registo"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

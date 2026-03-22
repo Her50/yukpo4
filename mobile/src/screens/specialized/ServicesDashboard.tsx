@@ -87,7 +87,7 @@ const ServicesDashboard: React.FC = () => {
                 <Text style={styles.emptyIcon}>📊</Text>
                 <Text style={styles.emptyTitle}>{t('servicesDashboard.aucuneStatistiqueDisponible')}</Text>
                 <Text style={styles.emptyText}>
-                    Créez des services spécialisés pour voir vos statistiques
+                    {t('servicesDashboard.emptyText')}
                 </Text>
             </View>
         );
@@ -96,13 +96,13 @@ const ServicesDashboard: React.FC = () => {
     // Préparer données pour graphique par type
     const typeChartData = Object.entries(stats.by_type).map(([type, data]: [string, any]) => {
         const typeLabels: Record<string, string> = {
-            pharmacie: 'Pharmacie',
+            pharmacie: t('servicesDashboard.pharmacie'),
             hopital: t('servicesDashboard.hopital'),
-            laboratoire: 'Laboratoire',
-            banque_sang: 'Banque Sang',
-            agence_voyage: 'Agence',
-            covoiturage: 'Covoiturage',
-            taxi: 'Taxi',
+            laboratoire: t('servicesDashboard.laboratoire'),
+            banque_sang: t('servicesDashboard.banqueSang'),
+            agence_voyage: t('servicesDashboard.agence'),
+            covoiturage: t('servicesDashboard.covoiturage'),
+            taxi: t('servicesDashboard.taxi'),
         };
         const typeColors: Record<string, string> = {
             pharmacie: '#10B981',
@@ -152,19 +152,19 @@ const ServicesDashboard: React.FC = () => {
             {/* Statistiques principales */}
             <View style={styles.statsGrid}>
                 <NativeCard style={styles.statCard}>
-                    <Text style={styles.statLabel}>Total</Text>
+                    <Text style={styles.statLabel}>{t('servicesDashboard.total')}</Text>
                     <Text style={styles.statValue}>{stats.total}</Text>
                     <SafeIcon name="layers" size={24} color={modernColors.primary} />
                 </NativeCard>
                 <NativeCard style={styles.statCard}>
-                    <Text style={styles.statLabel}>Actifs</Text>
+                    <Text style={styles.statLabel}>{t('servicesDashboard.actifs')}</Text>
                     <Text style={[styles.statValue, { color: modernColors.success }]}>
                         {stats.active}
                     </Text>
                     <SafeIcon name="check-circle" size={24} color={modernColors.success} />
                 </NativeCard>
                 <NativeCard style={styles.statCard}>
-                    <Text style={styles.statLabel}>Inactifs</Text>
+                    <Text style={styles.statLabel}>{t('servicesDashboard.inactifs')}</Text>
                     <Text style={[styles.statValue, { color: modernColors.warning }]}>
                         {stats.inactive}
                     </Text>
@@ -178,15 +178,15 @@ const ServicesDashboard: React.FC = () => {
                 <View style={styles.activityRow}>
                     <View style={styles.activityItem}>
                         <Text style={styles.activityValue}>{stats.recent_activity.last_7_days}</Text>
-                        <Text style={styles.activityLabel}>7 derniers jours</Text>
+                        <Text style={styles.activityLabel}>{t('servicesDashboard.last7Days')}</Text>
                     </View>
                     <View style={styles.activityItem}>
                         <Text style={styles.activityValue}>{stats.recent_activity.last_30_days}</Text>
-                        <Text style={styles.activityLabel}>30 derniers jours</Text>
+                        <Text style={styles.activityLabel}>{t('servicesDashboard.last30Days')}</Text>
                     </View>
                     <View style={styles.activityItem}>
                         <Text style={styles.activityValue}>{stats.recent_activity.this_month}</Text>
-                        <Text style={styles.activityLabel}>Ce mois</Text>
+                        <Text style={styles.activityLabel}>{t('servicesDashboard.thisMonth')}</Text>
                     </View>
                 </View>
             </NativeCard>
@@ -217,13 +217,13 @@ const ServicesDashboard: React.FC = () => {
                     <Text style={styles.sectionTitle}>{t('servicesDashboard.detailsParType')}</Text>
                     {Object.entries(stats.by_type).map(([type, data]: [string, any]) => {
                         const typeLabels: Record<string, string> = {
-                            pharmacie: '💊 Pharmacie',
-                            hopital: t('servicesDashboard.hopital'),
-                            laboratoire: '🔬 Laboratoire',
-                            banque_sang: '🩸 Banque Sang',
-                            agence_voyage: '🚌 Agence',
-                            covoiturage: '🚗 Covoiturage',
-                            taxi: '🚕 Taxi',
+                            pharmacie: t('servicesDashboard.pharmacieDetail'),
+                            hopital: t('servicesDashboard.hopitalDetail'),
+                            laboratoire: t('servicesDashboard.laboratoireDetail'),
+                            banque_sang: t('servicesDashboard.banqueSangDetail'),
+                            agence_voyage: t('servicesDashboard.agenceDetail'),
+                            covoiturage: t('servicesDashboard.covoiturageDetail'),
+                            taxi: t('servicesDashboard.taxiDetail'),
                         };
                         return (
                             <View key={type} style={styles.typeRow}>
@@ -233,7 +233,7 @@ const ServicesDashboard: React.FC = () => {
                                 <View style={styles.typeStats}>
                                     <View style={styles.typeStatItem}>
                                         <Text style={styles.typeStatValue}>{data.total}</Text>
-                                        <Text style={styles.typeStatLabel}>Total</Text>
+                                        <Text style={styles.typeStatLabel}>{t('servicesDashboard.total')}</Text>
                                     </View>
                                     <View style={styles.typeStatItem}>
                                         <Text
@@ -241,7 +241,7 @@ const ServicesDashboard: React.FC = () => {
                                         >
                                             {data.active}
                                         </Text>
-                                        <Text style={styles.typeStatLabel}>Actifs</Text>
+                                        <Text style={styles.typeStatLabel}>{t('servicesDashboard.actifs')}</Text>
                                     </View>
                                     <View style={styles.typeStatItem}>
                                         <Text
@@ -249,7 +249,7 @@ const ServicesDashboard: React.FC = () => {
                                         >
                                             {data.inactive}
                                         </Text>
-                                        <Text style={styles.typeStatLabel}>Inactifs</Text>
+                                        <Text style={styles.typeStatLabel}>{t('servicesDashboard.inactifs')}</Text>
                                     </View>
                                 </View>
                             </View>

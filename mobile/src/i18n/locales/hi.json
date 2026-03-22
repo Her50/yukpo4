@@ -79,7 +79,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} इंटरैक्शन",
+        "favoriteCount": "{{count}} पसंदीदा",
+        "period7d": "7दि",
+        "period30d": "30दि",
+        "period90d": "90दि"
     },
     "account": {
         "title": "मेरा खाता"
@@ -172,7 +177,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "त्रुटि",
+        "remplirTousChamps": "कृपया सभी फ़ील्ड भरें",
+        "impossibleEnvoyer": "संदेश भेजना असंभव",
+        "impossibleOuvrirLien": "यह लिंक खोलना असंभव",
+        "contactezNous": "संपर्क करें",
+        "nousSommesLa": "हम आपकी मदद के लिए यहाँ हैं!",
+        "envoyezMessage": "हमें संदेश भेजें",
+        "emailLabel": "ईमेल *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "विषय *",
+        "sujetPlaceholder": "आपके संदेश का विषय",
+        "messageLabel": "संदेश *",
+        "emailTitle": "ईमेल",
+        "chatDirect": "सीधी बातचीत",
+        "heuresOuverture": "कार्य समय:",
+        "heuresOuvertureValeur": "8:00 - 18:00 (सोम-शुक्र)",
+        "tempsReponseValeur": "24 घंटे से कम",
+        "supportValeur": "सप्ताह में 7 दिन उपलब्ध"
     },
     "tokens": {
         "recharge": "टोकन रिचार्ज",
@@ -1854,7 +1877,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "AI स्टोरीबोर्ड",
+            "storyboardFailedMessage": "स्टोरीबोर्ड बनाना संभव नहीं।",
+            "previewShortNoSessionTitle": "त्वरित पूर्वावलोकन",
+            "previewShortNoSessionMessage": "पहले AI स्टोरीबोर्ड या Studio सत्र बनाएं।",
+            "previewShortNoUrlTitle": "त्वरित पूर्वावलोकन",
+            "previewShortNoUrlMessage": "पूर्वावलोकन URL प्राप्त नहीं हो सका।",
+            "previewShortFailedTitle": "त्वरित पूर्वावलोकन",
+            "previewShortFailedMessage": "छोटा पूर्वावलोकन शुरू नहीं हो सका।"
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1883,12 +1914,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "त्वरित पूर्वावलोकन"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "कॉन्फ़िगरेशन",
+            "step2": "मीडिया",
+            "step3": "सारांश"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1916,7 +1951,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "पूर्वावलोकन…",
+            "previewShort": "3 सेकंड पूर्वावलोकन"
         },
         "summary": {
             "service": "Service",
@@ -1934,7 +1971,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "दृश्य {{index}}",
+            "sceneMediaNone": "Yukpo को स्वचालित रूप से चुनने दें",
+            "sceneMediaNoneShort": "स्वत:",
+            "optionalScene": "वैकल्पिक दृश्य",
+            "sceneMediaHint": "इस दृश्य के लिए मीडिया चुनें या Yukpo को तय करने दें।",
+            "sceneDefaultHint": "(खाली दृश्य)",
+            "noScenes": "कोई दृश्य परिभाषित नहीं"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "ठीक है",
+        "error": "त्रुटि",
+        "cancel": "रद्द करें",
+        "goToMyServices": "मेरी सेवाओं पर जाएं",
+        "productFallback": "उत्पाद",
+        "serviceWithId": "सेवा #{{id}}",
+        "productWithIndex": "उत्पाद {{index}}",
+        "helpLabel": "सहायता",
+        "helpHint": "वीडियो निर्माण ट्यूटोरियल खोलें",
+        "loadingServices": "आपकी सेवाएं लोड हो रही हैं…",
+        "servicesAvailable": "{{count}} सेवा(एं) उपलब्ध",
+        "loading": "लोड हो रहा है…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "पिकअप पॉइंट",
+        "dropoff": "डिलीवरी पॉइंट",
+        "voirStatistiques": "मेरे आँकड़े देखें",
+        "livraisonsCompletees": "पूर्ण डिलीवरी",
+        "tauxReussite": "सफलता दर",
+        "tempsMoyen": "औसत समय",
+        "gainsTotaux": "कुल कमाई",
+        "gainsCeMois": "इस महीने की कमाई"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "त्रुटि",
+        "impossibleChargerDonnees": "डैशबोर्ड डेटा लोड नहीं हो सका",
+        "actif": "सक्रिय",
+        "inactif": "निष्क्रिय",
+        "enAttente": "लंबित",
+        "inconnu": "अज्ञात",
+        "reessayer": "पुनः प्रयास करें",
+        "septJours": "7 दिन",
+        "trenteJours": "30 दिन",
+        "quatreVingtDixJours": "90 दिन",
+        "vuesTotales": "कुल दृश्य",
+        "interactions": "इंटरैक्शन",
+        "actionsRapides": "त्वरित कार्रवाई",
+        "nouvelle": "नया",
+        "analytics": "विश्लेषण",
+        "viewsCount": "{{count}} दृश्य",
+        "messagesCount": "{{count}} संदेश",
+        "callsCount": "{{count}} कॉल",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "दृश्य",
+        "message": "संदेश",
+        "appel": "कॉल",
+        "activite": "गतिविधि",
+        "surService": "{{service}} पर",
+        "ilYA": "{{time}} पहले"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "कृपया गाइड देखें: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "उपयोगकर्ता",
+        "erreurOauth": "OAuth त्रुटि",
+        "erreur": "त्रुटि",
+        "configOauthAndroidManquante": "Android OAuth कॉन्फ़िगरेशन गायब है।\n\n",
+        "consultezGuideOauth": "देखें: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "कॉन्फ़िगरेशन आवश्यक",
+        "erreurDeConnexion": "लॉगिन त्रुटि",
+        "emailOuMotDePasseIncorrect": "ईमेल या पासवर्ड गलत है",
+        "continuerAvec": "{{label}} से जारी रखें",
+        "connectezVousAvecVotreCompte": "अपने खाते से साइन इन करें",
+        "ou": "या",
+        "ouUtilisezVosIdentifiants": "या अपने क्रेडेंशियल्स का उपयोग करें:",
+        "connexionEnCours": "लॉगिन हो रहा है...",
+        "seConnecter": "साइन इन",
+        "inscriptionPartenaire": "⚠️ पार्टनर पंजीकरण",
+        "devenirPartenaire": "🏢 पार्टनर बनें",
+        "supportContact": "समस्या होने पर, हमारे सपोर्ट से संपर्क करें: support@yukpo.com",
+        "important": "⚠️ महत्वपूर्ण:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "अपने आँकड़े देखने के लिए विशेष सेवाएँ बनाएँ",
+        "pharmacie": "फार्मेसी",
+        "laboratoire": "प्रयोगशाला",
+        "banqueSang": "ब्लड बैंक",
+        "agence": "एजेंसी",
+        "covoiturage": "कारपूलिंग",
+        "taxi": "टैक्सी",
+        "total": "कुल",
+        "actifs": "सक्रिय",
+        "inactifs": "निष्क्रिय",
+        "last7Days": "पिछले 7 दिन",
+        "last30Days": "पिछले 30 दिन",
+        "thisMonth": "इस महीने",
+        "pharmacieDetail": "💊 फार्मेसी",
+        "hopitalDetail": "🏥 अस्पताल",
+        "laboratoireDetail": "🔬 प्रयोगशाला",
+        "banqueSangDetail": "🩸 ब्लड बैंक",
+        "agenceDetail": "🚌 एजेंसी",
+        "covoiturageDetail": "🚗 कारपूलिंग",
+        "taxiDetail": "🚕 टैक्सी"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "कैमरून",
+        "rdCongo": "डीआर कांगो",
+        "gabon": "गैबॉन",
+        "burkinaFaso": "बुर्किना फासो",
+        "mali": "माली",
+        "tchad": "चाड",
+        "congo": "कांगो",
+        "france": "फ्रांस",
+        "belgique": "बेल्जियम",
+        "consultezGuide": "कृपया OAuth कॉन्फ़िगरेशन गाइड देखें",
+        "utilisateur": "उपयोगकर्ता",
+        "erreurOauth": "OAuth त्रुटि",
+        "configOauthManquante": "Android OAuth कॉन्फ़िगरेशन गायब है।",
+        "configurationRequise": "कॉन्फ़िगरेशन आवश्यक",
+        "erreurInscription": "पंजीकरण त्रुटि"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

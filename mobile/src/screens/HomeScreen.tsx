@@ -295,7 +295,7 @@ const HomeScreen: React.FC = () => {
             if (!result.success) {
                 // ✅ AMÉLIORÉ: Messages d'erreur plus clairs selon le type d'erreur
                 let errorTitle = t('errors.searchTitle');
-                let errorMessage = result.message || t('errors.searchGeneric');
+                let errorMessage = t('errors.searchGeneric');
 
                 if (result.error === 'TIMEOUT') {
                     errorTitle = t('errors.searchTimeoutTitle');
@@ -406,7 +406,7 @@ const HomeScreen: React.FC = () => {
 
             // ✅ AMÉLIORÉ: Messages d'erreur plus clairs selon le type d'erreur
             let errorTitle = t('errors.searchTitle');
-            let errorMessage = error?.message || t('errors.searchGeneric');
+            let errorMessage = t('errors.searchGeneric');
 
             if (error?.name === 'AbortError' || error?.message?.includes('timeout') || error?.message?.includes('Timeout')) {
                 errorTitle = t('errors.searchTimeoutTitle');
@@ -556,7 +556,7 @@ const HomeScreen: React.FC = () => {
         } catch (error: any) {
             console.error('[HomeScreen] Erreur création service:', error);
             setLoading(false);
-            Alert.alert(t('message.error'), error?.message || t('errors.createGeneric'));
+            Alert.alert(t('message.error'), t('errors.createGeneric'));
         }
     }, [user, navigate]);
 

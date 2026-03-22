@@ -385,10 +385,10 @@ const SettingsScreen: React.FC = () => {
       <View style={[styles.settingRow, { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#E5E7EB' }]}>
         <View style={styles.settingInfo}>
           <Text style={styles.settingTitle}>
-            {t('settings.coachIaNavTitle') || '🤖 Coach IA — Navigation intelligente'}
+            {t('settings.coachIaNavTitle')}
           </Text>
           <Text style={styles.settingDescription}>
-            {t('settings.coachIaNavDesc') || 'Notifications de motivation liées à l’écran Navigation (GPS). Désactivé : alerte visuelle + vibration, sans son.'}
+            {t('settings.coachIaNavDesc')}
           </Text>
         </View>
         <Switch

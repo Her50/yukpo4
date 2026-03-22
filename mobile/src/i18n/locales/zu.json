@@ -79,7 +79,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} interaction(s)",
+        "favoriteCount": "{{count}} favorite(s)",
+        "period7d": "7d",
+        "period30d": "30d",
+        "period90d": "90d"
     },
     "account": {
         "title": "I-akhawunti Yami"
@@ -172,7 +177,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "Error",
+        "remplirTousChamps": "Please fill in all fields",
+        "impossibleEnvoyer": "Unable to send the message",
+        "impossibleOuvrirLien": "Unable to open this link",
+        "contactezNous": "Contact us",
+        "nousSommesLa": "We are here to help! Feel free to contact us.",
+        "envoyezMessage": "Send us a message",
+        "emailLabel": "Email *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "Subject *",
+        "sujetPlaceholder": "Subject of your message",
+        "messageLabel": "Message *",
+        "emailTitle": "Email",
+        "chatDirect": "Direct chat",
+        "heuresOuverture": "Business hours:",
+        "heuresOuvertureValeur": "8:00 AM - 6:00 PM (Mon-Fri)",
+        "tempsReponseValeur": "Less than 24h",
+        "supportValeur": "Available 7 days a week"
     },
     "tokens": {
         "recharge": "Gcwalisa Amathokheni",
@@ -1854,7 +1877,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "Storyboard IA",
+            "storyboardFailedMessage": "Impossible de générer le storyboard.",
+            "previewShortNoSessionTitle": "Prévisualisation rapide",
+            "previewShortNoSessionMessage": "Génère d'abord un storyboard IA ou une session Studio avant la prévisualisation.",
+            "previewShortNoUrlTitle": "Prévisualisation rapide",
+            "previewShortNoUrlMessage": "Impossible de récupérer l'URL de la prévisualisation.",
+            "previewShortFailedTitle": "Prévisualisation rapide",
+            "previewShortFailedMessage": "Impossible de lancer la prévisualisation courte."
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1883,12 +1914,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "Prévisualisation rapide"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "Configuration",
+            "step2": "Médias",
+            "step3": "Résumé"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1916,7 +1951,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "Prévisualisation…",
+            "previewShort": "Prévisualiser 3s"
         },
         "summary": {
             "service": "Service",
@@ -1934,7 +1971,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "Scène {{index}}",
+            "sceneMediaNone": "Laisser Yukpo choisir automatiquement",
+            "sceneMediaNoneShort": "Auto",
+            "optionalScene": "Scène optionnelle",
+            "sceneMediaHint": "Choisis un média pour cette scène ou laisse Yukpo décider.",
+            "sceneDefaultHint": "(Scène vide)",
+            "noScenes": "Aucune scène définie"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "Kulungile",
+        "error": "Iphutha",
+        "cancel": "Khansela",
+        "goToMyServices": "Iya Ezinsizeni Zami",
+        "productFallback": "Umkhiqizo",
+        "serviceWithId": "Insizakalo #{{id}}",
+        "productWithIndex": "Umkhiqizo {{index}}",
+        "helpLabel": "Usizo",
+        "helpHint": "Vula isifundo sokudala ividiyo",
+        "loadingServices": "Ilayisha izinsizakalo zakho…",
+        "servicesAvailable": "Izinsizakalo {{count}} ziyatholakala",
+        "loading": "Iyalayisha…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "Pickup point",
+        "dropoff": "Drop-off point",
+        "voirStatistiques": "View my statistics",
+        "livraisonsCompletees": "Completed deliveries",
+        "tauxReussite": "Success rate",
+        "tempsMoyen": "Average time",
+        "gainsTotaux": "Total earnings",
+        "gainsCeMois": "Earnings this month"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "Iphutha",
+        "impossibleChargerDonnees": "Ayikwazanga ukulayisha idatha yedashbhodi",
+        "actif": "Kuyasebenza",
+        "inactif": "Akusebenzi",
+        "enAttente": "Kulindile",
+        "inconnu": "Akwaziwa",
+        "reessayer": "Zama futhi",
+        "septJours": "Izinsuku ezi-7",
+        "trenteJours": "Izinsuku ezi-30",
+        "quatreVingtDixJours": "Izinsuku ezi-90",
+        "vuesTotales": "Izibukelo zonke",
+        "interactions": "Ukuxhumana",
+        "actionsRapides": "Izenzo ezisheshayo",
+        "nouvelle": "Okusha",
+        "analytics": "Ukuhlaziya",
+        "viewsCount": "Izibukelo {{count}}",
+        "messagesCount": "Imilayezo {{count}}",
+        "callsCount": "Izingcingo {{count}}",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "Isibukelo",
+        "message": "Umlayezo",
+        "appel": "Ucingo",
+        "activite": "Umsebenzi",
+        "surService": "ku {{service}}",
+        "ilYA": "{{time}} edlule"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "Sicela ubheke umhlahlandlela: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "Umsebenzisi",
+        "erreurOauth": "Iphutha le-OAuth",
+        "erreur": "Iphutha",
+        "configOauthAndroidManquante": "Ukusetha i-OAuth ye-Android akutholakalanga.\n\n",
+        "consultezGuideOauth": "Bheka: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "Ukusetha kuyadingeka",
+        "erreurDeConnexion": "Iphutha lokungena",
+        "emailOuMotDePasseIncorrect": "I-imeyili noma iphasiwedi ayilungile",
+        "continuerAvec": "Qhubeka nge-{{label}}",
+        "connectezVousAvecVotreCompte": "Ngena nge-akhawunti yakho",
+        "ou": "noma",
+        "ouUtilisezVosIdentifiants": "noma sebenzisa imininingwane yakho:",
+        "connexionEnCours": "Iyangena...",
+        "seConnecter": "Ngena",
+        "inscriptionPartenaire": "⚠️ Ukubhalisa komlingani",
+        "devenirPartenaire": "🏢 Yiba umlingani",
+        "supportContact": "Uma kunenkinga, xhumana nosizo lwethu ku-support@yukpo.com",
+        "important": "⚠️ Okubalulekile:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "Dala amasevisi akhethekile ukuze ubone izibalo zakho",
+        "pharmacie": "Ikhemisi",
+        "laboratoire": "Ilebhu",
+        "banqueSang": "Ibhange legazi",
+        "agence": "I-ejensi",
+        "covoiturage": "Ukwabelana ngemoto",
+        "taxi": "Itekisi",
+        "total": "Isamba",
+        "actifs": "Esebenzayo",
+        "inactifs": "Engasebenzi",
+        "last7Days": "Izinsuku ezi-7 ezedlule",
+        "last30Days": "Izinsuku ezi-30 ezedlule",
+        "thisMonth": "Le nyanga",
+        "pharmacieDetail": "💊 Ikhemisi",
+        "hopitalDetail": "🏥 Isibhedlela",
+        "laboratoireDetail": "🔬 Ilebhu",
+        "banqueSangDetail": "🩸 Ibhange legazi",
+        "agenceDetail": "🚌 I-ejensi",
+        "covoiturageDetail": "🚗 Ukwabelana ngemoto",
+        "taxiDetail": "🚕 Itekisi"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "Cameroon",
+        "rdCongo": "DR Congo",
+        "gabon": "Gabon",
+        "burkinaFaso": "Burkina Faso",
+        "mali": "Mali",
+        "tchad": "Chad",
+        "congo": "Congo",
+        "france": "France",
+        "belgique": "Belgium",
+        "consultezGuide": "Please refer to the OAuth configuration guide",
+        "utilisateur": "User",
+        "erreurOauth": "OAuth Error",
+        "configOauthManquante": "Android OAuth configuration missing.",
+        "configurationRequise": "Configuration required",
+        "erreurInscription": "Registration error"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

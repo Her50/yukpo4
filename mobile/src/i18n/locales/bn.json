@@ -213,7 +213,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} interaction(s)",
+        "favoriteCount": "{{count}} favorite(s)",
+        "period7d": "7d",
+        "period30d": "30d",
+        "period90d": "90d"
     },
     "account": {
         "title": "My Account"
@@ -306,7 +311,25 @@
         "envoyerLeMessage": " বার্তা পাঠান",
         "contactRapide": " দ্রুত যোগাযোগ",
         "informations": "ℹ তথ্য",
-        "supportTechnique": "প্রযুক্তিগত সহায়তা:"
+        "supportTechnique": "প্রযুক্তিগত সহায়তা:",
+        "erreur": "Error",
+        "remplirTousChamps": "Please fill in all fields",
+        "impossibleEnvoyer": "Unable to send the message",
+        "impossibleOuvrirLien": "Unable to open this link",
+        "contactezNous": "Contact us",
+        "nousSommesLa": "We are here to help! Feel free to contact us.",
+        "envoyezMessage": "Send us a message",
+        "emailLabel": "Email *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "Subject *",
+        "sujetPlaceholder": "Subject of your message",
+        "messageLabel": "Message *",
+        "emailTitle": "Email",
+        "chatDirect": "Direct chat",
+        "heuresOuverture": "Business hours:",
+        "heuresOuvertureValeur": "8:00 AM - 6:00 PM (Mon-Fri)",
+        "tempsReponseValeur": "Less than 24h",
+        "supportValeur": "Available 7 days a week"
     },
     "tokens": {
         "recharge": "Recharge Tokens",
@@ -1473,7 +1496,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "AI স্টোরিবোর্ড",
+            "storyboardFailedMessage": "স্টোরিবোর্ড তৈরি করা যায়নি।",
+            "previewShortNoSessionTitle": "দ্রুত প্রিভিউ",
+            "previewShortNoSessionMessage": "প্রথমে AI স্টোরিবোর্ড বা Studio সেশন তৈরি করুন।",
+            "previewShortNoUrlTitle": "দ্রুত প্রিভিউ",
+            "previewShortNoUrlMessage": "প্রিভিউ URL পাওয়া যায়নি।",
+            "previewShortFailedTitle": "দ্রুত প্রিভিউ",
+            "previewShortFailedMessage": "ছোট প্রিভিউ শুরু করা যায়নি।"
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1502,12 +1533,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "দ্রুত প্রিভিউ"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "কনফিগারেশন",
+            "step2": "মিডিয়া",
+            "step3": "সারাংশ"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1535,7 +1570,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "প্রিভিউ…",
+            "previewShort": "৩সে প্রিভিউ"
         },
         "summary": {
             "service": "সেবা",
@@ -1553,7 +1590,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "দৃশ্য {{index}}",
+            "sceneMediaNone": "Yukpo-কে স্বয়ংক্রিয়ভাবে বেছে নিতে দিন",
+            "sceneMediaNoneShort": "স্বয়ংক্রিয়",
+            "optionalScene": "ঐচ্ছিক দৃশ্য",
+            "sceneMediaHint": "এই দৃশ্যের জন্য মিডিয়া বেছে নিন বা Yukpo-কে সিদ্ধান্ত নিতে দিন।",
+            "sceneDefaultHint": "(খালি দৃশ্য)",
+            "noScenes": "কোনো দৃশ্য সংজ্ঞায়িত নেই"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "ঠিক আছে",
+        "error": "ত্রুটি",
+        "cancel": "বাতিল",
+        "goToMyServices": "আমার সেবায় যান",
+        "productFallback": "পণ্য",
+        "serviceWithId": "সেবা #{{id}}",
+        "productWithIndex": "পণ্য {{index}}",
+        "helpLabel": "সাহায্য",
+        "helpHint": "ভিডিও তৈরির টিউটোরিয়াল খুলুন",
+        "loadingServices": "আপনার সেবা লোড হচ্ছে…",
+        "servicesAvailable": "{{count}}টি সেবা উপলব্ধ",
+        "loading": "লোড হচ্ছে…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "কুরিয়ার ড্যাশবোর্ড"
+        "tableauDeBordCoursier": "কুরিয়ার ড্যাশবোর্ড",
+        "pickup": "Pickup point",
+        "dropoff": "Drop-off point",
+        "voirStatistiques": "View my statistics",
+        "livraisonsCompletees": "Completed deliveries",
+        "tauxReussite": "Success rate",
+        "tempsMoyen": "Average time",
+        "gainsTotaux": "Total earnings",
+        "gainsCeMois": "Earnings this month"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "মোট সেবা",
         "servicesActifs": "সক্রিয় সেবা",
         "noteMoyenne": "গড় রেটিং",
-        "servicesLesMieuxPerformants": "সেরা পারফর্মিং পরিষেবা"
+        "servicesLesMieuxPerformants": "সেরা পারফর্মিং পরিষেবা",
+        "erreur": "ত্রুটি",
+        "impossibleChargerDonnees": "ড্যাশবোর্ড ডেটা লোড করা যায়নি",
+        "actif": "সক্রিয়",
+        "inactif": "নিষ্ক্রিয়",
+        "enAttente": "অপেক্ষমাণ",
+        "inconnu": "অজানা",
+        "reessayer": "আবার চেষ্টা করুন",
+        "septJours": "৭ দিন",
+        "trenteJours": "৩০ দিন",
+        "quatreVingtDixJours": "৯০ দিন",
+        "vuesTotales": "মোট ভিউ",
+        "interactions": "ইন্টারঅ্যাকশন",
+        "actionsRapides": "দ্রুত পদক্ষেপ",
+        "nouvelle": "নতুন",
+        "analytics": "বিশ্লেষণ",
+        "viewsCount": "{{count}} ভিউ",
+        "messagesCount": "{{count}} বার্তা",
+        "callsCount": "{{count}} কল",
+        "ratingOutOf5": "{{rating}} / ৫",
+        "vue": "ভিউ",
+        "message": "বার্তা",
+        "appel": "কল",
+        "activite": "কার্যকলাপ",
+        "surService": "{{service}}-এ",
+        "ilYA": "{{time}} আগে"
     },
     "debugOverlay": {
         "logsRecents": "সাম্প্রতিক লগ:",
@@ -6844,7 +6934,26 @@
         "nonDefinie": "সংজ্ঞায়িত নয়",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "এখনো নিবন্ধিত হয়নি?",
-        "ouiJeSuisPartenaire": "হ্যাঁ, আমি একজন অংশীদার"
+        "ouiJeSuisPartenaire": "হ্যাঁ, আমি একজন অংশীদার",
+        "consultezLeGuide": "অনুগ্রহ করে গাইড দেখুন: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "ব্যবহারকারী",
+        "erreurOauth": "OAuth ত্রুটি",
+        "erreur": "ত্রুটি",
+        "configOauthAndroidManquante": "Android OAuth কনফিগারেশন অনুপস্থিত।\n\n",
+        "consultezGuideOauth": "দেখুন: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "কনফিগারেশন প্রয়োজন",
+        "erreurDeConnexion": "লগইন ত্রুটি",
+        "emailOuMotDePasseIncorrect": "ইমেইল বা পাসওয়ার্ড ভুল",
+        "continuerAvec": "{{label}} দিয়ে চালিয়ে যান",
+        "connectezVousAvecVotreCompte": "আপনার অ্যাকাউন্ট দিয়ে সাইন ইন করুন",
+        "ou": "অথবা",
+        "ouUtilisezVosIdentifiants": "অথবা আপনার শংসাপত্র ব্যবহার করুন:",
+        "connexionEnCours": "লগইন হচ্ছে...",
+        "seConnecter": "সাইন ইন",
+        "inscriptionPartenaire": "⚠️ অংশীদার নিবন্ধন",
+        "devenirPartenaire": "🏢 অংশীদার হন",
+        "supportContact": "সমস্যা হলে, আমাদের সাপোর্টে যোগাযোগ করুন: support@yukpo.com",
+        "important": "⚠️ গুরুত্বপূর্ণ:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9988,7 +10097,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "ড্যাশব���র্ড পরিসংখ্যান",
-        "hopital": "হাসপাতাল"
+        "hopital": "হাসপাতাল",
+        "emptyText": "আপনার পরিসংখ্যান দেখতে বিশেষায়িত সেবা তৈরি করুন",
+        "pharmacie": "ফার্মেসি",
+        "laboratoire": "ল্যাবরেটরি",
+        "banqueSang": "রক্ত ব্যাংক",
+        "agence": "এজেন্সি",
+        "covoiturage": "কারপুলিং",
+        "taxi": "ট্যাক্সি",
+        "total": "মোট",
+        "actifs": "সক্রিয়",
+        "inactifs": "নিষ্ক্রিয়",
+        "last7Days": "গত ৭ দিন",
+        "last30Days": "গত ৩০ দিন",
+        "thisMonth": "এই মাস",
+        "pharmacieDetail": "💊 ফার্মেসি",
+        "hopitalDetail": "🏥 হাসপাতাল",
+        "laboratoireDetail": "🔬 ল্যাবরেটরি",
+        "banqueSangDetail": "🩸 রক্ত ব্যাংক",
+        "agenceDetail": "🚌 এজেন্সি",
+        "covoiturageDetail": "🚗 কারপুলিং",
+        "taxiDetail": "🚕 ট্যাক্সি"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11078,7 +11207,22 @@
         "senegal": "🇸🇳 সেনেগাল",
         "guinee": "🇬🇳 গিনি",
         "nonDefinie": "সংজ্ঞায়িত নয়",
-        "coteDivoire": "🇨🇮 আইভরি কোস্ট"
+        "coteDivoire": "🇨🇮 আইভরি কোস্ট",
+        "cameroun": "Cameroon",
+        "rdCongo": "DR Congo",
+        "gabon": "Gabon",
+        "burkinaFaso": "Burkina Faso",
+        "mali": "Mali",
+        "tchad": "Chad",
+        "congo": "Congo",
+        "france": "France",
+        "belgique": "Belgium",
+        "consultezGuide": "Please refer to the OAuth configuration guide",
+        "utilisateur": "User",
+        "erreurOauth": "OAuth Error",
+        "configOauthManquante": "Android OAuth configuration missing.",
+        "configurationRequise": "Configuration required",
+        "erreurInscription": "Registration error"
     },
     "bookBuyDirect": {
         "especes": "প্রজাতি"

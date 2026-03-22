@@ -1027,13 +1027,13 @@ const VideoCreationWizardScreen: React.FC = () => {
                 markStepCompleted(1);
                 setStep(2);
             } else {
-                const errorMsg = response.message || t('videoWizard.alert.retrySoon') || t('videoWizard.errors.estimationError');
+                const errorMsg = response.message || t('videoWizard.alert.retrySoon');
                 Alert.alert(t('videoWizard.alert.estimationFailedTitle'), errorMsg);
                 console.error('[VideoCreationWizard] Estimation vide:', response);
             }
         } catch (error: any) {
             console.error('[VideoCreationWizard] Erreur estimation coût:', error);
-            let message = error?.message || t('videoWizard.alert.serverError') || t('videoWizard.errors.serverError');
+            let message = error?.message || t('videoWizard.alert.serverError');
 
             // Messages d'erreur plus spécifiques
             if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
@@ -1175,9 +1175,9 @@ const VideoCreationWizardScreen: React.FC = () => {
             });
         } catch (error: any) {
             console.error('[VideoCreationWizard] Erreur génération storyboard:', error);
-            const title = t('videoWizard.alert.storyboardFailedTitle') ?? t('videoWizard.storyboardAI');
+            const title = t('videoWizard.alert.storyboardFailedTitle');
             const defaultMessage = t('videoWizard.alert.storyboardFailedMessage');
-            let message = error?.message || defaultMessage || t('videoCreationWizard.impossibleDeGenererLeStoryboard');
+            let message = error?.message || defaultMessage;
 
             // Messages d'erreur plus spécifiques
             if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
@@ -1539,9 +1539,8 @@ const VideoCreationWizardScreen: React.FC = () => {
     const handleShortPreview = async () => {
         if (!studioSessionId) {
             Alert.alert(
-                t('videoWizard.alert.previewShortNoSessionTitle') ?? t('videoCreationWizard.previsualisationRapide'),
-                t('videoWizard.alert.previewShortNoSessionMessage') ??
-                t('videoCreationWizardScreen.genereDabordUnStoryboardIaOu'),
+                t('videoWizard.alert.previewShortNoSessionTitle'),
+                t('videoWizard.alert.previewShortNoSessionMessage'),
             );
             return;
         }
@@ -1573,9 +1572,8 @@ const VideoCreationWizardScreen: React.FC = () => {
             const response = await studioService.requestShortPreview(studioSessionId);
             if (!response.preview_url) {
                 Alert.alert(
-                    t('videoWizard.alert.previewShortNoUrlTitle') ?? t('videoCreationWizard.previsualisationRapide'),
-                    t('videoWizard.alert.previewShortNoUrlMessage') ??
-                    t('videoWizard.errors.previewUrlError'),
+                    t('videoWizard.alert.previewShortNoUrlTitle'),
+                    t('videoWizard.alert.previewShortNoUrlMessage'),
                 );
                 const durationMs = Date.now() - startedAt;
                 trackUxEvent('preview_short_failed', {
@@ -1606,10 +1604,8 @@ const VideoCreationWizardScreen: React.FC = () => {
             });
         } catch (error: any) {
             Alert.alert(
-                t('videoWizard.alert.previewShortFailedTitle') ?? t('videoCreationWizard.previsualisationRapide'),
-                error?.message ||
-                t('videoWizard.alert.previewShortFailedMessage') ||
-                t('videoCreationWizardScreen.impossibleDeLancerLaPrevisualisationCourte'),
+                t('videoWizard.alert.previewShortFailedTitle'),
+                error?.message || t('videoWizard.alert.previewShortFailedMessage'),
             );
             const durationMs = Date.now() - startedAt;
             trackUxEvent('preview_short_failed', {
@@ -1981,13 +1977,13 @@ const VideoCreationWizardScreen: React.FC = () => {
 
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>
-                                    {t('videoWizard.sections.timeline') || t('videoCreationWizard.montageParScene')}
+                                    {t('videoWizard.sections.timeline')}
                                 </Text>
                                 {scenesDraft.length === 0 ? (
                                     <View style={styles.emptyScenesState}>
                                         <SafeIcon name="film" size={48} color={modernColors.textSecondary} />
                                         <Text style={styles.emptyScenesTitle}>
-                                            {t('videoWizard.summary.noScenes') || t('videoCreationWizard.aucuneSceneDefinie')}
+                                            {t('videoWizard.summary.noScenes')}
                                         </Text>
                                         <Text style={styles.emptyScenesText}>
                                             {t('videoWizard.generateStoryboardHint')}
@@ -2040,20 +2036,12 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                                 active && styles.sceneChipLabelActive,
                                                             ]}
                                                         >
-                                                            {t('videoWizard.summary.sceneShortLabel', {
-                                                                defaultValue: `S${index + 1}`,
-                                                                index: index + 1,
-                                                            })}
+                                                            {format('videoWizard.summary.sceneShortLabel', { index: index + 1 })}
                                                         </Text>
                                                         <Text style={styles.sceneChipMeta}>
                                                             {assignedMediaId
                                                                 ? `#${assignedMediaId}`
-                                                                : t(
-                                                                    'videoWizard.summary.sceneMediaNone',
-                                                                    {
-                                                                        defaultValue: 'Auto',
-                                                                    },
-                                                                )}
+                                                                : t('videoWizard.summary.sceneMediaNoneShort')}
                                                         </Text>
                                                     </TouchableOpacity>
                                                 );
@@ -2063,19 +2051,11 @@ const VideoCreationWizardScreen: React.FC = () => {
                                             <View style={styles.scenePanel}>
                                                 <View style={styles.inlineRow}>
                                                     <Text style={styles.inlineLabel}>
-                                                        {t('videoWizard.summary.sceneLabel', {
-                                                            defaultValue: `Scène ${currentSceneIndex + 1}`,
-                                                            index: currentSceneIndex + 1,
-                                                        })}
+                                                        {format('videoWizard.summary.sceneLabel', { index: currentSceneIndex + 1 })}
                                                     </Text>
                                                     <View style={styles.sceneOptionalRow}>
                                                         <Text style={styles.sceneOptionalLabel}>
-                                                            {t(
-                                                                'videoWizard.summary.optionalScene',
-                                                                {
-                                                                    defaultValue: t('videoCreationWizardScreen.sceneOptionnelle'),
-                                                                },
-                                                            )}
+                                                            {t('videoWizard.summary.optionalScene')}
                                                         </Text>
                                                         <Switch
                                                             value={currentScene.optional}
@@ -2086,8 +2066,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                     </View>
                                                 </View>
                                                 <Text style={styles.scenePanelHint}>
-                                                    {t('videoWizard.summary.sceneMediaHint') ||
-                                                        t('videoWizard.chooseMediaForScene')}
+                                                    {t('videoWizard.summary.sceneMediaHint')}
                                                 </Text>
                                                 <ScrollView
                                                     style={styles.sceneMediaList}
@@ -2114,13 +2093,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                             color={modernColors.primary}
                                                         />
                                                         <Text style={styles.sceneMediaRowLabel}>
-                                                            {t(
-                                                                'videoWizard.summary.sceneMediaNone',
-                                                                {
-                                                                    defaultValue:
-                                                                        'Laisser Yukpo choisir automatiquement',
-                                                                },
-                                                            )}
+                                                            {t('videoWizard.summary.sceneMediaNone')}
                                                         </Text>
                                                     </TouchableOpacity>
                                                     {mediaItems.map((item) => {
@@ -2359,7 +2332,7 @@ const VideoCreationWizardScreen: React.FC = () => {
 
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>
-                                    {t('videoWizard.sections.previewShort') ?? t('videoCreationWizard.previsualisationRapide')}
+                                    {t('videoWizard.sections.previewShort')}
                                 </Text>
                                 <Text style={styles.sectionSubTitle}>
                                     {t('videoWizard.previewSubtitle')}
@@ -2368,8 +2341,8 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     <NativeButton
                                         title={
                                             shortPreviewLoading
-                                                ? t('videoWizard.buttons.previewShortLoading') ?? t('videoCreationWizard.previsualisation')
-                                                : t('videoWizard.buttons.previewShort') ?? t('videoCreationWizard.previsualiser3s')
+                                                ? t('videoWizard.buttons.previewShortLoading')
+                                                : t('videoWizard.buttons.previewShort')
                                         }
                                         variant="primary"
                                         onPress={handleShortPreview}
@@ -2437,9 +2410,9 @@ const VideoCreationWizardScreen: React.FC = () => {
                             {/* ✅ NOUVEAU: Indicateur visuel des étapes */}
                             {(() => {
                                 const stepLabels = [
-                                    t('videoWizard.steps.step1') || 'Configuration',
-                                    t('videoWizard.steps.step2') || t('videoCreationWizard.medias'),
-                                    t('videoWizard.steps.step3') || t('videoCreationWizard.resume')
+                                    t('videoWizard.steps.step1'),
+                                    t('videoWizard.steps.step2'),
+                                    t('videoWizard.steps.step3')
                                 ];
 
                                 return (

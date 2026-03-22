@@ -213,7 +213,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} interaction(s)",
+        "favoriteCount": "{{count}} favorite(s)",
+        "period7d": "7d",
+        "period30d": "30d",
+        "period90d": "90d"
     },
     "account": {
         "title": "My Account"
@@ -306,7 +311,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "Error",
+        "remplirTousChamps": "Please fill in all fields",
+        "impossibleEnvoyer": "Unable to send the message",
+        "impossibleOuvrirLien": "Unable to open this link",
+        "contactezNous": "Contact us",
+        "nousSommesLa": "We are here to help! Feel free to contact us.",
+        "envoyezMessage": "Send us a message",
+        "emailLabel": "Email *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "Subject *",
+        "sujetPlaceholder": "Subject of your message",
+        "messageLabel": "Message *",
+        "emailTitle": "Email",
+        "chatDirect": "Direct chat",
+        "heuresOuverture": "Business hours:",
+        "heuresOuvertureValeur": "8:00 AM - 6:00 PM (Mon-Fri)",
+        "tempsReponseValeur": "Less than 24h",
+        "supportValeur": "Available 7 days a week"
     },
     "tokens": {
         "recharge": "Recharge Tokens",
@@ -1473,7 +1496,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "Storyboard AI",
+            "storyboardFailedMessage": "Gagal membuat storyboard.",
+            "previewShortNoSessionTitle": "Pratinjau cepat",
+            "previewShortNoSessionMessage": "Buat storyboard AI atau sesi Studio terlebih dahulu.",
+            "previewShortNoUrlTitle": "Pratinjau cepat",
+            "previewShortNoUrlMessage": "Gagal mendapatkan URL pratinjau.",
+            "previewShortFailedTitle": "Pratinjau cepat",
+            "previewShortFailedMessage": "Gagal memulai pratinjau singkat."
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1502,12 +1533,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "Pratinjau cepat"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "Konfigurasi",
+            "step2": "Media",
+            "step3": "Ringkasan"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1535,7 +1570,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "Pratinjau…",
+            "previewShort": "Pratinjau 3d"
         },
         "summary": {
             "service": "Service",
@@ -1553,7 +1590,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "Adegan {{index}}",
+            "sceneMediaNone": "Biarkan Yukpo memilih otomatis",
+            "sceneMediaNoneShort": "Otomatis",
+            "optionalScene": "Adegan opsional",
+            "sceneMediaHint": "Pilih media untuk adegan ini atau biarkan Yukpo yang memutuskan.",
+            "sceneDefaultHint": "(Adegan kosong)",
+            "noScenes": "Tidak ada adegan yang ditentukan"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "OK",
+        "error": "Kesalahan",
+        "cancel": "Batal",
+        "goToMyServices": "Ke Layanan Saya",
+        "productFallback": "Produk",
+        "serviceWithId": "Layanan #{{id}}",
+        "productWithIndex": "Produk {{index}}",
+        "helpLabel": "Bantuan",
+        "helpHint": "Buka tutorial pembuatan video",
+        "loadingServices": "Memuat layanan Anda…",
+        "servicesAvailable": "{{count}} layanan tersedia",
+        "loading": "Memuat…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "Pickup point",
+        "dropoff": "Drop-off point",
+        "voirStatistiques": "View my statistics",
+        "livraisonsCompletees": "Completed deliveries",
+        "tauxReussite": "Success rate",
+        "tempsMoyen": "Average time",
+        "gainsTotaux": "Total earnings",
+        "gainsCeMois": "Earnings this month"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "Kesalahan",
+        "impossibleChargerDonnees": "Tidak dapat memuat data dasbor",
+        "actif": "Aktif",
+        "inactif": "Tidak aktif",
+        "enAttente": "Menunggu",
+        "inconnu": "Tidak diketahui",
+        "reessayer": "Coba lagi",
+        "septJours": "7 hari",
+        "trenteJours": "30 hari",
+        "quatreVingtDixJours": "90 hari",
+        "vuesTotales": "Total tayangan",
+        "interactions": "Interaksi",
+        "actionsRapides": "Tindakan cepat",
+        "nouvelle": "Baru",
+        "analytics": "Analitik",
+        "viewsCount": "{{count}} tayangan",
+        "messagesCount": "{{count}} pesan",
+        "callsCount": "{{count}} panggilan",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "Tayangan",
+        "message": "Pesan",
+        "appel": "Panggilan",
+        "activite": "Aktivitas",
+        "surService": "di {{service}}",
+        "ilYA": "{{time}} yang lalu"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "Silakan lihat panduan: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "Pengguna",
+        "erreurOauth": "Kesalahan OAuth",
+        "erreur": "Kesalahan",
+        "configOauthAndroidManquante": "Konfigurasi OAuth Android tidak ada.\n\n",
+        "consultezGuideOauth": "Lihat: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "Konfigurasi diperlukan",
+        "erreurDeConnexion": "Kesalahan masuk",
+        "emailOuMotDePasseIncorrect": "Email atau kata sandi salah",
+        "continuerAvec": "Lanjutkan dengan {{label}}",
+        "connectezVousAvecVotreCompte": "Masuk dengan akun Anda",
+        "ou": "atau",
+        "ouUtilisezVosIdentifiants": "atau gunakan kredensial Anda:",
+        "connexionEnCours": "Masuk...",
+        "seConnecter": "Masuk",
+        "inscriptionPartenaire": "⚠️ Pendaftaran Mitra",
+        "devenirPartenaire": "🏢 Jadi mitra",
+        "supportContact": "Jika ada masalah, hubungi dukungan kami di support@yukpo.com",
+        "important": "⚠️ Penting:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "Buat layanan khusus untuk melihat statistik Anda",
+        "pharmacie": "Apotek",
+        "laboratoire": "Laboratorium",
+        "banqueSang": "Bank darah",
+        "agence": "Agen",
+        "covoiturage": "Berbagi tumpangan",
+        "taxi": "Taksi",
+        "total": "Total",
+        "actifs": "Aktif",
+        "inactifs": "Tidak aktif",
+        "last7Days": "7 hari terakhir",
+        "last30Days": "30 hari terakhir",
+        "thisMonth": "Bulan ini",
+        "pharmacieDetail": "💊 Apotek",
+        "hopitalDetail": "🏥 Rumah sakit",
+        "laboratoireDetail": "🔬 Laboratorium",
+        "banqueSangDetail": "🩸 Bank darah",
+        "agenceDetail": "🚌 Agen",
+        "covoiturageDetail": "🚗 Berbagi tumpangan",
+        "taxiDetail": "🚕 Taksi"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "Cameroon",
+        "rdCongo": "DR Congo",
+        "gabon": "Gabon",
+        "burkinaFaso": "Burkina Faso",
+        "mali": "Mali",
+        "tchad": "Chad",
+        "congo": "Congo",
+        "france": "France",
+        "belgique": "Belgium",
+        "consultezGuide": "Please refer to the OAuth configuration guide",
+        "utilisateur": "User",
+        "erreurOauth": "OAuth Error",
+        "configOauthManquante": "Android OAuth configuration missing.",
+        "configurationRequise": "Configuration required",
+        "erreurInscription": "Registration error"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { config } from '../config/environment';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import i18n from '../i18n';
 import { apiGet, iaApi, mediaApi } from '../services/api';
 import { uploadToCloud } from '../services/cloudUpload';
 import { studioService, type VideoDependency } from '../services/studioService';
@@ -81,20 +82,9 @@ interface ProductVideoCreationModalProps {
     navigation?: any; // ✅ AJOUTÉ: Navigation pour rediriger vers la recharge
 }
 
-const VIDEO_STYLE_OPTIONS: Array<{ key: VideoStylePreset; label: string; description: string }> = [
-    { key: 'tiktok', label: 'TikTok Boost', description: 'Transitions rapides, texte dynamique, format vertical 9:16' },
-    { key: 'story', label: 'Story Produit', description: 'Narration douce, highlight des atouts, superpositions élégantes' },
-    { key: 'cinematic', label: 'Ciné Premium', description: 'Animations lentes, focus sur détails, ambiance immersive' },
-    { key: 'carousel', label: 'Carousel Flash', description: 'Slides punchy, CTA répétés, idéal publicités express' },
-];
-
-const MUSIC_MODE_OPTIONS: Array<{ key: MusicMode; label: string; description: string }> = [
-    { key: 'pulse', label: 'Pulse', description: "Beat énergique parfait pour capter l'attention" },
-    { key: 'lofi', label: 'Lofi', description: 'Ambiance douce et premium' },
-    { key: 'ambient', label: 'Ambient', description: 'Atmosphère aérienne et relaxante' },
-    { key: 'cinematic', label: 'Ciné', description: 'Montée orchestrale immersive' },
-    { key: 'none', label: 'Aucun', description: 'Sans musique automatique' },
-];
+/** Traductions clés productVideoCreationModal (utilisable hors composant) */
+const pvm = (key: string, opts?: Record<string, unknown>) =>
+    String(i18n.t(`productVideoCreationModal.${key}`, opts ?? {}));
 
 const VOICE_LANG_OPTIONS = [
     { value: 'fr', label: 'Français (FR)' },
@@ -103,14 +93,6 @@ const VOICE_LANG_OPTIONS = [
     { value: 'en-gb', label: 'English (UK)' },
     { value: 'pt-br', label: 'Português (BR)' },
     { value: 'es', label: 'Español' },
-];
-
-const DISTRIBUTION_OPTIONS = [
-    { key: 'chat', label: 'Chat Commerce' },
-    { key: 'product', label: 'Carte Produit' },
-    { key: 'shorts', label: 'Shorts / Reels' },
-    { key: 'instagram', label: 'Instagram Feed' },
-    { key: 'youtube', label: 'YouTube' },
 ];
 
 // ✅ CORRIGÉ 2025-11-30: Utiliser l'endpoint /api/media/files pour les chemins uploads/
@@ -138,12 +120,12 @@ const buildMediaUrl = (path: string | undefined | null): string => {
 
 const normalizeProductName = (product?: ManagedProduct | null): string => {
     if (!product) {
-        return 'Votre produit';
+        return pvm('votreProduit');
     }
 
     // ✅ CORRIGÉ: Utiliser extractProductName qui gère tous les cas
     const { extractProductName } = require('../utils/displayHelpers');
-    return extractProductName(product, 'Votre produit');
+    return extractProductName(product, pvm('votreProduit'));
 };
 
 const ensureNumber = (...args: any[]): number => {
@@ -186,7 +168,7 @@ const computePromotionLabel = (product: ManagedProduct | null | undefined): stri
     const candidate =
         (product as any)?.promotion_label ||
         (product as any)?.promotion ||
-        ((product as any)?.promotionActive ? 'Promotion active' : undefined);
+        ((product as any)?.promotionActive ? pvm('promotionActive') : undefined);
     return candidate ? String(candidate) : undefined;
 };
 
@@ -467,7 +449,7 @@ const buildDefaultVoiceover = (
     if (headline) {
         lines.push(headline.replace(/[✅⚠️🎵🔥📞📦📝🎬…]+/g, '').trim());
     } else {
-        lines.push(`Découvrez ${productName} sur Yukpo.`);
+        lines.push(pvm('decouvrezProduitSurYukpo', { name: productName }));
     }
 
     storyboardLines.slice(0, 3).forEach((line) => {
@@ -479,7 +461,7 @@ const buildDefaultVoiceover = (
     if (callToAction) {
         lines.push(callToAction.replace(/[✅⚠️🎵🔥📞📦📝🎬…]+/g, '').trim());
     } else {
-        lines.push('Contactez-nous dès maintenant via Yukpo.');
+        lines.push(pvm('contacteznousDesMaintenantViaYukpo'));
     }
 
     return lines.join('\n');
@@ -506,7 +488,7 @@ const applyBriefVariant = (
         setVoiceoverScript(variant.voiceover);
     }
     setVariantPickerVisible(false);
-    Alert.alert('Brief appliqué', 'La variante sélectionnée a été appliquée.');
+    Alert.alert(pvm('alertBriefAppliedTitle'), pvm('alertBriefAppliedBody'));
 };
 
 type ModalStep = 1 | 2 | 3 | 4 | 5 | 6;
@@ -522,6 +504,41 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const insets = useSafeAreaInsets();
     // ✅ NOUVEAU: Internationalisation
     const { t } = useLanguageSafe();
+
+    const videoStyleOptions = useMemo(
+        () =>
+            [
+                { key: 'tiktok' as const, label: t('productVideoCreationModal.styleTiktokLabel'), description: t('productVideoCreationModal.styleTiktokDesc') },
+                { key: 'story' as const, label: t('productVideoCreationModal.styleStoryLabel'), description: t('productVideoCreationModal.styleStoryDesc') },
+                { key: 'cinematic' as const, label: t('productVideoCreationModal.styleCinematicLabel'), description: t('productVideoCreationModal.styleCinematicDesc') },
+                { key: 'carousel' as const, label: t('productVideoCreationModal.styleCarouselLabel'), description: t('productVideoCreationModal.styleCarouselDesc') },
+            ] as const,
+        [t],
+    );
+
+    const musicModeOptions = useMemo(
+        () =>
+            [
+                { key: 'pulse' as const, label: t('productVideoCreationModal.musicPulseLabel'), description: t('productVideoCreationModal.musicPulseDesc') },
+                { key: 'lofi' as const, label: t('productVideoCreationModal.musicLofiLabel'), description: t('productVideoCreationModal.musicLofiDesc') },
+                { key: 'ambient' as const, label: t('productVideoCreationModal.musicAmbientLabel'), description: t('productVideoCreationModal.musicAmbientDesc') },
+                { key: 'cinematic' as const, label: t('productVideoCreationModal.musicCineLabel'), description: t('productVideoCreationModal.musicCineDesc') },
+                { key: 'none' as const, label: t('productVideoCreationModal.musicNoneLabel'), description: t('productVideoCreationModal.musicNoneDesc') },
+            ] as const,
+        [t],
+    );
+
+    const distributionOptions = useMemo(
+        () => [
+            { key: 'chat', label: t('productVideoCreationModal.distChat') },
+            { key: 'product', label: t('productVideoCreationModal.distProduct') },
+            { key: 'shorts', label: t('productVideoCreationModal.distShorts') },
+            { key: 'instagram', label: t('productVideoCreationModal.distInstagram') },
+            { key: 'youtube', label: t('productVideoCreationModal.distYoutube') },
+        ],
+        [t],
+    );
+
     const [activeStep, setActiveStep] = useState<ModalStep>(1);
     // ✅ NOUVEAU: Tracking des étapes complétées
     const [completedSteps, setCompletedSteps] = useState<Set<ModalStep>>(new Set());
@@ -536,7 +553,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [stylePreset, setStylePreset] = useState<VideoStylePreset>('tiktok');
     const [duration, setDuration] = useState<string>('28');
     const [headline, setHeadline] = useState<string>('');
-    const [callToAction, setCallToAction] = useState<string>('Commandez maintenant sur Yukpo ✅');
+    const [callToAction, setCallToAction] = useState<string>(() => pvm('defaultCallToAction'));
     const [scriptNotes, setScriptNotes] = useState<string>('');
 
     const [includePrice, setIncludePrice] = useState<boolean>(true);
@@ -646,9 +663,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         if (!productToUse) {
             Alert.alert(
-                'Produit requis',
-                'Aucun produit n\'est sélectionné. Veuillez sélectionner un produit avant de sauvegarder la vidéo AR.',
-                [{ text: 'OK', onPress: () => setShowAREditor(false) }]
+                pvm('alertArProduitRequisTitle'),
+                pvm('alertArProduitRequisBody'),
+                [{ text: String(i18n.t('common.ok')), onPress: () => setShowAREditor(false) }]
             );
             return;
         }
@@ -686,18 +703,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 product_name: productToUse.nom || productToUse.titre
             });
             Alert.alert(
-                'Produit invalide',
-                'Le produit sélectionné n\'a pas d\'index valide. Veuillez sélectionner un autre produit ou contacter le support.',
-                [{ text: 'OK', onPress: () => setShowAREditor(false) }]
+                pvm('alertArProduitInvalideTitle'),
+                pvm('alertArProduitInvalideBody'),
+                [{ text: String(i18n.t('common.ok')), onPress: () => setShowAREditor(false) }]
             );
             return;
         }
 
         if (!productToUse.serviceId) {
             Alert.alert(
-                'Service invalide',
-                'Le produit sélectionné n\'a pas de service associé. Veuillez sélectionner un autre produit.',
-                [{ text: 'OK', onPress: () => setShowAREditor(false) }]
+                pvm('alertArServiceInvalideTitle'),
+                pvm('alertArServiceInvalideBody'),
+                [{ text: String(i18n.t('common.ok')), onPress: () => setShowAREditor(false) }]
             );
             return;
         }
@@ -738,7 +755,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             });
 
             if (!uploadResult.success || !uploadResult.url) {
-                const errorMessage = uploadResult.error || 'Erreur lors de l\'upload';
+                const errorMessage = uploadResult.error || pvm('erreurUploadVideo');
                 console.error('[ProductVideoCreationModal] ❌ Erreur upload:', errorMessage);
                 throw new Error(errorMessage);
             }
@@ -750,7 +767,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 type: 'video',
                 media_type: 'video',
                 product_index: productIndex,
-                ai_description: 'Vidéo AR immersive',
+                ai_description: pvm('videoArImmersive'),
             };
 
             // Ajouter à la médiathèque produit immédiatement
@@ -766,7 +783,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             // ✅ NOUVEAU: Afficher l'alerte après la fermeture du modal pour éviter les conflits
             setTimeout(() => {
-                Alert.alert('Succès', `Vidéo AR ajoutée à la médiathèque du produit "${productToUse.nom || productToUse.titre || 'sélectionné'}"`);
+                const displayName = productToUse.nom || productToUse.titre || pvm('produitSelectionne');
+                Alert.alert(pvm('alertArSuccesTitle'), pvm('alertArSuccesBody', { name: displayName }));
             }, 300);
 
             // Rafraëchir les médias pour obtenir l'ID réel depuis le serveur
@@ -797,16 +815,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setArEditorProduct(null);
 
             // Afficher un message d'erreur plus détaillé
-            let errorMessage = 'Impossible d\'ajouter la vidéo AR. Réessayez plus tard.';
+            let errorMessage = pvm('alertArErreurAjout');
             if (error?.response?.status === 500) {
-                errorMessage = 'Erreur serveur (500). Veuillez réessayer ou contacter le support.';
+                errorMessage = pvm('alertArErreur500');
             } else if (error?.message) {
                 errorMessage = error.message;
             }
 
             // ✅ NOUVEAU: Afficher l'alerte après la fermeture du modal
             setTimeout(() => {
-                Alert.alert('Erreur', errorMessage);
+                Alert.alert(String(i18n.t('message.error')), errorMessage);
             }, 300);
         } finally {
             setIsUploadingARVideo(false);
@@ -1735,13 +1753,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU: Fonction pour estimer le coût de génération
     const handleEstimateCost = useCallback(async () => {
         if (!selectedProduct || typeof selectedProduct.product_index !== 'number') {
-            Alert.alert('Produit requis', 'Sélectionnez d\'abord un produit.');
+            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertSelectProduitDabord'));
             return;
         }
 
         const serviceId = Number(selectedProduct.serviceId);
         if (Number.isNaN(serviceId)) {
-            Alert.alert('Service invalide', 'Impossible d\'estimer le coût.');
+            Alert.alert(pvm('alertTitreServiceInvalideEstimation'), pvm('alertServiceInvalideCout'));
             return;
         }
 
@@ -1797,7 +1815,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     );
                 }
             } else {
-                Alert.alert('Estimation impossible', 'Impossible d\'estimer le coût pour le moment. Réessayez plus tard.');
+                Alert.alert(pvm('alertEstimationImpossible'), pvm('alertEstimationCoutPlusTard'));
             }
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur estimation coût:', error);
@@ -2007,7 +2025,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }
             const numericServiceId = Number(selectedProduct.serviceId);
             if (Number.isNaN(numericServiceId)) {
-                Alert.alert('Service introuvable', "Impossible d'attacher cette piste audio.");
+                Alert.alert(pvm('alertServiceIntrouvableTitre'), pvm('alertServiceIntrouvableAudio'));
                 return;
             }
             setAttachingLoopId(loopId);
@@ -2017,10 +2035,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     throw new Error(response.error || 'Attache impossible');
                 }
                 await refreshMedia(selectedProduct);
-                Alert.alert('🎵 Audio ajouté', 'La boucle a été ajoutée à votre médiathèque.');
+                Alert.alert(pvm('alertAudioAjouteTitre'), pvm('alertAudioAjouteBody'));
             } catch (error) {
                 console.error("[ProductVideoCreationModal] Impossible d'attacher la boucle audio: ", error);
-                Alert.alert('Erreur', "Ajout de la boucle audio impossible pour le moment.");
+                Alert.alert(String(i18n.t('message.error')), pvm('alertAudioErreurBody'));
             } finally {
                 setAttachingLoopId(null);
             }
@@ -2030,7 +2048,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const handleImportAudioTrack = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', "Sélectionnez un produit principal avant d'importer un audio.");
+            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertSelectProduitPrincipalAudio'));
             return;
         }
 
@@ -2047,7 +2065,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             const asset: any = (result as any).assets?.[0] || result;
             if (!asset?.uri) {
-                Alert.alert('Import audio', 'Impossible de lire ce fichier audio.');
+                Alert.alert(pvm('importAudioTitle'), pvm('alertImportAudioErreur'));
                 return;
             }
 
@@ -3408,7 +3426,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     Choisissez le style visuel et les effets pour votre vidéo.
                 </Text>
                 <View style={styles.styleRow}>
-                    {VIDEO_STYLE_OPTIONS.map((option) => {
+                    {videoStyleOptions.map((option) => {
                         const selected = stylePreset === option.key;
                         return (
                             <TouchableOpacity
@@ -4017,7 +4035,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         Choisissez une ambiance générée automatiquement ou importez votre propre piste.
                     </Text>
                     <View style={styles.styleRow}>
-                        {MUSIC_MODE_OPTIONS.map((option) => {
+                        {musicModeOptions.map((option) => {
                             const selected = musicMode === option.key;
                             return (
                                 <TouchableOpacity
@@ -4333,7 +4351,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <SafeIcon name="film" size={16} color="#8B5CF6" />
                             <Text style={styles.recapLabel}>Style</Text>
                             <Text style={styles.recapValue} numberOfLines={1}>
-                                {VIDEO_STYLE_OPTIONS.find(o => o.key === stylePreset)?.label || stylePreset}
+                                {videoStyleOptions.find(o => o.key === stylePreset)?.label || stylePreset}
                             </Text>
                         </View>
                         <View style={styles.recapItem}>
@@ -4347,7 +4365,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <SafeIcon name="music" size={16} color="#EC4899" />
                             <Text style={styles.recapLabel}>Audio</Text>
                             <Text style={styles.recapValue} numberOfLines={1}>
-                                {musicMode === 'none' ? 'Aucun' : MUSIC_MODE_OPTIONS.find(o => o.key === musicMode)?.label || musicMode}
+                                {musicMode === 'none' ? t('productVideoCreationModal.musicNoneLabel') : musicModeOptions.find(o => o.key === musicMode)?.label || musicMode}
                                 {voiceoverEnabled ? ' + Voix off' : ''}
                             </Text>
                         </View>
@@ -4560,7 +4578,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         Ciblez aussi des canaux externes à planifier (export automatique disponible) :
                     </Text>
                     <View style={styles.voiceRow}>
-                        {DISTRIBUTION_OPTIONS.map((option) => {
+                        {distributionOptions.map((option) => {
                             const selected = selectedChannels.has(option.key);
                             return (
                                 <TouchableOpacity
@@ -6345,7 +6363,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         <View style={styles.generateInfoItem}>
                                             <SafeIcon name="film" size={12} color={modernColors.textSecondary} />
                                             <Text style={styles.generateInfoText}>
-                                                {VIDEO_STYLE_OPTIONS.find(o => o.key === stylePreset)?.label || stylePreset}
+                                                {videoStyleOptions.find(o => o.key === stylePreset)?.label || stylePreset}
                                             </Text>
                                         </View>
                                         {selectedMediaIds.size > 0 && (

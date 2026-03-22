@@ -79,7 +79,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} interaction(s)",
+        "favoriteCount": "{{count}} favorite(s)",
+        "period7d": "7d",
+        "period30d": "30d",
+        "period90d": "90d"
     },
     "account": {
         "title": "Kont Mwen"
@@ -172,7 +177,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "Error",
+        "remplirTousChamps": "Please fill in all fields",
+        "impossibleEnvoyer": "Unable to send the message",
+        "impossibleOuvrirLien": "Unable to open this link",
+        "contactezNous": "Contact us",
+        "nousSommesLa": "We are here to help! Feel free to contact us.",
+        "envoyezMessage": "Send us a message",
+        "emailLabel": "Email *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "Subject *",
+        "sujetPlaceholder": "Subject of your message",
+        "messageLabel": "Message *",
+        "emailTitle": "Email",
+        "chatDirect": "Direct chat",
+        "heuresOuverture": "Business hours:",
+        "heuresOuvertureValeur": "8:00 AM - 6:00 PM (Mon-Fri)",
+        "tempsReponseValeur": "Less than 24h",
+        "supportValeur": "Available 7 days a week"
     },
     "tokens": {
         "recharge": "Rechaje Token",
@@ -1833,7 +1856,9 @@
             "launchFailed": "Failed to start generation",
             "rendering": "Unable to start the rendering.",
             "unknownError": "Erè enkoni",
-            "serverError": "Erè sèvè."
+            "serverError": "Erè sèvè.",
+            "estimationError": "Erreur lors de l'estimation.",
+            "previewUrlError": "Impossible de récupérer l'URL de la prévisualisation."
         },
         "notifications": {
             "costReady": "Budget validated ",
@@ -1852,7 +1877,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "Storyboard IA",
+            "storyboardFailedMessage": "Impossible de générer le storyboard.",
+            "previewShortNoSessionTitle": "Prévisualisation rapide",
+            "previewShortNoSessionMessage": "Génère d'abord un storyboard IA ou une session Studio avant la prévisualisation.",
+            "previewShortNoUrlTitle": "Prévisualisation rapide",
+            "previewShortNoUrlMessage": "Impossible de récupérer l'URL de la prévisualisation.",
+            "previewShortFailedTitle": "Prévisualisation rapide",
+            "previewShortFailedMessage": "Impossible de lancer la prévisualisation courte."
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1881,12 +1914,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "Prévisualisation rapide"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "Configuration",
+            "step2": "Médias",
+            "step3": "Résumé"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1914,7 +1951,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "Prévisualisation…",
+            "previewShort": "Prévisualiser 3s"
         },
         "summary": {
             "service": "Service",
@@ -1932,7 +1971,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "Scène {{index}}",
+            "sceneMediaNone": "Laisser Yukpo choisir automatiquement",
+            "sceneMediaNoneShort": "Auto",
+            "optionalScene": "Scène optionnelle",
+            "sceneMediaHint": "Choisis un média pour cette scène ou laisse Yukpo décider.",
+            "sceneDefaultHint": "(Scène vide)",
+            "noScenes": "Aucune scène définie"
         },
         "progress": {
             "title": "Render progress",
@@ -1987,7 +2034,12 @@
         "fallback": {
             "ctaDiscover": "Dekouvri",
             "ctaTry": "Eseye",
-            "ctaBook": "Rezève"
+            "ctaBook": "Rezève",
+            "blogLabel": "Blog / Chronique",
+            "tutorialLabel": "Tutoriel / How-to",
+            "testimonialDesc": "Renforce la preuve sociale en quelques secondes.",
+            "comparisonLabel": "Comparatif / Benchmark",
+            "comparisonDesc": "Oppose deux options pour mettre en avant Yukpo."
         }
     },
     "pharmacieDetails": {
@@ -3144,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "OK",
+        "error": "Erè",
+        "cancel": "Anile",
+        "goToMyServices": "Ale nan Sèvis Mwen yo",
+        "productFallback": "Pwodui",
+        "serviceWithId": "Sèvis #{{id}}",
+        "productWithIndex": "Pwodui {{index}}",
+        "helpLabel": "Èd",
+        "helpHint": "Ouvri tityorièl kreyasyon videyo",
+        "loadingServices": "Ap chaje sèvis ou yo…",
+        "servicesAvailable": "{{count}} sèvis disponib",
+        "loading": "Ap chaje…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4923,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "Pickup point",
+        "dropoff": "Drop-off point",
+        "voirStatistiques": "View my statistics",
+        "livraisonsCompletees": "Completed deliveries",
+        "tauxReussite": "Success rate",
+        "tempsMoyen": "Average time",
+        "gainsTotaux": "Total earnings",
+        "gainsCeMois": "Earnings this month"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5329,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "Erè",
+        "impossibleChargerDonnees": "Pa kapab chaje done tablodbò a",
+        "actif": "Aktif",
+        "inactif": "Inaktif",
+        "enAttente": "Ap tann",
+        "inconnu": "Enkoni",
+        "reessayer": "Eseye ankò",
+        "septJours": "7 jou",
+        "trenteJours": "30 jou",
+        "quatreVingtDixJours": "90 jou",
+        "vuesTotales": "Total vizit",
+        "interactions": "Entèraksyon",
+        "actionsRapides": "Aksyon rapid",
+        "nouvelle": "Nouvo",
+        "analytics": "Analiz",
+        "viewsCount": "{{count}} vizit",
+        "messagesCount": "{{count}} mesaj",
+        "callsCount": "{{count}} apèl",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "Vizit",
+        "message": "Mesaj",
+        "appel": "Apèl",
+        "activite": "Aktivite",
+        "surService": "sou {{service}}",
+        "ilYA": "Sa gen {{time}}"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6829,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "Tanpri gade gid la: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "Itilizatè",
+        "erreurOauth": "Erè OAuth",
+        "erreur": "Erè",
+        "configOauthAndroidManquante": "Konfigirasyon OAuth Android manke.\n\n",
+        "consultezGuideOauth": "Gade: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "Konfigirasyon obligatwa",
+        "erreurDeConnexion": "Erè koneksyon",
+        "emailOuMotDePasseIncorrect": "Imèl oswa modpas pa kòrèk",
+        "continuerAvec": "Kontinye ak {{label}}",
+        "connectezVousAvecVotreCompte": "Konekte ak kont ou",
+        "ou": "oswa",
+        "ouUtilisezVosIdentifiants": "oswa itilize idantifyan ou:",
+        "connexionEnCours": "Koneksyon...",
+        "seConnecter": "Konekte",
+        "inscriptionPartenaire": "⚠️ Enskripsyon patnè",
+        "devenirPartenaire": "🏢 Vin patnè",
+        "supportContact": "Si gen pwoblèm, kontakte sipò nou nan support@yukpo.com",
+        "important": "⚠️ Enpòtan:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9973,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "Kreye sèvis espesyalize pou wè estatistik ou yo",
+        "pharmacie": "Famasi",
+        "laboratoire": "Laboratwa",
+        "banqueSang": "Bank san",
+        "agence": "Ajans",
+        "covoiturage": "Pataje machin",
+        "taxi": "Taksi",
+        "total": "Total",
+        "actifs": "Aktif",
+        "inactifs": "Inaktif",
+        "last7Days": "7 dènye jou",
+        "last30Days": "30 dènye jou",
+        "thisMonth": "Mwa sa a",
+        "pharmacieDetail": "💊 Famasi",
+        "hopitalDetail": "🏥 Lopital",
+        "laboratoireDetail": "🔬 Laboratwa",
+        "banqueSangDetail": "🩸 Bank san",
+        "agenceDetail": "🚌 Ajans",
+        "covoiturageDetail": "🚗 Pataje machin",
+        "taxiDetail": "🚕 Taksi"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11063,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "Cameroon",
+        "rdCongo": "DR Congo",
+        "gabon": "Gabon",
+        "burkinaFaso": "Burkina Faso",
+        "mali": "Mali",
+        "tchad": "Chad",
+        "congo": "Congo",
+        "france": "France",
+        "belgique": "Belgium",
+        "consultezGuide": "Please refer to the OAuth configuration guide",
+        "utilisateur": "User",
+        "erreurOauth": "OAuth Error",
+        "configOauthManquante": "Android OAuth configuration missing.",
+        "configurationRequise": "Configuration required",
+        "erreurInscription": "Registration error"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

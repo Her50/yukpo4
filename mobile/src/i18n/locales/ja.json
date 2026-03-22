@@ -79,7 +79,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} 件のインタラクション",
+        "favoriteCount": "{{count}} 件のお気に入り",
+        "period7d": "7日",
+        "period30d": "30日",
+        "period90d": "90日"
     },
     "account": {
         "title": "マイアカウント"
@@ -172,7 +177,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "エラー",
+        "remplirTousChamps": "すべてのフィールドを入力してください",
+        "impossibleEnvoyer": "メッセージを送信できません",
+        "impossibleOuvrirLien": "このリンクを開けません",
+        "contactezNous": "お問い合わせ",
+        "nousSommesLa": "お気軽にお問い合わせください！",
+        "envoyezMessage": "メッセージを送る",
+        "emailLabel": "メール *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "件名 *",
+        "sujetPlaceholder": "メッセージの件名",
+        "messageLabel": "メッセージ *",
+        "emailTitle": "メール",
+        "chatDirect": "ダイレクトチャット",
+        "heuresOuverture": "営業時間:",
+        "heuresOuvertureValeur": "8:00 - 18:00 (月-金)",
+        "tempsReponseValeur": "24時間以内",
+        "supportValeur": "年中無休"
     },
     "tokens": {
         "recharge": "トークンをチャージ",
@@ -1854,7 +1877,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "AIストーリーボード",
+            "storyboardFailedMessage": "ストーリーボードを生成できませんでした。",
+            "previewShortNoSessionTitle": "クイックプレビュー",
+            "previewShortNoSessionMessage": "先にAIストーリーボードまたはStudioセッションを生成してください。",
+            "previewShortNoUrlTitle": "クイックプレビュー",
+            "previewShortNoUrlMessage": "プレビューURLを取得できませんでした。",
+            "previewShortFailedTitle": "クイックプレビュー",
+            "previewShortFailedMessage": "ショートプレビューを開始できませんでした。"
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1883,12 +1914,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "クイックプレビュー"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "設定",
+            "step2": "メディア",
+            "step3": "概要"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1916,7 +1951,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "プレビュー中…",
+            "previewShort": "3秒プレビュー"
         },
         "summary": {
             "service": "Service",
@@ -1934,7 +1971,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "シーン {{index}}",
+            "sceneMediaNone": "Yukpoに自動選択させる",
+            "sceneMediaNoneShort": "自動",
+            "optionalScene": "オプションシーン",
+            "sceneMediaHint": "このシーンのメディアを選択するかYukpoに任せてください。",
+            "sceneDefaultHint": "（空のシーン）",
+            "noScenes": "シーンが未定義です"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "OK",
+        "error": "エラー",
+        "cancel": "キャンセル",
+        "goToMyServices": "マイサービスへ",
+        "productFallback": "製品",
+        "serviceWithId": "サービス #{{id}}",
+        "productWithIndex": "製品 {{index}}",
+        "helpLabel": "ヘルプ",
+        "helpHint": "動画作成チュートリアルを開く",
+        "loadingServices": "サービスを読み込み中…",
+        "servicesAvailable": "{{count}} 件のサービスが利用可能",
+        "loading": "読み込み中…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "集荷地点",
+        "dropoff": "配達先",
+        "voirStatistiques": "統計を見る",
+        "livraisonsCompletees": "完了した配達",
+        "tauxReussite": "成功率",
+        "tempsMoyen": "平均時間",
+        "gainsTotaux": "総収入",
+        "gainsCeMois": "今月の収入"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "エラー",
+        "impossibleChargerDonnees": "ダッシュボードデータを読み込めません",
+        "actif": "アクティブ",
+        "inactif": "非アクティブ",
+        "enAttente": "保留中",
+        "inconnu": "不明",
+        "reessayer": "再試行",
+        "septJours": "7日間",
+        "trenteJours": "30日間",
+        "quatreVingtDixJours": "90日間",
+        "vuesTotales": "総閲覧数",
+        "interactions": "インタラクション",
+        "actionsRapides": "クイックアクション",
+        "nouvelle": "新規",
+        "analytics": "分析",
+        "viewsCount": "{{count}} 回閲覧",
+        "messagesCount": "{{count}} 件",
+        "callsCount": "{{count}} 件通話",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "閲覧",
+        "message": "メッセージ",
+        "appel": "通話",
+        "activite": "アクティビティ",
+        "surService": "{{service}} で",
+        "ilYA": "{{time}}前"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "ガイドをご覧ください：mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "ユーザー",
+        "erreurOauth": "OAuthエラー",
+        "erreur": "エラー",
+        "configOauthAndroidManquante": "Android OAuth設定が不足しています。\n\n",
+        "consultezGuideOauth": "参照：mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "設定が必要です",
+        "erreurDeConnexion": "ログインエラー",
+        "emailOuMotDePasseIncorrect": "メールまたはパスワードが正しくありません",
+        "continuerAvec": "{{label}}で続行",
+        "connectezVousAvecVotreCompte": "アカウントでサインイン",
+        "ou": "または",
+        "ouUtilisezVosIdentifiants": "または認証情報を使用：",
+        "connexionEnCours": "ログイン中...",
+        "seConnecter": "サインイン",
+        "inscriptionPartenaire": "⚠️ パートナー登録",
+        "devenirPartenaire": "🏢 パートナーになる",
+        "supportContact": "問題がある場合は、support@yukpo.comまでお問い合わせください",
+        "important": "⚠️ 重要："
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "統計を表示するには専門サービスを作成してください",
+        "pharmacie": "薬局",
+        "laboratoire": "検査室",
+        "banqueSang": "血液バンク",
+        "agence": "代理店",
+        "covoiturage": "相乗り",
+        "taxi": "タクシー",
+        "total": "合計",
+        "actifs": "アクティブ",
+        "inactifs": "非アクティブ",
+        "last7Days": "過去7日間",
+        "last30Days": "過去30日間",
+        "thisMonth": "今月",
+        "pharmacieDetail": "💊 薬局",
+        "hopitalDetail": "🏥 病院",
+        "laboratoireDetail": "🔬 検査室",
+        "banqueSangDetail": "🩸 血液バンク",
+        "agenceDetail": "🚌 代理店",
+        "covoiturageDetail": "🚗 相乗り",
+        "taxiDetail": "🚕 タクシー"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "カメルーン",
+        "rdCongo": "コンゴ民主共和国",
+        "gabon": "ガボン",
+        "burkinaFaso": "ブルキナファソ",
+        "mali": "マリ",
+        "tchad": "チャド",
+        "congo": "コンゴ",
+        "france": "フランス",
+        "belgique": "ベルギー",
+        "consultezGuide": "OAuth設定ガイドをご参照ください",
+        "utilisateur": "ユーザー",
+        "erreurOauth": "OAuthエラー",
+        "configOauthManquante": "Android OAuth設定が不足しています。",
+        "configurationRequise": "設定が必要です",
+        "erreurInscription": "登録エラー"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

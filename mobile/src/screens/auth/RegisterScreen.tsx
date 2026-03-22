@@ -50,18 +50,18 @@ const RegisterScreen: React.FC = () => {
   // Indicatifs téléphoniques par pays africain francophone
   // IMPORTANT: doit rester dans le composant car dépend de t()
   const COUNTRY_CODES = [
-    { code: 'CM', label: '🇨🇲 Cameroun', prefix: '+237' },
+    { code: 'CM', label: `🇨🇲 ${t('register.cameroun')}`, prefix: '+237' },
     { code: 'CI', label: t('register.coteDivoire'), prefix: '+225' },
     { code: 'SN', label: t('register.senegal'), prefix: '+221' },
-    { code: 'CD', label: '🇨🇩 RD Congo', prefix: '+243' },
-    { code: 'GA', label: '🇬🇦 Gabon', prefix: '+241' },
-    { code: 'BF', label: '🇧🇫 Burkina Faso', prefix: '+226' },
-    { code: 'ML', label: '🇲🇱 Mali', prefix: '+223' },
+    { code: 'CD', label: `🇨🇩 ${t('register.rdCongo')}`, prefix: '+243' },
+    { code: 'GA', label: `🇬🇦 ${t('register.gabon')}`, prefix: '+241' },
+    { code: 'BF', label: `🇧🇫 ${t('register.burkinaFaso')}`, prefix: '+226' },
+    { code: 'ML', label: `🇲🇱 ${t('register.mali')}`, prefix: '+223' },
     { code: 'GN', label: t('register.guinee'), prefix: '+224' },
-    { code: 'TD', label: '🇹🇩 Tchad', prefix: '+235' },
-    { code: 'CG', label: '🇨🇬 Congo', prefix: '+242' },
-    { code: 'FR', label: '🇫🇷 France', prefix: '+33' },
-    { code: 'BE', label: '🇧🇪 Belgique', prefix: '+32' },
+    { code: 'TD', label: `🇹🇩 ${t('register.tchad')}`, prefix: '+235' },
+    { code: 'CG', label: `🇨🇬 ${t('register.congo')}`, prefix: '+242' },
+    { code: 'FR', label: `🇫🇷 ${t('register.france')}`, prefix: '+33' },
+    { code: 'BE', label: `🇧🇪 ${t('register.belgique')}`, prefix: '+32' },
   ];
 
   // États du formulaire
@@ -127,7 +127,7 @@ const RegisterScreen: React.FC = () => {
         googleResponse.error?.message?.includes('invalid_request')) {
         errorMessage = t('registerScreen.configurationOauthManquanteLeSchemaUriPersonnalise') +
           t('registerScreen.uriUtilisee') + (googleRequest?.redirectUri || t('register.nonDefinie')) + '\n\n' +
-          'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
+          t('register.consultezGuide');
       } else if (googleResponse.error?.code === 'access_denied') {
         errorMessage = t('registerScreen.connexionGoogleAnnulee');
       } else if (googleResponse.error?.code === 'popup_closed') {
@@ -166,7 +166,7 @@ const RegisterScreen: React.FC = () => {
           updateUser({
             id: String(decoded.sub),
             email: decoded.email,
-            name: decoded.name || decoded.email?.split('@')[0] || 'Utilisateur',
+            name: decoded.name || decoded.email?.split('@')[0] || t('register.utilisateur'),
             token: data.token,
             credits: decoded.tokens_balance ?? 0,
             role: decoded.role || 'user',
@@ -179,7 +179,7 @@ const RegisterScreen: React.FC = () => {
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Erreur OAuth');
+        throw new Error(errorData.message || t('register.erreurOauth'));
       }
     } catch (error: any) {
       console.error('[RegisterScreen] Erreur OAuth:', error);
@@ -198,11 +198,11 @@ const RegisterScreen: React.FC = () => {
 
       // Vérifier que le Client ID Android est configuré sur Android
       if (Platform.OS === 'android' && !process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) {
-        const errorMsg = 'Configuration OAuth Android manquante.\n\n' +
+        const errorMsg = t('register.configOauthManquante') + '\n\n' +
           t('registerScreen.veuillezDefinirExpopublicgoogleandroidclientidDansVosVa') +
-          'Consultez: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
+          t('register.consultezGuide');
         setError(errorMsg);
-        Alert.alert('Configuration requise', errorMsg);
+        Alert.alert(t('register.configurationRequise'), errorMsg);
         setFormLoading(false);
         return;
       }
@@ -214,11 +214,11 @@ const RegisterScreen: React.FC = () => {
 
       if (error?.message?.includes('Custom URI scheme') || error?.message?.includes('invalid_request')) {
         errorMessage = t('registerScreen.configurationOauthManquanteLeSchemaUriPersonnalise') +
-          'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
+          t('register.consultezGuide');
       }
 
       setError(errorMessage);
-      Alert.alert('Erreur OAuth', errorMessage);
+      Alert.alert(t('register.erreurOauth'), errorMessage);
       setFormLoading(false);
     }
   };
@@ -304,7 +304,7 @@ const RegisterScreen: React.FC = () => {
     } catch (error: any) {
       console.error('[RegisterScreen] Erreur inscription:', error);
 
-      let errorMessage = error.message || 'Erreur lors de l\'inscription';
+      let errorMessage = error.message || t('register.erreurInscription');
 
       if (error.message?.includes('409') || error.message?.includes('deja utilise') || error.message?.includes('already exists')) {
         errorMessage = t('auth.emailAlreadyUsed');

@@ -167,7 +167,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
                     end={{ x: 1, y: 1 }}
                     style={styles.headerGradient}
                 >
-                    <View style={styles.headerTop}>
+                    <View style={styles.headerTopRow}>
                         <TouchableOpacity
                             onPress={() => {
                                 hapticPress();
@@ -175,45 +175,45 @@ const LivreScolaireHomeScreen: React.FC = () => {
                             }}
                             style={styles.backButton}
                         >
-                            <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
+                            <SafeIcon name="arrow-left" size={22} color="#FFFFFF" />
                         </TouchableOpacity>
-                        <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>{t('livreScolaireHome.bourseDuLivre')}</Text>
-                        </View>
-                        <View style={styles.headerButtonsContainer}>
-                            <TouchableOpacity
-                                onPress={onLibraireHeaderPress}
-                                style={styles.libraireHeaderBtn}
-                                activeOpacity={0.88}
-                            >
-                                <SafeIcon
-                                    name={isLibrairePartner ? 'layout-dashboard' : 'store'}
-                                    size={15}
-                                    color="#B45309"
-                                    type="lucide"
-                                />
-                                <Text style={styles.libraireHeaderBtnText} numberOfLines={2}>
-                                    {isLibrairePartner
-                                        ? t('bourseLivre.maLibrairie', 'Ma librairie')
-                                        : t('bourseLivre.devenirLibraire', 'Devenir libraire')}
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => safeNavigate('EtablissementScolaire')}
-                                style={styles.etablissementHeaderBtn}
-                                activeOpacity={0.88}
-                            >
-                                <SafeIcon
-                                    name="school"
-                                    size={15}
-                                    color="#059669"
-                                    type="lucide"
-                                />
-                                <Text style={styles.etablissementHeaderBtnText} numberOfLines={2}>
-                                    {t('bourseLivre.etablissementScolaire', 'Établissement scolaire')}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+                        <Text style={styles.headerTitle} numberOfLines={1}>
+                            {t('livreScolaireHome.bourseDuLivre')}
+                        </Text>
+                    </View>
+                    <View style={styles.headerButtonsRow}>
+                        <TouchableOpacity
+                            onPress={onLibraireHeaderPress}
+                            style={styles.libraireHeaderBtn}
+                            activeOpacity={0.85}
+                        >
+                            <SafeIcon
+                                name={isLibrairePartner ? 'layout-dashboard' : 'store'}
+                                size={16}
+                                color="#B45309"
+                                type="lucide"
+                            />
+                            <Text style={styles.libraireHeaderBtnText} numberOfLines={1}>
+                                {isLibrairePartner
+                                    ? t('bourseLivre.maLibrairie', 'Ma librairie')
+                                    : t('bourseLivre.devenirLibraire', 'Devenir libraire')}
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => safeNavigate('EtablissementScolaire')}
+                            style={styles.etablissementHeaderBtn}
+                            activeOpacity={0.85}
+                        >
+                            <SafeIcon
+                                name="school"
+                                size={16}
+                                color="#059669"
+                                type="lucide"
+                            />
+                            <Text style={styles.etablissementHeaderBtnText} numberOfLines={1}>
+                                {t('bourseLivre.etablissementScolaire', 'Établissement scolaire')}
+                            </Text>
+                        </TouchableOpacity>
                     </View>
                 </LinearGradient>
             </View>
@@ -222,31 +222,41 @@ const LivreScolaireHomeScreen: React.FC = () => {
                 <TouchableOpacity
                     style={[styles.primaryActionButton, styles.primaryActionSell]}
                     onPress={() => safeNavigate('BookUploadV2')}
-                    activeOpacity={0.9}
+                    activeOpacity={0.88}
                 >
-                    <SafeIcon name="camera" size={20} color="#FFFFFF" type="lucide" />
-                    <Text style={styles.primaryActionTitle}>
-                        {t('livreScolaireHome.vendreTroquerTitle', 'Mettez vos livres en circulation')}
-                    </Text>
-                    <Text style={styles.primaryActionSubtitle}>
-                        {t(
-                            'livreScolaireHome.vendreTroquerSubtitle',
-                            'Vente, troc ou don — à l\'étape suivante, précisez si le livre est offert gratuitement'
-                        )}
-                    </Text>
+                    <View style={styles.primaryActionIconWrap}>
+                        <SafeIcon name="camera" size={22} color="#047857" type="lucide" />
+                    </View>
+                    <View style={styles.primaryActionTextWrap}>
+                        <Text style={[styles.primaryActionTitle, { color: '#047857' }]} numberOfLines={2}>
+                            {t('livreScolaireHome.vendreTroquerTitle', 'Mettez vos livres en circulation')}
+                        </Text>
+                        <Text style={[styles.primaryActionSubtitle, { color: '#065F46' }]} numberOfLines={2}>
+                            {t(
+                                'livreScolaireHome.vendreTroquerSubtitle',
+                                'Vente, troc ou don — précisez à l\'étape suivante'
+                            )}
+                        </Text>
+                    </View>
+                    <SafeIcon name="chevron-right" size={18} color="#047857" type="lucide" />
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.primaryActionButton, styles.primaryActionBuy]}
                     onPress={() => safeNavigate('ProgrammeBesoinsSelector')}
-                    activeOpacity={0.9}
+                    activeOpacity={0.88}
                 >
-                    <SafeIcon name="book-check" size={20} color="#FFFFFF" type="lucide" />
-                    <Text style={styles.primaryActionTitle}>
-                        {t('livreScolaireHome.acheterLivresTitle', 'Trouvez votre liste scolaire en un parcours')}
-                    </Text>
-                    <Text style={styles.primaryActionSubtitle}>
-                        {t('livreScolaireHome.acheterLivresSubtitle', 'Cochez vos besoins et arbitrez entre neuf et occasion')}
-                    </Text>
+                    <View style={[styles.primaryActionIconWrap, { backgroundColor: '#EFF6FF' }]}>
+                        <SafeIcon name="book-check" size={22} color="#2563EB" type="lucide" />
+                    </View>
+                    <View style={styles.primaryActionTextWrap}>
+                        <Text style={[styles.primaryActionTitle, { color: '#1E40AF' }]} numberOfLines={2}>
+                            {t('livreScolaireHome.acheterLivresTitle', 'Trouvez votre liste scolaire')}
+                        </Text>
+                        <Text style={[styles.primaryActionSubtitle, { color: '#1E3A8A' }]} numberOfLines={2}>
+                            {t('livreScolaireHome.acheterLivresSubtitle', 'Cochez vos besoins, arbitrez neuf / occasion')}
+                        </Text>
+                    </View>
+                    <SafeIcon name="chevron-right" size={18} color="#2563EB" type="lucide" />
                 </TouchableOpacity>
             </View>
 
@@ -431,7 +441,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#F9FAFB',
     },
     headerContainer: {
-        backgroundColor: '#FFFFFF',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -440,79 +449,71 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     headerGradient: {
-        paddingTop: 20,
-        paddingBottom: 16,
+        paddingTop: 18,
+        paddingBottom: 14,
         paddingHorizontal: 16,
+        gap: 12,
     },
-    headerTop: {
+    headerTopRow: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     backButton: {
-        marginRight: 12,
-    },
-    headerTitleContainer: {
-        flex: 1,
+        marginRight: 10,
+        padding: 2,
     },
     headerTitle: {
-        fontSize: 24,
-        fontWeight: '700',
+        fontSize: 20,
+        fontWeight: '800',
         color: '#FFFFFF',
+        flex: 1,
+        letterSpacing: 0.3,
     },
-    headerButtonsContainer: {
+    headerButtonsRow: {
         flexDirection: 'row',
-        gap: 8,
-        alignItems: 'center',
+        gap: 10,
     },
     libraireHeaderBtn: {
-        maxWidth: 120,
-        minHeight: 44,
-        paddingVertical: 8,
-        paddingHorizontal: 8,
-        borderRadius: 14,
-        backgroundColor: '#FFFFFF',
-        flexDirection: 'column',
+        flex: 1,
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 4,
+        gap: 7,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.12,
         shadowRadius: 3,
-        elevation: 3,
+        elevation: 2,
     },
     libraireHeaderBtnText: {
-        fontSize: 10,
-        fontWeight: '800',
+        fontSize: 12,
+        fontWeight: '700',
         color: '#92400E',
-        textAlign: 'center',
-        lineHeight: 13,
-        maxWidth: 112,
     },
     etablissementHeaderBtn: {
-        maxWidth: 120,
-        minHeight: 44,
-        paddingVertical: 8,
-        paddingHorizontal: 8,
-        borderRadius: 14,
-        backgroundColor: '#FFFFFF',
-        flexDirection: 'column',
+        flex: 1,
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 4,
+        gap: 7,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.12,
         shadowRadius: 3,
-        elevation: 3,
+        elevation: 2,
     },
     etablissementHeaderBtnText: {
-        fontSize: 10,
-        fontWeight: '800',
+        fontSize: 12,
+        fontWeight: '700',
         color: '#047857',
-        textAlign: 'center',
-        lineHeight: 13,
-        maxWidth: 112,
     },
     primaryActionsRow: {
         paddingHorizontal: 16,
@@ -520,38 +521,52 @@ const styles = StyleSheet.create({
         paddingBottom: 10,
         backgroundColor: '#F9FAFB',
         gap: 10,
-        flexDirection: 'row',
     },
     primaryActionButton: {
-        flex: 1,
-        minHeight: 118,
-        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 14,
         paddingVertical: 14,
-        paddingHorizontal: 12,
-        justifyContent: 'space-between',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.22,
+        paddingHorizontal: 14,
+        gap: 12,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
         shadowRadius: 4,
         elevation: 2,
     },
     primaryActionSell: {
-        backgroundColor: '#047857',
+        backgroundColor: '#ECFDF5',
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
         shadowColor: '#059669',
     },
     primaryActionBuy: {
-        backgroundColor: '#2563EB',
+        backgroundColor: '#EFF6FF',
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
         shadowColor: '#2563EB',
     },
+    primaryActionIconWrap: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#D1FAE5',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    primaryActionTextWrap: {
+        flex: 1,
+        gap: 2,
+    },
     primaryActionTitle: {
-        color: '#FFFFFF',
         fontSize: 14,
         fontWeight: '700',
+        lineHeight: 18,
     },
     primaryActionSubtitle: {
-        color: 'rgba(255,255,255,0.92)',
         fontSize: 11,
         lineHeight: 15,
-        marginTop: 6,
+        opacity: 0.8,
     },
     dashboardSection: {
         marginHorizontal: 16,

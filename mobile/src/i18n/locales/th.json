@@ -213,7 +213,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} interaction(s)",
+        "favoriteCount": "{{count}} favorite(s)",
+        "period7d": "7d",
+        "period30d": "30d",
+        "period90d": "90d"
     },
     "account": {
         "title": "My Account"
@@ -306,7 +311,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "Error",
+        "remplirTousChamps": "Please fill in all fields",
+        "impossibleEnvoyer": "Unable to send the message",
+        "impossibleOuvrirLien": "Unable to open this link",
+        "contactezNous": "Contact us",
+        "nousSommesLa": "We are here to help! Feel free to contact us.",
+        "envoyezMessage": "Send us a message",
+        "emailLabel": "Email *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "Subject *",
+        "sujetPlaceholder": "Subject of your message",
+        "messageLabel": "Message *",
+        "emailTitle": "Email",
+        "chatDirect": "Direct chat",
+        "heuresOuverture": "Business hours:",
+        "heuresOuvertureValeur": "8:00 AM - 6:00 PM (Mon-Fri)",
+        "tempsReponseValeur": "Less than 24h",
+        "supportValeur": "Available 7 days a week"
     },
     "tokens": {
         "recharge": "Recharge Tokens",
@@ -1473,7 +1496,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "สตอรี่บอร์ด AI",
+            "storyboardFailedMessage": "ไม่สามารถสร้างสตอรี่บอร์ดได้",
+            "previewShortNoSessionTitle": "ตัวอย่างด่วน",
+            "previewShortNoSessionMessage": "สร้างสตอรี่บอร์ด AI หรือเซสชัน Studio ก่อน",
+            "previewShortNoUrlTitle": "ตัวอย่างด่วน",
+            "previewShortNoUrlMessage": "ไม่สามารถรับ URL ตัวอย่างได้",
+            "previewShortFailedTitle": "ตัวอย่างด่วน",
+            "previewShortFailedMessage": "ไม่สามารถเริ่มตัวอย่างสั้นได้"
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1502,12 +1533,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "ตัวอย่างด่วน"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "การตั้งค่า",
+            "step2": "สื่อ",
+            "step3": "สรุป"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1535,7 +1570,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "กำลังแสดงตัวอย่าง…",
+            "previewShort": "ตัวอย่าง 3วิ"
         },
         "summary": {
             "service": "Service",
@@ -1553,7 +1590,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "ฉาก {{index}}",
+            "sceneMediaNone": "ให้ Yukpo เลือกอัตโนมัติ",
+            "sceneMediaNoneShort": "อัตโนมัติ",
+            "optionalScene": "ฉากเสริม",
+            "sceneMediaHint": "เลือกสื่อสำหรับฉากนี้หรือให้ Yukpo ตัดสินใจ",
+            "sceneDefaultHint": "(ฉากว่าง)",
+            "noScenes": "ยังไม่มีฉากที่กำหนด"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "ตกลง",
+        "error": "ข้อผิดพลาด",
+        "cancel": "ยกเลิก",
+        "goToMyServices": "ไปที่บริการของฉัน",
+        "productFallback": "สินค้า",
+        "serviceWithId": "บริการ #{{id}}",
+        "productWithIndex": "สินค้า {{index}}",
+        "helpLabel": "ช่วยเหลือ",
+        "helpHint": "เปิดบทเรียนการสร้างวิดีโอ",
+        "loadingServices": "กำลังโหลดบริการของคุณ…",
+        "servicesAvailable": "{{count}} บริการพร้อมใช้งาน",
+        "loading": "กำลังโหลด…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "Pickup point",
+        "dropoff": "Drop-off point",
+        "voirStatistiques": "View my statistics",
+        "livraisonsCompletees": "Completed deliveries",
+        "tauxReussite": "Success rate",
+        "tempsMoyen": "Average time",
+        "gainsTotaux": "Total earnings",
+        "gainsCeMois": "Earnings this month"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "ข้อผิดพลาด",
+        "impossibleChargerDonnees": "ไม่สามารถโหลดข้อมูลแดชบอร์ดได้",
+        "actif": "ใช้งานอยู่",
+        "inactif": "ไม่ใช้งาน",
+        "enAttente": "รอดำเนินการ",
+        "inconnu": "ไม่ทราบ",
+        "reessayer": "ลองอีกครั้ง",
+        "septJours": "7 วัน",
+        "trenteJours": "30 วัน",
+        "quatreVingtDixJours": "90 วัน",
+        "vuesTotales": "ยอดดูทั้งหมด",
+        "interactions": "การโต้ตอบ",
+        "actionsRapides": "การดำเนินการด่วน",
+        "nouvelle": "ใหม่",
+        "analytics": "วิเคราะห์",
+        "viewsCount": "{{count}} ครั้ง",
+        "messagesCount": "{{count}} ข้อความ",
+        "callsCount": "{{count}} สาย",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "การดู",
+        "message": "ข้อความ",
+        "appel": "โทร",
+        "activite": "กิจกรรม",
+        "surService": "บน {{service}}",
+        "ilYA": "{{time}} ที่แล้ว"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "โปรดดูคู่มือ: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "ผู้ใช้",
+        "erreurOauth": "ข้อผิดพลาด OAuth",
+        "erreur": "ข้อผิดพลาด",
+        "configOauthAndroidManquante": "ขาดการตั้งค่า OAuth ของ Android\n\n",
+        "consultezGuideOauth": "ดู: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "ต้องการการตั้งค่า",
+        "erreurDeConnexion": "ข้อผิดพลาดในการเข้าสู่ระบบ",
+        "emailOuMotDePasseIncorrect": "อีเมลหรือรหัสผ่านไม่ถูกต้อง",
+        "continuerAvec": "ดำเนินการต่อด้วย {{label}}",
+        "connectezVousAvecVotreCompte": "เข้าสู่ระบบด้วยบัญชีของคุณ",
+        "ou": "หรือ",
+        "ouUtilisezVosIdentifiants": "หรือใช้ข้อมูลรับรองของคุณ:",
+        "connexionEnCours": "กำลังเข้าสู่ระบบ...",
+        "seConnecter": "เข้าสู่ระบบ",
+        "inscriptionPartenaire": "⚠️ ลงทะเบียนพันธมิตร",
+        "devenirPartenaire": "🏢 เป็นพันธมิตร",
+        "supportContact": "หากมีปัญหา ติดต่อฝ่ายสนับสนุนที่ support@yukpo.com",
+        "important": "⚠️ สำคัญ:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "สร้างบริการเฉพาะทางเพื่อดูสถิติของคุณ",
+        "pharmacie": "ร้านขายยา",
+        "laboratoire": "ห้องปฏิบัติการ",
+        "banqueSang": "ธนาคารเลือด",
+        "agence": "เอเจนซี่",
+        "covoiturage": "ร่วมเดินทาง",
+        "taxi": "แท็กซี่",
+        "total": "ทั้งหมด",
+        "actifs": "ใช้งาน",
+        "inactifs": "ไม่ใช้งาน",
+        "last7Days": "7 วันที่ผ่านมา",
+        "last30Days": "30 วันที่ผ่านมา",
+        "thisMonth": "เดือนนี้",
+        "pharmacieDetail": "💊 ร้านขายยา",
+        "hopitalDetail": "🏥 โรงพยาบาล",
+        "laboratoireDetail": "🔬 ห้องปฏิบัติการ",
+        "banqueSangDetail": "🩸 ธนาคารเลือด",
+        "agenceDetail": "🚌 เอเจนซี่",
+        "covoiturageDetail": "🚗 ร่วมเดินทาง",
+        "taxiDetail": "🚕 แท็กซี่"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "Cameroon",
+        "rdCongo": "DR Congo",
+        "gabon": "Gabon",
+        "burkinaFaso": "Burkina Faso",
+        "mali": "Mali",
+        "tchad": "Chad",
+        "congo": "Congo",
+        "france": "France",
+        "belgique": "Belgium",
+        "consultezGuide": "Please refer to the OAuth configuration guide",
+        "utilisateur": "User",
+        "erreurOauth": "OAuth Error",
+        "configOauthManquante": "Android OAuth configuration missing.",
+        "configurationRequise": "Configuration required",
+        "erreurInscription": "Registration error"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

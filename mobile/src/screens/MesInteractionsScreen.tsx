@@ -280,7 +280,7 @@ const MesInteractionsScreen: React.FC = () => {
             <View style={styles.headerTextContainer}>
               <Text style={styles.headerTitle}>{t('interactions.title')}</Text>
               <Text style={styles.headerSubtitle}>
-                {String(interactions.length)} interaction{interactions.length > 1 ? 's' : ''} • {String(favorites.length)} favori{favorites.length > 1 ? 's' : ''}
+                {t('interactions.interactionCount', { count: interactions.length })} • {t('interactions.favoriteCount', { count: favorites.length })}
               </Text>
             </View>
           </View>
@@ -300,7 +300,7 @@ const MesInteractionsScreen: React.FC = () => {
                   styles.periodButtonText,
                   selectedPeriod === period && styles.periodButtonTextActive
                 ]}>
-                  {period === '7d' ? '7j' : period === '30d' ? '30j' : '90j'}
+                  {period === '7d' ? t('interactions.period7d') : period === '30d' ? t('interactions.period30d') : t('interactions.period90d')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -413,7 +413,7 @@ const MesInteractionsScreen: React.FC = () => {
                     <SafeIcon name={category.icon} size={24} color={category.color} />
                   </View>
                   <Text style={styles.categoryName}>{category.name}</Text>
-                  <Text style={styles.categoryCount}>{String(category.count)} interaction{category.count > 1 ? 's' : ''}</Text>
+                  <Text style={styles.categoryCount}>{t('interactions.interactionCount', { count: category.count })}</Text>
 
                   {/* Types d'interactions */}
                   <View style={styles.categoryInteractionTypes}>

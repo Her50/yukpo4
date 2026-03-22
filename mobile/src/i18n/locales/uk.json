@@ -213,7 +213,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} interaction(s)",
+        "favoriteCount": "{{count}} favorite(s)",
+        "period7d": "7d",
+        "period30d": "30d",
+        "period90d": "90d"
     },
     "account": {
         "title": "My Account"
@@ -306,7 +311,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "Error",
+        "remplirTousChamps": "Please fill in all fields",
+        "impossibleEnvoyer": "Unable to send the message",
+        "impossibleOuvrirLien": "Unable to open this link",
+        "contactezNous": "Contact us",
+        "nousSommesLa": "We are here to help! Feel free to contact us.",
+        "envoyezMessage": "Send us a message",
+        "emailLabel": "Email *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "Subject *",
+        "sujetPlaceholder": "Subject of your message",
+        "messageLabel": "Message *",
+        "emailTitle": "Email",
+        "chatDirect": "Direct chat",
+        "heuresOuverture": "Business hours:",
+        "heuresOuvertureValeur": "8:00 AM - 6:00 PM (Mon-Fri)",
+        "tempsReponseValeur": "Less than 24h",
+        "supportValeur": "Available 7 days a week"
     },
     "tokens": {
         "recharge": "Recharge Tokens",
@@ -1473,7 +1496,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "ІІ-розкадрування",
+            "storyboardFailedMessage": "Не вдалося згенерувати розкадрування.",
+            "previewShortNoSessionTitle": "Швидкий попередній перегляд",
+            "previewShortNoSessionMessage": "Спочатку створіть ІІ-розкадрування або сесію Studio.",
+            "previewShortNoUrlTitle": "Швидкий попередній перегляд",
+            "previewShortNoUrlMessage": "Не вдалося отримати URL попереднього перегляду.",
+            "previewShortFailedTitle": "Швидкий попередній перегляд",
+            "previewShortFailedMessage": "Не вдалося запустити короткий попередній перегляд."
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1502,12 +1533,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "Швидкий попередній перегляд"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "Налаштування",
+            "step2": "Медіа",
+            "step3": "Підсумок"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1535,7 +1570,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "Перегляд…",
+            "previewShort": "Перегляд 3с"
         },
         "summary": {
             "service": "Service",
@@ -1553,7 +1590,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "Сцена {{index}}",
+            "sceneMediaNone": "Дозволити Yukpo обрати автоматично",
+            "sceneMediaNoneShort": "Авто",
+            "optionalScene": "Необов'язкова сцена",
+            "sceneMediaHint": "Оберіть медіа для цієї сцени або дозвольте Yukpo вирішити.",
+            "sceneDefaultHint": "(Порожня сцена)",
+            "noScenes": "Сцени не визначені"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "OK",
+        "error": "Помилка",
+        "cancel": "Скасувати",
+        "goToMyServices": "Перейти до Моїх Послуг",
+        "productFallback": "Продукт",
+        "serviceWithId": "Послуга #{{id}}",
+        "productWithIndex": "Продукт {{index}}",
+        "helpLabel": "Допомога",
+        "helpHint": "Відкрити посібник зі створення відео",
+        "loadingServices": "Завантаження ваших послуг…",
+        "servicesAvailable": "{{count}} послуг(а) доступно",
+        "loading": "Завантаження…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "Pickup point",
+        "dropoff": "Drop-off point",
+        "voirStatistiques": "View my statistics",
+        "livraisonsCompletees": "Completed deliveries",
+        "tauxReussite": "Success rate",
+        "tempsMoyen": "Average time",
+        "gainsTotaux": "Total earnings",
+        "gainsCeMois": "Earnings this month"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "Помилка",
+        "impossibleChargerDonnees": "Не вдалося завантажити дані панелі",
+        "actif": "Активний",
+        "inactif": "Неактивний",
+        "enAttente": "Очікує",
+        "inconnu": "Невідомо",
+        "reessayer": "Спробувати знову",
+        "septJours": "7 днів",
+        "trenteJours": "30 днів",
+        "quatreVingtDixJours": "90 днів",
+        "vuesTotales": "Загальні перегляди",
+        "interactions": "Взаємодії",
+        "actionsRapides": "Швидкі дії",
+        "nouvelle": "Нове",
+        "analytics": "Аналітика",
+        "viewsCount": "{{count}} перегл.",
+        "messagesCount": "{{count}} повід.",
+        "callsCount": "{{count}} дзвінків",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "Перегляд",
+        "message": "Повідомлення",
+        "appel": "Дзвінок",
+        "activite": "Активність",
+        "surService": "на {{service}}",
+        "ilYA": "{{time}} тому"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "Перегляньте посібник: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "Користувач",
+        "erreurOauth": "Помилка OAuth",
+        "erreur": "Помилка",
+        "configOauthAndroidManquante": "Відсутня конфігурація OAuth для Android.\n\n",
+        "consultezGuideOauth": "Дивіться: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "Потрібна конфігурація",
+        "erreurDeConnexion": "Помилка входу",
+        "emailOuMotDePasseIncorrect": "Невірна електронна пошта або пароль",
+        "continuerAvec": "Продовжити з {{label}}",
+        "connectezVousAvecVotreCompte": "Увійдіть за допомогою акаунту",
+        "ou": "або",
+        "ouUtilisezVosIdentifiants": "або використайте свої облікові дані:",
+        "connexionEnCours": "Вхід...",
+        "seConnecter": "Увійти",
+        "inscriptionPartenaire": "⚠️ Реєстрація партнера",
+        "devenirPartenaire": "🏢 Стати партнером",
+        "supportContact": "У разі проблем зверніться до підтримки: support@yukpo.com",
+        "important": "⚠️ Важливо:"
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "Створіть спеціалізовані послуги, щоб переглянути статистику",
+        "pharmacie": "Аптека",
+        "laboratoire": "Лабораторія",
+        "banqueSang": "Банк крові",
+        "agence": "Агентство",
+        "covoiturage": "Спільні поїздки",
+        "taxi": "Таксі",
+        "total": "Усього",
+        "actifs": "Активні",
+        "inactifs": "Неактивні",
+        "last7Days": "Останні 7 днів",
+        "last30Days": "Останні 30 днів",
+        "thisMonth": "Цей місяць",
+        "pharmacieDetail": "💊 Аптека",
+        "hopitalDetail": "🏥 Лікарня",
+        "laboratoireDetail": "🔬 Лабораторія",
+        "banqueSangDetail": "🩸 Банк крові",
+        "agenceDetail": "🚌 Агентство",
+        "covoiturageDetail": "🚗 Спільні поїздки",
+        "taxiDetail": "🚕 Таксі"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "Cameroon",
+        "rdCongo": "DR Congo",
+        "gabon": "Gabon",
+        "burkinaFaso": "Burkina Faso",
+        "mali": "Mali",
+        "tchad": "Chad",
+        "congo": "Congo",
+        "france": "France",
+        "belgique": "Belgium",
+        "consultezGuide": "Please refer to the OAuth configuration guide",
+        "utilisateur": "User",
+        "erreurOauth": "OAuth Error",
+        "configOauthManquante": "Android OAuth configuration missing.",
+        "configurationRequise": "Configuration required",
+        "erreurInscription": "Registration error"
     },
     "bookBuyDirect": {
         "especes": "Espèces"

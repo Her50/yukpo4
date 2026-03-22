@@ -547,16 +547,28 @@ async function _fallbackCountry(): Promise<string> {
     return 'CM';
 }
 
+const GLOBAL_LANGUAGES: GeoLanguage[] = [
+    { code: 'en', name: 'English', nativeName: 'English', flag: '\uD83C\uDDEC\uD83C\uDDE7', isOfficial: false, isLocal: false },
+    { code: 'fr', name: 'French', nativeName: 'Français', flag: '\uD83C\uDDEB\uD83C\uDDF7', isOfficial: false, isLocal: false },
+    { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '\uD83C\uDDE9\uD83C\uDDEA', isOfficial: false, isLocal: false },
+    { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '\uD83C\uDDEA\uD83C\uDDF8', isOfficial: false, isLocal: false },
+];
+
 /**
- * Retourne les langues suggérées pour un pays donné (max 10, avec locales)
+ * Retourne les langues suggérées pour un pays donné (locales + 4 langues globales toujours présentes)
  */
 export function getLanguagesForCountry(countryCode: string): GeoLanguage[] {
     const entry = COUNTRY_LANGUAGES[countryCode];
-    if (!entry) {
-        // Fallback : langues internationales courantes
-        return COUNTRY_LANGUAGES['CM'].languages;
+    const countryLangs = entry ? entry.languages.slice(0, 10) : COUNTRY_LANGUAGES['CM'].languages;
+
+    const existingCodes = new Set(countryLangs.map(l => l.code));
+    const merged = [...countryLangs];
+    for (const gl of GLOBAL_LANGUAGES) {
+        if (!existingCodes.has(gl.code)) {
+            merged.push(gl);
+        }
     }
-    return entry.languages.slice(0, 10);
+    return merged;
 }
 
 /**
@@ -581,4 +593,75 @@ export async function detectGeoLanguageContext(): Promise<{
         defaultLanguage: getDefaultLanguageForCountry(countryCode),
         suggestedLanguages: getLanguagesForCountry(countryCode),
     };
+}
+
+/**
+ * Noms de langues traduits dans les langues principales de l'app.
+ * Clé = code langue cible (la langue de l'utilisateur), valeur = map code → nom traduit.
+ */
+const LOCALIZED_LANG_NAMES: Record<string, Record<string, string>> = {
+    fr: {
+        en: 'Anglais', fr: 'Français', de: 'Allemand', es: 'Espagnol', pt: 'Portugais',
+        it: 'Italien', nl: 'Néerlandais', pl: 'Polonais', uk: 'Ukrainien', tr: 'Turc',
+        ru: 'Russe', zh: 'Chinois', ja: 'Japonais', ko: 'Coréen', hi: 'Hindi',
+        ar: 'Arabe', sw: 'Swahili', ha: 'Haoussa', yo: 'Yoruba', ig: 'Igbo',
+        am: 'Amharique', zu: 'Zoulou', wo: 'Wolof', ln: 'Lingala', ff: 'Peul (Fulfulde)',
+        rw: 'Kinyarwanda', sn: 'Shona', so: 'Somali', mg: 'Malgache', ht: 'Créole haïtien',
+        bn: 'Bengali', af: 'Afrikaans', xh: 'Xhosa', st: 'Sesotho', ti: 'Tigrinya',
+        pcm: 'Pidgin', ewo: 'Ewondo', dua: 'Duala', bas: 'Bassa', bbj: 'Ghomala',
+        bum: 'Bulu', bci: 'Baoulé', dyu: 'Dioula', bet: 'Bété', mos: 'Mooré',
+        dje: 'Zarma', ee: 'Éwé', kbp: 'Kabiyè', sar: 'Sara', sg: 'Sango',
+        kg: 'Kikongo', lua: 'Tshiluba', fan: 'Fang', srr: 'Sérère', bm: 'Bambara',
+        rn: 'Kirundi', pap: 'Papiamento', ms: 'Malais', tl: 'Tagalog', vi: 'Vietnamien',
+        th: 'Thaï',
+    },
+    en: {
+        en: 'English', fr: 'French', de: 'German', es: 'Spanish', pt: 'Portuguese',
+        it: 'Italian', nl: 'Dutch', pl: 'Polish', uk: 'Ukrainian', tr: 'Turkish',
+        ru: 'Russian', zh: 'Chinese', ja: 'Japanese', ko: 'Korean', hi: 'Hindi',
+        ar: 'Arabic', sw: 'Swahili', ha: 'Hausa', yo: 'Yoruba', ig: 'Igbo',
+        am: 'Amharic', zu: 'Zulu', wo: 'Wolof', ln: 'Lingala', ff: 'Fulfulde',
+        rw: 'Kinyarwanda', sn: 'Shona', so: 'Somali', mg: 'Malagasy', ht: 'Haitian Creole',
+        bn: 'Bengali', af: 'Afrikaans', xh: 'Xhosa', st: 'Sesotho', ti: 'Tigrinya',
+        pcm: 'Pidgin', ewo: 'Ewondo', dua: 'Duala', bas: 'Bassa', bbj: 'Ghomala',
+        bum: 'Bulu', bci: 'Baoulé', dyu: 'Dioula', bet: 'Bété', mos: 'Mooré',
+        dje: 'Zarma', ee: 'Ewe', kbp: 'Kabiyè', sar: 'Sara', sg: 'Sango',
+        kg: 'Kikongo', lua: 'Tshiluba', fan: 'Fang', srr: 'Seereer', bm: 'Bambara',
+        rn: 'Kirundi', pap: 'Papiamento', ms: 'Malay', tl: 'Tagalog', vi: 'Vietnamese',
+        th: 'Thai',
+    },
+    de: {
+        en: 'Englisch', fr: 'Französisch', de: 'Deutsch', es: 'Spanisch', pt: 'Portugiesisch',
+        it: 'Italienisch', nl: 'Niederländisch', pl: 'Polnisch', uk: 'Ukrainisch', tr: 'Türkisch',
+        ru: 'Russisch', zh: 'Chinesisch', ja: 'Japanisch', ko: 'Koreanisch', hi: 'Hindi',
+        ar: 'Arabisch', sw: 'Swahili', ha: 'Hausa', yo: 'Yoruba', ig: 'Igbo',
+    },
+    es: {
+        en: 'Inglés', fr: 'Francés', de: 'Alemán', es: 'Español', pt: 'Portugués',
+        it: 'Italiano', nl: 'Neerlandés', pl: 'Polaco', uk: 'Ucraniano', tr: 'Turco',
+        ru: 'Ruso', zh: 'Chino', ja: 'Japonés', ko: 'Coreano', hi: 'Hindi',
+        ar: 'Árabe', sw: 'Suajili', ha: 'Hausa', yo: 'Yoruba', ig: 'Igbo',
+    },
+    pt: {
+        en: 'Inglês', fr: 'Francês', de: 'Alemão', es: 'Espanhol', pt: 'Português',
+        it: 'Italiano', ar: 'Árabe', zh: 'Chinês', ja: 'Japonês', sw: 'Suaíli',
+    },
+    ar: {
+        en: 'الإنجليزية', fr: 'الفرنسية', de: 'الألمانية', es: 'الإسبانية', pt: 'البرتغالية',
+        ar: 'العربية', sw: 'السواحيلية', ha: 'الهوسا', zh: 'الصينية', hi: 'الهندية',
+    },
+    sw: {
+        en: 'Kiingereza', fr: 'Kifaransa', de: 'Kijerumani', es: 'Kihispania',
+        sw: 'Kiswahili', ar: 'Kiarabu', pt: 'Kireno', zh: 'Kichina',
+    },
+};
+
+/**
+ * Retourne le nom d'une langue traduit dans la langue de l'utilisateur.
+ * Ex: getLocalizedLanguageName('fr', 'en') → 'French'
+ *     getLocalizedLanguageName('fr', 'de') → 'Französisch'
+ */
+export function getLocalizedLanguageName(langCode: string, userLang: string): string | null {
+    const baseLang = userLang.toLowerCase().split('-')[0];
+    return LOCALIZED_LANG_NAMES[baseLang]?.[langCode] || null;
 }

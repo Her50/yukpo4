@@ -94,7 +94,7 @@ const LoginScreen: React.FC = () => {
         googleResponse.error?.message?.includes('invalid_request')) {
         errorMessage = t('loginScreen.configurationOauthManquanteLeSchemaUriPersonnalise') +
           t('loginScreen.uriUtilisee') + (googleRequest?.redirectUri || t('login.nonDefinie')) + '\n\n' +
-          'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
+          t('login.consultezLeGuide');
       } else if (googleResponse.error?.code === 'access_denied') {
         errorMessage = t('loginScreen.connexionGoogleAnnulee');
       } else if (googleResponse.error?.code === 'popup_closed') {
@@ -133,7 +133,7 @@ const LoginScreen: React.FC = () => {
           updateUser({
             id: String(decoded.sub),
             email: decoded.email,
-            name: decoded.name || decoded.email?.split('@')[0] || 'Utilisateur',
+            name: decoded.name || decoded.email?.split('@')[0] || t('login.utilisateur'),
             token: data.token,
             credits: decoded.tokens_balance ?? 0,
             role: decoded.role || 'user',
@@ -145,12 +145,12 @@ const LoginScreen: React.FC = () => {
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Erreur OAuth');
+        throw new Error(errorData.message || t('login.erreurOauth'));
       }
     } catch (error: any) {
       console.error('[LoginScreen] Erreur OAuth:', error);
       setError(error.message || t('login.connexionEchoueeVeuillezReessayer'));
-      Alert.alert('Erreur', error.message || t('loginScreen.connexionEchouee'));
+      Alert.alert(t('login.erreur'), error.message || t('loginScreen.connexionEchouee'));
     } finally {
       setFormLoading(false);
     }
@@ -164,11 +164,11 @@ const LoginScreen: React.FC = () => {
 
       // Vérifier que le Client ID Android est configuré sur Android
       if (Platform.OS === 'android' && !process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID) {
-        const errorMsg = 'Configuration OAuth Android manquante.\n\n' +
+        const errorMsg = t('login.configOauthAndroidManquante') +
           t('loginScreen.veuillezDefinirExpopublicgoogleandroidclientidDansVosVa') +
-          'Consultez: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
+          t('login.consultezGuideOauth');
         setError(errorMsg);
-        Alert.alert('Configuration requise', errorMsg);
+        Alert.alert(t('login.configurationRequise'), errorMsg);
         setFormLoading(false);
         return;
       }
@@ -180,11 +180,11 @@ const LoginScreen: React.FC = () => {
 
       if (error?.message?.includes('Custom URI scheme') || error?.message?.includes('invalid_request')) {
         errorMessage = t('loginScreen.configurationOauthManquanteLeSchemaUriPersonnalise') +
-          'Veuillez consulter le guide: mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md';
+          t('login.consultezLeGuide');
       }
 
       setError(errorMessage);
-      Alert.alert('Erreur OAuth', errorMessage);
+      Alert.alert(t('login.erreurOauth'), errorMessage);
       setFormLoading(false);
     }
   };
@@ -215,11 +215,11 @@ const LoginScreen: React.FC = () => {
       console.error('[LoginScreen] Message d\'erreur:', error.message);
 
       // ✅ CORRIGÉ 2025-12-24: Améliorer le message d'erreur pour l'utilisateur
-      let errorMessage = error.message || 'Erreur de connexion';
+      let errorMessage = error.message || t('login.erreurDeConnexion');
 
       // ✅ Messages plus clairs pour les erreurs d'authentification
       if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('Identifiants')) {
-        errorMessage = 'Email ou mot de passe incorrect';
+        errorMessage = t('login.emailOuMotDePasseIncorrect');
       } else if (errorMessage.includes('Network') || errorMessage.includes('fetch')) {
         errorMessage = t('loginScreen.erreurDeConnexionAuServeurVerifiez');
       }
@@ -250,7 +250,7 @@ const LoginScreen: React.FC = () => {
           style={styles.oauthButton}
         >
           <Envelope size={20} color="white" weight="bold" />
-          <Text style={styles.oauthButtonText}>Continuer avec {label}</Text>
+          <Text style={styles.oauthButtonText}>{t('login.continuerAvec', { label })}</Text>
         </LinearGradient>
       </TouchableOpacity>
     );
@@ -272,8 +272,8 @@ const LoginScreen: React.FC = () => {
             <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>
           </Title>
           <Paragraph style={styles.subtitle}>
-            Connectez-vous avec votre compte{' '}
-            <Text style={styles.bold}>Google</Text> ou{' '}
+            {t('login.connectezVousAvecVotreCompte')}{' '}
+            <Text style={styles.bold}>Google</Text> {t('login.ou')}{' '}
             <Text style={styles.bold}>Facebook</Text>
           </Paragraph>
         </View>
@@ -315,7 +315,7 @@ const LoginScreen: React.FC = () => {
 
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ou utilisez vos identifiants :</Text>
+          <Text style={styles.dividerText}>{t('login.ouUtilisezVosIdentifiants')}</Text>
           <View style={styles.dividerLine} />
         </View>
 
@@ -359,7 +359,7 @@ const LoginScreen: React.FC = () => {
                 style={styles.loginButton}
               >
                 <Text style={styles.loginButtonLabel}>
-                  {formLoading || loading ? 'Connexion...' : 'Se connecter'}
+                  {formLoading || loading ? t('login.connexionEnCours') : t('login.seConnecter')}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -390,7 +390,7 @@ const LoginScreen: React.FC = () => {
               const partnerAlertMessage = [
                 normalizeAlertText(t('loginScreen.ceBoutonEstUniquementDestineAuxPartenaires')),
                 '',
-                '⚠️ Important :',
+                t('login.important'),
                 `• ${normalizeAlertText(t('loginScreen.lesFonctionnalitesUtilisateursClassiquesNeSeront'))}`,
                 `• ${normalizeAlertText(t('loginScreen.votreCompteDevraEtreValideParUn'))}`,
                 `• ${normalizeAlertText(t('loginScreen.vousRecevrezUnEmailDeConfirmation'))}`,
@@ -400,7 +400,7 @@ const LoginScreen: React.FC = () => {
               ].join('\n');
 
               Alert.alert(
-                '⚠️ Inscription Partenaire',
+                t('login.inscriptionPartenaire'),
                 partnerAlertMessage,
                 [
                   {
@@ -425,7 +425,7 @@ const LoginScreen: React.FC = () => {
             style={styles.partnerButton}
           >
             <Text style={styles.partnerButtonText}>
-              🏢 Devenir partenaire
+              {t('login.devenirPartenaire')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -433,7 +433,7 @@ const LoginScreen: React.FC = () => {
         {/* Informations de support */}
         <View style={styles.supportContainer}>
           <Text style={styles.supportText}>
-            En cas de problème, contactez notre support à support@yukpo.com
+            {t('login.supportContact')}
           </Text>
         </View>
       </KeyboardAwareScreen>

@@ -79,7 +79,12 @@
         "typeShare": "Share",
         "typeReview": "Review",
         "typeFavorite": "Favorite",
-        "typeView": "View"
+        "typeView": "View",
+        "interactionCount": "{{count}} 次互动",
+        "favoriteCount": "{{count}} 个收藏",
+        "period7d": "7天",
+        "period30d": "30天",
+        "period90d": "90天"
     },
     "account": {
         "title": "我的账户"
@@ -172,7 +177,25 @@
         "envoyerLeMessage": " Envoyer le message",
         "contactRapide": " Contact rapide",
         "informations": "ℹ Informations",
-        "supportTechnique": "Support technique :"
+        "supportTechnique": "Support technique :",
+        "erreur": "错误",
+        "remplirTousChamps": "请填写所有字段",
+        "impossibleEnvoyer": "无法发送消息",
+        "impossibleOuvrirLien": "无法打开此链接",
+        "contactezNous": "联系我们",
+        "nousSommesLa": "我们随时为您提供帮助！",
+        "envoyezMessage": "给我们发送消息",
+        "emailLabel": "邮箱 *",
+        "emailPlaceholder": "your@email.com",
+        "sujetLabel": "主题 *",
+        "sujetPlaceholder": "您的消息主题",
+        "messageLabel": "消息 *",
+        "emailTitle": "邮箱",
+        "chatDirect": "在线聊天",
+        "heuresOuverture": "营业时间:",
+        "heuresOuvertureValeur": "8:00 - 18:00 (周一至周五)",
+        "tempsReponseValeur": "24小时内",
+        "supportValeur": "每周7天可用"
     },
     "tokens": {
         "recharge": "充值代币",
@@ -1854,7 +1877,15 @@
             "renderDoneTitle": "Render complete",
             "renderDoneMessage": "The video has been generated.",
             "renderFailedTitle": "Render failed",
-            "renderFailedMessage": "Please try again."
+            "renderFailedMessage": "Please try again.",
+            "storyboardFailedTitle": "AI分镜",
+            "storyboardFailedMessage": "无法生成分镜。",
+            "previewShortNoSessionTitle": "快速预览",
+            "previewShortNoSessionMessage": "请先生成AI分镜或Studio会话。",
+            "previewShortNoUrlTitle": "快速预览",
+            "previewShortNoUrlMessage": "无法获取预览URL。",
+            "previewShortFailedTitle": "快速预览",
+            "previewShortFailedMessage": "无法启动短预览。"
         },
         "hero": {
             "title": "Yukpo Immersive Video Studio",
@@ -1883,12 +1914,16 @@
             "summary": "Summary",
             "context": "Your context",
             "mode": "AI mode",
-            "publication": "Distribution"
+            "publication": "Distribution",
+            "previewShort": "快速预览"
         },
         "steps": {
             "describe": "Describe your video",
             "assets": "Select assets",
-            "preview": "Preview & launch"
+            "preview": "Preview & launch",
+            "step1": "配置",
+            "step2": "媒体",
+            "step3": "摘要"
         },
         "placeholders": {
             "brief": "Ex: Limited edition launch, wow effect, CTA Instagram DM",
@@ -1916,7 +1951,9 @@
             "rendering": "Rendering...",
             "launchRender": "Launch render",
             "prevStepShort": "Previous step",
-            "nextStepGeneric": "Next step"
+            "nextStepGeneric": "Next step",
+            "previewShortLoading": "预览中…",
+            "previewShort": "预览3秒"
         },
         "summary": {
             "service": "Service",
@@ -1934,7 +1971,15 @@
             "finalHint": "Rendering takes 30 to 90 seconds depending on AI assets.",
             "mediaSelected": "Selected media",
             "costTitle": "Estimated cost",
-            "costLine": "~ {{usd}} $ / margin x{{multiplier}}"
+            "costLine": "~ {{usd}} $ / margin x{{multiplier}}",
+            "sceneShortLabel": "S{{index}}",
+            "sceneLabel": "场景 {{index}}",
+            "sceneMediaNone": "让Yukpo自动选择",
+            "sceneMediaNoneShort": "自动",
+            "optionalScene": "可选场景",
+            "sceneMediaHint": "为此场景选择媒体或让Yukpo决定。",
+            "sceneDefaultHint": "（空场景）",
+            "noScenes": "未定义场景"
         },
         "progress": {
             "title": "Render progress",
@@ -3151,7 +3196,19 @@
         "productRequired": "Product required",
         "productRequiredMsg": "You don't have any products yet. Create a product first to be able to create a video.",
         "serviceRequired": "Service required",
-        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product."
+        "serviceRequiredMsg": "To create a video, you must first create a service with at least one product.",
+        "ok": "好的",
+        "error": "错误",
+        "cancel": "取消",
+        "goToMyServices": "前往我的服务",
+        "productFallback": "产品",
+        "serviceWithId": "服务 #{{id}}",
+        "productWithIndex": "产品 {{index}}",
+        "helpLabel": "帮助",
+        "helpHint": "打开视频创建教程",
+        "loadingServices": "正在加载您的服务…",
+        "servicesAvailable": "{{count}} 个服务可用",
+        "loading": "加载中…"
     },
     "bloodGroup": {
         "selectBloodGroup": "Please select your blood group",
@@ -4930,7 +4987,15 @@
         "chargement": "loading...",
         "aucuneLivraisonActive": "no delivery active",
         "monPortefeuille": " my portefeuille",
-        "tableauDeBordCoursier": "Tableau de bord coursier"
+        "tableauDeBordCoursier": "Tableau de bord coursier",
+        "pickup": "取件点",
+        "dropoff": "送达点",
+        "voirStatistiques": "查看我的统计",
+        "livraisonsCompletees": "已完成配送",
+        "tauxReussite": "成功率",
+        "tempsMoyen": "平均时间",
+        "gainsTotaux": "总收入",
+        "gainsCeMois": "本月收入"
     },
     "courierDifficulty": {
         "signalerUneDifficulte": "Signaler a difficulté",
@@ -5336,7 +5401,32 @@
         "servicesTotaux": "Services totaux",
         "servicesActifs": "Services actifs",
         "noteMoyenne": "Note moyenne",
-        "servicesLesMieuxPerformants": "Services les mieux performants"
+        "servicesLesMieuxPerformants": "Services les mieux performants",
+        "erreur": "错误",
+        "impossibleChargerDonnees": "无法加载仪表盘数据",
+        "actif": "活跃",
+        "inactif": "不活跃",
+        "enAttente": "待处理",
+        "inconnu": "未知",
+        "reessayer": "重试",
+        "septJours": "7天",
+        "trenteJours": "30天",
+        "quatreVingtDixJours": "90天",
+        "vuesTotales": "总浏览量",
+        "interactions": "互动",
+        "actionsRapides": "快捷操作",
+        "nouvelle": "新建",
+        "analytics": "分析",
+        "viewsCount": "{{count}} 次浏览",
+        "messagesCount": "{{count}} 条消息",
+        "callsCount": "{{count}} 次通话",
+        "ratingOutOf5": "{{rating}} / 5",
+        "vue": "浏览",
+        "message": "消息",
+        "appel": "通话",
+        "activite": "活动",
+        "surService": "在 {{service}}",
+        "ilYA": "{{time}}前"
     },
     "debugOverlay": {
         "logsRecents": "Logs récents:",
@@ -6836,7 +6926,26 @@
         "nonDefinie": "non définie",
         "connexionEchoueeVeuillezReessayer": "login échouée. Please réessayer.",
         "pasEncoreInscrit": "Pas encore inscrit ?",
-        "ouiJeSuisPartenaire": "Oui, je suis partenaire"
+        "ouiJeSuisPartenaire": "Oui, je suis partenaire",
+        "consultezLeGuide": "请参阅指南：mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "utilisateur": "用户",
+        "erreurOauth": "OAuth 错误",
+        "erreur": "错误",
+        "configOauthAndroidManquante": "缺少 Android OAuth 配置。\n\n",
+        "consultezGuideOauth": "参阅：mobile/GUIDE_FIX_GOOGLE_OAUTH_ANDROID.md",
+        "configurationRequise": "需要配置",
+        "erreurDeConnexion": "登录错误",
+        "emailOuMotDePasseIncorrect": "邮箱或密码不正确",
+        "continuerAvec": "使用 {{label}} 继续",
+        "connectezVousAvecVotreCompte": "使用您的帐户登录",
+        "ou": "或",
+        "ouUtilisezVosIdentifiants": "或使用您的凭据：",
+        "connexionEnCours": "登录中...",
+        "seConnecter": "登录",
+        "inscriptionPartenaire": "⚠️ 合作伙伴注册",
+        "devenirPartenaire": "🏢 成为合作伙伴",
+        "supportContact": "如有问题，请联系我们的支持：support@yukpo.com",
+        "important": "⚠️ 重要："
     },
     "manageAgencySchedules": {
         "horairesDeDepart": "Horaires of departure",
@@ -9980,7 +10089,27 @@
         "chargementDesStatistiques": "loading of the statistiques...",
         "aucuneStatistiqueDisponible": "no statistique available",
         "dashboardStatistiques": "Dashboard Statistiques",
-        "hopital": "Hôpital"
+        "hopital": "Hôpital",
+        "emptyText": "创建专业服务以查看您的统计数据",
+        "pharmacie": "药房",
+        "laboratoire": "实验室",
+        "banqueSang": "血库",
+        "agence": "代理",
+        "covoiturage": "拼车",
+        "taxi": "出租车",
+        "total": "总计",
+        "actifs": "活跃",
+        "inactifs": "不活跃",
+        "last7Days": "最近7天",
+        "last30Days": "最近30天",
+        "thisMonth": "本月",
+        "pharmacieDetail": "💊 药房",
+        "hopitalDetail": "🏥 医院",
+        "laboratoireDetail": "🔬 实验室",
+        "banqueSangDetail": "🩸 血库",
+        "agenceDetail": "🚌 代理",
+        "covoiturageDetail": "🚗 拼车",
+        "taxiDetail": "🚕 出租车"
     },
     "servicesList": {
         "creerUnService": "Create un service",
@@ -11070,7 +11199,22 @@
         "senegal": "🇸🇳 Sénégal",
         "guinee": "🇬🇳 Guinée",
         "nonDefinie": "non définie",
-        "coteDivoire": "🇨🇮 Côte d\\'Ivoire"
+        "coteDivoire": "🇨🇮 Côte d\\'Ivoire",
+        "cameroun": "喀麦隆",
+        "rdCongo": "刚果民主共和国",
+        "gabon": "加蓬",
+        "burkinaFaso": "布基纳法索",
+        "mali": "马里",
+        "tchad": "乍得",
+        "congo": "刚果",
+        "france": "法国",
+        "belgique": "比利时",
+        "consultezGuide": "请参阅OAuth配置指南",
+        "utilisateur": "用户",
+        "erreurOauth": "OAuth错误",
+        "configOauthManquante": "缺少Android OAuth配置。",
+        "configurationRequise": "需要配置",
+        "erreurInscription": "注册错误"
     },
     "bookBuyDirect": {
         "especes": "Espèces"
