@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Modal, Pressable, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Alert, Image, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { apiPost } from '../services/api';
 import UserMentionPicker from './UserMentionPicker';
 
@@ -19,52 +19,61 @@ interface GlobalShareModalProps {
   payload: GlobalSharePayload | null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const YUKPO_ICON = require('../../assets/icon.png');
+
+const PLATFORMS = [
+  { key: 'whatsapp', label: 'WhatsApp', icon: '💬', bg: '#25D366', scheme: (text: string) => `https://wa.me/?text=${encodeURIComponent(text)}` },
+  { key: 'facebook', label: 'Facebook', icon: 'f', bg: '#1877F2', scheme: (text: string, url: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}` },
+  { key: 'telegram', label: 'Telegram', icon: '✈️', bg: '#0088CC', scheme: (text: string, url: string) => `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}` },
+  { key: 'twitter', label: 'Twitter/X', icon: '𝕏', bg: '#111827', scheme: (text: string) => `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}` },
+  { key: 'email', label: 'Email', icon: '✉️', bg: '#6B7280', scheme: (text: string, _url: string, title: string) => `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}` },
+  { key: 'copy', label: 'Copier', icon: '🔗', bg: '#4B5563', scheme: null },
+] as const;
+
 const GlobalShareModal: React.FC<GlobalShareModalProps> = ({ visible, onClose, payload }) => {
   const [showPicker, setShowPicker] = useState(false);
   const [sendingInternal, setSendingInternal] = useState(false);
-  const [showYukpoOption, setShowYukpoOption] = useState(false);
-  const nativeShareTriggered = useRef(false);
+  const [copiedFeedback, setCopiedFeedback] = useState(false);
 
   const shareText = useMemo(() => {
     if (!payload) return '';
-    let text = `🎬 ${payload.title}`;
+    let text = payload.title;
     if (payload.description) text += `\n\n${payload.description}`;
-    text += `\n\n🔗 Voir sur Yukpo:\n${payload.shareUrl}`;
+    text += `\n\n${payload.shareUrl}`;
     return text;
   }, [payload]);
 
-  useEffect(() => {
-    if (visible && payload && !nativeShareTriggered.current) {
-      nativeShareTriggered.current = true;
-      triggerNativeShare();
+  const handlePlatformShare = async (key: string) => {
+    if (!payload) return;
+    if (key === 'copy') {
+      try {
+        const Clipboard = await import('expo-clipboard');
+        await Clipboard.setStringAsync(payload.shareUrl);
+        setCopiedFeedback(true);
+        setTimeout(() => setCopiedFeedback(false), 2000);
+      } catch { Alert.alert('Erreur', 'Copie impossible'); }
+      return;
     }
-    if (!visible) {
-      nativeShareTriggered.current = false;
-      setShowYukpoOption(false);
-    }
-  }, [visible, payload]);
+    const platform = PLATFORMS.find(p => p.key === key);
+    if (!platform?.scheme) return;
+    const url = platform.scheme(shareText, payload.shareUrl, payload.title);
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) { await Linking.openURL(url); }
+      else { Alert.alert('Non disponible', `${platform.label} n'est pas installé sur cet appareil`); }
+    } catch { Alert.alert('Erreur', `Impossible d'ouvrir ${platform.label}`); }
+  };
 
-  const triggerNativeShare = async () => {
+  const handleNativeShare = async () => {
     if (!payload) return;
     try {
       await Share.share({
         message: shareText,
         title: payload.title,
-        url: payload.shareUrl,
+        ...(Platform.OS === 'ios' ? { url: payload.shareUrl } : {}),
       });
-    } catch (e) {
-      console.log('[GlobalShareModal] Native share dismissed or error');
-    }
-    setShowYukpoOption(true);
-  };
-
-  const handleReshare = async () => {
-    nativeShareTriggered.current = false;
-    setShowYukpoOption(false);
-    setTimeout(() => {
-      nativeShareTriggered.current = true;
-      triggerNativeShare();
-    }, 100);
+    } catch { }
   };
 
   const handleSelectUser = async (user: any) => {
@@ -85,9 +94,9 @@ const GlobalShareModal: React.FC<GlobalShareModalProps> = ({ visible, onClose, p
         },
       });
       if (response.success) {
-        Alert.alert('Envoyé', `Partagé avec ${user.nom_complet || 'utilisateur'}`);
+        Alert.alert('Envoyé !', `Partagé avec ${user.nom_complet || 'utilisateur'}`);
       } else {
-        Alert.alert('Erreur', (response as any)?.error || 'Echec du partage interne');
+        Alert.alert('Erreur', (response as any)?.error || 'Échec du partage interne');
       }
     } catch {
       Alert.alert('Erreur', 'Partage interne impossible');
@@ -99,51 +108,63 @@ const GlobalShareModal: React.FC<GlobalShareModalProps> = ({ visible, onClose, p
   };
 
   const handleClose = () => {
-    setShowYukpoOption(false);
     setShowPicker(false);
+    setCopiedFeedback(false);
     onClose();
   };
 
   if (!visible || !payload) return null;
 
-  if (!showYukpoOption) return null;
-
   return (
     <>
-      <Modal visible={showYukpoOption} transparent animationType="slide" onRequestClose={handleClose}>
-        <Pressable style={styles.overlay} onPress={handleClose}>
-          <View style={styles.bottomSheet} onStartShouldSetResponder={() => true}>
-            <View style={styles.handle} />
-            <Text style={styles.title}>Partager sur Yukpo</Text>
+      <Modal visible transparent animationType="slide" onRequestClose={handleClose}>
+        <Pressable style={s.overlay} onPress={handleClose}>
+          <View style={s.sheet} onStartShouldSetResponder={() => true}>
+            <View style={s.handle} />
+            <Text style={s.title}>Partager</Text>
 
-            <TouchableOpacity
-              style={styles.yukpoRow}
-              onPress={() => setShowPicker(true)}
-              disabled={sendingInternal}
-              activeOpacity={0.7}
-            >
-              <View style={styles.yukpoIcon}>
-                <Text style={styles.yukpoIconText}>YP</Text>
-              </View>
-              <View style={styles.yukpoTextContainer}>
-                <Text style={styles.yukpoLabel}>Yukpo</Text>
-                <Text style={styles.yukpoSub}>Envoyer à un ami dans l'app</Text>
-              </View>
-            </TouchableOpacity>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.row} style={s.scrollRow}>
+              {/* Yukpo — first position */}
+              <TouchableOpacity
+                style={s.appItem}
+                onPress={() => setShowPicker(true)}
+                disabled={sendingInternal}
+                activeOpacity={0.7}
+              >
+                <Image source={YUKPO_ICON} style={s.appIconImage} />
+                <Text style={s.appLabel} numberOfLines={1}>Yukpo</Text>
+              </TouchableOpacity>
 
-            <View style={styles.separator} />
+              {/* Platform targets */}
+              {PLATFORMS.map(p => (
+                <TouchableOpacity
+                  key={p.key}
+                  style={s.appItem}
+                  onPress={() => handlePlatformShare(p.key)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[s.appIcon, { backgroundColor: p.bg }]}>
+                    {p.key === 'copy' && copiedFeedback
+                      ? <Text style={s.appIconText}>✓</Text>
+                      : <Text style={[s.appIconText, p.key === 'facebook' && s.fbText]}>{p.icon}</Text>}
+                  </View>
+                  <Text style={s.appLabel} numberOfLines={1}>
+                    {p.key === 'copy' && copiedFeedback ? 'Copié !' : p.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
 
-            <TouchableOpacity
-              style={styles.reshareRow}
-              onPress={handleReshare}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.reshareIcon}>📤</Text>
-              <Text style={styles.reshareLabel}>Autres applications...</Text>
-            </TouchableOpacity>
+              {/* Plus... → native share sheet */}
+              <TouchableOpacity style={s.appItem} onPress={handleNativeShare} activeOpacity={0.7}>
+                <View style={[s.appIcon, { backgroundColor: '#6366F1' }]}>
+                  <Text style={s.appIconText}>⋯</Text>
+                </View>
+                <Text style={s.appLabel} numberOfLines={1}>Plus</Text>
+              </TouchableOpacity>
+            </ScrollView>
 
-            <TouchableOpacity style={styles.closeBtn} onPress={handleClose} activeOpacity={0.7}>
-              <Text style={styles.closeBtnText}>Fermer</Text>
+            <TouchableOpacity style={s.closeBtn} onPress={handleClose} activeOpacity={0.7}>
+              <Text style={s.closeBtnText}>Fermer</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -159,98 +180,67 @@ const GlobalShareModal: React.FC<GlobalShareModalProps> = ({ visible, onClose, p
   );
 };
 
-const styles = StyleSheet.create({
+const ICON_SIZE = 54;
+
+const s = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
-  bottomSheet: {
+  sheet: {
     backgroundColor: '#1F2937',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 32,
-    paddingTop: 12,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 16,
+    paddingBottom: 34,
+    paddingTop: 10,
   },
   handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
+    width: 40, height: 4, borderRadius: 2,
     backgroundColor: '#4B5563',
-    alignSelf: 'center',
-    marginBottom: 16,
+    alignSelf: 'center', marginBottom: 14,
   },
   title: {
-    color: '#F9FAFB',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 16,
+    color: '#F9FAFB', fontSize: 16, fontWeight: '700',
+    marginBottom: 16, marginLeft: 4,
   },
-  yukpoRow: {
+  scrollRow: { marginBottom: 16 },
+  row: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    paddingHorizontal: 2,
+  },
+  appItem: {
     alignItems: 'center',
-    backgroundColor: '#374151',
-    borderRadius: 14,
-    padding: 14,
+    width: ICON_SIZE + 12,
   },
-  yukpoIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#7C3AED',
-    alignItems: 'center',
-    justifyContent: 'center',
+  appIcon: {
+    width: ICON_SIZE, height: ICON_SIZE,
+    borderRadius: ICON_SIZE / 2,
+    alignItems: 'center', justifyContent: 'center',
   },
-  yukpoIconText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
+  appIconImage: {
+    width: ICON_SIZE, height: ICON_SIZE,
+    borderRadius: ICON_SIZE / 2,
   },
-  yukpoTextContainer: {
-    marginLeft: 14,
-    flex: 1,
+  appIconText: {
+    color: '#fff', fontSize: 22,
   },
-  yukpoLabel: {
-    color: '#F9FAFB',
-    fontSize: 15,
-    fontWeight: '700',
+  fbText: {
+    fontWeight: '800', fontSize: 24,
   },
-  yukpoSub: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#374151',
-    marginVertical: 12,
-  },
-  reshareRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-  },
-  reshareIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  reshareLabel: {
-    color: '#D1D5DB',
-    fontSize: 14,
-    fontWeight: '600',
+  appLabel: {
+    color: '#D1D5DB', fontSize: 11, marginTop: 6,
+    textAlign: 'center',
   },
   closeBtn: {
-    marginTop: 8,
     alignSelf: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 24,
+    paddingVertical: 10, paddingHorizontal: 24,
   },
   closeBtnText: {
-    color: '#9CA3AF',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#9CA3AF', fontSize: 14, fontWeight: '600',
   },
 });
 

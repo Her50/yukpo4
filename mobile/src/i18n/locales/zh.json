@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "未提供邮箱"
     },
     "stats": {
         "title": "统计",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "邮箱",
+        "telephone": "电话",
+        "nonRenseigne": "未填写",
+        "role": "角色",
+        "sauvegarder": "保存",
+        "annuler": "取消",
+        "parametres": "设置",
+        "rechargerTokens": "充值代币",
+        "actions": "操作",
+        "succes": "成功",
+        "profilMisAJour": "资料更新成功",
+        "erreur": "错误",
+        "impossibleMajProfil": "无法更新资料"
     },
     "fleetDashboard": {
         "enCours": "in progress",

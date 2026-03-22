@@ -430,7 +430,8 @@
         "financialTracking": "የገንዘብ ክትትል",
         "financialTrackingDesc": "ሁሉንም የገንዘብ እንቅስቃሴዎችዎን በዝርዝር ይከታተሉ",
         "uneErreurInattendueS": "ያልተጠበቀ ስህተት ተከስቷል።",
-        "uneErreurInattendueSestProduite": "ያልተጠበቀ ስህተት ተፈጥሯል።"
+        "uneErreurInattendueSestProduite": "ያልተጠበቀ ስህተት ተፈጥሯል።",
+        "noEmail": "ኢሜል አልተሰጠም"
     },
     "stats": {
         "title": "ስታቲስቲክስ",
@@ -10663,7 +10664,20 @@
         "utilisateur": "ተጠቃሚ",
         "informationsPersonnelles": "የግል መረጃ",
         "solde": "ይክፈሉ።",
-        "historique": "ታሪካዊ"
+        "historique": "ታሪካዊ",
+        "email": "ኢሜል",
+        "telephone": "ስልክ",
+        "nonRenseigne": "አልተሰጠም",
+        "role": "ሚና",
+        "sauvegarder": "አስቀምጥ",
+        "annuler": "ሰርዝ",
+        "parametres": "ቅንብሮች",
+        "rechargerTokens": "ቶከኖችን ሙላ",
+        "actions": "ተግባራት",
+        "succes": "ስኬት",
+        "profilMisAJour": "መገለጫ በተሳካ ሁኔታ ተዘምኗል",
+        "erreur": "ስህተት",
+        "impossibleMajProfil": "መገለጫውን ማዘመን አልተቻለም"
     },
     "fleetDashboard": {
         "enCours": "in progress",

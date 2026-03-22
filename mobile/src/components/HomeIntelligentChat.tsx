@@ -128,65 +128,30 @@ const HomeIntelligentChat: React.FC<HomeIntelligentChatProps> = ({
         }
     }, [visible, user?.name, t]);
 
-    const handleActionPress = useCallback(async (action: ActionDescriptor) => {
-        // Ajouter l'action comme message utilisateur
-        const userMessage: ChatMessage = {
-            id: Date.now().toString(),
-            text: action.label,
-            isUser: true,
-            timestamp: new Date(),
-            type: 'action_suggestion'
-        };
-        setMessages(prev => [...prev, userMessage]);
-
+    // Logique unifiée pour traiter un message (suggestion cliquée ou texte tapé)
+    const processMessage = useCallback(async (text: string) => {
         setIsLoading(true);
         setShowSuggestions(false);
 
         try {
-            // Détecter si c'est une question contextuelle
-            const delegation = intelligentChatService.detectContextualDelegation(action.label);
+            // getContextualResponse gère tout : détection de délégation, appel backend, fallback
+            const chatResponse = await intelligentChatService.getContextualResponse(
+                text, 'Home', 'home', messages, user
+            );
 
-            let response: ChatMessage;
-
-            if (delegation) {
-                // Question contextuelle : déléguer au module spécialisé
-                const chatResponse = intelligentChatService.generateContextualDelegationResponse(action.label, delegation);
-
-                response = {
-                    id: (Date.now() + 1).toString(),
-                    text: chatResponse.message,
-                    isUser: false,
-                    timestamp: new Date(),
-                    type: chatResponse.type,
-                    suggestedActions: chatResponse.suggestedActions,
-                    nextSteps: chatResponse.nextSteps
-                };
-            } else {
-                // Question générale : réponse du HomeScreen
-                const chatResponse = await intelligentChatService.getContextualResponse(
-                    action.label,
-                    'Home',
-                    'home',
-                    messages,
-                    user
-                );
-
-                response = {
-                    id: (Date.now() + 1).toString(),
-                    text: chatResponse.message,
-                    isUser: false,
-                    timestamp: new Date(),
-                    type: chatResponse.type,
-                    suggestedActions: chatResponse.suggestedActions,
-                    visualElements: chatResponse.visualElements,
-                    nextSteps: chatResponse.nextSteps
-                };
-            }
-
+            const response: ChatMessage = {
+                id: (Date.now() + 1).toString(),
+                text: chatResponse.message,
+                isUser: false,
+                timestamp: new Date(),
+                type: chatResponse.type,
+                suggestedActions: chatResponse.suggestedActions,
+                visualElements: chatResponse.visualElements,
+                nextSteps: chatResponse.nextSteps
+            };
             setMessages(prev => [...prev, response]);
         } catch (error) {
             console.error('[HomeIntelligentChat] Erreur:', error);
-
             const errorMessage: ChatMessage = {
                 id: (Date.now() + 1).toString(),
                 text: t('intelligentChat.error') || 'Désolé, je rencontre des difficultés. Veuillez réessayer.',
@@ -200,79 +165,33 @@ const HomeIntelligentChat: React.FC<HomeIntelligentChatProps> = ({
         }
     }, [messages, user, t]);
 
+    const handleActionPress = useCallback(async (action: ActionDescriptor) => {
+        const userMessage: ChatMessage = {
+            id: Date.now().toString(),
+            text: action.label,
+            isUser: true,
+            timestamp: new Date(),
+            type: 'action_suggestion'
+        };
+        setMessages(prev => [...prev, userMessage]);
+        await processMessage(action.label);
+    }, [processMessage]);
+
     const handleSendMessage = useCallback(async () => {
         if (!inputText.trim() || isLoading) return;
+        const text = inputText.trim();
 
         const userMessage: ChatMessage = {
             id: Date.now().toString(),
-            text: inputText.trim(),
+            text,
             isUser: true,
             timestamp: new Date(),
             type: 'text'
         };
-
         setMessages(prev => [...prev, userMessage]);
         setInputText('');
-        setIsLoading(true);
-        setShowSuggestions(false);
-
-        try {
-            // Détecter si c'est une question contextuelle
-            const delegation = intelligentChatService.detectContextualDelegation(userMessage.text);
-
-            let response: ChatMessage;
-
-            if (delegation) {
-                // Question contextuelle : déléguer au module spécialisé
-                const chatResponse = intelligentChatService.generateContextualDelegationResponse(userMessage.text, delegation);
-
-                response = {
-                    id: (Date.now() + 1).toString(),
-                    text: chatResponse.message,
-                    isUser: false,
-                    timestamp: new Date(),
-                    type: chatResponse.type,
-                    suggestedActions: chatResponse.suggestedActions,
-                    nextSteps: chatResponse.nextSteps
-                };
-            } else {
-                // Question générale : réponse du HomeScreen
-                const chatResponse = await intelligentChatService.getContextualResponse(
-                    userMessage.text,
-                    'Home',
-                    'home',
-                    messages,
-                    user
-                );
-
-                response = {
-                    id: (Date.now() + 1).toString(),
-                    text: chatResponse.message,
-                    isUser: false,
-                    timestamp: new Date(),
-                    type: chatResponse.type,
-                    suggestedActions: chatResponse.suggestedActions,
-                    visualElements: chatResponse.visualElements,
-                    nextSteps: chatResponse.nextSteps
-                };
-            }
-
-            setMessages(prev => [...prev, response]);
-        } catch (error) {
-            console.error('[HomeIntelligentChat] Erreur:', error);
-
-            const errorMessage: ChatMessage = {
-                id: (Date.now() + 1).toString(),
-                text: t('intelligentChat.error') || 'Désolé, je rencontre des difficultés. Veuillez réessayer.',
-                isUser: false,
-                timestamp: new Date(),
-                type: 'text'
-            };
-            setMessages(prev => [...prev, errorMessage]);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [inputText, isLoading, messages, user, t]);
+        await processMessage(text);
+    }, [inputText, isLoading, processMessage]);
 
     const handleNavigateToScreen = useCallback((route: string, params?: any) => {
         onClose(); // Fermer le chat d'abord
@@ -300,38 +219,62 @@ const HomeIntelligentChat: React.FC<HomeIntelligentChatProps> = ({
                     </Text>
 
                     {/* Actions suggérées */}
-                    {message.suggestedActions && message.suggestedActions.length > 0 && (
-                        <View style={styles.suggestedActionsContainer}>
-                            {message.suggestedActions.map((action, actionIndex) => (
-                                <TouchableOpacity
-                                    key={actionIndex}
-                                    style={[
-                                        styles.suggestedAction,
-                                        { borderLeftColor: action.color || modernColors.primary }
-                                    ]}
-                                    onPress={() => {
-                                        if (action.route) {
-                                            handleNavigateToScreen(action.route, action.params);
-                                        } else {
-                                            handleActionPress(action);
-                                        }
-                                    }}
-                                >
-                                    <View style={styles.actionIcon}>
-                                        <SafeIcon
-                                            name={action.icon || 'help-circle'}
-                                            size={16}
-                                            color={action.color || modernColors.primary}
-                                        />
-                                    </View>
-                                    <Text style={styles.actionText}>{action.label}</Text>
-                                    {action.description && (
-                                        <Text style={styles.actionDescription}>{action.description}</Text>
-                                    )}
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    )}
+                    {message.suggestedActions && message.suggestedActions.length > 0 && (() => {
+                        const navLinks = message.suggestedActions!.filter(a => a.id?.startsWith('nav-'));
+                        const otherActions = message.suggestedActions!.filter(a => !a.id?.startsWith('nav-'));
+                        return (
+                            <View style={styles.suggestedActionsContainer}>
+                                {otherActions.map((action, actionIndex) => (
+                                    <TouchableOpacity
+                                        key={`action-${actionIndex}`}
+                                        style={[
+                                            styles.suggestedAction,
+                                            { borderLeftColor: action.color || modernColors.primary }
+                                        ]}
+                                        onPress={() => {
+                                            if (action.route) {
+                                                handleNavigateToScreen(action.route, action.params);
+                                            } else {
+                                                handleActionPress(action);
+                                            }
+                                        }}
+                                    >
+                                        <View style={styles.actionIcon}>
+                                            <SafeIcon
+                                                name={action.icon || 'help-circle'}
+                                                size={16}
+                                                color={action.color || modernColors.primary}
+                                            />
+                                        </View>
+                                        <Text style={styles.actionText}>{action.label}</Text>
+                                        {action.description && (
+                                            <Text style={styles.actionDescription}>{action.description}</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                                {navLinks.length > 0 && (
+                                    <>
+                                        <Text style={styles.navLinksTitle}>🔗 Accès rapide :</Text>
+                                        {navLinks.map((action, actionIndex) => (
+                                            <TouchableOpacity
+                                                key={`nav-${actionIndex}`}
+                                                style={styles.navLinkButton}
+                                                onPress={() => handleNavigateToScreen(action.route!, action.params)}
+                                            >
+                                                <SafeIcon
+                                                    name={action.icon || 'arrow-right'}
+                                                    size={16}
+                                                    color="#fff"
+                                                />
+                                                <Text style={styles.navLinkText}>{action.label}</Text>
+                                                <SafeIcon name="chevron-right" size={14} color="#fff" />
+                                            </TouchableOpacity>
+                                        ))}
+                                    </>
+                                )}
+                            </View>
+                        );
+                    })()}
 
                     {/* Next steps */}
                     {message.nextSteps && message.nextSteps.length > 0 && (
@@ -583,6 +526,28 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.textSecondary,
         marginTop: 2,
+    },
+    navLinksTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: modernColors.textSecondary,
+        marginTop: 12,
+        marginBottom: 6,
+    },
+    navLinkButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        marginBottom: 6,
+        backgroundColor: modernColors.primary,
+        borderRadius: 12,
+        gap: 8,
+    },
+    navLinkText: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
     nextStepsContainer: {
         marginTop: 12,

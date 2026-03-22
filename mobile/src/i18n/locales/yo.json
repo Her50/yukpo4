@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "A kò pèsè imeeli"
     },
     "stats": {
         "title": "Àwọn ìṣirò",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Imeeli",
+        "telephone": "Fóònù",
+        "nonRenseigne": "A kò pèsè",
+        "role": "Ipa",
+        "sauvegarder": "Tọ́jú",
+        "annuler": "Fagilé",
+        "parametres": "Ètò",
+        "rechargerTokens": "Gbé Tokens sí",
+        "actions": "Àwọn ìgbésẹ̀",
+        "succes": "Àṣeyọrí",
+        "profilMisAJour": "Profaili ti ṣe àtúnṣe dáadáa",
+        "erreur": "Àṣìṣe",
+        "impossibleMajProfil": "Kò ṣeé ṣe àtúnṣe profaili"
     },
     "fleetDashboard": {
         "enCours": "in progress",

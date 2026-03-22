@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email i pégésama"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Telefon",
+        "nonRenseigne": "I pégésama",
+        "role": "Bôlô",
+        "sauvegarder": "Boñ log",
+        "annuler": "Hañ",
+        "parametres": "Nkwel",
+        "rechargerTokens": "Kéhna Tokens",
+        "actions": "Mabôlô",
+        "succes": "Nyongi",
+        "profilMisAJour": "Profil i ñemba loñ i nyen",
+        "erreur": "Ndôñ",
+        "impossibleMajProfil": "Profil i yé hop i ñemba"
     },
     "fleetDashboard": {
         "enCours": "in progress",

@@ -430,7 +430,8 @@
         "financialTracking": "المراقبة المالية",
         "financialTrackingDesc": "تتبع جميع تحركاتك المالية بالتفصيل",
         "uneErreurInattendueS": "يحدث خطأ غير متوقع",
-        "uneErreurInattendueSestProduite": "لقد حدث خطأ غير متوقع"
+        "uneErreurInattendueSestProduite": "لقد حدث خطأ غير متوقع",
+        "noEmail": "البريد الإلكتروني غير محدد"
     },
     "stats": {
         "title": "الإحصائيات",
@@ -10663,7 +10664,20 @@
         "utilisateur": "المستخدم",
         "informationsPersonnelles": "المعلومات الشخصية",
         "solde": "التوازن",
-        "historique": "التاريخ"
+        "historique": "التاريخ",
+        "email": "البريد الإلكتروني",
+        "telephone": "الهاتف",
+        "nonRenseigne": "غير محدد",
+        "role": "الدور",
+        "sauvegarder": "حفظ",
+        "annuler": "إلغاء",
+        "parametres": "الإعدادات",
+        "rechargerTokens": "شحن الرموز",
+        "actions": "الإجراءات",
+        "succes": "نجاح",
+        "profilMisAJour": "تم تحديث الملف الشخصي بنجاح",
+        "erreur": "خطأ",
+        "impossibleMajProfil": "تعذر تحديث الملف الشخصي"
     },
     "fleetDashboard": {
         "enCours": "in progress",

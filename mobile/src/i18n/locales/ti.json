@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "ኢመይል ኣይተዋህበን"
     },
     "stats": {
         "title": "ስታቲስቲክስ",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "ኢመይል",
+        "telephone": "ተሌፎን",
+        "nonRenseigne": "ኣይተዋህበን",
+        "role": "ግደ",
+        "sauvegarder": "ዓቅብ",
+        "annuler": "ሰርዝ",
+        "parametres": "ቅጥዒታት",
+        "rechargerTokens": "ቶከናት ምልኣ",
+        "actions": "ተግባራት",
+        "succes": "ዓወት",
+        "profilMisAJour": "ፕሮፋይል ብዓወት ተሓዲሱ",
+        "erreur": "ጌጋ",
+        "impossibleMajProfil": "ፕሮፋይል ምሕዳስ ኣይተኻእለን"
     },
     "fleetDashboard": {
         "enCours": "in progress",

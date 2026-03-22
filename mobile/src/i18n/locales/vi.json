@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email chưa cung cấp"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Điện thoại",
+        "nonRenseigne": "Chưa cung cấp",
+        "role": "Vai trò",
+        "sauvegarder": "Lưu",
+        "annuler": "Hủy",
+        "parametres": "Cài đặt",
+        "rechargerTokens": "Nạp Token",
+        "actions": "Hành động",
+        "succes": "Thành công",
+        "profilMisAJour": "Hồ sơ đã được cập nhật thành công",
+        "erreur": "Lỗi",
+        "impossibleMajProfil": "Không thể cập nhật hồ sơ"
     },
     "fleetDashboard": {
         "enCours": "in progress",

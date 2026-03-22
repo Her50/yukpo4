@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Mokanda ya Internet epesamaki te"
     },
     "stats": {
         "title": "Bakonti",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Mokanda ya Internet",
+        "telephone": "Telefone",
+        "nonRenseigne": "Epesamaki te",
+        "role": "Mosala",
+        "sauvegarder": "Bómba",
+        "annuler": "Longola",
+        "parametres": "Mibeko",
+        "rechargerTokens": "Kotya Tokens",
+        "actions": "Misala",
+        "succes": "Elongi",
+        "profilMisAJour": "Profil esalemi malamu",
+        "erreur": "Libunga",
+        "impossibleMajProfil": "Profil ekoki kobongisama te"
     },
     "fleetDashboard": {
         "enCours": "in progress",

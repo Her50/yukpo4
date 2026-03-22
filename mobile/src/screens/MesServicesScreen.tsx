@@ -58,10 +58,10 @@ const MesServicesScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { t } = useLanguageSafe();
-  const { colors } = useTheme(); // Ô£à NOUVEAU: Support th├¿me
-  const toaster = useToaster(); // Ô£à NOUVEAU: Toast notifications au lieu de Alert
-  const deviceType = useDeviceType(); // Ô£à NOUVEAU: Responsive design
-  const { isLandscape } = useDeviceOrientation(); // Ô£à NOUVEAU: Orientation
+  const { colors } = useTheme();
+  const toaster = useToaster();
+  const deviceType = useDeviceType();
+  const { isLandscape } = useDeviceOrientation();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -102,7 +102,7 @@ const MesServicesScreen: React.FC = () => {
       if (typeof product === 'string' && product.trim()) {
         // Ô£à CORRECTION: S'assurer que product est une string valide avant split
         const parts = product.split(',').map((p: string) => (p || '').trim()).filter((p: string) => p.length > 0);
-        productTitle = (parts && parts.length > 0 && parts[0]) ? parts[0] : `Produit ${index + 1}`;
+        productTitle = (parts && parts.length > 0 && parts[0]) ? parts[0] : t('mesServices.produitIndex', { index: index + 1 });
 
         if (parts.length >= 3) {
           let lastNumericIndex = -1;
@@ -135,7 +135,7 @@ const MesServicesScreen: React.FC = () => {
           (typeof product.nom_produit === 'string' && product.nom_produit) ||
           (typeof product.data?.nom_produit === 'object' && product.data?.nom_produit?.valeur) ||
           (typeof product.data?.nom_produit === 'string' && product.data?.nom_produit) ||
-          `Produit ${index + 1}`;
+          t('mesServices.produitIndex', { index: index + 1 });
         productDescription = product.description ||
           product.desc ||
           product.description_produit ||
@@ -143,7 +143,7 @@ const MesServicesScreen: React.FC = () => {
           (typeof product.description_produit === 'string' && product.description_produit) ||
           t('mesServices.noDescription');
       } else {
-        productTitle = `Produit ${index + 1}`;
+        productTitle = t('mesServices.produitIndex', { index: index + 1 });
         productDescription = t('mesServices.noDescription');
       }
 
@@ -326,7 +326,7 @@ const MesServicesScreen: React.FC = () => {
             const serviceTitre = service.data?.titre_service?.valeur ||
               service.data?.titre?.valeur ||
               service.titre ||
-              'Service sans titre';
+              t('mesServices.serviceSansTitre');
 
             try {
               // Ô£à PHASE 4: R├®cup├®rer les produits depuis l'API
@@ -393,7 +393,7 @@ const MesServicesScreen: React.FC = () => {
       }
     } catch (error) {
       logger.error('Erreur chargement produits:', error);
-      toaster.error('Impossible de charger vos produits');
+      toaster.error(t('mesServices.impossibleChargerProduits'));
       setServices([]);
     } finally {
       setLoading(false);
@@ -625,8 +625,8 @@ const MesServicesScreen: React.FC = () => {
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
     try {
       // Impl├®mentation du partage avec deep linking
-      const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service Yukpo';
-      const description = service.data?.description?.valeur || service.description || 'D├®couvrez ce service sur Yukpo';
+      const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || t('mesServices.serviceYukpo');
+      const description = service.data?.description?.valeur || service.description || t('mesServices.decouvrezService');
       const prix = service.data?.prix?.valeur || service.prix;
       const localisation = service.data?.localisation?.valeur || service.localisation;
 
@@ -636,14 +636,14 @@ const MesServicesScreen: React.FC = () => {
       let shareText = `­ƒøì´©Å ${titre}\n\n${description}`;
 
       if (prix) {
-        shareText += `\n­ƒÆ░ Prix: ${prix} FCFA`;
+        shareText += `\n­ƒÆ░ ${t('mesServices.prix')}: ${prix} FCFA`;
       }
 
       if (localisation) {
-        shareText += `\n­ƒôì Localisation: ${localisation}`;
+        shareText += `\n­ƒôì ${t('mesServices.localisation')}: ${localisation}`;
       }
 
-      shareText += `\n\n­ƒöù Voir ce service sur Yukpo :\n­ƒô▒ ${serviceUrl}`;
+      shareText += `\n\n­ƒöù ${t('mesServices.voirServiceSurYukpo')} :\n­ƒô▒ ${serviceUrl}`;
 
       // Utiliser l'API de partage native React Native
       const result = await Share.share({
@@ -821,7 +821,7 @@ const MesServicesScreen: React.FC = () => {
                 if (errorMsg.includes('2 or more products')) {
                   toaster.warning(t('mesServices.deleteBlockedMultiple'));
                 } else {
-                  throw new Error(errorMsg || 'Erreur lors de la suppression');
+                  throw new Error(errorMsg || t('mesServices.erreurSuppression'));
                 }
               }
             } catch (error: any) {
@@ -877,8 +877,8 @@ const MesServicesScreen: React.FC = () => {
       const serviceId = product.service_id || product.data?.serviceId || (typeof product.id === 'string' && product.id.includes('_') ? parseInt(product.id.split('_')[0], 10) : parseInt(String(product.id), 10));
       const productIndex = product.product_index ?? product.data?.product_index ?? 0;
       // Ô£à CORRECTION: Utiliser extractProductName et extractServiceName pour une extraction correcte
-      const productName = extractProductName(product, 'Produit sans nom');
-      const serviceName = extractServiceName(product, 'Service sans titre');
+      const productName = extractProductName(product, t('mesServices.produitSansNom'));
+      const serviceName = extractServiceName(product, t('mesServices.serviceSansNom'));
 
       if (serviceId && !isNaN(serviceId)) {
         productsList.push({
@@ -1015,12 +1015,12 @@ const MesServicesScreen: React.FC = () => {
       id: product.id || `prod_${product.product_index || 0}`,
       serviceId: numericServiceId.toString(),
       product_index: product.product_index || product.data?.product_index || 0,
-      nom: product.nom || product.data?.nom || product.data?.nom_produit || product.nom_produit || product.title || product.data?.title || 'Produit',
+      nom: product.nom || product.data?.nom || product.data?.nom_produit || product.nom_produit || product.title || product.data?.title || t('mesServices.produit'),
       description: product.description || product.data?.description || '',
       prix: product.data?.prix || product.prix || product.price,
       devise: product.data?.devise || product.devise || product.currency || 'XAF',
       type: product.data?.type || product.type || product.categorie || 'produit',
-      serviceTitre: product.service_title || product.data?.serviceTitre || product.title || `Service #${numericServiceId}`,
+      serviceTitre: product.service_title || product.data?.serviceTitre || product.title || t('mesServices.serviceSansTitre'),
       ...product.data,
       ...product
     }));
@@ -1031,7 +1031,7 @@ const MesServicesScreen: React.FC = () => {
       navigateToVideoWizard(navigation, {
         serviceId: numericServiceId,
         productIndex: product.product_index || 0,
-        productName: extractProductName(product, 'Produit')
+        productName: extractProductName(product, t('mesServices.produit'))
       });
       return;
     }
@@ -1051,7 +1051,7 @@ const MesServicesScreen: React.FC = () => {
   };
 
   const handlePromotionService = (service: any) => {
-    const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service';
+    const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || t('mesServices.serviceSansTitre');
 
     // Afficher un modal de gestion des promotions comme dans le frontend
     Alert.alert(
@@ -1220,7 +1220,7 @@ const MesServicesScreen: React.FC = () => {
               <View style={dynamicStyles.logoContainer}>
                 <SafeIcon name="briefcase" size={22} color="#fff" />
                 <View style={dynamicStyles.titleContainer}>
-                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Produits</Text>
+                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">{t('mesServices.products')}</Text>
                 </View>
               </View>
             </View>
@@ -1248,7 +1248,7 @@ const MesServicesScreen: React.FC = () => {
                 onPress={() => {
                   const productsList = prepareProductsForSelector();
                   if (productsList.length === 0) {
-                    toaster.warning('Vous devez d\'abord cr├®er des produits avant de cr├®er un flash promo.');
+                    toaster.warning(t('mesServices.creerProduitsAvantFlash'));
                     return;
                   }
                   setProductsForSelection(productsList);
@@ -1273,7 +1273,7 @@ const MesServicesScreen: React.FC = () => {
                   setProductSelectorMode('delivery');
                   setShowProductSelector(true);
                 }}
-                accessibilityLabel="Configuration livraison"
+                accessibilityLabel={t('mesServices.configLivraison')}
                 accessibilityRole="button"
               >
                 <SafeIcon name="bike" size={18} color="#fff" />
@@ -1287,7 +1287,7 @@ const MesServicesScreen: React.FC = () => {
                       setSelectedItems(new Set());
                     }
                   }}
-                  accessibilityLabel={bulkMode ? "D├®sactiver s├®lection multiple" : "Activer s├®lection multiple"}
+                  accessibilityLabel={bulkMode ? t('mesServices.desactiverSelection') : t('mesServices.activerSelection')}
                   accessibilityRole="button"
                 >
                   <SafeIcon name={bulkMode ? "check-square" : "square"} size={18} color="#fff" />
@@ -1296,7 +1296,7 @@ const MesServicesScreen: React.FC = () => {
               <TouchableOpacity
                 style={[dynamicStyles.headerButton, dynamicStyles.menuButton]}
                 onPress={() => setShowSidebar(true)}
-                accessibilityLabel="Menu navigation"
+                accessibilityLabel={t('mesServices.menuNavigation')}
                 accessibilityRole="button"
               >
                 <SafeIcon name="menu" size={20} color="#fff" />
@@ -1412,7 +1412,7 @@ const MesServicesScreen: React.FC = () => {
                     (navigation as any).navigate('FlashPromosActive');
                   } catch (error) {
                     logger.error('Erreur navigation FlashPromosActive:', error);
-                    toaster.error('Impossible d\'ouvrir les Flash Promotionnels');
+                    toaster.error(t('mesServices.impossibleOuvrirFlash'));
                   }
                 }}
               >
@@ -1434,7 +1434,7 @@ const MesServicesScreen: React.FC = () => {
                     }
                   } catch (error) {
                     logger.error('Erreur navigation vers VideoFeed:', error);
-                    toaster.error('Impossible d\'ouvrir Mes Vid├®os');
+                    toaster.error(t('mesServices.impossibleOuvrirVideos'));
                   }
                 }}
               >
@@ -1465,7 +1465,7 @@ const MesServicesScreen: React.FC = () => {
                     }
                   } catch (error) {
                     logger.error('Erreur navigation vers VideoAnalytics:', error);
-                    toaster.error('Impossible d\'ouvrir Analytiques Vid├®os');
+                    toaster.error(t('mesServices.impossibleOuvrirAnalytiques'));
                   }
                 }}
               >
@@ -1786,11 +1786,11 @@ const MesServicesScreen: React.FC = () => {
                 setSelectedService(null);
               }}
               onMemberAdded={() => {
-                toaster.success('Membre ajout├® ├á l\'├®quipe avec succ├¿s');
+                toaster.success(t('mesServices.membreAjoute'));
                 loadServices(true);
               }}
               onMemberRemoved={() => {
-                toaster.success('Membre retir├® de l\'├®quipe avec succ├¿s');
+                toaster.success(t('mesServices.membreRetire'));
                 loadServices(true);
               }}
             />
@@ -1820,10 +1820,10 @@ const MesServicesScreen: React.FC = () => {
                 productIndex: product?.productIndex ?? 0,
                 productName: typeof product?.productName === 'string' ? product.productName.trim() :
                   (product?.productName && typeof product.productName === 'object' && 'valeur' in product.productName && typeof product.productName.valeur === 'string' ? product.productName.valeur.trim() :
-                    String(product?.productName || 'Produit sans nom')),
+                    String(product?.productName || t('mesServices.produitSansNom'))),
                 serviceName: typeof product?.serviceName === 'string' ? product.serviceName.trim() :
                   (product?.serviceName && typeof product.serviceName === 'object' && 'valeur' in product.serviceName && typeof product.serviceName.valeur === 'string' ? product.serviceName.valeur.trim() :
-                    String(product?.serviceName || 'Service sans nom')),
+                    String(product?.serviceName || t('mesServices.serviceSansNom'))),
               })).filter(p => p.serviceId > 0);
 
               // Ô£à Stocker les produits s├®lectionn├®s normalis├®s et ouvrir le modal de configuration livraison
@@ -1832,7 +1832,7 @@ const MesServicesScreen: React.FC = () => {
             } else if (productSelectorMode === 'flash-promo') {
               // Ô£à NOUVEAU: Mode Flash Promo - Cr├®er un flash promo pour plusieurs produits
               if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
-                toaster.warning('Veuillez s├®lectionner au moins un produit pour cr├®er un flash promo.');
+                toaster.warning(t('mesServices.selectAuMoinsUnProduit'));
                 setShowProductSelector(false);
                 setProductSelectorMode(null);
                 return;
@@ -1842,7 +1842,7 @@ const MesServicesScreen: React.FC = () => {
               const validProducts = selectedProducts.filter(p => p && p.serviceId != null && p.serviceId > 0);
 
               if (validProducts.length === 0) {
-                toaster.warning('Aucun produit valide s├®lectionn├®.');
+                toaster.warning(t('mesServices.aucunProduitValide'));
                 setShowProductSelector(false);
                 setProductSelectorMode(null);
                 return;
@@ -1858,7 +1858,7 @@ const MesServicesScreen: React.FC = () => {
                   });
                 } catch (error) {
                   logger.error('Erreur navigation CreateFlashPromo:', error);
-                  toaster.error('Impossible d\'ouvrir la cr├®ation de flash promo');
+                  toaster.error(t('mesServices.impossibleCreerFlash'));
                 }
               } else {
                 // Plusieurs produits : naviguer avec la liste des produits s├®lectionn├®s
@@ -1875,7 +1875,7 @@ const MesServicesScreen: React.FC = () => {
                   });
                 } catch (error) {
                   logger.error('Erreur navigation CreateFlashPromo (multiple):', error);
-                  toaster.error('Impossible d\'ouvrir la cr├®ation de flash promo');
+                  toaster.error(t('mesServices.impossibleCreerFlash'));
                 }
               }
 
@@ -1885,7 +1885,7 @@ const MesServicesScreen: React.FC = () => {
             } else if (productSelectorMode === 'team') {
               // Ô£à CORRECTION: V├®rifier que selectedProducts est un tableau valide
               if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
-                toaster.warning('Aucun produit s├®lectionn├®');
+                toaster.warning(t('mesServices.aucunProduitSelectionne'));
                 setShowProductSelector(false);
                 setProductSelectorMode(null);
                 return;
@@ -1959,30 +1959,30 @@ const MesServicesScreen: React.FC = () => {
           items={[
             {
               id: 'create-product',
-              label: 'Cr├®er produit',
+              label: t('mesServices.creerProduit'),
               icon: 'plus-circle',
-              section: 'Actions',
+              section: t('mesServices.sectionActions'),
               color: modernColors.success,
               onPress: () => handleAddProduct(),
             },
             {
               id: 'gallery',
-              label: 'Galerie M├®dias',
+              label: t('mesServices.galerieMedias'),
               icon: 'image',
-              section: 'Actions',
+              section: t('mesServices.sectionActions'),
               color: modernColors.success,
               onPress: () => setShowProductGallery(true),
             },
             {
               id: 'team',
-              label: 'G├®rer ├®quipe',
+              label: t('mesServices.gererEquipe'),
               icon: 'users',
-              section: 'Actions',
+              section: t('mesServices.sectionActions'),
               color: modernColors.primary,
               onPress: () => {
                 const productsList = prepareProductsForSelector();
                 if (productsList.length === 0) {
-                  toaster.warning('Vous devez d\'abord cr├®er des produits avant de g├®rer l\'├®quipe.');
+                  toaster.warning(t('mesServices.creerProduitsAvantEquipe'));
                   return;
                 }
                 setProductsForSelection(productsList);
@@ -1992,33 +1992,33 @@ const MesServicesScreen: React.FC = () => {
             },
             {
               id: 'analytics',
-              label: 'Statistiques',
+              label: t('mesServices.statistiques'),
               icon: 'tablet',
-              section: 'Analytics',
+              section: t('mesServices.sectionAnalytics'),
               color: '#3B82F6',
               onPress: () => (navigation as any).navigate('AnalyticsDashboard'),
             },
             {
               id: 'publicite-dashboard',
-              label: 'Mes Publicit├®s',
+              label: t('mesServices.mesPublicites'),
               icon: 'megaphone',
-              section: 'Marketing',
+              section: t('mesServices.sectionMarketing'),
               color: '#8B5CF6',
               onPress: () => (navigation as any).navigate('PubliciteDashboard'),
             },
             {
               id: 'publicite-create',
-              label: 'Nouvelle Publicit├®',
+              label: t('mesServices.nouvellePublicite'),
               icon: 'plus-circle',
-              section: 'Marketing',
+              section: t('mesServices.sectionMarketing'),
               color: '#EC4899',
               onPress: () => (navigation as any).navigate('CreatePublicite'),
             },
             {
               id: 'videos',
-              label: 'Mes Vid├®os',
+              label: t('mesServices.mesVideos'),
               icon: 'video',
-              section: 'Contenu',
+              section: t('mesServices.sectionContenu'),
               color: modernColors.primary,
               onPress: () => {
                 try {
@@ -2029,23 +2029,23 @@ const MesServicesScreen: React.FC = () => {
                     (navigation as any).navigate('VideoFeed');
                   }
                 } catch (error) {
-                  toaster.error('Impossible d\'ouvrir Mes Vid├®os');
+                  toaster.error(t('mesServices.impossibleOuvrirVideos'));
                 }
               },
             },
             {
               id: 'start-live',
-              label: 'D├®marrer un Live',
+              label: t('mesServices.demarrerLive'),
               icon: 'radio',
-              section: 'Contenu',
+              section: t('mesServices.sectionContenu'),
               color: '#DC2626',
               onPress: () => (navigation as any).navigate('StartLive'),
             },
             {
               id: 'video-analytics',
-              label: 'Analytiques Vid├®os',
+              label: t('mesServices.analytiquesVideos'),
               icon: 'bar-chart',
-              section: 'Contenu',
+              section: t('mesServices.sectionContenu'),
               color: modernColors.primary,
               onPress: () => {
                 try {
@@ -2056,29 +2056,28 @@ const MesServicesScreen: React.FC = () => {
                     (navigation as any).navigate('VideoAnalytics');
                   }
                 } catch (error) {
-                  toaster.error('Impossible d\'ouvrir Analytiques Vid├®os');
+                  toaster.error(t('mesServices.impossibleOuvrirAnalytiques'));
                 }
               },
             },
             {
               id: 'black-friday',
-              label: 'Black Friday',
+              label: t('mesServices.blackFriday'),
               icon: 'flame',
-              section: 'Promotions',
+              section: t('mesServices.sectionPromotions'),
               color: '#F59E0B',
               onPress: () => (navigation as any).navigate('GlobalPromoSubmission'),
             },
             {
               id: 'flash-promo',
-              label: 'Flash Promo',
+              label: t('mesServices.flashPromo'),
               icon: 'zap',
-              section: 'Promotions',
+              section: t('mesServices.sectionPromotions'),
               color: '#F59E0B',
               onPress: () => {
-                // Pr├®parer la liste des produits et ouvrir le s├®lecteur en mode multiple
                 const productsList = prepareProductsForSelector();
                 if (productsList.length === 0) {
-                  toaster.warning('Vous devez d\'abord cr├®er des produits avant de cr├®er un flash promo.');
+                  toaster.warning(t('mesServices.creerProduitsAvantFlash'));
                   return;
                 }
                 setProductsForSelection(productsList);
@@ -2088,9 +2087,9 @@ const MesServicesScreen: React.FC = () => {
             },
             {
               id: 'settings',
-              label: 'Param├¿tres',
+              label: t('mesServices.parametres'),
               icon: 'settings',
-              section: 'Autres',
+              section: t('mesServices.sectionAutres'),
               color: '#6B7280',
               onPress: () => (navigation as any).navigate('Settings'),
             },
@@ -2114,7 +2113,7 @@ const MesServicesScreen: React.FC = () => {
           actions={[
             {
               id: 'activate',
-              label: 'Activer',
+              label: t('mesServices.activer'),
               icon: 'play-circle',
               color: modernColors.success,
               onPress: async (selectedIds) => {
@@ -2128,12 +2127,12 @@ const MesServicesScreen: React.FC = () => {
                 });
                 await Promise.all(promises);
                 setSelectedItems(new Set());
-                toaster.success(`${selectedCount} produit(s) activ├®(s)`);
+                toaster.success(t('mesServices.produitsActives', { count: selectedCount }));
               },
             },
             {
               id: 'deactivate',
-              label: 'D├®sactiver',
+              label: t('mesServices.desactiver'),
               icon: 'pause-circle',
               color: modernColors.warning,
               onPress: async (selectedIds) => {
@@ -2147,20 +2146,20 @@ const MesServicesScreen: React.FC = () => {
                 });
                 await Promise.all(promises);
                 setSelectedItems(new Set());
-                toaster.success(`${selectedCount} produit(s) d├®sactiv├®(s)`);
+                toaster.success(t('mesServices.produitsDesactives', { count: selectedCount }));
               },
             },
             {
               id: 'delete',
-              label: 'Supprimer',
+              label: t('mesServices.supprimer'),
               icon: 'trash-2',
               color: modernColors.error,
               destructive: true,
               onPress: (selectedIds) => {
                 const selectedCount = selectedItems.size;
                 Alert.alert(
-                  'Supprimer plusieurs produits',
-                  `├ètes-vous s├╗r de vouloir supprimer ${selectedCount} produit(s) ?\n\nCette action est irr├®versible.`,
+                  t('mesServices.supprimerPlusieurs'),
+                  t('mesServices.confirmSupprimerPlusieurs', { count: selectedCount }),
                   [
                     { text: t('common.cancel'), style: 'cancel' },
                     {
@@ -2176,7 +2175,7 @@ const MesServicesScreen: React.FC = () => {
                         });
                         await Promise.all(promises);
                         setSelectedItems(new Set());
-                        toaster.success(`${selectedCount} produit(s) supprim├®(s)`);
+                        toaster.success(t('mesServices.produitSupprimes', { count: selectedCount }));
                       },
                     },
                   ]
@@ -2406,11 +2405,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   servicesContainer: {
     gap: 16,
-  },
-  // Ô£à NOUVEAU: Styles pour FlashList
-  flashListContent: {
-    padding: 16,
-    paddingBottom: 120,
   },
   emptyContainer: {
     alignItems: 'center',

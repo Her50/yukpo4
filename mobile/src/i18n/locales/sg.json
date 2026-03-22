@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email a mu pepe"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Telefon",
+        "nonRenseigne": "A mu pepe",
+        "role": "Kua",
+        "sauvegarder": "Mä",
+        "annuler": "Sära lêgê",
+        "parametres": "Nguîringo",
+        "rechargerTokens": "Fa Tokens",
+        "actions": "Kua",
+        "succes": "A gâ nzönî",
+        "profilMisAJour": "Profil asara nzönî",
+        "erreur": "Ngangu",
+        "impossibleMajProfil": "Profil ahînga sara tî a"
     },
     "fleetDashboard": {
         "enCours": "in progress",

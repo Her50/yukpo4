@@ -8,10 +8,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 
 const MonProfilScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user, updateUser } = useAuth();
+  const { t } = useLanguageSafe();
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -23,10 +25,10 @@ const MonProfilScreen: React.FC = () => {
     try {
       await updateUser(formData);
       setEditing(false);
-      Alert.alert('Succ�s', 'Profil mis � jour avec succ�s');
+      Alert.alert(t('monProfil.succes'), t('monProfil.profilMisAJour'));
     } catch (error) {
-      console.error('Erreur mise � jour profil:', error);
-      Alert.alert('Erreur', 'Impossible de mettre � jour le profil');
+      console.error('Erreur mise à jour profil:', error);
+      Alert.alert(t('monProfil.erreur'), t('monProfil.impossibleMajProfil'));
     }
   };
 
@@ -52,7 +54,7 @@ const MonProfilScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Title style={styles.title}>Mon Profil</Title>
+          <Title style={styles.title}>{t('monProfil.monProfil')}</Title>
           <TouchableOpacity
             style={styles.editButton}
             onPress={() => setEditing(!editing)}
@@ -73,19 +75,19 @@ const MonProfilScreen: React.FC = () => {
               style={styles.avatar}
             />
             <View style={styles.profileInfo}>
-              <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
+              <Text style={styles.userName}>{user?.name || t('monProfil.utilisateur')}</Text>
               <Text style={styles.userEmail}>{user?.email}</Text>
-              <Text style={styles.userRole}>R�le: {user?.role}</Text>
+              <Text style={styles.userRole}>{t('monProfil.role')}: {user?.role}</Text>
             </View>
           </Card.Content>
         </Card>
 
         <Card style={styles.infoCard}>
           <Card.Content>
-            <Title style={styles.cardTitle}>Informations personnelles</Title>
+            <Title style={styles.cardTitle}>{t('monProfil.informationsPersonnelles')}</Title>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Nom complet</Text>
+              <Text style={styles.inputLabel}>{t('monProfil.nomComplet')}</Text>
               {editing ? (
                 <TextInput
                   value={formData.name}
@@ -94,12 +96,12 @@ const MonProfilScreen: React.FC = () => {
                   mode="outlined"
                 />
               ) : (
-                <Text style={styles.inputValue}>{user?.name || 'Non renseign�'}</Text>
+                <Text style={styles.inputValue}>{user?.name || t('monProfil.nonRenseigne')}</Text>
               )}
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
+              <Text style={styles.inputLabel}>{t('monProfil.email')}</Text>
               {editing ? (
                 <TextInput
                   value={formData.email}
@@ -114,7 +116,7 @@ const MonProfilScreen: React.FC = () => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>T�l�phone</Text>
+              <Text style={styles.inputLabel}>{t('monProfil.telephone')}</Text>
               {editing ? (
                 <TextInput
                   value={formData.phone}
@@ -124,12 +126,12 @@ const MonProfilScreen: React.FC = () => {
                   keyboardType="phone-pad"
                 />
               ) : (
-                <Text style={styles.inputValue}>{user?.phone || 'Non renseign�'}</Text>
+                <Text style={styles.inputValue}>{user?.phone || t('monProfil.nonRenseigne')}</Text>
               )}
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Solde</Text>
+              <Text style={styles.inputLabel}>{t('monProfil.solde')}</Text>
               <Text style={styles.inputValue}>
                 {user?.credits?.toLocaleString() || '0'} XAF
               </Text>
@@ -144,28 +146,28 @@ const MonProfilScreen: React.FC = () => {
               onPress={handleCancel}
               style={styles.cancelButton}
             >
-              Annuler
+              <Text>{t('monProfil.annuler')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               mode="contained"
               onPress={handleSave}
               style={styles.saveButton}
             >
-              Sauvegarder
+              <Text>{t('monProfil.sauvegarder')}</Text>
             </TouchableOpacity>
           </View>
         )}
 
         <Card style={styles.actionsCard}>
           <Card.Content>
-            <Title style={styles.cardTitle}>Actions</Title>
+            <Title style={styles.cardTitle}>{t('monProfil.actions')}</Title>
 
             <TouchableOpacity
               style={styles.actionItem}
               onPress={() => navigation.navigate('Settings' as never)}
             >
               <Ionicons name="settings" size={24} color={theme.colors.primary} />
-              <Text style={styles.actionText}>Param�tres</Text>
+              <Text style={styles.actionText}>{t('monProfil.parametres')}</Text>
               <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
             </TouchableOpacity>
 
@@ -174,7 +176,7 @@ const MonProfilScreen: React.FC = () => {
               onPress={() => navigation.navigate('SoldeDetail' as never)}
             >
               <Ionicons name="time" size={24} color={theme.colors.primary} />
-              <Text style={styles.actionText}>Historique</Text>
+              <Text style={styles.actionText}>{t('monProfil.historique')}</Text>
               <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
             </TouchableOpacity>
 
@@ -183,7 +185,7 @@ const MonProfilScreen: React.FC = () => {
               onPress={() => navigation.navigate('RechargeTokens' as never)}
             >
               <Ionicons name="card" size={24} color={theme.colors.primary} />
-              <Text style={styles.actionText}>Recharger Tokens</Text>
+              <Text style={styles.actionText}>{t('monProfil.rechargerTokens')}</Text>
               <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
             </TouchableOpacity>
           </Card.Content>

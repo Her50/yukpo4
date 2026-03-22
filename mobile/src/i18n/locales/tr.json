@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "E-posta belirtilmedi"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "E-posta",
+        "telephone": "Telefon",
+        "nonRenseigne": "Belirtilmedi",
+        "role": "Rol",
+        "sauvegarder": "Kaydet",
+        "annuler": "İptal",
+        "parametres": "Ayarlar",
+        "rechargerTokens": "Token Yükle",
+        "actions": "İşlemler",
+        "succes": "Başarılı",
+        "profilMisAJour": "Profil başarıyla güncellendi",
+        "erreur": "Hata",
+        "impossibleMajProfil": "Profil güncellenemedi"
     },
     "fleetDashboard": {
         "enCours": "in progress",

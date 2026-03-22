@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email haina kupihwa"
     },
     "stats": {
         "title": "Nhamba",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Tsamba ye-email",
+        "telephone": "Runhare",
+        "nonRenseigne": "Haina kupihwa",
+        "role": "Basa",
+        "sauvegarder": "Chengetedza",
+        "annuler": "Kanzura",
+        "parametres": "Zvirongwa",
+        "rechargerTokens": "Chaja Matokeni",
+        "actions": "Zviito",
+        "succes": "Kwabudirira",
+        "profilMisAJour": "Profairi yagadziridzwa zvakanaka",
+        "erreur": "Kukanganisa",
+        "impossibleMajProfil": "Hazvibviri kugadzirisa profairi"
     },
     "fleetDashboard": {
         "enCours": "in progress",

@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Barua pepe haijajazwa"
     },
     "stats": {
         "title": "Takwimu",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Barua pepe",
+        "telephone": "Simu",
+        "nonRenseigne": "Haijajazwa",
+        "role": "Jukumu",
+        "sauvegarder": "Hifadhi",
+        "annuler": "Ghairi",
+        "parametres": "Mipangilio",
+        "rechargerTokens": "Jaza Tokeni",
+        "actions": "Vitendo",
+        "succes": "Imefanikiwa",
+        "profilMisAJour": "Wasifu umesasishwa kwa mafanikio",
+        "erreur": "Hitilafu",
+        "impossibleMajProfil": "Haiwezekani kusasisha wasifu"
     },
     "fleetDashboard": {
         "enCours": "in progress",

@@ -514,7 +514,7 @@ WITH autocomplete_matches AS (
         ) + (ac.usage_count::REAL * 0.5) as final_score
     FROM autocomplete_characteristics ac
     INNER JOIN services s ON s.id = ac.service_id
-    INNER JOIN service_products p ON p.id = ac.product_id::INTEGER AND p.service_id = ac.service_id
+    INNER JOIN service_products p ON p.id = CASE WHEN ac.product_id ~ '^\d+$' THEN ac.product_id::INTEGER ELSE -1 END AND p.service_id = ac.service_id
     WHERE s.is_active = true
       AND p.is_active = true
       AND ac.identifiant_base = 'produits'
@@ -648,7 +648,7 @@ WITH autocomplete_matches AS (
         )::REAL as ac_score
     FROM autocomplete_characteristics ac
     INNER JOIN services s ON s.id = ac.service_id
-    INNER JOIN service_products p ON p.id = ac.product_id::INTEGER AND p.service_id = ac.service_id
+    INNER JOIN service_products p ON p.id = CASE WHEN ac.product_id ~ '^\d+$' THEN ac.product_id::INTEGER ELSE -1 END AND p.service_id = ac.service_id
     WHERE s.is_active = true
     AND p.is_active = true
     AND ac.identifiant_base = 'produits'
@@ -1280,7 +1280,7 @@ LIMIT 100
                     )::REAL as ac_score
                 FROM autocomplete_characteristics ac
                 INNER JOIN services s ON s.id = ac.service_id
-                INNER JOIN service_products p ON p.id = ac.product_id::INTEGER AND p.service_id = ac.service_id
+                INNER JOIN service_products p ON p.id = CASE WHEN ac.product_id ~ '^\d+$' THEN ac.product_id::INTEGER ELSE -1 END AND p.service_id = ac.service_id
                 WHERE s.is_active = true
                 AND p.is_active = true
                 AND ac.identifiant_base = 'produits'

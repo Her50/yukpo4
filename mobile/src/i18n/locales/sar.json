@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email joxul"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Telefon",
+        "nonRenseigne": "Joxul",
+        "role": "Liggéey",
+        "sauvegarder": "Denc",
+        "annuler": "Neenal",
+        "parametres": "Tëralinu",
+        "rechargerTokens": "Fésal Tokens",
+        "actions": "Jëf yi",
+        "succes": "Jàmm",
+        "profilMisAJour": "Profil bi yeesal na bu baax",
+        "erreur": "Njuumte",
+        "impossibleMajProfil": "Mënul yeesal profil bi"
     },
     "fleetDashboard": {
         "enCours": "in progress",

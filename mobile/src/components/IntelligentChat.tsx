@@ -554,22 +554,42 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
               </View>
             )}
 
-            {item.suggestedActions && item.suggestedActions.length > 0 && (
-              <View style={styles.messageActions}>
-                {item.suggestedActions.slice(0, 6).map((action) => (
-                  <TouchableOpacity
-                    key={action.id}
-                    style={styles.messageActionButton}
-                    onPress={() => handleActionPress(action)}
-                  >
-                    {action.icon && (
-                      <SafeIcon name={action.icon} size={14} color="#6366f1" />
-                    )}
-                    <Text style={styles.messageActionText}>{actionDisplayLabel(action)}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            {item.suggestedActions && item.suggestedActions.length > 0 && (() => {
+              const navLinks = item.suggestedActions!.filter((a: any) => a.id?.startsWith('nav-'));
+              const otherActions = item.suggestedActions!.filter((a: any) => !a.id?.startsWith('nav-'));
+              return (
+                <View style={styles.messageActions}>
+                  {otherActions.slice(0, 6).map((action: any) => (
+                    <TouchableOpacity
+                      key={action.id}
+                      style={styles.messageActionButton}
+                      onPress={() => handleActionPress(action)}
+                    >
+                      {action.icon && (
+                        <SafeIcon name={action.icon} size={14} color="#6366f1" />
+                      )}
+                      <Text style={styles.messageActionText}>{actionDisplayLabel(action)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                  {navLinks.length > 0 && (
+                    <>
+                      <Text style={styles.navLinksLabel}>🔗 Accès rapide :</Text>
+                      {navLinks.map((action: any) => (
+                        <TouchableOpacity
+                          key={action.id}
+                          style={styles.navLinkBtn}
+                          onPress={() => handleActionPress(action)}
+                        >
+                          {action.icon && <SafeIcon name={action.icon} size={14} color="#fff" />}
+                          <Text style={styles.navLinkBtnText}>{action.label}</Text>
+                          <SafeIcon name="chevron-right" size={14} color="#fff" />
+                        </TouchableOpacity>
+                      ))}
+                    </>
+                  )}
+                </View>
+              );
+            })()}
 
             {item.metadata?.nextSteps && item.metadata.nextSteps.length > 0 && (
               <View style={styles.nextStepsContainer}>
@@ -911,6 +931,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#6366f1',
+  },
+  navLinksLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748b',
+    marginTop: 10,
+    marginBottom: 4,
+    width: '100%',
+  },
+  navLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 6,
+    width: '100%',
+    marginBottom: 4,
+  },
+  navLinkBtnText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
   },
   suggestedActionsContainer: {
     paddingHorizontal: 12,

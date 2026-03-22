@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "ไม่ได้ระบุอีเมล"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "อีเมล",
+        "telephone": "โทรศัพท์",
+        "nonRenseigne": "ไม่ได้ระบุ",
+        "role": "บทบาท",
+        "sauvegarder": "บันทึก",
+        "annuler": "ยกเลิก",
+        "parametres": "ตั้งค่า",
+        "rechargerTokens": "เติมโทเค็น",
+        "actions": "การดำเนินการ",
+        "succes": "สำเร็จ",
+        "profilMisAJour": "อัปเดตโปรไฟล์สำเร็จ",
+        "erreur": "ข้อผิดพลาด",
+        "impossibleMajProfil": "ไม่สามารถอัปเดตโปรไฟล์ได้"
     },
     "fleetDashboard": {
         "enCours": "in progress",

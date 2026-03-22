@@ -180,8 +180,13 @@ impl OptimizedMediaProcessor {
 
         // 2. Décoder si base64 pour obtenir les bytes
         let media_bytes = if item.is_base64 {
+            let raw_b64 = if item.data.starts_with("data:") {
+                item.data.split(',').nth(1).unwrap_or(&item.data)
+            } else {
+                &item.data
+            };
             STANDARD
-                .decode(&item.data)
+                .decode(raw_b64)
                 .map_err(|e| AppError::BadRequest(format!("Erreur décodage base64: {}", e)))?
         } else {
             tokio::fs::read(&file_path).await?

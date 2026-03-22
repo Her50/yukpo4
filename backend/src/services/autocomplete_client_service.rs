@@ -80,7 +80,7 @@ pub async fn search_product_suggestions(
             ) as relevance_score
         FROM autocomplete_characteristics ac
         INNER JOIN services s ON s.id = ac.service_id
-        INNER JOIN service_products p ON p.id = ac.product_id::INTEGER AND p.service_id = ac.service_id
+        INNER JOIN service_products p ON p.id = CASE WHEN ac.product_id ~ '^\d+$' THEN ac.product_id::INTEGER ELSE -1 END AND p.service_id = ac.service_id
         WHERE 
             ac.is_real_product = TRUE
             AND s.is_active = TRUE

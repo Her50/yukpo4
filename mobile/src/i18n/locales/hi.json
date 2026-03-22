@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "ईमेल नहीं दिया गया"
     },
     "stats": {
         "title": "आंकड़े",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "ईमेल",
+        "telephone": "फ़ोन",
+        "nonRenseigne": "नहीं दिया गया",
+        "role": "भूमिका",
+        "sauvegarder": "सहेजें",
+        "annuler": "रद्द करें",
+        "parametres": "सेटिंग्स",
+        "rechargerTokens": "टोकन रिचार्ज करें",
+        "actions": "कार्रवाइयाँ",
+        "succes": "सफलता",
+        "profilMisAJour": "प्रोफ़ाइल सफलतापूर्वक अपडेट की गई",
+        "erreur": "त्रुटि",
+        "impossibleMajProfil": "प्रोफ़ाइल अपडेट नहीं हो सकी"
     },
     "fleetDashboard": {
         "enCours": "in progress",

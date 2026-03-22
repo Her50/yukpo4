@@ -1,6 +1,5 @@
 import { Component, ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import * as Sentry from 'sentry-expo';
 import i18n from '../i18n';
 
 const t = (key: string, options?: any) => {
@@ -70,7 +69,8 @@ class ErrorBoundary extends Component<Props, State> {
         }
 
         try {
-            Sentry.Native?.captureException?.(error, { extra: detailedError });
+            const Sentry = require('sentry-expo');
+            Sentry?.Native?.captureException?.(error, { extra: detailedError });
         } catch (sentryError) {
             console.warn('[ErrorBoundary] Sentry non disponible:', sentryError);
         }
@@ -131,7 +131,8 @@ class ErrorBoundary extends Component<Props, State> {
                                 onPress={() => {
                                     if (this.state.error) {
                                         try {
-                                            Sentry.Native?.captureException?.(this.state.error, {
+                                            const Sentry = require('sentry-expo');
+                                            Sentry?.Native?.captureException?.(this.state.error, {
                                                 extra: { origin: 'ErrorBoundaryUserReport' },
                                             });
                                         } catch (e) { /* Sentry indisponible */ }

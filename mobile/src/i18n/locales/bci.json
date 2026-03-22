@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email b'a manman"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Telefɔnun",
+        "nonRenseigne": "B'a manman",
+        "role": "Junman",
+        "sauvegarder": "Sié",
+        "annuler": "Yaci",
+        "parametres": "Ninnge'm be siesie",
+        "rechargerTokens": "Fa sika gua Tokens su",
+        "actions": "Sa mun",
+        "succes": "Ɔ yoli kpa",
+        "profilMisAJour": "Profil'n w'a kaci klanman",
+        "erreur": "Fɔnlɛ",
+        "impossibleMajProfil": "E kwlá kaciman profil'n"
     },
     "fleetDashboard": {
         "enCours": "in progress",

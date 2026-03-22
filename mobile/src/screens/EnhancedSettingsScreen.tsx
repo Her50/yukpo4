@@ -134,7 +134,7 @@ const EnhancedSettingsScreen: React.FC = () => {
         },
         {
             id: 'notifications',
-            title: 'Notifications',
+            title: t('enhancedSettings.notifications'),
             icon: '🔔',
             color: '#F59E0B',
             description: t('enhancedSettings.controlerVosNotifications')
@@ -148,10 +148,10 @@ const EnhancedSettingsScreen: React.FC = () => {
         },
         {
             id: 'appearance',
-            title: 'Apparence',
+            title: t('enhancedSettings.apparence'),
             icon: '🎨',
             color: '#8B5CF6',
-            description: 'Personnaliser l\'interface'
+            description: t('enhancedSettings.personnaliserInterface')
         },
         {
             id: 'security',
@@ -198,7 +198,7 @@ const EnhancedSettingsScreen: React.FC = () => {
             }
         } catch (error) {
             console.error('[EnhancedSettingsScreen] Erreur sauvegarde:', error);
-            Alert.alert('Erreur', error.message || t('enhancedSettingsScreen.impossibleDeSauvegarderLesParametres'));
+            Alert.alert(t('enhancedSettings.erreur'), error.message || t('enhancedSettingsScreen.impossibleDeSauvegarderLesParametres'));
         } finally {
             setLoading(false);
         }
@@ -223,7 +223,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
                     <View style={styles.sectionContent}>
                         <Text style={styles.sectionTitle}>{t('enhancedSettings.mesSuivis')}</Text>
-                        <Text style={styles.sectionDescription}>Vendeurs et prestataires que vous suivez</Text>
+                        <Text style={styles.sectionDescription}>{t('enhancedSettings.vendeursSuivis')}</Text>
                     </View>
                     <Text style={styles.sectionArrow}>›</Text>
                 </TouchableOpacity>
@@ -253,16 +253,16 @@ const EnhancedSettingsScreen: React.FC = () => {
             <View style={styles.userInfoCard}>
                 <Text style={styles.userInfoTitle}>{t('enhancedSettings.informationsDuCompte')}</Text>
                 <View style={styles.userInfoRow}>
-                    <Text style={styles.userInfoLabel}>Nom:</Text>
+                    <Text style={styles.userInfoLabel}>{t('enhancedSettings.nom')}</Text>
                     <Text style={styles.userInfoValue}>{user?.name || t('enhancedSettings.nonDefini')}</Text>
                 </View>
                 <View style={styles.userInfoRow}>
-                    <Text style={styles.userInfoLabel}>Email:</Text>
+                    <Text style={styles.userInfoLabel}>{t('enhancedSettings.emailLabel')}</Text>
                     <Text style={styles.userInfoValue}>{user?.email || t('enhancedSettings.nonDefini')}</Text>
                 </View>
                 <View style={styles.userInfoRow}>
                     <Text style={styles.userInfoLabel}>{t('enhancedSettings.credits')}</Text>
-                    <Text style={styles.userInfoValue}>{user?.credits || 0} tokens</Text>
+                    <Text style={styles.userInfoValue}>{user?.credits || 0} {t('enhancedSettings.tokens')}</Text>
                 </View>
             </View>
         </ScrollView>
@@ -298,12 +298,12 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Email</Text>
+                        <Text style={styles.inputLabel}>{t('enhancedSettings.email')}</Text>
                         <TextInput
                             style={styles.textInput}
                             value={profileData.email}
                             onChangeText={(text) => setProfileData({ ...profileData, email: text })}
-                            placeholder="votre@email.com"
+                            placeholder={t('enhancedSettings.emailPlaceholder')}
                             keyboardType="email-address"
                         />
                     </View>
@@ -314,13 +314,13 @@ const EnhancedSettingsScreen: React.FC = () => {
                             style={styles.textInput}
                             value={profileData.phone}
                             onChangeText={(text) => setProfileData({ ...profileData, phone: text })}
-                            placeholder="+33 6 12 34 56 78"
+                            placeholder={t('enhancedSettings.phonePlaceholder')}
                             keyboardType="phone-pad"
                         />
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Bio</Text>
+                        <Text style={styles.inputLabel}>{t('enhancedSettings.bio')}</Text>
                         <TextInput
                             style={[styles.textInput, styles.textArea]}
                             value={profileData.bio}
@@ -350,10 +350,10 @@ const EnhancedSettingsScreen: React.FC = () => {
                                         ]}
                                     >
                                         {option === 'public'
-                                            ? 'Public'
+                                            ? t('enhancedSettings.public')
                                             : option === 'private'
                                                 ? t('enhancedSettingsScreen.prive')
-                                                : 'Amis uniquement'}
+                                                : t('enhancedSettings.amisUniquement')}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -366,7 +366,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                         disabled={loading}
                     >
                         <Text style={styles.saveButtonText}>
-                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                            {loading ? t('enhancedSettings.sauvegarde') : t('enhancedSettings.sauvegarder')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -377,8 +377,8 @@ const EnhancedSettingsScreen: React.FC = () => {
     const renderNotificationsScreen = () => (
         <View style={styles.container}>
             <NavigatorToolbar
-                title="Notifications"
-                subtitle="Personnalisez vos alertes"
+                title={t('enhancedSettings.notifications')}
+                subtitle={t('enhancedSettings.personnalisezAlertes')}
                 showHandle={false}
                 density="compact"
                 backIcon="back"
@@ -417,7 +417,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Emails marketing</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.emailsMarketing')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, notifications.marketing && styles.toggleActive]}
                             onPress={() => setNotifications({ ...notifications, marketing: !notifications.marketing })}
@@ -427,7 +427,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Traduction automatique</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.traductionAuto')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, notifications.autoTranslation && styles.toggleActive]}
                             onPress={() => setNotifications({ ...notifications, autoTranslation: !notifications.autoTranslation })}
@@ -444,7 +444,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                         disabled={loading}
                     >
                         <Text style={styles.saveButtonText}>
-                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                            {loading ? t('enhancedSettings.sauvegarde') : t('enhancedSettings.sauvegarder')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -485,7 +485,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Autoriser les messages</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.autoriserMessages')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, privacy.allowMessages && styles.toggleActive]}
                             onPress={() => setPrivacy({ ...privacy, allowMessages: !privacy.allowMessages })}
@@ -510,7 +510,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                         disabled={loading}
                     >
                         <Text style={styles.saveButtonText}>
-                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                            {loading ? t('enhancedSettings.sauvegarde') : t('enhancedSettings.sauvegarder')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -521,8 +521,8 @@ const EnhancedSettingsScreen: React.FC = () => {
     const renderAppearanceScreen = () => (
         <View style={styles.container}>
             <NavigatorToolbar
-                title="Apparence"
-                subtitle="Personnalisez l'interface"
+                title={t('enhancedSettings.apparence')}
+                subtitle={t('enhancedSettings.personnalisezInterface')}
                 showHandle={false}
                 density="compact"
                 backIcon="back"
@@ -548,7 +548,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                                             appearance.theme === theme && styles.radioOptionTextActive,
                                         ]}
                                     >
-                                        {theme === 'light' ? 'Clair' : theme === 'dark' ? 'Sombre' : 'Automatique'}
+                                        {theme === 'light' ? t('enhancedSettings.clair') : theme === 'dark' ? t('enhancedSettings.sombre') : t('enhancedSettings.automatique')}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -556,7 +556,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Langue</Text>
+                        <Text style={styles.inputLabel}>{t('enhancedSettings.langue')}</Text>
                         <View style={styles.radioGroup}>
                             {['fr', 'en', 'es'].map((lang) => (
                                 <TouchableOpacity
@@ -581,7 +581,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Animations</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.animations')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, appearance.animations && styles.toggleActive]}
                             onPress={() => setAppearance({ ...appearance, animations: !appearance.animations })}
@@ -596,7 +596,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                         disabled={loading}
                     >
                         <Text style={styles.saveButtonText}>
-                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                            {loading ? t('enhancedSettings.sauvegarde') : t('enhancedSettings.sauvegarder')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -608,7 +608,7 @@ const EnhancedSettingsScreen: React.FC = () => {
         <View style={styles.container}>
             <NavigatorToolbar
                 title={t('enhancedSettings.securite')}
-                subtitle="Renforcez la protection de votre compte"
+                subtitle={t('enhancedSettings.securiteSubtitle')}
                 showHandle={false}
                 density="compact"
                 backIcon="back"
@@ -637,7 +637,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Alertes de connexion</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.alertesConnexion')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, security.loginAlerts && styles.toggleActive]}
                             onPress={() => setSecurity({ ...security, loginAlerts: !security.loginAlerts })}
@@ -665,7 +665,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                         disabled={loading}
                     >
                         <Text style={styles.saveButtonText}>
-                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                            {loading ? t('enhancedSettings.sauvegarde') : t('enhancedSettings.sauvegarder')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -677,7 +677,7 @@ const EnhancedSettingsScreen: React.FC = () => {
         <View style={styles.container}>
             <NavigatorToolbar
                 title={t('enhancedSettings.donnees')}
-                subtitle="Gestion du stockage et des sauvegardes"
+                subtitle={t('enhancedSettings.gestionStockage')}
                 showHandle={false}
                 density="compact"
                 backIcon="back"
@@ -689,12 +689,12 @@ const EnhancedSettingsScreen: React.FC = () => {
                         <Text style={styles.infoCardTitle}>{t('enhancedSettings.cacheDeLapplication')}</Text>
                         <Text style={styles.infoCardValue}>{data.cacheSize}</Text>
                         <TouchableOpacity style={styles.actionButton}>
-                            <Text style={styles.actionButtonText}>Vider le cache</Text>
+                            <Text style={styles.actionButtonText}>{t('enhancedSettings.viderCache')}</Text>
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.toggleGroup}>
-                        <Text style={styles.toggleLabel}>Sauvegarde automatique</Text>
+                        <Text style={styles.toggleLabel}>{t('enhancedSettings.sauvegardeAuto')}</Text>
                         <TouchableOpacity
                             style={[styles.toggle, data.autoBackup && styles.toggleActive]}
                             onPress={() => setData({ ...data, autoBackup: !data.autoBackup })}
@@ -722,10 +722,10 @@ const EnhancedSettingsScreen: React.FC = () => {
                                         ]}
                                     >
                                         {freq === 'hourly'
-                                            ? 'Horaire'
+                                            ? t('enhancedSettings.horaire')
                                             : freq === 'daily'
-                                                ? 'Quotidienne'
-                                                : 'Hebdomadaire'}
+                                                ? t('enhancedSettings.quotidienne')
+                                                : t('enhancedSettings.hebdomadaire')}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -738,7 +738,7 @@ const EnhancedSettingsScreen: React.FC = () => {
                         disabled={loading}
                     >
                         <Text style={styles.saveButtonText}>
-                            {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                            {loading ? t('enhancedSettings.sauvegarde') : t('enhancedSettings.sauvegarder')}
                         </Text>
                     </TouchableOpacity>
                 </View>

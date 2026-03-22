@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "이메일 미입력"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "이메일",
+        "telephone": "전화",
+        "nonRenseigne": "미입력",
+        "role": "역할",
+        "sauvegarder": "저장",
+        "annuler": "취소",
+        "parametres": "설정",
+        "rechargerTokens": "토큰 충전",
+        "actions": "작업",
+        "succes": "성공",
+        "profilMisAJour": "프로필이 성공적으로 업데이트되었습니다",
+        "erreur": "오류",
+        "impossibleMajProfil": "프로필을 업데이트할 수 없습니다"
     },
     "fleetDashboard": {
         "enCours": "in progress",

@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Enyeghị ozi-e"
     },
     "stats": {
         "title": "Ọnụọgụgụ",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Ozi-e",
+        "telephone": "Ekwentị",
+        "nonRenseigne": "Enyeghị",
+        "role": "Ọrụ",
+        "sauvegarder": "Chekwaa",
+        "annuler": "Kagbuo",
+        "parametres": "Ntọala",
+        "rechargerTokens": "Gbakwunye Tokens",
+        "actions": "Omume",
+        "succes": "Ọganihu",
+        "profilMisAJour": "Emelitere profaịlụ nke ọma",
+        "erreur": "Njehie",
+        "impossibleMajProfil": "Enweghị ike imelite profaịlụ"
     },
     "fleetDashboard": {
         "enCours": "in progress",

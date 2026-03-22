@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email no duna"
     },
     "stats": {
         "title": "Estadístikanan",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Telefòn",
+        "nonRenseigne": "No duna",
+        "role": "Rol",
+        "sauvegarder": "Warda",
+        "annuler": "Kanselá",
+        "parametres": "Konfiguashon",
+        "rechargerTokens": "Recarga Tokens",
+        "actions": "Akshon",
+        "succes": "Eksito",
+        "profilMisAJour": "Perfil a keda aktualisá ku éksito",
+        "erreur": "Eror",
+        "impossibleMajProfil": "No por aktualisá perfil"
     },
     "fleetDashboard": {
         "enCours": "in progress",

@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email tidak diisi"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Telepon",
+        "nonRenseigne": "Tidak diisi",
+        "role": "Peran",
+        "sauvegarder": "Simpan",
+        "annuler": "Batal",
+        "parametres": "Pengaturan",
+        "rechargerTokens": "Isi ulang Token",
+        "actions": "Tindakan",
+        "succes": "Berhasil",
+        "profilMisAJour": "Profil berhasil diperbarui",
+        "erreur": "Kesalahan",
+        "impossibleMajProfil": "Tidak dapat memperbarui profil"
     },
     "fleetDashboard": {
         "enCours": "in progress",

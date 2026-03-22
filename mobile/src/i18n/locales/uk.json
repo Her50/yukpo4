@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Електронна пошта не вказана"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Електронна пошта",
+        "telephone": "Телефон",
+        "nonRenseigne": "Не вказано",
+        "role": "Роль",
+        "sauvegarder": "Зберегти",
+        "annuler": "Скасувати",
+        "parametres": "Налаштування",
+        "rechargerTokens": "Поповнити токени",
+        "actions": "Дії",
+        "succes": "Успіх",
+        "profilMisAJour": "Профіль успішно оновлено",
+        "erreur": "Помилка",
+        "impossibleMajProfil": "Неможливо оновити профіль"
     },
     "fleetDashboard": {
         "enCours": "in progress",

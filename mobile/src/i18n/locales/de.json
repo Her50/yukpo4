@@ -430,7 +430,8 @@
         "financialTracking": "Finanzüberwachung",
         "financialTrackingDesc": "Verfolgen Sie alle Ihre Finanzbewegungen im Detail",
         "uneErreurInattendueS": "Ein unerwarteter Fehler tritt auf",
-        "uneErreurInattendueSestProduite": "Es ist ein unerwarteter Fehler aufgetreten"
+        "uneErreurInattendueSestProduite": "Es ist ein unerwarteter Fehler aufgetreten",
+        "noEmail": "E-Mail nicht angegeben"
     },
     "stats": {
         "title": "Statistiken",
@@ -10663,7 +10664,20 @@
         "utilisateur": "Benutzer",
         "informationsPersonnelles": "Persönliche Informationen",
         "solde": "Zahlen",
-        "historique": "Historisch"
+        "historique": "Historisch",
+        "email": "E-Mail",
+        "telephone": "Telefon",
+        "nonRenseigne": "Nicht angegeben",
+        "role": "Rolle",
+        "sauvegarder": "Speichern",
+        "annuler": "Abbrechen",
+        "parametres": "Einstellungen",
+        "rechargerTokens": "Tokens aufladen",
+        "actions": "Aktionen",
+        "succes": "Erfolg",
+        "profilMisAJour": "Profil erfolgreich aktualisiert",
+        "erreur": "Fehler",
+        "impossibleMajProfil": "Profil konnte nicht aktualisiert werden"
     },
     "fleetDashboard": {
         "enCours": "in progress",

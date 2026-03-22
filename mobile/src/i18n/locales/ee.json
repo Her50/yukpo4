@@ -997,7 +997,8 @@
         "financialTracking": "Ganyawo dzi kpɔkpɔ",
         "financialTrackingDesc": "Lé ŋku ɖe wò ganyawo katã ŋu tsitotsito",
         "uneErreurInattendueS": "Vodada aɖe si womele mɔ kpɔm na o dzɔna",
-        "uneErreurInattendueSestProduite": "Vodada aɖe si womele mɔ kpɔm na o la dzɔ"
+        "uneErreurInattendueSestProduite": "Vodada aɖe si womele mɔ kpɔm na o la dzɔ",
+        "noEmail": "Womená email o"
     },
     "stats": {
         "title": "Statistics",
@@ -10663,7 +10664,20 @@
         "utilisateur": "Zãla",
         "informationsPersonnelles": "Ame ŋutɔ ƒe nyatakakawo",
         "solde": "Xe fe",
-        "historique": "Ŋutinya me nyawo"
+        "historique": "Ŋutinya me nyawo",
+        "email": "Email",
+        "telephone": "Telefon",
+        "nonRenseigne": "Womená o",
+        "role": "Dɔwɔƒe",
+        "sauvegarder": "Dzra ɖi",
+        "annuler": "Dzudzɔ",
+        "parametres": "Ɖoɖowo",
+        "rechargerTokens": "Tsɔ ga kpe ɖe Tokens ŋu",
+        "actions": "Dɔwɔwɔwo",
+        "succes": "Edzi dzo",
+        "profilMisAJour": "Profayl trɔ azu nyuie",
+        "erreur": "Vodada",
+        "impossibleMajProfil": "Mate ŋu atrɔ profayl o"
     },
     "fleetDashboard": {
         "enCours": "in progress",

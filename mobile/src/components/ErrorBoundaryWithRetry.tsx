@@ -5,7 +5,6 @@
 
 import React, { Component, ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import * as Sentry from 'sentry-expo';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
@@ -50,9 +49,11 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
     componentDidCatch(error: Error, errorInfo: any) {
         console.error('[ErrorBoundaryWithRetry] Error caught:', error, errorInfo);
 
-        // Envoyer à Sentry en production
         if (__DEV__ === false) {
-            Sentry.Native.captureException(error, { extra: errorInfo });
+            try {
+                const Sentry = require('sentry-expo');
+                Sentry?.Native?.captureException?.(error, { extra: errorInfo });
+            } catch {}
         }
 
         this.setState({

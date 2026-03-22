@@ -79,6 +79,24 @@ pub struct EntityItem {
     pub confidence: f64,
 }
 
+/// Strip ```json ... ``` wrappers that LLMs commonly add around JSON output.
+fn strip_json_markdown(raw: &str) -> String {
+    let trimmed = raw.trim();
+    let s = if trimmed.starts_with("```json") {
+        trimmed.strip_prefix("```json").unwrap_or(trimmed).trim_start()
+    } else if trimmed.starts_with("```") {
+        trimmed.strip_prefix("```").unwrap_or(trimmed).trim_start()
+    } else {
+        trimmed
+    };
+    let s = if s.ends_with("```") {
+        s.strip_suffix("```").unwrap_or(s).trim_end()
+    } else {
+        s
+    };
+    s.to_string()
+}
+
 fn get_language_instruction(lang_code: &str) -> &'static str {
     match lang_code {
         "en" => "You MUST respond in English.",
@@ -859,13 +877,14 @@ pub async fn chat_ai(
         .as_str()
         .unwrap_or("")
         .to_string();
+    let cleaned = strip_json_markdown(&raw_content);
 
-    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_content) {
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cleaned) {
         return Ok(ResponseJson(parsed));
     }
 
     Ok(ResponseJson(serde_json::json!({
-        "message": raw_content,
+        "message": cleaned,
         "type": "text",
         "confidence": 0.7,
         "suggestions": ["Plus d'informations", "Aide"]
@@ -970,13 +989,14 @@ pub async fn get_recommendations(
         .as_str()
         .unwrap_or("")
         .to_string();
+    let cleaned = strip_json_markdown(&raw_content);
 
-    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_content) {
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cleaned) {
         return Ok(ResponseJson(parsed));
     }
 
     Ok(ResponseJson(serde_json::json!({
-        "recommendations": [{"title": raw_content, "description": "", "category": "general", "score": 0.5}],
+        "recommendations": [{"title": cleaned, "description": "", "category": "general", "score": 0.5}],
         "confidence": 0.5
     })))
 }
@@ -1120,8 +1140,9 @@ pub async fn analyze_text(
         .as_str()
         .unwrap_or("")
         .to_string();
+    let cleaned = strip_json_markdown(&raw_content);
 
-    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_content) {
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cleaned) {
         return Ok(ResponseJson(parsed));
     }
 
@@ -1244,13 +1265,14 @@ pub async fn contextual_chat(
         .as_str()
         .unwrap_or("")
         .to_string();
+    let cleaned = strip_json_markdown(&raw_content);
 
-    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&raw_content) {
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cleaned) {
         return Ok(ResponseJson(parsed));
     }
 
     Ok(ResponseJson(serde_json::json!({
-        "message": raw_content,
+        "message": cleaned,
         "type": "text",
         "confidence": 0.7
     })))

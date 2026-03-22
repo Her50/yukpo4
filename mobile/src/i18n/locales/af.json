@@ -997,7 +997,8 @@
         "financialTracking": "Finansiële monitering",
         "financialTrackingDesc": "Volg al jou finansiële bewegings in detail",
         "uneErreurInattendueS": "'n Onverwagte fout s\\",
-        "uneErreurInattendueSestProduite": "'n Onverwagte fout het voorgekom"
+        "uneErreurInattendueSestProduite": "'n Onverwagte fout het voorgekom",
+        "noEmail": "E-pos nie verskaf nie"
     },
     "stats": {
         "title": "Statistics",
@@ -10663,7 +10664,20 @@
         "utilisateur": "Gebruiker",
         "informationsPersonnelles": "Persoonlike inligting",
         "solde": "Balans",
-        "historique": "Geskiedenis"
+        "historique": "Geskiedenis",
+        "email": "E-pos",
+        "telephone": "Telefoon",
+        "nonRenseigne": "Nie verskaf nie",
+        "role": "Rol",
+        "sauvegarder": "Stoor",
+        "annuler": "Kanselleer",
+        "parametres": "Instellings",
+        "rechargerTokens": "Herlaai Tokens",
+        "actions": "Aksies",
+        "succes": "Sukses",
+        "profilMisAJour": "Profiel suksesvol bygewerk",
+        "erreur": "Fout",
+        "impossibleMajProfil": "Kan nie profiel bywerk nie"
     },
     "fleetDashboard": {
         "enCours": "in progress",

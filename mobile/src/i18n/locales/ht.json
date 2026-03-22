@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Imèl pa bay"
     },
     "stats": {
         "title": "Estatistik",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Imèl",
+        "telephone": "Telefòn",
+        "nonRenseigne": "Pa bay",
+        "role": "Wòl",
+        "sauvegarder": "Anrejistre",
+        "annuler": "Anile",
+        "parametres": "Paramèt",
+        "rechargerTokens": "Rechaje Tokens",
+        "actions": "Aksyon",
+        "succes": "Siksè",
+        "profilMisAJour": "Pwofil mete ajou ak siksè",
+        "erreur": "Erè",
+        "impossibleMajProfil": "Enposib mete pwofil ajou"
     },
     "fleetDashboard": {
         "enCours": "in progress",

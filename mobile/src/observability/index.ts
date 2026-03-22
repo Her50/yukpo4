@@ -1,6 +1,10 @@
 import Constants from 'expo-constants';
 import { AppState, AppStateStatus } from 'react-native';
-import * as Sentry from 'sentry-expo';
+
+let Sentry: any = null;
+try {
+    Sentry = require('sentry-expo');
+} catch {}
 
 type ObservabilityConfig = {
     fpsSampleInterval?: number;
@@ -35,8 +39,13 @@ type SentryMetricEmitter = {
     ) => void;
 };
 
-const getMetricsEmitter = (): SentryMetricEmitter | undefined =>
-    (Sentry as unknown as { metrics?: SentryMetricEmitter }).metrics;
+const getMetricsEmitter = (): SentryMetricEmitter | undefined => {
+    try {
+        return Sentry?.metrics;
+    } catch {
+        return undefined;
+    }
+};
 
 let initialized = false;
 let fpsInterval: NodeJS.Timer | null = null;
@@ -79,7 +88,7 @@ const recordMetric = (name: string, value: number, unit: MetricUnit, tags?: Reco
         return;
     }
     // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
-    if (Sentry.Native && typeof Sentry.Native.addBreadcrumb === 'function') {
+    if (Sentry?.Native && typeof Sentry.Native.addBreadcrumb === 'function') {
         try {
             Sentry.Native.addBreadcrumb({
                 category: 'metrics',
@@ -119,7 +128,7 @@ const startFpsMonitor = () => {
 
         if (lowFpsCounter >= fpsConfig.fpsWarningDebounce) {
             // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
-            if (Sentry.Native && typeof Sentry.Native.captureMessage === 'function') {
+            if (Sentry?.Native && typeof Sentry.Native.captureMessage === 'function') {
                 try {
                     Sentry.Native.captureMessage(
                         `[Performance] FPS moyen ${fps.toFixed(
@@ -184,8 +193,7 @@ export const initObservability = () => {
             fpsWarningDebounce: observabilityConfig.fpsWarningDebounce ?? 2,
         };
 
-        // ✅ CORRIGÉ: Vérifier si Sentry est disponible avant initialisation
-        if (typeof Sentry !== 'undefined' && Sentry.init) {
+        if (Sentry && typeof Sentry.init === 'function') {
             Sentry.init({
                 dsn: dsn || undefined,
                 enableInExpoDevelopment: true,
@@ -194,8 +202,7 @@ export const initObservability = () => {
                 tracesSampleRate: observabilityConfig.traceSampleRate ?? 0.2,
             });
 
-            // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
-            if (Sentry.Native && typeof Sentry.Native.setTag === 'function') {
+            if (Sentry?.Native && typeof Sentry.Native.setTag === 'function') {
                 try {
                     Sentry.Native.setTag('app.platform', 'mobile');
                     if (extra.eas?.projectId) {
@@ -239,7 +246,7 @@ export const recordWebSocketStatusChange = (status: 'online' | 'offline', metada
     }
 
     // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
-    if (Sentry.Native && typeof Sentry.Native.addBreadcrumb === 'function') {
+    if (Sentry?.Native && typeof Sentry.Native.addBreadcrumb === 'function') {
         try {
             Sentry.Native.addBreadcrumb({
                 category: 'websocket',
@@ -263,7 +270,7 @@ export const recordWebSocketReconnect = (attempt: number, delayMs: number) => {
 
     if (attempt >= 3) {
         // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
-        if (Sentry.Native && typeof Sentry.Native.captureMessage === 'function') {
+        if (Sentry?.Native && typeof Sentry.Native.captureMessage === 'function') {
             try {
                 Sentry.Native.captureMessage(
                     `[WebSocket] ${attempt} tentatives de reconnexion (delay ${delayMs}ms)`,
@@ -281,7 +288,7 @@ export const recordWebSocketReconnect = (attempt: number, delayMs: number) => {
 
 export const recordWebSocketError = (error: unknown) => {
     // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
-    if (Sentry.Native && typeof Sentry.Native.captureException === 'function') {
+    if (Sentry?.Native && typeof Sentry.Native.captureException === 'function') {
         try {
             Sentry.Native.captureException(error);
         } catch (sentryError) {
@@ -299,7 +306,7 @@ export const recordWebSocketMessage = (type: string) => {
 
 export const captureHandledError = (error: unknown, context?: Record<string, unknown>) => {
     // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
-    if (Sentry.Native && typeof Sentry.Native.captureException === 'function') {
+    if (Sentry?.Native && typeof Sentry.Native.captureException === 'function') {
         try {
             Sentry.Native.captureException(error, { extra: context });
         } catch (sentryError) {
@@ -338,7 +345,7 @@ export const recordPreviewMetrics = (payload: PreviewMetricPayload) => {
     recordMetric('mobile.preview.warnings', warningsCount, 'none', { template: templateTag });
 
     // ✅ CORRIGÉ: Vérifier si Sentry.Native est disponible avant utilisation
-    if (Sentry.Native && typeof Sentry.Native.addBreadcrumb === 'function') {
+    if (Sentry?.Native && typeof Sentry.Native.addBreadcrumb === 'function') {
         try {
             Sentry.Native.addBreadcrumb({
                 category: 'preview',

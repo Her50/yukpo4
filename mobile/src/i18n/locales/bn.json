@@ -997,7 +997,8 @@
         "financialTracking": "আর্থিক নিরীক্ষণ",
         "financialTrackingDesc": "আপনার সমস্ত আর্থিক গতিবিধি বিস্তারিতভাবে ট্র্যাক করুন",
         "uneErreurInattendueS": "একটি অপ্রত্যাশিত ত্রুটি ঘটে",
-        "uneErreurInattendueSestProduite": "একটি অপ্রত্যাশিত ত্রুটি ঘটেছে"
+        "uneErreurInattendueSestProduite": "একটি অপ্রত্যাশিত ত্রুটি ঘটেছে",
+        "noEmail": "ইমেইল প্রদান করা হয়নি"
     },
     "stats": {
         "title": "Statistics",
@@ -10663,7 +10664,20 @@
         "utilisateur": "ব্যবহারকারী",
         "informationsPersonnelles": "ব্যক্তিগত তথ্য",
         "solde": "ভারসাম্য",
-        "historique": "ঐতিহাসিক"
+        "historique": "ঐতিহাসিক",
+        "email": "ইমেইল",
+        "telephone": "ফোন",
+        "nonRenseigne": "প্রদান করা হয়নি",
+        "role": "ভূমিকা",
+        "sauvegarder": "সংরক্ষণ",
+        "annuler": "বাতিল",
+        "parametres": "সেটিংস",
+        "rechargerTokens": "টোকেন রিচার্জ",
+        "actions": "কার্যক্রম",
+        "succes": "সাফল্য",
+        "profilMisAJour": "প্রোফাইল সফলভাবে আপডেট হয়েছে",
+        "erreur": "ত্রুটি",
+        "impossibleMajProfil": "প্রোফাইল আপডেট করা সম্ভব হয়নি"
     },
     "fleetDashboard": {
         "enCours": "in progress",

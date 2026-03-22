@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Hindi ibinigay ang email"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Telepono",
+        "nonRenseigne": "Hindi ibinigay",
+        "role": "Tungkulin",
+        "sauvegarder": "I-save",
+        "annuler": "Kanselahin",
+        "parametres": "Mga setting",
+        "rechargerTokens": "Mag-load ng Tokens",
+        "actions": "Mga aksyon",
+        "succes": "Tagumpay",
+        "profilMisAJour": "Matagumpay na na-update ang profile",
+        "erreur": "Error",
+        "impossibleMajProfil": "Hindi ma-update ang profile"
     },
     "fleetDashboard": {
         "enCours": "in progress",

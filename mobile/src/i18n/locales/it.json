@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email non fornita"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Telefono",
+        "nonRenseigne": "Non fornito",
+        "role": "Ruolo",
+        "sauvegarder": "Salva",
+        "annuler": "Annulla",
+        "parametres": "Impostazioni",
+        "rechargerTokens": "Ricarica Token",
+        "actions": "Azioni",
+        "succes": "Successo",
+        "profilMisAJour": "Profilo aggiornato con successo",
+        "erreur": "Errore",
+        "impossibleMajProfil": "Impossibile aggiornare il profilo"
     },
     "fleetDashboard": {
         "enCours": "in progress",

@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email kapesamwa"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Telefone",
+        "nonRenseigne": "Kapesamwa",
+        "role": "Mudimu",
+        "sauvegarder": "Bika",
+        "annuler": "Lekela",
+        "parametres": "Nzila",
+        "rechargerTokens": "Tuma Tokens",
+        "actions": "Midimu",
+        "succes": "Bimpe",
+        "profilMisAJour": "Profil musungidibwa bimpe",
+        "erreur": "Tshilema",
+        "impossibleMajProfil": "Profil kapinganyibwa ko"
     },
     "fleetDashboard": {
         "enCours": "in progress",

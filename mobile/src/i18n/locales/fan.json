@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email a bié bè"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Telefon",
+        "nonRenseigne": "A bié bè",
+        "role": "Asu",
+        "sauvegarder": "Bômôlô",
+        "annuler": "Lede",
+        "parametres": "Minyiŋ",
+        "rechargerTokens": "Loe Tokens",
+        "actions": "Minsôn",
+        "succes": "Anyu",
+        "profilMisAJour": "Profil a bé kig anyu",
+        "erreur": "Mbag",
+        "impossibleMajProfil": "Profil a bé dang kig"
     },
     "fleetDashboard": {
         "enCours": "in progress",

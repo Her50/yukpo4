@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Iimaylka lama bixin"
     },
     "stats": {
         "title": "Tirakoob",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Iimaylka",
+        "telephone": "Taleefanka",
+        "nonRenseigne": "Lama bixin",
+        "role": "Doorka",
+        "sauvegarder": "Kaydi",
+        "annuler": "Ka noqo",
+        "parametres": "Dejinta",
+        "rechargerTokens": "Buuxi Tokens",
+        "actions": "Talaabooyinka",
+        "succes": "Guul",
+        "profilMisAJour": "Bogaaga si guul leh ayaa loo cusbooneysiiyey",
+        "erreur": "Khalad",
+        "impossibleMajProfil": "Lama cusboonaysiin karo bogaaga"
     },
     "fleetDashboard": {
         "enCours": "in progress",

@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "I-imeyili ayikanikezwanga"
     },
     "stats": {
         "title": "Izibalo",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "I-imeyili",
+        "telephone": "Ucingo",
+        "nonRenseigne": "Akukanikezwanga",
+        "role": "Indima",
+        "sauvegarder": "Londoloza",
+        "annuler": "Khansela",
+        "parametres": "Izilungiselelo",
+        "rechargerTokens": "Shaja Amathokheni",
+        "actions": "Izenzo",
+        "succes": "Impumelelo",
+        "profilMisAJour": "Iphrofayela ibuyekezwe ngempumelelo",
+        "erreur": "Iphutha",
+        "impossibleMajProfil": "Ayikwazi ukubuyekeza iphrofayela"
     },
     "fleetDashboard": {
         "enCours": "in progress",

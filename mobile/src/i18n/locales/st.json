@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Imeile ha ea fanoa"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Imeile",
+        "telephone": "Mohala",
+        "nonRenseigne": "Ha ea fanoa",
+        "role": "Karolo",
+        "sauvegarder": "Boloka",
+        "annuler": "Hlakola",
+        "parametres": "Litlhophiso",
+        "rechargerTokens": "Tlatsa Tokens",
+        "actions": "Liketso",
+        "succes": "Katleho",
+        "profilMisAJour": "Profile e ntlafalitsoe ka katleho",
+        "erreur": "Phoso",
+        "impossibleMajProfil": "Ha ho khonehe ho ntlafatsa profile"
     },
     "fleetDashboard": {
         "enCours": "in progress",

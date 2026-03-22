@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "メール未入力"
     },
     "stats": {
         "title": "統計",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "メール",
+        "telephone": "電話",
+        "nonRenseigne": "未入力",
+        "role": "役割",
+        "sauvegarder": "保存",
+        "annuler": "キャンセル",
+        "parametres": "設定",
+        "rechargerTokens": "トークンをチャージ",
+        "actions": "アクション",
+        "succes": "成功",
+        "profilMisAJour": "プロフィールが更新されました",
+        "erreur": "エラー",
+        "impossibleMajProfil": "プロフィールを更新できません"
     },
     "fleetDashboard": {
         "enCours": "in progress",

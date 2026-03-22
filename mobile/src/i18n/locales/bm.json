@@ -997,7 +997,8 @@
         "financialTracking": "Nafolo kɔlɔsili",
         "financialTrackingDesc": "Aw ye aw ka wariko taabolo bɛɛ lajɛ ka ɲɛ",
         "uneErreurInattendueS": "Misali dɔ min ma labɛn s\\",
-        "uneErreurInattendueSestProduite": "Misali dɔ kɛra min ma labɛn"
+        "uneErreurInattendueSestProduite": "Misali dɔ kɛra min ma labɛn",
+        "noEmail": "Email a ma fɔ"
     },
     "stats": {
         "title": "Statistics",
@@ -10663,7 +10664,20 @@
         "utilisateur": "Baarakɛla",
         "informationsPersonnelles": "Mɔgɔ yɛrɛ ka kunnafoniw",
         "solde": "Balance",
-        "historique": "Tariku"
+        "historique": "Tariku",
+        "email": "Email",
+        "telephone": "Telefɔni",
+        "nonRenseigne": "A ma fɔ",
+        "role": "Baara",
+        "sauvegarder": "A mara",
+        "annuler": "A dabila",
+        "parametres": "Labɛnni",
+        "rechargerTokens": "Tokens ladon",
+        "actions": "Kɛtaw",
+        "succes": "A kɛra",
+        "profilMisAJour": "Profil yɛlɛmana kosɔbɛ",
+        "erreur": "Fili",
+        "impossibleMajProfil": "Profil tɛ se ka yɛlɛma"
     },
     "fleetDashboard": {
         "enCours": "in progress",

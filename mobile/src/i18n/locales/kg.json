@@ -997,7 +997,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Email ka pesama ko"
     },
     "stats": {
         "title": "Statistics",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Email",
+        "telephone": "Telefone",
+        "nonRenseigne": "Ka pesama ko",
+        "role": "Kisalu",
+        "sauvegarder": "Bakisa",
+        "annuler": "Katula",
+        "parametres": "Bidimbu",
+        "rechargerTokens": "Tiya Tokens",
+        "actions": "Bisalu",
+        "succes": "Bimbueni",
+        "profilMisAJour": "Profil ya mono ebongisami malamu",
+        "erreur": "Foti",
+        "impossibleMajProfil": "Profil lenda ko bobongisa"
     },
     "fleetDashboard": {
         "enCours": "in progress",

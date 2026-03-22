@@ -14,14 +14,16 @@ import { theme } from '../theme/theme';
 import { isAdminRole } from '../utils/roleHelpers'; // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
 
 // ✅ NOUVEAU: Fonction pour nettoyer le nom et supprimer les doublons
-const cleanUserName = (name: string | undefined | null): string => {
+const FALLBACK_SENTINEL = '__FALLBACK__';
+
+const cleanUserName = (name: string | undefined | null, fallback: string = FALLBACK_SENTINEL): string => {
   if (!name || typeof name !== 'string') {
-    return 'Utilisateur';
+    return fallback;
   }
 
   const trimmed = name.trim();
   if (!trimmed) {
-    return 'Utilisateur';
+    return fallback;
   }
 
   // ✅ CORRECTION : Détecter et supprimer les doublons (ex: "LELE Hernandez LELE Hernandez" -> "LELE Hernandez")
@@ -71,8 +73,9 @@ const ProfileScreen: React.FC = () => {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [accountInfo, setAccountInfo] = useState({
     memberSince: '',
-    accountType: 'Utilisateur',
-    status: 'Actif'
+    accountType: t('monProfil.utilisateur'),
+    status: t('profile.active'),
+    isActive: true
   });
 
   useEffect(() => {
@@ -115,7 +118,8 @@ const ProfileScreen: React.FC = () => {
           // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
           accountType: isAdminRole(profileData.role) ? t('profile.administrator') :
             profileData.role === 'prestataire' ? t('profile.provider') : t('profile.user'),
-          status: profileData.is_active ? t('profile.active') : t('profile.inactive')
+          status: profileData.is_active ? t('profile.active') : t('profile.inactive'),
+          isActive: !!profileData.is_active
         });
       }
 
@@ -430,7 +434,7 @@ const ProfileScreen: React.FC = () => {
                   <Text style={styles.avatarText}>
                     {(() => {
                       const cleanedName = cleanUserName(user?.name || user?.nom_complet);
-                      if (cleanedName && cleanedName !== 'Utilisateur') {
+                      if (cleanedName && cleanedName !== FALLBACK_SENTINEL) {
                         return cleanedName
                           .split(' ')
                           .map(word => word.charAt(0))
@@ -438,7 +442,7 @@ const ProfileScreen: React.FC = () => {
                           .toUpperCase()
                           .slice(0, 2);
                       }
-                      return 'U';
+                      return t('monProfil.utilisateur').charAt(0).toUpperCase();
                     })()}
                   </Text>
                 </View>
@@ -447,8 +451,8 @@ const ProfileScreen: React.FC = () => {
                 <Text style={styles.avatarEditIcon}>📷</Text>
               </View>
             </TouchableOpacity>
-            <Text style={styles.userName}>{cleanUserName(user?.name || user?.nom_complet)}</Text>
-            <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
+            <Text style={styles.userName}>{cleanUserName(user?.name || user?.nom_complet, t('monProfil.utilisateur'))}</Text>
+            <Text style={styles.userEmail}>{user?.email || t('profile.noEmail')}</Text>
             <View style={styles.verificationBadge}>
               <Text style={styles.verificationIcon}>✓</Text>
               <Text style={styles.verificationText}>{t('profile.verified')}</Text>
@@ -515,7 +519,7 @@ const ProfileScreen: React.FC = () => {
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>{t('profile.status')}</Text>
-              <Text style={[styles.infoValue, { color: accountInfo.status === 'Actif' ? '#4CAF50' : '#F44336' }]}>
+              <Text style={[styles.infoValue, { color: accountInfo.isActive ? '#4CAF50' : '#F44336' }]}>
                 {accountInfo.status}
               </Text>
             </View>

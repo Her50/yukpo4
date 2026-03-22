@@ -430,7 +430,8 @@
         "financialTracking": "Suivi financier",
         "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
         "uneErreurInattendueS": "Une erreur inattendue s\\",
-        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite"
+        "uneErreurInattendueSestProduite": "Une erreur inattendue s\\'est produite",
+        "noEmail": "Mailaka tsy nomena"
     },
     "stats": {
         "title": "Statistika",
@@ -10655,7 +10656,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "Solde",
-        "historique": "Historique"
+        "historique": "Historique",
+        "email": "Mailaka",
+        "telephone": "Finday",
+        "nonRenseigne": "Tsy nomena",
+        "role": "Andraikitra",
+        "sauvegarder": "Tehirizo",
+        "annuler": "Ajanony",
+        "parametres": "Fandrindrana",
+        "rechargerTokens": "Fenoy Tokens",
+        "actions": "Hetsika",
+        "succes": "Fahombiazana",
+        "profilMisAJour": "Voaova soa aman-tsara ny mombamomba",
+        "erreur": "Hadisoana",
+        "impossibleMajProfil": "Tsy afaka manova ny mombamomba"
     },
     "fleetDashboard": {
         "enCours": "in progress",

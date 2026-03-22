@@ -545,19 +545,19 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
     const getServiceName = (service: SpecializedService): string => {
         switch (service.type) {
             case 'pharmacie':
-                return service.nom || 'Pharmacie';
+                return service.nom || t('gestionServices.pharmacie');
             case 'hopital':
-                return service.nom || 'Hôpital/Clinique';
+                return service.nom || t('gestionServices.hopitalClinique');
             case 'laboratoire':
-                return service.nom || 'Laboratoire';
+                return service.nom || t('gestionServices.laboratoire');
             case 'agence_voyage':
-                return service.nom_agence || 'Agence de Voyage';
+                return service.nom_agence || t('gestionServices.agenceVoyage');
             case 'covoiturage':
                 return `${service.depart} → ${service.destination}`;
             case 'taxi':
-                return service.nom_chauffeur || `Taxi ${service.id}`;
+                return service.nom_chauffeur || `${t('gestionServices.taxi')} ${service.id}`;
             default:
-                return 'Service';
+                return t('gestionServices.service');
         }
     };
 
@@ -880,12 +880,12 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 <View style={styles.serviceInfo}>
                     <Text style={styles.serviceName}>{getServiceName(item)}</Text>
                     <Text style={styles.serviceType}>
-                        {item.type === 'pharmacie' ? 'Pharmacie' :
-                            item.type === 'hopital' ? 'Hôpital/Clinique' :
-                                item.type === 'laboratoire' ? 'Laboratoire' :
-                                    item.type === 'agence_voyage' ? 'Agence de Voyage' :
-                                        item.type === 'covoiturage' ? 'Covoiturage' :
-                                            item.type === 'taxi' ? 'Taxi' : ''}
+                        {item.type === 'pharmacie' ? t('gestionServices.pharmacie') :
+                            item.type === 'hopital' ? t('gestionServices.hopitalClinique') :
+                                item.type === 'laboratoire' ? t('gestionServices.laboratoire') :
+                                    item.type === 'agence_voyage' ? t('gestionServices.agenceVoyage') :
+                                        item.type === 'covoiturage' ? t('gestionServices.covoiturage') :
+                                            item.type === 'taxi' ? t('gestionServices.taxiLabel') : ''}
                     </Text>
                 </View>
                 <View style={styles.statusBadge}>
@@ -896,7 +896,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                         ]}
                     />
                     <Text style={styles.statusText}>
-                        {item.is_active ? 'Actif' : 'Inactif'}
+                        {item.is_active ? t('gestionServices.actif') : t('gestionServices.inactif')}
                     </Text>
                 </View>
             </View>
@@ -904,7 +904,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
             {(item.is_on_duty_now || item.is_available_now) && (
                 <View style={styles.availabilityBadge}>
                     <Text style={styles.availabilityText}>
-                        {item.is_on_duty_now ? '🟢 DE GARDE' : '🟢 DISPONIBLE'}
+                        {item.is_on_duty_now ? `🟢 ${t('gestionServices.deGarde')}` : `🟢 ${t('gestionServices.disponible')}`}
                     </Text>
                 </View>
             )}
@@ -917,14 +917,14 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                         onPress={() => (navigation as any).navigate('AgencyTicketManagement')}
                     >
                         <SafeIcon name="ticket" size={18} color="#fff" />
-                        <Text style={styles.ticketsButtonText}>Gérer les tickets</Text>
+                        <Text style={styles.ticketsButtonText}>{t('gestionServices.gererTickets')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.ticketsButton, styles.agencyButton, { backgroundColor: modernColors.primary }]}
                         onPress={() => (navigation as any).navigate('ManageAgencySchedules')}
                     >
                         <SafeIcon name="clock" size={18} color="#fff" />
-                        <Text style={styles.ticketsButtonText}>Horaires de départ</Text>
+                        <Text style={styles.ticketsButtonText}>{t('gestionServices.horairesDepart')}</Text>
                     </TouchableOpacity>
                 </View>
             )}
@@ -935,7 +935,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     onPress={() => handleEdit(item)}
                 >
                     <SafeIcon name="edit" size={16} color={modernColors.primary} />
-                    <Text style={styles.actionButtonText}>Modifier</Text>
+                    <Text style={styles.actionButtonText}>{t('gestionServices.modifier')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -953,7 +953,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                             { color: item.is_active ? '#EF4444' : '#10B981' },
                         ]}
                     >
-                        {item.is_active ? 'Désactiver' : 'Activer'}
+                        {item.is_active ? t('gestionServices.desactiver') : t('gestionServices.activer')}
                     </Text>
                 </TouchableOpacity>
 
@@ -963,7 +963,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 >
                     <SafeIcon name="trash-2" size={16} color="#EF4444" />
                     <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>
-                        Supprimer
+                        {t('gestionServices.supprimer')}
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -981,19 +981,19 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Gestion Services Spécialisés</Text>
+                    <Text style={styles.title}>{t('gestionServices.pageTitle')}</Text>
                 </View>
                 <View style={styles.emptyContainer}>
                     <SafeIcon name="shield-off" size={64} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyTitle}>Accès réservé aux partenaires</Text>
+                    <Text style={styles.emptyTitle}>{t('gestionServices.accesReserve')}</Text>
                     <Text style={styles.emptyText}>
-                        Cette section est réservée aux partenaires commerciaux. Si vous souhaitez devenir partenaire, veuillez vous inscrire depuis l'écran de connexion.
+                        {t('gestionServices.accesReserveDesc')}
                     </Text>
                     <TouchableOpacity
                         style={styles.createButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Text style={styles.createButtonText}>Retour</Text>
+                        <Text style={styles.createButtonText}>{t('gestionServices.retour')}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -1011,7 +1011,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     >
                         <SafeIcon name="arrow-left" size={24} color="#111827" />
                     </TouchableOpacity>
-                    <Text style={styles.title}>Gestion Services Spécialisés</Text>
+                    <Text style={styles.title}>{t('gestionServices.pageTitle')}</Text>
                 </View>
 
                 {/* Skeleton pour la barre de recherche */}
@@ -1054,13 +1054,13 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color="#111827" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Gestion Services Spécialisés</Text>
+                <Text style={styles.title}>{t('gestionServices.pageTitle')}</Text>
                 <View style={styles.headerActions}>
                     {/* ✅ Phase 6.2 & 6.5: Indicateur mode hors ligne et statut sync */}
                     {isOffline && (
                         <View style={styles.offlineIndicator}>
                             <SafeIcon name="wifi-off" size={16} color={modernColors.warning} />
-                            <Text style={styles.offlineText}>Hors ligne</Text>
+                            <Text style={styles.offlineText}>{t('gestionServices.horsLigne')}</Text>
                         </View>
                     )}
                     {!isOffline && (
@@ -1117,10 +1117,10 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 }}
                                 style={styles.cancelSelectionButton}
                             >
-                                <Text style={styles.cancelSelectionText}>Annuler</Text>
+                                <Text style={styles.cancelSelectionText}>{t('gestionServices.annuler')}</Text>
                             </TouchableOpacity>
                             <Text style={styles.selectionCount}>
-                                {selectedServices.size} sélectionné{selectedServices.size > 1 ? 's' : ''}
+                                {t('gestionServices.selectionne', { count: selectedServices.size })}
                             </Text>
                         </>
                     )}
@@ -1133,7 +1133,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 onSearchChange={setSearchQuery}
                 sortConfig={sortConfig}
                 onSortChange={setSortConfig}
-                placeholder="Rechercher dans la liste..."
+                placeholder={t('gestionServices.rechercherDansListe')}
             />
 
             {/* Filtres et Toggle */}
@@ -1149,7 +1149,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 filter === 'tous' && styles.filterChipTextActive,
                             ]}
                         >
-                            Tous
+                            {t('gestionServices.tous')}
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -1162,7 +1162,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 filter === 'sante' && styles.filterChipTextActive,
                             ]}
                         >
-                            Santé
+                            {t('gestionServices.sante')}
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -1175,7 +1175,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 filter === 'transport' && styles.filterChipTextActive,
                             ]}
                         >
-                            Transport
+                            {t('gestionServices.transport')}
                         </Text>
                     </TouchableOpacity>
                     {/* ✅ Phase 5.2: Bouton filtres avancés */}
@@ -1193,7 +1193,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 (advancedFilters.type !== 'all' || advancedFilters.status !== 'all' || advancedFilters.dateRange !== 'all') && styles.filterChipTextActive,
                             ]}
                         >
-                            Filtres
+                            {t('gestionServices.filtres')}
                         </Text>
                         {(advancedFilters.type !== 'all' || advancedFilters.status !== 'all' || advancedFilters.dateRange !== 'all') && (
                             <View style={styles.filterBadge}>
@@ -1247,7 +1247,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     onPress={() => (navigation as any).navigate('ServicesDashboard')}
                 >
                     <SafeIcon name="bar-chart-2" size={20} color={modernColors.primary} />
-                    <Text style={styles.dashboardButtonText}>Accéder au Dashboard</Text>
+                    <Text style={styles.dashboardButtonText}>{t('gestionServices.accederDashboard')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -1270,42 +1270,42 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     </View>
                     <Text style={styles.emptyTitle} accessibilityRole="header">
                         {searchQuery || filter !== 'tous'
-                            ? 'Aucun résultat trouvé'
-                            : 'Bienvenue sur votre espace partenaire'}
+                            ? t('gestionServices.aucunResultat')
+                            : t('gestionServices.bienvenue')}
                     </Text>
                     <Text style={styles.emptyText} accessibilityRole="text">
                         {searchQuery || filter !== 'tous'
-                            ? 'Aucun service ne correspond à vos critères de recherche. Essayez de modifier vos filtres.'
-                            : 'Commencez par créer votre premier service pour proposer vos prestations aux utilisateurs de <Text style={styles.brandYuk}>Yuk</Text><Text style={styles.brandPo}>po</Text>.'}
+                            ? t('gestionServices.aucunResultatDesc')
+                            : t('gestionServices.bienvenueDesc')}
                     </Text>
                     {/* ✅ AMÉLIORÉ: CTA avec navigation directe vers le bon formulaire selon le partner_type */}
                     <View style={styles.emptyActions}>
                         {user?.role === 'partenaire' && (() => {
-                            const partnerFormMap: Record<string, { screen: string; label: string }> = {
-                                'pharmacie': { screen: 'PharmacieForm', label: 'Enregistrer ma pharmacie' },
-                                'hopital': { screen: 'HopitalForm', label: 'Enregistrer mon hôpital' },
-                                'laboratoire': { screen: 'LaboratoireForm', label: 'Enregistrer mon laboratoire' },
-                                'banquesang': { screen: 'BanqueSangForm', label: 'Enregistrer ma banque de sang' },
-                                'agence de voyage': { screen: 'AgenceVoyageForm', label: 'Enregistrer mon agence' },
-                                'hotel': { screen: 'HotelDashboard', label: 'Gérer mon hôtel' },
-                                'meuble': { screen: 'HotelDashboard', label: 'Gérer mon meublé' },
-                                'chauffeur': { screen: 'TaxiForm', label: 'Créer mon profil chauffeur' },
-                                'covoiturage': { screen: 'CovoiturageForm', label: 'Gérer mes covoiturages' },
-                                'supermarche': { screen: 'SupermarketHome', label: 'Gérer mon supermarché' },
-                                'offres_emploi': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
-                                'recruteur': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
-                                'employeur': { screen: 'CreateOffre', label: 'Publier une offre d\'emploi' },
+                            const partnerFormMap: Record<string, { screen: string; labelKey: string }> = {
+                                'pharmacie': { screen: 'PharmacieForm', labelKey: 'enregistrerPharmacie' },
+                                'hopital': { screen: 'HopitalForm', labelKey: 'enregistrerHopital' },
+                                'laboratoire': { screen: 'LaboratoireForm', labelKey: 'enregistrerLabo' },
+                                'banquesang': { screen: 'BanqueSangForm', labelKey: 'enregistrerBanqueSang' },
+                                'agence de voyage': { screen: 'AgenceVoyageForm', labelKey: 'enregistrerAgence' },
+                                'hotel': { screen: 'HotelDashboard', labelKey: 'gererHotel' },
+                                'meuble': { screen: 'HotelDashboard', labelKey: 'gererMeuble' },
+                                'chauffeur': { screen: 'TaxiForm', labelKey: 'creerProfilChauffeur' },
+                                'covoiturage': { screen: 'CovoiturageForm', labelKey: 'gererCovoiturages' },
+                                'supermarche': { screen: 'SupermarketHome', labelKey: 'gererSupermarche' },
+                                'offres_emploi': { screen: 'CreateOffre', labelKey: 'publierOffre' },
+                                'recruteur': { screen: 'CreateOffre', labelKey: 'publierOffre' },
+                                'employeur': { screen: 'CreateOffre', labelKey: 'publierOffre' },
                             };
                             const formInfo = user.partner_type ? partnerFormMap[user.partner_type] : null;
                             const targetScreen = formInfo?.screen || 'MesServicesSpecialises';
-                            const buttonLabel = formInfo?.label || 'Créer un service';
+                            const buttonLabel = formInfo ? t(`gestionServices.${formInfo.labelKey}`) : t('gestionServices.creerService');
                             return (
                                 <TouchableOpacity
                                     onPress={() => (navigation as any).navigate(targetScreen)}
                                     style={[styles.createButton, { backgroundColor: modernColors.primary }]}
                                     accessibilityRole="button"
                                     accessibilityLabel={buttonLabel}
-                                    accessibilityHint="Ouvre le formulaire de création de service"
+                                    accessibilityHint={t('gestionServices.ouvrirFormulaire')}
                                 >
                                     <SafeIcon name="plus" size={18} color="#fff" />
                                     <Text style={styles.createButtonText}>{buttonLabel}</Text>
@@ -1325,20 +1325,20 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                                 }}
                                 style={[styles.createButton, styles.clearButton]}
                                 accessibilityRole="button"
-                                accessibilityLabel="Réinitialiser tous les filtres"
+                                accessibilityLabel={t('gestionServices.reinitialiserFiltres')}
                             >
                                 <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
-                                <Text style={styles.clearButtonText}>Réinitialiser les filtres</Text>
+                                <Text style={styles.clearButtonText}>{t('gestionServices.reinitialiserFiltres')}</Text>
                             </TouchableOpacity>
                         ) : (
                             <TouchableOpacity
                                 onPress={() => (navigation as any).navigate('SpecializedServicesHub')}
                                 style={styles.exploreButton}
                                 accessibilityRole="button"
-                                accessibilityLabel="Explorer les services disponibles"
+                                accessibilityLabel={t('gestionServices.explorerServices')}
                             >
                                 <SafeIcon name="compass" size={18} color={modernColors.primary} />
-                                <Text style={styles.exploreButtonText}>Explorer les services</Text>
+                                <Text style={styles.exploreButtonText}>{t('gestionServices.explorerServices')}</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -1398,7 +1398,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     >
                         <SafeIcon name="check-circle" size={18} color="#10B981" />
                         <Text style={[styles.batchActionText, { color: '#10B981' }]}>
-                            Activer
+                            {t('gestionServices.activer')}
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -1407,7 +1407,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     >
                         <SafeIcon name="x-circle" size={18} color="#F59E0B" />
                         <Text style={[styles.batchActionText, { color: '#F59E0B' }]}>
-                            Désactiver
+                            {t('gestionServices.desactiver')}
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -1416,7 +1416,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                     >
                         <SafeIcon name="trash-2" size={18} color="#EF4444" />
                         <Text style={[styles.batchActionText, { color: '#EF4444' }]}>
-                            Supprimer
+                            {t('gestionServices.supprimer')}
                         </Text>
                     </TouchableOpacity>
                 </View>

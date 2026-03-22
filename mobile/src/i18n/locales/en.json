@@ -2237,7 +2237,8 @@
         "uneErreurInattendueS": "a erreur inattendue s\\",
         "uneErreurInattendueSestProduite": "a erreur inattendue s\\'is",
         "financialTracking": "Suivi financier",
-        "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail"
+        "financialTrackingDesc": "Suivez tous vos mouvements financiers en détail",
+        "noEmail": "Email not provided"
     },
     "stats": {
         "title": "Statistics",
@@ -10706,7 +10707,20 @@
         "utilisateur": "Utilisateur",
         "informationsPersonnelles": "Informations personnelles",
         "solde": "balance",
-        "historique": "history"
+        "historique": "history",
+        "email": "Email",
+        "telephone": "Phone",
+        "nonRenseigne": "Not provided",
+        "role": "Role",
+        "sauvegarder": "Save",
+        "annuler": "Cancel",
+        "parametres": "Settings",
+        "rechargerTokens": "Recharge Tokens",
+        "actions": "Actions",
+        "succes": "Success",
+        "profilMisAJour": "Profile updated successfully",
+        "erreur": "Error",
+        "impossibleMajProfil": "Unable to update profile"
     },
     "fleetDashboard": {
         "enCours": "in progress",

@@ -1008,7 +1008,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
                             </TouchableOpacity>
                             <View style={styles.headerInfo}>
-                                <Text style={styles.prestataireName} numberOfLines={1}>{nomPrestataire}</Text>
+                                <Text style={styles.prestataireName} numberOfLines={1}>{titreService || nomPrestataire}</Text>
                                 <View style={styles.statusIndicator}>
                                     <View style={[
                                         styles.statusDot,
@@ -1140,10 +1140,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         </View>
                     </View>
 
-                    {/* Deuxième ligne : Titre du service (toujours visible) */}
-                    <View style={styles.headerBottom}>
-                        <Text style={styles.serviceInfo} numberOfLines={1}>{titreService || 'Service'}</Text>
-                    </View>
+                    {/* Deuxième ligne : Nom du prestataire (uniquement si différent du titre service) */}
+                    {titreService && nomPrestataire && titreService !== nomPrestataire && (
+                        <View style={styles.headerBottom}>
+                            <Text style={styles.serviceInfo} numberOfLines={1}>{nomPrestataire}</Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* Messages */}
@@ -2037,28 +2039,50 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     )}
 
                                     {/* Navigation action buttons */}
-                                    {!msg.isUser && msg.response?.suggestedActions && msg.response.suggestedActions.length > 0 && (
-                                        <View style={styles.chatbotActionsRow}>
-                                            {msg.response.suggestedActions.map((action: any, idx: number) => (
-                                                <TouchableOpacity
-                                                    key={idx}
-                                                    style={styles.chatbotActionBtn}
-                                                    onPress={() => {
-                                                        if (action.route) {
-                                                            try {
-                                                                (navigation as any).navigate(action.route, action.params);
-                                                            } catch { /* ignore */ }
-                                                        } else {
-                                                            handleChatbotQuery(action.label);
-                                                        }
-                                                    }}
-                                                >
-                                                    <SafeIcon name={action.icon || 'arrow-right'} size={14} color="#6366f1" />
-                                                    <Text style={styles.chatbotActionText}>{action.label}</Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </View>
-                                    )}
+                                    {!msg.isUser && msg.response?.suggestedActions && msg.response.suggestedActions.length > 0 && (() => {
+                                        const navLinks = msg.response!.suggestedActions!.filter((a: any) => a.id?.startsWith('nav-'));
+                                        const otherActions = msg.response!.suggestedActions!.filter((a: any) => !a.id?.startsWith('nav-'));
+                                        return (
+                                            <View style={styles.chatbotActionsRow}>
+                                                {otherActions.map((action: any, idx: number) => (
+                                                    <TouchableOpacity
+                                                        key={idx}
+                                                        style={styles.chatbotActionBtn}
+                                                        onPress={() => {
+                                                            if (action.route) {
+                                                                try {
+                                                                    (navigation as any).navigate(action.route, action.params);
+                                                                } catch { /* ignore */ }
+                                                            } else {
+                                                                handleChatbotQuery(action.label);
+                                                            }
+                                                        }}
+                                                    >
+                                                        <SafeIcon name={action.icon || 'arrow-right'} size={14} color="#6366f1" />
+                                                        <Text style={styles.chatbotActionText}>{action.label}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                                {navLinks.length > 0 && (
+                                                    <>
+                                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748b', marginTop: 8, marginBottom: 2, width: '100%' }}>🔗 Accès rapide :</Text>
+                                                        {navLinks.map((action: any, idx: number) => (
+                                                            <TouchableOpacity
+                                                                key={`nav-${idx}`}
+                                                                style={[styles.chatbotActionBtn, { backgroundColor: '#6366f1', borderColor: '#6366f1' }]}
+                                                                onPress={() => {
+                                                                    try { (navigation as any).navigate(action.route, action.params); } catch { /* ignore */ }
+                                                                }}
+                                                            >
+                                                                <SafeIcon name={action.icon || 'arrow-right'} size={14} color="#fff" />
+                                                                <Text style={[styles.chatbotActionText, { color: '#fff' }]}>{action.label}</Text>
+                                                                <SafeIcon name="chevron-right" size={12} color="#fff" />
+                                                            </TouchableOpacity>
+                                                        ))}
+                                                    </>
+                                                )}
+                                            </View>
+                                        );
+                                    })()}
 
                                     {/* Anticipated next questions */}
                                     {!msg.isUser && msg.response?.nextSteps && msg.response.nextSteps.length > 0 && (
@@ -2141,11 +2165,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 8,
     },
     headerBottom: {
-        paddingLeft: 48, // Aligné avec le nom (après le bouton retour)
-        paddingRight: 40, // Espace pour ne pas être caché par les boutons
+        paddingLeft: 48,
+        paddingRight: 40,
+        marginTop: 4,
     },
     headerInfo: {
         flex: 1,
