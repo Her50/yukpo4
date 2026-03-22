@@ -140,34 +140,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const initializeAuth = async () => {
       try {
-        // ✅ CRITIQUE: Ajouter un timeout de sécurité pour éviter le blocage indéfini
-        // Si checkAuthStatus prend plus de 8 secondes, on force loading à false
         timeoutId = setTimeout(() => {
           if (isMounted) {
-            console.warn('[AuthContext] ⚠️ Timeout initialisation auth (8s), continuation sans auth');
+            console.warn('[AuthContext] ⚠️ Timeout initialisation auth (5s), continuation sans auth');
             setLoading(false);
           }
-        }, 8000); // 8 secondes max
+        }, 5000);
 
         await checkAuthStatus();
-        // Précharger tôt les sons pour éviter la latence au premier play.
-        notificationSoundService.preloadAllSounds().catch(() => { });
-        await ensureBackgroundLocationPromptShown();
-        // Assurer un tracking passif systématique dès que l'app est installée,
-        // indépendamment de l'état de connexion utilisateur.
-        PassiveActivityTracker.start().catch(() => { });
-        // Restaurer les notifications Coach IA selon le flag persistant,
-        // indépendamment de l'état de session auth.
-        coachingNotificationService.restoreFromPersistedFlag().catch(() => { });
+
+        // Tâches non-critiques lancées en parallèle APRÈS le premier rendu
+        // pour ne pas retarder l'affichage de l'écran principal
+        setTimeout(() => {
+          notificationSoundService.preloadAllSounds().catch(() => {});
+          ensureBackgroundLocationPromptShown().catch(() => {});
+          PassiveActivityTracker.start().catch(() => {});
+          coachingNotificationService.restoreFromPersistedFlag().catch(() => {});
+        }, 100);
       } catch (error) {
         console.error('[AuthContext] Erreur lors de l\'initialisation:', error);
-        // En cas d'erreur, continuer sans authentification
         if (isMounted) {
           setUser(null);
           setLoading(false);
         }
       } finally {
-        // Nettoyer le timeout si toujours actif
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
@@ -196,12 +192,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
 
-      // ✅ CRITIQUE: Ajouter un timeout pour éviter le blocage indéfini
       const timeoutPromise = new Promise<null>((resolve) => {
         setTimeout(() => {
-          console.warn('[AuthContext] ⚠️ Timeout vérification auth (5s), continuation sans token');
+          console.warn('[AuthContext] ⚠️ Timeout vérification auth (2s), continuation sans token');
           resolve(null);
-        }, 5000); // 5 secondes max
+        }, 2000);
       });
 
       const tokenPromise = SafeStorage.getItem('auth_token');

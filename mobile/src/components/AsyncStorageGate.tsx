@@ -24,13 +24,11 @@ export const AsyncStorageGate: React.FC<AsyncStorageGateProps> = ({ children }) 
 
         const initialize = async () => {
             try {
-                // ✅ CRITIQUE: Ajouter un timeout pour éviter le blocage indéfini
-                // Si AsyncStorage ne s'initialise pas en 10 secondes, on continue quand même
                 const timeoutPromise = new Promise<boolean>((resolve) => {
                     timeoutId = setTimeout(() => {
-                        console.warn('[AsyncStorageGate] ⚠️ Timeout initialisation AsyncStorage (10s), continuation sans AsyncStorage');
+                        console.warn('[AsyncStorageGate] ⚠️ Timeout AsyncStorage (3s), continuation');
                         resolve(false);
-                    }, 10000); // 10 secondes max
+                    }, 3000);
                 });
 
                 // ✅ CRITIQUE: Attendre que AsyncStorage soit vraiment prêt

@@ -4,11 +4,14 @@ import './polyfills';
 // ✅ i18next — initialisation avant tout composant React
 import './src/i18n';
 
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // ✅ Import dynamique pour NavigationContainer (évite les erreurs TypeScript)
 const { NavigationContainer } = require('@react-navigation/native');
@@ -171,7 +174,7 @@ export default function App() {
                                   linking={linking}
                                   fallback={null}
                                   onReady={() => {
-                                    console.log('[NavigationContainer] ✅ Navigation prête avec Deep Linking');
+                                    SplashScreen.hideAsync().catch(() => {});
                                   }}
                                   onStateChange={() => {
                                     console.log('[NavigationContainer] 📍 Navigation changée');
