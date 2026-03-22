@@ -175,6 +175,7 @@
         "desactiverSelection": "Disable multi-select",
         "activerSelection": "Enable multi-select",
         "menuNavigation": "Navigation menu",
+        "menuVideoAssistant": "Video creation (assistant)",
         "produit": "Product"
     },
     "interactions": {

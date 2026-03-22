@@ -74,9 +74,7 @@ const MesServicesScreen: React.FC = () => {
   const [showProductSelector, setShowProductSelector] = useState(false);
   const [productSelectorMode, setProductSelectorMode] = useState<'team' | 'delivery' | 'flash-promo' | null>(null); // Mode du s├®lecteur
   const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
-  // Ô£à ├ëtat pour le menu global (remplac├® par Sidebar)
-  const [showGlobalMenu, setShowGlobalMenu] = useState(false);
-  // Ô£à NOUVEAU: Sidebar navigation
+  // Ô£à Sidebar (panneau lat├®ral) = menu principal des actions (remplace l'ancien menu ┬½ trois points ┬╗ d├®roulant)
   const [showSidebar, setShowSidebar] = useState(false);
   // Ô£à NOUVEAU: Bulk Actions - s├®lection multiple
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -1231,7 +1229,7 @@ const MesServicesScreen: React.FC = () => {
                     toaster.error(t('mesServices.cannotCreateVideo'));
                   }
                 }}
-                accessibilityLabel={t('mesServices.createProduct')}
+                accessibilityLabel={t('mesServices.menuVideoAssistant')}
                 accessibilityRole="button"
               >
                 <SafeIcon name="plus" size={20} color="#fff" type="lucide" />
@@ -1293,214 +1291,12 @@ const MesServicesScreen: React.FC = () => {
                 accessibilityLabel={t('mesServices.menuNavigation')}
                 accessibilityRole="button"
               >
-                <SafeIcon name="menu" size={20} color="#fff" />
+                <SafeIcon name="more-vertical" size={22} color="#fff" type="lucide" />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Ô£à Menu global d├®roulant */}
-          {showGlobalMenu && (
-            <View style={dynamicStyles.globalMenu}>
-              {/* Ô£à NOUVEAU: Galerie M├®dias Produits - D├®plac├® ici pour ├¬tre visible */}
-              <TouchableOpacity
-                style={[dynamicStyles.menuItem, { backgroundColor: colors.surfaceVariant }]}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  setShowProductGallery(true);
-                }}
-              >
-                <SafeIcon name="image" size={18} color={colors.success} />
-                <Text style={[dynamicStyles.menuItemText, { color: colors.success }]}>{t('mesServices.mediaGallery')}</Text>
-              </TouchableOpacity>
-
-              {/* Ô£à Bouton Membres existant - am├®lior├® pour s├®lection produits/services */}
-              <TouchableOpacity
-                style={dynamicStyles.menuItem}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  // Ô£à Pr├®parer la liste des produits et ouvrir le s├®lecteur
-                  const productsList = prepareProductsForSelector();
-                  if (productsList.length === 0) {
-                    toaster.warning(t('mesServices.createProductsFirstTeam'));
-                    return;
-                  }
-                  setProductsForSelection(productsList);
-                  setProductSelectorMode('team');
-                  setShowProductSelector(true);
-                }}
-              >
-                <SafeIcon name="users" size={18} color="#6366F1" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.members')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={dynamicStyles.menuItem}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  handleAddProduct();
-                }}
-              >
-                <SafeIcon name="plus-circle" size={18} color="#10B981" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.createProduct')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={dynamicStyles.menuItem}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  (navigation as any).navigate('AnalyticsDashboard');
-                }}
-              >
-                <SafeIcon name="tablet" size={18} color="#3B82F6" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.statistics')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={dynamicStyles.menuItem}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  (navigation as any).navigate('PubliciteDashboard');
-                }}
-              >
-                <SafeIcon name="megaphone" size={18} color="#8B5CF6" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.myAds')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={dynamicStyles.menuItem}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  (navigation as any).navigate('CreatePublicite');
-                }}
-              >
-                <SafeIcon name="plus-circle" size={18} color="#EC4899" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.newAd')}</Text>
-              </TouchableOpacity>
-
-              {/* Ô£à NOUVEAU: Cr├®er Flash Promo - S├®lection multiple de produits */}
-              <TouchableOpacity
-                style={[dynamicStyles.menuItem, { backgroundColor: '#FEF3C7', borderWidth: 2, borderColor: '#F59E0B' }]}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  // Pr├®parer la liste des produits et ouvrir le s├®lecteur
-                  const productsList = prepareProductsForSelector();
-                  if (productsList.length === 0) {
-                    toaster.warning(t('mesServices.createProductsFirstFlash'));
-                    return;
-                  }
-                  setProductsForSelection(productsList);
-                  setProductSelectorMode('flash-promo');
-                  setShowProductSelector(true);
-                }}
-              >
-                <Text style={{ fontSize: 18, marginRight: 8 }}>ÔÜí</Text>
-                <Text style={[dynamicStyles.menuItemText, { color: '#F59E0B', fontWeight: '700' }]}>{t('mesServices.createFlash')}</Text>
-              </TouchableOpacity>
-
-              {/* Ô£à NOUVEAU: Voir Flash Promotionnels actifs */}
-              <TouchableOpacity
-                style={dynamicStyles.menuItem}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  try {
-                    (navigation as any).navigate('FlashPromosActive');
-                  } catch (error) {
-                    logger.error('Erreur navigation FlashPromosActive:', error);
-                    toaster.error(t('mesServices.impossibleOuvrirFlash'));
-                  }
-                }}
-              >
-                <SafeIcon name="zap" size={18} color="#F59E0B" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.viewActiveFlash')}</Text>
-              </TouchableOpacity>
-
-              {/* Ô£à NOUVEAU: Mes Vid├®os - Cr├®├®es */}
-              <TouchableOpacity
-                style={[dynamicStyles.menuItem, { backgroundColor: colors.surfaceVariant }]}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  try {
-                    const parent = (navigation as any).getParent();
-                    if (parent) {
-                      parent.navigate('VideoFeed');
-                    } else {
-                      (navigation as any).navigate('VideoFeed');
-                    }
-                  } catch (error) {
-                    logger.error('Erreur navigation vers VideoFeed:', error);
-                    toaster.error(t('mesServices.impossibleOuvrirVideos'));
-                  }
-                }}
-              >
-                <SafeIcon name="video" size={18} color={colors.primary} />
-                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>{t('mesServices.myCreatedVideos')}</Text>
-              </TouchableOpacity>
-
-              {/* Ô£à NOUVEAU: D├®marrer un Live */}
-              <TouchableOpacity
-                style={[dynamicStyles.menuItem, { backgroundColor: '#FEF2F2' }]}
-                onPress={() => (navigation as any).navigate('StartLive')}
-              >
-                <SafeIcon name="radio" size={18} color="#DC2626" />
-                <Text style={[dynamicStyles.menuItemText, { color: '#DC2626' }]}>­ƒÄÑ {t('mesServices.startLive')}</Text>
-              </TouchableOpacity>
-
-              {/* Ô£à NOUVEAU: Analytiques Vid├®os */}
-              <TouchableOpacity
-                style={[dynamicStyles.menuItem, { backgroundColor: colors.surfaceVariant }]}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  try {
-                    const parent = (navigation as any).getParent();
-                    if (parent) {
-                      parent.navigate('VideoAnalytics');
-                    } else {
-                      (navigation as any).navigate('VideoAnalytics');
-                    }
-                  } catch (error) {
-                    logger.error('Erreur navigation vers VideoAnalytics:', error);
-                    toaster.error(t('mesServices.impossibleOuvrirAnalytiques'));
-                  }
-                }}
-              >
-                <SafeIcon name="bar-chart" size={18} color={colors.primary} />
-                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>{t('mesServices.videoAnalytics')}</Text>
-              </TouchableOpacity>
-
-              {/* Ô£à Bouton Param├¿tres */}
-              <TouchableOpacity
-                style={dynamicStyles.menuItem}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  (navigation as any).navigate('Settings');
-                }}
-              >
-                <SafeIcon name="settings" size={18} color="#6B7280" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.settings')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={dynamicStyles.menuItem}
-                onPress={() => {
-                  setShowGlobalMenu(false);
-                  onRefresh();
-                }}
-              >
-                <SafeIcon name="refresh-cw" size={18} color="#6B7280" />
-                <Text style={dynamicStyles.menuItemText}>{t('mesServices.refresh')}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </LinearGradient>
-
-        {/* Overlay pour fermer le menu quand on clique ailleurs */}
-        {showGlobalMenu && (
-          <TouchableOpacity
-            style={dynamicStyles.menuOverlay}
-            activeOpacity={1}
-            onPress={() => setShowGlobalMenu(false)}
-          />
-        )}
 
         {/* Ô£à NOUVEAU: Breadcrumbs navigation */}
         <Breadcrumbs items={breadcrumbItems} />
@@ -2079,6 +1875,44 @@ const MesServicesScreen: React.FC = () => {
                 setProductsForSelection(productsList);
                 setProductSelectorMode('flash-promo');
                 setShowProductSelector(true);
+              },
+            },
+            {
+              id: 'flash-active',
+              label: t('mesServices.viewActiveFlash'),
+              icon: 'activity',
+              section: t('mesServices.sectionPromotions'),
+              color: '#EA580C',
+              onPress: () => {
+                try {
+                  (navigation as any).navigate('FlashPromosActive');
+                } catch (error) {
+                  toaster.error(t('mesServices.impossibleOuvrirFlash'));
+                }
+              },
+            },
+            {
+              id: 'video-intro',
+              label: t('mesServices.menuVideoAssistant'),
+              icon: 'film',
+              section: t('mesServices.sectionContenu'),
+              color: '#7C3AED',
+              onPress: () => {
+                try {
+                  (navigation as any).navigate('VideoCreationIntro');
+                } catch (error) {
+                  toaster.error(t('mesServices.cannotCreateVideo'));
+                }
+              },
+            },
+            {
+              id: 'refresh-services',
+              label: t('mesServices.refresh'),
+              icon: 'refresh-cw',
+              section: t('mesServices.sectionAutres'),
+              color: modernColors.primary,
+              onPress: () => {
+                loadServices(true);
               },
             },
             {
