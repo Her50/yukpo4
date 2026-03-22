@@ -46,6 +46,16 @@ fn openai_auth_header_value(api_key: &str) -> Result<HeaderValue, String> {
     })
 }
 
+/// **Point d’entrée unique** dans AppIA pour : sémaphore sortant + retries 429/503 (`yukpo_openai_outbound`).
+/// Utilisé par YukpoIA (`chat_completion_*`) et par les helpers legacy `call_*` — **un** enchaînement par requête HTTP, pas de doublon.
+async fn app_ia_resilient_request<F>(label: &str, build: F) -> Result<reqwest::Response, String>
+where
+    F: FnMut() -> reqwest::RequestBuilder,
+{
+    let _slot = crate::services::yukpo_openai_outbound::acquire_concurrency_permit().await;
+    crate::services::yukpo_openai_outbound::send_request_with_retry(label, build).await
+}
+
 /// ?? Configuration avanc?e pour les mod?les IA
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelConfig {
@@ -261,7 +271,8 @@ impl AppIA {
         AppIA {
             redis_client,
             stats,
-            http: Client::new(),
+            // Même pool connexions / timeouts que YukpoIA (`yukpo_openai_outbound`)
+            http: crate::services::yukpo_openai_outbound::http_client().clone(),
             models: Arc::new(RwLock::new(models)),
             metrics,
             feedback_queue: Arc::new(Mutex::new(Vec::new())),
@@ -1279,16 +1290,20 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         let auth = openai_auth_header_value(&model.api_key)
             .map_err(|e| format!("OpenAI API error: {}", e))?;
-        let response = self
-            .http
-            .post(&url)
-            .header("Authorization", auth)
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .timeout(Duration::from_secs(model.timeout))
-            .send()
-            .await
-            .map_err(|e| format!("OpenAI API error: {}", e))?;
+        let url_c = url.clone();
+        let payload_c = payload.clone();
+        let model_timeout = model.timeout;
+        let label = format!("AppIA-call_openai-{}", model.name);
+        let response = app_ia_resilient_request(&label, || {
+            self.http
+                .post(&url_c)
+                .header("Authorization", auth.clone())
+                .header("Content-Type", "application/json")
+                .json(&payload_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("OpenAI API error: {}", e))?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -1399,16 +1414,21 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             "stream": false
         });
 
-        let response = self
-            .http
-            .post(&url)
-            .header("Authorization", format!("Bearer {}", model.api_key))
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .timeout(Duration::from_secs(model.timeout))
-            .send()
-            .await
-            .map_err(|e| format!("Mistral API error: {}", e))?;
+        let url_c = url.clone();
+        let payload_c = payload.clone();
+        let api_key = model.api_key.clone();
+        let model_timeout = model.timeout;
+        let label = format!("AppIA-call_mistral-{}", model.name);
+        let response = app_ia_resilient_request(&label, || {
+            self.http
+                .post(&url_c)
+                .header("Authorization", format!("Bearer {}", api_key))
+                .header("Content-Type", "application/json")
+                .json(&payload_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("Mistral API error: {}", e))?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -1479,16 +1499,21 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             "stream": false
         });
 
-        let response = self
-            .http
-            .post(&url)
-            .header("Authorization", format!("Bearer {}", model.api_key))
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .timeout(Duration::from_secs(model.timeout))
-            .send()
-            .await
-            .map_err(|e| format!("DeepSeek API error: {}", e))?;
+        let url_c = url.clone();
+        let payload_c = payload.clone();
+        let api_key = model.api_key.clone();
+        let model_timeout = model.timeout;
+        let label = format!("AppIA-call_deepseek-{}", model.name);
+        let response = app_ia_resilient_request(&label, || {
+            self.http
+                .post(&url_c)
+                .header("Authorization", format!("Bearer {}", api_key))
+                .header("Content-Type", "application/json")
+                .json(&payload_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("DeepSeek API error: {}", e))?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -1586,15 +1611,19 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             ]
         });
 
-        let response = self
-            .http
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .json(&request_body)
-            .timeout(Duration::from_secs(model.timeout))
-            .send()
-            .await
-            .map_err(|e| format!("Gemini API error: {}", e))?;
+        let url_c = url.clone();
+        let request_body_c = request_body.clone();
+        let model_timeout = model.timeout;
+        let label = format!("AppIA-call_gemini-{}", model.name);
+        let response = app_ia_resilient_request(&label, || {
+            self.http
+                .post(&url_c)
+                .header("Content-Type", "application/json")
+                .json(&request_body_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("Gemini API error: {}", e))?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -1671,15 +1700,19 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             }
         });
 
-        let response = self
-            .http
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .timeout(Duration::from_secs(model.timeout))
-            .send()
-            .await
-            .map_err(|e| format!("Ollama API error: {}", e))?;
+        let url_c = url.clone();
+        let payload_c = payload.clone();
+        let model_timeout = model.timeout;
+        let label = format!("AppIA-call_ollama-{}", model.name);
+        let response = app_ia_resilient_request(&label, || {
+            self.http
+                .post(&url_c)
+                .header("Content-Type", "application/json")
+                .json(&payload_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("Ollama API error: {}", e))?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -1716,17 +1749,22 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             ]
         });
 
-        let response = self
-            .http
-            .post(&url)
-            .header("Authorization", format!("Bearer {}", model.api_key))
-            .header("Content-Type", "application/json")
-            .header("anthropic-version", "2023-06-01")
-            .json(&payload)
-            .timeout(Duration::from_secs(model.timeout))
-            .send()
-            .await
-            .map_err(|e| format!("Anthropic API error: {}", e))?;
+        let url_c = url.clone();
+        let payload_c = payload.clone();
+        let api_key = model.api_key.clone();
+        let model_timeout = model.timeout;
+        let label = format!("AppIA-call_anthropic-{}", model.name);
+        let response = app_ia_resilient_request(&label, || {
+            self.http
+                .post(&url_c)
+                .header("Authorization", format!("Bearer {}", api_key))
+                .header("Content-Type", "application/json")
+                .header("anthropic-version", "2023-06-01")
+                .json(&payload_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("Anthropic API error: {}", e))?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -1795,16 +1833,21 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             "stream": false
         });
 
-        let response = self
-            .http
-            .post(&url)
-            .header("Authorization", format!("Bearer {}", model.api_key))
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .timeout(Duration::from_secs(model.timeout))
-            .send()
-            .await
-            .map_err(|e| format!("Cohere API error: {}", e))?;
+        let url_c = url.clone();
+        let payload_c = payload.clone();
+        let api_key = model.api_key.clone();
+        let model_timeout = model.timeout;
+        let label = format!("AppIA-call_cohere-{}", model.name);
+        let response = app_ia_resilient_request(&label, || {
+            self.http
+                .post(&url_c)
+                .header("Authorization", format!("Bearer {}", api_key))
+                .header("Content-Type", "application/json")
+                .json(&payload_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("Cohere API error: {}", e))?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -1976,6 +2019,372 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         };
 
         Ok((content.to_string(), tokens_used))
+    }
+
+    /// ✅ NOUVEAU 2026-03-22: Chat completion avec tableau de messages complet (multi-provider)
+    /// Utilisé par YukpoIA chat pour envoyer historique + system prompt + contenu multimodal
+    /// Retourne (model_name, response_text, completion_tokens, total_tokens)
+    pub async fn chat_completion_with_messages(
+        &self,
+        messages: &[Value],
+        has_vision: bool,
+        max_tokens: u32,
+        temperature: f32,
+    ) -> AppResult<(String, String, u64, u64)> {
+        let models = self.models.read().await;
+        let mut candidates: Vec<&ModelConfig> = if has_vision {
+            models.iter().filter(|m| m.enabled && self.supports_multimodal(m)).collect()
+        } else {
+            models.iter().filter(|m| m.enabled).collect()
+        };
+        candidates.sort_by(|a, b| b.priority.cmp(&a.priority));
+
+        if candidates.is_empty() && has_vision {
+            candidates = models.iter().filter(|m| m.enabled).collect();
+            candidates.sort_by(|a, b| b.priority.cmp(&a.priority));
+        }
+
+        if candidates.is_empty() {
+            return Err("Aucun modèle IA disponible".into());
+        }
+
+        let model_names: Vec<&str> = candidates.iter().map(|m| m.name.as_str()).collect();
+        log::info!(
+            "[AppIA::chat_completion] {} modèle(s) candidat(s) (vision={}): {:?}",
+            candidates.len(),
+            has_vision,
+            model_names
+        );
+
+        use crate::config::ai_timeouts::{AIRequestType, AITimeoutConfig};
+        let timeout_dur = if has_vision {
+            AITimeoutConfig::get_multimodal_timeout()
+        } else {
+            AITimeoutConfig::get_timeout(AIRequestType::Standard)
+        };
+
+        let mut last_error: Option<String> = None;
+        for model in &candidates {
+            log::info!(
+                "[AppIA::chat_completion] Tentative avec {} (timeout {}s)",
+                model.name,
+                timeout_dur.as_secs()
+            );
+
+            let result = tokio::time::timeout(
+                timeout_dur,
+                self.chat_completion_for_provider(model, messages, max_tokens, temperature),
+            )
+            .await;
+
+            match result {
+                Ok(Ok((content, comp_tokens, total_tokens))) => {
+                    log::info!(
+                        "[AppIA::chat_completion] ✅ {} réussi ({} tokens)",
+                        model.name,
+                        total_tokens
+                    );
+                    return Ok((model.name.clone(), content, comp_tokens, total_tokens));
+                }
+                Ok(Err(e)) => {
+                    log::warn!("[AppIA::chat_completion] ⚠️ {} échoué: {}", model.name, e);
+                    last_error = Some(format!("{}", e));
+                }
+                Err(_) => {
+                    log::warn!(
+                        "[AppIA::chat_completion] ⏱️ {} timeout ({}s)",
+                        model.name,
+                        timeout_dur.as_secs()
+                    );
+                    last_error = Some("Timeout".into());
+                }
+            }
+        }
+
+        Err(format!(
+            "Tous les modèles ont échoué. Dernière erreur: {}",
+            last_error.unwrap_or_default()
+        )
+        .into())
+    }
+
+    /// Dispatch chat completion vers le bon fournisseur
+    async fn chat_completion_for_provider(
+        &self,
+        model: &ModelConfig,
+        messages: &[Value],
+        max_tokens: u32,
+        temperature: f32,
+    ) -> AppResult<(String, u64, u64)> {
+        match model.name.as_str() {
+            // OpenAI-compatible: OpenAI, Mistral, DeepSeek, Ollama
+            "openai-gpt4o" | "openai-gpt4o-mini" | "openai-gpt35" | "mistral-large"
+            | "deepseek-chat" | "ollama-mistral" | "ollama-llama2" => {
+                self.chat_completion_openai_compat(model, messages, max_tokens, temperature)
+                    .await
+            }
+            // Anthropic Claude
+            "claude-3-5-sonnet" | "claude-3-sonnet" => {
+                self.chat_completion_anthropic(model, messages, max_tokens, temperature).await
+            }
+            // Gemini
+            "gemini-pro" => {
+                self.chat_completion_gemini(model, messages, max_tokens, temperature).await
+            }
+            // Cohere (fallback to OpenAI compat format)
+            "cohere-command" => {
+                self.chat_completion_openai_compat(model, messages, max_tokens, temperature)
+                    .await
+            }
+            _ => Err(format!("Fournisseur non supporté: {}", model.name).into()),
+        }
+    }
+
+    /// Chat completion pour fournisseurs compatibles OpenAI (OpenAI, Mistral, DeepSeek, Ollama)
+    async fn chat_completion_openai_compat(
+        &self,
+        model: &ModelConfig,
+        messages: &[Value],
+        max_tokens: u32,
+        temperature: f32,
+    ) -> AppResult<(String, u64, u64)> {
+        use crate::services::yukpo_openai_outbound::{
+            acquire_concurrency_permit, http_client, send_request_with_retry,
+        };
+
+        let url = format!("{}/chat/completions", model.base_url);
+        let payload = json!({
+            "model": model.model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": false
+        });
+
+        let auth_header: Option<reqwest::header::HeaderValue> = if !model.api_key.is_empty() {
+            Some(
+                openai_auth_header_value(&model.api_key)
+                    .map_err(|e| format!("Auth error {}: {}", model.name, e))?,
+            )
+        } else {
+            None
+        };
+
+        let model_timeout = model.timeout;
+        let url_c = url.clone();
+        let payload_c = payload.clone();
+        let label = format!("AppIA-{}", model.name);
+
+        let _slot = acquire_concurrency_permit().await;
+        let client = http_client();
+
+        let response = send_request_with_retry(&label, || {
+            let mut req = client
+                .post(&url_c)
+                .header("Content-Type", "application/json")
+                .json(&payload_c)
+                .timeout(Duration::from_secs(model_timeout));
+            if let Some(ref auth) = auth_header {
+                req = req.header("Authorization", auth.clone());
+            }
+            req
+        })
+        .await
+        .map_err(|e| format!("{} network error: {}", model.name, e))?;
+
+        if !response.status().is_success() {
+            let err = response.text().await.unwrap_or_default();
+            return Err(format!("{} API error: {}", model.name, err).into());
+        }
+
+        let body: Value =
+            response.json().await.map_err(|e| format!("{} JSON error: {}", model.name, e))?;
+
+        let content = body["choices"][0]["message"]["content"]
+            .as_str()
+            .ok_or_else(|| format!("{}: missing content in response", model.name))?;
+
+        let comp = body["usage"]["completion_tokens"].as_u64().unwrap_or(0);
+        let total = body["usage"]["total_tokens"].as_u64().unwrap_or(comp);
+        Ok((content.to_string(), comp, total))
+    }
+
+    /// Chat completion pour Anthropic Claude (format messages différent)
+    async fn chat_completion_anthropic(
+        &self,
+        model: &ModelConfig,
+        messages: &[Value],
+        max_tokens: u32,
+        temperature: f32,
+    ) -> AppResult<(String, u64, u64)> {
+        let url = format!("{}/messages", model.base_url);
+
+        // Extraire system prompt et convertir les messages
+        let mut system_text = String::new();
+        let mut claude_messages: Vec<Value> = Vec::new();
+        for msg in messages {
+            let role = msg["role"].as_str().unwrap_or("user");
+            if role == "system" {
+                if let Some(s) = msg["content"].as_str() {
+                    system_text.push_str(s);
+                    system_text.push('\n');
+                }
+            } else {
+                claude_messages.push(json!({
+                    "role": role,
+                    "content": msg["content"].clone()
+                }));
+            }
+        }
+
+        let payload = json!({
+            "model": model.model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "system": system_text.trim(),
+            "messages": claude_messages
+        });
+
+        use crate::services::yukpo_openai_outbound::{
+            acquire_concurrency_permit, http_client, send_request_with_retry,
+        };
+        let url_c = url.clone();
+        let payload_c = payload.clone();
+        let api_key = model.api_key.clone();
+        let model_timeout = model.timeout;
+        let _slot = acquire_concurrency_permit().await;
+        let client = http_client();
+
+        let response = send_request_with_retry("AppIA-anthropic", || {
+            client
+                .post(&url_c)
+                .header("x-api-key", &api_key)
+                .header("anthropic-version", "2023-06-01")
+                .header("Content-Type", "application/json")
+                .json(&payload_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("Anthropic network error: {}", e))?;
+
+        if !response.status().is_success() {
+            let err = response.text().await.unwrap_or_default();
+            return Err(format!("Anthropic API error: {}", err).into());
+        }
+
+        let body: Value =
+            response.json().await.map_err(|e| format!("Anthropic JSON error: {}", e))?;
+
+        let content = body["content"][0]["text"]
+            .as_str()
+            .ok_or_else(|| "Anthropic: missing content in response".to_string())?;
+
+        let input_tokens = body["usage"]["input_tokens"].as_u64().unwrap_or(0);
+        let output_tokens = body["usage"]["output_tokens"].as_u64().unwrap_or(0);
+        Ok((
+            content.to_string(),
+            output_tokens,
+            input_tokens + output_tokens,
+        ))
+    }
+
+    /// Chat completion pour Google Gemini (format contents)
+    async fn chat_completion_gemini(
+        &self,
+        model: &ModelConfig,
+        messages: &[Value],
+        max_tokens: u32,
+        temperature: f32,
+    ) -> AppResult<(String, u64, u64)> {
+        let url = format!(
+            "{}/models/{}:generateContent?key={}",
+            model.base_url, model.model, model.api_key
+        );
+
+        // Convertir messages en format Gemini contents
+        let mut system_instruction = String::new();
+        let mut contents: Vec<Value> = Vec::new();
+        for msg in messages {
+            let role = msg["role"].as_str().unwrap_or("user");
+            if role == "system" {
+                if let Some(s) = msg["content"].as_str() {
+                    system_instruction.push_str(s);
+                    system_instruction.push('\n');
+                }
+                continue;
+            }
+            let gemini_role = if role == "assistant" { "model" } else { "user" };
+            let parts = if let Some(text) = msg["content"].as_str() {
+                vec![json!({"text": text})]
+            } else if let Some(arr) = msg["content"].as_array() {
+                arr.iter().filter_map(|p| {
+                    if p["type"].as_str() == Some("text") {
+                        Some(json!({"text": p["text"].as_str().unwrap_or("")}))
+                    } else if p["type"].as_str() == Some("image_url") {
+                        let url_str = p["image_url"]["url"].as_str().unwrap_or("");
+                        if url_str.starts_with("data:") {
+                            let b64 = url_str.split(',').nth(1).unwrap_or("");
+                            Some(json!({"inline_data": {"mime_type": "image/jpeg", "data": b64}}))
+                        } else {
+                            None
+                        }
+                    } else { None }
+                }).collect()
+            } else {
+                vec![json!({"text": ""})]
+            };
+            contents.push(json!({"role": gemini_role, "parts": parts}));
+        }
+
+        let mut request_body = json!({
+            "contents": contents,
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens
+            }
+        });
+        if !system_instruction.is_empty() {
+            request_body["systemInstruction"] =
+                json!({"parts": [{"text": system_instruction.trim()}]});
+        }
+
+        use crate::services::yukpo_openai_outbound::{
+            acquire_concurrency_permit, http_client, send_request_with_retry,
+        };
+        let url_c = url.clone();
+        let request_body_c = request_body.clone();
+        let model_timeout = model.timeout;
+        let _slot = acquire_concurrency_permit().await;
+        let client = http_client();
+
+        let response = send_request_with_retry("AppIA-gemini", || {
+            client
+                .post(&url_c)
+                .header("Content-Type", "application/json")
+                .json(&request_body_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("Gemini network error: {}", e))?;
+
+        if !response.status().is_success() {
+            let err = response.text().await.unwrap_or_default();
+            return Err(format!("Gemini API error: {}", err).into());
+        }
+
+        let body: Value = response.json().await.map_err(|e| format!("Gemini JSON error: {}", e))?;
+
+        let content = body["candidates"][0]["content"]["parts"][0]["text"]
+            .as_str()
+            .ok_or_else(|| "Gemini: missing content in response".to_string())?;
+
+        let prompt_tokens = body["usageMetadata"]["promptTokenCount"].as_u64().unwrap_or(0);
+        let comp_tokens = body["usageMetadata"]["candidatesTokenCount"].as_u64().unwrap_or(0);
+        Ok((
+            content.to_string(),
+            comp_tokens,
+            prompt_tokens + comp_tokens,
+        ))
     }
 
     /// Nettoie une chaîne base64 (data-URI ou brut) pour les APIs multimodales.

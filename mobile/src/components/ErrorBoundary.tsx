@@ -103,10 +103,10 @@ class ErrorBoundary extends Component<Props, State> {
                     <View style={styles.errorCard}>
                         <Text style={styles.errorIcon}>⚠️</Text>
 
-                        <Text style={styles.errorTitle}>{t('errorBoundary.oupsUneErreurSestProduite')}</Text>
+                        <Text style={styles.errorTitle}>{String(t('errorBoundary.oupsUneErreurSestProduite'))}</Text>
 
                         <Text style={styles.errorMessage}>
-                            {t('errorBoundary.unexpectedErrorMessage')}
+                            {String(t('errorBoundary.unexpectedErrorMessage'))}
                         </Text>
 
                         {true && this.state.error && ( // TOUJOURS AFFICHER EN PRODUCTION
@@ -123,7 +123,7 @@ class ErrorBoundary extends Component<Props, State> {
                                 onPress={this.handleRetry}
                             >
                                 <Text style={styles.buttonIcon}>🔄</Text>
-                                <Text style={styles.retryButtonText}>{t('errorBoundary.redemarrer')}</Text>
+                                <Text style={styles.retryButtonText}>{String(t('errorBoundary.redemarrer'))}</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity

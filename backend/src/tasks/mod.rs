@@ -30,6 +30,7 @@ pub mod service_status_checker; // ✅ Tâche de désactivation des publicités 
 pub mod stats_recalculation; // ✅ NOUVEAU : Recalcul périodique des statistiques
 pub mod troc_expiration_monitor; // Expiration automatique des trocs en attente (72h TTL)
 pub mod video_weekly_report; // ✅ NOUVEAU 2025-01-29: Tâche cron pour trajets récurrents
+pub mod yukpo_ia_queue_worker; // ✅ YukpoIA — worker file Redis chat async
 
 // ajoute ici d'autres modules de tâches, par ex.
 // pub mod notification_scheduler;

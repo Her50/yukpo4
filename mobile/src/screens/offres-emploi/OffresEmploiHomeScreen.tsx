@@ -4,7 +4,7 @@
 
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -41,6 +41,7 @@ const OffresEmploiHomeScreen: React.FC = () => {
     const { location } = useLocation();
     const { t } = useLanguageSafe();
     const { predictSalary } = useAIWithFallback();
+    const CONTRACT_FILTERS = useMemo(() => getContractFilters(t), [t]);
 
     // États de recherche
     const [searchQuery, setSearchQuery] = useState('');

@@ -263,7 +263,7 @@ const OrientationScolaireHomeScreen: React.FC = () => {
                     domain: 'education',
                 });
                 if (response?.success) {
-                    return response.response || response.data?.response || response.data?.message || null;
+                    return response.response || response.data?.response || null;
                 }
                 return null;
             },

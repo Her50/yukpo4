@@ -253,6 +253,12 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         paiement_service: Arc::new(
             crate::services::paiement_agrege_service::PaiementAgregeService::new(products_pool),
         ),
+        yukpo_ia_metrics: Arc::new(
+            crate::services::yukpo_ia_metrics_service::YukpoIaMetricsService::new(),
+        ),
+        yukpo_ia_job_queue: Arc::new(crate::services::yukpo_ia_job_queue::YukpoIaJobQueue::new(
+            redis_client.clone(),
+        )),
     });
 
     Some(BackendTestContext {

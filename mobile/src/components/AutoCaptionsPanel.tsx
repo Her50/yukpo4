@@ -1,6 +1,6 @@
 // ✅ NOUVEAU: Panel de génération automatique de sous-titres
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -22,13 +22,6 @@ interface AutoCaptionsPanelProps {
     onCaptionsGenerated: (subtitles: Subtitle[], subtitleFileUrl: string) => void;
 }
 
-const CAPTION_STYLES = [
-    { key: 'modern', label: 'Moderne', description: 'Style classique avec fond' },
-    { key: 'minimal', label: 'Minimal', description: t('autoCaptionsPanel.sansFondEpure') },
-    { key: 'bold', label: 'Bold', description: t('autoCaptionsPanel.grasCentreImpactant') },
-    { key: 'elegant', label: t('autoCaptionsPanel.elegant'), description: t('autoCaptionsPanel.raffineDiscret') },
-];
-
 const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -40,11 +33,21 @@ export const AutoCaptionsPanel: React.FC<AutoCaptionsPanelProps> = ({
     lang = 'fr',
     onCaptionsGenerated,
 }) => {
-        const { t } = useLanguageSafe();
-const [loading, setLoading] = useState(false);
+    const { t } = useLanguageSafe();
+    const [loading, setLoading] = useState(false);
     const [selectedStyle, setSelectedStyle] = useState('modern');
     const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
     const [confidence, setConfidence] = useState<number | null>(null);
+
+    const CAPTION_STYLES = useMemo(
+        () => [
+            { key: 'modern', label: 'Moderne', description: 'Style classique avec fond' },
+            { key: 'minimal', label: 'Minimal', description: t('autoCaptionsPanel.sansFondEpure') },
+            { key: 'bold', label: 'Bold', description: t('autoCaptionsPanel.grasCentreImpactant') },
+            { key: 'elegant', label: t('autoCaptionsPanel.elegant'), description: t('autoCaptionsPanel.raffineDiscret') },
+        ],
+        [t],
+    );
 
     const handleGenerate = async () => {
         // ✅ CORRIGÉ: Validation avant d'appeler l'API

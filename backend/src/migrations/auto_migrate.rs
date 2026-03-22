@@ -9118,6 +9118,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         ),
     }
 
+    // ✅ NOUVEAU 2026-03-22 : Table navigation_poi_daily_usage (quota recherches POI / jour / utilisateur)
+    match ensure_navigation_poi_daily_usage_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: navigation_poi_daily_usage OK"),
+        Err(e) => error!("❌ Erreur migration auto navigation_poi_daily_usage: {}", e),
+    }
+
     // ✅ NOUVEAU 2026-03-14 : Backfill services.category depuis data JSONB (corrige NULL pour supermarchés etc.)
     match backfill_services_category_from_data(pool).await {
         Ok(_) => info!("✅ Migration auto: backfill services.category OK"),
@@ -9143,6 +9149,15 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_wallet_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: wallet tables (user_wallets + wallet_transactions) OK"),
         Err(e) => error!("❌ Erreur migration auto wallet tables: {}", e),
+    }
+
+    // ✅ NOUVEAU 2026-03-22 : Backfill wallet_transactions.reference_type depuis [feature] dans description
+    match backfill_wallet_transactions_reference_type_from_description(pool).await {
+        Ok(_) => info!("✅ Migration auto: backfill wallet_transactions.reference_type OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto backfill wallet_transactions.reference_type: {}",
+            e
+        ),
     }
 
     // ✅ NOUVEAU 2026-03-15 : Table disbursement_requests (transferts sortants via agrégateur)
@@ -10280,6 +10295,40 @@ pub async fn ensure_navigation_achievements_table(pool: &PgPool) -> Result<(), s
     .await?;
 
     info!("✅ Tables navigation achievements & challenges créées/vérifiées");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-22: Quota journalier POI par utilisateur (compteur UTC, aligné avec `migrations/20260322_navigation_poi_daily_usage.sql`)
+pub async fn ensure_navigation_poi_daily_usage_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table navigation_poi_daily_usage...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS navigation_poi_daily_usage (
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            usage_date DATE NOT NULL,
+            request_count INTEGER NOT NULL DEFAULT 0,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (user_id, usage_date)
+        )
+    "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_navigation_poi_daily_usage_date ON navigation_poi_daily_usage(usage_date)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "COMMENT ON TABLE navigation_poi_daily_usage IS 'Compteur par jour (UTC) des appels /api/navigation/points-of-interest par utilisateur'",
+    )
+    .execute(pool)
+    .await?;
+
+    info!("✅ Table navigation_poi_daily_usage créée/vérifiée avec succès");
     Ok(())
 }
 
@@ -20392,6 +20441,67 @@ pub async fn backfill_services_category_from_data(pool: &PgPool) -> Result<(), s
     Ok(())
 }
 
+/// ✅ NOUVEAU 2026-03-22 : Backfill `reference_type` depuis le préfixe `[feature]` dans `description`
+/// (seul point d’exécution — éviter un second script SQL dupliqué).
+pub async fn backfill_wallet_transactions_reference_type_from_description(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
+    info!("🔍 Backfill wallet_transactions.reference_type depuis [feature] dans description...");
+
+    let col_exists = sqlx::query_scalar::<_, bool>(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'wallet_transactions'
+              AND column_name = 'reference_type'
+        )
+        "#,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !col_exists {
+        info!("  → Colonne reference_type absente, skip");
+        return Ok(());
+    }
+
+    let result = sqlx::query(
+        r#"
+        UPDATE wallet_transactions wt
+        SET reference_type = LEFT(
+            TRIM(BOTH FROM (regexp_match(wt.description, '^\[([^\]]+)\]'))[1]),
+            50
+        )
+        WHERE wt.description IS NOT NULL
+          AND wt.description ~ '^\[[^\]]+\]'
+          AND (
+              wt.reference_type IS NULL
+              OR TRIM(COALESCE(wt.reference_type::text, '')) = ''
+          )
+          AND (regexp_match(wt.description, '^\[([^\]]+)\]'))[1] IS NOT NULL
+          AND TRIM((regexp_match(wt.description, '^\[([^\]]+)\]'))[1]) <> ''
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    info!(
+        "  → {} ligne(s) wallet_transactions mises à jour (reference_type)",
+        result.rows_affected()
+    );
+
+    let _ = sqlx::query(
+        r#"COMMENT ON COLUMN wallet_transactions.reference_type IS
+'Clé métier stable (ex: feature deduct-balance). Backfill depuis description [feature] …'"#,
+    )
+    .execute(pool)
+    .await;
+
+    info!("✅ Backfill wallet_transactions.reference_type terminé");
+    Ok(())
+}
+
 /// ✅ NOUVEAU 2026-03-15 : Table token_ledger pour historique complet des mouvements de tokens
 /// Chaque crédit (recharge, bonus, refund) et débit (consommation IA, achat service) est enregistré.
 pub async fn ensure_token_ledger_table(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -20763,6 +20873,32 @@ pub async fn ensure_exchange_rate_cache_table(pool: &PgPool) -> Result<(), sqlx:
     .await?;
 
     info!("✅ Table exchange_rate_cache OK");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2026-03-21: Table quota journalier YukpoIA (facturation chat intelligent)
+pub async fn ensure_yukpo_ia_daily_usage_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création de la table yukpo_ia_daily_usage...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS yukpo_ia_daily_usage (
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            usage_date DATE NOT NULL,
+            free_token_units_consumed BIGINT NOT NULL DEFAULT 0,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (user_id, usage_date)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_yukpo_ia_daily_usage_date ON yukpo_ia_daily_usage(usage_date)")
+        .execute(pool)
+        .await;
+
+    info!("✅ Table yukpo_ia_daily_usage créée/vérifiée");
     Ok(())
 }
 

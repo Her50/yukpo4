@@ -116,6 +116,177 @@ async fn create_media_entry_for_ai_video(
     Ok(result.get("id"))
 }
 
+/// Corps JSON pour `POST .../attach-generative-video` (lier un job `/api/generative/generate` terminé au produit).
+///
+/// ```json
+/// {
+///   "generative_job_id": "uuid-string-from-generate",
+///   "final_video_url": "https://..."  // optionnel si déjà dans result_payload du job
+/// }
+/// ```
+#[derive(Debug, Deserialize)]
+pub struct AttachGenerativeVideoBody {
+    /// ID retourné par `POST /api/generative/generate`
+    pub generative_job_id: String,
+    /// Optionnel — sinon extrait de `generative_video_jobs.result_payload.video_url`
+    pub final_video_url: Option<String>,
+}
+
+/// Lie une vidéo déjà générée (job `generative_video_jobs` **completed**) au produit : crée une ligne `media` et retourne le même format que la fin du mode `ai_virtual`.
+pub async fn attach_generative_job_to_product(
+    state: Arc<AppState>,
+    user: &AuthenticatedUser,
+    service_id: i32,
+    product_index: i32,
+    body: AttachGenerativeVideoBody,
+) -> AppResult<VideoGenerationResult> {
+    let svc =
+        sqlx::query_as::<_, ServiceDataRow>("SELECT user_id, data FROM services WHERE id = $1")
+            .bind(service_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|err| {
+                error!(
+                    "[AttachGenerative] Erreur service {}: {:?}",
+                    service_id, err
+                );
+                AppError::from(err)
+            })?
+            .ok_or_else(|| AppError::NotFound("Service introuvable.".to_string()))?;
+
+    if svc.user_id != user.id {
+        return Err(AppError::Unauthorized(
+            "Vous ne pouvez attacher une vidéo qu'à vos propres services.".to_string(),
+        ));
+    }
+
+    let product_opt = state.products_service.get_product(service_id, product_index).await?;
+
+    let primary_product = if let Some(product) = product_opt {
+        if !product.is_active {
+            return Err(AppError::BadRequest(format!(
+                "Le produit {} du service {} est désactivé.",
+                product_index, service_id
+            )));
+        }
+        product.product_data
+    } else {
+        return Err(AppError::NotFound(format!(
+            "Produit {} introuvable pour le service {}.",
+            product_index, service_id
+        )));
+    };
+
+    let product_name = extract_string(&primary_product, &["nom", "name", "titre", "title"])
+        .unwrap_or_else(|| "Produit".to_string());
+
+    let row = sqlx::query(
+        r#"SELECT status, result_payload, user_id FROM generative_video_jobs WHERE job_id = $1"#,
+    )
+    .bind(&body.generative_job_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("generative job: {e}")))?
+    .ok_or_else(|| {
+        AppError::NotFound(format!(
+            "Job génératif « {} » introuvable.",
+            body.generative_job_id
+        ))
+    })?;
+
+    let status: String = row
+        .try_get("status")
+        .map_err(|e| AppError::Database(format!("lecture statut job generative: {e}")))?;
+    let result_payload: Option<Value> = row.try_get("result_payload").ok();
+    let job_user_id: i64 = row
+        .try_get("user_id")
+        .map_err(|e| AppError::Database(format!("lecture user_id job generative: {e}")))?;
+
+    if job_user_id != i64::from(user.id) {
+        return Err(AppError::Unauthorized(
+            "Ce job de génération ne vous appartient pas.".to_string(),
+        ));
+    }
+
+    if status != "completed" {
+        return Err(AppError::BadRequest(format!(
+            "Le job n'est pas terminé (statut: {}). Attendez la fin de la génération.",
+            status
+        )));
+    }
+
+    let url_from_payload = result_payload
+        .as_ref()
+        .and_then(|r| r.get("video_url"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let video_url = match (body.final_video_url.clone(), url_from_payload) {
+        (Some(u), _) if !u.trim().is_empty() => u.trim().to_string(),
+        (_, Some(u)) if !u.is_empty() => u,
+        _ => {
+            return Err(AppError::BadRequest(
+                "Aucune URL vidéo dans le résultat du job (result_payload.video_url manquant)."
+                    .to_string(),
+            ));
+        }
+    };
+
+    let duration_seconds = result_payload
+        .as_ref()
+        .and_then(|r| r.get("total_duration"))
+        .and_then(|v| v.as_f64())
+        .map(|d| d.round() as u32)
+        .filter(|&d| d > 0)
+        .unwrap_or(30);
+
+    let progress_steps = vec![ProgressStep::completed(
+        "generative_attached",
+        "Vidéo IA reliée au produit",
+        Some(video_url.clone()),
+    )];
+
+    let media_id = create_media_entry_for_ai_video(
+        &state.pg,
+        service_id,
+        product_index,
+        &video_url,
+        &product_name,
+        &progress_steps,
+    )
+    .await?;
+
+    Ok(VideoGenerationResult {
+        success: true,
+        media_id,
+        service_id,
+        product_index,
+        video_url: video_url.clone(),
+        path: video_url,
+        duration_seconds,
+        used_media_ids: vec![],
+        script_outline: vec![],
+        style: "ai_virtual".to_string(),
+        headline: Some(product_name),
+        call_to_action: None,
+        published_to_chat: true,
+        published_to_product_card: true,
+        background_music_used: None,
+        voiceover_generated: false,
+        additional_outputs: vec![],
+        subtitles_generated: false,
+        subtitle_url: None,
+        distribution_targets: vec![],
+        quality_score: 0.95,
+        immersive_timeline: None,
+        immersive_analytics: None,
+        orchestration_warnings: vec![],
+        progress_steps,
+        cost_estimation: None,
+        job_id: None,
+    })
+}
+
 /// Select a curated audio track based on mode and hint
 async fn select_curated_audio_track(
     session_dir: &Path,

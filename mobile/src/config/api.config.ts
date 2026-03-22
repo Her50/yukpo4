@@ -10,10 +10,10 @@
 
 // Variables d'environnement depuis .env
 // ✅ HARMONISÉ: Utiliser EXPO_PUBLIC_API_URL (comme dans eas.json)
-const ENV =
+const ENV: NodeJS.ProcessEnv =
     typeof process !== 'undefined' && process?.env
         ? process.env
-        : {};
+        : ({} as NodeJS.ProcessEnv);
 const EXPO_API_URL = ENV.EXPO_PUBLIC_API_URL || ENV.EXPO_PUBLIC_API_BASE_URL;
 const EXPO_WS_URL = ENV.EXPO_PUBLIC_WS_URL;
 const EXPO_ENV = ENV.EXPO_PUBLIC_ENVIRONMENT || 'production';

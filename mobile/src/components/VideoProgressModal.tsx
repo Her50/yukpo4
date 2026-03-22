@@ -17,6 +17,7 @@ import Animated, {
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { NativeButton, NativeCard } from './SafeNativeDesign';
+import type { TranslateFn } from '../contexts/LanguageContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 
 export type GenerationStep =
@@ -46,17 +47,16 @@ interface VideoProgressModalProps {
     startTime?: number;
 }
 
-const getStepLabel = (step: GenerationStep): string => {
-    const { t } = useLanguageSafe();
+const getStepLabel = (step: GenerationStep, t: TranslateFn): string => {
     switch (step) {
         case 'storyboard':
             return t('videoProgressModal.generationDuStoryboard');
         case 'clips':
             return t('videoProgressModal.generationDesClipsVideo');
         case 'audio':
-            return 'Synchronisation audio';
+            return t('videoProgressModal.synchronisationAudio');
         case 'rendering':
-            return 'Rendu final';
+            return t('videoProgressModal.renduFinal');
         case 'complete':
             return t('videoProgressModal.videoGeneree');
         case 'error':
@@ -100,6 +100,7 @@ export const VideoProgressModal: React.FC<VideoProgressModalProps> = ({
     onCancel,
     onDismiss,
 }) => {
+    const { t } = useLanguageSafe();
     const progressAnim = useSharedValue(0);
 
     React.useEffect(() => {
@@ -120,6 +121,7 @@ export const VideoProgressModal: React.FC<VideoProgressModalProps> = ({
 
     const isComplete = progress.step === 'complete';
     const isError = progress.step === 'error';
+    const stepLabel = getStepLabel(progress.step, t);
 
     return (
         <Modal
@@ -143,7 +145,7 @@ export const VideoProgressModal: React.FC<VideoProgressModalProps> = ({
                                         : modernColors.primary
                             }
                         />
-                        <Text style={styles.title}>{getStepLabel(progress.step)}</Text>
+                        <Text style={styles.title}>{stepLabel}</Text>
                     </View>
 
                     {/* Progress Bar */}
@@ -177,7 +179,10 @@ export const VideoProgressModal: React.FC<VideoProgressModalProps> = ({
                         progress.totalScenes !== undefined && (
                             <View style={styles.sceneProgress}>
                                 <Text style={styles.sceneText}>
-                                    Scène {progress.currentScene} / {progress.totalScenes}
+                                    {t('videoProgressModal.sceneProgress', {
+                                        current: progress.currentScene,
+                                        total: progress.totalScenes,
+                                    })}
                                 </Text>
                             </View>
                         )}
@@ -231,7 +236,7 @@ export const VideoProgressModal: React.FC<VideoProgressModalProps> = ({
                         )}
                         {(isComplete || isError) && onDismiss && (
                             <NativeButton
-                                title={isError ? 'Fermer' : 'OK'}
+                                title={isError ? t('videoProgressModal.close') : t('videoProgressModal.ok')}
                                 variant={isError ? 'secondary' : 'primary'}
                                 size="medium"
                                 onPress={onDismiss}

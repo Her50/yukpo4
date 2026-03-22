@@ -149,7 +149,7 @@ const BookRecapV2Screen: React.FC = () => {
             stats[classe].value += book.valeur_calculee;
         });
         return stats;
-    }, [initialBooks, getEffectiveValue]);
+    }, [initialBooks, t]);
 
     const handleModeChange = useCallback((bookId: number, mode: string) => {
         hapticPress();

@@ -305,6 +305,7 @@ impl TrocIntelligentService {
             receiver_id: i32,
             livre: LivreScolaire,
             distance_km: f64,
+            #[allow(dead_code)]
             matieres_bundle: Vec<String>, // ✅ MULTI-MATIÈRE : toutes les matières du lot
         }
 
@@ -314,6 +315,7 @@ impl TrocIntelligentService {
             matieres: HashSet<String>,
             classe_actuelle: String,
             classe_souhaitee: String,
+            #[allow(dead_code)]
             user_id: i32,
         }
 
@@ -424,7 +426,7 @@ impl TrocIntelligentService {
                 edges.push(PotentialEdge {
                     sender_id: *sender_id,
                     receiver_id: *receiver_id,
-                    livre: best_sender_livre.clone().clone(),
+                    livre: (*best_sender_livre).clone(),
                     distance_km: dist,
                     matieres_bundle: sender_bundle.matieres.iter().cloned().collect(),
                 });

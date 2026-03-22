@@ -7,7 +7,7 @@ export interface GlobalSharePayload {
   title: string;
   description?: string;
   shareUrl: string;
-  contentType: 'product' | 'video' | 'menu' | 'health_stats' | 'navigation_stats';
+  contentType: 'product' | 'video' | 'menu' | 'health_stats' | 'navigation_stats' | 'chat_message';
   serviceId?: number | null;
   productIndex?: number | null;
   extraData?: Record<string, any>;

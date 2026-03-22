@@ -25,7 +25,12 @@ import { useToaster } from '../components/ToasterProvider';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useAIWithFallback } from '../hooks/useAIWithFallback';
 import { apiGet } from '../services/api';
-import { BookRecommendationRequest, bourseLivreApi, PriceSuggestionRequest } from '../services/bourseLivreApi';
+import {
+    BookRecommendationRequest,
+    BookRecommendationResponse,
+    bourseLivreApi,
+    PriceSuggestionRequest,
+} from '../services/bourseLivreApi';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 
 const { width } = Dimensions.get('window');
@@ -174,12 +179,12 @@ const BourseLivreScreen: React.FC = () => {
             },
             'bourse_livre_reco',
             `Recommandations livres: ${filters.classe_actuelle || t('bourseLivre.6eme')} vers ${filters.classe_souhaitee || t('bourseLivre.5eme')}, ${filters.matiere || t('bourseLivre.mathematiques')}`,
-            () => ({
-                recommendations: [
-                    { titre: t('bourseLivreScreen.ciamMathematiques'), raison: t('bourseLivreScreen.manuelDeReferencePourCetteClasse'), score: 0.9 },
-                    { titre: t('bourseLivreScreen.excellenceEnFrancais'), raison: t('bourseLivreScreen.tresUtiliseDansLesEtablissements'), score: 0.8 },
-                ],
-                conseil: t('bourseLivreScreen.verifiezLaListeOfficielleDeVotre'),
+            (): BookRecommendationResponse => ({
+                livre_ids: [],
+                score_recommendation: 82.5,
+                reasoning: t('bourseLivreScreen.verifiezLaListeOfficielleDeVotre'),
+                alternative_books: [],
+                matieres_suggestees: [t('bourseLivre.mathematiques'), t('bourseLivre.francais')],
             })
         );
         if (result.success && result.data) {

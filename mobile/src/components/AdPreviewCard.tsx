@@ -26,6 +26,7 @@ export const AdPreviewCard: React.FC<AdPreviewCardProps> = ({
     zone,
     duree,
 }) => {
+    const { t } = useLanguageSafe();
     const getZoneIcon = (zone: string) => {
         switch (zone) {
             case 'local':

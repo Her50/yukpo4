@@ -29,6 +29,7 @@ import { getFieldValue } from '../utils/productNormalizer';
 import { apiCallWithRetry } from '../utils/retryWithBackoff';
 import { clearVideoDraft, loadVideoDraft, saveVideoDraft, type VideoDraft } from '../utils/videoDraftStorage';
 import ProductDeliveryConfigModal from './delivery/ProductDeliveryConfigModal';
+import { GenerativeVideoWizard, GenerativeVideoGeneratedPayload } from './GenerativeVideoWizard';
 import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import { TimelineEditor } from './TimelineEditor';
@@ -172,25 +173,28 @@ const computePromotionLabel = (product: ManagedProduct | null | undefined): stri
     return candidate ? String(candidate) : undefined;
 };
 
+/**
+ * Highlights pour l'IA / validation — libellés **stables en anglais** (préfixes fixes)
+ * pour que validateAICohesion puisse filtrer sans dépendre de la langue UI.
+ */
 const collectProductHighlights = (product: ManagedProduct | null | undefined): string[] => {
     if (!product) {
         return [];
     }
     const highlights: string[] = [];
 
-    // ✅ EXISTANT - Informations de base
     if (product.type) {
         highlights.push(`Type: ${product.type}`);
     }
     if (product.category_label) {
-        highlights.push(`Catégorie: ${product.category_label}`);
+        highlights.push(`Category: ${product.category_label}`);
     }
     const priceLabel = computePriceLabel(product);
     if (priceLabel) {
-        highlights.push(`Prix courant: ${priceLabel}`);
+        highlights.push(`Current price: ${priceLabel}`);
     }
     if ((product as any)?.city) {
-        highlights.push(`Localisation: ${(product as any).city}`);
+        highlights.push(`Location: ${(product as any).city}`);
     }
     if (Array.isArray((product as any)?.tags)) {
         (product as any).tags.forEach((tag: string) => {
@@ -200,33 +204,29 @@ const collectProductHighlights = (product: ManagedProduct | null | undefined): s
         });
     }
 
-    // ✅ NOUVEAU - Caractéristiques détaillées
     if (product.caracteristiques) {
         if (Array.isArray(product.caracteristiques)) {
             product.caracteristiques.slice(0, 5).forEach(caract => {
                 if (typeof caract === 'string' && caract.trim()) {
-                    highlights.push(`Caractéristique: ${caract.trim()}`);
+                    highlights.push(`Characteristic: ${caract.trim()}`);
                 }
             });
         } else if (typeof product.caracteristiques === 'object') {
-            // Gérer le format {valeur: [...]} du formulaire dynamique
             const caractArray = (product.caracteristiques as any)?.valeur ||
                 Object.values(product.caracteristiques);
             caractArray.slice(0, 5).forEach((caract: any) => {
                 if (typeof caract === 'string' && caract.trim()) {
-                    highlights.push(`Caractéristique: ${caract.trim()}`);
+                    highlights.push(`Characteristic: ${caract.trim()}`);
                 }
             });
         }
     }
 
-    // ✅ NOUVEAU - Variants (couleurs, tailles, matériaux, etc.)
     if (product.variants) {
         const variantTypes = Object.keys(product.variants);
         if (variantTypes.length > 0) {
-            highlights.push(`Variants disponibles: ${variantTypes.join(', ')}`);
+            highlights.push(`Available variants: ${variantTypes.join(', ')}`);
 
-            // Ajouter les détails de chaque variant
             variantTypes.slice(0, 3).forEach(variantType => {
                 const variantValues = product.variants?.[variantType];
                 if (Array.isArray(variantValues)) {
@@ -238,14 +238,12 @@ const collectProductHighlights = (product: ManagedProduct | null | undefined): s
         }
     }
 
-    // ✅ NOUVEAU - Images existantes pour inspiration IA
     if (product.images && product.images.length > 0) {
-        highlights.push(`${product.images.length} images de référence disponibles`);
-        // Extraire les descriptions des images si disponibles
+        highlights.push(`${product.images.length} reference images available`);
         if (Array.isArray(product.images)) {
             product.images.slice(0, 2).forEach((img: any, index: number) => {
                 if (typeof img === 'string') {
-                    highlights.push(`Image ${index + 1}: référence visuelle`);
+                    highlights.push(`Image ${index + 1}: visual reference`);
                 } else if (img && typeof img === 'object') {
                     const imgDesc = img.description || img.ai_description || img.alt;
                     if (imgDesc) {
@@ -256,39 +254,37 @@ const collectProductHighlights = (product: ManagedProduct | null | undefined): s
         }
     }
 
-    // ✅ NOUVEAU - Attributs physiques et techniques
     if ((product as any)?.poids) {
-        highlights.push(`Poids: ${(product as any).poids}`);
+        highlights.push(`Weight: ${(product as any).poids}`);
     }
     if ((product as any)?.dimensions) {
         highlights.push(`Dimensions: ${(product as any).dimensions}`);
     }
     if ((product as any)?.materiaux) {
         if (Array.isArray((product as any).materiaux)) {
-            highlights.push(`Matériaux: ${(product as any).materiaux.join(', ')}`);
+            highlights.push(`Materials: ${(product as any).materiaux.join(', ')}`);
         } else {
-            highlights.push(`Matériaux: ${(product as any).materiaux}`);
+            highlights.push(`Materials: ${(product as any).materiaux}`);
         }
     }
 
-    // ✅ NOUVEAU - Métadonnées avancées
     if ((product as any)?.marque) {
-        highlights.push(`Marque: ${(product as any).marque}`);
+        highlights.push(`Brand: ${(product as any).marque}`);
     }
     if ((product as any)?.modele) {
-        highlights.push(`Modèle: ${(product as any).modele}`);
+        highlights.push(`Model: ${(product as any).modele}`);
     }
     if ((product as any)?.origine) {
-        highlights.push(`Origine: ${(product as any).origine}`);
+        highlights.push(`Origin: ${(product as any).origine}`);
     }
 
     return highlights;
 };
 
-// ✅ NOUVEAU - Fonction de validation de cohérence IA
+// ✅ NOUVEAU - Fonction de validation de cohérence IA (messages via i18n ; filtres sur libellés anglais stables)
 const validateAICohesion = (brief: AIVideoBriefVariant, product: ManagedProduct | null): { isValid: boolean; warnings: string[]; suggestions: string[] } => {
     if (!product) {
-        return { isValid: false, warnings: ['Produit non disponible pour la validation'], suggestions: [] };
+        return { isValid: false, warnings: [pvm('cohesionProductUnavailable')], suggestions: [] };
     }
 
     const warnings: string[] = [];
@@ -297,15 +293,13 @@ const validateAICohesion = (brief: AIVideoBriefVariant, product: ManagedProduct 
     const productName = (product.name || product.titre || '').toLowerCase();
     const productHighlights = collectProductHighlights(product);
 
-    // ✅ Validation 1: Le nom du produit doit apparaître dans le brief
     if (productName && !briefText.includes(productName)) {
-        warnings.push('⚠️ Le brief ne mentionne pas le nom du produit');
-        suggestions.push(`Ajoutez "${product.name || product.titre}" dans le script`);
+        warnings.push(pvm('cohesionWarnBriefNoProductName'));
+        suggestions.push(pvm('cohesionSuggestAddProductName', { name: String(product.name || product.titre || '') }));
     }
 
-    // ✅ Validation 2: Cohérence des caractéristiques principales
     const mainCharacteristics = productHighlights.filter(h =>
-        h.includes('Type:') || h.includes('Catégorie:') || h.includes('Caractéristique:')
+        h.startsWith('Type:') || h.startsWith('Category:') || h.startsWith('Characteristic:')
     ).slice(0, 3);
 
     if (mainCharacteristics.length > 0) {
@@ -315,43 +309,59 @@ const validateAICohesion = (brief: AIVideoBriefVariant, product: ManagedProduct 
         });
 
         if (!hasCharacteristicMention) {
-            warnings.push('⚠️ Le brief ne mentionne aucune caractéristique principale du produit');
-            suggestions.push(`Intégrez: ${mainCharacteristics[0]}`);
+            warnings.push(pvm('cohesionWarnNoMainCharacteristic'));
+            suggestions.push(pvm('cohesionSuggestIntegrate', { line: mainCharacteristics[0] }));
         }
     }
 
-    // ✅ Validation 3: Cohérence des variants
-    const variantHighlights = productHighlights.filter(h => h.includes('Variants disponibles:'));
-    if (variantHighlights.length > 0 && !briefText.includes('variant') && !briefText.includes('couleur') && !briefText.includes('taille')) {
-        warnings.push('⚠️ Le produit a des variants mais ils ne sont pas mentionnés');
-        suggestions.push('Mentionnez les options disponibles (couleurs, tailles, etc.)');
+    const variantHighlights = productHighlights.filter(h => h.startsWith('Available variants:'));
+    if (
+        variantHighlights.length > 0 &&
+        !briefText.includes('variant') &&
+        !briefText.includes('couleur') &&
+        !briefText.includes('taille') &&
+        !briefText.includes('color') &&
+        !briefText.includes('size')
+    ) {
+        warnings.push(pvm('cohesionWarnVariantsNotMentioned'));
+        suggestions.push(pvm('cohesionSuggestMentionVariants'));
     }
 
-    // ✅ Validation 4: Cohérence des images existantes
-    const imageHighlights = productHighlights.filter(h => h.includes('images de référence'));
-    if (imageHighlights.length > 0 && !briefText.includes('image') && !briefText.includes('visuel') && !briefText.includes('apparence')) {
-        warnings.push('⚠️ Des images de référence existent mais ne sont pas évoquées');
-        suggestions.push('Faites référence à l\'apparence visuelle du produit');
+    const imageHighlights = productHighlights.filter(h => h.includes('reference images'));
+    if (
+        imageHighlights.length > 0 &&
+        !briefText.includes('image') &&
+        !briefText.includes('visuel') &&
+        !briefText.includes('apparence') &&
+        !briefText.includes('visual') &&
+        !briefText.includes('appearance')
+    ) {
+        warnings.push(pvm('cohesionWarnImagesNotMentioned'));
+        suggestions.push(pvm('cohesionSuggestVisualReference'));
     }
 
-    // ✅ Validation 5: Cohérence du prix
-    const priceHighlight = productHighlights.find(h => h.includes('Prix courant:'));
-    if (priceHighlight && !briefText.includes('prix') && !briefText.includes('coût') && !briefText.includes('tarif')) {
-        warnings.push('⚠️ Le prix n\'est pas mentionné dans le brief');
-        suggestions.push('Ajoutez une référence au prix ou à la valeur');
+    const priceHighlight = productHighlights.find(h => h.startsWith('Current price:'));
+    if (
+        priceHighlight &&
+        !briefText.includes('prix') &&
+        !briefText.includes('price') &&
+        !briefText.includes('coût') &&
+        !briefText.includes('cost') &&
+        !briefText.includes('tarif')
+    ) {
+        warnings.push(pvm('cohesionWarnPriceNotMentioned'));
+        suggestions.push(pvm('cohesionSuggestPrice'));
     }
 
-    // ✅ Validation 6: Longueur et richesse du contenu
     const scriptLength = (brief.script_outline || []).length;
     if (scriptLength < 3) {
-        warnings.push('⚠️ Le script est trop court (moins de 3 lignes)');
-        suggestions.push('Enrichissez le script avec plus de détails sur le produit');
+        warnings.push(pvm('cohesionWarnScriptTooShort'));
+        suggestions.push(pvm('cohesionSuggestEnrichScript'));
     } else if (scriptLength > 8) {
-        warnings.push('⚠️ Le script est très long (plus de 8 lignes)');
-        suggestions.push('Raccourcissez le script pour un impact maximal');
+        warnings.push(pvm('cohesionWarnScriptTooLong'));
+        suggestions.push(pvm('cohesionSuggestShortenScript'));
     }
 
-    // ✅ Validation 7: Mots-clés pertinents
     const relevantKeywords = [
         productName,
         ...(product.type ? [product.type.toLowerCase()] : []),
@@ -363,79 +373,145 @@ const validateAICohesion = (brief: AIVideoBriefVariant, product: ManagedProduct 
     const keywordRatio = keywordScore / Math.max(relevantKeywords.length, 1);
 
     if (keywordRatio < 0.3) {
-        warnings.push('⚠️ Peu de mots-clés pertinents dans le script');
-        suggestions.push(`Intégrez des termes comme: ${relevantKeywords.slice(0, 3).join(', ')}`);
+        warnings.push(pvm('cohesionWarnFewKeywords'));
+        suggestions.push(pvm('cohesionSuggestKeywords', { keywords: relevantKeywords.slice(0, 3).join(', ') }));
     }
 
     const isValid = warnings.length === 0;
     return { isValid, warnings, suggestions };
 };
 
-// ✅ NOUVEAU - Fonction de validation de cohérence pour les styles IA
+// ✅ NOUVEAU - Validation de cohérence pour les styles IA
 const validateStyleCohesion = (suggestion: AIVideoStyleSuggestion, product: ManagedProduct | null): { isValid: boolean; warnings: string[]; suggestions: string[] } => {
     if (!product) {
-        return { isValid: false, warnings: ['Produit non disponible pour la validation'], suggestions: [] };
+        return { isValid: false, warnings: [pvm('styleCohesionProductUnavailable')], suggestions: [] };
     }
 
     const warnings: string[] = [];
     const suggestions: string[] = [];
     const highlights = collectProductHighlights(product);
 
-    // ✅ Validation 1: Cohérence des couleurs avec le produit
     const hasVisualReferences = product.images && product.images.length > 0;
     if (suggestion.color_palette && !hasVisualReferences) {
-        warnings.push('⚠️ Palette de couleurs spécifiée mais aucune image de référence');
-        suggestions.push('Ajoutez des images du produit pour une meilleure cohérence des couleurs');
+        warnings.push(pvm('styleWarnPaletteNoImages'));
+        suggestions.push(pvm('styleSuggestAddImagesColors'));
     }
 
-    // ✅ Validation 2: Cohérence des effets avec le type de produit
     const productType = product.type || product.category_label;
     const effects = suggestion.effects || [];
 
     if (productType?.toLowerCase().includes('aliment') && effects.some(e => e.includes('glitch') || e.includes('cyberpunk'))) {
-        warnings.push('⚠️ Effets numériques intenses pour un produit alimentaire');
-        suggestions.push('Optez pour des effets plus doux et naturels');
+        warnings.push(pvm('styleWarnFoodGlitch'));
+        suggestions.push(pvm('styleSuggestSofterEffects'));
     }
 
     if (productType?.toLowerCase().includes('luxe') && effects.some(e => e.includes('retro') || e.includes('vintage'))) {
-        warnings.push('⚠️ Effets vintage pour un produit de luxe');
-        suggestions.push('Privilégiez des effets élégants et modernes');
+        warnings.push(pvm('styleWarnLuxuryVintage'));
+        suggestions.push(pvm('styleSuggestElegantModern'));
     }
 
-    // ✅ Validation 3: Cohérence des transitions avec les variants
     const hasVariants = product.variants && Object.keys(product.variants).length > 0;
     const transitions = suggestion.transitions || [];
 
     if (hasVariants && transitions.length === 0) {
-        warnings.push('⚠️ Produit avec variants mais aucune transition spécifiée');
-        suggestions.push('Ajoutez des transitions pour mettre en valeur les différents variants');
+        warnings.push(pvm('styleWarnVariantsNoTransitions'));
+        suggestions.push(pvm('styleSuggestAddTransitions'));
     }
 
-    // ✅ Validation 4: Cohérence musicale avec l'ambiance du produit
-    const musicHint = suggestion.music_hint;
+    const musicHint = suggestion.music_hint?.toLowerCase() || '';
     const productTags = Array.isArray((product as any)?.tags) ? (product as any).tags : [];
 
-    if (productTags.some(tag => tag.toLowerCase().includes('sport')) && musicHint?.includes('lent')) {
-        warnings.push('⚠️ Musique lente pour un produit sportif');
-        suggestions.push('Optez pour une musique plus rythmée et énergique');
+    if (productTags.some((tag: string) => tag.toLowerCase().includes('sport')) && musicHint.includes('lent')) {
+        warnings.push(pvm('styleWarnSportSlowMusic'));
+        suggestions.push(pvm('styleSuggestRhythmicMusic'));
     }
 
-    if (productTags.some(tag => tag.toLowerCase().includes('relax') || tag.toLowerCase().includes('bien-être')) && musicHint?.includes('énergique')) {
-        warnings.push('⚠️ Musique trop énergique pour un produit bien-être');
-        suggestions.push('Choisissez une musique plus douce et apaisante');
+    if (
+        productTags.some((tag: string) => tag.toLowerCase().includes('relax') || tag.toLowerCase().includes('bien-être')) &&
+        (musicHint.includes('énergique') || musicHint.includes('energetic'))
+    ) {
+        warnings.push(pvm('styleWarnWellnessEnergeticMusic'));
+        suggestions.push(pvm('styleSuggestCalmMusic'));
     }
 
-    // ✅ Validation 5: Cohérence des overlay tips avec les caractéristiques
     const overlayTips = suggestion.overlay_tips || [];
-    const characteristics = highlights.filter(h => h.includes('Caractéristique:'));
+    const characteristics = highlights.filter(h => h.startsWith('Characteristic:'));
 
     if (characteristics.length > 2 && overlayTips.length < 2) {
-        warnings.push('⚠️ Produit avec plusieurs caractéristiques mais peu d\'overlays informatifs');
-        suggestions.push('Ajoutez des overlays pour mettre en valeur les caractéristiques principales');
+        warnings.push(pvm('styleWarnManyCharsFewOverlays'));
+        suggestions.push(pvm('styleSuggestAddOverlays'));
     }
 
     const isValid = warnings.length === 0;
     return { isValid, warnings, suggestions };
+};
+
+/** Corps d’alerte « validation IA » (warnings/suggestions déjà traduits côté validateAICohesion) */
+const buildBriefValidationAlertBody = (
+    invalidCount: number,
+    allWarnings: string[],
+    allSuggestions: string[],
+): string => {
+    let body = pvm('validationIaProblemsIntro', { count: invalidCount }) + '\n\n';
+    body += allWarnings.slice(0, 3).join('\n');
+    if (allWarnings.length > 3) {
+        body += '\n' + pvm('validationIaAndMoreLines', { n: allWarnings.length - 3 });
+    }
+    body += '\n\n' + pvm('validationIaSuggestionsHeader') + '\n';
+    body += allSuggestions.slice(0, 2).join('\n');
+    if (allSuggestions.length > 2) {
+        body += '\n' + pvm('validationIaAndMoreLines', { n: allSuggestions.length - 2 });
+    }
+    body += '\n\n' + pvm('validationIaContinueQuestion');
+    return body;
+};
+
+const buildStyleValidationAlertBody = (warnings: string[], suggestions: string[]): string =>
+    pvm('styleGeneratedReservesBody', {
+        warnings: warnings.slice(0, 2).join('\n'),
+        suggestions: suggestions.slice(0, 2).join('\n'),
+    });
+
+const buildCostEstimationMessage = (
+    totalCost: number,
+    currentBalance: number,
+    isAffordable: boolean,
+    estimation: VideoCostEstimation | undefined,
+): string => {
+    let costMessage = pvm('costEstimationHeader') + '\n\n';
+    costMessage += pvm('costEstimationTotalLine', { amount: totalCost.toLocaleString('fr-FR') }) + '\n';
+    if (estimation?.breakdown) {
+        costMessage += '\n' + pvm('costEstimationDetailHeader') + '\n';
+        costMessage +=
+            pvm('costEstimationTokensLine', { usd: estimation.breakdown.tokens_cost_usd.toFixed(2) }) + '\n';
+        if (estimation.breakdown.audio_mastering_usd > 0) {
+            costMessage +=
+                pvm('costEstimationAudioLine', { usd: estimation.breakdown.audio_mastering_usd.toFixed(2) }) + '\n';
+        }
+        if (estimation.breakdown.broll_generation_usd > 0) {
+            costMessage +=
+                pvm('costEstimationBrollLine', { usd: estimation.breakdown.broll_generation_usd.toFixed(2) }) + '\n';
+        }
+    }
+    costMessage += '\n' + pvm('costEstimationBalanceLine', { amount: currentBalance.toLocaleString('fr-FR') }) + '\n';
+    if (!isAffordable) {
+        costMessage += '\n' + pvm('costEstimationInsufficientBalance');
+    }
+    return costMessage;
+};
+
+const buildProceedVideoGenErrorMessage = (msg: string): string => {
+    const m = msg.toLowerCase();
+    if (m.includes('500') || m.includes('internal') || m.includes('erreur 500')) {
+        return pvm('estimationErrServer500');
+    }
+    if (m.includes('400') || m.includes('bad request') || m.includes('invalide')) {
+        return pvm('estimationErrBadRequest');
+    }
+    if (m.includes('timeout') || m.includes('timed out')) {
+        return pvm('estimationErrTimeout');
+    }
+    return msg;
 };
 
 const buildDefaultVoiceover = (
@@ -492,6 +568,8 @@ const applyBriefVariant = (
 };
 
 type ModalStep = 1 | 2 | 3 | 4 | 5 | 6;
+
+type EmptyRefKey = 'emptyRefMedia' | 'emptyRefStyle' | 'emptyRefScript' | 'emptyRefAudio' | 'emptyRefPublish';
 
 const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     visible,
@@ -649,6 +727,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU: Stocker le produit courant au moment de l'ouverture de l'éditeur AR
     const [arEditorProduct, setArEditorProduct] = useState<ManagedProduct | null>(null);
     const [isUploadingARVideo, setIsUploadingARVideo] = useState<boolean>(false);
+
+    /** Wizard Runway/Pika/Sora puis attache au produit via `attach-generative-video` */
+    const [generativeWizardVisible, setGenerativeWizardVisible] = useState(false);
+    const [attachGenerativeLoading, setAttachGenerativeLoading] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -1292,8 +1374,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 // Seulement afficher l'alerte si le fallback n'a rien trouvé
                 Alert.alert(
-                    'Erreur récupération médias',
-                    'Impossible de récupérer vos images et vidéos pour le moment. Réessayez plus tard.'
+                    pvm('erreurRecuperationMedias'),
+                    pvm('alertRecuperationMediasBody')
                 );
                 return [];
             } finally {
@@ -1836,12 +1918,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 );
             } else if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
                 message = 'Erreur de connexion. Vérifiez votre accès Internet.';
-                Alert.alert('Erreur d\'estimation', message);
+                Alert.alert(pvm('alertErreurEstimationTitre'), message);
             } else if (error?.message?.includes('timeout')) {
                 message = 'Le délai d\'attente a expiré. Réessayez.';
-                Alert.alert('Erreur d\'estimation', message);
+                Alert.alert(pvm('alertErreurEstimationTitre'), message);
             } else {
-                Alert.alert('Erreur d\'estimation', message);
+                Alert.alert(pvm('alertErreurEstimationTitre'), message);
             }
         } finally {
             setCostLoading(false);
@@ -2086,12 +2168,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 setSelectedMusicTrackId(latest?.id ?? null);
             }
 
-            Alert.alert('Audio importé', 'Votre piste a été ajoutée à la médiathèque.');
+            Alert.alert(pvm('alertAudioImporteTitre'), pvm('alertAudioImporteBody'));
         } catch (error) {
             console.error('[ProductVideoCreationModal] Import audio échoué:', error);
             Alert.alert(
-                'Erreur import audio',
-                error instanceof Error ? error.message : "Impossible d'importer ce fichier audio pour le moment."
+                pvm('importAudioErrorTitle'),
+                error instanceof Error ? error.message : pvm('importAudioErrorBody')
             );
         } finally {
             setIsUploadingAudio(false);
@@ -2100,7 +2182,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const handleGenerateBrief = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer un brief.');
+            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertSelectProduitBrief'));
             return;
         }
 
@@ -2143,34 +2225,30 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 const allWarnings = invalidVariants.flatMap(r => r.validation.warnings);
                 const allSuggestions = invalidVariants.flatMap(r => r.validation.suggestions);
 
-                const warningMessage = `⚠️ Validation IA détecte ${invalidVariants.length} problème(s):\n\n` +
-                    allWarnings.slice(0, 3).join('\n') +
-                    (allWarnings.length > 3 ? `\n... et ${allWarnings.length - 3} autre(s)` : '') +
-                    `\n\n💡 Suggestions:\n` +
-                    allSuggestions.slice(0, 2).join('\n') +
-                    (allSuggestions.length > 2 ? `\n... et ${allSuggestions.length - 2} autre(s)` : '') +
-                    `\n\nVoulez-vous continuer avec ces briefs ou les améliorer ?`;
+                const warningMessage = buildBriefValidationAlertBody(
+                    invalidVariants.length,
+                    allWarnings,
+                    allSuggestions,
+                );
 
                 Alert.alert(
-                    'Validation IA - Cohérence détectée',
+                    pvm('validationIaDialogTitle'),
                     warningMessage,
                     [
                         {
-                            text: 'Continuer quand même',
+                            text: pvm('btnContinueAnyway'),
                             onPress: () => {
-                                // Continuer avec les briefs générés
                                 if (variants.length === 1) {
                                     applyBriefVariant(variants[0], setHeadline, setCallToAction, setScriptNotes, setVoiceoverScript, setVariantPickerVisible);
-                                    Alert.alert('Brief généré', 'Le script et le CTA ont été optimisés par Yukpo IA.\n\n⚠️ Certaines incohérences ont été détectées.');
+                                    Alert.alert(pvm('alertBriefGenereTitre'), pvm('alertBriefGenereIncoherent'));
                                 } else {
                                     setVariantPickerVisible(true);
                                 }
                             }
                         },
                         {
-                            text: 'Améliorer les briefs',
+                            text: pvm('btnImproveBriefs'),
                             onPress: () => {
-                                // Regénérer avec plus de contexte
                                 handleGenerateBriefWithEnhancedContext();
                             }
                         },
@@ -2187,25 +2265,25 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 throw new Error('Aucune variante générée');
             } else if (variants.length === 1) {
                 applyBriefVariant(variants[0], setHeadline, setCallToAction, setScriptNotes, setVoiceoverScript, setVariantPickerVisible);
-                Alert.alert('Brief généré', '✅ Le script et le CTA ont été optimisés par Yukpo IA.\n\n✅ Validation IA: Cohérence parfaite détectée !');
+                Alert.alert(pvm('alertBriefGenereTitre'), pvm('alertBriefGenereCoherent'));
             } else {
                 setVariantPickerVisible(true);
             }
         } catch (error) {
             console.error('[ProductVideoCreationModal] Brief IA impossible:', error);
             Alert.alert(
-                'Erreur IA',
-                error instanceof Error ? error.message : 'Impossible de générer le brief IA pour le moment.'
+                pvm('errorIaTitle'),
+                error instanceof Error ? error.message : pvm('errorIaBriefGeneric')
             );
         } finally {
             setIsGeneratingBrief(false);
         }
-    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang]); // ✅ CORRIGÉ: applyBriefVariant est une fonction utilitaire stable, pas besoin de dépendance
+    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang, t]); // ✅ CORRIGÉ: applyBriefVariant est une fonction utilitaire stable, pas besoin de dépendance
 
     // ✅ NOUVEAU - Fonction pour regénérer les briefs avec contexte amélioré
     const handleGenerateBriefWithEnhancedContext = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer des effets IA.');
+            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertSelectProduitEffets'));
             return;
         }
 
@@ -2218,18 +2296,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             // ✅ AMÉLIORÉ - Ajouter plus de contexte spécifique
             const enhancedHighlights = [
                 ...highlights,
-                // Ajouter les variants spécifiquement
                 ...(selectedProduct.variants ? Object.keys(selectedProduct.variants).map(v => `Variant: ${v}`) : []),
-                // Ajouter les références d'images
                 ...(selectedProduct.images && selectedProduct.images.length > 0
-                    ? [`Images disponibles: ${selectedProduct.images.length} références visuelles`]
+                    ? [`Available images: ${selectedProduct.images.length} visual references`]
                     : []),
-                // Ajouter les caractéristiques techniques
-                ...((selectedProduct as any)?.caracteristiques ?
-                    Array.isArray((selectedProduct as any).caracteristiques)
-                        ? (selectedProduct as any).caracteristiques.slice(0, 3).map((c: string) => `Spécification: ${c}`)
-                        : []
-                    : [])
+                ...((selectedProduct as any)?.caracteristiques &&
+                Array.isArray((selectedProduct as any).caracteristiques)
+                    ? (selectedProduct as any).caracteristiques.slice(0, 3).map((c: string) => `Specification: ${c}`)
+                    : []),
             ];
 
             const response = await mediaApi.generateVideoBrief({
@@ -2265,17 +2339,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             if (validVariants.length > 0) {
                 Alert.alert(
-                    '✅ Briefs améliorés !',
-                    `${validVariants.length}/${variants.length} briefs sont maintenant cohérents avec les caractéristiques du produit.\n\n` +
-                    `✅ Validation IA réussie pour ${validVariants.length} variante(s)`,
-                    [{ text: 'OK' }]
+                    pvm('briefImprovedSuccessTitle'),
+                    pvm('briefImprovedSuccessBody', {
+                        validCount: validVariants.length,
+                        totalCount: variants.length,
+                    }),
+                    [{ text: String(i18n.t('common.ok')) }]
                 );
             } else {
                 Alert.alert(
-                    '⚠️ Amélioration limitée',
-                    'Les briefs ont été enrichis mais certaines incohérences persistent.\n\n' +
-                    'Vous pouvez continuer avec ces briefs ou ajuster manuellement.',
-                    [{ text: 'OK' }]
+                    pvm('briefImprovementPartialTitle'),
+                    pvm('briefImprovementPartialBody'),
+                    [{ text: String(i18n.t('common.ok')) }]
                 );
             }
 
@@ -2287,8 +2362,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         } catch (error) {
             console.error('[ProductVideoCreationModal] Brief IA amélioré impossible:', error);
             Alert.alert(
-                'Erreur IA',
-                error instanceof Error ? error.message : 'Impossible d\'améliorer les briefs IA pour le moment.'
+                pvm('errorIaTitle'),
+                error instanceof Error ? error.message : pvm('errorIaBriefImprovedGeneric')
             );
         } finally {
             setIsGeneratingBrief(false);
@@ -2306,7 +2381,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const handleGenerateStyleSuggestion = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer des effets IA.');
+            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertSelectProduitEffets'));
             return;
         }
 
@@ -2322,7 +2397,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 product_type: selectedProduct.type || selectedProduct.category_label,
                 tone: stylePreset,
                 // ✅ NOUVEAU - Ajouter les caractéristiques détaillées
-                product_characteristics: highlights.filter(h => h.includes('Caractéristique:')).map(h => h.replace('Caractéristique: ', '')),
+                product_characteristics: highlights
+                    .filter(h => h.startsWith('Characteristic:'))
+                    .map(h => h.replace(/^Characteristic:\s*/, '')),
                 // ✅ NOUVEAU - Ajouter les variants disponibles
                 available_variants: selectedProduct.variants ? Object.keys(selectedProduct.variants) : [],
                 // ✅ NOUVEAU - Ajouter les références visuelles
@@ -2354,22 +2431,22 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 console.warn('[ProductVideoCreationModal] ⚠️ Validation style IA:', styleValidation.warnings);
 
                 Alert.alert(
-                    'Style généré avec réserves',
-                    `✅ Effets visuels générés\n\n⚠️ Points à considérer:\n${styleValidation.warnings.slice(0, 2).join('\n')}\n\n💡 Suggestions:\n${styleValidation.suggestions.slice(0, 2).join('\n')}`,
-                    [{ text: 'OK' }]
+                    pvm('styleGeneratedReservesTitle'),
+                    buildStyleValidationAlertBody(styleValidation.warnings, styleValidation.suggestions),
+                    [{ text: String(i18n.t('common.ok')) }]
                 );
             } else {
                 Alert.alert(
-                    '✅ Style parfait !',
-                    'Les effets visuels générés correspondent parfaitement aux caractéristiques de votre produit.',
-                    [{ text: 'OK' }]
+                    pvm('stylePerfectTitle'),
+                    pvm('stylePerfectBody'),
+                    [{ text: String(i18n.t('common.ok')) }]
                 );
             }
         } catch (error) {
             console.error('[ProductVideoCreationModal] Style IA impossible:', error);
             Alert.alert(
-                'Erreur IA',
-                error instanceof Error ? error.message : 'Impossible de générer les effets IA pour le moment.'
+                pvm('errorIaTitle'),
+                error instanceof Error ? error.message : pvm('errorIaStyleGeneric')
             );
         } finally {
             setIsGeneratingStyle(false);
@@ -2380,7 +2457,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const handleAnalyzeMedia = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant d\'analyser les médias.');
+            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertSelectProduitAnalyse'));
             return;
         }
 
@@ -2418,12 +2495,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 ambiance: analysis.ambiance,
                 marketingAngle: analysis.marketing_angle,
             });
-            Alert.alert('Analyse IA terminée', 'Couleurs dominantes et angles marketing mis à jour.');
+            Alert.alert(pvm('alertAnalyseIaTitre'), pvm('alertAnalyseIaTerminee'));
         } catch (error) {
             console.error('[ProductVideoCreationModal] Analyse média impossible:', error);
             Alert.alert(
-                'Erreur IA',
-                error instanceof Error ? error.message : "Impossible d'analyser vos médias pour le moment."
+                pvm('errorIaTitle'),
+                error instanceof Error ? error.message : pvm('errorIaAnalyzeMediaGeneric')
             );
         } finally {
             setIsAnalyzingMedia(false);
@@ -2783,7 +2860,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU: Generate Storyboard via Studio (depuis Wizard)
     const handleGenerateStoryboard = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer un storyboard.');
+            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertSelectProduitStoryboard'));
             return;
         }
 
@@ -2862,7 +2939,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 durationMs,
                 extra: { scenes: result.scenes.length },
             });
-            Alert.alert('Storyboard généré', `${result.scenes.length} scènes créées.`);
+            Alert.alert(pvm('alertStoryboardGenereTitre'), pvm('alertStoryboardGenere', { count: result.scenes.length }));
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur génération storyboard:', error);
             const durationMs = Date.now() - startedAt;
@@ -2875,7 +2952,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 durationMs,
                 extra: { error: error?.message ?? 'unknown' },
             });
-            Alert.alert('Erreur', error?.message || 'Impossible de générer le storyboard.');
+            Alert.alert(String(i18n.t('message.error')), error?.message || pvm('alertImpossibleStoryboard'));
         } finally {
             setStoryboardLoading(false);
         }
@@ -2884,7 +2961,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     // ✅ NOUVEAU: Request Short Preview (depuis Wizard)
     const handleShortPreview = useCallback(async () => {
         if (!studioSessionId) {
-            Alert.alert('Session requise', 'Générez d\'abord un storyboard pour créer une session Studio.');
+            Alert.alert(pvm('alertSessionRequiseTitre'), pvm('alertSessionRequiseStudio'));
             return;
         }
         const startedAt = Date.now();
@@ -2969,7 +3046,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     durationMs,
                     prewarmed: false,
                 });
-                Alert.alert('Preview ouverte', 'La prévisualisation s\'ouvre dans votre lecteur vidéo.');
+                Alert.alert(pvm('alertPreviewOuverteTitre'), pvm('alertPreviewOuverte'));
             } else {
                 throw new Error('Aucune URL de preview retournée');
             }
@@ -3029,7 +3106,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 }
             }
 
-            Alert.alert('Erreur', errorMessage);
+            Alert.alert(String(i18n.t('message.error')), errorMessage);
         } finally {
             setShortPreviewLoading(false);
         }
@@ -3053,7 +3130,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         </Text>
                         <View style={styles.toggleRow}>
                             <View style={styles.toggleText}>
-                                <Text style={styles.toggleLabel}>Livraison activée</Text>
+                                <Text style={styles.toggleLabel}>{pvm('uiDeliveryEnabled')}</Text>
                                 <Text style={styles.toggleDescription}>
                                     Les clients pourront commander la livraison directement depuis la vidéo
                                 </Text>
@@ -3124,34 +3201,34 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     };
 
     const renderStepTip = (step: ModalStep) => {
-        const tips: Record<number, { icon: string; text: string }> = {
-            1: { icon: 'package', text: 'Choisissez le produit vedette de votre vidéo. Vous pourrez ajouter des produits complémentaires.' },
-            2: { icon: 'image', text: 'Plus vous ajoutez de médias de qualité, plus la vidéo sera professionnelle. Astuce : 4 à 8 images fonctionnent le mieux.' },
-            3: { icon: 'palette', text: 'Le style définit l\'ambiance visuelle. TikTok Boost est idéal pour les réseaux sociaux, Ciné Premium pour les produits haut de gamme.' },
-            4: { icon: 'file-text', text: 'Chaque ligne du script = une scène. Soyez concis et percutant. L\'IA peut vous aider à rédiger un script optimisé.' },
-            5: { icon: 'headphones', text: 'La musique augmente l\'engagement de 80%. La voix off est idéale pour les vidéos explicatives.' },
-            6: { icon: 'check-circle', text: 'Vérifiez votre récapitulatif et choisissez vos canaux de diffusion. Tout est prêt !' },
+        const tips: Record<number, { icon: string; textKey: string }> = {
+            1: { icon: 'package', textKey: 'uiStepTip1' },
+            2: { icon: 'image', textKey: 'uiStepTip2' },
+            3: { icon: 'palette', textKey: 'uiStepTip3' },
+            4: { icon: 'file-text', textKey: 'uiStepTip4' },
+            5: { icon: 'headphones', textKey: 'uiStepTip5' },
+            6: { icon: 'check-circle', textKey: 'uiStepTip6' },
         };
         const tip = tips[step];
         if (!tip) return null;
         return (
             <View style={styles.stepTipContainer}>
                 <SafeIcon name={tip.icon as any} size={16} color="#3B82F6" />
-                <Text style={styles.stepTipText}>{tip.text}</Text>
+                <Text style={styles.stepTipText}>{pvm(tip.textKey)}</Text>
             </View>
         );
     };
 
-    const renderEmptyProductState = (stepName: string) => (
+    const renderEmptyProductState = (stepRef: EmptyRefKey) => (
         <NativeCard style={styles.sectionCard}>
             <View style={styles.emptyProductState}>
                 <SafeIcon name="alert-circle" size={32} color="#F59E0B" />
-                <Text style={styles.emptyProductTitle}>Produit requis</Text>
+                <Text style={styles.emptyProductTitle}>{pvm('emptyProductTitle')}</Text>
                 <Text style={styles.emptyProductSubtitle}>
-                    Sélectionnez un produit à l'étape 1 avant d'accéder à « {stepName} ».
+                    {pvm('emptyProductSubtitle', { step: pvm(stepRef) })}
                 </Text>
                 <NativeButton
-                    title="← Retour à l'étape 1"
+                    title={pvm('emptyBackStep1')}
                     variant="outline"
                     size="small"
                     onPress={() => setActiveStep(1)}
@@ -3163,14 +3240,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const renderStep2 = () => {
         // Étape 2 : Sélection médias uniquement
         if (!selectedProduct) {
-            return renderEmptyProductState('Sélection des médias');
+            return renderEmptyProductState('emptyRefMedia');
         }
 
         return (
             <NativeCard style={styles.sectionCard}>
                 {renderStepTip(2)}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>📸 Sélection des médias</Text>
+                    <Text style={styles.sectionTitle}>{pvm('uiSectionMediaTitle')}</Text>
                     <TouchableOpacity
                         style={styles.linkButton}
                         onPress={handleAnalyzeMedia}
@@ -3182,18 +3259,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <SafeIcon name="scan" size={16} color={modernColors.primary} />
                         )}
                         <Text style={styles.linkButtonText}>
-                            {isAnalyzingMedia ? 'Analyse…' : 'Analyse IA'}
+                            {isAnalyzingMedia ? pvm('uiAnalyzeRunning') : pvm('uiAnalyzeIa')}
                         </Text>
                     </TouchableOpacity>
                 </View>
                 <Text style={styles.sectionSubtitle}>
-                    Choisissez les images/vidéos à utiliser dans votre vidéo, ou créez une vidéo AR immersive.
+                    {pvm('uiSectionMediaSubtitle')}
                 </Text>
 
                 {/* ✅ NOUVEAU Phase 3.2: Bouton pour créer vidéo AR */}
                 <View style={styles.arButtonContainer}>
                     <NativeButton
-                        title="🎬 Créer vidéo AR immersive"
+                        title={pvm('uiArButtonTitle')}
                         variant="primary"
                         size="medium"
                         onPress={async () => {
@@ -3204,8 +3281,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                                 if (!productToUse) {
                                     Alert.alert(
-                                        'Produit requis',
-                                        'Veuillez d\'abord sélectionner un produit avant d\'ouvrir l\'éditeur AR.'
+                                        pvm('alertArProduitRequisTitle'),
+                                        pvm('veuillezDabordSelectionnerUnProduitAvantDouvrirLediteur')
                                     );
                                     return;
                                 }
@@ -3243,16 +3320,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         product_name: productToUse.nom || productToUse.titre
                                     });
                                     Alert.alert(
-                                        'Produit invalide',
-                                        'Le produit sélectionné n\'a pas d\'index valide. Veuillez sélectionner un autre produit ou contacter le support.'
+                                        pvm('alertArProduitInvalideTitle'),
+                                        pvm('alertArProduitInvalideBody')
                                     );
                                     return;
                                 }
 
                                 if (!productToUse.serviceId) {
                                     Alert.alert(
-                                        'Service invalide',
-                                        'Le produit sélectionné n\'a pas de service associé. Veuillez sélectionner un autre produit.'
+                                        pvm('alertArServiceInvalideTitle'),
+                                        pvm('alertArServiceInvalideBody')
                                     );
                                     return;
                                 }
@@ -3317,13 +3394,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     />
                     {/* ✅ CORRIGÉ: Protection contre l'affichage de booléens comme texte */}
                     <Text style={styles.arButtonHint}>
-                        Capturez votre produit en réalité augmentée avec effets 3D
+                        {pvm('uiArHint')}
                     </Text>
                 </View>
 
                 {Array.isArray(mediaAnalysis.dominantColors) && mediaAnalysis.dominantColors.length > 0 && (
                     <View style={styles.mediaInsightsBox}>
-                        <Text style={styles.mediaInsightsTitle}>Palette dominante</Text>
+                        <Text style={styles.mediaInsightsTitle}>{pvm('uiPaletteDominant')}</Text>
                         <View style={styles.colorRow}>
                             {mediaAnalysis.dominantColors.map((color, idx) => (
                                 <View
@@ -3356,7 +3433,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 </View>
                 <View style={styles.toggleRow}>
                     <View style={styles.toggleText}>
-                        <Text style={styles.toggleLabel}>Médiathèque service</Text>
+                        <Text style={styles.toggleLabel}>{pvm('uiServiceLibraryToggle')}</Text>
                         <Text style={styles.toggleDescription}>
                             Ajouter vos assets généraux (logos, publicités).
                         </Text>
@@ -3382,14 +3459,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 </View>
                 {renderMediaGrid(
                     productMedia,
-                    'Images et vidéos du produit',
-                    'Ajoutez des médias à cette fiche pour dynamiser la vidéo.',
+                    pvm('uiProductMediaGridTitle'),
+                    pvm('uiProductMediaGridHint'),
                     '#6366F1',
                 )}
                 {renderMediaGrid(
                     serviceMedia,
-                    'Médiathèque prestataire',
-                    'Aucun média global enregistré pour ce service pour le moment.',
+                    pvm('uiServiceMediaGridTitle'),
+                    pvm('uiServiceMediaGridEmpty'),
                     '#8B5CF6',
                 )}
             </NativeCard>
@@ -3399,14 +3476,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const renderStep3 = () => {
         // Étape 3 : Style et effets uniquement
         if (!selectedProduct) {
-            return renderEmptyProductState('Style et effets');
+            return renderEmptyProductState('emptyRefStyle');
         }
 
         return (
             <NativeCard style={styles.sectionCard}>
                 {renderStepTip(3)}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>🎨 Style et effets</Text>
+                    <Text style={styles.sectionTitle}>{pvm('uiStyleSectionTitle')}</Text>
                     <TouchableOpacity
                         style={styles.linkButton}
                         onPress={handleGenerateStyleSuggestion}
@@ -3532,18 +3609,18 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             }) : null}
                         </View>
 
-                        <Text style={styles.suggestionTitle}>Palette de couleurs</Text>
+                        <Text style={styles.suggestionTitle}>{pvm('step4PaletteTitle')}</Text>
                         <NativeInput
                             value={colorPalette}
                             onChangeText={setColorPalette}
                             placeholder={styleSuggestion.color_palette || '#6366F1 / #0EA5E9'}
                         />
 
-                        <Text style={styles.suggestionTitle}>Ambiance musicale recommandée</Text>
+                        <Text style={styles.suggestionTitle}>{pvm('step4MusicAmbianceRecommended')}</Text>
                         <NativeInput
                             value={styleMusicHint}
                             onChangeText={setStyleMusicHint}
-                            placeholder={styleSuggestion.music_hint || 'Ex: Beat afro-pop énergique'}
+                            placeholder={styleSuggestion.music_hint || pvm('placeholderMusicBeatExample')}
                         />
                     </View>
                 )}
@@ -3554,7 +3631,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const renderStep4 = () => {
         // Étape 4 : Script et timeline uniquement
         if (!selectedProduct) {
-            return renderEmptyProductState('Script de montage');
+            return renderEmptyProductState('emptyRefScript');
         }
 
         return (
@@ -3564,13 +3641,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {selectedProduct && storyTemplates.length > 0 && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>📝 Templates narratifs</Text>
+                            <Text style={styles.sectionTitle}>{pvm('step4NarrativeTemplatesTitle')}</Text>
                             {storyTemplatesLoading && (
                                 <ActivityIndicator size="small" color={modernColors.primary} />
                             )}
                         </View>
                         <Text style={styles.sectionSubtitle}>
-                            Choisissez un template pour structurer votre vidéo.
+                            {pvm('step4NarrativeTemplatesSubtitle')}
                         </Text>
                         <View style={styles.templateList}>
                             {storyTemplates.slice(0, 4).map((spec) => {
@@ -3600,7 +3677,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {/* ✅ Storyboard IA via Studio (déplacé depuis étape 1) */}
                 {selectedProduct && (
                     <NativeCard style={styles.sectionCard}>
-                        <Text style={[styles.sectionTitle, { marginBottom: 12 }]} numberOfLines={1}>🎬 Storyboard IA</Text>
+                        <Text style={[styles.sectionTitle, { marginBottom: 12 }]} numberOfLines={1}>{pvm('step4StoryboardIaTitle')}</Text>
                         <TouchableOpacity
                             style={[styles.linkButton, { alignSelf: 'flex-start' }]}
                             onPress={handleGenerateStoryboard}
@@ -3612,7 +3689,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
                             )}
                             <Text style={styles.linkButtonText}>
-                                {storyboardLoading ? 'Génération…' : 'Générer storyboard'}
+                                {storyboardLoading ? pvm('generation') : pvm('genererStoryboard')}
                             </Text>
                         </TouchableOpacity>
                         <Text style={styles.sectionSubtitle}>
@@ -3631,7 +3708,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <View style={styles.storyboardList}>
                                 {storyboard.scenes.slice(0, 4).map((scene) => {
                                     // ✅ CORRIGÉ 2025-12-24: Nettoyer et formater le texte pour un meilleur rendu
-                                    const sceneText = (scene.headline || scene.body || 'Scène générée')
+                                    const sceneText = (scene.headline || scene.body || pvm('sceneGeneratedFallback'))
                                         .replace(/\n+/g, ' ') // Remplacer les retours à la ligne multiples par un espace
                                         .replace(/\s+/g, ' ') // Remplacer les espaces multiples par un seul espace
                                         .trim(); // Supprimer les espaces en début/fin
@@ -3658,7 +3735,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>✍️ Script de montage</Text>
+                        <Text style={styles.sectionTitle}>{pvm('scriptMontageCardTitle')}</Text>
                         <TouchableOpacity
                             style={styles.linkButton}
                             onPress={handleGenerateBrief}
@@ -3670,54 +3747,54 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
                             )}
                             <Text style={styles.linkButtonText}>
-                                {isGeneratingBrief ? 'Génération…' : 'Brief IA'}
+                                {isGeneratingBrief ? pvm('briefIaButtonLoading') : pvm('briefIaButton')}
                             </Text>
                         </TouchableOpacity>
                     </View>
                     <View style={styles.fieldGroup}>
-                        <Text style={styles.fieldLabel}>Titre percutant</Text>
+                        <Text style={styles.fieldLabel}>{pvm('fieldLabelPunchyTitle')}</Text>
                         <NativeInput
                             value={headline}
                             onChangeText={setHeadline}
-                            placeholder="Ex: 🎯 Promotion spéciale sur nos mèches premium !"
+                            placeholder={pvm('placeholderHeadlinePromo')}
                             multiline
                             minLines={2}
                         />
                     </View>
                     <View style={styles.fieldGroup}>
-                        <Text style={styles.fieldLabel}>Call-to-action</Text>
+                        <Text style={styles.fieldLabel}>{pvm('fieldLabelCallToAction')}</Text>
                         <NativeInput
                             value={callToAction}
                             onChangeText={setCallToAction}
-                            placeholder="Ex: Réservez en ligne et profitez de la livraison express !"
+                            placeholder={pvm('placeholderCtaExpress')}
                             multiline
                             minLines={2}
                         />
                     </View>
                     <View style={styles.fieldGroup}>
                         <View style={styles.fieldLabelRow}>
-                            <Text style={styles.fieldLabel}>✍️ Script de montage</Text>
+                            <Text style={styles.fieldLabel}>{pvm('scriptMontageFieldLabel')}</Text>
                             <Text style={styles.fieldRequired}>*</Text>
                         </View>
                         <Text style={styles.fieldHint}>
-                            Décrivez les messages clés, avantages, garanties. Une ligne = une scène.
+                            {pvm('scriptMontageHint')}
                         </Text>
                         <NativeInput
                             value={scriptNotes}
                             onChangeText={setScriptNotes}
-                            placeholder={`Exemple:\nDécouvrez notre nouveau produit\nQualité premium garantie\nPrix spécial limité\nLivraison express disponible`}
+                            placeholder={pvm('placeholderScriptMultiline')}
                             multiline
                             minLines={4}
                             style={scriptNotes.trim().length === 0 ? styles.scriptInputRequired : undefined}
                         />
                         {scriptNotes.trim().length === 0 && (
                             <Text style={styles.fieldError}>
-                                ⚠️ Le script est requis pour générer la vidéo
+                                {pvm('scriptRequiredWarning')}
                             </Text>
                         )}
                     </View>
                     <View style={styles.durationRow}>
-                        <Text style={styles.fieldLabel}>Durée cible</Text>
+                        <Text style={styles.fieldLabel}>{pvm('fieldLabelTargetDuration')}</Text>
                         <View style={styles.durationPresetsRow}>
                             {[
                                 { value: '15', label: '15s', hint: 'Story' },
@@ -3762,7 +3839,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 keyboardType="numeric"
                                 style={styles.durationInput}
                             />
-                            <Text style={styles.durationUnit}>secondes</Text>
+                            <Text style={styles.durationUnit}>{pvm('uiSecondsUnit')}</Text>
                         </View>
                         <Text style={styles.durationHint}>
                             {Number(duration) >= 25 && Number(duration) <= 35
@@ -3828,7 +3905,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         {studioSessionId && (
                             <View style={styles.shortPreviewContainer}>
                                 <NativeButton
-                                    title={shortPreviewLoading ? "Génération preview…" : "🎬 Preview courte (Studio)"}
+                                    title={shortPreviewLoading ? pvm('previewShortGenerating') : pvm('previewShortTitle')}
                                     variant="outline"
                                     size="medium"
                                     onPress={handleShortPreview}
@@ -3836,7 +3913,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     style={styles.shortPreviewButton}
                                 />
                                 <Text style={styles.shortPreviewHint}>
-                                    Génère une prévisualisation courte avant la génération finale
+                                    {pvm('previewShortHint')}
                                 </Text>
                             </View>
                         )}
@@ -4023,7 +4100,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const renderStep5 = () => {
         // Étape 5 : Audio uniquement (musique + voiceover)
         if (!selectedProduct) {
-            return renderEmptyProductState('Audio et musique');
+            return renderEmptyProductState('emptyRefAudio');
         }
 
         return (
@@ -4064,16 +4141,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     {musicMode !== 'none' && (
                         <View style={styles.fieldGroup}>
                             <View style={styles.volumeHeaderRow}>
-                                <Text style={styles.fieldLabel}>Volume musique</Text>
+                                <Text style={styles.fieldLabel}>{pvm('fieldLabelMusicVolume')}</Text>
                                 <Text style={styles.volumeValueBadge}>
                                     {Math.round((Number(musicVolume) || 0.28) * 100)}%
                                 </Text>
                             </View>
                             <View style={styles.volumePresetsRow}>
                                 {[
-                                    { value: '0.10', label: 'Discret', icon: 'volume' },
-                                    { value: '0.28', label: 'Normal', icon: 'volume-1' },
-                                    { value: '0.45', label: 'Fort', icon: 'volume-2' },
+                                    { value: '0.10', label: pvm('volumePresetQuiet'), icon: 'volume' },
+                                    { value: '0.28', label: pvm('volumePresetNormal'), icon: 'volume-1' },
+                                    { value: '0.45', label: pvm('volumePresetLoud'), icon: 'volume-2' },
                                 ].map((preset) => {
                                     const isActive = musicVolume === preset.value;
                                     return (
@@ -4109,14 +4186,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         <SafeIcon name="plus" size={16} color={modernColors.primary} />
                                     )}
                                     <Text style={styles.audioImportText}>
-                                        {isUploadingAudio ? 'Import en cours…' : "Importer une piste depuis l'appareil"}
+                                        {isUploadingAudio ? pvm('importAudioInProgress') : pvm('importAudioFromDevice')}
                                     </Text>
                                 </TouchableOpacity>
                             </View>
                             {availableAudioTracks.length > 0 && (
                                 <>
                                     <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
-                                        Sélectionner une piste audio existante
+                                        {pvm('selectExistingAudioTrack')}
                                     </Text>
                                     {/* ✅ NOUVEAU: Panel de suggestions audio contextuelles IA */}
                                     {selectedProduct && (
@@ -4271,7 +4348,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <NativeInput
                                 value={voiceoverScript}
                                 onChangeText={setVoiceoverScript}
-                                placeholder="Texte de narration..."
+                                placeholder={pvm('placeholderNarrationText')}
                                 multiline
                                 minLines={3}
                             />
@@ -4289,13 +4366,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
                     <View style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>🎬 Génération en cours</Text>
+                            <Text style={styles.sectionTitle}>{pvm('uiJobGenerationTitle')}</Text>
                         </View>
 
                         <View style={styles.jobProgressContainer}>
                             <ActivityIndicator size="large" color={modernColors.primary} style={styles.jobProgressSpinner} />
                             <Text style={styles.jobProgressText}>
-                                {jobStatus === 'queued' ? 'En attente...' : 'Génération de la vidéo...'}
+                                {jobStatus === 'queued' ? pvm('uiJobStatusQueued') : pvm('uiJobStatusRunning')}
                             </Text>
                             <Text style={styles.jobProgressSubtext}>
                                 Job ID: {currentJobId.substring(0, 8)}...
@@ -4310,10 +4387,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                         <View style={styles.jobInfoContainer}>
                             <Text style={styles.jobInfoText}>
-                                ⏱️ La génération peut prendre quelques minutes selon la durée et la complexité de la vidéo.
+                                {pvm('uiJobInfoLine1')}
                             </Text>
                             <Text style={styles.jobInfoText}>
-                                📱 Vous pouvez fermer cette fenêtre, vous recevrez une notification une fois la vidéo prête.
+                                {pvm('uiJobInfoLine2')}
                             </Text>
                         </View>
                     </View>
@@ -4323,7 +4400,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         // Étape 6 : Publication et distribution
         if (!selectedProduct) {
-            return renderEmptyProductState('Publication');
+            return renderEmptyProductState('emptyRefPublish');
         }
 
         return (
@@ -4332,46 +4409,46 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {/* ✅ NOUVEAU: Récapitulatif visuel avant génération (comme TikTok/Canva) */}
                 <NativeCard style={[styles.sectionCard, styles.recapCard]}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>📋 Récapitulatif</Text>
+                        <Text style={styles.sectionTitle}>{pvm('recapCardTitle')}</Text>
                     </View>
                     <View style={styles.recapGrid}>
                         <View style={styles.recapItem}>
                             <SafeIcon name="package" size={16} color={modernColors.primary} />
-                            <Text style={styles.recapLabel}>Produit</Text>
+                            <Text style={styles.recapLabel}>{pvm('recapLabelProduct')}</Text>
                             <Text style={styles.recapValue} numberOfLines={1}>
                                 {normalizeProductName(selectedProduct)}
                             </Text>
                         </View>
                         <View style={styles.recapItem}>
                             <SafeIcon name="clock" size={16} color="#F59E0B" />
-                            <Text style={styles.recapLabel}>Durée</Text>
+                            <Text style={styles.recapLabel}>{pvm('recapLabelDuration')}</Text>
                             <Text style={styles.recapValue}>{duration}s</Text>
                         </View>
                         <View style={styles.recapItem}>
                             <SafeIcon name="film" size={16} color="#8B5CF6" />
-                            <Text style={styles.recapLabel}>Style</Text>
+                            <Text style={styles.recapLabel}>{pvm('recapLabelStyle')}</Text>
                             <Text style={styles.recapValue} numberOfLines={1}>
                                 {videoStyleOptions.find(o => o.key === stylePreset)?.label || stylePreset}
                             </Text>
                         </View>
                         <View style={styles.recapItem}>
                             <SafeIcon name="image" size={16} color="#10B981" />
-                            <Text style={styles.recapLabel}>Médias</Text>
+                            <Text style={styles.recapLabel}>{pvm('recapLabelMedia')}</Text>
                             <Text style={styles.recapValue}>
-                                {selectedMediaIds.size > 0 ? `${selectedMediaIds.size} sélectionné(s)` : 'Auto'}
+                                {selectedMediaIds.size > 0 ? pvm('recapMediaSelected', { count: selectedMediaIds.size }) : pvm('recapMediaAuto')}
                             </Text>
                         </View>
                         <View style={styles.recapItem}>
                             <SafeIcon name="music" size={16} color="#EC4899" />
-                            <Text style={styles.recapLabel}>Audio</Text>
+                            <Text style={styles.recapLabel}>{pvm('recapLabelAudio')}</Text>
                             <Text style={styles.recapValue} numberOfLines={1}>
                                 {musicMode === 'none' ? t('productVideoCreationModal.musicNoneLabel') : musicModeOptions.find(o => o.key === musicMode)?.label || musicMode}
-                                {voiceoverEnabled ? ' + Voix off' : ''}
+                                {voiceoverEnabled ? pvm('recapVoiceoverSuffix') : ''}
                             </Text>
                         </View>
                         <View style={styles.recapItem}>
                             <SafeIcon name="send" size={16} color="#3B82F6" />
-                            <Text style={styles.recapLabel}>Diffusion</Text>
+                            <Text style={styles.recapLabel}>{pvm('uiRecapDiffusion')}</Text>
                             <Text style={styles.recapValue} numberOfLines={1}>
                                 {selectedChannels.size} canal{selectedChannels.size > 1 ? 'ux' : ''}
                             </Text>
@@ -4379,10 +4456,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                     {scriptNotes.trim().length > 0 && (
                         <View style={styles.recapScriptPreview}>
-                            <Text style={styles.recapScriptLabel}>Script :</Text>
+                            <Text style={styles.recapScriptLabel}>{pvm('recapScriptPreviewLabel')}</Text>
                             <Text style={styles.recapScriptText} numberOfLines={2}>
                                 {scriptNotes.trim().split('\n')[0]}
-                                {scriptNotes.trim().split('\n').length > 1 ? ` (+${scriptNotes.trim().split('\n').length - 1} lignes)` : ''}
+                                {scriptNotes.trim().split('\n').length > 1 ? ` ${pvm('recapScriptMoreLines', { n: scriptNotes.trim().split('\n').length - 1 })}` : ''}
                             </Text>
                         </View>
                     )}
@@ -4392,13 +4469,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {!generatedTimeline && !isGeneratingTimeline && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>🎬 Structure de la vidéo</Text>
+                            <Text style={styles.sectionTitle}>{pvm('videoStructureTitle')}</Text>
                             <TouchableOpacity
                                 style={styles.linkButton}
                                 onPress={async () => {
                                     // Générer la timeline si elle n'existe pas
                                     if (!selectedProduct || !briefVariants.length || !styleSuggestion) {
-                                        Alert.alert('Prérequis manquants', 'Générez d\'abord le brief et le style pour créer la timeline.');
+                                        Alert.alert(pvm('alertPrerequisTimelineTitre'), pvm('alertPrerequisTimeline'));
                                         return;
                                     }
                                     setIsGeneratingTimeline(true);
@@ -4447,7 +4524,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         }
                                     } catch (error) {
                                         console.error('[ProductVideoCreationModal] Erreur génération timeline:', error);
-                                        Alert.alert('Erreur', 'Impossible de générer la timeline. La vidéo sera créée avec le script texte.');
+                                        Alert.alert(String(i18n.t('message.error')), pvm('alertErreurTimeline'));
                                     } finally {
                                         setIsGeneratingTimeline(false);
                                     }
@@ -4459,7 +4536,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
                                 )}
                                 <Text style={styles.linkButtonText}>
-                                    {isGeneratingTimeline ? 'Génération…' : 'Générer la timeline'}
+                                    {isGeneratingTimeline ? pvm('generation') : pvm('genererLaTimeline')}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -4471,7 +4548,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {generatedTimeline && !isEditingTimeline && (
                     <NativeCard style={styles.sectionCard}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>🎬 Structure de la vidéo</Text>
+                            <Text style={styles.sectionTitle}>{pvm('videoStructureTitle')}</Text>
                         </View>
                         <Text style={styles.sectionSubtitle}>
                             Visualisez la structure de votre vidéo avant la génération finale.
@@ -4503,7 +4580,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 {/* ✅ Distribution automatique avec plan IA */}
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Diffusion automatique</Text>
+                        <Text style={styles.sectionTitle}>{pvm('uiAutoDiffusionTitle')}</Text>
                         <TouchableOpacity
                             style={styles.linkButton}
                             onPress={handleGenerateDistribution}
@@ -4626,7 +4703,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         <View style={styles.advancedOptionsTitleRow}>
                             <Text style={styles.sectionTitle}>⚙️ Options avancées</Text>
                             <View style={styles.optionalBadge}>
-                                <Text style={styles.optionalBadgeText}>Optionnel</Text>
+                                <Text style={styles.optionalBadgeText}>{pvm('uiOptionalBadge')}</Text>
                             </View>
                         </View>
                         <SafeIcon
@@ -4763,7 +4840,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                     <View style={styles.toggleRow}>
                         <View style={styles.toggleText}>
-                            <Text style={styles.toggleLabel}>Promotions actives</Text>
+                            <Text style={styles.toggleLabel}>{pvm('uiPromotionsActive')}</Text>
                             <Text style={styles.toggleDescription}>
                                 Ajoute badges et messages promo détectés dans votre fiche produit.
                             </Text>
@@ -4776,7 +4853,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </View>
                     <View style={styles.toggleRow}>
                         <View style={styles.toggleText}>
-                            <Text style={styles.toggleLabel}>Coordonnées & CTA</Text>
+                            <Text style={styles.toggleLabel}>{pvm('uiContactsCtaToggle')}</Text>
                             <Text style={styles.toggleDescription}>
                                 Ajoute votre CTA + boutons vers le chat Yukpo.
                             </Text>
@@ -4923,11 +5000,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             setActiveStep(newStep);
         } else {
             Alert.alert(
-                t('videoCreation.errors.incompleteStep') || 'Étape incomplète',
-                validation.error || t('videoCreation.errors.completeRequiredInfo') || 'Veuillez compléter les informations requises avant de continuer.'
+                String(t('videoCreation.errors.incompleteStep')),
+                validation.error || String(t('videoCreation.errors.completeRequiredInfo'))
             );
         }
-    }, [activeStep, validateStepCompletion, markStepCompleted]);
+    }, [activeStep, validateStepCompletion, markStepCompleted, t]);
 
     // ✅ CORRIGÉ: Fonction wrapper pour applyBriefVariant avec les setters du composant
     // ✅ CORRIGÉ 2025-11-28: Retiré les setters des dépendances car ils sont stables
@@ -4967,7 +5044,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         return (
             <NativeCard style={styles.sectionCard}>
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Coach IA Yukpo</Text>
+                    <Text style={styles.sectionTitle}>{pvm('uiCoachTitle')}</Text>
                     <TouchableOpacity style={styles.linkButton} onPress={handleRefreshCoach}>
                         {coachLoading ? (
                             <ActivityIndicator size="small" color={modernColors.primary} />
@@ -4975,7 +5052,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             <SafeIcon name="refresh-cw" size={16} color={modernColors.primary} />
                         )}
                         <Text style={styles.linkButtonText}>
-                            {coachLoading ? 'Analyse…' : 'Actualiser'}
+                            {coachLoading ? pvm('uiCoachAnalyzingShort') : pvm('uiCoachRefresh')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -4983,7 +5060,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     <View style={styles.coachLoading}>
                         <ActivityIndicator size="small" color={modernColors.primary} />
                         <Text style={styles.coachLoadingText}>
-                            Le coach prépare vos recommandations personnalisées…
+                            {pvm('uiCoachPreparing')}
                         </Text>
                     </View>
                 ) : (
@@ -4996,7 +5073,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     color={modernColors.primary}
                                 />
                                 <View style={styles.coachContent}>
-                                    <Text style={styles.coachLabel}>Script IA</Text>
+                                    <Text style={styles.coachLabel}>{pvm('uiCoachScriptLabel')}</Text>
                                     {scriptPreview ? (
                                         <Text style={styles.coachText} numberOfLines={2}>
                                             {scriptPreview}
@@ -5008,7 +5085,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     >
                                         <SafeIcon name="sparkles" size={14} color={modernColors.primary} />
                                         <Text style={styles.coachActionText}>
-                                            Voir les {briefVariants.length} variantes
+                                            {pvm('uiCoachSeeVariants', { count: briefVariants.length })}
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
@@ -5023,15 +5100,15 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     color={modernColors.primary}
                                 />
                                 <View style={styles.coachContent}>
-                                    <Text style={styles.coachLabel}>Effets recommandés</Text>
+                                    <Text style={styles.coachLabel}>{pvm('uiCoachEffectsLabel')}</Text>
                                     {Array.isArray(styleSuggestion.effects) && styleSuggestion.effects.length > 0 ? (
                                         <Text style={styles.coachText} numberOfLines={2}>
-                                            Effets : {styleSuggestion.effects.slice(0, 3).join(', ')}
+                                            {pvm('uiCoachEffectsPrefix')} {styleSuggestion.effects.slice(0, 3).join(', ')}
                                         </Text>
                                     ) : null}
                                     {Array.isArray(styleSuggestion.transitions) && styleSuggestion.transitions.length > 0 ? (
                                         <Text style={styles.coachMeta}>
-                                            Transitions : {styleSuggestion.transitions.slice(0, 2).join(', ')}
+                                            {pvm('uiCoachTransitionsPrefix')} {styleSuggestion.transitions.slice(0, 2).join(', ')}
                                         </Text>
                                     ) : null}
                                     <TouchableOpacity
@@ -5039,7 +5116,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         onPress={() => applyStyleSuggestion(styleSuggestion)}
                                     >
                                         <SafeIcon name="plus-circle" size={14} color={modernColors.primary} />
-                                        <Text style={styles.coachActionText}>Appliquer les effets</Text>
+                                        <Text style={styles.coachActionText}>{pvm('uiCoachApplyEffects')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -5061,12 +5138,15 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     ) : null}
                                     {limitedHashtags.length > 0 ? (
                                         <Text style={styles.coachMeta}>
-                                            Hashtags : {limitedHashtags.join(' ')}
+                                            {pvm('uiCoachHashtagsPrefix')} {limitedHashtags.join(' ')}
                                         </Text>
                                     ) : null}
                                     {nextSchedule ? (
                                         <Text style={styles.coachMeta}>
-                                            Prochaine diffusion : {nextSchedule.channel} • {nextSchedule.best_time}
+                                            {pvm('uiCoachNextPublish', {
+                                                channel: String(nextSchedule.channel),
+                                                time: String(nextSchedule.best_time),
+                                            })}
                                         </Text>
                                     ) : null}
                                 </View>
@@ -5085,21 +5165,22 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         selectedProduct,
         // ✅ CORRIGÉ: setVariantPickerVisible retiré des dépendances car c'est un setter useState stable
         styleSuggestion,
+        i18n.language,
     ]);
 
     const handleSubmit = async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', "Sélectionnez d'abord le produit principal à mettre en avant.");
+            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertSelectProduitPrincipal'));
             return;
         }
 
         if (typeof selectedProduct.product_index !== 'number') {
-            Alert.alert('Produit incomplet', "Ce produit ne possède pas d'index. Rechargez la page et réessayez.");
+            Alert.alert(pvm('alertProduitIncompletTitre'), pvm('alertProduitIncompletIndex'));
             return;
         }
 
         if (!headline.trim()) {
-            Alert.alert('Titre manquant', 'Ajoutez un titre accrocheur pour votre vidéo.');
+            Alert.alert(pvm('alertTitreManquantTitre'), pvm('alertTitreManquant'));
             return;
         }
 
@@ -5110,25 +5191,21 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         if (!hasScript && !hasStoryboard && !hasBrief) {
             Alert.alert(
-                'Script requis',
-                'Le script de montage vidéo est requis. Vous pouvez :\n\n' +
-                '• Remplir manuellement le script\n' +
-                '• Générer un storyboard IA (étape 1)\n' +
-                '• Générer un brief IA (étape 4)\n\n' +
-                'Une ligne = une scène.'
+                pvm('submitScriptRequiredTitle'),
+                pvm('submitScriptRequiredBody')
             );
             return;
         }
 
         const durationSeconds = ensureNumber(duration, 28);
         if (durationSeconds < 10 || durationSeconds > 90) {
-            Alert.alert('Durée invalide', 'Choisissez une durée comprise entre 10 et 90 secondes.');
+            Alert.alert(pvm('alertDureeInvalideTitre'), pvm('alertDureeInvalide'));
             return;
         }
 
         if (voiceoverEnabled) {
             if (voiceoverScript.trim().length < 10) {
-                Alert.alert('Narration insuffisante', 'Le texte de la voix off doit contenir au moins 10 caractères.');
+                Alert.alert(pvm('alertNarrationInsuffisanteTitre'), pvm('alertNarrationInsuffisante'));
                 return;
             }
         }
@@ -5240,17 +5317,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             // ✅ CORRIGÉ: Validation de la réponse - Ne pas bloquer si l'estimation échoue
             if (!response || !response.success) {
                 setCostLoading(false);
-                const errorMsg = response?.error || 'Impossible d\'estimer le coût pour le moment.';
+                const errorMsg = response?.error || pvm('estimationErrGenericShort');
                 console.warn('[ProductVideoCreationModal] Erreur estimation coût:', errorMsg);
 
-                // ✅ CORRIGÉ: Proposer de continuer quand même
                 Alert.alert(
-                    'Estimation impossible',
-                    errorMsg + '\n\nSouhaitez-vous continuer avec la génération de la vidéo ?',
+                    pvm('estimationImpossibleTitle'),
+                    `${errorMsg}\n\n${pvm('estimationAskContinue')}`,
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {
-                            text: 'Continuer quand même',
+                            text: pvm('btnContinueAnyway'),
                             onPress: async () => {
                                 await proceedWithVideoGeneration(payloadForEstimation);
                             },
@@ -5271,15 +5347,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             if (!estimation) {
                 setCostLoading(false);
                 console.warn('[ProductVideoCreationModal] Estimation vide, proposer de continuer quand même');
-                // ✅ CORRIGÉ: Proposer de continuer quand même
                 Alert.alert(
-                    'Estimation impossible',
-                    'Impossible d\'estimer le coût pour le moment.\n\n' +
-                    'Souhaitez-vous continuer avec la génération de la vidéo ?',
+                    pvm('estimationImpossibleTitle'),
+                    pvm('estimationEmptyContinueBody'),
                     [
                         { text: t('common.cancel'), style: 'cancel' },
                         {
-                            text: 'Continuer quand même',
+                            text: pvm('btnContinueAnyway'),
                             onPress: async () => {
                                 await proceedWithVideoGeneration(payloadForEstimation);
                             },
@@ -5289,32 +5363,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 return;
             }
 
-            // Construire le message d'estimation
             const totalCost = estimation.total_cost_fcfa || estimation.required_fcfa || 0;
             const currentBalance = estimation.current_balance_fcfa || 0;
             const isAffordable = estimation.affordable !== false;
 
-            let costMessage = `💰 Estimation du coût de génération\n\n`;
-            costMessage += `Coût total : ${totalCost.toLocaleString('fr-FR')} FCFA\n`;
-            if (estimation.breakdown) {
-                costMessage += `\nDétail :\n`;
-                costMessage += `• Tokens IA : ${estimation.breakdown.tokens_cost_usd.toFixed(2)} USD\n`;
-                if (estimation.breakdown.audio_mastering_usd > 0) {
-                    costMessage += `• Mastering audio : ${estimation.breakdown.audio_mastering_usd.toFixed(2)} USD\n`;
-                }
-                if (estimation.breakdown.broll_generation_usd > 0) {
-                    costMessage += `• Génération B-roll : ${estimation.breakdown.broll_generation_usd.toFixed(2)} USD\n`;
-                }
-            }
-            costMessage += `\nSolde actuel : ${currentBalance.toLocaleString('fr-FR')} FCFA\n`;
+            const costMessage = buildCostEstimationMessage(totalCost, currentBalance, isAffordable, estimation);
 
-            if (!isAffordable) {
-                costMessage += `\n⚠️ Solde insuffisant !`;
-            }
-
-            // Afficher l'Alert avec confirmation
             Alert.alert(
-                'Estimation du coût',
+                pvm('costEstimationDialogTitle'),
                 costMessage,
                 [
                     {
@@ -5322,14 +5378,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         style: 'cancel',
                     },
                     {
-                        text: isAffordable ? 'Confirmer et générer' : '💳 Recharger',
+                        text: isAffordable ? pvm('btnConfirmAndGenerate') : pvm('btnRechargeShort'),
                         onPress: async () => {
                             if (!isAffordable) {
-                                // ✅ Naviguer vers l'écran de recharge de tokens
                                 navigation?.navigate('RechargeTokens' as never);
                                 return;
                             }
-                            // Continuer avec la génération
                             await proceedWithVideoGeneration(payloadForEstimation);
                         },
                     },
@@ -5347,36 +5401,21 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
             if (isBalanceError) {
                 Alert.alert(
-                    '💸 Solde insuffisant',
-                    'Votre solde est insuffisant pour générer cette vidéo. Veuillez recharger votre compte.',
+                    pvm('alertBalanceInsufficientTitle'),
+                    pvm('alertBalanceInsufficientBody'),
                     [
                         { text: t('common.cancel'), style: 'cancel' },
-                        { text: 'Recharger', onPress: () => { onClose(); navigation?.navigate('RechargeTokens' as never); } },
+                        { text: pvm('btnRecharge'), onPress: () => { onClose(); navigation?.navigate('RechargeTokens' as never); } },
                     ]
                 );
                 return;
             }
 
-            // ✅ CORRIGÉ: Messages d'erreur améliorés
-            let errorMessage = 'Erreur lors de l\'estimation du coût.';
+            const errorMessage = error?.message
+                ? buildProceedVideoGenErrorMessage(error.message)
+                : pvm('estimationErrGeneric');
 
-            if (error?.message) {
-                if (msg.includes('500') || msg.includes('internal') || msg.includes('erreur 500')) {
-                    errorMessage = 'Erreur serveur temporaire.\n\n' +
-                        'Le serveur a rencontré une erreur lors de l\'estimation.\n\n' +
-                        'Veuillez réessayer dans quelques instants.';
-                } else if (msg.includes('400') || msg.includes('bad request') || msg.includes('invalide')) {
-                    errorMessage = 'Demande invalide.\n\n' +
-                        'Vérifiez que tous les champs sont correctement remplis et réessayez.';
-                } else if (msg.includes('timeout') || msg.includes('timed out')) {
-                    errorMessage = 'Le délai d\'attente a expiré.\n\n' +
-                        'Veuillez réessayer.';
-                } else {
-                    errorMessage = error.message;
-                }
-            }
-
-            Alert.alert('Erreur d\'estimation', errorMessage, [{ text: 'OK' }]);
+            Alert.alert(pvm('alertErreurEstimationTitre'), errorMessage, [{ text: String(i18n.t('common.ok')) }]);
         }
     };
 
@@ -5384,7 +5423,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const proceedWithVideoGeneration = async (payload: VideoGenerationPayload) => {
         // ✅ CORRIGÉ: Validations complètes avant l'appel API
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Aucun produit sélectionné. Veuillez sélectionner un produit avant de générer la vidéo.');
+            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertAucunProduitVideo'));
             return;
         }
 
@@ -5393,65 +5432,55 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         if (!serviceId || serviceId === null || serviceId === undefined) {
             Alert.alert(
-                'Service invalide',
-                'Le service ID est manquant ou invalide.\n\nVeuillez sélectionner un produit valide.',
-                [{ text: 'OK' }]
+                pvm('proceedInvalidServiceTitle'),
+                pvm('proceedInvalidServiceBody'),
+                [{ text: String(i18n.t('common.ok')) }]
             );
             return;
         }
 
         if (productIndex === null || productIndex === undefined || isNaN(Number(productIndex))) {
             Alert.alert(
-                'Index produit invalide',
-                'L\'index du produit est manquant ou invalide.\n\nVeuillez sélectionner un produit valide.',
-                [{ text: 'OK' }]
+                pvm('proceedInvalidIndexTitle'),
+                pvm('proceedInvalidIndexBody'),
+                [{ text: String(i18n.t('common.ok')) }]
             );
             return;
         }
 
-        // ✅ CORRIGÉ: Vérifier que le payload contient les données minimales
         if (!payload) {
             Alert.alert(
-                'Données manquantes',
-                'Les données de génération sont manquantes.\n\nVeuillez remplir les champs requis et réessayez.',
-                [{ text: 'OK' }]
+                pvm('proceedMissingDataTitle'),
+                pvm('proceedMissingDataBody'),
+                [{ text: String(i18n.t('common.ok')) }]
             );
             return;
         }
 
-        // ✅ CORRIGÉ: Vérifier que la durée est valide
         const durationSeconds = payload.duration_seconds || ensureNumber(duration, 28);
         if (!durationSeconds || durationSeconds < 10 || durationSeconds > 90) {
             Alert.alert(
-                'Durée invalide',
-                'La durée de la vidéo doit être comprise entre 10 et 90 secondes.\n\nVeuillez ajuster la durée et réessayez.',
-                [{ text: 'OK' }]
+                pvm('proceedInvalidDurationTitle'),
+                pvm('proceedInvalidDurationBody'),
+                [{ text: String(i18n.t('common.ok')) }]
             );
             return;
         }
 
-        // ✅ CORRIGÉ: Vérifier qu'il y a au moins un script, storyboard ou timeline
         const hasScript = payload.voiceover_script && payload.voiceover_script.trim().length > 0;
         const hasStoryboard = payload.storyboard && Array.isArray(payload.storyboard) && payload.storyboard.length > 0;
         const hasTimeline = payload.timeline && payload.timeline.scenes && payload.timeline.scenes.length > 0;
 
         if (!hasScript && !hasStoryboard && !hasTimeline) {
             Alert.alert(
-                'Script requis',
-                'Aucun script, storyboard ou timeline disponible.\n\n' +
-                'Solutions :\n' +
-                '• Remplissez le script de montage\n' +
-                '• Générez un storyboard IA\n' +
-                '• Générez un brief IA\n' +
-                '• Créez une timeline avec des médias',
-                [{ text: 'OK' }]
+                pvm('proceedScriptRequiredTitle'),
+                pvm('proceedScriptRequiredBody'),
+                [{ text: String(i18n.t('common.ok')) }]
             );
             return;
         }
 
-        // ✅ CORRIGÉ: Vérifier qu'il y a des médias disponibles si nécessaire
-        // Si auto_generate_images est activé, on permet la génération même sans médias
-        const autoGenerateImages = payload.auto_generate_images !== false; // true par défaut
+        const autoGenerateImages = payload.auto_generate_images !== false;
         const hasSelectedMedia = payload.selected_media_ids && Array.isArray(payload.selected_media_ids) && payload.selected_media_ids.length > 0;
         const useProductGallery = payload.use_product_gallery === true;
         const useServiceMediatech = payload.use_service_mediatech === true;
@@ -5459,17 +5488,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         if (!autoGenerateImages && !hasSelectedMedia && !useProductGallery && !useServiceMediatech && !hasTimelineMedia) {
             Alert.alert(
-                'Médias requis',
-                'Aucun média disponible pour générer la vidéo.\n\n' +
-                'Solutions :\n' +
-                '• Sélectionnez des médias dans la médiathèque\n' +
-                '• Activez "Utiliser galerie produit"\n' +
-                '• Activez "Utiliser médiathèque service"\n' +
-                '• Ajoutez des médias à la timeline\n' +
-                '• La génération automatique d\'images IA sera activée automatiquement',
-                [{ text: 'OK' }]
+                pvm('proceedMediaRequiredTitle'),
+                pvm('proceedMediaRequiredBody'),
+                [{ text: String(i18n.t('common.ok')) }]
             );
-            // ✅ CORRIGÉ: Activer auto_generate_images automatiquement si aucun média n'est disponible
             payload.auto_generate_images = true;
         }
 
@@ -5522,13 +5544,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                 // Afficher un message informatif mais ne pas fermer le modal immédiatement
                 Alert.alert(
-                    'Génération en cours',
-                    'Votre vidéo est en cours de génération.\n\n' +
-                    'Vous pouvez suivre la progression ci-dessous.\n\n' +
-                    'Le modal restera ouvert pour afficher le résultat.',
+                    pvm('genInProgressTitle'),
+                    pvm('genInProgressBody'),
                     [
                         {
-                            text: 'OK',
+                            text: String(i18n.t('common.ok')),
                             onPress: () => {
                                 // Ne pas fermer, continuer à afficher la progression
                             }
@@ -5546,56 +5566,35 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }
 
             // ✅ Si ni job_id ni video_url, c'est une erreur
-            throw new Error('Réponse invalide : ni job_id ni video_url reçu');
+            throw new Error(pvm('genErrInvalidResponse'));
         } catch (error: any) {
             console.error('[ProductVideoCreationModal] Erreur génération vidéo:', error);
 
-            // ✅ CORRIGÉ: Messages d'erreur améliorés avec détails spécifiques
-            let errorMessage = 'Nous ne parvenons pas à générer la vidéo.';
+            let errorMessage = pvm('genErrGeneric');
 
             if (error?.message) {
                 const msg = error.message.toLowerCase();
                 if (msg.includes('aucune image') || msg.includes('image trouvée') || msg.includes('no media') || msg.includes('aucun média')) {
-                    errorMessage = 'Aucun média disponible pour générer la vidéo.\n\n' +
-                        'Solutions :\n' +
-                        '• Ajoutez des images dans la médiathèque du service\n' +
-                        '• Ajoutez des images au produit\n' +
-                        '• Activez "Utiliser galerie produit" ou "Utiliser médiathèque service"\n' +
-                        '• La génération automatique d\'images IA sera activée automatiquement lors de la prochaine tentative';
+                    errorMessage = pvm('genErrNoMedia');
                 } else if (msg.includes('400') || msg.includes('bad request') || msg.includes('invalide') || msg.includes('demande invalide')) {
-                    // ✅ AMÉLIORÉ: Extraire les détails du message d'erreur du backend si disponible
                     const backendDetails = error.message.includes('Solutions possibles')
                         ? '\n\n' + error.message.split('Solutions possibles')[1]
                         : '';
-                    errorMessage = 'Demande invalide.\n\n' +
-                        'Vérifiez que tous les champs sont correctement remplis et réessayez.\n\n' +
-                        'Champs requis :\n' +
-                        '• Durée (10-90 secondes)\n' +
-                        '• Script, storyboard ou timeline\n' +
-                        '• Au moins un média disponible ou génération IA activée' +
-                        backendDetails;
+                    errorMessage = pvm('genErrBadRequestFull', { details: backendDetails });
                 } else if (msg.includes('500') || msg.includes('internal') || msg.includes('erreur 500') || msg.includes('renderer vidéo indisponible')) {
                     if (msg.includes('renderer') || msg.includes('prévisualisation')) {
-                        errorMessage = 'Service de prévisualisation temporairement indisponible.\n\n' +
-                            'La génération de la vidéo principale peut toujours fonctionner.\n\n' +
-                            'Veuillez réessayer la prévisualisation plus tard.';
+                        errorMessage = pvm('genErrPreviewUnavailable');
                     } else {
-                        errorMessage = 'Erreur serveur temporaire.\n\n' +
-                            'Le serveur a rencontré une erreur lors de la génération.\n\n' +
-                            'Veuillez réessayer dans quelques instants. Si le problème persiste, contactez le support.';
+                        errorMessage = pvm('genErrServer');
                     }
                 } else if (msg.includes('timeout') || msg.includes('timed out')) {
-                    errorMessage = 'La génération prend plus de temps que prévu.\n\n' +
-                        'La vidéo est peut-être en cours de création. Vérifiez vos vidéos dans quelques instants.';
+                    errorMessage = pvm('genErrTimeoutLong');
                 } else if (msg.includes('solde') || msg.includes('balance') || msg.includes('tokens') || msg.includes('insuffisant')) {
-                    // ✅ AMÉLIORÉ: Message plus informatif avec bouton de redirection
-                    errorMessage = 'Solde insuffisant pour générer cette vidéo.\n\n' +
-                        'Coût estimé : ' + (msg.match(/\d+/)?.[0] || 'inconnu') + ' FCFA\n' +
-                        'Votre solde actuel est insuffisant.';
+                    const estimate = String(msg.match(/\d+/)?.[0] || pvm('genErrUnknownAmount'));
+                    errorMessage = pvm('genErrInsufficientBody', { estimate });
 
-                    // ✅ AMÉLIORÉ: Alert avec bouton de redirection vers la recharge
                     Alert.alert(
-                        'Solde insuffisant',
+                        pvm('genErrInsufficientTitle'),
                         errorMessage,
                         [
                             {
@@ -5603,12 +5602,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 style: 'cancel'
                             },
                             {
-                                text: 'Recharger mes tokens',
+                                text: pvm('btnRechargeTokens'),
                                 style: 'default',
                                 onPress: () => {
-                                    // Fermer le modal de création vidéo
                                     onClose();
-                                    // Rediriger vers l'écran de recharge
                                     if (navigation) {
                                         navigation.navigate('RechargeTokens' as never);
                                     }
@@ -5616,16 +5613,16 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             }
                         ]
                     );
-                    return; // ✅ ARRÊTER: Ne pas continuer avec l'Alert standard
+                    return;
                 } else {
                     errorMessage = error.message;
                 }
             }
 
             Alert.alert(
-                'Erreur de création vidéo',
-                errorMessage + '\n\nConseils :\n• Vérifiez que vous avez des images dans votre médiathèque\n• Activez "Générer images automatiquement" si vous n\'avez pas d\'images\n• Assurez-vous que le script ou le brief est rempli\n• Vérifiez votre connexion internet',
-                [{ text: 'OK' }]
+                pvm('genErrCreationTitle'),
+                `${errorMessage}\n\n${pvm('genErrCreationTips')}`,
+                [{ text: String(i18n.t('common.ok')) }]
             );
         } finally {
             setIsSubmitting(false);
@@ -5655,11 +5652,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 setCurrentJobId(null);
                 setIsSubmitting(false);
                 Alert.alert(
-                    '⏰ Délai dépassé',
-                    'La génération de la vidéo prend trop de temps (> 10 min).\n\n' +
-                    'Cela peut être dû à une surcharge du serveur.\n\n' +
-                    'Veuillez réessayer plus tard.',
-                    [{ text: 'OK' }]
+                    pvm('alertPollingTimeoutTitle'),
+                    pvm('alertPollingTimeoutBody'),
+                    [{ text: String(i18n.t('common.ok')) }]
                 );
                 return;
             }
@@ -5758,16 +5753,14 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     }
 
                     setJobStatus('failed');
-                    const errorMsg = job.error_message || 'Erreur inconnue lors de la génération';
+                    const errorMsg = job.error_message || pvm('erreurInconnueGeneration');
 
                     Alert.alert(
-                        '❌ Génération échouée',
-                        'La génération de la vidéo a échoué.\n\n' +
-                        'Erreur: ' + errorMsg + '\n\n' +
-                        'Veuillez réessayer ou contacter le support si le problème persiste.',
+                        pvm('alertGenerationFailedTitle'),
+                        pvm('alertGenerationFailedBody', { error: errorMsg }),
                         [
                             {
-                                text: 'OK',
+                                text: String(i18n.t('common.ok')),
                                 onPress: () => {
                                     setCurrentJobId(null);
                                     setIsSubmitting(false);
@@ -5802,6 +5795,68 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             completionHandledRef.current = false;
         }
     }, [visible]);
+
+    const generativeInitialDescription = useMemo(() => {
+        if (!selectedProduct) return '';
+        const name = normalizeProductName(selectedProduct);
+        const bits = collectProductHighlights(selectedProduct).slice(0, 8);
+        return bits.length ? `${name} — ${bits.join(' ')}` : `${name}.`;
+    }, [selectedProduct]);
+
+    const handleGenerativeVideoComplete = useCallback(async (payload: GenerativeVideoGeneratedPayload) => {
+        if (!selectedProduct?.serviceId || typeof selectedProduct.product_index !== 'number') {
+            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertSelectProduitDabord'));
+            return;
+        }
+        setGenerativeWizardVisible(false);
+        setAttachGenerativeLoading(true);
+        try {
+            const res = await mediaApi.attachGenerativeVideoToProduct(
+                selectedProduct.serviceId,
+                selectedProduct.product_index,
+                { generative_job_id: payload.generativeJobId, final_video_url: payload.videoUrl }
+            );
+            if (!res.success || !(res as any).data) {
+                throw new Error((res as any).error || pvm('generativeAttachError'));
+            }
+            const raw = (res as any).data;
+            const videoResult: GeneratedVideoResponse = {
+                success: true,
+                media_id: raw.media_id,
+                service_id: raw.service_id,
+                product_index: raw.product_index,
+                video_url: raw.video_url,
+                path: raw.path ?? raw.video_url,
+                duration_seconds: raw.duration_seconds ?? 30,
+                used_media_ids: raw.used_media_ids ?? [],
+                script_outline: raw.script_outline ?? [],
+                style: raw.style ?? null,
+                headline: raw.headline ?? null,
+                call_to_action: raw.call_to_action ?? null,
+                published_to_chat: raw.published_to_chat ?? true,
+                published_to_product_card: raw.published_to_product_card ?? true,
+                background_music_used: raw.background_music_used ?? null,
+                voiceover_generated: raw.voiceover_generated ?? false,
+                additional_outputs: raw.additional_outputs ?? [],
+                subtitles_generated: raw.subtitles_generated ?? false,
+                subtitle_url: raw.subtitle_url ?? null,
+                distribution_targets: raw.distribution_targets ?? [],
+                quality_score: raw.quality_score ?? 0,
+                immersive_timeline: raw.immersive_timeline ?? null,
+                immersive_analytics: raw.immersive_analytics ?? null,
+                orchestration_warnings: raw.orchestration_warnings ?? [],
+                progress_steps: raw.progress_steps,
+                cost_estimation: raw.cost_estimation ?? null,
+                job_id: raw.job_id ?? null,
+            };
+            await onSuccess(videoResult);
+            onClose();
+        } catch (e: any) {
+            Alert.alert(pvm('alertGenerationFailedTitle'), e?.message || pvm('generativeAttachError'));
+        } finally {
+            setAttachGenerativeLoading(false);
+        }
+    }, [selectedProduct, onSuccess, onClose]);
 
     const renderProductSelection = () => {
         if (selectedProduct) {
@@ -5860,9 +5915,9 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
         return (
             <NativeCard style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>Sélectionnez le produit à mettre en avant</Text>
+                <Text style={styles.sectionTitle}>{pvm('selectProductHighlightTitle')}</Text>
                 <Text style={styles.sectionSubtitle}>
-                    Choisissez un service puis un produit pour lancer la création automatique de votre vidéo verticale.
+                    {pvm('selectProductSubtitle')}
                 </Text>
                 {/* ✅ CORRIGÉ 2025-12-24: Utiliser ScrollView pour permettre le scroll vertical */}
                 <ScrollView
@@ -6080,7 +6135,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const handleGenerateDistribution = useCallback(async () => {
         if (!selectedProduct) {
-            Alert.alert('Produit requis', 'Sélectionnez un produit avant de générer un plan de diffusion.');
+            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertSelectProduitPlanDiffusion'));
             return;
         }
 
@@ -6099,12 +6154,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }
 
             setDistributionPlan((response.data as any).plan);
-            Alert.alert('Plan IA généré', 'Le plan de diffusion et hashtags ont été ajoutés.');
+            Alert.alert(pvm('alertPlanIaGenereTitre'), pvm('alertPlanIaGenere'));
         } catch (error) {
             console.error('[ProductVideoCreationModal] Plan IA impossible:', error);
             Alert.alert(
-                'Erreur IA',
-                error instanceof Error ? error.message : 'Impossible de générer le plan de diffusion pour le moment.'
+                pvm('errorIaTitle'),
+                error instanceof Error ? error.message : pvm('errorIaDistributionGeneric')
             );
         } finally {
             setIsGeneratingDistribution(false);
@@ -6128,7 +6183,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         <View style={styles.modalHeader}>
                             {/* Ligne 1: Titre + progression + fermer */}
                             <View style={styles.headerTopRow}>
-                                <Text style={styles.modalTitle} numberOfLines={1}>Studio vidéo produit</Text>
+                                <Text style={styles.modalTitle} numberOfLines={1}>{pvm('uiModalTitle')}</Text>
                                 <View style={styles.headerTopRight}>
                                     <View style={styles.globalProgressContainer}>
                                         <View style={styles.globalProgressBar}>
@@ -6151,19 +6206,45 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
                             {/* Ligne 2: Sous-titre compact pleine largeur */}
                             <Text style={styles.modalSubtitle} numberOfLines={2}>
-                                Assemblez en 30s une vidéo verticale prête pour TikTok, Reels et votre fiche produit.
+                                {pvm('uiModalSubtitle')}
                             </Text>
+
+                            {selectedProduct && (
+                                <TouchableOpacity
+                                    onPress={() => setGenerativeWizardVisible(true)}
+                                    disabled={isSubmitting || attachGenerativeLoading}
+                                    style={{
+                                        marginTop: 8,
+                                        paddingVertical: 8,
+                                        paddingHorizontal: 12,
+                                        borderRadius: 8,
+                                        backgroundColor: `${modernColors.primary}18`,
+                                        borderWidth: 1,
+                                        borderColor: modernColors.primary,
+                                        alignSelf: 'flex-start',
+                                    }}
+                                    activeOpacity={0.75}
+                                >
+                                    <Text style={{ fontSize: 12, fontWeight: '600', color: modernColors.primary }}>
+                                        {attachGenerativeLoading ? pvm('generativeAttachBusy') : pvm('openGenerativeWizard')}
+                                    </Text>
+                                    <Text style={{ fontSize: 10, color: modernColors.textSecondary, marginTop: 2 }}>
+                                        {pvm('openGenerativeWizardHint')}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
 
                             {/* Ligne 3: Indicateur d'étapes pleine largeur */}
                             <View style={styles.stepsIndicator}>
                                 {([
-                                    { num: 1, label: 'Produit' },
-                                    { num: 2, label: 'Médias' },
-                                    { num: 3, label: 'Style' },
-                                    { num: 4, label: 'Script' },
-                                    { num: 5, label: 'Audio' },
-                                    { num: 6, label: 'Publier' },
-                                ] as const).map(({ num: stepNum, label }) => {
+                                    { num: 1, labelKey: 'uiStepProduct' },
+                                    { num: 2, labelKey: 'uiStepMedia' },
+                                    { num: 3, labelKey: 'uiStepStyle' },
+                                    { num: 4, labelKey: 'uiStepScript' },
+                                    { num: 5, labelKey: 'uiStepAudio' },
+                                    { num: 6, labelKey: 'uiStepPublish' },
+                                ] as const).map(({ num: stepNum, labelKey }) => {
+                                    const label = pvm(labelKey);
                                     const isCompleted = completedSteps.has(stepNum as ModalStep);
                                     const isActive = activeStep === stepNum;
 
@@ -6257,13 +6338,17 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
                                             <SafeIcon name="camera-off" size={64} color={modernColors.error} />
                                             <Text style={{ fontSize: 18, fontWeight: '600', marginTop: 16, textAlign: 'center' }}>
-                                                Éditeur AR non disponible
+                                                {pvm('uiArUnavailableTitle')}
                                             </Text>
                                             <Text style={{ fontSize: 14, color: modernColors.textSecondary, marginTop: 8, textAlign: 'center' }}>
-                                                {error?.message || 'L\'éditeur AR nécessite react-native-vision-camera. Veuillez mettre à jour l\'application.'}
+                                                {pvm('uiArUnavailableBody', {
+                                                    message:
+                                                        error?.message ||
+                                                        pvm('lediteurArNecessiteReactnativevisioncameraVeuillezMettreAJou'),
+                                                })}
                                             </Text>
                                             <NativeButton
-                                                title="Fermer"
+                                                title={pvm('uiClose')}
                                                 variant="primary"
                                                 size="medium"
                                                 onPress={() => setShowAREditor(false)}
@@ -6279,7 +6364,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         <View style={getFixedBottomButtonStyle()}>
                             {activeStep === 1 && (
                                 <NativeButton
-                                    title={selectedProduct ? "Suivant" : "Sélectionnez un produit"}
+                                    title={selectedProduct ? pvm('uiNext') : pvm('uiSelectProductNav')}
                                     variant="primary"
                                     size="large"
                                     onPress={() => {
@@ -6294,12 +6379,12 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             {activeStep === 2 && (
                                 <View style={styles.navigationRow}>
                                     <NativeButton
-                                        title="Précédent"
+                                        title={pvm('uiPrevious')}
                                         variant="secondary"
                                         onPress={() => handleStepChange(1)}
                                     />
                                     <NativeButton
-                                        title="Suivant"
+                                        title={pvm('uiNext')}
                                         variant="primary"
                                         onPress={() => handleStepChange(3)}
                                     />
@@ -6308,13 +6393,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             {activeStep === 3 && (
                                 <View style={styles.navigationRow}>
                                     <NativeButton
-                                        title="Précédent"
+                                        title={pvm('uiPrevious')}
                                         variant="secondary"
                                         onPress={() => handleStepChange(2)}
                                         style={styles.navigationButtonLeft} // ✅ AJOUTÉ: Style pour positionner à gauche
                                     />
                                     <NativeButton
-                                        title="Suivant"
+                                        title={pvm('uiNext')}
                                         variant="primary"
                                         onPress={() => handleStepChange(4)}
                                         style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
@@ -6324,13 +6409,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             {activeStep === 4 && (
                                 <View style={styles.navigationRow}>
                                     <NativeButton
-                                        title="Précédent"
+                                        title={pvm('uiPrevious')}
                                         variant="secondary"
                                         onPress={() => handleStepChange(3)}
                                         style={styles.navigationButtonLeft} // ✅ AJOUTÉ: Style pour positionner à gauche
                                     />
                                     <NativeButton
-                                        title="Suivant"
+                                        title={pvm('uiNext')}
                                         variant="primary"
                                         onPress={() => handleStepChange(5)}
                                         style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
@@ -6340,13 +6425,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             {activeStep === 5 && (
                                 <View style={styles.navigationRow}>
                                     <NativeButton
-                                        title="Précédent"
+                                        title={pvm('uiPrevious')}
                                         variant="secondary"
                                         onPress={() => handleStepChange(4)}
                                         style={styles.navigationButtonLeft} // ✅ AJOUTÉ: Style pour positionner à gauche
                                     />
                                     <NativeButton
-                                        title="Suivant"
+                                        title={pvm('uiNext')}
                                         variant="primary"
                                         onPress={() => handleStepChange(6)}
                                         style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
@@ -6369,18 +6454,20 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         {selectedMediaIds.size > 0 && (
                                             <View style={styles.generateInfoItem}>
                                                 <SafeIcon name="image" size={12} color={modernColors.textSecondary} />
-                                                <Text style={styles.generateInfoText}>{selectedMediaIds.size} média(s)</Text>
+                                                <Text style={styles.generateInfoText}>
+                                                    {pvm('uiMediaCount', { count: selectedMediaIds.size })}
+                                                </Text>
                                             </View>
                                         )}
                                     </View>
                                     <View style={styles.navigationRow}>
                                         <NativeButton
-                                            title="Précédent"
+                                            title={pvm('uiPrevious')}
                                             variant="secondary"
                                             onPress={() => handleStepChange(5)}
                                         />
                                         <NativeButton
-                                            title={isSubmitting ? 'Génération en cours...' : '🎬 Générer ma vidéo'}
+                                            title={isSubmitting ? pvm('uiGenerating') : pvm('uiGenerateVideo')}
                                             variant="primary"
                                             onPress={handleSubmit}
                                             disabled={isSubmitting || !selectedProduct}
@@ -6411,7 +6498,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                     onPress={() => handleApplyBriefVariant(variant)}
                                 >
                                     <Text style={styles.variantCardTitle}>
-                                        Variante {index + 1}
+                                        {pvm('uiVariantTitle', { n: index + 1 })}
                                     </Text>
                                     {variant.hook && (
                                         <Text style={styles.variantCardHook}>{variant.hook}</Text>
@@ -6435,7 +6522,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                             style={styles.variantCloseButton}
                             onPress={() => setVariantPickerVisible(false)}
                         >
-                            <Text style={styles.variantCloseText}>Annuler</Text>
+                            <Text style={styles.variantCloseText}>{pvm('uiVariantCancel')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -6458,6 +6545,17 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     }}
                 />
             )}
+
+            <GenerativeVideoWizard
+                visible={generativeWizardVisible}
+                onClose={() => {
+                    if (!attachGenerativeLoading) {
+                        setGenerativeWizardVisible(false);
+                    }
+                }}
+                initialDescription={generativeInitialDescription}
+                onVideoGenerated={handleGenerativeVideoComplete}
+            />
         </>
     );
 };

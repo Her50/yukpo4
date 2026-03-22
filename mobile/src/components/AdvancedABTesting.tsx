@@ -59,6 +59,7 @@ export const AdvancedABTesting: React.FC<AdvancedABTestingProps> = ({
     onRemoveVariant,
     userId,
 }) => {
+    const { t } = useLanguageSafe();
     const [expanded, setExpanded] = useState(false);
     const [loadingStats, setLoadingStats] = useState(false);
     const [stats, setStats] = useState<ABTestStats[]>([]);

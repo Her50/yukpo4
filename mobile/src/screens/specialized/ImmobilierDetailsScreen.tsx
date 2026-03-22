@@ -71,8 +71,9 @@ const ImmobilierDetailsScreen: React.FC = () => {
                 try { const fav = await immobilierService.getMyFavorites(); if (fav.success && fav.data) setIsFavorite(((fav.data as unknown) as any[]).some((p: any) => p.id === propertyId)); } catch { }
                 // ✅ Load virtual tours
                 try {
-                    const virtualTours = await immobilierService.getPropertyVirtualTours(propertyId);
-                    setVirtualTours(virtualTours || []);
+                    const vtRes: any = await immobilierService.getPropertyVirtualTours(propertyId);
+                    const tours = vtRes?.success && Array.isArray(vtRes.data) ? vtRes.data : [];
+                    setVirtualTours(tours);
                 } catch (err) {
                     console.warn('[ImmobilierDetails] Failed to load virtual tours:', err);
                     setVirtualTours([]);

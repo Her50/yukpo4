@@ -2,24 +2,16 @@
 // Architecture: Backend pilote les prix → mobile cache + fallback hardcodé
 // Modèle: prix = coût_réel × 2 (marge 100%), arrondi au multiple de 5 supérieur
 //
-// COÛTS RÉELS MESURÉS (2026-03-16):
-// ┌─────────────────────────┬──────────────────────────────────┬───────────┬──────────┐
-// │ Feature                 │ Appels API                       │ Coût réel │ Prix     │
-// ├─────────────────────────┼──────────────────────────────────┼───────────┼──────────┤
-// │ POI health (2 types)    │ 4 pts × 2 Google Nearby = 8      │ ~170 XAF  │ 340 XAF  │
-// │ POI food (3 types)      │ 4 pts × 3 Google Nearby = 12     │ ~255 XAF  │ 510 XAF  │
-// │ POI fuel (1 type)       │ 4 pts × 1 Google Nearby = 4      │ ~85 XAF   │ 170 XAF  │
-// │ POI finance (1 type)    │ 4 pts × 1 = 4                    │ ~85 XAF   │ 170 XAF  │
-// │ POI auto (3 types)      │ 4 pts × 3 = 12                   │ ~255 XAF  │ 510 XAF  │
-// │ POI religion (2 types)  │ 4 pts × 2 = 8                    │ ~170 XAF  │ 340 XAF  │
-// │ POI accommodation       │ 4 pts × 1 = 4                    │ ~85 XAF   │ 170 XAF  │
-// │ Alertes communautaires  │ 1 SQL + 5 reverseGeocode max     │ ~17 XAF   │ 35 XAF   │  (consultation écran)
-// │ Stats d'activité        │ 5 SQL queries (aucune API)       │ ~0 XAF    │ GRATUIT  │
-// │ Coach IA (à la demande) │ 12 SQL + 1 LLM (GPT-4o)         │ ~3.4 XAF  │ 10 XAF   │
-// │ Coaching push mensuel   │ Notifications auto (pas de LLM)  │ ~0 XAF    │ 500 XAF  │
-// │ Recherche itinéraire    │ 1-3 Google Directions             │ ~12 XAF   │ GRATUIT  │
-// │ Sécurité/Police         │ 4 pts × 1 Google Nearby           │ ~85 XAF   │ GRATUIT  │
-// └─────────────────────────┴──────────────────────────────────┴───────────┴──────────┘
+// COÛTS RÉELS — modèle backend (TYPICAL_SEARCH_POINTS ≈ 12, marge 100 %). Voir GET /api/pricing/navigation.
+// ┌─────────────────────────┬──────────────────────────────────┬───────────┬───────────┐
+// │ Feature                 │ Modèle facturation                 │ Coût réel │ Prix XAF  │
+// ├─────────────────────────┼──────────────────────────────────┼───────────┼───────────┤
+// │ POI health (2 types G.) │ 12 pts × 2 Nearby + overhead      │ ~504 XAF  │ ~1010 XAF │
+// │ POI food (3 types)      │ 12 × 3 Nearby                       │ ~756 XAF  │ ~1515 XAF │
+// │ POI fuel / finance / h. │ 12 × 1 Nearby                       │ ~252 XAF  │ ~505 XAF  │
+// │ security                │ public → 0                          │ —         │ 0         │
+// │ Alertes communautaires  │ 1 SQL + 5 reverseGeocode max      │ ~17 XAF   │ 35 XAF    │
+// └─────────────────────────┴──────────────────────────────────┴───────────┴───────────┘
 
 import SafeStorage from '../utils/safeStorage';
 import { apiGet } from './api';
@@ -38,13 +30,13 @@ export interface NavigationFeaturePrice {
 // ══════════════════════════════════════════════════════════════════════
 
 const FALLBACK_POI_PRICES: Record<string, number> = {
-    health: 340,        // 2 types × 4 pts × 21 XAF × 2 (marge 100%)
-    food: 510,          // 3 types × 4 pts × 21 XAF × 2
-    fuel: 170,          // 1 type  × 4 pts × 21 XAF × 2
-    finance: 170,       // 1 type  × 4 pts × 21 XAF × 2
-    auto: 510,          // 3 types × 4 pts × 21 XAF × 2
-    religion: 340,      // 2 types × 4 pts × 21 XAF × 2
-    accommodation: 170, // 1 type  × 4 pts × 21 XAF × 2
+    health: 1010,       // aligné backend poi_cost(2) avec TYPICAL_SEARCH_POINTS=12 + marge 100%
+    food: 1515,         // 3 types Google dans la catégorie
+    fuel: 505,
+    finance: 505,
+    auto: 1515,
+    religion: 1010,
+    accommodation: 505,
     security: 0,        // GRATUIT — service public
 };
 
@@ -301,4 +293,13 @@ export function getPoiPricingSummary(
             priceFormatted: formatPrice(priceConverted, currency),
         };
     });
+}
+
+/** Distance en mètres → libellé court (liste POI, navigation) */
+export function formatDistance(meters: number): string {
+    const m = Number(meters) || 0;
+    if (m >= 1000) {
+        return `${(m / 1000).toFixed(1)} km`;
+    }
+    return `${Math.round(m)} m`;
 }

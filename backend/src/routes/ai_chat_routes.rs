@@ -1,16 +1,21 @@
 use axum::{
-    extract::{Extension, Json, State},
-    http::StatusCode,
+    extract::{Extension, Json, Path, State},
+    http::{HeaderMap, StatusCode},
     response::Json as ResponseJson,
-    routing::post,
+    routing::{get, post},
     Router,
 };
 use log::{error, info, warn};
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::Instant};
 
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::services::yukpo_ia_billing;
+use crate::services::yukpo_ia_chat_enrich;
+use crate::services::yukpo_ia_preprocess;
+use crate::services::yukpo_openai_outbound::{
+    acquire_concurrency_permit, post_chat_completions, resolve_openai_api_key,
+};
 use crate::state::AppState;
 use crate::utils::prompt_sanitizer::{
     detect_prompt_injection, sanitize_prompt_input, validate_input_length,
@@ -562,7 +567,7 @@ BOUNDARIES:\n\
 fn build_system_prompt_for_mode(
     context: &Option<serde_json::Value>,
     lang_instruction: &str,
-    request_type: &str,
+    _request_type: &str,
 ) -> String {
     let ctx = context.as_ref().cloned().unwrap_or(serde_json::json!({}));
 
@@ -733,9 +738,272 @@ fn truncate_for_prompt(input: &str, max_len: usize) -> String {
     format!("{}\n\n[Context truncated for stability]", &input[..end])
 }
 
+/// Contenu utilisateur texte seul ou multimodal (images) + texte enrichi pour fichiers / audio (transcription client).
+fn build_user_message_content(
+    ctx: &Option<serde_json::Value>,
+    sanitized_message: &str,
+) -> (serde_json::Value, bool) {
+    let Some(ctx) = ctx else {
+        return (
+            serde_json::Value::String(sanitized_message.to_string()),
+            false,
+        );
+    };
+    let Some(arr) = ctx.get("yukpo_ia_attachments").and_then(|v| v.as_array()) else {
+        return (
+            serde_json::Value::String(sanitized_message.to_string()),
+            false,
+        );
+    };
+    if arr.is_empty() {
+        return (
+            serde_json::Value::String(sanitized_message.to_string()),
+            false,
+        );
+    }
+
+    let mut text_combined = sanitized_message.to_string();
+    let mut has_image = false;
+    let mut image_parts: Vec<serde_json::Value> = Vec::new();
+
+    for att in arr.iter().take(8) {
+        let kind = att.get("kind").and_then(|k| k.as_str()).unwrap_or("");
+
+        let mime = att.get("mime").and_then(|m| m.as_str()).unwrap_or("application/octet-stream");
+
+        if kind == "image" {
+            if let Some(b64) = att.get("data_base64").and_then(|v| v.as_str()) {
+                let clipped: String = b64.chars().take(1_400_000).collect();
+                if !clipped.is_empty() {
+                    has_image = true;
+                    let url = format!("data:{};base64,{}", mime, clipped);
+                    image_parts.push(serde_json::json!({
+                        "type": "image_url",
+                        "image_url": {"url": url}
+                    }));
+                }
+            }
+        } else if kind == "file" {
+            let excerpt = att.get("extracted_text").and_then(|t| t.as_str()).unwrap_or("");
+            let name = att.get("name").and_then(|n| n.as_str()).unwrap_or("fichier");
+            let clip_exc: String = excerpt.chars().take(12000).collect();
+            text_combined.push_str(&format!("\n\n[Fichier joint : {}]\n{}", name, clip_exc));
+        } else if kind == "audio" {
+            let tr = att.get("transcript").and_then(|t| t.as_str()).unwrap_or("");
+            let name = att.get("name").and_then(|n| n.as_str()).unwrap_or("audio");
+            let clip_tr: String = tr.chars().take(8000).collect();
+            text_combined.push_str(&format!(
+                "\n\n[Audio : {} — transcription]\n{}",
+                name, clip_tr
+            ));
+        }
+    }
+
+    if !has_image {
+        return (serde_json::Value::String(text_combined), false);
+    }
+
+    let mut parts = vec![serde_json::json!({"type": "text", "text": text_combined})];
+    parts.extend(image_parts);
+    (serde_json::Value::Array(parts), true)
+}
+
+fn merge_billing_into_response(
+    mut body: serde_json::Value,
+    billing: serde_json::Value,
+) -> serde_json::Value {
+    if let Some(obj) = body.as_object_mut() {
+        obj.insert("billing".to_string(), billing);
+    }
+    body
+}
+
+/// Logique partagée `/ai/chat` et `/ai/contextual-chat` : YukpoIA + facturation + pièces jointes.
+/// Utilisée aussi par le **worker** file Redis (`yukpo_ia_queue_worker`).
+pub(crate) async fn yukpo_ia_chat_core_inner(
+    state: Arc<AppState>,
+    user_id: i32,
+    mut payload: ChatRequest,
+) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
+    if let Err(e) = validate_input_length(&payload.message, 5000) {
+        return Ok(ResponseJson(serde_json::json!({
+            "message": format!("Erreur: {}", e),
+            "type": "text",
+            "confidence": 0.0
+        })));
+    }
+
+    if detect_prompt_injection(&payload.message) {
+        return Ok(ResponseJson(serde_json::json!({
+            "message": "Requête rejetée pour raisons de sécurité",
+            "type": "text",
+            "confidence": 0.0
+        })));
+    }
+
+    match yukpo_ia_billing::precheck_can_use_yukpo_ia(&state.pg, user_id).await {
+        Ok(Ok(())) => {}
+        Ok(Err(err_json)) => return Ok(ResponseJson(err_json)),
+        Err(e) => {
+            error!("[YukpoIA] precheck DB: {}", e);
+            return Ok(ResponseJson(serde_json::json!({
+                "message": "Erreur serveur (vérification du quota YukpoIA). Réessayez.",
+                "type": "text",
+                "confidence": 0.0
+            })));
+        }
+    }
+
+    let sanitized_message = sanitize_prompt_input(&payload.message);
+    let user_lang = payload.language.as_deref().unwrap_or("fr");
+    // Transcription Whisper + extraction PDF / Office / texte depuis data_base64
+    let whisper_billed_units = yukpo_ia_preprocess::preprocess_yukpo_ia_attachments(
+        &state.pg,
+        user_id,
+        &mut payload.context,
+        user_lang,
+    )
+    .await;
+
+    let lang_instruction = get_language_instruction(user_lang);
+
+    let system_prompt =
+        build_system_prompt_for_mode(&payload.context, lang_instruction, &payload.r#type);
+
+    let mut messages_vec = vec![serde_json::json!({"role": "system", "content": system_prompt})];
+
+    if let Some(ctx) = &payload.context {
+        if let Some(history) = ctx.get("conversation_history").or(ctx.get("recent_messages")) {
+            if let Some(arr) = history.as_array() {
+                for msg in arr.iter().rev().take(6).collect::<Vec<_>>().into_iter().rev() {
+                    let role = msg.get("role").and_then(|v| v.as_str()).unwrap_or("user");
+                    let content = msg.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                    if !content.is_empty() {
+                        messages_vec.push(serde_json::json!({"role": role, "content": content}));
+                    }
+                }
+            }
+        }
+    }
+
+    let (user_content, has_vision) =
+        build_user_message_content(&payload.context, &sanitized_message);
+    messages_vec.push(serde_json::json!({"role": "user", "content": user_content}));
+
+    // ✅ 2026-03-22: Utilisation de AppIA multi-provider (au lieu d'appeler OpenAI directement)
+    // AppIA sélectionne automatiquement le meilleur modèle disponible par priorité
+    // avec fallback : OpenAI → Claude → Gemini → Mistral → DeepSeek → Ollama → Cohere
+    let ia_start = Instant::now();
+    let (model_name, raw_content, completion_tokens, total_tokens) = match state
+        .ia
+        .chat_completion_with_messages(&messages_vec, has_vision, 800, 0.7)
+        .await
+    {
+        Ok(result) => result,
+        Err(e) => {
+            error!(
+                "[YukpoIA] Tous les modèles IA ont échoué user_id={}, elapsed_ms={}, err={}",
+                user_id,
+                ia_start.elapsed().as_millis(),
+                e
+            );
+            return Ok(ResponseJson(serde_json::json!({
+                "message": "Erreur de connexion à l'API IA. Veuillez réessayer.",
+                "type": "text",
+                "confidence": 0.0
+            })));
+        }
+    };
+
+    info!(
+        "[YukpoIA] Succès via {} user_id={}, elapsed_ms={}, tokens={}",
+        model_name,
+        user_id,
+        ia_start.elapsed().as_millis(),
+        total_tokens
+    );
+
+    let completion_tokens = completion_tokens as i64;
+    let total_tokens = total_tokens as i64;
+
+    let mut billing = match yukpo_ia_billing::finalize_yukpo_ia_billing(
+        &state.pg,
+        user_id,
+        completion_tokens,
+        total_tokens,
+    )
+    .await
+    {
+        Ok(b) => b,
+        Err(e) => {
+            error!("[YukpoIA] finalize billing user_id={}: {}", user_id, e);
+            serde_json::json!({
+                "enabled": true,
+                "error": "billing_persist_failed",
+                "insufficient_balance": false
+            })
+        }
+    };
+
+    if whisper_billed_units > 0 {
+        if let Some(obj) = billing.as_object_mut() {
+            obj.insert(
+                "audio_transcription_units".to_string(),
+                serde_json::json!(whisper_billed_units),
+            );
+        }
+    }
+
+    let cleaned = strip_json_markdown(&raw_content);
+
+    let mut body = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cleaned) {
+        merge_billing_into_response(parsed, billing.clone())
+    } else {
+        merge_billing_into_response(
+            serde_json::json!({
+                "message": cleaned,
+                "type": "text",
+                "confidence": 0.7,
+                "suggestions": ["Plus d'informations", "Aide"]
+            }),
+            billing,
+        )
+    };
+
+    // Renforce la marque côté client (les apps peuvent aussi afficher « YukpoIA » via i18n).
+    if let Some(obj) = body.as_object_mut() {
+        obj.insert(
+            "assistant_brand".to_string(),
+            serde_json::Value::String("YukpoIA".to_string()),
+        );
+        obj.insert(
+            "model_used".to_string(),
+            serde_json::Value::String(model_name),
+        );
+    }
+
+    // Pièces jointes : inline_base64 → URL stockage ; tool_outputs → attachments ; nettoyage.
+    yukpo_ia_chat_enrich::enrich_response_attachments(&state, user_id, &mut body).await;
+
+    Ok(ResponseJson(body))
+}
+
+async fn yukpo_ia_chat_core(
+    state: Arc<AppState>,
+    user_id: i32,
+    payload: ChatRequest,
+    route_label: &'static str,
+) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
+    let started = Instant::now();
+    let res = yukpo_ia_chat_core_inner(state.clone(), user_id, payload).await;
+    let ok = res.is_ok();
+    state.yukpo_ia_metrics.record(route_label, user_id, started.elapsed(), ok);
+    res
+}
+
 /// Chat IA unifié avec OpenAI — supporte les modes assistant guide et chatbot service
 pub async fn chat_ai(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     user: Option<Extension<AuthenticatedUser>>,
     Json(payload): Json<ChatRequest>,
 ) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
@@ -758,148 +1026,101 @@ pub async fn chat_ai(
         payload.context.is_some()
     );
 
-    if let Err(e) = validate_input_length(&payload.message, 5000) {
-        return Ok(ResponseJson(serde_json::json!({
-            "message": format!("Erreur: {}", e),
-            "type": "text",
-            "confidence": 0.0
-        })));
-    }
+    yukpo_ia_chat_core(state, user_id, payload, "POST /ai/chat").await
+}
 
-    if detect_prompt_injection(&payload.message) {
-        return Ok(ResponseJson(serde_json::json!({
-            "message": "Requête rejetée pour raisons de sécurité",
-            "type": "text",
-            "confidence": 0.0
-        })));
-    }
-
-    let api_key = match std::env::var("OPENAI_API_KEY") {
-        Ok(key) => key,
-        Err(_) => {
-            return Ok(ResponseJson(serde_json::json!({
-                "message": "Erreur de configuration API",
-                "type": "text",
-                "confidence": 0.0
-            })));
+/// Soumet un chat YukpoIA en **asynchrone** : la requête est persistée (Redis) et traitée par le worker.
+pub async fn submit_yukpo_ia_chat_job(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<ChatRequest>,
+) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
+    let started = Instant::now();
+    let body = serde_json::to_value(&payload).map_err(|_| StatusCode::BAD_REQUEST)?;
+    match state.yukpo_ia_job_queue.enqueue(user.id, body).await {
+        Ok(job_id) => {
+            state
+                .yukpo_ia_metrics
+                .record("POST /ai/chat/jobs", user.id, started.elapsed(), true);
+            Ok(ResponseJson(serde_json::json!({
+                "job_id": job_id,
+                "status": "pending",
+                "poll": format!("/ai/chat/jobs/{}", job_id),
+                "message": "Job accepté — interrogez GET /ai/chat/jobs/:job_id jusqu'à status=completed"
+            })))
         }
-    };
-
-    let client = Client::new();
-    let sanitized_message = sanitize_prompt_input(&payload.message);
-    let user_lang = payload.language.as_deref().unwrap_or("fr");
-    let lang_instruction = get_language_instruction(user_lang);
-
-    let system_prompt =
-        build_system_prompt_for_mode(&payload.context, lang_instruction, &payload.r#type);
-
-    let mut messages_vec = vec![serde_json::json!({"role": "system", "content": system_prompt})];
-
-    if let Some(ctx) = &payload.context {
-        if let Some(history) = ctx.get("conversation_history").or(ctx.get("recent_messages")) {
-            if let Some(arr) = history.as_array() {
-                for msg in arr.iter().rev().take(6).collect::<Vec<_>>().into_iter().rev() {
-                    let role = msg.get("role").and_then(|v| v.as_str()).unwrap_or("user");
-                    let content = msg.get("content").and_then(|v| v.as_str()).unwrap_or("");
-                    if !content.is_empty() {
-                        messages_vec.push(serde_json::json!({"role": role, "content": content}));
-                    }
-                }
-            }
-        }
-    }
-
-    messages_vec.push(serde_json::json!({"role": "user", "content": sanitized_message}));
-
-    let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_string());
-
-    let request_body = serde_json::json!({
-        "model": model,
-        "messages": messages_vec,
-        "max_tokens": 800,
-        "temperature": 0.7
-    });
-
-    let openai_start = Instant::now();
-    let response = match client
-        .post("https://api.openai.com/v1/chat/completions")
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&request_body)
-        .send()
-        .await
-    {
-        Ok(resp) => resp,
         Err(e) => {
-            error!(
-                "[AI Chat] Erreur réseau OpenAI user_id={}, elapsed_ms={}, err={}",
-                user_id,
-                openai_start.elapsed().as_millis(),
-                e
-            );
-            return Ok(ResponseJson(serde_json::json!({
-                "message": "Erreur de connexion à l'API",
-                "type": "text",
-                "confidence": 0.0
-            })));
+            error!("[YukpoIA] enqueue job: {}", e);
+            state
+                .yukpo_ia_metrics
+                .record("POST /ai/chat/jobs", user.id, started.elapsed(), false);
+            Err(StatusCode::SERVICE_UNAVAILABLE)
         }
-    };
-
-    if !response.status().is_success() {
-        let status = response.status();
-        let error_body = response.text().await.unwrap_or_default();
-        error!(
-            "[AI Chat] OpenAI status non-success user_id={}, status={}, elapsed_ms={}, body_snippet={}",
-            user_id,
-            status.as_u16(),
-            openai_start.elapsed().as_millis(),
-            error_body.chars().take(300).collect::<String>()
-        );
-        return Ok(ResponseJson(serde_json::json!({
-            "message": "Erreur de l'API IA",
-            "type": "text",
-            "confidence": 0.0
-        })));
     }
+}
 
-    let openai_response: serde_json::Value = match response.json().await {
-        Ok(data) => data,
+/// Récupère le statut / résultat d'un job chat async (même utilisateur uniquement).
+pub async fn get_yukpo_ia_chat_job(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(job_id): Path<String>,
+) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
+    let record = match state.yukpo_ia_job_queue.get_job(&job_id).await {
+        Ok(Some(r)) => r,
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
         Err(e) => {
-            error!(
-                "[AI Chat] Erreur parsing OpenAI user_id={}, elapsed_ms={}, err={}",
-                user_id,
-                openai_start.elapsed().as_millis(),
-                e
-            );
-            return Ok(ResponseJson(serde_json::json!({
-                "message": "Erreur de parsing de la réponse",
-                "type": "text",
-                "confidence": 0.0
-            })));
+            error!("[YukpoIA] get_job: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
-    info!(
-        "[AI Chat] Succès OpenAI user_id={}, elapsed_ms={}",
-        user_id,
-        openai_start.elapsed().as_millis()
-    );
-
-    let raw_content = openai_response["choices"][0]["message"]["content"]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
-    let cleaned = strip_json_markdown(&raw_content);
-
-    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cleaned) {
-        return Ok(ResponseJson(parsed));
+    if record.user_id != user.id {
+        return Err(StatusCode::FORBIDDEN);
     }
-
+    let status_str = match record.status {
+        crate::services::yukpo_ia_job_queue::YukpoIaJobStatus::Pending => "pending",
+        crate::services::yukpo_ia_job_queue::YukpoIaJobStatus::Processing => "processing",
+        crate::services::yukpo_ia_job_queue::YukpoIaJobStatus::Completed => "completed",
+        crate::services::yukpo_ia_job_queue::YukpoIaJobStatus::Failed => "failed",
+    };
     Ok(ResponseJson(serde_json::json!({
-        "message": cleaned,
-        "type": "text",
-        "confidence": 0.7,
-        "suggestions": ["Plus d'informations", "Aide"]
+        "job_id": record.job_id,
+        "status": status_str,
+        "result": record.result,
+        "error": record.error,
+        "http_status": record.http_status,
+        "created_at_ms": record.created_at_ms,
+        "updated_at_ms": record.updated_at_ms,
     })))
+}
+
+/// Vue d’ensemble des métriques YukpoIA (ops) — protégé par `YUKPO_IA_METRICS_TOKEN` (header `x-yukpo-ia-metrics-token`).
+pub async fn yukpo_ia_metrics_overview(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
+    let expected = match std::env::var("YUKPO_IA_METRICS_TOKEN") {
+        Ok(t) if !t.trim().is_empty() => t,
+        _ => return Err(StatusCode::NOT_FOUND),
+    };
+    let got = headers.get("x-yukpo-ia-metrics-token").and_then(|v| v.to_str().ok());
+    if got != Some(expected.trim()) {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    let snap = state.yukpo_ia_metrics.snapshot();
+    let qlen = state.yukpo_ia_job_queue.queue_len().await.unwrap_or(None);
+    Ok(ResponseJson(serde_json::json!({
+        "metrics": snap,
+        "queue_depth": qlen,
+    })))
+}
+
+/// Métriques YukpoIA pour l’utilisateur connecté (par route).
+pub async fn yukpo_ia_metrics_me(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> ResponseJson<serde_json::Value> {
+    let rows = state.yukpo_ia_metrics.snapshot_for_user(user.id);
+    ResponseJson(serde_json::json!({ "user_id": user.id, "by_route": rows }))
 }
 
 /// Génère des recommandations personnalisées via OpenAI
@@ -947,7 +1168,6 @@ pub async fn get_recommendations(
         lang_instruction, preferences_str, context_str, payload.r#type,
     );
 
-    let client = Client::new();
     let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_string());
 
     let request_body = serde_json::json!({
@@ -960,14 +1180,8 @@ pub async fn get_recommendations(
         "temperature": 0.7
     });
 
-    let response = match client
-        .post("https://api.openai.com/v1/chat/completions")
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&request_body)
-        .send()
-        .await
-    {
+    let _slot = acquire_concurrency_permit().await;
+    let response = match post_chat_completions(&api_key, &request_body).await {
         Ok(resp) => resp,
         Err(e) => {
             log::error!("[AI Recommendations] OpenAI request failed: {}", e);
@@ -1036,9 +1250,9 @@ pub async fn analyze_text(
 
     let sanitized_text = sanitize_prompt_input(&payload.text);
 
-    let api_key = match std::env::var("OPENAI_API_KEY") {
-        Ok(key) => key,
-        Err(_) => {
+    let api_key = match resolve_openai_api_key() {
+        Some(key) => key,
+        None => {
             // Graceful fallback: basic local analysis if no API key
             let lower = sanitized_text.to_lowercase();
             let (sentiment, score) = if lower.contains("merci")
@@ -1097,7 +1311,6 @@ pub async fn analyze_text(
         lang_instruction,
     );
 
-    let client = Client::new();
     let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_string());
 
     let request_body = serde_json::json!({
@@ -1110,14 +1323,8 @@ pub async fn analyze_text(
         "temperature": 0.3
     });
 
-    let response = match client
-        .post("https://api.openai.com/v1/chat/completions")
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&request_body)
-        .send()
-        .await
-    {
+    let _slot = acquire_concurrency_permit().await;
+    let response = match post_chat_completions(&api_key, &request_body).await {
         Ok(resp) => resp,
         Err(e) => {
             log::error!("[AI Analyze] OpenAI request failed: {}", e);
@@ -1169,132 +1376,31 @@ pub async fn analyze_text(
 /// Receives screen context, conversation history, and user message
 /// Returns a structured response with suggested actions and visual elements
 pub async fn contextual_chat(
-    State(_state): State<Arc<AppState>>,
-    Extension(_user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<ChatRequest>,
 ) -> Result<ResponseJson<serde_json::Value>, StatusCode> {
-    if let Err(e) = validate_input_length(&payload.message, 5000) {
-        return Ok(ResponseJson(serde_json::json!({
-            "message": format!("Erreur: {}", e),
-            "type": "text",
-            "confidence": 0.0
-        })));
-    }
-
-    if detect_prompt_injection(&payload.message) {
-        return Ok(ResponseJson(serde_json::json!({
-            "message": "Requête rejetée pour raisons de sécurité",
-            "type": "text",
-            "confidence": 0.0
-        })));
-    }
-
-    let api_key = match std::env::var("OPENAI_API_KEY") {
-        Ok(key) => key,
-        Err(_) => {
-            return Ok(ResponseJson(serde_json::json!({
-                "message": "Erreur de configuration API",
-                "type": "text",
-                "confidence": 0.0
-            })));
-        }
-    };
-
-    let client = Client::new();
-    let sanitized_message = sanitize_prompt_input(&payload.message);
-    let user_lang = payload.language.as_deref().unwrap_or("fr");
-    let lang_instruction = get_language_instruction(user_lang);
-
-    let system_prompt =
-        build_system_prompt_for_mode(&payload.context, lang_instruction, &payload.r#type);
-
-    let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_string());
-
-    let mut messages_vec = vec![serde_json::json!({"role": "system", "content": system_prompt})];
-
-    if let Some(ctx) = &payload.context {
-        if let Some(history) = ctx.get("conversation_history").or(ctx.get("recent_messages")) {
-            if let Some(arr) = history.as_array() {
-                for msg in arr.iter().rev().take(6).collect::<Vec<_>>().into_iter().rev() {
-                    let role = msg.get("role").and_then(|v| v.as_str()).unwrap_or("user");
-                    let content = msg.get("content").and_then(|v| v.as_str()).unwrap_or("");
-                    if !content.is_empty() {
-                        messages_vec.push(serde_json::json!({"role": role, "content": content}));
-                    }
-                }
-            }
-        }
-    }
-
-    messages_vec.push(serde_json::json!({"role": "user", "content": sanitized_message}));
-
-    let request_body = serde_json::json!({
-        "model": model,
-        "messages": messages_vec,
-        "max_tokens": 800,
-        "temperature": 0.7
-    });
-
-    let response = match client
-        .post("https://api.openai.com/v1/chat/completions")
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&request_body)
-        .send()
-        .await
-    {
-        Ok(resp) => resp,
-        Err(_) => {
-            return Ok(ResponseJson(serde_json::json!({
-                "message": "Erreur de connexion à l'API",
-                "type": "text",
-                "confidence": 0.0
-            })));
-        }
-    };
-
-    if !response.status().is_success() {
-        return Ok(ResponseJson(serde_json::json!({
-            "message": "Erreur de l'API OpenAI",
-            "type": "text",
-            "confidence": 0.0
-        })));
-    }
-
-    let openai_response: serde_json::Value = match response.json().await {
-        Ok(data) => data,
-        Err(_) => {
-            return Ok(ResponseJson(serde_json::json!({
-                "message": "Erreur de parsing",
-                "type": "text",
-                "confidence": 0.0
-            })));
-        }
-    };
-
-    let raw_content = openai_response["choices"][0]["message"]["content"]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
-    let cleaned = strip_json_markdown(&raw_content);
-
-    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cleaned) {
-        return Ok(ResponseJson(parsed));
-    }
-
-    Ok(ResponseJson(serde_json::json!({
-        "message": cleaned,
-        "type": "text",
-        "confidence": 0.7
-    })))
+    yukpo_ia_chat_core(state, user.id, payload, "POST /ai/contextual-chat").await
 }
 
 pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     use crate::middlewares::ia_rate_limit::ia_rate_limit;
     use crate::middlewares::jwt::jwt_auth;
 
+    let metrics_ops = Router::new()
+        .route("/ai/metrics/yukpo-ia", get(yukpo_ia_metrics_overview))
+        .with_state(state.clone());
+    let metrics_me = Router::new()
+        .route("/ai/metrics/yukpo-ia/me", get(yukpo_ia_metrics_me))
+        .layer(axum::middleware::from_fn(jwt_auth))
+        .with_state(state.clone());
+
     Router::<Arc<AppState>>::new()
+        .merge(metrics_ops)
+        .merge(metrics_me)
         .route("/ai/chat", post(chat_ai))
+        .route("/ai/chat/jobs", post(submit_yukpo_ia_chat_job))
+        .route("/ai/chat/jobs/:job_id", get(get_yukpo_ia_chat_job))
         .route("/ai/contextual-chat", post(contextual_chat))
         .route("/ai/recommendations", post(get_recommendations))
         .route("/ai/analyze", post(analyze_text))

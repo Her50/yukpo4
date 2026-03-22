@@ -22,7 +22,8 @@ export type CommunityAlertType =
     | 'weather_alert';       // Alerte météo (pluie, verglas)
 
 interface CommunityAlertSound {
-    type: CommunityAlertType;
+    /** Optionnel : le type est celui de la clé parente dans COMMUNITY_ALERT_SOUNDS */
+    type?: CommunityAlertType;
     titleKey: string;
     bodyKey: string;
     emoji: string;
@@ -64,7 +65,7 @@ class CommunityAlertSoundService {
     // ✅ FIX 2026-03-18: Dedup par session — un checkpoint n'est facturé qu'une fois
     private billedCheckpointIds: Set<string> = new Set();
 
-    private constructor() {
+    constructor() {
         this.initialize();
     }
 
@@ -253,4 +254,4 @@ class CommunityAlertSoundService {
     }
 }
 
-export const communityAlertSoundService = new CommunityAlertSoundService();
+export const communityAlertSoundService = CommunityAlertSoundService.getInstance();

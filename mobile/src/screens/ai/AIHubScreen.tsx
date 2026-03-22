@@ -1,9 +1,13 @@
-// @ts-nocheck
+/**
+ * Raccourcis vers les écrans IA / recherche / création.
+ * Les liens contextuels « Accéder à » sont surtout proposés depuis le chat intelligent — pas de doublon marketing ici.
+ */
 import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Card, Text } from 'react-native-paper';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Card } from 'react-native-paper';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { modernColors } from '../../theme/modernTheme';
 
 const AIHubScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -13,26 +17,26 @@ const AIHubScreen: React.FC = () => {
     {
       title: t('ai.featureChatTitle'),
       description: t('ai.featureChatDesc'),
-      icon: '??',
+      emoji: '💬',
       onPress: () => navigation.navigate('AIChat' as never),
     },
     {
       title: t('ai.featureSearchTitle'),
       description: t('ai.featureSearchDesc'),
-      icon: '??',
+      emoji: '🔍',
       onPress: () => navigation.navigate('Search' as never),
     },
     {
       title: t('ai.featureCreateTitle'),
       description: t('ai.featureCreateDesc'),
-      icon: '??',
+      emoji: '✨',
       onPress: () => navigation.navigate('CreateService' as never),
     },
     {
       title: t('ai.featureSuggestTitle'),
       description: t('ai.featureSuggestDesc'),
-      icon: '?',
-      onPress: () => { },
+      emoji: '🎯',
+      onPress: () => navigation.navigate('Match' as never),
     },
   ];
 
@@ -40,9 +44,7 @@ const AIHubScreen: React.FC = () => {
     {
       title: t('ai.quickSearchHairdresser'),
       description: t('ai.quickSearchHairdresserDesc'),
-      onPress: () => {
-        navigation.navigate('Search' as never);
-      },
+      onPress: () => navigation.navigate('Search' as never),
     },
     {
       title: t('ai.quickCreateCleaning'),
@@ -57,80 +59,55 @@ const AIHubScreen: React.FC = () => {
   ];
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentInset}>
       <View style={styles.content}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{t('ai.hubTitle')}</Text>
-          <Text style={styles.subtitle}>
-            {t('ai.hubSubtitle')}
-          </Text>
+          <Text style={styles.subtitle}>{t('ai.hubSubtitle')}</Text>
         </View>
 
-        {/* AI Features */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('ai.featuresTitle')}</Text>
-          <View style={styles.featuresGrid}>
-            {aiFeatures.map((feature, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.featureCard}
-                onPress={feature.onPress}
-              >
-                <Text style={styles.featureIcon}>{feature.icon}</Text>
-                <Text style={styles.featureTitle}>{feature.title}</Text>
-                <Text style={styles.featureDescription}>{feature.description}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('ai.quickActionsTitle')}</Text>
-          {quickActions.map((action, index) => (
-            <Card key={index} style={styles.actionCard}>
-              <Card.Content>
-                <TouchableOpacity onPress={action.onPress}>
-                  <Text style={styles.actionTitle}>{action.title}</Text>
-                  <Text style={styles.actionDescription}>{action.description}</Text>
-                </TouchableOpacity>
-              </Card.Content>
-            </Card>
+        <Text style={styles.sectionTitle}>{t('ai.featuresTitle')}</Text>
+        <View style={styles.featuresGrid}>
+          {aiFeatures.map((feature, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.featureCard}
+              onPress={feature.onPress}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.featureEmoji} accessibilityLabel={feature.title}>
+                {feature.emoji}
+              </Text>
+              <Text style={styles.featureTitle} numberOfLines={2}>
+                {feature.title}
+              </Text>
+              <Text style={styles.featureDescription} numberOfLines={3}>
+                {feature.description}
+              </Text>
+            </TouchableOpacity>
           ))}
         </View>
 
-        {/* AI Stats */}
-        <Card style={styles.statsCard}>
-          <Card.Content>
-            <Text style={styles.sectionTitle}>{t('ai.statsTitle')}</Text>
-            <View style={styles.statsGrid}>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>1,234</Text>
-                <Text style={styles.statLabel}>{t('ai.requestsProcessed')}</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>98%</Text>
-                <Text style={styles.statLabel}>{t('ai.precision')}</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>2.3s</Text>
-                <Text style={styles.statLabel}>{t('ai.avgTime')}</Text>
-              </View>
-            </View>
-          </Card.Content>
-        </Card>
+        <Text style={[styles.sectionTitle, styles.sectionSpaced]}>{t('ai.quickActionsTitle')}</Text>
+        {quickActions.map((action, index) => (
+          <Card key={index} style={styles.actionCard}>
+            <Card.Content style={styles.actionCardInner}>
+              <TouchableOpacity onPress={action.onPress} activeOpacity={0.85}>
+                <Text style={styles.actionTitle} numberOfLines={2}>
+                  {action.title}
+                </Text>
+                <Text style={styles.actionDescription} numberOfLines={3}>
+                  {action.description}
+                </Text>
+              </TouchableOpacity>
+            </Card.Content>
+          </Card>
+        ))}
 
-        {/* Tips */}
-        <Card style={styles.tipsCard}>
+        <Card style={styles.hintCard}>
           <Card.Content>
-            <Text style={styles.sectionTitle}>{t('ai.tipsTitle')}</Text>
-            <View style={styles.tipsList}>
-              <Text style={styles.tipItem}>• {t('ai.tipPrecise')}</Text>
-              <Text style={styles.tipItem}>• {t('ai.tipKeywords')}</Text>
-              <Text style={styles.tipItem}>• {t('ai.tipLearns')}</Text>
-              <Text style={styles.tipItem}>• {t('ai.tipRephrase')}</Text>
-            </View>
+            <Text style={styles.hintTitle}>💡 {t('ai.tipsTitle')}</Text>
+            <Text style={styles.hintBody}>{t('ai.hubChatHint')}</Text>
           </Card.Content>
         </Card>
       </View>
@@ -141,34 +118,40 @@ const AIHubScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: modernColors.background,
+  },
+  contentInset: {
+    paddingBottom: 32,
   },
   content: {
     padding: 20,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  section: {
     marginBottom: 24,
   },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: modernColors.primary,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: modernColors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 8,
+  },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#333',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+    color: modernColors.text,
+  },
+  sectionSpaced: {
+    marginTop: 8,
   },
   featuresGrid: {
     flexDirection: 'row',
@@ -177,81 +160,78 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     width: '48%',
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
+    backgroundColor: modernColors.surface,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 14,
     alignItems: 'center',
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: modernColors.surfaceVariant,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
     elevation: 2,
+    minHeight: 148,
+    justifyContent: 'flex-start',
   },
-  featureIcon: {
-    fontSize: 32,
-    marginBottom: 8,
+  featureEmoji: {
+    fontSize: 36,
+    marginBottom: 10,
   },
   featureTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
-    color: '#333',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 6,
+    color: modernColors.text,
     textAlign: 'center',
   },
   featureDescription: {
     fontSize: 12,
-    color: '#666',
+    color: modernColors.textSecondary,
     textAlign: 'center',
+    lineHeight: 16,
   },
   actionCard: {
-    marginBottom: 12,
-    elevation: 2,
+    marginBottom: 10,
+    backgroundColor: modernColors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: modernColors.surfaceVariant,
+  },
+  actionCardInner: {
+    paddingVertical: 4,
   },
   actionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: modernColors.text,
+    marginBottom: 6,
   },
   actionDescription: {
     fontSize: 14,
-    color: '#666',
-  },
-  statsCard: {
-    marginBottom: 24,
-    elevation: 2,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-  },
-  tipsCard: {
-    elevation: 2,
-  },
-  tipsList: {
-    marginTop: 8,
-  },
-  tipItem: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
+    color: modernColors.textSecondary,
     lineHeight: 20,
+  },
+  hintCard: {
+    marginTop: 16,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  hintTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: modernColors.text,
+    marginBottom: 8,
+  },
+  hintBody: {
+    fontSize: 14,
+    color: modernColors.textSecondary,
+    lineHeight: 21,
   },
 });
 
 export default AIHubScreen;
-
-
-
-

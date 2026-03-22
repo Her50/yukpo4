@@ -570,9 +570,20 @@ const RechargeTokensScreen: React.FC = () => {
     return parseInt(customAmount) || 0;
   };
 
-  const renderAmountStep = () => (
+  const renderAmountStep = () => {
+    const amt = getSelectedAmount();
+    const cannotContinue = (!selectedOption && !customAmount) || amt < minimumRechargeAmount;
+
+    return (
     <View style={styles.stepContainer}>
       <Title style={styles.stepTitle}>{t('rechargeScreen.selectAmount') || 'Choisissez le montant'}</Title>
+      <View style={styles.minAmountBanner}>
+        <Text style={styles.minAmountBannerText}>
+          {(t('rechargeScreen.minRechargeRule') || 'Montant minimum : {{min}} {{symbol}} (requis pour valider la recharge).')
+            .replace('{{min}}', minimumRechargeAmount.toLocaleString())
+            .replace('{{symbol}}', userCurrency.symbol)}
+        </Text>
+      </View>
 
       {/* Options prédéfinies */}
       <View style={styles.optionsContainer}>
@@ -650,18 +661,27 @@ const RechargeTokensScreen: React.FC = () => {
         </Card.Content>
       </Card>
 
+      {cannotContinue && (
+        <Text style={styles.continueBlockedHint}>
+          {(t('rechargeScreen.continueBlockedHint') || 'Saisissez au moins {{min}} {{symbol}} ou choisissez une carte ci-dessus pour continuer.')
+            .replace('{{min}}', String(minimumRechargeAmount))
+            .replace('{{symbol}}', userCurrency.symbol)}
+        </Text>
+      )}
+
       <TouchableOpacity
         onPress={() => setCurrentStep('payment')}
-        disabled={!selectedOption && !customAmount || getSelectedAmount() < minimumRechargeAmount}
+        disabled={cannotContinue}
         style={[
           styles.nextButton,
-          ((!selectedOption && !customAmount) || getSelectedAmount() < minimumRechargeAmount) && styles.nextButtonDisabled
+          cannotContinue && styles.nextButtonDisabled
         ]}
       >
         <Text style={styles.nextButtonText}>{t('rechargeScreen.continue') || 'Continuer →'}</Text>
       </TouchableOpacity>
     </View>
-  );
+    );
+  };
 
   const renderPhoneNumberCard = () => (
     <Card style={styles.phoneCard}>
@@ -1108,6 +1128,29 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     marginTop: 6,
     fontWeight: '600',
+  },
+  minAmountBanner: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  minAmountBannerText: {
+    fontSize: 13,
+    color: '#3730A3',
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  continueBlockedHint: {
+    fontSize: 13,
+    color: '#92400E',
+    backgroundColor: '#FEF3C7',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 10,
+    lineHeight: 18,
   },
   paymentMethodsContainer: {
     marginBottom: 20,

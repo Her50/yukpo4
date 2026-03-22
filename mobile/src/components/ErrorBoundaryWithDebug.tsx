@@ -3,7 +3,16 @@ import React, { Component, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Platform } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
-import { useLanguageSafe } from '../contexts/LanguageContext';
+import i18n from '../i18n';
+
+const t = (key: string, options?: any) => {
+    try {
+        const r = i18n.t(key, options);
+        return typeof r === 'string' ? r : String(r ?? key);
+    } catch {
+        return key;
+    }
+};
 
 interface Props {
     children: ReactNode;
@@ -89,7 +98,7 @@ ${errorInfo?.componentStack}
                 <View style={styles.container}>
                     <View style={styles.header}>
                         <Ionicons name="warning" size={64} color="#EF4444" />
-                        <Text style={styles.title}>{t('errorBoundaryWithDebug.oupsUneErreurEstSurvenue')}</Text>
+                        <Text style={styles.title}>Oups — une erreur est survenue</Text>
                         <Text style={styles.subtitle}>
                             L'application a rencontré un problème
                         </Text>
@@ -129,7 +138,7 @@ ${errorInfo?.componentStack}
                             onPress={this.copyErrorToClipboard}
                         >
                             <Ionicons name="copy" size={20} color="#FFF" />
-                            <Text style={styles.buttonText}>{t('errorBoundaryWithDebug.copierLerreur')}</Text>
+                            <Text style={styles.buttonText}>Copier l&apos;erreur</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -137,7 +146,7 @@ ${errorInfo?.componentStack}
                             onPress={this.resetError}
                         >
                             <Ionicons name="refresh" size={20} color="#FFF" />
-                            <Text style={styles.buttonText}>{t('errorBoundaryWithDebug.reessayer')}</Text>
+                            <Text style={styles.buttonText}>Réessayer</Text>
                         </TouchableOpacity>
                     </View>
 

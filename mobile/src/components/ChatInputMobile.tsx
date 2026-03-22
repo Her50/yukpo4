@@ -41,6 +41,10 @@ interface ChatInputMobileProps {
     showAutocomplete?: boolean; // ✅ NOUVEAU: Activer l'autocomplete pour la recherche
     isSearchMode?: boolean; // ✅ NOUVEAU: Indique si on est en mode recherche
     isCreateService?: boolean; // ✅ NOUVEAU: Indique si on est en mode création de service
+    /** Incrémenté depuis HomeScreen pour focus le champ (ex. lien « Accéder → Recherche » du chat) */
+    focusSearchToken?: number;
+    /** Mode Créer : focus clavier (ex. lien chat « Créer avec l'IA ») */
+    focusCreateToken?: number;
 }
 
 const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
@@ -51,9 +55,13 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
     showSendButton = true,
     showAutocomplete = false, // ✅ NOUVEAU
     isSearchMode = false, // ✅ NOUVEAU
-    isCreateService = false // ✅ NOUVEAU
+    isCreateService = false, // ✅ NOUVEAU
+    focusSearchToken = 0,
+    focusCreateToken = 0,
 }) => {
     // ✅ NOUVEAU: Monitoring des re-renders
+    const textInputRef = useRef<TextInput>(null);
+
     useRenderMonitor('ChatInputMobile', {
         loading,
         showSendButton,
@@ -61,6 +69,30 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
         isSearchMode,
         isCreateService,
     });
+
+    useEffect(() => {
+        if (!focusSearchToken || !isSearchMode) return;
+        const t = setTimeout(() => {
+            try {
+                textInputRef.current?.focus();
+            } catch {
+                /* ignore */
+            }
+        }, 350);
+        return () => clearTimeout(t);
+    }, [focusSearchToken, isSearchMode]);
+
+    useEffect(() => {
+        if (!focusCreateToken || !isCreateService) return;
+        const t = setTimeout(() => {
+            try {
+                textInputRef.current?.focus();
+            } catch {
+                /* ignore */
+            }
+        }, 350);
+        return () => clearTimeout(t);
+    }, [focusCreateToken, isCreateService]);
 
     // ✅ SAFE: Utiliser la position GPS du contexte pour l'autocomplete (ne crash jamais)
     const { location } = useLocationSafe();
@@ -1092,6 +1124,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
             <View style={dynamicStyles.inputContainer}>
                 <View style={styles.inputRow}>
                     <TextInput
+                        ref={textInputRef}
                         style={[dynamicStyles.textInput, isSearchMode && styles.searchInputText]}
                         placeholder={text.length === 0 && dynamicPlaceholder ? dynamicPlaceholder : placeholder}
                         placeholderTextColor="#9CA3AF"

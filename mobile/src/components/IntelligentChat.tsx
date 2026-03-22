@@ -1,6 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Dimensions,
   Easing,
@@ -20,9 +21,22 @@ import { useScreenContext } from '../hooks/useScreenContext';
 import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 import { ChatMessage, ChatResponse, intelligentChatService, VisualElement } from '../services/intelligentChatService';
 import { modernColors } from '../theme/modernTheme';
+import { exportChatTextAsFile, openOrDownloadRemoteFile, stripSimpleMarkdownForExport } from '../utils/chatExportUtils';
+import {
+  cancelAudioRecording,
+  pickDocumentForYukpoIa,
+  pickImageForYukpoIa,
+  startAudioRecordingForYukpoIa,
+  stopAudioRecordingForYukpoIa,
+  type YukpoIaAttachmentPayload
+} from '../utils/yukpoIaAttachments';
+import GlobalShareModal, { GlobalSharePayload } from './GlobalShareModal';
 import SafeIcon from './SafeIcon';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const DEFAULT_SHARE_WEB = 'https://yukpomnang.com';
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🙏'] as const;
 
 interface IntelligentChatProps {
   visible: boolean;
@@ -42,8 +56,6 @@ const FRIENDLY_SCREEN_NAMES: Record<string, string> = {
   Services: 'Mes services (Produits)',
   MesServices: 'Mes services (Produits)',
   ServicesDashboard: 'Tableau de bord services',
-  MesServices: 'Mes services',
-  Services: 'Mes services (produits)',
   GestionServicesSpecialises: 'Services spécialisés',
   OffresEmploiHome: 'Offres d’emploi',
   HotelMeubleHome: 'Hôtels & meublés',
@@ -227,8 +239,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         ...(inferredContext?.serviceData || {}),
         ...(externalContext?.serviceData || {}),
         ...((externalContext as any)?.routeParams &&
-        typeof (externalContext as any).routeParams === 'object' &&
-        !Array.isArray((externalContext as any).routeParams)
+          typeof (externalContext as any).routeParams === 'object' &&
+          !Array.isArray((externalContext as any).routeParams)
           ? (externalContext as any).routeParams
           : {}),
       },
@@ -268,6 +280,12 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
   const [loading, setLoading] = useState(false);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [suggestedActions, setSuggestedActions] = useState<any[]>([]);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [sharePayload, setSharePayload] = useState<GlobalSharePayload | null>(null);
+  /** Réaction par id de message (affichage local) */
+  const [messageReactions, setMessageReactions] = useState<Record<string, string>>({});
+  const [pendingAttachments, setPendingAttachments] = useState<YukpoIaAttachmentPayload[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const flatListRef = useRef<FlatList>(null);
 
@@ -384,15 +402,60 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     });
   }, [onClose, slideAnim]);
 
+  const openShareForAssistantMessage = useCallback(
+    (item: ChatMessage) => {
+      setSharePayload({
+        title: (t('intelligentChat.shareTitle') as string) || 'Réponse Yukpo',
+        description: stripSimpleMarkdownForExport(item.text).slice(0, 4000),
+        shareUrl: DEFAULT_SHARE_WEB,
+        contentType: 'chat_message',
+        extraData: { source: 'intelligent_chat', messageId: item.id },
+      });
+      setShareModalVisible(true);
+    },
+    [t],
+  );
+
+  const promptExportAssistantMessage = useCallback(
+    (item: ChatMessage) => {
+      Alert.alert(
+        (t('intelligentChat.exportTitle') as string) || 'Exporter',
+        (t('intelligentChat.exportSubtitle') as string) || '',
+        [
+          { text: 'TXT', onPress: () => { void exportChatTextAsFile(item.text, 'txt'); } },
+          { text: 'Markdown', onPress: () => { void exportChatTextAsFile(item.text, 'md'); } },
+          { text: 'CSV', onPress: () => { void exportChatTextAsFile(item.text, 'csv'); } },
+          { text: (t('message.cancel') as string) || 'Annuler', style: 'cancel' },
+        ],
+      );
+    },
+    [t],
+  );
+
+  const toggleMessageReaction = useCallback((messageId: string, emoji: string) => {
+    setMessageReactions((prev) => {
+      const next = { ...prev };
+      if (next[messageId] === emoji) {
+        delete next[messageId];
+      } else {
+        next[messageId] = emoji;
+      }
+      return next;
+    });
+  }, []);
+
   const handleSendMessage = useCallback(async (messageText?: string) => {
-    const text = messageText || inputText.trim();
+    const raw = messageText ?? inputText.trim();
+    const atts = [...pendingAttachments];
+    const text = raw || (atts.length ? (t('yukpoIa.analyzeThis') as string) : '');
     if (!text || loading) return;
 
     setLastFailedMessage(null);
+    setPendingAttachments([]);
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      text,
+      text: atts.length ? `${text} \n📎×${atts.length}` : text,
       isUser: true,
       timestamp: new Date(),
       type: 'text',
@@ -407,6 +470,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         screenContext,
         messages,
         language,
+        atts.length ? { yukpoIaAttachments: atts } : undefined,
       );
 
       const aiMessage: ChatMessage = {
@@ -417,9 +481,12 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         type: response.type,
         suggestedActions: response.suggestedActions,
         visualElements: response.visualElements,
+        attachments: response.attachments,
         metadata: {
           confidence: response.confidence,
           nextSteps: response.nextSteps,
+          billing: response.billing,
+          assistantBrand: response.assistantBrand,
         },
       };
 
@@ -448,7 +515,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [inputText, loading, screenContext, messages, language]);
+  }, [inputText, loading, screenContext, messages, language, pendingAttachments, t]);
 
   const handleRetry = useCallback(() => {
     if (lastFailedMessage) {
@@ -462,12 +529,58 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
       const discoveryQuery = t('intelligentChat.discoveryQuery') || 'What is Yukpo? Show me all features';
       handleSendMessage(discoveryQuery);
     } else if (
+      action.route === 'RechercheBesoin' ||
+      action.route === 'ResultatBesoin' ||
+      action.id === 'search_services' ||
+      action.id === 'yukpo-home-search'
+    ) {
+      // Depuis l'accueil, la « recherche » = mode 🔍 + focus sur ChatInputMobile (pas l'écran résultats vide).
+      try {
+        (navigation as any).navigate('MainTabs', { screen: 'Home', params: { focusSearch: true } });
+      } catch {
+        try {
+          (navigation as any).navigate('Home', { focusSearch: true });
+        } catch {
+          /* ignore */
+        }
+      }
+      handleClose();
+    } else if (action.route === 'Home' && action.params?.focusSearch) {
+      try {
+        (navigation as any).navigate('MainTabs', { screen: 'Home', params: { focusSearch: true } });
+      } catch {
+        try {
+          (navigation as any).navigate('Home', { focusSearch: true });
+        } catch {
+          /* ignore */
+        }
+      }
+      handleClose();
+    } else if (action.route === 'Home' && action.params?.focusCreate) {
+      try {
+        (navigation as any).navigate('MainTabs', { screen: 'Home', params: { focusCreate: true } });
+      } catch {
+        try {
+          (navigation as any).navigate('Home', { focusCreate: true });
+        } catch {
+          /* ignore */
+        }
+      }
+      handleClose();
+    } else if (
       action.id === 'services' ||
       action.id === 'tab-services' ||
       action.route === 'MesServices' ||
       action.route === 'Services'
     ) {
       navigateToMesServicesHub(navigation as any);
+      handleClose();
+    } else if (action.route === 'AIHub') {
+      (navigation as any).navigate('AIChat');
+      handleClose();
+    } else if (action.route === 'HashtagDiscovery') {
+      // Sans hashtag : l'écran affiche les tendances (plus de spinner infini).
+      (navigation as any).navigate('HashtagDiscovery', { hashtag: action.params?.hashtag || '' });
       handleClose();
     } else if (action.route) {
       try {
@@ -542,6 +655,35 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
               })}
             </View>
 
+            {!isUser && item.metadata?.billing?.enabled && item.metadata?.billing?.tokens_charged > 0 && !item.metadata?.billing?.insufficient_balance && (
+              <Text style={styles.billingChip}>
+                {item.metadata.billing.from_free_quota
+                  ? t('yukpoIa.billingNoticeFree', { charged: item.metadata.billing.tokens_charged, remaining: item.metadata.billing.daily_free_remaining ?? '?' })
+                  : item.metadata.billing.units_from_wallet > 0
+                    ? t('yukpoIa.billingNoticePaid', { charged: item.metadata.billing.tokens_charged, balance: item.metadata.billing.balance_after ?? '?' })
+                    : t('yukpoIa.billingNoticeGeneric', { charged: item.metadata.billing.tokens_charged })
+                    || String(item.metadata.billing.notice)}
+              </Text>
+            )}
+
+            {!isUser && item.attachments && item.attachments.length > 0 && (
+              <View style={styles.attachmentsContainer}>
+                {item.attachments.map((att) => (
+                  <TouchableOpacity
+                    key={att.id}
+                    style={styles.attachmentChip}
+                    onPress={() => void openOrDownloadRemoteFile(att.url, att.filename)}
+                  >
+                    <SafeIcon name="paperclip" size={14} color="#6366f1" />
+                    <Text style={styles.attachmentChipText} numberOfLines={1}>
+                      {att.filename}
+                    </Text>
+                    <SafeIcon name="external-link" size={12} color={modernColors.textSecondary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
             {item.visualElements && item.visualElements.length > 0 && (
               <View style={styles.visualElementsContainer}>
                 {item.visualElements.map((element: VisualElement) => (
@@ -606,6 +748,43 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                 ))}
               </View>
             )}
+
+            {!isUser && item.id !== 'welcome' && (
+              <View style={styles.assistantMessageFooter}>
+                <View style={styles.assistantToolbar}>
+                  <TouchableOpacity
+                    style={styles.toolbarBtn}
+                    onPress={() => openShareForAssistantMessage(item)}
+                    accessibilityLabel={t('intelligentChat.shareTitle') as string}
+                  >
+                    <SafeIcon name="share-2" size={16} color={modernColors.textSecondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.toolbarBtn}
+                    onPress={() => promptExportAssistantMessage(item)}
+                    accessibilityLabel={t('intelligentChat.exportTitle') as string}
+                  >
+                    <SafeIcon name="download" size={16} color={modernColors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.reactionRow}>
+                  <Text style={styles.reactionHint}>{t('intelligentChat.reactions')}</Text>
+                  {REACTION_EMOJIS.map((em) => {
+                    const selected = messageReactions[item.id] === em;
+                    return (
+                      <TouchableOpacity
+                        key={`${item.id}-r-${em}`}
+                        style={[styles.reactionChip, selected && styles.reactionChipSelected]}
+                        onPress={() => toggleMessageReaction(item.id, em)}
+                        hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                      >
+                        <Text style={styles.reactionEmoji}>{em}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
           </View>
 
           <Text style={styles.timestamp}>
@@ -614,7 +793,15 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         </View>
       </View>
     );
-  }, [handleActionPress]);
+  }, [
+    handleActionPress,
+    handleSendMessage,
+    t,
+    openShareForAssistantMessage,
+    promptExportAssistantMessage,
+    toggleMessageReaction,
+    messageReactions,
+  ]);
 
   const renderSuggestedActions = useCallback(() => {
     if (suggestedActions.length === 0 || loading) return null;
@@ -639,78 +826,142 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
   }, [suggestedActions, handleActionPress, loading]);
 
   return (
-    <Modal visible={visible} animationType="none" transparent presentationStyle="overFullScreen">
-      <Animated.View style={[styles.safeArea, { transform: [{ translateY: slideAnim }] }]}>
-        <SafeAreaView style={styles.safeArea}>
-        <View style={[styles.container, { paddingBottom: keyboardBottomInset }]}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <SafeIcon name="x" size={22} color={modernColors.text} />
-            </TouchableOpacity>
-            <View style={styles.headerContent}>
-              <View style={styles.headerTitleRow}>
-                <View style={styles.headerAiIconWrap}>
-                  <SafeIcon name="sparkles" size={18} color="#6366f1" />
-                  <View style={styles.headerAiDot} />
+    <>
+      <Modal visible={visible} animationType="none" transparent presentationStyle="overFullScreen">
+        <Animated.View style={[styles.safeArea, { transform: [{ translateY: slideAnim }] }]}>
+          <SafeAreaView style={styles.safeArea}>
+            <View style={[styles.container, { paddingBottom: keyboardBottomInset }]}>
+              <View style={styles.header}>
+                <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+                  <SafeIcon name="x" size={22} color={modernColors.text} />
+                </TouchableOpacity>
+                <View style={styles.headerContent}>
+                  <View style={styles.headerTitleRow}>
+                    <View style={styles.headerAiIconWrap}>
+                      <SafeIcon name="sparkles" size={18} color="#6366f1" />
+                      <View style={styles.headerAiDot} />
+                    </View>
+                    <Text style={styles.headerTitle}>{t('yukpoIa.brandName') || t('intelligentChat.title') || 'YukpoIA'}</Text>
+                  </View>
+                  <View style={styles.headerStatusRow}>
+                    <View style={styles.onlineDot} />
+                    <Text style={styles.headerSubtitle}>{humanizeScreenName(screenContext.screenName)}</Text>
+                  </View>
                 </View>
-                <Text style={styles.headerTitle}>{t('intelligentChat.title') || 'Assistant IA'}</Text>
+                <View style={styles.headerPlaceholder} />
               </View>
-              <View style={styles.headerStatusRow}>
-                <View style={styles.onlineDot} />
-                <Text style={styles.headerSubtitle}>{humanizeScreenName(screenContext.screenName)}</Text>
+
+              <FlatList
+                ref={flatListRef}
+                data={messages}
+                renderItem={renderMessage}
+                keyExtractor={(item) => item.id}
+                style={styles.messagesList}
+                contentContainerStyle={styles.messagesContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+                ListFooterComponent={loading ? <TypingIndicator /> : null}
+                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              />
+
+              {lastFailedMessage && !loading && (
+                <TouchableOpacity style={styles.retryBar} onPress={handleRetry}>
+                  <SafeIcon name="refresh-cw" size={14} color="#ef4444" />
+                  <Text style={styles.retryText}>{t('intelligentChat.retryMessage') || 'Réessayer'}</Text>
+                </TouchableOpacity>
+              )}
+
+              {renderSuggestedActions()}
+
+              <View style={styles.inputContainer}>
+                {pendingAttachments.length > 0 && (
+                  <Text style={styles.pendingAttHint}>
+                    📎 {pendingAttachments.length} — {t('yukpoIa.billingLabel')}
+                  </Text>
+                )}
+                <View style={styles.mediaToolbar}>
+                  <TouchableOpacity
+                    style={styles.mediaToolBtn}
+                    onPress={async () => {
+                      const a = await pickImageForYukpoIa();
+                      if (a) setPendingAttachments((p) => [...p, a]);
+                    }}
+                    disabled={loading}
+                  >
+                    <SafeIcon name="image" size={20} color="#6366f1" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.mediaToolBtn}
+                    onPress={async () => {
+                      const a = await pickDocumentForYukpoIa();
+                      if (a) setPendingAttachments((p) => [...p, a]);
+                    }}
+                    disabled={loading}
+                  >
+                    <SafeIcon name="paperclip" size={20} color="#6366f1" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.mediaToolBtn, isRecording && { backgroundColor: '#fee2e2' }]}
+                    onPress={async () => {
+                      if (isRecording) {
+                        const a = await stopAudioRecordingForYukpoIa();
+                        setIsRecording(false);
+                        if (a) setPendingAttachments((p) => [...p, a]);
+                      } else {
+                        const ok = await startAudioRecordingForYukpoIa();
+                        setIsRecording(ok);
+                      }
+                    }}
+                    onLongPress={() => {
+                      if (isRecording) {
+                        cancelAudioRecording();
+                        setIsRecording(false);
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    <SafeIcon name={isRecording ? 'square' : 'mic'} size={20} color={isRecording ? '#dc2626' : '#6366f1'} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.inputRow}>
+                  <TextInput
+                    style={styles.textInput}
+                    value={inputText}
+                    onChangeText={setInputText}
+                    placeholder={t('intelligentChat.placeholder') || 'Posez votre question...'}
+                    placeholderTextColor={modernColors.textSecondary}
+                    multiline
+                    maxLength={500}
+                    editable={!loading}
+                    onSubmitEditing={() => handleSendMessage()}
+                    returnKeyType="send"
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.sendButton,
+                      ((!inputText.trim() && pendingAttachments.length === 0) || loading) && styles.sendButtonDisabled,
+                    ]}
+                    onPress={() => handleSendMessage()}
+                    disabled={(!inputText.trim() && pendingAttachments.length === 0) || loading}
+                  >
+                    <SafeIcon name="send" size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-            <View style={styles.headerPlaceholder} />
-          </View>
-
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
-            style={styles.messagesList}
-            contentContainerStyle={styles.messagesContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-            ListFooterComponent={loading ? <TypingIndicator /> : null}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          />
-
-          {lastFailedMessage && !loading && (
-            <TouchableOpacity style={styles.retryBar} onPress={handleRetry}>
-              <SafeIcon name="refresh-cw" size={14} color="#ef4444" />
-              <Text style={styles.retryText}>{t('intelligentChat.retryMessage') || 'Réessayer'}</Text>
-            </TouchableOpacity>
-          )}
-
-          {renderSuggestedActions()}
-
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder={t('intelligentChat.placeholder') || 'Posez votre question...'}
-              placeholderTextColor={modernColors.textSecondary}
-              multiline
-              maxLength={500}
-              editable={!loading}
-              onSubmitEditing={() => handleSendMessage()}
-              returnKeyType="send"
-            />
-            <TouchableOpacity
-              style={[styles.sendButton, (!inputText.trim() || loading) && styles.sendButtonDisabled]}
-              onPress={() => handleSendMessage()}
-              disabled={!inputText.trim() || loading}
-            >
-              <SafeIcon name="send" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-        </SafeAreaView>
-      </Animated.View>
-    </Modal>
+          </SafeAreaView>
+        </Animated.View>
+      </Modal>
+      <GlobalShareModal
+        visible={shareModalVisible}
+        onClose={() => {
+          setShareModalVisible(false);
+          setSharePayload(null);
+        }}
+        payload={sharePayload}
+      />
+    </>
   );
 };
 
@@ -860,6 +1111,71 @@ const styles = StyleSheet.create({
     marginTop: 3,
     marginHorizontal: 4,
   },
+  attachmentsContainer: {
+    marginTop: 8,
+    gap: 6,
+  },
+  attachmentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: modernColors.background,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: modernColors.border,
+    maxWidth: '100%',
+  },
+  attachmentChipText: {
+    flex: 1,
+    fontSize: 12,
+    color: modernColors.text,
+  },
+  assistantMessageFooter: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: modernColors.border,
+    gap: 8,
+  },
+  assistantToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  toolbarBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: modernColors.background,
+  },
+  reactionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  reactionHint: {
+    fontSize: 10,
+    color: modernColors.textSecondary,
+    marginRight: 4,
+  },
+  reactionChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: modernColors.background,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  reactionChipSelected: {
+    borderColor: '#6366f1',
+    backgroundColor: '#eef2ff',
+  },
+  reactionEmoji: {
+    fontSize: 18,
+  },
   visualElementsContainer: {
     marginTop: 8,
     gap: 4,
@@ -1006,14 +1322,38 @@ const styles = StyleSheet.create({
     color: '#ef4444',
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: 'column',
+    alignItems: 'stretch',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: modernColors.border,
     backgroundColor: modernColors.card,
     gap: 8,
+  },
+  pendingAttHint: {
+    fontSize: 12,
+    color: modernColors.textSecondary,
+  },
+  mediaToolbar: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  mediaToolBtn: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: modernColors.background,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  billingChip: {
+    marginTop: 6,
+    fontSize: 12,
+    color: modernColors.textSecondary,
+    fontStyle: 'italic',
   },
   textInput: {
     flex: 1,

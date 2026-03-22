@@ -13,7 +13,7 @@ use crate::services::taxi_realtime_metrics_service::{
 use crate::state::AppState;
 
 /// Créer routes WebSocket métriques temps réel
-pub fn create_taxi_realtime_metrics_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+pub fn create_taxi_realtime_metrics_routes(_state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new().route(
         "/ws/taxi/realtime-metrics",
         get(realtime_metrics_websocket_handler),

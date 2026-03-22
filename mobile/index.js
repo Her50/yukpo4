@@ -7,6 +7,14 @@ import { registerRootComponent } from 'expo';
 import { Platform, StyleSheet } from 'react-native';
 import 'react-native-gesture-handler';
 
+// Traduction globale (alignée sur translateShared / LanguageProvider)
+try {
+    const { translateWithFallback } = require('./src/i18n/translateShared');
+    global.t = translateWithFallback;
+} catch (e) {
+    console.warn('[INDEX.JS] Init global t (i18n):', e?.message || e);
+}
+
 // ✅ CRITIQUE: Initialiser AsyncStorage de manière BLOQUANTE au démarrage
 // Cela résout le problème "Driver not found" à la racine
 // ✅ AMÉLIORÉ: Attendre que l'initialisation soit complète avant de continuer

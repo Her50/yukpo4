@@ -41,7 +41,7 @@ const COLORS = {
 
 export default function BusTicketCreditsScreen() {
     const { t } = useLanguageSafe();
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation();
 
     const [credits, setCredits] = useState<TicketCredit[]>([]);
     const [activeTotal, setActiveTotal] = useState(0);

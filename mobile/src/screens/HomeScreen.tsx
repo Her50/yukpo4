@@ -10,7 +10,7 @@
 
 import * as ReactNavigation from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
 import {
     Alert,
     AppState,
@@ -118,40 +118,45 @@ const PromotionsBar: React.FC<{ navigate: (route: string) => boolean }> = ({ nav
 const HomeScreen: React.FC = () => {
     // Navigation et contextes
     const navigation = ReactNavigation.useNavigation();
+    const route = ReactNavigation.useRoute();
     const { user } = useAuth();
     const { language, setLanguage, t } = useLanguageSafe();
 
     // États simples
     const [isCreateService, setIsCreateService] = useState(false);
+    /** Incrémenté quand le chat (ou autre) demande focus sur le champ recherche */
+    const [focusSearchToken, setFocusSearchToken] = useState(0);
+    /** Incrémenté quand le chat demande mode Créer + focus sur ChatInputMobile */
+    const [focusCreateToken, setFocusCreateToken] = useState(0);
     const [loading, setLoading] = useState(false);
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
 
-    // ✅ NOUVEAU: Réinitialiser le mode sur "recherche" à chaque fois que l'écran reçoit le focus
-    // ✅ AMÉLIORÉ: Garantir que le bouton "recherche" est toujours sélectionné par défaut
-    useFocusEffect(
-        useCallback(() => {
-            console.log('[HomeScreen] ✅ Focus reçu - Réinitialisation du mode sur "recherche"');
-
-            // Forcer le mode recherche peu importe d'où l'on vient
+    // Deep links / chat : traiter en layout pour limiter les courses avec le focus (mode Créer vs 🔍)
+    useLayoutEffect(() => {
+        const params = route.params as { focusSearch?: boolean; focusCreate?: boolean } | undefined;
+        if (params?.focusCreate) {
+            console.log('[HomeScreen] focusCreate — mode Créer + focus ChatInputMobile');
+            setIsCreateService(true);
+            setFocusCreateToken((n) => n + 1);
+            try {
+                (navigation as any).setParams?.({ focusCreate: undefined });
+            } catch {
+                /* ignore */
+            }
+            return;
+        }
+        if (params?.focusSearch) {
             setIsCreateService(false);
-
-            // ✅ SÉCURITÉ: Forcer une deuxième réinitialisation après un court délai
-            // pour garantir que le mode soit bien appliqué même si le composant se re-render
-            const timeoutId = setTimeout(() => {
-                setIsCreateService(false);
-                console.log('[HomeScreen] ✅ Deuxième réinitialisation du mode sur "recherche" (sécurité)');
-            }, 100);
-
-            return () => {
-                // Nettoyer le timeout si l'écran perd le focus
-                if (timeoutId) {
-                    clearTimeout(timeoutId);
-                }
-            };
-        }, [])
-    );
+            setFocusSearchToken((n) => n + 1);
+            try {
+                (navigation as any).setParams?.({ focusSearch: undefined });
+            } catch {
+                /* ignore */
+            }
+        }
+    }, [route.params, navigation]);
     const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
     // ✅ NOUVEAU: Nombre de notifications non lues
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
@@ -772,6 +777,8 @@ const HomeScreen: React.FC = () => {
                             showAutocomplete={false} // ✅ DÉSACTIVÉ: Autocomplete désactivée pour améliorer les performances
                             isSearchMode={!isCreateService}
                             isCreateService={isCreateService}
+                            focusSearchToken={focusSearchToken}
+                            focusCreateToken={focusCreateToken}
                         />
                     </View>
 

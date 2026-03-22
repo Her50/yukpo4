@@ -7,6 +7,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 
 pub struct SpecializedPaymentService {
+    #[allow(dead_code)]
     payment_service: PaymentService,
     pool: Arc<PgPool>,
 }

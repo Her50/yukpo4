@@ -1,8 +1,45 @@
 import { ActionDescriptor, ScreenContext } from '../hooks/useScreenContext';
 import i18n from '../i18n';
+import type { YukpoIaAttachmentPayload } from '../utils/yukpoIaAttachments';
 import { apiCall } from './api';
 
 const t = (key: string, params?: Record<string, any>): string => i18n.t(key, params) as string;
+
+/** Backend / LLM peut renvoyer label comme string ou { labelKey, fallback } — toujours produire une chaîne pour React */
+function resolveActionLabel(raw: unknown): string {
+    if (raw == null) return '';
+    if (typeof raw === 'string') return raw;
+    if (typeof raw === 'object' && raw !== null && 'labelKey' in raw) {
+        const o = raw as { labelKey?: string; fallback?: string };
+        return o.labelKey ? ((t(o.labelKey) as string) || o.fallback || '') : (o.fallback || '');
+    }
+    try {
+        return String(raw);
+    } catch {
+        return '';
+    }
+}
+
+/**
+ * Fichier renvoyé par le backend / LLM (URL signée, CDN, etc.) — l’app ouvre ou télécharge puis partage.
+ *
+ * **Contrat API suggéré** (réponse `POST /ai/chat`, en complément de `message`) :
+ * ```json
+ * "attachments": [
+ *   { "url": "https://...", "filename": "note.pdf", "mime_type": "application/pdf", "format": "pdf" }
+ * ]
+ * ```
+ * Alias acceptés au parse : `generated_files`, `generatedFiles`. L’IA externe génère le fichier côté serveur
+ * (upload stockage) et ne renvoie que l’URL — le client ne reconstruit pas le PDF en local sauf export TXT/MD/CSV.
+ */
+export interface ChatAttachment {
+  id: string;
+  url: string;
+  filename: string;
+  mimeType?: string;
+  /** ex. pdf, csv, xlsx */
+  format?: string;
+}
 
 export interface ChatMessage {
   id: string;
@@ -13,6 +50,8 @@ export interface ChatMessage {
   suggestedActions?: ActionDescriptor[];
   visualElements?: VisualElement[];
   nextSteps?: string[];
+  /** Fichiers générés côté serveur / IA (optionnel) */
+  attachments?: ChatAttachment[];
   metadata?: any;
 }
 
@@ -26,6 +65,21 @@ export interface VisualElement {
   action?: ActionDescriptor;
 }
 
+/** Facturation YukpoIA (réponse POST /ai/chat, champ `billing`) */
+export interface YukpoIaBillingInfo {
+  enabled?: boolean;
+  tokens_charged?: number;
+  from_free_quota?: boolean;
+  daily_free_remaining?: number;
+  balance_after?: number | null;
+  notice?: string | null;
+  insufficient_balance?: boolean;
+  recharge_required?: boolean;
+  api_tokens?: number;
+  units_from_free?: number;
+  units_from_wallet?: number;
+}
+
 export interface ChatResponse {
   message: string;
   type: 'text' | 'action_suggestion' | 'navigation_help' | 'visual_guide';
@@ -33,6 +87,11 @@ export interface ChatResponse {
   visualElements?: VisualElement[];
   nextSteps?: string[];
   confidence?: number;
+  /** Réponse structurée du backend : fichiers générés (PDF, CSV, etc.) */
+  attachments?: ChatAttachment[];
+  /** Solde / quota YukpoIA */
+  billing?: YukpoIaBillingInfo;
+  assistantBrand?: string;
 }
 
 class IntelligentChatService {
@@ -374,6 +433,7 @@ class IntelligentChatService {
     screenContext: ScreenContext,
     conversationHistory: ChatMessage[] = [],
     lang?: string,
+    options?: { yukpoIaAttachments?: YukpoIaAttachmentPayload[] },
   ): Promise<ChatResponse> {
     try {
       const activeLang = lang || i18n.language || 'fr';
@@ -423,38 +483,43 @@ class IntelligentChatService {
 
       // Backend (Rust) exposes AI routes without the `/api` prefix: POST /ai/chat
       // No retry on /ai/chat: avoids rapid duplicate failures when backend returns 500.
+      const ctxPayload: Record<string, unknown> = {
+        screen: screenContext.screenName,
+        screen_type: screenContext.screenType,
+        available_actions: (Array.isArray(screenContext.availableActions) ? screenContext.availableActions : []).map(a => a.label).slice(0, 10),
+        visible_elements: (Array.isArray(screenContext.visibleElements) ? screenContext.visibleElements : []).map(e => e.label).slice(0, 8),
+        user_role: screenContext.userData?.role || 'guest',
+        service_data: screenContext.serviceData || null,
+        context_prompt: contextPrompt,
+        conversation_summary: conversationSummary || undefined,
+        conversation_history: conversationHistory.slice(-8).map(m => ({
+          role: m.isUser ? 'user' : 'assistant',
+          content: m.text,
+        })),
+        sentiment_context: {
+          dominant_sentiment: dominantSentiment,
+          is_correction: correction.isCorrection,
+          is_recadrage: correction.isRecadrage,
+          correction_confidence: correction.confidence,
+          emotion: correction.emotion,
+          emotion_confidence: correction.emotionConfidence,
+          is_follow_up: isFollowUp,
+          emotional_prefix: emotionalPrefix.trim() || null,
+          last_assistant_message: correction.lastAssistantMessage?.text || null,
+          conversation_turn_count: conversationHistory.length,
+        },
+      };
+      if (options?.yukpoIaAttachments?.length) {
+        ctxPayload.yukpo_ia_attachments = options.yukpoIaAttachments;
+      }
+
       let response = await apiCall<any>(
         '/ai/chat',
         {
           method: 'POST',
           body: JSON.stringify({
             message: contextualUserMessage,
-            context: {
-              screen: screenContext.screenName,
-              screen_type: screenContext.screenType,
-              available_actions: (Array.isArray(screenContext.availableActions) ? screenContext.availableActions : []).map(a => a.label).slice(0, 10),
-              visible_elements: (Array.isArray(screenContext.visibleElements) ? screenContext.visibleElements : []).map(e => e.label).slice(0, 8),
-              user_role: screenContext.userData?.role || 'guest',
-              service_data: screenContext.serviceData || null,
-              context_prompt: contextPrompt,
-              conversation_summary: conversationSummary || undefined,
-              conversation_history: conversationHistory.slice(-8).map(m => ({
-                role: m.isUser ? 'user' : 'assistant',
-                content: m.text,
-              })),
-              sentiment_context: {
-                dominant_sentiment: dominantSentiment,
-                is_correction: correction.isCorrection,
-                is_recadrage: correction.isRecadrage,
-                correction_confidence: correction.confidence,
-                emotion: correction.emotion,
-                emotion_confidence: correction.emotionConfidence,
-                is_follow_up: isFollowUp,
-                emotional_prefix: emotionalPrefix.trim() || null,
-                last_assistant_message: correction.lastAssistantMessage?.text || null,
-                conversation_turn_count: conversationHistory.length,
-              },
-            },
+            context: ctxPayload,
             type: requestType,
             language: activeLang,
           }),
@@ -472,7 +537,7 @@ class IntelligentChatService {
       }
 
       if (data?.message) {
-        const parsed = this.parseAIResponse(data, screenContext);
+        const parsed = this.parseAIResponse(data, screenContext, contextualUserMessage);
         // Ne PAS doubler le préfixe : le backend reçoit déjà le tone hint via
         // [ASSISTANT_TONE_PREFIX] et le sentiment_context — il intègre le ton
         // dans sa réponse. On ne prépend que si la réponse est très courte
@@ -516,7 +581,8 @@ class IntelligentChatService {
 
     baseFallback.suggestedActions = this.injectProactiveNavigationLinks(
       userMessage + ' ' + baseFallback.message,
-      baseFallback.suggestedActions || []
+      baseFallback.suggestedActions || [],
+      userMessage,
     );
 
     return baseFallback;
@@ -2670,7 +2736,22 @@ RESPONSE FORMAT (JSON):
     // Keyword → screen mapping for cross-screen detection
     const CROSS_SCREEN_RULES: Array<{ keywords: string[]; screen: string; label: string }> = [
       { keywords: ['navigation', 'gps', 'itineraire', 'marche libre', 'free walk', 'marche', 'walking', 'statistiques marche', 'stats marche', 'calories', 'coach ia', 'health score', 'score sante', 'fitness', 'checkpoint', 'radar', 'alerte communautaire', 'poi', 'vitesse', 'km parcourus', 'sessions marche'], screen: 'Navigation', label: 'Navigation GPS & Fitness' },
-      { keywords: ['mes services', 'mes produits', 'produit', 'service', 'vendre', 'prestataire', 'ajouter produit', 'flash promo', 'promo', 'publicite', 'video creation', 'galerie media'], screen: 'MesServices', label: 'Mes Services / Produits' },
+      {
+        keywords: [
+          'creer un produit', 'creer produit', 'nouveau produit', 'publier produit', 'mode creer', 'creer un service',
+          'assistant creation', 'chatinput', 'decrire mon produit',
+        ],
+        screen: 'Home',
+        label: 'Accueil — création (ChatInputMobile)',
+      },
+      {
+        keywords: [
+          'mes services', 'mes produits', 'catalogue prestataire', 'gerer catalogue', 'gerer mes produits', 'prestataire',
+          'flash promo', 'promo', 'publicite vendeur', 'video creation', 'galerie media', 'statistiques vendeur',
+        ],
+        screen: 'MesServices',
+        label: 'Mes Services / Produits',
+      },
       { keywords: ['catalogue produit', 'gerer produits', 'mes produits', 'dupliquer produit', 'livraison produit'], screen: 'MesProduits', label: 'Catalogue Produits' },
       { keywords: ['livre scolaire', 'bourse du livre', 'troc livre', 'manuel scolaire', 'programme scolaire', 'librairie'], screen: 'BourseLivre', label: 'Bourse du Livre' },
       { keywords: ['bus', 'billet', 'ticket voyage', 'agence voyage', 'trajet bus', 'voyage interurbain'], screen: 'TicketVoyage', label: 'Tickets Voyage' },
@@ -2861,17 +2942,159 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
   }
 
   /**
-   * Parser la réponse de l'IA
+   * Détecte une enveloppe JSON complète (message + suggested_actions ou seulement suggested_actions).
    */
-  private parseAIResponse(aiData: any, screenContext: ScreenContext): ChatResponse {
+  private tryUnwrapWholeJsonMessage(raw: string): { text: string; moreActions: any[] } {
+    const moreActions: any[] = [];
+    const t = raw.trim();
+    if (!t.startsWith('{') || !t.endsWith('}')) return { text: raw, moreActions };
+    try {
+      const parsed = JSON.parse(t);
+      const sug = Array.isArray(parsed.suggested_actions)
+        ? parsed.suggested_actions
+        : Array.isArray(parsed.suggestedActions)
+          ? parsed.suggestedActions
+          : null;
+      if (typeof parsed.message === 'string') {
+        if (sug) moreActions.push(...sug);
+        return { text: parsed.message, moreActions };
+      }
+      if (sug) {
+        moreActions.push(...sug);
+        return { text: '', moreActions };
+      }
+    } catch {
+      /* pas un JSON « enveloppe » */
+    }
+    return { text: raw, moreActions };
+  }
+
+  /**
+   * Retire du texte les objets JSON inline du type {"suggested_actions":[...]} (souvent collés par le LLM après le discours).
+   * Si keepActions est true, renvoie aussi les entrées pour les fusionner dans suggestedActions.
+   */
+  private peelSuggestedActionsBlobs(text: string, keepActions: boolean): { text: string; actions: any[] } {
+    const actions: any[] = [];
+    let s = String(text || '');
+    for (let guard = 0; guard < 20; guard++) {
+      const m = /\{\s*"(?:suggested_actions|suggestedActions)"\s*:/.exec(s);
+      if (!m) break;
+      const start = m.index;
+      let depth = 0;
+      let i = start;
+      let removed = false;
+      for (; i < s.length; i++) {
+        const ch = s[i];
+        if (ch === '{') depth++;
+        else if (ch === '}') {
+          depth--;
+          if (depth === 0) {
+            const blob = s.slice(start, i + 1);
+            try {
+              const obj = JSON.parse(blob);
+              const arr = obj && (Array.isArray(obj.suggested_actions) ? obj.suggested_actions : Array.isArray(obj.suggestedActions) ? obj.suggestedActions : null);
+              if (arr) {
+                if (keepActions) actions.push(...arr);
+                s = (s.slice(0, start) + s.slice(i + 1)).replace(/\n{3,}/g, '\n\n').trim();
+                removed = true;
+                break;
+              }
+            } catch {
+              s = (s.slice(0, start) + s.slice(i + 1)).trim();
+              removed = true;
+              break;
+            }
+            s = (s.slice(0, start) + s.slice(i + 1)).trim();
+            removed = true;
+            break;
+          }
+        }
+      }
+      if (!removed) break;
+    }
+    return { text: s, actions };
+  }
+
+  private normalizeChatAttachment(raw: unknown): ChatAttachment | null {
+    if (raw == null || typeof raw !== 'object') return null;
+    const o = raw as Record<string, unknown>;
+    const url = (o.url || o.href || o.download_url) as string | undefined;
+    if (!url || typeof url !== 'string') return null;
+    const filename = String(o.filename || o.name || o.title || 'fichier').slice(0, 200);
+    const id = String(o.id || filename || url).slice(0, 300);
+    const mimeType = (o.mime_type || o.mimeType) as string | undefined;
+    const format = (o.format || o.type) as string | undefined;
+    return { id, url, filename, mimeType, format };
+  }
+
+  /**
+   * Parser la réponse de l'IA
+   * @param userUtterance message utilisateur brut (pour scoring navigation multi-modules, indépendant des fuites JSON dans la réponse)
+   */
+  private parseAIResponse(aiData: any, screenContext: ScreenContext, userUtterance?: string): ChatResponse {
+    const raw = aiData.message != null ? String(aiData.message) : t('intelligentChat.error');
+    const unwrapped = this.tryUnwrapWholeJsonMessage(raw);
+    const peeled = this.peelSuggestedActionsBlobs(unwrapped.text, true);
+    const unwrappedStripped = this.stripTrailingApiJsonLeak(peeled.text);
+    const mergedRaw = [
+      ...(Array.isArray(aiData.suggested_actions) ? aiData.suggested_actions : []),
+      ...(Array.isArray(aiData.suggestedActions) ? aiData.suggestedActions : []),
+      ...unwrapped.moreActions,
+      ...peeled.actions,
+    ];
+
+    const attachmentSources = [
+      ...(Array.isArray(aiData.attachments) ? aiData.attachments : []),
+      ...(Array.isArray(aiData.generated_files) ? aiData.generated_files : []),
+      ...(Array.isArray(aiData.generatedFiles) ? aiData.generatedFiles : []),
+    ];
+    const attachments = attachmentSources
+      .map((a) => this.normalizeChatAttachment(a))
+      .filter(Boolean) as ChatAttachment[];
+
     const response: ChatResponse = {
-      message: this.cleanMessageText(aiData.message || t('intelligentChat.error')),
+      message: this.cleanMessageText(unwrappedStripped),
       type: aiData.type || 'text',
       confidence: aiData.confidence || 0.8,
     };
+    if (attachments.length > 0) {
+      response.attachments = attachments;
+    }
 
-    if (aiData.suggested_actions && Array.isArray(aiData.suggested_actions)) {
-      response.suggestedActions = aiData.suggested_actions
+    if (aiData.billing && typeof aiData.billing === 'object') {
+      const b = aiData.billing as Record<string, unknown>;
+      response.billing = {
+        enabled: b.enabled as boolean | undefined,
+        tokens_charged: typeof b.tokens_charged === 'number' ? b.tokens_charged : undefined,
+        from_free_quota: b.from_free_quota as boolean | undefined,
+        daily_free_remaining: typeof b.daily_free_remaining === 'number' ? b.daily_free_remaining : undefined,
+        balance_after: typeof b.balance_after === 'number' ? b.balance_after : (b.balance_after === null ? null : undefined),
+        notice: typeof b.notice === 'string' ? b.notice : undefined,
+        insufficient_balance: Boolean(b.insufficient_balance),
+        recharge_required: Boolean(b.recharge_required),
+        api_tokens: typeof b.api_tokens === 'number' ? b.api_tokens : undefined,
+        units_from_free: typeof b.units_from_free === 'number' ? b.units_from_free : undefined,
+        units_from_wallet: typeof b.units_from_wallet === 'number' ? b.units_from_wallet : undefined,
+      };
+    }
+    if (typeof aiData.assistant_brand === 'string') {
+      response.assistantBrand = aiData.assistant_brand;
+    }
+
+    if (response.billing?.recharge_required || response.billing?.insufficient_balance) {
+      const rechargeAction: ActionDescriptor = {
+        id: 'yukpo-ia-recharge',
+        label: t('yukpoIa.rechargeCta'),
+        icon: 'credit-card',
+        route: 'RechargeTokens',
+        category: 'navigation',
+        description: (t('yukpoIa.rechargeHint') as string) || '',
+      };
+      response.suggestedActions = [rechargeAction, ...(response.suggestedActions || [])];
+    }
+
+    if (mergedRaw.length) {
+      response.suggestedActions = mergedRaw
         .map((action: any) => this.mapActionFromAI(action, screenContext))
         .filter(Boolean) as ActionDescriptor[];
     }
@@ -2890,9 +3113,14 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
       response.nextSteps = aiData.follow_up_questions;
     }
 
-    // Injecter des liens de navigation proactifs basés sur le contenu
+    // Injecter des liens de navigation proactifs (question utilisateur + texte nettoyé — évite les faux négatifs si le modèle a collé du JSON)
+    const navHintUser = String(userUtterance || '')
+      .replace(/^\[ASSISTANT_TONE_PREFIX:[\s\S]*?\]\s*/i, '')
+      .trim();
     response.suggestedActions = this.injectProactiveNavigationLinks(
-      response.message, response.suggestedActions || []
+      `${navHintUser} ${response.message}`,
+      response.suggestedActions || [],
+      navHintUser,
     );
 
     return response;
@@ -2901,14 +3129,59 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
   /**
    * Nettoyer le texte du message : supprimer les blocs JSON/markdown parasites
    */
+  /**
+   * Le backend / LLM colle parfois la fin de l'objet JSON dans le champ texte
+   * (ex. `..., "type": "text", "confidence": 0.9, "suggested_actions": [...]`).
+   */
+  private stripTrailingApiJsonLeak(text: string): string {
+    let s = String(text || '');
+    const cut = (idx: number) => {
+      if (idx > 20) s = s.slice(0, idx).replace(/[,\s]+$/g, '').trim();
+    };
+    const mType = s.match(/,\s*"type"\s*:\s*"[^"]*"\s*,/);
+    if (mType && mType.index != null) cut(mType.index);
+    const mConf = s.match(/,\s*"confidence"\s*:\s*[\d.]+\s*,/);
+    if (mConf && mConf.index != null) cut(mConf.index);
+    let mSug = s.search(/\s*"(?:suggested_actions|suggestedActions)"\s*:\s*\[/);
+    if (mSug < 0) mSug = s.search(/\s*"(?:suggested_actions|suggestedActions)"\s*:\s*\{/);
+    if (mSug >= 40) cut(mSug);
+    const mNext = s.search(/\s*"next_steps"\s*:\s*\[/);
+    if (mNext >= 40) cut(mNext);
+    return s;
+  }
+
+  /**
+   * Supprime un second bloc JSON collé après le texte (LLM qui duplique l'enveloppe).
+   */
+  private stripEmbeddedDuplicateJson(text: string): string {
+    const s = String(text || '');
+    const re = /\n\s*\{[\s\n]*"(?:message|type|suggested_actions|suggestedActions|confidence)"\s*:/m;
+    const m = re.exec(s);
+    if (m && m.index > 50) {
+      return s.slice(0, m.index).replace(/[,\s]+$/g, '').trim();
+    }
+    return s;
+  }
+
   private cleanMessageText(message: string): string {
     if (!message) return '';
-    let cleaned = message;
+    // JSON inline (hors blocs markdown) — même logique que parseAIResponse mais sans conserver les actions
+    let cleaned = this.peelSuggestedActionsBlobs(message, false).text;
+    cleaned = this.stripTrailingApiJsonLeak(cleaned);
+    cleaned = this.stripEmbeddedDuplicateJson(cleaned);
 
     // Supprimer les blocs ```json ... ``` et leur contenu JSON
-    cleaned = cleaned.replace(/```json\s*\{[\s\S]*?\}\s*```/g, '').trim();
-    // Supprimer les blocs ``` génériques contenant du JSON
-    cleaned = cleaned.replace(/```\s*\{[\s\S]*?\}\s*```/g, '').trim();
+    cleaned = cleaned.replace(/```(?:json)?\s*[\s\S]*?```/gi, '').trim();
+    // Lignes entièrement JSON (souvent laissées par le modèle)
+    cleaned = cleaned
+      .split('\n')
+      .filter((line) => {
+        const t = line.trim();
+        if (!t) return true;
+        if (/^\{[\s\S]*\}$/.test(t) && (t.includes('"message"') || t.includes('"suggested_'))) return false;
+        return true;
+      })
+      .join('\n');
 
     // Si le message entier est du JSON, essayer d'extraire le champ "message"
     if (/^\s*\{/.test(cleaned) && /\}\s*$/.test(cleaned)) {
@@ -2929,9 +3202,10 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
    * Mapper une action depuis la réponse IA
    */
   private mapActionFromAI(aiAction: any, screenContext: ScreenContext): ActionDescriptor | null {
+    const aiLabelStr = resolveActionLabel(aiAction?.label);
     // Chercher l'action correspondante dans le contexte
     const matchedAction = screenContext.availableActions.find(action =>
-      action.label.toLowerCase().includes(aiAction.label?.toLowerCase()) ||
+      (aiLabelStr && typeof action.label === 'string' && action.label.toLowerCase().includes(aiLabelStr.toLowerCase())) ||
       action.id === aiAction.id
     );
 
@@ -2939,16 +3213,28 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
       return matchedAction;
     }
 
+    // Hub IA redondant : préférer l'écran Chat IA directement
+    if (aiAction.route === 'AIHub') {
+      return {
+        id: aiAction.id || 'nav-ai-chat',
+        label: aiLabelStr || 'Chat IA',
+        icon: aiAction.icon || 'message-circle',
+        route: 'AIChat',
+        category: 'navigation',
+        description: typeof aiAction.description === 'string' ? aiAction.description : resolveActionLabel(aiAction.description),
+      };
+    }
+
     // Action générique si non trouvée
     if (aiAction.route) {
       return {
         id: aiAction.id || 'custom',
-        label: aiAction.label,
+        label: aiLabelStr || resolveActionLabel(aiAction.description) || 'Action',
         icon: aiAction.icon || 'arrow-right',
         route: aiAction.route,
         params: aiAction.params,
         category: 'navigation',
-        description: aiAction.description,
+        description: typeof aiAction.description === 'string' ? aiAction.description : resolveActionLabel(aiAction.description),
       };
     }
 
@@ -2959,8 +3245,9 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
    * Mapper un élément visuel depuis la réponse IA
    */
   private mapVisualElementFromAI(aiElement: any, screenContext: ScreenContext): VisualElement | null {
+    const aiElLabel = resolveActionLabel(aiElement?.label);
     const matchedElement = screenContext.visibleElements.find(element =>
-      element.label.toLowerCase().includes(aiElement.label?.toLowerCase()) ||
+      (aiElLabel && typeof element.label === 'string' && element.label.toLowerCase().includes(aiElLabel.toLowerCase())) ||
       element.id === aiElement.id
     );
 
@@ -2975,7 +3262,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         type: validType,
         label: matchedElement.label,
         icon: matchedElement.icon,
-        description: aiElement.description || matchedElement.label,
+        description: typeof aiElement.description === 'string' ? aiElement.description : resolveActionLabel(aiElement.description) || matchedElement.label,
         position: aiElement.position,
       };
     }
@@ -3357,7 +3644,7 @@ Explorez l'avenir dès maintenant ! 👇`,
           + 'Retrouve tout dans **Mes services** et **Mon catalogue**.',
         type: 'action_suggestion',
         suggestedActions: [
-          { id: 'go-home-create', label: '✨ Créer mon produit (accueil)', icon: 'home', route: 'Home', category: 'creation', description: '' },
+          { id: 'go-home-create', label: '✨ Créer mon produit (accueil)', icon: 'home', route: 'Home', params: { focusCreate: true }, category: 'creation', description: '' },
           { id: 'mes-services-hub', label: '🧭 Gérer mes produits', icon: 'briefcase', route: 'MesServices', category: 'navigation', description: '' },
           { id: 'my-products', label: t('intelligentChat.fallback.myProducts') || '📦 Voir mon catalogue', icon: 'package', route: 'MesProduits', category: 'navigation', description: '' },
           { id: 'add-product', label: t('intelligentChat.fallback.addProduct') || '➕ Ajouter un produit', icon: 'plus', route: 'AjouterProduitSimple', category: 'creation', description: '' },
@@ -3394,7 +3681,7 @@ Explorez l'avenir dès maintenant ! 👇`,
             + '🏪 Première mise en place: l’app enregistre aussi les infos de ta boutique (nom, contacts, logo, moyens de paiement).',
           type: 'action_suggestion',
           suggestedActions: [
-            { id: 'go-home-create', label: t('intelligentChat.fallback.goCreate') || '✨ Créer maintenant', icon: 'plus', route: 'Home', category: 'creation', description: '' },
+            { id: 'go-home-create', label: t('intelligentChat.fallback.goCreate') || '✨ Créer maintenant', icon: 'plus', route: 'Home', params: { focusCreate: true }, category: 'creation', description: '' },
             { id: 'my-products', label: t('intelligentChat.fallback.myProducts') || '📦 Voir mon catalogue', icon: 'package', route: 'MesProduits', category: 'navigation', description: '' },
             { id: 'dashboard', label: t('intelligentChat.fallback.dashboard_nav') || '📊 Voir mes stats', icon: 'bar-chart-3', route: 'DashboardPrestataire', category: 'navigation', description: '' },
           ],
@@ -3749,22 +4036,80 @@ Explorez l'avenir dès maintenant ! 👇`,
           { id: 'nav-walk', label: 'Marche libre', icon: 'activity', route: 'Navigation', category: 'navigation' as const, description: 'Commencer une marche' }
         ]
       },
+      // Création vendeur : priorité absolue Accueil (ChatInputMobile, mode Créer) — MesServices = gestion / plan B
+      {
+        screen: 'Home',
+        keywords: [
+          'creer un produit', 'creer produit', 'creer un service', 'creer service',
+          'nouveau produit', 'nouveau service', 'nouvelle offre', 'ajouter un produit', 'ajouter produit',
+          'ajouter un service', 'ajouter service', 'publier un produit', 'publier produit', 'publier un service', 'publier service',
+          'mettre en ligne', 'monetiser', 'devenir vendeur', 'vendre sur yukpo', 'lancer mon activite', 'ouvrir ma boutique',
+          'comment creer', 'comment publier', 'parcours creation', 'assistant creation', 'mode creer', 'chatinput',
+          'create product', 'add product', 'new product', 'publish product', 'sell online', 'start selling',
+          'product erstellen', 'neues produkt', 'produit vendeur'
+        ],
+        contextualPrompt:
+          '**Création d’un produit ou service (recommandé)** : depuis l’**Accueil**, basculez en mode **« Créer »** puis décrivez votre offre dans **ChatInputMobile** — l’IA vous guide (formulaire intelligent ou ajout rapide selon votre profil).\n\n' +
+          '**Alternative** : onglet **Mes services** (**MesServicesScreen**) pour gérer le catalogue, les médias et les stats — utile surtout une fois l’offre créée.',
+        suggestedActions: [
+          {
+            id: 'home-create-chatinput',
+            label: 'Créer avec l’IA (Accueil — mode Créer)',
+            icon: 'sparkles',
+            route: 'Home',
+            params: { focusCreate: true },
+            category: 'creation' as const,
+            description: 'ChatInputMobile : parcours guidé recommandé',
+          },
+          {
+            id: 'services-catalog-secondary',
+            label: 'Gérer dans Mes services (catalogue)',
+            icon: 'briefcase',
+            route: 'MesServices',
+            category: 'navigation' as const,
+            description: 'Hub produits : liste, stats, promos',
+          },
+        ],
+      },
       {
         screen: 'MesServices',
         keywords: [
-          'mes services', 'mon service', 'produit', 'catalogue', 'vendre', 'ajouter produit', 'gestion',
+          'mes services', 'mon service', 'catalogue', 'gestion catalogue', 'gestion',
           'mes produits', 'vendeur', 'prestataire', 'mon catalogue', 'modifier produit', 'supprimer produit',
-          'creer', 'créer', 'creation', 'créer produit', 'créer service', 'creer produit', 'creer service',
-          'nouveau produit', 'nouveau service', 'ouvrir boutique', 'ouvrir service', 'lancer', 'demarrer',
-          'commencer', 'faire', 'comment faire', 'publier', 'mettre en ligne', 'monetiser',
-          'boutique', 'business', 'activite', 'entreprise', 'commerce', 'shop'
+          'statistique', 'statistiques', 'analytics vendeur', 'mes commandes', 'commandes recues',
+          'flash promo', 'bulk', 'desactiver produit', 'onglet services', 'hub produits', 'tableau de bord vendeur',
+          'boutique existante', 'mon inventaire', 'gerer mes produits',
         ],
-        contextualPrompt: 'Pour créer un produit ou service sur Yukpo :\n\n1. Depuis l\'Accueil, passez en mode "Créer" (bouton du haut) et décrivez votre activité dans le champ texte — l\'IA vous guide étape par étape.\n2. Vous pouvez aussi aller dans l\'onglet "Mes services" pour ajouter/modifier/supprimer vos produits, voir vos statistiques et gérer votre catalogue.',
+        contextualPrompt:
+          '**Gestion du catalogue (Mes services / MesServicesScreen)** : onglet **Mes services** pour voir la liste, modifier, stats, vidéos, promos.\n\n' +
+          '**Pour créer une nouvelle offre**, l’approche recommandée reste l’**Accueil** en mode **Créer** + **ChatInputMobile** (IA guidée) ; Mes services sert surtout à **piloter** ce qui existe déjà.',
         suggestedActions: [
-          { id: 'services-create', label: 'Créer via l\'assistant IA (Accueil)', icon: 'sparkles', route: 'Home', category: 'action' as const, description: 'Mode Créer + IA guidée' },
-          { id: 'services-add', label: 'Ajouter dans Mes Services', icon: 'plus', route: 'MesServices', category: 'action' as const, description: 'Ajout direct au catalogue' },
-          { id: 'services-manage', label: 'Gérer mon catalogue', icon: 'briefcase', route: 'MesServices', category: 'action' as const, description: 'Voir tous mes produits' }
-        ]
+          {
+            id: 'home-create-from-manage',
+            label: 'Créer une nouvelle offre (Accueil — recommandé)',
+            icon: 'sparkles',
+            route: 'Home',
+            params: { focusCreate: true },
+            category: 'creation' as const,
+            description: 'Mode Créer + ChatInputMobile',
+          },
+          {
+            id: 'services-add',
+            label: 'Ajouter dans Mes services',
+            icon: 'plus',
+            route: 'MesServices',
+            category: 'action' as const,
+            description: 'Ajout direct au catalogue',
+          },
+          {
+            id: 'services-manage',
+            label: 'Gérer mon catalogue',
+            icon: 'briefcase',
+            route: 'MesServices',
+            category: 'action' as const,
+            description: 'Voir tous mes produits',
+          },
+        ],
       },
       {
         screen: 'PharmacieHome',
@@ -4039,14 +4384,12 @@ Explorez l'avenir dès maintenant ! 👇`,
       }
     ];
 
-    // Calculer le score pour chaque contexte
-    let bestMatch: typeof contextualKeywords[0] | null = null;
-    let bestScore = 0;
-    let matchedKeywords: string[] = [];
+    // Calculer le score pour chaque contexte — fusionner les modules proches du meilleur score (ex. taxi + covoiturage)
+    const scored: Array<{ context: typeof contextualKeywords[0]; score: number; matches: string[] }> = [];
 
     for (const context of contextualKeywords) {
       let score = 0;
-      let contextMatches: string[] = [];
+      const contextMatches: string[] = [];
 
       const qWords = q.split(/\s+/).filter(w => w.length >= 3);
 
@@ -4069,27 +4412,47 @@ Explorez l'avenir dès maintenant ! 👇`,
       }
 
       if (contextMatches.length > 0) {
-        // log2 penalise moins que sqrt pour les listes longues
         score = score / Math.log2(context.keywords.length + 1);
-
-        if (score > bestScore) {
-          bestScore = score;
-          bestMatch = context;
-          matchedKeywords = contextMatches;
-        }
+        scored.push({ context, score, matches: contextMatches });
       }
     }
 
-    if (bestMatch && bestScore >= 0.9) {
-      return {
-        targetScreen: bestMatch.screen,
-        confidence: Math.min(bestScore / 3, 1), // Normaliser entre 0 et 1
-        contextualPrompt: bestMatch.contextualPrompt,
-        suggestedActions: bestMatch.suggestedActions
-      };
-    }
+    scored.sort((a, b) => b.score - a.score);
+    if (scored.length === 0) return null;
 
-    return null;
+    const top = scored[0].score;
+    if (top < 0.9) return null;
+
+    const RELATIVE_KEEP = 0.88;
+    /** Garde aussi le 2e module si scores proches (ex. taxi + covoiturage dans la même phrase). */
+    const winners = scored.filter(
+      (s) =>
+        s.score >= top * RELATIVE_KEEP ||
+        (s.score >= 0.88 && top - s.score <= 0.32),
+    );
+
+    const mergeActionsDeduped = (lists: ActionDescriptor[][]): ActionDescriptor[] => {
+      const byRoute = new Map<string, ActionDescriptor>();
+      for (const list of lists) {
+        for (const a of list || []) {
+          if (!a?.route) continue;
+          if (!byRoute.has(a.route)) byRoute.set(a.route, a);
+        }
+      }
+      return Array.from(byRoute.values());
+    };
+
+    const mergedPrompt =
+      winners.length === 1
+        ? winners[0].context.contextualPrompt
+        : winners.map((w) => `**${w.context.screen}**\n${w.context.contextualPrompt}`).join('\n\n---\n\n');
+
+    return {
+      targetScreen: winners[0].context.screen,
+      confidence: Math.min(top / 3, 1),
+      contextualPrompt: mergedPrompt,
+      suggestedActions: mergeActionsDeduped(winners.map((w) => w.context.suggestedActions || [])),
+    };
   }
 
   /**
@@ -4116,7 +4479,17 @@ Explorez l'avenir dès maintenant ! 👇`,
     route: string; label: string; icon: string; keywords: string[]; description: string;
   }> = [
     // ─── Accueil & Profil ───
-    { route: 'Home', label: 'Accueil', icon: 'home', keywords: ['accueil', 'home', 'page principale', 'ecran principal'], description: 'Retour à l\'accueil' },
+    {
+      route: 'Home',
+      label: 'Accueil',
+      icon: 'home',
+      keywords: [
+        'accueil', 'home', 'page principale', 'ecran principal',
+        // Parcours création (prioritaire — complété par injectProactiveNavigationLinks)
+        'mode creer', 'creer avec ia', 'assistant ia creation', 'decrire mon produit',
+      ],
+      description: 'Accueil Yukpo — mode Créer + ChatInputMobile pour publier une offre',
+    },
     { route: 'Profile', label: 'Mon Profil', icon: 'user', keywords: ['profil', 'compte', 'informations personnelles', 'mon compte', 'photo profil'], description: 'Gérer votre profil' },
     { route: 'Settings', label: 'Paramètres', icon: 'settings', keywords: ['parametre', 'reglage', 'configuration', 'preference', 'langue', 'notification', 'theme', 'settings'], description: 'Paramètres de l\'application' },
     { route: 'ChangePassword', label: 'Changer mot de passe', icon: 'lock', keywords: ['mot de passe', 'password', 'securite', 'changer mdp', 'modifier mot de passe'], description: 'Modifier votre mot de passe' },
@@ -4131,11 +4504,33 @@ Explorez l'avenir dès maintenant ! 👇`,
     { route: 'QRCodeShare', label: 'QR Code', icon: 'maximize', keywords: ['qr code', 'qr', 'scanner', 'partager qr', 'code qr'], description: 'Partager via QR Code' },
 
     // ─── Services & Commerce ───
-    { route: 'MesServices', label: 'Mes Services', icon: 'briefcase', keywords: ['mes services', 'produit', 'catalogue', 'vendre', 'boutique', 'creer produit', 'creer service', 'ajouter produit', 'commerce', 'vendeur', 'prestataire', 'mon activite', 'mon business'], description: 'Gérer votre catalogue de produits et services' },
-    { route: 'AjouterProduitSimple', label: 'Ajouter un Produit', icon: 'plus', keywords: ['ajouter produit', 'nouveau produit', 'publier produit', 'creer produit', 'mettre en vente'], description: 'Ajouter un nouveau produit à votre catalogue' },
+    {
+      route: 'MesServices',
+      label: 'Mes Services',
+      icon: 'briefcase',
+      keywords: [
+        'mes services', 'catalogue', 'commerce', 'boutique', 'vendeur', 'prestataire', 'mon activite', 'mon business',
+        'mes produits', 'mon catalogue', 'gerer mes produits', 'gestion produit', 'hub mes services', 'onglet services',
+        // Pas les intentions « première création » — celles-ci vont vers Home + mode Créer
+      ],
+      description: 'Gérer votre catalogue, médias et statistiques (hub Mes services)',
+    },
+    {
+      route: 'AjouterProduitSimple',
+      label: 'Ajouter un Produit',
+      icon: 'plus',
+      keywords: ['ajout rapide produit', 'formulaire court produit', 'ajouter depuis catalogue'],
+      description: 'Ajout rapide depuis le hub catalogue (secondaire vs Accueil mode Créer)',
+    },
     { route: 'MesProduits', label: 'Mes Produits', icon: 'package', keywords: ['mes produits', 'inventaire', 'stock', 'gestion produit', 'mon catalogue'], description: 'Gérer vos produits existants' },
     { route: 'ProductStats', label: 'Statistiques Produits', icon: 'bar-chart', keywords: ['statistique produit', 'ventes', 'performance produit', 'analytics produit'], description: 'Voir les statistiques de vos produits' },
-    { route: 'CreationService', label: 'Créer un Service', icon: 'plus-circle', keywords: ['creer service', 'nouveau service', 'ajouter service', 'publier service', 'demarrer activite'], description: 'Créer un nouveau service' },
+    {
+      route: 'CreationService',
+      label: 'Créer un Service',
+      icon: 'plus-circle',
+      keywords: ['ecran creation service', 'formulaire creation service direct'],
+      description: 'Accès direct formulaire service (secondaire vs Accueil mode Créer)',
+    },
     { route: 'DashboardPrestataire', label: 'Dashboard Prestataire', icon: 'bar-chart-2', keywords: ['dashboard prestataire', 'tableau de bord', 'mon activite', 'statistiques vendeur', 'performance vendeur', 'chiffre affaire'], description: 'Tableau de bord de votre activité' },
     { route: 'ProviderOrderManagement', label: 'Gestion Commandes', icon: 'clipboard', keywords: ['commande', 'gestion commande', 'commandes recues', 'traiter commande', 'order'], description: 'Gérer vos commandes reçues' },
     { route: 'Catalogue', label: 'Catalogue', icon: 'grid', keywords: ['catalogue', 'catalog', 'tous les produits', 'explorer produits', 'parcourir'], description: 'Parcourir le catalogue de produits' },
@@ -4255,8 +4650,9 @@ Explorez l'avenir dès maintenant ! 👇`,
     { route: 'DeclarationSinistre', label: 'Déclarer un Sinistre', icon: 'alert-triangle', keywords: ['sinistre', 'declarer sinistre', 'accident', 'declaration', 'dommage'], description: 'Déclarer un sinistre' },
 
     // ─── IA & Chat ───
-    { route: 'AIHub', label: 'Hub IA', icon: 'cpu', keywords: ['intelligence artificielle', 'ia', 'ai', 'hub ia', 'outils ia', 'assistant ia'], description: 'Accéder aux outils d\'IA Yukpo' },
-    { route: 'AIChat', label: 'Chat IA', icon: 'message-circle', keywords: ['chat ia', 'chatbot', 'discuter ia', 'poser question ia', 'assistant'], description: 'Discuter avec l\'assistant IA' },
+    // NOTE: pas de route « AIHub » ici — le chat doit proposer des liens directs vers les écrans métiers
+    // (Search, AIChat, FormulaireYukpoIntelligent, etc.). L’écran IA Hub reste accessible depuis l’accueil si besoin.
+    { route: 'AIChat', label: 'Chat IA', icon: 'message-circle', keywords: ['chat ia', 'chatbot', 'discuter ia', 'poser question ia', 'assistant', 'intelligence artificielle', 'assistant ia'], description: 'Discuter avec l\'assistant IA' },
     { route: 'FormulaireYukpoIntelligent', label: 'Formulaire IA', icon: 'edit', keywords: ['formulaire intelligent', 'formulaire ia', 'creation assistee', 'aide formulaire'], description: 'Formulaire intelligent assisté par IA' },
     { route: 'Match', label: 'Match', icon: 'zap', keywords: ['match', 'matching', 'correspondance', 'trouver match'], description: 'Trouver des correspondances' },
 
@@ -4267,19 +4663,139 @@ Explorez l'avenir dès maintenant ! 👇`,
     { route: 'AnalyticsDashboard', label: 'Analytics', icon: 'bar-chart-2', keywords: ['analytics', 'analyse', 'statistique', 'performance', 'graphique', 'data'], description: 'Tableau de bord analytique' },
   ];
 
+  /** Routes catalogue / formulaires directs : ne pas les proposer en premier si l’intention est « créer » depuis l’accueil. */
+  private static readonly NAV_ROUTES_DEFER_WHEN_PRODUCT_CREATION: ReadonlySet<string> = new Set([
+    'MesServices',
+    'AjouterProduitSimple',
+    'CreationService',
+    'MesProduits',
+  ]);
+
+  /**
+   * Détecte une intention de création / publication d’offre vendeur (priorité Accueil + mode Créer).
+   */
+  private matchesProductCreationIntent(normalizedMsg: string): boolean {
+    const phrases = [
+      'creer un produit',
+      'creer produit',
+      'creer un service',
+      'creer service',
+      'nouveau produit',
+      'nouveau service',
+      'nouvelle offre',
+      'ajouter un produit',
+      'ajouter produit',
+      'ajouter un service',
+      'ajouter service',
+      'publier un produit',
+      'publier produit',
+      'publier un service',
+      'publier service',
+      'mettre en ligne',
+      'devenir vendeur',
+      'vendre sur yukpo',
+      'comment creer',
+      'comment publier',
+      'mode creer',
+      'assistant creation',
+      'create product',
+      'add product',
+      'new product',
+      'publish product',
+      'sell online',
+      'start selling',
+    ];
+    if (phrases.some((p) => normalizedMsg.includes(p))) {
+      return true;
+    }
+    if (/(^|[\s,.;:!?])creer\s/.test(normalizedMsg) && /(produit|service|offre|boutique|catalogue)/.test(normalizedMsg)) {
+      return true;
+    }
+    return false;
+  }
+
   /**
    * Injecter proactivement des liens de navigation pertinents dans la réponse.
    * Analyse le message pour détecter les services mentionnés et ajoute des actions de navigation.
    */
-  private injectProactiveNavigationLinks(message: string, existingActions: ActionDescriptor[]): ActionDescriptor[] {
+  /**
+   * Garantit les boutons clés quand l'utilisateur demande plusieurs modules en une phrase (ex. taxi + covoiturage).
+   * Utilise uniquement l'intention utilisateur (pas le texte modèle qui peut contenir du JSON).
+   */
+  private ensurePinnedMultiIntentRoutes(
+    intentNormalized: string,
+    actions: ActionDescriptor[],
+    existingRoutes: Set<string>,
+  ): void {
+    const goToPrefix = i18n.t('intelligentChat.goTo', { defaultValue: 'Accéder →' }) as string;
+    const addPin = (route: string) => {
+      if (existingRoutes.has(route)) return;
+      const entry = IntelligentChatService.YUKPO_NAV_MAP.find((e) => e.route === route);
+      if (!entry) return;
+      existingRoutes.add(route);
+      const translatedLabel = i18n.t(`intelligentChat.screen.${route}`, { defaultValue: entry.label }) as string;
+      const translatedDesc = i18n.t(`intelligentChat.screenDesc.${route}`, { defaultValue: entry.description }) as string;
+      actions.unshift({
+        id: `nav-pin-${route}`,
+        label: `${goToPrefix} ${translatedLabel}`,
+        icon: entry.icon,
+        route: entry.route,
+        category: 'action' as const,
+        description: translatedDesc,
+      });
+    };
+    if (/\b(taxi|vtc|chauffeur\s+taxi)\b/.test(intentNormalized)) {
+      addPin('TaxiHome');
+    }
+    if (/\b(covoiturage|covoit|trajet\s+partage|carpooling)\b/.test(intentNormalized)) {
+      addPin('CovoiturageHome');
+    }
+  }
+
+  /**
+   * @param message Texte pour matcher les mots-clés YUKPO_NAV (réponse + question)
+   * @param userIntentOnly Optionnel : intention brute utilisateur (pins multi-modules, sans pollution JSON)
+   */
+  private injectProactiveNavigationLinks(
+    message: string,
+    existingActions: ActionDescriptor[],
+    userIntentOnly?: string,
+  ): ActionDescriptor[] {
     const actions = [...existingActions];
-    const existingRoutes = new Set(actions.map(a => a.route).filter(Boolean));
+    const existingRoutes = new Set(actions.map((a) => a.route).filter(Boolean));
     const normalizedMsg = message.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const intentNorm = (userIntentOnly || message)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const creationFirst = this.matchesProductCreationIntent(normalizedMsg);
+
+    const hasHomeCreate = actions.some((a) => a.route === 'Home' && (a.params as { focusCreate?: boolean } | undefined)?.focusCreate);
+    if (creationFirst && !hasHomeCreate && !existingRoutes.has('Home')) {
+      const goToPrefix = i18n.t('intelligentChat.goTo', { defaultValue: 'Accéder →' }) as string;
+      const label = i18n.t('intelligentChat.screen.homeCreate', { defaultValue: 'Créer avec l’IA (Accueil)' }) as string;
+      const desc = i18n.t('intelligentChat.screenDesc.homeCreate', {
+        defaultValue: 'Mode Créer + ChatInputMobile — parcours recommandé',
+      }) as string;
+      actions.unshift({
+        id: 'nav-home-create-priority',
+        label: `${goToPrefix} ${label}`,
+        icon: 'sparkles',
+        route: 'Home',
+        params: { focusCreate: true },
+        category: 'creation',
+        description: desc,
+      });
+      existingRoutes.add('Home');
+    }
 
     const matchedServices: Array<{ entry: typeof IntelligentChatService.YUKPO_NAV_MAP[0]; score: number }> = [];
 
     for (const entry of IntelligentChatService.YUKPO_NAV_MAP) {
       if (existingRoutes.has(entry.route)) continue;
+      if (creationFirst && IntelligentChatService.NAV_ROUTES_DEFER_WHEN_PRODUCT_CREATION.has(entry.route)) {
+        continue;
+      }
       let score = 0;
       for (const kw of entry.keywords) {
         const normalizedKw = kw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -4293,7 +4809,7 @@ Explorez l'avenir dès maintenant ! 👇`,
     }
 
     matchedServices.sort((a, b) => b.score - a.score);
-    const topMatches = matchedServices.slice(0, 3);
+    const topMatches = matchedServices.slice(0, 6);
 
     const goToPrefix = i18n.t('intelligentChat.goTo', { defaultValue: 'Accéder →' }) as string;
 
@@ -4310,7 +4826,26 @@ Explorez l'avenir dès maintenant ! 👇`,
       });
     }
 
-    return actions;
+    this.ensurePinnedMultiIntentRoutes(intentNorm, actions, existingRoutes);
+
+    return this.dedupeNavigationActionsByRoute(actions);
+  }
+
+  /** Une entrée par route (+ params) pour éviter nav-* et nav-pin-* en double. */
+  private dedupeNavigationActionsByRoute(actions: ActionDescriptor[]): ActionDescriptor[] {
+    const seen = new Set<string>();
+    const out: ActionDescriptor[] = [];
+    for (const a of actions) {
+      if (!a?.route) {
+        out.push(a);
+        continue;
+      }
+      const pk = `${a.route}:${JSON.stringify((a as ActionDescriptor).params ?? null)}`;
+      if (seen.has(pk)) continue;
+      seen.add(pk);
+      out.push(a);
+    }
+    return out;
   }
 
   /**
@@ -4318,7 +4853,7 @@ Explorez l'avenir dès maintenant ! 👇`,
    * API publique pour les composants qui veulent enrichir leurs réponses.
    */
   public getNavigationLinksForMessage(message: string): ActionDescriptor[] {
-    return this.injectProactiveNavigationLinks(message, []);
+    return this.injectProactiveNavigationLinks(message, [], message);
   }
 
   /**
@@ -4336,7 +4871,8 @@ Explorez l'avenir dès maintenant ! 👇`,
 
     const enrichedActions = this.injectProactiveNavigationLinks(
       userMessage + ' ' + delegation.contextualPrompt,
-      delegation.suggestedActions || []
+      delegation.suggestedActions || [],
+      userMessage,
     );
 
     return {
@@ -4359,12 +4895,12 @@ Explorez l'avenir dès maintenant ! 👇`,
     const t = (key: string, params?: Record<string, any>): string => i18n.t(key, params) as string;
 
     const baseActions: ActionDescriptor[] = [
-      { id: 'search', label: 'Rechercher un service', icon: 'search', route: 'Home', category: 'navigation' as const, description: 'Trouver des services ou produits' },
-      { id: 'create', label: 'Créer un service', icon: 'plus', route: 'Home', category: 'action' as const, description: 'Démarrer votre activité' },
+      { id: 'search', label: 'Rechercher un service', icon: 'search', route: 'Home', params: { focusSearch: true }, category: 'navigation' as const, description: 'Trouver des services ou produits' },
+      { id: 'create', label: 'Créer un service', icon: 'plus', route: 'Home', params: { focusCreate: true }, category: 'action' as const, description: 'Démarrer votre activité' },
       { id: 'discover', label: 'Découvrir Yukpo', icon: 'rocket', route: 'Home', category: 'help' as const, description: 'Explorer toutes les fonctionnalités' }
     ];
 
-    const enrichedActions = this.injectProactiveNavigationLinks(userMessage, baseActions);
+    const enrichedActions = this.injectProactiveNavigationLinks(userMessage, baseActions, userMessage);
 
     return {
       message: t('intelligentChat.fallback.general') || 'Je suis votre assistant IA sur l\'accueil. Je peux vous aider avec la recherche de services, la création de votre activité, ou vous orienter vers les modules spécialisés. Que souhaitez-vous faire ?',
@@ -4383,7 +4919,8 @@ Explorez l'avenir dès maintenant ! 👇`,
     screenName: string,
     screenType: string,
     history: ChatMessage[],
-    user: any
+    user: any,
+    options?: { yukpoIaAttachments?: YukpoIaAttachmentPayload[] },
   ): Promise<ChatResponse> {
     const activeLang = i18n.language || 'fr';
 
@@ -4407,14 +4944,15 @@ Explorez l'avenir dès maintenant ! 👇`,
     try {
       // Appeler le VRAI backend /ai/chat (gère la langue de l'utilisateur)
       const response = await this.generateContextualResponse(
-        userMessage, screenContext, history, activeLang
+        userMessage, screenContext, history, activeLang, options,
       );
 
       // Enrichir avec les actions du module + liens proactifs
       const moduleActions = delegation ? delegation.suggestedActions : [];
       response.suggestedActions = this.injectProactiveNavigationLinks(
         userMessage + ' ' + response.message,
-        [...(moduleActions || []), ...(response.suggestedActions || [])]
+        [...(moduleActions || []), ...(response.suggestedActions || [])],
+        userMessage,
       );
 
       return response;
@@ -4451,7 +4989,9 @@ Explorez l'avenir dès maintenant ! 👇`,
       // Enrichir la réponse avec les actions du module + liens proactifs
       const moduleActions = this.getModuleActions(targetScreen);
       const enrichedActions = this.injectProactiveNavigationLinks(
-        response.message, moduleActions
+        userMessage + ' ' + response.message,
+        moduleActions,
+        userMessage,
       );
       return {
         ...response,
@@ -4900,8 +5440,8 @@ Soyez précis, utilisez les fonctionnalités disponibles, et donnez des réponse
   private getServicesResponse(prompt: string): string {
     const q = prompt.toLowerCase();
 
-    if (q.includes('produit') || q.includes('ajout') || q.includes('cré')) {
-      return "📦 **Gestion de Produits et Catalogue**\n\nJe vous aide à gérer votre catalogue de produits de manière intelligente.\n\n**Fonctionnalités :**\n• ➕ Ajout rapide avec suggestions IA\n• 📝 Modification en masse\n• 📊 Statistiques de ventes\n• 🏷️ Gestion des prix et promotions\n• 📸 Photos et descriptions optimisées\n\n**Comment ajouter :** Dites \"ajouter produit [nom]\" ou utilisez le formulaire IA pour des suggestions automatiques.";
+    if (q.includes('produit') || q.includes('ajout') || q.includes('cré') || q.includes('creer')) {
+      return "📦 **Produits & catalogue Yukpo**\n\n**Pour créer une nouvelle offre (recommandé)** : allez à l’**Accueil**, passez en mode **« Créer »**, puis décrivez votre produit ou service dans **ChatInputMobile** — l’IA vous guide (formulaire complet ou ajout rapide selon votre profil).\n\n**Pour gérer ce qui existe déjà** : onglet **Mes services** — liste, modification, stats, vidéos, promos et commandes.";
     }
 
     if (q.includes('statistique') || q.includes('vente') || q.includes('performance')) {
@@ -4920,11 +5460,20 @@ Soyez précis, utilisez les fonctionnalités disponibles, et donnez des réponse
    */
   private getServicesActions(): ActionDescriptor[] {
     return [
-      { id: 'services-add', label: 'Ajouter produit', icon: 'plus', route: 'MesServices', category: 'action', description: 'Ajouter un nouveau produit' },
-      { id: 'services-catalog', label: 'Voir catalogue', icon: 'briefcase', route: 'MesServices', category: 'action', description: 'Gerer tous vos produits' },
+      {
+        id: 'home-create-ia',
+        label: 'Créer avec l’IA (Accueil — mode Créer)',
+        icon: 'sparkles',
+        route: 'Home',
+        params: { focusCreate: true },
+        category: 'creation',
+        description: 'ChatInputMobile — parcours recommandé',
+      },
+      { id: 'services-add', label: 'Ajouter dans Mes services', icon: 'plus', route: 'MesServices', category: 'action', description: 'Hub catalogue' },
+      { id: 'services-catalog', label: 'Voir mon catalogue', icon: 'briefcase', route: 'MesServices', category: 'action', description: 'Gérer tous vos produits' },
       { id: 'services-stats', label: 'Statistiques', icon: 'bar-chart-3', route: 'MesServices', category: 'action', description: 'Voir vos performances' },
       { id: 'services-orders', label: 'Commandes', icon: 'shopping-cart', route: 'MesServices', category: 'action', description: 'Suivre les commandes' },
-      { id: 'services-promo', label: 'Promotions', icon: 'tag', route: 'MesServices', category: 'action', description: 'Creer des promotions' }
+      { id: 'services-promo', label: 'Promotions', icon: 'tag', route: 'MesServices', category: 'action', description: 'Créer des promotions' },
     ];
   }
 
@@ -4973,7 +5522,9 @@ Soyez précis, utilisez les fonctionnalités disponibles, et donnez des réponse
 
     const result = fallbacks[targetScreen] || this.generateFallbackResponse(userMessage);
     result.suggestedActions = this.injectProactiveNavigationLinks(
-      userMessage + ' ' + result.message, result.suggestedActions || []
+      userMessage + ' ' + result.message,
+      result.suggestedActions || [],
+      userMessage,
     );
     return result;
   }

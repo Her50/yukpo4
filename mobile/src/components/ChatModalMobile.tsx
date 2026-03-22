@@ -145,26 +145,6 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const typingDot2 = useRef(new Animated.Value(0.3)).current;
     const typingDot3 = useRef(new Animated.Value(0.3)).current;
 
-    useEffect(() => {
-        if (prestataireTyping || chatbotLoading) {
-            const createPulse = (dot: Animated.Value, delay: number) =>
-                Animated.loop(
-                    Animated.sequence([
-                        Animated.delay(delay),
-                        Animated.timing(dot, { toValue: 1, duration: 400, easing: Easing.ease, useNativeDriver: true }),
-                        Animated.timing(dot, { toValue: 0.3, duration: 400, easing: Easing.ease, useNativeDriver: true }),
-                    ])
-                );
-            const a1 = createPulse(typingDot1, 0);
-            const a2 = createPulse(typingDot2, 150);
-            const a3 = createPulse(typingDot3, 300);
-            a1.start(); a2.start(); a3.start();
-            return () => { a1.stop(); a2.stop(); a3.stop(); };
-        } else {
-            typingDot1.setValue(0.3); typingDot2.setValue(0.3); typingDot3.setValue(0.3);
-        }
-    }, [prestataireTyping, chatbotLoading]);
-
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -2165,6 +2145,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        minWidth: 0,
+    },
+    backButton: {
+        padding: 8,
+        marginRight: 4,
     },
     headerBottom: {
         paddingLeft: 48,

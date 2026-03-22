@@ -73,8 +73,10 @@ const CourierHistoryScreen: React.FC = () => {
                 deliveryApi.getCourierHistory(),
             ]);
 
-            const active: DeliverySummary[] = (activeRes.data?.deliveries || activeRes.data || []) as DeliverySummary[];
-            const history: DeliverySummary[] = (historyRes.data?.deliveries || historyRes.data || []) as DeliverySummary[];
+            const ar = activeRes as any;
+            const hr = historyRes as any;
+            const active: DeliverySummary[] = (ar?.data?.deliveries || ar?.data || []) as DeliverySummary[];
+            const history: DeliverySummary[] = (hr?.data?.deliveries || hr?.data || []) as DeliverySummary[];
 
             const completedStatuses = new Set(['completed', 'delivered', 'cancelled', 'refunded']);
             const completed = active.filter((d) => completedStatuses.has(d.status));

@@ -26,6 +26,7 @@ import { useNavigationPayment } from '../hooks/useNavigationPayment';
 import { apiGet, apiPost } from '../services/api';
 import { coachingNotificationService } from '../services/coachingNotificationService';
 import { communityAlertSoundService } from '../services/communityAlertSoundService';
+import { estimatePoiCost, getPoiPrices } from '../services/navigationPricing';
 import { FreeWalkSessionService } from '../services/FreeWalkSessionService';
 import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
 import { socialSharing } from '../services/socialSharing';
@@ -237,6 +238,13 @@ const TRAVEL_MODES = [
     { key: 'transit', label: { labelKey: 'navigation.travelModeTransit', fallback: 'Transport' }, emoji: '🚌', color: '#8B5CF6' },
     { key: 'bicycling', label: { labelKey: 'navigation.travelModeBicycling', fallback: 'Vélo' }, emoji: '🚲', color: '#F59E0B' },
 ] as const;
+/** Évite le crash React « Objects are not valid as a React child » quand label est I18nLabel */
+function resolveI18nLabel(label: string | I18nLabel | undefined, t: (key: string) => string, fallback: string): string {
+    if (label == null) return fallback;
+    if (typeof label === 'string') return label;
+    return label.labelKey ? (t(label.labelKey) || label.fallback) : (label.fallback || fallback);
+}
+
 const CHECKPOINT_LABELS: Record<string, { label: I18nLabel; icon: string; color: string }> = {
     radar: { label: { labelKey: 'navigation.checkpointRadar', fallback: 'Radar' }, icon: '📸', color: '#EF4444' },
     road_check: { label: { labelKey: 'navigation.checkpointRoadCheck', fallback: 'Contrôle' }, icon: '🚧', color: '#D97706' },
@@ -510,6 +518,10 @@ const NavigationScreen: React.FC = () => {
     const [loadingPOI, setLoadingPOI] = useState(false);
     const [poiRequested, setPoiRequested] = useState(false);
     const [poiSelectedCategories, setPoiSelectedCategories] = useState<string[]>([]);
+    /** Par trajet : catégories POI déjà payées ; une catégorie ajoutée plus tard est facturée à part (complément). */
+    const poiPaidCategoriesByRouteRef = React.useRef<Map<string, Set<string>>>(new Map());
+    /** Mirror of poiPaidCategoriesByRouteRef for UI re-rendering (paid categories for current route). */
+    const [poiPaidCategories, setPoiPaidCategories] = useState<string[]>([]);
     const [travelMode, setTravelMode] = useState<string>('driving');
     const [waypoints, setWaypoints] = useState<Array<{ lat: number; lng: number; name: string }>>([]);
     const [avoidTolls, setAvoidTolls] = useState(false);
@@ -745,6 +757,8 @@ const NavigationScreen: React.FC = () => {
         setPointsOfInterest([]);
         setExpandedCategories({});
         setPoiShowAll({});
+        poiPaidCategoriesByRouteRef.current = new Map();
+        setPoiPaidCategories([]);
     }, [selectedRoute?.id]);
 
     // ── Helpers ──
@@ -869,15 +883,6 @@ const NavigationScreen: React.FC = () => {
         })();
         return () => { cancelled = true; };
     }, []);
-    useEffect(() => {
-        if (showActivityStats) {
-            loadCoachingNotificationHistory();
-        }
-    }, [showActivityStats, loadCoachingNotificationHistory]);
-    // Détecter la langue active pour le TTS
-    const activeLang = useMemo(() => {
-        try { const i18n = require('i18next').default; return i18n.language?.split('-')[0] || 'fr'; } catch { return 'fr'; }
-    }, []);
     const loadCoachingNotificationHistory = useCallback(async () => {
         setLoadingCoachingHistory(true);
         try {
@@ -888,6 +893,15 @@ const NavigationScreen: React.FC = () => {
         } finally {
             setLoadingCoachingHistory(false);
         }
+    }, []);
+    useEffect(() => {
+        if (showActivityStats) {
+            loadCoachingNotificationHistory();
+        }
+    }, [showActivityStats, loadCoachingNotificationHistory]);
+    // Détecter la langue active pour le TTS
+    const activeLang = useMemo(() => {
+        try { const i18n = require('i18next').default; return i18n.language?.split('-')[0] || 'fr'; } catch { return 'fr'; }
     }, []);
     const resolveDestination = useCallback(async (dest: string) => {
         const dl = dest.toLowerCase().trim();
@@ -953,6 +967,12 @@ const NavigationScreen: React.FC = () => {
                     Alert.alert(t('navigation.noRoute'), t('navigation.noRouteFound')); setLoading(false); return;
                 }
                 setRoutes(valid); setSelectedRoute(valid[0]);
+                // ✅ Éviter état POI / liste obsolète entre deux recherches (crash ou données incohérentes avant le useEffect)
+                setPointsOfInterest([]);
+                setPoiRequested(false);
+                setLoadingPOI(false);
+                setExpandedCategories({});
+                setPoiShowAll({});
                 showToast(`🛣️ ${t('navigation.routesFound', { count: valid.length }) || `${valid.length} itinéraire(s) trouvé(s) !`}`);
                 // ✅ Auto-scroll vers les résultats après un court délai pour que le state se mette à jour
                 setTimeout(() => { scrollViewRef.current?.scrollTo({ y: 400, animated: true }); }, 300);
@@ -988,23 +1008,30 @@ const NavigationScreen: React.FC = () => {
             const typesP = requestedTypes && requestedTypes.length > 0 ? `&types=${encodeURIComponent(requestedTypes.join(','))}` : '';
             const r = await apiGet(`/api/navigation/points-of-interest?route_id=${route.id}&origin_lat=${origin.lat}&origin_lng=${origin.lng}&dest_lat=${destinationCoords.lat}&dest_lng=${destinationCoords.lng}${stepsP}${typesP}&lang=${encodeURIComponent(activeLang)}`) as any;
             console.log('[Navigation] POI Response:', JSON.stringify(r, null, 2));
+            if (r?.success === false) {
+                const msg = typeof r?.error === 'string' ? r.error : (r?.data?.message || r?.data?.error || t('navigation.poiLoadError'));
+                if (r?.status === 429) {
+                    Alert.alert(tr('navigation.poiQuotaTitle', 'Limite quotidienne de recherches POI atteinte'), msg);
+                } else {
+                    Alert.alert(t('message.error'), msg);
+                }
+                setPointsOfInterest([]);
+                return;
+            }
             if (r?.data?.pois && Array.isArray(r.data.pois)) {
                 console.log('[Navigation] Raw POIs:', r.data.pois);
+                const _fallbackName = t('navigation.unnamedPlace') || t('navigation.unknownName') || 'Lieu';
                 const vp = r.data.pois.filter((p: any) => {
                     console.log('[Navigation] Processing POI:', p);
-                    // Extract name properly - handle object or string
-                    const _unkn = t('navigation.unknownName') || (t('navigation.unknownName') || 'Nom inconnu');
-                    const name = typeof p?.name === 'string' ? p.name :
-                        typeof p?.name === 'object' ? p.name?.name || JSON.stringify(p.name) :
-                            _unkn;
-                    console.log('[Navigation] Extracted name:', name, 'type:', typeof p?.name);
-                    if (p && name !== _unkn) {
-                        p.name = name;
-                    }
+                    let name = typeof p?.name === 'string' ? p.name.trim() :
+                        typeof p?.name === 'object' && p?.name ? (p.name as any).name || JSON.stringify(p.name) : '';
+                    if (!name) name = _fallbackName;
+                    p.name = name;
                     p.type = normalizePoiType(p?.type);
                     const coords = validateCoords(p.location?.lat ?? p.latitude ?? 0, p.location?.lng ?? p.longitude ?? 0);
-                    console.log('[Navigation] POI coords valid:', coords, 'name:', p.name);
-                    return p?.name && coords && Object.values(POI_CATEGORIES).some(cat => cat.types.includes(p.type));
+                    console.log('[Navigation] POI coords valid:', coords, 'name:', p.name, 'type:', p.type);
+                    const typeOk = Object.values(POI_CATEGORIES).some(cat => cat.types.includes(p.type));
+                    return coords && typeOk;
                 });
                 console.log('[Navigation] Validated POIs:', vp);
                 setPointsOfInterest(vp);
@@ -1017,7 +1044,7 @@ const NavigationScreen: React.FC = () => {
                 setPoiShowAll({});
             }
         } catch { setPointsOfInterest([]); } finally { setLoadingPOI(false); }
-    }, [destinationCoords, getCurrentPosition]);
+    }, [destinationCoords, getCurrentPosition, t, tr, activeLang]);
 
     // ✅ POI avec gate de paiement — à la demande de l'utilisateur
     const loadPointsOfInterestSafely = useCallback(async (route: RouteOption, selectedCategories: string[] = []) => {
@@ -1025,7 +1052,6 @@ const NavigationScreen: React.FC = () => {
 
         const categories = selectedCategories.length > 0 ? selectedCategories : Object.keys(POI_CATEGORIES);
 
-        // Construire les labels des catégories pour l'écran de confirmation
         const catLabels: Record<string, string> = {};
         categories.forEach(k => {
             const cat = POI_CATEGORIES[k];
@@ -1033,20 +1059,42 @@ const NavigationScreen: React.FC = () => {
             catLabels[k] = cat.label?.labelKey ? (t(cat.label.labelKey) || cat.label.fallback) : (cat.label?.fallback || k);
         });
 
-        setPoiRequested(false);
-        // Gate via payForPoi — confirmation + débit automatique
+        const runPoiLoad = () => {
+            setPoiRequested(true);
+            const types = categories.flatMap(k => (POI_CATEGORIES as any)[k]?.types || []);
+            _loadPOIInternal(route, types);
+        };
+
+        const paidMap = poiPaidCategoriesByRouteRef.current;
+        const paidSet = new Set(paidMap.get(route.id) ?? []);
+        const unpaidCategories = categories.filter((k) => !paidSet.has(k));
+
+        // Toutes les catégories demandées sont déjà payées pour ce trajet → recherche sans nouveau débit
+        if (unpaidCategories.length === 0) {
+            runPoiLoad();
+            return;
+        }
+
+        const unpaidLabels: Record<string, string> = {};
+        unpaidCategories.forEach((k) => {
+            unpaidLabels[k] = catLabels[k] || k;
+        });
+
+        const supplemental = paidSet.size > 0;
+
         await payForPoi(
-            categories,
-            catLabels,
+            unpaidCategories,
+            unpaidLabels,
             () => {
-                setPoiRequested(true);
-                const types = categories.flatMap(k => (POI_CATEGORIES as any)[k]?.types || []);
-                _loadPOIInternal(route, types);
+                unpaidCategories.forEach((k) => paidSet.add(k));
+                paidMap.set(route.id, paidSet);
+                setPoiPaidCategories(Array.from(paidSet));
+                runPoiLoad();
             },
             () => {
-                setPoiRequested(false);
                 console.log('[Navigation] POI payment cancelled');
-            }
+            },
+            { supplemental },
         );
     }, [destinationCoords, _loadPOIInternal, payForPoi, t]);
 
@@ -1756,7 +1804,7 @@ const NavigationScreen: React.FC = () => {
                         content: { title: `📍 ${t('navigation.waypointArrivedTitle') || 'Arrêt atteint'}`, body: wp.name, sound: true, ...(Platform.OS === 'android' ? { channelId: 'community_alerts' } : {}) },
                         trigger: null,
                     });
-                } catch {}
+                } catch { }
             } else if (dist <= THRESHOLD_APPROACHING && lastThreshold > THRESHOLD_APPROACHING) {
                 announced.set(wpKey, THRESHOLD_APPROACHING);
                 const distText = dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`;
@@ -1992,6 +2040,11 @@ const NavigationScreen: React.FC = () => {
                                 ) : (
                                     alertHistoryData.map((alert, idx) => {
                                         const info = CHECKPOINT_LABELS[alert.checkpoint_type] || { label: alert.checkpoint_type, icon: '⚠️', color: '#6B7280' };
+                                        const alertHistLabel = resolveI18nLabel(
+                                            info.label as string | I18nLabel | undefined,
+                                            t,
+                                            alert.checkpoint_type
+                                        );
                                         const timeAgo = alert.created_at ? (() => {
                                             const diff = Date.now() - new Date(alert.created_at).getTime();
                                             if (diff < 3600000) return `il y a ${Math.floor(diff / 60000)} min`;
@@ -2004,7 +2057,7 @@ const NavigationScreen: React.FC = () => {
                                                 <View style={st.flex1}>
                                                     <View style={st.alertHistItemTop}>
                                                         <Text style={[st.alertHistLabel, { color: info.color }]}>
-                                                            {info.label?.labelKey ? (t(info.label.labelKey) || info.label.fallback) : (info.label?.fallback || '')}
+                                                            {alertHistLabel}
                                                         </Text>
                                                         {alert.count > 1 && <View style={[st.alertHistCountBadge, { backgroundColor: info.color + '20' }]}><Text style={[st.alertHistCountTxt, { color: info.color }]}>×{alert.count}</Text></View>}
                                                     </View>
@@ -3127,7 +3180,19 @@ const NavigationScreen: React.FC = () => {
                                         {routePolylineCoords.length > 1 && <Polyline coordinates={routePolylineCoords} strokeColor={modernColors.primary} strokeWidth={4} />}
                                         {destinationCoords && <Marker coordinate={{ latitude: destinationCoords.lat, longitude: destinationCoords.lng }} title={t('navigation.destination_marker') || "Destination"} pinColor="#EF4444" tracksViewChanges={false} />}
                                         {livePosition && <Marker coordinate={{ latitude: livePosition.lat, longitude: livePosition.lng }} title={t('navigation.myPositionMarker') || "Ma position"} pinColor="#3B82F6" />}
-                                        {checkpoints.slice(0, 10).map(cp => <Marker key={cp.id} coordinate={{ latitude: cp.latitude, longitude: cp.longitude }} title={`${CHECKPOINT_LABELS[cp.checkpoint_type]?.icon || '⚠️'} ${CHECKPOINT_LABELS[cp.checkpoint_type]?.label || cp.checkpoint_type}`} pinColor={CHECKPOINT_LABELS[cp.checkpoint_type]?.color || '#6B7280'} tracksViewChanges={false} />)}
+                                        {checkpoints.slice(0, 10).map(cp => {
+                                            const cpInfo = CHECKPOINT_LABELS[cp.checkpoint_type];
+                                            const cpTitle = resolveI18nLabel(cpInfo?.label, t, cp.checkpoint_type);
+                                            return (
+                                                <Marker
+                                                    key={cp.id}
+                                                    coordinate={{ latitude: cp.latitude, longitude: cp.longitude }}
+                                                    title={`${cpInfo?.icon || '⚠️'} ${cpTitle}`}
+                                                    pinColor={cpInfo?.color || '#6B7280'}
+                                                    tracksViewChanges={false}
+                                                />
+                                            );
+                                        })}
                                     </AnyMapView>
                                     <TouchableOpacity style={st.mapBtnLabeled} onPress={() => { if (livePosition && mapRef.current) mapRef.current.animateToRegion({ latitude: livePosition.lat, longitude: livePosition.lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500); }}>
                                         <SafeIcon name="Locate" size={14} color={modernColors.primary} />
@@ -3148,14 +3213,14 @@ const NavigationScreen: React.FC = () => {
                                         value={selectedLocation ? selectedLocation : (destination || '')}
                                         onSelect={(loc: any) => {
                                             setSelectedLocation(loc);
-                                            const t = loc.raw || loc.place_name || '';
-                                            setDestination(t);
+                                            const destinationText = loc.raw || loc.place_name || '';
+                                            setDestination(destinationText);
                                             if ((loc as any).latitude && (loc as any).longitude) {
                                                 setDestinationCoords({ lat: (loc as any).latitude, lng: (loc as any).longitude });
                                                 setTimeout(() => searchRoutesRef.current(), 200);
                                             }
                                             else {
-                                                geocodeDestination(t).then(c => {
+                                                geocodeDestination(destinationText).then(c => {
                                                     if (c) {
                                                         setDestinationCoords(c);
                                                         setTimeout(() => searchRoutesRef.current(), 200);
@@ -3175,7 +3240,7 @@ const NavigationScreen: React.FC = () => {
                                             onPress={() => { setTravelMode(m.key); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 100); }}>
                                             <Text style={{ fontSize: 20 }}>{m.emoji}</Text>
                                             <Text style={[st.modeBtnLbl, travelMode === m.key && { color: m.color, fontWeight: '700' as any }]} numberOfLines={1}>
-                                                {m.label?.labelKey ? (t(m.label.labelKey) || m.label.fallback) : (m.label?.fallback || '')}
+                                                {resolveI18nLabel(m.label as I18nLabel, t, m.key)}
                                             </Text>
                                         </TouchableOpacity>
                                     ))}
@@ -3315,10 +3380,11 @@ const NavigationScreen: React.FC = () => {
                                     <Text style={st.secTitle}>🚨 {t('navigation.reportsOnRoute') || 'Signalements sur le trajet'}</Text>
                                     {checkpoints.slice(0, 5).map(cp => {
                                         const info = CHECKPOINT_LABELS[cp.checkpoint_type] || { label: cp.checkpoint_type, icon: '⚠️', color: '#6B7280' };
+                                        const checkpointLabelText = resolveI18nLabel(info.label, t, cp.checkpoint_type);
                                         return (
                                             <View key={cp.id} style={st.cpItem}>
                                                 <Text style={{ fontSize: 18 }}>{info.icon}</Text>
-                                                <View style={st.flex1}><Text style={st.cpItemLabel}>{info.label}</Text>{cp.description && <Text style={st.cpItemDesc}>{cp.description}</Text>}</View>
+                                                <View style={st.flex1}><Text style={st.cpItemLabel}>{checkpointLabelText}</Text>{cp.description && <Text style={st.cpItemDesc}>{cp.description}</Text>}</View>
                                                 {cp.speed_limit && <Text style={st.cpItemSpd}>{cp.speed_limit} km/h</Text>}
                                                 <TouchableOpacity onPress={() => shareAlert({ checkpoint_type: cp.checkpoint_type, lat: cp.latitude, lng: cp.longitude, speed_limit: cp.speed_limit })} style={st.cpShareBtn}>
                                                     <SafeIcon name="Redo2" size={12} color={modernColors.textSecondary} />
@@ -3329,62 +3395,87 @@ const NavigationScreen: React.FC = () => {
                                 </NativeCard>
                             )}
 
-                            {/* POIs */}
+                            {/* POIs : sélecteur de catégories toujours visible ; résultats en dessous */}
                             {selectedRoute && (
                                 <View style={{ marginBottom: 12 }}>
-                                    {!poiRequested ? (
-                                        <NativeCard style={st.secCard}>
-                                            <Text style={st.secTitle}>{tr('navigation.selectPoiCategories', 'Choisissez vos points d\'intérêt')}</Text>
-                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                                                {Object.entries(POI_CATEGORIES).map(([catKey, cat]) => {
+                                    <NativeCard style={st.secCard}>
+                                        <Text style={st.secTitle}>{tr('navigation.selectPoiCategories', 'Choisissez vos points d\'intérêt')}</Text>
+                                        <Text style={{ fontSize: 12, color: modernColors.textSecondary, marginBottom: 8 }}>
+                                            {tr('navigation.poiCategoriesHint', 'Vous pouvez modifier les catégories et relancer la recherche sur le même trajet.')}
+                                        </Text>
+                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                                            {(() => {
+                                                const poiPrices = getPoiPrices(); return Object.entries(POI_CATEGORIES).map(([catKey, cat]) => {
                                                     const selected = poiSelectedCategories.includes(catKey);
-                                                    const label = cat.label?.labelKey ? (t(cat.label.labelKey) || cat.label.fallback) : (cat.label?.fallback || catKey);
+                                                    const paid = poiPaidCategories.includes(catKey);
+                                                    const label = resolveI18nLabel(cat.label, t, catKey);
+                                                    const priceXAF = poiPrices[catKey] ?? 0;
+                                                    const priceLabel = paid ? (t('navigation.poiPaid') || 'Payé') : (priceXAF === 0 ? (t('common.free') || 'Gratuit') : fmtPrice(priceXAF, userCurrency));
                                                     return (
                                                         <TouchableOpacity
                                                             key={catKey}
                                                             style={[
                                                                 st.actChip,
-                                                                selected && { backgroundColor: cat.color + '20', borderColor: cat.color, borderWidth: 1 },
+                                                                selected && !paid && { backgroundColor: cat.color + '20', borderColor: cat.color, borderWidth: 1 },
+                                                                selected && paid && { backgroundColor: '#DCFCE7', borderColor: '#16A34A', borderWidth: 1 },
                                                             ]}
                                                             activeOpacity={0.7}
                                                             onPress={() => {
                                                                 setPoiSelectedCategories(prev => selected ? prev.filter(k => k !== catKey) : [...prev, catKey]);
                                                             }}
                                                         >
-                                                            <Text style={[st.actChipTxt, selected && { color: cat.color }]} numberOfLines={1}>
-                                                                {selected ? '✓ ' : ''}{label}
+                                                            <Text style={[st.actChipTxt, selected && !paid && { color: cat.color }, selected && paid && { color: '#16A34A' }]} numberOfLines={1}>
+                                                                {selected ? (paid ? '✓ ' : '● ') : ''}{label}
+                                                            </Text>
+                                                            <Text style={{ fontSize: 10, color: paid ? '#16A34A' : modernColors.textSecondary, marginTop: 1 }} numberOfLines={1}>
+                                                                {priceLabel}
                                                             </Text>
                                                         </TouchableOpacity>
                                                     );
-                                                })}
-                                            </View>
+                                                });
+                                            })()}
+                                        </View>
 
-                                            <TouchableOpacity
-                                                style={[
-                                                    st.shareRouteBtn,
-                                                    {
-                                                        backgroundColor: poiSelectedCategories.length > 0 ? modernColors.primary : modernColors.surfaceVariant,
-                                                        borderColor: poiSelectedCategories.length > 0 ? modernColors.primary : modernColors.border,
-                                                        opacity: poiSelectedCategories.length > 0 ? 1 : 0.7,
-                                                    },
-                                                ]}
-                                                disabled={poiSelectedCategories.length === 0}
-                                                onPress={() => loadPointsOfInterestSafely(selectedRoute, poiSelectedCategories)}
-                                            >
-                                                <Text
-                                                    style={{
-                                                        fontSize: 14,
-                                                        fontWeight: '600',
-                                                        color: poiSelectedCategories.length > 0 ? '#FFFFFF' : modernColors.primary,
-                                                    }}
-                                                >
-                                                    {loadingPOI ? tr('navigation.searchingPOI', 'Recherche des POI...') : tr('navigation.showPOI', 'Afficher les POI')}
+                                        {poiSelectedCategories.length > 0 && (() => {
+                                            const unpaidSelected = poiSelectedCategories.filter(k => !poiPaidCategories.includes(k));
+                                            const totalCostXAF = estimatePoiCost(unpaidSelected);
+                                            const allPaid = unpaidSelected.length === 0;
+                                            return (
+                                                <Text style={{ fontSize: 12, color: allPaid ? '#16A34A' : modernColors.textSecondary, marginBottom: 8, textAlign: 'center', fontWeight: '600' }}>
+                                                    {allPaid
+                                                        ? (t('navigation.poiAllPaid') || 'Toutes les catégories sélectionnées sont déjà payées')
+                                                        : (t('navigation.poiEstimatedTotal') || 'Coût estimé : {{total}}').replace('{{total}}', fmtPrice(totalCostXAF, userCurrency))}
                                                 </Text>
-                                            </TouchableOpacity>
-                                        </NativeCard>
-                                    ) : (
+                                            );
+                                        })()}
+
+                                        <TouchableOpacity
+                                            style={[
+                                                st.shareRouteBtn,
+                                                {
+                                                    backgroundColor: poiSelectedCategories.length > 0 ? modernColors.primary : modernColors.surfaceVariant,
+                                                    borderColor: poiSelectedCategories.length > 0 ? modernColors.primary : modernColors.border,
+                                                    opacity: poiSelectedCategories.length > 0 ? 1 : 0.7,
+                                                },
+                                            ]}
+                                            disabled={poiSelectedCategories.length === 0 || loadingPOI}
+                                            onPress={() => loadPointsOfInterestSafely(selectedRoute, poiSelectedCategories)}
+                                        >
+                                            <Text
+                                                style={{
+                                                    fontSize: 14,
+                                                    fontWeight: '600',
+                                                    color: poiSelectedCategories.length > 0 ? '#FFFFFF' : modernColors.primary,
+                                                }}
+                                            >
+                                                {loadingPOI ? tr('navigation.searchingPOI', 'Recherche des POI...') : tr('navigation.showPOI', 'Afficher les POI')}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </NativeCard>
+
+                                    {poiRequested && (
                                         <>
-                                            <Text style={st.secTitle}>{tr('navigation.poiNearby', 'Points d\'intérêt à proximité')}</Text>
+                                            <Text style={[st.secTitle, { marginTop: 8 }]}>{tr('navigation.poiNearby', 'Points d\'intérêt à proximité')}</Text>
                                             {loadingPOI ? (
                                                 <NativeCard style={st.loadCard}>
                                                     <ActivityIndicator color={modernColors.primary} />
@@ -3407,7 +3498,7 @@ const NavigationScreen: React.FC = () => {
                                                                     <View style={[st.poiCatIcon, { backgroundColor: cat.color + '15' }]}><Text style={{ fontSize: 20 }}>{cat.icon}</Text></View>
                                                                     <View style={st.flex1}>
                                                                         <Text style={st.poiCatLabel}>
-                                                                            {cat.label?.labelKey ? (t(cat.label.labelKey) || cat.label.fallback) : (cat.label?.fallback || '')}
+                                                                            {resolveI18nLabel(cat.label, t, catKey)}
                                                                         </Text>
                                                                         <Text style={st.poiCatCount}>{pois.length} lieu{pois.length > 1 ? 'x' : ''} trouvé{pois.length > 1 ? 's' : ''} sur le trajet</Text>
                                                                     </View>

@@ -91,7 +91,8 @@ const DeliveryCommissionsAdminScreen: React.FC = () => {
                 apiGet(`/api/delivery/courier/stats?period=${period}`),
             ]);
 
-            const commData = commissionsRes?.data || commissionsRes;
+            const cr = commissionsRes as any;
+            const commData = cr?.data ?? cr;
             const list: CommissionEntry[] = commData?.commissions || commData?.data || [];
 
             if (reset) {
@@ -101,7 +102,8 @@ const DeliveryCommissionsAdminScreen: React.FC = () => {
             }
             setHasMore(list.length >= PAGE_SIZE);
 
-            const sData = statsRes?.data || statsRes;
+            const sr = statsRes as any;
+            const sData = sr?.data ?? sr;
             setStats({
                 total_commissions_cents: sData?.total_commissions_cents ?? 0,
                 total_deliveries: sData?.total_deliveries ?? 0,

@@ -22,6 +22,9 @@ interface User {
   token?: string;
   partner_type?: string; // ✅ NOUVEAU: Type de partenaire
   nom_complet?: string;
+  /** Nom commercial / établissement (profil pro) */
+  nom_entreprise?: string;
+  tokens_balance?: number;
 }
 
 interface DecodedToken {

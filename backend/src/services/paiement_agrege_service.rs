@@ -121,6 +121,7 @@ pub struct TransactionAgregee {
 }
 
 pub struct PaiementAgregeService {
+    #[allow(dead_code)]
     pg: Arc<PgPool>,
     fournisseurs: HashMap<String, FournisseurPaiement>,
     commission_app: f64,
@@ -513,7 +514,7 @@ impl PaiementAgregeService {
         &self,
         demande: &DemandePaiement,
         transaction: &TransactionAgregee,
-        pg: &sqlx::PgPool,
+        _pg: &sqlx::PgPool,
     ) -> Result<ReponsePaiement, AppError> {
         // TODO: Intégration Stripe, Paystack, etc.
         let payment_url = format!(

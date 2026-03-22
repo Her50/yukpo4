@@ -49,7 +49,7 @@ const PLAY_STORE_URL: &str = "https://play.google.com/store/apps/details?id=com.
 const APP_STORE_URL: &str = "https://apps.apple.com/app/yukpomnang";
 const DIRECT_APK_URL: &str = "https://yukpomnang.com/download";
 
-fn get_download_info(platform: &str, install_source: Option<&str>) -> (String, String) {
+fn get_download_info(platform: &str, _install_source: Option<&str>) -> (String, String) {
     match platform {
         "android" => {
             if ANDROID_ON_PLAY_STORE {

@@ -22,10 +22,24 @@ interface PointOfInterest {
 }
 
 interface PoiCategory {
-    label: string;
+    /** Chaîne ou objet i18n { labelKey, fallback } (évite crash React si mal typé) */
+    label: string | { labelKey: string; fallback: string };
     icon: string;
     color: string;
     types: string[];
+}
+
+function categoryLabelText(
+    label: PoiCategory['label'] | undefined,
+    t: typeof i18n.t
+): string {
+    if (label == null) return '';
+    if (typeof label === 'string') return label;
+    if (typeof label === 'object' && label !== null && 'labelKey' in label) {
+        const tr = t(label.labelKey);
+        return (tr && tr !== label.labelKey ? tr : label.fallback) || label.fallback || '';
+    }
+    return '';
 }
 
 interface PoiFlatListItem {
@@ -251,7 +265,7 @@ const PoiFlatList: React.FC<PoiFlatListProps> = memo(({
                             <Text style={{ fontSize: 20 }}>{category?.icon}</Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.poiCatLabel}>{category?.label}</Text>
+                            <Text style={styles.poiCatLabel}>{categoryLabelText(category?.label, i18n.t.bind(i18n))}</Text>
                             <Text style={styles.poiCatCount}>
                                 {poiCount} {i18n.t('navPayment.placesFound') || i18n.t('navigationScreen.lieuxTrouves')}
                             </Text>

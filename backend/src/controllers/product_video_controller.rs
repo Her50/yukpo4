@@ -14,8 +14,8 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     services::video_generation_service::{
-        estimate_video_cost, generate_product_video, validate_video_generation_prerequisites,
-        VideoGenerationPayload,
+        attach_generative_job_to_product, estimate_video_cost, generate_product_video,
+        validate_video_generation_prerequisites, AttachGenerativeVideoBody, VideoGenerationPayload,
     },
     services::video_job_service::VideoGenerationJob,
     state::AppState,
@@ -201,6 +201,34 @@ pub async fn generate_video_for_product(
 
 /// Estime le coût de génération d'une vidéo immersive sans lancer le rendu.
 #[axum::debug_handler]
+/// Attache une vidéo issue du pipeline `/api/generative/generate` (job **completed**) au produit.
+/// Réponse : `{ "success": true, "data": VideoGenerationResult }` (aligné mobile `generateProductVideo` synchrone).
+pub async fn attach_generative_video_to_product(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path((service_id, product_index)): Path<(i32, i32)>,
+    Json(body): Json<AttachGenerativeVideoBody>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!(
+        "[ProductVideoController] attach-generative - user_id={}, service_id={}, product_index={}, job_id={}",
+        user.id, service_id, product_index, body.generative_job_id
+    );
+
+    if service_id <= 0 || product_index < 0 {
+        return Err(AppError::BadRequest(
+            "service_id ou product_index invalide.".to_string(),
+        ));
+    }
+
+    let result =
+        attach_generative_job_to_product(state, &user, service_id, product_index, body).await?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "data": result,
+    })))
+}
+
 pub async fn estimate_video_cost_for_product(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,

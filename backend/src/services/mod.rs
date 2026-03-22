@@ -286,4 +286,10 @@ pub mod trending_music_service; // ✅ NOUVEAU 2026-03-05: Service de musique tr
 pub mod video_transcoding_service; // ✅ NOUVEAU 2026-03-05: Service de transcodage vidéo HLS/DASH (TikTok/Shorts)
 pub mod watermark_service; // ✅ NOUVEAU 2025-01-27: Service de watermark Yukpo pour branding vidéo
 pub mod whatsapp_service; // ✅ NOUVEAU 2026-03-06: Service WhatsApp Business avec routing automatique
-pub mod youtube_audio_service; // ✅ NOUVEAU Phase 2.2: Service YouTube Audio Library // ✅ NOUVEAU Phase 3.2 Améliorations: Service de rendu 3D complet // ✅ NOUVEAU 2026-03-16: Service de paiements agrégés
+pub mod youtube_audio_service;
+pub mod yukpo_ia_billing; // YukpoIA — quota journalier + prélèvement jetons
+pub mod yukpo_ia_chat_enrich; // YukpoIA — attachments / fichiers générés dans la réponse /ai/chat
+pub mod yukpo_ia_job_queue; // YukpoIA — file Redis + jobs async chat
+pub mod yukpo_ia_metrics_service; // YukpoIA — métriques par route / tenant
+pub mod yukpo_ia_preprocess; // YukpoIA — Whisper + extraction PDF/office avant le prompt
+pub mod yukpo_openai_outbound; // YukpoIA — client OpenAI partagé, concurrence, retries 429 // ✅ NOUVEAU Phase 2.2: Service YouTube Audio Library // ✅ NOUVEAU Phase 3.2 Améliorations: Service de rendu 3D complet // ✅ NOUVEAU 2026-03-16: Service de paiements agrégés

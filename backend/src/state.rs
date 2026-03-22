@@ -136,6 +136,10 @@ pub struct AppState {
     pub multilingue_service: Arc<crate::services::multilingue_service::MultilingueService>,
     /// ✅ NOUVEAU 2026-03-16: Service de paiements agrégés
     pub paiement_service: Arc<crate::services::paiement_agrege_service::PaiementAgregeService>,
+    /// Métriques YukpoIA (route + tenant)
+    pub yukpo_ia_metrics: Arc<crate::services::yukpo_ia_metrics_service::YukpoIaMetricsService>,
+    /// File Redis jobs chat async + persistance job
+    pub yukpo_ia_job_queue: Arc<crate::services::yukpo_ia_job_queue::YukpoIaJobQueue>,
 }
 
 impl AppState {
@@ -853,6 +857,12 @@ impl AppState {
                 crate::services::paiement_agrege_service::PaiementAgregeService::new(Arc::new(
                     pg_clone,
                 )),
+            ),
+            yukpo_ia_metrics: Arc::new(
+                crate::services::yukpo_ia_metrics_service::YukpoIaMetricsService::new(),
+            ),
+            yukpo_ia_job_queue: Arc::new(
+                crate::services::yukpo_ia_job_queue::YukpoIaJobQueue::new(redis_client.clone()),
             ),
         }
     }

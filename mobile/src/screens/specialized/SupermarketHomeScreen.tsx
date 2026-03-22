@@ -9,6 +9,7 @@ import {
     Alert,
     Animated, Dimensions,
     FlatList,
+    Image,
     RefreshControl,
     ScrollView,
     StyleSheet,

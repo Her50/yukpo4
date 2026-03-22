@@ -341,16 +341,18 @@ pub async fn deduct_balance(
     .execute(&state.pg)
     .await;
 
-    // Log pour traçabilité
+    // Log pour traçabilité — reference_type = clé « profil » stable pour filtres (consumption-history)
+    let feature_key = feature.chars().take(50).collect::<String>();
     let _ = sqlx::query(
         r#"
-        INSERT INTO wallet_transactions (user_id, amount_cents, direction, description, created_at)
-        VALUES ($1, $2, 'debit', $3, NOW())
+        INSERT INTO wallet_transactions (user_id, amount_cents, direction, description, reference_type, created_at)
+        VALUES ($1, $2, 'debit', $3, $4, NOW())
         "#,
     )
     .bind(user.id)
     .bind(amount * 100)
     .bind(format!("[{}] {}", feature, reason))
+    .bind(feature_key)
     .execute(&state.pg)
     .await;
 

@@ -47,17 +47,44 @@ const HashtagDiscoveryScreen: React.FC = () => {
     const navigation = useNavigation();
     const { t } = useLanguageSafe();
     const route = useRoute();
-    const hashtag = (route.params as any)?.hashtag || '';
+    const rawTag = (route.params as any)?.hashtag ?? '';
+    const hasTag = String(rawTag || '')
+        .trim()
+        .replace(/^#/, '');
 
     const [loading, setLoading] = useState(true);
     const [videos, setVideos] = useState<VideoItem[]>([]);
     const [hashtagInfo, setHashtagInfo] = useState<HashtagInfo | null>(null);
+    const [trendingTags, setTrendingTags] = useState<HashtagInfo[]>([]);
     const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'trending'>('recent');
     const [refreshing, setRefreshing] = useState(false);
     const [offset, setOffset] = useState(0);
     const [hasMore, setHasMore] = useState(true);
 
+    const loadTrendingHashtags = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await apiGet('/api/hashtags/search', {
+                params: { limit: 40, trending: true },
+            });
+            const body: any = response.data;
+            const list: HashtagInfo[] = Array.isArray(body?.data) ? body.data : [];
+            setTrendingTags(list);
+        } catch (error) {
+            console.error('[HashtagDiscovery] Erreur tendances:', error);
+            setTrendingTags([]);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
+
     const loadVideos = useCallback(async (reset = false) => {
+        if (!hasTag) {
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
         try {
             if (reset) {
                 setLoading(true);
@@ -65,9 +92,8 @@ const HashtagDiscoveryScreen: React.FC = () => {
             }
 
             const currentOffset = reset ? 0 : offset;
-            // ✅ SCALABILITÉ: Limiter à 50 max par requête
             const response = await apiGet(
-                `/api/hashtags/${encodeURIComponent(hashtag)}/videos?sort=${sortBy}&limit=50&offset=${currentOffset}`
+                `/api/hashtags/${encodeURIComponent(hasTag)}/videos?sort=${sortBy}&limit=50&offset=${currentOffset}`
             );
 
             if (response.success && response.data) {
@@ -81,7 +107,6 @@ const HashtagDiscoveryScreen: React.FC = () => {
                     setVideos((prev) => [...prev, ...newVideos]);
                 }
 
-                // ✅ SCALABILITÉ: Vérifier si plus de résultats disponibles
                 setHasMore(newVideos.length === 50 && (currentOffset + newVideos.length) < total);
                 setOffset(currentOffset + newVideos.length);
             }
@@ -91,31 +116,49 @@ const HashtagDiscoveryScreen: React.FC = () => {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [hashtag, sortBy, offset]);
+    }, [hasTag, sortBy, offset]);
 
     const loadHashtagInfo = useCallback(async () => {
+        if (!hasTag) {
+            setHashtagInfo(null);
+            return;
+        }
         try {
-            const response = await apiGet(`/api/hashtags/search?q=${encodeURIComponent(hashtag)}&limit=1`);
-            if (response.success && response.data && (response.data as any[]).length > 0) {
-                setHashtagInfo(response.data[0]);
+            const response = await apiGet('/api/hashtags/search', {
+                params: { q: hasTag, limit: 1 },
+            });
+            const body: any = response.data;
+            const arr: HashtagInfo[] = Array.isArray(body?.data) ? body.data : [];
+            if (arr.length > 0) {
+                setHashtagInfo(arr[0]);
+            } else {
+                setHashtagInfo(null);
             }
         } catch (error) {
             console.error('[HashtagDiscovery] Erreur chargement info hashtag:', error);
         }
-    }, [hashtag]);
+    }, [hasTag]);
 
     useEffect(() => {
-        if (hashtag) {
-            loadHashtagInfo();
-            loadVideos(true);
+        if (!hasTag) {
+            loadTrendingHashtags();
+            setVideos([]);
+            setHashtagInfo(null);
+            return;
         }
-    }, [hashtag, sortBy]);
+        loadHashtagInfo();
+        loadVideos(true);
+    }, [hasTag, sortBy]);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
+        if (!hasTag) {
+            loadTrendingHashtags();
+            return;
+        }
         loadVideos(true);
         loadHashtagInfo();
-    }, [loadVideos, loadHashtagInfo]);
+    }, [hasTag, loadVideos, loadHashtagInfo, loadTrendingHashtags]);
 
     const handleSortChange = useCallback((newSort: 'recent' | 'popular' | 'trending') => {
         setSortBy(newSort);
@@ -186,17 +229,23 @@ const HashtagDiscoveryScreen: React.FC = () => {
                 </TouchableOpacity>
                 <View style={styles.headerContent}>
                     <Text style={styles.hashtagTitle}>
-                        {hashtag.startsWith('#') ? hashtag : `#${hashtag}`}
+                        {hasTag ? (hasTag.startsWith('#') ? hasTag : `#${hasTag}`) : (t('hashtagDiscovery.trendingTitle') || 'Hashtags tendance')}
                     </Text>
-                    {hashtagInfo && (
+                    {hasTag && hashtagInfo && (
                         <Text style={styles.hashtagSubtitle}>
                             {formatCount(hashtagInfo.video_count)} vidéos{hashtagInfo.is_trending ? ' • 🔥 Tendance' : ''}
+                        </Text>
+                    )}
+                    {!hasTag && (
+                        <Text style={styles.hashtagSubtitle}>
+                            {t('hashtagDiscovery.pickHashtag') || 'Choisissez un hashtag pour voir les vidéos'}
                         </Text>
                     )}
                 </View>
             </View>
 
-            {/* Filtres de tri */}
+            {/* Filtres de tri (uniquement quand un tag est choisi) */}
+            {hasTag ? (
             <View style={styles.sortContainer}>
                 {(['recent', 'popular', 'trending'] as const).map((sort) => (
                     <TouchableOpacity
@@ -216,14 +265,59 @@ const HashtagDiscoveryScreen: React.FC = () => {
                     </TouchableOpacity>
                 ))}
             </View>
+            ) : null}
 
-            {/* Liste des vidéos */}
-            {loading && videos.length === 0 ? (
+            {/* Mode découverte : liste des hashtags tendance */}
+            {!hasTag && (
+                <>
+                    {loading && trendingTags.length === 0 ? (
+                        <View style={styles.loader}>
+                            <ActivityIndicator size="large" color={modernColors.primary} />
+                            <Text style={styles.loaderText}>{t('hashtagDiscovery.chargementDesVideos')}</Text>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={trendingTags}
+                            keyExtractor={(item, i) => item.tag || String(i)}
+                            numColumns={2}
+                            contentContainerStyle={styles.listContent}
+                            refreshControl={
+                                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                            }
+                            ListEmptyComponent={
+                                <View style={styles.emptyState}>
+                                    <Text style={styles.emptyTitle}>{t('hashtagDiscovery.aucuneVideoTrouvee')}</Text>
+                                    <Text style={styles.emptySubtitle}>
+                                        {t('hashtagDiscovery.noTrending') || 'Aucun hashtag pour le moment.'}
+                                    </Text>
+                                </View>
+                            }
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={styles.trendChip}
+                                    onPress={() => (navigation as any).setParams({ hashtag: item.tag })}
+                                    activeOpacity={0.85}
+                                >
+                                    <Text style={styles.trendChipTag} numberOfLines={1}>
+                                        #{item.tag}
+                                    </Text>
+                                    <Text style={styles.trendChipMeta}>
+                                        {formatCount(item.video_count)} vid.
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+                        />
+                    )}
+                </>
+            )}
+
+            {/* Liste des vidéos (tag sélectionné) */}
+            {hasTag && loading && videos.length === 0 ? (
                 <View style={styles.loader}>
                     <ActivityIndicator size="large" color={modernColors.primary} />
                     <Text style={styles.loaderText}>{t('hashtagDiscovery.chargementDesVideos')}</Text>
                 </View>
-            ) : videos.length === 0 ? (
+            ) : hasTag && videos.length === 0 ? (
                 <View style={styles.emptyState}>
                     <SafeIcon name="video-off" size={48} color={modernColors.textSecondary} />
                     <Text style={styles.emptyTitle}>{t('hashtagDiscovery.aucuneVideoTrouvee')}</Text>
@@ -231,7 +325,7 @@ const HashtagDiscoveryScreen: React.FC = () => {
                         Aucune vidéo n'utilise ce hashtag pour le moment.
                     </Text>
                 </View>
-            ) : (
+            ) : hasTag ? (
                 <FlatList
                     data={videos}
                     renderItem={renderVideoItem}
@@ -253,7 +347,7 @@ const HashtagDiscoveryScreen: React.FC = () => {
                         ) : null
                     }
                 />
-            )}
+            ) : null}
         </SafeNativeView>
     );
 };
@@ -378,6 +472,28 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.textSecondary,
         textAlign: 'center',
+    },
+    trendChip: {
+        flex: 1,
+        margin: 6,
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        minHeight: 72,
+        justifyContent: 'center',
+    },
+    trendChipTag: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: modernColors.primary,
+    },
+    trendChipMeta: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 4,
     },
 });
 

@@ -56,6 +56,8 @@
   "exclude": [
     "src/legacy",
     "src/legacy/**",
+    "**/*.462f361.tsx",
+    "App.from-commit.tsx",
     "**/*.backup.tsx",
     "App.MINIMAL-CRASH-TEST.tsx",
     "App.MINIMAL-TEST.tsx",

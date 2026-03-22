@@ -34,6 +34,17 @@ const currencySymbolForCountry = (code: string): string => {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+/** Profil d’usage pour filtres (clé backend : reference_type / service_type, ou préfixe [feature] dans description). */
+export type UsageProfileId =
+    | 'navigation'
+    | 'yukpo_ia'
+    | 'marketplace'
+    | 'delivery'
+    | 'hotel'
+    | 'bus'
+    | 'recharge'
+    | 'other';
+
 interface UnifiedTransaction {
     id: number;
     type: 'credit' | 'debit' | 'refund';
@@ -48,6 +59,8 @@ interface UnifiedTransaction {
     location?: string | null;
     created_at: string;
     trace_id?: string; // For full traceability
+    /** Profil d’usage (navigation, IA, etc.) — dérivé de reference_type / description. */
+    usage_profile: UsageProfileId;
 }
 
 interface FinancialSummary {
@@ -72,6 +85,79 @@ interface PeriodSummary {
 type PeriodDays = 7 | 30 | 90;
 type TransactionFilter = 'all' | 'credit' | 'debit' | 'refund';
 
+type UsageProfileFilter = 'all' | UsageProfileId;
+
+const USAGE_PROFILE_CHIPS: UsageProfileId[] = [
+    'navigation',
+    'yukpo_ia',
+    'marketplace',
+    'delivery',
+    'hotel',
+    'bus',
+    'recharge',
+    'other',
+];
+
+function parseBracketFeature(description: string | null | undefined): string | null {
+    if (!description) return null;
+    const m = /^\s*\[([^\]]+)\]/.exec(description);
+    return m ? m[1].trim().toLowerCase() : null;
+}
+
+function mapFeatureStringToProfile(feature: string): UsageProfileId {
+    const f = feature.toLowerCase().replace(/\s+/g, '_');
+    if (!f || f === 'unknown') return 'other';
+    if (f === 'navigation' || f === 'nav') return 'navigation';
+    if (f === 'yukpo_ia' || f === 'yukpoia') return 'yukpo_ia';
+    if (f.includes('yukpo_ia') || f.includes('yukpoia')) return 'yukpo_ia';
+    const tokens = f.split(/[_\-/]+/).filter(Boolean);
+    if (tokens.some((t) => t === 'navigation' || t === 'nav')) return 'navigation';
+    if (tokens.includes('yukpo') && tokens.includes('ia')) return 'yukpo_ia';
+    if (tokens.some((t) => t === 'ai_chat' || t === 'yukpo_ia')) return 'yukpo_ia';
+    if (/livraison|delivery|coursier|courier/.test(f)) return 'delivery';
+    if (/hotel|room|reservation|booking/.test(f)) return 'hotel';
+    if (/bus_ticket|bus|billet/.test(f)) return 'bus';
+    if (/market|shop|boutique|store/.test(f)) return 'marketplace';
+    if (/gps|routing|itineraire|itinerary|maps/.test(f)) return 'navigation';
+    if (/gpt|claude|openai|ai_chat/.test(f)) return 'yukpo_ia';
+    return 'other';
+}
+
+function inferUsageProfile(
+    category: UnifiedTransaction['category'],
+    referenceType: string | null | undefined,
+    description: string | null | undefined
+): UsageProfileId {
+    if (category === 'payment') return 'recharge';
+    const bracket = parseBracketFeature(description);
+    const ref = (referenceType || '').trim().toLowerCase();
+    const primary = ref || bracket || '';
+    if (primary) {
+        const mapped = mapFeatureStringToProfile(primary);
+        if (mapped !== 'other') return mapped;
+    }
+    if (bracket) {
+        const m2 = mapFeatureStringToProfile(bracket);
+        if (m2 !== 'other') return m2;
+    }
+    const combined = `${ref} ${(description || '').toLowerCase()}`;
+    if (category === 'delivery') return 'delivery';
+    if (/livraison|delivery|coursier|courier/.test(combined)) return 'delivery';
+    if (/navigation|nav_|itinéraire|itinerary|gps|maps|routing|itineraire/.test(combined)) return 'navigation';
+    if (/yukpo_ia|yukpoia|ai_chat|yukpo ia|gpt|claude|openai/.test(combined)) return 'yukpo_ia';
+    if (/hôtel|hotel|chambre|room\s*booking/.test(combined)) return 'hotel';
+    if (/bus|billet|ticket/.test(combined)) return 'bus';
+    if (/market|boutique|shop|commande/.test(combined)) return 'marketplace';
+    return 'other';
+}
+
+function withUsageProfile(base: Omit<UnifiedTransaction, 'usage_profile'>): UnifiedTransaction {
+    return {
+        ...base,
+        usage_profile: inferUsageProfile(base.category, base.reference_type, base.description),
+    };
+}
+
 const WalletFinancialScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
@@ -91,6 +177,9 @@ const WalletFinancialScreen: React.FC = () => {
     const [summary, setSummary] = useState<FinancialSummary | null>(null);
     const [periodSummaries, setPeriodSummaries] = useState<PeriodSummary[]>([]);
     const [error, setError] = useState<string | null>(null);
+    /** Liste fusionnée (toutes sources) avant filtres locaux type / profil */
+    const [rawTransactions, setRawTransactions] = useState<UnifiedTransaction[]>([]);
+    const [usageProfileFilter, setUsageProfileFilter] = useState<UsageProfileFilter>('all');
 
     // ✅ Partner financial summary
     const isPartner = user?.role === 'partenaire' || user?.role === 'partner';
@@ -99,15 +188,8 @@ const WalletFinancialScreen: React.FC = () => {
     useFocusEffect(
         useCallback(() => {
             loadAllData();
-        }, [selectedPeriod, selectedFilter])
+        }, [selectedPeriod])
     );
-
-    // Recompute financial summary whenever transactions change (avoids stale state)
-    useEffect(() => {
-        if (transactions.length > 0 || !loading) {
-            loadFinancialSummary();
-        }
-    }, [transactions, selectedFilter]);
 
     const loadAllData = async () => {
         if (!loading) setLoading(true);
@@ -123,7 +205,6 @@ const WalletFinancialScreen: React.FC = () => {
                 promises.push(loadPartnerSummary());
             }
             await Promise.all(promises);
-            // Summary is computed in a useEffect after transactions state updates
         } catch (error) {
             console.error('[WalletFinancial] Error loading data:', error);
             setError(t('financialTracking.errorLoadingData'));
@@ -168,102 +249,9 @@ const WalletFinancialScreen: React.FC = () => {
         }
     };
 
-    const loadUnifiedTransactions = async () => {
-        const allTransactions: UnifiedTransaction[] = [];
-
+    /** Agrège KPI + séries quotidiennes à partir d’une liste déjà filtrée. */
+    const applyFinancialSummaryFromTransactions = (filteredTxns: UnifiedTransaction[]) => {
         try {
-            // 1. Wallet transactions (for partners/couriers)
-            const walletResponse = await apiGet<any>('/shopping/wallet/transactions', {
-                params: { limit: 100, offset: 0 }
-            });
-            if (walletResponse?.data?.success) {
-                const walletTxns = (walletResponse.data.transactions || []).map((txn: any) => ({
-                    id: txn.id,
-                    type: txn.transaction_type?.startsWith('credit') ? 'credit' :
-                        txn.transaction_type?.startsWith('debit') ? 'debit' : 'refund',
-                    amount_cents: txn.amount_cents,
-                    balance_before_cents: txn.balance_before_cents,
-                    balance_after_cents: txn.balance_after_cents,
-                    currency: txn.currency || 'XAF',
-                    category: mapTransactionCategory(txn.transaction_type),
-                    reference_type: txn.reference_type,
-                    reference_id: txn.reference_id,
-                    description: txn.description,
-                    location: extractLocation(txn),
-                    created_at: txn.created_at,
-                    trace_id: `wallet_${txn.id}`
-                }));
-                allTransactions.push(...walletTxns);
-            }
-        } catch (err) {
-            console.warn('[WalletFinancial] Wallet transactions error:', err);
-        }
-
-        try {
-            // 2. User credit history (for regular users)
-            const creditsResponse = await apiGet<any>(`/api/users/consumption-history?period=${selectedPeriod}d`);
-            if (creditsResponse?.data?.success) {
-                const creditTxns = (creditsResponse.data.history || []).map((txn: any) => ({
-                    id: txn.id || `credit_${Date.now()}_${Math.random()}`,
-                    type: 'debit',
-                    amount_cents: txn.amount_cents || 0,
-                    balance_before_cents: txn.balance_before_cents,
-                    balance_after_cents: txn.balance_after_cents,
-                    currency: txn.currency || 'XAF',
-                    category: 'consumption',
-                    reference_type: txn.service_type,
-                    reference_id: txn.service_id?.toString(),
-                    description: txn.description || t('financialTracking.serviceUsage'),
-                    location: txn.location,
-                    created_at: txn.created_at,
-                    trace_id: `credit_${txn.id || Math.random()}`
-                }));
-                allTransactions.push(...creditTxns);
-            }
-        } catch (err) {
-            console.warn('[WalletFinancial] Credit history error:', err);
-        }
-
-        try {
-            // 3. Payment history (recharges)
-            const paymentsResponse = await apiGet<any>(`/api/users/payment-history?period=${selectedPeriod}d`);
-            if (paymentsResponse?.data?.success) {
-                const paymentTxns = (paymentsResponse.data.history || []).map((txn: any) => ({
-                    id: txn.id || `payment_${Date.now()}_${Math.random()}`,
-                    type: 'credit',
-                    amount_cents: txn.amount_cents || 0,
-                    balance_before_cents: txn.balance_before_cents,
-                    balance_after_cents: txn.balance_after_cents,
-                    currency: txn.currency || 'XAF',
-                    category: 'payment',
-                    reference_type: txn.payment_method,
-                    reference_id: txn.payment_id?.toString(),
-                    description: txn.description || t('financialTracking.accountRecharge'),
-                    location: txn.location,
-                    created_at: txn.created_at,
-                    trace_id: `payment_${txn.id || Math.random()}`
-                }));
-                allTransactions.push(...paymentTxns);
-            }
-        } catch (err) {
-            console.warn('[WalletFinancial] Payment history error:', err);
-        }
-
-        // Sort all transactions by date (newest first)
-        allTransactions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-        // Apply filter
-        const filteredTransactions = selectedFilter === 'all'
-            ? allTransactions
-            : allTransactions.filter(txn => txn.type === selectedFilter);
-
-        setTransactions(filteredTransactions);
-    };
-
-    const loadFinancialSummary = async () => {
-        try {
-            // Calculate summary from transactions
-            const filteredTxns = selectedFilter === 'all' ? transactions : transactions.filter(t => t.type === selectedFilter);
             const credits = filteredTxns.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount_cents, 0);
             const debits = filteredTxns.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount_cents, 0);
             const refunds = filteredTxns.filter(t => t.type === 'refund').reduce((sum, t) => sum + t.amount_cents, 0);
@@ -282,7 +270,6 @@ const WalletFinancialScreen: React.FC = () => {
                 period_end: endDate.toISOString()
             });
 
-            // Generate period summaries (daily)
             const dailyMap = new Map<string, PeriodSummary>();
             filteredTxns.forEach(txn => {
                 const date = new Date(txn.created_at).toISOString().split('T')[0];
@@ -308,6 +295,115 @@ const WalletFinancialScreen: React.FC = () => {
             console.warn('[WalletFinancial] Summary error:', err);
         }
     };
+
+    const applyTransactionFilters = (source: UnifiedTransaction[]) => {
+        let r = source;
+        if (usageProfileFilter !== 'all') {
+            r = r.filter(x => x.usage_profile === usageProfileFilter);
+        }
+        if (selectedFilter !== 'all') {
+            r = r.filter(x => x.type === selectedFilter);
+        }
+        setTransactions(r);
+        applyFinancialSummaryFromTransactions(r);
+    };
+
+    const loadUnifiedTransactions = async () => {
+        const allTransactions: UnifiedTransaction[] = [];
+
+        try {
+            // 1. Wallet transactions (for partners/couriers)
+            const walletResponse = await apiGet<any>('/shopping/wallet/transactions', {
+                params: { limit: 100, offset: 0 }
+            });
+            if (walletResponse?.data?.success) {
+                const walletTxns = (walletResponse.data.transactions || []).map((txn: any) =>
+                    withUsageProfile({
+                        id: txn.id,
+                        type: txn.transaction_type?.startsWith('credit') ? 'credit' :
+                            txn.transaction_type?.startsWith('debit') ? 'debit' : 'refund',
+                        amount_cents: txn.amount_cents,
+                        balance_before_cents: txn.balance_before_cents,
+                        balance_after_cents: txn.balance_after_cents,
+                        currency: txn.currency || 'XAF',
+                        category: mapTransactionCategory(txn.transaction_type),
+                        reference_type: txn.reference_type,
+                        reference_id: txn.reference_id,
+                        description: txn.description,
+                        location: extractLocation(txn),
+                        created_at: txn.created_at,
+                        trace_id: `wallet_${txn.id}`
+                    })
+                );
+                allTransactions.push(...walletTxns);
+            }
+        } catch (err) {
+            console.warn('[WalletFinancial] Wallet transactions error:', err);
+        }
+
+        try {
+            // 2. User credit history (for regular users)
+            const creditsResponse = await apiGet<any>(`/api/users/consumption-history?period=${selectedPeriod}d`);
+            if (creditsResponse?.data?.success) {
+                const creditTxns = (creditsResponse.data.history || []).map((txn: any) =>
+                    withUsageProfile({
+                        id: txn.id || `credit_${Date.now()}_${Math.random()}`,
+                        type: 'debit',
+                        amount_cents: txn.amount_cents || 0,
+                        balance_before_cents: txn.balance_before_cents,
+                        balance_after_cents: txn.balance_after_cents,
+                        currency: txn.currency || 'XAF',
+                        category: 'consumption',
+                        reference_type: txn.service_type,
+                        reference_id: txn.service_id?.toString(),
+                        description: txn.description || t('financialTracking.serviceUsage'),
+                        location: txn.location,
+                        created_at: txn.created_at,
+                        trace_id: `credit_${txn.id || Math.random()}`
+                    })
+                );
+                allTransactions.push(...creditTxns);
+            }
+        } catch (err) {
+            console.warn('[WalletFinancial] Credit history error:', err);
+        }
+
+        try {
+            // 3. Payment history (recharges)
+            const paymentsResponse = await apiGet<any>(`/api/users/payment-history?period=${selectedPeriod}d`);
+            if (paymentsResponse?.data?.success) {
+                const paymentTxns = (paymentsResponse.data.history || []).map((txn: any) =>
+                    withUsageProfile({
+                        id: txn.id || `payment_${Date.now()}_${Math.random()}`,
+                        type: 'credit',
+                        amount_cents: txn.amount_cents || 0,
+                        balance_before_cents: txn.balance_before_cents,
+                        balance_after_cents: txn.balance_after_cents,
+                        currency: txn.currency || 'XAF',
+                        category: 'payment',
+                        reference_type: txn.payment_method,
+                        reference_id: txn.payment_id?.toString(),
+                        description: txn.description || t('financialTracking.accountRecharge'),
+                        location: txn.location,
+                        created_at: txn.created_at,
+                        trace_id: `payment_${txn.id || Math.random()}`
+                    })
+                );
+                allTransactions.push(...paymentTxns);
+            }
+        } catch (err) {
+            console.warn('[WalletFinancial] Payment history error:', err);
+        }
+
+        allTransactions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        setRawTransactions(allTransactions);
+        applyTransactionFilters(allTransactions);
+    };
+
+    useEffect(() => {
+        applyTransactionFilters(rawTransactions);
+    }, [selectedFilter, usageProfileFilter, rawTransactions]);
 
     // Helper functions
     const mapTransactionCategory = (type: string): UnifiedTransaction['category'] => {
@@ -479,14 +575,49 @@ const WalletFinancialScreen: React.FC = () => {
         );
     };
 
+    /** Aucune donnée sur la période (avant filtres profil / type). */
+    const hasNoRawActivity = rawTransactions.length === 0;
+
+    /** État vide explicite : explique ce que l’aperçu montrera une fois des mouvements présents. */
+    const renderEmptyPeriodExplainer = () => {
+        if (!hasNoRawActivity) return null;
+        return (
+            <NativeCard style={styles.emptyExplainerCard}>
+                <View style={styles.emptyExplainerIconWrap}>
+                    <SafeIcon name="trending-up" size={26} color={modernColors.primary} />
+                </View>
+                <Text style={styles.emptyExplainerTitle}>{t('financialTracking.emptyPeriodTitle')}</Text>
+                <Text style={styles.emptyExplainerSubtitle}>{t('financialTracking.emptyPeriodSubtitle')}</Text>
+                <View style={styles.emptyExplainerChips}>
+                    <View style={styles.emptyExplainerChip}>
+                        <SafeIcon name="arrow-down-left" size={14} color={modernColors.success} />
+                        <Text style={styles.emptyExplainerChipText}>{t('financialTracking.credits')}</Text>
+                    </View>
+                    <View style={styles.emptyExplainerChip}>
+                        <SafeIcon name="arrow-up-right" size={14} color={modernColors.error} />
+                        <Text style={styles.emptyExplainerChipText}>{t('financialTracking.debits')}</Text>
+                    </View>
+                    <View style={styles.emptyExplainerChip}>
+                        <SafeIcon name="rotate-ccw" size={14} color={modernColors.info} />
+                        <Text style={styles.emptyExplainerChipText}>{t('financialTracking.refunds')}</Text>
+                    </View>
+                </View>
+                <TouchableOpacity
+                    style={styles.emptyExplainerCta}
+                    onPress={() => (navigation as any).navigate('RechargeTokens')}
+                    accessibilityRole="button"
+                >
+                    <SafeIcon name="plus-circle" size={18} color="#fff" />
+                    <Text style={styles.emptyExplainerCtaText}>{t('financialTracking.emptyPeriodCta')}</Text>
+                </TouchableOpacity>
+            </NativeCard>
+        );
+    };
+
     // ===== Mini bar chart for daily summaries =====
     const renderMiniChart = () => {
         if (periodSummaries.length === 0) {
-            return (
-                <View style={styles.chartEmpty}>
-                    <Text style={styles.chartEmptyText}>{t('financialTracking.noDataForPeriod')}</Text>
-                </View>
-            );
+            return null;
         }
         const maxAmount = Math.max(...periodSummaries.map(d => Math.abs(d.net_cents)), 1);
         const barWidth = Math.max(4, (SCREEN_WIDTH - 80) / Math.max(periodSummaries.length, 1) - 2);
@@ -598,6 +729,20 @@ const WalletFinancialScreen: React.FC = () => {
         );
     };
 
+    const labelForUsageProfile = (p: UsageProfileId) => {
+        const keys: Record<UsageProfileId, string> = {
+            navigation: 'financialTracking.usageProfileNavigation',
+            yukpo_ia: 'financialTracking.usageProfileYukpoIa',
+            marketplace: 'financialTracking.usageProfileMarketplace',
+            delivery: 'financialTracking.usageProfileDelivery',
+            hotel: 'financialTracking.usageProfileHotel',
+            bus: 'financialTracking.usageProfileBus',
+            recharge: 'financialTracking.usageProfileRecharge',
+            other: 'financialTracking.usageProfileOther',
+        };
+        return t(keys[p]);
+    };
+
     // ===== Transaction item =====
     const renderTransaction = ({ item }: { item: UnifiedTransaction }) => {
         const { icon, color } = getTransactionIcon(item.type);
@@ -610,6 +755,9 @@ const WalletFinancialScreen: React.FC = () => {
                 </View>
                 <View style={styles.txnContent}>
                     <Text style={styles.txnType}>{getTransactionLabel(item)}</Text>
+                    <View style={styles.txnProfileBadge}>
+                        <Text style={styles.txnProfileBadgeText}>{labelForUsageProfile(item.usage_profile)}</Text>
+                    </View>
                     <Text style={styles.txnDesc} numberOfLines={1}>
                         {item.description || item.reference_type || '—'}
                     </Text>
@@ -671,6 +819,37 @@ const WalletFinancialScreen: React.FC = () => {
                     {t('financialTracking.transactions')}
                 </Text>
             </TouchableOpacity>
+        </View>
+    );
+
+    const renderUsageProfileChips = () => (
+        <View style={styles.profileSection}>
+            <Text style={styles.profileSectionLabel}>{t('financialTracking.usageProfileFilterLabel')}</Text>
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.profileChipScroll}
+            >
+                <TouchableOpacity
+                    style={[styles.profileChip, usageProfileFilter === 'all' && styles.profileChipActive]}
+                    onPress={() => setUsageProfileFilter('all')}
+                >
+                    <Text style={[styles.profileChipText, usageProfileFilter === 'all' && styles.profileChipTextActive]}>
+                        {t('financialTracking.usageProfileAll')}
+                    </Text>
+                </TouchableOpacity>
+                {USAGE_PROFILE_CHIPS.map((key) => (
+                    <TouchableOpacity
+                        key={key}
+                        style={[styles.profileChip, usageProfileFilter === key && styles.profileChipActive]}
+                        onPress={() => setUsageProfileFilter(key)}
+                    >
+                        <Text style={[styles.profileChipText, usageProfileFilter === key && styles.profileChipTextActive]}>
+                            {labelForUsageProfile(key)}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
         </View>
     );
 
@@ -770,6 +949,8 @@ const WalletFinancialScreen: React.FC = () => {
                 {/* Period selector */}
                 {renderPeriodSelector()}
 
+                {renderUsageProfileChips()}
+
                 {/* Tab selector */}
                 {renderTabSelector()}
 
@@ -778,7 +959,7 @@ const WalletFinancialScreen: React.FC = () => {
                     <>
                         {renderPartnerRevenue()}
                         {renderKPIs()}
-                        {renderMiniChart()}
+                        {hasNoRawActivity ? renderEmptyPeriodExplainer() : renderMiniChart()}
 
                         {/* Recent transactions preview */}
                         <View style={styles.recentSection}>
@@ -795,8 +976,33 @@ const WalletFinancialScreen: React.FC = () => {
                                 <View style={styles.emptyTxn}>
                                     <SafeIcon name="inbox" size={40} color={modernColors.textTertiary} />
                                     <Text style={styles.emptyTxnText}>
-                                        {t('financialTracking.noTransactions')}
+                                        {rawTransactions.length > 0
+                                            ? t('financialTracking.noTransactionsForFilters')
+                                            : t('financialTracking.noTransactions')}
                                     </Text>
+                                    <Text style={styles.emptyTxnHint}>
+                                        {rawTransactions.length > 0
+                                            ? t('financialTracking.adjustFiltersHint')
+                                            : t('financialTracking.emptyRecentHint')}
+                                    </Text>
+                                    {rawTransactions.length > 0 ? (
+                                        <TouchableOpacity
+                                            style={styles.emptyTxnCta}
+                                            onPress={() => {
+                                                setUsageProfileFilter('all');
+                                                setSelectedFilter('all');
+                                            }}
+                                        >
+                                            <Text style={styles.emptyTxnCtaText}>{t('financialTracking.clearFilters')}</Text>
+                                        </TouchableOpacity>
+                                    ) : (
+                                        <TouchableOpacity
+                                            style={styles.emptyTxnCta}
+                                            onPress={() => (navigation as any).navigate('RechargeTokens')}
+                                        >
+                                            <Text style={styles.emptyTxnCtaText}>{t('financialTracking.emptyPeriodCta')}</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             )}
                         </View>
@@ -813,8 +1019,33 @@ const WalletFinancialScreen: React.FC = () => {
                                 <View style={styles.emptyTxn}>
                                     <SafeIcon name="inbox" size={40} color={modernColors.textTertiary} />
                                     <Text style={styles.emptyTxnText}>
-                                        {t('financialTracking.noTransactions')}
+                                        {rawTransactions.length > 0
+                                            ? t('financialTracking.noTransactionsForFilters')
+                                            : t('financialTracking.noTransactions')}
                                     </Text>
+                                    <Text style={styles.emptyTxnHint}>
+                                        {rawTransactions.length > 0
+                                            ? t('financialTracking.adjustFiltersHint')
+                                            : t('financialTracking.emptyRecentHint')}
+                                    </Text>
+                                    {rawTransactions.length > 0 ? (
+                                        <TouchableOpacity
+                                            style={styles.emptyTxnCta}
+                                            onPress={() => {
+                                                setUsageProfileFilter('all');
+                                                setSelectedFilter('all');
+                                            }}
+                                        >
+                                            <Text style={styles.emptyTxnCtaText}>{t('financialTracking.clearFilters')}</Text>
+                                        </TouchableOpacity>
+                                    ) : (
+                                        <TouchableOpacity
+                                            style={styles.emptyTxnCta}
+                                            onPress={() => (navigation as any).navigate('RechargeTokens')}
+                                        >
+                                            <Text style={styles.emptyTxnCtaText}>{t('financialTracking.emptyPeriodCta')}</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             )}
                         </View>
@@ -889,6 +1120,29 @@ const styles = StyleSheet.create({
     periodBtnText: { fontSize: 13, fontWeight: '600', color: modernColors.textSecondary },
     periodBtnTextActive: { color: '#fff' },
 
+    profileSection: { marginHorizontal: 16, marginTop: 12 },
+    profileSectionLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+        marginBottom: 8,
+    },
+    profileChipScroll: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingBottom: 4 },
+    profileChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 20,
+        backgroundColor: modernColors.surfaceVariant,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    profileChipActive: {
+        backgroundColor: modernColors.primary + '18',
+        borderColor: modernColors.primary,
+    },
+    profileChipText: { fontSize: 12, fontWeight: '600', color: modernColors.textSecondary },
+    profileChipTextActive: { color: modernColors.primary },
+
     // Tab selector
     tabSelector: {
         flexDirection: 'row', marginHorizontal: 16, marginTop: 12,
@@ -935,8 +1189,71 @@ const styles = StyleSheet.create({
         flexDirection: 'row', justifyContent: 'space-between', marginTop: 8,
     },
     chartLabel: { fontSize: 10, color: modernColors.textTertiary },
-    chartEmpty: { paddingVertical: 30, alignItems: 'center' },
-    chartEmptyText: { fontSize: 13, color: modernColors.textTertiary },
+
+    emptyExplainerCard: {
+        marginHorizontal: 16,
+        marginTop: 12,
+        padding: 18,
+        borderRadius: 14,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.borderLight,
+    },
+    emptyExplainerIconWrap: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: modernColors.primary + '18',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+    },
+    emptyExplainerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 6,
+    },
+    emptyExplainerSubtitle: {
+        fontSize: 13,
+        lineHeight: 19,
+        color: modernColors.textSecondary,
+        marginBottom: 14,
+    },
+    emptyExplainerChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 16,
+    },
+    emptyExplainerChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: modernColors.surfaceVariant,
+    },
+    emptyExplainerChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+    },
+    emptyExplainerCta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: modernColors.primary,
+        paddingVertical: 12,
+        borderRadius: 12,
+    },
+    emptyExplainerCtaText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '700',
+    },
 
     // Disbursement card
     disbursementCard: { marginHorizontal: 16, marginTop: 16, padding: 16, borderRadius: 14 },
@@ -985,7 +1302,16 @@ const styles = StyleSheet.create({
     },
     txnContent: { flex: 1, marginLeft: 12 },
     txnType: { fontSize: 14, fontWeight: '600', color: modernColors.text },
-    txnDesc: { fontSize: 12, color: modernColors.textSecondary, marginTop: 2 },
+    txnProfileBadge: {
+        alignSelf: 'flex-start',
+        marginTop: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 8,
+        backgroundColor: modernColors.surfaceVariant,
+    },
+    txnProfileBadgeText: { fontSize: 10, fontWeight: '700', color: modernColors.primary },
+    txnDesc: { fontSize: 12, color: modernColors.textSecondary, marginTop: 4 },
     txnLocation: { fontSize: 11, color: modernColors.primary, marginTop: 2, fontStyle: 'italic' },
     txnDate: { fontSize: 11, color: modernColors.textTertiary, marginTop: 2 },
     txnTrace: { fontSize: 10, color: modernColors.textTertiary, marginTop: 1, fontFamily: 'monospace' },
@@ -994,8 +1320,24 @@ const styles = StyleSheet.create({
     txnBalance: { fontSize: 10, color: modernColors.textTertiary, marginTop: 2 },
 
     // Empty state
-    emptyTxn: { paddingVertical: 40, alignItems: 'center' },
-    emptyTxnText: { fontSize: 14, color: modernColors.textTertiary, marginTop: 8 },
+    emptyTxn: { paddingVertical: 40, alignItems: 'center', paddingHorizontal: 12 },
+    emptyTxnText: { fontSize: 15, fontWeight: '600', color: modernColors.textSecondary, marginTop: 8 },
+    emptyTxnHint: {
+        fontSize: 13,
+        color: modernColors.textTertiary,
+        marginTop: 8,
+        textAlign: 'center',
+        lineHeight: 18,
+    },
+    emptyTxnCta: {
+        marginTop: 16,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+    },
+    emptyTxnCtaText: { fontSize: 14, fontWeight: '600', color: modernColors.primary },
 });
 
 export default WalletFinancialScreen;

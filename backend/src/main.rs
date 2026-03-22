@@ -2741,6 +2741,13 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 log::warn!("⚠️ Erreur création navigation_achievements: {}", e);
             }
+            if let Err(e) = yukpomnang_backend::migrations::auto_migrate::ensure_navigation_poi_daily_usage_table(
+                &pg_for_checkpoints,
+            )
+            .await
+            {
+                log::warn!("⚠️ Erreur création navigation_poi_daily_usage: {}", e);
+            }
             if let Err(e) = yukpomnang_backend::migrations::auto_migrate::ensure_push_tokens_table(
                 &pg_for_checkpoints,
             )
@@ -2847,6 +2854,11 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .await;
         let _ =
+            yukpomnang_backend::migrations::auto_migrate::ensure_navigation_poi_daily_usage_table(
+                &app_state.pg,
+            )
+            .await;
+        let _ =
             yukpomnang_backend::migrations::auto_migrate::ensure_push_tokens_table(&app_state.pg)
                 .await;
         let _ = yukpomnang_backend::migrations::auto_migrate::ensure_geo_regional_config_table(
@@ -2878,6 +2890,12 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
 
         // ✅ 2026-03-18: Table cache taux de change
         let _ = yukpomnang_backend::migrations::auto_migrate::ensure_exchange_rate_cache_table(
+            &app_state.pg,
+        )
+        .await;
+
+        // ✅ NOUVEAU 2026-03-21: Table quota journalier YukpoIA (facturation chat intelligent)
+        let _ = yukpomnang_backend::migrations::auto_migrate::ensure_yukpo_ia_daily_usage_table(
             &app_state.pg,
         )
         .await;
@@ -3090,6 +3108,9 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     }
     // ✅ Phase 2 : Archivage automatique des livraisons complétées
     tasks::delivery_archive_worker::start_delivery_archive_worker(app_state.clone());
+
+    // ✅ YukpoIA : worker file Redis (chat async)
+    tasks::yukpo_ia_queue_worker::start_yukpo_ia_queue_worker(app_state.clone());
 
     // ✅ NOUVEAU: Healthcheck périodique Redis pour détecter les changements d'état
     // ✅ CORRIGÉ: Réduit la fréquence à toutes les 5 minutes (au lieu de chaque minute)

@@ -6,12 +6,20 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { Text } from 'react-native';
 
 import i18n, { SUPPORTED_LANGUAGES, getDeviceLanguage } from '../i18n';
+import { translateWithFallback } from '../i18n/translateShared';
 import SafeStorage from '../utils/safeStorage';
+
+/** Params i18n OU chaîne de secours ; 3e arg = params si le 2e est defaultValue */
+export type TranslateFn = (
+    key: string,
+    paramsOrFallback?: Record<string, string | number> | string,
+    paramsWhenSecondIsDefault?: Record<string, string | number>,
+) => string;
 
 interface LanguageContextType {
     language: string;
     setLanguage: (lang: string) => void;
-    t: (key: string, params?: Record<string, string | number>) => string;
+    t: TranslateFn;
 }
 
 const LanguageContext = createContext<LanguageContextType>({
@@ -45,10 +53,7 @@ export const useLanguageSafe = () => {
         setLanguage: (lang: string) => {
             console.log('[LanguageContext] Fallback: setLanguage appelé mais provider absent:', lang);
         },
-        t: (key: string, params?: Record<string, string | number>) => {
-            const result = i18n.t(key, params as any);
-            return typeof result === 'string' ? result : String(result || key);
-        }
+        t: translateWithFallback,
     };
 };
 
@@ -104,17 +109,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
         }
     };
 
-    // ✅ Fonction de traduction — déléguée à i18next
-    const t = (key: string, params?: Record<string, string | number>): string => {
-        try {
-            const result = i18n.t(key, params as any);
-            // i18next retourne la clé si la traduction n'existe pas
-            // S'assurer que le résultat est toujours une string
-            return typeof result === 'string' ? result : String(result || key);
-        } catch {
-            return key;
-        }
-    };
+    const t: TranslateFn = translateWithFallback;
 
     // ✅ S'assurer que les enfants sont toujours des éléments React valides
     const safeChildren = React.Children.map(children, (child, index) => {

@@ -497,9 +497,10 @@ const EtablissementScolaireScreen: React.FC = () => {
                 }}
                 onSelectLocation={(loc) => {
                     setGpsCoords(`${loc.latitude},${loc.longitude}`);
-                    setGpsAddress(loc.address || loc.name || null);
-                    if (loc.name && !nomEtablissement.trim()) {
-                        setNomEtablissement(loc.name);
+                    const placeLabel = loc.placeName || loc.address || '';
+                    setGpsAddress(loc.address || loc.placeName || null);
+                    if (placeLabel && !nomEtablissement.trim()) {
+                        setNomEtablissement(placeLabel);
                     }
                     setShowGPSModal(false);
                 }}

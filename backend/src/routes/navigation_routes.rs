@@ -676,10 +676,51 @@ async fn get_routes(
 }
 
 /// Obtenir les points d'intérêt le long d'une route
+/// Points d’intérêt le long du trajet (Google Places Nearby par point × type).
+/// Quota journalier par utilisateur (variable d’env `NAV_POI_DAILY_LIMIT_PER_USER`, défaut 50).
+/// La confirmation tarifaire reste côté **app** (`payForPoi`).
 async fn get_points_of_interest(
+    Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<PointsOfInterestRequest>,
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
 ) -> AppResult<Json<PointsOfInterestResponse>> {
+    let daily_limit: i64 = std::env::var("NAV_POI_DAILY_LIMIT_PER_USER")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(50);
+    let today = chrono::Utc::now().date_naive();
+
+    let current: i64 = sqlx::query_scalar(
+        "SELECT COALESCE((SELECT request_count FROM navigation_poi_daily_usage WHERE user_id = $1 AND usage_date = $2), 0::bigint)",
+    )
+    .bind(user.id)
+    .bind(today)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(e.to_string()))?;
+
+    if current >= daily_limit {
+        return Err(AppError::TooManyRequests(format!(
+            "Quota journalier de recherches POI atteint ({}/{}). Réessayez demain.",
+            current, daily_limit
+        )));
+    }
+
+    sqlx::query(
+        r#"
+        INSERT INTO navigation_poi_daily_usage (user_id, usage_date, request_count)
+        VALUES ($1, $2, 1)
+        ON CONFLICT (user_id, usage_date) DO UPDATE
+        SET request_count = navigation_poi_daily_usage.request_count + 1,
+            updated_at = NOW()
+        "#,
+    )
+    .bind(user.id)
+    .bind(today)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(e.to_string()))?;
+
     let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
         .map_err(|_| AppError::Internal("GOOGLE_MAPS_API_KEY non configurée".to_string()))?;
 
@@ -757,11 +798,28 @@ async fn get_points_of_interest(
         vec![]
     };
 
+    // Longueur réelle du polyline (somme des segments) — mieux qu’origine→dest pour les routes sinueuses / longues
+    let path_length_m: f64 = if route_step_points.len() >= 2 {
+        route_step_points
+            .windows(2)
+            .map(|w| haversine_distance(w[0].0, w[0].1, w[1].0, w[1].1))
+            .sum()
+    } else {
+        route_distance
+    };
+
     // Points de recherche: soit les vrais steps du trajet, soit fallback linéaire
     let search_points: Vec<(f64, f64)> = if route_step_points.len() >= 3 {
         let step_count = route_step_points.len();
         let mut sampled = Vec::new();
-        let num_samples = 8usize;
+        // Plus d’échantillons sur les trajets longs (plafonné pour limiter les appels Google : types × points)
+        // ~14 points en urbain / court, jusqu’à ~28 sur les très longs tronçons
+        let num_samples: usize = {
+            let base = 14usize;
+            let extra = (path_length_m / 6_000.0).floor() as usize; // +1 point tous les ~6 km
+            let n = (base + extra).min(28).max(base);
+            n.max(2)
+        };
         let sample_indices: Vec<usize> = if step_count <= num_samples {
             (0..step_count).collect()
         } else {
@@ -796,10 +854,24 @@ async fn get_points_of_interest(
     };
 
     // ✅ FIX 2026-03-04: Rayon adaptatif — plus petit quand on a les vrais steps (meilleure précision)
+    // Sur trajets longs, léger élargissement pour recouvrir l’espace entre deux échantillons (Nearby max 50 km, on reste raisonnable)
     let has_real_steps = route_step_points.len() >= 3;
     let radius_per_point = if has_real_steps {
-        // Avec les vrais points du trajet, un rayon plus petit suffit (500m–1500m)
-        ((route_distance * 0.10).max(500.0).min(1500.0)) as u32
+        let pct = if path_length_m < 20_000.0 {
+            0.10
+        } else if path_length_m < 60_000.0 {
+            0.11
+        } else {
+            0.125
+        };
+        let cap_m = if path_length_m < 40_000.0 {
+            1_600.0
+        } else if path_length_m < 100_000.0 {
+            2_000.0
+        } else {
+            2_400.0
+        };
+        ((path_length_m * pct).max(550.0).min(cap_m)) as u32
     } else {
         // Sans steps, rayon plus large pour compenser l'imprécision
         ((route_distance * 0.20).max(500.0).min(3000.0)) as u32
@@ -866,10 +938,14 @@ async fn get_points_of_interest(
 
                                     // ✅ FIX 2026-03-04: Filtrer les POI trop éloignés du trajet réel
                                     // Max 1500m de détour (sauf si le trajet est très court)
-                                    let max_detour = if route_distance < 3000.0 {
+                                    let max_detour = if path_length_m < 3000.0 {
                                         800.0
+                                    } else if path_length_m < 15_000.0 {
+                                        1800.0
+                                    } else if path_length_m < 80_000.0 {
+                                        2200.0
                                     } else {
-                                        1500.0
+                                        2600.0
                                     };
                                     if distance_from_route > max_detour {
                                         continue;
@@ -945,7 +1021,7 @@ async fn get_points_of_interest(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    all_pois.truncate(60);
+    all_pois.truncate(120);
 
     // ✅ DEBUG: Log POI names to verify structure
     log::info!("[POI] Returning {} POIs", all_pois.len());

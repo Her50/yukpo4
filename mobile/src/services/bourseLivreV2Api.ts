@@ -111,6 +111,7 @@ export interface ProgrammeScolaire {
     annee_scolaire?: string;
     est_obligatoire: boolean;
     prix_officiel?: number;
+    devise?: string;
     // V2 Phase 2
     fichier_url?: string;
     fichier_type?: string;

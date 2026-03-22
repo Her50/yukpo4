@@ -404,7 +404,7 @@ async fn process_payment_webhook(
 
 /// Vérifier la signature du webhook (legacy MTN/Orange direct)
 /// Utilise HMAC-SHA256: signature = HMAC(secret_key, transaction_id + amount + status)
-fn verify_webhook_signature(headers: &HeaderMap, signature: &str, provider: &str) -> bool {
+fn verify_webhook_signature(_headers: &HeaderMap, signature: &str, provider: &str) -> bool {
     let secret_key = match provider {
         "orange_money" => std::env::var("ORANGE_MONEY_WEBHOOK_SECRET").unwrap_or_default(),
         "mtn_money" => std::env::var("MTN_MONEY_WEBHOOK_SECRET").unwrap_or_default(),

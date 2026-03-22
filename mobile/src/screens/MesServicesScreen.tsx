@@ -1194,7 +1194,9 @@ const MesServicesScreen: React.FC = () => {
 
   return (
     <ErrorBoundaryWithRetry
-      maxRetries={3}
+      diagnosticsReport
+      reportScreenLabel="MesServicesScreen"
+      maxRetries={0}
       retryDelay={2000}
       onRetry={() => {
         loadServices(true);

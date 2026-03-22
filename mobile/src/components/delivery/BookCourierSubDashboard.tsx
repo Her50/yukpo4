@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { useLanguageSafe, type TranslateFn } from '../../contexts/LanguageContext';
 import { BookDeliveryPackage, bourseLivreV2Api } from '../../services/bourseLivreV2Api';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
@@ -17,7 +17,7 @@ interface BookCourierSubDashboardProps {
     onRefresh?: () => void;
 }
 
-const getStatusLabels = (t: (key: string, fallback?: string) => string): Record<string, string> => ({
+const getStatusLabels = (t: TranslateFn): Record<string, string> => ({
     a_constituer: t('bookCourierSubDashboard.aConstituer', 'À constituer'),
     constitue: t('bookCourierSubDashboard.constitue', 'Constitué'),
     en_route: t('bookCourierSubDashboard.enRoute', 'En route'),

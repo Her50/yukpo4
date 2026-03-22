@@ -751,7 +751,7 @@ pub async fn broadcast_commande_librairies(
         .await
         .map_err(|e| AppError::Internal(format!("Erreur création notification: {}", e)))?;
 
-        notifications_created.push((librairie.clone(), validation, notification));
+        notifications_created.push((librairie, validation, notification));
     }
 
     tx.commit()
@@ -1442,7 +1442,7 @@ pub async fn get_librairies_proches(
         query.push_str(&format!(" AND lp.ville ILIKE '%{}%'", ville));
     }
 
-    if let (Some(lat), Some(lng)) = (params.gps_lat, params.gps_lng) {
+    if let (Some(_lat), Some(_lng)) = (params.gps_lat, params.gps_lng) {
         if let Some(rayon) = params.rayon_km {
             query.push_str(&format!(
                 " AND distance_gps($1, $2, SPLIT_PART(lp.gps, ',', 1)::FLOAT, SPLIT_PART(lp.gps, ',', 2)::FLOAT) <= {}",
@@ -1631,22 +1631,22 @@ async fn creer_chaine_livraison(
 }
 
 async fn preparer_donnees_qr(
-    pg: &sqlx::PgPool,
-    paquet_id: Uuid,
+    _pg: &sqlx::PgPool,
+    _paquet_id: Uuid,
 ) -> Result<(Vec<LivreQRReference>, Vec<DestinationQR>), AppError> {
     // TODO: Implémenter la préparation des données QR
     Ok((vec![], vec![]))
 }
 
 async fn optimiser_itineraire(
-    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    commande_id: Uuid,
+    _tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    _commande_id: Uuid,
 ) -> Result<Vec<PointPassage>, AppError> {
     // TODO: Implémenter l'algorithme d'optimisation TSP
     Ok(vec![])
 }
 
-fn calculer_metrics_itineraire(points: &[PointPassage]) -> (f64, i32) {
+fn calculer_metrics_itineraire(_points: &[PointPassage]) -> (f64, i32) {
     // TODO: Calculer distance totale et durée estimée
     (0.0, 0)
 }

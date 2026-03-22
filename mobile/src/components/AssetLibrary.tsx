@@ -153,20 +153,20 @@ const [assets, setAssets] = useState<Asset[]>([]);
                     style={styles.searchInput}
                 />
                 <View style={styles.filterRow}>
-                    {(['all', 'image', 'video'] as const).map((t) => (
+                    {(['all', 'image', 'video'] as const).map((filterKey) => (
                         <TouchableOpacity
-                            key={t}
+                            key={filterKey}
                             style={[
                                 styles.filterButton,
-                                filterType === t && styles.filterButtonActive,
+                                filterType === filterKey && styles.filterButtonActive,
                             ]}
-                            onPress={() => setFilterType(t)}
+                            onPress={() => setFilterType(filterKey)}
                         >
                             <Text style={[
                                 styles.filterText,
-                                filterType === t && styles.filterTextActive,
+                                filterType === filterKey && styles.filterTextActive,
                             ]}>
-                                {t === 'all' ? 'Tous' : t === 'image' ? '📷 Images' : t('assetLibrary.videos')}
+                                {filterKey === 'all' ? 'Tous' : filterKey === 'image' ? '📷 Images' : t('assetLibrary.videos')}
                             </Text>
                         </TouchableOpacity>
                     ))}

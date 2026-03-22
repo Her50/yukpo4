@@ -13,14 +13,14 @@
 // ┌─────────────────────┬────────────────────────────────────────┬──────────────┐
 // │ Feature             │ Appels API                             │ Coût réel    │
 // ├─────────────────────┼────────────────────────────────────────┼──────────────┤
-// │ POI health (2 types)│ 4 pts × 2 types = 8 Google Nearby     │ ~170 XAF     │
-// │ POI food (3 types)  │ 4 pts × 3 types = 12 Google Nearby    │ ~255 XAF     │
-// │ POI fuel (1 type)   │ 4 pts × 1 type = 4 Google Nearby      │ ~85 XAF      │
-// │ POI finance (1 type)│ 4 pts × 1 type = 4 Google Nearby      │ ~85 XAF      │
-// │ POI auto (3 types)  │ 4 pts × 3 types = 12 Google Nearby    │ ~255 XAF     │
-// │ POI religion (2 ty) │ 4 pts × 2 types = 8 Google Nearby     │ ~170 XAF     │
-// │ POI accommodation   │ 4 pts × 1 type = 4 Google Nearby      │ ~85 XAF      │
-// │ POI security (1 ty) │ 4 pts × 1 type = 4 Google Nearby      │ ~85 XAF      │
+// │ POI health (2 types)│ 12 pts × 2 types = 24 Google Nearby   │ ~505 XAF     │
+// │ POI food (3 types)  │ 12 pts × 3 types = 36 Google Nearby   │ ~757 XAF     │
+// │ POI fuel (1 type)   │ 12 pts × 1 type = 12 Google Nearby    │ ~253 XAF     │
+// │ POI finance (1 type)│ 12 pts × 1 type = 12 Google Nearby    │ ~253 XAF     │
+// │ POI auto (3 types)  │ 12 pts × 3 types = 36 Google Nearby   │ ~757 XAF     │
+// │ POI religion (2 ty) │ 12 pts × 2 types = 24 Google Nearby   │ ~505 XAF     │
+// │ POI accommodation   │ 12 pts × 1 type = 12 Google Nearby    │ ~253 XAF     │
+// │ POI security (1 ty) │ 12 pts × 1 type = 12 Google Nearby    │ ~253 XAF     │
 // │ Activity stats      │ 5 SQL queries (aucune API externe)     │ ~0.02 XAF    │
 // │ AI Coach            │ 12 SQL + 1 LLM call (GPT-4o ~2.9 XAF) │ ~3 XAF       │
 // │ Community alerts    │ 1 SQL + 5 reverseGeocode max           │ ~17 XAF      │
@@ -49,8 +49,10 @@ const GOOGLE_DIRECTIONS_COST_XAF: f64 = 5.0;
 const CLOUD_RUN_OVERHEAD_XAF: f64 = 0.5;
 /// GPT-4o LLM call (~800 tokens): ~2.9 XAF
 const LLM_CALL_COST_XAF: f64 = 2.9;
-/// Nombre de search points le long du trajet (typique)
-const TYPICAL_SEARCH_POINTS: f64 = 4.0;
+/// Nombre de points d’échantillonnage « équivalent facturation » le long du trajet.
+/// Aligné sur la densification backend (jusqu’à ~28 points) : on utilise une moyenne prudente
+/// pour que le prix utilisateur couvre le coût Google (Nearby ≈ par point × par type) sans exploser les tarifs au maximum technique.
+const TYPICAL_SEARCH_POINTS: f64 = 12.0;
 /// Max reverseGeocode calls pour alertes (plafonné)
 const MAX_GEOCODE_ALERTS: f64 = 5.0;
 
@@ -84,14 +86,14 @@ fn poi_cost(google_types_count: usize) -> f64 {
 pub async fn get_navigation_pricing(_state: State<Arc<AppState>>) -> Json<serde_json::Value> {
     // ── Coûts réels par catégorie POI ──
     // health: pharmacy + hospital = 2 types
-    let cost_health = poi_cost(2); // 4×2×21 + 0.5 = 168.5 XAF
-    let cost_food = poi_cost(3); // 4×3×21 + 0.5 = 252.5 XAF
-    let cost_fuel = poi_cost(1); // 4×1×21 + 0.5 = 84.5 XAF
-    let cost_finance = poi_cost(1); // 4×1×21 + 0.5 = 84.5 XAF
-    let cost_auto = poi_cost(3); // 4×3×21 + 0.5 = 252.5 XAF
-    let cost_religion = poi_cost(2); // 4×2×21 + 0.5 = 168.5 XAF
-    let cost_accommodation = poi_cost(1); // 4×1×21 + 0.5 = 84.5 XAF
-    let cost_security = poi_cost(1); // 4×1×21 + 0.5 = 84.5 XAF — mais service public
+    let cost_health = poi_cost(2); // 12×2×21 + 0.5 = 504.5 XAF
+    let cost_food = poi_cost(3); // 12×3×21 + 0.5 = 756.5 XAF
+    let cost_fuel = poi_cost(1); // 12×1×21 + 0.5 = 252.5 XAF
+    let cost_finance = poi_cost(1); // 12×1×21 + 0.5 = 252.5 XAF
+    let cost_auto = poi_cost(3); // 12×3×21 + 0.5 = 756.5 XAF
+    let cost_religion = poi_cost(2); // 12×2×21 + 0.5 = 504.5 XAF
+    let cost_accommodation = poi_cost(1); // 12×1×21 + 0.5 = 252.5 XAF
+    let cost_security = poi_cost(1); // 12×1×21 + 0.5 = 252.5 XAF — mais service public
 
     // ── Coûts réels micro-features ──
     let cost_alerts = MAX_GEOCODE_ALERTS * GOOGLE_GEOCODE_COST_XAF + CLOUD_RUN_OVERHEAD_XAF; // 5×3.3+0.5 = 17 XAF
@@ -101,13 +103,13 @@ pub async fn get_navigation_pricing(_state: State<Arc<AppState>>) -> Json<serde_
 
     // ── Prix avec marge 100% ──
     let poi_prices = serde_json::json!({
-        "health": compute_price(cost_health),           // 168.5 × 2 → 340 XAF
-        "food": compute_price(cost_food),               // 252.5 × 2 → 505 XAF
-        "fuel": compute_price(cost_fuel),               // 84.5 × 2  → 170 XAF
-        "finance": compute_price(cost_finance),         // 84.5 × 2  → 170 XAF
-        "auto": compute_price(cost_auto),               // 252.5 × 2 → 505 XAF
-        "religion": compute_price(cost_religion),       // 168.5 × 2 → 340 XAF
-        "accommodation": compute_price(cost_accommodation), // 84.5 × 2 → 170 XAF
+        "health": compute_price(cost_health),           // 12 pts × 2 types × 21 XAF + overhead → ~1010 XAF
+        "food": compute_price(cost_food),               // 12 × 3 → ~1515 XAF
+        "fuel": compute_price(cost_fuel),               // 12 × 1 → ~505 XAF
+        "finance": compute_price(cost_finance),         // idem fuel
+        "auto": compute_price(cost_auto),               // 12 × 3 → ~1515 XAF
+        "religion": compute_price(cost_religion),       // 12 × 2 → ~1010 XAF
+        "accommodation": compute_price(cost_accommodation),
         "security": 0                                   // GRATUIT — service public d'intérêt général
     });
 

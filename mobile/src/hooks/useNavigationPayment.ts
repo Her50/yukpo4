@@ -34,7 +34,7 @@ const INDEPENDENT_NAV_FEATURES = new Set(['ai_coach']);
 
 export function useNavigationPayment() {
     const { user, refreshUser } = useAuth();
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation() as any;
     const { t } = useLanguageSafe();
     const toaster = useToaster();
     const userCurrency = useCurrencyDetection();
@@ -347,18 +347,29 @@ export function useNavigationPayment() {
     }, [currentBalance, redirectToRecharge, t, userCurrency]);
 
     // ── Paiement POI: estimation + confirmation + débit (multi-devise) ──
+    /** `supplemental` = catégories ajoutées après un premier paiement sur le même trajet (facturation au prorata des nouvelles lignes). */
     const payForPoi = useCallback(async (
         selectedCategories: string[],
         categoryLabels: Record<string, string>,
         onSuccess: () => void,
         onCancel?: () => void,
+        options?: { supplemental?: boolean },
     ): Promise<void> => {
+        const totalCost = estimatePoiCost(selectedCategories);
+        const supplemental = options?.supplemental === true;
+
+        // Période de lancement : pas de débit, mais transparence sur le coût indicatif (toast)
         if (isNavigationFreePeriod) {
+            if (totalCost > 0) {
+                const msg = (t('navPayment.poiLaunchFreeEstimate') ||
+                    'Recherche POI gratuite jusqu’au {{date}}. Coût indicatif après cette date : {{cost}} (tarif basé sur l’usage API).')
+                    .replace('{{date}}', NAVIGATION_FREE_UNTIL_LABEL)
+                    .replace('{{cost}}', formatPriceInCurrency(totalCost, userCurrency));
+                toaster.info(msg);
+            }
             onSuccess();
             return;
         }
-
-        const totalCost = estimatePoiCost(selectedCategories);
 
         // Gratuit → exécuter directement
         if (totalCost <= 0) {
@@ -366,32 +377,27 @@ export function useNavigationPayment() {
             return;
         }
 
-        // Vérifier solde
+        // Solde insuffisant : ouvrir directement l’écran recharge (pas seulement une alerte)
         if (!hasEnoughBalance(totalCost)) {
-            Alert.alert(
-                t('navPayment.insufficientBalance') || 'Solde insuffisant',
-                (t('navPayment.insufficientBalanceMsg') || 'Vous avez {{balance}}. La recherche POI coûte {{cost}}. Rechargez votre solde pour continuer.')
-                    .replace('{{balance}}', formatPriceInCurrency(currentBalance, userCurrency))
+            toaster.warning(
+                (t('navPayment.insufficientBalanceRedirect') ||
+                    'Solde insuffisant pour cette recherche POI ({{cost}}). Ouverture de la recharge…')
                     .replace('{{cost}}', formatPriceInCurrency(totalCost, userCurrency)),
-                [
-                    { text: t('common.cancel') || 'Annuler', style: 'cancel', onPress: onCancel },
-                    {
-                        text: `\uD83D\uDD0B ${t('navPayment.recharge') || 'Recharger'}`,
-                        onPress: () => redirectToRecharge('Navigation', { pendingPoiCategories: selectedCategories }),
-                    },
-                ]
             );
+            redirectToRecharge('Navigation', { pendingPoiCategories: selectedCategories });
+            onCancel?.();
             return;
         }
 
-        // Afficher estimation et demander confirmation (dans la devise utilisateur)
+        // Estimation détaillée + confirmation explicite (prix TTC / commission Yukpo incluse dans le tarif)
         const categoryLines = selectedCategories
             .map(cat => `  • ${categoryLabels[cat] || cat}: ${formatPriceInCurrency(estimatePoiCost([cat]), userCurrency)}`)
             .join('\n');
 
         Alert.alert(
             t('navPayment.poiCostTitle') || 'Coût de la recherche POI',
-            (t('navPayment.poiCostMsg') || 'Catégories sélectionnées:\n{{categories}}\n\nTotal: {{total}}\nSolde actuel: {{balance}}\n\nConfirmer le prélèvement ?')
+            (t('navPayment.poiCostMsg') ||
+                'Catégories sélectionnées:\n{{categories}}\n\nTotal (tarif TTC, marge Yukpo incluse) : {{total}}\nSolde actuel : {{balance}}\n\nConfirmer le prélèvement sur votre solde ?')
                 .replace('{{categories}}', categoryLines)
                 .replace('{{total}}', formatPriceInCurrency(totalCost, userCurrency))
                 .replace('{{balance}}', formatPriceInCurrency(currentBalance, userCurrency)),
@@ -401,10 +407,14 @@ export function useNavigationPayment() {
                     text: t('navPayment.confirmPay') || `Payer ${formatPriceInCurrency(totalCost, userCurrency)}`,
                     style: 'default',
                     onPress: async () => {
-                        const result = await debitAccount(totalCost, `POI: ${selectedCategories.join(', ')}`);
+                        const result = await debitAccount(
+                            totalCost,
+                            supplemental ? `POI (supplément): ${selectedCategories.join(', ')}` : `POI: ${selectedCategories.join(', ')}`,
+                        );
                         if (result.success) {
                             onSuccess();
                         } else if (result.error === 'insufficient_balance') {
+                            toaster.warning(t('navPayment.insufficientBalanceRedirect') || 'Solde insuffisant. Ouverture de la recharge…');
                             redirectToRecharge('Navigation', { pendingPoiCategories: selectedCategories });
                         } else {
                             Alert.alert(
@@ -416,7 +426,7 @@ export function useNavigationPayment() {
                 },
             ]
         );
-    }, [currentBalance, hasEnoughBalance, debitAccount, redirectToRecharge, t, userCurrency, isNavigationFreePeriod]);
+    }, [currentBalance, hasEnoughBalance, debitAccount, redirectToRecharge, t, toaster, userCurrency, isNavigationFreePeriod]);
 
     // ── Micro-paiement avec alerte progressive et dette cumulée ──
     const payMicroFeature = useCallback(async (

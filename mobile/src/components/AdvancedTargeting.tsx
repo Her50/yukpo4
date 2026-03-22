@@ -19,22 +19,28 @@ interface AdvancedTargetingProps {
     onTargetingChange: (targeting: TargetingOptions) => void;
 }
 
-const INTERESTS = [
-    'Immobilier', 'Automobile', 'Mode', 'Technologie', 'Voyage',
-    'Alimentation', 'Sport', t('advancedTargeting.beaute'), t('advancedTargeting.education'), t('advancedTargeting.sante'),
-];
-
-const BEHAVIORS = [
-    t('advancedTargeting.acheteursFrequents'), 'Nouveaux utilisateurs', 'Abandon panier',
-    t('advancedTargeting.visiteursRecents'), 'Clients VIP', 'Inactifs',
-];
-
 export const AdvancedTargeting: React.FC<AdvancedTargetingProps> = ({
     targeting,
     onTargetingChange,
 }) => {
-        const { t } = useLanguageSafe();
-const [expanded, setExpanded] = useState(false);
+    const { t } = useLanguageSafe();
+    const [expanded, setExpanded] = useState(false);
+
+    const INTERESTS = React.useMemo(
+        () => [
+            'Immobilier', 'Automobile', 'Mode', 'Technologie', 'Voyage',
+            'Alimentation', 'Sport', t('advancedTargeting.beaute'), t('advancedTargeting.education'), t('advancedTargeting.sante'),
+        ],
+        [t],
+    );
+
+    const BEHAVIORS = React.useMemo(
+        () => [
+            t('advancedTargeting.acheteursFrequents'), 'Nouveaux utilisateurs', 'Abandon panier',
+            t('advancedTargeting.visiteursRecents'), 'Clients VIP', 'Inactifs',
+        ],
+        [t],
+    );
 
     const toggleInterest = (interest: string) => {
         const newInterests = targeting.interests.includes(interest)

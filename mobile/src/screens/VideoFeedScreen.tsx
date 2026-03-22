@@ -1356,7 +1356,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         <TextInput
                             ref={searchInputRef}
                             style={styles.searchInput}
-                            placeholder="Rechercher des vidéos..."
+                            placeholder={t('videoFeed.rechercherDesVideos')}
                             placeholderTextColor="#9CA3AF"
                             value={searchQuery}
                             onChangeText={setSearchQuery}
@@ -1367,7 +1367,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         </TouchableOpacity>
                     </View>
                     {searchQuery.length > 0 && filteredFeed.length === 0 && (
-                        <Text style={styles.searchNoResults}>Aucune vidéo trouvée</Text>
+                        <Text style={styles.searchNoResults}>{t('videoFeed.aucuneVideoTrouvee')}</Text>
                     )}
                 </Animated.View>
             )}

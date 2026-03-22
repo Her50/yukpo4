@@ -15,6 +15,7 @@ const AlerteSecurite: React.FC<AlerteSecuriteProps> = ({
     showDetails = true,
     onDismiss
 }) => {
+    const { t } = useLanguageSafe();
     const isWarning = variant === 'warning';
 
     return (

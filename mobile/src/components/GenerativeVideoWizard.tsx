@@ -1,6 +1,6 @@
 // ✅ NOUVEAU Phase 3.1: Wizard pour génération vidéo IA complète depuis texte
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -18,30 +18,69 @@ import {
     generativeVideoService,
     Storyboard,
 } from '../services/generativeVideoService';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeInput } from './SafeNativeDesign';
 import { SafeIcon } from './SafeIcon';
 
+export interface GenerativeVideoGeneratedPayload {
+    /** ID du job `POST /api/generative/generate` (pour attache produit) */
+    generativeJobId: string;
+    videoUrl: string;
+    timelineId: string;
+}
+
 interface GenerativeVideoWizardProps {
     visible: boolean;
     onClose: () => void;
-    onVideoGenerated?: (timelineId: string, videoUrl: string) => void;
+    /** Texte initial (ex. contexte produit) */
+    initialDescription?: string;
+    /** Appelé quand la génération est terminée avec succès */
+    onVideoGenerated?: (payload: GenerativeVideoGeneratedPayload) => void;
 }
 
-const STYLES = ['cinématique', 'dramatique', 'dynamique', 'calme', 'épique', 'intime'];
-const MOODS = ['energetic', 'relaxing', 'happy', 'sad', 'dramatic', 'calm', 'epic'];
+/** Valeurs envoyées à l’API — libellés via i18n `style*` */
+const STYLE_OPTIONS = [
+    { value: 'cinématique', i18nKey: 'styleCinematic' },
+    { value: 'dramatique', i18nKey: 'styleDramatic' },
+    { value: 'dynamique', i18nKey: 'styleDynamic' },
+    { value: 'calme', i18nKey: 'styleCalm' },
+    { value: 'épique', i18nKey: 'styleEpic' },
+    { value: 'intime', i18nKey: 'styleIntimate' },
+] as const;
+
+const MOOD_OPTIONS = [
+    { value: 'energetic', i18nKey: 'moodEnergetic' },
+    { value: 'relaxing', i18nKey: 'moodRelaxing' },
+    { value: 'happy', i18nKey: 'moodHappy' },
+    { value: 'sad', i18nKey: 'moodSad' },
+    { value: 'dramatic', i18nKey: 'moodDramatic' },
+    { value: 'calm', i18nKey: 'moodCalm' },
+    { value: 'epic', i18nKey: 'moodEpic' },
+] as const;
+
 const ASPECT_RATIOS: Array<'16:9' | '9:16' | '1:1' | '4:5' | '21:9'> = ['16:9', '9:16', '1:1', '4:5', '21:9'];
-const PROVIDERS = [
-    { value: 'runway', label: 'Runway ML' },
-    { value: 'pika', label: 'Pika Labs' },
-    { value: 'sora', label: 'Sora (OpenAI)' },
-];
+
+const PROVIDER_OPTIONS = [
+    { value: 'runway' as const, i18nKey: 'providerRunway' },
+    { value: 'pika' as const, i18nKey: 'providerPika' },
+    { value: 'sora' as const, i18nKey: 'providerSora' },
+] as const;
+
+const G = 'generativeVideoWizard';
 
 export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
     visible,
     onClose,
+    initialDescription = '',
     onVideoGenerated,
 }) => {
+    const { t } = useLanguageSafe();
+    const tg = useCallback(
+        (key: string, params?: Record<string, string | number>) => t(`${G}.${key}`, params),
+        [t],
+    );
+
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [description, setDescription] = useState('');
     const [duration, setDuration] = useState('30');
@@ -53,7 +92,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
     const [jobId, setJobId] = useState<string | null>(null);
     const [job, setJob] = useState<GenerativeJob | null>(null);
     const [storyboard, setStoryboard] = useState<Storyboard | null>(null);
-    const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+    const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Polling pour le statut du job
     useEffect(() => {
@@ -64,35 +103,43 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
                 const updatedJob = await generativeVideoService.getJobStatus(jobId);
                 setJob(updatedJob);
 
-                if (updatedJob.storyboard && !storyboard) {
-                    setStoryboard(updatedJob.storyboard);
+                if (updatedJob.storyboard) {
+                    setStoryboard((prev) => prev ?? updatedJob.storyboard!);
                 }
 
-                if (updatedJob.status === 'completed' && updatedJob.final_video_url) {
-                    if (pollingInterval) clearInterval(pollingInterval);
+                if (updatedJob.status === 'completed' && updatedJob.final_video_url && jobId) {
+                    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
                     setLoading(false);
-                    onVideoGenerated?.(updatedJob.final_timeline_id || '', updatedJob.final_video_url);
-                    Alert.alert('Succès', 'Vidéo générée avec succès !');
+                    const payload: GenerativeVideoGeneratedPayload = {
+                        generativeJobId: jobId,
+                        videoUrl: updatedJob.final_video_url,
+                        timelineId: updatedJob.final_timeline_id || '',
+                    };
+                    if (onVideoGenerated) {
+                        onVideoGenerated(payload);
+                    } else {
+                        Alert.alert(tg('alertSuccessTitle'), tg('alertSuccessBody'));
+                    }
                 } else if (updatedJob.status === 'failed') {
-                    if (pollingInterval) clearInterval(pollingInterval);
+                    if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
                     setLoading(false);
-                    Alert.alert('Erreur', updatedJob.error || 'Échec de la génération');
+                    Alert.alert(tg('alertErrorTitle'), updatedJob.error || tg('alertGenerationFailed'));
                 }
             } catch (error: any) {
                 console.error('[GenerativeVideoWizard] Erreur polling:', error);
             }
         }, 3000); // Poll toutes les 3 secondes
 
-        setPollingInterval(interval);
+        pollingIntervalRef.current = interval;
 
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [jobId, storyboard, pollingInterval, onVideoGenerated]);
+    }, [jobId, onVideoGenerated, tg]);
 
     const handleGenerate = async () => {
         if (!description.trim()) {
-            Alert.alert('Erreur', 'Veuillez entrer une description');
+            Alert.alert(tg('alertErrorTitle'), tg('alertEmptyDescription'));
             return;
         }
 
@@ -113,14 +160,14 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
             setJobId(response.job_id);
         } catch (error: any) {
             console.error('[GenerativeVideoWizard] Erreur génération:', error);
-            Alert.alert('Erreur', error.message || 'Erreur lors de la génération');
+            Alert.alert(tg('alertErrorTitle'), error.message || tg('alertGenericError'));
             setLoading(false);
             setStep(1);
         }
     };
 
     const handleClose = () => {
-        if (pollingInterval) clearInterval(pollingInterval);
+        if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
         setJobId(null);
         setJob(null);
         setStoryboard(null);
@@ -129,28 +176,43 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
         onClose();
     };
 
+    const getProgressLabel = (): string => {
+        if (!job) return '';
+        const { stage, message, current_scene, total_scenes } = job.progress;
+        if (stage === 'generating_storyboard') return tg('progressStoryboard');
+        if (stage === 'generating_clips') {
+            return tg('progressClips', {
+                current: current_scene || 0,
+                total: total_scenes || 0,
+            });
+        }
+        if (stage === 'assembling') return tg('progressAssembling');
+        if (message && String(message).trim()) return String(message);
+        return tg('progressProcessing');
+    };
+
     const renderStep1 = () => (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>Description de la vidéo</Text>
+            <Text style={styles.stepTitle}>{tg('step1Title')}</Text>
             <TextInput
                 style={styles.textArea}
                 value={description}
                 onChangeText={setDescription}
-                placeholder="Décrivez la vidéo que vous souhaitez générer..."
+                placeholder={tg('placeholderDescription')}
                 multiline
                 numberOfLines={6}
                 placeholderTextColor={modernColors.textSecondary}
             />
 
-            <Text style={styles.label}>Durée (secondes)</Text>
+            <Text style={styles.label}>{tg('labelDurationSeconds')}</Text>
             <NativeInput
                 value={duration}
                 onChangeText={setDuration}
                 keyboardType="numeric"
-                placeholder="30"
+                placeholder={tg('placeholderDuration')}
             />
 
-            <Text style={styles.label}>Ratio d'aspect</Text>
+            <Text style={styles.label}>{tg('labelAspectRatio')}</Text>
             <View style={styles.optionsRow}>
                 {ASPECT_RATIOS.map((ratio) => (
                     <TouchableOpacity
@@ -174,7 +236,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
             </View>
 
             <NativeButton
-                title="Suivant"
+                title={tg('next')}
                 onPress={() => setStep(2)}
                 variant="primary"
                 disabled={!description.trim()}
@@ -184,78 +246,74 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
 
     const renderStep2 = () => (
         <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.stepTitle}>Options de génération</Text>
+            <Text style={styles.stepTitle}>{tg('step2Title')}</Text>
 
-            <Text style={styles.label}>Style visuel (optionnel)</Text>
+            <Text style={styles.label}>{tg('labelVisualStyle')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsRow}>
-                {STYLES.map((style) => (
+                {STYLE_OPTIONS.map(({ value, i18nKey }) => (
                     <TouchableOpacity
-                        key={style}
+                        key={value}
                         style={[
                             styles.optionChip,
-                            selectedStyle === style && styles.optionChipActive,
+                            selectedStyle === value && styles.optionChipActive,
                         ]}
-                        onPress={() => setSelectedStyle(selectedStyle === style ? null : style)}
+                        onPress={() => setSelectedStyle(selectedStyle === value ? null : value)}
                     >
                         <Text
                             style={[
                                 styles.optionChipText,
-                                selectedStyle === style && styles.optionChipTextActive,
+                                selectedStyle === value && styles.optionChipTextActive,
                             ]}
                         >
-                            {style}
+                            {tg(i18nKey)}
                         </Text>
                     </TouchableOpacity>
                 ))}
             </ScrollView>
 
-            <Text style={styles.label}>Ambiance/Mood (optionnel)</Text>
+            <Text style={styles.label}>{tg('labelMood')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsRow}>
-                {MOODS.map((mood) => (
+                {MOOD_OPTIONS.map(({ value, i18nKey }) => (
                     <TouchableOpacity
-                        key={mood}
+                        key={value}
                         style={[
                             styles.optionChip,
-                            selectedMood === mood && styles.optionChipActive,
+                            selectedMood === value && styles.optionChipActive,
                         ]}
-                        onPress={() => setSelectedMood(selectedMood === mood ? null : mood)}
+                        onPress={() => setSelectedMood(selectedMood === value ? null : value)}
                     >
                         <Text
                             style={[
                                 styles.optionChipText,
-                                selectedMood === mood && styles.optionChipTextActive,
+                                selectedMood === value && styles.optionChipTextActive,
                             ]}
                         >
-                            {mood}
+                            {tg(i18nKey)}
                         </Text>
                     </TouchableOpacity>
                 ))}
             </ScrollView>
 
-            <Text style={styles.label}>Provider IA (optionnel - auto si non spécifié)</Text>
+            <Text style={styles.label}>{tg('labelAiProvider')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionsRow}>
-                {PROVIDERS.map((provider) => (
+                {PROVIDER_OPTIONS.map(({ value, i18nKey }) => (
                     <TouchableOpacity
-                        key={provider.value}
+                        key={value}
                         style={[
                             styles.optionChip,
-                            selectedProvider === provider.value && styles.optionChipActive,
+                            selectedProvider === value && styles.optionChipActive,
                         ]}
                         onPress={() =>
-                            setSelectedProvider(
-                                selectedProvider === provider.value
-                                    ? undefined
-                                    : (provider.value as any)
-                            )
+                            setSelectedProvider(selectedProvider === value ? undefined : value)
                         }
                     >
                         <Text
                             style={[
                                 styles.optionChipText,
-                                selectedProvider === provider.value && styles.optionChipTextActive,
+                                selectedProvider === value && styles.optionChipTextActive,
                             ]}
                         >
-                            {provider.label}
+                            {tg(i18nKey)}
                         </Text>
                     </TouchableOpacity>
                 ))}
@@ -263,13 +321,13 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
 
             <View style={styles.stepActions}>
                 <NativeButton
-                    title="Retour"
+                    title={tg('back')}
                     onPress={() => setStep(1)}
                     variant="outline"
                     style={styles.backButton}
                 />
                 <NativeButton
-                    title="Générer"
+                    title={tg('generate')}
                     onPress={handleGenerate}
                     variant="primary"
                     style={styles.generateButton}
@@ -280,7 +338,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
 
     const renderStep3 = () => (
         <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Génération en cours...</Text>
+            <Text style={styles.stepTitle}>{tg('step3Title')}</Text>
 
             {loading && (
                 <ActivityIndicator
@@ -292,12 +350,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
 
             {job && (
                 <View style={styles.progressContainer}>
-                    <Text style={styles.progressLabel}>
-                        {job.progress.stage === 'generating_storyboard' ? 'Génération du storyboard...' :
-                            job.progress.stage === 'generating_clips' ? `Génération des clips (${job.progress.current_scene || 0}/${job.progress.total_scenes || 0})...` :
-                                job.progress.stage === 'assembling' ? 'Assemblage de la vidéo...' :
-                                    job.progress.message || 'Traitement en cours...'}
-                    </Text>
+                    <Text style={styles.progressLabel}>{getProgressLabel()}</Text>
                     <View style={styles.progressBar}>
                         <View
                             style={[
@@ -314,21 +367,24 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
 
             {storyboard && (
                 <View style={styles.storyboardContainer}>
-                    <Text style={styles.storyboardTitle}>Storyboard généré</Text>
+                    <Text style={styles.storyboardTitle}>{tg('storyboardGenerated')}</Text>
                     <Text style={styles.storyboardInfo}>
-                        {String(storyboard.scenes.length)} scènes • {String(storyboard.total_duration)}s
+                        {tg('storyboardMeta', {
+                            count: storyboard.scenes.length,
+                            seconds: storyboard.total_duration,
+                        })}
                     </Text>
                     <ScrollView style={styles.scenesList}>
                         {storyboard.scenes.map((scene) => (
                             <View key={scene.scene_number} style={styles.sceneItem}>
                                 <Text style={styles.sceneNumber}>
-                                    Scène {String(scene.scene_number)}
+                                    {tg('sceneLabel', { n: scene.scene_number })}
                                 </Text>
                                 <Text style={styles.sceneDescription}>
                                     {scene.description}
                                 </Text>
                                 <Text style={styles.sceneDuration}>
-                                    {String(scene.duration_seconds)}s
+                                    {tg('sceneDurationLine', { seconds: scene.duration_seconds })}
                                 </Text>
                             </View>
                         ))}
@@ -339,7 +395,10 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
             {job?.generated_clips && job.generated_clips.length > 0 && (
                 <View style={styles.clipsContainer}>
                     <Text style={styles.clipsTitle}>
-                        Clips générés: {String(job.generated_clips.length)}/{String(storyboard?.scenes.length || 0)}
+                        {tg('clipsProgress', {
+                            done: job.generated_clips.length,
+                            total: storyboard?.scenes.length || 0,
+                        })}
                     </Text>
                 </View>
             )}
@@ -357,7 +416,7 @@ export const GenerativeVideoWizard: React.FC<GenerativeVideoWizardProps> = ({
             <View style={styles.overlay}>
                 <View style={styles.container}>
                     <View style={styles.header}>
-                        <Text style={styles.title}>Génération Vidéo IA</Text>
+                        <Text style={styles.title}>{tg('modalTitle')}</Text>
                         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -592,4 +651,3 @@ const styles = StyleSheet.create({
         color: modernColors.error,
     },
 });
-

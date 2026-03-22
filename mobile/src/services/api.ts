@@ -1585,6 +1585,20 @@ export const mediaApi = {
       body: JSON.stringify(payload),
     });
   },
+  /**
+   * Attache une vidéo issue du job `POST /api/generative/generate` (statut **completed**) au produit.
+   * Réponse : `{ success: true, data }` avec `data` aligné sur `VideoGenerationResult` / `GeneratedVideoResponse`.
+   */
+  attachGenerativeVideoToProduct: async (
+    serviceId: string | number,
+    productIndex: string | number,
+    body: { generative_job_id: string; final_video_url?: string }
+  ) => {
+    return apiCall(`/api/media/product/${serviceId}/${productIndex}/attach-generative-video`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
   trackMediaView: async (mediaId: number | undefined | null, payload: { channel?: string; session_id?: string; metadata?: any }) => {
     // ✅ CORRECTION 2025-12-01: Valider mediaId avant l'appel API pour éviter /api/media/undefined/track-view
     if (!mediaId || mediaId === undefined || mediaId === null || isNaN(Number(mediaId))) {

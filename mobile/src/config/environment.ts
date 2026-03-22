@@ -1,9 +1,9 @@
 import { Platform } from 'react-native';
 
-const ENV =
+const ENV: NodeJS.ProcessEnv =
     typeof process !== 'undefined' && process?.env
         ? process.env
-        : {};
+        : ({} as NodeJS.ProcessEnv);
 
 // Configuration de l'environnement pour l'application mobile
 export const ENVIRONMENT = {

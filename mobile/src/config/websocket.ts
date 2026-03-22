@@ -1,9 +1,9 @@
 // Configuration WebSocket pour l'application mobile
 // TODO: Fix TypeScript type issue
-const ENV =
+const ENV: NodeJS.ProcessEnv =
   typeof process !== 'undefined' && process?.env
     ? process.env
-    : {};
+    : ({} as NodeJS.ProcessEnv);
 
 export const WEBSOCKET_CONFIG = {
   // WebSockets activés
