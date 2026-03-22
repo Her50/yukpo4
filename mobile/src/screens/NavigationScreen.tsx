@@ -851,56 +851,6 @@ const NavigationScreen: React.FC = () => {
         return () => { s1.remove(); s2.remove(); };
     }, []);
 
-    // ── Force GPS activation on mount ──
-    useEffect(() => {
-        (async () => {
-            try {
-                const enabled = await Location.hasServicesEnabledAsync();
-                const { status } = await Location.getForegroundPermissionsAsync();
-
-                if (!enabled) {
-                    Alert.alert(
-                        t('navigation.gpsRequired') || 'GPS requis',
-                        t('navigation.gpsRequiredMsg') || 'La navigation nécessite le GPS. Veuillez activer la localisation dans les paramètres de votre appareil.',
-                        [
-                            { text: t('common.cancel') || 'Plus tard', style: 'cancel' },
-                            {
-                                text: t('navigation.openSettings') || 'Ouvrir Paramètres',
-                                onPress: () => {
-                                    if (Platform.OS === 'ios') Linking.openURL('app-settings:');
-                                    else Linking.openSettings();
-                                },
-                            },
-                        ]
-                    );
-                    return;
-                }
-
-                if (status !== 'granted') {
-                    const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
-                    if (newStatus !== 'granted') {
-                        Alert.alert(
-                            t('navigation.permissionRequired') || 'Permission requise',
-                            t('navigation.allowLocationMsg') || 'Yukpo a besoin de votre position pour la navigation, les alertes routières et les points d\'intérêt.',
-                            [
-                                { text: t('common.cancel') || 'Plus tard', style: 'cancel' },
-                                {
-                                    text: t('navigation.openSettings') || 'Ouvrir Paramètres',
-                                    onPress: () => {
-                                        if (Platform.OS === 'ios') Linking.openURL('app-settings:');
-                                        else Linking.openSettings();
-                                    },
-                                },
-                            ]
-                        );
-                    }
-                }
-            } catch (e) {
-                console.warn('[Navigation] GPS check failed:', e);
-            }
-        })();
-    }, [t]);
-
     // Vérifier puis auto-activer le tracking passif au montage
     useEffect(() => {
         let cancelled = false;

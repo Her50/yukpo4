@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { Text } from 'react-native';
+import React, { createContext, ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import { Alert, Linking, Platform, Text } from 'react-native';
 
 interface LocationContextType {
   location: Location.LocationObject | null;
@@ -212,26 +212,71 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     return R * c;
   };
 
+  const gpsPromptShownRef = useRef(false);
+
   useEffect(() => {
-    // ✅ SÉCURITÉ: Vérifier que getCurrentLocation est disponible
-    if (typeof getCurrentLocation === 'function') {
-      getCurrentLocation().catch((error) => {
-        console.warn('[LocationContext] Erreur getCurrentLocation dans useEffect:', error);
-      });
-    }
+    (async () => {
+      try {
+        const enabled = await Location.hasServicesEnabledAsync();
+        const { status } = await Location.getForegroundPermissionsAsync();
+
+        if (!enabled && !gpsPromptShownRef.current) {
+          gpsPromptShownRef.current = true;
+          Alert.alert(
+            'GPS requis',
+            'Yukpo utilise votre position pour la navigation, la recherche de services à proximité, la livraison et bien d\'autres fonctionnalités. Veuillez activer la localisation.',
+            [
+              { text: 'Plus tard', style: 'cancel' },
+              {
+                text: 'Ouvrir Paramètres',
+                onPress: () => {
+                  if (Platform.OS === 'ios') Linking.openURL('app-settings:');
+                  else Linking.openSettings();
+                },
+              },
+            ]
+          );
+          return;
+        }
+
+        if (status !== 'granted') {
+          const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+          if (newStatus !== 'granted' && !gpsPromptShownRef.current) {
+            gpsPromptShownRef.current = true;
+            Alert.alert(
+              'Permission de localisation',
+              'Sans accès à votre position, de nombreuses fonctionnalités seront limitées (navigation, recherche, livraison, alertes).',
+              [
+                { text: 'Plus tard', style: 'cancel' },
+                {
+                  text: 'Ouvrir Paramètres',
+                  onPress: () => {
+                    if (Platform.OS === 'ios') Linking.openURL('app-settings:');
+                    else Linking.openSettings();
+                  },
+                },
+              ]
+            );
+            return;
+          }
+        }
+
+        getCurrentLocation().catch((error) => {
+          console.warn('[LocationContext] Erreur getCurrentLocation:', error);
+        });
+      } catch (e) {
+        console.warn('[LocationContext] GPS check failed:', e);
+        getCurrentLocation().catch(() => {});
+      }
+    })();
 
     return () => {
-      // ✅ SÉCURITÉ: Vérifier que la fonction existe avant de l'appeler
       if (typeof stopWatchingLocation === 'function') {
-        try {
-          stopWatchingLocation();
-        } catch (error) {
-          console.warn('[LocationContext] Erreur stopWatchingLocation dans cleanup:', error);
-        }
+        try { stopWatchingLocation(); } catch {}
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ✅ CORRIGÉ: getCurrentLocation et stopWatchingLocation sont stables, pas besoin de les inclure
+  }, []);
 
   const value: LocationContextType = {
     location,
