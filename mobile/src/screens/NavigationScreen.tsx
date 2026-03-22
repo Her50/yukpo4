@@ -531,6 +531,7 @@ const NavigationScreen: React.FC = () => {
     const checkpointsEncounteredRef = useRef<number>(0);
     const wasOffRouteRef = useRef<boolean>(false);
     const encounteredCheckpointIdsRef = useRef<Map<string, number>>(new Map());
+    const announcedWaypointsRef = useRef<Map<string, number>>(new Map());
     const [isFreeWalking, setIsFreeWalking] = useState(false);
     const [freeWalkStarting, setFreeWalkStarting] = useState(false);
     const [freeWalkTick, setFreeWalkTick] = useState(0);
@@ -1452,6 +1453,7 @@ const NavigationScreen: React.FC = () => {
         lastPositionRef.current = null; checkpointsReportedRef.current = 0;
         checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false;
         encounteredCheckpointIdsRef.current = new Map();
+        announcedWaypointsRef.current = new Map();
         setIsTracking(true);
 
         // Démarrer la souscription GPS pour mettre à jour livePosition
@@ -1709,6 +1711,52 @@ const NavigationScreen: React.FC = () => {
 
         setNearbyCheckpoint(nearest);
     }, [livePosition, isTracking, isFreeWalking, haversineDistance, activeLang, t]);
+
+    // ── Détection de proximité des waypoints POI → annonces vocales TTS ──
+    useEffect(() => {
+        if (!isTracking || waypoints.length === 0 || !livePosition) return;
+
+        const THRESHOLD_APPROACHING = 300;
+        const THRESHOLD_ARRIVED = 50;
+        const announced = announcedWaypointsRef.current;
+
+        const ttsLangMap: Record<string, string> = {
+            fr: 'fr-FR', en: 'en-US', es: 'es-ES', de: 'de-DE', pt: 'pt-BR',
+            ar: 'ar-SA', sw: 'sw-KE', ha: 'ha-NG', wo: 'wo-SN', yo: 'yo-NG',
+            ig: 'ig-NG', am: 'am-ET', zu: 'zu-ZA', rw: 'rw-RW', mg: 'mg-MG',
+            zh: 'zh-CN', hi: 'hi-IN', ja: 'ja-JP', ko: 'ko-KR', ru: 'ru-RU',
+            it: 'it-IT', nl: 'nl-NL', tr: 'tr-TR', pl: 'pl-PL', uk: 'uk-UA',
+        };
+        const ttsLang = ttsLangMap[activeLang] || `${activeLang}-${activeLang.toUpperCase()}`;
+
+        for (let i = 0; i < waypoints.length; i++) {
+            const wp = waypoints[i];
+            const wpKey = `${wp.lat.toFixed(5)},${wp.lng.toFixed(5)}`;
+            const dist = haversineDistance(livePosition.lat, livePosition.lng, wp.lat, wp.lng);
+            const lastThreshold = announced.get(wpKey) ?? Infinity;
+
+            if (dist <= THRESHOLD_ARRIVED && lastThreshold > THRESHOLD_ARRIVED) {
+                announced.set(wpKey, THRESHOLD_ARRIVED);
+                const msg = t('navigation.waypointArrived', { name: wp.name })
+                    || `Vous êtes arrivé à ${wp.name}. Arrêt numéro ${i + 1}.`;
+                Speech.stop();
+                Speech.speak(msg, { language: ttsLang, rate: 0.95, pitch: 1.0 });
+                try {
+                    Notifications.scheduleNotificationAsync({
+                        content: { title: `📍 ${t('navigation.waypointArrivedTitle') || 'Arrêt atteint'}`, body: wp.name, sound: true, ...(Platform.OS === 'android' ? { channelId: 'community_alerts' } : {}) },
+                        trigger: null,
+                    });
+                } catch {}
+            } else if (dist <= THRESHOLD_APPROACHING && lastThreshold > THRESHOLD_APPROACHING) {
+                announced.set(wpKey, THRESHOLD_APPROACHING);
+                const distText = dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`;
+                const msg = t('navigation.waypointApproaching', { name: wp.name, distance: distText })
+                    || `Approche de ${wp.name} dans ${distText}.`;
+                Speech.stop();
+                Speech.speak(msg, { language: ttsLang, rate: 0.95, pitch: 1.0 });
+            }
+        }
+    }, [livePosition, isTracking, waypoints, haversineDistance, activeLang, t]);
 
     // Réattacher la session marche libre si active (retour écran / app relancée)
     useEffect(() => {
