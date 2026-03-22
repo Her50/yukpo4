@@ -573,7 +573,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                   ))}
                   {navLinks.length > 0 && (
                     <>
-                      <Text style={styles.navLinksLabel}>🔗 Accès rapide :</Text>
+                      <Text style={styles.navLinksLabel}>{t('intelligentChat.quickAccess')}</Text>
                       {navLinks.map((action: any) => (
                         <TouchableOpacity
                           key={action.id}

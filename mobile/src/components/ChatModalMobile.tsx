@@ -2064,7 +2064,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                 ))}
                                                 {navLinks.length > 0 && (
                                                     <>
-                                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748b', marginTop: 8, marginBottom: 2, width: '100%' }}>🔗 Accès rapide :</Text>
+                                                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748b', marginTop: 8, marginBottom: 2, width: '100%' }}>{t('intelligentChat.quickAccess')}</Text>
                                                         {navLinks.map((action: any, idx: number) => (
                                                             <TouchableOpacity
                                                                 key={`nav-${idx}`}

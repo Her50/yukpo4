@@ -254,7 +254,7 @@ const HomeIntelligentChat: React.FC<HomeIntelligentChatProps> = ({
                                 ))}
                                 {navLinks.length > 0 && (
                                     <>
-                                        <Text style={styles.navLinksTitle}>🔗 Accès rapide :</Text>
+                                        <Text style={styles.navLinksTitle}>{t('intelligentChat.quickAccess')}</Text>
                                         {navLinks.map((action, actionIndex) => (
                                             <TouchableOpacity
                                                 key={`nav-${actionIndex}`}

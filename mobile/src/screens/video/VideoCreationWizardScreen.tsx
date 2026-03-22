@@ -73,41 +73,41 @@ type WizardStep = 1 | 2 | 3;
 type ModePreset = 'standard' | 'expert';
 type CreationSource = 'media' | 'ai_virtual';
 
-const FALLBACK_STORY_TEMPLATES: StoryTemplateSpec[] = [
+const buildFallbackStoryTemplates = (t: (key: string) => string): StoryTemplateSpec[] => [
     {
         id: 'blog',
-        label: 'Blog / Chronicle',
+        label: t('videoWizard.fallback.blogLabel'),
         description: t('videoCreationWizard.recitEditorialIdealPourActus'),
         recommendedCategories: [],
         tones: ['inspirational'],
-        ctas: ['Découvrir'],
+        ctas: [t('videoWizard.fallback.ctaDiscover')],
         defaultDurationSeconds: 30,
         suggestedScenes: 3,
     },
     {
         id: 'tutorial',
-        label: 'Tutoriel / How-to',
+        label: t('videoWizard.fallback.tutorialLabel'),
         description: t('videoCreationWizard.pasapasPourExpliquerUnServiceapp'),
         recommendedCategories: [],
         tones: ['educational'],
-        ctas: ['Essayer'],
+        ctas: [t('videoWizard.fallback.ctaTry')],
         defaultDurationSeconds: 36,
         suggestedScenes: 4,
     },
     {
         id: 'testimonial',
         label: t('videoCreationWizard.temoignageClient'),
-        description: 'Renforce la preuve sociale en quelques secondes.',
+        description: t('videoWizard.fallback.testimonialDesc'),
         recommendedCategories: [],
         tones: ['trust'],
-        ctas: ['Réserver'],
+        ctas: [t('videoWizard.fallback.ctaBook')],
         defaultDurationSeconds: 28,
         suggestedScenes: 3,
     },
     {
         id: 'comparison',
-        label: 'Comparatif / Benchmark',
-        description: 'Oppose deux options pour mettre en avant Yukpo.',
+        label: t('videoWizard.fallback.comparisonLabel'),
+        description: t('videoWizard.fallback.comparisonDesc'),
         recommendedCategories: [],
         tones: ['bold'],
         ctas: [t('videoCreationWizardScreen.passerAYukpo')],
@@ -215,8 +215,9 @@ const VideoCreationWizardScreen: React.FC = () => {
         minHeight: 80 + insets.bottom, // ✅ Hauteur minimale pour garantir la visibilité
     }), [insets.bottom]);
 
+    const fallbackStoryTemplates = useMemo(() => buildFallbackStoryTemplates(t), [t]);
     const templateOptions =
-        storyTemplates.length > 0 ? storyTemplates : FALLBACK_STORY_TEMPLATES;
+        storyTemplates.length > 0 ? storyTemplates : fallbackStoryTemplates;
     const selectedStoryTemplate = templateOptions.find((spec) => spec.id === storyTemplateId);
     const effectiveScenesCount = useMemo(() => {
         if (selectedStoryTemplate?.suggestedScenes && selectedStoryTemplate.suggestedScenes > 0) {
@@ -526,7 +527,7 @@ const VideoCreationWizardScreen: React.FC = () => {
         } catch (error) {
             console.warn('[VideoCreationWizard] Service introuvable', error);
             // ✅ CORRIGÉ: Afficher un message d'erreur en cas d'erreur
-            const errorMessage = (error as any)?.message || 'Erreur inconnue';
+            const errorMessage = (error as any)?.message || t('videoWizard.errors.unknownError');
             const isNetworkError = errorMessage.toLowerCase().includes('network') ||
                 errorMessage.toLowerCase().includes('timeout') ||
                 errorMessage.toLowerCase().includes('fetch');
@@ -646,7 +647,7 @@ const VideoCreationWizardScreen: React.FC = () => {
             Alert.alert(
                 t('videoWizardExtra.mediaUnavailable'),
                 t('videoWizardExtra.mediaUnavailableMsg'),
-                [{ text: 'OK' }]
+                [{ text: t('videoWizard.ok') }]
             );
         } finally {
             setMediaLoading(false);
@@ -1011,7 +1012,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 if (estimation.affordable === false) {
                     const balanceStr = estimation.current_balance_fcfa != null
                         ? `${Math.round(estimation.current_balance_fcfa).toLocaleString()} FCFA`
-                        : 'inconnu';
+                        : t('videoWizard.unknown');
                     const costStr = `${Math.round(estimation.total_cost_local).toLocaleString()} ${estimation.local_currency}`;
                     Alert.alert(
                         t('videoWizardExtra.insufficientBalance'),
@@ -1026,13 +1027,13 @@ const VideoCreationWizardScreen: React.FC = () => {
                 markStepCompleted(1);
                 setStep(2);
             } else {
-                const errorMsg = response.message || t('videoWizard.alert.retrySoon') || 'Erreur lors de l\'estimation.';
+                const errorMsg = response.message || t('videoWizard.alert.retrySoon') || t('videoWizard.errors.estimationError');
                 Alert.alert(t('videoWizard.alert.estimationFailedTitle'), errorMsg);
                 console.error('[VideoCreationWizard] Estimation vide:', response);
             }
         } catch (error: any) {
             console.error('[VideoCreationWizard] Erreur estimation coût:', error);
-            let message = error?.message || t('videoWizard.alert.serverError') || 'Erreur serveur.';
+            let message = error?.message || t('videoWizard.alert.serverError') || t('videoWizard.errors.serverError');
 
             // Messages d'erreur plus spécifiques
             if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
@@ -1174,7 +1175,7 @@ const VideoCreationWizardScreen: React.FC = () => {
             });
         } catch (error: any) {
             console.error('[VideoCreationWizard] Erreur génération storyboard:', error);
-            const title = t('videoWizard.alert.storyboardFailedTitle') ?? 'Storyboard IA';
+            const title = t('videoWizard.alert.storyboardFailedTitle') ?? t('videoWizard.storyboardAI');
             const defaultMessage = t('videoWizard.alert.storyboardFailedMessage');
             let message = error?.message || defaultMessage || t('videoCreationWizard.impossibleDeGenererLeStoryboard');
 
@@ -1368,7 +1369,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 t('videoWizardExtra.aiNotAvailable'),
                 t('videoWizardExtra.aiNotAvailableMsg'),
                 [
-                    { text: 'OK', style: 'cancel' },
+                    { text: t('videoWizard.ok'), style: 'cancel' },
                     { text: t('videoWizardExtra.useMyMedia'), onPress: () => setCreationSource('media') },
                 ]
             );
@@ -1379,7 +1380,7 @@ const VideoCreationWizardScreen: React.FC = () => {
         if (costEstimation && costEstimation.affordable === false) {
             const balanceStr = costEstimation.current_balance_fcfa != null
                 ? `${Math.round(costEstimation.current_balance_fcfa).toLocaleString()} FCFA`
-                : 'inconnu';
+                : t('videoWizard.unknown');
             const costStr = `${Math.round(costEstimation.total_cost_local).toLocaleString()} ${costEstimation.local_currency}`;
             Alert.alert(
                 t('videoWizardExtra.insufficientBalance'),
@@ -1508,7 +1509,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 errorMessage.toLowerCase().includes('solde insuffisant') ||
                 errorMessage.toLowerCase().includes('insufficient');
 
-            const alertButtons: any[] = [{ text: 'OK' }];
+            const alertButtons: any[] = [{ text: t('videoWizard.ok') }];
             if (isBalanceError) {
                 alertButtons.push({
                     text: `💳 ${t('videoWizardExtra.recharge')}`,
@@ -1574,7 +1575,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                 Alert.alert(
                     t('videoWizard.alert.previewShortNoUrlTitle') ?? t('videoCreationWizard.previsualisationRapide'),
                     t('videoWizard.alert.previewShortNoUrlMessage') ??
-                    "Impossible de récupérer l'URL de la prévisualisation.",
+                    t('videoWizard.errors.previewUrlError'),
                 );
                 const durationMs = Date.now() - startedAt;
                 trackUxEvent('preview_short_failed', {
@@ -1659,10 +1660,10 @@ const VideoCreationWizardScreen: React.FC = () => {
                     )}
                     <View style={styles.mediaInfoRow}>
                         <Text style={styles.mediaTitle} numberOfLines={1}>
-                            {item.ai_description || `Média #${item.id}`}
+                            {item.ai_description || format('videoWizard.mediaLabel', { id: item.id })}
                         </Text>
                         <Text style={styles.mediaSubTitle}>
-                            {isVideo ? t('videoCreationWizardScreen.video') : '📸 Image'}
+                            {isVideo ? t('videoCreationWizardScreen.video') : t('videoWizard.imageType')}
                         </Text>
                     </View>
                 </NativeCard>
@@ -1800,7 +1801,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                             </NativeCard>
 
                             <NativeCard style={styles.sectionCard}>
-                                <Text style={styles.sectionTitle}>Templates narratifs</Text>
+                                <Text style={styles.sectionTitle}>{t('videoWizard.narrativeTemplates')}</Text>
                                 {storyTemplatesLoading ? (
                                     <ActivityIndicator color={modernColors.primary} />
                                 ) : (
@@ -1828,8 +1829,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                         {spec.description}
                                                     </Text>
                                                     <Text style={styles.templateMeta}>
-                                                        {spec.suggestedScenes} scènes · ~{spec.defaultDurationSeconds}s · CTA{' '}
-                                                        {spec.ctas[0] ?? '—'}
+                                                        {format('videoWizard.templateMeta', { scenes: spec.suggestedScenes, duration: spec.defaultDurationSeconds, cta: spec.ctas[0] ?? '—' })}
                                                     </Text>
                                                 </TouchableOpacity>
                                             );
@@ -1838,21 +1838,20 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 )}
                                 {selectedStoryTemplate && (
                                     <Text style={styles.templateHint}>
-                                        Template sélectionné : {selectedStoryTemplate.label}
+                                        {format('videoWizard.selectedTemplate', { label: selectedStoryTemplate.label })}
                                     </Text>
                                 )}
                             </NativeCard>
 
                             <NativeCard style={styles.sectionCard}>
-                                <Text style={styles.sectionTitle}>Storyboard IA</Text>
+                                <Text style={styles.sectionTitle}>{t('videoWizard.storyboardAI')}</Text>
                                 <Text style={styles.sectionSubTitle}>
-                                    Génère une proposition de scènes (intro, bénéfices, preuves, CTA) à partir de ton
-                                    brief.
+                                    {t('videoWizard.storyboardDesc')}
                                 </Text>
                                 <View style={styles.inlineRow}>
                                     <NativeButton
                                         testID="video-storyboard-generate-button"
-                                        title={storyboardLoading ? 'Storyboard…' : t('videoCreationWizardScreen.genererStoryboard')}
+                                        title={storyboardLoading ? t('videoWizard.storyboardLoading') : t('videoCreationWizardScreen.genererStoryboard')}
                                         variant="primary"
                                         size="small"
                                         onPress={handleGenerateStoryboard}
@@ -1963,10 +1962,10 @@ const VideoCreationWizardScreen: React.FC = () => {
                                         <SafeIcon name="image-off" size={32} color={modernColors.textSecondary} />
                                         <Text style={styles.emptyMediaTitle}>{t('videoCreationWizard.aucunMediaDisponible')}</Text>
                                         <Text style={styles.emptyMediaText}>
-                                            Les médias seront automatiquement sélectionnés depuis votre service et produit.
+                                            {t('videoWizard.autoMediaSelect')}
                                         </Text>
                                         <Text style={styles.emptyMediaHint}>
-                                            Vous pouvez aussi ajouter des médias dans la médiathèque de votre service.
+                                            {t('videoWizard.addMediaHint')}
                                         </Text>
                                     </View>
                                 ) : (
@@ -1991,7 +1990,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                             {t('videoWizard.summary.noScenes') || t('videoCreationWizard.aucuneSceneDefinie')}
                                         </Text>
                                         <Text style={styles.emptyScenesText}>
-                                            Génère un storyboard pour créer des scènes automatiquement, ou configure-les manuellement.
+                                            {t('videoWizard.generateStoryboardHint')}
                                         </Text>
                                         <NativeButton
                                             title={t('videoCreationWizard.genererStoryboard')}
@@ -2002,7 +2001,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                             style={{ marginTop: 12 }}
                                         />
                                         <Text style={styles.emptyScenesHint}>
-                                            Les scènes seront créées automatiquement lors de la génération si le storyboard est activé.
+                                            {t('videoWizard.autoScenesHint')}
                                         </Text>
                                     </View>
                                 ) : (
@@ -2088,7 +2087,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                 </View>
                                                 <Text style={styles.scenePanelHint}>
                                                     {t('videoWizard.summary.sceneMediaHint') ||
-                                                        "Choisis un média pour cette scène ou laisse Yukpo décider."}
+                                                        t('videoWizard.chooseMediaForScene')}
                                                 </Text>
                                                 <ScrollView
                                                     style={styles.sceneMediaList}
@@ -2164,14 +2163,14 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                                         numberOfLines={1}
                                                                     >
                                                                         {item.ai_description ||
-                                                                            `Média #${item.id}`}
+                                                                            format('videoWizard.mediaLabel', { id: item.id })}
                                                                     </Text>
                                                                     <Text
                                                                         style={
                                                                             styles.sceneMediaRowMeta
                                                                         }
                                                                     >
-                                                                        {item.media_type || 'image'}
+                                                                        {item.media_type || t('videoWizard.imageTypeFallback')}
                                                                     </Text>
                                                                 </View>
                                                             </TouchableOpacity>
@@ -2242,19 +2241,18 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 </Text>
                                 {selectedStoryTemplate && (
                                     <Text style={styles.summaryText}>
-                                        Template narratif : {selectedStoryTemplate.label}
+                                        {format('videoWizard.summaryTemplate', { label: selectedStoryTemplate.label })}
                                     </Text>
                                 )}
                                 <Text style={styles.summaryText}>
                                     {t('videoWizard.summary.mediaSelected')} : {selectedMediaIds.length}
                                 </Text>
                                 <Text style={styles.summaryText}>
-                                    Pack de style :{' '}
-                                    {stylePack === 'pulse'
-                                        ? 'Pulse social'
+                                    {format('videoWizard.summaryStylePackLabel', { pack: stylePack === 'pulse'
+                                        ? t('videoWizard.pulseSocial')
                                         : stylePack === 'story'
                                             ? t('videoCreationWizardScreen.storyEditoriale')
-                                            : 'Corporate clair'}
+                                            : t('videoWizard.corporateLight') })}
                                 </Text>
                                 {costEstimation && (
                                     <View style={styles.costContainer}>
@@ -2277,7 +2275,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 <NativeCard style={styles.sectionCard}>
                                     <Text style={styles.sectionTitle}>{t('videoCreationWizard.videosLieesChainage')}</Text>
                                     <Text style={styles.sectionSubTitle}>
-                                        Sélectionne les vidéos qui suivront celle-ci dans une séquence
+                                        {t('videoWizard.selectLinkedVideos')}
                                     </Text>
                                     {availableSessions.length > 0 ? (
                                         <FlatList
@@ -2307,7 +2305,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                                             color={isSelected ? modernColors.success : modernColors.textSecondary}
                                                         />
                                                         <Text style={styles.sceneMediaRowLabel}>
-                                                            {item.title || `Session ${item.id.slice(0, 8)}`}
+                                                            {item.title || format('videoWizard.sessionLabel', { id: item.id.slice(0, 8) })}
                                                         </Text>
                                                     </TouchableOpacity>
                                                 );
@@ -2341,7 +2339,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                             <Text style={styles.sectionSubTitle}>{t('videoCreationWizard.videosLiees')}</Text>
                                             {dependencies.map((dep, idx) => (
                                                 <Text key={dep.id} style={styles.summaryText}>
-                                                    {idx + 1}. Session {dep.child_session_id.slice(0, 8)}
+                                                    {idx + 1}. {format('videoWizard.sessionLabel', { id: dep.child_session_id.slice(0, 8) })}
                                                 </Text>
                                             ))}
                                         </View>
@@ -2364,7 +2362,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                     {t('videoWizard.sections.previewShort') ?? t('videoCreationWizard.previsualisationRapide')}
                                 </Text>
                                 <Text style={styles.sectionSubTitle}>
-                                    Lance un aperçu court (~3–5s) de ton montage pour tester le rythme avant le rendu complet.
+                                    {t('videoWizard.previewSubtitle')}
                                 </Text>
                                 <View style={styles.inlineRow}>
                                     <NativeButton
@@ -2511,7 +2509,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                     />
                 </View>
                 <Text style={styles.globalProgressText}>
-                    {globalProgress}% complété
+                    {format('videoWizard.progressCompleted', { progress: globalProgress })}
                 </Text>
             </View>
 

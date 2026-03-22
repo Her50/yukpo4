@@ -176,9 +176,9 @@ const VideoCreationIntroScreen: React.FC = () => {
                     // ✅ AMÉLIORATION: Afficher une alerte si la réponse est invalide
                     if (response.success === false) {
                         Alert.alert(
-                            'Erreur de chargement',
-                            'Impossible de charger vos services. Veuillez réessayer.',
-                            [{ text: 'OK' }]
+                            t('videoIntro.loadError'),
+                            t('videoIntro.cannotLoadServices'),
+                            [{ text: t('videoIntro.ok') }]
                         );
                     } else if (response.data && !Array.isArray(response.data)) {
                         // ✅ CORRECTION: Essayer d'extraire les données d'une structure imbriquée
@@ -200,9 +200,9 @@ const VideoCreationIntroScreen: React.FC = () => {
                         } else {
                             console.error('[VideoCreationIntroScreen] ❌ Impossible d\'extraire les données');
                             Alert.alert(
-                                'Format de données invalide',
-                                'Les données reçues ne sont pas dans le format attendu. Veuillez réessayer.',
-                                [{ text: 'OK' }]
+                                t('videoIntro.invalidDataFormat'),
+                                t('videoIntro.invalidDataFormatMsg'),
+                                [{ text: t('videoIntro.ok') }]
                             );
                         }
                     }
@@ -213,22 +213,22 @@ const VideoCreationIntroScreen: React.FC = () => {
                 const errorMessage = error?.message || error?.error || '';
                 if (errorMessage.includes('Timeout') || errorMessage.includes('expiré') || errorMessage.includes('timeout')) {
                     Alert.alert(
-                        'Chargement lent',
-                        'Le chargement prend plus de temps que prévu. Vérifiez votre connexion internet.',
-                        [{ text: 'OK' }]
+                        t('videoIntro.slowLoading'),
+                        t('videoIntro.slowLoadingMsg'),
+                        [{ text: t('videoIntro.ok') }]
                     );
                 } else if (errorMessage.includes('réseau') || errorMessage.includes('connexion') || errorMessage.includes('Network')) {
                     Alert.alert(
-                        'Problème de connexion',
-                        'Impossible de se connecter au serveur. Vérifiez votre connexion internet.',
-                        [{ text: 'OK' }]
+                        t('videoIntro.connectionProblem'),
+                        t('videoIntro.connectionProblemMsg'),
+                        [{ text: t('videoIntro.ok') }]
                     );
                 } else {
                     // ✅ AMÉLIORATION: Afficher une alerte pour les autres erreurs
                     Alert.alert(
-                        'Erreur de chargement',
-                        errorMessage || 'Impossible de charger vos services. Veuillez réessayer plus tard.',
-                        [{ text: 'OK' }]
+                        t('videoIntro.loadError'),
+                        errorMessage || t('videoIntro.cannotLoadServicesLater'),
+                        [{ text: t('videoIntro.ok') }]
                     );
                 }
             } finally {
@@ -248,8 +248,8 @@ const VideoCreationIntroScreen: React.FC = () => {
                 openVideoCreationModal({
                     serviceId: params.serviceId,
                     productIndex: params.productIndex,
-                    productName: params.productName || 'Produit',
-                    serviceName: extractServiceName(service, `Service #${params.serviceId}`)
+                    productName: params.productName || t('videoIntro.productFallback'),
+                    serviceName: extractServiceName(service, t('videoIntro.serviceWithId', { id: params.serviceId }))
                 }).catch((error) => {
                     console.error('[VideoCreationIntroScreen] Erreur ouverture automatique modal:', error);
                 });
@@ -269,9 +269,8 @@ const VideoCreationIntroScreen: React.FC = () => {
     ): ManagedProduct | null => {
         try {
             const serviceId = service.id || service.service_id;
-            const serviceName = extractServiceName(service, `Service #${serviceId}`);
+            const serviceName = extractServiceName(service, t('videoIntro.serviceWithId', { id: serviceId }));
 
-            // Extraire les données du produit (gérer différents formats)
             const productData = product.data || product;
 
             return {
@@ -279,7 +278,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                 serviceId: String(serviceId),
                 product_index: productIndex,
                 rawProductId: productIndex,
-                nom: extractProductName(product, `Produit ${productIndex + 1}`),
+                nom: extractProductName(product, t('videoIntro.productWithIndex', { index: productIndex + 1 })),
                 description: productData?.description || product.description || '',
                 prix: productData?.prix || product.prix || product.price,
                 devise: productData?.devise || product.devise || product.currency || 'XAF',
@@ -307,7 +306,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             );
 
             if (!service) {
-                Alert.alert('Erreur', 'Service introuvable');
+                Alert.alert(t('videoIntro.error'), t('videoIntro.serviceNotFound'));
                 return;
             }
 
@@ -316,7 +315,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             const produits = normalizeServiceProducts(produitsRaw);
 
             if (!Array.isArray(produits) || produits.length === 0) {
-                Alert.alert('Erreur', 'Aucun produit trouvé dans ce service');
+                Alert.alert(t('videoIntro.error'), t('videoIntro.noProductsFound'));
                 return;
             }
 
@@ -326,7 +325,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                 .filter((p): p is ManagedProduct => p !== null);
 
             if (managedProducts.length === 0) {
-                Alert.alert('Erreur', 'Impossible de charger les produits');
+                Alert.alert(t('videoIntro.error'), t('videoIntro.cannotLoadProducts'));
                 return;
             }
 
@@ -349,7 +348,7 @@ const VideoCreationIntroScreen: React.FC = () => {
             setShowVideoCreationModal(true);
         } catch (error) {
             console.error('[VideoCreationIntroScreen] Erreur ouverture modal:', error);
-            Alert.alert('Erreur', 'Impossible d\'ouvrir l\'éditeur de vidéo');
+            Alert.alert(t('videoIntro.error'), t('videoIntro.cannotOpenEditor'));
         }
     };
 
@@ -365,8 +364,8 @@ const VideoCreationIntroScreen: React.FC = () => {
                 await openVideoCreationModal({
                     serviceId: params.serviceId,
                     productIndex: params.productIndex,
-                    productName: params.productName || 'Produit',
-                    serviceName: extractServiceName(service, `Service #${params.serviceId}`)
+                    productName: params.productName || t('videoIntro.productFallback'),
+                    serviceName: extractServiceName(service, t('videoIntro.serviceWithId', { id: params.serviceId }))
                 });
                 return;
             }
@@ -395,7 +394,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                     }
 
                     // ✅ CORRECTION: Utiliser extractServiceName pour éviter l'affichage de JSON
-                    const serviceName = extractServiceName(service, `Service #${serviceId}`);
+                    const serviceName = extractServiceName(service, t('videoIntro.serviceWithId', { id: serviceId }));
 
                     // ✅ CORRECTION: Utiliser normalizeServiceProducts qui gère tous les formats
                     // Essayer plusieurs sources possibles pour les produits
@@ -425,7 +424,7 @@ const VideoCreationIntroScreen: React.FC = () => {
                         produits.forEach((product: any, index: number) => {
                             try {
                                 // ✅ CORRECTION: Utiliser extractProductName pour éviter l'affichage de JSON
-                                const productName = extractProductName(product, `Produit ${index + 1}`);
+                                const productName = extractProductName(product, t('videoIntro.productWithIndex', { index: index + 1 }));
 
                                 // ✅ NOUVEAU: Extraire la première image du produit
                                 const extractFirstImage = (productData: any): string | null => {
@@ -501,12 +500,12 @@ const VideoCreationIntroScreen: React.FC = () => {
 
             if (allProducts.length === 0) {
                 Alert.alert(
-                    'Produit requis',
-                    'Vous n\'avez pas encore de produit. Créez d\'abord un produit pour pouvoir créer une vidéo.',
+                    t('videoIntro.productRequired'),
+                    t('videoIntro.productRequiredMsg'),
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('videoIntro.cancel'), style: 'cancel' },
                         {
-                            text: 'Aller à Mes Services',
+                            text: t('videoIntro.goToMyServices'),
                             onPress: () => {
                                 const parent = (navigation as any).getParent();
                                 if (parent) {
@@ -530,12 +529,12 @@ const VideoCreationIntroScreen: React.FC = () => {
 
         // Pas de services → Rediriger vers MesServices
         Alert.alert(
-            'Service requis',
-            'Pour créer une vidéo, vous devez d\'abord créer un service avec au moins un produit.',
+            t('videoIntro.serviceRequired'),
+            t('videoIntro.serviceRequiredMsg'),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('videoIntro.cancel'), style: 'cancel' },
                 {
-                    text: 'Aller à Mes Services',
+                    text: t('videoIntro.goToMyServices'),
                     onPress: () => {
                         const parent = (navigation as any).getParent();
                         if (parent) {
@@ -568,8 +567,8 @@ const VideoCreationIntroScreen: React.FC = () => {
                 <TouchableOpacity
                     style={styles.helpButton}
                     onPress={handleShowTutorial}
-                    accessibilityLabel="Afficher l'aide"
-                    accessibilityHint="Ouvre le tutoriel de création vidéo"
+                    accessibilityLabel={t('videoIntro.helpLabel')}
+                    accessibilityHint={t('videoIntro.helpHint')}
                 >
                     <SafeIcon name="help-circle" size={24} color={modernColors.primary} />
                 </TouchableOpacity>
@@ -620,13 +619,13 @@ const VideoCreationIntroScreen: React.FC = () => {
                 {loadingServices ? (
                     <View style={styles.servicesInfo}>
                         <ActivityIndicator size="small" color={modernColors.primary} />
-                        <Text style={styles.servicesInfoText}>Chargement de vos services...</Text>
+                        <Text style={styles.servicesInfoText}>{t('videoIntro.loadingServices')}</Text>
                     </View>
                 ) : userServices.length > 0 && (
                     <Animated.View style={[styles.servicesInfo, contentAnimatedStyle]}>
                         <SafeIcon name="check-circle" size={20} color="#10B981" />
                         <Text style={styles.servicesInfoText}>
-                            {userServices.length} service(s) disponible(s) - Prêt à créer une vidéo
+                            {t('videoIntro.servicesAvailable', { count: userServices.length })}
                         </Text>
                     </Animated.View>
                 )}
@@ -648,7 +647,7 @@ const VideoCreationIntroScreen: React.FC = () => {
 
                 <Animated.View style={[styles.actions, actionsAnimatedStyle]}>
                     <NativeButton
-                        title={loadingServices ? 'Chargement...' : t('video.intro.createButton')}
+                        title={loadingServices ? t('videoIntro.loading') : t('video.intro.createButton')}
                         size="large"
                         variant="primary"
                         onPress={handleStart}

@@ -73,6 +73,7 @@ export const NativeCard: React.FC<NativeCardProps> = ({
                     if (React.isValidElement(child)) {
                         return child;
                     }
+                    if (Array.isArray(child)) { return <React.Fragment key={idx}>{child}</React.Fragment>; }
                     if (typeof child === 'object') { return null; } return <Text key={idx}>{String(child)}</Text>;
                 })
                 .filter(child => child != null); // Filtrer les null/undefined
@@ -123,6 +124,7 @@ export const NativeCard: React.FC<NativeCardProps> = ({
                 return React.cloneElement(child, { key: idx });
             }
             // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
+            if (Array.isArray(child)) { return <React.Fragment key={idx}>{child}</React.Fragment>; }
             if (typeof child === 'object' && child !== null) { return null; } return <Text key={idx}>{String(child)}</Text>; };
 
         // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas
@@ -260,6 +262,7 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
                     if (React.isValidElement(child)) {
                         return child;
                     }
+                    if (Array.isArray(child)) { return <React.Fragment key={idx}>{child}</React.Fragment>; }
                     if (typeof child === 'object') { return null; } return <Text key={idx}>{String(child)}</Text>;
                 })
                 .filter(child => child != null); // Filtrer les null/undefined
@@ -310,6 +313,7 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
                 return React.cloneElement(child, { key: idx });
             }
             // ✅ CRITIQUE: Fallback - toujours wrapper dans Text si ce n'est pas un élément React valide
+            if (Array.isArray(child)) { return <React.Fragment key={idx}>{child}</React.Fragment>; }
             if (typeof child === 'object' && child !== null) { return null; } return <Text key={idx}>{String(child)}</Text>; };
 
         // ✅ CRITIQUE: Utiliser React.Children.map pour gérer les fragments et autres cas

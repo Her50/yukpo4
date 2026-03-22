@@ -4295,14 +4295,18 @@ Explorez l'avenir dès maintenant ! 👇`,
     matchedServices.sort((a, b) => b.score - a.score);
     const topMatches = matchedServices.slice(0, 3);
 
+    const goToPrefix = i18n.t('intelligentChat.goTo', { defaultValue: 'Accéder →' }) as string;
+
     for (const match of topMatches) {
+      const translatedLabel = i18n.t(`intelligentChat.screen.${match.entry.route}`, { defaultValue: match.entry.label }) as string;
+      const translatedDesc = i18n.t(`intelligentChat.screenDesc.${match.entry.route}`, { defaultValue: match.entry.description }) as string;
       actions.push({
         id: `nav-${match.entry.route}`,
-        label: `Accéder → ${match.entry.label}`,
+        label: `${goToPrefix} ${translatedLabel}`,
         icon: match.entry.icon,
         route: match.entry.route,
         category: 'action' as const,
-        description: match.entry.description,
+        description: translatedDesc,
       });
     }
 
@@ -4371,7 +4375,8 @@ Explorez l'avenir dès maintenant ! 👇`,
   }
 
   /**
-   * Obtenir une réponse contextuelle (pour compatibilité avec HomeIntelligentChat)
+   * Obtenir une réponse contextuelle (pour compatibilité avec HomeIntelligentChat).
+   * Appelle le vrai backend /ai/chat pour que le LLM réponde dans la langue de l'utilisateur.
    */
   async getContextualResponse(
     userMessage: string,
@@ -4380,20 +4385,45 @@ Explorez l'avenir dès maintenant ! 👇`,
     history: ChatMessage[],
     user: any
   ): Promise<ChatResponse> {
-    // Pour le HomeScreen, détecter et utiliser les contextes spécialisés
-    if (screenName === 'Home') {
-      const delegation = this.detectContextualDelegation(userMessage);
-      if (delegation) {
-        // 🎯 NOUVEAU: Utiliser directement le contexte du module spécialisé
-        return this.getContextualResponseFromModule(userMessage, delegation.targetScreen, history, user);
-      }
-    }
+    const activeLang = i18n.language || 'fr';
 
-    // Sinon, utiliser la logique existante ou le fallback
+    // Détecter si la question concerne un module spécialisé
+    const delegation = this.detectContextualDelegation(userMessage);
+    const targetModule = delegation?.targetScreen || screenName;
+
+    // Construire un ScreenContext à partir du module détecté
+    const moduleCtx = this.getModuleContext(targetModule);
+    const resolvedType = (moduleCtx.screenType || screenType) as ScreenContext['screenType'];
+    const screenContext: ScreenContext = {
+      screenName: targetModule,
+      screenType: resolvedType,
+      availableActions: delegation?.suggestedActions || [],
+      visibleElements: [],
+      userData: user ? { role: user.role || 'guest', name: user.name || user.email } : undefined,
+      serviceData: moduleCtx.contextData,
+      guideText: delegation?.contextualPrompt || '',
+    };
+
     try {
-      return this.generateFallbackResponse(userMessage);
+      // Appeler le VRAI backend /ai/chat (gère la langue de l'utilisateur)
+      const response = await this.generateContextualResponse(
+        userMessage, screenContext, history, activeLang
+      );
+
+      // Enrichir avec les actions du module + liens proactifs
+      const moduleActions = delegation ? delegation.suggestedActions : [];
+      response.suggestedActions = this.injectProactiveNavigationLinks(
+        userMessage + ' ' + response.message,
+        [...(moduleActions || []), ...(response.suggestedActions || [])]
+      );
+
+      return response;
     } catch (error) {
-      console.error('[IntelligentChatService] Erreur dans getContextualResponse:', error);
+      console.error('[IntelligentChatService] Erreur getContextualResponse, fallback local:', error);
+      // Fallback local en cas d'erreur réseau
+      if (delegation) {
+        return this.getSpecializedFallback(userMessage, delegation.targetScreen);
+      }
       return this.generateFallbackResponse(userMessage);
     }
   }
