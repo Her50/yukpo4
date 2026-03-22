@@ -158,6 +158,30 @@ interface PointOfInterest {
 const getPoiLat = (poi: PointOfInterest): number => poi.latitude ?? poi.location?.lat ?? 0;
 const getPoiLng = (poi: PointOfInterest): number => poi.longitude ?? poi.location?.lng ?? 0;
 
+// ── TTS Language Map (62 locales → BCP 47) ──────────────────────────────
+const TTS_LANG_MAP: Record<string, string> = {
+    // Major international
+    fr: 'fr-FR', en: 'en-US', es: 'es-ES', de: 'de-DE', pt: 'pt-BR',
+    ar: 'ar-SA', zh: 'zh-CN', hi: 'hi-IN', ja: 'ja-JP', ko: 'ko-KR',
+    ru: 'ru-RU', it: 'it-IT', nl: 'nl-NL', tr: 'tr-TR', pl: 'pl-PL',
+    uk: 'uk-UA', vi: 'vi-VN', th: 'th-TH', id: 'id-ID', ms: 'ms-MY',
+    bn: 'bn-BD', tl: 'tl-PH',
+    // African — TTS-supported
+    sw: 'sw-KE', ha: 'ha-NG', yo: 'yo-NG', ig: 'ig-NG', am: 'am-ET',
+    zu: 'zu-ZA', xh: 'xh-ZA', af: 'af-ZA', st: 'st-ZA', sn: 'sn-ZW',
+    rw: 'rw-RW', mg: 'mg-MG', so: 'so-SO', ti: 'ti-ET',
+    // African — fallback to closest TTS-supported language
+    wo: 'wo-SN', ff: 'ff-SN', bm: 'bm-ML', ln: 'ln-CD', kg: 'kg-CD',
+    rn: 'rn-BI', ee: 'ee-GH', sg: 'sg-CF',
+    // Creoles & pidgins — fallback to lexifier language
+    ht: 'fr-HT', pcm: 'en-NG', pap: 'pt-BR',
+    // Cameroonian & West African languages — fallback to fr-CM
+    bas: 'fr-CM', bbj: 'fr-CM', bci: 'fr-CI', bet: 'fr-TD', bum: 'fr-CM',
+    dje: 'fr-NE', dua: 'fr-CM', dyu: 'fr-ML', ewo: 'fr-CM', fan: 'fr-GA',
+    kbp: 'fr-TG', lua: 'fr-CD', mos: 'fr-BF', sar: 'fr-TD', srr: 'fr-SN',
+};
+const getTtsLang = (lang: string): string => TTS_LANG_MAP[lang] || `${lang}-${lang.toUpperCase()}`;
+
 // ── Constants ────────────────────────────────────────────────────────────
 type I18nLabel = { labelKey: string; fallback: string };
 const POI_CATEGORIES: Record<string, { label: I18nLabel; icon: string; color: string; types: string[] }> = {
@@ -417,14 +441,7 @@ const playContextualAlert = async (
             message = msgFn ? msgFn(distText, speedLimit) : `Attention, alerte à ${distText}. Soyez prudent.`;
         }
         Speech.stop();
-        const ttsLangMap: Record<string, string> = {
-            fr: 'fr-FR', en: 'en-US', es: 'es-ES', de: 'de-DE', pt: 'pt-BR',
-            ar: 'ar-SA', sw: 'sw-KE', ha: 'ha-NG', wo: 'wo-SN', yo: 'yo-NG',
-            ig: 'ig-NG', am: 'am-ET', zu: 'zu-ZA', rw: 'rw-RW', mg: 'mg-MG',
-            zh: 'zh-CN', hi: 'hi-IN', ja: 'ja-JP', ko: 'ko-KR', ru: 'ru-RU',
-            it: 'it-IT', nl: 'nl-NL', tr: 'tr-TR', pl: 'pl-PL', uk: 'uk-UA',
-        };
-        const ttsLang = ttsLangMap[lang] || `${lang}-${lang.toUpperCase()}`;
+        const ttsLang = getTtsLang(lang);
         Speech.speak(message, {
             language: ttsLang,
             rate: 0.95,
@@ -833,6 +850,57 @@ const NavigationScreen: React.FC = () => {
         const s2 = Keyboard.addListener('keyboardDidHide', () => { setKeyboardHeight(0); setIsKeyboardVisible(false); });
         return () => { s1.remove(); s2.remove(); };
     }, []);
+
+    // ── Force GPS activation on mount ──
+    useEffect(() => {
+        (async () => {
+            try {
+                const enabled = await Location.hasServicesEnabledAsync();
+                const { status } = await Location.getForegroundPermissionsAsync();
+
+                if (!enabled) {
+                    Alert.alert(
+                        t('navigation.gpsRequired') || 'GPS requis',
+                        t('navigation.gpsRequiredMsg') || 'La navigation nécessite le GPS. Veuillez activer la localisation dans les paramètres de votre appareil.',
+                        [
+                            { text: t('common.cancel') || 'Plus tard', style: 'cancel' },
+                            {
+                                text: t('navigation.openSettings') || 'Ouvrir Paramètres',
+                                onPress: () => {
+                                    if (Platform.OS === 'ios') Linking.openURL('app-settings:');
+                                    else Linking.openSettings();
+                                },
+                            },
+                        ]
+                    );
+                    return;
+                }
+
+                if (status !== 'granted') {
+                    const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+                    if (newStatus !== 'granted') {
+                        Alert.alert(
+                            t('navigation.permissionRequired') || 'Permission requise',
+                            t('navigation.allowLocationMsg') || 'Yukpo a besoin de votre position pour la navigation, les alertes routières et les points d\'intérêt.',
+                            [
+                                { text: t('common.cancel') || 'Plus tard', style: 'cancel' },
+                                {
+                                    text: t('navigation.openSettings') || 'Ouvrir Paramètres',
+                                    onPress: () => {
+                                        if (Platform.OS === 'ios') Linking.openURL('app-settings:');
+                                        else Linking.openSettings();
+                                    },
+                                },
+                            ]
+                        );
+                    }
+                }
+            } catch (e) {
+                console.warn('[Navigation] GPS check failed:', e);
+            }
+        })();
+    }, [t]);
+
     // Vérifier puis auto-activer le tracking passif au montage
     useEffect(() => {
         let cancelled = false;
@@ -1719,15 +1787,7 @@ const NavigationScreen: React.FC = () => {
         const THRESHOLD_APPROACHING = 300;
         const THRESHOLD_ARRIVED = 50;
         const announced = announcedWaypointsRef.current;
-
-        const ttsLangMap: Record<string, string> = {
-            fr: 'fr-FR', en: 'en-US', es: 'es-ES', de: 'de-DE', pt: 'pt-BR',
-            ar: 'ar-SA', sw: 'sw-KE', ha: 'ha-NG', wo: 'wo-SN', yo: 'yo-NG',
-            ig: 'ig-NG', am: 'am-ET', zu: 'zu-ZA', rw: 'rw-RW', mg: 'mg-MG',
-            zh: 'zh-CN', hi: 'hi-IN', ja: 'ja-JP', ko: 'ko-KR', ru: 'ru-RU',
-            it: 'it-IT', nl: 'nl-NL', tr: 'tr-TR', pl: 'pl-PL', uk: 'uk-UA',
-        };
-        const ttsLang = ttsLangMap[activeLang] || `${activeLang}-${activeLang.toUpperCase()}`;
+        const ttsLang = getTtsLang(activeLang);
 
         for (let i = 0; i < waypoints.length; i++) {
             const wp = waypoints[i];

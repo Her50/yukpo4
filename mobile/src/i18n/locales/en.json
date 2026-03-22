@@ -2929,6 +2929,10 @@
     "navigation": {
         "permissionRequired": "Permission required",
         "allowLocation": "Please allow location access",
+        "allowLocationMsg": "Yukpo needs your location for navigation, road alerts and points of interest.",
+        "gpsRequired": "GPS required",
+        "gpsRequiredMsg": "Navigation requires GPS. Please enable location services in your device settings.",
+        "openSettings": "Open Settings",
         "poiCategoryHealth": "Health",
         "poiCategoryFood": "Food",
         "poiCategoryFuel": "Fuel",

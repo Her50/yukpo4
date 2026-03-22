@@ -3038,6 +3038,10 @@
     "navigation": {
         "permissionRequired": "Permission requise",
         "allowLocation": "Veuillez autoriser la localisation",
+        "allowLocationMsg": "Yukpo a besoin de votre position pour la navigation, les alertes routières et les points d'intérêt.",
+        "gpsRequired": "GPS requis",
+        "gpsRequiredMsg": "La navigation nécessite le GPS. Veuillez activer la localisation dans les paramètres de votre appareil.",
+        "openSettings": "Ouvrir Paramètres",
         "poiCategoryHealth": "Santé",
         "poiCategoryFood": "Alimentation",
         "poiCategoryFuel": "Carburant",
