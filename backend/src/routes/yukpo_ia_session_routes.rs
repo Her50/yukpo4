@@ -202,14 +202,14 @@ pub async fn patch_yukpo_ia_preferences(
     Json(body): Json<PreferencesPatchBody>,
 ) -> Result<ResponseJson<PreferencesResponse>, StatusCode> {
     let start = Instant::now();
-    yukpo_ia_session_store::set_user_long_term_memory_enabled(
+    if let Err(e) = yukpo_ia_session_store::set_user_long_term_memory_enabled(
         &state.pg,
         user.id,
         body.long_term_memory_enabled,
         body.long_term_memory_consent_acknowledged,
     )
     .await
-    .map_err(|e| {
+    {
         error!("[YukpoIA sessions] prefs patch: {}", e);
         state.yukpo_ia_metrics.record(
             "PATCH /ai/sessions/preferences",
@@ -217,8 +217,8 @@ pub async fn patch_yukpo_ia_preferences(
             start.elapsed(),
             false,
         );
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
     let consent_at = yukpo_ia_session_store::user_long_term_memory_consent_at(&state.pg, user.id)
         .await
         .map_err(|e| {

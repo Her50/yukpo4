@@ -5,6 +5,7 @@
 # DATABASE_URL supportées:
 # - postgresql://USER:PASS@HOST:PORT/DB?...
 # - postgresql://USER:PASS@/DB?host=/cloudsql/... (socket)
+# - postgresql://HOST:PORT/DB (sans @) : définir YUKPO_GCP_SQL_USER et YUKPO_GCP_SQL_PASSWORD
 # Le mot de passe peut contenir des caractères spéciaux ; l'URL complète est parsée après le dernier @ du schéma.
 
 param(
@@ -24,41 +25,54 @@ if (-not (Test-Path $SqlPath)) {
 $sqlFull = (Resolve-Path $SqlPath).Path
 
 Write-Host "[INFO] Lecture du secret $SecretName..." -ForegroundColor Cyan
-$dbUrl = (gcloud secrets versions access latest --secret=$SecretName --project=$ProjectId 2>$null).Trim()
-if (-not $dbUrl) {
+$rawSecret = gcloud secrets versions access latest --secret=$SecretName --project=$ProjectId 2>$null
+if (-not $rawSecret) {
     Write-Error "Impossible de lire database-url depuis Secret Manager."
 }
+# Une seule ligne, type string (évite Char[] / tableaux qui cassent .Substring)
+$dbUrl = [string](($rawSecret | Out-String) -replace "`r`n|`n","").Trim()
 if ($dbUrl -notmatch "^(postgres(ql)?://)") {
     Write-Error "Format DATABASE_URL inattendu (attendu postgres:// ou postgresql://)."
 }
 
 # Retirer le schéma postgresql:// ou postgres://
-$afterScheme = $dbUrl -replace "^postgres(ql)?://", ""
-# Dernier @ sépare credentials | host+path (mot de passe peut contenir @)
+$afterScheme = [string]($dbUrl -replace "^postgres(ql)?://", "")
 $lastAt = $afterScheme.LastIndexOf("@")
-if ($lastAt -lt 0) {
-    Write-Error "DATABASE_URL sans @ (credentials invalides)."
-}
-$cred = $afterScheme.Substring(0, $lastAt)
-$hostAndPath = $afterScheme.Substring($lastAt + 1)
+$dbUser = $null
+$dbPass = $null
+$dbName = $null
 
-$colonIdx = $cred.IndexOf(":")
-if ($colonIdx -lt 0) {
-    Write-Error "Utilisateur:mot de passe invalides dans DATABASE_URL (pas de ':')."
-}
-$dbUser = $cred.Substring(0, $colonIdx)
-$dbPass = $cred.Substring($colonIdx + 1)
-
-# Cas Cloud SQL unix socket: hostAndPath = /DBNAME?host=/cloudsql/...
-if ($hostAndPath.StartsWith("/")) {
-    $dbAndQuery = $hostAndPath.TrimStart("/")
+if ($lastAt -ge 0) {
+    $cred = [string]$afterScheme.Substring(0, $lastAt)
+    $hostAndPath = [string]$afterScheme.Substring($lastAt + 1)
+    $colonIdx = $cred.IndexOf(":")
+    if ($colonIdx -lt 0) {
+        Write-Error "Utilisateur:mot de passe invalides dans DATABASE_URL (pas de ':' avant @)."
+    }
+    $dbUser = [string]$cred.Substring(0, $colonIdx)
+    $dbPass = [string]$cred.Substring($colonIdx + 1)
+    $slashIdx = $hostAndPath.IndexOf("/")
+    if ($slashIdx -lt 0) {
+        Write-Error "DATABASE_URL: attendu ...@hôte/collection (ex. host:5432/dbname ou /dbname?host=...)."
+    }
+    $dbAndQuery = [string]$hostAndPath.Substring($slashIdx + 1)
+    $qIdx = $dbAndQuery.IndexOf("?")
+    $dbName = if ($qIdx -ge 0) { [string]$dbAndQuery.Substring(0, $qIdx) } else { $dbAndQuery }
 }
 else {
-    $dbAndQuery = $hostAndPath
+    $slashIdx = $afterScheme.IndexOf("/")
+    if ($slashIdx -lt 0) {
+        Write-Error "DATABASE_URL sans '@' : attendu postgresql://hôte:port/db ou définir YUKPO_GCP_SQL_USER."
+    }
+    $dbAndQuery = [string]$afterScheme.Substring($slashIdx + 1)
+    $qIdx = $dbAndQuery.IndexOf("?")
+    $dbName = if ($qIdx -ge 0) { [string]$dbAndQuery.Substring(0, $qIdx) } else { $dbAndQuery }
+    $dbUser = $env:YUKPO_GCP_SQL_USER
+    $dbPass = $env:YUKPO_GCP_SQL_PASSWORD
+    if (-not $dbUser) {
+        Write-Error "DATABASE_URL sans identifiants (pas de '@'). Définissez YUKPO_GCP_SQL_USER et YUKPO_GCP_SQL_PASSWORD, ou mettez postgresql://user:pass@hôte/db dans le secret."
+    }
 }
-
-$qIdx = $dbAndQuery.IndexOf("?")
-$dbName = if ($qIdx -ge 0) { $dbAndQuery.Substring(0, $qIdx) } else { $dbAndQuery }
 
 if ([string]::IsNullOrWhiteSpace($dbName)) {
     Write-Error "Nom de base introuvable dans DATABASE_URL."
