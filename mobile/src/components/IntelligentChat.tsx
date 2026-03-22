@@ -1,5 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import {
   ActivityIndicator,
   Alert,
@@ -11,9 +12,11 @@ import {
   Platform,
   SafeAreaView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   Pressable,
+  Share,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -41,6 +44,22 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DEFAULT_SHARE_WEB = 'https://yukpomnang.com';
 const YUKPO_IA_SESSION_STORAGE_KEY = 'yukpo_ia_active_session_id';
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🙏'] as const;
+
+function mapYukpoSessionMessageToChat(m: {
+  id: string;
+  role: string;
+  content: string;
+  created_at: string;
+}): ChatMessage {
+  return {
+    id: m.id,
+    text: m.content,
+    isUser: m.role === 'user',
+    timestamp: new Date(m.created_at),
+    type: 'text',
+    metadata: { serverCreatedAt: m.created_at },
+  };
+}
 
 interface IntelligentChatProps {
   visible: boolean;
@@ -293,9 +312,18 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
   const [sessionsModalVisible, setSessionsModalVisible] = useState(false);
   const [sessionsList, setSessionsList] = useState<Array<{ id: string; title: string | null; last_message_at?: string }>>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [longTermMemoryEnabled, setLongTermMemoryEnabled] = useState(true);
+  /** Horodatage ISO du consentement mémoire long terme (null = jamais accepté). */
+  const [longTermMemoryConsentAt, setLongTermMemoryConsentAt] = useState<string | null>(null);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const flatListRef = useRef<FlatList>(null);
+  const oldestBeforeRef = useRef<string | null>(null);
+  const loadOlderCooldownRef = useRef(0);
+  /** Évite scrollToEnd lorsqu'on préfixe d'anciens messages (préserve la position de lecture). */
+  const prependingOlderRef = useRef(false);
 
   useEffect(() => {
     if (keyboardBottomInset <= 0) return;
@@ -398,16 +426,14 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
           if (!cancelled && detail?.session?.id) {
             setActiveSessionId(detail.session.id);
             if (detail.messages?.length) {
-              const mapped: ChatMessage[] = detail.messages.map((m) => ({
-                id: m.id,
-                text: m.content,
-                isUser: m.role === 'user',
-                timestamp: new Date(m.created_at),
-                type: 'text',
-              }));
+              const mapped: ChatMessage[] = detail.messages.map(mapYukpoSessionMessageToChat);
               setMessages(mapped);
+              oldestBeforeRef.current = detail.messages[0]?.created_at ?? null;
+              setHasMoreOlder(Boolean(detail.has_more));
             } else {
               setMessages([welcomeMessage]);
+              oldestBeforeRef.current = null;
+              setHasMoreOlder(false);
             }
             setLastFailedMessage(null);
             setSuggestedActions(dedupeActions(contextActions));
@@ -443,6 +469,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
 
       if (cancelled) return;
       setMessages([welcomeMessage]);
+      oldestBeforeRef.current = null;
+      setHasMoreOlder(false);
       setLastFailedMessage(null);
       setSuggestedActions(dedupeActions(contextActions));
 
@@ -612,10 +640,23 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     setSessionsModalVisible(true);
     setSessionsLoading(true);
     try {
-      const rows = await intelligentChatService.listYukpoIaSessions({ limit: 40 });
+      const [rows, prefs] = await Promise.all([
+        intelligentChatService.listYukpoIaSessions({ limit: 40 }),
+        intelligentChatService.getYukpoIaPreferences(),
+      ]);
       setSessionsList(
         rows.map((s) => ({ id: s.id, title: s.title, last_message_at: s.last_message_at })),
       );
+      if (prefs) {
+        setLongTermMemoryConsentAt(
+          typeof prefs.long_term_memory_consent_at === 'string' ? prefs.long_term_memory_consent_at : null,
+        );
+        setLongTermMemoryEnabled(
+          typeof prefs.long_term_memory_active === 'boolean'
+            ? prefs.long_term_memory_active
+            : prefs.long_term_memory_enabled,
+        );
+      }
     } catch {
       setSessionsList([]);
     } finally {
@@ -632,6 +673,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     setActiveSessionId(created.id);
     await SafeStorage.setItem(YUKPO_IA_SESSION_STORAGE_KEY, created.id);
     setSessionsModalVisible(false);
+    oldestBeforeRef.current = null;
+    setHasMoreOlder(false);
     const hint =
       (t('intelligentChat.newSessionHint') as string) ||
       'Nouvelle conversation YukpoIA — posez votre question.';
@@ -646,6 +689,123 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     ]);
   }, [effectiveRouteName, screenContext.screenType, t]);
 
+  const loadOlderMessages = useCallback(async () => {
+    if (!activeSessionId || !oldestBeforeRef.current || !hasMoreOlder || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const page = await intelligentChatService.listYukpoIaSessionMessagesPage(activeSessionId, {
+        before: oldestBeforeRef.current,
+        limit: 30,
+      });
+      if (!page?.messages?.length) {
+        setHasMoreOlder(false);
+        return;
+      }
+      const mapped = page.messages.map(mapYukpoSessionMessageToChat);
+      setMessages((prev) => [...mapped, ...prev]);
+      oldestBeforeRef.current = page.messages[0]?.created_at ?? oldestBeforeRef.current;
+      setHasMoreOlder(page.has_more);
+    } finally {
+      setLoadingOlder(false);
+      prependingOlderRef.current = false;
+    }
+  }, [activeSessionId, hasMoreOlder, loadingOlder]);
+
+  const onChatScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      if (y > 48) return;
+      const now = Date.now();
+      if (now - loadOlderCooldownRef.current < 900) return;
+      if (!hasMoreOlder || loadingOlder || !activeSessionId || !oldestBeforeRef.current) return;
+      loadOlderCooldownRef.current = now;
+      void loadOlderMessages();
+    },
+    [hasMoreOlder, loadingOlder, activeSessionId, loadOlderMessages],
+  );
+
+  const runGdprDelete = useCallback(() => {
+    void (async () => {
+      const r = await intelligentChatService.requestGdprDeleteYukpoIaData();
+      if (r?.ok) {
+        await SafeStorage.removeItem(YUKPO_IA_SESSION_STORAGE_KEY);
+        setSessionsModalVisible(false);
+        setActiveSessionId(null);
+        oldestBeforeRef.current = null;
+        setHasMoreOlder(false);
+        void startNewSession();
+      } else {
+        Alert.alert('', t('intelligentChat.gdprError') as string || 'Échec de la suppression.');
+      }
+    })();
+  }, [t, startNewSession]);
+
+  const confirmGdprDelete = useCallback(() => {
+    Alert.alert(
+      (t('intelligentChat.gdprExportTitle') as string) || 'Copie de vos données',
+      (t('intelligentChat.gdprExportBody') as string) ||
+        'Exporter une copie JSON (sessions, messages, mémoire) avant suppression ?',
+      [
+        { text: t('message.cancel') as string, style: 'cancel' },
+        {
+          text: (t('intelligentChat.gdprExportSkip') as string) || 'Supprimer sans exporter',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              (t('intelligentChat.gdprTitle') as string) || 'Données YukpoIA',
+              (t('intelligentChat.gdprBody') as string) ||
+                'Toutes vos conversations YukpoIA et la mémoire long terme seront supprimées. Continuer ?',
+              [
+                { text: t('message.cancel') as string, style: 'cancel' },
+                {
+                  text: t('intelligentChat.gdprConfirm') as string || 'Supprimer',
+                  style: 'destructive',
+                  onPress: runGdprDelete,
+                },
+              ],
+            );
+          },
+        },
+        {
+          text: (t('intelligentChat.gdprExportBtn') as string) || 'Exporter puis continuer',
+          onPress: () => {
+            void (async () => {
+              const data = await intelligentChatService.exportGdprYukpoIaData();
+              if (data) {
+                try {
+                  await Share.share({
+                    message: JSON.stringify(data, null, 2),
+                    title: 'yukpo-ia-export.json',
+                  });
+                } catch {
+                  /* utilisateur a annulé le partage */
+                }
+              } else {
+                Alert.alert(
+                  '',
+                  (t('intelligentChat.gdprExportError') as string) || 'Export indisponible pour le moment.',
+                );
+              }
+              Alert.alert(
+                (t('intelligentChat.gdprTitle') as string) || 'Données YukpoIA',
+                (t('intelligentChat.gdprBody') as string) ||
+                  'Toutes vos conversations YukpoIA et la mémoire long terme seront supprimées. Continuer ?',
+                [
+                  { text: t('message.cancel') as string, style: 'cancel' },
+                  {
+                    text: t('intelligentChat.gdprConfirm') as string || 'Supprimer',
+                    style: 'destructive',
+                    onPress: runGdprDelete,
+                  },
+                ],
+              );
+            })();
+          },
+        },
+      ],
+    );
+  }, [t, runGdprDelete]);
+
   const selectSession = useCallback(
     async (sessionId: string) => {
       setSessionsLoading(true);
@@ -655,15 +815,9 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         setActiveSessionId(detail.session.id);
         await SafeStorage.setItem(YUKPO_IA_SESSION_STORAGE_KEY, detail.session.id);
         if (detail.messages?.length) {
-          setMessages(
-            detail.messages.map((m) => ({
-              id: m.id,
-              text: m.content,
-              isUser: m.role === 'user',
-              timestamp: new Date(m.created_at),
-              type: 'text' as const,
-            })),
-          );
+          setMessages(detail.messages.map(mapYukpoSessionMessageToChat));
+          oldestBeforeRef.current = detail.messages[0]?.created_at ?? null;
+          setHasMoreOlder(Boolean(detail.has_more));
         } else {
           const hint =
             (t('intelligentChat.sessionEmpty') as string) ||
@@ -677,6 +831,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
               type: 'text',
             },
           ]);
+          oldestBeforeRef.current = null;
+          setHasMoreOlder(false);
         }
         setSessionsModalVisible(false);
       } finally {
@@ -1038,8 +1194,28 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
+                ListHeaderComponent={
+                  loadingOlder ? (
+                    <View style={styles.loadOlderWrap}>
+                      <ActivityIndicator size="small" color="#6366f1" />
+                      <Text style={styles.loadOlderHint}>
+                        {t('intelligentChat.loadingOlder') || 'Chargement…'}
+                      </Text>
+                    </View>
+                  ) : null
+                }
                 ListFooterComponent={loading ? <TypingIndicator /> : null}
-                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                onScroll={onChatScroll}
+                scrollEventThrottle={16}
+                maintainVisibleContentPosition={
+                  Platform.OS === 'web'
+                    ? undefined
+                    : { minIndexForVisible: 0, autoscrollToTopThreshold: 80 }
+                }
+                onContentSizeChange={() => {
+                  if (prependingOlderRef.current) return;
+                  flatListRef.current?.scrollToEnd({ animated: true });
+                }}
               />
 
               {lastFailedMessage && !loading && (
@@ -1145,22 +1321,66 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         transparent
         onRequestClose={() => setSessionsModalVisible(false)}
       >
-        <TouchableOpacity
-          style={styles.sessionModalOverlay}
-          activeOpacity={1}
-          onPress={() => setSessionsModalVisible(false)}
-        >
-          <TouchableOpacity style={styles.sessionModalCard} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+        <View style={styles.sessionModalOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setSessionsModalVisible(false)} />
+          <View style={styles.sessionModalCard}>
             <Text style={styles.sessionModalTitle}>
               {t('intelligentChat.sessionsTitle') || 'Conversations YukpoIA'}
             </Text>
+            <View style={styles.prefsRow}>
+              <Text style={styles.prefsLabel}>
+                {t('intelligentChat.longTermMemory') || 'Mémoire long terme (entre conversations)'}
+              </Text>
+              <Switch
+                value={longTermMemoryEnabled}
+                onValueChange={(v) => {
+                  if (v && !longTermMemoryConsentAt) {
+                    Alert.alert(
+                      (t('intelligentChat.ltmConsentTitle') as string) || 'Mémoire long terme',
+                      (t('intelligentChat.ltmConsentBody') as string) ||
+                        'Yukpo peut mémoriser des faits utiles entre vos conversations pour personnaliser les réponses. Vous pouvez désactiver cette option à tout moment.',
+                      [
+                        { text: t('message.cancel') as string, style: 'cancel' },
+                        {
+                          text: (t('intelligentChat.ltmConsentAccept') as string) || 'Accepter',
+                          onPress: () => {
+                            void (async () => {
+                              const p = await intelligentChatService.patchYukpoIaPreferences({
+                                long_term_memory_enabled: true,
+                                long_term_memory_consent_acknowledged: true,
+                              });
+                              setLongTermMemoryEnabled(true);
+                              if (p?.long_term_memory_consent_at) {
+                                setLongTermMemoryConsentAt(p.long_term_memory_consent_at);
+                              }
+                            })();
+                          },
+                        },
+                      ],
+                    );
+                    return;
+                  }
+                  setLongTermMemoryEnabled(v);
+                  void intelligentChatService.patchYukpoIaPreferences({ long_term_memory_enabled: v });
+                }}
+                trackColor={{ false: '#cbd5e1', true: '#a5b4fc' }}
+                thumbColor={longTermMemoryEnabled ? '#6366f1' : '#f4f4f5'}
+              />
+            </View>
+            <TouchableOpacity style={styles.gdprBtn} onPress={confirmGdprDelete} accessibilityRole="button">
+              <SafeIcon name="trash-2" size={16} color="#b91c1c" />
+              <Text style={styles.gdprBtnText}>
+                {t('intelligentChat.gdprButton') || 'Effacer mes données YukpoIA (RGPD)'}
+              </Text>
+            </TouchableOpacity>
             {sessionsLoading ? (
               <ActivityIndicator color="#6366f1" style={{ marginVertical: 16 }} />
             ) : (
               <FlatList
                 data={sessionsList}
                 keyExtractor={(it) => it.id}
-                style={{ maxHeight: SCREEN_HEIGHT * 0.45 }}
+                style={{ maxHeight: SCREEN_HEIGHT * 0.4 }}
+                keyboardShouldPersistTaps="handled"
                 ListEmptyComponent={
                   <Text style={styles.sessionEmptyText}>
                     {t('intelligentChat.noSessions') || 'Aucune session enregistrée.'}
@@ -1189,8 +1409,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
             <TouchableOpacity style={styles.sessionModalClose} onPress={() => setSessionsModalVisible(false)}>
               <Text style={styles.sessionModalCloseText}>{t('message.close') || 'Fermer'}</Text>
             </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </>
   );
@@ -1282,6 +1502,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     alignSelf: 'center',
     width: '100%',
+    zIndex: 2,
   },
   sessionModalTitle: {
     fontSize: 17,
@@ -1321,6 +1542,43 @@ const styles = StyleSheet.create({
   sessionModalCloseText: {
     color: '#6366f1',
     fontWeight: '600',
+  },
+  prefsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    paddingVertical: 4,
+    gap: 8,
+  },
+  prefsLabel: {
+    flex: 1,
+    fontSize: 13,
+    color: modernColors.text,
+  },
+  gdprBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  gdprBtnText: {
+    fontSize: 13,
+    color: '#b91c1c',
+    fontWeight: '600',
+    flex: 1,
+  },
+  loadOlderWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    justifyContent: 'center',
+  },
+  loadOlderHint: {
+    fontSize: 12,
+    color: modernColors.textSecondary,
   },
   messagesList: {
     flex: 1,

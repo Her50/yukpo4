@@ -1761,12 +1761,15 @@ async fn get_activity_summary(
     .await?;
 
     // Destinations les plus visitées
+    // Regroupe les destinations par adresse normalisée (évite doublons "Douala" vs "douala " / espaces)
     let top_destinations = sqlx::query_as::<_, (Option<String>, i64)>(
         r#"
-        SELECT destination_address, COUNT(*)::bigint as visits
+        SELECT (MIN(destination_address))::text as address, COUNT(*)::bigint as visits
         FROM navigation_activity_log
-        WHERE user_id = $1 AND started_at >= $2 AND destination_address IS NOT NULL
-        GROUP BY destination_address
+        WHERE user_id = $1 AND started_at >= $2
+          AND destination_address IS NOT NULL
+          AND TRIM(destination_address) <> ''
+        GROUP BY LOWER(TRIM(destination_address))
         ORDER BY visits DESC
         LIMIT 10
         "#,
@@ -4372,6 +4375,24 @@ struct CheckpointResponse {
     confidence: f64, // upvotes / (upvotes + downvotes)
     distance_from_route_meters: Option<f64>,
     created_at: String,
+    upvotes: i32,
+    downvotes: i32,
+    comments_count: i64,
+}
+
+#[derive(sqlx::FromRow)]
+struct CheckpointAlongRouteRow {
+    id: uuid::Uuid,
+    checkpoint_type: String,
+    latitude: f64,
+    longitude: f64,
+    description: Option<String>,
+    speed_limit: Option<i32>,
+    is_permanent: bool,
+    upvotes: i32,
+    downvotes: i32,
+    created_at: chrono::DateTime<chrono::Utc>,
+    comments_count: i64,
 }
 
 #[derive(Deserialize)]
@@ -4480,16 +4501,20 @@ async fn get_checkpoints_along_route(
     let min_lng = params.origin_lng.min(params.dest_lng) - 0.01;
     let max_lng = params.origin_lng.max(params.dest_lng) + 0.01;
 
-    let rows = sqlx::query_as::<_, CheckpointRow>(
+    let rows = sqlx::query_as::<_, CheckpointAlongRouteRow>(
         r#"
-        SELECT id, checkpoint_type, latitude, longitude, description,
-               speed_limit, is_permanent, upvotes, downvotes, created_at
-        FROM navigation_checkpoints
-        WHERE is_active = true
-          AND latitude BETWEEN $1 AND $2
-          AND longitude BETWEEN $3 AND $4
-          AND (downvotes < upvotes + 3)
-        ORDER BY created_at DESC
+        SELECT cp.id, cp.checkpoint_type, cp.latitude, cp.longitude, cp.description,
+               cp.speed_limit, cp.is_permanent, cp.upvotes, cp.downvotes, cp.created_at,
+               COALESCE(
+                   (SELECT COUNT(*)::bigint FROM navigation_checkpoint_comments c WHERE c.checkpoint_id = cp.id),
+                   0
+               ) AS comments_count
+        FROM navigation_checkpoints cp
+        WHERE cp.is_active = true
+          AND cp.latitude BETWEEN $1 AND $2
+          AND cp.longitude BETWEEN $3 AND $4
+          AND (cp.downvotes < cp.upvotes + 3)
+        ORDER BY cp.created_at DESC
         LIMIT 50
         "#,
     )
@@ -4542,6 +4567,9 @@ async fn get_checkpoints_along_route(
                 confidence,
                 distance_from_route_meters: Some(dist),
                 created_at: row.created_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+                upvotes: row.upvotes,
+                downvotes: row.downvotes,
+                comments_count: row.comments_count,
             })
         })
         .collect();

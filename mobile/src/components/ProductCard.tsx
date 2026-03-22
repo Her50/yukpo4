@@ -29,7 +29,6 @@ import { productDeliveryService } from '../services/productDeliveryService';
 import { modernColors } from '../theme/modernTheme';
 import { generateProductShareMessage, generateSmartShareLink } from '../utils/productShareHelper';
 import SafeStorage from '../utils/safeStorage';
-import InternalShareButton from './InternalShareButton';
 import { NativeCard } from './NativeDesign';
 import ProductCommentsSection from './ProductCommentsSection';
 import ProductMediaCarousel from './ProductMediaCarousel';
@@ -1808,19 +1807,6 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   >
                     <SafeIcon name="share" size={14} color="#6B7280" />
                   </TouchableOpacity>
-                  {/* ✅ NOUVEAU 2026-03-14: Partage interne via composant réutilisable */}
-                  <InternalShareButton
-                    payload={{
-                      contentType: 'product',
-                      serviceId: serviceId || product?.service_id || service?.id,
-                      productIndex: productIndex !== undefined && productIndex !== null ? productIndex : (product?.product_index ?? null),
-                      title: productData?.nom || productData?.product_name || product?.product_name || t('productCard.produit'),
-                      description: productData?.description || '',
-                    }}
-                    iconSize={14}
-                    iconColor="#6B7280"
-                    style={[styles.shareButtonCompact, { marginLeft: 4 }]}
-                  />
                 </View>
               </View>
 

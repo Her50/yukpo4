@@ -80,6 +80,8 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
     selected = false,
     onSelect,
 }) => {
+    const { t } = useLanguageSafe();
+
     const getStatusColor = (status: string | undefined | null) => {
         if (!status || typeof status !== 'string') return '#9E9E9E';
         switch (status) {

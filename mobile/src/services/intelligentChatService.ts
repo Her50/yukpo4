@@ -120,6 +120,18 @@ export interface YukpoIaSessionMessage {
   created_at: string;
 }
 
+export interface YukpoIaSessionDetail {
+  session: YukpoIaSession;
+  messages: YukpoIaSessionMessage[];
+  has_more?: boolean;
+}
+
+export interface YukpoIaPreferences {
+  long_term_memory_enabled: boolean;
+  long_term_memory_consent_at?: string | null;
+  long_term_memory_active?: boolean;
+}
+
 class IntelligentChatService {
   private contextCache: Map<string, ScreenContext> = new Map();
   private static readonly MAX_CONTEXT_PROMPT_LENGTH = 9000;
@@ -452,9 +464,6 @@ class IntelligentChatService {
   }
 
   /**
-   * Générer une réponse contextuelle basée sur l'écran courant
-   */
-  /**
    * Crée une nouvelle session YukpoIA (historique serveur).
    */
   async createYukpoIaSession(body: {
@@ -494,18 +503,112 @@ class IntelligentChatService {
 
   async getYukpoIaSessionDetail(
     sessionId: string,
-    opts?: { limit?: number },
-  ): Promise<{ session: YukpoIaSession; messages: YukpoIaSessionMessage[] } | null> {
+    opts?: { limit?: number; before?: string },
+  ): Promise<YukpoIaSessionDetail | null> {
     try {
-      const q = opts?.limit != null ? `?limit=${encodeURIComponent(String(opts.limit))}` : '';
-      const res = await apiCall<{ session: YukpoIaSession; messages: YukpoIaSessionMessage[] }>(
-        `/ai/sessions/${encodeURIComponent(sessionId)}${q}`,
+      const q = new URLSearchParams();
+      if (opts?.limit != null) q.set('limit', String(opts.limit));
+      if (opts?.before) q.set('before', opts.before);
+      const qs = q.toString();
+      const res = await apiCall<YukpoIaSessionDetail>(
+        `/ai/sessions/${encodeURIComponent(sessionId)}${qs ? `?${qs}` : ''}`,
         { method: 'GET' },
         false,
       );
       const d = res?.data ?? res;
       if (d && typeof d === 'object' && (d as any).session) {
-        return d as { session: YukpoIaSession; messages: YukpoIaSessionMessage[] };
+        return d as YukpoIaSessionDetail;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Pagination messages seuls (scroll infini vers le passé). */
+  async listYukpoIaSessionMessagesPage(
+    sessionId: string,
+    opts: { before: string; limit?: number },
+  ): Promise<{ messages: YukpoIaSessionMessage[]; has_more: boolean } | null> {
+    try {
+      const q = new URLSearchParams();
+      q.set('before', opts.before);
+      if (opts.limit != null) q.set('limit', String(opts.limit));
+      const res = await apiCall<{ messages: YukpoIaSessionMessage[]; has_more: boolean }>(
+        `/ai/sessions/${encodeURIComponent(sessionId)}/messages?${q.toString()}`,
+        { method: 'GET' },
+        false,
+      );
+      const d = res?.data ?? res;
+      if (d && typeof d === 'object' && Array.isArray((d as any).messages)) {
+        return { messages: (d as any).messages, has_more: Boolean((d as any).has_more) };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getYukpoIaPreferences(): Promise<YukpoIaPreferences | null> {
+    try {
+      const res = await apiCall<YukpoIaPreferences>('/ai/sessions/preferences', { method: 'GET' }, false);
+      const d = res?.data ?? res;
+      if (d && typeof d === 'object' && 'long_term_memory_enabled' in d) {
+        return d as YukpoIaPreferences;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async patchYukpoIaPreferences(
+    body: YukpoIaPreferences & { long_term_memory_consent_acknowledged?: boolean },
+  ): Promise<YukpoIaPreferences | null> {
+    try {
+      const res = await apiCall<YukpoIaPreferences>('/ai/sessions/preferences', {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }, false);
+      const d = res?.data ?? res;
+      if (d && typeof d === 'object' && 'long_term_memory_enabled' in d) {
+        return d as YukpoIaPreferences;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Export JSON RGPD (sessions, messages, mémoire) avant suppression éventuelle. */
+  async exportGdprYukpoIaData(): Promise<Record<string, unknown> | null> {
+    try {
+      const res = await apiCall<Record<string, unknown>>('/ai/sessions/gdpr/export-my-data', { method: 'GET' }, false);
+      const d = res?.data ?? res;
+      if (d && typeof d === 'object' && ('exported_at' in d || 'sessions' in d)) {
+        return d as Record<string, unknown>;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Effacement RGPD : sessions + messages + mémoire long terme YukpoIA (requête authentifiée). */
+  async requestGdprDeleteYukpoIaData(): Promise<{ ok: boolean; deleted_sessions?: number; deleted_messages?: number; deleted_memory_rows?: number } | null> {
+    try {
+      const res = await apiCall<{
+        ok?: boolean;
+        deleted_sessions?: number;
+        deleted_messages?: number;
+        deleted_memory_rows?: number;
+      }>('/ai/sessions/gdpr/delete-my-data', {
+        method: 'POST',
+        body: JSON.stringify({ confirm: true }),
+      }, false);
+      const d = res?.data ?? res;
+      if (d && typeof d === 'object' && (d as any).ok === true) {
+        return d as { ok: boolean; deleted_sessions?: number; deleted_messages?: number; deleted_memory_rows?: number };
       }
       return null;
     } catch {

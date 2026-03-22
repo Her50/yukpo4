@@ -10,6 +10,17 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 
+fn truncate_for_store(s: &str, max: usize) -> String {
+    if s.len() <= max {
+        return s.to_string();
+    }
+    let mut end = max;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}\n\n[…]", &s[..end])
+}
+
 const RECENT_TURNS_FOR_PROMPT: i64 = 8;
 const SUMMARY_EVERY_N_MESSAGES: i32 = 10;
 const MEMORY_EVERY_N_MESSAGES: i32 = 15;
@@ -213,12 +224,16 @@ pub struct MessagePageRow {
     pub created_at: DateTime<Utc>,
 }
 
+/// Page de messages (ordre chronologique). `has_more` = il existe des messages plus anciens que la page.
 pub async fn fetch_messages_page(
     pool: &PgPool,
     session_id: Uuid,
     before: Option<DateTime<Utc>>,
     limit: i64,
-) -> Result<Vec<MessagePageRow>, sqlx::Error> {
+) -> Result<(Vec<MessagePageRow>, bool), sqlx::Error> {
+    let lim = limit.clamp(1, 100);
+    let take = lim + 1;
+
     let mut rows: Vec<MessagePageRow> = if let Some(ts) = before {
         sqlx::query_as(
             r#"
@@ -231,7 +246,7 @@ pub async fn fetch_messages_page(
         )
         .bind(session_id)
         .bind(ts)
-        .bind(limit)
+        .bind(take)
         .fetch_all(pool)
         .await?
     } else {
@@ -245,16 +260,211 @@ pub async fn fetch_messages_page(
             "#,
         )
         .bind(session_id)
-        .bind(limit)
+        .bind(take)
         .fetch_all(pool)
         .await?
     };
 
+    let has_more = rows.len() as i64 > lim;
+    if has_more {
+        rows.pop();
+    }
     rows.reverse();
-    Ok(rows)
+    Ok((rows, has_more))
+}
+
+/// Préférence utilisateur : mémoire long terme (faits cross-session) activée.
+/// Défaut `true` si colonne absente / erreur lecture.
+pub async fn user_long_term_memory_enabled(
+    pool: &PgPool,
+    user_id: i32,
+) -> Result<bool, sqlx::Error> {
+    let v: Option<bool> =
+        sqlx::query_scalar("SELECT yukpo_ia_long_term_memory_enabled FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await?;
+    Ok(v.unwrap_or(true))
+}
+
+/// Consentement explicite enregistré (horodatage) pour la mémoire long terme.
+pub async fn user_long_term_memory_consent_at(
+    pool: &PgPool,
+    user_id: i32,
+) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+    sqlx::query_scalar("SELECT yukpo_ia_long_term_memory_consent_at FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+}
+
+/// Mémoire long terme réellement utilisée : préférence activée **et** consentement explicite.
+pub async fn user_long_term_memory_active(
+    pool: &PgPool,
+    user_id: i32,
+) -> Result<bool, sqlx::Error> {
+    let row: Option<(bool, Option<DateTime<Utc>>)> = sqlx::query_as(
+        "SELECT yukpo_ia_long_term_memory_enabled, yukpo_ia_long_term_memory_consent_at FROM users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await?;
+    Ok(match row {
+        Some((enabled, consent)) => enabled && consent.is_some(),
+        None => false,
+    })
+}
+
+pub async fn set_user_long_term_memory_enabled(
+    pool: &PgPool,
+    user_id: i32,
+    enabled: bool,
+    consent_acknowledged: Option<bool>,
+) -> Result<(), sqlx::Error> {
+    if consent_acknowledged == Some(true) {
+        sqlx::query(
+            r#"
+            UPDATE users
+            SET yukpo_ia_long_term_memory_enabled = $1,
+                yukpo_ia_long_term_memory_consent_at = COALESCE(yukpo_ia_long_term_memory_consent_at, NOW())
+            WHERE id = $2
+            "#,
+        )
+        .bind(enabled)
+        .bind(user_id)
+        .execute(pool)
+        .await?;
+    } else {
+        sqlx::query("UPDATE users SET yukpo_ia_long_term_memory_enabled = $1 WHERE id = $2")
+            .bind(enabled)
+            .bind(user_id)
+            .execute(pool)
+            .await?;
+    }
+    Ok(())
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct IaMessageExportRow {
+    pub id: Uuid,
+    pub session_id: Uuid,
+    pub role: String,
+    pub content: String,
+    #[sqlx(json)]
+    pub attachments: serde_json::Value,
+    pub tokens_used: Option<i32>,
+    pub model_used: Option<String>,
+    pub billing: Option<serde_json::Value>,
+    #[sqlx(json)]
+    pub metadata: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct IaUserMemoryExportRow {
+    pub id: Uuid,
+    pub user_id: i32,
+    pub memory_key: String,
+    pub memory_value: String,
+    pub source_session_id: Option<Uuid>,
+    pub confidence: f32,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Export RGPD : snapshot JSON des sessions, messages et mémoire utilisateur YukpoIA.
+pub async fn gdpr_export_user_data_json(
+    pool: &PgPool,
+    user_id: i32,
+) -> Result<serde_json::Value, sqlx::Error> {
+    let sessions = list_sessions(pool, user_id, 10_000, 0, true).await?;
+    let mut session_blocks = Vec::new();
+    for s in sessions {
+        let messages: Vec<IaMessageExportRow> = sqlx::query_as(
+            r#"
+            SELECT id, session_id, role, content, attachments, tokens_used, model_used, billing, metadata, created_at
+            FROM yukpo_ia_messages
+            WHERE session_id = $1
+            ORDER BY created_at ASC
+            "#,
+        )
+        .bind(s.id)
+        .fetch_all(pool)
+        .await?;
+        session_blocks.push(json!({
+            "session": s,
+            "messages": messages,
+        }));
+    }
+    let user_memory: Vec<IaUserMemoryExportRow> = sqlx::query_as(
+        r#"
+        SELECT id, user_id, memory_key, memory_value, source_session_id, confidence::real AS confidence,
+               created_at, updated_at
+        FROM yukpo_ia_user_memory
+        WHERE user_id = $1
+        ORDER BY updated_at DESC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(json!({
+        "export_version": 1,
+        "user_id": user_id,
+        "exported_at": Utc::now(),
+        "sessions": session_blocks,
+        "user_memory": user_memory,
+    }))
+}
+
+#[derive(Debug, Serialize)]
+pub struct GdprWipeResult {
+    pub deleted_sessions: u64,
+    pub deleted_messages: u64,
+    pub deleted_memory_rows: u64,
+}
+
+/// Supprime toutes les données YukpoIA personnelles (sessions, messages, mémoire long terme).
+/// Ne supprime pas `yukpo_ia_daily_usage` (traçabilité facturation — traiter séparément si exigé).
+pub async fn gdpr_delete_all_yukpo_ia_user_data(
+    pool: &PgPool,
+    user_id: i32,
+) -> Result<GdprWipeResult, sqlx::Error> {
+    let deleted_messages: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)::bigint FROM yukpo_ia_messages m
+        INNER JOIN yukpo_ia_sessions s ON m.session_id = s.id
+        WHERE s.user_id = $1
+        "#,
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await?;
+
+    let deleted_memory_rows = sqlx::query("DELETE FROM yukpo_ia_user_memory WHERE user_id = $1")
+        .bind(user_id)
+        .execute(pool)
+        .await?
+        .rows_affected();
+
+    let deleted_sessions = sqlx::query("DELETE FROM yukpo_ia_sessions WHERE user_id = $1")
+        .bind(user_id)
+        .execute(pool)
+        .await?
+        .rows_affected();
+
+    Ok(GdprWipeResult {
+        deleted_sessions,
+        deleted_messages: deleted_messages as u64,
+        deleted_memory_rows,
+    })
 }
 
 pub async fn load_user_memory_text(pool: &PgPool, user_id: i32) -> Result<String, sqlx::Error> {
+    if !user_long_term_memory_active(pool, user_id).await.unwrap_or(false) {
+        return Ok(String::new());
+    }
     let rows: Vec<IaUserMemoryRow> = sqlx::query_as(
         r#"
         SELECT memory_key, memory_value, confidence::real AS confidence, updated_at
@@ -272,10 +482,8 @@ pub async fn load_user_memory_text(pool: &PgPool, user_id: i32) -> Result<String
     if rows.is_empty() {
         return Ok(String::new());
     }
-    let parts: Vec<String> = rows
-        .iter()
-        .map(|r| format!("- {}: {}", r.memory_key, r.memory_value))
-        .collect();
+    let parts: Vec<String> =
+        rows.iter().map(|r| format!("- {}: {}", r.memory_key, r.memory_value)).collect();
     Ok(parts.join("\n"))
 }
 
@@ -290,6 +498,10 @@ pub async fn persist_chat_turn(
     assistant_tokens: i32,
     billing_snapshot: serde_json::Value,
 ) -> Result<i32, sqlx::Error> {
+    const MAX_STORED_MSG: usize = 120_000;
+    let user_content = truncate_for_store(user_content, MAX_STORED_MSG);
+    let assistant_content = truncate_for_store(assistant_content, MAX_STORED_MSG);
+
     let mut tx = pool.begin().await?;
 
     sqlx::query(
@@ -299,7 +511,7 @@ pub async fn persist_chat_turn(
         "#,
     )
     .bind(session_id)
-    .bind(user_content)
+    .bind(&user_content)
     .execute(&mut *tx)
     .await?;
 
@@ -335,7 +547,7 @@ pub async fn persist_chat_turn(
     .bind(session_id)
     .bind(user_id)
     .bind(assistant_tokens as i64)
-    .bind(user_content)
+    .bind(&user_content)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -350,10 +562,8 @@ pub fn spawn_session_maintenance(
     session_id: Uuid,
     message_count: i32,
 ) {
-    let need_summary =
-        message_count > 0 && message_count % SUMMARY_EVERY_N_MESSAGES == 0;
-    let need_memory =
-        message_count > 0 && message_count % MEMORY_EVERY_N_MESSAGES == 0;
+    let need_summary = message_count > 0 && message_count % SUMMARY_EVERY_N_MESSAGES == 0;
+    let need_memory = message_count > 0 && message_count % MEMORY_EVERY_N_MESSAGES == 0;
 
     if !need_summary && !need_memory {
         return;
@@ -361,9 +571,7 @@ pub fn spawn_session_maintenance(
 
     tokio::spawn(async move {
         if need_summary {
-            if let Err(e) =
-                refresh_session_summary(&state, user_id, session_id).await
-            {
+            if let Err(e) = refresh_session_summary(&state, user_id, session_id).await {
                 warn!("[YukpoIA session] refresh summary: {}", e);
             }
         }
@@ -429,6 +637,9 @@ async fn extract_user_memory(
     session_id: Uuid,
 ) -> Result<(), String> {
     let pool = &state.pg;
+    if !user_long_term_memory_active(pool, user_id).await.unwrap_or(false) {
+        return Ok(());
+    }
     let hist = fetch_recent_messages_for_prompt(pool, session_id, 30)
         .await
         .map_err(|e| e.to_string())?;

@@ -76,16 +76,24 @@ function aggregateActivitiesSummary(list: any[]): Record<string, any> {
             };
         }
     }
-    const destCounts = new Map<string, number>();
+    /** Même logique que le backend (GROUP BY LOWER(TRIM(...))) : évite de compter deux fois la même destination avec des variantes de casse / espaces. */
+    const normalizeDestKey = (d: string) => d.trim().toLowerCase().replace(/\s+/g, ' ');
+    const destCounts = new Map<string, { visit_count: number; displayName: string }>();
     for (const a of list) {
-        const d = String(a?.destination || '').trim();
-        if (!d) continue;
-        destCounts.set(d, (destCounts.get(d) || 0) + 1);
+        const raw = String(a?.destination || '').trim();
+        if (!raw) continue;
+        const key = normalizeDestKey(raw);
+        const cur = destCounts.get(key);
+        if (cur) {
+            cur.visit_count += 1;
+        } else {
+            destCounts.set(key, { visit_count: 1, displayName: raw });
+        }
     }
     const most_visited_places = [...destCounts.entries()]
-        .sort((x, y) => y[1] - x[1])
+        .sort((x, y) => y[1].visit_count - x[1].visit_count)
         .slice(0, 32)
-        .map(([name, visit_count]) => ({ name, visit_count }));
+        .map(([, v]) => ({ name: v.displayName, visit_count: v.visit_count }));
     const modeCounts = new Map<string, { count: number; distance_km: number; duration_minutes: number }>();
     for (const a of list) {
         const m = String(a?.travel_mode || 'unknown');
@@ -998,9 +1006,19 @@ const NavigationScreen: React.FC = () => {
     useEffect(() => { searchRoutesRef.current = searchRoutes; }, [searchRoutes]);
 
     // ── POI interne (sans gate de paiement) ──
-    const _loadPOIInternal = useCallback(async (route: RouteOption, requestedTypes?: string[]) => {
-        if (!route || !destinationCoords) { setPointsOfInterest([]); return; }
-        setLoadingPOI(true); setPointsOfInterest([]);
+    const _loadPOIInternal = useCallback(async (
+        route: RouteOption,
+        requestedTypes?: string[],
+        opts?: { merge?: boolean; keepGoogleTypes?: Set<string> },
+    ) => {
+        const merge = opts?.merge === true;
+        const keepGoogleTypes = opts?.keepGoogleTypes;
+        if (!route || !destinationCoords) {
+            if (!merge) setPointsOfInterest([]);
+            return;
+        }
+        setLoadingPOI(true);
+        if (!merge) setPointsOfInterest([]);
         try {
             const origin = await getCurrentPosition(); if (!origin) { setLoadingPOI(false); return; }
             if (!route.id || !route.steps?.length) { setLoadingPOI(false); return; }
@@ -1015,7 +1033,7 @@ const NavigationScreen: React.FC = () => {
                 } else {
                     Alert.alert(t('message.error'), msg);
                 }
-                setPointsOfInterest([]);
+                if (!merge) setPointsOfInterest([]);
                 return;
             }
             if (r?.data?.pois && Array.isArray(r.data.pois)) {
@@ -1034,16 +1052,35 @@ const NavigationScreen: React.FC = () => {
                     return coords && typeOk;
                 });
                 console.log('[Navigation] Validated POIs:', vp);
-                setPointsOfInterest(vp);
+                if (merge && keepGoogleTypes && keepGoogleTypes.size > 0) {
+                    setPointsOfInterest((prev) => {
+                        const kept = prev.filter((p) => keepGoogleTypes.has(normalizePoiType(p.type)));
+                        const seen = new Set(kept.map((p) => String(p.id)));
+                        const out = [...kept];
+                        for (const p of vp) {
+                            const id = String(p.id);
+                            if (!seen.has(id)) {
+                                out.push(p);
+                                seen.add(id);
+                            }
+                        }
+                        return out;
+                    });
+                } else {
+                    setPointsOfInterest(vp);
+                }
                 const reset: Record<string, boolean> = {};
                 const vpSet = new Set(vp.map((p: any) => normalizePoiType(p.type)));
+                if (merge && keepGoogleTypes) {
+                    keepGoogleTypes.forEach((gt) => vpSet.add(gt));
+                }
                 Object.entries(POI_CATEGORIES).forEach(([k, cat]) => {
-                    reset[k] = cat.types.some(t => vpSet.has(t));
+                    reset[k] = cat.types.some(tt => vpSet.has(tt));
                 });
                 setExpandedCategories(reset);
                 setPoiShowAll({});
             }
-        } catch { setPointsOfInterest([]); } finally { setLoadingPOI(false); }
+        } catch { if (!merge) setPointsOfInterest([]); } finally { setLoadingPOI(false); }
     }, [destinationCoords, getCurrentPosition, t, tr, activeLang]);
 
     // ✅ POI avec gate de paiement — à la demande de l'utilisateur
@@ -1059,7 +1096,7 @@ const NavigationScreen: React.FC = () => {
             catLabels[k] = cat.label?.labelKey ? (t(cat.label.labelKey) || cat.label.fallback) : (cat.label?.fallback || k);
         });
 
-        const runPoiLoad = () => {
+        const runPoiLoadFull = () => {
             setPoiRequested(true);
             const types = categories.flatMap(k => (POI_CATEGORIES as any)[k]?.types || []);
             _loadPOIInternal(route, types);
@@ -1067,11 +1104,12 @@ const NavigationScreen: React.FC = () => {
 
         const paidMap = poiPaidCategoriesByRouteRef.current;
         const paidSet = new Set(paidMap.get(route.id) ?? []);
+        const previousPaidSnapshot = new Set(paidSet);
         const unpaidCategories = categories.filter((k) => !paidSet.has(k));
 
         // Toutes les catégories demandées sont déjà payées pour ce trajet → recherche sans nouveau débit
         if (unpaidCategories.length === 0) {
-            runPoiLoad();
+            runPoiLoadFull();
             return;
         }
 
@@ -1080,7 +1118,7 @@ const NavigationScreen: React.FC = () => {
             unpaidLabels[k] = catLabels[k] || k;
         });
 
-        const supplemental = paidSet.size > 0;
+        const supplemental = previousPaidSnapshot.size > 0;
 
         await payForPoi(
             unpaidCategories,
@@ -1089,7 +1127,16 @@ const NavigationScreen: React.FC = () => {
                 unpaidCategories.forEach((k) => paidSet.add(k));
                 paidMap.set(route.id, paidSet);
                 setPoiPaidCategories(Array.from(paidSet));
-                runPoiLoad();
+                setPoiRequested(true);
+                if (supplemental) {
+                    const keepGoogleTypes = new Set(
+                        [...previousPaidSnapshot].flatMap((k) => (POI_CATEGORIES as any)[k]?.types || []),
+                    );
+                    const newTypes = unpaidCategories.flatMap((k) => (POI_CATEGORIES as any)[k]?.types || []);
+                    _loadPOIInternal(route, newTypes, { merge: true, keepGoogleTypes });
+                } else {
+                    runPoiLoadFull();
+                }
             },
             () => {
                 console.log('[Navigation] POI payment cancelled');
@@ -1258,7 +1305,6 @@ const NavigationScreen: React.FC = () => {
                     best_session: sr.data.best_session || null,
                     daily_trend: sr.data.daily_trend || [],
                     most_visited_places: (sr.data.top_destinations || []).map((d: any) => ({ name: d.address || (t('navigation.unknownPlace') || 'Lieu inconnu'), visit_count: d.visits || 0 })),
-                    favorite_poi_types: (sr.data.by_mode || []).map((m: any) => ({ poi_type: m.mode, count: m.count || 0 })),
                 });
             }
             if (hr?.data?.activities) {
@@ -1461,18 +1507,22 @@ const NavigationScreen: React.FC = () => {
             console.log('[Navigation] Clusters created:', clusters);
 
             // Résolution des noms de lieux + calcul des distances
+            const sumStat = (items: any[], key: string) =>
+                items.reduce((s, c) => s + (typeof c?.[key] === 'number' ? c[key] : Number(c?.[key]) || 0), 0);
             const data = await Promise.all(clusters.map(async (cl) => {
                 const sortedItems = [...cl.items].sort((a: any, b: any) => getCreatedAtMs(b) - getCreatedAtMs(a));
                 const main = sortedItems[0];
                 const locName = await reverseGeocode(cl.centerLat, cl.centerLng);
                 const dist = pos ? haversineDistance(pos.lat, pos.lng, cl.centerLat, cl.centerLng) : 0;
-                // Calculer le temps écoulé depuis la création
                 return {
                     id: main.id, checkpoint_type: main.checkpoint_type,
                     lat: cl.centerLat, lng: cl.centerLng, locationName: locName,
                     distance: dist, count: cl.items.length,
                     description: main.description, speed_limit: main.speed_limit,
                     created_at: main.created_at,
+                    upvotes: sumStat(cl.items, 'upvotes'),
+                    downvotes: sumStat(cl.items, 'downvotes'),
+                    comments_count: sumStat(cl.items, 'comments_count'),
                 };
             }));
 
@@ -2067,15 +2117,17 @@ const NavigationScreen: React.FC = () => {
                                                         {timeAgo ? <Text style={st.alertHistTime}>🕒 {timeAgo}</Text> : null}
                                                         {alert.speed_limit ? <Text style={st.alertHistSpd}>🚦 {alert.speed_limit} km/h</Text> : null}
                                                     </View>
-                                                    {/* ✅ Boutons confirmer / infirmer l'alerte */}
+                                                    {/* ✅ Boutons confirmer / infirmer l'alerte + compteurs agrégés (clusters) */}
                                                     <View style={st.voteRow}>
                                                         <TouchableOpacity style={st.voteBtn} onPress={() => voteCheckpoint(alert.id, 'up')} activeOpacity={0.7}>
                                                             <Text style={{ fontSize: 14 }}>👍</Text>
                                                             <Text style={st.voteBtnTxt}>{t('message.confirm') || 'Confirmer'}</Text>
+                                                            <Text style={st.voteStatTxt}>{typeof (alert as any).upvotes === 'number' ? (alert as any).upvotes : 0}</Text>
                                                         </TouchableOpacity>
                                                         <TouchableOpacity style={[st.voteBtn, st.voteBtnDown]} onPress={() => voteCheckpoint(alert.id, 'down')} activeOpacity={0.7}>
                                                             <Text style={{ fontSize: 14 }}>👎</Text>
                                                             <Text style={[st.voteBtnTxt, { color: '#EF4444' }]}>{t('navigation.dispute') || 'Infirmer'}</Text>
+                                                            <Text style={st.voteStatTxt}>{typeof (alert as any).downvotes === 'number' ? (alert as any).downvotes : 0}</Text>
                                                         </TouchableOpacity>
                                                         <TouchableOpacity
                                                             style={[st.voteBtn, expandedCommentsId === alert.id && { backgroundColor: '#DBEAFE', borderColor: '#93C5FD' }]}
@@ -2086,6 +2138,7 @@ const NavigationScreen: React.FC = () => {
                                                             <Text style={[st.voteBtnTxt, { color: expandedCommentsId === alert.id ? '#2563EB' : '#6B7280' }]}>
                                                                 {t('navigation.comment') || 'Commenter'}
                                                             </Text>
+                                                            <Text style={st.voteStatTxt}>{typeof (alert as any).comments_count === 'number' ? (alert as any).comments_count : 0}</Text>
                                                         </TouchableOpacity>
                                                     </View>
                                                     {/* ✅ Section commentaires (expandable) */}
@@ -2545,6 +2598,9 @@ const NavigationScreen: React.FC = () => {
                                                 <Text style={st.secTitle}>📍 {tr('navigation.topVisitedPlaces', 'Top lieux')}</Text>
                                                 <Text style={{ fontSize: 10, color: modernColors.textSecondary, textAlign: 'right' as any, maxWidth: '48%' as any }} numberOfLines={2}>{statsPeriodMenuLabel} · {statsModalityMenuLabel}</Text>
                                             </View>
+                                            <Text style={{ fontSize: 10, color: modernColors.textSecondary, marginBottom: 8 }}>
+                                                {tr('navigation.mostVisitedExplainer', 'Comptage par destination d’arrivée (adresses identiques regroupées, sans tenir compte des majuscules). Vue « Tout combiné » : données serveur.')}
+                                            </Text>
                                             {(statsDashboardSummary.most_visited_places || []).slice(0, 5).map((place: any, i: number) => {
                                                 const name = typeof place?.name === 'string' ? place.name : (t('navigation.unknownPlace') || 'Lieu inconnu');
                                                 const count = typeof place?.visit_count === 'number' ? place.visit_count : 0;
@@ -2576,19 +2632,22 @@ const NavigationScreen: React.FC = () => {
                                         </NativeCard>
                                     )}
 
-                                    {/* ━━ TYPES DE LIEUX FAVORIS ━━ */}
-                                    {statsModality === 'all' && !freeWalkFilterRange && activitySummaryForDisplay.favorite_poi_types?.length > 0 && (
+                                    {/* ━━ MODES DE DÉPLACEMENT (données serveur by_mode — plus « types POI » erronés) ━━ */}
+                                    {statsModality === 'all' && !freeWalkFilterRange && (activitySummaryForDisplay.by_mode || []).length > 0 && (
                                         <NativeCard style={st.secCard}>
-                                            <Text style={st.secTitle}>⭐ Types de lieux favoris</Text>
+                                            <Text style={st.secTitle}>{tr('navigation.statsTravelModesTitle', 'Modes de déplacement les plus utilisés')}</Text>
+                                            <Text style={{ fontSize: 11, color: modernColors.textSecondary, marginBottom: 6 }}>
+                                                {tr('navigation.statsTravelModesHint', 'Basé sur vos sessions enregistrées (pas sur les POI Google).')}
+                                            </Text>
                                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                                                {activitySummaryForDisplay.favorite_poi_types.map((poi: any, i: number) => {
-                                                    const poiType = typeof poi?.poi_type === 'string' ? poi.poi_type : 'autre';
-                                                    const count = typeof poi?.count === 'number' ? poi.count : 0;
-                                                    const poiIcons: Record<string, string> = { restaurant: '🍽️', pharmacy: '💊', hospital: '🏥', bank: '🏦', gas_station: '⛽', supermarket: '🛒', school: '🎓', mosque: '🕌', church: '⛪', hotel: '🏨', bar: '🍺', cafe: '☕', police: '👮', post_office: '📮', parking: '🅿️' };
+                                                {(activitySummaryForDisplay.by_mode || []).map((m: any, i: number) => {
+                                                    const mode = typeof m?.mode === 'string' ? m.mode : 'unknown';
+                                                    const count = typeof m?.count === 'number' ? m.count : 0;
+                                                    const modeIcons: Record<string, string> = { walking: '🚶', bicycling: '🚲', driving: '🚗', transit: '🚌', unknown: '📍' };
                                                     return (
                                                         <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: modernColors.surfaceVariant, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: modernColors.border }}>
-                                                            <Text style={{ fontSize: 14 }}>{poiIcons[poiType] || '📍'}</Text>
-                                                            <Text style={{ fontSize: 12, fontWeight: '600', color: modernColors.text }}>{poiType}</Text>
+                                                            <Text style={{ fontSize: 14 }}>{modeIcons[mode] || '📍'}</Text>
+                                                            <Text style={{ fontSize: 12, fontWeight: '600', color: modernColors.text }}>{mode}</Text>
                                                             <Text style={{ fontSize: 11, fontWeight: '700', color: modernColors.primary, marginLeft: 2 }}>×{count}</Text>
                                                         </View>
                                                     );
@@ -3403,6 +3462,11 @@ const NavigationScreen: React.FC = () => {
                                         <Text style={{ fontSize: 12, color: modernColors.textSecondary, marginBottom: 8 }}>
                                             {tr('navigation.poiCategoriesHint', 'Vous pouvez modifier les catégories et relancer la recherche sur le même trajet.')}
                                         </Text>
+                                        {isNavigationFreePeriod ? (
+                                            <Text style={{ fontSize: 11, color: '#047857', marginBottom: 8, lineHeight: 16, fontWeight: '600' }}>
+                                                {(tr('navigation.poiFreePeriodNotice', 'Chaque catégorie POI est un service payant (tarif indicatif sur les pastilles). Après le {{date}}, le montant sera débité de votre solde Yukpo — pour l’instant la recherche est gratuite jusqu’au {{date}}.')).replace(/\{\{date\}\}/g, navigationFreeUntilLabel)}
+                                            </Text>
+                                        ) : null}
                                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                                             {(() => {
                                                 const poiPrices = getPoiPrices(); return Object.entries(POI_CATEGORIES).map(([catKey, cat]) => {
@@ -3962,6 +4026,7 @@ const st = StyleSheet.create({
     voteBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: '#DCFCE7', borderWidth: 1, borderColor: '#BBF7D0' },
     voteBtnDown: { backgroundColor: '#FEE2E2', borderColor: '#FECACA' },
     voteBtnTxt: { fontSize: 11, fontWeight: '700', color: '#16A34A' },
+    voteStatTxt: { fontSize: 10, fontWeight: '800', color: '#374151', marginLeft: 4, minWidth: 16, textAlign: 'right' as const },
 
     // LocationSelector override
     locationSelector: { marginTop: 4 },

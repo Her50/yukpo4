@@ -14,6 +14,7 @@ import {
     Platform,
     Pressable,
     RefreshControl,
+    Share,
     StatusBar,
     StyleSheet,
     Text,
@@ -22,7 +23,6 @@ import {
     View,
     ViewToken
 } from 'react-native';
-import GlobalShareModal, { GlobalSharePayload } from '../components/GlobalShareModal';
 import OrderDeliveryModal from '../components/delivery/OrderDeliveryModal';
 import ProductCommentsSection from '../components/ProductCommentsSection';
 import ProductDescriptionSection from '../components/ProductDescriptionSection';
@@ -33,6 +33,7 @@ import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
 import { mediaService } from '../services/mediaService';
 import { videoCacheService } from '../services/videoCacheService';
+import { generateProductShareMessage, generateSmartShareLink } from '../utils/productShareHelper';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -296,8 +297,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const [showDeliveryModal, setShowDeliveryModal] = useState(false);
     const [selectedDeliveryItem, setSelectedDeliveryItem] = useState<FeedItem | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [shareModalVisible, setShareModalVisible] = useState(false);
-    const [sharePayload, setSharePayload] = useState<GlobalSharePayload | null>(null);
     const [searchExpanded, setSearchExpanded] = useState(false);
     const searchWidthAnim = useRef(new Animated.Value(0)).current;
     const searchInputRef = useRef<TextInput>(null);
@@ -564,7 +563,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
             // Afficher un message d'erreur à l'utilisateur
             Alert.alert(
                 t('message.error'),
-                t('videoFeed.cannotFollow'),
+                t('videoFeed.cannotFollowVendor'),
                 [{ text: 'OK' }]
             );
         }
@@ -813,21 +812,40 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     const handleShare = useCallback(async (item: FeedItem) => {
         try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
-        const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
-        const shareUrl = item.serviceId
-            ? `${SHARE_BASE_URL}/product/${item.serviceId}_${item.productIndex ?? 0}`
-            : item.videoUrl;
-        setSharePayload({
-            title: item.titre || 'Vidéo',
-            description: item.description || '',
-            shareUrl,
-            contentType: 'video',
-            serviceId: item.serviceId ?? null,
-            productIndex: item.productIndex ?? null,
-            extraData: { videoUrl: item.videoUrl, sellerName: item.sellerName || '' },
-        });
-        setShareModalVisible(true);
-    }, []);
+        const productName = item.titre?.trim() || t('videoFeed.video');
+        const productDesc = (item.description && String(item.description).trim()) || '';
+
+        try {
+            if (item.serviceId != null && item.serviceId !== undefined) {
+                const shareProductId = item.productIndex ?? 0;
+                const shareServiceId = item.serviceId;
+                const shareMessage = generateProductShareMessage({
+                    productName,
+                    productDescription: productDesc,
+                    productId: shareProductId,
+                    serviceId: shareServiceId,
+                });
+                const smartLink = generateSmartShareLink(shareProductId, shareServiceId);
+                await Share.share({
+                    message: shareMessage,
+                    title: productName,
+                    url: smartLink,
+                });
+            } else {
+                const fallbackMsg = productDesc
+                    ? `${productName}\n\n${productDesc}\n\n${item.videoUrl}`
+                    : `${productName}\n\n${item.videoUrl}`;
+                await Share.share({
+                    message: fallbackMsg,
+                    title: productName,
+                    url: item.videoUrl,
+                });
+            }
+        } catch (error) {
+            console.error('[VideoFeedScreen] Erreur partage:', error);
+            Alert.alert(t('videoFeed.information'), t('videoFeed.shareError'));
+        }
+    }, [t]);
 
     // ✅ FIX 2026-03-14: Barre de recherche style Facebook — icône ronde → expand au clic
     const toggleSearch = useCallback(() => {
@@ -873,7 +891,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         if (item.serviceId) {
             (navigation as any).navigate('ServiceDetailShared', { serviceId: item.serviceId });
         } else {
-            Alert.alert(t('videoFeed.information'), t('videoFeed.noProductAssociated'));
+            Alert.alert(t('videoFeed.information'), t('videoFeed.noAssociatedProduct'));
         }
     }, [navigation]);
 
@@ -1275,7 +1293,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         <View style={styles.actionIconBg}>
                             <SafeIcon name="share" size={22} color="#fff" type="lucide" />
                         </View>
-                        <Text style={styles.actionLabel}>Partager</Text>
+                        <Text style={styles.actionLabel}>{t('videoFeed.partager')}</Text>
                     </TouchableOpacity>
 
                 </View>
@@ -1296,7 +1314,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 {/* ✅ SUPPRIMÉ 2026-03-14: Ancien picker horizontal en bas — remplacé par picker flottant au-dessus du coeur */}
             </View>
         );
-    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, spinAnim, filteredFeed.length, navigation, followMap, handleToggleFollow, playCount, expandedDescriptions, toggleDescription, handleDeliveryOrder, pageHeight]);
+    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, spinAnim, filteredFeed.length, navigation, followMap, handleToggleFollow, playCount, expandedDescriptions, toggleDescription, handleDeliveryOrder, pageHeight, t]);
 
     if (loading) {
         return (
@@ -1480,14 +1498,6 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 />
             )}
 
-            <GlobalShareModal
-                visible={shareModalVisible}
-                onClose={() => {
-                    setShareModalVisible(false);
-                    setSharePayload(null);
-                }}
-                payload={sharePayload}
-            />
         </SafeNativeView>
     );
 };

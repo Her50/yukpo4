@@ -2,7 +2,7 @@ use axum::{
     extract::{Extension, Json, Path, State},
     http::{HeaderMap, StatusCode},
     response::Json as ResponseJson,
-    routing::{delete, get, patch, post},
+    routing::{get, post},
     Router,
 };
 use log::{error, info, warn};
@@ -1526,6 +1526,23 @@ pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::<Arc<AppState>>::new()
         .merge(metrics_ops)
         .merge(metrics_me)
+        .route(
+            "/ai/sessions/preferences",
+            get(yukpo_ia_session_routes::get_yukpo_ia_preferences)
+                .patch(yukpo_ia_session_routes::patch_yukpo_ia_preferences),
+        )
+        .route(
+            "/ai/sessions/gdpr/export-my-data",
+            get(yukpo_ia_session_routes::get_yukpo_ia_gdpr_export),
+        )
+        .route(
+            "/ai/sessions/gdpr/delete-my-data",
+            post(yukpo_ia_session_routes::post_yukpo_ia_gdpr_delete),
+        )
+        .route(
+            "/ai/sessions/:session_id/messages",
+            get(yukpo_ia_session_routes::list_yukpo_ia_session_messages),
+        )
         .route(
             "/ai/sessions",
             get(yukpo_ia_session_routes::list_yukpo_ia_sessions)

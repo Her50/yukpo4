@@ -1,6 +1,11 @@
 # Applique un fichier SQL sur l'instance Cloud SQL GCP (IP publique + secret database-url)
 # Usage: .\scripts\apply_sql_gcp_cloudsql.ps1 -SqlPath "..\migrations\20260322_backfill_wallet_transactions_reference_type.sql"
 # Prérequis: gcloud auth, secretmanager sur database-url, psql (PostgreSQL client)
+#
+# DATABASE_URL supportées:
+# - postgresql://USER:PASS@HOST:PORT/DB?...
+# - postgresql://USER:PASS@/DB?host=/cloudsql/... (socket)
+# Le mot de passe peut contenir des caractères spéciaux ; l'URL complète est parsée après le dernier @ du schéma.
 
 param(
     [Parameter(Mandatory = $true)]
@@ -20,25 +25,44 @@ $sqlFull = (Resolve-Path $SqlPath).Path
 
 Write-Host "[INFO] Lecture du secret $SecretName..." -ForegroundColor Cyan
 $dbUrl = (gcloud secrets versions access latest --secret=$SecretName --project=$ProjectId 2>$null).Trim()
-if (-not $dbUrl -or $dbUrl -notmatch "^postgresql://") {
+if (-not $dbUrl) {
     Write-Error "Impossible de lire database-url depuis Secret Manager."
 }
-
-# Format attendu: postgresql://USER:PASS@/DBNAME?host=/cloudsql/... (mot de passe peut contenir : ou @)
-if (-not $dbUrl.StartsWith("postgresql://") -or $dbUrl -notmatch "@/") {
-    Write-Error "Format DATABASE_URL inattendu (attendu postgresql://user:pass@/db?...)"
+if ($dbUrl -notmatch "^(postgres(ql)?://)") {
+    Write-Error "Format DATABASE_URL inattendu (attendu postgres:// ou postgresql://)."
 }
-$rest = $dbUrl.Substring("postgresql://".Length)
-$atSlash = $rest.IndexOf("@/")
-if ($atSlash -lt 0) { Write-Error "Séparateur @/ manquant dans DATABASE_URL" }
-$cred = $rest.Substring(0, $atSlash)
-$dbAndQuery = $rest.Substring($atSlash + 2)
-$qIdx = $dbAndQuery.IndexOf("?")
-$dbName = if ($qIdx -ge 0) { $dbAndQuery.Substring(0, $qIdx) } else { $dbAndQuery }
+
+# Retirer le schéma postgresql:// ou postgres://
+$afterScheme = $dbUrl -replace "^postgres(ql)?://", ""
+# Dernier @ sépare credentials | host+path (mot de passe peut contenir @)
+$lastAt = $afterScheme.LastIndexOf("@")
+if ($lastAt -lt 0) {
+    Write-Error "DATABASE_URL sans @ (credentials invalides)."
+}
+$cred = $afterScheme.Substring(0, $lastAt)
+$hostAndPath = $afterScheme.Substring($lastAt + 1)
+
 $colonIdx = $cred.IndexOf(":")
-if ($colonIdx -lt 0) { Write-Error "Utilisateur:mot de passe invalides dans DATABASE_URL" }
+if ($colonIdx -lt 0) {
+    Write-Error "Utilisateur:mot de passe invalides dans DATABASE_URL (pas de ':')."
+}
 $dbUser = $cred.Substring(0, $colonIdx)
 $dbPass = $cred.Substring($colonIdx + 1)
+
+# Cas Cloud SQL unix socket: hostAndPath = /DBNAME?host=/cloudsql/...
+if ($hostAndPath.StartsWith("/")) {
+    $dbAndQuery = $hostAndPath.TrimStart("/")
+}
+else {
+    $dbAndQuery = $hostAndPath
+}
+
+$qIdx = $dbAndQuery.IndexOf("?")
+$dbName = if ($qIdx -ge 0) { $dbAndQuery.Substring(0, $qIdx) } else { $dbAndQuery }
+
+if ([string]::IsNullOrWhiteSpace($dbName)) {
+    Write-Error "Nom de base introuvable dans DATABASE_URL."
+}
 
 Write-Host "[INFO] Instance Cloud SQL: $InstanceName" -ForegroundColor Cyan
 Write-Host "[INFO] Base: $dbName | Utilisateur: $dbUser" -ForegroundColor Cyan

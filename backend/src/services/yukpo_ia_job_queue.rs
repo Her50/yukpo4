@@ -156,10 +156,7 @@ impl YukpoIaJobQueue {
             .get_multiplexed_async_connection()
             .await
             .map_err(|e| format!("redis: {}", e))?;
-        let n: u64 = conn
-            .llen(QUEUE_KEY)
-            .await
-            .map_err(|e| format!("redis LLEN: {}", e))?;
+        let n: u64 = conn.llen(QUEUE_KEY).await.map_err(|e| format!("redis LLEN: {}", e))?;
         Ok(Some(n))
     }
 }

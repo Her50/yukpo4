@@ -3581,6 +3581,8 @@
         "orderRejected": "Commande rejetée"
     },
     "videoFeed": {
+        "information": "Information",
+        "shareError": "Impossible de partager cette vidéo.",
         "videosUnavailable": "Vidéos indisponibles",
         "cannotLoadVideos": "Impossible de charger les vidéos pour l'instant.",
         "loginRequired": "Connexion requise",

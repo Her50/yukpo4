@@ -7,7 +7,6 @@ import React from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 interface BulkAction {
     id: string;
@@ -40,7 +39,6 @@ export const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
     const slideAnim = React.useRef(new Animated.Value(100)).current;
 
     React.useEffect(() => {
-    const { t } = useLanguageSafe();
         if (visible) {
             Animated.spring(slideAnim, {
                 toValue: 0,

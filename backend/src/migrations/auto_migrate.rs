@@ -20986,6 +20986,18 @@ pub async fn ensure_yukpo_ia_sessions_tables(pool: &PgPool) -> Result<(), sqlx::
     .execute(pool)
     .await;
 
+    // Opt-out mémoire long terme (cross-session) — RGPD / transparence
+    let _ = sqlx::query(
+        r#"ALTER TABLE users ADD COLUMN IF NOT EXISTS yukpo_ia_long_term_memory_enabled BOOLEAN NOT NULL DEFAULT TRUE"#,
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query(
+        r#"ALTER TABLE users ADD COLUMN IF NOT EXISTS yukpo_ia_long_term_memory_consent_at TIMESTAMPTZ"#,
+    )
+    .execute(pool)
+    .await;
+
     info!("✅ Tables YukpoIA sessions OK");
     Ok(())
 }
