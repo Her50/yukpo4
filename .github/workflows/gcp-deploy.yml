@@ -361,15 +361,7 @@ jobs:
           # Au lieu de faire 7 mises à jour séparées (qui créent 7 revisions), on fait tout en une fois
           # dans le déploiement final avec --clear-env-vars et --clear-secrets
           
-          echo "🧹 Nettoyage sera fait lors du déploiement final (évite les revisions multiples)..."
-          
-          # ✅ CRITIQUE 2026-02-18: Supprimer DATABASE_URL comme variable AVANT de le définir comme secret
-          # Cloud Run ne permet pas de changer le type (variable <-> secret) sans supprimer d'abord
-          echo "🔧 Suppression de DATABASE_URL comme variable d'environnement (si elle existe)..."
-          gcloud run services update ${{ env.SERVICE_NAME }} \
-            --region ${{ env.REGION }} \
-            --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
-            --project ${{ secrets.GCP_PROJECT_ID }} 2>&1 | grep -v "does not exist\|not found\|No change\|does not have" || true
+          echo "🧹 Nettoyage des secrets en doublon: --remove-env-vars est appliqué dans le même gcloud run deploy (pas de 2e révision cassée)."
           
           # Construire la liste des variables d'environnement depuis env-vars.json (sans les secrets)
           echo "Construction de la liste des variables d'environnement..."
@@ -398,6 +390,7 @@ jobs:
                 --allow-unauthenticated \
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
+                --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
                 --update-env-vars="^;^$ENV_VARS" \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
                 --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER,MONGODB_URL" \
@@ -421,6 +414,7 @@ jobs:
                 --allow-unauthenticated \
                 --port 8080 \
                 --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
+                --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
                 --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
@@ -448,6 +442,7 @@ jobs:
               --allow-unauthenticated \
               --port 8080 \
               --startup-probe=timeoutSeconds=10,periodSeconds=15,initialDelaySeconds=180,failureThreshold=30,httpGet.port=8080,httpGet.path=/health \
+              --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
               --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
               --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \

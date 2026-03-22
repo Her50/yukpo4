@@ -488,13 +488,31 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             // ✅ CRITIQUE 2026-02-18: Vérifier que le socket existe AVANT de tenter la connexion
+            // ✅ FIX 2026-03-23: Sur Cloud Run le proxy Unix peut apparaître quelques secondes après le
+            // démarrage du conteneur — sans attente, le processus quitte et la startup probe échoue en boucle.
             eprintln!(
-                "[MAIN] 🔍 Vérification existence du socket Unix: {}",
+                "[MAIN] 🔍 Attente du socket Unix Cloud SQL: {}",
                 socket_path
             );
-            if !Path::new(socket_path).exists() {
+            let mut socket_ready = false;
+            for attempt in 1..=90 {
+                if Path::new(socket_path).exists() {
+                    socket_ready = true;
+                    eprintln!(
+                        "[MAIN] ✅ Socket Unix disponible après {} tentative(s)",
+                        attempt
+                    );
+                    break;
+                }
                 eprintln!(
-                    "[MAIN] ❌ ERREUR: Le socket Unix n'existe pas: {}",
+                    "[MAIN] ⏳ Socket pas encore monté ({}/90), nouvel essai dans 2s...",
+                    attempt
+                );
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            }
+            if !socket_ready {
+                eprintln!(
+                    "[MAIN] ❌ ERREUR: Le socket Unix n'existe pas après attente: {}",
                     socket_path
                 );
                 eprintln!("[MAIN] 🔍 Vérification du répertoire /cloudsql/...");
@@ -508,12 +526,12 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                     eprintln!("[MAIN] ⚠️ Cloud SQL Unix socket n'est pas monté dans le conteneur");
                 }
                 return Err(format!(
-                    "Socket Unix Cloud SQL n'existe pas: {} (vérifiez que Cloud Run a la connexion Cloud SQL configurée)",
+                    "Socket Unix Cloud SQL introuvable après 180s: {} (vérifiez --set-cloudsql-instances et IAM)",
                     socket_path
                 )
                 .into());
             }
-            eprintln!("[MAIN] ✅ Socket Unix existe: {}", socket_path);
+            eprintln!("[MAIN] ✅ Socket Unix prêt: {}", socket_path);
 
             log::info!(
                 "🔧 Configuration Cloud SQL: user={}, db={}, socket={}",
