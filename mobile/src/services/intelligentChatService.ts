@@ -92,6 +92,32 @@ export interface ChatResponse {
   /** Solde / quota YukpoIA */
   billing?: YukpoIaBillingInfo;
   assistantBrand?: string;
+  /** Id session YukpoIA persistée (réponse POST /ai/chat) */
+  sessionId?: string;
+}
+
+/** Session persistée côté serveur (GET/POST /ai/sessions) */
+export interface YukpoIaSession {
+  id: string;
+  user_id?: number;
+  title: string | null;
+  context_screen: string | null;
+  context_type: string | null;
+  metadata?: Record<string, unknown>;
+  summary?: string | null;
+  message_count: number;
+  total_tokens_used?: number;
+  is_archived?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  last_message_at?: string;
+}
+
+export interface YukpoIaSessionMessage {
+  id: string;
+  role: string;
+  content: string;
+  created_at: string;
 }
 
 class IntelligentChatService {
@@ -428,12 +454,81 @@ class IntelligentChatService {
   /**
    * Générer une réponse contextuelle basée sur l'écran courant
    */
+  /**
+   * Crée une nouvelle session YukpoIA (historique serveur).
+   */
+  async createYukpoIaSession(body: {
+    title?: string;
+    context_screen?: string;
+    context_type?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<YukpoIaSession | null> {
+    try {
+      const res = await apiCall<YukpoIaSession>('/ai/sessions', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }, false);
+      const d = res?.data ?? res;
+      if (d && typeof d === 'object' && 'id' in d) return d as YukpoIaSession;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async listYukpoIaSessions(opts?: { limit?: number; offset?: number; include_archived?: boolean }): Promise<YukpoIaSession[]> {
+    try {
+      const q = new URLSearchParams();
+      if (opts?.limit != null) q.set('limit', String(opts.limit));
+      if (opts?.offset != null) q.set('offset', String(opts.offset));
+      if (opts?.include_archived) q.set('include_archived', 'true');
+      const qs = q.toString();
+      const res = await apiCall<{ sessions: YukpoIaSession[] }>(`/ai/sessions${qs ? `?${qs}` : ''}`, { method: 'GET' }, false);
+      const d = res?.data ?? res;
+      if (d && typeof d === 'object' && Array.isArray((d as any).sessions)) return (d as any).sessions;
+      return [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getYukpoIaSessionDetail(
+    sessionId: string,
+    opts?: { limit?: number },
+  ): Promise<{ session: YukpoIaSession; messages: YukpoIaSessionMessage[] } | null> {
+    try {
+      const q = opts?.limit != null ? `?limit=${encodeURIComponent(String(opts.limit))}` : '';
+      const res = await apiCall<{ session: YukpoIaSession; messages: YukpoIaSessionMessage[] }>(
+        `/ai/sessions/${encodeURIComponent(sessionId)}${q}`,
+        { method: 'GET' },
+        false,
+      );
+      const d = res?.data ?? res;
+      if (d && typeof d === 'object' && (d as any).session) {
+        return d as { session: YukpoIaSession; messages: YukpoIaSessionMessage[] };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async deleteYukpoIaSession(sessionId: string): Promise<boolean> {
+    try {
+      const res = await apiCall<{ ok?: boolean }>(`/ai/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' }, false);
+      const data = res?.data as { ok?: boolean } | undefined;
+      return Boolean(data?.ok) || res?.success === true;
+    } catch {
+      return false;
+    }
+  }
+
   async generateContextualResponse(
     userMessage: string,
     screenContext: ScreenContext,
     conversationHistory: ChatMessage[] = [],
     lang?: string,
-    options?: { yukpoIaAttachments?: YukpoIaAttachmentPayload[] },
+    options?: { yukpoIaAttachments?: YukpoIaAttachmentPayload[]; sessionId?: string | null },
   ): Promise<ChatResponse> {
     try {
       const activeLang = lang || i18n.language || 'fr';
@@ -491,11 +586,6 @@ class IntelligentChatService {
         user_role: screenContext.userData?.role || 'guest',
         service_data: screenContext.serviceData || null,
         context_prompt: contextPrompt,
-        conversation_summary: conversationSummary || undefined,
-        conversation_history: conversationHistory.slice(-8).map(m => ({
-          role: m.isUser ? 'user' : 'assistant',
-          content: m.text,
-        })),
         sentiment_context: {
           dominant_sentiment: dominantSentiment,
           is_correction: correction.isCorrection,
@@ -509,20 +599,32 @@ class IntelligentChatService {
           conversation_turn_count: conversationHistory.length,
         },
       };
+      if (!options?.sessionId) {
+        ctxPayload.conversation_summary = conversationSummary || undefined;
+        ctxPayload.conversation_history = conversationHistory.slice(-8).map(m => ({
+          role: m.isUser ? 'user' : 'assistant',
+          content: m.text,
+        }));
+      }
       if (options?.yukpoIaAttachments?.length) {
         ctxPayload.yukpo_ia_attachments = options.yukpoIaAttachments;
+      }
+
+      const chatBody: Record<string, unknown> = {
+        message: contextualUserMessage,
+        context: ctxPayload,
+        type: requestType,
+        language: activeLang,
+      };
+      if (options?.sessionId) {
+        chatBody.session_id = options.sessionId;
       }
 
       let response = await apiCall<any>(
         '/ai/chat',
         {
           method: 'POST',
-          body: JSON.stringify({
-            message: contextualUserMessage,
-            context: ctxPayload,
-            type: requestType,
-            language: activeLang,
-          }),
+          body: JSON.stringify(chatBody),
         },
         false,
       );
@@ -3079,6 +3181,9 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
     }
     if (typeof aiData.assistant_brand === 'string') {
       response.assistantBrand = aiData.assistant_brand;
+    }
+    if (typeof aiData.session_id === 'string') {
+      response.sessionId = aiData.session_id;
     }
 
     if (response.billing?.recharge_required || response.billing?.insufficient_balance) {

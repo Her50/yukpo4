@@ -1,6 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -12,6 +13,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  Pressable,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -22,6 +24,7 @@ import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 import { ChatMessage, ChatResponse, intelligentChatService, VisualElement } from '../services/intelligentChatService';
 import { modernColors } from '../theme/modernTheme';
 import { exportChatTextAsFile, openOrDownloadRemoteFile, stripSimpleMarkdownForExport } from '../utils/chatExportUtils';
+import SafeStorage from '../utils/safeStorage';
 import {
   cancelAudioRecording,
   pickDocumentForYukpoIa,
@@ -36,6 +39,7 @@ import SafeIcon from './SafeIcon';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const DEFAULT_SHARE_WEB = 'https://yukpomnang.com';
+const YUKPO_IA_SESSION_STORAGE_KEY = 'yukpo_ia_active_session_id';
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🙏'] as const;
 
 interface IntelligentChatProps {
@@ -285,6 +289,10 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
   /** Réaction par id de message (affichage local) */
   const [messageReactions, setMessageReactions] = useState<Record<string, string>>({});
   const [pendingAttachments, setPendingAttachments] = useState<YukpoIaAttachmentPayload[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionsModalVisible, setSessionsModalVisible] = useState(false);
+  const [sessionsList, setSessionsList] = useState<Array<{ id: string; title: string | null; last_message_at?: string }>>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const flatListRef = useRef<FlatList>(null);
@@ -311,7 +319,12 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
   }, [visible, screenContext]);
 
   useEffect(() => {
-    if (visible) {
+    if (!visible) return;
+
+    let cancelled = false;
+    let initialTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const run = async () => {
       const screenLabel = humanizeScreenName(screenContext.screenName);
       const userName = screenContext.userData?.name || screenContext.userData?.email?.split('@')[0] || '';
       const isHomeScreen = screenLabel === 'Accueil';
@@ -325,7 +338,6 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
             ? `${userName}, bienvenue sur Yukpo ! 🚀 Je suis votre assistant IA. Santé, transport, livraison, emploi, éducation — demandez-moi tout !`
             : `Bienvenue sur Yukpo ! 🚀 La super-app qui révolutionne votre quotidien. Découvrez nos services — demandez ou appuyez ci-dessous !`;
         }
-        // Retire la mention "aujourd'hui" dans le texte d'accueil Home.
         greeting = greeting
           .replace(/aujourd[’']hui/gi, '')
           .replace(/\s{2,}/g, ' ')
@@ -356,8 +368,6 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         isUser: false,
         timestamp: new Date(),
         type: 'text',
-        // Les actions restent dans le bloc "Actions rapides" du bas.
-        // On masque ici les boutons attachés au message d'accueil.
         suggestedActions: undefined,
         metadata: isHomeScreen ? {
           nextSteps: [
@@ -367,15 +377,12 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
           ],
         } : undefined,
       };
-      setMessages([welcomeMessage]);
-      setLastFailedMessage(null);
 
       const contextActions = isHomeScreen
         ? welcomeActions
         : (Array.isArray(screenContext.availableActions) ? screenContext.availableActions : [])
           .filter((a: any) => a.id !== 'home' && a.id !== 'profile' && a.id !== 'services')
           .slice(0, 6);
-      setSuggestedActions(dedupeActions(contextActions));
 
       Animated.timing(slideAnim, {
         toValue: 0,
@@ -384,12 +391,74 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         useNativeDriver: true,
       }).start();
 
+      try {
+        const stored = await SafeStorage.getItem(YUKPO_IA_SESSION_STORAGE_KEY);
+        if (stored) {
+          const detail = await intelligentChatService.getYukpoIaSessionDetail(stored, { limit: 80 });
+          if (!cancelled && detail?.session?.id) {
+            setActiveSessionId(detail.session.id);
+            if (detail.messages?.length) {
+              const mapped: ChatMessage[] = detail.messages.map((m) => ({
+                id: m.id,
+                text: m.content,
+                isUser: m.role === 'user',
+                timestamp: new Date(m.created_at),
+                type: 'text',
+              }));
+              setMessages(mapped);
+            } else {
+              setMessages([welcomeMessage]);
+            }
+            setLastFailedMessage(null);
+            setSuggestedActions(dedupeActions(contextActions));
+            if (initialMessage) {
+              initialTimer = setTimeout(() => {
+                if (!cancelled) void handleSendMessage(initialMessage);
+              }, 500);
+            }
+            return;
+          }
+          await SafeStorage.removeItem(YUKPO_IA_SESSION_STORAGE_KEY);
+        }
+
+        const created = await intelligentChatService.createYukpoIaSession({
+          context_screen: effectiveRouteName,
+          context_type: screenContext.screenType || 'general',
+        });
+        if (!cancelled && created?.id) {
+          setActiveSessionId(created.id);
+          await SafeStorage.setItem(YUKPO_IA_SESSION_STORAGE_KEY, created.id);
+        }
+      } catch (e) {
+        console.warn('[IntelligentChat] session bootstrap', e);
+        const fallback = await intelligentChatService.createYukpoIaSession({
+          context_screen: effectiveRouteName,
+          context_type: screenContext.screenType || 'general',
+        });
+        if (!cancelled && fallback?.id) {
+          setActiveSessionId(fallback.id);
+          await SafeStorage.setItem(YUKPO_IA_SESSION_STORAGE_KEY, fallback.id);
+        }
+      }
+
+      if (cancelled) return;
+      setMessages([welcomeMessage]);
+      setLastFailedMessage(null);
+      setSuggestedActions(dedupeActions(contextActions));
+
       if (initialMessage) {
-        setTimeout(() => {
-          handleSendMessage(initialMessage);
+        initialTimer = setTimeout(() => {
+          if (!cancelled) void handleSendMessage(initialMessage);
         }, 500);
       }
-    }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+      if (initialTimer) clearTimeout(initialTimer);
+    };
   }, [visible, screenContext.screenName, initialMessage]);
 
   const handleClose = useCallback(() => {
@@ -465,12 +534,27 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     setLoading(true);
 
     try {
+      let sessionIdForReq = activeSessionId;
+      if (!sessionIdForReq) {
+        const created = await intelligentChatService.createYukpoIaSession({
+          context_screen: effectiveRouteName,
+          context_type: screenContext.screenType || 'general',
+        });
+        if (created?.id) {
+          sessionIdForReq = created.id;
+          setActiveSessionId(created.id);
+          await SafeStorage.setItem(YUKPO_IA_SESSION_STORAGE_KEY, created.id);
+        }
+      }
+
       const response: ChatResponse = await intelligentChatService.generateContextualResponse(
         text,
         screenContext,
         messages,
         language,
-        atts.length ? { yukpoIaAttachments: atts } : undefined,
+        atts.length
+          ? { yukpoIaAttachments: atts, sessionId: sessionIdForReq }
+          : { sessionId: sessionIdForReq },
       );
 
       const aiMessage: ChatMessage = {
@@ -515,7 +599,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [inputText, loading, screenContext, messages, language, pendingAttachments, t]);
+  }, [inputText, loading, screenContext, messages, language, pendingAttachments, t, activeSessionId]);
 
   const handleRetry = useCallback(() => {
     if (lastFailedMessage) {
@@ -523,6 +607,84 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
       handleSendMessage(lastFailedMessage);
     }
   }, [lastFailedMessage, handleSendMessage]);
+
+  const openSessionsModal = useCallback(async () => {
+    setSessionsModalVisible(true);
+    setSessionsLoading(true);
+    try {
+      const rows = await intelligentChatService.listYukpoIaSessions({ limit: 40 });
+      setSessionsList(
+        rows.map((s) => ({ id: s.id, title: s.title, last_message_at: s.last_message_at })),
+      );
+    } catch {
+      setSessionsList([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  const startNewSession = useCallback(async () => {
+    const created = await intelligentChatService.createYukpoIaSession({
+      context_screen: effectiveRouteName,
+      context_type: screenContext.screenType || 'general',
+    });
+    if (!created?.id) return;
+    setActiveSessionId(created.id);
+    await SafeStorage.setItem(YUKPO_IA_SESSION_STORAGE_KEY, created.id);
+    setSessionsModalVisible(false);
+    const hint =
+      (t('intelligentChat.newSessionHint') as string) ||
+      'Nouvelle conversation YukpoIA — posez votre question.';
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        text: hint,
+        isUser: false,
+        timestamp: new Date(),
+        type: 'text',
+      },
+    ]);
+  }, [effectiveRouteName, screenContext.screenType, t]);
+
+  const selectSession = useCallback(
+    async (sessionId: string) => {
+      setSessionsLoading(true);
+      try {
+        const detail = await intelligentChatService.getYukpoIaSessionDetail(sessionId, { limit: 120 });
+        if (!detail?.session?.id) return;
+        setActiveSessionId(detail.session.id);
+        await SafeStorage.setItem(YUKPO_IA_SESSION_STORAGE_KEY, detail.session.id);
+        if (detail.messages?.length) {
+          setMessages(
+            detail.messages.map((m) => ({
+              id: m.id,
+              text: m.content,
+              isUser: m.role === 'user',
+              timestamp: new Date(m.created_at),
+              type: 'text' as const,
+            })),
+          );
+        } else {
+          const hint =
+            (t('intelligentChat.sessionEmpty') as string) ||
+            'Session vide — envoyez un message pour continuer.';
+          setMessages([
+            {
+              id: `welcome-${Date.now()}`,
+              text: hint,
+              isUser: false,
+              timestamp: new Date(),
+              type: 'text',
+            },
+          ]);
+        }
+        setSessionsModalVisible(false);
+      } finally {
+        setSessionsLoading(false);
+      }
+    },
+    [t],
+  );
 
   const handleActionPress = useCallback((action: any) => {
     if (action.id === 'discover') {
@@ -848,7 +1010,22 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                     <Text style={styles.headerSubtitle}>{humanizeScreenName(screenContext.screenName)}</Text>
                   </View>
                 </View>
-                <View style={styles.headerPlaceholder} />
+                <View style={styles.headerRightActions}>
+                  <TouchableOpacity
+                    onPress={() => void openSessionsModal()}
+                    style={styles.headerIconBtn}
+                    accessibilityLabel="Conversations"
+                  >
+                    <SafeIcon name="layers" size={20} color={modernColors.text} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => void startNewSession()}
+                    style={styles.headerIconBtn}
+                    accessibilityLabel="Nouvelle conversation"
+                  >
+                    <SafeIcon name="plus-circle" size={20} color="#6366f1" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <FlatList
@@ -961,6 +1138,60 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         }}
         payload={sharePayload}
       />
+
+      <Modal
+        visible={sessionsModalVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setSessionsModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.sessionModalOverlay}
+          activeOpacity={1}
+          onPress={() => setSessionsModalVisible(false)}
+        >
+          <TouchableOpacity style={styles.sessionModalCard} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.sessionModalTitle}>
+              {t('intelligentChat.sessionsTitle') || 'Conversations YukpoIA'}
+            </Text>
+            {sessionsLoading ? (
+              <ActivityIndicator color="#6366f1" style={{ marginVertical: 16 }} />
+            ) : (
+              <FlatList
+                data={sessionsList}
+                keyExtractor={(it) => it.id}
+                style={{ maxHeight: SCREEN_HEIGHT * 0.45 }}
+                ListEmptyComponent={
+                  <Text style={styles.sessionEmptyText}>
+                    {t('intelligentChat.noSessions') || 'Aucune session enregistrée.'}
+                  </Text>
+                }
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.sessionRow,
+                      item.id === activeSessionId && styles.sessionRowActive,
+                    ]}
+                    onPress={() => void selectSession(item.id)}
+                  >
+                    <Text style={styles.sessionRowTitle} numberOfLines={2}>
+                      {item.title?.trim() || t('intelligentChat.untitledSession') || 'Conversation'}
+                    </Text>
+                    {item.last_message_at ? (
+                      <Text style={styles.sessionRowMeta}>
+                        {new Date(item.last_message_at).toLocaleString()}
+                      </Text>
+                    ) : null}
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+            <TouchableOpacity style={styles.sessionModalClose} onPress={() => setSessionsModalVisible(false)}>
+              <Text style={styles.sessionModalCloseText}>{t('message.close') || 'Fermer'}</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </>
   );
 };
@@ -1027,8 +1258,69 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: modernColors.textSecondary,
   },
-  headerPlaceholder: {
-    width: 38,
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerIconBtn: {
+    padding: 8,
+  },
+  sessionModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    padding: 20,
+    position: 'relative',
+  },
+  sessionModalCard: {
+    backgroundColor: modernColors.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: modernColors.border,
+    maxWidth: 400,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  sessionModalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: modernColors.text,
+    marginBottom: 8,
+  },
+  sessionEmptyText: {
+    color: modernColors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 12,
+  },
+  sessionRow: {
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: modernColors.border,
+  },
+  sessionRowActive: {
+    backgroundColor: 'rgba(99,102,241,0.08)',
+  },
+  sessionRowTitle: {
+    fontSize: 15,
+    color: modernColors.text,
+    fontWeight: '600',
+  },
+  sessionRowMeta: {
+    fontSize: 11,
+    color: modernColors.textSecondary,
+    marginTop: 4,
+  },
+  sessionModalClose: {
+    marginTop: 12,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  sessionModalCloseText: {
+    color: '#6366f1',
+    fontWeight: '600',
   },
   messagesList: {
     flex: 1,

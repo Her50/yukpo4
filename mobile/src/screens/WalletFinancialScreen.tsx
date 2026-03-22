@@ -398,7 +398,7 @@ const WalletFinancialScreen: React.FC = () => {
         allTransactions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
         setRawTransactions(allTransactions);
-        applyTransactionFilters(allTransactions);
+        // Filtres + KPI : un seul chemin via useEffect (évite double appel à applyTransactionFilters).
     };
 
     useEffect(() => {
@@ -781,6 +781,40 @@ const WalletFinancialScreen: React.FC = () => {
         );
     };
 
+    /** État vide liste transactions (aperçu + onglet) — une seule implémentation pour éviter la duplication. */
+    const renderTransactionsEmptyState = () => {
+        const hasRaw = rawTransactions.length > 0;
+        return (
+            <View style={styles.emptyTxn}>
+                <SafeIcon name="inbox" size={40} color={modernColors.textTertiary} />
+                <Text style={styles.emptyTxnText}>
+                    {hasRaw ? t('financialTracking.noTransactionsForFilters') : t('financialTracking.noTransactions')}
+                </Text>
+                <Text style={styles.emptyTxnHint}>
+                    {hasRaw ? t('financialTracking.adjustFiltersHint') : t('financialTracking.emptyRecentHint')}
+                </Text>
+                {hasRaw ? (
+                    <TouchableOpacity
+                        style={styles.emptyTxnCta}
+                        onPress={() => {
+                            setUsageProfileFilter('all');
+                            setSelectedFilter('all');
+                        }}
+                    >
+                        <Text style={styles.emptyTxnCtaText}>{t('financialTracking.clearFilters')}</Text>
+                    </TouchableOpacity>
+                ) : (
+                    <TouchableOpacity
+                        style={styles.emptyTxnCta}
+                        onPress={() => (navigation as any).navigate('RechargeTokens')}
+                    >
+                        <Text style={styles.emptyTxnCtaText}>{t('financialTracking.emptyPeriodCta')}</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+        );
+    };
+
     // ===== Period selector =====
     const renderPeriodSelector = () => (
         <View style={styles.periodSelector}>
@@ -972,39 +1006,7 @@ const WalletFinancialScreen: React.FC = () => {
                             {transactions.slice(0, 5).map((txn) => (
                                 <View key={txn.id}>{renderTransaction({ item: txn })}</View>
                             ))}
-                            {transactions.length === 0 && (
-                                <View style={styles.emptyTxn}>
-                                    <SafeIcon name="inbox" size={40} color={modernColors.textTertiary} />
-                                    <Text style={styles.emptyTxnText}>
-                                        {rawTransactions.length > 0
-                                            ? t('financialTracking.noTransactionsForFilters')
-                                            : t('financialTracking.noTransactions')}
-                                    </Text>
-                                    <Text style={styles.emptyTxnHint}>
-                                        {rawTransactions.length > 0
-                                            ? t('financialTracking.adjustFiltersHint')
-                                            : t('financialTracking.emptyRecentHint')}
-                                    </Text>
-                                    {rawTransactions.length > 0 ? (
-                                        <TouchableOpacity
-                                            style={styles.emptyTxnCta}
-                                            onPress={() => {
-                                                setUsageProfileFilter('all');
-                                                setSelectedFilter('all');
-                                            }}
-                                        >
-                                            <Text style={styles.emptyTxnCtaText}>{t('financialTracking.clearFilters')}</Text>
-                                        </TouchableOpacity>
-                                    ) : (
-                                        <TouchableOpacity
-                                            style={styles.emptyTxnCta}
-                                            onPress={() => (navigation as any).navigate('RechargeTokens')}
-                                        >
-                                            <Text style={styles.emptyTxnCtaText}>{t('financialTracking.emptyPeriodCta')}</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            )}
+                            {transactions.length === 0 && renderTransactionsEmptyState()}
                         </View>
                     </>
                 ) : (
@@ -1016,37 +1018,7 @@ const WalletFinancialScreen: React.FC = () => {
                                     <View key={txn.id}>{renderTransaction({ item: txn })}</View>
                                 ))
                             ) : (
-                                <View style={styles.emptyTxn}>
-                                    <SafeIcon name="inbox" size={40} color={modernColors.textTertiary} />
-                                    <Text style={styles.emptyTxnText}>
-                                        {rawTransactions.length > 0
-                                            ? t('financialTracking.noTransactionsForFilters')
-                                            : t('financialTracking.noTransactions')}
-                                    </Text>
-                                    <Text style={styles.emptyTxnHint}>
-                                        {rawTransactions.length > 0
-                                            ? t('financialTracking.adjustFiltersHint')
-                                            : t('financialTracking.emptyRecentHint')}
-                                    </Text>
-                                    {rawTransactions.length > 0 ? (
-                                        <TouchableOpacity
-                                            style={styles.emptyTxnCta}
-                                            onPress={() => {
-                                                setUsageProfileFilter('all');
-                                                setSelectedFilter('all');
-                                            }}
-                                        >
-                                            <Text style={styles.emptyTxnCtaText}>{t('financialTracking.clearFilters')}</Text>
-                                        </TouchableOpacity>
-                                    ) : (
-                                        <TouchableOpacity
-                                            style={styles.emptyTxnCta}
-                                            onPress={() => (navigation as any).navigate('RechargeTokens')}
-                                        >
-                                            <Text style={styles.emptyTxnCtaText}>{t('financialTracking.emptyPeriodCta')}</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
+                                renderTransactionsEmptyState()
                             )}
                         </View>
                     </>

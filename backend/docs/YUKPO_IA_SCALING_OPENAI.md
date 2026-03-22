@@ -9,7 +9,7 @@
 | **Retries 429 / 503** | `post_chat_completions` et `post_audio_transcriptions` — backoff + en-tête `Retry-After`. |
 | **Multi-clés** | `OPENAI_API_KEYS=key1,key2,...` — une clé tirée au hasard par appel ; sinon `OPENAI_API_KEY`. |
 | **Rate limit utilisateur** | Middleware Redis sur `/ai/chat` (voir `ia_rate_limit.rs`). |
-| **Chat principal YukpoIA** | `AppIA::chat_completion_with_messages` → `chat_completion_for_provider` : **même client HTTP**, **`acquire_concurrency_permit`**, et **`send_request_with_retry`** pour OpenAI-compat, Anthropic et Gemini. |
+| **Chat principal YukpoIA** | `app_ia_resilient_request` dans `app_ia.rs` appelle **une fois** `yukpo_openai_outbound` (sémaphore + retries) ; **pas** de second enchaînement inline (évite la duplication qu’on avait entre `chat_completion_*` et le helper). |
 
 ### Variables d’environnement
 
@@ -25,4 +25,4 @@
 1. **File (Redis Streams / SQS)** : traiter les requêtes longues ou pics via workers ; l’API renvoie un `job_id`.
 2. **Autoscaling + load balancer** : plusieurs réplicas ; la limite `YUKPO_IA_OPENAI_MAX_CONCURRENT` est **par pod**.
 3. **Quotas fournisseur** : plusieurs comptes (`OPENAI_API_KEYS`) + surveillance TPM/RPM côté observabilité.
-4. **AppIA** : étendre `AppIA` pour réutiliser le même client / sémaphore / retries sur **chaque** provider si besoin.
+4. **AppIA** : déjà branché (client = `http_client().clone()`, tout HTTP via `app_ia_resilient_request`).

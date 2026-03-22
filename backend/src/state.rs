@@ -598,6 +598,12 @@ impl AppState {
                     pg_for_paiement,
                 )),
             ),
+            yukpo_ia_metrics: Arc::new(
+                crate::services::yukpo_ia_metrics_service::YukpoIaMetricsService::new(),
+            ),
+            yukpo_ia_job_queue: Arc::new(
+                crate::services::yukpo_ia_job_queue::YukpoIaJobQueue::new(redis_client.clone()),
+            ),
         }
     }
 

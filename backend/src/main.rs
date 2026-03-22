@@ -2900,6 +2900,11 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .await;
 
+        let _ = yukpomnang_backend::migrations::auto_migrate::ensure_yukpo_ia_sessions_tables(
+            &app_state.pg,
+        )
+        .await;
+
         // ✅ CORRIGÉ 2026-03-19: Tables critiques manquantes
         let _ = yukpomnang_backend::migrations::auto_migrate::ensure_history_events_table(
             &app_state.pg,

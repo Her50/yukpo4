@@ -20902,6 +20902,94 @@ pub async fn ensure_yukpo_ia_daily_usage_table(pool: &PgPool) -> Result<(), sqlx
     Ok(())
 }
 
+/// Sessions YukpoIA persistantes + messages + mémoire long terme utilisateur.
+pub async fn ensure_yukpo_ia_sessions_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des tables yukpo_ia_sessions / messages / user_memory...");
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS yukpo_ia_sessions (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(200),
+            context_screen VARCHAR(100),
+            context_type VARCHAR(50),
+            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            summary TEXT,
+            message_count INTEGER NOT NULL DEFAULT 0,
+            total_tokens_used BIGINT NOT NULL DEFAULT 0,
+            is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS yukpo_ia_messages (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            session_id UUID NOT NULL REFERENCES yukpo_ia_sessions(id) ON DELETE CASCADE,
+            role VARCHAR(10) NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+            content TEXT NOT NULL,
+            attachments JSONB NOT NULL DEFAULT '[]'::jsonb,
+            tokens_used INTEGER,
+            model_used VARCHAR(50),
+            billing JSONB,
+            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS yukpo_ia_user_memory (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            memory_key VARCHAR(100) NOT NULL,
+            memory_value TEXT NOT NULL,
+            source_session_id UUID REFERENCES yukpo_ia_sessions(id) ON DELETE SET NULL,
+            confidence REAL NOT NULL DEFAULT 0.8,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE(user_id, memory_key)
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_yukpo_ia_sessions_user ON yukpo_ia_sessions(user_id, last_message_at DESC)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_yukpo_ia_sessions_active ON yukpo_ia_sessions(user_id, is_archived, last_message_at DESC)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_yukpo_ia_messages_session ON yukpo_ia_messages(session_id, created_at ASC)",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_yukpo_ia_user_memory_user ON yukpo_ia_user_memory(user_id, updated_at DESC)",
+    )
+    .execute(pool)
+    .await;
+
+    info!("✅ Tables YukpoIA sessions OK");
+    Ok(())
+}
+
 /// ✅ NOUVEAU 2026-03-16: Système escrow, commission app, crédits tickets bus
 pub async fn ensure_bus_ticket_escrow_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🎫 Application du système escrow/crédit pour tickets bus...");

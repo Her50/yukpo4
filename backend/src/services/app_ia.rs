@@ -1951,16 +1951,20 @@ Réponds SEULEMENT le JSON, rien d'autre.",
 
         let auth = openai_auth_header_value(&model.api_key)
             .map_err(|e| format!("OpenAI multimodal API error: {}", e))?;
-        let response = self
-            .http
-            .post(&url)
-            .header("Authorization", auth)
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .timeout(Duration::from_secs(model.timeout))
-            .send()
-            .await
-            .map_err(|e| format!("OpenAI multimodal API error: {}", e))?;
+        let url_c = url.clone();
+        let payload_c = payload.clone();
+        let model_timeout = model.timeout;
+        let label = format!("AppIA-openai_multimodal-{}", model.name);
+        let response = app_ia_resilient_request(&label, || {
+            self.http
+                .post(&url_c)
+                .header("Authorization", auth.clone())
+                .header("Content-Type", "application/json")
+                .json(&payload_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("OpenAI multimodal API error: {}", e))?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -2148,10 +2152,6 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         max_tokens: u32,
         temperature: f32,
     ) -> AppResult<(String, u64, u64)> {
-        use crate::services::yukpo_openai_outbound::{
-            acquire_concurrency_permit, http_client, send_request_with_retry,
-        };
-
         let url = format!("{}/chat/completions", model.base_url);
         let payload = json!({
             "model": model.model,
@@ -2175,11 +2175,9 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         let payload_c = payload.clone();
         let label = format!("AppIA-{}", model.name);
 
-        let _slot = acquire_concurrency_permit().await;
-        let client = http_client();
-
-        let response = send_request_with_retry(&label, || {
-            let mut req = client
+        let response = app_ia_resilient_request(&label, || {
+            let mut req = self
+                .http
                 .post(&url_c)
                 .header("Content-Type", "application/json")
                 .json(&payload_c)
@@ -2245,18 +2243,13 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             "messages": claude_messages
         });
 
-        use crate::services::yukpo_openai_outbound::{
-            acquire_concurrency_permit, http_client, send_request_with_retry,
-        };
         let url_c = url.clone();
         let payload_c = payload.clone();
         let api_key = model.api_key.clone();
         let model_timeout = model.timeout;
-        let _slot = acquire_concurrency_permit().await;
-        let client = http_client();
 
-        let response = send_request_with_retry("AppIA-anthropic", || {
-            client
+        let response = app_ia_resilient_request("AppIA-anthropic-chat", || {
+            self.http
                 .post(&url_c)
                 .header("x-api-key", &api_key)
                 .header("anthropic-version", "2023-06-01")
@@ -2348,17 +2341,12 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                 json!({"parts": [{"text": system_instruction.trim()}]});
         }
 
-        use crate::services::yukpo_openai_outbound::{
-            acquire_concurrency_permit, http_client, send_request_with_retry,
-        };
         let url_c = url.clone();
         let request_body_c = request_body.clone();
         let model_timeout = model.timeout;
-        let _slot = acquire_concurrency_permit().await;
-        let client = http_client();
 
-        let response = send_request_with_retry("AppIA-gemini", || {
-            client
+        let response = app_ia_resilient_request("AppIA-gemini-chat", || {
+            self.http
                 .post(&url_c)
                 .header("Content-Type", "application/json")
                 .json(&request_body_c)
@@ -2464,15 +2452,19 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             ]
         });
 
-        let response = self
-            .http
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .json(&request_body)
-            .timeout(Duration::from_secs(model.timeout))
-            .send()
-            .await
-            .map_err(|e| format!("Gemini multimodal API error: {}", e))?;
+        let url_c = url.clone();
+        let request_body_c = request_body.clone();
+        let model_timeout = model.timeout;
+        let label = format!("AppIA-gemini_multimodal-{}", model.name);
+        let response = app_ia_resilient_request(&label, || {
+            self.http
+                .post(&url_c)
+                .header("Content-Type", "application/json")
+                .json(&request_body_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("Gemini multimodal API error: {}", e))?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
@@ -2573,17 +2565,22 @@ Réponds SEULEMENT le JSON, rien d'autre.",
             "messages": messages
         });
 
-        let response = self
-            .http
-            .post(&url)
-            .header("Authorization", format!("Bearer {}", model.api_key))
-            .header("Content-Type", "application/json")
-            .header("anthropic-version", "2023-06-01")
-            .json(&payload)
-            .timeout(Duration::from_secs(model.timeout))
-            .send()
-            .await
-            .map_err(|e| format!("Anthropic multimodal API error: {}", e))?;
+        let url_c = url.clone();
+        let payload_c = payload.clone();
+        let api_key = model.api_key.clone();
+        let model_timeout = model.timeout;
+        let label = format!("AppIA-anthropic_multimodal-{}", model.name);
+        let response = app_ia_resilient_request(&label, || {
+            self.http
+                .post(&url_c)
+                .header("Authorization", format!("Bearer {}", api_key))
+                .header("Content-Type", "application/json")
+                .header("anthropic-version", "2023-06-01")
+                .json(&payload_c)
+                .timeout(Duration::from_secs(model_timeout))
+        })
+        .await
+        .map_err(|e| format!("Anthropic multimodal API error: {}", e))?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();

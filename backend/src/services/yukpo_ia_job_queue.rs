@@ -139,9 +139,9 @@ impl YukpoIaJobQueue {
             .map_err(|e| format!("redis BRPOP: {}", e))?;
         match v {
             redis::Value::Nil => Ok(None),
-            redis::Value::Bulk(parts) if parts.len() >= 2 => {
+            redis::Value::Array(parts) if parts.len() >= 2 => {
                 let id = match &parts[1] {
-                    redis::Value::Data(b) => String::from_utf8_lossy(b).to_string(),
+                    redis::Value::BulkString(b) => String::from_utf8_lossy(b).to_string(),
                     _ => return Ok(None),
                 };
                 Ok(Some(id))
@@ -156,8 +156,10 @@ impl YukpoIaJobQueue {
             .get_multiplexed_async_connection()
             .await
             .map_err(|e| format!("redis: {}", e))?;
-        let n: Option<u64> =
-            conn.llen(QUEUE_KEY).await.map_err(|e| format!("redis LLEN: {}", e))?;
+        let n: u64 = conn
+            .llen(QUEUE_KEY)
+            .await
+            .map_err(|e| format!("redis LLEN: {}", e))?;
         Ok(Some(n))
     }
 }
