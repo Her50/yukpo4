@@ -3550,7 +3550,9 @@
         "labDetailsComingSoon": "Navigation vers les détails du laboratoire sera bientôt disponible",
         "poiPaid": "Payé",
         "poiAllPaid": "Toutes les catégories sélectionnées sont déjà payées",
-        "poiIndicativeAfterFree": "Indicatif après le {{date}} : {{total}}"
+        "poiIndicativeAfterFree": "Indicatif après le {{date}} : {{total}}",
+        "poiDistanceFromRoute": "Détour: {{distance}}",
+        "poiDistanceExplanation": "Distance de détour depuis votre trajet"
     },
     "liveViewer": {
         "reservationConfirmed": "Réservation confirmée",

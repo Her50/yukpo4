@@ -26,8 +26,8 @@ import { useNavigationPayment } from '../hooks/useNavigationPayment';
 import { apiGet, apiPost } from '../services/api';
 import { coachingNotificationService } from '../services/coachingNotificationService';
 import { communityAlertSoundService } from '../services/communityAlertSoundService';
-import { estimatePoiCost, getPoiPrices } from '../services/navigationPricing';
 import { FreeWalkSessionService } from '../services/FreeWalkSessionService';
+import { estimatePoiCost, getPoiPrices } from '../services/navigationPricing';
 import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
 import { socialSharing } from '../services/socialSharing';
 import { modernColors } from '../theme/modernTheme';
@@ -3620,7 +3620,7 @@ const NavigationScreen: React.FC = () => {
                                                                                 <Text style={st.poiName}>{displayName}</Text>
                                                                                 {poi.address && <Text style={st.poiAddr} numberOfLines={1}>{poi.address}</Text>}
                                                                                 <View style={st.poiMeta}>
-                                                                                    <Text style={st.poiDist}>{formatDistance(poi.distance_from_route_meters)}</Text>
+                                                                                    <Text style={st.poiDist}>{t('navigation.poiDistanceFromRoute', { distance: formatDistance(poi.distance_from_route_meters) }) || `${formatDistance(poi.distance_from_route_meters)}`}</Text>
                                                                                     {poi.rating != null && poi.rating > 0 && <Text style={st.poiRating}>⭐ {poi.rating}{poi.total_ratings ? ` (${poi.total_ratings})` : ''}</Text>}
                                                                                     {poi.price_level != null && poi.price_level > 0 && <Text style={st.poiPrice}>{'💰'.repeat(poi.price_level)}</Text>}
                                                                                     {poi.is_open != null && <View style={[st.openBadge, { backgroundColor: poi.is_open ? '#DCFCE7' : '#FEE2E2' }]}><Text style={[st.openText, { color: poi.is_open ? '#16A34A' : '#EF4444' }]}>{poi.is_open ? (t('navigation.poiOpen') || 'Ouvert') : (t('navigation.poiClosed') || 'Fermé')}</Text></View>}
