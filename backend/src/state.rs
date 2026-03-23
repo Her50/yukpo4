@@ -863,6 +863,7 @@ impl AppState {
             multilingue_service: Arc::new(
                 crate::services::multilingue_service::MultilingueService::new(),
             ),
+            degraded_mode: false,
             paiement_service: Arc::new(
                 crate::services::paiement_agrege_service::PaiementAgregeService::new(Arc::new(
                     pg_clone,
