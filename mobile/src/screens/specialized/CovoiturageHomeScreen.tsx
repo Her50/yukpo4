@@ -4,7 +4,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -38,66 +38,12 @@ const CovoiturageHomeScreen: React.FC = () => {
     const { location } = useLocation();
     const toaster = useToaster();
 
-    // ✅ NOUVEAU: Vérifier si l'utilisateur est un chauffeur validé
-    const [isDriverValidated, setIsDriverValidated] = useState(false);
-    const [checkingDriverStatus, setCheckingDriverStatus] = useState(true);
-
-    // ✅ NOUVEAU: Vérifier le statut chauffeur depuis l'API
-    useEffect(() => {
-        const checkDriverStatus = async () => {
-            if (!user?.id) {
-                setIsDriverValidated(false);
-                setCheckingDriverStatus(false);
-                return;
-            }
-
-            try {
-                // Vérifier depuis les données utilisateur locales d'abord
-                const localCheck = user?.role === 'driver' ||
-                    (user as any)?.is_driver === true ||
-                    (user as any)?.driver_status === 'validated' ||
-                    (user as any)?.driver_status === 'approved';
-
-                // ✅ FIX 2026-03-14: Reconnaître aussi les partenaires chauffeur/taxi/covoiturage
-                const partnerType = ((user as any)?.partner_type || '').toLowerCase().trim();
-                const isPartnerDriver = user?.role === 'partenaire' &&
-                    ['chauffeur', 'taxi', 'covoiturage'].includes(partnerType);
-
-                if (localCheck || isPartnerDriver) {
-                    setIsDriverValidated(true);
-                    setCheckingDriverStatus(false);
-                    return;
-                }
-
-                // Si pas trouvé localement, vérifier via API
-                const { apiGet } = await import('../../services/api');
-                const response = await apiGet(`/api/users/${user.id}/driver-status`);
-
-                if (response.success && response.data) {
-                    const rd: any = response.data;
-                    const driverStatus = rd.driver_status || rd.is_driver;
-                    setIsDriverValidated(driverStatus === 'validated' || driverStatus === 'approved' || driverStatus === true);
-                } else {
-                    setIsDriverValidated(false);
-                }
-            } catch (error) {
-                console.warn('[CovoiturageHomeScreen] Erreur vérification statut chauffeur:', error);
-                // En cas d'erreur, utiliser la vérification locale
-                const pt = ((user as any)?.partner_type || '').toLowerCase().trim();
-                setIsDriverValidated(
-                    user?.role === 'driver' ||
-                    (user as any)?.is_driver === true ||
-                    (user as any)?.driver_status === 'validated' ||
-                    (user as any)?.driver_status === 'approved' ||
-                    (user?.role === 'partenaire' && ['chauffeur', 'taxi', 'covoiturage'].includes(pt))
-                );
-            } finally {
-                setCheckingDriverStatus(false);
-            }
-        };
-
-        checkDriverStatus();
-    }, [user]);
+    // ✅ CORRIGÉ 2026-03-23: Le covoiturage est du partage de trajet pair-à-pair.
+    // Tout utilisateur authentifié peut proposer un trajet (comme BlaBlaCar).
+    // L'ancien check exigeait un rôle "driver" ou partner_type spécifique,
+    // ce qui bloquait les chauffeurs, coursiers et utilisateurs normaux.
+    const isDriverValidated = !!user?.id;
+    const checkingDriverStatus = false;
 
     // Mode d'affichage : recherche ou création
     const [viewMode, setViewMode] = useState<ViewMode>('search');

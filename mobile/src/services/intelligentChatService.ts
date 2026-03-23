@@ -9,17 +9,17 @@ const t = (key: string, params?: Record<string, any>): string => i18n.t(key, par
 
 /** Backend / LLM peut renvoyer label comme string ou { labelKey, fallback } — toujours produire une chaîne pour React */
 function resolveActionLabel(raw: unknown): string {
-    if (raw == null) return '';
-    if (typeof raw === 'string') return raw;
-    if (typeof raw === 'object' && raw !== null && 'labelKey' in raw) {
-        const o = raw as { labelKey?: string; fallback?: string };
-        return o.labelKey ? ((t(o.labelKey) as string) || o.fallback || '') : (o.fallback || '');
-    }
-    try {
-        return String(raw);
-    } catch {
-        return '';
-    }
+  if (raw == null) return '';
+  if (typeof raw === 'string') return raw;
+  if (typeof raw === 'object' && raw !== null && 'labelKey' in raw) {
+    const o = raw as { labelKey?: string; fallback?: string };
+    return o.labelKey ? ((t(o.labelKey) as string) || o.fallback || '') : (o.fallback || '');
+  }
+  try {
+    return String(raw);
+  } catch {
+    return '';
+  }
 }
 
 /**
@@ -148,6 +148,17 @@ class IntelligentChatService {
     if (success === false) return true;
     if (status >= 400) return true;
     if (/(erreur\s*500|internal server error|api openai|erreur de l'?api|api error)/i.test(text)) {
+      return true;
+    }
+    // Detect billing/configuration errors from yukpo_ia_billing precheck
+    if (data?.debug_info?.error_type === 'missing_table' || data?.debug_info?.error_type === 'database_error') {
+      return true;
+    }
+    if (/(erreur de configuration|contacter le support|quota.*épuisé.*insuffisant)/i.test(text)) {
+      return true;
+    }
+    // confidence === 0 with no real content is an error signal
+    if (data?.confidence === 0 && data?.type === 'text' && !data?.billing && text.includes('erreur')) {
       return true;
     }
     return false;
@@ -4695,190 +4706,190 @@ Explorez l'avenir dès maintenant ! 👇`,
   private static readonly YUKPO_NAV_MAP: Array<{
     route: string; label: string; icon: string; keywords: string[]; description: string;
   }> = [
-    // ─── Accueil & Profil ───
-    {
-      route: 'Home',
-      label: 'Accueil',
-      icon: 'home',
-      keywords: [
-        'accueil', 'home', 'page principale', 'ecran principal',
-        // Parcours création (prioritaire — complété par injectProactiveNavigationLinks)
-        'mode creer', 'creer avec ia', 'assistant ia creation', 'decrire mon produit',
-      ],
-      description: 'Accueil Yukpo — mode Créer + ChatInputMobile pour publier une offre',
-    },
-    { route: 'Profile', label: 'Mon Profil', icon: 'user', keywords: ['profil', 'compte', 'informations personnelles', 'mon compte', 'photo profil'], description: 'Gérer votre profil' },
-    { route: 'Settings', label: 'Paramètres', icon: 'settings', keywords: ['parametre', 'reglage', 'configuration', 'preference', 'langue', 'notification', 'theme', 'settings'], description: 'Paramètres de l\'application' },
-    { route: 'ChangePassword', label: 'Changer mot de passe', icon: 'lock', keywords: ['mot de passe', 'password', 'securite', 'changer mdp', 'modifier mot de passe'], description: 'Modifier votre mot de passe' },
-    { route: 'WalletFinancial', label: 'Portefeuille', icon: 'wallet', keywords: ['portefeuille', 'solde', 'argent', 'paiement', 'finances', 'recharger', 'tokens', 'retrait', 'depot'], description: 'Gérer votre portefeuille et finances' },
-    { route: 'RechargeTokens', label: 'Recharger Tokens', icon: 'plus-circle', keywords: ['recharge', 'tokens', 'credit', 'acheter tokens', 'recharger compte'], description: 'Acheter des tokens Yukpo' },
-    { route: 'Plans', label: 'Abonnements', icon: 'star', keywords: ['plan', 'abonnement', 'premium', 'formule', 'forfait', 'souscrire', 'offre'], description: 'Voir les plans et abonnements' },
-    { route: 'SoldeDetail', label: 'Détail Solde', icon: 'credit-card', keywords: ['solde', 'historique paiement', 'transaction', 'releve', 'detail solde'], description: 'Historique détaillé de votre solde' },
-    { route: 'MyFavorites', label: 'Mes Favoris', icon: 'heart', keywords: ['favori', 'favoris', 'sauvegarde', 'enregistre', 'like', 'aime'], description: 'Vos services et produits favoris' },
-    { route: 'Blog', label: 'Blog Yukpo', icon: 'file-text', keywords: ['blog', 'article', 'actualite', 'news', 'nouveaute', 'annonce'], description: 'Actualités et articles Yukpo' },
-    { route: 'About', label: 'À propos', icon: 'info', keywords: ['a propos', 'about', 'qui sommes nous', 'yukpo', 'version', 'contact'], description: 'Informations sur Yukpo' },
-    { route: 'Contact', label: 'Contact', icon: 'phone', keywords: ['contact', 'support', 'aide', 'assistance', 'signaler', 'reclamation'], description: 'Contacter le support Yukpo' },
-    { route: 'QRCodeShare', label: 'QR Code', icon: 'maximize', keywords: ['qr code', 'qr', 'scanner', 'partager qr', 'code qr'], description: 'Partager via QR Code' },
+      // ─── Accueil & Profil ───
+      {
+        route: 'Home',
+        label: 'Accueil',
+        icon: 'home',
+        keywords: [
+          'accueil', 'home', 'page principale', 'ecran principal',
+          // Parcours création (prioritaire — complété par injectProactiveNavigationLinks)
+          'mode creer', 'creer avec ia', 'assistant ia creation', 'decrire mon produit',
+        ],
+        description: 'Accueil Yukpo — mode Créer + ChatInputMobile pour publier une offre',
+      },
+      { route: 'Profile', label: 'Mon Profil', icon: 'user', keywords: ['profil', 'compte', 'informations personnelles', 'mon compte', 'photo profil'], description: 'Gérer votre profil' },
+      { route: 'Settings', label: 'Paramètres', icon: 'settings', keywords: ['parametre', 'reglage', 'configuration', 'preference', 'langue', 'notification', 'theme', 'settings'], description: 'Paramètres de l\'application' },
+      { route: 'ChangePassword', label: 'Changer mot de passe', icon: 'lock', keywords: ['mot de passe', 'password', 'securite', 'changer mdp', 'modifier mot de passe'], description: 'Modifier votre mot de passe' },
+      { route: 'WalletFinancial', label: 'Portefeuille', icon: 'wallet', keywords: ['portefeuille', 'solde', 'argent', 'paiement', 'finances', 'recharger', 'tokens', 'retrait', 'depot'], description: 'Gérer votre portefeuille et finances' },
+      { route: 'RechargeTokens', label: 'Recharger Tokens', icon: 'plus-circle', keywords: ['recharge', 'tokens', 'credit', 'acheter tokens', 'recharger compte'], description: 'Acheter des tokens Yukpo' },
+      { route: 'Plans', label: 'Abonnements', icon: 'star', keywords: ['plan', 'abonnement', 'premium', 'formule', 'forfait', 'souscrire', 'offre'], description: 'Voir les plans et abonnements' },
+      { route: 'SoldeDetail', label: 'Détail Solde', icon: 'credit-card', keywords: ['solde', 'historique paiement', 'transaction', 'releve', 'detail solde'], description: 'Historique détaillé de votre solde' },
+      { route: 'MyFavorites', label: 'Mes Favoris', icon: 'heart', keywords: ['favori', 'favoris', 'sauvegarde', 'enregistre', 'like', 'aime'], description: 'Vos services et produits favoris' },
+      { route: 'Blog', label: 'Blog Yukpo', icon: 'file-text', keywords: ['blog', 'article', 'actualite', 'news', 'nouveaute', 'annonce'], description: 'Actualités et articles Yukpo' },
+      { route: 'About', label: 'À propos', icon: 'info', keywords: ['a propos', 'about', 'qui sommes nous', 'yukpo', 'version', 'contact'], description: 'Informations sur Yukpo' },
+      { route: 'Contact', label: 'Contact', icon: 'phone', keywords: ['contact', 'support', 'aide', 'assistance', 'signaler', 'reclamation'], description: 'Contacter le support Yukpo' },
+      { route: 'QRCodeShare', label: 'QR Code', icon: 'maximize', keywords: ['qr code', 'qr', 'scanner', 'partager qr', 'code qr'], description: 'Partager via QR Code' },
 
-    // ─── Services & Commerce ───
-    {
-      route: 'MesServices',
-      label: 'Mes Services',
-      icon: 'briefcase',
-      keywords: [
-        'mes services', 'catalogue', 'commerce', 'boutique', 'vendeur', 'prestataire', 'mon activite', 'mon business',
-        'mes produits', 'mon catalogue', 'gerer mes produits', 'gestion produit', 'hub mes services', 'onglet services',
-        // Pas les intentions « première création » — celles-ci vont vers Home + mode Créer
-      ],
-      description: 'Gérer votre catalogue, médias et statistiques (hub Mes services)',
-    },
-    {
-      route: 'AjouterProduitSimple',
-      label: 'Ajouter un Produit',
-      icon: 'plus',
-      keywords: ['ajout rapide produit', 'formulaire court produit', 'ajouter depuis catalogue'],
-      description: 'Ajout rapide depuis le hub catalogue (secondaire vs Accueil mode Créer)',
-    },
-    { route: 'MesProduits', label: 'Mes Produits', icon: 'package', keywords: ['mes produits', 'inventaire', 'stock', 'gestion produit', 'mon catalogue'], description: 'Gérer vos produits existants' },
-    { route: 'ProductStats', label: 'Statistiques Produits', icon: 'bar-chart', keywords: ['statistique produit', 'ventes', 'performance produit', 'analytics produit'], description: 'Voir les statistiques de vos produits' },
-    {
-      route: 'CreationService',
-      label: 'Créer un Service',
-      icon: 'plus-circle',
-      keywords: ['ecran creation service', 'formulaire creation service direct'],
-      description: 'Accès direct formulaire service (secondaire vs Accueil mode Créer)',
-    },
-    { route: 'DashboardPrestataire', label: 'Dashboard Prestataire', icon: 'bar-chart-2', keywords: ['dashboard prestataire', 'tableau de bord', 'mon activite', 'statistiques vendeur', 'performance vendeur', 'chiffre affaire'], description: 'Tableau de bord de votre activité' },
-    { route: 'ProviderOrderManagement', label: 'Gestion Commandes', icon: 'clipboard', keywords: ['commande', 'gestion commande', 'commandes recues', 'traiter commande', 'order'], description: 'Gérer vos commandes reçues' },
-    { route: 'Catalogue', label: 'Catalogue', icon: 'grid', keywords: ['catalogue', 'catalog', 'tous les produits', 'explorer produits', 'parcourir'], description: 'Parcourir le catalogue de produits' },
-    { route: 'SpecializedSearch', label: 'Recherche', icon: 'search', keywords: ['recherche', 'chercher', 'trouver', 'search', 'rechercher service', 'rechercher produit'], description: 'Rechercher des services et produits' },
-    { route: 'SpecializedServicesHub', label: 'Hub Services', icon: 'grid', keywords: ['tous les services', 'hub services', 'services specialises', 'categorie service'], description: 'Tous les services spécialisés Yukpo' },
-    { route: 'PrestataireBoutique', label: 'Ma Boutique', icon: 'shopping-bag', keywords: ['boutique', 'ma boutique', 'shop', 'vitrine', 'magasin', 'profil boutique'], description: 'Votre boutique en ligne' },
-    { route: 'MesEquipes', label: 'Mes Équipes', icon: 'users', keywords: ['equipe', 'collaborateur', 'employe', 'personnel', 'mes equipes', 'staff'], description: 'Gérer vos équipes' },
-    { route: 'ServicesInteragis', label: 'Services Consultés', icon: 'eye', keywords: ['services consultes', 'interaction', 'historique visite', 'services vus'], description: 'Services avec lesquels vous avez interagi' },
-    { route: 'HistoriqueProduitsConsultes', label: 'Historique Consultations', icon: 'clock', keywords: ['historique', 'produits consultes', 'recemment vu', 'derniers produits'], description: 'Historique des produits consultés' },
-    { route: 'OrderStatus', label: 'Suivi de Commande', icon: 'truck', keywords: ['suivi commande', 'statut commande', 'ou est ma commande', 'tracking commande'], description: 'Suivre l\'état de votre commande' },
-    { route: 'MesSuivis', label: 'Mes Suivis', icon: 'bell', keywords: ['mes suivis', 'suivi', 'notification', 'abonnement service', 'suivre'], description: 'Vos suivis et abonnements' },
+      // ─── Services & Commerce ───
+      {
+        route: 'MesServices',
+        label: 'Mes Services',
+        icon: 'briefcase',
+        keywords: [
+          'mes services', 'catalogue', 'commerce', 'boutique', 'vendeur', 'prestataire', 'mon activite', 'mon business',
+          'mes produits', 'mon catalogue', 'gerer mes produits', 'gestion produit', 'hub mes services', 'onglet services',
+          // Pas les intentions « première création » — celles-ci vont vers Home + mode Créer
+        ],
+        description: 'Gérer votre catalogue, médias et statistiques (hub Mes services)',
+      },
+      {
+        route: 'AjouterProduitSimple',
+        label: 'Ajouter un Produit',
+        icon: 'plus',
+        keywords: ['ajout rapide produit', 'formulaire court produit', 'ajouter depuis catalogue'],
+        description: 'Ajout rapide depuis le hub catalogue (secondaire vs Accueil mode Créer)',
+      },
+      { route: 'MesProduits', label: 'Mes Produits', icon: 'package', keywords: ['mes produits', 'inventaire', 'stock', 'gestion produit', 'mon catalogue'], description: 'Gérer vos produits existants' },
+      { route: 'ProductStats', label: 'Statistiques Produits', icon: 'bar-chart', keywords: ['statistique produit', 'ventes', 'performance produit', 'analytics produit'], description: 'Voir les statistiques de vos produits' },
+      {
+        route: 'CreationService',
+        label: 'Créer un Service',
+        icon: 'plus-circle',
+        keywords: ['ecran creation service', 'formulaire creation service direct'],
+        description: 'Accès direct formulaire service (secondaire vs Accueil mode Créer)',
+      },
+      { route: 'DashboardPrestataire', label: 'Dashboard Prestataire', icon: 'bar-chart-2', keywords: ['dashboard prestataire', 'tableau de bord', 'mon activite', 'statistiques vendeur', 'performance vendeur', 'chiffre affaire'], description: 'Tableau de bord de votre activité' },
+      { route: 'ProviderOrderManagement', label: 'Gestion Commandes', icon: 'clipboard', keywords: ['commande', 'gestion commande', 'commandes recues', 'traiter commande', 'order'], description: 'Gérer vos commandes reçues' },
+      { route: 'Catalogue', label: 'Catalogue', icon: 'grid', keywords: ['catalogue', 'catalog', 'tous les produits', 'explorer produits', 'parcourir'], description: 'Parcourir le catalogue de produits' },
+      { route: 'SpecializedSearch', label: 'Recherche', icon: 'search', keywords: ['recherche', 'chercher', 'trouver', 'search', 'rechercher service', 'rechercher produit'], description: 'Rechercher des services et produits' },
+      { route: 'SpecializedServicesHub', label: 'Hub Services', icon: 'grid', keywords: ['tous les services', 'hub services', 'services specialises', 'categorie service'], description: 'Tous les services spécialisés Yukpo' },
+      { route: 'PrestataireBoutique', label: 'Ma Boutique', icon: 'shopping-bag', keywords: ['boutique', 'ma boutique', 'shop', 'vitrine', 'magasin', 'profil boutique'], description: 'Votre boutique en ligne' },
+      { route: 'MesEquipes', label: 'Mes Équipes', icon: 'users', keywords: ['equipe', 'collaborateur', 'employe', 'personnel', 'mes equipes', 'staff'], description: 'Gérer vos équipes' },
+      { route: 'ServicesInteragis', label: 'Services Consultés', icon: 'eye', keywords: ['services consultes', 'interaction', 'historique visite', 'services vus'], description: 'Services avec lesquels vous avez interagi' },
+      { route: 'HistoriqueProduitsConsultes', label: 'Historique Consultations', icon: 'clock', keywords: ['historique', 'produits consultes', 'recemment vu', 'derniers produits'], description: 'Historique des produits consultés' },
+      { route: 'OrderStatus', label: 'Suivi de Commande', icon: 'truck', keywords: ['suivi commande', 'statut commande', 'ou est ma commande', 'tracking commande'], description: 'Suivre l\'état de votre commande' },
+      { route: 'MesSuivis', label: 'Mes Suivis', icon: 'bell', keywords: ['mes suivis', 'suivi', 'notification', 'abonnement service', 'suivre'], description: 'Vos suivis et abonnements' },
 
-    // ─── Publicité & Promotions ───
-    { route: 'CreatePublicite', label: 'Créer une Publicité', icon: 'megaphone', keywords: ['publicite', 'pub', 'annonce', 'promotion', 'creer publicite', 'faire pub', 'sponsoriser', 'advertise'], description: 'Créer et lancer une campagne publicitaire' },
-    { route: 'PubliciteDashboard', label: 'Dashboard Publicité', icon: 'bar-chart', keywords: ['dashboard publicite', 'mes publicites', 'campagne pub', 'performance pub', 'statistique pub'], description: 'Gérer vos campagnes publicitaires' },
-    { route: 'CreateFlashPromo', label: 'Créer Promo Flash', icon: 'zap', keywords: ['promo flash', 'flash sale', 'vente flash', 'promotion eclair', 'offre limitee', 'creer promo'], description: 'Créer une promotion flash' },
-    { route: 'FlashPromosActive', label: 'Promos Flash Actives', icon: 'zap', keywords: ['promo active', 'promotion en cours', 'flash promo', 'offres du moment', 'black friday', 'soldes'], description: 'Voir les promotions flash en cours' },
-    { route: 'GlobalPromoCatalog', label: 'Catalogue Promotions', icon: 'tag', keywords: ['promotion', 'reduction', 'solde', 'offre speciale', 'bon plan', 'remise', 'discount', 'black friday'], description: 'Toutes les promotions disponibles' },
-    { route: 'FlashSale', label: 'Vente Flash Live', icon: 'zap', keywords: ['vente flash', 'flash sale', 'vente live', 'encheres', 'vente en direct'], description: 'Ventes flash en direct' },
+      // ─── Publicité & Promotions ───
+      { route: 'CreatePublicite', label: 'Créer une Publicité', icon: 'megaphone', keywords: ['publicite', 'pub', 'annonce', 'promotion', 'creer publicite', 'faire pub', 'sponsoriser', 'advertise'], description: 'Créer et lancer une campagne publicitaire' },
+      { route: 'PubliciteDashboard', label: 'Dashboard Publicité', icon: 'bar-chart', keywords: ['dashboard publicite', 'mes publicites', 'campagne pub', 'performance pub', 'statistique pub'], description: 'Gérer vos campagnes publicitaires' },
+      { route: 'CreateFlashPromo', label: 'Créer Promo Flash', icon: 'zap', keywords: ['promo flash', 'flash sale', 'vente flash', 'promotion eclair', 'offre limitee', 'creer promo'], description: 'Créer une promotion flash' },
+      { route: 'FlashPromosActive', label: 'Promos Flash Actives', icon: 'zap', keywords: ['promo active', 'promotion en cours', 'flash promo', 'offres du moment', 'black friday', 'soldes'], description: 'Voir les promotions flash en cours' },
+      { route: 'GlobalPromoCatalog', label: 'Catalogue Promotions', icon: 'tag', keywords: ['promotion', 'reduction', 'solde', 'offre speciale', 'bon plan', 'remise', 'discount', 'black friday'], description: 'Toutes les promotions disponibles' },
+      { route: 'FlashSale', label: 'Vente Flash Live', icon: 'zap', keywords: ['vente flash', 'flash sale', 'vente live', 'encheres', 'vente en direct'], description: 'Ventes flash en direct' },
 
-    // ─── Vidéos & Lives ───
-    { route: 'VideoFeed', label: 'Vidéos', icon: 'play', keywords: ['video', 'videos', 'fil video', 'feed', 'regarder', 'voir video', 'clip', 'reels', 'shorts'], description: 'Fil de vidéos Yukpo' },
-    { route: 'VideoCreationIntro', label: 'Créer une Vidéo', icon: 'video', keywords: ['creer video', 'filmer', 'enregistrer', 'publier video', 'tourner video', 'nouvelle video'], description: 'Créer et publier une vidéo' },
-    { route: 'VideoAnalytics', label: 'Analytics Vidéo', icon: 'bar-chart', keywords: ['statistique video', 'analytics video', 'vues', 'performance video'], description: 'Statistiques de vos vidéos' },
-    { route: 'CreatorAnalytics', label: 'Analytics Créateur', icon: 'trending-up', keywords: ['analytics createur', 'statistique createur', 'performance contenu', 'mes stats'], description: 'Tableau de bord créateur de contenu' },
-    { route: 'LivesList', label: 'Lives', icon: 'radio', keywords: ['live', 'lives', 'en direct', 'streaming', 'diffusion', 'regarder live', 'voir live'], description: 'Voir les diffusions en direct' },
-    { route: 'StartLive', label: 'Démarrer un Live', icon: 'radio', keywords: ['demarrer live', 'lancer live', 'streaming', 'diffuser', 'commencer live', 'go live'], description: 'Lancer une diffusion en direct' },
-    { route: 'HashtagDiscovery', label: 'Découverte Hashtags', icon: 'hash', keywords: ['hashtag', 'tendance', 'trending', 'decouvrir', 'explorer', 'populaire'], description: 'Découvrir les hashtags tendance' },
+      // ─── Vidéos & Lives ───
+      { route: 'VideoFeed', label: 'Vidéos', icon: 'play', keywords: ['video', 'videos', 'fil video', 'feed', 'regarder', 'voir video', 'clip', 'reels', 'shorts'], description: 'Fil de vidéos Yukpo' },
+      { route: 'VideoCreationIntro', label: 'Créer une Vidéo', icon: 'video', keywords: ['creer video', 'filmer', 'enregistrer', 'publier video', 'tourner video', 'nouvelle video'], description: 'Créer et publier une vidéo' },
+      { route: 'VideoAnalytics', label: 'Analytics Vidéo', icon: 'bar-chart', keywords: ['statistique video', 'analytics video', 'vues', 'performance video'], description: 'Statistiques de vos vidéos' },
+      { route: 'CreatorAnalytics', label: 'Analytics Créateur', icon: 'trending-up', keywords: ['analytics createur', 'statistique createur', 'performance contenu', 'mes stats'], description: 'Tableau de bord créateur de contenu' },
+      { route: 'LivesList', label: 'Lives', icon: 'radio', keywords: ['live', 'lives', 'en direct', 'streaming', 'diffusion', 'regarder live', 'voir live'], description: 'Voir les diffusions en direct' },
+      { route: 'StartLive', label: 'Démarrer un Live', icon: 'radio', keywords: ['demarrer live', 'lancer live', 'streaming', 'diffuser', 'commencer live', 'go live'], description: 'Lancer une diffusion en direct' },
+      { route: 'HashtagDiscovery', label: 'Découverte Hashtags', icon: 'hash', keywords: ['hashtag', 'tendance', 'trending', 'decouvrir', 'explorer', 'populaire'], description: 'Découvrir les hashtags tendance' },
 
-    // ─── Navigation & Transport ───
-    { route: 'Navigation', label: 'Navigation GPS', icon: 'navigation', keywords: ['navigation', 'gps', 'itineraire', 'route', 'direction', 'carte', 'map', 'marche', 'sport', 'coach', 'trajet', 'aller', 'conduire', 'trafic', 'statistique marche', 'calories', 'distance', 'km', 'pas', 'walking', 'footing', 'course pied', 'fitness', 'activite sportive'], description: 'Navigation, itinéraires, suivi sportif et statistiques de marche' },
-    { route: 'TicketVoyageHome', label: 'Tickets de Voyage', icon: 'ticket', keywords: ['ticket', 'voyage', 'bus', 'billet', 'transport', 'depart', 'arrivee', 'agence voyage', 'voyager', 'trajet bus'], description: 'Rechercher et acheter des tickets de bus' },
-    { route: 'BusTicketSearch', label: 'Rechercher un Ticket', icon: 'search', keywords: ['recherche ticket', 'chercher bus', 'horaire bus', 'prochain bus', 'depart bus'], description: 'Rechercher un ticket de bus' },
-    { route: 'BusTicketBooking', label: 'Réserver un Ticket', icon: 'ticket', keywords: ['reserver ticket', 'acheter ticket', 'booking bus', 'reservation bus', 'payer ticket'], description: 'Réserver et payer un ticket de bus' },
-    { route: 'MyBusTickets', label: 'Mes Tickets', icon: 'ticket', keywords: ['mes tickets', 'mes billets', 'tickets achetes', 'historique ticket'], description: 'Voir vos tickets de bus' },
-    { route: 'MyTrips', label: 'Mes Trajets', icon: 'map-pin', keywords: ['mes trajets', 'historique voyage', 'mes voyages', 'trajets effectues'], description: 'Historique de vos trajets' },
-    { route: 'AgenceVoyageSearch', label: 'Agences de Voyage', icon: 'map', keywords: ['agence voyage', 'agence transport', 'compagnie bus', 'transporteur'], description: 'Trouver une agence de voyage' },
-    { route: 'CovoiturageHome', label: 'Covoiturage', icon: 'users', keywords: ['covoiturage', 'covoit', 'partager trajet', 'passager', 'conducteur', 'vehicule partage'], description: 'Trouver ou proposer un covoiturage' },
-    { route: 'CovoiturageSearch', label: 'Rechercher Covoiturage', icon: 'search', keywords: ['recherche covoiturage', 'chercher covoit', 'trajet partage'], description: 'Rechercher un covoiturage' },
-    { route: 'MesReservationsCovoiturage', label: 'Mes Réservations Covoit.', icon: 'calendar', keywords: ['reservation covoiturage', 'mes covoiturages', 'historique covoit'], description: 'Vos réservations de covoiturage' },
-    { route: 'TaxiHome', label: 'Taxi', icon: 'car', keywords: ['taxi', 'chauffeur', 'vtc', 'reservation taxi', 'appeler taxi', 'course taxi'], description: 'Réserver un taxi' },
-    { route: 'TaxiBooking', label: 'Réserver un Taxi', icon: 'car', keywords: ['reserver taxi', 'commander taxi', 'appeler chauffeur', 'booking taxi'], description: 'Commander un taxi maintenant' },
-    { route: 'TaxiTracking', label: 'Suivi Taxi', icon: 'map-pin', keywords: ['suivi taxi', 'ou est mon taxi', 'tracking taxi', 'position chauffeur'], description: 'Suivre votre taxi en temps réel' },
+      // ─── Navigation & Transport ───
+      { route: 'Navigation', label: 'Navigation GPS', icon: 'navigation', keywords: ['navigation', 'gps', 'itineraire', 'route', 'direction', 'carte', 'map', 'marche', 'sport', 'coach', 'trajet', 'aller', 'conduire', 'trafic', 'statistique marche', 'calories', 'distance', 'km', 'pas', 'walking', 'footing', 'course pied', 'fitness', 'activite sportive'], description: 'Navigation, itinéraires, suivi sportif et statistiques de marche' },
+      { route: 'TicketVoyageHome', label: 'Tickets de Voyage', icon: 'ticket', keywords: ['ticket', 'voyage', 'bus', 'billet', 'transport', 'depart', 'arrivee', 'agence voyage', 'voyager', 'trajet bus'], description: 'Rechercher et acheter des tickets de bus' },
+      { route: 'BusTicketSearch', label: 'Rechercher un Ticket', icon: 'search', keywords: ['recherche ticket', 'chercher bus', 'horaire bus', 'prochain bus', 'depart bus'], description: 'Rechercher un ticket de bus' },
+      { route: 'BusTicketBooking', label: 'Réserver un Ticket', icon: 'ticket', keywords: ['reserver ticket', 'acheter ticket', 'booking bus', 'reservation bus', 'payer ticket'], description: 'Réserver et payer un ticket de bus' },
+      { route: 'MyBusTickets', label: 'Mes Tickets', icon: 'ticket', keywords: ['mes tickets', 'mes billets', 'tickets achetes', 'historique ticket'], description: 'Voir vos tickets de bus' },
+      { route: 'MyTrips', label: 'Mes Trajets', icon: 'map-pin', keywords: ['mes trajets', 'historique voyage', 'mes voyages', 'trajets effectues'], description: 'Historique de vos trajets' },
+      { route: 'AgenceVoyageSearch', label: 'Agences de Voyage', icon: 'map', keywords: ['agence voyage', 'agence transport', 'compagnie bus', 'transporteur'], description: 'Trouver une agence de voyage' },
+      { route: 'CovoiturageHome', label: 'Covoiturage', icon: 'users', keywords: ['covoiturage', 'covoit', 'partager trajet', 'passager', 'conducteur', 'vehicule partage'], description: 'Trouver ou proposer un covoiturage' },
+      { route: 'CovoiturageSearch', label: 'Rechercher Covoiturage', icon: 'search', keywords: ['recherche covoiturage', 'chercher covoit', 'trajet partage'], description: 'Rechercher un covoiturage' },
+      { route: 'MesReservationsCovoiturage', label: 'Mes Réservations Covoit.', icon: 'calendar', keywords: ['reservation covoiturage', 'mes covoiturages', 'historique covoit'], description: 'Vos réservations de covoiturage' },
+      { route: 'TaxiHome', label: 'Taxi', icon: 'car', keywords: ['taxi', 'chauffeur', 'vtc', 'reservation taxi', 'appeler taxi', 'course taxi'], description: 'Réserver un taxi' },
+      { route: 'TaxiBooking', label: 'Réserver un Taxi', icon: 'car', keywords: ['reserver taxi', 'commander taxi', 'appeler chauffeur', 'booking taxi'], description: 'Commander un taxi maintenant' },
+      { route: 'TaxiTracking', label: 'Suivi Taxi', icon: 'map-pin', keywords: ['suivi taxi', 'ou est mon taxi', 'tracking taxi', 'position chauffeur'], description: 'Suivre votre taxi en temps réel' },
 
-    // ─── Livraison & Courses ───
-    { route: 'DeliveryHome', label: 'Livraison', icon: 'truck', keywords: ['livraison', 'colis', 'coursier', 'envoyer', 'expedition', 'paquet', 'delivery', 'commander livraison'], description: 'Envoyer un colis ou commander des courses' },
-    { route: 'DeliveryParcelFlowNew', label: 'Envoyer un Colis', icon: 'package', keywords: ['envoyer colis', 'expedier', 'nouveau colis', 'envoi paquet', 'poster'], description: 'Envoyer un colis via coursier' },
-    { route: 'DeliveryShoppingFlowNew', label: 'Commander des Courses', icon: 'shopping-bag', keywords: ['commander course', 'faire course', 'acheter pour moi', 'shopping livraison', 'course a domicile'], description: 'Commander des courses livrées chez vous' },
-    { route: 'DeliveryShoppingTracking', label: 'Suivi Courses', icon: 'map-pin', keywords: ['suivi course', 'ou est ma livraison', 'tracking livraison', 'position coursier'], description: 'Suivre vos courses en temps réel' },
-    { route: 'CourierDashboard', label: 'Dashboard Coursier', icon: 'truck', keywords: ['coursier', 'dashboard coursier', 'mes courses coursier', 'livreur', 'devenir coursier'], description: 'Tableau de bord coursier' },
-    { route: 'CourierRegistration', label: 'Devenir Coursier', icon: 'user-plus', keywords: ['devenir coursier', 'inscription coursier', 'livreur inscription', 'travailler coursier'], description: 'S\'inscrire comme coursier' },
+      // ─── Livraison & Courses ───
+      { route: 'DeliveryHome', label: 'Livraison', icon: 'truck', keywords: ['livraison', 'colis', 'coursier', 'envoyer', 'expedition', 'paquet', 'delivery', 'commander livraison'], description: 'Envoyer un colis ou commander des courses' },
+      { route: 'DeliveryParcelFlowNew', label: 'Envoyer un Colis', icon: 'package', keywords: ['envoyer colis', 'expedier', 'nouveau colis', 'envoi paquet', 'poster'], description: 'Envoyer un colis via coursier' },
+      { route: 'DeliveryShoppingFlowNew', label: 'Commander des Courses', icon: 'shopping-bag', keywords: ['commander course', 'faire course', 'acheter pour moi', 'shopping livraison', 'course a domicile'], description: 'Commander des courses livrées chez vous' },
+      { route: 'DeliveryShoppingTracking', label: 'Suivi Courses', icon: 'map-pin', keywords: ['suivi course', 'ou est ma livraison', 'tracking livraison', 'position coursier'], description: 'Suivre vos courses en temps réel' },
+      { route: 'CourierDashboard', label: 'Dashboard Coursier', icon: 'truck', keywords: ['coursier', 'dashboard coursier', 'mes courses coursier', 'livreur', 'devenir coursier'], description: 'Tableau de bord coursier' },
+      { route: 'CourierRegistration', label: 'Devenir Coursier', icon: 'user-plus', keywords: ['devenir coursier', 'inscription coursier', 'livreur inscription', 'travailler coursier'], description: 'S\'inscrire comme coursier' },
 
-    // ─── Santé ───
-    { route: 'HealthServicesHub', label: 'Services Santé', icon: 'heart', keywords: ['sante', 'medical', 'soins', 'bien etre', 'wellness', 'services sante'], description: 'Hub des services de santé' },
-    { route: 'PharmacieHome', label: 'Pharmacie', icon: 'heart', keywords: ['pharmacie', 'medicament', 'ordonnance', 'comprime', 'sirop', 'garde', 'prescription', 'pharmacie garde'], description: 'Trouver une pharmacie et commander des médicaments' },
-    { route: 'PharmacieSearch', label: 'Rechercher Pharmacie', icon: 'search', keywords: ['recherche pharmacie', 'trouver pharmacie', 'pharmacie proche', 'pharmacie ouverte'], description: 'Rechercher une pharmacie' },
-    { route: 'MyPharmacyOrders', label: 'Mes Commandes Pharmacie', icon: 'clipboard', keywords: ['commande pharmacie', 'mes medicaments', 'historique pharmacie'], description: 'Vos commandes pharmacie' },
-    { route: 'HopitalHome', label: 'Hôpital', icon: 'activity', keywords: ['hopital', 'clinique', 'medecin', 'docteur', 'consultation', 'rendez-vous medical', 'urgence', 'soin', 'hospital'], description: 'Trouver un hôpital et prendre rendez-vous' },
-    { route: 'BookAppointment', label: 'Prendre RDV Médical', icon: 'calendar', keywords: ['rendez-vous', 'rdv medical', 'prendre rdv', 'consultation', 'voir medecin', 'appointment'], description: 'Prendre un rendez-vous médical' },
-    { route: 'MyConsultations', label: 'Mes Consultations', icon: 'clipboard', keywords: ['mes consultations', 'historique consultation', 'mes rdv', 'rendez-vous passes'], description: 'Historique de vos consultations' },
-    { route: 'LaboratoireHome', label: 'Laboratoire', icon: 'flask', keywords: ['laboratoire', 'labo', 'analyse', 'examen', 'prise de sang', 'resultat', 'bilan sanguin'], description: 'Trouver un laboratoire d\'analyses' },
-    { route: 'LaboratoireSearch', label: 'Rechercher Laboratoire', icon: 'search', keywords: ['recherche labo', 'trouver laboratoire', 'labo proche'], description: 'Rechercher un laboratoire' },
-    { route: 'MyLabExaminations', label: 'Mes Examens Labo', icon: 'file-text', keywords: ['mes examens', 'resultats labo', 'analyses', 'bilan', 'mes analyses'], description: 'Vos résultats d\'examens' },
-    { route: 'BanqueSangSearch', label: 'Banque de Sang', icon: 'droplet', keywords: ['sang', 'don sang', 'banque sang', 'groupe sanguin', 'donneur', 'transfusion'], description: 'Don de sang et recherche de donneurs' },
-    { route: 'BloodDonation', label: 'Donner du Sang', icon: 'droplet', keywords: ['donner sang', 'don sang', 'devenir donneur', 'donneur sang'], description: 'Faire un don de sang' },
-    { route: 'MyBloodDonations', label: 'Mes Dons de Sang', icon: 'heart', keywords: ['mes dons', 'historique don', 'mes dons sang'], description: 'Historique de vos dons de sang' },
+      // ─── Santé ───
+      { route: 'HealthServicesHub', label: 'Services Santé', icon: 'heart', keywords: ['sante', 'medical', 'soins', 'bien etre', 'wellness', 'services sante'], description: 'Hub des services de santé' },
+      { route: 'PharmacieHome', label: 'Pharmacie', icon: 'heart', keywords: ['pharmacie', 'medicament', 'ordonnance', 'comprime', 'sirop', 'garde', 'prescription', 'pharmacie garde'], description: 'Trouver une pharmacie et commander des médicaments' },
+      { route: 'PharmacieSearch', label: 'Rechercher Pharmacie', icon: 'search', keywords: ['recherche pharmacie', 'trouver pharmacie', 'pharmacie proche', 'pharmacie ouverte'], description: 'Rechercher une pharmacie' },
+      { route: 'MyPharmacyOrders', label: 'Mes Commandes Pharmacie', icon: 'clipboard', keywords: ['commande pharmacie', 'mes medicaments', 'historique pharmacie'], description: 'Vos commandes pharmacie' },
+      { route: 'HopitalHome', label: 'Hôpital', icon: 'activity', keywords: ['hopital', 'clinique', 'medecin', 'docteur', 'consultation', 'rendez-vous medical', 'urgence', 'soin', 'hospital'], description: 'Trouver un hôpital et prendre rendez-vous' },
+      { route: 'BookAppointment', label: 'Prendre RDV Médical', icon: 'calendar', keywords: ['rendez-vous', 'rdv medical', 'prendre rdv', 'consultation', 'voir medecin', 'appointment'], description: 'Prendre un rendez-vous médical' },
+      { route: 'MyConsultations', label: 'Mes Consultations', icon: 'clipboard', keywords: ['mes consultations', 'historique consultation', 'mes rdv', 'rendez-vous passes'], description: 'Historique de vos consultations' },
+      { route: 'LaboratoireHome', label: 'Laboratoire', icon: 'flask', keywords: ['laboratoire', 'labo', 'analyse', 'examen', 'prise de sang', 'resultat', 'bilan sanguin'], description: 'Trouver un laboratoire d\'analyses' },
+      { route: 'LaboratoireSearch', label: 'Rechercher Laboratoire', icon: 'search', keywords: ['recherche labo', 'trouver laboratoire', 'labo proche'], description: 'Rechercher un laboratoire' },
+      { route: 'MyLabExaminations', label: 'Mes Examens Labo', icon: 'file-text', keywords: ['mes examens', 'resultats labo', 'analyses', 'bilan', 'mes analyses'], description: 'Vos résultats d\'examens' },
+      { route: 'BanqueSangSearch', label: 'Banque de Sang', icon: 'droplet', keywords: ['sang', 'don sang', 'banque sang', 'groupe sanguin', 'donneur', 'transfusion'], description: 'Don de sang et recherche de donneurs' },
+      { route: 'BloodDonation', label: 'Donner du Sang', icon: 'droplet', keywords: ['donner sang', 'don sang', 'devenir donneur', 'donneur sang'], description: 'Faire un don de sang' },
+      { route: 'MyBloodDonations', label: 'Mes Dons de Sang', icon: 'heart', keywords: ['mes dons', 'historique don', 'mes dons sang'], description: 'Historique de vos dons de sang' },
 
-    // ─── Alimentation ───
-    { route: 'SupermarketHome', label: 'Supermarché', icon: 'shopping-cart', keywords: ['supermarche', 'alimentation', 'epicerie', 'provision', 'achats', 'bayam selam', 'marche'], description: 'Faire ses courses au supermarché' },
-    { route: 'BayamSelamSearch', label: 'Bayam Selam', icon: 'search', keywords: ['bayam selam', 'marche local', 'produits locaux', 'marche africain', 'vivres'], description: 'Produits du marché local' },
-    { route: 'MenuPlanningHub', label: 'Menu Planning', icon: 'calendar', keywords: ['menu', 'recette', 'cuisine', 'repas', 'planification', 'nutrition', 'manger', 'plat', 'quoi manger'], description: 'Planifier vos repas de la semaine' },
-    { route: 'RecipeSearch', label: 'Rechercher Recettes', icon: 'search', keywords: ['recherche recette', 'trouver recette', 'recette cuisine', 'idee repas', 'plat du jour'], description: 'Rechercher des recettes' },
-    { route: 'MenuWeekCalendar', label: 'Calendrier Menus', icon: 'calendar', keywords: ['calendrier menu', 'menu semaine', 'planning repas', 'repas semaine'], description: 'Calendrier hebdomadaire des menus' },
-    { route: 'ShoppingList', label: 'Liste de Courses', icon: 'list', keywords: ['liste course', 'liste achats', 'liste ingredients', 'courses a faire'], description: 'Votre liste de courses' },
-    { route: 'FamilyProfile', label: 'Profil Famille', icon: 'users', keywords: ['famille', 'profil famille', 'membres famille', 'foyer', 'menage'], description: 'Profil de votre famille' },
+      // ─── Alimentation ───
+      { route: 'SupermarketHome', label: 'Supermarché', icon: 'shopping-cart', keywords: ['supermarche', 'alimentation', 'epicerie', 'provision', 'achats', 'bayam selam', 'marche'], description: 'Faire ses courses au supermarché' },
+      { route: 'BayamSelamSearch', label: 'Bayam Selam', icon: 'search', keywords: ['bayam selam', 'marche local', 'produits locaux', 'marche africain', 'vivres'], description: 'Produits du marché local' },
+      { route: 'MenuPlanningHub', label: 'Menu Planning', icon: 'calendar', keywords: ['menu', 'recette', 'cuisine', 'repas', 'planification', 'nutrition', 'manger', 'plat', 'quoi manger'], description: 'Planifier vos repas de la semaine' },
+      { route: 'RecipeSearch', label: 'Rechercher Recettes', icon: 'search', keywords: ['recherche recette', 'trouver recette', 'recette cuisine', 'idee repas', 'plat du jour'], description: 'Rechercher des recettes' },
+      { route: 'MenuWeekCalendar', label: 'Calendrier Menus', icon: 'calendar', keywords: ['calendrier menu', 'menu semaine', 'planning repas', 'repas semaine'], description: 'Calendrier hebdomadaire des menus' },
+      { route: 'ShoppingList', label: 'Liste de Courses', icon: 'list', keywords: ['liste course', 'liste achats', 'liste ingredients', 'courses a faire'], description: 'Votre liste de courses' },
+      { route: 'FamilyProfile', label: 'Profil Famille', icon: 'users', keywords: ['famille', 'profil famille', 'membres famille', 'foyer', 'menage'], description: 'Profil de votre famille' },
 
-    // ─── Emploi ───
-    { route: 'OffresEmploiHome', label: 'Offres d\'Emploi', icon: 'briefcase', keywords: ['emploi', 'travail', 'job', 'offre emploi', 'recrutement', 'embauche', 'carriere', 'poste'], description: 'Rechercher des offres d\'emploi' },
-    { route: 'OffreSearch', label: 'Rechercher un Emploi', icon: 'search', keywords: ['recherche emploi', 'chercher travail', 'trouver job', 'offre disponible'], description: 'Rechercher des offres d\'emploi' },
-    { route: 'CreateOffre', label: 'Publier une Offre', icon: 'plus', keywords: ['publier offre', 'creer offre emploi', 'recruter', 'poster offre', 'embaucher'], description: 'Publier une offre d\'emploi' },
-    { route: 'AnalyseCV', label: 'Analyser mon CV', icon: 'file-text', keywords: ['cv', 'curriculum', 'analyser cv', 'ameliorer cv', 'optimiser cv'], description: 'Analyser et optimiser votre CV' },
-    { route: 'AICVAnalysis', label: 'Analyse CV par IA', icon: 'cpu', keywords: ['analyse cv ia', 'cv intelligence artificielle', 'evaluation cv'], description: 'Analyse IA de votre CV' },
-    { route: 'AISalaryPrediction', label: 'Estimation Salaire', icon: 'dollar-sign', keywords: ['salaire', 'remuneration', 'combien gagner', 'estimation salaire', 'grille salariale'], description: 'Estimer votre salaire potentiel' },
-    { route: 'AlertesEmploi', label: 'Alertes Emploi', icon: 'bell', keywords: ['alerte emploi', 'notification emploi', 'veille emploi', 'nouvelle offre'], description: 'Configurer des alertes emploi' },
-    { route: 'ProfilCandidat', label: 'Profil Candidat', icon: 'user', keywords: ['profil candidat', 'mon profil emploi', 'competence', 'experience'], description: 'Votre profil candidat' },
+      // ─── Emploi ───
+      { route: 'OffresEmploiHome', label: 'Offres d\'Emploi', icon: 'briefcase', keywords: ['emploi', 'travail', 'job', 'offre emploi', 'recrutement', 'embauche', 'carriere', 'poste'], description: 'Rechercher des offres d\'emploi' },
+      { route: 'OffreSearch', label: 'Rechercher un Emploi', icon: 'search', keywords: ['recherche emploi', 'chercher travail', 'trouver job', 'offre disponible'], description: 'Rechercher des offres d\'emploi' },
+      { route: 'CreateOffre', label: 'Publier une Offre', icon: 'plus', keywords: ['publier offre', 'creer offre emploi', 'recruter', 'poster offre', 'embaucher'], description: 'Publier une offre d\'emploi' },
+      { route: 'AnalyseCV', label: 'Analyser mon CV', icon: 'file-text', keywords: ['cv', 'curriculum', 'analyser cv', 'ameliorer cv', 'optimiser cv'], description: 'Analyser et optimiser votre CV' },
+      { route: 'AICVAnalysis', label: 'Analyse CV par IA', icon: 'cpu', keywords: ['analyse cv ia', 'cv intelligence artificielle', 'evaluation cv'], description: 'Analyse IA de votre CV' },
+      { route: 'AISalaryPrediction', label: 'Estimation Salaire', icon: 'dollar-sign', keywords: ['salaire', 'remuneration', 'combien gagner', 'estimation salaire', 'grille salariale'], description: 'Estimer votre salaire potentiel' },
+      { route: 'AlertesEmploi', label: 'Alertes Emploi', icon: 'bell', keywords: ['alerte emploi', 'notification emploi', 'veille emploi', 'nouvelle offre'], description: 'Configurer des alertes emploi' },
+      { route: 'ProfilCandidat', label: 'Profil Candidat', icon: 'user', keywords: ['profil candidat', 'mon profil emploi', 'competence', 'experience'], description: 'Votre profil candidat' },
 
-    // ─── Éducation & Livres ───
-    { route: 'OrientationScolaireHome', label: 'Orientation Scolaire', icon: 'graduation-cap', keywords: ['orientation', 'scolaire', 'ecole', 'universite', 'formation', 'etude', 'concours', 'inscription', 'programme'], description: 'Orientation scolaire et universitaire' },
-    { route: 'EtablissementSearch', label: 'Rechercher Établissement', icon: 'search', keywords: ['recherche ecole', 'trouver universite', 'etablissement', 'lycee', 'college'], description: 'Rechercher un établissement scolaire' },
-    { route: 'ConcoursEntree', label: 'Concours d\'Entrée', icon: 'award', keywords: ['concours', 'examen', 'concours entree', 'admission', 'inscription concours'], description: 'Informations sur les concours d\'entrée' },
-    { route: 'FournituresScolaires', label: 'Fournitures Scolaires', icon: 'shopping-bag', keywords: ['fourniture', 'scolaire', 'materiel scolaire', 'liste fourniture', 'cahier', 'stylo'], description: 'Trouver des fournitures scolaires' },
-    { route: 'ProgrammesScolaires', label: 'Programmes Scolaires', icon: 'book-open', keywords: ['programme scolaire', 'programme officiel', 'curriculum', 'matiere'], description: 'Consulter les programmes scolaires' },
-    { route: 'LivreScolaireHome', label: 'Bourse du Livre', icon: 'book', keywords: ['livre', 'scolaire', 'bourse du livre', 'troc livre', 'manuels', 'bouquin', 'librairie', 'echange livre', 'acheter livre'], description: 'Acheter, vendre ou troquer des livres scolaires' },
-    { route: 'LivreScolaireSearch', label: 'Rechercher un Livre', icon: 'search', keywords: ['recherche livre', 'trouver livre', 'chercher manuel', 'livre scolaire'], description: 'Rechercher un livre scolaire' },
-    { route: 'MesLivres', label: 'Mes Livres', icon: 'book', keywords: ['mes livres', 'mes manuels', 'livres achetes', 'ma bibliotheque'], description: 'Vos livres scolaires' },
-    { route: 'BookBuyDirect', label: 'Acheter un Livre', icon: 'shopping-cart', keywords: ['acheter livre', 'commander livre', 'achat direct livre'], description: 'Acheter un livre directement' },
-    { route: 'NewBooks', label: 'Nouveaux Livres', icon: 'book-open', keywords: ['nouveau livre', 'nouveaute livre', 'derniers livres', 'livre recent'], description: 'Découvrir les nouveaux livres' },
-    { route: 'TrocMatching', label: 'Troc de Livres', icon: 'repeat', keywords: ['troc', 'echange', 'echanger livre', 'troc livre', 'matching troc'], description: 'Troquer des livres avec d\'autres utilisateurs' },
-    { route: 'MesTrocs', label: 'Mes Trocs', icon: 'repeat', keywords: ['mes trocs', 'historique troc', 'echanges en cours', 'mes echanges'], description: 'Vos trocs en cours et historique' },
+      // ─── Éducation & Livres ───
+      { route: 'OrientationScolaireHome', label: 'Orientation Scolaire', icon: 'graduation-cap', keywords: ['orientation', 'scolaire', 'ecole', 'universite', 'formation', 'etude', 'concours', 'inscription', 'programme'], description: 'Orientation scolaire et universitaire' },
+      { route: 'EtablissementSearch', label: 'Rechercher Établissement', icon: 'search', keywords: ['recherche ecole', 'trouver universite', 'etablissement', 'lycee', 'college'], description: 'Rechercher un établissement scolaire' },
+      { route: 'ConcoursEntree', label: 'Concours d\'Entrée', icon: 'award', keywords: ['concours', 'examen', 'concours entree', 'admission', 'inscription concours'], description: 'Informations sur les concours d\'entrée' },
+      { route: 'FournituresScolaires', label: 'Fournitures Scolaires', icon: 'shopping-bag', keywords: ['fourniture', 'scolaire', 'materiel scolaire', 'liste fourniture', 'cahier', 'stylo'], description: 'Trouver des fournitures scolaires' },
+      { route: 'ProgrammesScolaires', label: 'Programmes Scolaires', icon: 'book-open', keywords: ['programme scolaire', 'programme officiel', 'curriculum', 'matiere'], description: 'Consulter les programmes scolaires' },
+      { route: 'LivreScolaireHome', label: 'Bourse du Livre', icon: 'book', keywords: ['livre', 'scolaire', 'bourse du livre', 'troc livre', 'manuels', 'bouquin', 'librairie', 'echange livre', 'acheter livre'], description: 'Acheter, vendre ou troquer des livres scolaires' },
+      { route: 'LivreScolaireSearch', label: 'Rechercher un Livre', icon: 'search', keywords: ['recherche livre', 'trouver livre', 'chercher manuel', 'livre scolaire'], description: 'Rechercher un livre scolaire' },
+      { route: 'MesLivres', label: 'Mes Livres', icon: 'book', keywords: ['mes livres', 'mes manuels', 'livres achetes', 'ma bibliotheque'], description: 'Vos livres scolaires' },
+      { route: 'BookBuyDirect', label: 'Acheter un Livre', icon: 'shopping-cart', keywords: ['acheter livre', 'commander livre', 'achat direct livre'], description: 'Acheter un livre directement' },
+      { route: 'NewBooks', label: 'Nouveaux Livres', icon: 'book-open', keywords: ['nouveau livre', 'nouveaute livre', 'derniers livres', 'livre recent'], description: 'Découvrir les nouveaux livres' },
+      { route: 'TrocMatching', label: 'Troc de Livres', icon: 'repeat', keywords: ['troc', 'echange', 'echanger livre', 'troc livre', 'matching troc'], description: 'Troquer des livres avec d\'autres utilisateurs' },
+      { route: 'MesTrocs', label: 'Mes Trocs', icon: 'repeat', keywords: ['mes trocs', 'historique troc', 'echanges en cours', 'mes echanges'], description: 'Vos trocs en cours et historique' },
 
-    // ─── Automobile & Flotte ───
-    { route: 'AutomobileDashboard', label: 'Automobile', icon: 'truck', keywords: ['automobile', 'voiture', 'reparation', 'garage', 'entretien', 'panne', 'mecanique', 'vidange'], description: 'Services automobiles et réparations' },
-    { route: 'AutoServicesSearch', label: 'Rechercher Garage', icon: 'search', keywords: ['recherche garage', 'trouver mecanicien', 'garage proche', 'reparation auto'], description: 'Trouver un garage ou mécanicien' },
-    { route: 'FleetDashboard', label: 'Gestion de Flotte', icon: 'truck', keywords: ['flotte', 'vehicule', 'gestion flotte', 'parc automobile', 'logistique'], description: 'Gestion de flotte de véhicules' },
+      // ─── Automobile & Flotte ───
+      { route: 'AutomobileDashboard', label: 'Automobile', icon: 'truck', keywords: ['automobile', 'voiture', 'reparation', 'garage', 'entretien', 'panne', 'mecanique', 'vidange'], description: 'Services automobiles et réparations' },
+      { route: 'AutoServicesSearch', label: 'Rechercher Garage', icon: 'search', keywords: ['recherche garage', 'trouver mecanicien', 'garage proche', 'reparation auto'], description: 'Trouver un garage ou mécanicien' },
+      { route: 'FleetDashboard', label: 'Gestion de Flotte', icon: 'truck', keywords: ['flotte', 'vehicule', 'gestion flotte', 'parc automobile', 'logistique'], description: 'Gestion de flotte de véhicules' },
 
-    // ─── Immobilier & Hébergement ───
-    { route: 'HotelMeubleHome', label: 'Hôtel / Meublé', icon: 'home', keywords: ['hotel', 'meuble', 'hebergement', 'chambre', 'reservation hotel', 'logement', 'dormir', 'nuit', 'auberge'], description: 'Réserver un hôtel ou un meublé' },
-    { route: 'HotelBooking', label: 'Réserver Hôtel', icon: 'calendar', keywords: ['reserver hotel', 'booking hotel', 'chambre hotel', 'nuit hotel'], description: 'Réserver une chambre d\'hôtel' },
-    { route: 'MesReservations', label: 'Mes Réservations', icon: 'calendar', keywords: ['mes reservations', 'reservation hotel', 'historique reservation'], description: 'Vos réservations d\'hôtel' },
-    { route: 'ImmobilierHome', label: 'Immobilier', icon: 'home', keywords: ['immobilier', 'maison', 'appartement', 'louer', 'acheter maison', 'terrain', 'location', 'immeuble', 'villa'], description: 'Rechercher un bien immobilier' },
-    { route: 'ImmobilierSearch', label: 'Rechercher Immobilier', icon: 'search', keywords: ['recherche immobilier', 'trouver maison', 'chercher appartement', 'bien immobilier'], description: 'Rechercher un bien immobilier' },
+      // ─── Immobilier & Hébergement ───
+      { route: 'HotelMeubleHome', label: 'Hôtel / Meublé', icon: 'home', keywords: ['hotel', 'meuble', 'hebergement', 'chambre', 'reservation hotel', 'logement', 'dormir', 'nuit', 'auberge'], description: 'Réserver un hôtel ou un meublé' },
+      { route: 'HotelBooking', label: 'Réserver Hôtel', icon: 'calendar', keywords: ['reserver hotel', 'booking hotel', 'chambre hotel', 'nuit hotel'], description: 'Réserver une chambre d\'hôtel' },
+      { route: 'MesReservations', label: 'Mes Réservations', icon: 'calendar', keywords: ['mes reservations', 'reservation hotel', 'historique reservation'], description: 'Vos réservations d\'hôtel' },
+      { route: 'ImmobilierHome', label: 'Immobilier', icon: 'home', keywords: ['immobilier', 'maison', 'appartement', 'louer', 'acheter maison', 'terrain', 'location', 'immeuble', 'villa'], description: 'Rechercher un bien immobilier' },
+      { route: 'ImmobilierSearch', label: 'Rechercher Immobilier', icon: 'search', keywords: ['recherche immobilier', 'trouver maison', 'chercher appartement', 'bien immobilier'], description: 'Rechercher un bien immobilier' },
 
-    // ─── Assurance ───
-    { route: 'AssuranceDashboard', label: 'Assurance', icon: 'shield', keywords: ['assurance', 'police', 'sinistre', 'couverture', 'devis assurance', 'assurer'], description: 'Gérer vos assurances' },
-    { route: 'InsuranceServicesSearch', label: 'Rechercher Assurance', icon: 'search', keywords: ['recherche assurance', 'trouver assurance', 'comparateur assurance', 'devis'], description: 'Rechercher une assurance' },
-    { route: 'MesPolicesAssurance', label: 'Mes Polices', icon: 'shield', keywords: ['mes polices', 'mes assurances', 'contrat assurance', 'police assurance'], description: 'Vos polices d\'assurance' },
-    { route: 'DeclarationSinistre', label: 'Déclarer un Sinistre', icon: 'alert-triangle', keywords: ['sinistre', 'declarer sinistre', 'accident', 'declaration', 'dommage'], description: 'Déclarer un sinistre' },
+      // ─── Assurance ───
+      { route: 'AssuranceDashboard', label: 'Assurance', icon: 'shield', keywords: ['assurance', 'police', 'sinistre', 'couverture', 'devis assurance', 'assurer'], description: 'Gérer vos assurances' },
+      { route: 'InsuranceServicesSearch', label: 'Rechercher Assurance', icon: 'search', keywords: ['recherche assurance', 'trouver assurance', 'comparateur assurance', 'devis'], description: 'Rechercher une assurance' },
+      { route: 'MesPolicesAssurance', label: 'Mes Polices', icon: 'shield', keywords: ['mes polices', 'mes assurances', 'contrat assurance', 'police assurance'], description: 'Vos polices d\'assurance' },
+      { route: 'DeclarationSinistre', label: 'Déclarer un Sinistre', icon: 'alert-triangle', keywords: ['sinistre', 'declarer sinistre', 'accident', 'declaration', 'dommage'], description: 'Déclarer un sinistre' },
 
-    // ─── IA & Chat ───
-    // NOTE: pas de route « AIHub » ici — le chat doit proposer des liens directs vers les écrans métiers
-    // (Search, AIChat, FormulaireYukpoIntelligent, etc.). L’écran IA Hub reste accessible depuis l’accueil si besoin.
-    { route: 'AIChat', label: 'Chat IA', icon: 'message-circle', keywords: ['chat ia', 'chatbot', 'discuter ia', 'poser question ia', 'assistant', 'intelligence artificielle', 'assistant ia'], description: 'Discuter avec l\'assistant IA' },
-    { route: 'FormulaireYukpoIntelligent', label: 'Formulaire IA', icon: 'edit', keywords: ['formulaire intelligent', 'formulaire ia', 'creation assistee', 'aide formulaire'], description: 'Formulaire intelligent assisté par IA' },
-    { route: 'Match', label: 'Match', icon: 'zap', keywords: ['match', 'matching', 'correspondance', 'trouver match'], description: 'Trouver des correspondances' },
+      // ─── IA & Chat ───
+      // NOTE: pas de route « AIHub » ici — le chat doit proposer des liens directs vers les écrans métiers
+      // (Search, AIChat, FormulaireYukpoIntelligent, etc.). L’écran IA Hub reste accessible depuis l’accueil si besoin.
+      { route: 'AIChat', label: 'Chat IA', icon: 'message-circle', keywords: ['chat ia', 'chatbot', 'discuter ia', 'poser question ia', 'assistant', 'intelligence artificielle', 'assistant ia'], description: 'Discuter avec l\'assistant IA' },
+      { route: 'FormulaireYukpoIntelligent', label: 'Formulaire IA', icon: 'edit', keywords: ['formulaire intelligent', 'formulaire ia', 'creation assistee', 'aide formulaire'], description: 'Formulaire intelligent assisté par IA' },
+      { route: 'Match', label: 'Match', icon: 'zap', keywords: ['match', 'matching', 'correspondance', 'trouver match'], description: 'Trouver des correspondances' },
 
-    // ─── Gestion Prestataire ───
-    { route: 'GestionServicesSpecialises', label: 'Mon Espace Partenaire', icon: 'briefcase', keywords: ['espace partenaire', 'gestion service', 'mon espace', 'services specialises', 'partenaire'], description: 'Gérer vos services spécialisés' },
-    { route: 'SlotManagement', label: 'Gestion Créneaux', icon: 'clock', keywords: ['creneau', 'horaire', 'disponibilite', 'planning', 'slot', 'agenda'], description: 'Gérer vos créneaux horaires' },
-    { route: 'PrestataireReservations', label: 'Réservations Prestataire', icon: 'calendar', keywords: ['reservation prestataire', 'mes reservations pro', 'rdv clients'], description: 'Gérer les réservations de vos clients' },
-    { route: 'AnalyticsDashboard', label: 'Analytics', icon: 'bar-chart-2', keywords: ['analytics', 'analyse', 'statistique', 'performance', 'graphique', 'data'], description: 'Tableau de bord analytique' },
-  ];
+      // ─── Gestion Prestataire ───
+      { route: 'GestionServicesSpecialises', label: 'Mon Espace Partenaire', icon: 'briefcase', keywords: ['espace partenaire', 'gestion service', 'mon espace', 'services specialises', 'partenaire'], description: 'Gérer vos services spécialisés' },
+      { route: 'SlotManagement', label: 'Gestion Créneaux', icon: 'clock', keywords: ['creneau', 'horaire', 'disponibilite', 'planning', 'slot', 'agenda'], description: 'Gérer vos créneaux horaires' },
+      { route: 'PrestataireReservations', label: 'Réservations Prestataire', icon: 'calendar', keywords: ['reservation prestataire', 'mes reservations pro', 'rdv clients'], description: 'Gérer les réservations de vos clients' },
+      { route: 'AnalyticsDashboard', label: 'Analytics', icon: 'bar-chart-2', keywords: ['analytics', 'analyse', 'statistique', 'performance', 'graphique', 'data'], description: 'Tableau de bord analytique' },
+    ];
 
   /** Routes catalogue / formulaires directs : ne pas les proposer en premier si l’intention est « créer » depuis l’accueil. */
   private static readonly NAV_ROUTES_DEFER_WHEN_PRODUCT_CREATION: ReadonlySet<string> = new Set([

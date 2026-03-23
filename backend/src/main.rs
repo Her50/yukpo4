@@ -2965,7 +2965,24 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                     e
                 );
             }
-            log::info!("✅ Tables supplémentaires (video, shares, team, exchange_rate, history, wallets, chat_mentions) créées/vérifiées");
+            // ✅ 2026-03-21: Tables YukpoIA (quota journalier + sessions/messages)
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_yukpo_ia_daily_usage_table(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création yukpo_ia_daily_usage: {}", e);
+            }
+            if let Err(e) =
+                yukpomnang_backend::migrations::auto_migrate::ensure_yukpo_ia_sessions_tables(
+                    &pg_for_checkpoints,
+                )
+                .await
+            {
+                log::warn!("⚠️ Erreur création yukpo_ia_sessions/messages: {}", e);
+            }
+            log::info!("✅ Tables supplémentaires (video, shares, team, exchange_rate, history, wallets, chat_mentions, yukpo_ia) créées/vérifiées");
         });
     } else {
         let _ = yukpomnang_backend::migrations::auto_migrate::ensure_navigation_checkpoints_table(

@@ -166,6 +166,13 @@ interface PointOfInterest {
 }
 const getPoiLat = (poi: PointOfInterest): number => poi.latitude ?? poi.location?.lat ?? 0;
 const getPoiLng = (poi: PointOfInterest): number => poi.longitude ?? poi.location?.lng ?? 0;
+const haversineMeters = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const toRad = (d: number) => d * Math.PI / 180;
+    const R = 6371000;
+    const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
 
 // ── TTS Language Map (62 locales → BCP 47) ──────────────────────────────
 const TTS_LANG_MAP: Record<string, string> = {
@@ -621,13 +628,23 @@ const NavigationScreen: React.FC = () => {
     const searchRoutesRef = useRef<() => void>(() => { });
 
     // ── Mémos ──
+    const userOriginLat = currentLocation?.coords?.latitude ?? 0;
+    const userOriginLng = currentLocation?.coords?.longitude ?? 0;
     const groupedPOIs = useMemo(() => {
         const groups: Record<string, PointOfInterest[]> = {};
         for (const [catKey, cat] of Object.entries(POI_CATEGORIES)) {
-            groups[catKey] = pointsOfInterest.filter(poi => cat.types.includes(normalizePoiType(poi.type)));
+            const filtered = pointsOfInterest.filter(poi => cat.types.includes(normalizePoiType(poi.type)));
+            if (userOriginLat && userOriginLng) {
+                filtered.sort((a, b) => {
+                    const distA = haversineMeters(userOriginLat, userOriginLng, getPoiLat(a), getPoiLng(a));
+                    const distB = haversineMeters(userOriginLat, userOriginLng, getPoiLat(b), getPoiLng(b));
+                    return distA - distB;
+                });
+            }
+            groups[catKey] = filtered;
         }
         return groups;
-    }, [pointsOfInterest]);
+    }, [pointsOfInterest, userOriginLat, userOriginLng]);
     const freeWalkHistoryScoped = useMemo(() => {
         if (!freeWalkFilterRange) return activityHistory;
         const startMs = new Date(freeWalkFilterRange.start).getTime();
@@ -3614,13 +3631,15 @@ const NavigationScreen: React.FC = () => {
                                                                 </TouchableOpacity>
                                                                 {expanded && visiblePois.map((poi, idx) => {
                                                                     const displayName = typeof poi.name === 'string' ? poi.name : (typeof poi.name === 'object' && poi.name !== null ? (poi.name as any).name || (poi.name as any).text || JSON.stringify(poi.name) : (t('navigation.unknownName') || 'Nom inconnu'));
+                                                                    const distFromUser = (userOriginLat && userOriginLng) ? haversineMeters(userOriginLat, userOriginLng, getPoiLat(poi), getPoiLng(poi)) : 0;
                                                                     return (
                                                                         <View key={poi.id || `poi-${catKey}-${idx}`} style={st.poiItem}>
                                                                             <View style={st.flex1}>
                                                                                 <Text style={st.poiName}>{displayName}</Text>
                                                                                 {poi.address && <Text style={st.poiAddr} numberOfLines={1}>{poi.address}</Text>}
                                                                                 <View style={st.poiMeta}>
-                                                                                    <Text style={st.poiDist}>{t('navigation.poiDistanceFromRoute', { distance: formatDistance(poi.distance_from_route_meters) }) || `${formatDistance(poi.distance_from_route_meters)}`}</Text>
+                                                                                    {distFromUser > 0 && <Text style={st.poiDist}>📍 {formatDistance(distFromUser)}</Text>}
+                                                                                    <Text style={[st.poiDist, { color: '#6366F1' }]}>↔ {t('navigation.poiDistanceFromRoute', { distance: formatDistance(poi.distance_from_route_meters) }) || formatDistance(poi.distance_from_route_meters)}</Text>
                                                                                     {poi.rating != null && poi.rating > 0 && <Text style={st.poiRating}>⭐ {poi.rating}{poi.total_ratings ? ` (${poi.total_ratings})` : ''}</Text>}
                                                                                     {poi.price_level != null && poi.price_level > 0 && <Text style={st.poiPrice}>{'💰'.repeat(poi.price_level)}</Text>}
                                                                                     {poi.is_open != null && <View style={[st.openBadge, { backgroundColor: poi.is_open ? '#DCFCE7' : '#FEE2E2' }]}><Text style={[st.openText, { color: poi.is_open ? '#16A34A' : '#EF4444' }]}>{poi.is_open ? (t('navigation.poiOpen') || 'Ouvert') : (t('navigation.poiClosed') || 'Fermé')}</Text></View>}

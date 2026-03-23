@@ -177,23 +177,48 @@ pub async fn precheck_can_use_yukpo_ia(
         return Ok(Ok(()));
     }
 
-    // ✅ DEBUG: Vérifier que les tables existent
-    if let Err(table_err) =
-        sqlx::query("SELECT 1 FROM yukpo_ia_daily_usage LIMIT 1").fetch_one(pool).await
+    // ✅ Vérifier que la table existe (fetch_optional pour éviter faux-positif sur table vide)
+    if let Err(table_err) = sqlx::query("SELECT 1 FROM yukpo_ia_daily_usage LIMIT 1")
+        .fetch_optional(pool)
+        .await
     {
-        log::error!(
-            "[YukpoIA] Table yukpo_ia_daily_usage not accessible: {}",
+        log::warn!(
+            "[YukpoIA] Table yukpo_ia_daily_usage not accessible ({}), tentative de création automatique...",
             table_err
         );
-        return Ok(Err(json!({
-            "message": "Erreur de configuration du système IA. Veuillez contacter le support.",
-            "type": "text",
-            "confidence": 0.0,
-            "debug_info": {
-                "error_type": "missing_table",
-                "table": "yukpo_ia_daily_usage"
+        // Auto-create the table if missing
+        let create_result = sqlx::query(
+            r#"CREATE TABLE IF NOT EXISTS yukpo_ia_daily_usage (
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                usage_date DATE NOT NULL,
+                free_token_units_consumed BIGINT NOT NULL DEFAULT 0,
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (user_id, usage_date)
+            )"#,
+        )
+        .execute(pool)
+        .await;
+
+        match create_result {
+            Ok(_) => {
+                log::info!("[YukpoIA] Table yukpo_ia_daily_usage créée automatiquement ✅");
             }
-        })));
+            Err(create_err) => {
+                log::error!(
+                    "[YukpoIA] Impossible de créer yukpo_ia_daily_usage: {}",
+                    create_err
+                );
+                return Ok(Err(json!({
+                    "message": "Erreur de configuration du système IA. Veuillez contacter le support.",
+                    "type": "text",
+                    "confidence": 0.0,
+                    "debug_info": {
+                        "error_type": "missing_table",
+                        "table": "yukpo_ia_daily_usage"
+                    }
+                })));
+            }
+        }
     }
 
     let today = Utc::now().date_naive();
