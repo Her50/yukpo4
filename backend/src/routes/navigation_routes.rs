@@ -724,24 +724,22 @@ async fn get_points_of_interest(
     let api_key = std::env::var("GOOGLE_MAPS_API_KEY")
         .map_err(|_| AppError::Internal("GOOGLE_MAPS_API_KEY non configurée".to_string()))?;
 
-    // ✅ FIX 2026-03-16: Utiliser les types demandés par le mobile (param 'types')
-    // Avant: TOUJOURS 14 types = 56+ appels Google par requête (très coûteux)
-    // Après: seulement les types demandés = 4-12 appels (économie 70-90%)
+    // ✅ FIX 2026-03-23: Types optimisés par pertinence
     let all_default_types = vec![
-        "pharmacy",
-        "bakery",
-        "gas_station",
-        "supermarket",
-        "restaurant",
-        "atm",
-        "hospital",
-        "parking",
-        "car_wash",
-        "car_repair",
-        "mosque",
-        "church",
-        "lodging",
-        "police",
+        "pharmacy",    // ✅ Très pertinent - pharmacies spécifiques
+        "gas_station", // ✅ Très pertinent - stations service spécifiques
+        "bakery",      // ✅ Pertinent - boulangeries locales
+        "supermarket", // ✅ Pertinent - supermarchés spécifiques
+        "restaurant",  // ✅ Pertinent - restaurants spécifiques
+        "hospital",    // ✅ Très pertinent - hôpitaux urgents
+        "parking",     // ✅ Pertinent - parkings spécifiques
+        "car_wash",    // ✅ Pertinent - lavages auto
+        "car_repair",  // ✅ Pertinent - garages
+        "lodging",     // ✅ Pertinent - hôtels/logements
+        "mosque",      // ✅ Pertinent - lieux de culte
+        "church",      // ✅ Pertinent - lieux de culte
+        "police",      // ✅ Pertinent - commissariats
+                       // "atm" retiré - peu pertinent, retourne DAB génériques sans contexte
     ];
     let poi_types: Vec<&str> = if let Some(ref types_param) = params.types {
         let requested: Vec<&str> = types_param
@@ -1014,80 +1012,76 @@ async fn get_points_of_interest(
         }
     }
 
-    // ✅ FIX 2026-03-23: Filtrage amélioré pour pertinence POI
-    // Élimine les POI de faible qualité, sans nom, ou trop génériques
+    // ✅ FIX 2026-03-23: Filtrage amélioré par catégorie pour pertinence maximale
     let filtered_pois: Vec<PointOfInterest> = all_pois
         .into_iter()
         .filter(|poi| {
-            // 1. Le nom doit être significatif (pas "Unnamed Place" ou trop court)
+            // 1. Le nom doit être significatif
             let name_clean = poi.name.trim();
             if name_clean.len() < 2 {
                 return false;
             }
 
-            // 2. Éliminer les noms trop génériques qui ne sont pas pertinents
-            let generic_names = [
-                "unnamed",
-                "unknown",
-                "place",
-                "location",
-                "point",
-                "spot",
-                "area",
-                "établissement",
-                "lieu",
-                "endroit",
-                "commerce",
-                "service",
-                "magasin",
-                "store",
-                "shop",
-                "business",
-                "company",
-            ];
+            // 2. Éliminer les noms génériques
             let name_lower = name_clean.to_lowercase();
+            let generic_names = [
+                "unnamed", "unknown", "place", "location", "point", "spot", "area",
+            ];
             if generic_names.iter().any(|generic| name_lower.contains(generic))
                 && name_clean.len() < 6
             {
                 return false;
             }
 
-            // 3. Filtrer par rating minimum pour certains types (restaurants, hôtels, etc.)
-            let requires_min_rating =
-                matches!(poi.poi_type.as_str(), "restaurant" | "hotel" | "lodging");
-            if requires_min_rating {
-                if let Some(rating) = poi.rating {
-                    if rating < 3.0 {
-                        return false;
-                    }
-                } else {
-                    // Pas de rating = probablement pas pertinent pour ces types
-                    return false;
+            // 3. Filtrage par catégorie avec règles spécifiques
+            match poi.poi_type.as_str() {
+                // 🏥 Services d'urgence - pas de filtrage rating
+                "hospital" | "pharmacy" => {
+                    !name_lower.contains("hospital") && !name_lower.contains("pharmacy")
+                }
+
+                // ⛽ Carburant - filtrage simple
+                "gas_station" => !name_lower.eq("gas station") && !name_lower.eq("station service"),
+
+                // 🍕 Restauration - rating minimum
+                "restaurant" => poi.rating.unwrap_or(0.0) >= 3.0 || name_clean.len() > 5,
+
+                // 🏨 Hébergement - rating strict
+                "lodging" => poi.rating.unwrap_or(0.0) >= 3.5,
+
+                // 🛒 Commerce - nom spécifique
+                "supermarket" | "bakery" => {
+                    !name_lower.contains("supermarket")
+                        && !name_lower.contains("bakery")
+                        && name_clean.len() > 3
+                }
+
+                // 🚗 Services auto - nom spécifique
+                "car_repair" | "car_wash" => {
+                    !name_lower.contains("car repair")
+                        && !name_lower.contains("car wash")
+                        && name_clean.len() > 4
+                }
+
+                // 🅿️ Parking - filtrage simple
+                "parking" => name_clean.len() > 3 && !name_lower.eq("parking"),
+
+                // 🏛️ Services publics
+                "police" | "mosque" | "church" => {
+                    !name_lower.contains(poi.poi_type.as_str()) && name_clean.len() > 3
+                }
+
+                // Autres - filtrage par défaut
+                _ => {
+                    let has_sufficient_reviews = poi.total_ratings.unwrap_or(0) >= 3;
+                    let has_good_rating = poi.rating.unwrap_or(0.0) >= 3.5;
+                    has_sufficient_reviews || has_good_rating
                 }
             }
-
-            // 4. Pour les types commerciaux, exiger un minimum d'avis ou une bonne note
-            let commercial_types = [
-                "restaurant",
-                "hotel",
-                "lodging",
-                "pharmacy",
-                "bakery",
-                "supermarket",
-            ];
-            if commercial_types.contains(&poi.poi_type.as_str()) {
-                let has_sufficient_reviews = poi.total_ratings.unwrap_or(0) >= 3;
-                let has_good_rating = poi.rating.unwrap_or(0.0) >= 3.5;
-                if !has_sufficient_reviews && !has_good_rating {
-                    return false;
-                }
-            }
-
-            true
         })
         .collect();
 
-    // ✅ FIX 2026-03-04: Trier par pertinence = distance de détour + qualité
+    // ✅ FIX 2026-03-23: Trier par pertinence = distance de détour + qualité
     let mut sorted_pois = filtered_pois;
     sorted_pois.sort_by(|a, b| {
         // Premier critère: distance du trajet (plus petit = meilleur)
