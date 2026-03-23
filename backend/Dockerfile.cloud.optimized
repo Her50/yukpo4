@@ -5,7 +5,7 @@
 ############################################
 # Stage 1: Builder - Compilation Rust optimisée
 ############################################
-FROM rust:bookworm AS builder
+FROM rust:latest AS builder
 
 WORKDIR /app
 
@@ -70,9 +70,9 @@ RUN --mount=type=cache,target=/root/.cargo/registry \
 ############################################
 # Stage 2: Runtime - Image finale OPTIMISÉE
 ############################################
-# ✅ CORRIGÉ 2026-03-23: Utiliser bookworm-slim pour matcher le builder (rust:bookworm)
-# Évite les incompatibilités GLIBC si rust:latest change de base Debian.
-FROM debian:bookworm-slim
+# ✅ CORRIGÉ 2026-03-23: trixie-slim = GLIBC 2.39+ (requis par ort_sys/ONNX Runtime)
+# rust:latest est aussi trixie-based → même GLIBC, pas de mismatch.
+FROM debian:trixie-slim
 
 LABEL maintainer="Yukpomnang Team"
 LABEL description="Yukpomnang Backend Cloud - Version Optimisée (sans Blender)"
