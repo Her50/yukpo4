@@ -1,6 +1,7 @@
 // @ts-nocheck
 // ✅ MIGRÉ: Utilise react-native-reanimated pour de meilleures performances
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -23,6 +24,7 @@ import Animated, {
     useSharedValue,
 } from 'react-native-reanimated';
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
+import InternalShareButton from '../components/InternalShareButton';
 import NavigatorToolbar from '../components/NavigatorToolbar';
 import ProductVideoCreationModal from '../components/ProductVideoCreationModal';
 import SafeIcon from '../components/SafeIcon';
@@ -31,6 +33,7 @@ import ServiceMediaGallery from '../components/ServiceMediaGallery';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import config from '../config/environment';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiDelete, apiGet, apiPatch, apiPost, mediaApi } from '../services/api';
 import { productsService } from '../services/productsService';
 import { genererSuggestionsService } from '../services/yukpoclient';
@@ -102,19 +105,19 @@ const getProductTypeLabel = (type: string | null | undefined): string => {
     if (!type) return 'Non catégorisé';
     const key = type.toLowerCase();
     const labels: Record<string, string> = {
-        'electronique': '📱 Électronique',
-        'informatique': '💻 Informatique',
-        'plombier': '🔧 Plomberie',
-        'plomberie': '🔧 Plomberie',
+        'electronique': '\uD83D\uDCF1 Électronique',
+        'informatique': '\uD83D\uDCBB Informatique',
+        'plombier': '\uD83D\uDD27 Plomberie',
+        'plomberie': '\uD83D\uDD27 Plomberie',
         'electricite': '⚡ Électricité',
-        'automobile': '🚗 Automobile',
-        'agriculture': '🌾 Agriculture',
-        'beaute': '💄 Beauté',
-        'sante': '🩺 Santé',
-        'immobilier': '🏢 Immobilier',
-        'service': '💼 Service',
-        'prestation': '💼 Prestation',
-        'ticket_voyage': '🚌 Ticket de voyage',
+        'automobile': '\uD83D\uDE97 Automobile',
+        'agriculture': '\uD83C\uDF3E Agriculture',
+        'beaute': '\uD83D\uDC84 Beauté',
+        'sante': '\uD83E\uDE7A Santé',
+        'immobilier': '\uD83C\uDFE2 Immobilier',
+        'service': '\uD83D\uDCBC Service',
+        'prestation': '\uD83D\uDCBC Prestation',
+        'ticket_voyage': '\uD83D\uDE8C Ticket de voyage',
     };
 
     if (labels[key]) {
@@ -244,6 +247,7 @@ const HEADER_HEIGHT = Platform.OS === 'ios' ? 88 : 72;
 const MesProduitsScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const [products, setProducts] = useState<ManagedProduct[]>([]);
     const [services, setServices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -257,6 +261,8 @@ const MesProduitsScreen: React.FC = () => {
     const [showMenuModal, setShowMenuModal] = useState(false);
     const [showDeliveryConfigModal, setShowDeliveryConfigModal] = useState(false);
     const [deliveryConfigProduct, setDeliveryConfigProduct] = useState<ManagedProduct | null>(null);
+    const [showProductActionsModal, setShowProductActionsModal] = useState(false);
+    const [productActionsTarget, setProductActionsTarget] = useState<ManagedProduct | null>(null);
     const [showMediaGallery, setShowMediaGallery] = useState(false);
     const [selectedServiceForGallery, setSelectedServiceForGallery] = useState<any>(null);
     // ✅ MIGRÉ: Utilise useSharedValue au lieu de Animated.Value
@@ -363,7 +369,7 @@ const MesProduitsScreen: React.FC = () => {
                 // ✅ DEBUG: Logger les prix pour diagnostiquer le problème de multiplication
                 if (__DEV__ && prixValue && prixValue > 0) {
                     const priceVariant = productData.price_variant || productData.variabilite_prix || productData.variation_prix;
-                    console.log(`[MesProduitsScreen] 💰 Prix produit ${product.id}:`, {
+                    console.log(`[MesProduitsScreen] \uD83D\uDCB0 Prix produit ${product.id}:`, {
                         product_price: product.product_price,
                         prixValue,
                         hasPriceVariant: !!priceVariant,
@@ -501,8 +507,8 @@ const MesProduitsScreen: React.FC = () => {
             });
             setProducts([]);
             Alert.alert(
-                'Erreur de chargement',
-                'Impossible de charger les produits. Veuillez réessayer.\n\n' + errorMessage
+                t('mesProducts.loadError'),
+                t('mesProducts.loadErrorMsg') + '\n\n' + errorMessage
             );
         } finally {
             setLoading(false);
@@ -526,7 +532,7 @@ const MesProduitsScreen: React.FC = () => {
         }
 
         const subscription = DeviceEventEmitter.addListener('product:created', () => {
-            console.log('[MesProduitsScreen] 📦 Événement product:created reçu, rechargement des produits');
+            console.log('[MesProduitsScreen] \uD83D\uDCE6 Événement product:created reçu, rechargement des produits');
             if (typeof loadProducts === 'function') {
                 loadProducts(true);
             }
@@ -577,8 +583,8 @@ const MesProduitsScreen: React.FC = () => {
         // ✅ Validation améliorée
         if (!serviceId || serviceId === 0) {
             Alert.alert(
-                'Service requis',
-                'Ce produit n\'est associé à aucun service. Veuillez vérifier la configuration du produit.',
+                t('mesProducts.serviceRequired'),
+                t('mesProducts.serviceRequiredMsg'),
                 [{ text: 'OK' }]
             );
             return;
@@ -586,8 +592,8 @@ const MesProduitsScreen: React.FC = () => {
 
         if (productIndex === undefined || productIndex === null || productIndex < 0) {
             Alert.alert(
-                'Index produit invalide',
-                'Impossible de déterminer l\'index du produit. Veuillez réessayer ou contacter le support.',
+                t('mesProducts.invalidIndex'),
+                t('mesProducts.invalidIndexMsg'),
                 [{ text: 'OK' }]
             );
             return;
@@ -618,7 +624,7 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     const handleVideoCreatorSuccess = useCallback(async (result: GeneratedVideoResponse) => {
-        console.log('[MesProduitsScreen] 🎬 Vidéo générée:', result);
+        console.log('[MesProduitsScreen] \uD83C\uDFAC Vidéo générée:', result);
 
         try {
             // ✅ CORRECTION 2025-12-01: Vérifier que media_id existe avant d'appeler trackMediaView
@@ -662,12 +668,12 @@ const MesProduitsScreen: React.FC = () => {
         const productIndex = result?.product_index;
 
         Alert.alert(
-            '🎬 Vidéo créée avec succès',
+            t('mesProducts.videoCreated'),
             message,
             [
                 { text: 'OK', style: 'default' },
                 ...(serviceId ? [{
-                    text: '👁️ Voir la vidéo',
+                    text: t('mesProducts.viewVideo'),
                     onPress: () => {
                         try {
                             (navigation as any).navigate('ServiceDetail', {
@@ -677,7 +683,7 @@ const MesProduitsScreen: React.FC = () => {
                             });
                         } catch (error) {
                             console.error('[MesProduitsScreen] Erreur navigation vers ServiceDetail:', error);
-                            Alert.alert('Information', 'La vidéo est disponible dans la galerie de votre produit.');
+                            Alert.alert('Info', t('mesProducts.videoInGallery'));
                         }
                     }
                 }] : [])
@@ -693,15 +699,15 @@ const MesProduitsScreen: React.FC = () => {
 
             if (productIdForToggle === null) {
                 Alert.alert(
-                    'Identifiant introuvable',
-                    'Impossible de déterminer l\'identifiant de ce produit. Veuillez réessayer après actualisation.'
+                    t('mesProducts.idNotFound'),
+                    t('mesProducts.cannotToggleId')
                 );
                 return;
             }
 
             // Si RÉACTIVATION (inactif → actif)
             if (newStatus) {
-                // 🚌 SPÉCIAL: Bloquer réactivation tickets de voyage expirés
+                // \uD83D\uDE8C SPÉCIAL: Bloquer réactivation tickets de voyage expirés
                 if (product.type === 'ticket_voyage' && product.dateDepart) {
                     try {
                         const [day, month, year] = product.dateDepart.split('/');
@@ -710,9 +716,9 @@ const MesProduitsScreen: React.FC = () => {
 
                         if (departureDate < now) {
                             Alert.alert(
-                                '⚠️ Réactivation impossible',
-                                `Ce ticket de voyage est expiré.\n\nDépart prévu: ${product.dateDepart}\nDate actuelle: ${now.toLocaleDateString('fr-FR')}\n\n🚫 Les tickets expirés ne peuvent pas être réactivés.\n\n✅ Créez un nouveau ticket avec une date future.`,
-                                [{ text: 'Compris' }]
+                                t('mesProducts.expiredTicket'),
+                                t('mesProducts.expiredTicketMsg'),
+                                [{ text: t('mesProducts.understood') }]
                             );
                             return;
                         }
@@ -727,7 +733,7 @@ const MesProduitsScreen: React.FC = () => {
                 const balanceResponse = await apiGet('/api/users/balance');
 
                 if (!balanceResponse.success || !balanceResponse.data) {
-                    Alert.alert('Erreur', 'Impossible de vérifier votre solde');
+                    Alert.alert(t('message.error'), t('mesProducts.cannotCheckBalance'));
                     return;
                 }
 
@@ -735,23 +741,23 @@ const MesProduitsScreen: React.FC = () => {
 
                 if (currentBalance < activationCost) {
                     Alert.alert(
-                        '💰 Solde insuffisant',
-                        `Coût de réactivation: ${activationCost.toLocaleString()} FCFA\nVotre solde: ${currentBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`,
+                        t('mesProducts.insufficientBalance'),
+                        t('mesProducts.insufficientBalanceMsg', { cost: activationCost.toLocaleString(), balance: currentBalance.toLocaleString() }),
                         [
-                            { text: 'Annuler', style: 'cancel' },
-                            { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
+                            { text: t('message.cancel'), style: 'cancel' },
+                            { text: t('mesProducts.recharge'), onPress: () => (navigation as any).navigate('RechargeTokens') },
                         ]
                     );
                     return;
                 }
 
                 Alert.alert(
-                    '✅ Réactiver le produit',
-                    `"${product.nom}"\n\n💰 Coût: ${activationCost.toLocaleString()} FCFA\nSolde après: ${(currentBalance - activationCost).toLocaleString()} FCFA`,
+                    t('mesProducts.reactivateProduct'),
+                    t('mesProducts.reactivateCostMsg', { name: product.nom, cost: activationCost.toLocaleString(), after: (currentBalance - activationCost).toLocaleString() }),
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('message.cancel'), style: 'cancel' },
                         {
-                            text: 'Confirmer',
+                            text: t('message.confirm'),
                             onPress: async () => {
                                 try {
                                     // Déduire le coût
@@ -761,7 +767,7 @@ const MesProduitsScreen: React.FC = () => {
                                     });
 
                                     if (!deductResponse.success) {
-                                        Alert.alert('Erreur', 'Impossible de déduire le montant');
+                                        Alert.alert(t('message.error'), t('mesProducts.cannotDeduct'));
                                         return;
                                     }
 
@@ -781,11 +787,11 @@ const MesProduitsScreen: React.FC = () => {
                                         );
 
                                         Alert.alert(
-                                            '✅ Produit réactivé',
-                                            `${activationCost.toLocaleString()} FCFA débités\nNouveau solde: ${(currentBalance - activationCost).toLocaleString()} FCFA`
+                                            t('mesProducts.productReactivated'),
+                                            t('mesProducts.deductedMsg', { cost: activationCost.toLocaleString(), after: (currentBalance - activationCost).toLocaleString() })
                                         );
                                     } else {
-                                        Alert.alert('Erreur', response.error || 'Impossible de réactiver');
+                                        Alert.alert(t('message.error'), response.error || t('mesProducts.cannotReactivate'));
                                     }
                                 } catch (error: any) {
                                     // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
@@ -800,9 +806,9 @@ const MesProduitsScreen: React.FC = () => {
                                     const finalErrorMessage = errorMessage;
                                     const is404 = errorMessage.includes('404') || errorMessage.includes('not found');
                                     Alert.alert(
-                                        '❌ Erreur',
+                                        t('message.error'),
                                         is404
-                                            ? 'Produit introuvable. Il a peut-être déjà été supprimé.'
+                                            ? t('mesProducts.productNotFound')
                                             : errorMessage
                                     );
                                     // ✅ CORRECTION: Recharger les produits en cas d'erreur pour restaurer l'état
@@ -815,12 +821,12 @@ const MesProduitsScreen: React.FC = () => {
             } else {
                 // DÉSACTIVATION (actif → inactif) = GRATUIT
                 Alert.alert(
-                    '⏸️ Désactiver le produit',
-                    `"${product.nom}"\n\n✅ Désactivation gratuite\n\nLe produit ne sera plus visible dans les recherches.`,
+                    t('mesProducts.deactivateProduct'),
+                    t('mesProducts.deactivateMsg', { name: product.nom }),
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('message.cancel'), style: 'cancel' },
                         {
-                            text: 'Désactiver',
+                            text: t('mesProducts.deactivate'),
                             onPress: async () => {
                                 try {
                                     const response = await apiPatch(`/api/products/${productIdForToggle}/toggle-status`, {
@@ -837,9 +843,9 @@ const MesProduitsScreen: React.FC = () => {
                                             })
                                         );
 
-                                        Alert.alert('✅ Succès', 'Produit désactivé avec succès');
+                                        Alert.alert(t('message.success'), t('mesProducts.productDeactivated'));
                                     } else {
-                                        Alert.alert('Erreur', response.error || 'Impossible de désactiver');
+                                        Alert.alert(t('message.error'), response.error || t('mesProducts.cannotDeactivate'));
                                     }
                                 } catch (error: any) {
                                     // ✅ CORRIGÉ: Afficher correctement l'erreur avec message et stack
@@ -854,9 +860,9 @@ const MesProduitsScreen: React.FC = () => {
                                     const finalErrorMessage = errorMessage;
                                     const is404 = errorMessage.includes('404') || errorMessage.includes('not found');
                                     Alert.alert(
-                                        '❌ Erreur',
+                                        t('message.error'),
                                         is404
-                                            ? 'Produit introuvable. Il a peut-être déjà été supprimé.'
+                                            ? t('mesProducts.productNotFound')
                                             : errorMessage
                                     );
                                     // ✅ CORRECTION: Recharger les produits en cas d'erreur pour restaurer l'état
@@ -883,12 +889,12 @@ const MesProduitsScreen: React.FC = () => {
     const handleDeleteProduct = async (product: ManagedProduct) => {
         // ✅ CORRECTION: Afficher la confirmation AVANT toute action
         Alert.alert(
-            '🗑️ Supprimer le produit',
-            `Êtes-vous sûr de vouloir supprimer "${product.nom || 'ce produit'}" ?\n\n⚠️ Cette action est irréversible et supprimera définitivement le produit.`,
+            t('mesProducts.deleteProduct'),
+            t('mesProducts.deleteProductConfirm', { name: product.nom || 'ce produit' }),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('message.cancel'), style: 'cancel' },
                 {
-                    text: 'Supprimer',
+                    text: t('message.delete'),
                     style: 'destructive',
                     onPress: async () => {
                         try {
@@ -906,8 +912,8 @@ const MesProduitsScreen: React.FC = () => {
                                     product: product
                                 });
                                 Alert.alert(
-                                    '❌ Identifiant introuvable',
-                                    'Impossible de supprimer ce produit car l\'identifiant du service est manquant.'
+                                    t('mesProducts.idNotFound'),
+                                    t('mesProducts.cannotDeleteServiceId')
                                 );
                                 return;
                             }
@@ -921,8 +927,8 @@ const MesProduitsScreen: React.FC = () => {
                                     product: product
                                 });
                                 Alert.alert(
-                                    '❌ Identifiant introuvable',
-                                    'Impossible de supprimer ce produit car l\'index du produit est invalide.'
+                                    t('mesProducts.idNotFound'),
+                                    t('mesProducts.cannotDeleteIndex')
                                 );
                                 return;
                             }
@@ -935,15 +941,15 @@ const MesProduitsScreen: React.FC = () => {
                                     product: product
                                 });
                                 Alert.alert(
-                                    '❌ Identifiant introuvable',
-                                    'Impossible de supprimer ce produit car l\'identifiant du service est invalide.'
+                                    t('mesProducts.idNotFound'),
+                                    t('mesProducts.cannotDeleteServiceInvalid')
                                 );
                                 return;
                             }
 
                             const productIndex = productIndexValue;
 
-                            console.log('[MesProduitsScreen] 🗑️ Suppression produit:', {
+                            console.log('[MesProduitsScreen] \uD83D\uDDD1️ Suppression produit:', {
                                 serviceId,
                                 productIndex,
                                 productName: product.nom
@@ -961,13 +967,13 @@ const MesProduitsScreen: React.FC = () => {
                                 // ✅ CORRECTION: Recharger les produits depuis le serveur pour synchronisation
                                 await loadProducts(true);
                                 // ✅ CORRECTION: Afficher le message de succès après rechargement
-                                Alert.alert('✅ Succès', 'Produit supprimé avec succès');
+                                Alert.alert(t('message.success'), t('mesProducts.productDeleted'));
                             } else {
                                 // ✅ CORRECTION: En cas d'erreur, recharger pour restaurer l'état
                                 await loadProducts(true);
                                 Alert.alert(
-                                    '❌ Erreur',
-                                    response.error || 'Impossible de supprimer le produit. Le produit a été restauré.'
+                                    t('message.error'),
+                                    response.error || t('mesProducts.cannotDeleteProduct')
                                 );
                             }
                         } catch (error: any) {
@@ -988,9 +994,9 @@ const MesProduitsScreen: React.FC = () => {
                             const finalErrorMessage = errorMessage;
                             const is404 = finalErrorMessage.includes('404') || finalErrorMessage.includes('not found');
                             Alert.alert(
-                                '❌ Erreur',
+                                t('message.error'),
                                 is404
-                                    ? 'Produit introuvable. Il a peut-être déjà été supprimé.'
+                                    ? t('mesProducts.productNotFound')
                                     : finalErrorMessage
                             );
                         }
@@ -1005,7 +1011,7 @@ const MesProduitsScreen: React.FC = () => {
         const productIdForUpdate = resolveNumericId(product.rawProductId ?? product.id);
 
         if (productIdForUpdate === null) {
-            Alert.alert('Identifiant introuvable', 'Impossible de modifier ce produit car son identifiant est manquant.');
+            Alert.alert(t('mesProducts.idNotFound'), t('mesProducts.cannotEditId'));
             return;
         }
 
@@ -1017,7 +1023,7 @@ const MesProduitsScreen: React.FC = () => {
             let loadedDocuments: string[] = [];
 
             if (typeof product.product_index === 'number' && product.serviceId) {
-                console.log('[MesProduitsScreen] 📥 Chargement des médias pour édition produit:', {
+                console.log('[MesProduitsScreen] \uD83D\uDCE5 Chargement des médias pour édition produit:', {
                     serviceId: product.serviceId,
                     productIndex: product.product_index
                 });
@@ -1092,7 +1098,7 @@ const MesProduitsScreen: React.FC = () => {
                 doc_base64: finalDocuments,
             };
 
-            console.log('[MesProduitsScreen] 📦 Prefill final pour édition:', {
+            console.log('[MesProduitsScreen] \uD83D\uDCE6 Prefill final pour édition:', {
                 nom_produit: prefill.nom_produit,
                 images_count: finalImages.length,
                 videos_count: finalVideos.length,
@@ -1110,7 +1116,7 @@ const MesProduitsScreen: React.FC = () => {
             } as never);
         } catch (error) {
             console.error('[MesProduitsScreen] ❌ Erreur lors de l\'édition du produit:', error);
-            Alert.alert('Erreur', 'Impossible de charger les données du produit pour l\'édition');
+            Alert.alert(t('message.error'), t('mesProducts.cannotLoadEdit'));
         }
     };
 
@@ -1137,6 +1143,7 @@ const MesProduitsScreen: React.FC = () => {
 
     // Partager un produit
     const handleShareProduct = async (product: ManagedProduct) => {
+        try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
         try {
             // ✅ NOUVEAU 2026-01-XX: Utiliser la fonction utilitaire pour générer le message de partage uniforme
             // Extraire la localisation si disponible (depuis les données brutes du produit)
@@ -1177,7 +1184,7 @@ const MesProduitsScreen: React.FC = () => {
             }
         } catch (error) {
             console.error('Erreur partage produit:', error);
-            Alert.alert('Erreur', 'Impossible de partager ce produit');
+            Alert.alert(t('message.error'), t('mesProducts.cannotShare'));
         }
     };
 
@@ -1191,7 +1198,7 @@ const MesProduitsScreen: React.FC = () => {
             let loadedDocuments: string[] = [];
 
             if (typeof product.product_index === 'number' && product.serviceId) {
-                console.log('[MesProduitsScreen] 📥 Chargement des médias pour duplication produit:', {
+                console.log('[MesProduitsScreen] \uD83D\uDCE5 Chargement des médias pour duplication produit:', {
                     serviceId: product.serviceId,
                     productIndex: product.product_index
                 });
@@ -1265,7 +1272,7 @@ const MesProduitsScreen: React.FC = () => {
                 doc_base64: finalDocuments,
             };
 
-            console.log('[MesProduitsScreen] 📦 Prefill final pour duplication:', {
+            console.log('[MesProduitsScreen] \uD83D\uDCE6 Prefill final pour duplication:', {
                 nom_produit: prefill.nom_produit,
                 images_count: finalImages.length,
                 videos_count: finalVideos.length,
@@ -1281,19 +1288,19 @@ const MesProduitsScreen: React.FC = () => {
             } as never);
         } catch (error) {
             console.error('[MesProduitsScreen] ❌ Erreur lors de la duplication du produit:', error);
-            Alert.alert('Erreur', 'Impossible de charger les données du produit pour la duplication');
+            Alert.alert(t('message.error'), t('mesProducts.cannotLoadDuplicate'));
         }
     };
 
     // Promouvoir un produit
     const handlePromoteProduct = (product: ManagedProduct) => {
         Alert.alert(
-            '🎉 Promouvoir le produit',
-            `Booster "${product.nom}" pour augmenter sa visibilité ?\n\n✨ Votre produit apparaîtra en tête des résultats de recherche.\n\n💰 Coût: À définir`,
+            t('mesProducts.promoteProduct'),
+            t('mesProducts.promoteMsg', { name: product.nom }),
             [
-                { text: 'Annuler', style: 'cancel' },
+                { text: t('message.cancel'), style: 'cancel' },
                 {
-                    text: 'Promouvoir ce produit',
+                    text: t('mesProducts.promote'),
                     onPress: () => {
                         navigation.navigate('CreatePublicite' as never, {
                             productId: product.id,
@@ -1344,12 +1351,12 @@ const MesProduitsScreen: React.FC = () => {
 
             if (!servicesResponse.success || !servicesData || servicesData.length === 0) {
                 Alert.alert(
-                    'Aucun service',
-                    'Vous devez d\'abord créer un service avant de pouvoir ajouter des produits.\n\nVoulez-vous créer un service maintenant ?',
+                    t('mesProducts.noService'),
+                    t('mesProducts.noServiceCreateMsg'),
                     [
-                        { text: 'Annuler', style: 'cancel' },
+                        { text: t('message.cancel'), style: 'cancel' },
                         {
-                            text: 'Créer un service',
+                            text: t('mesProducts.createService'),
                             onPress: async () => {
                                 try {
                                     // ✅ CORRECTION: Générer les suggestions IA avant de naviguer (comme dans HomeScreen)
@@ -1420,7 +1427,7 @@ const MesProduitsScreen: React.FC = () => {
                     } as never);
                 } else {
                     console.error('[MesProduitsScreen] handleCreateNewProduct - Service ID introuvable:', service);
-                    Alert.alert('Erreur', 'Impossible de déterminer l\'ID du service');
+                    Alert.alert(t('message.error'), t('mesProducts.cannotFindServiceId'));
                 }
             } else {
                 // Plusieurs services : proposer de choisir
@@ -1443,11 +1450,11 @@ const MesProduitsScreen: React.FC = () => {
                     });
 
                 Alert.alert(
-                    '📦 Choisir un service',
-                    'Dans quel service voulez-vous ajouter un nouveau produit ?',
+                    t('mesProducts.chooseService'),
+                    t('mesProducts.chooseServiceMsg'),
                     [
                         ...serviceOptions.slice(0, 5), // Limiter à 5 services pour éviter un menu trop long
-                        { text: 'Annuler', style: 'cancel' }
+                        { text: t('message.cancel'), style: 'cancel' }
                     ]
                 );
             }
@@ -1460,7 +1467,7 @@ const MesProduitsScreen: React.FC = () => {
                 stack: errorStack,
                 error: error
             });
-            Alert.alert('Erreur', 'Impossible de charger vos services');
+            Alert.alert(t('message.error'), t('mesProducts.cannotLoadServices'));
         }
     };
 
@@ -1472,8 +1479,8 @@ const MesProduitsScreen: React.FC = () => {
     const handleManageMembers = () => {
         if (!services || services.length === 0) {
             Alert.alert(
-                'Aucun service',
-                'Vous n\'avez pas encore de service pour gérer des membres. Créez un service pour définir les droits d\'accès.'
+                t('mesProducts.noService'),
+                t('mesProducts.noServiceMembers')
             );
             return;
         }
@@ -1490,8 +1497,8 @@ const MesProduitsScreen: React.FC = () => {
         // ✅ CORRECTION: Vérifier que serviceId est valide
         if (!serviceId) {
             Alert.alert(
-                'Erreur',
-                'Impossible de gérer les membres : service ID manquant.'
+                t('message.error'),
+                t('mesProducts.cannotManageMembers')
             );
             return;
         }
@@ -1516,8 +1523,8 @@ const MesProduitsScreen: React.FC = () => {
 
             if (!servicesResponse.success || !servicesData || servicesData.length === 0) {
                 Alert.alert(
-                    'Aucun service',
-                    'Vous n\'avez pas encore de service à éditer.',
+                    t('mesProducts.noService'),
+                    t('mesProducts.noServiceEdit'),
                     [{ text: 'OK' }]
                 );
                 return;
@@ -1526,7 +1533,7 @@ const MesProduitsScreen: React.FC = () => {
             const service = servicesData[0]; // Premier service
             const serviceData = service.data || {};
 
-            console.log('[MesProduitsScreen] 📝 Édition service', service.id);
+            console.log('[MesProduitsScreen] \uD83D\uDCDD Édition service', service.id);
 
             // Naviguer vers le formulaire en mode edit_service_info
             (navigation as any).navigate('FormulaireYukpoIntelligent', {
@@ -1550,7 +1557,7 @@ const MesProduitsScreen: React.FC = () => {
                 stack: errorStack,
                 error: error
             });
-            Alert.alert('Erreur', 'Impossible de charger les données du service');
+            Alert.alert(t('message.error'), t('mesProducts.cannotLoadServiceData'));
         }
     };
 
@@ -1558,7 +1565,7 @@ const MesProduitsScreen: React.FC = () => {
     const handleViewStats = (product: ManagedProduct) => {
         const numericId = resolveNumericId(product.rawProductId ?? product.id);
         if (numericId === null) {
-            Alert.alert('Erreur', 'Impossible de résoudre l\'identifiant du produit');
+            Alert.alert(t('message.error'), t('mesProducts.cannotResolveId'));
             return;
         }
         navigation.navigate('ProductStats' as never, {
@@ -2062,7 +2069,7 @@ const MesProduitsScreen: React.FC = () => {
                                 {allUrls.length > 1 && (
                                     <View style={{ position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
                                         <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>
-                                            {imageUrls.length > 0 ? `📷 ${imageUrls.length}` : ''}{imageUrls.length > 0 && videoUrls.length > 0 ? '  ' : ''}{videoUrls.length > 0 ? `🎬 ${videoUrls.length}` : ''}
+                                            {imageUrls.length > 0 ? `\uD83D\uDCF7 ${imageUrls.length}` : ''}{imageUrls.length > 0 && videoUrls.length > 0 ? '  ' : ''}{videoUrls.length > 0 ? `\uD83C\uDFAC ${videoUrls.length}` : ''}
                                         </Text>
                                     </View>
                                 )}
@@ -2157,7 +2164,7 @@ const MesProduitsScreen: React.FC = () => {
                         <Text style={styles.statItemText}>{viewsLabel}</Text>
                     </View>
                     <View style={styles.statItem}>
-                        <SafeIcon name="share-2" size={14} color="#6B7280" />
+                        <SafeIcon name="share" size={14} color="#6B7280" />
                         <Text style={styles.statItemText}>{sharesLabel}</Text>
                     </View>
                     <View style={styles.statItem}>
@@ -2198,24 +2205,29 @@ const MesProduitsScreen: React.FC = () => {
                         style={styles.contextMenuRow}
                         onPress={() => handleShareProduct(product)}
                     >
-                        <SafeIcon name="share-2" size={15} color="#3B82F6" />
+                        <SafeIcon name="share" size={15} color="#3B82F6" />
                         <Text style={[styles.contextMenuLabel, { color: '#3B82F6' }]}>Partager</Text>
                     </TouchableOpacity>
+                    {/* ✅ NOUVEAU 2026-03-14: Partage interne produit */}
+                    <InternalShareButton
+                        payload={{
+                            contentType: 'product',
+                            serviceId: product.serviceId,
+                            productIndex: product.product_index ?? product.id,
+                            title: product.nom || 'Produit',
+                            description: product.description || '',
+                        }}
+                        iconSize={15}
+                        iconColor="#8B5CF6"
+                        showLabel
+                        label="Envoyer"
+                        style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}
+                    />
                     <TouchableOpacity
                         style={styles.contextMenuRow}
                         onPress={() => {
-                            Alert.alert(
-                                'Plus d\'actions',
-                                `Actions pour "${product.nom || 'ce produit'}"`,
-                                [
-                                    { text: '📋 Dupliquer', onPress: () => handleDuplicateProduct(product) },
-                                    { text: '📊 Statistiques', onPress: () => handleViewStats(product) },
-                                    { text: '📢 Promouvoir', onPress: () => handlePromoteProduct(product) },
-                                    { text: '🚚 Livraison', onPress: () => handleOpenDeliveryConfig(product) },
-                                    { text: '🗑️ Supprimer', style: 'destructive', onPress: () => handleDeleteProduct(product) },
-                                    { text: 'Annuler', style: 'cancel' },
-                                ]
-                            );
+                            setProductActionsTarget(product);
+                            setShowProductActionsModal(true);
                         }}
                     >
                         <SafeIcon name="more-vertical" size={15} color="#6B7280" />
@@ -2234,8 +2246,8 @@ const MesProduitsScreen: React.FC = () => {
 
         if (!serviceId) {
             Alert.alert(
-                'Erreur',
-                'Impossible de configurer la livraison : service ID manquant pour ce produit.'
+                t('message.error'),
+                t('mesProducts.cannotDeliveryConfig')
             );
             return;
         }
@@ -2263,7 +2275,7 @@ const MesProduitsScreen: React.FC = () => {
                     setSelectedServiceForGallery(services[0]);
                     setShowMediaGallery(true);
                 } else {
-                    Alert.alert('Aucun service', 'Vous devez d\'abord créer un service pour accéder à la galerie médias.');
+                    Alert.alert(t('mesProducts.noService'), t('mesProducts.noServiceGallery'));
                 }
             },
         },
@@ -2281,7 +2293,7 @@ const MesProduitsScreen: React.FC = () => {
             onPress: () => {
                 setShowMenuModal(false);
                 if (!products || products.length === 0) {
-                    Alert.alert('Aucun produit', 'Vous devez d\'abord créer des produits avant de créer un flash promo.');
+                    Alert.alert(t('mesProducts.noService'), t('mesProducts.noProductFlash'));
                     return;
                 }
                 const firstProduct = products.find(p => p.is_active) || products[0];
@@ -2291,7 +2303,7 @@ const MesProduitsScreen: React.FC = () => {
                         productIndex: firstProduct.product_index ?? 0,
                     });
                 } else {
-                    Alert.alert('Erreur', 'Impossible de créer un flash promo : service ID manquant.');
+                    Alert.alert(t('message.error'), t('mesProducts.cannotFlashPromo'));
                 }
             },
         },
@@ -2589,6 +2601,121 @@ const MesProduitsScreen: React.FC = () => {
                 </TouchableOpacity>
             </Modal>
 
+            {/* ✅ FIX: Modal actions produit (remplace Alert.alert qui bloquait sur Android avec >3 boutons) */}
+            <Modal
+                visible={showProductActionsModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowProductActionsModal(false)}
+            >
+                <TouchableOpacity
+                    style={styles.productActionsOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowProductActionsModal(false)}
+                >
+                    <View style={styles.productActionsSheet} onStartShouldSetResponder={() => true}>
+                        {/* Handle bar */}
+                        <View style={styles.productActionsHandle} />
+
+                        <Text style={styles.productActionsTitle}>
+                            {productActionsTarget?.nom || 'Produit'}
+                        </Text>
+
+                        {/* Actions */}
+                        <TouchableOpacity
+                            style={styles.productActionRow}
+                            onPress={() => {
+                                setShowProductActionsModal(false);
+                                if (productActionsTarget) handlePromoteProduct(productActionsTarget);
+                            }}
+                        >
+                            <View style={[styles.productActionIconBg, { backgroundColor: '#FEF3C7' }]}>
+                                <SafeIcon name="trending-up" size={18} color="#D97706" />
+                            </View>
+                            <View style={styles.productActionTextCol}>
+                                <Text style={styles.productActionLabel}>Promouvoir</Text>
+                                <Text style={styles.productActionHint}>Booster la visibilité</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.productActionRow}
+                            onPress={() => {
+                                setShowProductActionsModal(false);
+                                if (productActionsTarget) handleViewStats(productActionsTarget);
+                            }}
+                        >
+                            <View style={[styles.productActionIconBg, { backgroundColor: '#EEF2FF' }]}>
+                                <SafeIcon name="bar-chart-2" size={18} color="#6366F1" />
+                            </View>
+                            <View style={styles.productActionTextCol}>
+                                <Text style={styles.productActionLabel}>Statistiques</Text>
+                                <Text style={styles.productActionHint}>Vues, clics, conversions</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.productActionRow}
+                            onPress={() => {
+                                setShowProductActionsModal(false);
+                                if (productActionsTarget) handleDuplicateProduct(productActionsTarget);
+                            }}
+                        >
+                            <View style={[styles.productActionIconBg, { backgroundColor: '#F0FDF4' }]}>
+                                <SafeIcon name="copy" size={18} color="#16A34A" />
+                            </View>
+                            <View style={styles.productActionTextCol}>
+                                <Text style={styles.productActionLabel}>Dupliquer</Text>
+                                <Text style={styles.productActionHint}>Créer une copie</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.productActionRow}
+                            onPress={() => {
+                                setShowProductActionsModal(false);
+                                if (productActionsTarget) handleOpenDeliveryConfig(productActionsTarget);
+                            }}
+                        >
+                            <View style={[styles.productActionIconBg, { backgroundColor: '#EFF6FF' }]}>
+                                <SafeIcon name="truck" size={18} color="#3B82F6" />
+                            </View>
+                            <View style={styles.productActionTextCol}>
+                                <Text style={styles.productActionLabel}>Livraison</Text>
+                                <Text style={styles.productActionHint}>Configurer la livraison</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Séparateur avant action destructive */}
+                        <View style={styles.productActionSeparator} />
+
+                        <TouchableOpacity
+                            style={styles.productActionRow}
+                            onPress={() => {
+                                setShowProductActionsModal(false);
+                                if (productActionsTarget) handleDeleteProduct(productActionsTarget);
+                            }}
+                        >
+                            <View style={[styles.productActionIconBg, { backgroundColor: '#FEF2F2' }]}>
+                                <SafeIcon name="trash-2" size={18} color="#DC2626" />
+                            </View>
+                            <View style={styles.productActionTextCol}>
+                                <Text style={[styles.productActionLabel, { color: '#DC2626' }]}>Supprimer</Text>
+                                <Text style={styles.productActionHint}>Supprimer définitivement</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Bouton Annuler */}
+                        <TouchableOpacity
+                            style={styles.productActionCancel}
+                            onPress={() => setShowProductActionsModal(false)}
+                        >
+                            <Text style={styles.productActionCancelText}>Annuler</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
             {/* ✅ Modal galerie médias des produits */}
             {selectedServiceForGallery && (
                 <ServiceMediaGallery
@@ -2749,6 +2876,77 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: modernColors.text,
         flex: 1,
+    },
+    // ✅ FIX: Styles pour le modal actions produit (remplace Alert.alert)
+    productActionsOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        justifyContent: 'flex-end',
+    },
+    productActionsSheet: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+        paddingHorizontal: 20,
+    },
+    productActionsHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#D1D5DB',
+        alignSelf: 'center',
+        marginTop: 12,
+        marginBottom: 16,
+    },
+    productActionsTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#1F2937',
+        marginBottom: 16,
+    },
+    productActionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 13,
+        gap: 14,
+    },
+    productActionIconBg: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    productActionTextCol: {
+        flex: 1,
+    },
+    productActionLabel: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#1F2937',
+    },
+    productActionHint: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        marginTop: 1,
+    },
+    productActionSeparator: {
+        height: 1,
+        backgroundColor: '#F3F4F6',
+        marginVertical: 4,
+    },
+    productActionCancel: {
+        marginTop: 12,
+        paddingVertical: 14,
+        alignItems: 'center',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 14,
+    },
+    productActionCancelText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#6B7280',
     },
     filtersContainer: {
         backgroundColor: '#FFFFFF',
