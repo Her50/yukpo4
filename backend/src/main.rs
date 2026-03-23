@@ -138,6 +138,8 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                 (StatusCode::OK, "OK")
             }),
         )
+        // Si Cloud Run retombe sur une sonde HTTP (path /), le fallback renvoyait 503 — la révision échouait.
+        .route("/", get(|| async { (StatusCode::OK, "OK") }))
         .fallback(move |req: Request| {
             let holder = holder_for_fallback.clone();
             async move {

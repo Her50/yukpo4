@@ -27,10 +27,12 @@ echo "🔍 [WRAPPER] Env: DATABASE_URL=${DATABASE_URL:+OK(${#DATABASE_URL}c)} JW
 echo "🔍 [WRAPPER] Binaire: $(ls -lh /app/yukpomnang_backend 2>&1)"
 echo "🔍 [WRAPPER] PORT=$PORT HOST=$HOST"
 
-# ── Diagnostic libs ────────────────────────────────────────────────
-echo "🔍 [WRAPPER] ldd (toutes les libs):"
-ldd /app/yukpomnang_backend 2>&1 || true
-echo "🔍 [WRAPPER] GLIBC: $(ldd --version 2>&1 | head -1 || true)"
+# ── Diagnostic libs (optionnel : ldd peut ralentir le cold start) ───
+if [ "${WRAPPER_DEBUG:-}" = "1" ]; then
+  echo "🔍 [WRAPPER] ldd (toutes les libs):"
+  ldd /app/yukpomnang_backend 2>&1 || true
+  echo "🔍 [WRAPPER] GLIBC: $(ldd --version 2>&1 | head -1 || true)"
+fi
 
 # ── Pre-flight: vérifier que le binaire CHARGE correctement ────────
 echo "🔍 [WRAPPER] Pre-flight: /app/yukpomnang_backend --version"
