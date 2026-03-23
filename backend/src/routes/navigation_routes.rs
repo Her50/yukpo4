@@ -1014,18 +1014,104 @@ async fn get_points_of_interest(
         }
     }
 
-    // ✅ FIX 2026-03-04: Trier par distance de détour (les plus proches du trajet en premier)
-    all_pois.sort_by(|a, b| {
-        a.distance_from_route_meters
+    // ✅ FIX 2026-03-23: Filtrage amélioré pour pertinence POI
+    // Élimine les POI de faible qualité, sans nom, ou trop génériques
+    let filtered_pois: Vec<PointOfInterest> = all_pois
+        .into_iter()
+        .filter(|poi| {
+            // 1. Le nom doit être significatif (pas "Unnamed Place" ou trop court)
+            let name_clean = poi.name.trim();
+            if name_clean.len() < 2 {
+                return false;
+            }
+
+            // 2. Éliminer les noms trop génériques qui ne sont pas pertinents
+            let generic_names = [
+                "unnamed",
+                "unknown",
+                "place",
+                "location",
+                "point",
+                "spot",
+                "area",
+                "établissement",
+                "lieu",
+                "endroit",
+                "commerce",
+                "service",
+                "magasin",
+                "store",
+                "shop",
+                "business",
+                "company",
+            ];
+            let name_lower = name_clean.to_lowercase();
+            if generic_names.iter().any(|generic| name_lower.contains(generic))
+                && name_clean.len() < 6
+            {
+                return false;
+            }
+
+            // 3. Filtrer par rating minimum pour certains types (restaurants, hôtels, etc.)
+            let requires_min_rating =
+                matches!(poi.poi_type.as_str(), "restaurant" | "hotel" | "lodging");
+            if requires_min_rating {
+                if let Some(rating) = poi.rating {
+                    if rating < 3.0 {
+                        return false;
+                    }
+                } else {
+                    // Pas de rating = probablement pas pertinent pour ces types
+                    return false;
+                }
+            }
+
+            // 4. Pour les types commerciaux, exiger un minimum d'avis ou une bonne note
+            let commercial_types = [
+                "restaurant",
+                "hotel",
+                "lodging",
+                "pharmacy",
+                "bakery",
+                "supermarket",
+            ];
+            if commercial_types.contains(&poi.poi_type.as_str()) {
+                let has_sufficient_reviews = poi.total_ratings.unwrap_or(0) >= 3;
+                let has_good_rating = poi.rating.unwrap_or(0.0) >= 3.5;
+                if !has_sufficient_reviews && !has_good_rating {
+                    return false;
+                }
+            }
+
+            true
+        })
+        .collect();
+
+    // ✅ FIX 2026-03-04: Trier par pertinence = distance de détour + qualité
+    let mut sorted_pois = filtered_pois;
+    sorted_pois.sort_by(|a, b| {
+        // Premier critère: distance du trajet (plus petit = meilleur)
+        let distance_cmp = a
+            .distance_from_route_meters
             .partial_cmp(&b.distance_from_route_meters)
-            .unwrap_or(std::cmp::Ordering::Equal)
+            .unwrap_or(std::cmp::Ordering::Equal);
+
+        if distance_cmp != std::cmp::Ordering::Equal {
+            return distance_cmp;
+        }
+
+        // Deuxième critère: rating (plus grand = meilleur) pour départager
+        let rating_a = a.rating.unwrap_or(0.0);
+        let rating_b = b.rating.unwrap_or(0.0);
+        rating_b.partial_cmp(&rating_a).unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    all_pois.truncate(120);
+    // Limiter le nombre final pour éviter la surcharge
+    sorted_pois.truncate(120);
 
     // ✅ DEBUG: Log POI names to verify structure
-    log::info!("[POI] Returning {} POIs", all_pois.len());
-    for (idx, poi) in all_pois.iter().enumerate().take(5) {
+    log::info!("[POI] Returning {} POIs after filtering", sorted_pois.len());
+    for (idx, poi) in sorted_pois.iter().enumerate().take(5) {
         log::info!(
             "[POI] #{}: name='{}', type={}, distance={:.0}m",
             idx + 1,
@@ -1035,7 +1121,7 @@ async fn get_points_of_interest(
         );
     }
 
-    Ok(Json(PointsOfInterestResponse { pois: all_pois }))
+    Ok(Json(PointsOfInterestResponse { pois: sorted_pois }))
 }
 
 /// Enregistrer un trajet pour les statistiques
