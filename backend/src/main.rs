@@ -1,6 +1,5 @@
 // Mise à jour: 2026-02-14 - Configuration GCP complète (Artifact Registry, Cloud Run, permissions)
 // Note: Build trigger test - 2026-03-12
-use std::convert::Infallible;
 use std::error::Error;
 use std::{env, fs, net::SocketAddr, path::Path, sync::Arc};
 
@@ -9,11 +8,10 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, Router};
 use dotenvy::dotenv;
-use tower::service_fn;
-use tower::Service;
 use redis::Client as RedisClient;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgSslMode};
 use tokio::sync::Mutex;
+use tower::Service;
 
 use axum::serve;
 use yukpomnang_backend::{
@@ -140,20 +138,18 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
                 (StatusCode::OK, "OK")
             }),
         )
-        .fallback_service(service_fn(move |req: Request| {
+        .fallback(move |req: Request| {
             let holder = holder_for_fallback.clone();
             async move {
                 let guard = holder.read().await;
                 if let Some(full) = guard.as_ref() {
                     let mut r = full.clone();
-                    Service::call(&mut r, req).await
+                    Service::call(&mut r, req).await.unwrap_or_else(|e| match e {})
                 } else {
-                    Ok::<_, Infallible>(
-                        (StatusCode::SERVICE_UNAVAILABLE, "starting").into_response(),
-                    )
+                    (StatusCode::SERVICE_UNAVAILABLE, "starting").into_response()
                 }
             }
-        }));
+        });
 
     eprintln!("[MAIN] 🔍 Tentative de bind sur {}:{}...", "0.0.0.0", port);
 
@@ -194,11 +190,26 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
 
     let listener = listener_opt.expect("listener bound");
 
-    eprintln!("[MAIN] 🚀 axum::serve (shell) sur :{} — accept immédiat", port);
+    eprintln!(
+        "[MAIN] 🚀 axum::serve (shell) sur :{} — accept immédiat",
+        port
+    );
     let serve_task = tokio::spawn(async move { serve(listener, shell_router).await });
     tokio::task::yield_now().await;
 
-    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+    // Vérifier que le serve task n'a pas crashé prématurément
+    if serve_task.is_finished() {
+        eprintln!("[MAIN] ❌ ERREUR CRITIQUE: Le serve task s'est terminé en <500ms!");
+        match serve_task.await {
+            Ok(Ok(())) => eprintln!("[MAIN]   → serve a retourné Ok(()) (inattendu)"),
+            Ok(Err(e)) => eprintln!("[MAIN]   → serve a retourné Err: {}", e),
+            Err(e) => eprintln!("[MAIN]   → serve task paniquée: {}", e),
+        }
+        return Err("serve task terminated prematurely".into());
+    }
+    eprintln!("[MAIN] ✅ serve task toujours actif après 500ms");
     let test_client = reqwest::Client::new();
     let test_url = format!("http://localhost:{}/health", port);
     match test_client
