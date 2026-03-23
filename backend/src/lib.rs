@@ -216,7 +216,7 @@ async fn fournitures_axum_handler(
         serde_json::json!({"message": "Service temporairement désactivé"}),
     ))
 }
-pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
+pub fn build_app(state: Arc<AppState>) -> Router {
     // Auth routes (public, pas de JWT)
     let auth = auth_routes(state.clone());
     // User routes (protégées par JWT dans le module)

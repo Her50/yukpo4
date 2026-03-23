@@ -352,7 +352,7 @@ jobs:
         run: |
           # Sonde TCP explicite (écrase toute sonde HTTP héritée). timeoutSeconds < periodSeconds (requis Cloud Run).
           STARTUP_PROBE='timeoutSeconds=4,periodSeconds=5,initialDelaySeconds=5,failureThreshold=120,tcpSocket.port=8080'
-          echo "🔖 workflow=gcp-deploy.yml rev=2026-03-23-v4-graceful-health tcp-probe SHA=${{ github.sha }}"
+          echo "🔖 workflow=gcp-deploy.yml rev=2026-03-23-v5-single-listener-no-rebind SHA=${{ github.sha }}"
           echo "Déploiement vers Cloud Run..."
           
           # Utiliser la variable d'environnement définie dans l'étape précédente

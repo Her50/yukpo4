@@ -660,7 +660,7 @@ jobs:
         run: |
           echo "🔄 Deploying to Cloud Run..."
           STARTUP_PROBE='timeoutSeconds=4,periodSeconds=5,initialDelaySeconds=5,failureThreshold=120,tcpSocket.port=8080'
-          echo "🔖 workflow=docker-build-optimized.yml rev=v4-tcp-probe SHA=${{ github.sha }}"
+          echo "🔖 workflow=docker-build-optimized.yml rev=v5-single-listener-no-rebind SHA=${{ github.sha }}"
           
           # ✅ CORRIGÉ: Utiliser --update-env-vars au lieu de --env-vars-file pour ne pas écraser
           # NOTE: --set-cloudsql-instances dans le deploy remplace atomiquement (pas besoin de clear séparé)

@@ -1,9 +1,16 @@
 // Mise à jour: 2026-02-14 - Configuration GCP complète (Artifact Registry, Cloud Run, permissions)
 // Note: Build trigger test - 2026-03-12
+use std::convert::Infallible;
 use std::error::Error;
 use std::{env, fs, net::SocketAddr, path::Path, sync::Arc};
 
+use axum::extract::Request;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::routing::{get, Router};
 use dotenvy::dotenv;
+use tower::service_fn;
+use tower::Service;
 use redis::Client as RedisClient;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgSslMode};
 use tokio::sync::Mutex;
@@ -107,129 +114,109 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .unwrap_or(8080);
+    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     eprintln!("[MAIN] 🔍 Port configuré: {}", port);
 
-    // ✅ CORRIGÉ 2026-02-28: TOUJOURS démarrer le serveur minimal (Cloud Run ou pas)
-    // Rust bind le port 8080 immédiatement avec /health, la startup probe est satisfaite
-    // Le serveur complet remplace le minimal une fois l'init terminée
-    let health_server_handle = {
-        eprintln!("[MAIN] 🚀 Démarrage serveur HTTP minimal pour health check...");
+    // Un seul TcpListener pour toute la vie du processus : /health répond tout de suite ;
+    // l'API complète est injectée après init (pas de rebind → pas de TIME_WAIT / crash Cloud Run).
+    // build_app() finit par .with_state → Router (alias Router<()>) : seul ce type impl Service<Request> dans axum 0.8.
+    let app_router_holder: Arc<tokio::sync::RwLock<Option<Router>>> =
+        Arc::new(tokio::sync::RwLock::new(None));
+    let holder_for_fallback = app_router_holder.clone();
 
-        // Créer un serveur minimal avec juste /health
-        use axum::{http::StatusCode, routing::get, Router};
-        let health_app = Router::new()
-            .route(
-                "/health",
-                get(|| async {
-                    eprintln!("[HEALTH] ✅ Requête /health reçue");
-                    (StatusCode::OK, "OK")
-                }),
-            )
-            .route(
-                "/healthz",
-                get(|| async {
-                    eprintln!("[HEALTH] ✅ Requête /healthz reçue");
-                    (StatusCode::OK, "OK")
-                }),
-            );
+    let shell_router = Router::new()
+        .route(
+            "/health",
+            get(|| async {
+                eprintln!("[HEALTH] ✅ Requête /health reçue");
+                (StatusCode::OK, "OK")
+            }),
+        )
+        .route(
+            "/healthz",
+            get(|| async {
+                eprintln!("[HEALTH] ✅ Requête /healthz reçue");
+                (StatusCode::OK, "OK")
+            }),
+        )
+        .fallback_service(service_fn(move |req: Request| {
+            let holder = holder_for_fallback.clone();
+            async move {
+                let guard = holder.read().await;
+                if let Some(full) = guard.as_ref() {
+                    let mut r = full.clone();
+                    Service::call(&mut r, req).await
+                } else {
+                    Ok::<_, Infallible>(
+                        (StatusCode::SERVICE_UNAVAILABLE, "starting").into_response(),
+                    )
+                }
+            }
+        }));
 
-        eprintln!("[MAIN] 🔍 Tentative de bind sur {}:{}...", "0.0.0.0", port);
+    eprintln!("[MAIN] 🔍 Tentative de bind sur {}:{}...", "0.0.0.0", port);
 
-        // ✅ CORRIGÉ: Réessayer plusieurs fois si le port est occupé (serveur Python)
-        let mut health_listener = None;
-        let mut retries = 0;
-        const MAX_RETRIES: u32 = 10;
-
-        while health_listener.is_none() && retries < MAX_RETRIES {
-            match tokio::net::TcpListener::bind(addr).await {
-                Ok(listener) => {
+    let mut listener_opt = None;
+    let mut retries = 0u32;
+    const MAX_BIND_RETRIES: u32 = 10;
+    while listener_opt.is_none() && retries < MAX_BIND_RETRIES {
+        match tokio::net::TcpListener::bind(addr).await {
+            Ok(listener) => {
+                eprintln!(
+                    "[MAIN] ✅ Bind réussi sur port {} (tentative {})",
+                    port,
+                    retries + 1
+                );
+                listener_opt = Some(listener);
+            }
+            Err(e) => {
+                if retries < MAX_BIND_RETRIES - 1 {
                     eprintln!(
-                        "[MAIN] ✅ Serveur HTTP minimal bind réussi sur port {} (tentative {})",
+                        "[MAIN] ⏳ Port {} occupé (tentative {}), réessai dans 1s...",
                         port,
                         retries + 1
                     );
-                    health_listener = Some(listener);
-                }
-                Err(e) => {
-                    if retries < MAX_RETRIES - 1 {
-                        eprintln!(
-                            "[MAIN] ⏳ Port {} occupé (tentative {}), réessai dans 1s...",
-                            port,
-                            retries + 1
-                        );
-                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                        retries += 1;
-                    } else {
-                        eprintln!(
-                            "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind serveur minimal sur {}:{} après {} tentatives - {}",
-                            "0.0.0.0", port, MAX_RETRIES, e
-                        );
-                        return Err(format!(
-                            "Impossible de bind sur {}:{} - {}",
-                            "0.0.0.0", port, e
-                        )
-                        .into());
-                    }
-                }
-            }
-        }
-
-        let health_listener = health_listener.expect("health_listener should be set");
-
-        // Canal pour arrêt propre (abort() laissait le port en TIME_WAIT → échecs de rebind → crash du conteneur)
-        let (health_shutdown_tx, health_shutdown_rx) = tokio::sync::oneshot::channel::<()>();
-
-        // Lancer le serveur minimal en arrière-plan
-        eprintln!("[MAIN] 🚀 Lancement du serveur HTTP minimal en arrière-plan...");
-
-        let handle = tokio::spawn(async move {
-            eprintln!("[HEALTH_SERVER] 🚀 Serveur minimal démarré, en attente de requêtes...");
-
-            let serve_result = axum::serve(health_listener, health_app)
-                .with_graceful_shutdown(async {
-                    let _ = health_shutdown_rx.await;
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    retries += 1;
+                } else {
                     eprintln!(
-                        "[HEALTH_SERVER] 🛑 Arrêt gracieux demandé, fermeture du listener..."
+                        "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} après {} tentatives - {}",
+                        "0.0.0.0", port, MAX_BIND_RETRIES, e
                     );
-                })
-                .await;
-
-            if let Err(e) = serve_result {
-                eprintln!("[HEALTH_SERVER] ❌ Erreur serveur minimal: {}", e);
-            } else {
-                eprintln!("[HEALTH_SERVER] ✅ Serveur minimal arrêté proprement");
-            }
-        });
-
-        // Attendre que le serveur soit vraiment prêt (augmenté pour Cloud Run)
-        tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
-        eprintln!(
-            "[MAIN] ✅ Serveur HTTP minimal lancé et prêt, continuant les initialisations..."
-        );
-
-        // Vérifier que le serveur répond vraiment
-        let test_client = reqwest::Client::new();
-        let test_url = format!("http://localhost:{}/health", port);
-        match test_client
-            .get(&test_url)
-            .timeout(std::time::Duration::from_secs(2))
-            .send()
-            .await
-        {
-            Ok(resp) => {
-                eprintln!(
-                    "[MAIN] ✅ Test health check réussi: status {}",
-                    resp.status()
-                );
-            }
-            Err(e) => {
-                eprintln!("[MAIN] ⚠️ Test health check échoué (non bloquant): {}", e);
+                    return Err(
+                        format!("Impossible de bind sur {}:{} - {}", "0.0.0.0", port, e).into(),
+                    );
+                }
             }
         }
+    }
 
-        Some((handle, health_shutdown_tx))
-    };
+    let listener = listener_opt.expect("listener bound");
+
+    eprintln!("[MAIN] 🚀 axum::serve (shell) sur :{} — accept immédiat", port);
+    let serve_task = tokio::spawn(async move { serve(listener, shell_router).await });
+    tokio::task::yield_now().await;
+
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    let test_client = reqwest::Client::new();
+    let test_url = format!("http://localhost:{}/health", port);
+    match test_client
+        .get(&test_url)
+        .timeout(std::time::Duration::from_secs(2))
+        .send()
+        .await
+    {
+        Ok(resp) => {
+            eprintln!(
+                "[MAIN] ✅ Test health check réussi: status {}",
+                resp.status()
+            );
+        }
+        Err(e) => {
+            eprintln!("[MAIN] ⚠️ Test health check échoué (non bloquant): {}", e);
+        }
+    }
 
     // Maintenant initialiser dotenv et logging (APRÈS le serveur minimal)
     eprintln!("[MAIN] 🔧 Initialisation dotenv...");
@@ -3484,95 +3471,14 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    // Construction de l'application avec Extension
-    let app = build_app(app_state.clone())
-        //.merge(yukpomnang_backend::openapi::swagger_router()) // Swagger d?sactiv? temporairement
-        .with_state(app_state.clone());
-
-    // ✅ CORRIGÉ: Utiliser la variable d'environnement PORT (défaut: 8080 pour AWS ALB)
-    let port = env::var("PORT")
-        .unwrap_or_else(|_| "8080".to_string())
-        .parse::<u16>()
-        .unwrap_or(8080);
-    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-
-    // ✅ CRITIQUE 2026-03-23: Arrêt gracieux du serveur minimal (pas abort) pour libérer le port proprement.
-    if let Some((handle, shutdown_tx)) = health_server_handle {
-        eprintln!(
-            "[MAIN] 🛑 Arrêt gracieux du serveur HTTP minimal avant rebind du serveur complet..."
-        );
-        log::info!("🛑 Arrêt gracieux du serveur HTTP minimal avant rebind du serveur complet...");
-        let _ = shutdown_tx.send(());
-        match tokio::time::timeout(std::time::Duration::from_secs(15), handle).await {
-            Ok(Ok(())) => {
-                eprintln!("[MAIN] ✅ Tâche serveur minimal terminée");
-            }
-            Ok(Err(e)) => {
-                eprintln!("[MAIN] ⚠️ Join serveur minimal: {}", e);
-            }
-            Err(_) => {
-                eprintln!("[MAIN] ⚠️ Timeout 15s en attendant l'arrêt du serveur minimal — on tente quand même le rebind");
-            }
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    // Injection de l'app complète (même socket TCP, pas de rebind — évite TIME_WAIT / crash Cloud Run).
+    {
+        let app = build_app(app_state.clone());
+        let mut w = app_router_holder.write().await;
+        *w = Some(app);
     }
-
-    eprintln!(
-        "[MAIN] 🔌 Bind immédiat sur {}:{} (retry) — aucune autre étape avant...",
-        host, port
-    );
-    let mut listener_opt = None;
-    for attempt in 1..=80u32 {
-        match tokio::net::TcpListener::bind(addr).await {
-            Ok(l) => {
-                eprintln!(
-                    "[MAIN] ✅ Bind réussi sur {}:{} (tentative {})",
-                    host, port, attempt
-                );
-                log::info!(
-                    "✅ Bind réussi sur {}:{} (tentative {})",
-                    host,
-                    port,
-                    attempt
-                );
-                listener_opt = Some(l);
-                break;
-            }
-            Err(e) => {
-                if attempt < 80 {
-                    eprintln!(
-                        "[MAIN] ⏳ Port {} occupé (tentative {}/80), attente 150ms... ({})",
-                        port, attempt, e
-                    );
-                    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
-                } else {
-                    eprintln!(
-                        "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} après 80 tentatives - {}",
-                        host, port, e
-                    );
-                    log::error!(
-                        "❌ Impossible de bind sur {}:{} après 80 tentatives - {}",
-                        host,
-                        port,
-                        e
-                    );
-                    return Err(format!("Impossible de bind sur {}:{} - {}", host, port, e).into());
-                }
-            }
-        }
-    }
-    let listener = listener_opt.expect("listener should be set after retry loop");
-
-    // ✅ CRITIQUE 2026-03-23: Démarrer axum::serve AVANT tout autre travail synchrone.
-    // Sinon le socket est bind mais personne n'appelle accept() → la sonde HTTP GET /health de Cloud Run
-    // expire (startup probe failed) pendant les logs de diagnostic.
-    eprintln!(
-        "[MAIN] 🚀 axum::serve en tâche parallèle sur http://{}:{} (accept immédiat)",
-        host, port
-    );
-    let serve_task = tokio::spawn(async move { serve(listener, app).await });
-    tokio::task::yield_now().await;
+    eprintln!("[MAIN] ✅ Router complet chargé (API disponible sur le même port)");
+    log::info!("✅ Router complet chargé — API disponible");
 
     // Diagnostic des services externes (le serveur accepte déjà /health en parallèle)
     {
