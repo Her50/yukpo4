@@ -186,7 +186,7 @@ pub async fn setup_backend_test_context() -> Option<BackendTestContext> {
         ia_stats,
         database_url,
         optimizations_enabled: false,
-        redis_client,
+        redis_client: redis_client.clone(),
         redis_pool: None,
         redis_cluster_nodes: vec![],
         semantic_cache: None,
