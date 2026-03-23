@@ -468,13 +468,21 @@ const apiCallInternal = async <T>(
       console.log(`[Mobile API] ✅ Should try parse JSON:`, shouldTryParseJson);
     }
 
-    // Si c'est une erreur 404 ou 500 sans body, ne pas essayer de parser JSON
+    // Si c'est une erreur sans JSON exploitable, ne pas parser (ex. 503 text/plain "starting")
     if (!response.ok && (!hasBody || !isJson)) {
       const statusText = response.statusText || `Erreur ${response.status}`;
+      let errorMessage = statusText;
+      if (response.status === 503) {
+        errorMessage =
+          'Service temporairement indisponible (démarrage du serveur). Réessayez dans 10–30 secondes.';
+      } else if (response.status === 502 || response.status === 504) {
+        errorMessage =
+          'Passerelle ou délai dépassé. Vérifiez la connexion ou réessayez plus tard.';
+      }
       return {
         success: false,
-        error: statusText,
-        data: { status: response.status, message: statusText } as T,
+        error: errorMessage,
+        data: { status: response.status, message: errorMessage } as T,
       };
     }
 
@@ -488,7 +496,7 @@ const apiCallInternal = async <T>(
         try {
           data = await response.json();
           // ✅ DEBUG: Log la réponse JSON parsée pour /auth/login
-          if (endpoint === '/auth/login') {
+          if (endpoint === '/api/auth/login') {
             console.log(`[Mobile API] ✅ JSON parsé avec succès:`, JSON.stringify(data, null, 2));
             console.log(`[Mobile API] ✅ data.token existe?:`, !!data?.token);
             console.log(`[Mobile API] ✅ data.tokens_balance:`, data?.tokens_balance);
@@ -497,7 +505,7 @@ const apiCallInternal = async <T>(
           // Si le parsing JSON échoue, essayer de lire comme texte
           console.error(`[Mobile API] ⚠️ Erreur parsing JSON, essai texte:`, jsonParseError);
           const textData = await responseClone.text();
-          if (endpoint === '/auth/login') {
+          if (endpoint === '/api/auth/login') {
             console.log(`[Mobile API] ⚠️ Réponse texte:`, textData);
           }
           data = { raw: textData };
@@ -505,7 +513,7 @@ const apiCallInternal = async <T>(
       } else if (hasBody) {
         const textData = await response.text();
         data = { raw: textData };
-        if (endpoint === '/auth/login') {
+        if (endpoint === '/api/auth/login') {
           console.log(`[Mobile API] ⚠️ Réponse non-JSON:`, textData);
         }
       } else {
@@ -514,18 +522,18 @@ const apiCallInternal = async <T>(
         if (isJson && response.ok) {
           try {
             data = await response.json();
-            if (endpoint === '/auth/login') {
+            if (endpoint === '/api/auth/login') {
               console.log(`[Mobile API] ✅ JSON parsé (sans content-length):`, JSON.stringify(data, null, 2));
             }
           } catch (e) {
             data = {};
-            if (endpoint === '/auth/login') {
+            if (endpoint === '/api/auth/login') {
               console.log(`[Mobile API] ⚠️ Réponse sans body (tentative échouée)`);
             }
           }
         } else {
           data = {};
-          if (endpoint === '/auth/login') {
+          if (endpoint === '/api/auth/login') {
             console.log(`[Mobile API] ⚠️ Réponse sans body`);
           }
         }
@@ -548,7 +556,7 @@ const apiCallInternal = async <T>(
 
     if (!response.ok) {
       // ✅ DEBUG: Log pour /auth/login même en cas d'erreur
-      if (endpoint === '/auth/login') {
+      if (endpoint === '/api/auth/login') {
         console.error(`[Mobile API] ❌ Response not OK:`, {
           status: response.status,
           statusText: response.statusText,
@@ -592,7 +600,7 @@ const apiCallInternal = async <T>(
     }
 
     // ✅ DEBUG: Log la structure finale pour /auth/login
-    if (endpoint === '/auth/login') {
+    if (endpoint === '/api/auth/login') {
       console.log(`[Mobile API] ✅ Structure finale retournée:`, {
         success: true,
         data: data,

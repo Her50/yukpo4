@@ -1,3 +1,10 @@
+import { config } from './environment';
+
+/** Même base URL que `services/api.ts` — utilisé par écrans legacy (Login/Register) pour l’affichage debug */
+export const APP_CONFIG = {
+  API_BASE_URL: config.API_BASE_URL,
+};
+
 // Configuration de l'application mobile
 export const appConfig = {
   // Version de l'application
@@ -5,7 +12,7 @@ export const appConfig = {
 
   // Configuration de l'API
   api: {
-    baseUrl: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001',
+    baseUrl: config.API_BASE_URL,
     timeout: 30000,
     retries: 3
   },

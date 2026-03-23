@@ -1575,7 +1575,7 @@ pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(yukpo_ia_session_routes::post_yukpo_ia_gdpr_delete),
         )
         .route(
-            "/ai/sessions/:session_id/messages",
+            "/ai/sessions/{session_id}/messages",
             get(yukpo_ia_session_routes::list_yukpo_ia_session_messages),
         )
         .route(
@@ -1584,14 +1584,14 @@ pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
                 .post(yukpo_ia_session_routes::create_yukpo_ia_session),
         )
         .route(
-            "/ai/sessions/:session_id",
+            "/ai/sessions/{session_id}",
             get(yukpo_ia_session_routes::get_yukpo_ia_session)
                 .patch(yukpo_ia_session_routes::patch_yukpo_ia_session)
                 .delete(yukpo_ia_session_routes::delete_yukpo_ia_session),
         )
         .route("/ai/chat", post(chat_ai))
         .route("/ai/chat/jobs", post(submit_yukpo_ia_chat_job))
-        .route("/ai/chat/jobs/:job_id", get(get_yukpo_ia_chat_job))
+        .route("/ai/chat/jobs/{job_id}", get(get_yukpo_ia_chat_job))
         .route("/ai/contextual-chat", post(contextual_chat))
         .route("/ai/recommendations", post(get_recommendations))
         .route("/ai/analyze", post(analyze_text))
