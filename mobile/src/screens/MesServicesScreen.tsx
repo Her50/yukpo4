@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Design moderne inspir├® du frontend - Version am├®lior├®e UX niveau g├®ant
+// Design moderne inspiré du frontend - Version améliorée UX niveau géant
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { FlashList } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
@@ -20,11 +20,10 @@ import ServiceCardModern from '../components/ServiceCardModern';
 import ServiceProductSelector from '../components/ServiceProductSelector';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import { SidebarNavigation } from '../components/SidebarNavigation';
-import { SkeletonList, SkeletonStats } from '../components/SkeletonLoader';
+import SkeletonLoader from '../components/SkeletonLoader';
 import { StatsCard } from '../components/StatsCard';
 import { useToaster } from '../components/ToasterProvider';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation';
 import { useDeviceType } from '../hooks/useDeviceType';
@@ -57,50 +56,51 @@ interface Service {
 const MesServicesScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { t } = useLanguageSafe();
-  const { colors } = useTheme();
-  const toaster = useToaster();
-  const deviceType = useDeviceType();
-  const { isLandscape } = useDeviceOrientation();
+  const { colors } = useTheme(); // ✅ NOUVEAU: Support thème
+  const toaster = useToaster(); // ✅ NOUVEAU: Toast notifications au lieu de Alert
+  const deviceType = useDeviceType(); // ✅ NOUVEAU: Responsive design
+  const { isLandscape } = useDeviceOrientation(); // ✅ NOUVEAU: Orientation
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'tous' | 'actif' | 'inactif'>('tous');
-  // Ô£à NOUVEAU: Optimistic updates - stocker l'├®tat original pour rollback
+  // ✅ NOUVEAU: Optimistic updates - stocker l'état original pour rollback
   const [optimisticStates, setOptimisticStates] = useState<Map<string, any>>(new Map());
-  // Ô£à ├ëtats pour gestion d'├®quipe globale (depuis menu)
+  // ✅ États pour gestion d'équipe globale (depuis menu)
   const [showTeamManager, setShowTeamManager] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [showProductSelector, setShowProductSelector] = useState(false);
-  const [productSelectorMode, setProductSelectorMode] = useState<'team' | 'delivery' | 'flash-promo' | null>(null); // Mode du s├®lecteur
+  const [productSelectorMode, setProductSelectorMode] = useState<'team' | 'delivery' | 'flash-promo' | null>(null); // Mode du sélecteur
   const [productsForSelection, setProductsForSelection] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
-  // Ô£à Sidebar (panneau lat├®ral) = menu principal des actions (remplace l'ancien menu ┬½ trois points ┬╗ d├®roulant)
+  // ✅ État pour le menu global (remplacé par Sidebar)
+  const [showGlobalMenu, setShowGlobalMenu] = useState(false);
+  // ✅ NOUVEAU: Sidebar navigation
   const [showSidebar, setShowSidebar] = useState(false);
-  // Ô£à NOUVEAU: Bulk Actions - s├®lection multiple
+  // ✅ NOUVEAU: Bulk Actions - sélection multiple
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
-  // Ô£à NOUVEAU: ├ëtats pour configuration globale de livraison
+  // ✅ NOUVEAU: États pour configuration globale de livraison
   const [showGlobalDeliveryConfig, setShowGlobalDeliveryConfig] = useState(false);
   const [selectedProductsForDelivery, setSelectedProductsForDelivery] = useState<Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }>>([]);
-  // Ô£à NOUVEAU: ├ëtats pour le modal de cr├®ation de vid├®o
+  // ✅ NOUVEAU: États pour le modal de création de vidéo
   const [showVideoCreationModal, setShowVideoCreationModal] = useState(false);
   const [productsForVideoCreation, setProductsForVideoCreation] = useState<ManagedProduct[]>([]);
   const [selectedServiceForVideo, setSelectedServiceForVideo] = useState<Service | null>(null);
-  // Ô£à NOUVEAU: ├ëtat pour stocker les services bruts (pour d├®tecter si service existe)
+  // ✅ NOUVEAU: État pour stocker les services bruts (pour détecter si service existe)
   const [rawServices, setRawServices] = useState<any[]>([]);
-  // Ô£à NOUVEAU: ├ëtat pour la galerie de produits
+  // ✅ NOUVEAU: État pour la galerie de produits
   const [showProductGallery, setShowProductGallery] = useState(false);
 
-  // Ô£à OPTIMISATION: Fonction pour parser un produit (extrait pour r├®utilisabilit├®)
+  // ✅ OPTIMISATION: Fonction pour parser un produit (extrait pour réutilisabilité)
   const parseProduct = useCallback((product: any, index: number, service: any, serviceId: string, serviceTitre: string): Service | null => {
     try {
       let productTitle = '';
       let productDescription = '';
 
       if (typeof product === 'string' && product.trim()) {
-        // Ô£à CORRECTION: S'assurer que product est une string valide avant split
+        // ✅ CORRECTION: S'assurer que product est une string valide avant split
         const parts = product.split(',').map((p: string) => (p || '').trim()).filter((p: string) => p.length > 0);
-        productTitle = (parts && parts.length > 0 && parts[0]) ? parts[0] : t('mesServices.produitIndex', { index: index + 1 });
+        productTitle = (parts && parts.length > 0 && parts[0]) ? parts[0] : `Produit ${index + 1}`;
 
         if (parts.length >= 3) {
           let lastNumericIndex = -1;
@@ -113,14 +113,14 @@ const MesServicesScreen: React.FC = () => {
           if (lastNumericIndex > 2) {
             productDescription = parts.slice(2, lastNumericIndex).join(', ').trim();
           } else if (parts.length >= 3) {
-            productDescription = parts[2] || t('mesServices.noDescription');
+            productDescription = parts[2] || 'Aucune description';
           } else {
-            productDescription = parts[1] || t('mesServices.noDescription');
+            productDescription = parts[1] || 'Aucune description';
           }
         } else if (parts.length === 2) {
-          productDescription = parts[1] || t('mesServices.noDescription');
+          productDescription = parts[1] || 'Aucune description';
         } else {
-          productDescription = t('mesServices.noDescription');
+          productDescription = 'Aucune description';
         }
       } else if (product && typeof product === 'object') {
         productTitle = product.nom ||
@@ -133,16 +133,16 @@ const MesServicesScreen: React.FC = () => {
           (typeof product.nom_produit === 'string' && product.nom_produit) ||
           (typeof product.data?.nom_produit === 'object' && product.data?.nom_produit?.valeur) ||
           (typeof product.data?.nom_produit === 'string' && product.data?.nom_produit) ||
-          t('mesServices.produitIndex', { index: index + 1 });
+          `Produit ${index + 1}`;
         productDescription = product.description ||
           product.desc ||
           product.description_produit ||
           (typeof product.description_produit === 'object' && product.description_produit?.valeur) ||
           (typeof product.description_produit === 'string' && product.description_produit) ||
-          t('mesServices.noDescription');
+          'Aucune description';
       } else {
-        productTitle = t('mesServices.produitIndex', { index: index + 1 });
-        productDescription = t('mesServices.noDescription');
+        productTitle = `Produit ${index + 1}`;
+        productDescription = 'Aucune description';
       }
 
       const productIndex = typeof product.product_index === 'number' ? product.product_index : index;
@@ -176,75 +176,75 @@ const MesServicesScreen: React.FC = () => {
       logger.error('[MesServicesScreen] Erreur parsing produit:', error);
       return null;
     }
-  }, [t]);
+  }, []);
 
-  // Ô£à CORRECTION 2025-11-28: Fonction pour extraire les produits d'un service (tous formats)
+  // ✅ CORRECTION 2025-11-28: Fonction pour extraire les produits d'un service (tous formats)
   const extractProduits = useCallback((service: any): any[] => {
-    // Ô£à CORRECTION: V├®rifier d'abord si service.data existe
+    // ✅ CORRECTION: Vérifier d'abord si service.data existe
     const serviceData = service.data || service;
 
-    // Ô£à CORRECTION: Format 1 - produits.valeur (tableau de strings ou objets)
+    // ✅ CORRECTION: Format 1 - produits.valeur (tableau de strings ou objets)
     if (serviceData?.produits?.valeur) {
       const valeur = serviceData.produits.valeur;
       if (Array.isArray(valeur) && valeur.length > 0) {
-        // Ô£à CORRECTION: Filtrer les valeurs vides
+        // ✅ CORRECTION: Filtrer les valeurs vides
         const filtered = valeur.filter((v: any) => v !== null && v !== undefined && v !== '');
         if (filtered.length > 0) {
-          logger.log('[MesServicesScreen] Ô£à Produits trouv├®s dans produits.valeur:', filtered.length);
+          logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits.valeur:', filtered.length);
           return filtered;
         }
       }
     }
 
-    // Ô£à CORRECTION: Format 2 - produits directement un tableau
+    // ✅ CORRECTION: Format 2 - produits directement un tableau
     if (Array.isArray(serviceData?.produits) && serviceData.produits.length > 0) {
-      logger.log('[MesServicesScreen] Ô£à Produits trouv├®s dans produits (array):', serviceData.produits.length);
+      logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits (array):', serviceData.produits.length);
       return serviceData.produits;
     }
 
-    // Ô£à CORRECTION: Format 3 - produits.items ou produits.list
+    // ✅ CORRECTION: Format 3 - produits.items ou produits.list
     if (serviceData?.produits && typeof serviceData.produits === 'object') {
       const produitsObj = serviceData.produits;
       if (Array.isArray(produitsObj.items) && produitsObj.items.length > 0) {
-        logger.log('[MesServicesScreen] Ô£à Produits trouv├®s dans produits.items:', produitsObj.items.length);
+        logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits.items:', produitsObj.items.length);
         return produitsObj.items;
       } else if (Array.isArray(produitsObj.list) && produitsObj.list.length > 0) {
-        logger.log('[MesServicesScreen] Ô£à Produits trouv├®s dans produits.list:', produitsObj.list.length);
+        logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits.list:', produitsObj.list.length);
         return produitsObj.list;
       }
     }
 
-    // Ô£à CORRECTION: Format 4 - produits dans le service brut (sans data)
+    // ✅ CORRECTION: Format 4 - produits dans le service brut (sans data)
     if (Array.isArray(service.produits) && service.produits.length > 0) {
-      logger.log('[MesServicesScreen] Ô£à Produits trouv├®s dans service.produits:', service.produits.length);
+      logger.log('[MesServicesScreen] ✅ Produits trouvés dans service.produits:', service.produits.length);
       return service.produits;
     }
 
-    // Ô£à CORRECTION: Format 5 - V├®rifier si produits est une string (├á parser)
+    // ✅ CORRECTION: Format 5 - Vérifier si produits est une string (à parser)
     if (typeof serviceData?.produits === 'string' && serviceData.produits.trim().length > 0) {
       try {
         const parsed = JSON.parse(serviceData.produits);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          logger.log('[MesServicesScreen] Ô£à Produits trouv├®s dans produits (JSON string):', parsed.length);
+          logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits (JSON string):', parsed.length);
           return parsed;
         } else if (parsed.valeur && Array.isArray(parsed.valeur) && parsed.valeur.length > 0) {
-          logger.log('[MesServicesScreen] Ô£à Produits trouv├®s dans produits (JSON string avec valeur):', parsed.valeur.length);
+          logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits (JSON string avec valeur):', parsed.valeur.length);
           return parsed.valeur;
         }
       } catch (e) {
-        // Ce n'est pas du JSON, peut-├¬tre une string simple avec s├®parateur
-        // Ô£à CORRECTION: V├®rifier que serviceData.produits est une string avant split
+        // Ce n'est pas du JSON, peut-être une string simple avec séparateur
+        // ✅ CORRECTION: Vérifier que serviceData.produits est une string avant split
         if (typeof serviceData.produits === 'string' && serviceData.produits.trim()) {
           const parts = serviceData.produits.split(',').map((p: string) => (p || '').trim()).filter((p: string) => p.length > 0);
           if (parts && parts.length > 0) {
-            logger.log('[MesServicesScreen] Ô£à Produits trouv├®s dans produits (string s├®par├®e):', parts.length);
+            logger.log('[MesServicesScreen] ✅ Produits trouvés dans produits (string séparée):', parts.length);
             return parts;
           }
         }
       }
     }
 
-    logger.warn('[MesServicesScreen] ÔÜá´©Å Aucun produit trouv├® dans le service:', {
+    logger.warn('[MesServicesScreen] ⚠️ Aucun produit trouvé dans le service:', {
       hasData: !!serviceData,
       hasProduits: !!serviceData?.produits,
       produitsType: typeof serviceData?.produits,
@@ -262,12 +262,12 @@ const MesServicesScreen: React.FC = () => {
         setLoading(true);
       }
 
-      // Ô£à OPTIMISATION: V├®rifier le cache avant de faire l'appel API
+      // ✅ OPTIMISATION: Vérifier le cache avant de faire l'appel API
       const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
       if (!isRefresh) {
         const cached = await CacheManager.get<Service[]>(cacheKey, 5 * 60 * 1000); // 5 minutes
         if (cached) {
-          logger.log('[MesServicesScreen] Ô£à Donn├®es charg├®es depuis le cache');
+          logger.log('[MesServicesScreen] ✅ Données chargées depuis le cache');
           setServices(cached);
           setLoading(false);
           setRefreshing(false);
@@ -275,23 +275,23 @@ const MesServicesScreen: React.FC = () => {
         }
       }
 
-      // Ô£à CORRIG├ë: Utilise apiGet
+      // ✅ CORRIGÉ: Utilise apiGet
       const response = await apiGet('/api/prestataire/services');
 
-      logger.log('[MesServicesScreen] ­ƒöì R├®ponse API:', {
+      logger.log('[MesServicesScreen] 🔍 Réponse API:', {
         ok: response.ok,
         status: response.status,
         success: response.success
       });
 
-      // Ô£à CORRECTION: L'API retourne directement un tableau, apiGet l'enveloppe dans { success: true, data: [...] }
+      // ✅ CORRECTION: L'API retourne directement un tableau, apiGet l'enveloppe dans { success: true, data: [...] }
       if (response.success) {
         let data = response.data;
 
         // Si data est directement un tableau, l'utiliser
-        // Sinon, v├®rifier si c'est dans une structure imbriqu├®e
+        // Sinon, vérifier si c'est dans une structure imbriquée
         if (!Array.isArray(data)) {
-          // Essayer de trouver le tableau dans diff├®rentes structures possibles
+          // Essayer de trouver le tableau dans différentes structures possibles
           if (data && typeof data === 'object') {
             if (Array.isArray(data.data)) {
               data = data.data;
@@ -303,38 +303,38 @@ const MesServicesScreen: React.FC = () => {
           }
         }
 
-        logger.log('[MesServicesScreen] ­ƒôª Services re├ºus:', {
+        logger.log('[MesServicesScreen] 📦 Services reçus:', {
           isArray: Array.isArray(data),
           count: Array.isArray(data) ? data.length : 0,
           type: typeof data
         });
 
-        // Ô£à NOUVEAU: Stocker les services bruts pour la d├®tection lors de l'ajout de produit
+        // ✅ NOUVEAU: Stocker les services bruts pour la détection lors de l'ajout de produit
         const servicesArray = Array.isArray(data) ? data : [];
         setRawServices(servicesArray);
 
-        // Ô£à PHASE 4: On extrait et affiche les PRODUITS depuis l'API service_products
-        // Chaque produit est r├®cup├®r├® depuis la table service_products
+        // ✅ PHASE 4: On extrait et affiche les PRODUITS depuis l'API service_products
+        // Chaque produit est récupéré depuis la table service_products
         const allProducts: Service[] = []; // Note: Type Service mais contient des produits
 
         if (Array.isArray(data)) {
-          // Ô£à PHASE 4: R├®cup├®rer les produits depuis l'API pour chaque service
+          // ✅ PHASE 4: Récupérer les produits depuis l'API pour chaque service
           const productPromises = data.map(async (service: any) => {
             const serviceId = service.id;
             const serviceTitre = service.data?.titre_service?.valeur ||
               service.data?.titre?.valeur ||
               service.titre ||
-              t('mesServices.serviceSansTitre');
+              'Service sans titre';
 
             try {
-              // Ô£à PHASE 4: R├®cup├®rer les produits depuis l'API
+              // ✅ PHASE 4: Récupérer les produits depuis l'API
               const products = await productsService.getProductsByService(serviceId);
 
               return products.map((product, index) => {
-                // Ô£à Parser chaque produit depuis l'API
+                // ✅ Parser chaque produit depuis l'API
                 const parsed = parseProduct(product.product_data, product.product_index, service, serviceId.toString(), serviceTitre);
                 if (parsed) {
-                  // Ô£à Ajouter les m├®tadonn├®es de service_products
+                  // ✅ Ajouter les métadonnées de service_products
                   parsed.product_id = product.id;
                   parsed.product_name = product.product_name;
                   parsed.product_type = product.product_type;
@@ -343,8 +343,8 @@ const MesServicesScreen: React.FC = () => {
                 return parsed;
               }).filter((p): p is Service => p !== null);
             } catch (error) {
-              logger.warn('[MesServicesScreen] ÔÜá´©Å Erreur r├®cup├®ration produits depuis API, fallback extractProduits:', error);
-              // Ô£à FALLBACK: Utiliser extractProduits si l'API ├®choue (compatibilit├®)
+              logger.warn('[MesServicesScreen] ⚠️ Erreur récupération produits depuis API, fallback extractProduits:', error);
+              // ✅ FALLBACK: Utiliser extractProduits si l'API échoue (compatibilité)
               const produits = extractProduits(service);
               if (produits && produits.length > 0) {
                 return produits.map((product: any, index: number) => {
@@ -356,7 +356,7 @@ const MesServicesScreen: React.FC = () => {
             }
           });
 
-          // Ô£à Attendre tous les appels API en parall├¿le
+          // ✅ Attendre tous les appels API en parallèle
           const productsArrays = await Promise.all(productPromises);
           productsArrays.forEach(products => {
             products.forEach(product => {
@@ -367,23 +367,23 @@ const MesServicesScreen: React.FC = () => {
           });
         }
 
-        // Ô£à Trier les produits du plus r├®cent au plus ancien
+        // ✅ Trier les produits du plus récent au plus ancien
         allProducts.sort((a: any, b: any) => {
           const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return dateB - dateA;
         });
 
-        logger.log('[MesServicesScreen] Ô£à Produits extraits:', allProducts.length);
+        logger.log('[MesServicesScreen] ✅ Produits extraits:', allProducts.length);
 
-        // Ô£à OPTIMISATION: Sauvegarder dans le cache
+        // ✅ OPTIMISATION: Sauvegarder dans le cache
         await CacheManager.set(cacheKey, allProducts);
 
-        // Ô£à IMPORTANT: allProducts contient les PRODUITS de l'utilisateur (pas les services)
-        // On les stocke dans "services" pour compatibilit├® avec le reste du code
+        // ✅ IMPORTANT: allProducts contient les PRODUITS de l'utilisateur (pas les services)
+        // On les stocke dans "services" pour compatibilité avec le reste du code
         setServices(allProducts);
       } else {
-        logger.error('[MesServicesScreen] ÔØî Erreur API ou pas de donn├®es:', {
+        logger.error('[MesServicesScreen] ❌ Erreur API ou pas de données:', {
           success: response.success,
           error: response.error
         });
@@ -391,15 +391,23 @@ const MesServicesScreen: React.FC = () => {
       }
     } catch (error) {
       logger.error('Erreur chargement produits:', error);
-      toaster.error(t('mesServices.impossibleChargerProduits'));
+      toaster.error('Impossible de charger vos produits');
       setServices([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id, parseProduct, extractProduits, t, toaster]);
+  }, [user?.id, parseProduct, extractProduits]);
 
-  // Un seul chargement à l'entrée sur l'onglet (évite double appel concurrent useEffect + focus → crash / état corrompu)
+  useEffect(() => {
+    // ✅ CRITIQUE: Appeler la fonction async mais ne pas retourner sa Promise
+    loadServices().catch(error => {
+      console.error('[MesServicesScreen] Erreur loadServices:', error);
+    });
+    // ✅ CRITIQUE: Retourner explicitement undefined (pas de cleanup nécessaire ici)
+    return undefined;
+  }, [loadServices]);
+
   useFocusEffect(
     useCallback(() => {
       loadServices(true);
@@ -407,16 +415,16 @@ const MesServicesScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    // Ô£à S├ëCURIT├ë: V├®rifier que DeviceEventEmitter existe
+    // ✅ SÉCURITÉ: Vérifier que DeviceEventEmitter existe
     if (!DeviceEventEmitter || typeof DeviceEventEmitter.addListener !== 'function') {
       console.warn('[MesServicesScreen] DeviceEventEmitter.addListener non disponible');
-      return undefined; // Ô£à CRITIQUE: Retourner explicitement undefined
+      return undefined; // ✅ CRITIQUE: Retourner explicitement undefined
     }
 
-    // ├ëcouter les ├®v├®nements de cr├®ation/modification de service/produit
+    // Écouter les événements de création/modification de service/produit
     const subscription1 = DeviceEventEmitter.addListener('service:refresh', () => {
-      logger.log('[MesServicesScreen] ­ƒöä ├ëv├®nement service:refresh re├ºu');
-      // Ô£à OPTIMISATION: Invalider le cache avant de recharger
+      logger.log('[MesServicesScreen] 🔄 Événement service:refresh reçu');
+      // ✅ OPTIMISATION: Invalider le cache avant de recharger
       const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
       CacheManager.remove(cacheKey);
       if (typeof loadServices === 'function') {
@@ -424,9 +432,9 @@ const MesServicesScreen: React.FC = () => {
       }
     });
 
-    // Ô£à NOUVEAU: ├ëcouter les ├®v├®nements de cr├®ation de produit
+    // ✅ NOUVEAU: Écouter les événements de création de produit
     const subscription2 = DeviceEventEmitter.addListener('product:created', () => {
-      logger.log('[MesServicesScreen] ­ƒöä ├ëv├®nement product:created re├ºu');
+      logger.log('[MesServicesScreen] 🔄 Événement product:created reçu');
       const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
       CacheManager.remove(cacheKey);
       if (typeof loadServices === 'function') {
@@ -435,7 +443,7 @@ const MesServicesScreen: React.FC = () => {
     });
 
     const subscription3 = DeviceEventEmitter.addListener('product:updated', () => {
-      logger.log('[MesServicesScreen] ­ƒöä ├ëv├®nement product:updated re├ºu');
+      logger.log('[MesServicesScreen] 🔄 Événement product:updated reçu');
       const cacheKey = createCacheKey('mes_services', user?.id || 'anonymous');
       CacheManager.remove(cacheKey);
       if (typeof loadServices === 'function') {
@@ -444,7 +452,7 @@ const MesServicesScreen: React.FC = () => {
     });
 
     return () => {
-      // Ô£à S├ëCURIT├ë: V├®rifier que les subscriptions existent avant de les nettoyer
+      // ✅ SÉCURITÉ: Vérifier que les subscriptions existent avant de les nettoyer
       if (subscription1 && typeof subscription1.remove === 'function') {
         subscription1.remove();
       }
@@ -472,14 +480,14 @@ const MesServicesScreen: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'active': return t('mesServices.statusActive');
-      case 'inactive': return t('mesServices.statusInactive');
-      case 'pending': return t('mesServices.statusPending');
-      default: return t('mesServices.statusUnknown');
+      case 'active': return 'Actif';
+      case 'inactive': return 'Inactif';
+      case 'pending': return 'En attente';
+      default: return 'Inconnu';
     }
   };
 
-  // Ô£à NOUVEAU: Fonction pour g├®rer l'ajout de produit (d├®tecte si service existe)
+  // ✅ NOUVEAU: Fonction pour gérer l'ajout de produit (détecte si service existe)
   const handleAddProduct = useCallback(async (serviceId?: number | string) => {
     try {
       // Si un serviceId est fourni, naviguer directement vers AjouterProduitSimple
@@ -492,7 +500,7 @@ const MesServicesScreen: React.FC = () => {
         return;
       }
 
-      // Ô£à CORRECTION: Si rawServices est vide ou en cours de chargement, recharger les services d'abord
+      // ✅ CORRECTION: Si rawServices est vide ou en cours de chargement, recharger les services d'abord
       if ((!rawServices || rawServices.length === 0) && !loading) {
         logger.log('[MesServicesScreen] handleAddProduct - rawServices vide, rechargement des services...');
         await loadServices(true);
@@ -500,17 +508,17 @@ const MesServicesScreen: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // Sinon, v├®rifier s'il y a des services existants
-      // Ô£à AM├ëLIORATION 2025-11-28: V├®rifier d'abord rawServices (services bruts), puis services (produits pars├®s)
+      // Sinon, vérifier s'il y a des services existants
+      // ✅ AMÉLIORATION 2025-11-28: Vérifier d'abord rawServices (services bruts), puis services (produits parsés)
       let foundServiceId: number | undefined;
 
-      // 1. V├®rifier rawServices d'abord (services bruts de l'API)
+      // 1. Vérifier rawServices d'abord (services bruts de l'API)
       if (rawServices && rawServices.length > 0) {
         const activeService = rawServices.find((s: any) => s.is_active !== false && s.actif !== false) || rawServices[0];
 
         if (activeService && activeService.id) {
           foundServiceId = typeof activeService.id === 'string' ? parseInt(activeService.id, 10) : activeService.id;
-          logger.log('[MesServicesScreen] handleAddProduct - Service existant trouv├® (rawServices):', foundServiceId);
+          logger.log('[MesServicesScreen] handleAddProduct - Service existant trouvé (rawServices):', foundServiceId);
         }
       }
 
@@ -521,13 +529,13 @@ const MesServicesScreen: React.FC = () => {
 
         if (serviceId) {
           foundServiceId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
-          logger.log('[MesServicesScreen] handleAddProduct - Service existant trouv├® (services pars├®s):', foundServiceId);
+          logger.log('[MesServicesScreen] handleAddProduct - Service existant trouvé (services parsés):', foundServiceId);
         }
       }
 
-      // Ô£à CORRECTION: Si toujours pas de service trouv├®, faire un appel API direct pour v├®rifier
+      // ✅ CORRECTION: Si toujours pas de service trouvé, faire un appel API direct pour vérifier
       if (!foundServiceId) {
-        logger.log('[MesServicesScreen] handleAddProduct - Aucun service dans l\'├®tat, v├®rification API directe...');
+        logger.log('[MesServicesScreen] handleAddProduct - Aucun service dans l\'état, vérification API directe...');
         try {
           const directResponse = await apiGet('/api/prestataire/services');
           if (directResponse.success && Array.isArray(directResponse.data) && directResponse.data.length > 0) {
@@ -536,15 +544,15 @@ const MesServicesScreen: React.FC = () => {
             if (directData.length > 0) {
               const firstService = directData[0];
               foundServiceId = typeof firstService.id === 'string' ? parseInt(firstService.id, 10) : firstService.id;
-              logger.log('[MesServicesScreen] handleAddProduct - Service trouv├® via API directe:', foundServiceId);
+              logger.log('[MesServicesScreen] handleAddProduct - Service trouvé via API directe:', foundServiceId);
             }
           }
         } catch (apiError) {
-          logger.error('[MesServicesScreen] handleAddProduct - Erreur v├®rification API directe:', apiError);
+          logger.error('[MesServicesScreen] handleAddProduct - Erreur vérification API directe:', apiError);
         }
       }
 
-      // 3. Si un service a ├®t├® trouv├®, naviguer vers AjouterProduitSimple
+      // 3. Si un service a été trouvé, naviguer vers AjouterProduitSimple
       if (foundServiceId) {
         logger.log('[MesServicesScreen] handleAddProduct - Navigation vers AjouterProduitSimple avec serviceId:', foundServiceId);
         (navigation as any).navigate('AjouterProduitSimple', {
@@ -554,22 +562,22 @@ const MesServicesScreen: React.FC = () => {
         return;
       }
 
-      // Aucun service existant, naviguer vers FormulaireYukpoIntelligent pour cr├®er service + produit
-      logger.log('[MesServicesScreen] handleAddProduct - Aucun service trouv├®, cr├®ation nouveau service');
+      // Aucun service existant, naviguer vers FormulaireYukpoIntelligent pour créer service + produit
+      logger.log('[MesServicesScreen] handleAddProduct - Aucun service trouvé, création nouveau service');
       (navigation as any).navigate('FormulaireYukpoIntelligent', {
         mode: 'create',
         focusProduct: true
       });
     } catch (error) {
       logger.error('[MesServicesScreen] Erreur handleAddProduct:', error);
-      toaster.error(t('mesServices.cannotOpenForm'));
+      toaster.error('Impossible d\'ouvrir le formulaire d\'ajout de produit');
     }
   }, [rawServices, services, navigation, loading, loadServices]);
 
   // Fonctions de gestion des services
   const handleEditService = (service: any) => {
     try {
-      // Navigation vers l'├®cran de modification avec les donn├®es du service
+      // Navigation vers l'écran de modification avec les données du service
       (navigation as any).navigate('FormulaireYukpoIntelligent', {
         mode: 'edit',
         serviceId: service.id,
@@ -585,15 +593,15 @@ const MesServicesScreen: React.FC = () => {
       });
     } catch (error) {
       logger.error('Erreur navigation modification:', error);
-      toaster.error(t('mesServices.cannotOpenEdit'));
+      toaster.error('Impossible d\'ouvrir la modification du service');
     }
   };
 
   const handleViewService = (service: any) => {
     try {
-      // Navigation vers l'├®cran de visualisation en mode lecture seule
+      // Navigation vers l'écran de visualisation en mode lecture seule
       (navigation as any).navigate('FormulaireYukpoIntelligent', {
-        mode: 'view',  // Ô£à CORRECTION : Utiliser 'view' au lieu de 'readonly'
+        mode: 'view',  // ✅ CORRECTION : Utiliser 'view' au lieu de 'readonly'
         serviceId: service.id,
         serviceData: service.data,
         suggestion: {
@@ -602,53 +610,53 @@ const MesServicesScreen: React.FC = () => {
           confidence: service.confidence || 0.8
         },
         type: 'visualisation_service',
-        readonly: true,  // Ô£à Flag explicite pour mode lecture seule
+        readonly: true,  // ✅ Flag explicite pour mode lecture seule
         fromMesServices: true
       });
     } catch (error) {
       logger.error('Erreur navigation visualisation:', error);
-      toaster.error(t('mesServices.cannotOpenView'));
+      toaster.error('Impossible d\'ouvrir la visualisation du service');
     }
   };
 
   const handleShareService = async (service: any) => {
     try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch (_) { }
     try {
-      // Impl├®mentation du partage avec deep linking
-      const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || t('mesServices.serviceYukpo');
-      const description = service.data?.description?.valeur || service.description || t('mesServices.decouvrezService');
+      // Implémentation du partage avec deep linking
+      const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service Yukpo';
+      const description = service.data?.description?.valeur || service.description || 'Découvrez ce service sur Yukpo';
       const prix = service.data?.prix?.valeur || service.prix;
       const localisation = service.data?.localisation?.valeur || service.localisation;
 
-      // Ô£à CORRIG├ë: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
-      const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
+      // ✅ CORRIGÉ: Utiliser l'URL du backend Cloud Run qui sert la route /service/:id
+      const serviceUrl = `https://yukpo-backend-376093909298.europe-west1.run.app/service/${service.id}`;
 
-      let shareText = `­ƒøì´©Å ${titre}\n\n${description}`;
+      let shareText = `🛍️ ${titre}\n\n${description}`;
 
       if (prix) {
-        shareText += `\n­ƒÆ░ ${t('mesServices.prix')}: ${prix} FCFA`;
+        shareText += `\n💰 Prix: ${prix} FCFA`;
       }
 
       if (localisation) {
-        shareText += `\n­ƒôì ${t('mesServices.localisation')}: ${localisation}`;
+        shareText += `\n📍 Localisation: ${localisation}`;
       }
 
-      shareText += `\n\n­ƒöù ${t('mesServices.voirServiceSurYukpo')} :\n­ƒô▒ ${serviceUrl}`;
+      shareText += `\n\n🔗 Voir ce service sur Yukpo :\n📱 ${serviceUrl}`;
 
       // Utiliser l'API de partage native React Native
       const result = await Share.share({
         message: shareText,
         title: titre,
-        url: serviceUrl  // Ô£à URL sp├®cifique au service
+        url: serviceUrl  // ✅ URL spécifique au service
       });
 
       if (result.action === Share.sharedAction) {
-        logger.log('[MesServicesScreen] Service partag├®:', serviceUrl);
-        toaster.success(t('mesServices.serviceShared'));
+        logger.log('[MesServicesScreen] Service partagé:', serviceUrl);
+        toaster.success('Service partagé avec succès !');
       }
     } catch (error) {
       logger.error('Erreur lors du partage:', error);
-      toaster.error(t('mesServices.cannotShare'));
+      toaster.error('Impossible de partager le service');
     }
   };
 
@@ -657,7 +665,7 @@ const MesServicesScreen: React.FC = () => {
       const currentStatus = service.status === 'active';
       const newStatus = !currentStatus;
 
-      // Ô£à OPTIMISTIC UPDATE: Mettre ├á jour l'UI imm├®diatement
+      // ✅ OPTIMISTIC UPDATE: Mettre à jour l'UI immédiatement
       const previousState = { ...service };
       setOptimisticStates(prev => new Map(prev).set(service.id, previousState));
 
@@ -669,18 +677,18 @@ const MesServicesScreen: React.FC = () => {
         )
       );
 
-      // Si on r├®active un service (passage de inactif ├á actif), facturer 1000 FCFA
+      // Si on réactive un service (passage de inactif à actif), facturer 1000 FCFA
       if (!currentStatus) {
-        // Ô£à CORRIG├ë: V├®rifier le solde avec apiGet
+        // ✅ CORRIGÉ: Vérifier le solde avec apiGet
         const balanceResponse = await apiGet('/api/users/balance');
         const balanceData = (balanceResponse?.data || balanceResponse) as any;
 
         if (balanceResponse.success) {
           const currentBalance = balanceData?.tokens_balance || 0;
-          const activationCost = 1000; // 1000 FCFA pour r├®activation
+          const activationCost = 1000; // 1000 FCFA pour réactivation
 
           if (currentBalance < activationCost) {
-            // Ô£à ROLLBACK optimistic update
+            // ✅ ROLLBACK optimistic update
             setServices(prevServices =>
               prevServices.map(s =>
                 s.id === service.id ? previousState : s
@@ -693,17 +701,17 @@ const MesServicesScreen: React.FC = () => {
             });
 
             Alert.alert(
-              `­ƒÆ© ${t('mesServices.insufficientBalance')}`,
-              t('mesServices.reactivationCost', { cost: activationCost.toLocaleString(), balance: currentBalance.toLocaleString() }),
+              '💸 Solde insuffisant',
+              `Coût de réactivation : ${activationCost.toLocaleString()} FCFA\nVotre solde : ${currentBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`,
               [
-                { text: t('mesServices.cancel'), style: 'cancel' },
-                { text: t('mesServices.recharge'), onPress: () => (navigation as any).navigate('RechargeTokens') },
+                { text: 'Annuler', style: 'cancel' },
+                { text: 'Recharger', onPress: () => (navigation as any).navigate('RechargeTokens') },
               ]
             );
             return;
           }
 
-          // Ô£à CORRIG├ë: D├®duire le co├╗t avec apiPost
+          // ✅ CORRIGÉ: Déduire le coût avec apiPost
           const deductResponse = await apiPost('/api/users/deduct-balance', {
             amount: activationCost,
             reason: 'service_reactivation'
@@ -711,7 +719,7 @@ const MesServicesScreen: React.FC = () => {
 
           if (deductResponse.success) {
             const newBalance = currentBalance - activationCost;
-            toaster.success(t('mesServices.serviceReactivated', { cost: activationCost, balance: newBalance }));
+            toaster.success(`Service réactivé ! Coût: ${activationCost} FCFA (Solde: ${newBalance} FCFA)`);
             loadServices(true);
           } else {
             // Rollback
@@ -720,12 +728,12 @@ const MesServicesScreen: React.FC = () => {
                 s.id === service.id ? previousState : s
               )
             );
-            toaster.error(t('mesServices.reactivationError'));
+            toaster.error('Erreur lors de la réactivation');
           }
         }
       }
 
-      // Ô£à CORRIG├ë: Changer le statut avec apiPatch
+      // ✅ CORRIGÉ: Changer le statut avec apiPatch
       const response = await apiPatch(`/api/services/${service.id}/toggle-status`, {
         actif: newStatus
       });
@@ -738,12 +746,12 @@ const MesServicesScreen: React.FC = () => {
         });
 
         if (currentStatus) {
-          toaster.success(t('mesServices.serviceDeactivated'));
+          toaster.success('Service désactivé avec succès');
         }
-        // Rafra├«chir la liste des services
+        // Rafraîchir la liste des services
         loadServices(true);
       } else {
-        // Ô£à ROLLBACK en cas d'erreur
+        // ✅ ROLLBACK en cas d'erreur
         setServices(prevServices =>
           prevServices.map(s =>
             s.id === service.id ? previousState : s
@@ -756,10 +764,10 @@ const MesServicesScreen: React.FC = () => {
         });
 
         logger.error('[MesServicesScreen] Erreur API toggle status:', response.status);
-        toaster.error(t('mesServices.cannotChangeStatus'));
+        toaster.error(`Impossible de changer le statut (Code: ${response.status})`);
       }
     } catch (error: any) {
-      // Ô£à ROLLBACK en cas d'exception
+      // ✅ ROLLBACK en cas d'exception
       const previousState = optimisticStates.get(service.id) || service;
       setServices(prevServices =>
         prevServices.map(s =>
@@ -773,59 +781,61 @@ const MesServicesScreen: React.FC = () => {
       });
 
       logger.error('[MesServicesScreen] Erreur toggle status:', error);
-      toaster.error(error.message || t('mesServices.cannotChangeStatus'));
+      toaster.error(error.message || 'Impossible de changer le statut du service');
     }
   };
 
   const handleDeleteService = async (service: any) => {
     // Confirmation avant suppression comme dans le frontend
     Alert.alert(
-      t('mesServices.deleteTitle'),
-      t('mesServices.deleteConfirm', { title: service.title }),
+      'Supprimer le service',
+      `Êtes-vous sûr de vouloir supprimer définitivement le service "${service.title}" ?\n\nCette action est irréversible.`,
       [
-        { text: t('mesServices.cancel'), style: 'cancel' },
+        { text: 'Annuler', style: 'cancel' },
         {
-          text: t('mesServices.delete'),
+          text: 'Supprimer',
           style: 'destructive',
           onPress: async () => {
             try {
-              // Ô£à OPTIMISTIC UPDATE: Supprimer de l'UI imm├®diatement
+              // ✅ OPTIMISTIC UPDATE: Supprimer de l'UI immédiatement
               const previousState = [...services];
               setServices(prevServices => prevServices.filter(s => s.id !== service.id));
 
-              // Ô£à CORRIG├ë: Supprimer avec apiDelete
+              // ✅ CORRIGÉ: Supprimer avec apiDelete
               const response = await apiDelete(`/api/services/${service.id}/delete`);
               const deleteData = (response?.data || response) as any;
 
               if (response.success) {
-                toaster.success(t('mesServices.serviceDeleted'));
-                // D├®clencher un rafra├«chissement pour mettre ├á jour l'interface
+                toaster.success('Service supprimé avec succès');
+                // Déclencher un rafraîchissement pour mettre à jour l'interface
                 loadServices(true);
               } else {
-                // Ô£à ROLLBACK optimistic update
+                // ✅ ROLLBACK optimistic update
                 setServices(previousState);
 
-                // Ô£à NOUVEAU 2025-11-01: Objectif #4 - Blocage suppression si >= 2 produits
+                // ✅ NOUVEAU 2025-11-01: Objectif #4 - Blocage suppression si >= 2 produits
                 const errorMsg = deleteData?.message || response.error || '';
 
                 if (errorMsg.includes('2 or more products')) {
-                  toaster.warning(t('mesServices.deleteBlockedMultiple'));
+                  toaster.warning(
+                    'Ce service contient 2 produits ou plus. Supprimez-les individuellement d\'abord.'
+                  );
                 } else {
-                  throw new Error(errorMsg || t('mesServices.erreurSuppression'));
+                  throw new Error(errorMsg || 'Erreur lors de la suppression');
                 }
               }
             } catch (error: any) {
-              // Ô£à ROLLBACK en cas d'erreur
+              // ✅ ROLLBACK en cas d'erreur
               const previousState = optimisticStates.get(service.id);
               if (previousState) {
                 setServices(prevServices => [...prevServices, previousState]);
               }
 
               logger.error('Erreur suppression:', error);
-              // Ô£à AM├ëLIORATION: Message d'erreur plus pr├®cis avec Toast
+              // ✅ AMÉLIORATION: Message d'erreur plus précis avec Toast
               const message = error.response?.data?.message ||
                 error.message ||
-                t('mesServices.cannotDelete');
+                'Impossible de supprimer le service. Vérifiez votre connexion.';
               toaster.error(message);
             }
           }
@@ -834,11 +844,11 @@ const MesServicesScreen: React.FC = () => {
     );
   };
 
-  // Ô£à Handler pour g├®rer l'├®quipe du SERVICE qui contient le produit
+  // ✅ Handler pour gérer l'équipe du SERVICE qui contient le produit
   // Note: "service" est en fait un PRODUIT (affiche les produits dans MesServices)
   // Il faut extraire le serviceId du service qui contient ce produit
   const handleManageTeam = (product: Service) => {
-    // Ô£à CORRECTION CRITIQUE: product est un produit affich├® dans MesServices
+    // ✅ CORRECTION CRITIQUE: product est un produit affiché dans MesServices
     // L'ID du produit est au format "serviceId_productIndex" (ex: "123_0")
     // Il faut extraire le serviceId du SERVICE qui contient ce produit
     const realServiceId = product.service_id ||
@@ -847,11 +857,11 @@ const MesServicesScreen: React.FC = () => {
         ? product.id.split('_')[0]
         : product.id);
 
-    // Cr├®er un objet avec le serviceId du SERVICE pour ServiceTeamManager
-    // ServiceTeamManager g├¿re l'├®quipe du SERVICE, pas du produit
+    // Créer un objet avec le serviceId du SERVICE pour ServiceTeamManager
+    // ServiceTeamManager gère l'équipe du SERVICE, pas du produit
     const serviceForTeam = {
       ...product,
-      id: realServiceId, // Ô£à Utiliser le serviceId du SERVICE parent
+      id: realServiceId, // ✅ Utiliser le serviceId du SERVICE parent
       service_id: realServiceId
     };
 
@@ -859,16 +869,16 @@ const MesServicesScreen: React.FC = () => {
     setShowTeamManager(true);
   };
 
-  // Ô£à Fonction pour pr├®parer la liste des produits pour le s├®lecteur
+  // ✅ Fonction pour préparer la liste des produits pour le sélecteur
   const prepareProductsForSelector = useCallback((): Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> => {
     const productsList: Array<{ serviceId: number; productIndex: number; productName: string; serviceName: string }> = [];
 
     services.forEach((product: Service) => {
       const serviceId = product.service_id || product.data?.serviceId || (typeof product.id === 'string' && product.id.includes('_') ? parseInt(product.id.split('_')[0], 10) : parseInt(String(product.id), 10));
       const productIndex = product.product_index ?? product.data?.product_index ?? 0;
-      // Ô£à CORRECTION: Utiliser extractProductName et extractServiceName pour une extraction correcte
-      const productName = extractProductName(product, t('mesServices.produitSansNom'));
-      const serviceName = extractServiceName(product, t('mesServices.serviceSansNom'));
+      // ✅ CORRECTION: Utiliser extractProductName et extractServiceName pour une extraction correcte
+      const productName = extractProductName(product, 'Produit sans nom');
+      const serviceName = extractServiceName(product, 'Service sans titre');
 
       if (serviceId && !isNaN(serviceId)) {
         productsList.push({
@@ -884,107 +894,107 @@ const MesServicesScreen: React.FC = () => {
   }, [services]);
 
   const handleCreateVideo = (productItem: any) => {
-    // Ô£à CORRECTION: productItem est un produit qui contient le service_id correct
-    // Le service_id doit ├¬tre extrait de mani├¿re fiable du produit
+    // ✅ CORRECTION: productItem est un produit qui contient le service_id correct
+    // Le service_id doit être extrait de manière fiable du produit
     let serviceId: string | number;
 
-    // Ô£à PRIORIT├ë 1: Utiliser service_id direct du produit (le plus fiable)
+    // ✅ PRIORITÉ 1: Utiliser service_id direct du produit (le plus fiable)
     if (productItem.service_id) {
       serviceId = productItem.service_id;
     }
-    // Ô£à PRIORIT├ë 2: Utiliser data.serviceId si disponible
+    // ✅ PRIORITÉ 2: Utiliser data.serviceId si disponible
     else if (productItem.data?.serviceId) {
       serviceId = productItem.data.serviceId;
     }
-    // Ô£à PRIORIT├ë 3: Extraire depuis l'ID au format "serviceId_productIndex"
+    // ✅ PRIORITÉ 3: Extraire depuis l'ID au format "serviceId_productIndex"
     else if (productItem.id && typeof productItem.id === 'string' && productItem.id.includes('_')) {
       const parts = productItem.id.split('_');
       if (parts.length >= 2) {
         serviceId = parts[0];
       } else {
-        logger.error('[MesServicesScreen] ÔØî Format ID produit invalide:', productItem.id);
-        toaster.error(t('mesServices.cannotDetermineService'));
+        logger.error('[MesServicesScreen] ❌ Format ID produit invalide:', productItem.id);
+        toaster.error('Impossible de déterminer le service pour ce produit');
         return;
       }
     }
-    // Ô£à PRIORIT├ë 4: Utiliser l'ID directement si c'est un nombre
+    // ✅ PRIORITÉ 4: Utiliser l'ID directement si c'est un nombre
     else if (productItem.id && !isNaN(Number(productItem.id))) {
       serviceId = productItem.id;
     }
     else {
-      logger.error('[MesServicesScreen] ÔØî Impossible d\'extraire serviceId du produit:', {
+      logger.error('[MesServicesScreen] ❌ Impossible d\'extraire serviceId du produit:', {
         product_id: productItem.id,
         service_id: productItem.service_id,
         data_serviceId: productItem.data?.serviceId
       });
-      toaster.error(t('mesServices.cannotDetermineService'));
+      toaster.error('Impossible de déterminer le service pour ce produit');
       return;
     }
 
-    // Ô£à S'assurer que serviceId est un nombre pour la coh├®rence
+    // ✅ S'assurer que serviceId est un nombre pour la cohérence
     const numericServiceId = Number(serviceId);
     if (!Number.isFinite(numericServiceId) || numericServiceId <= 0) {
-      logger.error('[MesServicesScreen] ÔØî serviceId invalide:', serviceId);
-      toaster.error(t('mesServices.invalidService'));
+      logger.error('[MesServicesScreen] ❌ serviceId invalide:', serviceId);
+      toaster.error('Service invalide pour ce produit');
       return;
     }
 
     logger.log('[MesServicesScreen] handleCreateVideo - Service ID:', numericServiceId, 'Produit:', productItem.id);
 
-    // Ô£à CORRECTION: S'assurer que services est un tableau avant filter
+    // ✅ CORRECTION: S'assurer que services est un tableau avant filter
     if (!Array.isArray(services)) {
-      toaster.error(t('mesServices.cannotCreateVideo'));
+      toaster.error('Impossible de créer une vidéo : données de services invalides');
       return;
     }
 
-    // Regrouper tous les produits du m├¬me service
+    // Regrouper tous les produits du même service
     const produitsDuService = services.filter((s: Service) => {
-      if (!s) return false; // Ô£à PROTECTION: Ignorer les services null/undefined
+      if (!s) return false; // ✅ PROTECTION: Ignorer les services null/undefined
 
-      // Ô£à CORRECTION: Utiliser la m├¬me logique robuste pour extraire le serviceId de chaque produit
+      // ✅ CORRECTION: Utiliser la même logique robuste pour extraire le serviceId de chaque produit
       let sServiceId: string | number;
 
-      // Ô£à PRIORIT├ë 1: Utiliser service_id direct du produit
+      // ✅ PRIORITÉ 1: Utiliser service_id direct du produit
       if (s.service_id) {
         sServiceId = s.service_id;
       }
-      // Ô£à PRIORIT├ë 2: Utiliser data.serviceId si disponible
+      // ✅ PRIORITÉ 2: Utiliser data.serviceId si disponible
       else if (s.data?.serviceId) {
         sServiceId = s.data.serviceId;
       }
-      // Ô£à PRIORIT├ë 3: Extraire depuis l'ID au format "serviceId_productIndex"
+      // ✅ PRIORITÉ 3: Extraire depuis l'ID au format "serviceId_productIndex"
       else if (s.id && typeof s.id === 'string' && s.id.includes('_')) {
         const parts = s.id.split('_');
         if (parts.length >= 2) {
           sServiceId = parts[0];
         } else {
-          return false; // Ô£à Ignorer les produits avec un ID invalide
+          return false; // ✅ Ignorer les produits avec un ID invalide
         }
       }
-      // Ô£à PRIORIT├ë 4: Utiliser l'ID directement si c'est un nombre
+      // ✅ PRIORITÉ 4: Utiliser l'ID directement si c'est un nombre
       else if (s.id && !isNaN(Number(s.id))) {
         sServiceId = s.id;
       }
       else {
-        return false; // Ô£à Ignorer les produits sans serviceId identifiable
+        return false; // ✅ Ignorer les produits sans serviceId identifiable
       }
 
-      // Ô£à Comparer les serviceId num├®riques pour la coh├®rence
+      // ✅ Comparer les serviceId numériques pour la cohérence
       const numericSServiceId = Number(sServiceId);
       return numericSServiceId === numericServiceId;
     });
 
-    logger.log('[MesServicesScreen] handleCreateVideo - Produits du service trouv├®s:', produitsDuService.length);
+    logger.log('[MesServicesScreen] handleCreateVideo - Produits du service trouvés:', produitsDuService.length);
 
     if (produitsDuService.length === 0) {
       // Utiliser Alert pour confirmation avec actions multiples
       Alert.alert(
-        t('mesServices.productRequired'),
-        t('mesServices.noProductForVideo'),
+        'Produit requis',
+        'Aucun produit trouvé pour ce service. Créez d\'abord un produit pour pouvoir créer une vidéo.',
         [
-          { text: t('mesServices.cancel'), style: 'cancel' },
+          { text: 'Annuler', style: 'cancel' },
           {
-            text: t('mesServices.createAProduct'),
+            text: 'Créer un produit',
             onPress: () => {
               handleAddProduct(numericServiceId);
             }
@@ -994,9 +1004,9 @@ const MesServicesScreen: React.FC = () => {
       return;
     }
 
-    // Ô£à CORRECTION: S'assurer que produitsDuService est un tableau avant map
+    // ✅ CORRECTION: S'assurer que produitsDuService est un tableau avant map
     if (!Array.isArray(produitsDuService) || produitsDuService.length === 0) {
-      toaster.error(t('mesServices.noProductFound'));
+      toaster.error('Aucun produit trouvé pour ce service');
       return;
     }
 
@@ -1005,55 +1015,55 @@ const MesServicesScreen: React.FC = () => {
       id: product.id || `prod_${product.product_index || 0}`,
       serviceId: numericServiceId.toString(),
       product_index: product.product_index || product.data?.product_index || 0,
-      nom: product.nom || product.data?.nom || product.data?.nom_produit || product.nom_produit || product.title || product.data?.title || t('mesServices.produit'),
+      nom: product.nom || product.data?.nom || product.data?.nom_produit || product.nom_produit || product.title || product.data?.title || 'Produit',
       description: product.description || product.data?.description || '',
       prix: product.data?.prix || product.prix || product.price,
       devise: product.data?.devise || product.devise || product.currency || 'XAF',
       type: product.data?.type || product.type || product.categorie || 'produit',
-      serviceTitre: product.service_title || product.data?.serviceTitre || product.title || t('mesServices.serviceSansTitre'),
+      serviceTitre: product.service_title || product.data?.serviceTitre || product.title || `Service #${numericServiceId}`,
       ...product.data,
       ...product
     }));
 
-    // Si un seul produit ÔåÆ Navigation directe
+    // Si un seul produit → Navigation directe
     if (managedProducts.length === 1) {
       const product = managedProducts[0];
       navigateToVideoWizard(navigation, {
         serviceId: numericServiceId,
         productIndex: product.product_index || 0,
-        productName: extractProductName(product, t('mesServices.produit'))
+        productName: extractProductName(product, 'Produit')
       });
       return;
     }
 
-    // Plusieurs produits ÔåÆ Afficher le modal ProductVideoCreationModal
+    // Plusieurs produits → Afficher le modal ProductVideoCreationModal
     setSelectedServiceForVideo(productItem);
     setProductsForVideoCreation(managedProducts);
     setShowVideoCreationModal(true);
   };
 
   const handleVideoCreationSuccess = async (result: GeneratedVideoResponse) => {
-    logger.log('[MesServicesScreen] Ô£à Vid├®o cr├®├®e avec succ├¿s:', result);
+    logger.log('[MesServicesScreen] ✅ Vidéo créée avec succès:', result);
     setShowVideoCreationModal(false);
     setProductsForVideoCreation([]);
     setSelectedServiceForVideo(null);
-    toaster.success(t('mesServices.videoCreated'));
+    toaster.success('Votre vidéo a été créée avec succès !');
   };
 
   const handlePromotionService = (service: any) => {
-    const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || t('mesServices.serviceSansTitre');
+    const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service';
 
     // Afficher un modal de gestion des promotions comme dans le frontend
     Alert.alert(
-      `­ƒôó ${t('mesServices.promotionTitle')}`,
-      t('mesServices.promotionQuestion', { title: titre }),
+      '📢 Promotion du service',
+      `Service: ${titre}\n\nQue souhaitez-vous faire ?`,
       [
-        { text: t('mesServices.cancel'), style: 'cancel' },
+        { text: 'Annuler', style: 'cancel' },
         {
-          text: `ÔÜí ${t('mesServices.createFlashPromo')}`,
+          text: '⚡ Créer un flash promotionnel',
           onPress: () => {
             try {
-              // Navigation vers l'├®cran de cr├®ation de flash promotionnel
+              // Navigation vers l'écran de création de flash promotionnel
               (navigation as any).navigate('CreateFlashPromo', {
                 serviceId: service.id,
                 serviceData: service.data,
@@ -1061,15 +1071,15 @@ const MesServicesScreen: React.FC = () => {
               });
             } catch (error) {
               logger.error('Erreur navigation flash promo:', error);
-              Alert.alert(t('message.error'), t('mesServices.cannotOpenFlashPromo'));
+              Alert.alert('Erreur', 'Impossible d\'ouvrir la création de flash promotionnel');
             }
           }
         },
         {
-          text: `­ƒÄë ${t('mesServices.createPromotion')}`,
+          text: '🎉 Créer une promotion',
           onPress: () => {
             try {
-              // Navigation vers l'├®cran de modification pour cr├®er une promotion
+              // Navigation vers l'écran de modification pour créer une promotion
               (navigation as any).navigate('FormulaireYukpoIntelligent', {
                 mode: 'edit',
                 serviceId: service.id,
@@ -1085,15 +1095,15 @@ const MesServicesScreen: React.FC = () => {
               });
             } catch (error) {
               logger.error('Erreur navigation promotion:', error);
-              Alert.alert(t('message.error'), t('mesServices.cannotOpenPromotion'));
+              Alert.alert('Erreur', 'Impossible d\'ouvrir la gestion des promotions');
             }
           }
         },
         {
-          text: t('mesServices.editPromotion'),
+          text: 'Modifier la promotion',
           onPress: () => {
             try {
-              // Navigation vers l'├®cran de modification pour modifier la promotion
+              // Navigation vers l'écran de modification pour modifier la promotion
               (navigation as any).navigate('FormulaireYukpoIntelligent', {
                 mode: 'edit',
                 serviceId: service.id,
@@ -1109,7 +1119,7 @@ const MesServicesScreen: React.FC = () => {
               });
             } catch (error) {
               logger.error('Erreur navigation promotion:', error);
-              Alert.alert(t('message.error'), t('mesServices.cannotOpenPromotion'));
+              Alert.alert('Erreur', 'Impossible d\'ouvrir la gestion des promotions');
             }
           }
         }
@@ -1117,11 +1127,11 @@ const MesServicesScreen: React.FC = () => {
     );
   };
 
-  // Filtrer les services selon le filtre s├®lectionn├®
-  // Ô£à CORRECTION: S'assurer que services est un tableau et filtrer uniquement les services valides
+  // Filtrer les services selon le filtre sélectionné
+  // ✅ CORRECTION: S'assurer que services est un tableau et filtrer uniquement les services valides
   const filteredServices = Array.isArray(services)
     ? services.filter((service) => {
-      // Ô£à PROTECTION: Ignorer les services null/undefined
+      // ✅ PROTECTION: Ignorer les services null/undefined
       if (!service) return false;
 
       if (filter === 'tous') return true;
@@ -1131,7 +1141,7 @@ const MesServicesScreen: React.FC = () => {
     })
     : [];
 
-  // Ô£à NOUVEAU: Calculer les statistiques pour les cards visuelles
+  // ✅ NOUVEAU: Calculer les statistiques pour les cards visuelles
   const stats = useMemo(() => {
     const totalProducts = services.length;
     const activeProducts = services.filter(s => s && s.status === 'active').length;
@@ -1146,23 +1156,8 @@ const MesServicesScreen: React.FC = () => {
     };
   }, [services]);
 
-  // Ô£à CORRIG├ë: Cr├®er les styles dynamiquement avec le th├¿me AVANT le early return loading
+  // ✅ CORRIGÉ: Créer les styles dynamiquement avec le thème AVANT le early return loading
   const dynamicStyles = React.useMemo(() => createStyles(colors), [colors]);
-
-  // Ô£à NOUVEAU: Breadcrumbs navigation (doit rester avant tout return conditionnel)
-  // pour garantir un ordre de hooks stable entre les rendus.
-  const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
-    const items: BreadcrumbItem[] = [
-      {
-        label: t('mesServices.home'),
-        onPress: () => navigation.navigate('Home' as never),
-      },
-      {
-        label: t('mesServices.products'),
-      },
-    ];
-    return items;
-  }, [navigation, t]);
 
   if (loading && services.length === 0) {
     return (
@@ -1176,25 +1171,37 @@ const MesServicesScreen: React.FC = () => {
               <View style={dynamicStyles.logoContainer}>
                 <SafeIcon name="briefcase" size={18} color="#fff" />
                 <View style={dynamicStyles.titleContainer}>
-                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">{t('mesServices.products')}</Text>
+                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Produits</Text>
                 </View>
               </View>
             </View>
           </View>
         </LinearGradient>
         <View style={dynamicStyles.scrollView}>
-          <SkeletonStats count={4} />
-          <SkeletonList count={3} />
+          <SkeletonLoader type="stats" count={4} />
+          <SkeletonLoader type="card" count={3} />
         </View>
       </View>
     );
   }
 
+  // ✅ NOUVEAU: Breadcrumbs navigation
+  const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
+    const items: BreadcrumbItem[] = [
+      {
+        label: 'Accueil',
+        onPress: () => navigation.navigate('Home' as never),
+      },
+      {
+        label: 'Produits',
+      },
+    ];
+    return items;
+  }, [navigation]);
+
   return (
     <ErrorBoundaryWithRetry
-      diagnosticsReport
-      reportScreenLabel="MesServicesScreen"
-      maxRetries={0}
+      maxRetries={3}
       retryDelay={2000}
       onRetry={() => {
         loadServices(true);
@@ -1207,18 +1214,18 @@ const MesServicesScreen: React.FC = () => {
           style={dynamicStyles.header}
         >
           <View style={dynamicStyles.headerContent}>
-            {/* Ô£à CORRECTION: Titre "Produits" sur sa propre ligne, align├® ├á droite */}
+            {/* ✅ CORRECTION: Titre "Produits" sur sa propre ligne, aligné à droite */}
             <View style={dynamicStyles.headerTitleRow}>
               <View style={dynamicStyles.logoContainer}>
                 <SafeIcon name="briefcase" size={22} color="#fff" />
                 <View style={dynamicStyles.titleContainer}>
-                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">{t('mesServices.products')}</Text>
+                  <Text style={dynamicStyles.title} numberOfLines={1} ellipsizeMode="tail">Produits</Text>
                 </View>
               </View>
             </View>
-            {/* Ô£à AM├ëLIOR├ë: Boutons d'action sur une ligne s├®par├®e, en dessous du titre */}
+            {/* ✅ AMÉLIORÉ: Boutons d'action sur une ligne séparée, en dessous du titre */}
             <View style={dynamicStyles.headerActions}>
-              {/* Ô£à NOUVEAU: Bouton cr├®ation vid├®o */}
+              {/* ✅ NOUVEAU: Bouton création vidéo */}
               <TouchableOpacity
                 style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
                 onPress={() => {
@@ -1226,46 +1233,46 @@ const MesServicesScreen: React.FC = () => {
                     (navigation as any).navigate('VideoCreationIntro');
                   } catch (error) {
                     logger.error('[MesServicesScreen] Erreur navigation vers VideoCreationIntro:', error);
-                    toaster.error(t('mesServices.cannotCreateVideo'));
+                    toaster.error('Impossible d\'ouvrir la création de vidéo');
                   }
                 }}
-                accessibilityLabel={t('mesServices.menuVideoAssistant')}
+                accessibilityLabel="Créer une vidéo"
                 accessibilityRole="button"
               >
                 <SafeIcon name="plus" size={20} color="#fff" type="lucide" />
               </TouchableOpacity>
-              {/* Ô£à NOUVEAU: Configuration Flash Promo - Visible directement dans le header */}
+              {/* ✅ NOUVEAU: Configuration Flash Promo - Visible directement dans le header */}
               <TouchableOpacity
                 style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(245, 158, 11, 0.4)', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.6)' }]}
                 onPress={() => {
                   const productsList = prepareProductsForSelector();
                   if (productsList.length === 0) {
-                    toaster.warning(t('mesServices.creerProduitsAvantFlash'));
+                    toaster.warning('Vous devez d\'abord créer des produits avant de créer un flash promo.');
                     return;
                   }
                   setProductsForSelection(productsList);
                   setProductSelectorMode('flash-promo');
                   setShowProductSelector(true);
                 }}
-                accessibilityLabel={t('mesServices.createFlash')}
+                accessibilityLabel="Configuration Flash Promo"
                 accessibilityRole="button"
               >
                 <SafeIcon name="zap" size={20} color="#fff" type="lucide" />
               </TouchableOpacity>
-              {/* Ô£à NOUVEAU: Configuration de livraison dans l'en-t├¬te */}
+              {/* ✅ NOUVEAU: Configuration de livraison dans l'en-tête */}
               <TouchableOpacity
                 style={[dynamicStyles.headerButton, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}
                 onPress={() => {
                   const productsList = prepareProductsForSelector();
                   if (productsList.length === 0) {
-                    toaster.warning(t('mesServices.createProductsFirst'));
+                    toaster.warning('Vous devez d\'abord créer des produits avant de configurer la livraison.');
                     return;
                   }
                   setProductsForSelection(productsList);
                   setProductSelectorMode('delivery');
                   setShowProductSelector(true);
                 }}
-                accessibilityLabel={t('mesServices.configLivraison')}
+                accessibilityLabel="Configuration livraison"
                 accessibilityRole="button"
               >
                 <SafeIcon name="bike" size={18} color="#fff" />
@@ -1279,7 +1286,7 @@ const MesServicesScreen: React.FC = () => {
                       setSelectedItems(new Set());
                     }
                   }}
-                  accessibilityLabel={bulkMode ? t('mesServices.desactiverSelection') : t('mesServices.activerSelection')}
+                  accessibilityLabel={bulkMode ? "Désactiver sélection multiple" : "Activer sélection multiple"}
                   accessibilityRole="button"
                 >
                   <SafeIcon name={bulkMode ? "check-square" : "square"} size={18} color="#fff" />
@@ -1288,36 +1295,238 @@ const MesServicesScreen: React.FC = () => {
               <TouchableOpacity
                 style={[dynamicStyles.headerButton, dynamicStyles.menuButton]}
                 onPress={() => setShowSidebar(true)}
-                accessibilityLabel={t('mesServices.menuNavigation')}
+                accessibilityLabel="Menu navigation"
                 accessibilityRole="button"
               >
-                <SafeIcon name="more-vertical" size={22} color="#fff" type="lucide" />
+                <SafeIcon name="menu" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
           </View>
 
+          {/* ✅ Menu global déroulant */}
+          {showGlobalMenu && (
+            <View style={dynamicStyles.globalMenu}>
+              {/* ✅ NOUVEAU: Galerie Médias Produits - Déplacé ici pour être visible */}
+              <TouchableOpacity
+                style={[dynamicStyles.menuItem, { backgroundColor: colors.surfaceVariant }]}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  setShowProductGallery(true);
+                }}
+              >
+                <SafeIcon name="image" size={18} color={colors.success} />
+                <Text style={[dynamicStyles.menuItemText, { color: colors.success }]}>Galerie Médias</Text>
+              </TouchableOpacity>
+
+              {/* ✅ Bouton Membres existant - amélioré pour sélection produits/services */}
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  // ✅ Préparer la liste des produits et ouvrir le sélecteur
+                  const productsList = prepareProductsForSelector();
+                  if (productsList.length === 0) {
+                    toaster.warning('Vous devez d\'abord créer des produits avant de gérer l\'équipe.');
+                    return;
+                  }
+                  setProductsForSelection(productsList);
+                  setProductSelectorMode('team');
+                  setShowProductSelector(true);
+                }}
+              >
+                <SafeIcon name="users" size={18} color="#6366F1" />
+                <Text style={dynamicStyles.menuItemText}>Membres</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  handleAddProduct();
+                }}
+              >
+                <SafeIcon name="plus-circle" size={18} color="#10B981" />
+                <Text style={dynamicStyles.menuItemText}>Créer produit</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  (navigation as any).navigate('AnalyticsDashboard');
+                }}
+              >
+                <SafeIcon name="tablet" size={18} color="#3B82F6" />
+                <Text style={dynamicStyles.menuItemText}>Statistiques</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  (navigation as any).navigate('PubliciteDashboard');
+                }}
+              >
+                <SafeIcon name="megaphone" size={18} color="#8B5CF6" />
+                <Text style={dynamicStyles.menuItemText}>Mes Publicités</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  (navigation as any).navigate('CreatePublicite');
+                }}
+              >
+                <SafeIcon name="plus-circle" size={18} color="#EC4899" />
+                <Text style={dynamicStyles.menuItemText}>Nouvelle Publicité</Text>
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU: Créer Flash Promo - Sélection multiple de produits */}
+              <TouchableOpacity
+                style={[dynamicStyles.menuItem, { backgroundColor: '#FEF3C7', borderWidth: 2, borderColor: '#F59E0B' }]}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  // Préparer la liste des produits et ouvrir le sélecteur
+                  const productsList = prepareProductsForSelector();
+                  if (productsList.length === 0) {
+                    toaster.warning('Vous devez d\'abord créer des produits avant de créer un flash promo.');
+                    return;
+                  }
+                  setProductsForSelection(productsList);
+                  setProductSelectorMode('flash-promo');
+                  setShowProductSelector(true);
+                }}
+              >
+                <Text style={{ fontSize: 18, marginRight: 8 }}>⚡</Text>
+                <Text style={[dynamicStyles.menuItemText, { color: '#F59E0B', fontWeight: '700' }]}>Créer Flash Promo</Text>
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU: Voir Flash Promotionnels actifs */}
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  try {
+                    (navigation as any).navigate('FlashPromosActive');
+                  } catch (error) {
+                    logger.error('Erreur navigation FlashPromosActive:', error);
+                    toaster.error('Impossible d\'ouvrir les Flash Promotionnels');
+                  }
+                }}
+              >
+                <SafeIcon name="zap" size={18} color="#F59E0B" />
+                <Text style={dynamicStyles.menuItemText}>Voir Flash Actifs</Text>
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU: Mes Vidéos - Créées */}
+              <TouchableOpacity
+                style={[dynamicStyles.menuItem, { backgroundColor: colors.surfaceVariant }]}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  try {
+                    const parent = (navigation as any).getParent();
+                    if (parent) {
+                      parent.navigate('VideoFeed');
+                    } else {
+                      (navigation as any).navigate('VideoFeed');
+                    }
+                  } catch (error) {
+                    logger.error('Erreur navigation vers VideoFeed:', error);
+                    toaster.error('Impossible d\'ouvrir Mes Vidéos');
+                  }
+                }}
+              >
+                <SafeIcon name="video" size={18} color={colors.primary} />
+                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>Mes Vidéos Créées</Text>
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU: Démarrer un Live */}
+              <TouchableOpacity
+                style={[dynamicStyles.menuItem, { backgroundColor: '#FEF2F2' }]}
+                onPress={() => (navigation as any).navigate('StartLive')}
+              >
+                <SafeIcon name="radio" size={18} color="#DC2626" />
+                <Text style={[dynamicStyles.menuItemText, { color: '#DC2626' }]}>🎥 Démarrer un Live</Text>
+              </TouchableOpacity>
+
+              {/* ✅ NOUVEAU: Analytiques Vidéos */}
+              <TouchableOpacity
+                style={[dynamicStyles.menuItem, { backgroundColor: colors.surfaceVariant }]}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  try {
+                    const parent = (navigation as any).getParent();
+                    if (parent) {
+                      parent.navigate('VideoAnalytics');
+                    } else {
+                      (navigation as any).navigate('VideoAnalytics');
+                    }
+                  } catch (error) {
+                    logger.error('Erreur navigation vers VideoAnalytics:', error);
+                    toaster.error('Impossible d\'ouvrir Analytiques Vidéos');
+                  }
+                }}
+              >
+                <SafeIcon name="bar-chart" size={18} color={colors.primary} />
+                <Text style={[dynamicStyles.menuItemText, { color: colors.primary }]}>Analytiques Vidéos</Text>
+              </TouchableOpacity>
+
+              {/* ✅ Bouton Paramètres */}
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  (navigation as any).navigate('Settings');
+                }}
+              >
+                <SafeIcon name="settings" size={18} color="#6B7280" />
+                <Text style={dynamicStyles.menuItemText}>Paramètres</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={dynamicStyles.menuItem}
+                onPress={() => {
+                  setShowGlobalMenu(false);
+                  onRefresh();
+                }}
+              >
+                <SafeIcon name="refresh-cw" size={18} color="#6B7280" />
+                <Text style={dynamicStyles.menuItemText}>Actualiser</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </LinearGradient>
 
-        {/* Ô£à NOUVEAU: Breadcrumbs navigation */}
+        {/* Overlay pour fermer le menu quand on clique ailleurs */}
+        {showGlobalMenu && (
+          <TouchableOpacity
+            style={dynamicStyles.menuOverlay}
+            activeOpacity={1}
+            onPress={() => setShowGlobalMenu(false)}
+          />
+        )}
+
+        {/* ✅ NOUVEAU: Breadcrumbs navigation */}
         <Breadcrumbs items={breadcrumbItems} />
 
-        {/* Ô£à NOUVEAU: Cards de statistiques visuelles (comme Shopify/Amazon) - Responsive */}
+        {/* ✅ NOUVEAU: Cards de statistiques visuelles (comme Shopify/Amazon) - Responsive */}
         <View style={dynamicStyles.statsSection}>
           {deviceType.isTablet ? (
-            // Ô£à NOUVEAU: Grid layout pour tablette (2 colonnes)
+            // ✅ NOUVEAU: Grid layout pour tablette (2 colonnes)
             <View style={dynamicStyles.statsGrid}>
               <View style={dynamicStyles.statsRow}>
                 <StatsCard
                   icon="package"
                   value={stats.totalProducts}
-                  label={t('mesServices.totalProducts')}
+                  label="Produits totaux"
                   gradient={modernColors.primaryGradient}
                   onPress={() => setFilter('tous')}
                 />
                 <StatsCard
                   icon="check-circle"
                   value={stats.activeProducts}
-                  label={t('mesServices.active')}
+                  label="Actifs"
                   color={modernColors.success}
                   onPress={() => setFilter('actif')}
                 />
@@ -1326,7 +1535,7 @@ const MesServicesScreen: React.FC = () => {
                 <StatsCard
                   icon="pause-circle"
                   value={stats.inactiveProducts}
-                  label={t('mesServices.inactive')}
+                  label="Inactifs"
                   color={modernColors.warning}
                   onPress={() => setFilter('inactif')}
                 />
@@ -1334,7 +1543,7 @@ const MesServicesScreen: React.FC = () => {
                   <StatsCard
                     icon="eye"
                     value={stats.totalViews.toLocaleString()}
-                    label={t('mesServices.totalViews')}
+                    label="Vues totales"
                     color={modernColors.secondary}
                   />
                 )}
@@ -1350,21 +1559,21 @@ const MesServicesScreen: React.FC = () => {
               <StatsCard
                 icon="package"
                 value={stats.totalProducts}
-                label={t('mesServices.totalProducts')}
+                label="Produits totaux"
                 gradient={modernColors.primaryGradient}
                 onPress={() => setFilter('tous')}
               />
               <StatsCard
                 icon="check-circle"
                 value={stats.activeProducts}
-                label={t('mesServices.active')}
+                label="Actifs"
                 color={modernColors.success}
                 onPress={() => setFilter('actif')}
               />
               <StatsCard
                 icon="pause-circle"
                 value={stats.inactiveProducts}
-                label={t('mesServices.inactive')}
+                label="Inactifs"
                 color={modernColors.warning}
                 onPress={() => setFilter('inactif')}
               />
@@ -1372,7 +1581,7 @@ const MesServicesScreen: React.FC = () => {
                 <StatsCard
                   icon="eye"
                   value={stats.totalViews.toLocaleString()}
-                  label={t('mesServices.totalViews')}
+                  label="Vues totales"
                   color={modernColors.secondary}
                 />
               )}
@@ -1381,7 +1590,7 @@ const MesServicesScreen: React.FC = () => {
         </View>
 
         <View style={dynamicStyles.scrollView}>
-          {/* Ô£à OPTIMIS├ë: Filtres sur une seule ligne avec scroll horizontal */}
+          {/* ✅ OPTIMISÉ: Filtres sur une seule ligne avec scroll horizontal */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -1404,7 +1613,7 @@ const MesServicesScreen: React.FC = () => {
                 dynamicStyles.filterChipText,
                 filter === 'tous' && dynamicStyles.filterChipTextActive
               ]}>
-                {t('mesServices.all')} ({services.length})
+                Tous ({services.length})
               </Text>
             </TouchableOpacity>
 
@@ -1424,7 +1633,7 @@ const MesServicesScreen: React.FC = () => {
                 dynamicStyles.filterChipText,
                 filter === 'actif' && dynamicStyles.filterChipTextActive
               ]}>
-                {t('mesServices.active')} ({Array.isArray(services) ? services.filter(s => s && s.status === 'active').length : 0})
+                Actifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'active').length : 0})
               </Text>
             </TouchableOpacity>
 
@@ -1444,27 +1653,27 @@ const MesServicesScreen: React.FC = () => {
                 dynamicStyles.filterChipText,
                 filter === 'inactif' && dynamicStyles.filterChipTextActive
               ]}>
-                {t('mesServices.inactive')} ({Array.isArray(services) ? services.filter(s => s && s.status === 'inactive').length : 0})
+                Inactifs ({Array.isArray(services) ? services.filter(s => s && s.status === 'inactive').length : 0})
               </Text>
             </TouchableOpacity>
 
           </ScrollView>
 
-          {/* Ô£à AM├ëLIOR├ë: FlashList pour virtualisation (performance +50%) */}
+          {/* ✅ AMÉLIORÉ: FlashList pour virtualisation (performance +50%) */}
           {filteredServices.length === 0 ? (
             <View style={dynamicStyles.emptyContainer}>
               <SafeIcon name="briefcase" size={64} color={colors.textSecondary} />
               <Text style={dynamicStyles.emptyTitle}>
-                {filter === 'tous' ? t('mesServices.noProductCreated') : t('mesServices.noProductFilter', { filter })}
+                {filter === 'tous' ? 'Aucun produit créé' : `Aucun produit ${filter}`}
               </Text>
               <Text style={dynamicStyles.emptyText}>
                 {filter === 'tous'
-                  ? t('mesServices.createFirstProduct')
-                  : t('mesServices.noProductForNow', { filter })
+                  ? 'Créez votre premier produit pour commencer à proposer vos produits.'
+                  : `Aucun produit ${filter} pour le moment.`
                 }
               </Text>
               <NativeButton
-                title={`Ô×ò ${t('mesServices.createNewProduct')}`}
+                title="➕ Créer un nouveau produit"
                 onPress={() => handleAddProduct()}
                 variant="primary"
                 size="medium"
@@ -1476,12 +1685,11 @@ const MesServicesScreen: React.FC = () => {
               data={filteredServices.filter(service => service != null)}
               estimatedItemSize={200}
               numColumns={deviceType.isTablet ? deviceType.columns : 1}
-              // Ô£à NOUVEAU: Responsive design - Grid layout pour tablette/desktop
-              extraData={{ bulkMode, selected: selectedItems.size, n: filteredServices.length }}
-              renderItem={({ item: service, index }) => {
+              // ✅ NOUVEAU: Responsive design - Grid layout pour tablette/desktop
+              columnWrapperStyle={deviceType.isTablet && deviceType.columns > 1 ? { gap: 16, paddingHorizontal: 16 } : undefined}
+              renderItem={({ item: service }) => {
                 const serviceId = service?.id?.toString() || '';
                 const isSelected = selectedItems.has(serviceId);
-                const stableKey = service?.id != null ? String(service.id) : `row-${index}`;
 
                 return (
                   <View style={[
@@ -1490,7 +1698,7 @@ const MesServicesScreen: React.FC = () => {
                     deviceType.isTablet && deviceType.columns > 1 && { flex: 1, marginHorizontal: 8 }
                   ]}>
                     <ServiceCardModern
-                      key={stableKey}
+                      key={service?.id || `service-${Math.random()}`}
                       service={service}
                       onEdit={handleEditService}
                       onView={handleViewService}
@@ -1514,7 +1722,7 @@ const MesServicesScreen: React.FC = () => {
                   </View>
                 );
               }}
-              keyExtractor={(item, index) => (item?.id != null ? String(item.id) : `service-${index}`)}
+              keyExtractor={(item) => item?.id?.toString() || `service-${Math.random()}`}
               contentContainerStyle={dynamicStyles.flashListContent}
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -1522,21 +1730,21 @@ const MesServicesScreen: React.FC = () => {
               ListFooterComponent={
                 <View style={dynamicStyles.footerContainer}>
                   <NativeButton
-                    title={`­ƒôè ${t('mesServices.statistics')}`}
+                    title="📊 Analytics Dashboard"
                     onPress={() => (navigation as any).navigate('AnalyticsDashboard')}
                     variant="primary"
                     size="large"
                     style={dynamicStyles.analyticsFooterButton}
                   />
                   <NativeButton
-                    title={`­ƒôª ${t('mesServices.manageProducts')}`}
+                    title="📦 Gérer mes produits"
                     onPress={() => navigation.navigate('MesProduits' as never)}
                     variant="outline"
                     size="large"
                     style={dynamicStyles.productsButton}
                   />
                   <NativeButton
-                    title={`­ƒÅá ${t('mesServices.backToHome')}`}
+                    title="🏠 Retour à l'accueil"
                     onPress={() => navigation.navigate('Home' as never)}
                     variant="outline"
                     size="large"
@@ -1548,10 +1756,10 @@ const MesServicesScreen: React.FC = () => {
                 <View style={dynamicStyles.emptyContainer}>
                   <SafeIcon name="briefcase" size={64} color={colors.textSecondary} />
                   <Text style={dynamicStyles.emptyTitle}>
-                    {filter === 'tous' ? t('mesServices.noProductCreated') : t('mesServices.noProductFilter', { filter })}
+                    {filter === 'tous' ? 'Aucun produit créé' : `Aucun produit ${filter}`}
                   </Text>
                   <NativeButton
-                    title={`Ô×ò ${t('mesServices.createNewProduct')}`}
+                    title="➕ Créer un nouveau produit"
                     onPress={() => handleAddProduct()}
                     variant="primary"
                     size="medium"
@@ -1563,7 +1771,7 @@ const MesServicesScreen: React.FC = () => {
           )}
         </View>
 
-        {/* Ô£à NOUVEAU : Modal Gestion d'├®quipe */}
+        {/* ✅ NOUVEAU : Modal Gestion d'équipe */}
         {showTeamManager && (
           <Modal
             visible={showTeamManager}
@@ -1578,24 +1786,24 @@ const MesServicesScreen: React.FC = () => {
                 setSelectedService(null);
               }}
               onMemberAdded={() => {
-                toaster.success(t('mesServices.membreAjoute'));
+                toaster.success('Membre ajouté à l\'équipe avec succès');
                 loadServices(true);
               }}
               onMemberRemoved={() => {
-                toaster.success(t('mesServices.membreRetire'));
+                toaster.success('Membre retiré de l\'équipe avec succès');
                 loadServices(true);
               }}
             />
           </Modal>
         )}
 
-        {/* Ô£à S├®lecteur de produit - Mode multiple pour livraison/├®quipe ou unique pour vid├®o */}
+        {/* ✅ Sélecteur de produit - Mode multiple pour livraison/équipe ou unique pour vidéo */}
         <ServiceProductSelector
           visible={showProductSelector}
           products={productsForSelection}
-          allowMultiple={productSelectorMode !== null} // Ô£à Mode multiple pour livraison/├®quipe
+          allowMultiple={productSelectorMode !== null} // ✅ Mode multiple pour livraison/équipe
           onSelect={(product) => {
-            // Ô£à Mode unique (vid├®o)
+            // ✅ Mode unique (vidéo)
             if (!productSelectorMode) {
               navigateToVideoWizard(navigation, product);
             }
@@ -1604,37 +1812,37 @@ const MesServicesScreen: React.FC = () => {
             setProductSelectorMode(null);
           }}
           onSelectMultiple={(selectedProducts) => {
-            // Ô£à Mode multiple (livraison ou ├®quipe)
+            // ✅ Mode multiple (livraison ou équipe)
             if (productSelectorMode === 'delivery') {
-              // Ô£à S├ëCURIS├ë: Normaliser les produits pour garantir que productName et serviceName sont des strings
+              // ✅ SÉCURISÉ: Normaliser les produits pour garantir que productName et serviceName sont des strings
               const normalizedProducts = (Array.isArray(selectedProducts) ? selectedProducts : []).map(product => ({
                 serviceId: product?.serviceId || 0,
                 productIndex: product?.productIndex ?? 0,
                 productName: typeof product?.productName === 'string' ? product.productName.trim() :
                   (product?.productName && typeof product.productName === 'object' && 'valeur' in product.productName && typeof product.productName.valeur === 'string' ? product.productName.valeur.trim() :
-                    String(product?.productName || t('mesServices.produitSansNom'))),
+                    String(product?.productName || 'Produit sans nom')),
                 serviceName: typeof product?.serviceName === 'string' ? product.serviceName.trim() :
                   (product?.serviceName && typeof product.serviceName === 'object' && 'valeur' in product.serviceName && typeof product.serviceName.valeur === 'string' ? product.serviceName.valeur.trim() :
-                    String(product?.serviceName || t('mesServices.serviceSansNom'))),
+                    String(product?.serviceName || 'Service sans nom')),
               })).filter(p => p.serviceId > 0);
 
-              // Ô£à Stocker les produits s├®lectionn├®s normalis├®s et ouvrir le modal de configuration livraison
+              // ✅ Stocker les produits sélectionnés normalisés et ouvrir le modal de configuration livraison
               setSelectedProductsForDelivery(normalizedProducts);
               setShowGlobalDeliveryConfig(true);
             } else if (productSelectorMode === 'flash-promo') {
-              // Ô£à NOUVEAU: Mode Flash Promo - Cr├®er un flash promo pour plusieurs produits
+              // ✅ NOUVEAU: Mode Flash Promo - Créer un flash promo pour plusieurs produits
               if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
-                toaster.warning(t('mesServices.selectAuMoinsUnProduit'));
+                toaster.warning('Veuillez sélectionner au moins un produit pour créer un flash promo.');
                 setShowProductSelector(false);
                 setProductSelectorMode(null);
                 return;
               }
 
-              // Normaliser les produits s├®lectionn├®s
+              // Normaliser les produits sélectionnés
               const validProducts = selectedProducts.filter(p => p && p.serviceId != null && p.serviceId > 0);
 
               if (validProducts.length === 0) {
-                toaster.warning(t('mesServices.aucunProduitValide'));
+                toaster.warning('Aucun produit valide sélectionné.');
                 setShowProductSelector(false);
                 setProductSelectorMode(null);
                 return;
@@ -1650,11 +1858,11 @@ const MesServicesScreen: React.FC = () => {
                   });
                 } catch (error) {
                   logger.error('Erreur navigation CreateFlashPromo:', error);
-                  toaster.error(t('mesServices.impossibleCreerFlash'));
+                  toaster.error('Impossible d\'ouvrir la création de flash promo');
                 }
               } else {
-                // Plusieurs produits : naviguer avec la liste des produits s├®lectionn├®s
-                // Le CreateFlashPromo devra g├®rer la cr├®ation multiple
+                // Plusieurs produits : naviguer avec la liste des produits sélectionnés
+                // Le CreateFlashPromo devra gérer la création multiple
                 try {
                   (navigation as any).navigate('CreateFlashPromo', {
                     products: validProducts.map(p => ({
@@ -1667,7 +1875,7 @@ const MesServicesScreen: React.FC = () => {
                   });
                 } catch (error) {
                   logger.error('Erreur navigation CreateFlashPromo (multiple):', error);
-                  toaster.error(t('mesServices.impossibleCreerFlash'));
+                  toaster.error('Impossible d\'ouvrir la création de flash promo');
                 }
               }
 
@@ -1675,14 +1883,14 @@ const MesServicesScreen: React.FC = () => {
               setProductsForSelection([]);
               setProductSelectorMode(null);
             } else if (productSelectorMode === 'team') {
-              // Ô£à CORRECTION: V├®rifier que selectedProducts est un tableau valide
+              // ✅ CORRECTION: Vérifier que selectedProducts est un tableau valide
               if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
-                toaster.warning(t('mesServices.aucunProduitSelectionne'));
+                toaster.warning('Aucun produit sélectionné');
                 setShowProductSelector(false);
                 setProductSelectorMode(null);
                 return;
               }
-              // Extraire les serviceIds uniques et ouvrir le gestionnaire d'├®quipe
+              // Extraire les serviceIds uniques et ouvrir le gestionnaire d'équipe
               const validProducts = selectedProducts.filter(p => p && p.serviceId != null);
               const uniqueServiceIds = [...new Set(validProducts.map(p => String(p.serviceId || '')))].filter(id => id);
               if (uniqueServiceIds.length === 1) {
@@ -1705,7 +1913,7 @@ const MesServicesScreen: React.FC = () => {
           }}
         />
 
-        {/* Ô£à NOUVEAU: Modal de configuration de livraison globale */}
+        {/* ✅ NOUVEAU: Modal de configuration de livraison globale */}
         <GlobalDeliveryConfigModal
           visible={showGlobalDeliveryConfig}
           selectedProducts={selectedProductsForDelivery}
@@ -1716,17 +1924,17 @@ const MesServicesScreen: React.FC = () => {
           onSuccess={() => {
             setShowGlobalDeliveryConfig(false);
             setSelectedProductsForDelivery([]);
-            loadServices(true); // Recharger les produits apr├¿s configuration
+            loadServices(true); // Recharger les produits après configuration
           }}
         />
 
-        {/* Ô£à NOUVEAU: Modal de cr├®ation de vid├®o avec produits */}
+        {/* ✅ NOUVEAU: Modal de création de vidéo avec produits */}
         {showVideoCreationModal && productsForVideoCreation.length > 0 && (
           <ProductVideoCreationModal
             visible={showVideoCreationModal}
             primaryProduct={productsForVideoCreation[0]}
             products={productsForVideoCreation}
-            navigation={navigation} // Ô£à AJOUT├ë: Navigation pour la redirection
+            navigation={navigation} // ✅ AJOUTÉ: Navigation pour la redirection
             onClose={() => {
               setShowVideoCreationModal(false);
               setProductsForVideoCreation([]);
@@ -1736,45 +1944,45 @@ const MesServicesScreen: React.FC = () => {
           />
         )}
 
-        {/* Ô£à NOUVEAU : Modal de galerie produits */}
+        {/* ✅ NOUVEAU : Modal de galerie produits */}
         <ProductGalleryModal
           visible={showProductGallery}
           services={services}
           onClose={() => setShowProductGallery(false)}
         />
 
-        {/* Ô£à NOUVEAU: Sidebar Navigation (remplace menu dropdown) */}
+        {/* ✅ NOUVEAU: Sidebar Navigation (remplace menu dropdown) */}
         <SidebarNavigation
           visible={showSidebar}
           onClose={() => setShowSidebar(false)}
-          currentRoute="Services"
+          currentRoute="MesServices"
           items={[
             {
               id: 'create-product',
-              label: t('mesServices.creerProduit'),
+              label: 'Créer produit',
               icon: 'plus-circle',
-              section: t('mesServices.sectionActions'),
+              section: 'Actions',
               color: modernColors.success,
               onPress: () => handleAddProduct(),
             },
             {
               id: 'gallery',
-              label: t('mesServices.galerieMedias'),
+              label: 'Galerie Médias',
               icon: 'image',
-              section: t('mesServices.sectionActions'),
+              section: 'Actions',
               color: modernColors.success,
               onPress: () => setShowProductGallery(true),
             },
             {
               id: 'team',
-              label: t('mesServices.gererEquipe'),
+              label: 'Gérer équipe',
               icon: 'users',
-              section: t('mesServices.sectionActions'),
+              section: 'Actions',
               color: modernColors.primary,
               onPress: () => {
                 const productsList = prepareProductsForSelector();
                 if (productsList.length === 0) {
-                  toaster.warning(t('mesServices.creerProduitsAvantEquipe'));
+                  toaster.warning('Vous devez d\'abord créer des produits avant de gérer l\'équipe.');
                   return;
                 }
                 setProductsForSelection(productsList);
@@ -1784,33 +1992,33 @@ const MesServicesScreen: React.FC = () => {
             },
             {
               id: 'analytics',
-              label: t('mesServices.statistiques'),
+              label: 'Statistiques',
               icon: 'tablet',
-              section: t('mesServices.sectionAnalytics'),
+              section: 'Analytics',
               color: '#3B82F6',
               onPress: () => (navigation as any).navigate('AnalyticsDashboard'),
             },
             {
               id: 'publicite-dashboard',
-              label: t('mesServices.mesPublicites'),
+              label: 'Mes Publicités',
               icon: 'megaphone',
-              section: t('mesServices.sectionMarketing'),
+              section: 'Marketing',
               color: '#8B5CF6',
               onPress: () => (navigation as any).navigate('PubliciteDashboard'),
             },
             {
               id: 'publicite-create',
-              label: t('mesServices.nouvellePublicite'),
+              label: 'Nouvelle Publicité',
               icon: 'plus-circle',
-              section: t('mesServices.sectionMarketing'),
+              section: 'Marketing',
               color: '#EC4899',
               onPress: () => (navigation as any).navigate('CreatePublicite'),
             },
             {
               id: 'videos',
-              label: t('mesServices.mesVideos'),
+              label: 'Mes Vidéos',
               icon: 'video',
-              section: t('mesServices.sectionContenu'),
+              section: 'Contenu',
               color: modernColors.primary,
               onPress: () => {
                 try {
@@ -1821,23 +2029,23 @@ const MesServicesScreen: React.FC = () => {
                     (navigation as any).navigate('VideoFeed');
                   }
                 } catch (error) {
-                  toaster.error(t('mesServices.impossibleOuvrirVideos'));
+                  toaster.error('Impossible d\'ouvrir Mes Vidéos');
                 }
               },
             },
             {
               id: 'start-live',
-              label: t('mesServices.demarrerLive'),
+              label: 'Démarrer un Live',
               icon: 'radio',
-              section: t('mesServices.sectionContenu'),
+              section: 'Contenu',
               color: '#DC2626',
               onPress: () => (navigation as any).navigate('StartLive'),
             },
             {
               id: 'video-analytics',
-              label: t('mesServices.analytiquesVideos'),
+              label: 'Analytiques Vidéos',
               icon: 'bar-chart',
-              section: t('mesServices.sectionContenu'),
+              section: 'Contenu',
               color: modernColors.primary,
               onPress: () => {
                 try {
@@ -1848,28 +2056,29 @@ const MesServicesScreen: React.FC = () => {
                     (navigation as any).navigate('VideoAnalytics');
                   }
                 } catch (error) {
-                  toaster.error(t('mesServices.impossibleOuvrirAnalytiques'));
+                  toaster.error('Impossible d\'ouvrir Analytiques Vidéos');
                 }
               },
             },
             {
               id: 'black-friday',
-              label: t('mesServices.blackFriday'),
+              label: 'Black Friday',
               icon: 'flame',
-              section: t('mesServices.sectionPromotions'),
+              section: 'Promotions',
               color: '#F59E0B',
               onPress: () => (navigation as any).navigate('GlobalPromoSubmission'),
             },
             {
               id: 'flash-promo',
-              label: t('mesServices.flashPromo'),
+              label: 'Flash Promo',
               icon: 'zap',
-              section: t('mesServices.sectionPromotions'),
+              section: 'Promotions',
               color: '#F59E0B',
               onPress: () => {
+                // Préparer la liste des produits et ouvrir le sélecteur en mode multiple
                 const productsList = prepareProductsForSelector();
                 if (productsList.length === 0) {
-                  toaster.warning(t('mesServices.creerProduitsAvantFlash'));
+                  toaster.warning('Vous devez d\'abord créer des produits avant de créer un flash promo.');
                   return;
                 }
                 setProductsForSelection(productsList);
@@ -1878,55 +2087,17 @@ const MesServicesScreen: React.FC = () => {
               },
             },
             {
-              id: 'flash-active',
-              label: t('mesServices.viewActiveFlash'),
-              icon: 'activity',
-              section: t('mesServices.sectionPromotions'),
-              color: '#EA580C',
-              onPress: () => {
-                try {
-                  (navigation as any).navigate('FlashPromosActive');
-                } catch (error) {
-                  toaster.error(t('mesServices.impossibleOuvrirFlash'));
-                }
-              },
-            },
-            {
-              id: 'video-intro',
-              label: t('mesServices.menuVideoAssistant'),
-              icon: 'film',
-              section: t('mesServices.sectionContenu'),
-              color: '#7C3AED',
-              onPress: () => {
-                try {
-                  (navigation as any).navigate('VideoCreationIntro');
-                } catch (error) {
-                  toaster.error(t('mesServices.cannotCreateVideo'));
-                }
-              },
-            },
-            {
-              id: 'refresh-services',
-              label: t('mesServices.refresh'),
-              icon: 'refresh-cw',
-              section: t('mesServices.sectionAutres'),
-              color: modernColors.primary,
-              onPress: () => {
-                loadServices(true);
-              },
-            },
-            {
               id: 'settings',
-              label: t('mesServices.parametres'),
+              label: 'Paramètres',
               icon: 'settings',
-              section: t('mesServices.sectionAutres'),
+              section: 'Autres',
               color: '#6B7280',
               onPress: () => (navigation as any).navigate('Settings'),
             },
           ]}
         />
 
-        {/* Ô£à NOUVEAU: Bulk Actions Bar */}
+        {/* ✅ NOUVEAU: Bulk Actions Bar */}
         <BulkActionsBar
           visible={bulkMode && selectedItems.size > 0}
           selectedCount={selectedItems.size}
@@ -1943,7 +2114,7 @@ const MesServicesScreen: React.FC = () => {
           actions={[
             {
               id: 'activate',
-              label: t('mesServices.activer'),
+              label: 'Activer',
               icon: 'play-circle',
               color: modernColors.success,
               onPress: async (selectedIds) => {
@@ -1957,12 +2128,12 @@ const MesServicesScreen: React.FC = () => {
                 });
                 await Promise.all(promises);
                 setSelectedItems(new Set());
-                toaster.success(t('mesServices.produitsActives', { count: selectedCount }));
+                toaster.success(`${selectedCount} produit(s) activé(s)`);
               },
             },
             {
               id: 'deactivate',
-              label: t('mesServices.desactiver'),
+              label: 'Désactiver',
               icon: 'pause-circle',
               color: modernColors.warning,
               onPress: async (selectedIds) => {
@@ -1976,24 +2147,24 @@ const MesServicesScreen: React.FC = () => {
                 });
                 await Promise.all(promises);
                 setSelectedItems(new Set());
-                toaster.success(t('mesServices.produitsDesactives', { count: selectedCount }));
+                toaster.success(`${selectedCount} produit(s) désactivé(s)`);
               },
             },
             {
               id: 'delete',
-              label: t('mesServices.supprimer'),
+              label: 'Supprimer',
               icon: 'trash-2',
               color: modernColors.error,
               destructive: true,
               onPress: (selectedIds) => {
                 const selectedCount = selectedItems.size;
                 Alert.alert(
-                  t('mesServices.supprimerPlusieurs'),
-                  t('mesServices.confirmSupprimerPlusieurs', { count: selectedCount }),
+                  'Supprimer plusieurs produits',
+                  `Êtes-vous sûr de vouloir supprimer ${selectedCount} produit(s) ?\n\nCette action est irréversible.`,
                   [
-                    { text: t('common.cancel'), style: 'cancel' },
+                    { text: 'Annuler', style: 'cancel' },
                     {
-                      text: t('common.delete'),
+                      text: 'Supprimer',
                       style: 'destructive',
                       onPress: async () => {
                         const promises = Array.from(selectedItems).map(id => {
@@ -2005,7 +2176,7 @@ const MesServicesScreen: React.FC = () => {
                         });
                         await Promise.all(promises);
                         setSelectedItems(new Set());
-                        toaster.success(t('mesServices.produitSupprimes', { count: selectedCount }));
+                        toaster.success(`${selectedCount} produit(s) supprimé(s)`);
                       },
                     },
                   ]
@@ -2019,7 +2190,7 @@ const MesServicesScreen: React.FC = () => {
   );
 };
 
-// Ô£à NOUVEAU: Fonction createStyles pour styles dynamiques avec th├¿me
+// ✅ NOUVEAU: Fonction createStyles pour styles dynamiques avec thème
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
@@ -2176,7 +2347,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingBottom: 120,
     backgroundColor: colors.background || modernColors.background,
   },
-  // Ô£à NOUVEAU: Styles pour les cards de statistiques
+  // ✅ NOUVEAU: Styles pour les cards de statistiques
   statsSection: {
     backgroundColor: colors.background || modernColors.background,
     paddingVertical: 12,
@@ -2186,7 +2357,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     gap: 12,
     paddingRight: 16,
   },
-  // Ô£à NOUVEAU: Grid layout pour tablette
+  // ✅ NOUVEAU: Grid layout pour tablette
   statsGrid: {
     gap: 12,
   },
@@ -2194,7 +2365,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  // Ô£à NOUVEAU: FlashList content style
+  // ✅ NOUVEAU: FlashList content style
   flashListContent: {
     padding: 16,
     paddingBottom: 120,
@@ -2235,6 +2406,11 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   servicesContainer: {
     gap: 16,
+  },
+  // ✅ NOUVEAU: Styles pour FlashList
+  flashListContent: {
+    padding: 16,
+    paddingBottom: 120,
   },
   emptyContainer: {
     alignItems: 'center',
