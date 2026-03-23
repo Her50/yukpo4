@@ -1,7 +1,7 @@
 // Mise à jour: 2026-02-14 - Configuration GCP complète (Artifact Registry, Cloud Run, permissions)
 // Note: Build trigger test - 2026-03-12
 use std::error::Error;
-use std::{env, fs, net::SocketAddr, path::Path, sync::Arc};
+use std::{env, fs, net::SocketAddr, path::Path, sync::Arc, thread};
 
 use axum::extract::Request;
 use axum::http::StatusCode;
@@ -37,22 +37,77 @@ fn main() {
         std::process::exit(0);
     }
 
-    // Maintenant initialiser tokio et exécuter async_main
+    // ✅ CRITIQUE Cloud Run : bind TCP *synchrone* AVANT tokio::Runtime::new().
+    // Sinon l’init du runtime + charge peut dépasser le délai avant que le port soit en écoute.
+    use std::io::Write;
+    let _ = std::io::stderr().flush();
+    eprintln!("[MAIN] 🚀 Application Rust démarre - Point d'entrée atteint");
+    let _ = std::io::stderr().flush();
+    eprintln!("[MAIN] 🔍 bind précoce sur PORT (avant tokio::Runtime) — sonde Cloud Run");
+    let _ = std::io::stderr().flush();
+
+    let port = env::var("PORT")
+        .unwrap_or_else(|_| "8080".to_string())
+        .parse::<u16>()
+        .unwrap_or(8080);
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+
+    let mut std_listener = None;
+    let mut retries = 0u32;
+    const MAX_BIND_RETRIES: u32 = 10;
+    while std_listener.is_none() && retries < MAX_BIND_RETRIES {
+        match std::net::TcpListener::bind(addr) {
+            Ok(l) => {
+                eprintln!(
+                    "[MAIN] ✅ Bind std sur {}:{} (tentative {}) — socket LISTEN pour la plateforme",
+                    "0.0.0.0",
+                    port,
+                    retries + 1
+                );
+                std_listener = Some(l);
+            }
+            Err(e) => {
+                if retries < MAX_BIND_RETRIES - 1 {
+                    eprintln!(
+                        "[MAIN] ⏳ Port {} occupé (tentative {}), réessai dans 1s... {}",
+                        port,
+                        retries + 1,
+                        e
+                    );
+                    thread::sleep(std::time::Duration::from_secs(1));
+                    retries += 1;
+                } else {
+                    eprintln!(
+                        "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} après {} tentatives - {}",
+                        "0.0.0.0",
+                        port,
+                        MAX_BIND_RETRIES,
+                        e
+                    );
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+    let std_listener = std_listener.expect("listener bound");
+    if let Err(e) = std_listener.set_nonblocking(true) {
+        eprintln!("[MAIN] ❌ set_nonblocking: {}", e);
+        std::process::exit(1);
+    }
+
     let rt = tokio::runtime::Runtime::new().unwrap();
-    if let Err(e) = rt.block_on(async_main()) {
+    if let Err(e) = rt.block_on(async_main(std_listener)) {
         eprintln!("[MAIN] ❌ Erreur fatale: {}", e);
         std::process::exit(1);
     }
 }
 
-async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
+async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn std::error::Error>> {
     // ✅ CRITIQUE: Logs IMMÉDIATS sur stderr AVANT toute initialisation
     // Ces logs apparaîtront même si le logging n'est pas initialisé
     // ✅ 2026-02-17: Ajout log de diagnostic pour vérifier que Rust démarre
     // ✅ CRITIQUE 2026-02-17: Forcer le flush immédiat pour Cloud Run
     use std::io::Write;
-    let _ = std::io::stderr().flush();
-    eprintln!("[MAIN] 🚀 Application Rust démarre - Point d'entrée atteint");
     let _ = std::io::stderr().flush();
     eprintln!("[MAIN] 🔍 Vérification des variables d'environnement critiques...");
     let _ = std::io::stderr().flush();
@@ -113,7 +168,6 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         .parse::<u16>()
         .unwrap_or(8080);
     let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     eprintln!("[MAIN] 🔍 Port configuré: {}", port);
 
     // Un seul TcpListener pour toute la vie du processus : /health répond tout de suite ;
@@ -153,44 +207,8 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
 
-    eprintln!("[MAIN] 🔍 Tentative de bind sur {}:{}...", "0.0.0.0", port);
-
-    let mut listener_opt = None;
-    let mut retries = 0u32;
-    const MAX_BIND_RETRIES: u32 = 10;
-    while listener_opt.is_none() && retries < MAX_BIND_RETRIES {
-        match tokio::net::TcpListener::bind(addr).await {
-            Ok(listener) => {
-                eprintln!(
-                    "[MAIN] ✅ Bind réussi sur port {} (tentative {})",
-                    port,
-                    retries + 1
-                );
-                listener_opt = Some(listener);
-            }
-            Err(e) => {
-                if retries < MAX_BIND_RETRIES - 1 {
-                    eprintln!(
-                        "[MAIN] ⏳ Port {} occupé (tentative {}), réessai dans 1s...",
-                        port,
-                        retries + 1
-                    );
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                    retries += 1;
-                } else {
-                    eprintln!(
-                        "[MAIN] ❌ ERREUR CRITIQUE: Impossible de bind sur {}:{} après {} tentatives - {}",
-                        "0.0.0.0", port, MAX_BIND_RETRIES, e
-                    );
-                    return Err(
-                        format!("Impossible de bind sur {}:{} - {}", "0.0.0.0", port, e).into(),
-                    );
-                }
-            }
-        }
-    }
-
-    let listener = listener_opt.expect("listener bound");
+    eprintln!("[MAIN] 🔍 Conversion listener std → tokio (bind déjà fait dans main())");
+    let listener = tokio::net::TcpListener::from_std(std_listener)?;
 
     eprintln!(
         "[MAIN] 🚀 axum::serve (shell) sur :{} — accept immédiat",
