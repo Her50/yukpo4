@@ -145,8 +145,10 @@ const CourierRegistrationScreen: React.FC = () => {
                     partnerTypesToLoad = ['livraison_courses_marche'];
                     break;
                 case 'taxi':
+                    partnerTypesToLoad = ['chauffeur', 'taxi'];
+                    break;
                 case 'carpooling':
-                    partnerTypesToLoad = ['chauffeur'];
+                    partnerTypesToLoad = ['chauffeur', 'covoiturage'];
                     break;
                 case 'moving':
                     partnerTypesToLoad = ['demenagement'];
@@ -1119,7 +1121,7 @@ const CourierRegistrationScreen: React.FC = () => {
                     <Text style={styles.sectionTitle}>Adresse de résidence</Text>
                     <View style={styles.inputContainer}>
                         <LocationSelector
-                            label="Adresse complète *"
+                            label="Adresse complète"
                             value={address || ''}
                             onSelect={(location: LocationObject) => {
                                 // ✅ CORRIGÉ 2026-03-01: Utiliser LocationSelector avec autocomplete intelligent
@@ -1151,44 +1153,27 @@ const CourierRegistrationScreen: React.FC = () => {
                         />
                     </View>
                     <View style={styles.inputContainer}>
-                        <LocationSelector
-                            label="Ville *"
-                            value={cityLocation || ''}
-                            onSelect={(location: LocationObject) => {
-                                console.log('[CourierRegistrationScreen] onSelect ville appelé avec:', location);
-                                setCityLocation(location);
-                                const ville = location.components?.ville || location.place_name || location.raw || '';
-                                setCity(ville);
-                                if (location.components?.pays && !country) {
-                                    const pays = location.components.pays;
-                                    setCountry(pays);
-                                    setCountryLocation({
-                                        raw: pays,
-                                        place_name: pays,
-                                        components: { pays },
-                                    });
-                                }
+                        <Text style={styles.inputLabel}>Ville *</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Ville (auto-remplie depuis l'adresse)"
+                            value={city}
+                            onChangeText={(text) => {
+                                setCity(text);
+                                setCityLocation(text ? { raw: text, place_name: text, components: { ville: text } } : null);
                             }}
-                            placeholder="Rechercher une ville..."
-                            scope="city"
-                            required={true}
-                            enrichWithBackend={true}
                         />
                     </View>
                     <View style={styles.inputContainer}>
-                        <LocationSelector
-                            label="Pays"
-                            value={countryLocation || ''}
-                            onSelect={(location: LocationObject) => {
-                                // ✅ CORRIGÉ: Stocker l'objet LocationObject complet pour l'affichage
-                                setCountryLocation(location);
-                                // Extraire le pays pour la soumission du formulaire
-                                const pays = location.components?.pays || location.place_name || location.raw || '';
-                                setCountry(pays);
+                        <Text style={styles.inputLabel}>Pays</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Pays (auto-rempli depuis l'adresse)"
+                            value={country}
+                            onChangeText={(text) => {
+                                setCountry(text);
+                                setCountryLocation(text ? { raw: text, place_name: text, components: { pays: text } } : null);
                             }}
-                            placeholder="Rechercher un pays..."
-                            scope="all"
-                            enrichWithBackend={true}
                         />
                     </View>
                 </NativeCard>
@@ -1282,18 +1267,22 @@ const CourierRegistrationScreen: React.FC = () => {
                     )}
                     {/* ✅ AMÉLIORÉ 2026-01-12: Champ partenaire (obligatoire) - Rendu opérationnel */}
                     <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>Partenaire de livraison *</Text>
+                        <Text style={styles.inputLabel}>Partenaire *</Text>
                         <Text style={styles.helperText}>
-                            Sélectionnez le partenaire de logistique auquel vous appartenez. Ce champ permet de gérer les coursiers qui feront les achats pour l'utilisateur au marché.
+                            {courierType === 'carpooling'
+                                ? 'Pour le covoiturage, vous êtes rattaché à Yukpo par défaut.'
+                                : courierType === 'taxi'
+                                    ? 'Sélectionnez la flotte de taxi à laquelle vous appartenez.'
+                                    : 'Sélectionnez le partenaire auquel vous appartenez.'}
                         </Text>
                         {partners.length === 0 ? (
                             <View style={styles.noPartnersContainer}>
                                 <SafeIcon name="alert-circle" size={24} color={modernColors.warning || '#F59E0B'} type="lucide" />
                                 <Text style={styles.errorText}>
-                                    Aucun partenaire de livraison disponible.
+                                    Aucun partenaire disponible.
                                 </Text>
                                 <Text style={styles.helperText}>
-                                    Veuillez contacter l'administrateur pour créer un partenaire de livraison ou réessayez plus tard.
+                                    Veuillez contacter l'administrateur ou réessayez plus tard.
                                 </Text>
                                 <TouchableOpacity
                                     style={styles.refreshButton}
