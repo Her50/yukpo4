@@ -1822,11 +1822,7 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                     log::warn!("⚠️ [MIGRATIONS] Tables manquantes: {:?}", missing_tables);
                     log::warn!("⚠️ [MIGRATIONS] Vérifiez que les migrations SQLx ont été exécutées correctement.");
 
-                    // ✅ NOUVEAU 2026-01-29: Arrêter l'application si les tables critiques sont manquantes
-                    // (sauf en mode développement où on peut continuer avec des fonctionnalités limitées)
-                    let is_production = env::var("ENVIRONMENT").unwrap_or_default() == "production"
-                        || env::var("AWS_EXECUTION_ENV").is_ok();
-
+                    // ✅ 2026-03-23: Tables critiques manquantes → mode dégradé (pas d’arrêt du processus)
                     if !missing_tables.is_empty() {
                         log::error!("❌ ERREUR CRITIQUE: {} table(s) critique(s) toujours manquante(s) après toutes les tentatives de migration:", missing_tables.len());
                         for table in &missing_tables {
@@ -2147,10 +2143,7 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                     log::error!("🔧 SOLUTION: Exécuter manuellement les migrations:");
                     log::error!("   cd backend && sqlx migrate run");
 
-                    // ✅ NOUVEAU 2026-01-29: Vérification finale et arrêt forcé en production
-                    let is_production = env::var("ENVIRONMENT").unwrap_or_default() == "production"
-                        || env::var("AWS_EXECUTION_ENV").is_ok();
-
+                    // ✅ 2026-03-23: Échec SQLx + tables manquantes → mode dégradé (pas d’arrêt du processus)
                     if !missing_tables.is_empty() {
                         log::error!("❌ ERREUR CRITIQUE: {} table(s) critique(s) manquante(s) après échec SQLx:", missing_tables.len());
                         for table in &missing_tables {
