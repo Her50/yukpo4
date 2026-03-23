@@ -19,7 +19,7 @@ pub fn get_launch_phase_start_date() -> DateTime<Utc> {
     Utc::now()
 }
 
-/// Durée de la phase de lancement en jours (3 mois = 90 jours)
+/// Durée de la phase de lancement en jours (prolongée jusqu'au 30/04/2026)
 pub const LAUNCH_PHASE_DURATION_DAYS: i64 = 90;
 
 /// Date de fin de la phase de lancement
