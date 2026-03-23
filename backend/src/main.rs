@@ -26,6 +26,9 @@ use yukpomnang_backend::services::specialized_notifications::check_and_notify_ph
 use yukpomnang_backend::services::specialized_services_optimizer::start_optimization_task;
 use yukpomnang_backend::tasks;
 
+/// URL du pool factice en mode dégradé (aucune connexion réelle requise tant que l’API renvoie 503).
+const DUMMY_POSTGRES_URL: &str = "postgresql://user:pass@localhost:5432/db";
+
 // ✅ CRITIQUE 2026-02-17: Gérer --version AVANT tokio::main
 // Le wrapper teste --version pour vérifier que le binaire fonctionne
 // Si --version n'est pas géré, le binaire essaie de démarrer normalement et peut crash
@@ -260,6 +263,8 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
 
     eprintln!("[MAIN] 🔍 Récupération de DATABASE_URL...");
 
+    let mut degraded_mode = false;
+
     // En Cloud Run, DATABASE_URL vient du secret injecté en env ; parfois absent au tout premier tick.
     // Ne jamais quitter le processus tout de suite : le serveur minimal tient le port 8080 pour la startup probe TCP.
     let mut db_url = if is_cloud_run {
@@ -305,19 +310,8 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                         // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
                         // Les routes API renverront 503 (Service Unavailable) via le fallback
                         log::error!("⚠️ DATABASE_URL non disponible après timeout — Application continue en mode dégradé (API désactivée)");
-                        // Créer un pool factice pour éviter les panics dans le reste du code
-                        let dummy_pool = PgPoolOptions::new()
-                            .max_connections(1)
-                            .min_connections(0)
-                            .connect_lazy("postgresql://user:pass@localhost:5432/db")
-                            .unwrap_or_else(|_| {
-                                // Si même le pool factice échoue, on continue sans pool
-                                log::error!("❌ Impossible de créer un pool factice — Continuation sans pool");
-                                panic!("Pool factice requis pour mode dégradé");
-                            });
                         degraded_mode = true;
-                        db_url = dummy_pool.connection_string().to_string();
-                        break;
+                        break DUMMY_POSTGRES_URL.to_string();
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(RETRY_SECS)).await;
                 }
@@ -339,18 +333,8 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
         // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
         // Les routes API renverront 503 (Service Unavailable) via le fallback
         log::error!("⚠️ DATABASE_URL non disponible — Application continue en mode dégradé (API désactivée)");
-        // Créer un pool factice pour éviter les panics dans le reste du code
-        let dummy_pool = PgPoolOptions::new()
-            .max_connections(1)
-            .min_connections(0)
-            .connect_lazy("postgresql://user:pass@localhost:5432/db")
-            .unwrap_or_else(|_| {
-                // Si même le pool factice échoue, on continue sans pool
-                log::error!("❌ Impossible de créer un pool factice — Continuation sans pool");
-                panic!("Pool factice requis pour mode dégradé");
-            });
         degraded_mode = true;
-        db_url = dummy_pool.connection_string().to_string();
+        DUMMY_POSTGRES_URL.to_string()
     };
 
     // Nettoyer les retours à la ligne qui cassent le parsing
@@ -441,8 +425,6 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     // ✅ OPTIMISÉ 2026-02-14: Pour Cloud Run, utiliser connect_lazy pour démarrage rapide
     // ✅ CORRIGÉ 2026-02-14: Pool augmenté pour Cloud Run (50 max au lieu de 100 pour éviter saturation)
     // ✅ SOLUTION DÉFINITIVE 2026-02-15: Utiliser PgConnectOptions pour Cloud SQL Unix socket
-    let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
-    let mut degraded_mode = false;
     let pg_pool: PgPool = if is_cloud_run {
         // Pour Cloud Run: utiliser connect_lazy pour démarrage immédiat (connexion en arrière-plan)
         // ✅ CORRIGÉ 2026-02-15: min_connections=0 pour éviter blocage si DB non accessible
@@ -526,7 +508,6 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
         if db_url.contains("/cloudsql/") {
             log::info!("🔧 Format Cloud SQL Unix socket détecté - Utilisation de PgConnectOptions");
 
-            // Parser l'URL Cloud SQL: postgresql://user:pass@/db?host=/cloudsql/PROJECT:REGION:INSTANCE
             let url_parts: Vec<&str> = db_url.split("://").collect();
             if url_parts.len() != 2 {
                 eprintln!(
@@ -537,237 +518,216 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                 eprintln!(
                     "[MAIN] 📝 L'application fonctionnera sans base de données (mode dégradé)"
                 );
-                // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER — continuer sans DB pour que /health reste disponible
-                // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
-                // Les routes API renverront 503 (Service Unavailable) via le fallback
                 log::error!("⚠️ Format DATABASE_URL invalide — Application continue en mode dégradé (API désactivée)");
-                // Créer un pool factice pour éviter les panics dans le reste du code
-                let dummy_pool = PgPoolOptions::new()
+                degraded_mode = true;
+                PgPoolOptions::new()
                     .max_connections(1)
                     .min_connections(0)
-                    .connect_lazy("postgresql://user:pass@localhost:5432/db")
+                    .connect_lazy(DUMMY_POSTGRES_URL)
                     .unwrap_or_else(|_| {
-                        // Si même le pool factice échoue, on continue sans pool
                         log::error!(
                             "❌ Impossible de créer un pool factice — Continuation sans pool"
                         );
                         panic!("Pool factice requis pour mode dégradé");
-                    });
-                degraded_mode = true;
-                // Continuer avec une URL factice pour éviter les erreurs de parsing
-                db_url = dummy_pool.connection_string().to_string();
-                // Passer à la section non-Cloud SQL
-                is_cloud_run = false;
-            }
+                    })
+            } else {
+                let auth_and_path = url_parts[1];
+                let (auth, query) = auth_and_path.split_once('?').unwrap_or((auth_and_path, ""));
 
-            let auth_and_path = url_parts[1];
-            let (auth, query) = auth_and_path.split_once('?').unwrap_or((auth_and_path, ""));
-
-            // Extraire user:password
-            let (user_pass, db_name) = auth.split_once("@/").ok_or_else(|| {
-                format!("Format DATABASE_URL Cloud SQL invalide: pas de @/ trouvé")
-            })?;
-            let (user, password) = user_pass.split_once(':').unwrap_or((user_pass, ""));
-
-            // Extraire le socket path depuis ?host=/cloudsql/...
-            // ✅ CRITIQUE 2026-02-17: Ajouter des logs de diagnostic pour comprendre le parsing
-            eprintln!("[MAIN] 🔍 Debug parsing URL Cloud SQL:");
-            eprintln!("[MAIN]   auth_and_path: {}", auth_and_path);
-            eprintln!("[MAIN]   query: '{}'", query);
-            eprintln!("[MAIN]   query length: {}", query.len());
-
-            // Nettoyer la query des retours à la ligne (au cas où)
-            let query_clean = query.trim().replace("\r\n", "").replace("\n", "").replace("\r", "");
-            eprintln!("[MAIN]   query_clean: '{}'", query_clean);
-
-            let socket_path = query_clean
-                .split('&')
-                .find(|p| p.trim().starts_with("host=/cloudsql/"))
-                .and_then(|p| p.trim().strip_prefix("host="))
-                .map(|p| p.trim())
-                .ok_or_else(|| {
-                    eprintln!(
-                        "[MAIN] ❌ ERREUR: Socket path non trouvé dans query: '{}'",
-                        query_clean
-                    );
-                    format!(
-                        "Socket path Cloud SQL non trouvé dans DATABASE_URL (query: '{}')",
-                        query_clean
-                    )
+                let (user_pass, db_name) = auth.split_once("@/").ok_or_else(|| {
+                    format!("Format DATABASE_URL Cloud SQL invalide: pas de @/ trouvé")
                 })?;
+                let (user, password) = user_pass.split_once(':').unwrap_or((user_pass, ""));
 
-            eprintln!("[MAIN] ✅ Socket path extrait: '{}'", socket_path);
-            eprintln!("[MAIN]   Socket path length: {}", socket_path.len());
+                eprintln!("[MAIN] 🔍 Debug parsing URL Cloud SQL:");
+                eprintln!("[MAIN]   auth_and_path: {}", auth_and_path);
+                eprintln!("[MAIN]   query: '{}'", query);
+                eprintln!("[MAIN]   query length: {}", query.len());
 
-            if socket_path.is_empty() {
-                eprintln!(
-                    "[MAIN] ❌ Socket path Cloud SQL est vide après extraction (query: '{}')",
-                    query_clean
-                );
-                eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
-                eprintln!(
-                    "[MAIN] 📝 L'application fonctionnera sans base de données (mode dégradé)"
-                );
-                // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER — continuer sans DB pour que /health reste disponible
-                // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
-                // Les routes API renverront 503 (Service Unavailable) via le fallback
-                log::error!("⚠️ Socket path Cloud SQL vide — Application continue en mode dégradé (API désactivée)");
-                // Créer un pool factice pour éviter les panics dans le reste du code
-                let dummy_pool = PgPoolOptions::new()
-                    .max_connections(1)
-                    .min_connections(0)
-                    .connect_lazy("postgresql://user:pass@localhost:5432/db")
-                    .unwrap_or_else(|_| {
-                        // Si même le pool factice échoue, on continue sans pool
-                        log::error!(
-                            "❌ Impossible de créer un pool factice — Continuation sans pool"
+                let query_clean =
+                    query.trim().replace("\r\n", "").replace("\n", "").replace("\r", "");
+                eprintln!("[MAIN]   query_clean: '{}'", query_clean);
+
+                let socket_path = query_clean
+                    .split('&')
+                    .find(|p| p.trim().starts_with("host=/cloudsql/"))
+                    .and_then(|p| p.trim().strip_prefix("host="))
+                    .map(|p| p.trim())
+                    .ok_or_else(|| {
+                        eprintln!(
+                            "[MAIN] ❌ ERREUR: Socket path non trouvé dans query: '{}'",
+                            query_clean
                         );
-                        panic!("Pool factice requis pour mode dégradé");
-                    });
-                degraded_mode = true;
-                // Continuer avec une URL factice pour éviter les erreurs de parsing
-                db_url = dummy_pool.connection_string().to_string();
-                // Passer à la section non-Cloud SQL
-                is_cloud_run = false;
-            }
+                        format!(
+                            "Socket path Cloud SQL non trouvé dans DATABASE_URL (query: '{}')",
+                            query_clean
+                        )
+                    })?;
 
-            // ✅ CRITIQUE 2026-02-18: Vérifier que le socket existe AVANT de tenter la connexion
-            // ✅ FIX 2026-03-23: Sur Cloud Run le proxy Unix peut apparaître quelques secondes après le
-            // démarrage du conteneur — sans attente, le processus quitte et la startup probe échoue en boucle.
-            eprintln!(
-                "[MAIN] 🔍 Attente du socket Unix Cloud SQL: {}",
-                socket_path
-            );
-            let mut socket_ready = false;
-            for attempt in 1..=90 {
-                if Path::new(socket_path).exists() {
-                    socket_ready = true;
+                eprintln!("[MAIN] ✅ Socket path extrait: '{}'", socket_path);
+                eprintln!("[MAIN]   Socket path length: {}", socket_path.len());
+
+                if socket_path.is_empty() {
                     eprintln!(
-                        "[MAIN] ✅ Socket Unix disponible après {} tentative(s)",
-                        attempt
+                        "[MAIN] ❌ Socket path Cloud SQL est vide après extraction (query: '{}')",
+                        query_clean
                     );
-                    break;
-                }
-                eprintln!(
-                    "[MAIN] ⏳ Socket pas encore monté ({}/90), nouvel essai dans 2s...",
-                    attempt
-                );
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-            }
-            if !socket_ready {
-                eprintln!(
-                    "[MAIN] ⚠️ ATTENTION: Le socket Unix Cloud SQL n'existe pas après 180s: {}",
-                    socket_path
-                );
-                eprintln!("[MAIN] 🔍 Vérification du répertoire /cloudsql/...");
-                if let Ok(entries) = fs::read_dir("/cloudsql") {
-                    eprintln!("[MAIN] 📂 Contenu de /cloudsql/:");
-                    for entry in entries.flatten() {
-                        eprintln!("[MAIN]   - {}", entry.path().display());
-                    }
+                    eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
+                    eprintln!(
+                        "[MAIN] 📝 L'application fonctionnera sans base de données (mode dégradé)"
+                    );
+                    log::error!("⚠️ Socket path Cloud SQL vide — Application continue en mode dégradé (API désactivée)");
+                    degraded_mode = true;
+                    PgPoolOptions::new()
+                        .max_connections(1)
+                        .min_connections(0)
+                        .connect_lazy(DUMMY_POSTGRES_URL)
+                        .unwrap_or_else(|_| {
+                            log::error!(
+                                "❌ Impossible de créer un pool factice — Continuation sans pool"
+                            );
+                            panic!("Pool factice requis pour mode dégradé");
+                        })
                 } else {
-                    eprintln!("[MAIN] ❌ Le répertoire /cloudsql/ n'existe pas !");
-                    eprintln!("[MAIN] ⚠️ Cloud SQL Unix socket n'est pas monté dans le conteneur");
-                }
-                eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
-                eprintln!(
-                    "[MAIN] 📝 L'application fonctionnera sans base de données (mode dégradé)"
-                );
-                eprintln!("[MAIN] 🔧 ACTION REQUISE: Vérifiez --set-cloudsql-instances et les permissions IAM");
-                // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER — continuer sans DB pour que /health reste disponible
-                // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
-                // Les routes API renverront 503 (Service Unavailable) via le fallback
-                log::error!("⚠️ Cloud SQL socket non disponible — Application continue en mode dégradé (API désactivée)");
-                // Créer un pool factice pour éviter les panics dans le reste du code
-                let dummy_pool = PgPoolOptions::new()
-                    .max_connections(1)
-                    .min_connections(0)
-                    .connect_lazy("postgresql://user:pass@localhost:5432/db")
-                    .unwrap_or_else(|_| {
-                        // Si même le pool factice échoue, on continue sans pool
-                        log::error!(
-                            "❌ Impossible de créer un pool factice — Continuation sans pool"
+                    eprintln!(
+                        "[MAIN] 🔍 Attente du socket Unix Cloud SQL: {}",
+                        socket_path
+                    );
+                    let mut socket_ready = false;
+                    for attempt in 1..=90 {
+                        if Path::new(socket_path).exists() {
+                            socket_ready = true;
+                            eprintln!(
+                                "[MAIN] ✅ Socket Unix disponible après {} tentative(s)",
+                                attempt
+                            );
+                            break;
+                        }
+                        eprintln!(
+                            "[MAIN] ⏳ Socket pas encore monté ({}/90), nouvel essai dans 2s...",
+                            attempt
                         );
-                        panic!("Pool factice requis pour mode dégradé");
-                    });
-                // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER — continuer sans DB pour que /health reste disponible
-                // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
-                // Les routes API renverront 503 (Service Unavailable) via le fallback
-                log::error!("⚠️ Cloud SQL socket non disponible — Application continue en mode dégradé (API désactivée)");
-                degraded_mode = true;
-                dummy_pool
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    }
+                    if !socket_ready {
+                        eprintln!(
+                            "[MAIN] ⚠️ ATTENTION: Le socket Unix Cloud SQL n'existe pas après 180s: {}",
+                            socket_path
+                        );
+                        eprintln!("[MAIN] 🔍 Vérification du répertoire /cloudsql/...");
+                        if let Ok(entries) = fs::read_dir("/cloudsql") {
+                            eprintln!("[MAIN] 📂 Contenu de /cloudsql/:");
+                            for entry in entries.flatten() {
+                                eprintln!("[MAIN]   - {}", entry.path().display());
+                            }
+                        } else {
+                            eprintln!("[MAIN] ❌ Le répertoire /cloudsql/ n'existe pas !");
+                            eprintln!(
+                                "[MAIN] ⚠️ Cloud SQL Unix socket n'est pas monté dans le conteneur"
+                            );
+                        }
+                        eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
+                        eprintln!(
+                            "[MAIN] 📝 L'application fonctionnera sans base de données (mode dégradé)"
+                        );
+                        eprintln!("[MAIN] 🔧 ACTION REQUISE: Vérifiez --set-cloudsql-instances et les permissions IAM");
+                        log::error!("⚠️ Cloud SQL socket non disponible — Application continue en mode dégradé (API désactivée)");
+                        degraded_mode = true;
+                        PgPoolOptions::new()
+                            .max_connections(1)
+                            .min_connections(0)
+                            .connect_lazy(DUMMY_POSTGRES_URL)
+                            .unwrap_or_else(|_| {
+                                log::error!(
+                                    "❌ Impossible de créer un pool factice — Continuation sans pool"
+                                );
+                                panic!("Pool factice requis pour mode dégradé");
+                            })
+                    } else {
+                        eprintln!("[MAIN] ✅ Socket Unix prêt: {}", socket_path);
+
+                        log::info!(
+                            "🔧 Configuration Cloud SQL: user={}, db={}, socket={}",
+                            user,
+                            db_name,
+                            socket_path
+                        );
+
+                        log::info!(
+                            "🔧 Construction de PgConnectOptions pour Cloud SQL Unix socket"
+                        );
+
+                        eprintln!("[MAIN] 🔍 Construction PgConnectOptions:");
+                        eprintln!("[MAIN]   user: {}", user);
+                        eprintln!("[MAIN]   db_name: {}", db_name);
+                        eprintln!("[MAIN]   socket_path: {}", socket_path);
+
+                        let mut connect_options = PgConnectOptions::new()
+                            .host(socket_path)
+                            .username(user)
+                            .database(db_name);
+
+                        if !password.is_empty() {
+                            let password_decoded = urlencoding::decode(password)
+                                .map_err(|e| format!("Erreur décodage mot de passe URL: {}", e))?
+                                .to_string();
+
+                            eprintln!(
+                                "[MAIN] 🔍 Mot de passe décodé (longueur: {})",
+                                password_decoded.len()
+                            );
+                            log::debug!("Mot de passe décodé pour user: {}", user);
+
+                            connect_options = connect_options.password(&password_decoded);
+                        }
+
+                        connect_options = connect_options.ssl_mode(PgSslMode::Disable);
+
+                        log::info!(
+                            "🔧 PgConnectOptions configuré: socket={}, user={}, db={}",
+                            socket_path,
+                            user,
+                            db_name
+                        );
+
+                        let pool = pool_options.connect_lazy_with(connect_options);
+
+                        log::info!(
+                            "✅ Pool PostgreSQL créé avec connect_lazy (max={}, min={})",
+                            cloud_run_max,
+                            cloud_run_min
+                        );
+                        eprintln!(
+                            "[MAIN] ✅ Pool PostgreSQL créé (max={}, min={}) - Le pool se connectera en arrière-plan",
+                            cloud_run_max,
+                            cloud_run_min
+                        );
+
+                        pool
+                    }
+                }
             }
         } else {
-            eprintln!("[MAIN] ✅ Socket Unix prêt: {}", socket_path);
-
             log::info!(
-                "🔧 Configuration Cloud SQL: user={}, db={}, socket={}",
-                user,
-                db_name,
-                socket_path
+                "🔧 Cloud Run: DATABASE_URL sans socket Unix /cloudsql/ — connect_lazy (TCP)"
             );
-
-            // ✅ CRITIQUE 2026-02-18: Pour les sockets Unix, tokio-postgres nécessite un format spécial
-            // Le socket path doit être utilisé comme "host" mais avec un format d'URL spécial
-            // Format: postgresql://user:pass@/db?host=/path/to/socket
-            // Mais sqlx ne peut pas parser ça, donc on construit PgConnectOptions manuellement
-            log::info!("🔧 Construction de PgConnectOptions pour Cloud SQL Unix socket");
-
-            eprintln!("[MAIN] 🔍 Construction PgConnectOptions:");
-            eprintln!("[MAIN]   user: {}", user);
-            eprintln!("[MAIN]   db_name: {}", db_name);
-            eprintln!("[MAIN]   socket_path: {}", socket_path);
-
-            // ✅ CRITIQUE 2026-02-18: Pour les sockets Unix, on utilise host() avec le chemin absolu
-            // tokio-postgres détecte automatiquement que c'est un socket Unix si le chemin commence par /
-            let mut connect_options = PgConnectOptions::new()
-                .host(socket_path) // Pour les sockets Unix, le chemin complet est utilisé comme "host"
-                .username(user)
-                .database(db_name);
-
-            // Ajouter le mot de passe si présent (décoder l'URL encoding)
-            if !password.is_empty() {
-                // ✅ CRITIQUE 2026-02-18: Le mot de passe est URL-encodé dans DATABASE_URL
-                // Il faut le décoder avant de l'utiliser (ex: %23 pour #, %25 pour %, %3D pour =)
-                let password_decoded = urlencoding::decode(password)
-                    .map_err(|e| format!("Erreur décodage mot de passe URL: {}", e))?
-                    .to_string();
-
-                eprintln!(
-                    "[MAIN] 🔍 Mot de passe décodé (longueur: {})",
-                    password_decoded.len()
-                );
-                log::debug!("Mot de passe décodé pour user: {}", user);
-
-                connect_options = connect_options.password(&password_decoded);
+            match pool_options.connect_lazy(&db_url) {
+                Ok(p) => p,
+                Err(e) => {
+                    log::error!("❌ connect_lazy (Cloud Run TCP): {}", e);
+                    degraded_mode = true;
+                    PgPoolOptions::new()
+                        .max_connections(1)
+                        .min_connections(0)
+                        .connect_lazy(DUMMY_POSTGRES_URL)
+                        .unwrap_or_else(|_| {
+                            log::error!(
+                                "❌ Impossible de créer un pool factice — Continuation sans pool"
+                            );
+                            panic!("Pool factice requis pour mode dégradé");
+                        })
+                }
             }
-
-            // Pour Cloud SQL Unix socket, pas besoin de SSL
-            connect_options = connect_options.ssl_mode(PgSslMode::Disable);
-
-            log::info!(
-                "🔧 PgConnectOptions configuré: socket={}, user={}, db={}",
-                socket_path,
-                user,
-                db_name
-            );
-
-            // ✅ CORRIGÉ 2026-02-17: connect_lazy_with() retourne directement un Pool, pas un Result
-            let pool = pool_options.connect_lazy_with(connect_options);
-
-            // ✅ CRITIQUE 2026-02-18: Log la configuration du pool après création
-            log::info!(
-                "✅ Pool PostgreSQL créé avec connect_lazy (max={}, min={})",
-                cloud_run_max,
-                cloud_run_min
-            );
-            eprintln!(
-                "[MAIN] ✅ Pool PostgreSQL créé (max={}, min={}) - Le pool se connectera en arrière-plan",
-                cloud_run_max,
-                cloud_run_min
-            );
-
-            pool.map_err(|e| format!("Erreur connexion PostgreSQL: {}", e))?
         }
     } else {
         // Pour autres environnements: connexion bloquante avec retry
@@ -882,7 +842,7 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
             let dummy_pool = PgPoolOptions::new()
                 .max_connections(1)
                 .min_connections(0)
-                .connect_lazy("postgresql://user:pass@localhost:5432/db")
+                .connect_lazy(DUMMY_POSTGRES_URL)
                 .unwrap_or_else(|_| {
                     // Si même le pool factice échoue, on continue sans pool
                     log::error!("❌ Impossible de créer un pool factice — Continuation sans pool");
