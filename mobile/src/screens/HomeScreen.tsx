@@ -802,9 +802,9 @@ const HomeScreen: React.FC = () => {
                                     'laboratoire': 'LaboratoireSearch',    // ✅ Utilisateur: LaboratoireHomeScreen
                                     'banque_sang': 'BanqueSangSearch',     // ✅ Utilisateur: BanqueSangSearchScreen
                                     // Services Transport - Navigation directe vers chaque écran spécifique (UTILISATEURS)
-                                    'agence_voyage': 'BusTicketSearch',    // ✅ Utilisateur: TicketVoyageHomeScreen
-                                    'covoiturage': 'CovoiturageSearch',    // ✅ Utilisateur: CovoiturageHomeScreen
-                                    'taxi': 'TaxiSearch',                  // ✅ Utilisateur: TaxiHomeScreen
+                                    'agence_voyage': 'TicketVoyageHome',    // ✅ Utilisateur: TicketVoyageHomeScreen
+                                    'covoiturage': 'CovoiturageHome',      // ✅ Utilisateur: CovoiturageHomeScreen
+                                    'taxi': 'TaxiHome',                     // ✅ Utilisateur: TaxiHomeScreen
                                     'automobile': 'AutoServicesSearch',    // ✅ Utilisateur: AutoServicesSearchScreen
                                     // Services Assurance (UTILISATEURS)
                                     'assurance': 'InsuranceServicesSearch', // ✅ Utilisateur: InsuranceServicesSearchScreen
