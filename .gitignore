@@ -18,6 +18,9 @@ aws-credentials.txt
 backend/target/
 backend/**/target/
 **/target/
+backend/target-check-tmp/
+backend/**/target-check-tmp/
+**/target-check-tmp/
 *.rs.bk
 Cargo.lock
 
