@@ -148,8 +148,7 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-# ✅ CORRIGÉ: Utiliser un script d'entrée unifié qui gère la détection d'environnement
-# Plus robuste que la logique bash inline dans ENTRYPOINT
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["./yukpomnang_backend"]
+# Cloud Run (image GCP) : lancer le binaire directement — pas de bash/ldd avant le bind sur :PORT
+# (docker-entrypoint.sh reste dans l'image pour debug manuel si besoin.)
+ENTRYPOINT ["/app/yukpomnang_backend"]
 
