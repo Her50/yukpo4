@@ -3547,7 +3547,10 @@
         "aiAnalysisUnavailableMsg": "Les résultats doivent être disponibles pour effectuer une analyse IA.",
         "loginToAnalyze": "Veuillez vous connecter pour analyser les résultats",
         "info": "Info",
-        "labDetailsComingSoon": "Navigation vers les détails du laboratoire sera bientôt disponible"
+        "labDetailsComingSoon": "Navigation vers les détails du laboratoire sera bientôt disponible",
+        "poiPaid": "Payé",
+        "poiAllPaid": "Toutes les catégories sélectionnées sont déjà payées",
+        "poiIndicativeAfterFree": "Indicatif après le {{date}} : {{total}}"
     },
     "liveViewer": {
         "reservationConfirmed": "Réservation confirmée",
