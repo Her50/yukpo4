@@ -24,7 +24,7 @@ use crate::utils::prompt_sanitizer::{
     detect_prompt_injection, sanitize_prompt_input, validate_input_length,
 };
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ChatRequest {
     pub message: String,
     pub context: Option<serde_json::Value>,
@@ -33,6 +33,22 @@ pub struct ChatRequest {
     /// Session YukpoIA persistante : historique + résumé chargés côté serveur.
     #[serde(default)]
     pub session_id: Option<Uuid>,
+}
+
+impl serde::Serialize for ChatRequest {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("ChatRequest", 5)?;
+        state.serialize_field("message", &self.message)?;
+        state.serialize_field("context", &self.context)?;
+        state.serialize_field("type", &self.r#type)?;
+        state.serialize_field("language", &self.language)?;
+        state.serialize_field("session_id", &self.session_id)?;
+        state.end()
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -887,13 +903,30 @@ pub(crate) async fn yukpo_ia_chat_core_inner(
 
     match yukpo_ia_billing::precheck_can_use_yukpo_ia(&state.pg, user_id).await {
         Ok(Ok(())) => {}
-        Ok(Err(err_json)) => return Ok(ResponseJson(err_json)),
+        Ok(Err(err_json)) => {
+            // Log détaillé pour debugging du quota
+            error!(
+                "[YukpoIA] Quota check failed for user {}: {}",
+                user_id,
+                serde_json::to_string_pretty(&err_json).unwrap_or_default()
+            );
+            return Ok(ResponseJson(err_json));
+        }
         Err(e) => {
-            error!("[YukpoIA] precheck DB: {}", e);
+            // Log SQL error détaillé
+            error!(
+                "[YukpoIA] Database error during quota check for user {}: {}",
+                user_id, e
+            );
+            error!("[YukpoIA] SQL Error details: {:?}", e);
             return Ok(ResponseJson(serde_json::json!({
                 "message": "Erreur serveur (vérification du quota YukpoIA). Réessayez.",
                 "type": "text",
-                "confidence": 0.0
+                "confidence": 0.0,
+                "debug_info": {
+                    "error_type": "database_error",
+                    "user_id": user_id
+                }
             })));
         }
     }

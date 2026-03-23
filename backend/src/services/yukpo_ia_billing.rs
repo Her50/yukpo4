@@ -168,7 +168,7 @@ pub async fn debit_yukpo_ia_units(
     }))
 }
 
-/// Retourne `Err(json)` si l’utilisateur ne peut pas lancer un appel (quota gratuit épuisé et solde nul).
+/// Retourne `Err(json)` si l'utilisateur ne peut pas lancer un appel (quota gratuit épuisé et solde nul).
 pub async fn precheck_can_use_yukpo_ia(
     pool: &PgPool,
     user_id: i32,
@@ -177,8 +177,35 @@ pub async fn precheck_can_use_yukpo_ia(
         return Ok(Ok(()));
     }
 
+    // ✅ DEBUG: Vérifier que les tables existent
+    if let Err(table_err) =
+        sqlx::query("SELECT 1 FROM yukpo_ia_daily_usage LIMIT 1").fetch_one(pool).await
+    {
+        log::error!(
+            "[YukpoIA] Table yukpo_ia_daily_usage not accessible: {}",
+            table_err
+        );
+        return Ok(Err(json!({
+            "message": "Erreur de configuration du système IA. Veuillez contacter le support.",
+            "type": "text",
+            "confidence": 0.0,
+            "debug_info": {
+                "error_type": "missing_table",
+                "table": "yukpo_ia_daily_usage"
+            }
+        })));
+    }
+
     let today = Utc::now().date_naive();
     let budget = daily_free_budget();
+
+    // ✅ DEBUG: Log des valeurs pour diagnostic
+    log::info!(
+        "[YukpoIA] Quota check - User: {}, Today: {}, Budget: {}",
+        user_id,
+        today,
+        budget
+    );
 
     let balance: i64 =
         sqlx::query_scalar("SELECT COALESCE(tokens_balance, 0) FROM users WHERE id = $1")
@@ -187,6 +214,9 @@ pub async fn precheck_can_use_yukpo_ia(
             .await?
             .flatten()
             .unwrap_or(0);
+
+    // ✅ DEBUG: Log du solde
+    log::info!("[YukpoIA] User balance: {}", balance);
 
     let free_used: i64 = sqlx::query_scalar(
         "SELECT COALESCE(free_token_units_consumed, 0) FROM yukpo_ia_daily_usage WHERE user_id = $1 AND usage_date = $2",
@@ -198,13 +228,26 @@ pub async fn precheck_can_use_yukpo_ia(
     .flatten()
     .unwrap_or(0);
 
+    // ✅ DEBUG: Log de l'utilisation quotidienne
+    log::info!("[YukpoIA] Daily free used: {} / {}", free_used, budget);
+
     if free_used < budget {
+        log::info!(
+            "[YukpoIA] Quota OK - Free remaining: {}",
+            budget - free_used
+        );
         return Ok(Ok(()));
     }
     if balance > 0 {
+        log::info!("[YukpoIA] Quota OK - Will use paid balance: {}", balance);
         return Ok(Ok(()));
     }
 
+    log::warn!(
+        "[YukpoIA] Quota exceeded - Free used: {}, Balance: {}",
+        free_used,
+        balance
+    );
     Ok(Err(json!({
         "message": "Quota YukpoIA gratuit du jour épuisé et solde de jetons insuffisant. Rechargez votre compte pour continuer.",
         "type": "text",
