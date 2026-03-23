@@ -212,24 +212,8 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("serve task terminated prematurely".into());
     }
     eprintln!("[MAIN] ✅ serve task toujours actif après 500ms");
-    let test_client = reqwest::Client::new();
-    let test_url = format!("http://localhost:{}/health", port);
-    match test_client
-        .get(&test_url)
-        .timeout(std::time::Duration::from_secs(2))
-        .send()
-        .await
-    {
-        Ok(resp) => {
-            eprintln!(
-                "[MAIN] ✅ Test health check réussi: status {}",
-                resp.status()
-            );
-        }
-        Err(e) => {
-            eprintln!("[MAIN] ⚠️ Test health check échoué (non bloquant): {}", e);
-        }
-    }
+    // Pas de reqwest vers localhost ici : sous Cloud Run, évite toute contention / deadlock
+    // au démarrage ; la sonde (TCP ou HTTP) valide le port.
 
     // Maintenant initialiser dotenv et logging (APRÈS le serveur minimal)
     eprintln!("[MAIN] 🔧 Initialisation dotenv...");
