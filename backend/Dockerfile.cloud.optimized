@@ -5,18 +5,19 @@
 ############################################
 # Stage 1: Builder - Compilation Rust optimisée
 ############################################
-FROM rust:latest AS builder
+# ✅ CORRIGÉ 2026-03-23: debian:trixie = GLIBC 2.39
+# rust:latest = bookworm = GLIBC 2.36 → trop vieux pour ort_sys (ONNX Runtime)
+# qui exige __isoc23_strtoll etc. (GLIBC 2.38+).
+# On installe Rust via rustup sur trixie pour avoir GLIBC 2.39.
+FROM debian:trixie AS builder
 
 WORKDIR /app
 
-# ✅ SQLx OFFLINE : Activer le mode offline SQLx dès le début
-ENV SQLX_OFFLINE=true
-# Note: target-cpu=native retiré pour compatibilité AWS Fargate (évite "Illegal instruction")
-ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
-ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
-
-# Installer uniquement les dépendances essentielles pour la compilation
+# Installer Rust via rustup + dépendances de compilation
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    build-essential \
+    git \
     pkg-config \
     libssl-dev \
     libpq-dev \
@@ -24,8 +25,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     clang \
     lld \
     ca-certificates \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
+
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# ✅ SQLx OFFLINE : Activer le mode offline SQLx dès le début
+ENV SQLX_OFFLINE=true
+# Note: target-cpu=native retiré pour compatibilité AWS Fargate (évite "Illegal instruction")
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 
 # Copier les fichiers de configuration Rust (LAYER CACHE)
 COPY Cargo.toml Cargo.lock ./
