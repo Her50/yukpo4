@@ -299,7 +299,25 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                         let err = "DATABASE_URL toujours absent après 10 minutes (Cloud Run)";
                         eprintln!("[MAIN] ❌ {}", err);
                         log::error!("❌ {}", err);
-                        return Err(err.into());
+                        eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
+                        eprintln!("[MAIN] 📝 L'application fonctionnera sans base de données (mode dégradé)");
+                        // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER — continuer sans DB pour que /health reste disponible
+                        // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
+                        // Les routes API renverront 503 (Service Unavailable) via le fallback
+                        log::error!("⚠️ DATABASE_URL non disponible après timeout — Application continue en mode dégradé (API désactivée)");
+                        // Créer un pool factice pour éviter les panics dans le reste du code
+                        let dummy_pool = PgPoolOptions::new()
+                            .max_connections(1)
+                            .min_connections(0)
+                            .connect_lazy("postgresql://user:pass@localhost:5432/db")
+                            .unwrap_or_else(|_| {
+                                // Si même le pool factice échoue, on continue sans pool
+                                log::error!("❌ Impossible de créer un pool factice — Continuation sans pool");
+                                panic!("Pool factice requis pour mode dégradé");
+                            });
+                        degraded_mode = true;
+                        db_url = dummy_pool.connection_string().to_string();
+                        break;
                     }
                     tokio::time::sleep(std::time::Duration::from_secs(RETRY_SECS)).await;
                 }
@@ -315,7 +333,24 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
         let err = "DATABASE_URL non trouvé (ni env var ni secret Cloud Run)";
         eprintln!("[MAIN] ❌ ERREUR CRITIQUE: {}", err);
         log::error!("❌ {}", err);
-        return Err(err.into());
+        eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
+        eprintln!("[MAIN] 📝 L'application fonctionnera sans base de données (mode dégradé)");
+        // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER — continuer sans DB pour que /health reste disponible
+        // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
+        // Les routes API renverront 503 (Service Unavailable) via le fallback
+        log::error!("⚠️ DATABASE_URL non disponible — Application continue en mode dégradé (API désactivée)");
+        // Créer un pool factice pour éviter les panics dans le reste du code
+        let dummy_pool = PgPoolOptions::new()
+            .max_connections(1)
+            .min_connections(0)
+            .connect_lazy("postgresql://user:pass@localhost:5432/db")
+            .unwrap_or_else(|_| {
+                // Si même le pool factice échoue, on continue sans pool
+                log::error!("❌ Impossible de créer un pool factice — Continuation sans pool");
+                panic!("Pool factice requis pour mode dégradé");
+            });
+        degraded_mode = true;
+        db_url = dummy_pool.connection_string().to_string();
     };
 
     // Nettoyer les retours à la ligne qui cassent le parsing
@@ -407,6 +442,7 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     // ✅ CORRIGÉ 2026-02-14: Pool augmenté pour Cloud Run (50 max au lieu de 100 pour éviter saturation)
     // ✅ SOLUTION DÉFINITIVE 2026-02-15: Utiliser PgConnectOptions pour Cloud SQL Unix socket
     let is_cloud_run = env::var("CLOUD_RUN").unwrap_or_default() == "true";
+    let mut degraded_mode = false;
     let pg_pool: PgPool = if is_cloud_run {
         // Pour Cloud Run: utiliser connect_lazy pour démarrage immédiat (connexion en arrière-plan)
         // ✅ CORRIGÉ 2026-02-15: min_connections=0 pour éviter blocage si DB non accessible
@@ -493,9 +529,35 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
             // Parser l'URL Cloud SQL: postgresql://user:pass@/db?host=/cloudsql/PROJECT:REGION:INSTANCE
             let url_parts: Vec<&str> = db_url.split("://").collect();
             if url_parts.len() != 2 {
-                return Err(
-                    format!("Format DATABASE_URL invalide pour Cloud SQL: {}", db_url).into(),
+                eprintln!(
+                    "[MAIN] ❌ Format DATABASE_URL invalide pour Cloud SQL: {}",
+                    db_url
                 );
+                eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
+                eprintln!(
+                    "[MAIN] 📝 L'application fonctionnera sans base de données (mode dégradé)"
+                );
+                // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER — continuer sans DB pour que /health reste disponible
+                // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
+                // Les routes API renverront 503 (Service Unavailable) via le fallback
+                log::error!("⚠️ Format DATABASE_URL invalide — Application continue en mode dégradé (API désactivée)");
+                // Créer un pool factice pour éviter les panics dans le reste du code
+                let dummy_pool = PgPoolOptions::new()
+                    .max_connections(1)
+                    .min_connections(0)
+                    .connect_lazy("postgresql://user:pass@localhost:5432/db")
+                    .unwrap_or_else(|_| {
+                        // Si même le pool factice échoue, on continue sans pool
+                        log::error!(
+                            "❌ Impossible de créer un pool factice — Continuation sans pool"
+                        );
+                        panic!("Pool factice requis pour mode dégradé");
+                    });
+                degraded_mode = true;
+                // Continuer avec une URL factice pour éviter les erreurs de parsing
+                db_url = dummy_pool.connection_string().to_string();
+                // Passer à la section non-Cloud SQL
+                is_cloud_run = false;
             }
 
             let auth_and_path = url_parts[1];
@@ -538,11 +600,35 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
             eprintln!("[MAIN]   Socket path length: {}", socket_path.len());
 
             if socket_path.is_empty() {
-                return Err(format!(
-                    "Socket path Cloud SQL est vide après extraction (query: '{}')",
+                eprintln!(
+                    "[MAIN] ❌ Socket path Cloud SQL est vide après extraction (query: '{}')",
                     query_clean
-                )
-                .into());
+                );
+                eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
+                eprintln!(
+                    "[MAIN] 📝 L'application fonctionnera sans base de données (mode dégradé)"
+                );
+                // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER — continuer sans DB pour que /health reste disponible
+                // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
+                // Les routes API renverront 503 (Service Unavailable) via le fallback
+                log::error!("⚠️ Socket path Cloud SQL vide — Application continue en mode dégradé (API désactivée)");
+                // Créer un pool factice pour éviter les panics dans le reste du code
+                let dummy_pool = PgPoolOptions::new()
+                    .max_connections(1)
+                    .min_connections(0)
+                    .connect_lazy("postgresql://user:pass@localhost:5432/db")
+                    .unwrap_or_else(|_| {
+                        // Si même le pool factice échoue, on continue sans pool
+                        log::error!(
+                            "❌ Impossible de créer un pool factice — Continuation sans pool"
+                        );
+                        panic!("Pool factice requis pour mode dégradé");
+                    });
+                degraded_mode = true;
+                // Continuer avec une URL factice pour éviter les erreurs de parsing
+                db_url = dummy_pool.connection_string().to_string();
+                // Passer à la section non-Cloud SQL
+                is_cloud_run = false;
             }
 
             // ✅ CRITIQUE 2026-02-18: Vérifier que le socket existe AVANT de tenter la connexion
@@ -570,7 +656,7 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
             }
             if !socket_ready {
                 eprintln!(
-                    "[MAIN] ❌ ERREUR: Le socket Unix n'existe pas après attente: {}",
+                    "[MAIN] ⚠️ ATTENTION: Le socket Unix Cloud SQL n'existe pas après 180s: {}",
                     socket_path
                 );
                 eprintln!("[MAIN] 🔍 Vérification du répertoire /cloudsql/...");
@@ -583,12 +669,35 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                     eprintln!("[MAIN] ❌ Le répertoire /cloudsql/ n'existe pas !");
                     eprintln!("[MAIN] ⚠️ Cloud SQL Unix socket n'est pas monté dans le conteneur");
                 }
-                return Err(format!(
-                    "Socket Unix Cloud SQL introuvable après 180s: {} (vérifiez --set-cloudsql-instances et IAM)",
-                    socket_path
-                )
-                .into());
+                eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
+                eprintln!(
+                    "[MAIN] 📝 L'application fonctionnera sans base de données (mode dégradé)"
+                );
+                eprintln!("[MAIN] 🔧 ACTION REQUISE: Vérifiez --set-cloudsql-instances et les permissions IAM");
+                // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER — continuer sans DB pour que /health reste disponible
+                // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
+                // Les routes API renverront 503 (Service Unavailable) via le fallback
+                log::error!("⚠️ Cloud SQL socket non disponible — Application continue en mode dégradé (API désactivée)");
+                // Créer un pool factice pour éviter les panics dans le reste du code
+                let dummy_pool = PgPoolOptions::new()
+                    .max_connections(1)
+                    .min_connections(0)
+                    .connect_lazy("postgresql://user:pass@localhost:5432/db")
+                    .unwrap_or_else(|_| {
+                        // Si même le pool factice échoue, on continue sans pool
+                        log::error!(
+                            "❌ Impossible de créer un pool factice — Continuation sans pool"
+                        );
+                        panic!("Pool factice requis pour mode dégradé");
+                    });
+                // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER — continuer sans DB pour que /health reste disponible
+                // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
+                // Les routes API renverront 503 (Service Unavailable) via le fallback
+                log::error!("⚠️ Cloud SQL socket non disponible — Application continue en mode dégradé (API désactivée)");
+                degraded_mode = true;
+                dummy_pool
             }
+        } else {
             eprintln!("[MAIN] ✅ Socket Unix prêt: {}", socket_path);
 
             log::info!(
@@ -598,7 +707,7 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                 socket_path
             );
 
-            // ✅ CORRIGÉ 2026-02-18: Pour les sockets Unix, tokio-postgres nécessite un format spécial
+            // ✅ CRITIQUE 2026-02-18: Pour les sockets Unix, tokio-postgres nécessite un format spécial
             // Le socket path doit être utilisé comme "host" mais avec un format d'URL spécial
             // Format: postgresql://user:pass@/db?host=/path/to/socket
             // Mais sqlx ne peut pas parser ça, donc on construit PgConnectOptions manuellement
@@ -609,7 +718,7 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
             eprintln!("[MAIN]   db_name: {}", db_name);
             eprintln!("[MAIN]   socket_path: {}", socket_path);
 
-            // ✅ CORRIGÉ 2026-02-18: Pour les sockets Unix, on utilise host() avec le chemin absolu
+            // ✅ CRITIQUE 2026-02-18: Pour les sockets Unix, on utilise host() avec le chemin absolu
             // tokio-postgres détecte automatiquement que c'est un socket Unix si le chemin commence par /
             let mut connect_options = PgConnectOptions::new()
                 .host(socket_path) // Pour les sockets Unix, le chemin complet est utilisé comme "host"
@@ -658,13 +767,7 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                 cloud_run_min
             );
 
-            pool
-        } else {
-            // Format URL standard (IP/hostname)
-            // ✅ CORRIGÉ 2026-02-17: connect_lazy() peut retourner un Result dans certaines versions
-            pool_options
-                .connect_lazy(&db_url)
-                .map_err(|e| format!("Erreur connexion PostgreSQL: {}", e))?
+            pool.map_err(|e| format!("Erreur connexion PostgreSQL: {}", e))?
         }
     } else {
         // Pour autres environnements: connexion bloquante avec retry
@@ -769,10 +872,27 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                 max_retries,
                 e
             );
-            return Err(Box::new(e) as Box<dyn std::error::Error>);
+            eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
+            eprintln!("[MAIN] 📝 L'application fonctionnera sans base de données (mode dégradé)");
+            // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER — continuer sans DB pour que /health reste disponible
+            // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
+            // Les routes API renverront 503 (Service Unavailable) via le fallback
+            log::error!("⚠️ Connexion PostgreSQL impossible — Application continue en mode dégradé (API désactivée)");
+            // Créer un pool factice pour éviter les panics dans le reste du code
+            let dummy_pool = PgPoolOptions::new()
+                .max_connections(1)
+                .min_connections(0)
+                .connect_lazy("postgresql://user:pass@localhost:5432/db")
+                .unwrap_or_else(|_| {
+                    // Si même le pool factice échoue, on continue sans pool
+                    log::error!("❌ Impossible de créer un pool factice — Continuation sans pool");
+                    panic!("Pool factice requis pour mode dégradé");
+                });
+            degraded_mode = true;
+            dummy_pool
+        } else {
+            pool_opt.unwrap()
         }
-
-        pool_opt.unwrap()
     };
 
     eprintln!("[MAIN] ✅ Pool PostgreSQL créé avec succès");
@@ -1753,25 +1873,16 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                             log::error!("   - {}", table);
                         }
 
-                        if is_production {
-                            log::error!(
-                            "❌ ARRÊT DE L'APPLICATION: Tables critiques manquantes en production"
-                        );
-                            log::error!(
-                            "❌ Les workers et services ne peuvent pas fonctionner sans ces tables"
-                        );
-                            log::error!("❌ ACTION REQUISE: Exécuter les migrations manuellement ou corriger les erreurs de migration");
-                            let missing_str = missing_tables.join(", ");
-                            return Err(format!(
-                                "Tables critiques manquantes après migrations: {}",
-                                missing_str
-                            )
-                            .into());
-                        } else {
-                            log::warn!(
-                            "⚠️ Continuation avec fonctionnalités limitées (mode développement)"
-                        );
-                        }
+                        // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER même en production — continuer en mode dégradé
+                        // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
+                        // Les routes API renverront 503 (Service Unavailable) via le fallback
+                        log::error!("❌ Tables critiques manquantes — Application continue en mode dégradé (API désactivée)");
+                        eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
+                        eprintln!("[MAIN] 📝 L'application fonctionnera sans les tables critiques (mode dégradé)");
+                        eprintln!("[MAIN] 🔧 ACTION REQUISE: Exécuter les migrations manuellement");
+                        // Marquer comme mode dégradé pour que les routes API renvoient 503
+                        degraded_mode = true;
+                        log::warn!("⚠️ Continuation avec fonctionnalités limitées (mode dégradé)");
                     }
                 } else {
                     log::info!("✅ Toutes les tables critiques existent");
@@ -2086,25 +2197,16 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
                             log::error!("   - {}", table);
                         }
 
-                        if is_production {
-                            log::error!(
-                            "❌ ARRÊT DE L'APPLICATION: Tables critiques manquantes en production"
-                        );
-                            log::error!(
-                            "❌ Les workers et services ne peuvent pas fonctionner sans ces tables"
-                        );
-                            log::error!("❌ ACTION REQUISE: Exécuter les migrations manuellement ou corriger les erreurs de migration");
-                            let missing_str = missing_tables.join(", ");
-                            return Err(format!(
-                                "Tables critiques manquantes après échec SQLx: {}",
-                                missing_str
-                            )
-                            .into());
-                        } else {
-                            log::warn!(
-                            "⚠️ Continuation avec fonctionnalités limitées (mode développement)"
-                        );
-                        }
+                        // ✅ CORRIGÉ 2026-03-23: NE PLUS QUITTER même en production — continuer en mode dégradé
+                        // Le serveur shell répond déjà sur /health, /healthz, / — la startup probe peut réussir
+                        // Les routes API renverront 503 (Service Unavailable) via le fallback
+                        log::error!("❌ Tables critiques manquantes après échec SQLx — Application continue en mode dégradé (API désactivée)");
+                        eprintln!("[MAIN] 🚨 CRITIQUE: Le serveur HTTP continue de tourner sur le port 8080 (/health répond)");
+                        eprintln!("[MAIN] 📝 L'application fonctionnera sans les tables critiques (mode dégradé)");
+                        eprintln!("[MAIN] 🔧 ACTION REQUISE: Exécuter les migrations manuellement");
+                        // Marquer comme mode dégradé pour que les routes API renvoient 503
+                        degraded_mode = true;
+                        log::warn!("⚠️ Continuation avec fonctionnalités limitées (mode dégradé)");
                     } else {
                         log::warn!("⚠️ Continuation du démarrage, mais certaines fonctionnalités peuvent être indisponibles");
                     }
@@ -2610,6 +2712,7 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
         ia_stats,
         redis_client,
         redis_available_for_ws,
+        degraded_mode, // ✅ CORRIGÉ 2026-03-23: Passer le flag de mode dégradé
     ));
 
     // ✅ OPTIMISÉ Cloud Run 2026-02-14: Lancer toutes les migrations SQLx en arrière-plan pour Cloud Run

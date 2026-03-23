@@ -134,6 +134,8 @@ pub struct AppState {
         Option<Arc<crate::services::generative_video_service::GenerativeVideoService>>,
     /// ✅ NOUVEAU 2026-03-16: Service multilingue pour notifications
     pub multilingue_service: Arc<crate::services::multilingue_service::MultilingueService>,
+    /// ✅ CORRIGÉ 2026-03-23: Flag pour mode dégradé (DB indisponible)
+    pub degraded_mode: bool,
     /// ✅ NOUVEAU 2026-03-16: Service de paiements agrégés
     pub paiement_service: Arc<crate::services::paiement_agrege_service::PaiementAgregeService>,
     /// Métriques YukpoIA (route + tenant)
@@ -151,6 +153,7 @@ impl AppState {
         ia_stats: Arc<Mutex<IAStats>>,
         redis_client: redis::Client,
         redis_available_for_ws: bool,
+        degraded_mode: bool, // ✅ CORRIGÉ 2026-03-23: Flag pour mode dégradé
     ) -> Self {
         dotenv().ok(); // Charge les variables d'environnement depuis .env
         let database_url =
@@ -592,6 +595,7 @@ impl AppState {
             multilingue_service: Arc::new(
                 crate::services::multilingue_service::MultilingueService::new(),
             ),
+            degraded_mode, // ✅ CORRIGÉ 2026-03-23: Flag pour mode dégradé
             // ✅ NOUVEAU 2026-03-16: Initialiser le service de paiements agrégés
             paiement_service: Arc::new(
                 crate::services::paiement_agrege_service::PaiementAgregeService::new(Arc::new(

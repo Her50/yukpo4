@@ -350,10 +350,11 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          # Sonde TCP. Le binaire fait maintenant un bind std::net AVANT tokio::Runtime (voir main.rs).
-          # timeoutSeconds < periodSeconds (requis Cloud Run). Budget ~240s : 45 + 32×6 = 237s.
-          STARTUP_PROBE='timeoutSeconds=5,periodSeconds=6,initialDelaySeconds=45,failureThreshold=32,tcpSocket.port=8080'
-          echo "🔖 workflow=gcp-deploy.yml rev=2026-03-23-v10-bind-std-before-tokio SHA=${{ github.sha }}"
+          # ✅ CORRIGÉ 2026-03-23 v11: initialDelaySeconds=0 car le binaire bind TCP en <1s
+          # (start-cloud.sh fait exec immédiat pour Cloud Run, pas de shell overhead).
+          # Budget total: 0 + 60×10 = 600s (10 min). Largement suffisant pour DB socket wait.
+          STARTUP_PROBE='timeoutSeconds=3,periodSeconds=10,initialDelaySeconds=0,failureThreshold=60,tcpSocket.port=8080'
+          echo "🔖 workflow=gcp-deploy.yml rev=2026-03-23-v11-exec-fast-start SHA=${{ github.sha }}"
           echo "Déploiement vers Cloud Run..."
           
           # Utiliser la variable d'environnement définie dans l'étape précédente
