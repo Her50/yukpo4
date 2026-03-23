@@ -350,10 +350,11 @@ jobs:
 
       - name: Deploy to Cloud Run
         run: |
-          # Sonde TCP explicite (écrase toute sonde HTTP héritée). timeoutSeconds < periodSeconds (requis Cloud Run).
-          # initialDelaySeconds laisse le temps au pull/cold start ; failureThreshold×period ≤ budget startup (~240s).
-          STARTUP_PROBE='timeoutSeconds=4,periodSeconds=5,initialDelaySeconds=20,failureThreshold=43,tcpSocket.port=8080'
-          echo "🔖 workflow=gcp-deploy.yml rev=2026-03-23-v8-tcp-no-localhost-reqwest-4g SHA=${{ github.sha }}"
+          # Sonde TCP (succès dès listen — pas besoin de pile HTTP). Préférée à httpGet si cold start lent.
+          # timeoutSeconds < periodSeconds (requis Cloud Run). Budget ~240s : 45 + 32×6 = 237s.
+          # (v7 httpGet /health échouait : « failed startup probe checks » — délai/timeout HTTP trop agressifs.)
+          STARTUP_PROBE='timeoutSeconds=5,periodSeconds=6,initialDelaySeconds=45,failureThreshold=32,tcpSocket.port=8080'
+          echo "🔖 workflow=gcp-deploy.yml rev=2026-03-23-v9-tcp-long-initial-delay SHA=${{ github.sha }}"
           echo "Déploiement vers Cloud Run..."
           
           # Utiliser la variable d'environnement définie dans l'étape précédente
