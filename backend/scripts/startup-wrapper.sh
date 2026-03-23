@@ -25,8 +25,25 @@ fi
 
 echo "🔍 [WRAPPER] Env: DATABASE_URL=${DATABASE_URL:+OK(${#DATABASE_URL}c)} JWT=${JWT_SECRET:+OK} REDIS=${REDIS_URL:+OK}"
 echo "🔍 [WRAPPER] Binaire: $(ls -lh /app/yukpomnang_backend 2>&1)"
-echo "🔍 [WRAPPER] ldd: $(ldd /app/yukpomnang_backend 2>&1 | head -5)"
 echo "🔍 [WRAPPER] PORT=$PORT HOST=$HOST"
+
+# ── Diagnostic libs ────────────────────────────────────────────────
+echo "🔍 [WRAPPER] ldd (toutes les libs):"
+ldd /app/yukpomnang_backend 2>&1 || true
+echo "🔍 [WRAPPER] GLIBC: $(ldd --version 2>&1 | head -1 || true)"
+
+# ── Pre-flight: vérifier que le binaire CHARGE correctement ────────
+echo "🔍 [WRAPPER] Pre-flight: /app/yukpomnang_backend --version"
+VERSION_OUTPUT=$(/app/yukpomnang_backend --version 2>&1)
+VERSION_RC=$?
+if [ $VERSION_RC -ne 0 ]; then
+    echo "❌ [WRAPPER] ERREUR CRITIQUE: le binaire ne peut pas se charger (exit code $VERSION_RC)"
+    echo "❌ [WRAPPER] Output: $VERSION_OUTPUT"
+    echo "❌ [WRAPPER] Cela indique probablement une lib manquante ou incompatibilité GLIBC."
+    echo "❌ [WRAPPER] file: $(file /app/yukpomnang_backend 2>&1)"
+    exit 1
+fi
+echo "✅ [WRAPPER] Pre-flight OK: $VERSION_OUTPUT"
 
 # ── Lancer Rust immédiatement ────────────────────────────────────────
 # Rust bind port 8080 avec un health handler dès le démarrage,
