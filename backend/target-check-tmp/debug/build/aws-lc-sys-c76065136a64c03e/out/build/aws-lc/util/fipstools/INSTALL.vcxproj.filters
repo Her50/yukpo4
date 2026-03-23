@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\23767\yukpomnang2\backend\target-check-tmp\debug\build\aws-lc-sys-c76065136a64c03e\out\build\CMakeFiles\39b41c00476531c6d654fc4016243e20\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{4395C7E2-1F3B-3B4A-A74C-5B62AFE8F5ED}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

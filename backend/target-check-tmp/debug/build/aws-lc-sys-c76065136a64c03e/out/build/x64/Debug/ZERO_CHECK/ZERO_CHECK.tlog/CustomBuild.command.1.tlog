@@ -1,0 +1,10 @@
+^C:\USERS\23767\YUKPOMNANG2\BACKEND\TARGET-CHECK-TMP\DEBUG\BUILD\AWS-LC-SYS-C76065136A64C03E\OUT\BUILD\CMAKEFILES\9A10E304369009BC97D4EC93F3ABE4D9\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/23767/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aws-lc-sys-0.35.0 -BC:/Users/23767/yukpomnang2/backend/target-check-tmp/debug/build/aws-lc-sys-c76065136a64c03e/out/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/23767/yukpomnang2/backend/target-check-tmp/debug/build/aws-lc-sys-c76065136a64c03e/out/build/AWS_LC_RUST.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

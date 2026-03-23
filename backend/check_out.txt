@@ -1,0 +1,108 @@
+﻿cargo :     Blocking waiting for file lock on build directory
+Au caractère C:\Users\23767\AppData\Local\Temp\ps-script-dd368f7d-c47b-4eba-ab5a-dda19c1fd434.ps1:7 : 50
++ ... Location c:\Users\23767\yukpomnang2\backend; cargo check 2>&1 | Out-F ...
++                                                  ~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (    Blocking wa...build directory:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    Checking yukpomnang_backend v0.1.0 (C:\Users\23767\yukpomnang2\backend)
+warning: unused import: `warn`
+ --> src\services\yukpo_ia_job_queue.rs:3:17
+  |
+3 | use log::{info, warn};
+  |                 ^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `YukpoIaJobQueue`
+ --> src\tasks\yukpo_ia_queue_worker.rs:4:43
+  |
+4 | use crate::services::yukpo_ia_job_queue::{YukpoIaJobQueue, YukpoIaJobStatus};
+  |                                           ^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `ChatRequest: serde::Serialize` is not satisfied
+    --> src\routes\ai_chat_routes.rs:1050:38
+     |
+1050 |     let body = serde_json::to_value(&payload).map_err(|_| StatusCode::BAD_REQUEST)?;
+     |                --------------------  ^^^^^^^ unsatisfied trait bound
+     |                |
+     |                required by a bound introduced by this call
+     |
+help: the trait `Serialize` is not implemented for `ChatRequest`
+    --> src\routes\ai_chat_routes.rs:25:1
+     |
+  25 | pub struct ChatRequest {
+     | ^^^^^^^^^^^^^^^^^^^^^^
+     = note: for local types consider adding `#[derive(serde::Serialize)]` to your `ChatRequest` type
+     = note: for types from other crates check whether the crate offers a `serde` feature flag
+     = help: the following other types implement trait `Serialize`:
+               &'a T
+               &'a mut T
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+               (T0, T1, T2, T3, T4)
+             and 1605 others
+     = note: required for `&ChatRequest` to implement `Serialize`
+note: required by a bound in `to_value`
+    --> C:\Users\23767\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\serde_json-1.0.149\src\value\mod.rs:997:8
+     |
+ 995 | pub fn to_value<T>(value: T) -> Result<Value, Error>
+     |        -------- required by a bound in this function
+ 996 | where
+ 997 |     T: Serialize,
+     |        ^^^^^^^^^ required by this bound in `to_value`
+
+error[E0599]: no variant or associated item named `Bulk` found for enum `redis::Value` in the current scope
+   --> src\services\yukpo_ia_job_queue.rs:139:27
+    |
+139 |             redis::Value::Bulk(parts) if parts.len() >= 2 => {
+    |                           ^^^^ variant or associated item not found in `redis::Value`
+
+error[E0599]: no variant or associated item named `Data` found for enum `redis::Value` in the current scope
+   --> src\services\yukpo_ia_job_queue.rs:141:35
+    |
+141 |                     redis::Value::Data(b) => String::from_utf8_lossy(b).to_string(),
+    |                                   ^^^^ variant or associated item not found in `redis::Value`
+
+error[E0308]: mismatched types
+   --> src\services\yukpo_ia_job_queue.rs:157:17
+    |
+157 |         Ok(Some(n))
+    |            ---- ^ expected `u64`, found `Option<u64>`
+    |            |
+    |            arguments to this enum variant are incorrect
+    |
+    = note: expected type `u64`
+               found enum `std::option::Option<u64>`
+help: the type constructed contains `std::option::Option<u64>` due to the type of the argument passed
+   --> src\services\yukpo_ia_job_queue.rs:157:12
+    |
+157 |         Ok(Some(n))
+    |            ^^^^^-^
+    |                 |
+    |                 this argument influences the type of `Some`
+note: tuple variant defined here
+   --> 
+C:\Users\23767\.rustup\toolchains\stable-x86_64-pc-windows-msvc\lib/rustlib/src/rust\library\core\src\option.rs:602:5
+    |
+602 |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+    |     ^^^^
+help: consider using `Option::expect` to unwrap the `std::option::Option<u64>` value, panicking if the value is an 
+`Option::None`
+    |
+157 |         Ok(Some(n.expect("REASON")))
+    |                  +++++++++++++++++
+
+error[E0063]: missing fields `yukpo_ia_job_queue` and `yukpo_ia_metrics` in initializer of `AppState`
+   --> src\state.rs:457:9
+    |
+457 |         AppState {
+    |         ^^^^^^^^ missing `yukpo_ia_job_queue` and `yukpo_ia_metrics`
+
+Some errors have detailed explanations: E0063, E0277, E0308, E0599.
+For more information about an error, try `rustc --explain E0063`.
+warning: `yukpomnang_backend` (lib) generated 2 warnings
+error: could not compile `yukpomnang_backend` (lib) due to 5 previous errors; 2 warnings emitted
