@@ -155,7 +155,7 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
             <SafeIcon name="sparkles" size={20} color="#FFFFFF" />
           </Animated.View>
           <View style={styles.aiMiniBadge}>
-            <SafeIcon name="brain" size={10} color="#06b6d4" />
+            <SafeIcon name="bot" size={11} color="#6366f1" type="lucide" />
           </View>
         </TouchableOpacity>
       </Animated.View>

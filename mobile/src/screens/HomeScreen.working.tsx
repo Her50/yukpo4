@@ -805,11 +805,11 @@ const HomeScreen: React.FC = () => {
                                 // ÔÜá´©Å IMPORTANT: Uniquement ├®crans UTILISATEURS (Home/Search/List/Details)
                                 // ÔØî JAMAIS d'├®crans PARTENAIRES (Form/Create/Manage) depuis HomeScreen
                                 const searchRoutes: Record<string, string> = {
-                                    // Services Sant├® - Navigation directe vers chaque ├®cran sp├®cifique (UTILISATEURS)
-                                    'pharmacie': 'PharmacieSearch',        // Ô£à Utilisateur: PharmacieHomeScreen
-                                    'hopital': 'HopitalSearch',            // Ô£à Utilisateur: HopitalHomeScreen
-                                    'laboratoire': 'LaboratoireSearch',    // Ô£à Utilisateur: LaboratoireHomeScreen
-                                    'banque_sang': 'BanqueSangSearch',     // Ô£à Utilisateur: BanqueSangSearchScreen
+                                    // Services Santé — hubs utilisateur (aligné Transport: *Home)
+                                    'pharmacie': 'PharmacieHome',
+                                    'hopital': 'HopitalHome',
+                                    'laboratoire': 'LaboratoireHome',
+                                    'banque_sang': 'BanqueSangSearch',
                                     // Services Transport - Navigation directe vers chaque ├®cran sp├®cifique (UTILISATEURS)
                                     'agence_voyage': 'BusTicketSearch',    // Ô£à Utilisateur: TicketVoyageHomeScreen
                                     'covoiturage': 'CovoiturageSearch',    // Ô£à Utilisateur: CovoiturageHomeScreen

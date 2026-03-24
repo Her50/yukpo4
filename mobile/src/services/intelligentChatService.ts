@@ -1754,7 +1754,7 @@ When the user taps **"Arrêter la marche"** (stop button):
 
 === LABORATORY_MODULE_DETAIL (authoritative — align on **CURRENT SCREEN** name) ===
 
-**User entry points:** grille d’accueil (**LaboratoireSearch**), hub santé (**HealthServicesHub** → tuile **LaboratoireSearch**), éventuellement **LaboratoireHome** (hub examens + IA / dispo).
+**User entry points:** grille d’accueil (**LaboratoireHome**), hub santé (**HealthServicesHub** → tuile **LaboratoireHome**), **LaboratoireSearch** (formulaire filtres lieux / GPS — toujours disponible depuis raccourcis ou listes).
 
 ### LaboratoireSearch (**LaboratoireSearchScreen**)
 - **GPS:** **LocationContext** préremplit \`gpsData\` ; sinon **ModernGPSModal** (\`handleGPSSelect\`).
@@ -1779,7 +1779,7 @@ When the user taps **"Arrêter la marche"** (stop button):
 - Autocomplete **\`laboratoryService.searchExaminationTypes\`** → **GET** \`/api/laboratoires/examinations/autocomplete\`.
 - Si **dispo + GPS** (\`useAvailability\` + **LocationContext**): **\`laboratoryService.searchWithAvailability\`** → **GET** \`/api/search/scheduling\` (query + lat/lng + \`max_distance\`).
 - Sinon navigation vers **LaboratoireList** avec param \`examinationType\` (texte) — la liste principale attend surtout \`filters\` ; en cas d’écart, orienter l’utilisateur vers **LaboratoireSearch** pour des critères complets.
-- Raccourcis **LaboratoireSearch** / **MyLabExaminations** ; modales IA pathologie / image via **laboratoryService** (\`/api/laboratoires/ai/search-pathology\`, \`/api/laboratoires/examinations/analyze-image\`).
+- Raccourcis **LaboratoireHome** (hub) / **LaboratoireSearch** (filtres lieux) / **MyLabExaminations** ; modales IA pathologie / image via **laboratoryService** (\`/api/laboratoires/ai/search-pathology\`, \`/api/laboratoires/examinations/analyze-image\`).
 
 ### MyLabExaminations (**MyLabExaminationsScreen**)
 - **GET** \`/api/laboratoires/my-examinations\` via **\`labService.getMyExaminations\`** (pagination 20, filtres statut UI).
@@ -2046,15 +2046,15 @@ When the user taps **"Arrêter la marche"** (stop button):
 
 **Header (pink gradient):** back ; title/subtitle santé ; **119** (or fallback **112**) **emergency call** button → \`Linking.openURL(tel:)\`.
 
-**Unified search bar:** free text ; **onSubmit** \`handleSearch\` routes by keywords → **PharmacieSearch**, **HopitalSearch**, **LaboratoireSearch**, **BanqueSangSearch**, or default **HopitalSearch**.
+**Unified search bar:** free text ; **onSubmit** \`handleSearch\` routes by keywords → **PharmacieHome**, **HopitalHome**, **LaboratoireHome**, **BanqueSangSearch**, or default **HopitalHome**.
 
-**Tiles (horizontal cards):** each opens a dedicated search route — **PharmacieSearch**, **HopitalSearch**, **LaboratoireSearch**, **BanqueSangSearch** (counts from \`servicesCounts\` when loaded).
+**Tiles (horizontal cards):** each opens the **user hub** route — **PharmacieHome**, **HopitalHome**, **LaboratoireHome**, **BanqueSangSearch** (counts from \`servicesCounts\` when loaded). **« Voir toutes »** on the duty-pharmacy strip still goes to **PharmacieSearch** (establishment list with filters).
 
 **Duty pharmacy block:** loads via **GET** \`/api/pharmacies/products/search\` with \`query: 'garde'\`, optional GPS + radius ; tap can call pharmacy phone.
 
 **Note:** \`MedicalServicesList\` is a **navigation alias** to this screen. The component **does not** read \`route.params.filters\` today — service-led filters from **HopitalSearch** that target **MedicalServicesList** are **not** applied inside this hub in current code; use **HopitalList** / **HopitalHome** flows for structured hospital/service discovery.
 
-**Hard rules:** Do not describe this hub as **PharmacieHome** (product catalog) or as **HopitalHome** (medical services availability list) — it is the **entry hub** only.
+**Hard rules:** This screen is the **hub/launcher**, not the full **PharmacieHome** / **HopitalHome** / **LaboratoireHome** UX — but **navigation from tiles** lands on those hubs. For **establishment-only** search (pharmacy on duty, geo filters without the product catalog hub), users can open **PharmacieSearch** / **HopitalSearch** / **LaboratoireSearch** from shortcuts inside those flows or from list empty states.
 `;
     }
 
@@ -2463,11 +2463,11 @@ When the user taps **"Arrêter la marche"** (stop button):
 
 **Offres spéciales (gift button):** dropdown with horizontal cards → **FlashPromosActive**, **GlobalPromoCatalog**, **LivesList** (icons zap / bag / video).
 
-**YukpoServicesQuickAccess:** six categories (Santé, Transport, Vie pratique, Bourse du livre, Assurance, Immobilier) covering **17 services**. Taps use **searchRoutes** mapping, e.g. Pharmacie→**PharmacieSearch**, Hôpital→**HopitalSearch**, Taxi→**TaxiSearch**, Covoiturage→**CovoiturageSearch**, Bourse du livre→**LivreScolaireHome**, Emploi→**OffresEmploiHub**, Menu→**MenuPlanningHub**, BayamSelam→**BayamSelamSearch**, Immobilier→**ImmobilierSearch**, Hôtel→**HotelSearch** with \`{ mode: 'hotel' }\`, Meublé→**MeubleSearch** with \`{ mode: 'meuble' }\`, etc. **Never** route casual users from Home into partner-only management screens.
+**YukpoServicesQuickAccess:** six categories (Santé, Transport, Vie pratique, Bourse du livre, Assurance, Immobilier) covering **17 services**. Taps use **searchRoutes** mapping, e.g. Pharmacie→**PharmacieHome**, Hôpital→**HopitalHome**, Laboratoire→**LaboratoireHome**, Transfusion→**BanqueSangSearch**, Taxi→**TaxiHome**, Covoiturage→**CovoiturageHome**, Ticket voyage→**TicketVoyageHome**, Bourse du livre→**LivreScolaireHome**, Emploi→**OffresEmploiHub**, Menu→**MenuPlanningHub**, BayamSelam→**BayamSelamSearch**, Immobilier→**ImmobilierSearch**, Hôtel→**HotelSearch** with \`{ mode: 'hotel' }\`, Meublé→**MeubleSearch** with \`{ mode: 'meuble' }\`, etc. **Never** route casual users from Home into partner-only management screens.
 
 **Assistant IA FAB:** rendered in **AppNavigator** (global). Quick actions like **Retour** / **Recherche** refer to stack/tab navigation, not internal Home controls.
 
-**Answering guidelines:** Match explanations to the **actual** buttons/modals above. If user asks “how to search”, describe **mode Rechercher + send in ChatInputMobile + ResultatBesoin**. If “how to publish a product”, describe **mode Créer + existing vs new service split**. For “where are taxis/pharmacy”, point to **quick access grid** and the **Search** route names.
+**Answering guidelines:** Match explanations to the **actual** buttons/modals above. If user asks “how to search”, describe **mode Rechercher + send in ChatInputMobile + ResultatBesoin**. If “how to publish a product”, describe **mode Créer + existing vs new service split**. For “where are taxis/pharmacy”, point to **quick access grid** and the **hub** route names (**PharmacieHome**, **HopitalHome**, **TaxiHome**, …); **\*Search** screens remain for **filtered establishment search** (GPS, garde, spécialités) when the user needs that path.
 
 **Home + creation priorities:**
 - When user asks how to create a **product or service/prestation**, always start with: go to **HomeScreen** and switch to **Create mode**.
@@ -3106,7 +3106,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         prompt += `
 === HOSPITAL_DETAIL (cross-screen — user asked about hospitals from ${screenName}) ===
 **What this screen is:** Hospital/clinic module: search, AI triage, book appointments, consultations history, AI recommendations.
-**How to access:** Navigate to HopitalSearch or HopitalHome.
+**How to access:** Navigate to **HopitalHome** (hub depuis l’accueil) ; **HopitalSearch** pour la liste filtrée d’établissements.
 `;
       }
 
@@ -3114,7 +3114,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         prompt += `
 === PHARMACY_DETAIL (cross-screen — user asked about pharmacies from ${screenName}) ===
 **What this screen is:** Pharmacy module: search pharmacies, check stock, order medications, find pharmacies de garde.
-**How to access:** Navigate to PharmacieSearch or PharmacieHome.
+**How to access:** Navigate to **PharmacieHome** (hub depuis l’accueil) ; **PharmacieSearch** pour rechercher des officines (garde, GPS, filtres).
 `;
       }
 
@@ -3122,7 +3122,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         prompt += `
 === TAXI_DETAIL (cross-screen — user asked about taxi from ${screenName}) ===
 **What this screen is:** Taxi booking with AI dynamic pricing, GPS pre-filled origin, demand prediction.
-**How to access:** Navigate to TaxiSearch or TaxiHome.
+**How to access:** Navigate to **TaxiHome** (hub depuis l’accueil) ; **TaxiSearch** si besoin d’une entrée recherche alternative.
 `;
       }
 
@@ -3154,7 +3154,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         prompt += `
 === LABORATORY_DETAIL (cross-screen — user asked about labs from ${screenName}) ===
 **What this screen is:** Medical labs: search labs, book analyses, track results, AI analysis interpretation.
-**How to access:** Navigate to LaboratoireSearch or LaboratoireHome.
+**How to access:** Navigate to **LaboratoireHome** (hub depuis l’accueil) ; **LaboratoireSearch** pour filtres lieux / liste labos.
 `;
       }
 
@@ -4371,6 +4371,35 @@ Explorez l'avenir dès maintenant ! 👇`,
         ],
       },
       {
+        screen: 'HealthServicesHub',
+        keywords: [
+          'sante', 'santé', 'medical', 'médical', 'hub sante', 'services sante', 'aide medicale',
+          'pharmacie', 'hopital', 'hôpital', 'laboratoire', 'banque sang', 'urgence',
+        ],
+        contextualPrompt:
+          'Hub santé Yukpo : barre de recherche unifiée (mots-clés → Pharmacie / Hôpital / Labo / Sang), tuiles vers les hubs **PharmacieHome**, **HopitalHome**, **LaboratoireHome**, **BanqueSangSearch**, bandeau urgence, pharmacie de garde proche.',
+        suggestedActions: [
+          { id: 'nav-pharma', label: 'Pharmacie (hub)', icon: 'pill', route: 'PharmacieHome', category: 'navigation' as const, description: 'Médicaments & catalogue' },
+          { id: 'nav-hopital', label: 'Hôpital (hub)', icon: 'activity', route: 'HopitalHome', category: 'navigation' as const, description: 'Prestations & RDV' },
+          { id: 'nav-labo', label: 'Laboratoire (hub)', icon: 'microscope', route: 'LaboratoireHome', category: 'navigation' as const, description: 'Examens & analyses' },
+          { id: 'nav-sang', label: 'Transfusion / don', icon: 'droplet', route: 'BanqueSangSearch', category: 'navigation' as const, description: 'Banque de sang' },
+        ],
+      },
+      {
+        screen: 'MedicalServicesList',
+        keywords: [
+          'services medicaux', 'medical services', 'liste medical',
+        ],
+        contextualPrompt:
+          'Alias **HealthServicesHub** : même comportement que le hub santé (tuiles vers **PharmacieHome**, **HopitalHome**, **LaboratoireHome**, **BanqueSangSearch**).',
+        suggestedActions: [
+          { id: 'nav-pharma', label: 'Pharmacie (hub)', icon: 'pill', route: 'PharmacieHome', category: 'navigation' as const, description: 'Médicaments & catalogue' },
+          { id: 'nav-hopital', label: 'Hôpital (hub)', icon: 'activity', route: 'HopitalHome', category: 'navigation' as const, description: 'Prestations & RDV' },
+          { id: 'nav-labo', label: 'Laboratoire (hub)', icon: 'microscope', route: 'LaboratoireHome', category: 'navigation' as const, description: 'Examens & analyses' },
+          { id: 'nav-sang', label: 'Transfusion / don', icon: 'droplet', route: 'BanqueSangSearch', category: 'navigation' as const, description: 'Banque de sang' },
+        ],
+      },
+      {
         screen: 'PharmacieHome',
         keywords: [
           'medicament', 'pharmacie', 'ordonnance', 'dosage', 'traitement', 'medic', 'pharma',
@@ -4378,11 +4407,12 @@ Explorez l'avenir dès maintenant ! 👇`,
           'comprime', 'sirop', 'pilule', 'prescription', 'generique', 'garde',
           'acheter medicament', 'trouver pharmacie', 'scanner ordonnance'
         ],
-        contextualPrompt: 'Pharmacie : recherche médicaments, ordonnances IA, dosage recommandé, effets secondaires, pharmacies de garde.',
+        contextualPrompt:
+          '**PharmacieHome** : catalogue produits multi-pharmacies, IA posologie / interactions, recherche médicaments, chips « proche », tri. Pour **liste d’officines** (garde, GPS, filtres établissement) → **PharmacieSearch**.',
         suggestedActions: [
-          { id: 'pharma-search', label: 'Rechercher médicament', icon: 'pill', route: 'PharmacieHome', category: 'navigation' as const, description: 'Trouver un médicament' },
-          { id: 'pharma-nearby', label: 'Pharmacies nearby', icon: 'map-pin', route: 'PharmacieHome', category: 'navigation' as const, description: 'Pharmacies à proximité' },
-          { id: 'pharma-ia', label: 'Analyse ordonnance', icon: 'scan', route: 'PharmacieHome', category: 'action' as const, description: 'Scanner une ordonnance' }
+          { id: 'pharma-search', label: 'Rechercher médicament', icon: 'pill', route: 'PharmacieHome', category: 'navigation' as const, description: 'Catalogue produits' },
+          { id: 'pharma-officines', label: 'Trouver une officine', icon: 'map-pin', route: 'PharmacieSearch', category: 'navigation' as const, description: 'Garde, GPS, liste pharmacies' },
+          { id: 'pharma-ia', label: 'Analyse ordonnance', icon: 'scan', route: 'PharmacieHome', category: 'action' as const, description: 'Assistant IA sur cet écran' },
         ]
       },
       {
@@ -4391,11 +4421,12 @@ Explorez l'avenir dès maintenant ! 👇`,
           'hopital', 'hospital', 'clinique', 'urgence', 'medecin', 'docteur', 'consultation',
           'rdv', 'rendez-vous', 'sante', 'maladie', 'symptome', 'triage', 'analyse'
         ],
-        contextualPrompt: 'Hôpital : urgences, rendez-vous, IA triage médical, spécialistes, consultations, analyses de laboratoire.',
+        contextualPrompt:
+          '**HopitalHome** : prestations / disponibilité, IA pathologie & image, RDV, temps d’attente. Pour **recherche établissements** avec filtres (ville, GPS, spécialités, urgences 24h) → **HopitalSearch**.',
         suggestedActions: [
-          { id: 'hosp-urgent', label: 'Urgences', icon: 'alert-triangle', route: 'HopitalHome', category: 'navigation' as const, description: 'Trouver les urgences' },
-          { id: 'hosp-rdv', label: 'Prendre RDV', icon: 'calendar', route: 'HopitalHome', category: 'action' as const, description: 'Rendez-vous médical' },
-          { id: 'hosp-ia', label: 'IA Triage', icon: 'stethoscope', route: 'HopitalHome', category: 'action' as const, description: 'Analyse symptômes' }
+          { id: 'hosp-urgent', label: 'Urgences', icon: 'alert-triangle', route: 'HopitalHome', category: 'navigation' as const, description: 'Bloc & dispo sur cet écran' },
+          { id: 'hosp-rdv', label: 'Prendre RDV', icon: 'calendar', route: 'HopitalHome', category: 'action' as const, description: 'RDV depuis les cartes' },
+          { id: 'hosp-filters', label: 'Recherche par filtres', icon: 'search', route: 'HopitalSearch', category: 'navigation' as const, description: 'Liste hôpitaux avec critères' },
         ]
       },
       {
@@ -4495,10 +4526,12 @@ Explorez l'avenir dès maintenant ! 👇`,
           'laboratoire', 'labo', 'analyse', 'examen', 'prise de sang', 'resultat', 'bilan',
           'test medical', 'analyse medicale', 'depistage'
         ],
-        contextualPrompt: 'Laboratoire : trouver un labo, prendre RDV pour analyses, résultats en ligne, interprétation IA.',
+        contextualPrompt:
+          '**LaboratoireHome** : autocomplete examens, IA pathologie / image, dispo. Pour **recherche lieux** (GPS, types d’examens, ville) → **LaboratoireSearch**.',
         suggestedActions: [
-          { id: 'lab-search', label: 'Trouver un labo', icon: 'search', route: 'LaboratoireSearch', category: 'navigation' as const, description: 'Laboratoires proches' },
-          { id: 'lab-exams', label: 'Mes examens', icon: 'file-text', route: 'MyLabExaminations', category: 'navigation' as const, description: 'Résultats d\'analyses' }
+          { id: 'lab-hub', label: 'Hub laboratoire', icon: 'microscope', route: 'LaboratoireHome', category: 'navigation' as const, description: 'Examens & IA sur cet écran' },
+          { id: 'lab-filters', label: 'Filtres par zone', icon: 'search', route: 'LaboratoireSearch', category: 'navigation' as const, description: 'Liste labos avec critères' },
+          { id: 'lab-exams', label: 'Mes examens', icon: 'file-text', route: 'MyLabExaminations', category: 'navigation' as const, description: 'Résultats d\'analyses' },
         ]
       },
       {

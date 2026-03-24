@@ -796,11 +796,11 @@ const HomeScreen: React.FC = () => {
                                 // ÔÜá´©Å IMPORTANT: Uniquement écrans UTILISATEURS (Home/Search/List/Details)
                                 // ÔØî JAMAIS d'écrans PARTENAIRES (Form/Create/Manage) depuis HomeScreen
                                 const searchRoutes: Record<string, string> = {
-                                    // Services Santé - Navigation directe vers chaque écran spécifique (UTILISATEURS)
-                                    'pharmacie': 'PharmacieSearch',        // ✅ Utilisateur: PharmacieHomeScreen
-                                    'hopital': 'HopitalSearch',            // ✅ Utilisateur: HopitalHomeScreen
-                                    'laboratoire': 'LaboratoireSearch',    // ✅ Utilisateur: LaboratoireHomeScreen
-                                    'banque_sang': 'BanqueSangSearch',     // ✅ Utilisateur: BanqueSangSearchScreen
+                                    // Services Santé — hubs utilisateur (même logique que Transport: *Home)
+                                    'pharmacie': 'PharmacieHome',
+                                    'hopital': 'HopitalHome',
+                                    'laboratoire': 'LaboratoireHome',
+                                    'banque_sang': 'BanqueSangSearch',
                                     // Services Transport - Navigation directe vers chaque écran spécifique (UTILISATEURS)
                                     'agence_voyage': 'TicketVoyageHome',    // ✅ Utilisateur: TicketVoyageHomeScreen
                                     'covoiturage': 'CovoiturageHome',      // ✅ Utilisateur: CovoiturageHomeScreen

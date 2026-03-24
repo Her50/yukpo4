@@ -240,9 +240,9 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'promo-flash', label: 'Promos flash', icon: 'zap', route: 'FlashPromosActive', category: 'navigation', description: 'Menu Offres spéciales (cadeau) : promos flash.' },
       { id: 'promo-catalog', label: 'Catalogue promos', icon: LUCIDE_ICONS['shopping-cart'], route: 'GlobalPromoCatalog', category: 'navigation', description: 'Offres spéciales → catalogue global (ex. Black Friday).' },
       { id: 'promo-lives', label: 'Lives', icon: LUCIDE_ICONS.video, route: 'LivesList', category: 'navigation', description: 'Offres spéciales → liste des lives.' },
-      { id: 'svc-pharmacie', label: 'Pharmacie (accès rapide)', icon: LUCIDE_ICONS.pharmacy, route: 'PharmacieSearch', category: 'navigation', description: 'Grille Yukpo : recherche utilisateur PharmacieSearch.' },
-      { id: 'svc-hopital', label: 'Hôpital', icon: LUCIDE_ICONS.hospital, route: 'HopitalSearch', category: 'navigation', description: 'HopitalSearch.' },
-      { id: 'svc-labo', label: 'Laboratoire', icon: LUCIDE_ICONS.activity, route: 'LaboratoireSearch', category: 'navigation', description: 'LaboratoireSearch.' },
+      { id: 'svc-pharmacie', label: 'Pharmacie (accès rapide)', icon: LUCIDE_ICONS.pharmacy, route: 'PharmacieHome', category: 'navigation', description: 'Grille Yukpo : hub utilisateur PharmacieHome.' },
+      { id: 'svc-hopital', label: 'Hôpital', icon: LUCIDE_ICONS.hospital, route: 'HopitalHome', category: 'navigation', description: 'HopitalHome.' },
+      { id: 'svc-labo', label: 'Laboratoire', icon: LUCIDE_ICONS.activity, route: 'LaboratoireHome', category: 'navigation', description: 'LaboratoireHome.' },
       { id: 'svc-banque-sang', label: 'Banque de sang', icon: LUCIDE_ICONS.droplet, route: 'BanqueSangSearch', category: 'navigation', description: 'BanqueSangSearch.' },
       { id: 'svc-bus', label: 'Billets / voyage', icon: LUCIDE_ICONS.bus, route: 'BusTicketSearch', category: 'navigation', description: 'BusTicketSearch (ticket voyage).' },
       { id: 'svc-covoit', label: 'Covoiturage', icon: LUCIDE_ICONS.users, route: 'CovoiturageSearch', category: 'navigation', description: 'CovoiturageSearch.' },
@@ -359,6 +359,7 @@ const SCREEN_CONFIGS: Record<string, {
   PharmacieHome: {
     type: 'specialized',
     actions: [
+      { id: 'officines-search', label: 'Pharmacies (officines)', icon: LUCIDE_ICONS.search, route: 'PharmacieSearch', category: 'navigation', description: 'Garde, GPS, liste officines (écran filtres établissements)' },
       { id: 'filters', label: 'Filtres avancés', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Prix min/max, rayon GPS, uniquement disponibles (badge = filtres actifs)' },
       { id: 'sort', label: 'Trier', icon: 'arrow-up-down', category: 'action', description: 'Modal: pertinence, prix, distance, nom A–Z' },
       { id: 'ai-expand', label: 'Assistant IA Pharmacie', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Photo médicament, suggestions, question → askPharmacyQuestion' },
@@ -373,7 +374,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'chip-prix-bas', type: 'card', label: 'Chip Prix bas', actionable: true },
       { id: 'liste-medicaments', type: 'card', label: 'Liste de cartes médicaments (détail, posologie, interactions)', actionable: true },
     ],
-    guide: 'Catalogue multi-pharmacies: recherche produits via pharmacyProductService.searchProducts (texte, GPS, rayon, dispo, prix). En-tête filtre avec pastille. Chips rapides, tri modal. Bloc repliable Assistant IA: analyse photo (imageAnalysisService), suggestions, chat askPharmacyQuestion. Chaque carte: fiche modal, Posologie IA, Interactions IA, vérif stock/réservation. Pour lister des officines (garde, adresse), orienter vers PharmacieSearch → PharmacieList — pas sur cet écran.',
+    guide: 'Catalogue multi-pharmacies: recherche produits via pharmacyProductService.searchProducts (texte, GPS, rayon, dispo, prix). En-tête filtre avec pastille. Chips rapides, tri modal. Bloc repliable Assistant IA: analyse photo (imageAnalysisService), suggestions, chat askPharmacyQuestion. Chaque carte: fiche modal, Posologie IA, Interactions IA, vérif stock/réservation. **Entrée accueil** = **PharmacieHome** ; pour **officines** (garde, adresse, filtres établissement) → **PharmacieSearch** → PharmacieList.',
   },
   PharmacieForm: {
     type: 'dashboard',
@@ -418,6 +419,7 @@ const SCREEN_CONFIGS: Record<string, {
   HopitalHome: {
     type: 'specialized',
     actions: [
+      { id: 'hopital-establishments', label: 'Recherche par filtres', icon: LUCIDE_ICONS.search, route: 'HopitalSearch', category: 'navigation', description: 'Liste hôpitaux/cliniques (ville, GPS, spécialités)' },
       { id: 'ai-modal', label: 'IA (pathologie)', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Header brain + modal: recherche pathologie / image hôpital' },
       { id: 'search-prestation', label: 'Recherche prestation', icon: LUCIDE_ICONS.search, category: 'search', description: 'Autocomplete hospitalService.searchMedicalServices + loupe' },
       { id: 'image-ia', label: 'Analyser image', icon: LUCIDE_ICONS.camera, category: 'help', description: 'Quick action → analyzeHospitalImage dans AIModal' },
@@ -430,7 +432,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'autocomplete', type: 'input', label: 'Liste déroulante autocomplete prestations', actionable: true },
       { id: 'availability-cards', type: 'card', label: 'Cartes établissements + services disponibles + distance', actionable: true },
     ],
-    guide: 'Hub **prestations / disponibilité** (pas la liste filtrée HopitalList): avec GPS, searchAvailableMedicalServices (50 km) ; sans GPS ou hors chemin dispo → navigation HopitalList avec serviceType. Autocomplete searchMedicalServices. AIModal: pathologie (useAIWithFallback) + image (imageAnalysisService.analyzeHospitalImage). Cartes: RDV bookAppointment, bouton Attente getWaitTimes. Pour filtres établissements (ville, urgences, spécialités) → HopitalSearch.',
+    guide: 'Hub **prestations / disponibilité** (pas la liste filtrée HopitalList): avec GPS, searchAvailableMedicalServices (50 km) ; sans GPS ou hors chemin dispo → navigation HopitalList avec serviceType. Autocomplete searchMedicalServices. AIModal: pathologie (useAIWithFallback) + image (imageAnalysisService.analyzeHospitalImage). Cartes: RDV bookAppointment, bouton Attente getWaitTimes. **Entrée accueil** = **HopitalHome** ; pour **filtres établissements** (ville, urgences, spécialités) → **HopitalSearch**.',
   },
   HopitalSearch: {
     type: 'search',
@@ -713,14 +715,14 @@ const SCREEN_CONFIGS: Record<string, {
   LaboratoireHome: {
     type: 'specialized',
     actions: [
-      { id: 'search-lab', label: 'Chercher Labo', icon: LUCIDE_ICONS.search, route: 'LaboratoireSearch', category: 'search', description: 'Rechercher un laboratoire' },
+      { id: 'search-lab', label: 'Filtres par zone', icon: LUCIDE_ICONS.search, route: 'LaboratoireSearch', category: 'search', description: 'Recherche lieux labo (GPS, types d’examens, ville)' },
       { id: 'my-exams', label: 'Mes Examens', icon: LUCIDE_ICONS.clipboard, route: 'MyLabExaminations', category: 'navigation', description: 'Historique d\'examens' },
       { id: 'ai-analysis', label: 'Analyse IA (modal)', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Modale IA : pathologie texte + image (**laboratoryService**), pas **LabAIAnalysis**' },
     ],
     elements: [
       { id: 'lab-search', type: 'input', label: 'Recherche + autocomplete examens', actionable: true },
     ],
-    guide: '**LaboratoireHomeScreen** : autocomplete **GET** `/api/laboratoires/examinations/autocomplete` ; si GPS + dispo → **GET** `/api/search/scheduling` ; sinon **LaboratoireList** avec `examinationType` (texte). Modales IA pathologie / image. Raccourcis **LaboratoireSearch** et **MyLabExaminations**.',
+    guide: '**LaboratoireHomeScreen** : autocomplete **GET** `/api/laboratoires/examinations/autocomplete` ; si GPS + dispo → **GET** `/api/search/scheduling` ; sinon **LaboratoireList** avec `examinationType` (texte). Modales IA pathologie / image. **Entrée accueil / hub santé** = **LaboratoireHome** ; **LaboratoireSearch** = filtres lieux / liste officines ; **MyLabExaminations** = historique.',
   },
 
   // === BANQUE DE SANG / TRANSFUSION (utilisateur) ===
@@ -1091,6 +1093,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'libraire-header', label: 'Ma librairie / Devenir libraire', icon: LUCIDE_ICONS.store, category: 'navigation', description: 'Bouton en-tête à droite : partenaire librairie → LivreScolaireForm ; sinon → LibrairieRegistration' },
       { id: 'sell-troquer', label: 'Mettez vos livres en circulation', icon: LUCIDE_ICONS.camera, route: 'BookUploadV2', category: 'creation', description: 'Carte verte : photo recto/verso, session V2, vente / troc / don à l’étape suivante' },
       { id: 'buy-programme', label: 'Trouvez votre liste scolaire', icon: LUCIDE_ICONS['list-checks'], route: 'ProgrammeBesoinsSelector', category: 'navigation', description: 'Carte bleue : classe + manuels au programme officiel, neuf vs occasion' },
+      { id: 'new-books-comparator', label: 'Comparer neuf / occasion', icon: LUCIDE_ICONS.book, route: 'NewBooks', category: 'navigation', description: 'Bandeau violet : comparateur neuf vs occasion (NewBooks), classe ou recherche' },
       { id: 'track-packages', label: 'Suivre mes paquets', icon: LUCIDE_ICONS.package, route: 'BookPackages', category: 'navigation', description: 'Livraisons / paquets livres (coursier, QR)' },
       { id: 'track-trocs', label: 'Suivre mes trocs', icon: LUCIDE_ICONS.refresh, route: 'MesTrocs', category: 'navigation', description: 'Échanges en cours' },
       { id: 'mes-besoins', label: 'Mes besoins', icon: LUCIDE_ICONS['list-checks'], route: 'MesBesoinsLivres', category: 'navigation', description: 'Demandes de dons / besoins actifs' },
@@ -1103,7 +1106,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'ops-dashboard', type: 'card', label: 'Dashboard des opérations (compteurs + QR + refresh)', actionable: true },
       { id: 'nearby-list', type: 'card', label: 'Liste livres à proximité (GPS ~20 km, pull to refresh)', actionable: true },
     ],
-    guide: 'Accueil Bourse du Livre (V2). Deux entrées principales : **Mettez vos livres en circulation** → BookUploadV2 (photos, analyse IA, vente/troc/don) ; **Trouvez votre liste scolaire** → ProgrammeBesoinsSelector. Le dashboard résume achats en cours, paquets à recevoir/envoyer, trocs en cours, besoins actifs ; raccourcis paquets / trocs / besoins ; astuce QR coursier. La liste charge les annonces proches via la position.',
+    guide: 'Accueil Bourse du Livre (V2). Deux cartes principales : **Mettez vos livres en circulation** → BookUploadV2 ; **Trouvez votre liste scolaire** → ProgrammeBesoinsSelector. **Bandeau violet** « Catalogue neuf & comparateur » → **NewBooks** (parcours distinct : prix neuf vs occasion sans passer par la liste officielle). Dashboard opérations ; raccourcis paquets / trocs / besoins ; liste annonces proches.',
   },
 
   // === BUS / TICKETS DE VOYAGE ===
@@ -1558,6 +1561,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'libraire-header', label: 'Ma librairie / Devenir libraire', icon: LUCIDE_ICONS.store, category: 'navigation', description: 'Bouton en-tête à droite : partenaire librairie → LivreScolaireForm ; sinon → LibrairieRegistration' },
       { id: 'sell-troquer', label: 'Mettez vos livres en circulation', icon: LUCIDE_ICONS.camera, route: 'BookUploadV2', category: 'creation', description: 'Carte verte : photo recto/verso, session V2, vente / troc / don à l’étape suivante' },
       { id: 'buy-programme', label: 'Trouvez votre liste scolaire', icon: LUCIDE_ICONS['list-checks'], route: 'ProgrammeBesoinsSelector', category: 'navigation', description: 'Carte bleue : classe + manuels au programme officiel, neuf vs occasion' },
+      { id: 'new-books-comparator', label: 'Comparer neuf / occasion', icon: LUCIDE_ICONS.book, route: 'NewBooks', category: 'navigation', description: 'Bandeau violet : comparateur neuf vs occasion (NewBooks), classe ou recherche' },
       { id: 'track-packages', label: 'Suivre mes paquets', icon: LUCIDE_ICONS.package, route: 'BookPackages', category: 'navigation', description: 'Livraisons / paquets livres (coursier, QR)' },
       { id: 'track-trocs', label: 'Suivre mes trocs', icon: LUCIDE_ICONS.refresh, route: 'MesTrocs', category: 'navigation', description: 'Échanges en cours' },
       { id: 'mes-besoins', label: 'Mes besoins', icon: LUCIDE_ICONS['list-checks'], route: 'MesBesoinsLivres', category: 'navigation', description: 'Demandes de dons / besoins actifs' },
@@ -1570,7 +1574,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'ops-dashboard', type: 'card', label: 'Dashboard des opérations (compteurs + QR + refresh)', actionable: true },
       { id: 'nearby-list', type: 'card', label: 'Liste livres à proximité (GPS ~20 km, pull to refresh)', actionable: true },
     ],
-    guide: 'Même accueil que LivreScolaireHome (LivreScolaireHomeScreen). Ne pas décrire l’ancien écran avec barre de recherche + filtres + boutons « Recommandations IA » en tête — ce n’est plus cette UI.',
+    guide: 'Même accueil que LivreScolaireHome (LivreScolaireHomeScreen) : cartes vente / liste scolaire, bandeau **NewBooks**, dashboard, liste proche. Ne pas décrire l’ancien écran avec barre de recherche + filtres + boutons « Recommandations IA » en tête — ce n’est plus cette UI.',
   },
 
   // === CHAT MODAL MOBILE (chatbot prestataire) ===
@@ -2047,23 +2051,28 @@ const SCREEN_CONFIGS: Record<string, {
     type: 'specialized',
     actions: [
       { id: 'emergency-119', label: 'Urgence 119', icon: LUCIDE_ICONS.call, category: 'action', description: 'Appel rapide 119 / fallback 112' },
-      { id: 'pharmacy', label: 'Pharmacie', icon: LUCIDE_ICONS.pharmacy, route: 'PharmacieSearch', category: 'navigation', description: 'Tuile hub' },
-      { id: 'hospital', label: 'Hôpital', icon: LUCIDE_ICONS.hospital, route: 'HopitalSearch', category: 'navigation', description: 'Tuile hub' },
-      { id: 'lab', label: 'Laboratoire', icon: LUCIDE_ICONS.activity, route: 'LaboratoireSearch', category: 'navigation', description: 'Tuile hub' },
+      { id: 'pharmacy', label: 'Pharmacie', icon: LUCIDE_ICONS.pharmacy, route: 'PharmacieHome', category: 'navigation', description: 'Tuile hub' },
+      { id: 'hospital', label: 'Hôpital', icon: LUCIDE_ICONS.hospital, route: 'HopitalHome', category: 'navigation', description: 'Tuile hub' },
+      { id: 'lab', label: 'Laboratoire', icon: LUCIDE_ICONS.activity, route: 'LaboratoireHome', category: 'navigation', description: 'Tuile hub' },
       { id: 'blood', label: 'Banque de sang', icon: LUCIDE_ICONS.droplet, route: 'BanqueSangSearch', category: 'navigation', description: 'Tuile hub' },
     ],
     elements: [
       { id: 'unified-search', type: 'input', label: 'Recherche unifiée (routing mots-clés)', actionable: true },
       { id: 'duty-pharmacy', type: 'card', label: 'Pharmacie de garde proche (API products search garde)', actionable: true },
     ],
-    guide: 'Hub santé rose: barre recherche intelligente (pharmacie/hôpital/labo/sang), 4 tuiles, bandeau pharmacie de garde (GET /api/pharmacies/products/search query garde + GPS). **MedicalServicesList** = alias même composant — params filtres non lus actuellement.',
+    guide: 'Hub santé rose: barre recherche intelligente (routage vers PharmacieHome / HopitalHome / LaboratoireHome / BanqueSangSearch), 4 tuiles (mêmes hubs), bandeau pharmacie de garde (GET /api/pharmacies/products/search query garde + GPS). « Voir toutes » officines → PharmacieSearch. **MedicalServicesList** = alias même composant — params filtres non lus actuellement.',
   },
 
   MedicalServicesList: {
     type: 'specialized',
-    actions: [],
+    actions: [
+      { id: 'pharmacy', label: 'Pharmacie', icon: LUCIDE_ICONS.pharmacy, route: 'PharmacieHome', category: 'navigation', description: 'Tuile hub' },
+      { id: 'hospital', label: 'Hôpital', icon: LUCIDE_ICONS.hospital, route: 'HopitalHome', category: 'navigation', description: 'Tuile hub' },
+      { id: 'lab', label: 'Laboratoire', icon: LUCIDE_ICONS.activity, route: 'LaboratoireHome', category: 'navigation', description: 'Tuile hub' },
+      { id: 'blood', label: 'Banque de sang', icon: LUCIDE_ICONS.droplet, route: 'BanqueSangSearch', category: 'navigation', description: 'Tuile hub' },
+    ],
     elements: [],
-    guide: 'Alias stack → **HealthServicesHubScreen** (identique à HealthServicesHub). HopitalSearch y navigue avec {filters} si prestation/spécialité ; l\'écran n\'applique pas ces params — pour liste hôpitaux filtrée utiliser **HopitalList**.',
+    guide: 'Alias stack → **HealthServicesHubScreen** (identique à **HealthServicesHub** : tuiles **PharmacieHome**, **HopitalHome**, **LaboratoireHome**, **BanqueSangSearch**). **HopitalSearch** avec {filters} ne s’applique pas à l’UI du hub — pour liste hôpitaux filtrée utiliser **HopitalList**.',
   },
 
   // =========================================================================

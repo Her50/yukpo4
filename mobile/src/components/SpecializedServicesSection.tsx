@@ -24,9 +24,9 @@ const SERVICE_CATEGORIES = [
         icon: 'heart-pulse',
         color: '#10B981',
         services: [
-            { id: 'pharmacie', name: 'Pharmacie', icon: 'pill', emoji: '💊', route: 'PharmacieForm', searchRoute: 'PharmacieSearch' },
-            { id: 'hopital', name: t('specializedServicesSection.hopital'), icon: 'hospital', emoji: '🏥', route: 'HopitalForm', searchRoute: 'HopitalSearch' },
-            { id: 'laboratoire', name: 'Laboratoire', icon: 'microscope', emoji: '🔬', route: 'LaboratoireForm', searchRoute: 'LaboratoireSearch' },
+            { id: 'pharmacie', name: 'Pharmacie', icon: 'pill', emoji: '💊', route: 'PharmacieForm', searchRoute: 'PharmacieHome' },
+            { id: 'hopital', name: t('specializedServicesSection.hopital'), icon: 'hospital', emoji: '🏥', route: 'HopitalForm', searchRoute: 'HopitalHome' },
+            { id: 'laboratoire', name: 'Laboratoire', icon: 'microscope', emoji: '🔬', route: 'LaboratoireForm', searchRoute: 'LaboratoireHome' },
             { id: 'banque_sang', name: 'Banque Sang', icon: 'droplet', emoji: '🩸', route: 'BanqueSangForm', searchRoute: 'BanqueSangSearch' },
         ],
     },

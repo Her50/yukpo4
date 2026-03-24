@@ -41,6 +41,14 @@ interface ClasseRow {
     entrees_programme?: number;
 }
 
+/** Aligné sur MesBesoinsLivres — utilisé si l’API classes-programmes est vide ou indisponible. */
+const CLASSES_PRIMAIRE = ['SIL', 'CP', 'CE1', 'CE2', 'CM1', 'CM2'];
+const CLASSES_COLLEGE = ['6ème', '5ème', '4ème', '3ème'];
+const CLASSES_LYCEE = ['2nde', '1ère', 'Terminale'];
+const FALLBACK_CLASSE_ROWS: ClasseRow[] = [...CLASSES_PRIMAIRE, ...CLASSES_COLLEGE, ...CLASSES_LYCEE].map(
+    (classe) => ({ classe, niveau: '', total_livres: 0 })
+);
+
 function livreEstNeuf(l: any): boolean {
     const a = `${l?.etat_classification ?? ''} ${l?.etat_livre ?? ''}`.toLowerCase();
     return a.includes('neuf');
@@ -69,6 +77,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
 
     const [classes, setClasses] = useState<ClasseRow[]>([]);
     const [classesLoading, setClassesLoading] = useState(true);
+    const [classesLoadError, setClassesLoadError] = useState(false);
     const [classe, setClasse] = useState<string | null>(null);
 
     const [programmes, setProgrammes] = useState<ProgrammeScolaire[]>([]);
@@ -90,6 +99,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
     const loadClasses = useCallback(async () => {
         try {
             setClassesLoading(true);
+            setClassesLoadError(false);
             const rows = await bourseLivreV2Api.getClassesWithProgrammes();
             const mapped: ClasseRow[] = (rows || []).map((r: any) => ({
                 classe: r.classe,
@@ -103,10 +113,19 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
         } catch (e) {
             console.error('[ProgrammeBesoins] classes', e);
             setClasses([]);
+            setClassesLoadError(true);
         } finally {
             setClassesLoading(false);
         }
     }, []);
+
+    const displayClasses = useMemo(() => {
+        if (classes.length > 0) return classes;
+        if (!classesLoading) return FALLBACK_CLASSE_ROWS;
+        return [];
+    }, [classes, classesLoading]);
+
+    const usingFallbackClasses = classes.length === 0 && !classesLoading;
 
     useEffect(() => {
         loadClasses();
@@ -352,25 +371,100 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                 <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
                     <SafeIcon name="arrow-left" size={22} color={modernColors.primary} type="lucide" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t('programmeBesoins.title', 'Besoins au programme')}</Text>
+                <Text style={styles.headerTitle}>
+                    {t('programmeBesoins.title', 'Votre liste scolaire')}
+                </Text>
             </View>
 
             <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
                 <Text style={styles.lead}>
                     {t(
                         'programmeBesoins.lead',
-                        'Choisissez une classe, cochez les manuels du programme officiel, indiquez si vous cherchez du neuf, de l’occasion ou les deux, puis lancez la recherche sur la bourse.'
+                        '1) Choisissez la classe · 2) cochez les manuels · 3) neuf ou occasion · 4) lancez la recherche. L’établissement est optionnel (PDF sur l’orientation).'
                     )}
                 </Text>
 
+                {classesLoadError ? (
+                    <View style={styles.warnBanner}>
+                        <SafeIcon name="wifi-off" size={18} color="#b45309" type="lucide" />
+                        <Text style={styles.warnBannerText}>
+                            {t(
+                                'programmeBesoins.classesLoadError',
+                                'Impossible de charger le référentiel en ligne. Classes standards affichées — vous pouvez réessayer.'
+                            )}
+                        </Text>
+                        <TouchableOpacity style={styles.warnBannerBtn} onPress={loadClasses}>
+                            <Text style={styles.warnBannerBtnText}>
+                                {t('programmeBesoins.retryClasses', 'Réessayer')}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : null}
+
+                {usingFallbackClasses && !classesLoadError ? (
+                    <View style={styles.infoBanner}>
+                        <SafeIcon name="info" size={18} color="#1d4ed8" type="lucide" />
+                        <Text style={styles.infoBannerText}>
+                            {t(
+                                'programmeBesoins.fallbackClassesBanner',
+                                'Sélectionnez une classe ci‑dessous. Si le référentiel distant est vide, les classes Cameroun standard sont proposées.'
+                            )}
+                        </Text>
+                    </View>
+                ) : null}
+
                 <View style={styles.card}>
+                    <Text style={styles.stepLabel}>{t('programmeBesoins.stepClasse', 'Étape 1 — Classe de votre enfant')}</Text>
+                    <Text style={styles.cardTitle}>{t('programmeBesoins.classeTitle', 'Classe')}</Text>
+                    {classesLoading ? (
+                        <ActivityIndicator color={modernColors.primary} />
+                    ) : (
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.chipsScroll}
+                            contentContainerStyle={styles.chipsScrollContent}
+                        >
+                            {displayClasses.map((c) => (
+                                <TouchableOpacity
+                                    key={c.classe}
+                                    style={[styles.chip, classe === c.classe && styles.chipOn]}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setClasse(c.classe);
+                                    }}
+                                >
+                                    <Text style={[styles.chipText, classe === c.classe && styles.chipTextOn]}>
+                                        {c.classe}
+                                    </Text>
+                                    {c.entrees_programme != null && c.entrees_programme > 0 ? (
+                                        <Text style={styles.chipSub}>
+                                            {t('programmeBesoins.refProgramme', '{{n}} au programme', {
+                                                n: c.entrees_programme,
+                                            })}
+                                        </Text>
+                                    ) : c.total_livres > 0 ? (
+                                        <Text style={styles.chipSub}>
+                                            {t('programmeBesoins.annonces', '{{n}} annonces', { n: c.total_livres })}
+                                        </Text>
+                                    ) : null}
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    )}
+                </View>
+
+                <View style={styles.card}>
+                    <Text style={styles.stepLabel}>
+                        {t('programmeBesoins.stepEtablissement', 'Étape 2 — Établissement (optionnel)')}
+                    </Text>
                     <Text style={styles.cardTitle}>
                         {t('programmeBesoins.etablissementSection', 'Établissement (optionnel)')}
                     </Text>
                     <Text style={styles.cardHint}>
                         {t(
                             'programmeBesoins.etablissementHint',
-                            'Repérez votre école pour accéder aux documents de programme sur l’orientation. La liste des manuels ci‑dessous est le référentiel Yukpo (officiel), indépendante de l’établissement.'
+                            'Utile pour ouvrir les PDF de programme de votre école (orientation). La liste des manuels à cocher ci‑dessous reste le référentiel Yukpo officiel.'
                         )}
                     </Text>
                     <View style={styles.rowInput}>
@@ -431,43 +525,11 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                     )}
                 </View>
 
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>{t('programmeBesoins.classeTitle', 'Classe')}</Text>
-                    {classesLoading ? (
-                        <ActivityIndicator color={modernColors.primary} />
-                    ) : (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
-                            {classes.map((c) => (
-                                <TouchableOpacity
-                                    key={c.classe}
-                                    style={[styles.chip, classe === c.classe && styles.chipOn]}
-                                    onPress={() => {
-                                        hapticPress();
-                                        setClasse(c.classe);
-                                    }}
-                                >
-                                    <Text style={[styles.chipText, classe === c.classe && styles.chipTextOn]}>
-                                        {c.classe}
-                                    </Text>
-                                    {c.entrees_programme != null && c.entrees_programme > 0 ? (
-                                        <Text style={styles.chipSub}>
-                                            {t('programmeBesoins.refProgramme', '{{n}} au programme', {
-                                                n: c.entrees_programme,
-                                            })}
-                                        </Text>
-                                    ) : c.total_livres > 0 ? (
-                                        <Text style={styles.chipSub}>
-                                            {t('programmeBesoins.annonces', '{{n}} annonces', { n: c.total_livres })}
-                                        </Text>
-                                    ) : null}
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    )}
-                </View>
-
                 {classe && (
                     <View style={styles.card}>
+                        <Text style={styles.stepLabel}>
+                            {t('programmeBesoins.stepLivres', 'Étape 3 — Cochez les manuels et lancez la recherche')}
+                        </Text>
                         <View style={styles.rowBetween}>
                             <Text style={styles.cardTitle}>
                                 {t('programmeBesoins.livresProgramme', 'Livres au programme')} — {classe}
@@ -616,6 +678,46 @@ const styles = StyleSheet.create({
     headerTitle: { fontSize: 18, fontWeight: '700', color: '#0f172a', flex: 1 },
     scroll: { padding: 16, paddingBottom: 40 },
     lead: { fontSize: 14, color: '#475569', lineHeight: 20, marginBottom: 16 },
+    stepLabel: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: modernColors.primary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
+        marginBottom: 6,
+    },
+    warnBanner: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+        backgroundColor: '#fffbeb',
+        borderWidth: 1,
+        borderColor: '#fcd34d',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 14,
+    },
+    warnBannerText: { flex: 1, fontSize: 13, color: '#92400e', lineHeight: 18 },
+    warnBannerBtn: {
+        backgroundColor: '#f59e0b',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+    },
+    warnBannerBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+    infoBanner: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+        backgroundColor: '#eff6ff',
+        borderWidth: 1,
+        borderColor: '#bfdbfe',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 14,
+    },
+    infoBannerText: { flex: 1, fontSize: 13, color: '#1e3a8a', lineHeight: 18 },
     card: {
         backgroundColor: '#fff',
         borderRadius: 14,
@@ -656,7 +758,8 @@ const styles = StyleSheet.create({
     etabActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
     link: { fontSize: 13, fontWeight: '600', color: modernColors.primary },
     linkMuted: { fontSize: 13, color: '#94a3b8' },
-    chipsScroll: { flexGrow: 0 },
+    chipsScroll: { flexGrow: 0, minHeight: 52 },
+    chipsScrollContent: { flexGrow: 1, alignItems: 'center', paddingVertical: 4 },
     chip: {
         paddingHorizontal: 14,
         paddingVertical: 10,

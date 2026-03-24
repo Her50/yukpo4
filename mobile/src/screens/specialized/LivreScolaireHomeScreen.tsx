@@ -260,6 +260,33 @@ const LivreScolaireHomeScreen: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
+            <View style={styles.quickComparatorRow}>
+                <TouchableOpacity
+                    style={styles.quickComparatorBtn}
+                    onPress={() => safeNavigate('NewBooks')}
+                    activeOpacity={0.88}
+                >
+                    <View style={styles.quickComparatorIconWrap}>
+                        <SafeIcon name="scale" size={20} color="#6d28d9" type="lucide" />
+                    </View>
+                    <View style={styles.quickComparatorTextWrap}>
+                        <Text style={styles.quickComparatorTitle} numberOfLines={2}>
+                            {t(
+                                'livreScolaireHome.quickComparatorTitle',
+                                'Comparer neuf / occasion'
+                            )}
+                        </Text>
+                        <Text style={styles.quickComparatorSubtitle} numberOfLines={2}>
+                            {t(
+                                'livreScolaireHome.quickComparatorSubtitle',
+                                'Par classe ou recherche'
+                            )}
+                        </Text>
+                    </View>
+                    <SafeIcon name="chevron-right" size={18} color="#6d28d9" type="lucide" />
+                </TouchableOpacity>
+            </View>
+
             <View style={styles.dashboardSection}>
                 <View style={styles.dashboardHeader}>
                     <Text style={styles.dashboardTitle}>
@@ -567,6 +594,46 @@ const styles = StyleSheet.create({
         fontSize: 11,
         lineHeight: 15,
         opacity: 0.8,
+    },
+    quickComparatorRow: {
+        paddingHorizontal: 16,
+        paddingBottom: 10,
+        backgroundColor: '#F9FAFB',
+    },
+    quickComparatorBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        gap: 10,
+        backgroundColor: '#F5F3FF',
+        borderWidth: 1,
+        borderColor: '#DDD6FE',
+    },
+    quickComparatorIconWrap: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        backgroundColor: '#EDE9FE',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    quickComparatorTextWrap: {
+        flex: 1,
+        gap: 2,
+    },
+    quickComparatorTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#5b21b6',
+        lineHeight: 17,
+    },
+    quickComparatorSubtitle: {
+        fontSize: 11,
+        lineHeight: 15,
+        color: '#6d28d9',
+        opacity: 0.9,
     },
     dashboardSection: {
         marginHorizontal: 16,

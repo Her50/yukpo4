@@ -17,7 +17,8 @@
     "detox:test:android": "detox test -c android.emu.debug",
     "detox:build:ios": "expo prebuild -p ios && cd ios && xcodebuild -workspace Yukpomnang.xcworkspace -scheme Yukpomnang -configuration Debug -sdk iphonesimulator -derivedDataPath ../ios/build && cd ..",
     "detox:test:ios": "detox test -c ios.sim.debug",
-    "maestro:test": "maestro test maestro/flows"
+    "maestro:test": "maestro test maestro/flows",
+    "i18n:sync-bourse-keys": "node scripts/sync-locale-keys-from-fr.mjs"
   },
   "dependencies": {
     "@craftzdog/react-native-buffer": "^6.1.1",

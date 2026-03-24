@@ -56,7 +56,7 @@ const HealthServicesHubScreen: React.FC = () => {
             icon: 'pill',
             gradient: ['#10B981', '#34D399'],
             description: t('healthServicesHub.medicamentsPharmaciesDeGarde'),
-            route: 'PharmacieSearch',
+            route: 'PharmacieHome',
             badge: '24/7',
             count: servicesCounts.pharmacie || 0,
         },
@@ -66,7 +66,7 @@ const HealthServicesHubScreen: React.FC = () => {
             icon: 'hospital',
             gradient: ['#EF4444', '#F87171'],
             description: t('healthServicesHub.urgencesConsultationsSpecialistes'),
-            route: 'HopitalSearch',
+            route: 'HopitalHome',
             count: servicesCounts.hopital || 0,
         },
         {
@@ -75,7 +75,7 @@ const HealthServicesHubScreen: React.FC = () => {
             icon: 'microscope',
             gradient: ['#3B82F6', '#60A5FA'],
             description: t('healthServicesHub.analysesMedicalesImagerie'),
-            route: 'LaboratoireSearch',
+            route: 'LaboratoireHome',
             count: servicesCounts.laboratoire || 0,
         },
         {
@@ -140,16 +140,16 @@ const HealthServicesHubScreen: React.FC = () => {
         const q = searchQuery.trim().toLowerCase();
         // Routing intelligent basé sur le terme recherché
         if (q.includes('pharmacie') || q.includes(t('healthServicesHubScreen.medicament')) || q.includes('medicament') || q.includes('doliprane') || q.includes('paracetamol')) {
-            (navigation as any).navigate('PharmacieSearch');
+            (navigation as any).navigate('PharmacieHome');
         } else if (q.includes('urgence') || q.includes(t('healthServicesHubScreen.hopital')) || q.includes('hopital') || q.includes('clinique')) {
-            (navigation as any).navigate('HopitalSearch');
+            (navigation as any).navigate('HopitalHome');
         } else if (q.includes('analyse') || q.includes('laboratoire') || q.includes('labo') || q.includes('radio') || q.includes('scanner')) {
-            (navigation as any).navigate('LaboratoireSearch');
+            (navigation as any).navigate('LaboratoireHome');
         } else if (q.includes('sang') || q.includes('don') || q.includes('transfusion')) {
             (navigation as any).navigate('BanqueSangSearch');
         } else {
-            // Par défaut, rechercher dans les hôpitaux (plus générique)
-            (navigation as any).navigate('HopitalSearch');
+            // Par défaut, hub hôpitaux (cohérent avec l’entrée accueil)
+            (navigation as any).navigate('HopitalHome');
         }
     };
 
@@ -204,7 +204,7 @@ const HealthServicesHubScreen: React.FC = () => {
                 {/* Bandeau urgence */}
                 <TouchableOpacity
                     style={styles.urgencyBanner}
-                    onPress={() => (navigation as any).navigate('HopitalSearch')}
+                    onPress={() => (navigation as any).navigate('HopitalHome')}
                     activeOpacity={0.8}
                 >
                     <LinearGradient colors={['#DC2626', '#EF4444']} style={styles.urgencyGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
@@ -296,13 +296,13 @@ const HealthServicesHubScreen: React.FC = () => {
                 {/* Raccourcis rapides */}
                 <Text style={styles.sectionTitle}>{t('healthServicesHub.accesRapide')}</Text>
                 <View style={styles.quickActionsRow}>
-                    <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('PharmacieSearch')}>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('PharmacieHome')}>
                         <View style={[styles.quickActionIcon, { backgroundColor: '#D1FAE5' }]}>
                             <SafeIcon name="pill" size={20} color="#10B981" type="lucide" />
                         </View>
                         <Text style={styles.quickActionText}>Pharmacie{'\n'}de garde</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('HopitalSearch')}>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('HopitalHome')}>
                         <View style={[styles.quickActionIcon, { backgroundColor: '#FEE2E2' }]}>
                             <SafeIcon name="stethoscope" size={20} color="#EF4444" type="lucide" />
                         </View>
@@ -314,7 +314,7 @@ const HealthServicesHubScreen: React.FC = () => {
                         </View>
                         <Text style={styles.quickActionText}>Donner{'\n'}du sang</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('LaboratoireSearch')}>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('LaboratoireHome')}>
                         <View style={[styles.quickActionIcon, { backgroundColor: '#DBEAFE' }]}>
                             <SafeIcon name="microscope" size={20} color="#3B82F6" type="lucide" />
                         </View>
