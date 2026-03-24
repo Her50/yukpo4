@@ -1,7 +1,7 @@
 // ✅ Tests complets pour le système de calcul des coûts de livraison
-use crate::core::types::AppResult;
-use crate::services::delivery_service::haversine_distance;
 use serde_json::json;
+use yukpomnang_backend::core::types::AppResult;
+use yukpomnang_backend::services::delivery_service::haversine_distance;
 
 #[cfg(test)]
 mod tests {
@@ -37,7 +37,7 @@ mod tests {
         let distance_km = distance_meters / 1000.0;
 
         // Calculer coût
-        let estimated_cost_fcfa = (distance_km * 500.0).max(1000.0);
+        let estimated_cost_fcfa = (distance_km * 500.0_f64).max(1000.0_f64);
 
         // Doit être 1000 FCFA (minimum)
         assert_eq!(estimated_cost_fcfa, 1000.0);
@@ -55,7 +55,7 @@ mod tests {
         let distance_km = distance_meters / 1000.0;
 
         // Calculer coût
-        let estimated_cost_fcfa = (distance_km * 500.0).max(1000.0);
+        let estimated_cost_fcfa = (distance_km * 500.0_f64).max(1000.0_f64);
         let delivery_cost_cents = (estimated_cost_fcfa * 100.0) as i64;
 
         // Vérifier que c'est proche de 5 * 500 = 2500 FCFA
@@ -76,7 +76,7 @@ mod tests {
         let distance_meters = haversine_distance(point1, point2);
         let distance_km = distance_meters / 1000.0;
 
-        let estimated_cost_fcfa = (distance_km * 500.0).max(1000.0);
+        let estimated_cost_fcfa = (distance_km * 500.0_f64).max(1000.0_f64);
         let delivery_cost_cents = (estimated_cost_fcfa * 100.0) as i64;
 
         // Vérifier que c'est proche de 20 * 500 = 10000 FCFA
@@ -182,7 +182,7 @@ mod tests {
         let product_price_cents = (product_price_fcfa * 100.0) as i64;
 
         let distance_km = 3.0;
-        let delivery_cost_fcfa = (distance_km * 500.0).max(1000.0);
+        let delivery_cost_fcfa = (distance_km * 500.0_f64).max(1000.0_f64);
         let delivery_cost_cents = (delivery_cost_fcfa * 100.0) as i64;
 
         let is_delivery_free = false;

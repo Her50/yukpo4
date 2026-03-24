@@ -943,6 +943,8 @@ User: "Wow c'est génial cette fonctionnalité!"
     const onProductHubScreen = screenName === 'Services' || screenName === 'MesServices';
     const onMesProduitsScreen = screenName === 'MesProduits';
     const onBookExchangeHome = screenName === 'LivreScolaireHome' || screenName === 'BourseLivre';
+    /** Dépôt « manuels scolaires (établissement) » — PDF/Excel/images, IA Yukpo, librairies notifiées (ville / rayon). */
+    const onEtablissementScolaireScreen = screenName === 'EtablissementScolaire';
     const onTicketVoyageHome = screenName === 'TicketVoyageHome';
     const onBusTicketSearch = screenName === 'BusTicketSearch';
     const onCovoiturageHome = screenName === 'CovoiturageHome';
@@ -1106,7 +1108,10 @@ Yukpo connects sellers and buyers. The user is on **Mes produits** (catalog mana
           : onBookExchangeHome
             ? `YUKPO (brief reminder only — detailed UI is in BOURSE_DU_LIVRE_HOME_DETAIL below):
 Yukpo is the all-in-one super-app (health, education, wallet, delivery, e‑commerce…). The user is on the **Bourse du Livre home** (**LivreScolaireHomeScreen**, routes **LivreScolaireHome** or **BourseLivre**). Prioritize **BOURSE_DU_LIVRE_HOME_DETAIL**; **do not** describe the deprecated **BourseLivreScreen** (search bar + filter panel + purple "Recommandations IA" header buttons) as the current UI.`
-            : onTicketVoyageHome
+            : onEtablissementScolaireScreen
+              ? `YUKPO (brief reminder only — detailed UI is in ETABLISSEMENT_SCOLAIRE_DETAIL below):
+Éducation — **manuels scolaires (établissement)** : dépôt de fichiers pour extraction IA Yukpo et rattachement au référentiel. The user is on **EtablissementScolaire** (**EtablissementScolaireScreen**). Prioritize **ETABLISSEMENT_SCOLAIRE_DETAIL**; **do not** confuse with **ProgrammeBesoinsSelector** (liste besoins **famille** au programme officiel) nor the generic book marketplace alone.`
+              : onTicketVoyageHome
               ? `YUKPO (brief reminder only — detailed UI is in TICKET_VOYAGE_HOME_DETAIL below):
 Transport & voyage. The user is on **TicketVoyageHome** (**TicketVoyageHomeScreen**): bus ticket search with **LocationSelector**, **busTicketService.searchBusTickets**, tri & filtres. Prioritize **TICKET_VOYAGE_HOME_DETAIL** — not a generic “all transport” pitch.`
               : onBusTicketSearch
@@ -1220,6 +1225,11 @@ ${onBookExchangeHome ? `
 BOURSE_DU_LIVRE_HOME_MODE:
 - **Prioritize** **BOURSE_DU_LIVRE_HOME_DETAIL** below over generic Yukpo education bullets or the legacy **BourseLivreScreen** story.
 - The live home UI is **LivreScolaireHomeScreen** (stack names **LivreScolaireHome** or **BourseLivre** — same component).
+` : ''}
+${onEtablissementScolaireScreen ? `
+ETABLISSEMENT_SCOLAIRE_MODE:
+- **Prioritize** **ETABLISSEMENT_SCOLAIRE_DETAIL** below (dépôt manuels établissement, **POST /api/bourse-livre/v2/programmes-scolaires/submit**, rayon notifications librairies).
+- **Ne pas** présenter cet écran comme la simple « liste famille » : celle-ci = **ProgrammeBesoinsSelector** depuis l’accueil bourse.
 ` : ''}
 ${onTicketVoyageHome ? `
 TICKET_VOYAGE_HOME_MODE:
@@ -1514,10 +1524,11 @@ When the user taps **"Arrêter la marche"** (stop button):
 - **Gauche — flèche retour:** \`navigation.goBack()\`.
 - **Titre:** libellé type « Bourse du Livre » (i18n).
 - **Droite — bouton librairie:** si \`partner_type\` ∈ {librairie, libraire, livrescolaire, livre_scolaire} → **LivreScolaireForm** (« Ma librairie », icône type tableau de bord) ; sinon → **LibrairieRegistration** (« Devenir libraire », icône store).
+- **Entête — accès établissement (si présent sur l’UI):** bouton type **« Établissement scolaire »** → **EtablissementScolaire** : dépôt **manuels scolaires (établissement)** (PDF / Excel / images), extraction **IA Yukpo** → référentiel \`programmes_scolaires\`, rattachement optionnel **fiche orientation** (\`etablissement_id\` via **GET /api/orientation/etablissements/mine**), **rayon km** pour notifier les **librairies** (ville + GPS). **À distinguer** de la carte bleue **ProgrammeBesoinsSelector** (famille / élève : coches besoins au programme officiel).
 
 **Deux cartes d’action principales (sous l’en-tête):**
 1. **Verte — « Mettez vos livres en circulation »** (icône **camera**): → **BookUploadV2**. Sous-texte: vente, troc ou don ; le don se précise à l’étape suivante du flux.
-2. **Bleue — « Trouvez votre liste scolaire »** (icône **book-check** / list-checks): → **ProgrammeBesoinsSelector**. Cocher les manuels au **programme officiel**, arbitrer **neuf vs occasion**.
+2. **Bleue — « Trouvez votre liste scolaire en un parcours »** (icône **list-checks**): → **ProgrammeBesoinsSelector**. Cocher les manuels au **programme officiel**, arbitrer **neuf vs occasion**.
 
 **Bloc « Dashboard des opérations »:**
 - Compteurs (API agrégée): **achats en cours**, **paquets à recevoir**, **paquets à envoyer**, **trocs en cours**, **besoins actifs** (\`bourseLivreV2Api.getUserBookDashboard\`, demandes de dons, \`/api/troc-livres/my-trocs\`).
@@ -1534,8 +1545,33 @@ When the user taps **"Arrêter la marche"** (stop button):
 **Hard rules:**
 - **Ne pas** décrire une **barre de recherche + panneau filtres + bouton violet « Recommandations IA »** en tête: c’est l’ancien **BourseLivreScreen** (fichier déprécié), pas l’écran monté par la navigation actuelle.
 - Pour « comment vendre / troquer / donner »: pointer **carte verte** → **BookUploadV2**.
-- Pour « liste de classe / manuels officiels »: pointer **carte bleue** → **ProgrammeBesoinsSelector**.
-- Pour livraison / QR / paquets: **dashboard** + **BookPackages** + rappel QR.
+- Pour « liste de classe / manuels officiels » (parcours **famille**): pointer **carte bleue** → **ProgrammeBesoinsSelector**.
+- Pour **dépôt liste établissement** (partenaire école / admin): **Établissement scolaire** → **EtablissementScolaire** (voir **ETABLISSEMENT_SCOLAIRE_DETAIL**).
+- Pour livraison / QR / paquets: **dashboard** + **BookPackages** + rappel QR (les paquets peuvent inclure **livres / cahiers / fournitures** selon \`type_article\`).
+`;
+    }
+
+    if (onEtablissementScolaireScreen) {
+      prompt += `
+
+=== ETABLISSEMENT_SCOLAIRE_DETAIL (authoritative — EtablissementScolaireScreen, route EtablissementScolaire) ===
+
+**Rôle:** Parcours **partenaire établissement** (ou équipe habilitée) pour transmettre les **manuels scolaires (établissement)** — source fichiers — afin que Yukpo les **extraie (IA)** et les intègre au **référentiel** ; les **librairies** dans la **ville** et/ou le **rayon GPS** (notifications) sont informées.
+
+**Données chargées:** **GET /api/orientation/etablissements/mine** → liste des fiches orientation de l’utilisateur ; sélection **rattache** \`etablissement_id\` et peut pré-remplir nom / ville / GPS.
+
+**Champs principaux:** nom établissement, pays/ville (ou **GPS** via **ModernGPSModal**), **niveaux** (puces Maternelle → Lycée), **année scolaire**, commentaire, **rayon de notification** (km, presets + saisie, borné côté app), pièces jointes.
+
+**Fichiers:** au moins une **image**, **PDF** ou document ; caméra, galerie, **DocumentPicker**.
+
+**Envoi:** **POST /api/bourse-livre/v2/programmes-scolaires/submit** avec notamment \`nom_etablissement\`, \`niveaux\`, \`annee_scolaire\`, \`fichiers\` (nom, type, base64), \`gps_coords\` / \`ville\`, \`etablissement_id\` optionnel, \`notification_radius_km\`.
+
+**Profils — comment guider:**
+- **Établissement:** insister sur **fichiers clairs**, **niveaux** cohérents, **GPS ou ville** pour cibler les librairies, **rayon** adapté.
+- **Famille / élève:** si la question porte sur *leur* liste de manuels au programme → renvoyer vers **LivreScolaireHome** → **ProgrammeBesoinsSelector** (pas cet écran).
+- **Librairie:** après dépôt, préparer stock (**livres**, **cahiers**, **fournitures**) ; les demandes et paquets peuvent distinguer les types (\`type_article\`).
+
+**Hard rules:** Ne pas inventer d’autre route d’envoi ; ne pas confondre avec **OrientationPartnerDashboard** (dashboard partenaire orientation) ni avec la simple recherche d’occasion sur **LivreScolaireHome**.
 `;
     }
 
@@ -2764,7 +2800,7 @@ Key screens: HotelMeubleHome / HotelSearch / MeubleSearch (user listing), HotelB
     }
 
     // Bourse du Livre / Coursier Livres context
-    const bookScreens = ['BookPackages', 'BookUploadV2', 'BookRecapV2', 'BookBuyDirect', 'LivreScolaireHome', 'LivreScolaireSearch', 'LivreScolaireDetails', 'LivreScolaireForm', 'LivreScolaireList', 'MesLivres', 'MesBesoinsLivres', 'ProgrammeBesoinsSelector', 'MesTrocs', 'TrocMatching', 'TrocDetails', 'TrocLiveValidation', 'NewBooks', 'AdminProgrammeUpload', 'AdminDonations', 'BourseLivre'];
+    const bookScreens = ['BookPackages', 'BookUploadV2', 'BookRecapV2', 'BookBuyDirect', 'LivreScolaireHome', 'LivreScolaireSearch', 'LivreScolaireDetails', 'LivreScolaireForm', 'LivreScolaireList', 'MesLivres', 'MesBesoinsLivres', 'ProgrammeBesoinsSelector', 'MesTrocs', 'TrocMatching', 'TrocDetails', 'TrocLiveValidation', 'NewBooks', 'AdminProgrammeUpload', 'AdminDonations', 'BourseLivre', 'EtablissementScolaire'];
     if (bookScreens.some(s => screenName.includes(s) || screenName.includes('Livre') || screenName.includes('Troc') || screenName.includes('BookPackage') || screenName.includes('Bourse'))) {
       const isCourier = userRole === 'coursier' || userData?.is_courier || screenName.includes('courier') || screenName === 'BookPackages';
       const isLibraire =
@@ -2829,9 +2865,13 @@ ${isCourier ? `COURSIER — GUIDE COMPLET DE LIVRAISON LIVRES:
 
 \uD83D\uDCE6 CONSTITUTION DES PAQUETS:
 - Quand une commande arrive, elle apparaît dans "Paquets en attente" (statut: à_constituer)
-- Ouvrir le détail du paquet: checklist des livres avec images recto/verso, titre, matière, classe
-- Préparer physiquement les livres → marquer "constitué"
+- Ouvrir le détail du paquet: checklist des **lignes** (livres **et** éventuellement **cahiers / fournitures** selon \`type_article\`) avec images recto/verso, titre, matière, classe
+- Préparer physiquement les articles → marquer "constitué"
 - Quand le coursier arrive, scanner son QR → le paquet passe en "en_route"
+
+\uD83D\uDCE2 LISTES ÉTABLISSEMENT & NOTIFICATIONS:
+- Quand un **établissement** envoie des **manuels scolaires (établissement)** (référentiel Yukpo), les **librairies** du **même périmètre** (ville normalisée + **rayon GPS** km) reçoivent une **alerte** pour ajuster stock (**livres**, **cahiers**, **fournitures**).
+- **Succursales:** l’inscription librairie (**LibrairieRegistration**) permet plusieurs **points GPS** (siège + succursales, carte Yukpo) ; le backend teste **chaque** point (`librairie_partners` + table **librairie_lieux`) pour inclure le compte libraire si **au moins une** succursale est dans la ville ou le rayon.
 
 \uD83D\uDCDA LIVRES NEUFS:
 - Publier des livres neufs en lot via "Publier livres neufs"
@@ -2840,7 +2880,7 @@ ${isCourier ? `COURSIER — GUIDE COMPLET DE LIVRAISON LIVRES:
 
 \uD83D\uDCB0 COMMISSIONS: 5% sur chaque vente/troc` :
 
-            `${onBookExchangeHome ? `NOTE — Sur l’accueil **LivreScolaireHome** / **BourseLivre**, la structure réelle est dans **BOURSE_DU_LIVRE_HOME_DETAIL** ; ce qui suit décrit les **autres** parcours (upload, troc, achat, dons, programme).\n\n` : ''}UTILISATEUR — TROC ET ACHAT DE LIVRES (flux du module):
+            `${onBookExchangeHome ? `NOTE — Sur l’accueil **LivreScolaireHome** / **BourseLivre**, la structure réelle est dans **BOURSE_DU_LIVRE_HOME_DETAIL** ; ce qui suit décrit les **autres** parcours (upload, troc, achat, dons, programme).\n\n` : onEtablissementScolaireScreen ? `NOTE — Écran **EtablissementScolaire** : suivre **ETABLISSEMENT_SCOLAIRE_DETAIL** ; le bloc ci-dessous décrit surtout **famille / troc / librairie** sur le reste du module.\n\n` : ''}UTILISATEUR — TROC ET ACHAT DE LIVRES (flux du module):
 
 \uD83D\uDCF8 ENVOYER DES LIVRES (BookUploadV2):
 1. Activer le GPS (obligatoire — c'est le lieu de récupération par défaut)
@@ -2866,11 +2906,11 @@ ${isCourier ? `COURSIER — GUIDE COMPLET DE LIVRAISON LIVRES:
 - Certains livres sont en mode "don" → demander gratuitement avec un motif
 - Validation par l'admin avant attribution
 
-\uD83D\uDCCA PROGRAMMES SCOLAIRES:
-- Vérifier si un livre est au programme officiel
-- Comparer prix neuf vs occasion vs programme officiel`}
+\uD83D\uDCCA MANUELS & PROGRAMMES (deux parcours):
+- **Famille / élève — liste au programme officiel:** **ProgrammeBesoinsSelector** depuis **LivreScolaireHome** (carte bleue) : coches besoins, arbitrage neuf / occasion ; s’appuie sur le **référentiel Yukpo** (programmes scolaires).
+- **Établissement — manuels scolaires (établissement):** **EtablissementScolaire** → **POST /api/bourse-livre/v2/programmes-scolaires/submit** ; extraction IA ; **notif librairies** (ville + rayon). **Ne pas** confondre les deux parcours.`}
 
-KEY SCREENS: LivreScolaireHome (accueil bourse), BookUploadV2 (envoyer livres), BookRecapV2 (récap session), BookPackages (paquets), MesLivres (mes livres), TrocMatching (matching), BookBuyDirect (achat direct), NewBooks (catalogue neufs)`;
+KEY SCREENS: LivreScolaireHome (accueil bourse), EtablissementScolaire (dépôt manuels établissement), ProgrammeBesoinsSelector (besoins famille), BookUploadV2 (envoyer livres), BookRecapV2 (récap session), BookPackages (paquets), MesLivres (mes livres), TrocMatching (matching), BookBuyDirect (achat direct), NewBooks (catalogue neufs)`;
     }
 
     // Financial / Recharge / Wallet context for users AND partners
@@ -2961,6 +3001,7 @@ RESPONSE FORMAT (JSON):
     if (onProductHubScreen) injectedScreens.add('MesServices');
     if (onMesProduitsScreen) injectedScreens.add('MesProduits');
     if (onBookExchangeHome) injectedScreens.add('BourseLivre');
+    if (onEtablissementScolaireScreen) injectedScreens.add('EtablissementScolaire');
     if (onTicketVoyageHome) injectedScreens.add('TicketVoyage');
     if (onCovoiturageHome) injectedScreens.add('Covoiturage');
     if (onTaxiHome) injectedScreens.add('Taxi');
@@ -2998,7 +3039,27 @@ RESPONSE FORMAT (JSON):
         label: 'Mes Services / Produits',
       },
       { keywords: ['catalogue produit', 'gerer produits', 'mes produits', 'dupliquer produit', 'livraison produit'], screen: 'MesProduits', label: 'Catalogue Produits' },
-      { keywords: ['livre scolaire', 'bourse du livre', 'troc livre', 'manuel scolaire', 'programme scolaire', 'librairie'], screen: 'BourseLivre', label: 'Bourse du Livre' },
+      {
+        keywords: ['livre scolaire', 'bourse du livre', 'troc livre', 'manuel scolaire', 'programme scolaire', 'librairie', 'troc scolaire', 'besoins livres'],
+        screen: 'BourseLivre',
+        label: 'Bourse du Livre',
+      },
+      {
+        keywords: [
+          'manuels etablissement',
+          'depot programme',
+          'referentiel yukpo',
+          'etablissement scolaire yukpo',
+          'liste etablissement',
+          'programme etablissement',
+          'soumettre manuels',
+          'fiche orientation etablissement',
+          'notif librairie',
+          'rayon librairie',
+        ],
+        screen: 'EtablissementScolaire',
+        label: 'Manuels scolaires (établissement)',
+      },
       { keywords: ['bus', 'billet', 'ticket voyage', 'agence voyage', 'trajet bus', 'voyage interurbain'], screen: 'TicketVoyage', label: 'Tickets Voyage' },
       { keywords: ['covoiturage', 'trajet partage', 'partager trajet', 'conducteur covoiturage'], screen: 'Covoiturage', label: 'Covoiturage' },
       { keywords: ['taxi', 'commander taxi', 'course taxi', 'chauffeur taxi'], screen: 'Taxi', label: 'Taxi' },
@@ -3068,10 +3129,19 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
       if (detectedCrossScreens.includes('BourseLivre')) {
         prompt += `
 === BOURSE_DU_LIVRE_DETAIL (cross-screen — user asked about book exchange from ${screenName}) ===
-**What this screen is:** Hub Bourse du Livre: sell/trade/donate school books, find official program lists.
-**How to access:** Navigate to LivreScolaireHome or BourseLivre.
-**Key flows:** (1) Green card "Mettez vos livres en circulation" → BookUploadV2, (2) Blue card "Trouvez votre liste scolaire" → ProgrammeBesoinsSelector.
-**Dashboard:** track purchases, packages, trades, needs. QR scan for courier delivery validation.
+**What this screen is:** Hub Bourse du Livre: sell/trade/donate school books, **official program needs**, and **establishment-submitted** school manual lists (Yukpo referential).
+**How to access:** Navigate to **LivreScolaireHome** or **BourseLivre** ; **EtablissementScolaire** via header **« Établissement scolaire »** when shown.
+**Key flows:** (1) Green card "Mettez vos livres en circulation" → BookUploadV2, (2) Blue card "Trouvez votre liste scolaire" → **ProgrammeBesoinsSelector** (family / student), (3) **Établissement scolaire** → **EtablissementScolaire** → **POST /api/bourse-livre/v2/programmes-scolaires/submit** (PDF/Excel/images, IA, **librairies** notified by city + **radius km**).
+**Dashboard:** track purchases, packages, trades, needs. QR scan for courier delivery validation. Packages may include **books / notebooks / supplies** (\`type_article\`).
+`;
+      }
+
+      if (detectedCrossScreens.includes('EtablissementScolaire') && screenName !== 'EtablissementScolaire') {
+        prompt += `
+=== ETABLISSEMENT_SCOLAIRE_DETAIL (cross-screen — user asked about establishment manual upload from ${screenName}) ===
+**What this screen is:** **EtablissementScolaireScreen** — upload **manuels scolaires (établissement)** for Yukpo IA extraction, optional link to orientation sheet (**GET /api/orientation/etablissements/mine**, \`etablissement_id\`), **notification_radius_km** for partner bookstores.
+**How to access:** From **LivreScolaireHome** → **Établissement scolaire** (header) → route **EtablissementScolaire**.
+**Not** the same as **ProgrammeBesoinsSelector** (family program checklist).
 `;
       }
 
@@ -4224,6 +4294,7 @@ Explorez l'avenir dès maintenant ! 👇`,
       'OffresEmploiHome': t('intelligentChat.screenDesc.jobs') || 'Emplois : recherche et publication.',
       'OrientationScolaireHome': t('intelligentChat.screenDesc.orientation') || 'Orientation scolaire avec IA.',
       'LivreScolaireHome': t('intelligentChat.screenDesc.books') || 'Livres scolaires : achat, vente, troc.',
+      'EtablissementScolaire': t('intelligentChat.screenDesc.etablissementScolaire') || 'Manuels scolaires (établissement) : dépôt fichiers, IA Yukpo, notifications librairies.',
       'Navigation': t('intelligentChat.screenDesc.navigation') || 'GPS avec guidage vocal et alertes.',
       'RechargeTokens': t('intelligentChat.screenDesc.recharge') || 'Rechargez votre solde. Bonus jusqu\'à +20%.',
       'WalletFinancial': t('intelligentChat.screenDesc.wallet') || 'Suivi financier détaillé.',
@@ -4447,13 +4518,37 @@ Explorez l'avenir dès maintenant ! 👇`,
         keywords: [
           'livre', 'ecole', 'education', 'etude', 'cours', 'manuel', 'bourse', 'troc', 'achat',
           'eleve', 'etudiant', 'classe', 'matiere', 'scolaire', 'universitaire', 'bourse du livre',
-          'bouquin', 'librairie', 'acheter livre', 'vendre livre'
+          'bouquin', 'librairie', 'acheter livre', 'vendre livre', 'programme besoins', 'liste scolaire',
+          'etablissement scolaire', 'manuels etablissement', 'rayon librairie'
         ],
-        contextualPrompt: 'Bourse du livre : troc intelligent, analyse livres IA, programmes scolaires, estimation prix, livraison.',
+        contextualPrompt:
+          'Bourse du livre : hub V2 (annonces proches, dashboard paquets/trocs/besoins). **Famille** : carte bleue → **ProgrammeBesoinsSelector** (liste au programme officiel). **Établissement** : bouton **Établissement scolaire** → **EtablissementScolaire** (dépôt PDF/Excel/images, **POST programmes-scolaires/submit**, IA Yukpo, notif librairies ville/rayon). **Librairie** : paquets **livres / cahiers / fournitures** selon le référentiel.',
         suggestedActions: [
           { id: 'book-exchange', label: 'Troc livres', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation' as const, description: 'Échanger des livres' },
-          { id: 'book-scan', label: 'Analyser livre', icon: 'scan', route: 'LivreScolaireHome', category: 'action' as const, description: 'Scanner un livre' },
-          { id: 'book-price', label: 'Estimer prix', icon: 'tag', route: 'LivreScolaireHome', category: 'action' as const, description: 'Estimer la valeur' }
+          { id: 'book-programme', label: 'Liste programme (famille)', icon: 'list-checks', route: 'ProgrammeBesoinsSelector', category: 'navigation' as const, description: 'Manuels au programme officiel' },
+          { id: 'book-etab', label: 'Manuels établissement', icon: 'building-2', route: 'EtablissementScolaire', category: 'navigation' as const, description: 'Dépôt liste établissement' }
+        ]
+      },
+      {
+        screen: 'EtablissementScolaire',
+        keywords: [
+          'etablissement scolaire',
+          'manuels etablissement',
+          'depot programme',
+          'referentiel yukpo',
+          'pdf programme',
+          'liste officielle ecole',
+          'notif librairie',
+          'rayon km',
+          'orientation etablissement',
+          'programmes scolaires submit'
+        ],
+        contextualPrompt:
+          '**EtablissementScolaire** : dépôt **manuels scolaires (établissement)** (images, PDF, documents), niveaux, année scolaire, GPS ou ville, **rattachement** fiche orientation (**GET etablissements/mine**), **rayon de notification** pour les librairies. Envoi **POST /api/bourse-livre/v2/programmes-scolaires/submit**. Pour les **familles** qui cherchent leur liste personnelle → **ProgrammeBesoinsSelector** depuis **LivreScolaireHome**.',
+        suggestedActions: [
+          { id: 'etab-gps', label: 'Position / ville', icon: 'map-pin', route: 'EtablissementScolaire', category: 'action' as const, description: 'Localiser pour les notifs' },
+          { id: 'etab-orientation', label: 'Fiche orientation', icon: 'school', route: 'CreateEtablissement', category: 'navigation' as const, description: 'Créer ou lier une fiche' },
+          { id: 'etab-home-bourse', label: 'Accueil bourse', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation' as const, description: 'Retour hub livres' }
         ]
       },
       {
@@ -4916,6 +5011,7 @@ Explorez l'avenir dès maintenant ! 👇`,
       { route: 'FournituresScolaires', label: 'Fournitures Scolaires', icon: 'shopping-bag', keywords: ['fourniture', 'scolaire', 'materiel scolaire', 'liste fourniture', 'cahier', 'stylo'], description: 'Trouver des fournitures scolaires' },
       { route: 'ProgrammesScolaires', label: 'Programmes Scolaires', icon: 'book-open', keywords: ['programme scolaire', 'programme officiel', 'curriculum', 'matiere'], description: 'Consulter les programmes scolaires' },
       { route: 'LivreScolaireHome', label: 'Bourse du Livre', icon: 'book', keywords: ['livre', 'scolaire', 'bourse du livre', 'troc livre', 'manuels', 'bouquin', 'librairie', 'echange livre', 'acheter livre'], description: 'Acheter, vendre ou troquer des livres scolaires' },
+      { route: 'EtablissementScolaire', label: 'Manuels établissement', icon: 'building-2', keywords: ['manuels etablissement', 'depot programme', 'liste ecole', 'referentiel yukpo', 'programme scolaire ecole'], description: 'Déposer les manuels (établissement) pour l’IA Yukpo et les librairies' },
       { route: 'LivreScolaireSearch', label: 'Rechercher un Livre', icon: 'search', keywords: ['recherche livre', 'trouver livre', 'chercher manuel', 'livre scolaire'], description: 'Rechercher un livre scolaire' },
       { route: 'MesLivres', label: 'Mes Livres', icon: 'book', keywords: ['mes livres', 'mes manuels', 'livres achetes', 'ma bibliotheque'], description: 'Vos livres scolaires' },
       { route: 'BookBuyDirect', label: 'Acheter un Livre', icon: 'shopping-cart', keywords: ['acheter livre', 'commander livre', 'achat direct livre'], description: 'Acheter un livre directement' },
@@ -5364,11 +5460,21 @@ Explorez l'avenir dès maintenant ! 👇`,
         screenName: 'LivreScolaireHome',
         screenType: 'specialized',
         contextData: {
-          features: ['troc', 'vente', 'scan_livre', 'programmes', 'estimation'],
+          features: ['troc', 'vente', 'scan_livre', 'programmes', 'estimation', 'programme_besoins_famille', 'depot_manuels_etablissement'],
           educationLevel: 'all', // primaire, secondaire, supérieur
           location: 'current'
         },
-        availableFeatures: ['book_exchange', 'book_scan', 'price_estimation', 'program_check']
+        availableFeatures: ['book_exchange', 'book_scan', 'price_estimation', 'program_check', 'etablissement_upload']
+      },
+      'EtablissementScolaire': {
+        screenName: 'EtablissementScolaire',
+        screenType: 'specialized',
+        contextData: {
+          features: ['upload_manuels', 'ia_extraction', 'orientation_link', 'notification_rayon_librairies'],
+          userProfile: 'etablissement_or_staff',
+          location: 'gps_or_ville'
+        },
+        availableFeatures: ['submit_programmes_scolaires', 'pick_files', 'select_etablissement_mine']
       },
       'MesServices': {
         screenName: 'MesServices',

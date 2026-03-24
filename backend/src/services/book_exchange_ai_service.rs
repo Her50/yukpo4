@@ -1908,12 +1908,13 @@ CONTEXTE :
 - Période académique : {}
 
 TON RÔLE :
-- Analyser le document (programme scolaire officiel) 
-- Extraire TOUS les livres/manuels listés dans ce programme
-- Pour chaque livre extraire: titre, auteur, éditeur, ISBN (si visible), classe, matière, prix officiel (si mentionné), si obligatoire ou recommandé
+- Analyser le document (liste officielle des manuels et fournitures scolaires de l'établissement)
+- Extraire chaque ligne : livres, cahiers, classeurs, fournitures spécifiques listées au programme
+- Pour chaque ligne extraire : titre, auteur, éditeur, ISBN (si visible), classe, matière, prix officiel (si mentionné), si obligatoire ou recommandé
+- Renseigner "type_article" pour chaque ligne : "livre" (manuel papier), "cahier", "fourniture" (autre)
 
 IMPORTANT :
-- Extraire TOUS les livres, pas seulement quelques-uns
+- Extraire TOUTES les lignes utiles aux familles (pas seulement les livres)
 - Si le document couvre plusieurs classes, indiquer la classe pour chaque livre
 - Les prix sont généralement en XAF (FCFA)
 - Distinguer "obligatoire" vs "recommandé/optionnel"
@@ -1929,7 +1930,19 @@ RÉPONSE ATTENDUE (JSON strict) :
             "classe": "6ème",
             "matiere": "Mathématiques",
             "prix_officiel": 5000.0,
-            "est_obligatoire": true
+            "est_obligatoire": true,
+            "type_article": "livre"
+        }},
+        {{
+            "titre": "Cahier 200 pages Seyès",
+            "auteur": null,
+            "editeur": null,
+            "isbn": null,
+            "classe": "6ème",
+            "matiere": "Fournitures",
+            "prix_officiel": 1500.0,
+            "est_obligatoire": true,
+            "type_article": "cahier"
         }}
     ],
     "nombre_total": 15,

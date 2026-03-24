@@ -1,6 +1,5 @@
 mod end_to_end_workflow {
     use chrono::{Duration, Utc};
-    use mongodb::Client as MongoClient;
     use redis::Client as RedisClient;
     use rust_decimal::prelude::FromPrimitive;
     use serde_json::json;
@@ -104,16 +103,6 @@ mod end_to_end_workflow {
 
         let user_id: i32 = user_row.get("id");
 
-        let mongo_uri = std::env::var("TEST_MONGODB_URL")
-            .unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
-        let mongo_client = match MongoClient::with_uri_str(&mongo_uri).await {
-            Ok(client) => client,
-            Err(err) => {
-                eprintln!("[e2e] ❌ Impossible de créer le client MongoDB ({mongo_uri}): {err:?}");
-                return None;
-            }
-        };
-
         let redis_uri =
             std::env::var("TEST_REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1/".to_string());
         let redis_client = match RedisClient::open(redis_uri.clone()) {
@@ -133,100 +122,16 @@ mod end_to_end_workflow {
             pool.clone(),
         ));
 
-        let mongo_history = Arc::new(
-            yukpomnang_backend::services::mongo_history_service::MongoHistoryService::new(
-                Arc::new(mongo_client.clone()),
-                "yukpo_history_test".to_string(),
-            ),
-        );
-
-        let delivery_repo = Arc::new(
-            yukpomnang_backend::services::delivery_repository::DeliveryRepository::new(
-                pool.clone(),
-            ),
-        );
-        let delivery_ws_manager = Arc::new(
-            yukpomnang_backend::websocket::delivery_tracking::DeliveryTrackingManager::new(
-                16,
-                Some(redis_client.clone()),
-            ),
-        );
-        let delivery_service = Arc::new(
-            yukpomnang_backend::services::delivery_service::DeliveryService::new(
-                delivery_repo.clone(),
-                delivery_ws_manager.clone(),
-            ),
-        );
-
-        let cost_service =
-            Arc::new(yukpomnang_backend::services::cost_service::CostEstimator::new(pool.clone()));
-
-        let media_storage = Arc::new(
-            yukpomnang_backend::services::media_storage_service::MediaStorageService::new(
-                yukpomnang_backend::config::storage::MediaStorageConfig::from_env(),
-            ),
-        );
-        let voice_profiles = Arc::new(
-            yukpomnang_backend::services::voice_profile_service::VoiceProfileService::new(
-                pool.clone(),
-                media_storage.clone(),
-            ),
-        );
-        let commerce_connector = Arc::new(
-            yukpomnang_backend::services::commerce_connector_service::CommerceConnectorService::new(
-                pool.clone(),
-            ),
-        );
-        let story_templates = Arc::new(
-            yukpomnang_backend::services::story_template_service::StoryTemplateService::new(),
-        );
-        let inventory = Arc::new(
-            yukpomnang_backend::services::inventory_service::InventoryService::new(pool.clone()),
-        );
-        let studio_service = Arc::new(
-            yukpomnang_backend::services::studio_service::StudioService::new(
-                pool.clone(),
-                media_storage.clone(),
-                None,
-            ),
-        );
-
-        let state = Arc::new(AppState {
-            pg: pool.clone(),
-            mongo: mongo_client,
-            mongo_history,
-            ia: app_ia,
+        // Utiliser le constructeur officiel pour rester aligné avec AppState courant.
+        let state = Arc::new(AppState::new(
+            pool.clone(),
+            None, // pg_read
+            app_ia,
             ia_stats,
-            database_url,
-            optimizations_enabled: false,
             redis_client,
-            semantic_cache: None,
-            prompt_optimizer: None,
-            live_streaming: Arc::new(
-                yukpomnang_backend::config::live_streaming::LiveStreamingConfig::from_env(),
-            ),
-            delivery_ws_manager,
-            delivery_service,
-            media_storage,
-            remotion_renderer: None,
-            video_renderer: None,
-            audio_mastering: None,
-            cost_service,
-            broll_service: None,
-            video_jobs: Arc::new(
-                yukpomnang_backend::services::video_job_service::VideoGenerationJobService::new(
-                    pool.clone(),
-                ),
-            ),
-            voice_profiles,
-            commerce_connector,
-            story_templates,
-            studio_service,
-            inventory,
-            feature_flags: Arc::new(
-                yukpomnang_backend::config::feature_flags::FeatureFlagService::from_env(),
-            ),
-        });
+            true,  // redis_available_for_ws
+            false, // degraded_mode
+        ));
 
         Some(E2EContext {
             state,
@@ -339,6 +244,11 @@ mod end_to_end_workflow {
             style_music_hint: None,
             media_scene_overrides: None,
             media_descriptions: None,
+            timeline: None,
+            auto_generate_images: Some(false),
+            enable_watermark: Some(false),
+            creation_source: Some("media".to_string()),
+            ai_video_prompt: None,
         };
 
         let video_result = generate_product_video(

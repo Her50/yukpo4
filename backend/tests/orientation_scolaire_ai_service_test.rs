@@ -3,9 +3,9 @@
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::app_ia::AppIA;
-    use crate::services::orientation_scolaire_ai_service::OrientationScolaireAIService;
     use std::sync::Arc;
+    use yukpomnang_backend::services::app_ia::AppIA;
+    use yukpomnang_backend::services::orientation_scolaire_ai_service::OrientationScolaireAIService;
 
     #[tokio::test]
     #[ignore] // Ignorer par défaut car nécessite AppIA configuré

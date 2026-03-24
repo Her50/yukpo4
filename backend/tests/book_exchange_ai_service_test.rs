@@ -3,9 +3,9 @@
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::app_ia::AppIA;
-    use crate::services::book_exchange_ai_service::BookExchangeAIService;
     use std::sync::Arc;
+    use yukpomnang_backend::services::app_ia::AppIA;
+    use yukpomnang_backend::services::book_exchange_ai_service::BookExchangeAIService;
 
     // Note: Ces tests nécessitent une instance AppIA configurée
     // Pour les tests d'intégration, utiliser un mock ou une instance de test

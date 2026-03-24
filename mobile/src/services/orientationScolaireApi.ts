@@ -167,5 +167,18 @@ export const orientationScolaireApi = {
         );
         return response.analytics || response.data?.analytics || response;
     },
+
+    /** Établissements rattachés au compte (JWT) — tableau de bord partenaire + rattachement manuels Yukpo */
+    getMyEtablissements: async (): Promise<{
+        etablissements: Array<{ id: number; nom_etablissement: string; ville: string; gps?: string | null }>;
+    }> => {
+        const response = await apiGet<{
+            success?: boolean;
+            data?: { etablissements?: any[] };
+        }>('/api/orientation/etablissements/mine');
+        const data = (response as any)?.data ?? response;
+        const etablissements = data?.etablissements ?? [];
+        return { etablissements };
+    },
 };
 

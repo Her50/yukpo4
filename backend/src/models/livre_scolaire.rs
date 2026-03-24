@@ -200,6 +200,10 @@ pub struct ProgrammeScolaire {
     pub extraction_result: Option<serde_json::Value>,
     pub livres_extraits: Option<serde_json::Value>, // [{titre, auteur, classe, matiere...}]
     pub nombre_livres_extraits: Option<i32>,
+    /// Si renseigné : ligne rattachée à un établissement (prioritaire sur le référentiel national).
+    #[serde(default)]
+    #[sqlx(default)]
+    pub etablissement_id: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -280,6 +284,9 @@ pub struct LivreExtraitProgramme {
     pub matiere: Option<String>,
     pub prix_officiel: Option<f64>,
     pub est_obligatoire: Option<bool>,
+    /// `livre` | `cahier` | `fourniture` | autres — utilisé pour paquets / disponibilité librairie.
+    #[serde(default)]
+    pub type_article: Option<String>,
 }
 
 /// Session d'upload progressive
@@ -354,6 +361,15 @@ pub struct BookDeliveryPackage {
     pub distance_totale_metres: Option<i32>,
     pub coursier_gps_actuel: Option<String>,
     pub coursier_gps_updated_at: Option<DateTime<Utc>>,
+    /// Succursale choisie pour préparer ce paquet (si expéditeur libraire multi-sites).
+    #[sqlx(default)]
+    pub librairie_lieu_id: Option<i32>,
+    /// Libellé figé de la succursale au moment de la validation (audit UX).
+    #[sqlx(default)]
+    pub succursale_label: Option<String>,
+    /// Le stock a été confirmé disponible sur la succursale choisie.
+    #[sqlx(default)]
+    pub stock_disponible_succursale: Option<bool>,
 }
 
 /// Commission sur transaction livre
@@ -398,6 +414,18 @@ pub struct CreateDonationRequestPayload {
     pub livre_id: i32,
     pub motif: String,
     pub justificatif_url: Option<String>,
+}
+
+/// Déduit le type d'article (liste Yukpo / matière préfixée `[Cahier]` / `[Fourniture]`).
+pub fn infer_type_article_from_matiere(matiere: &str) -> &'static str {
+    let m = matiere.trim().to_lowercase();
+    if m.starts_with("[cahier]") {
+        return "cahier";
+    }
+    if m.starts_with("[fourniture]") || m.starts_with("[fournitures]") {
+        return "fourniture";
+    }
+    "livre"
 }
 
 // ============================================================================

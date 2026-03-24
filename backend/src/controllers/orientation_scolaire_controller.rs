@@ -8,9 +8,9 @@ use crate::models::orientation_ai::{
 use crate::models::orientation_scolaire::{
     CreateConcoursRequest, CreateConferenceRequest, CreateEtablissementRequest,
     CreateExperienceRequest, CreateFournituresRequest, CreateProgrammeRequest,
-    SearchConcoursRequest, SearchConferencesRequest, SearchEtablissementsRequest,
-    SearchExperiencesRequest, SearchFournituresRequest, SearchProgrammesRequest,
-    SuggestEtablissementsRequest, UpdateStatistiquesExamensRequest,
+    EtablissementScolaire, SearchConcoursRequest, SearchConferencesRequest,
+    SearchEtablissementsRequest, SearchExperiencesRequest, SearchFournituresRequest,
+    SearchProgrammesRequest, SuggestEtablissementsRequest, UpdateStatistiquesExamensRequest,
 };
 use crate::services::{
     concours_entree_service::ConcoursEntreeService,
@@ -33,6 +33,31 @@ use serde::Deserialize;
 use serde_json::json;
 use sqlx;
 use std::sync::Arc;
+
+/// GET /api/orientation/etablissements/mine
+/// Liste des établissements rattachés au compte (tableau de bord partenaire + rattachement manuels Yukpo).
+pub async fn get_my_etablissements(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let rows: Vec<EtablissementScolaire> = sqlx::query_as::<_, EtablissementScolaire>(
+        "SELECT * FROM etablissements_scolaires WHERE user_id = $1 ORDER BY id DESC",
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "etablissements": rows,
+            "programs": [],
+            "formations": [],
+            "inscriptions_count": 0
+        }
+    })))
+}
 
 /// Créer un établissement scolaire
 pub async fn create_etablissement(

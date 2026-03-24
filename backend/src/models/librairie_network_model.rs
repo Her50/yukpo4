@@ -248,6 +248,20 @@ pub struct TraductionSysteme {
 }
 
 // DTOs pour les requêtes API
+/// Point de vente / succursale (GPS Yukpo — même réseau, notifications géographiques).
+#[derive(Debug, Deserialize, Clone)]
+pub struct LibrairieLieuIn {
+    #[serde(default)]
+    pub libelle: Option<String>,
+    pub gps: String,
+    #[serde(default)]
+    pub ville: Option<String>,
+    #[serde(default)]
+    pub pays: Option<String>,
+    #[serde(default)]
+    pub adresse: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CreateLibrairieRequest {
     pub nom: String,
@@ -258,6 +272,9 @@ pub struct CreateLibrairieRequest {
     pub pays: String,
     pub type_fournisseur: TypeFournisseur,
     pub gps: Option<String>,
+    /// Succursales / points de représentation (si vide, un seul « siège » est dérivé du GPS principal).
+    #[serde(default)]
+    pub lieux: Option<Vec<LibrairieLieuIn>>,
 }
 
 #[derive(Debug, Deserialize)]

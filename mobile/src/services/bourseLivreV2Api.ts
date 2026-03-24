@@ -62,7 +62,14 @@ export interface BookDeliveryPackage {
     expediteur_id: number;
     expediteur_gps?: string;
     expediteur_adresse?: string;
-    livres: Array<{ livre_id: number; titre: string; valeur: number; mode: string }>;
+    livres: Array<{
+        livre_id: number;
+        titre: string;
+        valeur: number;
+        mode: string;
+        matiere?: string;
+        type_article?: string;
+    }>;
     nombre_livres: number;
     valeur_totale: number;
     commission_app: number;
@@ -95,10 +102,15 @@ export interface BookDeliveryPackage {
     distance_totale_metres?: number;
     coursier_gps_actuel?: string;
     coursier_gps_updated_at?: string;
+    librairie_lieu_id?: number;
+    succursale_label?: string;
+    stock_disponible_succursale?: boolean;
 }
 
 export interface ProgrammeScolaire {
     id: number;
+    /** Présent si la ligne vient du programme d’un établissement (prioritaire sur le référentiel national). */
+    etablissement_id?: number | null;
     pays: string;
     systeme_educatif: string;
     niveau: string;
@@ -375,11 +387,18 @@ export const bourseLivreV2Api = {
     // PROGRAMMES SCOLAIRES
     // ============================
 
-    getProgrammes: async (classe?: string, matiere?: string, niveau?: string): Promise<ProgrammeScolaire[]> => {
-        const params: any = {};
+    getProgrammes: async (
+        classe?: string,
+        matiere?: string,
+        niveau?: string,
+        options?: { pays?: string; etablissementId?: number }
+    ): Promise<ProgrammeScolaire[]> => {
+        const params: Record<string, string | number> = {};
         if (classe) params.classe = classe;
         if (matiere) params.matiere = matiere;
         if (niveau) params.niveau = niveau;
+        if (options?.pays) params.pays = options.pays;
+        if (options?.etablissementId != null) params.etablissement_id = options.etablissementId;
 
         const response = await apiGet<{ success: boolean; programmes: ProgrammeScolaire[] }>(
             '/api/bourse-livre/v2/programmes',
@@ -1103,7 +1122,18 @@ export const bourseLivreV2Api = {
         package_id?: number;
         purchase_id?: number;
         action: 'en_preparation' | 'constitue' | 'pret';
-    }): Promise<{ type: string; id: number; new_status: string; validated_by: number; role: string }> => {
+        librairie_lieu_id?: number;
+        stock_disponible_succursale?: boolean;
+    }): Promise<{
+        type: string;
+        id: number;
+        new_status: string;
+        validated_by: number;
+        role: string;
+        librairie_lieu_id?: number;
+        succursale_label?: string;
+        message?: string;
+    }> => {
         const response = await apiPost<any>(
             '/api/bourse-livre/v2/libraire/team/validate-order',
             params
@@ -1115,6 +1145,9 @@ export const bourseLivreV2Api = {
             new_status: r?.new_status || '',
             validated_by: r?.validated_by || 0,
             role: r?.role || '',
+            librairie_lieu_id: r?.librairie_lieu_id,
+            succursale_label: r?.succursale_label,
+            message: r?.message,
         };
     },
 

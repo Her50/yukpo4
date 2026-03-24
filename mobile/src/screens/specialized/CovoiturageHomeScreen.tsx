@@ -56,7 +56,7 @@ const CovoiturageHomeScreen: React.FC = () => {
     const [activeLocationField, setActiveLocationField] = useState<'depart' | 'destination' | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [covoiturages, setCovoiturages] = useState<Covoiturage[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [totalResults, setTotalResults] = useState(0);

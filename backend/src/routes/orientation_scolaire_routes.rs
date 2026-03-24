@@ -81,6 +81,10 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
     // Routes protégées (avec JWT)
     let protected_routes = Router::new()
         .route(
+            "/api/orientation/etablissements/mine",
+            get(orientation_scolaire_controller::get_my_etablissements),
+        )
+        .route(
             "/api/orientation-scolaire/etablissements",
             post(orientation_scolaire_controller::create_etablissement),
         )

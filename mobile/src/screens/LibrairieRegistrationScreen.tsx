@@ -1,7 +1,7 @@
 // @ts-nocheck
 // ✅ Écran d'enregistrement pour les libraires partenaires
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
     Alert,
     ActivityIndicator,
@@ -34,94 +34,164 @@ interface LibrairieFormData {
     gps_coordinates: string | null;
 }
 
+/** Succursale / point de représentation supplémentaire (même réseau — notifications géo Yukpo). */
+interface SuccursaleDraft {
+    id: string;
+    libelle: string;
+    adresse: string;
+    ville: string;
+    gps_coordinates: string | null;
+}
+
 const LibrairieRegistrationScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { t } = useLanguageSafe();
+    const { t, language } = useLanguageSafe();
     const toaster = useToaster();
 
     const [loading, setLoading] = useState(false);
     const [showGPSModal, setShowGPSModal] = useState(false);
+    /** Quel emplacement est en cours de pointage GPS : siège | id succursale */
+    const [gpsTarget, setGpsTarget] = useState<'main' | string>('main');
+    const [succursales, setSuccursales] = useState<SuccursaleDraft[]>([]);
     const [formData, setFormData] = useState<LibrairieFormData>({
         nom: '',
         email: '',
         telephone: '',
         adresse: '',
         ville: '',
-        pays: 'Cameroun',
+        pays: '',
         type_fournisseur: 'librairie',
         gps_coordinates: null,
     });
 
-    // Types de fournisseurs disponibles
-    const fournisseurTypes = [
-        { value: 'librairie', label: 'Librairie' },
-        { value: 'fournisseur_scolaire', label: 'Fournisseur Scolaire' },
-        { value: 'editeur', label: 'Éditeur' },
-        { value: 'distributeur', label: 'Distributeur' },
-    ];
+    useEffect(() => {
+        setFormData((prev) => {
+            if (prev.pays.trim() !== '') return prev;
+            return { ...prev, pays: t('librairieRegistration.defaultCountry') };
+        });
+    }, [language, t]);
+
+    const fournisseurTypes = useMemo(
+        () => [
+            { value: 'librairie', label: t('librairieRegistration.typeLibrairie') },
+            { value: 'fournisseur_scolaire', label: t('librairieRegistration.typeFournisseurScolaire') },
+            { value: 'editeur', label: t('librairieRegistration.typeEditeur') },
+            { value: 'distributeur', label: t('librairieRegistration.typeDistributeur') },
+        ],
+        [t],
+    );
 
     // Mettre à jour les données du formulaire
     const updateFormData = useCallback((field: keyof LibrairieFormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     }, []);
 
-    // Gérer la sélection GPS
+    // Gérer la sélection GPS (siège ou succursale)
     const handleGPSLocationSelected = useCallback((location: any) => {
         if (location && location.latitude && location.longitude) {
             const gpsString = `${location.latitude},${location.longitude}`;
-            updateFormData('gps_coordinates', gpsString);
-            
-            // Extraire la ville si disponible
-            if (location.city || location.locality) {
-                updateFormData('ville', location.city || location.locality);
+            if (gpsTarget === 'main') {
+                updateFormData('gps_coordinates', gpsString);
+                if (location.city || location.locality) {
+                    updateFormData('ville', location.city || location.locality);
+                }
+            } else {
+                setSuccursales((prev) =>
+                    prev.map((s) =>
+                        s.id === gpsTarget
+                            ? {
+                                  ...s,
+                                  gps_coordinates: gpsString,
+                                  ville:
+                                      location.city || location.locality
+                                          ? (location.city || location.locality || s.ville)
+                                          : s.ville,
+                              }
+                            : s,
+                    ),
+                );
             }
-            
-            toaster?.show?.('Localisation enregistrée avec succès', 'success');
+            toaster?.show?.(t('librairieRegistration.toasterLocationSaved'), 'success');
         }
         setShowGPSModal(false);
-    }, [updateFormData, toaster]);
+        setGpsTarget('main');
+    }, [updateFormData, toaster, gpsTarget, t]);
+
+    const addSuccursale = useCallback(() => {
+        setSuccursales((prev) => [
+            ...prev,
+            {
+                id: `s-${Date.now()}`,
+                libelle: '',
+                adresse: '',
+                ville: '',
+                gps_coordinates: null,
+            },
+        ]);
+    }, []);
+
+    const removeSuccursale = useCallback((id: string) => {
+        setSuccursales((prev) => prev.filter((s) => s.id !== id));
+    }, []);
+
+    const updateSuccursale = useCallback((id: string, field: keyof SuccursaleDraft, value: string) => {
+        setSuccursales((prev) =>
+            prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
+        );
+    }, []);
 
     // Valider le formulaire
     const validateForm = useCallback(() => {
         if (!formData.nom.trim()) {
-            Alert.alert('Erreur', 'Le nom de la librairie est requis');
+            Alert.alert(t('librairieRegistration.error'), t('librairieRegistration.errNomRequired'));
             return false;
         }
-        
+
         if (!formData.email.trim()) {
-            Alert.alert('Erreur', 'L\'email est requis');
+            Alert.alert(t('librairieRegistration.error'), t('librairieRegistration.errEmailRequired'));
             return false;
         }
-        
+
         if (!formData.telephone.trim()) {
-            Alert.alert('Erreur', 'Le numéro de téléphone est requis');
+            Alert.alert(t('librairieRegistration.error'), t('librairieRegistration.errPhoneRequired'));
             return false;
         }
-        
+
         if (!formData.adresse.trim()) {
-            Alert.alert('Erreur', 'L\'adresse est requise');
+            Alert.alert(t('librairieRegistration.error'), t('librairieRegistration.errAddressRequired'));
             return false;
         }
-        
+
         if (!formData.ville.trim()) {
-            Alert.alert('Erreur', 'La ville est requise');
+            Alert.alert(t('librairieRegistration.error'), t('librairieRegistration.errCityRequired'));
             return false;
         }
-        
+
         if (!formData.gps_coordinates) {
-            Alert.alert('Erreur', 'La localisation GPS est requise pour être référencé');
+            Alert.alert(t('librairieRegistration.error'), t('librairieRegistration.errHeadquartersGpsRequired'));
             return false;
         }
-        
-        // Validation email simple
+
+        for (const s of succursales) {
+            if (!s.gps_coordinates?.trim()) {
+                Alert.alert(
+                    t('librairieRegistration.error'),
+                    t('librairieRegistration.errBranchGpsRequired', {
+                        name: s.libelle.trim() || t('librairieRegistration.branchDefaultName'),
+                    }),
+                );
+                return false;
+            }
+        }
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
-            Alert.alert('Erreur', 'L\'email n\'est pas valide');
+            Alert.alert(t('librairieRegistration.error'), t('librairieRegistration.errEmailInvalid'));
             return false;
         }
-        
+
         return true;
-    }, [formData]);
+    }, [formData, succursales, t]);
 
     // Soumettre le formulaire
     const handleSubmit = useCallback(async () => {
@@ -130,6 +200,23 @@ const LibrairieRegistrationScreen: React.FC = () => {
         setLoading(true);
         
         try {
+            const lieux = [
+                {
+                    libelle: t('librairieRegistration.headquartersLabel'),
+                    gps: formData.gps_coordinates,
+                    ville: formData.ville,
+                    pays: formData.pays,
+                    adresse: formData.adresse,
+                },
+                ...succursales.map((s) => ({
+                    libelle: s.libelle.trim() || t('librairieRegistration.branchDefaultName'),
+                    gps: s.gps_coordinates,
+                    ville: s.ville.trim() || undefined,
+                    pays: formData.pays,
+                    adresse: s.adresse.trim() || undefined,
+                })),
+            ];
+
             const payload = {
                 nom: formData.nom,
                 email: formData.email,
@@ -139,34 +226,34 @@ const LibrairieRegistrationScreen: React.FC = () => {
                 pays: formData.pays,
                 type_fournisseur: formData.type_fournisseur,
                 gps: formData.gps_coordinates,
+                lieux,
             };
             
             const response = await apiPost('/api/librairie-network/register', payload);
             
             if (response.success) {
-                Alert.alert(
-                    'Inscription réussie!',
-                    'Votre demande d\'inscription a été soumise. Vous recevrez un email dès qu\'elle sera validée.',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => navigation.goBack(),
-                        },
-                    ]
-                );
+                Alert.alert(t('librairieRegistration.successTitle'), t('librairieRegistration.successMessage'), [
+                    {
+                        text: t('librairieRegistration.ok'),
+                        onPress: () => navigation.goBack(),
+                    },
+                ]);
             } else {
-                Alert.alert('Erreur', response.message || 'Une erreur est survenue lors de l\'inscription');
+                Alert.alert(
+                    t('librairieRegistration.error'),
+                    response.message || t('librairieRegistration.errSubmitGeneric'),
+                );
             }
         } catch (error: any) {
             console.error('Erreur inscription librairie:', error);
             Alert.alert(
-                'Erreur',
-                error.response?.data?.message || 'Une erreur est survenue lors de l\'inscription'
+                t('librairieRegistration.error'),
+                error.response?.data?.message || t('librairieRegistration.errSubmitGeneric'),
             );
         } finally {
             setLoading(false);
         }
-    }, [formData, validateForm, navigation]);
+    }, [formData, validateForm, navigation, succursales, t]);
 
     return (
         <KeyboardAvoidingView
@@ -180,7 +267,7 @@ const LibrairieRegistrationScreen: React.FC = () => {
                 >
                     <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Devenir Libraire Partenaire</Text>
+                <Text style={styles.headerTitle}>{t('librairieRegistration.headerTitle')}</Text>
             </View>
 
             <ScrollView
@@ -190,19 +277,19 @@ const LibrairieRegistrationScreen: React.FC = () => {
             >
                 {/* Nom de la librairie */}
                 <View style={styles.formGroup}>
-                    <Text style={styles.label}>Nom de la librairie *</Text>
+                    <Text style={styles.label}>{t('librairieRegistration.labelBookstoreName')}</Text>
                     <TextInput
                         style={styles.input}
                         value={formData.nom}
                         onChangeText={(value) => updateFormData('nom', value)}
-                        placeholder="Ex: Librairie Excellence"
+                        placeholder={t('librairieRegistration.placeholderBookstoreName')}
                         placeholderTextColor={modernColors.textSecondary}
                     />
                 </View>
 
                 {/* Type de fournisseur */}
                 <View style={styles.formGroup}>
-                    <Text style={styles.label}>Type de fournisseur *</Text>
+                    <Text style={styles.label}>{t('librairieRegistration.labelSupplierType')}</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         {fournisseurTypes.map((type) => (
                             <TouchableOpacity
@@ -226,12 +313,12 @@ const LibrairieRegistrationScreen: React.FC = () => {
 
                 {/* Email */}
                 <View style={styles.formGroup}>
-                    <Text style={styles.label}>Email *</Text>
+                    <Text style={styles.label}>{t('librairieRegistration.labelEmail')}</Text>
                     <TextInput
                         style={styles.input}
                         value={formData.email}
                         onChangeText={(value) => updateFormData('email', value)}
-                        placeholder="contact@librairie.com"
+                        placeholder={t('librairieRegistration.placeholderEmail')}
                         keyboardType="email-address"
                         autoCapitalize="none"
                         placeholderTextColor={modernColors.textSecondary}
@@ -240,12 +327,12 @@ const LibrairieRegistrationScreen: React.FC = () => {
 
                 {/* Téléphone */}
                 <View style={styles.formGroup}>
-                    <Text style={styles.label}>Téléphone *</Text>
+                    <Text style={styles.label}>{t('librairieRegistration.labelPhone')}</Text>
                     <TextInput
                         style={styles.input}
                         value={formData.telephone}
                         onChangeText={(value) => updateFormData('telephone', value)}
-                        placeholder="+237 6 XX XX XX XX"
+                        placeholder={t('librairieRegistration.placeholderPhone')}
                         keyboardType="phone-pad"
                         placeholderTextColor={modernColors.textSecondary}
                     />
@@ -253,12 +340,12 @@ const LibrairieRegistrationScreen: React.FC = () => {
 
                 {/* Adresse */}
                 <View style={styles.formGroup}>
-                    <Text style={styles.label}>Adresse physique *</Text>
+                    <Text style={styles.label}>{t('librairieRegistration.labelAddress')}</Text>
                     <TextInput
                         style={[styles.input, styles.inputMultiline]}
                         value={formData.adresse}
                         onChangeText={(value) => updateFormData('adresse', value)}
-                        placeholder="Rue N°, Quartier, Ville..."
+                        placeholder={t('librairieRegistration.placeholderAddress')}
                         multiline
                         numberOfLines={3}
                         placeholderTextColor={modernColors.textSecondary}
@@ -267,34 +354,38 @@ const LibrairieRegistrationScreen: React.FC = () => {
 
                 {/* Ville */}
                 <View style={styles.formGroup}>
-                    <Text style={styles.label}>Ville *</Text>
+                    <Text style={styles.label}>{t('librairieRegistration.labelCity')}</Text>
                     <TextInput
                         style={styles.input}
                         value={formData.ville}
                         onChangeText={(value) => updateFormData('ville', value)}
-                        placeholder="Douala, Yaoundé, etc."
+                        placeholder={t('librairieRegistration.placeholderCity')}
                         placeholderTextColor={modernColors.textSecondary}
                     />
                 </View>
 
                 {/* Pays */}
                 <View style={styles.formGroup}>
-                    <Text style={styles.label}>Pays</Text>
+                    <Text style={styles.label}>{t('librairieRegistration.labelCountry')}</Text>
                     <TextInput
                         style={styles.input}
                         value={formData.pays}
                         onChangeText={(value) => updateFormData('pays', value)}
-                        placeholder="Cameroun"
+                        placeholder={t('librairieRegistration.placeholderCountry')}
                         placeholderTextColor={modernColors.textSecondary}
                     />
                 </View>
 
-                {/* Localisation GPS */}
+                {/* Localisation GPS — siège */}
                 <View style={styles.formGroup}>
-                    <Text style={styles.label}>Localisation GPS * </Text>
+                    <Text style={styles.label}>{t('librairieRegistration.labelHeadquartersGps')}</Text>
+                    <Text style={styles.hint}>{t('librairieRegistration.hintHeadquartersGps')}</Text>
                     <TouchableOpacity
                         style={styles.gpsButton}
-                        onPress={() => setShowGPSModal(true)}
+                        onPress={() => {
+                            setGpsTarget('main');
+                            setShowGPSModal(true);
+                        }}
                     >
                         <SafeIcon 
                             name={formData.gps_coordinates ? "check-circle" : "map-pin"} 
@@ -302,7 +393,7 @@ const LibrairieRegistrationScreen: React.FC = () => {
                             color={formData.gps_coordinates ? modernColors.success : modernColors.primary} 
                         />
                         <Text style={styles.gpsButtonText}>
-                            {formData.gps_coordinates ? 'Localisation enregistrée' : 'Sélectionner sur la carte'}
+                            {formData.gps_coordinates ? t('librairieRegistration.gpsSaved') : t('librairieRegistration.gpsPickOnMap')}
                         </Text>
                         <SafeIcon name="chevron-right" size={16} color={modernColors.textSecondary} />
                     </TouchableOpacity>
@@ -314,10 +405,73 @@ const LibrairieRegistrationScreen: React.FC = () => {
                     )}
                 </View>
 
+                {/* Succursales / points de représentation */}
+                <View style={styles.formGroup}>
+                    <View style={styles.rowBetween}>
+                        <Text style={styles.label}>{t('librairieRegistration.labelBranchesOptional')}</Text>
+                        <TouchableOpacity style={styles.addBranchBtn} onPress={addSuccursale}>
+                            <SafeIcon name="plus" size={18} color={modernColors.primary} />
+                            <Text style={[styles.addBranchText, { marginLeft: 6 }]}>{t('librairieRegistration.addBranch')}</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={styles.hint}>{t('librairieRegistration.hintBranches')}</Text>
+                    {succursales.map((s) => (
+                        <View key={s.id} style={styles.branchCard}>
+                            <View style={styles.rowBetween}>
+                                <Text style={styles.branchTitle}>{t('librairieRegistration.branchCardTitle')}</Text>
+                                <TouchableOpacity onPress={() => removeSuccursale(s.id)}>
+                                    <SafeIcon name="trash-2" size={18} color="#DC2626" />
+                                </TouchableOpacity>
+                            </View>
+                            <TextInput
+                                style={styles.input}
+                                value={s.libelle}
+                                onChangeText={(v) => updateSuccursale(s.id, 'libelle', v)}
+                                placeholder={t('librairieRegistration.placeholderBranchName')}
+                                placeholderTextColor={modernColors.textSecondary}
+                            />
+                            <TextInput
+                                style={[styles.input, { marginTop: 8 }]}
+                                value={s.adresse}
+                                onChangeText={(v) => updateSuccursale(s.id, 'adresse', v)}
+                                placeholder={t('librairieRegistration.placeholderBranchAddressOptional')}
+                                placeholderTextColor={modernColors.textSecondary}
+                            />
+                            <TextInput
+                                style={[styles.input, { marginTop: 8 }]}
+                                value={s.ville}
+                                onChangeText={(v) => updateSuccursale(s.id, 'ville', v)}
+                                placeholder={t('librairieRegistration.placeholderBranchCity')}
+                                placeholderTextColor={modernColors.textSecondary}
+                            />
+                            <TouchableOpacity
+                                style={[styles.gpsButton, { marginTop: 8 }]}
+                                onPress={() => {
+                                    setGpsTarget(s.id);
+                                    setShowGPSModal(true);
+                                }}
+                            >
+                                <SafeIcon
+                                    name={s.gps_coordinates ? 'check-circle' : 'map-pin'}
+                                    size={20}
+                                    color={s.gps_coordinates ? modernColors.success : modernColors.primary}
+                                />
+                                <Text style={styles.gpsButtonText}>
+                                    {s.gps_coordinates ? t('librairieRegistration.gpsRecorded') : t('librairieRegistration.placeOnMap')}
+                                </Text>
+                                <SafeIcon name="chevron-right" size={16} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                            {s.gps_coordinates ? (
+                                <Text style={styles.gpsCoordinates}>📍 {s.gps_coordinates}</Text>
+                            ) : null}
+                        </View>
+                    ))}
+                </View>
+
                 {/* Bouton de soumission */}
                 <View style={styles.submitContainer}>
                     <NativeButton
-                        title={loading ? "Inscription en cours..." : "S'inscrire"}
+                        title={loading ? t('librairieRegistration.submitting') : t('librairieRegistration.submitRegister')}
                         onPress={handleSubmit}
                         disabled={loading}
                         variant="primary"
@@ -337,10 +491,13 @@ const LibrairieRegistrationScreen: React.FC = () => {
             {/* Modal GPS */}
             <ModernGPSModal
                 visible={showGPSModal}
-                onClose={() => setShowGPSModal(false)}
+                onClose={() => {
+                    setShowGPSModal(false);
+                    setGpsTarget('main');
+                }}
                 onLocationSelected={handleGPSLocationSelected}
-                title="Localisation de la librairie"
-                subtitle="Sélectionnez l'emplacement exact de votre librairie"
+                title={gpsTarget === 'main' ? t('librairieRegistration.gpsModalTitleMain') : t('librairieRegistration.gpsModalTitleBranch')}
+                subtitle={t('librairieRegistration.gpsModalSubtitle')}
             />
         </KeyboardAvoidingView>
     );
@@ -442,6 +599,41 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         marginTop: 8,
         fontFamily: 'monospace',
+    },
+    hint: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        marginBottom: 10,
+        lineHeight: 18,
+    },
+    rowBetween: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    addBranchBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+    },
+    addBranchText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    branchCard: {
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: modernStyles.borderRadius.md,
+        padding: 12,
+        marginBottom: 12,
+        backgroundColor: modernColors.surface,
+    },
+    branchTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
     },
     submitContainer: {
         marginTop: 32,

@@ -524,7 +524,7 @@ const BookUploadV2Screen: React.FC = () => {
                         highlight={!is_rejected}
                     />
                     {analysis?.est_au_programme && (
-                        <DetailRow icon="award" label="Programme" value="Au programme scolaire officiel" highlight />
+                        <DetailRow icon="award" label="Référentiel" value="Manuels scolaires (source Yukpo)" highlight />
                     )}
                 </View>
 

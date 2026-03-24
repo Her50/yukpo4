@@ -10,12 +10,6 @@ lazy_static! {
     static ref EMAIL_REGEX: Regex = Regex::new(
         r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     ).unwrap();
-
-    /// Mot de passe fort: min 8 caractères, au moins une majuscule, une minuscule, un chiffre
-    #[allow(clippy::invalid_regex)]
-    static ref PASSWORD_REGEX: Regex = Regex::new(
-        r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$"
-    ).unwrap();
 }
 
 /// ✅ SÉCURITÉ: Valide un email

@@ -155,13 +155,27 @@ const BookPackagesScreen: React.FC<Props> = ({ mode = 'user' }) => {
                             ? t('bourseLivreV2.packages.livres_plural', { count: item.nombre_livres })
                             : t('bourseLivreV2.packages.livres', { count: item.nombre_livres })}
                     </Text>
-                    {livres.slice(0, 3).map((livre: any, idx: number) => (
-                        <View key={idx} style={styles.livreRow}>
-                            <SafeIcon name="book" size={12} color="#6b7280" />
-                            <Text style={styles.livreTitle} numberOfLines={1}>{livre.titre || `Livre #${livre.livre_id}`}</Text>
-                            <Text style={styles.livreValue}>{Math.round(livre.valeur || 0)} XAF</Text>
-                        </View>
-                    ))}
+                    {livres.slice(0, 3).map((livre: any, idx: number) => {
+                        const ta = String(livre.type_article || '').toLowerCase();
+                        const icon =
+                            ta === 'cahier' ? 'book-open' : ta === 'fourniture' ? 'package' : 'book';
+                        const taLabel =
+                            ta === 'cahier' ? 'Cahier' : ta === 'fourniture' ? 'Fourniture' : 'Livre';
+                        return (
+                            <View key={idx} style={styles.livreRow}>
+                                <SafeIcon name={icon as any} size={12} color="#6b7280" />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.livreTitle} numberOfLines={1}>
+                                        {livre.titre || `${taLabel} #${livre.livre_id}`}
+                                    </Text>
+                                    {!!livre.matiere && (
+                                        <Text style={styles.livreMatiere} numberOfLines={1}>{livre.matiere}</Text>
+                                    )}
+                                </View>
+                                <Text style={styles.livreValue}>{Math.round(livre.valeur || 0)} XAF</Text>
+                            </View>
+                        );
+                    })}
                     {livres.length > 3 && (
                         <Text style={styles.moreBooks}>{t('bourseLivreV2.packages.autresLivres', { count: livres.length - 3 })}</Text>
                     )}
@@ -426,8 +440,9 @@ const styles = StyleSheet.create({
 
     booksSection: { marginBottom: 12 },
     booksCount: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
-    livreRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 },
-    livreTitle: { flex: 1, fontSize: 12, color: '#6b7280' },
+    livreRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingVertical: 3 },
+    livreTitle: { fontSize: 12, color: '#6b7280' },
+    livreMatiere: { fontSize: 10, color: '#9ca3af', marginTop: 2 },
     livreValue: { fontSize: 12, fontWeight: '600', color: '#374151' },
     moreBooks: { fontSize: 11, color: '#9ca3af', fontStyle: 'italic', marginTop: 4 },
 

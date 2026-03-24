@@ -108,7 +108,7 @@ const TaxiHomeScreen: React.FC = () => {
     // ✅ NOUVEAU: État pour tracker quel champ LocationSelector est actif (pour gérer les z-index)
     const [activeLocationField, setActiveLocationField] = useState<'depart' | 'destination' | null>(null);
     const [taxis, setTaxis] = useState<Taxi[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [totalResults, setTotalResults] = useState(0);

@@ -4,9 +4,10 @@
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::models::livre_scolaire::{
-    calculer_montant_net, calculer_valeur_livre, generer_reference_paquet, BookDeliveryPackage,
-    BookDonationRequest, BookUploadSession, CreateDonationRequestPayload,
-    CreateProgrammeScolaireRequest, CreateUploadSessionRequest, ProgrammeScolaire,
+    calculer_montant_net, calculer_valeur_livre, generer_reference_paquet,
+    infer_type_article_from_matiere, BookDeliveryPackage, BookDonationRequest, BookUploadSession,
+    CreateDonationRequestPayload, CreateProgrammeScolaireRequest, CreateUploadSessionRequest,
+    LivreExtraitProgramme, ProgrammeScolaire,
 };
 use crate::services::book_exchange_ai_service::BookExchangeAIService;
 use crate::state::AppState;
@@ -20,6 +21,7 @@ use axum::{
 use log::{error, info, warn};
 use serde::Deserialize;
 use serde_json::json;
+use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -604,59 +606,147 @@ pub struct ProgrammesQuery {
     pub matiere: Option<String>,
     pub niveau: Option<String>,
     pub pays: Option<String>,
+    /// Si présent avec `classe` : fusionne programme établissement + référentiel national (Yukpo), l’établissement prime sur (matière, titre).
+    pub etablissement_id: Option<i32>,
+}
+
+/// Référentiel national : lignes sans rattachement établissement.
+fn merge_programmes_etablissement_puis_national(
+    etablissement: Vec<ProgrammeScolaire>,
+    national: Vec<ProgrammeScolaire>,
+) -> Vec<ProgrammeScolaire> {
+    let mut by_key: HashMap<(String, String), ProgrammeScolaire> = HashMap::new();
+    for p in national {
+        let k = (p.matiere.to_lowercase(), p.titre_livre.to_lowercase());
+        by_key.entry(k).or_insert(p);
+    }
+    for p in etablissement {
+        let k = (p.matiere.to_lowercase(), p.titre_livre.to_lowercase());
+        by_key.insert(k, p);
+    }
+    let mut out: Vec<_> = by_key.into_values().collect();
+    out.sort_by(|a, b| {
+        a.classe
+            .cmp(&b.classe)
+            .then_with(|| a.matiere.cmp(&b.matiere))
+            .then_with(|| a.titre_livre.cmp(&b.titre_livre))
+    });
+    out
 }
 
 pub async fn get_programmes_scolaires(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ProgrammesQuery>,
 ) -> AppResult<impl IntoResponse> {
-    let mut conditions = vec!["is_active = true".to_string()];
-    let mut param_idx = 1;
+    let programmes = if params.classe.is_some() && params.etablissement_id.is_some() {
+        let classe = params.classe.as_ref().unwrap().clone();
+        let eid = params.etablissement_id.unwrap();
 
-    if params.classe.is_some() {
-        conditions.push(format!("classe = ${}", param_idx));
-        param_idx += 1;
-    }
-    if params.matiere.is_some() {
-        conditions.push(format!("matiere = ${}", param_idx));
-        param_idx += 1;
-    }
-    if params.niveau.is_some() {
-        conditions.push(format!("niveau = ${}", param_idx));
-        param_idx += 1;
-    }
-    if params.pays.is_some() {
-        conditions.push(format!("pays = ${}", param_idx));
-        // param_idx += 1; // unused after this
-    }
+        let mut cond_etab = vec!["is_active = true".to_string(), "classe = $1".to_string()];
+        cond_etab.push(format!("etablissement_id = ${}", 2));
+        let mut p = 3;
+        if params.matiere.is_some() {
+            cond_etab.push(format!("matiere = ${}", p));
+            p += 1;
+        }
+        if params.niveau.is_some() {
+            cond_etab.push(format!("niveau = ${}", p));
+        }
+        let sql_etab = format!(
+            "SELECT * FROM programmes_scolaires WHERE {} ORDER BY matiere, titre_livre",
+            cond_etab.join(" AND ")
+        );
+        let mut q_etab = sqlx::query_as::<_, ProgrammeScolaire>(&sql_etab).bind(&classe).bind(eid);
+        if let Some(m) = &params.matiere {
+            q_etab = q_etab.bind(m);
+        }
+        if let Some(n) = &params.niveau {
+            q_etab = q_etab.bind(n);
+        }
+        let etab_rows = q_etab.fetch_all(&state.pg).await.unwrap_or_default();
 
-    let sql = format!(
-        "SELECT * FROM programmes_scolaires WHERE {} ORDER BY classe, matiere",
-        conditions.join(" AND ")
-    );
+        let mut cond_nat = vec![
+            "is_active = true".to_string(),
+            "classe = $1".to_string(),
+            "etablissement_id IS NULL".to_string(),
+        ];
+        let mut next = 2;
+        if params.matiere.is_some() {
+            cond_nat.push(format!("matiere = ${}", next));
+            next += 1;
+        }
+        if params.niveau.is_some() {
+            cond_nat.push(format!("niveau = ${}", next));
+            next += 1;
+        }
+        if params.pays.is_some() {
+            cond_nat.push(format!("pays = ${}", next));
+        }
+        let sql_nat = format!(
+            "SELECT * FROM programmes_scolaires WHERE {} ORDER BY matiere, titre_livre",
+            cond_nat.join(" AND ")
+        );
+        let mut q_nat = sqlx::query_as::<_, ProgrammeScolaire>(&sql_nat).bind(&classe);
+        if let Some(m) = &params.matiere {
+            q_nat = q_nat.bind(m);
+        }
+        if let Some(n) = &params.niveau {
+            q_nat = q_nat.bind(n);
+        }
+        if let Some(p) = &params.pays {
+            q_nat = q_nat.bind(p);
+        }
+        let nat_rows = q_nat.fetch_all(&state.pg).await.unwrap_or_default();
 
-    let mut query = sqlx::query_as::<_, ProgrammeScolaire>(&sql);
-    if let Some(classe) = &params.classe {
-        query = query.bind(classe);
-    }
-    if let Some(matiere) = &params.matiere {
-        query = query.bind(matiere);
-    }
-    if let Some(niveau) = &params.niveau {
-        query = query.bind(niveau);
-    }
-    if let Some(pays) = &params.pays {
-        query = query.bind(pays);
-    }
+        merge_programmes_etablissement_puis_national(etab_rows, nat_rows)
+    } else {
+        let mut conditions = vec!["is_active = true".to_string()];
+        let mut param_idx = 1;
 
-    let programmes = match query.fetch_all(&state.pg).await {
-        Ok(p) => p,
-        Err(e) => {
-            log::warn!(
-                "[get_programmes_scolaires] DB error (table may not exist yet): {}",
-                e
-            );
-            vec![]
+        if params.classe.is_some() {
+            conditions.push(format!("classe = ${}", param_idx));
+            param_idx += 1;
+        }
+        if params.matiere.is_some() {
+            conditions.push(format!("matiere = ${}", param_idx));
+            param_idx += 1;
+        }
+        if params.niveau.is_some() {
+            conditions.push(format!("niveau = ${}", param_idx));
+            param_idx += 1;
+        }
+        if params.pays.is_some() {
+            conditions.push(format!("pays = ${}", param_idx));
+        }
+
+        let sql = format!(
+            "SELECT * FROM programmes_scolaires WHERE {} ORDER BY classe, matiere",
+            conditions.join(" AND ")
+        );
+
+        let mut query = sqlx::query_as::<_, ProgrammeScolaire>(&sql);
+        if let Some(classe) = &params.classe {
+            query = query.bind(classe);
+        }
+        if let Some(matiere) = &params.matiere {
+            query = query.bind(matiere);
+        }
+        if let Some(niveau) = &params.niveau {
+            query = query.bind(niveau);
+        }
+        if let Some(pays) = &params.pays {
+            query = query.bind(pays);
+        }
+
+        match query.fetch_all(&state.pg).await {
+            Ok(p) => p,
+            Err(e) => {
+                log::warn!(
+                    "[get_programmes_scolaires] DB error (table may not exist yet): {}",
+                    e
+                );
+                vec![]
+            }
         }
     };
 
@@ -714,7 +804,9 @@ pub async fn create_delivery_package(
             "livre_id": livre.id,
             "titre": livre.titre,
             "valeur": valeur,
-            "mode": livre.mode_listing
+            "mode": livre.mode_listing,
+            "matiere": livre.matiere,
+            "type_article": infer_type_article_from_matiere(&livre.matiere)
         }));
 
         valeur_totale += valeur;
@@ -896,6 +988,7 @@ pub async fn get_package_detail_for_courier(
                         "titre": livre_db.titre,
                         "auteur": livre_db.auteur,
                         "matiere": livre_db.matiere,
+                        "type_article": infer_type_article_from_matiere(&livre_db.matiere),
                         "classe_actuelle": livre_db.classe_actuelle,
                         "classe_souhaitee": livre_db.classe_souhaitee,
                         "etat_livre": livre_db.etat_livre,
@@ -1482,6 +1575,17 @@ pub async fn calculate_net_amount(
     })))
 }
 
+fn matiere_avec_type_article(l: &LivreExtraitProgramme) -> String {
+    let base = l.matiere.clone().unwrap_or_else(|| "-".to_string());
+    match l.type_article.as_deref().map(|s| s.to_lowercase()).as_deref() {
+        Some("cahier") => format!("[Cahier] {}", base),
+        Some("fourniture") | Some("fournitures") => format!("[Fourniture] {}", base),
+        Some("livre") | None => base,
+        Some(other) if !other.is_empty() && other != "livre" => format!("[{}] {}", other, base),
+        _ => base,
+    }
+}
+
 // ============================================================================
 // UPLOAD FICHIER PROGRAMME SCOLAIRE (ADMIN)
 // ============================================================================
@@ -1598,6 +1702,7 @@ pub async fn upload_programme_file(
 
             // Créer automatiquement des entrées individuelles pour chaque livre extrait
             for livre in &result.livres {
+                let matiere_row = matiere_avec_type_article(livre);
                 let _ = sqlx::query(
                     r#"
                     INSERT INTO programmes_scolaires (
@@ -1622,7 +1727,7 @@ pub async fn upload_programme_file(
                 .bind(&payload.niveau)
                 .bind(&livre.classe)
                 .bind(&payload.classe)
-                .bind(&livre.matiere)
+                .bind(&matiere_row)
                 .bind(&livre.titre)
                 .bind(&livre.auteur)
                 .bind(&livre.editeur)
@@ -1674,6 +1779,409 @@ pub async fn upload_programme_file(
             ))
         }
     }
+}
+
+// ============================================================================
+// SOUMISSION MANUELS SCOLAIRES ÉTABLISSEMENT (mobile — App IA / Yukpo)
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct SubmitProgrammeFichierIn {
+    pub nom: String,
+    #[serde(rename = "type")]
+    pub file_type: String,
+    pub base64: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SubmitProgrammesEtablissementRequest {
+    pub nom_etablissement: String,
+    pub pays: Option<String>,
+    pub ville: Option<String>,
+    pub niveaux: Vec<String>,
+    pub annee_scolaire: String,
+    pub commentaire: Option<String>,
+    pub gps_coords: Option<String>,
+    pub gps_address: Option<String>,
+    /// Si l'établissement existe déjà dans Yukpo (orientation).
+    pub etablissement_id: Option<i32>,
+    /// Rayon (km) pour cibler les librairies partenaires (défaut 75, max 300).
+    #[serde(default)]
+    pub notification_radius_km: Option<f64>,
+    pub fichiers: Vec<SubmitProgrammeFichierIn>,
+}
+
+#[derive(sqlx::FromRow)]
+struct PartnerGeoRow {
+    id: i32,
+    gps: Option<String>,
+    etab_ville: Option<String>,
+    book_ville: Option<String>,
+}
+
+/// Clé de comparaison ville : minuscules, sans accents (NFD + retrait des marques combinantes), espaces normalisés.
+fn ville_key_for_match(s: &str) -> String {
+    use unicode_normalization::UnicodeNormalization;
+    s.trim()
+        .nfd()
+        .filter(|c| !unicode_normalization::char::is_combining_mark(*c))
+        .collect::<String>()
+        .to_lowercase()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn ville_matches_hint(partner_city: &str, hint: &str) -> bool {
+    let a = ville_key_for_match(partner_city);
+    let b = ville_key_for_match(hint);
+    if a.is_empty() || b.is_empty() {
+        return false;
+    }
+    a == b || a.contains(&b) || b.contains(&a)
+}
+
+fn parse_lat_lng_coords(s: &str) -> Option<(f64, f64)> {
+    let parts: Vec<&str> = s.split(',').map(|p| p.trim()).filter(|p| !p.is_empty()).collect();
+    if parts.len() >= 2 {
+        let lat = parts[0].parse().ok()?;
+        let lng = parts[1].parse().ok()?;
+        return Some((lat, lng));
+    }
+    None
+}
+
+fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
+    const R: f64 = 6371.0;
+    let d_lat = (lat2 - lat1).to_radians();
+    let d_lon = (lon2 - lon1).to_radians();
+    let a = (d_lat / 2.0).sin().powi(2)
+        + lat1.to_radians().cos() * lat2.to_radians().cos() * (d_lon / 2.0).sin().powi(2);
+    let c = 2.0 * a.sqrt().atan2((1.0 - a).max(0.0).sqrt());
+    R * c
+}
+
+/// Un couple (gps, ville) issu du profil utilisateur, de `librairie_partners` ou de `librairie_lieux` (succursales).
+fn partner_point_matches(
+    ville_hint: Option<&str>,
+    origin: Option<(f64, f64)>,
+    radius_km: f64,
+    gps: &Option<String>,
+    ville: &Option<String>,
+) -> bool {
+    if let Some(hint) = ville_hint.filter(|h| !h.trim().is_empty()) {
+        if let Some(v) = ville {
+            if ville_matches_hint(v, hint) {
+                return true;
+            }
+        }
+    }
+    if let Some((olat, olng)) = origin {
+        if let Some(g) = gps {
+            if let Some((lat, lng)) = parse_lat_lng_coords(g) {
+                if haversine_km(olat, olng, lat, lng) <= radius_km {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Librairies dans la même ville (établissement, annonce livre, fiche partenaire, **succursales**) ou dans le rayon GPS sur **un** des points ; sinon repli global.
+async fn librairie_partner_ids_geo_filtered(
+    pool: &sqlx::PgPool,
+    ville_hint: Option<&str>,
+    origin: Option<(f64, f64)>,
+    radius_km: f64,
+    fallback_limit: i64,
+) -> Vec<i32> {
+    let rows: Vec<PartnerGeoRow> = sqlx::query_as(
+        r#"
+        SELECT u.id, u.gps,
+          (SELECT e.ville FROM etablissements_scolaires e WHERE e.user_id = u.id ORDER BY e.id DESC LIMIT 1) AS etab_ville,
+          (SELECT ls.ville FROM livres_scolaires ls WHERE ls.user_id = u.id AND ls.ville IS NOT NULL AND TRIM(ls.ville) <> '' ORDER BY ls.id DESC LIMIT 1) AS book_ville
+        FROM users u
+        WHERE LOWER(COALESCE(u.partner_type, '')) IN ('librairie', 'libraire', 'livrescolaire', 'livre_scolaire')
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    if rows.is_empty() {
+        return vec![];
+    }
+
+    let user_ids: Vec<i32> = rows.iter().map(|r| r.id).collect();
+
+    let lp_points: Vec<(i32, Option<String>, Option<String>)> = sqlx::query_as(
+        r#"SELECT user_id, gps, ville FROM librairie_partners WHERE user_id = ANY($1)"#,
+    )
+    .bind(&user_ids)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    let lieu_points: Vec<(i32, Option<String>, Option<String>)> = sqlx::query_as(
+        r#"
+        SELECT lp.user_id, ll.gps, ll.ville
+        FROM librairie_lieux ll
+        INNER JOIN librairie_partners lp ON lp.id = ll.librairie_partner_id
+        WHERE lp.user_id = ANY($1)
+        "#,
+    )
+    .bind(&user_ids)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    let mut extra: HashMap<i32, Vec<(Option<String>, Option<String>)>> = HashMap::new();
+    for (uid, g, v) in lp_points.into_iter().chain(lieu_points.into_iter()) {
+        extra.entry(uid).or_default().push((g, v));
+    }
+
+    let mut matched: Vec<i32> = Vec::new();
+    for r in &rows {
+        let mut pts: Vec<(Option<String>, Option<String>)> = vec![
+            (r.gps.clone(), None),
+            (None, r.etab_ville.clone()),
+            (None, r.book_ville.clone()),
+        ];
+        if let Some(v) = extra.get(&r.id) {
+            pts.extend(v.iter().cloned());
+        }
+
+        let hit = pts
+            .iter()
+            .any(|(g, v)| partner_point_matches(ville_hint, origin, radius_km, g, v));
+        if hit {
+            matched.push(r.id);
+        }
+    }
+
+    if matched.is_empty() {
+        rows.into_iter().map(|r| r.id).take(fallback_limit.max(0) as usize).collect()
+    } else {
+        matched.into_iter().take(120).collect()
+    }
+}
+
+fn strip_data_url_base64(input: &str) -> (String, Option<String>) {
+    if let Some(rest) = input.strip_prefix("data:") {
+        if let Some((meta, b64)) = rest.split_once(',') {
+            return (b64.to_string(), Some(meta.to_string()));
+        }
+    }
+    (input.to_string(), None)
+}
+
+fn infer_file_type_from_client_and_mime(client: &str, meta: Option<&String>) -> &'static str {
+    let c = client.to_lowercase();
+    if c == "pdf" {
+        return "pdf";
+    }
+    if c == "document" || c.contains("excel") || c.contains("sheet") {
+        return "excel";
+    }
+    if c == "image" {
+        return "image";
+    }
+    if let Some(m) = meta {
+        let ml = m.to_lowercase();
+        if ml.contains("pdf") {
+            return "pdf";
+        }
+        if ml.contains("spreadsheet")
+            || ml.contains("excel")
+            || ml.contains("sheet")
+            || ml.contains("ms-excel")
+        {
+            return "excel";
+        }
+    }
+    "image"
+}
+
+/// POST /api/bourse-livre/v2/programmes-scolaires/submit
+/// Établissement envoie PDF / Excel / images — extraction IA (AppIA) comme l'admin, rattachement optionnel `etablissement_id`.
+pub async fn submit_programmes_scolaires_etablissement(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<SubmitProgrammesEtablissementRequest>,
+) -> AppResult<impl IntoResponse> {
+    if payload.fichiers.is_empty() {
+        return Err(AppError::BadRequest("Aucun fichier fourni".to_string()));
+    }
+    if payload.niveaux.is_empty() {
+        return Err(AppError::BadRequest(
+            "Sélectionnez au moins un niveau".to_string(),
+        ));
+    }
+
+    let niveau_label = payload.niveaux.join(", ");
+    let periode = payload.annee_scolaire.clone();
+    let pays = payload.pays.clone().unwrap_or_else(|| "Cameroun".to_string());
+    let etab_id = payload.etablissement_id;
+
+    let ai_service = BookExchangeAIService::new(state.ia.clone());
+    let mut total_inserted = 0i32;
+    let mut extractions = Vec::new();
+
+    for f in &payload.fichiers {
+        let (raw_b64, meta) = strip_data_url_base64(&f.base64);
+        let file_kind = infer_file_type_from_client_and_mime(&f.file_type, meta.as_ref());
+
+        let extraction = ai_service
+            .extract_programme_from_file(&raw_b64, file_kind, &niveau_label, &periode, None)
+            .await;
+
+        let result = match extraction {
+            Ok(r) => r,
+            Err(e) => {
+                warn!(
+                    "[submit_programmes_etab] extraction fichier {}: {}",
+                    f.nom, e
+                );
+                continue;
+            }
+        };
+
+        extractions.push(json!({
+            "fichier": f.nom,
+            "nombre": result.nombre_total,
+            "confidence": result.confidence,
+        }));
+
+        for livre in &result.livres {
+            let matiere = matiere_avec_type_article(livre);
+            let classe = livre.classe.clone().or_else(|| Some("Toutes".to_string())).unwrap();
+
+            let prix = livre.prix_officiel.and_then(rust_decimal::Decimal::from_f64_retain);
+
+            let ins = sqlx::query(
+                r#"
+                INSERT INTO programmes_scolaires (
+                    pays, systeme_educatif, niveau, classe, matiere, titre_livre,
+                    auteur_livre, editeur_livre, isbn_livre,
+                    annee_scolaire, est_obligatoire, prix_officiel, is_active, created_by,
+                    periode_academique, extraction_status, etablissement_id
+                )
+                VALUES (
+                    $1, 'francophone', $2, $3, $4, $5,
+                    $6, $7, $8,
+                    $9, COALESCE($10, true), $11, true, $12,
+                    $13, 'done', $14
+                )
+                ON CONFLICT DO NOTHING
+                "#,
+            )
+            .bind(&pays)
+            .bind(&niveau_label)
+            .bind(&classe)
+            .bind(&matiere)
+            .bind(&livre.titre)
+            .bind(&livre.auteur)
+            .bind(&livre.editeur)
+            .bind(&livre.isbn)
+            .bind(&periode)
+            .bind(livre.est_obligatoire)
+            .bind(prix)
+            .bind(user_id as i32)
+            .bind(&periode)
+            .bind(etab_id)
+            .execute(&state.pg)
+            .await;
+
+            if let Ok(r) = ins {
+                total_inserted += r.rows_affected() as i32;
+            }
+        }
+    }
+
+    if extractions.is_empty() {
+        return Err(AppError::BadRequest(
+            "Impossible d'analyser les fichiers (IA). Réessayez avec un PDF ou une image plus lisible."
+                .to_string(),
+        ));
+    }
+
+    // Notifications librairies (ville / rayon GPS) — si au moins une ligne insérée
+    let notifications_librairies = if total_inserted > 0 {
+        let nom_etab = payload.nom_etablissement.trim();
+        let radius_km = payload.notification_radius_km.unwrap_or(75.0).clamp(5.0, 300.0);
+
+        let mut ville_owned = payload.ville.clone();
+        let mut origin = payload.gps_coords.as_deref().and_then(parse_lat_lng_coords);
+
+        if let Some(eid) = etab_id {
+            if let Ok(Some(row)) = sqlx::query_as::<_, (Option<String>, String)>(
+                "SELECT gps, ville FROM etablissements_scolaires WHERE id = $1",
+            )
+            .bind(eid)
+            .fetch_optional(&state.pg)
+            .await
+            {
+                let (g, v) = row;
+                if ville_owned.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true) {
+                    ville_owned = Some(v);
+                }
+                if origin.is_none() {
+                    if let Some(ref gs) = g {
+                        origin = parse_lat_lng_coords(gs);
+                    }
+                }
+            }
+        }
+
+        let ville_hint = ville_owned.as_deref().filter(|s| !s.trim().is_empty());
+        let lib_ids =
+            librairie_partner_ids_geo_filtered(&state.pg, ville_hint, origin, radius_km, 120).await;
+
+        let n = lib_ids.len();
+        let filt_geo = ville_hint.is_some() || origin.is_some();
+
+        for uid in lib_ids {
+            let title = "Liste de manuels — Bourse du livre";
+            let body = format!(
+                "L'établissement « {} » a déposé une liste de manuels/fournitures ({}). Mettez à jour vos disponibilités (livres, cahiers…) dans Yukpo.",
+                nom_etab, periode
+            );
+            let data = json!({
+                "kind": "bourse_manuels_etablissement",
+                "nom_etablissement": nom_etab,
+                "annee_scolaire": periode,
+                "ville": payload.ville,
+                "i18n_key": "bourse_manuels_etablissement",
+                "filtre_geographique": filt_geo,
+                "rayon_km": radius_km,
+                "succursales_librairies_incluses": true
+            })
+            .to_string();
+            let _ = sqlx::query(
+                r#"INSERT INTO notifications (user_id, type, title, body, data, created_at)
+                   VALUES ($1, $2, $3, $4, $5, NOW())"#,
+            )
+            .bind(uid)
+            .bind("bourse_manuels_etablissement")
+            .bind(title)
+            .bind(&body)
+            .bind(&data)
+            .execute(&state.pg)
+            .await;
+        }
+        n
+    } else {
+        0
+    };
+
+    Ok(Json(json!({
+        "success": true,
+        "message": format!("{} ligne(s) enregistrée(s) dans le référentiel Yukpo (après extraction IA).", total_inserted),
+        "lignes_inserees": total_inserted,
+        "extractions": extractions,
+        "notifications_librairies": notifications_librairies,
+    })))
 }
 
 // ============================================================================
@@ -5756,6 +6264,8 @@ pub struct TeamValidateOrderRequest {
     pub package_id: Option<i32>,
     pub purchase_id: Option<i32>,
     pub action: String, // "en_preparation", "constitue", "pret"
+    pub librairie_lieu_id: Option<i32>,
+    pub stock_disponible_succursale: Option<bool>,
 }
 
 pub async fn team_validate_order(
@@ -5773,7 +6283,7 @@ pub async fn team_validate_order(
     .ok()
     .flatten();
 
-    let (_librairie_id, role) = member_info.ok_or_else(|| {
+    let (librairie_id, role) = member_info.ok_or_else(|| {
         AppError::Forbidden("Non autorisé — rôle preparer minimum requis".to_string())
     })?;
 
@@ -5792,6 +6302,91 @@ pub async fn team_validate_order(
             "constitue" | "pret" => "constitue",
             _ => "a_constituer",
         };
+
+        if matches!(payload.action.as_str(), "constitue" | "pret") {
+            let lieu_id = payload.librairie_lieu_id.ok_or_else(|| {
+                AppError::BadRequest(
+                    "Sélectionnez la succursale concernée avant validation. Si cette succursale n'a pas le stock, ne validez pas la commande.".to_string(),
+                )
+            })?;
+            if payload.stock_disponible_succursale != Some(true) {
+                return Err(AppError::BadRequest(
+                    "Stock indisponible sur la succursale sélectionnée: validation refusée. Choisissez une autre succursale ou laissez le statut en préparation.".to_string(),
+                ));
+            }
+
+            let owner_user_id: i32 = sqlx::query_scalar(
+                "SELECT user_id FROM libraire_team_members WHERE librairie_id = $1 AND role = 'owner' AND is_active = true LIMIT 1",
+            )
+            .bind(librairie_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification owner librairie: {}", e)))?
+            .ok_or_else(|| AppError::Forbidden("Owner librairie introuvable".to_string()))?;
+
+            let lieu: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
+                r#"
+                SELECT ll.libelle, ll.gps, ll.adresse
+                FROM librairie_lieux ll
+                INNER JOIN librairie_partners lp ON lp.id = ll.librairie_partner_id
+                WHERE ll.id = $1 AND lp.user_id = $2
+                LIMIT 1
+                "#,
+            )
+            .bind(lieu_id)
+            .bind(owner_user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification succursale: {}", e)))?;
+
+            let (succursale_label, succ_gps, succ_addr) = lieu.ok_or_else(|| {
+                AppError::BadRequest(
+                    "Succursale invalide pour cette librairie. Vérifiez la sélection avant validation."
+                        .to_string(),
+                )
+            })?;
+
+            let updated = sqlx::query_scalar::<_, i32>(
+                r#"
+                UPDATE book_delivery_packages
+                SET statut = $1,
+                    date_constitution = CASE WHEN $1 = 'constitue' THEN NOW() ELSE date_constitution END,
+                    librairie_lieu_id = $2,
+                    succursale_label = $3,
+                    stock_disponible_succursale = true,
+                    expediteur_gps = COALESCE($4, expediteur_gps),
+                    expediteur_adresse = COALESCE($5, expediteur_adresse),
+                    updated_at = NOW()
+                WHERE id = $6
+                RETURNING id
+                "#,
+            )
+            .bind(new_status)
+            .bind(lieu_id)
+            .bind(&succursale_label)
+            .bind(succ_gps)
+            .bind(succ_addr)
+            .bind(pkg_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur MAJ paquet (succursale): {}", e)))?;
+
+            if updated.is_none() {
+                return Err(AppError::NotFound("Paquet non trouvé".to_string()));
+            }
+
+            return Ok(Json(json!({
+                "success": true,
+                "type": "package",
+                "id": pkg_id,
+                "new_status": new_status,
+                "validated_by": user_id,
+                "role": role,
+                "librairie_lieu_id": lieu_id,
+                "succursale_label": succursale_label,
+                "message": "Commande validée sur la succursale sélectionnée."
+            })));
+        }
 
         let updated = sqlx::query_scalar::<_, i32>(
             "UPDATE book_delivery_packages SET statut = $1, date_constitution = CASE WHEN $1 = 'constitue' THEN NOW() ELSE date_constitution END, updated_at = NOW() WHERE id = $2 RETURNING id",
@@ -5817,7 +6412,8 @@ pub async fn team_validate_order(
             "id": pkg_id,
             "new_status": new_status,
             "validated_by": user_id,
-            "role": role
+            "role": role,
+            "message": "Commande mise en préparation."
         })));
     }
 
@@ -5931,6 +6527,7 @@ pub async fn team_get_package_detail(
                         "editeur": livre.editeur,
                         "isbn": livre.isbn,
                         "matiere": livre.matiere,
+                        "type_article": infer_type_article_from_matiere(&livre.matiere),
                         "classe_actuelle": livre.classe_actuelle,
                         "etat_livre": livre.etat_livre,
                         "etat_classification": livre.etat_classification,
@@ -5969,6 +6566,9 @@ pub async fn team_get_package_detail(
             "id": package.id,
             "reference": package.reference,
             "statut": package.statut,
+            "librairie_lieu_id": package.librairie_lieu_id,
+            "succursale_label": package.succursale_label,
+            "stock_disponible_succursale": package.stock_disponible_succursale,
             "nombre_livres": package.nombre_livres,
             "valeur_totale": package.valeur_totale,
             "frais_livraison": package.frais_livraison,

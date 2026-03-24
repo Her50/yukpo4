@@ -494,6 +494,7 @@ const NavigationScreen: React.FC = () => {
         isAlertsSuspended, redirectToRecharge,
         isNavigationFreePeriod, navigationFreeUntilLabel,
     } = useNavigationPayment();
+    const isCoachNotificationsEligible = isCoachingActive || isNavigationFreePeriod;
 
     // Toasts discrets pour infos paiement (au lieu de bannières permanentes)
     useFocusEffect(
@@ -624,6 +625,7 @@ const NavigationScreen: React.FC = () => {
     const [alertToast, setAlertToast] = useState<{ visible: boolean; message: string; icon: string; color: string }>({ visible: false, message: '', icon: '', color: '' });
     const alertToastAnim = useRef(new Animated.Value(0)).current;
     const paymentToastShownRef = useRef(false);
+    const coachInstantLastSentRef = useRef<Record<string, number>>({});
     const routeCardWidth = width * 0.72 + 10;
     const mapRef = useRef<MapView>(null);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -1384,6 +1386,35 @@ const NavigationScreen: React.FC = () => {
                         if (ar?.data?.success) {
                             console.log('[Navigation] Setting AI insights:', ar.data);
                             setAiInsights(ar.data);
+                            if (isCoachNotificationsEligible) {
+                                const now = Date.now();
+                                const cooldownMs = 6 * 60 * 60 * 1000; // anti-spam 6h/type
+                                const sendWithCooldown = async (
+                                    key: string,
+                                    type: 'health_alert' | 'streak_reminder' | 'challenge_progress' | 'eco_milestone',
+                                    extra?: Record<string, any>
+                                ) => {
+                                    const last = coachInstantLastSentRef.current[key] || 0;
+                                    if (now - last < cooldownMs) return;
+                                    await coachingNotificationService.sendInstant(type, extra);
+                                    coachInstantLastSentRef.current[key] = now;
+                                };
+                                const hs = ar.data?.health_score || {};
+                                const gam = ar.data?.gamification || {};
+                                const co2 = ar.data?.co2_impact || {};
+                                const hsScore = Number(hs.score) || 0;
+                                const streak = Number(gam.current_streak) || 0;
+                                const points = Number(gam.total_points) || 0;
+                                const co2Saved = Number(co2.saved_kg) || 0;
+                                if (hsScore > 0 && hsScore < 50) {
+                                    await sendWithCooldown('health_alert', 'health_alert', { score: hsScore, period });
+                                } else if (streak >= 3 || points >= 100) {
+                                    await sendWithCooldown('challenge_progress', 'challenge_progress', { streak, points, period });
+                                }
+                                if (co2Saved >= 5) {
+                                    await sendWithCooldown('eco_milestone', 'eco_milestone', { co2_saved_kg: co2Saved, period });
+                                }
+                            }
                         } else {
                             console.log('[Navigation] AI insights not successful or missing');
                         }
@@ -1399,7 +1430,7 @@ const NavigationScreen: React.FC = () => {
         } finally {
             setLoadingActivity(false);
         }
-    }, [payMicroFeature, redirectToRecharge, loadCoachingNotificationHistory]);
+    }, [payMicroFeature, redirectToRecharge, loadCoachingNotificationHistory, isCoachNotificationsEligible]);
     const estimateCalories = useCallback((dKm: number, dMin: number, mode: string, spd: number) => {
         let met = mode === 'walking' ? (spd < 4 ? 2.5 : spd < 5.5 ? 3.5 : spd < 7 ? 4.5 : 6.0) : mode === 'bicycling' ? (spd < 16 ? 4.0 : spd < 20 ? 6.8 : spd < 25 ? 8.0 : 10.0) : mode === 'transit' ? 1.3 : 1.5;
         return (met * 70 * dMin) / 60;
@@ -1746,6 +1777,18 @@ const NavigationScreen: React.FC = () => {
                     was_off_route: false,
                     started_at: st || new Date().toISOString(),
                 });
+                if (isCoachNotificationsEligible) {
+                    await coachingNotificationService.recordActivity().catch(() => { });
+                    if (dKm >= 1.5 || Math.round(cal) >= 120 || qual >= 70) {
+                        await coachingNotificationService.sendInstant('challenge_progress', {
+                            period: 'today',
+                            distance_km: Number(dKm.toFixed(2)),
+                            calories: Math.round(cal),
+                            quality_score: qual,
+                            free_launch: isNavigationFreePeriod,
+                        }).catch(() => { });
+                    }
+                }
                 setFreeWalkFilterRange({ start: st || endedAtIso, end: endedAtIso });
                 setFreeWalkCompareMode('last');
                 setStatsModality('freewalk');
@@ -1809,7 +1852,7 @@ const NavigationScreen: React.FC = () => {
             showToast(`🚶 ${t('navigation.walkTooShort') || 'Marche trop courte pour être enregistrée (min 30s / 10m)'}`);
         }
         setIsFreeWalking(false); setIsTracking(false); setNearbyCheckpoint(null); setLivePosition(null);
-    }, [livePosition, estimateCalories, computeQualityScore, loadActivityStats, walkingHistory, activitySummary, tr, activeLang]);
+    }, [livePosition, estimateCalories, computeQualityScore, loadActivityStats, walkingHistory, activitySummary, tr, activeLang, isCoachNotificationsEligible, isNavigationFreePeriod]);
 
     const stopTracking = useCallback(async () => {
         if (locationSubscriptionRef.current) { locationSubscriptionRef.current.remove(); locationSubscriptionRef.current = null; }
@@ -1823,9 +1866,18 @@ const NavigationScreen: React.FC = () => {
         const variance = sp.length > 0 ? sp.reduce((s, v) => s + (v - avg) ** 2, 0) / sp.length : 0;
         const consistency = Math.max(0, 100 - Math.sqrt(variance) * 5);
         const pacePerKm = dKm > 0.01 ? dSec / dKm : 0;
-        if (dSec > 30 && dM > 10) { try { await apiPost('/api/navigation/activity/log', { travel_mode: travelMode, origin_address: selectedRoute?.start_address, destination_address: destination || selectedRoute?.end_address, origin_lat: livePosition?.lat || lastPositionRef.current?.lat, origin_lng: livePosition?.lng || lastPositionRef.current?.lng, dest_lat: destinationCoords?.lat, dest_lng: destinationCoords?.lng, distance_meters: dM, duration_seconds: dSec, avg_speed_kmh: Math.round(avg * 10) / 10, max_speed_kmh: Math.round(maxSpeedRef.current * 10) / 10, calories_burned: Math.round(cal), quality_score: qual, speed_consistency: Math.round(consistency * 10) / 10, pace_per_km_seconds: Math.round(pacePerKm), checkpoints_reported: checkpointsReportedRef.current, checkpoints_encountered: checkpointsEncounteredRef.current, was_off_route: wasOffRouteRef.current, started_at: st || new Date().toISOString() }); Alert.alert(`🏁 ${t('navigation.sessionDone') || 'Session terminée'}`, `📏 ${dKm.toFixed(1)} km · ⏱ ${Math.floor(dMin)} min · 🔥 ${Math.round(cal)} cal · ⭐ ${qual}/100`, [{ text: t('navigation.viewStats') || 'Stats', onPress: () => { setShowActivityStats(true); loadActivityStats(activityPeriod); } }, { text: 'OK' }]); } catch { } }
+        if (dSec > 30 && dM > 10) { try { await apiPost('/api/navigation/activity/log', { travel_mode: travelMode, origin_address: selectedRoute?.start_address, destination_address: destination || selectedRoute?.end_address, origin_lat: livePosition?.lat || lastPositionRef.current?.lat, origin_lng: livePosition?.lng || lastPositionRef.current?.lng, dest_lat: destinationCoords?.lat, dest_lng: destinationCoords?.lng, distance_meters: dM, duration_seconds: dSec, avg_speed_kmh: Math.round(avg * 10) / 10, max_speed_kmh: Math.round(maxSpeedRef.current * 10) / 10, calories_burned: Math.round(cal), quality_score: qual, speed_consistency: Math.round(consistency * 10) / 10, pace_per_km_seconds: Math.round(pacePerKm), checkpoints_reported: checkpointsReportedRef.current, checkpoints_encountered: checkpointsEncounteredRef.current, was_off_route: wasOffRouteRef.current, started_at: st || new Date().toISOString() }); if (isCoachNotificationsEligible && String(travelMode || '').toLowerCase() === 'walking') { await coachingNotificationService.recordActivity().catch(() => { }); } Alert.alert(`🏁 ${t('navigation.sessionDone') || 'Session terminée'}`, `📏 ${dKm.toFixed(1)} km · ⏱ ${Math.floor(dMin)} min · 🔥 ${Math.round(cal)} cal · ⭐ ${qual}/100`, [{ text: t('navigation.viewStats') || 'Stats', onPress: () => { setShowActivityStats(true); loadActivityStats(activityPeriod); } }, { text: 'OK' }]); } catch { } }
         setIsTracking(false); setNearbyCheckpoint(null); setIsOffRoute(false); setLivePosition(null);
-    }, [travelMode, destination, livePosition, destinationCoords, selectedRoute, estimateCalories, computeQualityScore, activityPeriod, loadActivityStats]);
+    }, [travelMode, destination, livePosition, destinationCoords, selectedRoute, estimateCalories, computeQualityScore, activityPeriod, loadActivityStats, isCoachNotificationsEligible]);
+
+    // Vérification périodique des rappels de streak (avec garde paiement/période gratuite).
+    useEffect(() => {
+        if (!isCoachNotificationsEligible) return;
+        const run = () => coachingNotificationService.checkStreakAndNotify().catch(() => { });
+        run();
+        const id = setInterval(run, 30 * 60 * 1000);
+        return () => clearInterval(id);
+    }, [isCoachNotificationsEligible]);
 
     useEffect(() => {
         return () => {
@@ -2114,10 +2166,12 @@ const NavigationScreen: React.FC = () => {
                             <Text style={{ fontSize: 12 }}>{isNavigationFreePeriod ? '🎉' : (currentBalance > 0 ? '💰' : '⚠️')}</Text>
                             <View>
                                 <Text style={{ fontSize: 11, fontWeight: '800', color: isNavigationFreePeriod ? '#047857' : (currentBalance > 0 ? '#16A34A' : '#92400E') }}>
-                                    {isNavigationFreePeriod ? `Navigation offerte jusqu'au ${navigationFreeUntilLabel}` : `Solde: ${fmtPrice(currentBalance, userCurrency)}`}
+                                    {isNavigationFreePeriod ? `Navigation + notifications Coach IA santé offertes jusqu'au ${navigationFreeUntilLabel}` : `Solde: ${fmtPrice(currentBalance, userCurrency)}`}
                                 </Text>
                                 <Text style={{ fontSize: 10, color: isNavigationFreePeriod ? '#059669' : modernColors.textSecondary }}>
-                                    Appuyez pour recharger des tokens
+                                    {isNavigationFreePeriod
+                                        ? 'Service actif automatiquement: alertes sonores/vibreur, modifiables dans Paramètres'
+                                        : 'Appuyez pour recharger des tokens'}
                                 </Text>
                             </View>
                         </TouchableOpacity>
@@ -3235,6 +3289,13 @@ const NavigationScreen: React.FC = () => {
                                                         <Text style={{ fontSize: 11, fontWeight: '700', color: '#7C3AED' }}>Tout lu</Text>
                                                     </TouchableOpacity>
                                                 )}
+                                            </View>
+                                            <View style={{ marginBottom: 10, padding: 10, borderRadius: 10, backgroundColor: '#F5F3FF' }}>
+                                                <Text style={{ fontSize: 11, color: '#5B21B6' }}>
+                                                    {isNavigationFreePeriod
+                                                        ? `🎉 Coach IA gratuit jusqu'au ${navigationFreeUntilLabel} (phase lancement)`
+                                                        : 'Coach IA actif selon abonnement'}
+                                                </Text>
                                             </View>
                                             {loadingCoachingHistory ? (
                                                 <View style={{ alignItems: 'center', paddingVertical: 10 }}>

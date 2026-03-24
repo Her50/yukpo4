@@ -736,7 +736,7 @@ const PharmacieHomeScreen: React.FC = () => {
                             >
                                 {/* Bouton analyse d'image */}
                                 <TouchableOpacity
-                                    style={styles.aiImageButton}
+                                    style={[styles.aiImageButton, styles.aiImageButtonPriority]}
                                     onPress={showImageSourcePicker}
                                     activeOpacity={0.7}
                                     disabled={analyzingImage}
@@ -2412,6 +2412,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
+        zIndex: 120,
+        elevation: 8,
     },
     aiToggleButton: {
         padding: 16,
@@ -2455,7 +2457,7 @@ const styles = StyleSheet.create({
     },
     aiChatScrollContent: {
         padding: 16,
-        paddingBottom: 20,
+        paddingBottom: 110, // zone de securite pour les boutons flottants globaux
         gap: 12,
     },
     aiSuggestionsContainer: {
@@ -2581,6 +2583,11 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         borderWidth: 1,
         borderColor: '#D1FAE5',
+    },
+    aiImageButtonPriority: {
+        zIndex: 200,
+        elevation: 20,
+        position: 'relative',
     },
     aiImageButtonText: {
         flex: 1,

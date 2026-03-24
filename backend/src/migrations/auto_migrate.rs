@@ -8588,6 +8588,15 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto orientation scolaire: {}", e),
     }
 
+    // ✅ 2026-03-24 : programmes_scolaires.etablissement_id (après orientation : FK etablissements_scolaires)
+    match ensure_programmes_scolaires_etablissement_id_column(pool).await {
+        Ok(_) => info!("✅ Migration auto: programmes_scolaires.etablissement_id OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto programmes_scolaires.etablissement_id: {}",
+            e
+        ),
+    }
+
     // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
     match ensure_delivery_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
@@ -9170,6 +9179,19 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_librairie_network_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: librairie_network tables OK"),
         Err(e) => error!("❌ Erreur migration auto librairie_network: {}", e),
+    }
+
+    // ✅ 2026-03-24 : Points de vente / succursales (GPS) par librairie — notifications géo
+    match ensure_librairie_lieux_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: librairie_lieux OK"),
+        Err(e) => error!("❌ Erreur migration auto librairie_lieux: {}", e),
+    }
+    match ensure_book_delivery_packages_librairie_lieux_columns(pool).await {
+        Ok(_) => info!("✅ Migration auto: book_delivery_packages librairie_lieux columns OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto book_delivery_packages librairie_lieux columns: {}",
+            e
+        ),
     }
 
     // ✅ NOUVEAU 2026-03-16 : Tables manquantes pour paiements agrégés et QR codes
@@ -17198,6 +17220,22 @@ pub async fn ensure_orientation_scolaire_tables(pool: &PgPool) -> Result<(), sql
     Ok(())
 }
 
+/// ✅ 2026-03-24 : Colonne `etablissement_id` sur `programmes_scolaires` (priorité programme établissement)
+/// Migration: 20260324_programmes_scolaires_etablissement_id.sql
+pub async fn ensure_programmes_scolaires_etablissement_id_column(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration programmes_scolaires.etablissement_id (Bourse du livre)...");
+
+    let migration_sql =
+        include_str!("../../migrations/20260324_programmes_scolaires_etablissement_id.sql");
+
+    execute_migration_sql_safe(pool, migration_sql).await?;
+
+    info!("✅ programmes_scolaires : etablissement_id + index OK");
+    Ok(())
+}
+
 /// ✅ 2025-01-28 : Tables pour chat de livraison et gamification
 /// Migration: 20250128_create_delivery_chat_tables.sql
 pub async fn ensure_delivery_chat_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -20839,6 +20877,97 @@ pub async fn ensure_libraire_team_table(pool: &PgPool) -> Result<(), sqlx::Error
         .execute(pool).await.ok();
 
     info!("✅ Table libraire_team_members OK");
+    Ok(())
+}
+
+/// Succursales / points de représentation GPS pour une même librairie (notifications & recherche).
+pub async fn ensure_librairie_lieux_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("📍 Vérification table librairie_lieux...");
+
+    let lp_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'librairie_partners')",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+
+    if !lp_exists {
+        info!("⚠️ librairie_partners absent — skip librairie_lieux");
+        return Ok(());
+    }
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS librairie_lieux (
+            id SERIAL PRIMARY KEY,
+            librairie_partner_id UUID NOT NULL REFERENCES librairie_partners(id) ON DELETE CASCADE,
+            libelle VARCHAR(255) NOT NULL DEFAULT 'Point de vente',
+            adresse TEXT,
+            ville VARCHAR(255),
+            pays VARCHAR(120),
+            gps VARCHAR(120) NOT NULL,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_librairie_lieux_partner ON librairie_lieux(librairie_partner_id)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    info!("✅ Table librairie_lieux OK");
+    Ok(())
+}
+
+/// Colonnes de traçabilité succursale sur les paquets de livres (validation libraire multi-sites).
+pub async fn ensure_book_delivery_packages_librairie_lieux_columns(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
+    info!("📦 Vérification colonnes succursale sur book_delivery_packages...");
+
+    let bdp_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'book_delivery_packages')",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+    if !bdp_exists {
+        info!("⚠️ book_delivery_packages absent — skip colonnes succursale");
+        return Ok(());
+    }
+
+    sqlx::query(
+        "ALTER TABLE book_delivery_packages ADD COLUMN IF NOT EXISTS librairie_lieu_id INTEGER",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "ALTER TABLE book_delivery_packages ADD COLUMN IF NOT EXISTS succursale_label VARCHAR(255)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "ALTER TABLE book_delivery_packages ADD COLUMN IF NOT EXISTS stock_disponible_succursale BOOLEAN",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_book_packages_lieu ON book_delivery_packages(librairie_lieu_id)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    info!("✅ Colonnes succursale book_delivery_packages OK");
     Ok(())
 }
 

@@ -3,9 +3,9 @@
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::services::app_ia::AppIA;
-    use crate::services::emploi_ai_service::EmploiAIService;
     use std::sync::Arc;
+    use yukpomnang_backend::services::app_ia::AppIA;
+    use yukpomnang_backend::services::emploi_ai_service::EmploiAIService;
 
     #[tokio::test]
     #[ignore] // Ignorer par défaut car nécessite AppIA configuré

@@ -246,7 +246,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
                     activeOpacity={0.88}
                 >
                     <View style={[styles.primaryActionIconWrap, { backgroundColor: '#EFF6FF' }]}>
-                        <SafeIcon name="book-check" size={22} color="#2563EB" type="lucide" />
+                        <SafeIcon name="list-checks" size={22} color="#2563EB" type="lucide" />
                     </View>
                     <View style={styles.primaryActionTextWrap}>
                         <Text style={[styles.primaryActionTitle, { color: '#1E40AF' }]} numberOfLines={2}>

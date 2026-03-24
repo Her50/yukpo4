@@ -117,6 +117,18 @@ const CovoiturageFormScreen: React.FC = () => {
 
     useFormAutoSave(STORAGE_KEY, formData, mode !== 'edit', 1000);
 
+    const normalizeSelectedLocation = (loc: LocationObject): LocationObject => {
+        const normalizedRaw =
+            loc?.raw?.trim() ||
+            loc?.place_name?.trim() ||
+            '';
+        return {
+            ...loc,
+            raw: normalizedRaw,
+            place_name: loc?.place_name?.trim() || normalizedRaw,
+        };
+    };
+
     // Auto-detect currency
     useEffect(() => {
         if (detectedCurrency && detectedCurrency !== formData.devise) setFormData(p => ({ ...p, devise: detectedCurrency }));
@@ -382,22 +394,47 @@ const CovoiturageFormScreen: React.FC = () => {
                 <View style={s.routeInputs}>
                     <View style={{ width: '100%' }}>
                         <Text style={s.routeLabel}>{t('covoiturageForm.depart')}</Text>
-                        <LocationSelector label="" value={formData.depart ? (typeof formData.depart === 'string' ? { raw: formData.depart, place_name: formData.depart } : formData.depart) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, depart: loc })} placeholder={t('covoiturageForm.lieuDeDepart')} scope="all" enrichWithBackend />
+                        <LocationSelector
+                            label={t('covoiturageForm.depart')}
+                            value={formData.depart || ''}
+                            onSelect={(loc: LocationObject) => setFormData({ ...formData, depart: normalizeSelectedLocation(loc) })}
+                            placeholder={t('covoiturageForm.lieuDeDepart')}
+                            scope="all"
+                            enrichWithBackend
+                        />
                     </View>
                     <TouchableOpacity style={s.swapBtn} onPress={() => { const t = formData.depart; const tg = selectedGPSDepart; setFormData({ ...formData, depart: formData.destination, destination: t }); setSelectedGPSDepart(selectedGPSDestination); setSelectedGPSDestination(tg); }}>
                         <SafeIcon name="arrow-up-down" size={18} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ width: '100%' }}>
                         <Text style={s.routeLabel}>{t('covoiturageForm.arrivee')}</Text>
-                        <LocationSelector label="" value={formData.destination ? (typeof formData.destination === 'string' ? { raw: formData.destination, place_name: formData.destination } : formData.destination) : ''} onSelect={(loc: LocationObject) => setFormData({ ...formData, destination: loc })} placeholder={t('covoiturageFormScreen.lieuDArrivee')} scope="all" enrichWithBackend />
+                        <LocationSelector
+                            label={t('covoiturageForm.arrivee')}
+                            value={formData.destination || ''}
+                            onSelect={(loc: LocationObject) => setFormData({ ...formData, destination: normalizeSelectedLocation(loc) })}
+                            placeholder={t('covoiturageFormScreen.lieuDArrivee')}
+                            scope="all"
+                            enrichWithBackend
+                        />
                     </View>
                 </View>
+                <Text style={s.gpsSectionLabel}>{t('covoiturageFormScreen.coordonneesGpsOptionnelles') || 'Coordonnees GPS (optionnel)'}</Text>
                 <View style={s.gpsRow}>
-                    <TouchableOpacity style={s.gpsMini} onPress={() => setShowGPSModalDepart(true)}>
-                        <SafeIcon name="map-pin" size={14} color={modernColors.primary} /><Text style={s.gpsMiniText}>{selectedGPSDepart ? t('covoiturageFormScreen.gpsDepart') : t('covoiturageFormScreen.gpsDepart')}</Text>
+                    <TouchableOpacity style={s.gpsMini} onPress={() => setShowGPSModalDepart(true)} activeOpacity={0.8}>
+                        <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                        <Text style={s.gpsMiniText}>
+                            {selectedGPSDepart
+                                ? (t('covoiturageFormScreen.gpsDepartDefini') || 'GPS depart defini')
+                                : (t('covoiturageFormScreen.ajouterGpsDepart') || 'Ajouter GPS depart')}
+                        </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={s.gpsMini} onPress={() => setShowGPSModalDestination(true)}>
-                        <SafeIcon name="map-pin" size={14} color={modernColors.primary} /><Text style={s.gpsMiniText}>{selectedGPSDestination ? t('covoiturageFormScreen.gpsArrivee') : t('covoiturageFormScreen.gpsArrivee')}</Text>
+                    <TouchableOpacity style={s.gpsMini} onPress={() => setShowGPSModalDestination(true)} activeOpacity={0.8}>
+                        <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                        <Text style={s.gpsMiniText}>
+                            {selectedGPSDestination
+                                ? (t('covoiturageFormScreen.gpsArriveeDefini') || 'GPS arrivee defini')
+                                : (t('covoiturageFormScreen.ajouterGpsArrivee') || 'Ajouter GPS arrivee')}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -646,9 +683,10 @@ const s = StyleSheet.create({
     routeInputs: { gap: 8 },
     routeLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4 },
     swapBtn: { alignSelf: 'center', width: 36, height: 36, borderRadius: 18, backgroundColor: '#6366F1', justifyContent: 'center', alignItems: 'center', marginVertical: 4 },
+    gpsSectionLabel: { fontSize: 12, fontWeight: '600', color: '#6B7280', marginTop: 4, marginBottom: 8 },
     gpsRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
-    gpsMini: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, backgroundColor: '#F9FAFB', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB' },
-    gpsMiniText: { fontSize: 12, color: '#6B7280' },
+    gpsMini: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 10, backgroundColor: '#F9FAFB', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB' },
+    gpsMiniText: { fontSize: 12, color: '#374151', fontWeight: '500' },
 
     // Date
     dateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8 },

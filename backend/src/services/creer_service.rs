@@ -2576,11 +2576,12 @@ pub async fn creer_service(
         Ok((tx, verified_balance, new_balance, service_id))
     }
 
-    // Appeler la fonction avec retry (implémentation manuelle pour éviter les problèmes de lifetime avec les transactions)
+    // Retry sur erreurs réseau / DB transitoires (une seule boucle — pas de `loop` externe inutile)
     let max_retries = 5;
     let mut last_error = None;
-    let (mut tx, _verified_balance, _new_balance, service_id) = 'retry_loop: loop {
-        log::info!("[creer_service] 🔄 Tentative création service (retry loop)...");
+    log::info!("[creer_service] 🔄 Tentative création service (retry loop)...");
+    let (mut tx, _verified_balance, _new_balance, service_id) = {
+        let mut final_result = None;
         for attempt in 1..=max_retries {
             match execute_critical_transaction(
                 pool,
@@ -2601,7 +2602,8 @@ pub async fn creer_service(
                         result.1,
                         result.2
                     );
-                    break 'retry_loop result;
+                    final_result = Some(result);
+                    break;
                 }
                 Err(e) => {
                     let error_str = e.to_string();
@@ -2639,11 +2641,16 @@ pub async fn creer_service(
                 }
             }
         }
-        return Err(last_error.unwrap_or_else(|| {
-            crate::core::types::AppError::Internal(
-                "Toutes les tentatives de retry ont échoué".to_string(),
-            )
-        }));
+        match final_result {
+            Some(r) => r,
+            None => {
+                return Err(last_error.unwrap_or_else(|| {
+                    crate::core::types::AppError::Internal(
+                        "Toutes les tentatives de retry ont échoué".to_string(),
+                    )
+                }));
+            }
+        }
     };
 
     // Étape 2 : UPDATE users pour activer le provider (pas bloquant si déjà TRUE)

@@ -176,6 +176,11 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/v2/admin/programmes/upload",
             post(bourse_livre_v2_controller::upload_programme_file),
         )
+        // Établissement : dépôt liste de manuels (PDF/Excel) + extraction IA
+        .route(
+            "/api/bourse-livre/v2/programmes-scolaires/submit",
+            post(bourse_livre_v2_controller::submit_programmes_scolaires_etablissement),
+        )
         // Matching IA livre ↔ programme (avec date)
         .route(
             "/api/bourse-livre/v2/match-programme",

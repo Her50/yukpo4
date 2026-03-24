@@ -1762,9 +1762,64 @@ pub async fn register_librairie_publique(
         );
     }
 
+    // Points de vente / succursales (carte Yukpo) — notifications géo multi-sites
+    let lieux_to_save: Vec<LibrairieLieuIn> = match &payload.lieux {
+        Some(ll) if !ll.is_empty() => {
+            for l in ll {
+                if l.gps.trim().is_empty() {
+                    return Err(AppError::BadRequest(
+                        "Chaque point de vente doit avoir une localisation GPS".to_string(),
+                    ));
+                }
+            }
+            ll.clone()
+        }
+        _ => {
+            vec![LibrairieLieuIn {
+                libelle: Some("Siège principal".to_string()),
+                gps: payload.gps.clone().unwrap_or_default().trim().to_string(),
+                ville: Some(payload.ville.clone()),
+                pays: Some(payload.pays.clone()),
+                adresse: Some(payload.adresse.clone()),
+            }]
+        }
+    };
+
+    for (i, l) in lieux_to_save.iter().enumerate() {
+        let lab = l
+            .libelle
+            .clone()
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or_else(|| format!("Point {}", i + 1));
+        sqlx::query(
+            r#"
+            INSERT INTO librairie_lieux (
+                librairie_partner_id, libelle, gps, ville, pays, adresse, sort_order
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+            "#,
+        )
+        .bind(librairie_id)
+        .bind(&lab)
+        .bind(l.gps.trim())
+        .bind(l.ville.as_deref())
+        .bind(l.pays.as_deref())
+        .bind(l.adresse.as_deref())
+        .bind(i as i32)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            log::error!(
+                "[register_librairie_publique] librairie_lieux insert: {}",
+                e
+            );
+            AppError::Internal("Erreur enregistrement des points de vente".to_string())
+        })?;
+    }
+
     log::info!(
-        "[register_librairie_publique] Librairie {} enregistrée avec succès",
-        payload.nom
+        "[register_librairie_publique] Librairie {} enregistrée avec succès ({} point(s) GPS)",
+        payload.nom,
+        lieux_to_save.len()
     );
 
     Ok((
@@ -1774,7 +1829,8 @@ pub async fn register_librairie_publique(
             "message": "Votre demande d'inscription a été soumise avec succès",
             "librairie_id": librairie_id,
             "commission_app": commission_app,
-            "statut": "en_attente"
+            "statut": "en_attente",
+            "points_vente": lieux_to_save.len()
         })),
     ))
 }
