@@ -1014,25 +1014,25 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
                       <Image
                         key={`${item.id}-ua-${idx}`}
                         source={{ uri }}
-                        style={styles.attachmentImage}
+                        style={styles.userAttachmentImage}
                         resizeMode="cover"
                       />
                     );
                   }
                   if (att.kind === 'audio') {
                     return (
-                      <View key={`${item.id}-ua-${idx}`} style={styles.attachmentBadge}>
+                      <View key={`${item.id}-ua-${idx}`} style={styles.userAttachmentBadge}>
                         <SafeIcon name="mic" size={14} color="#6366f1" />
-                        <Text style={styles.attachmentBadgeText} numberOfLines={1}>
+                        <Text style={styles.userAttachmentBadgeText} numberOfLines={1}>
                           {att.name || 'Audio'}
                         </Text>
                       </View>
                     );
                   }
                   return (
-                    <View key={`${item.id}-ua-${idx}`} style={styles.attachmentBadge}>
+                    <View key={`${item.id}-ua-${idx}`} style={styles.userAttachmentBadge}>
                       <SafeIcon name="paperclip" size={14} color="#6366f1" />
-                      <Text style={styles.attachmentBadgeText} numberOfLines={1}>
+                      <Text style={styles.userAttachmentBadgeText} numberOfLines={1}>
                         {att.name || 'Fichier'}
                       </Text>
                     </View>
@@ -1043,8 +1043,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
 
             {/* Billing info for AI messages */}
             {!isUser && item.metadata?.billing?.enabled && item.metadata?.billing?.tokens_charged > 0 && !item.metadata?.billing?.insufficient_balance && (
-              <View style={styles.billingInfoContainer}>
-                <Text style={styles.billingText}>
+              <View style={styles.attachmentsContainer}>
+                <Text style={styles.billingChip}>
                   {item.metadata.billing.from_free_quota
                     ? t('yukpoIa.billingNoticeFree', { charged: item.metadata.billing.tokens_charged, remaining: (item.metadata.billing.monthly_free_remaining ?? item.metadata.billing.daily_free_remaining) ?? '?' })
                     : item.metadata.billing.units_from_wallet > 0
@@ -1182,7 +1182,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
             )}
           </View>
 
-          <Text style={[styles.timestamp, isUser ? styles.userTimestamp : styles.aiTimestamp]}>
+          <Text style={styles.timestamp}>
             {messageTime}
           </Text>
         </View>
