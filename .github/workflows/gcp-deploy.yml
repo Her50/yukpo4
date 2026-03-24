@@ -366,6 +366,49 @@ jobs:
           echo "Instance Cloud SQL: $CLOUD_SQL_INSTANCE"
           
           echo "🧹 Nettoyage des secrets en doublon: --remove-env-vars est appliqué dans le même gcloud run deploy (pas de 2e révision cassée)."
+          echo "🔐 Vérification des secrets Secret Manager (required + optional)..."
+
+          REQUIRED_SECRET_MAPPINGS="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest"
+          OPTIONAL_SECRET_MAPPINGS="OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest,TWILIO_ACCOUNT_SID=twilio-account-sid:latest,TWILIO_AUTH_TOKEN=twilio-auth-token:latest,TWILIO_FROM_NUMBER=twilio-from-number:latest"
+
+          AVAILABLE_SECRET_MAPPINGS=()
+          MISSING_REQUIRED_SECRETS=()
+
+          check_and_collect_mappings() {
+            local mappings="$1"
+            local required_flag="$2"
+            IFS=',' read -ra pairs <<< "$mappings"
+            for pair in "${pairs[@]}"; do
+              secret_name="${pair#*=}"
+              secret_name="${secret_name%:latest}"
+              if gcloud secrets describe "$secret_name" --project "${{ secrets.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+                AVAILABLE_SECRET_MAPPINGS+=("$pair")
+              else
+                if [ "$required_flag" = "required" ]; then
+                  MISSING_REQUIRED_SECRETS+=("$secret_name")
+                else
+                  echo "⚠️ Secret optionnel absent, ignoré: $secret_name"
+                fi
+              fi
+            done
+          }
+
+          check_and_collect_mappings "$REQUIRED_SECRET_MAPPINGS" "required"
+          check_and_collect_mappings "$OPTIONAL_SECRET_MAPPINGS" "optional"
+
+          if [ ${#MISSING_REQUIRED_SECRETS[@]} -gt 0 ]; then
+            echo "❌ Secrets requis manquants: ${MISSING_REQUIRED_SECRETS[*]}"
+            exit 1
+          fi
+
+          UPDATE_SECRETS_ARGS=()
+          if [ ${#AVAILABLE_SECRET_MAPPINGS[@]} -gt 0 ]; then
+            SECRET_MAPPINGS_JOINED=$(IFS=, ; echo "${AVAILABLE_SECRET_MAPPINGS[*]}")
+            echo "✅ Secrets injectés (${#AVAILABLE_SECRET_MAPPINGS[@]}): $SECRET_MAPPINGS_JOINED"
+            UPDATE_SECRETS_ARGS+=(--update-secrets="$SECRET_MAPPINGS_JOINED")
+          else
+            echo "⚠️ Aucun secret à injecter via --update-secrets"
+          fi
           
           # Construire la liste des variables d'environnement depuis env-vars.json (sans les secrets)
           echo "Construction de la liste des variables d'environnement..."
@@ -394,9 +437,7 @@ jobs:
                 --startup-probe="$STARTUP_PROBE" \
                 --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
                 --update-env-vars="^;^$ENV_VARS" \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
-                --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
-                --update-secrets="TWILIO_ACCOUNT_SID=twilio-account-sid:latest,TWILIO_AUTH_TOKEN=twilio-auth-token:latest,TWILIO_FROM_NUMBER=twilio-from-number:latest" \
+                "${UPDATE_SECRETS_ARGS[@]}" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 4Gi \
                 --cpu 2 \
@@ -418,9 +459,7 @@ jobs:
                 --port 8080 \
                 --startup-probe="$STARTUP_PROBE" \
                 --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
-                --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
-                --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
-                --update-secrets="TWILIO_ACCOUNT_SID=twilio-account-sid:latest,TWILIO_AUTH_TOKEN=twilio-auth-token:latest,TWILIO_FROM_NUMBER=twilio-from-number:latest" \
+                "${UPDATE_SECRETS_ARGS[@]}" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 4Gi \
                 --cpu 2 \
@@ -448,9 +487,7 @@ jobs:
               --startup-probe="$STARTUP_PROBE" \
               --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
-              --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
-              --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
-                --update-secrets="TWILIO_ACCOUNT_SID=twilio-account-sid:latest,TWILIO_AUTH_TOKEN=twilio-auth-token:latest,TWILIO_FROM_NUMBER=twilio-from-number:latest" \
+              "${UPDATE_SECRETS_ARGS[@]}" \
               --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
               --memory 4Gi \
               --cpu 2 \
