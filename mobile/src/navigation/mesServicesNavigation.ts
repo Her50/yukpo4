@@ -1,9 +1,9 @@
 /**
- * Ouvre **MesServicesScreen** (hub produits moderne : cartes, stats, menu latéral, bulk, promos…).
+ * Ouvre l'écran catalogue produits actif via l'onglet **Services**.
  *
  * Ne pas utiliser `navigate('Services')` depuis la pile racine : une route stack séparée `Services`
  * charge **ServicesScreen** (ancien tableau « Mon activité »), d’où la confusion avec l’onglet
- * barre du bas nommé aussi `Services` mais branché sur MesServicesScreen.
+ * barre du bas nommé aussi `Services`.
  */
 export function navigateToMesServicesHub(navigation: { navigate: (...args: any[]) => void }): void {
   const nav = navigation as any;
@@ -14,13 +14,13 @@ export function navigateToMesServicesHub(navigation: { navigate: (...args: any[]
     navigators.push(cursor);
     cursor = cursor?.getParent?.();
   }
-  // Cibler explicitement le hub PRODUITS moderne:
-  // - onglet "Services" de MainTabs -> MesServicesScreen
-  // - fallback stack "MesServices" (même écran)
+  // Cibler explicitement l'écran PRODUITS:
+  // - onglet "Services" de MainTabs (branché sur MesProduitsScreen)
+  // - fallback direct route MesProduits
   const targets: Array<{ route: string; params?: Record<string, any> }> = [
     { route: 'MainTabs', params: { screen: 'Services' } },
     { route: 'Main', params: { screen: 'Services' } },
-    { route: 'MesServices' },
+    { route: 'MesProduits' },
   ];
 
   for (const currentNav of navigators) {
@@ -34,7 +34,7 @@ export function navigateToMesServicesHub(navigation: { navigate: (...args: any[]
     }
   }
 
-  console.warn('[mesServicesNavigation] Unable to navigate to Mes Services hub');
+  console.warn('[mesServicesNavigation] Unable to navigate to product management screen');
 }
 
 /**

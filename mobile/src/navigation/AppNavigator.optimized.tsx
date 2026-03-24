@@ -784,7 +784,7 @@ function MainTabNavigator() {
       ) : (
         <Tab.Screen
           name="Services"
-          component={S['MesServices'] || loadScreen('../screens/MesServicesScreen', 'MesServices')}
+          component={S['MesProduits'] || loadScreen('../screens/MesProduitsScreen', 'MesProduits')}
           options={{
             tabBarLabel: (() => {
               try {

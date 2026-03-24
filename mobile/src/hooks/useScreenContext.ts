@@ -135,9 +135,9 @@ const getGlobalActions = (t: (key: string) => string): ActionDescriptor[] => [
     id: 'services',
     label: t('useScreenContext.services') || 'Mes Services',
     icon: LUCIDE_ICONS.briefcase,
-    route: 'MesServices',
+    route: 'MesProduits',
     category: 'navigation',
-    description: t('useScreenContext.servicesDesc') || 'Hub produits moderne (MesServicesScreen) — route pile **MesServices** ou onglet **Services** ; pas la route **ServicesActivity** (ancien écran).',
+    description: t('useScreenContext.servicesDesc') || 'Gestion produits (`MesProduitsScreen`) via l’onglet **Services**.',
   },
 ];
 
@@ -2387,7 +2387,11 @@ export const useScreenContext = (currentRouteName?: string, routeParams?: any): 
   const { user } = useAuth();
   const { t } = useLanguageSafe();
 
-  const screenName = currentRouteName || 'Unknown';
+  const rawScreenName = currentRouteName || 'Unknown';
+  // Unifier "Services / MesServices" vers l'écran réel de gestion catalogue.
+  const screenName = (rawScreenName === 'Services' || rawScreenName === 'MesServices')
+    ? 'MesProduits'
+    : rawScreenName;
 
   const getScreenType = useCallback((): ScreenContext['screenType'] => {
     const config = SCREEN_CONFIGS[screenName];
@@ -2438,7 +2442,7 @@ export const useScreenContext = (currentRouteName?: string, routeParams?: any): 
     visibleElements,
     userData: user,
     serviceData: routeParams,
-    currentRoute: currentRouteName,
+    currentRoute: rawScreenName,
     guideText,
   }), [screenName, screenType, specificActions, visibleElements, user, routeParams, currentRouteName, guideText]);
 

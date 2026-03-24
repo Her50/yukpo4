@@ -405,7 +405,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         { id: 'emploi', label: t('intelligentChat.nav.jobs') || '💼 Emploi', icon: 'briefcase', route: 'OffresEmploiHome', category: 'navigation', description: '' },
         { id: 'hotel', label: t('intelligentChat.nav.hotel') || '🏨 Hôtels', icon: 'building', route: 'HotelSearch', params: { mode: 'hotel' }, category: 'navigation', description: '' },
         { id: 'books', label: t('intelligentChat.nav.books') || '📚 Livres', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation', description: '' },
-        { id: 'services', label: t('intelligentChat.nav.myServices') || 'Mes services', icon: 'briefcase', route: 'MesServices', category: 'navigation', description: '' },
+        { id: 'services', label: t('intelligentChat.nav.myServices') || 'Mes services', icon: 'briefcase', route: 'MesProduits', category: 'navigation', description: '' },
       ] : [];
 
       const contextActions = isHomeScreen
@@ -957,6 +957,9 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     } else if (action.route === 'HashtagDiscovery') {
       // Sans hashtag : l'écran affiche les tendances (plus de spinner infini).
       (navigation as any).navigate('HashtagDiscovery', { hashtag: action.params?.hashtag || '' });
+      handleClose();
+    } else if (action.route === 'MesProduits') {
+      (navigation as any).navigate('MesProduits', action.params || undefined);
       handleClose();
     } else if (action.route) {
       try {

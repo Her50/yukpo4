@@ -718,6 +718,9 @@ const [query, setQuery] = useState('');
                 // ✅ CORRIGÉ: Mettre à jour les états correctement
                 setQuery(display);
                 setIsFocused(false);
+                onFocusChange?.(false);
+                setOptions([]);
+                setOptionsEnriched([]);
                 onSelect(finalLocation); // Le parent mettra à jour value, ce qui recalculera displayValue
                 // ✅ AMÉLIORÉ: Blur après un court délai pour permettre la mise à jour
                 setTimeout(() => {
@@ -738,6 +741,9 @@ const [query, setQuery] = useState('');
                 // ✅ CORRIGÉ: Mettre à jour les états correctement
                 setQuery(display);
                 setIsFocused(false);
+                onFocusChange?.(false);
+                setOptions([]);
+                setOptionsEnriched([]);
                 onSelect(finalLocation); // Le parent mettra à jour value, ce qui recalculera displayValue
                 setTimeout(() => {
                     inputRef.current?.blur();
@@ -758,6 +764,9 @@ const [query, setQuery] = useState('');
             // ✅ CORRIGÉ: Mettre à jour les états correctement
             setQuery(display);
             setIsFocused(false);
+            onFocusChange?.(false);
+            setOptions([]);
+            setOptionsEnriched([]);
             onSelect(finalLocation); // Le parent mettra à jour value, ce qui recalculera displayValue
             setTimeout(() => {
                 inputRef.current?.blur();
@@ -805,8 +814,6 @@ const [query, setQuery] = useState('');
                     }}
                     style={styles.input}
                     placeholderTextColor={modernColors.textSecondary}
-                    // ✅ NOUVEAU: Force le re-render quand displayValue change
-                    key={`input-${displayValue}`}
                 />
                 {/* ✅ NOUVEAU: Croix rouge pour effacer rapidement le contenu */}
                 {((isFocused && query.length > 0) || (!isFocused && displayValue)) && (

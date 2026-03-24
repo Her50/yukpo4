@@ -18,9 +18,9 @@ if (-not (Test-Path $ApkPath)) {
 $timestamp = Get-Date -Format "yyyyMMddHHmmss"
 Write-Host "📅 Timestamp: $timestamp"
 
-# 1. Upload du nouveau APK (écrase automatiquement l'ancien)
+# 1. Upload du nouveau APK (chemin unique utilise par /download)
 Write-Host "📤 Upload du nouvel APK..."
-gcloud storage cp $ApkPath gs://yukpo-project-yukpo-backend-media/yukpomnang-latest.apk
+gcloud storage cp $ApkPath gs://yukpo-project-yukpo-backend-media/app/yukpo.apk
 
 # 2. Mettre à jour le Worker Cloudflare avec le nouveau timestamp
 Write-Host "☁️  Mise à jour du Worker Cloudflare..."
@@ -28,10 +28,10 @@ Write-Host "☁️  Mise à jour du Worker Cloudflare..."
 
 # 3. Appliquer les headers anti-cache
 Write-Host "⚙️  Configuration des headers anti-cache..."
-gcloud storage objects update gs://yukpo-project-yukpo-backend-media/yukpomnang-latest.apk --cache-control="no-cache, no-store, must-revalidate"
+gcloud storage objects update gs://yukpo-project-yukpo-backend-media/app/yukpo.apk --cache-control="no-cache, no-store, must-revalidate"
 
 # 4. Vérifier la configuration finale
 Write-Host "✅ APK mis à jour avec succès !"
 Write-Host "🔗 Lien: https://yukpomnang.com/download"
 Write-Host "🆔 Version: $timestamp"
-Write-Host "🌐 URL directe GCP: https://storage.googleapis.com/yukpo-project-yukpo-backend-media/yukpomnang-latest.apk?v=$timestamp"
+Write-Host "🌐 URL directe GCP: https://storage.googleapis.com/yukpo-project-yukpo-backend-media/app/yukpo.apk?v=$timestamp"

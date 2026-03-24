@@ -401,7 +401,7 @@ const CovoiturageFormScreen: React.FC = () => {
                         <Text style={s.routeLabel}>{tr('covoiturageForm.depart', 'Depart *')}</Text>
                         <LocationSelector
                             label={undefined}
-                            value={formData.depart || ''}
+                            value={formData.depart?.raw || formData.depart?.place_name || ''}
                             onSelect={(loc: LocationObject) => setFormData(prev => ({ ...prev, depart: normalizeSelectedLocation(loc) }))}
                             placeholder={tr('covoiturageForm.lieuDeDepart', 'Lieu de depart...')}
                             scope="all"
@@ -415,7 +415,7 @@ const CovoiturageFormScreen: React.FC = () => {
                         <Text style={s.routeLabel}>{tr('covoiturageForm.arrivee', 'Arrivee *')}</Text>
                         <LocationSelector
                             label={undefined}
-                            value={formData.destination || ''}
+                            value={formData.destination?.raw || formData.destination?.place_name || ''}
                             onSelect={(loc: LocationObject) => setFormData(prev => ({ ...prev, destination: normalizeSelectedLocation(loc) }))}
                             placeholder={tr('covoiturageFormScreen.lieuDArrivee', 'Lieu d\'arrivee...')}
                             scope="all"
