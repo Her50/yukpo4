@@ -34,6 +34,7 @@ import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import { enrichLocationWithBackend } from '../../utils/locationBackendEnrich';
 
 const STORAGE_KEY = '@covoiturage_last_form_data';
 type TabType = 'trips' | 'create' | 'stats';
@@ -123,14 +124,16 @@ const CovoiturageFormScreen: React.FC = () => {
     useFormAutoSave(STORAGE_KEY, formData, mode !== 'edit', 1000);
 
     const normalizeSelectedLocation = (loc: LocationObject): LocationObject => {
-        const normalizedRaw =
-            loc?.raw?.trim() ||
-            loc?.place_name?.trim() ||
-            '';
+        const fromDisplay =
+            typeof loc?.raw === 'string' && loc.raw.trim()
+                ? loc.raw.trim()
+                : typeof loc?.place_name === 'string' && loc.place_name.trim()
+                    ? loc.place_name.trim()
+                    : '';
         return {
             ...loc,
-            raw: normalizedRaw,
-            place_name: loc?.place_name?.trim() || normalizedRaw,
+            raw: fromDisplay,
+            place_name: (loc?.place_name && String(loc.place_name).trim()) || fromDisplay,
         };
     };
 
@@ -221,11 +224,18 @@ const CovoiturageFormScreen: React.FC = () => {
         if (dep < now) { Alert.alert(t('covoiturage.validation'), t('covoiturage.dateInPast')); return; }
 
         setLoading(true);
+        const [depEnriched, destEnriched] = await Promise.all([
+            enrichLocationWithBackend(formData.depart!),
+            enrichLocationWithBackend(formData.destination!),
+        ]);
+        const departLabel = depEnriched.raw || depEnriched.place_name || '';
+        const destLabel = destEnriched.raw || destEnriched.place_name || '';
+
         let finalServiceId = serviceId;
         if (!finalServiceId && user?.id) {
             try {
-                const dStr = formData.depart?.raw || formData.depart?.place_name || '';
-                const aStr = formData.destination?.raw || formData.destination?.place_name || '';
+                const dStr = departLabel;
+                const aStr = destLabel;
                 const resp = await servicesApi.createService({ titre_service: `Covoiturage ${dStr} → ${aStr}`, description: 'Trajet covoiturage', category: 'transport' });
                 if (resp.success && resp.data && typeof resp.data === 'object' && 'id' in resp.data) { finalServiceId = (resp.data as any).id; setServiceId(finalServiceId); }
             } catch (e) { Alert.alert(t('message.error'), t('covoiturage.cannotCreateService')); setLoading(false); return; }
@@ -235,8 +245,8 @@ const CovoiturageFormScreen: React.FC = () => {
         try {
             const payload = {
                 service_id: finalServiceId,
-                depart: formData.depart?.raw || formData.depart?.place_name || '',
-                destination: formData.destination?.raw || formData.destination?.place_name || '',
+                depart: departLabel,
+                destination: destLabel,
                 gps_depart: selectedGPSDepart || (location ? `${location.coords.latitude},${location.coords.longitude}` : null),
                 gps_destination: selectedGPSDestination || null,
                 date_depart: formData.date_depart.toISOString(),
@@ -256,6 +266,11 @@ const CovoiturageFormScreen: React.FC = () => {
             const resp = await apiPost('/api/covoiturages', payload);
             if (resp.success) {
                 await clearSavedFormData(STORAGE_KEY);
+                setFormData(prev => ({
+                    ...prev,
+                    depart: normalizeSelectedLocation(depEnriched as LocationObject),
+                    destination: normalizeSelectedLocation(destEnriched as LocationObject),
+                }));
                 Alert.alert(t('message.success'), t('covoiturage.tripCreated'), [
                     { text: t('covoiturageForm.mesTrajets'), onPress: () => { setActiveTab('trips'); loadTrips(); setHasPreviousTrips(true); } },
                     { text: 'OK', style: 'cancel', onPress: () => navigation.goBack() },
@@ -401,11 +416,10 @@ const CovoiturageFormScreen: React.FC = () => {
                         <Text style={s.routeLabel}>{tr('covoiturageForm.depart', 'Depart *')}</Text>
                         <LocationSelector
                             label={undefined}
-                            value={formData.depart?.raw || formData.depart?.place_name || ''}
+                            value={formData.depart ?? ''}
                             onSelect={(loc: LocationObject) => setFormData(prev => ({ ...prev, depart: normalizeSelectedLocation(loc) }))}
                             placeholder={tr('covoiturageForm.lieuDeDepart', 'Lieu de depart...')}
                             scope="all"
-                            enrichWithBackend
                         />
                     </View>
                     <TouchableOpacity style={s.swapBtn} onPress={() => { const t = formData.depart; const tg = selectedGPSDepart; setFormData({ ...formData, depart: formData.destination, destination: t }); setSelectedGPSDepart(selectedGPSDestination); setSelectedGPSDestination(tg); }}>
@@ -415,11 +429,10 @@ const CovoiturageFormScreen: React.FC = () => {
                         <Text style={s.routeLabel}>{tr('covoiturageForm.arrivee', 'Arrivee *')}</Text>
                         <LocationSelector
                             label={undefined}
-                            value={formData.destination?.raw || formData.destination?.place_name || ''}
+                            value={formData.destination ?? ''}
                             onSelect={(loc: LocationObject) => setFormData(prev => ({ ...prev, destination: normalizeSelectedLocation(loc) }))}
                             placeholder={tr('covoiturageFormScreen.lieuDArrivee', 'Lieu d\'arrivee...')}
                             scope="all"
-                            enrichWithBackend
                         />
                     </View>
                 </View>

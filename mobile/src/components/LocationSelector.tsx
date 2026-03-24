@@ -7,6 +7,7 @@ import { PlaceResult, PlaceScope, placesService } from '../services/placesServic
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { formatLocationDisplay, enrichLocationWithBackend } from '../utils/locationBackendEnrich';
 
 // Translation helper for module-level utilities (outside React hooks).
 const t = (key: string, fallback?: string): string => {
@@ -315,127 +316,6 @@ const getPlaceIcon = (
     }
 };
 
-const formatLocationDisplay = (location?: LocationObject | string | boolean | null): string => {
-    // ✅ CORRECTION: Gérer les valeurs non-string (boolean, null, undefined)
-    if (!location || location === null) return '';
-    if (typeof location === 'boolean') return '';
-    if (typeof location === 'string') {
-        return location;
-    }
-
-    // ✅ CORRIGÉ: Construire depuis components en priorité si disponibles (plus fiable)
-    const parts: string[] = [];
-
-    if (location.components?.quartier && !parts.includes(location.components.quartier)) {
-        parts.push(location.components.quartier);
-    }
-
-    if (location.components?.ville) {
-        const ville = location.components.ville;
-        if (!parts.includes(ville)) {
-            parts.push(ville);
-        }
-    }
-
-    if (location.components?.region) {
-        const region = location.components.region;
-        if (!parts.includes(region)) {
-            parts.push(region);
-        }
-    }
-
-    if (location.components?.pays) {
-        const pays = location.components.pays;
-        if (!parts.includes(pays)) {
-            parts.push(pays);
-        }
-    }
-
-    // ✅ CORRIGÉ: Si on a des parts, les utiliser (même une seule partie)
-    if (parts.length > 0) {
-        return parts.join(', ');
-    }
-
-    // ✅ FALLBACK: Si pas de components, utiliser raw s'il est formaté (contient virgule ou tiret)
-    if (location.raw && typeof location.raw === 'string' && location.raw.trim() !== '') {
-        // Si raw contient déjà plusieurs parties (formaté), l'utiliser directement
-        if (location.raw.includes(',') || location.raw.includes(' - ')) {
-            return location.raw;
-        }
-        // Sinon utiliser raw même s'il est simple
-        return location.raw;
-    }
-
-    // ✅ DERNIER FALLBACK: Utiliser place_name
-    if (location.place_name && location.place_name.trim() !== '') {
-        return location.place_name;
-    }
-
-    return '';
-};
-
-// ✅ Enrichir avec backend GeoNames
-const enrichLocation = async (location: LocationObject): Promise<LocationObject> => {
-    try {
-        console.log('[enrichLocation] Début enrichissement:', location);
-        // ✅ CORRECTION: Ne pas envoyer country si vide (backend le déduit)
-        const countryParam = location.components?.pays
-            ? `&country=${encodeURIComponent(location.components.pays)}`
-            : '';
-
-        const response = await apiGet<any>(
-            `/api/places/enrich?place_name=${encodeURIComponent(location.place_name)}${countryParam}`
-        );
-
-        console.log('[enrichLocation] Réponse backend:', response);
-
-        if (response.success && response.data) {
-            const data: any = response.data;
-
-            // ✅ CORRIGÉ: Préserver les composants existants et les compléter avec les données backend
-            const enriched: LocationObject = {
-                raw: location.raw, // Garder le raw original
-                place_name: data.place_name || location.place_name || location.raw,
-                components: {
-                    // ✅ CORRIGÉ: Préserver les composants existants (surtout ville qui vient du parsing)
-                    ville: location.components?.ville || data.place_name || location.place_name || location.raw,
-                    region: data.hierarchy?.parents?.[0] || location.components?.region,
-                    pays: data.metadata?.country || location.components?.pays,
-                    quartier: location.components?.quartier, // Préserver le quartier s'il existe
-                },
-                coordinates: data.coordinates || location.coordinates,
-                geoname_id: data.geoname_id,
-                location_vector: data.location_vector,
-            };
-
-            // ✅ CORRIGÉ: Formater le raw pour l'affichage
-            const formattedRaw = formatLocationDisplay(enriched);
-            console.log('[enrichLocation] Location enrichie:', { enriched, formattedRaw });
-
-            return {
-                ...enriched,
-                raw: formattedRaw || enriched.place_name || enriched.components?.ville || location.raw,
-            };
-        }
-
-        // ✅ CORRIGÉ: Si pas de réponse backend, formater quand même la location originale
-        const formattedRaw = formatLocationDisplay(location);
-        console.log('[enrichLocation] Pas de réponse backend, utilisation location originale:', { location, formattedRaw });
-        return {
-            ...location,
-            raw: formattedRaw || location.place_name || location.raw,
-        };
-    } catch (error) {
-        console.error('[enrichLocation] Erreur:', error);
-        // ✅ Fallback : retourner location originale sans crash, mais formater le raw
-        const formattedRaw = formatLocationDisplay(location);
-        return {
-            ...location,
-            raw: formattedRaw || location.place_name || location.raw,
-        };
-    }
-};
-
 // ✅ NOUVEAU 2025-11-02: Structure objet complet pour localisation
 export interface LocationObject {
     raw: string;                    // "Douala, Littoral, Cameroun"
@@ -704,19 +584,20 @@ const [query, setQuery] = useState('');
         if (enrichWithBackend) {
             setEnriching(true);
             try {
-                const enriched = await enrichLocation(locationObj);
+                const enriched = await enrichLocationWithBackend(locationObj);
                 const display = formatLocationDisplay(enriched);
-                console.log('[LocationSelector] Location enrichie:', { enriched, display });
+                const safeDisplay = display || enriched.raw || opt;
+                console.log('[LocationSelector] Location enrichie:', { enriched, display, safeDisplay });
                 // ✅ NOUVEAU: Inclure les types Google Places dans LocationObject
                 const finalLocation = {
                     ...enriched,
-                    raw: display,
+                    raw: safeDisplay,
                     google_types: enrichedResult?.types,
                     place_id: enrichedResult?.place_id,
                 };
                 console.log('[LocationSelector] Appel onSelect avec:', finalLocation);
                 // ✅ CORRIGÉ: Mettre à jour les états correctement
-                setQuery(display);
+                setQuery(safeDisplay);
                 setIsFocused(false);
                 onFocusChange?.(false);
                 setOptions([]);
@@ -731,15 +612,16 @@ const [query, setQuery] = useState('');
                 console.error('[LocationSelector] Erreur enrichissement:', error);
                 // Fallback : retourner sans enrichissement
                 const display = formatLocationDisplay(locationObj);
+                const safeDisplay = display || locationObj.raw || opt;
                 const finalLocation = {
                     ...locationObj,
-                    raw: display,
+                    raw: safeDisplay,
                     google_types: enrichedResult?.types,
                     place_id: enrichedResult?.place_id,
                 };
                 console.log('[LocationSelector] Fallback - Appel onSelect avec:', finalLocation);
                 // ✅ CORRIGÉ: Mettre à jour les états correctement
-                setQuery(display);
+                setQuery(safeDisplay);
                 setIsFocused(false);
                 onFocusChange?.(false);
                 setOptions([]);
@@ -754,15 +636,16 @@ const [query, setQuery] = useState('');
             }
         } else {
             const display = formatLocationDisplay(locationObj);
+            const safeDisplay = display || locationObj.raw || opt;
             const finalLocation = {
                 ...locationObj,
-                raw: display,
+                raw: safeDisplay,
                 google_types: enrichedResult?.types,
                 place_id: enrichedResult?.place_id,
             };
             console.log('[LocationSelector] Sans enrichissement - Appel onSelect avec:', finalLocation);
             // ✅ CORRIGÉ: Mettre à jour les états correctement
-            setQuery(display);
+            setQuery(safeDisplay);
             setIsFocused(false);
             onFocusChange?.(false);
             setOptions([]);
