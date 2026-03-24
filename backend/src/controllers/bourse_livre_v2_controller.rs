@@ -5956,7 +5956,8 @@ pub async fn get_pending_packages_for_team(
         r#"
         SELECT * FROM book_delivery_packages
         WHERE expediteur_id = $1
-            AND statut IN ('a_constituer', 'constitue')
+            AND statut = 'a_constituer'
+            AND (claimed_by_user_id IS NULL OR claimed_by_user_id = $2)
         ORDER BY
             CASE WHEN statut = 'a_constituer' THEN 0 ELSE 1 END,
             created_at ASC
@@ -5964,6 +5965,7 @@ pub async fn get_pending_packages_for_team(
         "#,
     )
     .bind(owner_id)
+    .bind(user_id)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur paquets en attente: {}", e)))?;
@@ -5973,13 +5975,15 @@ pub async fn get_pending_packages_for_team(
         r#"
         SELECT * FROM book_purchases
         WHERE vendeur_id = $1
-            AND statut IN ('confirme', 'en_attente')
+            AND statut IN ('confirme', 'en_attente', 'en_preparation')
             AND paiement_statut = 'paye'
+            AND (claimed_by_user_id IS NULL OR claimed_by_user_id = $2)
         ORDER BY created_at ASC
         LIMIT 50
         "#,
     )
     .bind(owner_id)
+    .bind(user_id)
     .fetch_all(&state.pg)
     .await
     .unwrap_or_default();
@@ -6244,6 +6248,7 @@ pub async fn courier_get_my_stops(
                     "reference": pkg.reference,
                     "nombre_livres": pkg.nombre_livres,
                     "statut": pkg.statut,
+                    "succursale_label": pkg.succursale_label,
                     "livres": livres_du_paquet,
                 }));
             }
@@ -6285,11 +6290,23 @@ pub async fn courier_get_my_stops(
             "qr_code": qr_code,
             "qr_code_url": qr_code_url,
             "instruction": if stop.stop_type == "pickup" {
+                let mut succursales: Vec<String> = paquets_detail
+                    .iter()
+                    .filter_map(|p| p.get("succursale_label").and_then(|v| v.as_str()))
+                    .map(|s| s.to_string())
+                    .collect();
+                succursales.sort();
+                succursales.dedup();
+                let succ_txt = if succursales.is_empty() {
+                    "".to_string()
+                } else {
+                    format!(" | Succursale(s): {}", succursales.join(", "))
+                };
                 format!("Montrez ce QR code à {} pour récupérer {} paquet(s) ({} livre(s)). Références: {}",
                     user_json.as_ref().and_then(|u| u.get("nom")).and_then(|n| n.as_str()).unwrap_or("l'expéditeur"),
                     stop.package_ids.len(),
                     stop.livres_count,
-                    stop.package_refs.join(", "))
+                    stop.package_refs.join(", ")) + &succ_txt
             } else {
                 format!("Livrer {} paquet(s) ({} livre(s)) — Références: {}",
                     stop.package_ids.len(),
@@ -6318,7 +6335,7 @@ pub async fn courier_get_my_stops(
 pub struct TeamValidateOrderRequest {
     pub package_id: Option<i32>,
     pub purchase_id: Option<i32>,
-    pub action: String, // "en_preparation", "constitue", "pret"
+    pub action: String, // "en_preparation", "constitue", "pret", "liberer"
     pub librairie_lieu_id: Option<i32>,
     pub stock_disponible_succursale: Option<bool>,
 }
@@ -6342,10 +6359,10 @@ pub async fn team_validate_order(
         AppError::Forbidden("Non autorisé — rôle preparer minimum requis".to_string())
     })?;
 
-    let valid_actions = ["en_preparation", "constitue", "pret"];
+    let valid_actions = ["en_preparation", "constitue", "pret", "liberer"];
     if !valid_actions.contains(&payload.action.as_str()) {
         return Err(AppError::BadRequest(format!(
-            "Action invalide: {}. Actions: en_preparation, constitue, pret",
+            "Action invalide: {}. Actions: en_preparation, constitue, pret, liberer",
             payload.action
         )));
     }
@@ -6357,11 +6374,97 @@ pub async fn team_validate_order(
             "constitue" | "pret" => "constitue",
             _ => "a_constituer",
         };
+        let lock_state: Option<(Option<i32>, Option<i32>, String)> = sqlx::query_as(
+            "SELECT claimed_by_librairie_id, claimed_by_user_id, statut FROM book_delivery_packages WHERE id = $1",
+        )
+        .bind(pkg_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur lecture verrou paquet: {}", e)))?;
+        let (claimed_librairie, claimed_user, current_status) =
+            lock_state.ok_or_else(|| AppError::NotFound("Paquet non trouvé".to_string()))?;
+
+        if payload.action == "liberer" {
+            if claimed_user != Some(user_id) {
+                return Err(AppError::BadRequest(
+                    "Seul le libraire qui a pris en charge ce paquet peut le libérer.".to_string(),
+                ));
+            }
+            sqlx::query(
+                r#"
+                UPDATE book_delivery_packages
+                SET claimed_by_librairie_id = NULL,
+                    claimed_by_user_id = NULL,
+                    released_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = $1
+                "#,
+            )
+            .bind(pkg_id)
+            .execute(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur libération paquet: {}", e)))?;
+            if current_status == "a_constituer" {
+                notify_libraire_team(
+                    &state.pg,
+                    librairie_id,
+                    "Commande disponible",
+                    "Une commande a été libérée et redevient disponible pour traitement (éléments non validés uniquement).",
+                    json!({
+                        "event": "order_released_available",
+                        "type": "package",
+                        "package_id": pkg_id,
+                        "only_non_validated_visible": true
+                    }),
+                )
+                .await;
+            }
+            return Ok(Json(json!({
+                "success": true,
+                "type": "package",
+                "id": pkg_id,
+                "new_status": new_status,
+                "validated_by": user_id,
+                "role": role,
+                "message": "Commande libérée: un autre libraire éligible peut reprendre les éléments non validés."
+            })));
+        }
+
+        if let Some(other_user) = claimed_user {
+            if other_user != user_id {
+                return Err(AppError::BadRequest(
+                    "Commande en cours de traitement par un autre libraire. Attendez sa libération."
+                        .to_string(),
+                ));
+            }
+        }
+        if let Some(other_librairie) = claimed_librairie {
+            if other_librairie != librairie_id {
+                return Err(AppError::BadRequest(
+                    "Commande verrouillée par une autre librairie du périmètre pour éviter les conflits."
+                        .to_string(),
+                ));
+            }
+        }
+        if payload.action == "en_preparation" && current_status == "constitue" {
+            return Err(AppError::BadRequest(
+                "Ce paquet est déjà constitué. Les éléments validés ne peuvent plus être modifiés par un autre libraire."
+                    .to_string(),
+            ));
+        }
 
         if matches!(
             payload.action.as_str(),
             "en_preparation" | "constitue" | "pret"
         ) {
+            if matches!(payload.action.as_str(), "constitue" | "pret")
+                && claimed_user != Some(user_id)
+            {
+                return Err(AppError::BadRequest(
+                    "Passez d'abord la commande en préparation sur votre compte avant de la constituer."
+                        .to_string(),
+                ));
+            }
             let lieu_id = payload.librairie_lieu_id.ok_or_else(|| {
                 AppError::BadRequest(
                     "Sélectionnez la succursale concernée avant validation. Si cette succursale n'a pas le stock, ne validez pas la commande.".to_string(),
@@ -6430,6 +6533,7 @@ pub async fn team_validate_order(
                 ));
             }
 
+            let should_release = matches!(payload.action.as_str(), "constitue" | "pret");
             let updated = sqlx::query_scalar::<_, i32>(
                 r#"
                 UPDATE book_delivery_packages
@@ -6440,6 +6544,10 @@ pub async fn team_validate_order(
                     stock_disponible_succursale = $4,
                     expediteur_gps = COALESCE($5, expediteur_gps),
                     expediteur_adresse = COALESCE($6, expediteur_adresse),
+                    claimed_by_librairie_id = CASE WHEN $8 THEN NULL ELSE $9 END,
+                    claimed_by_user_id = CASE WHEN $8 THEN NULL ELSE $10 END,
+                    claimed_at = CASE WHEN $8 THEN claimed_at ELSE COALESCE(claimed_at, NOW()) END,
+                    released_at = CASE WHEN $8 THEN NOW() ELSE NULL END,
                     updated_at = NOW()
                 WHERE id = $7
                 RETURNING id
@@ -6452,6 +6560,9 @@ pub async fn team_validate_order(
             .bind(succ_gps)
             .bind(succ_addr)
             .bind(pkg_id)
+            .bind(should_release)
+            .bind(librairie_id)
+            .bind(user_id)
             .fetch_optional(&state.pg)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur MAJ paquet (succursale): {}", e)))?;
@@ -6513,6 +6624,87 @@ pub async fn team_validate_order(
             "constitue" | "pret" => "en_livraison",
             _ => "en_preparation",
         };
+        let lock_state: Option<(Option<i32>, Option<i32>, String)> = sqlx::query_as(
+            "SELECT claimed_by_librairie_id, claimed_by_user_id, statut FROM book_purchases WHERE id = $1",
+        )
+        .bind(purchase_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur lecture verrou achat: {}", e)))?;
+        let (claimed_librairie, claimed_user, current_status) =
+            lock_state.ok_or_else(|| AppError::NotFound("Achat non trouvé".to_string()))?;
+
+        if payload.action == "liberer" {
+            if claimed_user != Some(user_id) {
+                return Err(AppError::BadRequest(
+                    "Seul le libraire qui a pris en charge cette partie de commande peut la libérer."
+                        .to_string(),
+                ));
+            }
+            sqlx::query(
+                r#"
+                UPDATE book_purchases
+                SET claimed_by_librairie_id = NULL,
+                    claimed_by_user_id = NULL,
+                    released_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = $1
+                "#,
+            )
+            .bind(purchase_id)
+            .execute(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur libération achat: {}", e)))?;
+            if current_status == "en_preparation"
+                || current_status == "confirme"
+                || current_status == "en_attente"
+            {
+                notify_libraire_team(
+                    &state.pg,
+                    librairie_id,
+                    "Commande disponible",
+                    "Une partie de commande a été libérée et redevient disponible pour traitement (éléments non validés uniquement).",
+                    json!({
+                        "event": "order_released_available",
+                        "type": "purchase",
+                        "purchase_id": purchase_id,
+                        "only_non_validated_visible": true
+                    }),
+                )
+                .await;
+            }
+            return Ok(Json(json!({
+                "success": true,
+                "type": "purchase",
+                "id": purchase_id,
+                "new_status": new_status,
+                "validated_by": user_id,
+                "role": role,
+                "message": "Partie de commande libérée: un autre libraire éligible peut reprendre les éléments non validés."
+            })));
+        }
+        if let Some(other_user) = claimed_user {
+            if other_user != user_id {
+                return Err(AppError::BadRequest(
+                    "Cette partie de commande est en cours de traitement par un autre libraire."
+                        .to_string(),
+                ));
+            }
+        }
+        if let Some(other_librairie) = claimed_librairie {
+            if other_librairie != librairie_id {
+                return Err(AppError::BadRequest(
+                    "Cette partie de commande est verrouillée par une autre librairie du périmètre."
+                        .to_string(),
+                ));
+            }
+        }
+        if payload.action == "en_preparation" && current_status == "en_livraison" {
+            return Err(AppError::BadRequest(
+                "Cette partie de commande est déjà validée pour livraison. Elle n'est plus modifiable."
+                    .to_string(),
+            ));
+        }
 
         let lieu_id = payload.librairie_lieu_id.ok_or_else(|| {
             AppError::BadRequest(
@@ -6520,6 +6712,13 @@ pub async fn team_validate_order(
             )
         })?;
         let stock_ok = payload.stock_disponible_succursale == Some(true);
+        if matches!(payload.action.as_str(), "constitue" | "pret") && claimed_user != Some(user_id)
+        {
+            return Err(AppError::BadRequest(
+                "Passez d'abord cette partie de commande en préparation sur votre compte avant validation."
+                    .to_string(),
+            ));
+        }
         if matches!(payload.action.as_str(), "constitue" | "pret") && !stock_ok {
             return Err(AppError::BadRequest(
                 "Stock indisponible sur la succursale sélectionnée: validation refusée pour cette partie de commande.".to_string(),
@@ -6579,13 +6778,17 @@ pub async fn team_validate_order(
             ));
         }
 
+        let should_release = matches!(payload.action.as_str(), "constitue" | "pret");
         let updated = sqlx::query_scalar::<_, i32>(
-            "UPDATE book_purchases SET statut = $1, librairie_lieu_id = $2, succursale_label = $3, stock_disponible_succursale = $4, updated_at = NOW() WHERE id = $5 RETURNING id",
+            "UPDATE book_purchases SET statut = $1, librairie_lieu_id = $2, succursale_label = $3, stock_disponible_succursale = $4, claimed_by_librairie_id = CASE WHEN $5 THEN NULL ELSE $6 END, claimed_by_user_id = CASE WHEN $5 THEN NULL ELSE $7 END, claimed_at = CASE WHEN $5 THEN claimed_at ELSE COALESCE(claimed_at, NOW()) END, released_at = CASE WHEN $5 THEN NOW() ELSE NULL END, updated_at = NOW() WHERE id = $8 RETURNING id",
         )
         .bind(new_status)
         .bind(lieu_id)
         .bind(&succursale_label)
         .bind(stock_ok)
+        .bind(should_release)
+        .bind(librairie_id)
+        .bind(user_id)
         .bind(purchase_id)
         .fetch_optional(&state.pg)
         .await

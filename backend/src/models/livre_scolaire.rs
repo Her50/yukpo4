@@ -265,6 +265,14 @@ pub struct BookPurchase {
     pub succursale_label: Option<String>,
     #[sqlx(default)]
     pub stock_disponible_succursale: Option<bool>,
+    #[sqlx(default)]
+    pub claimed_by_librairie_id: Option<i32>,
+    #[sqlx(default)]
+    pub claimed_by_user_id: Option<i32>,
+    #[sqlx(default)]
+    pub claimed_at: Option<DateTime<Utc>>,
+    #[sqlx(default)]
+    pub released_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -376,6 +384,14 @@ pub struct BookDeliveryPackage {
     /// Le stock a été confirmé disponible sur la succursale choisie.
     #[sqlx(default)]
     pub stock_disponible_succursale: Option<bool>,
+    #[sqlx(default)]
+    pub claimed_by_librairie_id: Option<i32>,
+    #[sqlx(default)]
+    pub claimed_by_user_id: Option<i32>,
+    #[sqlx(default)]
+    pub claimed_at: Option<DateTime<Utc>>,
+    #[sqlx(default)]
+    pub released_at: Option<DateTime<Utc>>,
 }
 
 /// Commission sur transaction livre

@@ -105,6 +105,10 @@ export interface BookDeliveryPackage {
     librairie_lieu_id?: number;
     succursale_label?: string;
     stock_disponible_succursale?: boolean;
+    claimed_by_librairie_id?: number;
+    claimed_by_user_id?: number;
+    claimed_at?: string;
+    released_at?: string;
 }
 
 export interface ProgrammeScolaire {
@@ -186,6 +190,10 @@ export interface BookPurchase {
     librairie_lieu_id?: number;
     succursale_label?: string;
     stock_disponible_succursale?: boolean;
+    claimed_by_librairie_id?: number;
+    claimed_by_user_id?: number;
+    claimed_at?: string;
+    released_at?: string;
     created_at: string;
     updated_at: string;
 }
@@ -1126,7 +1134,7 @@ export const bourseLivreV2Api = {
     teamValidateOrder: async (params: {
         package_id?: number;
         purchase_id?: number;
-        action: 'en_preparation' | 'constitue' | 'pret';
+        action: 'en_preparation' | 'constitue' | 'pret' | 'liberer';
         librairie_lieu_id?: number;
         stock_disponible_succursale?: boolean;
     }): Promise<{

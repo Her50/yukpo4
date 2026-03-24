@@ -2866,6 +2866,9 @@ ${isCourier ? `COURSIER — GUIDE COMPLET DE LIVRAISON LIVRES:
 \uD83D\uDCE6 CONSTITUTION DES PAQUETS:
 - Quand une commande arrive, elle apparaît dans "Paquets en attente" (statut: à_constituer)
 - Ouvrir le détail du paquet: checklist des **lignes** (livres **et** éventuellement **cahiers / fournitures** selon \`type_article\`) avec images recto/verso, titre, matière, classe
+- **Validation par succursale (obligatoire):** sélectionner la succursale (\`librairie_lieu_id\`) **dès** "en_preparation"
+- **Stock succursale:** pour passer à "constitue" / "pret", cocher explicitement stock disponible (\`stock_disponible_succursale = true\`), sinon **ne pas valider**
+- Le backend refuse la validation si succursale hors périmètre de matching courant (ville/rayon) ou si stock indisponible
 - Préparer physiquement les articles → marquer "constitué"
 - Quand le coursier arrive, scanner son QR → le paquet passe en "en_route"
 
@@ -4526,7 +4529,10 @@ Explorez l'avenir dès maintenant ! 👇`,
         suggestedActions: [
           { id: 'book-exchange', label: 'Troc livres', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation' as const, description: 'Échanger des livres' },
           { id: 'book-programme', label: 'Liste programme (famille)', icon: 'list-checks', route: 'ProgrammeBesoinsSelector', category: 'navigation' as const, description: 'Manuels au programme officiel' },
-          { id: 'book-etab', label: 'Manuels établissement', icon: 'building-2', route: 'EtablissementScolaire', category: 'navigation' as const, description: 'Dépôt liste établissement' }
+          { id: 'book-etab', label: 'Manuels établissement', icon: 'building-2', route: 'EtablissementScolaire', category: 'navigation' as const, description: 'Dépôt liste établissement' },
+          { id: 'lib-team-choose-branch', label: 'Choisir succursale', icon: 'map-pin', route: 'LibrairieTeamPending', category: 'action' as const, description: 'Sélectionner la succursale avant validation' },
+          { id: 'lib-team-stock-check', label: 'Cocher stock dispo', icon: 'check-square', route: 'LibrairieTeamPending', category: 'action' as const, description: 'Confirmer disponibilité sur la succursale' },
+          { id: 'lib-team-keep-prep', label: 'Laisser en préparation', icon: 'clock', route: 'LibrairieTeamPending', category: 'action' as const, description: 'Ne pas valider si stock indisponible' }
         ]
       },
       {
@@ -5839,7 +5845,10 @@ Soyez précis, utilisez les fonctionnalités disponibles, et donnez des réponse
       { id: 'book-scan', label: 'Scanner livre', icon: 'scan', route: 'LivreScolaireHome', category: 'action', description: 'Analyser un livre avec IA' },
       { id: 'book-price', label: 'Estimer prix', icon: 'tag', route: 'LivreScolaireHome', category: 'action', description: 'Connaitre la valeur d un livre' },
       { id: 'book-delivery', label: 'Livraison', icon: 'truck', route: 'LivreScolaireHome', category: 'action', description: 'Livraison par coursiers' },
-      { id: 'book-program', label: 'Verifier programme', icon: 'graduation-cap', route: 'LivreScolaireHome', category: 'action', description: 'Verifier programme scolaire' }
+      { id: 'book-program', label: 'Verifier programme', icon: 'graduation-cap', route: 'LivreScolaireHome', category: 'action', description: 'Verifier programme scolaire' },
+      { id: 'lib-team-choose-branch', label: 'Choisir succursale', icon: 'map-pin', route: 'LibrairieTeamPending', category: 'action', description: 'Sélectionner la succursale de traitement' },
+      { id: 'lib-team-stock-check', label: 'Cocher stock dispo', icon: 'check-square', route: 'LibrairieTeamPending', category: 'action', description: 'Confirmer la dispo sur la succursale' },
+      { id: 'lib-team-keep-prep', label: 'Laisser en préparation', icon: 'clock', route: 'LibrairieTeamPending', category: 'action', description: 'Garder en préparation si stock indisponible' }
     ];
   }
 

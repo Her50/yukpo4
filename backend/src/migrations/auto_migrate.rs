@@ -8553,6 +8553,15 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     }
 
     // ✅ 2026-03-15 : Bourse du Livre V2 - recto/verso, modes, paquets, commissions, dons
+    match ensure_bourse_livre_book_tables_bootstrap_safe(pool).await {
+        Ok(_) => info!("✅ Migration auto: bootstrap safe tables book_* OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto bootstrap safe tables book_*: {}",
+            e
+        ),
+    }
+
+    // ✅ 2026-03-15 : Bourse du Livre V2 - recto/verso, modes, paquets, commissions, dons
     match ensure_bourse_livre_v2_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: bourse livre V2 tables OK"),
         Err(e) => error!("❌ Erreur migration auto bourse livre V2: {}", e),
@@ -17149,6 +17158,20 @@ pub async fn ensure_livres_scolaires_tables(pool: &PgPool) -> Result<(), sqlx::E
 
 /// ✅ 2026-03-15 : Bourse du Livre V2 - recto/verso, modes, paquets, commissions, dons
 /// Migration: 20260315_bourse_livre_v2_complete.sql
+pub async fn ensure_bourse_livre_book_tables_bootstrap_safe(
+    pool: &PgPool,
+) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création bootstrap safe des tables book_delivery_packages/book_purchases...");
+
+    let migration_sql = include_str!("../../migrations/20260324_bootstrap_book_tables_safe.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+
+    info!("✅ Bootstrap safe book tables OK");
+    Ok(())
+}
+
+/// ✅ 2026-03-15 : Bourse du Livre V2 - recto/verso, modes, paquets, commissions, dons
+/// Migration: 20260315_bourse_livre_v2_complete.sql
 pub async fn ensure_bourse_livre_v2_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification/création des tables Bourse du Livre V2...");
 
@@ -20966,6 +20989,30 @@ pub async fn ensure_book_delivery_packages_librairie_lieux_columns(
     .execute(pool)
     .await
     .ok();
+    sqlx::query(
+        "ALTER TABLE book_delivery_packages ADD COLUMN IF NOT EXISTS claimed_by_librairie_id INTEGER",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "ALTER TABLE book_delivery_packages ADD COLUMN IF NOT EXISTS claimed_by_user_id INTEGER",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "ALTER TABLE book_delivery_packages ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "ALTER TABLE book_delivery_packages ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ",
+    )
+    .execute(pool)
+    .await
+    .ok();
 
     sqlx::query("ALTER TABLE book_purchases ADD COLUMN IF NOT EXISTS librairie_lieu_id INTEGER")
         .execute(pool)
@@ -20989,6 +21036,24 @@ pub async fn ensure_book_delivery_packages_librairie_lieux_columns(
     .execute(pool)
     .await
     .ok();
+    sqlx::query(
+        "ALTER TABLE book_purchases ADD COLUMN IF NOT EXISTS claimed_by_librairie_id INTEGER",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query("ALTER TABLE book_purchases ADD COLUMN IF NOT EXISTS claimed_by_user_id INTEGER")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("ALTER TABLE book_purchases ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("ALTER TABLE book_purchases ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ")
+        .execute(pool)
+        .await
+        .ok();
 
     info!("✅ Colonnes succursale book_delivery_packages OK");
     Ok(())

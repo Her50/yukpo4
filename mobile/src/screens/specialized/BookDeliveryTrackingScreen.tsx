@@ -49,6 +49,7 @@ interface BookPackage {
     id: string;
     reference: string;
     status: string;
+    succursale_label?: string;
     book_titles: string[];
     sender_name: string;
     recipient_name: string;
@@ -329,6 +330,14 @@ const BookDeliveryTrackingScreen: React.FC = () => {
                         <Text style={styles.cardTitle}>
                             {t('bookDeliveryTracking.packageInfo') || 'Détails du colis'}
                         </Text>
+                        {!!bookPackage.succursale_label && (
+                            <View style={styles.pickupTag}>
+                                <SafeIcon name="MapPin" size={14} color="#0f766e" />
+                                <Text style={styles.pickupTagText}>
+                                    {`PICKUP: ${bookPackage.succursale_label}`}
+                                </Text>
+                            </View>
+                        )}
                         <View style={styles.infoRow}>
                             <SafeIcon name="Hash" size={16} color={modernColors.textSecondary} />
                             <Text style={styles.infoLabel}>{t('bookDeliveryTracking.reference') || 'Réf.'}</Text>
@@ -489,6 +498,24 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: modernColors.text,
         marginBottom: 12,
+    },
+    pickupTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 6,
+        backgroundColor: '#ccfbf1',
+        borderColor: '#5eead4',
+        borderWidth: 1,
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        marginBottom: 10,
+    },
+    pickupTagText: {
+        fontSize: 12,
+        color: '#115e59',
+        fontWeight: '800',
     },
     timeline: {
         flexDirection: 'row',

@@ -11,18 +11,38 @@ import {
   View,
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { bourseLivreV2Api } from '../../services/bourseLivreV2Api';
 import { modernColors } from '../../theme/modernTheme';
 
 type TeamLieu = { id: number; libelle: string; gps?: string; ville?: string; adresse?: string };
-type TeamPackage = { id: number; reference: string; statut: string; succursale_label?: string; nombre_livres?: number };
-type TeamPurchase = { id: number; statut: string; succursale_label?: string; prix_achat?: number; devise?: string };
+type TeamPackage = {
+  id: number;
+  reference: string;
+  statut: string;
+  succursale_label?: string;
+  nombre_livres?: number;
+  claimed_by_user_id?: number;
+  claimed_at?: string;
+  released_at?: string;
+};
+type TeamPurchase = {
+  id: number;
+  statut: string;
+  succursale_label?: string;
+  prix_achat?: number;
+  devise?: string;
+  claimed_by_user_id?: number;
+  claimed_at?: string;
+  released_at?: string;
+};
 
-const ACTIONS: Array<'en_preparation' | 'constitue' | 'pret'> = ['en_preparation', 'constitue', 'pret'];
+const BASE_ACTIONS: Array<'en_preparation' | 'constitue' | 'pret'> = ['en_preparation', 'constitue', 'pret'];
 
 const LibrairieTeamPendingScreen: React.FC = () => {
   const { t } = useLanguageSafe();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [packages, setPackages] = useState<TeamPackage[]>([]);
@@ -65,7 +85,46 @@ const LibrairieTeamPendingScreen: React.FC = () => {
   );
 
   const labelAction = (action: 'en_preparation' | 'constitue' | 'pret') =>
-    action === 'en_preparation' ? 'En préparation' : action === 'constitue' ? 'Constituer' : 'Prêt coursier';
+    action === 'en_preparation'
+      ? t('librairieTeamPending.actionEnPreparation', 'En préparation')
+      : action === 'constitue'
+      ? t('librairieTeamPending.actionConstituer', 'Constituer')
+      : t('librairieTeamPending.actionPretCoursier', 'Prêt coursier');
+
+  const isActionBlocked = (
+    action: 'en_preparation' | 'constitue' | 'pret',
+    claimedByUserId?: number
+  ) => {
+    if (claimedByUserId && claimedByUserId !== user?.id) return true;
+    if (!selectedLieuId) return true;
+    if ((action === 'constitue' || action === 'pret') && !stockDisponible) return true;
+    return false;
+  };
+
+  const blockedReason = (
+    action: 'en_preparation' | 'constitue' | 'pret',
+    claimedByUserId?: number
+  ) => {
+    if (claimedByUserId && claimedByUserId !== user?.id) {
+      return t(
+        'librairieTeamPending.reasonLockedByOther',
+        'Commande en cours de traitement par un autre libraire.'
+      );
+    }
+    if (!selectedLieuId) {
+      return t(
+        'librairieTeamPending.reasonChooseBranch',
+        'Choisir une succursale pour activer la validation.'
+      );
+    }
+    if ((action === 'constitue' || action === 'pret') && !stockDisponible) {
+      return t(
+        'librairieTeamPending.reasonStockRequired',
+        'Cocher "stock dispo" pour constituer ou marquer prêt coursier.'
+      );
+    }
+    return null;
+  };
 
   const validateItem = async (
     type: 'package' | 'purchase',
@@ -73,13 +132,22 @@ const LibrairieTeamPendingScreen: React.FC = () => {
     action: 'en_preparation' | 'constitue' | 'pret'
   ) => {
     if (!selectedLieuId) {
-      Alert.alert('Succursale requise', 'Sélectionnez une succursale avant validation.');
+      Alert.alert(
+        t('librairieTeamPending.branchRequiredTitle', 'Succursale requise'),
+        t(
+          'librairieTeamPending.branchRequiredMessage',
+          'Sélectionnez une succursale avant validation.'
+        )
+      );
       return;
     }
     if ((action === 'constitue' || action === 'pret') && !stockDisponible) {
       Alert.alert(
-        'Stock indisponible',
-        "Ne validez pas cette commande si le stock n'est pas disponible sur cette succursale. Gardez en préparation ou changez de succursale."
+        t('librairieTeamPending.stockUnavailableTitle', 'Stock indisponible'),
+        t(
+          'librairieTeamPending.stockUnavailableMessage',
+          "Ne validez pas cette commande si le stock n'est pas disponible sur cette succursale. Gardez en préparation ou changez de succursale."
+        )
       );
       return;
     }
@@ -101,12 +169,33 @@ const LibrairieTeamPendingScreen: React.FC = () => {
     }
   };
 
+  const formatMiniTime = (iso?: string) => {
+    if (!iso) return null;
+    try {
+      return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return null;
+    }
+  };
+
+  const getTimelineData = (item: any) => {
+    const claimedAt = formatMiniTime(item.claimed_at);
+    const releasedAt = formatMiniTime(item.released_at);
+    const isValidated = item.__type === 'package' ? item.statut === 'constitue' : item.statut === 'en_livraison';
+    return { claimedAt, releasedAt, isValidated };
+  };
+
   const openDetail = async (packageId: number) => {
     try {
       const detail = await bourseLivreV2Api.teamGetPackageDetail(packageId);
       const p = detail?.package || {};
-      const succ = p?.succursale_label ? `\nSuccursale: ${p.succursale_label}` : '\nSuccursale: non définie';
-      Alert.alert(`Détail ${p.reference || `#${packageId}`}`, `${detail?.instructions || ''}${succ}`);
+      const succ = p?.succursale_label
+        ? `\n${t('librairieTeamPending.succursaleLabel', 'Succursale')}: ${p.succursale_label}`
+        : `\n${t('librairieTeamPending.succursaleLabel', 'Succursale')}: ${t('librairieTeamPending.undefinedBranch', 'non définie')}`;
+      Alert.alert(
+        t('librairieTeamPending.detailTitle', { ref: p.reference || `#${packageId}` }),
+        `${detail?.instructions || ''}${succ}`
+      );
     } catch (e: any) {
       Alert.alert(t('message.error', 'Erreur'), e?.message || 'Détail indisponible');
     }
@@ -122,10 +211,10 @@ const LibrairieTeamPendingScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Equipe librairie - validations</Text>
+      <Text style={styles.title}>{t('librairieTeamPending.title', 'Equipe librairie - validations')}</Text>
 
       <View style={styles.panel}>
-        <Text style={styles.panelTitle}>1) Succursale concernee</Text>
+        <Text style={styles.panelTitle}>{t('librairieTeamPending.panelBranch', '1) Succursale concernée')}</Text>
         <View style={styles.chipsWrap}>
           {lieux.map((l) => (
             <TouchableOpacity
@@ -142,15 +231,33 @@ const LibrairieTeamPendingScreen: React.FC = () => {
         {!!selectedLieu && (
           <Text style={styles.helpText}>
             {selectedLieu.ville ? `${selectedLieu.ville} - ` : ''}
-            {selectedLieu.adresse || selectedLieu.gps || 'Sans adresse'}
+            {selectedLieu.adresse || selectedLieu.gps || t('librairieTeamPending.noAddress', 'Sans adresse')}
           </Text>
         )}
       </View>
 
       <TouchableOpacity style={styles.checkboxRow} onPress={() => setStockDisponible((s) => !s)}>
         <SafeIcon name={stockDisponible ? 'check-square' : 'square'} size={18} color={modernColors.primary} />
-        <Text style={styles.checkboxText}>Stock dispo sur cette succursale</Text>
+        <Text style={styles.checkboxText}>
+          {t('librairieTeamPending.stockCheckbox', 'Stock dispo sur cette succursale')}
+        </Text>
       </TouchableOpacity>
+      {!selectedLieuId || !stockDisponible ? (
+        <View style={styles.guardInfo}>
+          <SafeIcon name="shield-alert" size={14} color="#92400e" />
+          <Text style={styles.guardInfoText}>
+            {!selectedLieuId
+              ? t(
+                  'librairieTeamPending.guardChooseBranch',
+                  'Validation verrouillée: choisissez d’abord une succursale.'
+                )
+              : t(
+                  'librairieTeamPending.guardStockRequired',
+                  'Validation "constitue/prêt" verrouillée: cochez le stock disponible.'
+                )}
+          </Text>
+        </View>
+      ) : null}
 
       <FlatList
         data={[
@@ -162,28 +269,84 @@ const LibrairieTeamPendingScreen: React.FC = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
         renderItem={({ item }: any) => (
           <View style={styles.card}>
-            <Text style={styles.ref}>{item.__type === 'package' ? item.reference : `Achat #${item.id}`}</Text>
-            <Text style={styles.meta}>Statut: {item.statut || 'n/a'}</Text>
-            <Text style={styles.meta}>
-              Succursale: {item.succursale_label || 'non définie (à sélectionner)'}
+            <Text style={styles.ref}>
+              {item.__type === 'package'
+                ? item.reference
+                : t('librairieTeamPending.purchaseRef', { id: item.id })}
             </Text>
+            <Text style={styles.meta}>
+              {t('librairieTeamPending.statusLabel', 'Statut')}: {item.statut || 'n/a'}
+            </Text>
+            <Text style={styles.meta}>
+              {t('librairieTeamPending.succursaleLabel', 'Succursale')}:{' '}
+              {item.succursale_label ||
+                t('librairieTeamPending.undefinedBranchSelect', 'non définie (à sélectionner)')}
+            </Text>
+            {item.claimed_by_user_id ? (
+              <Text style={styles.meta}>
+                {t('librairieTeamPending.claimLabel', 'Pris en charge par')} #{item.claimed_by_user_id}
+              </Text>
+            ) : null}
+            {(() => {
+              const tl = getTimelineData(item);
+              return (
+                <View style={styles.timelineWrap}>
+                  <Text style={styles.timelineTitle}>
+                    {t('librairieTeamPending.timelineTitle', 'Timeline statut')}
+                  </Text>
+                  <View style={styles.timelineRow}>
+                    <View style={[styles.timelineDot, tl.claimedAt ? styles.timelineDotActive : null]} />
+                    <Text style={styles.timelineText}>
+                      {t('librairieTeamPending.timelineClaimed', 'Pris en charge')}
+                      {tl.claimedAt ? ` (${tl.claimedAt})` : ' -'}
+                    </Text>
+                  </View>
+                  <View style={styles.timelineRow}>
+                    <View style={[styles.timelineDot, tl.releasedAt ? styles.timelineDotWarn : null]} />
+                    <Text style={styles.timelineText}>
+                      {t('librairieTeamPending.timelineReleased', 'Libéré')}
+                      {tl.releasedAt ? ` (${tl.releasedAt})` : ' -'}
+                    </Text>
+                  </View>
+                  <View style={styles.timelineRow}>
+                    <View style={[styles.timelineDot, tl.isValidated ? styles.timelineDotSuccess : null]} />
+                    <Text style={styles.timelineText}>
+                      {t('librairieTeamPending.timelineValidated', 'Validé')}
+                      {tl.isValidated ? '' : ' -'}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })()}
             {item.__type === 'package' ? (
               <TouchableOpacity style={styles.detailBtn} onPress={() => openDetail(item.id)}>
-                <Text style={styles.detailBtnText}>Voir détail</Text>
+                <Text style={styles.detailBtnText}>
+                  {t('librairieTeamPending.viewDetail', 'Voir détail')}
+                </Text>
               </TouchableOpacity>
             ) : null}
             <View style={styles.actionsRow}>
-              {ACTIONS.map((a) => {
+              {BASE_ACTIONS.map((a) => {
                 const k = `${item.__type}-${item.id}-${a}`;
+                const blocked = isActionBlocked(a, item.claimed_by_user_id);
+                const reason = blockedReason(a, item.claimed_by_user_id);
                 return (
-                  <TouchableOpacity
-                    key={a}
-                    style={[styles.actionBtn, processingKey === k && { opacity: 0.6 }]}
-                    disabled={processingKey !== null}
-                    onPress={() => validateItem(item.__type, item.id, a)}
-                  >
-                    <Text style={styles.actionText}>{labelAction(a)}</Text>
-                  </TouchableOpacity>
+                  <View key={a} style={styles.actionWrap}>
+                    <TouchableOpacity
+                      style={[
+                        styles.actionBtn,
+                        blocked && styles.actionBtnDisabled,
+                        processingKey === k && { opacity: 0.6 },
+                      ]}
+                      disabled={processingKey !== null || blocked}
+                      onPress={() => validateItem(item.__type, item.id, a)}
+                    >
+                      <Text style={[styles.actionText, blocked && styles.actionTextDisabled]}>
+                        {labelAction(a)}
+                      </Text>
+                    </TouchableOpacity>
+                    {blocked && reason ? <Text style={styles.blockReason}>{reason}</Text> : null}
+                  </View>
                 );
               })}
             </View>
@@ -208,14 +371,52 @@ const styles = StyleSheet.create({
   helpText: { marginTop: 8, color: '#6b7280', fontSize: 11 },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   checkboxText: { fontSize: 13, color: '#111827', fontWeight: '600' },
+  guardInfo: {
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  guardInfoText: { fontSize: 12, color: '#92400e', fontWeight: '600', flex: 1 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 10 },
   ref: { fontSize: 14, fontWeight: '800', color: '#1f2937' },
   meta: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  timelineWrap: {
+    marginTop: 8,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  timelineTitle: { fontSize: 11, color: '#374151', fontWeight: '700', marginBottom: 4 },
+  timelineRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
+  timelineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: '#d1d5db',
+  },
+  timelineDotActive: { backgroundColor: '#2563eb' },
+  timelineDotWarn: { backgroundColor: '#f59e0b' },
+  timelineDotSuccess: { backgroundColor: '#16a34a' },
+  timelineText: { fontSize: 11, color: '#4b5563' },
   detailBtn: { marginTop: 8, alignSelf: 'flex-start' },
   detailBtnText: { color: modernColors.primary, fontWeight: '700', fontSize: 12 },
   actionsRow: { flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' },
+  actionWrap: { maxWidth: '100%' },
   actionBtn: { backgroundColor: modernColors.primary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
+  actionBtnDisabled: { backgroundColor: '#e5e7eb' },
   actionText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  actionTextDisabled: { color: '#6b7280' },
+  blockReason: { fontSize: 10, color: '#92400e', marginTop: 4, maxWidth: 180 },
 });
 
 export default LibrairieTeamPendingScreen;

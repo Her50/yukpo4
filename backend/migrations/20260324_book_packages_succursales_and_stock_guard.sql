@@ -13,7 +13,11 @@ BEGIN
         ALTER TABLE book_delivery_packages
             ADD COLUMN IF NOT EXISTS librairie_lieu_id INTEGER,
             ADD COLUMN IF NOT EXISTS succursale_label VARCHAR(255),
-            ADD COLUMN IF NOT EXISTS stock_disponible_succursale BOOLEAN;
+            ADD COLUMN IF NOT EXISTS stock_disponible_succursale BOOLEAN,
+            ADD COLUMN IF NOT EXISTS claimed_by_librairie_id INTEGER,
+            ADD COLUMN IF NOT EXISTS claimed_by_user_id INTEGER,
+            ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ,
+            ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ;
 
         CREATE INDEX IF NOT EXISTS idx_book_packages_lieu
             ON book_delivery_packages(librairie_lieu_id);
@@ -27,7 +31,11 @@ BEGIN
             ALTER TABLE book_purchases
                 ADD COLUMN IF NOT EXISTS librairie_lieu_id INTEGER,
                 ADD COLUMN IF NOT EXISTS succursale_label VARCHAR(255),
-                ADD COLUMN IF NOT EXISTS stock_disponible_succursale BOOLEAN;
+                ADD COLUMN IF NOT EXISTS stock_disponible_succursale BOOLEAN,
+                ADD COLUMN IF NOT EXISTS claimed_by_librairie_id INTEGER,
+                ADD COLUMN IF NOT EXISTS claimed_by_user_id INTEGER,
+                ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ,
+                ADD COLUMN IF NOT EXISTS released_at TIMESTAMPTZ;
 
             CREATE INDEX IF NOT EXISTS idx_book_purchases_lieu
                 ON book_purchases(librairie_lieu_id);

@@ -179,7 +179,7 @@ jobs:
                 "EMAIL_PROVIDER": "sendgrid",
                 "SENDGRID_FROM_EMAIL": "noreply@yukpo.com",
                 "SENDGRID_FROM_NAME": "Yukpo",
-                "SMS_ENABLED": "false",
+                "SMS_ENABLED": "true",
                 "SMS_PROVIDER": "twilio",
 
                 "SEARCH_DEFAULT_LANGUAGE": "fr",
@@ -395,7 +395,8 @@ jobs:
                 --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
                 --update-env-vars="^;^$ENV_VARS" \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
-                --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER,MONGODB_URL" \
+                --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
+                --update-secrets="TWILIO_ACCOUNT_SID=twilio-account-sid:latest,TWILIO_AUTH_TOKEN=twilio-auth-token:latest,TWILIO_FROM_NUMBER=twilio-from-number:latest" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 4Gi \
                 --cpu 2 \
@@ -419,6 +420,7 @@ jobs:
                 --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
                 --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
                 --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
+                --update-secrets="TWILIO_ACCOUNT_SID=twilio-account-sid:latest,TWILIO_AUTH_TOKEN=twilio-auth-token:latest,TWILIO_FROM_NUMBER=twilio-from-number:latest" \
                 --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
                 --memory 4Gi \
                 --cpu 2 \
@@ -448,6 +450,7 @@ jobs:
               --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
               --update-secrets="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,OPENAI_API_KEY=openai-api-key:latest,SORA_API_KEY=sora-api-key:latest,S3_ACCESS_KEY=s3-access-key:latest,S3_SECRET_KEY=s3-secret-key:latest,LIVEKIT_API_KEY=livekit-api-key:latest,LIVEKIT_API_SECRET=livekit-api-secret:latest,GOOGLE_MAPS_API_KEY=google-maps-api-key:latest,OPENWEATHERMAP_API_KEY=openweathermap-api-key:latest,CINETPAY_API_KEY=cinetpay-api-key:latest,CINETPAY_SITE_ID=cinetpay-site-id:latest,CINETPAY_SECRET_KEY=cinetpay-secret-key:latest,NOTCHPAY_PUBLIC_KEY=notchpay-public-key:latest,NOTCHPAY_SECRET_KEY=notchpay-secret-key:latest,FLUTTERWAVE_SECRET_KEY=flutterwave-secret-key:latest,FLUTTERWAVE_PUBLIC_KEY=flutterwave-public-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_PUBLISHABLE_KEY=stripe-publishable-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest,PAYPAL_WEBHOOK_ID=paypal-webhook-id:latest,ORANGE_MONEY_WEBHOOK_SECRET=orange-money-webhook-secret:latest,MTN_MONEY_WEBHOOK_SECRET=mtn-money-webhook-secret:latest" \
               --remove-secrets="TWILIO_ACCOUNT_SID,TWILIO_AUTH_TOKEN,TWILIO_FROM_NUMBER" \
+                --update-secrets="TWILIO_ACCOUNT_SID=twilio-account-sid:latest,TWILIO_AUTH_TOKEN=twilio-auth-token:latest,TWILIO_FROM_NUMBER=twilio-from-number:latest" \
               --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
               --memory 4Gi \
               --cpu 2 \

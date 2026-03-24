@@ -551,7 +551,7 @@ jobs:
                 "EMAIL_PROVIDER": "sendgrid",
                 "SENDGRID_FROM_EMAIL": "noreply@yukpomnang.com",
                 "SENDGRID_FROM_NAME": "Yukpomnang",
-                "SMS_ENABLED": "false",
+                "SMS_ENABLED": "true",
                 "SMS_PROVIDER": "twilio",
 
                 "SEARCH_DEFAULT_LANGUAGE": "fr",

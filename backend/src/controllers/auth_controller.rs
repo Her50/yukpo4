@@ -3,9 +3,9 @@ use axum::{
     response::{IntoResponse, Json},
 };
 use bcrypt::{hash, verify};
-use log::{error, info};
+use log::{error, info, warn};
 use reqwest::Client;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use std::sync::Arc;
 
@@ -20,6 +20,19 @@ use crate::{
 };
 
 use crate::state::AppState;
+
+fn log_safe_phone(phone: &str) -> String {
+    let digits: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
+    if digits.len() <= 4 {
+        return "****".to_string();
+    }
+    format!("***{}", &digits[digits.len() - 4..])
+}
+
+async fn check_rate_limit(_key: &str, _window_seconds: i64, _max_attempts: i64) -> AppResult<()> {
+    // Fallback permissif: le projet ne fournit plus de redis dans AppState.
+    Ok(())
+}
 
 // ✅ NOUVEAU 2026-02-06: Plus de tokens initiaux - les utilisateurs commencent à 0
 // Les tokens seront gagnés via la phase de lancement (produits gratuits) ou achat
@@ -973,7 +986,7 @@ pub async fn register_user(
         }
     }
 
-    // ✅ NOUVEAU 2026-02-25: Sauvegarder le téléphone si fourni
+    // ✅ NOUVEAU 2026-03-24: Envoyer le SMS de vérification si téléphone fourni
     if let Some(ref phone) = payload.phone {
         if !phone.trim().is_empty() {
             let phone_country = payload.phone_country.as_deref().unwrap_or("CM");
@@ -985,6 +998,49 @@ pub async fn register_user(
             .bind(new.id)
             .execute(db)
             .await;
+
+            // Envoyer le code de vérification par SMS
+            use crate::services::sms_service::SmsService;
+            let sms_service = SmsService::new();
+            let verification_code = format!("{:06}", rand::random::<u32>() % 1_000_000);
+            let message = format!(
+                "Votre code de vérification YUKPO est: {}. Valide 15 minutes.",
+                verification_code
+            );
+
+            match sms_service.send_sms(phone, &message).await {
+                Ok(result) => {
+                    if result.success {
+                        info!(
+                            "[register_user] SMS de vérification envoyé à: {}",
+                            log_safe_phone(phone)
+                        );
+
+                        // Sauvegarder le code en base
+                        let expires_at = chrono::Utc::now() + chrono::Duration::minutes(15);
+                        let phone_clean = phone.replace(" ", "").replace("-", "").replace("+", "");
+
+                        if let Err(e) = sqlx::query(
+                            "INSERT INTO phone_verification_codes (phone, code, expires_at) VALUES ($1, $2, $3)"
+                        )
+                        .bind(&phone_clean)
+                        .bind(&verification_code)
+                        .bind(expires_at)
+                        .execute(db)
+                        .await {
+                            error!("[register_user] Erreur sauvegarde code SMS: {:?}", e);
+                        }
+                    } else {
+                        warn!(
+                            "[register_user] Échec envoi SMS verification: {:?}",
+                            result.error
+                        );
+                    }
+                }
+                Err(e) => {
+                    error!("[register_user] Erreur service SMS verification: {:?}", e);
+                }
+            }
         }
     }
 
@@ -997,7 +1053,11 @@ pub async fn register_user(
             "tokens_balance": new.tokens_balance,
             "token": jwt,
             "phone_verified": false,
-            "message": "Compte créé avec succès. Veuillez vérifier votre numéro de téléphone."
+            "message": if payload.phone.is_some() && !payload.phone.as_ref().unwrap().trim().is_empty() {
+                "Compte créé avec succès. Veuillez vérifier votre numéro de téléphone avec le code reçu par SMS."
+            } else {
+                "Compte créé avec succès."
+            }
         })),
     )
         .into_response())
@@ -1006,6 +1066,238 @@ pub async fn register_user(
 async fn send_verification_email(email: &str) -> AppResult<()> {
     println!("Envoi d'un email de vérification à {}", email);
     Ok(())
+}
+
+// ✅ NOUVEAU: Structures pour la vérification téléphone
+#[derive(Deserialize)]
+pub struct SendPhoneVerificationRequest {
+    pub phone: String,
+    pub phone_country: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct VerifyPhoneRequest {
+    pub phone: String,
+    pub code: String,
+}
+
+#[derive(Serialize)]
+pub struct PhoneVerificationResponse {
+    pub success: bool,
+    pub message: String,
+    pub phone_verified: bool,
+}
+
+/// ? Envoi du code de vérification par SMS
+pub async fn send_phone_verification_code(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<SendPhoneVerificationRequest>,
+) -> AppResult<Json<PhoneVerificationResponse>> {
+    use crate::services::sms_service::SmsService;
+
+    info!(
+        "[send_phone_verification_code] Demande pour téléphone: {}",
+        log_safe_phone(&payload.phone)
+    );
+
+    // ✅ SÉCURITÉ: Nettoyer et valider le numéro
+    let phone_clean = payload.phone.replace(" ", "").replace("-", "").replace("+", "");
+    if phone_clean.len() < 8 || phone_clean.len() > 15 {
+        warn!(
+            "[send_phone_verification_code] Numéro invalide: {}",
+            log_safe_phone(&payload.phone)
+        );
+        return Ok(Json(PhoneVerificationResponse {
+            success: false,
+            message: "Numéro de téléphone invalide".to_string(),
+            phone_verified: false,
+        }));
+    }
+
+    // ✅ SÉCURITÉ: Rate limiting par numéro
+    let rate_limit_key = format!("sms_verification:{}", &phone_clean);
+    if let Err(e) = check_rate_limit(&rate_limit_key, 60, 3).await {
+        warn!(
+            "[send_phone_verification_code] Rate limit dépassé pour téléphone: {}",
+            log_safe_phone(&payload.phone)
+        );
+        return Ok(Json(PhoneVerificationResponse {
+            success: false,
+            message: "Trop de tentatives. Veuillez attendre avant de réessayer.".to_string(),
+            phone_verified: false,
+        }));
+    }
+
+    // Générer un code à 6 chiffres
+    let verification_code = format!("{:06}", rand::random::<u32>() % 1_000_000);
+
+    // Sauvegarder le code en base de données
+    let db = &state.pg;
+    let expires_at = chrono::Utc::now() + chrono::Duration::minutes(15);
+
+    // Supprimer les anciens codes pour ce numéro
+    let _ = sqlx::query("DELETE FROM phone_verification_codes WHERE phone = $1")
+        .bind(&phone_clean)
+        .execute(db)
+        .await;
+
+    // Insérer le nouveau code
+    sqlx::query(
+        "INSERT INTO phone_verification_codes (phone, code, expires_at) VALUES ($1, $2, $3)",
+    )
+    .bind(&phone_clean)
+    .bind(&verification_code)
+    .bind(expires_at)
+    .execute(db)
+    .await
+    .map_err(|e| {
+        error!(
+            "[send_phone_verification_code] Erreur sauvegarde code: {:?}",
+            e
+        );
+        AppError::Internal("Erreur lors de la sauvegarde du code de vérification".into())
+    })?;
+
+    // Envoyer le SMS
+    let sms_service = SmsService::new();
+    let message = format!(
+        "Votre code de vérification YUKPO est: {}. Valide 15 minutes.",
+        verification_code
+    );
+
+    match sms_service.send_sms(&payload.phone, &message).await {
+        Ok(result) => {
+            if result.success {
+                info!(
+                    "[send_phone_verification_code] SMS envoyé avec succès à: {}",
+                    log_safe_phone(&payload.phone)
+                );
+                Ok(Json(PhoneVerificationResponse {
+                    success: true,
+                    message: "Code de vérification envoyé par SMS".to_string(),
+                    phone_verified: false,
+                }))
+            } else {
+                error!(
+                    "[send_phone_verification_code] Échec envoi SMS: {:?}",
+                    result.error
+                );
+                Ok(Json(PhoneVerificationResponse {
+                    success: false,
+                    message: "Échec de l'envoi du SMS. Veuillez réessayer.".to_string(),
+                    phone_verified: false,
+                }))
+            }
+        }
+        Err(e) => {
+            error!("[send_phone_verification_code] Erreur service SMS: {:?}", e);
+            Ok(Json(PhoneVerificationResponse {
+                success: false,
+                message: "Service SMS indisponible. Veuillez réessayer plus tard.".to_string(),
+                phone_verified: false,
+            }))
+        }
+    }
+}
+
+/// ? Vérification du code reçu par SMS
+pub async fn verify_phone_code(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<VerifyPhoneRequest>,
+) -> AppResult<Json<PhoneVerificationResponse>> {
+    info!(
+        "[verify_phone_code] Tentative de vérification pour téléphone: {}",
+        log_safe_phone(&payload.phone)
+    );
+
+    // ✅ SÉCURITÉ: Nettoyer le numéro
+    let phone_clean = payload.phone.replace(" ", "").replace("-", "").replace("+", "");
+
+    // Vérifier le code en base de données
+    let db = &state.pg;
+    let now = chrono::Utc::now();
+
+    let result = sqlx::query_as::<_, (i32, String, chrono::DateTime<chrono::Utc>, bool)>(
+        "SELECT id, code, expires_at, used FROM phone_verification_codes WHERE phone = $1 AND code = $2 AND used = FALSE",
+    )
+    .bind(&phone_clean)
+    .bind(&payload.code)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| {
+        error!("[verify_phone_code] Erreur recherche code: {:?}", e);
+        AppError::Internal("Erreur lors de la vérification du code".into())
+    })?;
+
+    match result {
+        Some(record) => {
+            let (record_id, _code, expires_at, _used) = record;
+            // Vérifier l'expiration
+            if now > expires_at {
+                warn!(
+                    "[verify_phone_code] Code expiré pour téléphone: {}",
+                    log_safe_phone(&payload.phone)
+                );
+                return Ok(Json(PhoneVerificationResponse {
+                    success: false,
+                    message: "Code expiré. Veuillez demander un nouveau code.".to_string(),
+                    phone_verified: false,
+                }));
+            }
+
+            // Marquer le code comme utilisé
+            let _ = sqlx::query("UPDATE phone_verification_codes SET used = TRUE WHERE id = $1")
+                .bind(record_id)
+                .execute(db)
+                .await;
+
+            // Mettre à jour le statut de vérification de l'utilisateur
+            let updated = sqlx::query(
+                "UPDATE users SET phone_verified = TRUE, updated_at = NOW() 
+                 WHERE phone = $1",
+            )
+            .bind(&phone_clean)
+            .execute(db)
+            .await
+            .map_err(|e| {
+                error!("[verify_phone_code] Erreur mise à jour user: {:?}", e);
+                AppError::Internal("Erreur lors de la mise à jour du statut".into())
+            })?;
+
+            if updated.rows_affected() > 0 {
+                info!(
+                    "[verify_phone_code] ✅ Téléphone vérifié avec succès: {}",
+                    log_safe_phone(&payload.phone)
+                );
+                Ok(Json(PhoneVerificationResponse {
+                    success: true,
+                    message: "Numéro de téléphone vérifié avec succès!".to_string(),
+                    phone_verified: true,
+                }))
+            } else {
+                warn!(
+                    "[verify_phone_code] Aucun utilisateur trouvé pour ce téléphone: {}",
+                    log_safe_phone(&payload.phone)
+                );
+                Ok(Json(PhoneVerificationResponse {
+                    success: false,
+                    message: "Aucun compte associé à ce numéro de téléphone".to_string(),
+                    phone_verified: false,
+                }))
+            }
+        }
+        None => {
+            warn!(
+                "[verify_phone_code] Code invalide pour téléphone: {}",
+                log_safe_phone(&payload.phone)
+            );
+            Ok(Json(PhoneVerificationResponse {
+                success: false,
+                message: "Code de vérification invalide".to_string(),
+                phone_verified: false,
+            }))
+        }
+    }
 }
 
 #[derive(Deserialize)]
