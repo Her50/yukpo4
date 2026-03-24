@@ -327,6 +327,17 @@ async fn get_routes(
     let travel_mode = request.mode.as_deref().unwrap_or("driving");
     let traffic_model = request.traffic_model.as_deref().unwrap_or("best_guess");
 
+    // ✅ VALIDATION: Vérifier si le mode est supporté par Google Maps pour cette région
+    // Certains modes (bicycling, transit) ne sont pas disponibles dans toutes les régions
+    let supported_modes = ["driving", "walking", "bicycling", "transit"];
+    if !supported_modes.contains(&travel_mode) {
+        return Err(AppError::BadRequest(format!(
+            "Mode de déplacement non supporté: {}. Modes disponibles: {}",
+            travel_mode,
+            supported_modes.join(", ")
+        )));
+    }
+
     let lang = request.language_hint.as_deref().unwrap_or("fr");
     let mut url = format!(
         "https://maps.googleapis.com/maps/api/directions/json?origin={},{}&destination={},{}&key={}&language={}&units=metric&alternatives={}&mode={}",
@@ -455,10 +466,24 @@ async fn get_routes(
                 || status == "MAX_WAYPOINTS_EXCEEDED"
                 || status == "MAX_ROUTE_LENGTH_EXCEEDED"
             {
-                return Err(AppError::BadRequest(format!(
-                    "Google Directions: {} - {}",
-                    status, detail
-                )));
+                // ✅ MESSAGE SPÉCIFIQUE pour bicycling/transit souvent non disponibles
+                let error_msg = if (travel_mode == "bicycling" || travel_mode == "transit")
+                    && (status == "ZERO_RESULTS" || status == "NOT_FOUND")
+                {
+                    format!(
+                        "Mode {} non disponible dans cette région. Essayez le mode voiture ou marche. Détail: {}",
+                        match travel_mode {
+                            "bicycling" => "vélo",
+                            "transit" => "transport en commun",
+                            _ => travel_mode,
+                        },
+                        detail
+                    )
+                } else {
+                    format!("Google Directions: {} - {}", status, detail)
+                };
+
+                return Err(AppError::BadRequest(error_msg));
             }
             return Err(AppError::Internal(format!(
                 "Google Directions: {} - {}",
@@ -5216,6 +5241,17 @@ pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/navigation/geo-config/{country_code}",
             put(update_geo_regional_config).layer(middleware::from_fn(jwt_auth)),
+        )
+        // ✅ NOUVEAU: Gestion des speed_bump (dos d'âne)
+        .route(
+            "/api/navigation/speed-bumps/check",
+            get(crate::handlers::speed_bump_handler::check_speed_bumps)
+                .layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/navigation/speed-bumps/delete",
+            delete(crate::handlers::speed_bump_handler::delete_speed_bumps)
+                .layer(middleware::from_fn(jwt_auth)),
         )
         .with_state(state)
 }

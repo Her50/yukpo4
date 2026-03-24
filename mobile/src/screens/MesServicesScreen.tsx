@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, DeviceEventEmitter, Dimensions, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BreadcrumbItem, Breadcrumbs } from '../components/Breadcrumbs';
 import { BulkActionsBar } from '../components/BulkActionsBar';

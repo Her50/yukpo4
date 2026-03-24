@@ -978,20 +978,37 @@ const NavigationScreen: React.FC = () => {
             if (response?.success === false) {
                 const errMsg = response?.error || response?.message || '';
                 console.warn('[Navigation] ❌ API error:', errMsg);
-                if (errMsg.toLowerCase().includes('mode') || errMsg.toLowerCase().includes('non disponible') || errMsg.toLowerCase().includes('zero_results')) {
-                    const isTransitOrBike = travelMode === 'transit' || travelMode === 'bicycling';
+                // ✅ DÉTECTION AMÉLIORÉE: Messages d'erreur spécifiques pour vélo/transit
+                const isTransitOrBike = travelMode === 'transit' || travelMode === 'bicycling';
+                const isModeUnavailable = errMsg.toLowerCase().includes('mode')
+                    || errMsg.toLowerCase().includes('non disponible')
+                    || errMsg.toLowerCase().includes('zero_results')
+                    || errMsg.toLowerCase().includes('not available')
+                    || errMsg.toLowerCase().includes('region');
+
+                if (isTransitOrBike && isModeUnavailable) {
                     Alert.alert(
                         t('navigation.modeUnavailable', { mode: modeLabel }),
-                        isTransitOrBike
-                            ? `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || `Le mode ${modeLabel} n'est pas disponible dans cette région.`}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}`
-                            : t('navigation.modeUnavailableMsg', { mode: modeLabel }),
+                        `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || `Le mode ${modeLabel} n'est pas disponible dans cette région.`}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}\n\nErreur: ${errMsg}`,
                         [
                             { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
                             { text: `🚶 ${t('navigation.walking')}`, onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
                             { text: t('message.cancel') || 'OK', style: 'cancel' }
                         ]
                     );
-                } else { Alert.alert(t('message.error'), errMsg || t('navigation.serverError')); }
+                } else if (isModeUnavailable) {
+                    Alert.alert(
+                        t('navigation.modeUnavailable', { mode: modeLabel }),
+                        t('navigation.modeUnavailableMsg', { mode: modeLabel }) || `Le mode ${modeLabel} n'est pas disponible pour cet itinéraire.`,
+                        [
+                            { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                            { text: `🚶 ${t('navigation.walking')}`, onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                            { text: t('message.cancel') || 'OK', style: 'cancel' }
+                        ]
+                    );
+                } else {
+                    Alert.alert(t('message.error'), errMsg || t('navigation.serverError'));
+                }
             }
             else if (response?.data?.routes?.length > 0) {
                 const valid = response.data.routes.filter((r: any) => r?.overview_polyline && r.distance_meters > 0 && r.duration_seconds > 0 && Array.isArray(r.steps));
@@ -1000,13 +1017,14 @@ const NavigationScreen: React.FC = () => {
                     console.warn('[Navigation] ⚠️ All routes filtered out! Raw routes:', JSON.stringify(response.data.routes.map((r: any) => ({ polyline: (r?.overview_polyline || '').substring(0, 20), dist: r?.distance_meters, dur: r?.duration_seconds, stepsType: typeof r?.steps }))));
                     Alert.alert(t('navigation.noRoute'), t('navigation.noRouteFound')); setLoading(false); return;
                 }
-                // ✅ Filtrer les avertissements Google non pertinents (ex: "Walking directions are in beta...")
+                // ✅ Pour le mode walking, supprimer les alertes trafic (bêta)
+                // Pas de filtrage des warnings pour éviter les messages "beta" de Google
                 const cleanedRoutes = valid.map((r: any) => ({
                     ...r,
-                    warnings: Array.isArray(r.warnings) ? r.warnings.filter((w: string) => {
+                    warnings: travelMode === 'walking' ? [] : (Array.isArray(r.warnings) ? r.warnings.filter((w: string) => {
                         const wl = (w || '').toLowerCase();
                         return !wl.includes('beta') && !wl.includes('use caution') && !wl.includes('may be missing sidewalks');
-                    }) : [],
+                    }) : []),
                 }));
                 setRoutes(cleanedRoutes); setSelectedRoute(cleanedRoutes[0]);
                 // ✅ Éviter état POI / liste obsolète entre deux recherches (crash ou données incohérentes avant le useEffect)
@@ -1508,8 +1526,12 @@ const NavigationScreen: React.FC = () => {
                 console.log('[Navigation] Filtered checkpoints:', rawCps);
             }
 
-            if (rawCps.length === 0) {
-                console.log('[Navigation] No checkpoints found');
+            // ✅ FILTRAGE: Ne pas afficher les speed_bump (dos d'âne) dans la liste des alertes communautaires
+            // car ce sont des alertes fixes permanentes, mais on garde l'alerte sonore
+            const filteredForDisplay = rawCps.filter((cp: any) => cp.checkpoint_type !== 'speed_bump');
+
+            if (filteredForDisplay.length === 0) {
+                console.log('[Navigation] No non-speed_bump checkpoints found');
                 setAlertHistoryData([]);
                 setLoadingAlertHistory(false);
                 return;
@@ -1525,7 +1547,7 @@ const NavigationScreen: React.FC = () => {
                 const ms = cp?.created_at ? new Date(cp.created_at).getTime() : 0;
                 return Number.isFinite(ms) ? ms : 0;
             };
-            for (const cp of rawCps) {
+            for (const cp of filteredForDisplay) {
                 let added = false;
                 for (const cl of clusters) {
                     const main = cl.items[0];
@@ -3513,8 +3535,8 @@ const NavigationScreen: React.FC = () => {
 
                             {/* Map preview supprimée : afficher seulement via "Suivi en temps réel" */}
 
-                            {/* Traffic alerts */}
-                            {selectedRoute?.warnings && selectedRoute.warnings.length > 0 && (
+                            {/* Traffic alerts - masqué pour le mode walking (bêta) */}
+                            {selectedRoute?.warnings && selectedRoute.warnings.length > 0 && travelMode !== 'walking' && (
                                 <NativeCard style={[st.secCard, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B', borderWidth: 1 }]}>
                                     <Text style={st.secTitle}>⚠️ Alertes trafic</Text>
                                     {selectedRoute.warnings.map((w, i) => <Text key={i} style={st.alertText}>• {w}</Text>)}

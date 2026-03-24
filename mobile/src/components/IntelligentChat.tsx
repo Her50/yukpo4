@@ -393,6 +393,12 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         { id: 'services', label: t('intelligentChat.nav.myServices') || 'Mes services', icon: 'briefcase', route: 'MesServices', category: 'navigation', description: '' },
       ] : [];
 
+      const contextActions = isHomeScreen
+        ? welcomeActions.slice(0, 3)
+        : (Array.isArray(screenContext.availableActions) ? screenContext.availableActions : [])
+          .filter((a: any) => a.id !== 'home' && a.id !== 'profile' && a.id !== 'services')
+          .slice(0, 3);
+
       const welcomeMessage: ChatMessage = {
         id: 'welcome',
         text: greeting,
@@ -408,12 +414,6 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
           ],
         } : undefined,
       };
-
-      const contextActions = isHomeScreen
-        ? welcomeActions.slice(0, 3)
-        : (Array.isArray(screenContext.availableActions) ? screenContext.availableActions : [])
-          .filter((a: any) => a.id !== 'home' && a.id !== 'profile' && a.id !== 'services')
-          .slice(0, 3);
 
       Animated.timing(slideAnim, {
         toValue: 0,

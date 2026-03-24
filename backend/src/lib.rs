@@ -1,6 +1,7 @@
 pub mod config;
 pub mod controllers;
 pub mod core;
+pub mod handlers;
 pub mod ia;
 pub mod metrics;
 pub mod middlewares;
