@@ -51,4 +51,5 @@ psql "postgresql://user:password@host:port/database" -f migrations/20250127_crea
 - Les erreurs "already exists" sont normales et peuvent être ignorées
 - Les migrations sont idempotentes (peuvent être exécutées plusieurs fois)
 - Tous les triggers utilisent maintenant `DROP TRIGGER IF EXISTS` avant `CREATE TRIGGER`
+- Dernière vérification documentaire: 2026-03-24
 
