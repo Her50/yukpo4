@@ -16,13 +16,14 @@ import {
     StyleSheet,
     Switch,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
-import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
+import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
@@ -64,6 +65,10 @@ const CovoiturageFormScreen: React.FC = () => {
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
     const mode = (route.params as any)?.mode as string | undefined;
     const devise = getCurrencyIntelligently() || 'XAF';
+    const tr = (key: string, fallback: string) => {
+        const translated = t(key) as unknown as string;
+        return translated && translated !== key ? translated : fallback;
+    };
 
     // Dashboard state
     // ✅ FIX: Partenaires arrivent sur l'onglet "Mes trajets" par défaut, pas "Créer"
@@ -393,12 +398,12 @@ const CovoiturageFormScreen: React.FC = () => {
                 <Text style={s.routeCardTitle}>{t('covoiturageForm.itineraire')}</Text>
                 <View style={s.routeInputs}>
                     <View style={{ width: '100%' }}>
-                        <Text style={s.routeLabel}>{t('covoiturageForm.depart')}</Text>
+                        <Text style={s.routeLabel}>{tr('covoiturageForm.depart', 'Depart *')}</Text>
                         <LocationSelector
-                            label={t('covoiturageForm.depart')}
+                            label={undefined}
                             value={formData.depart || ''}
-                            onSelect={(loc: LocationObject) => setFormData({ ...formData, depart: normalizeSelectedLocation(loc) })}
-                            placeholder={t('covoiturageForm.lieuDeDepart')}
+                            onSelect={(loc: LocationObject) => setFormData(prev => ({ ...prev, depart: normalizeSelectedLocation(loc) }))}
+                            placeholder={tr('covoiturageForm.lieuDeDepart', 'Lieu de depart...')}
                             scope="all"
                             enrichWithBackend
                         />
@@ -407,33 +412,33 @@ const CovoiturageFormScreen: React.FC = () => {
                         <SafeIcon name="arrow-up-down" size={18} color="#fff" />
                     </TouchableOpacity>
                     <View style={{ width: '100%' }}>
-                        <Text style={s.routeLabel}>{t('covoiturageForm.arrivee')}</Text>
+                        <Text style={s.routeLabel}>{tr('covoiturageForm.arrivee', 'Arrivee *')}</Text>
                         <LocationSelector
-                            label={t('covoiturageForm.arrivee')}
+                            label={undefined}
                             value={formData.destination || ''}
-                            onSelect={(loc: LocationObject) => setFormData({ ...formData, destination: normalizeSelectedLocation(loc) })}
-                            placeholder={t('covoiturageFormScreen.lieuDArrivee')}
+                            onSelect={(loc: LocationObject) => setFormData(prev => ({ ...prev, destination: normalizeSelectedLocation(loc) }))}
+                            placeholder={tr('covoiturageFormScreen.lieuDArrivee', 'Lieu d\'arrivee...')}
                             scope="all"
                             enrichWithBackend
                         />
                     </View>
                 </View>
-                <Text style={s.gpsSectionLabel}>{t('covoiturageFormScreen.coordonneesGpsOptionnelles') || 'Coordonnees GPS (optionnel)'}</Text>
+                <Text style={s.gpsSectionLabel}>{tr('covoiturageFormScreen.coordonneesGpsOptionnelles', 'Coordonnees GPS (optionnel)')}</Text>
                 <View style={s.gpsRow}>
                     <TouchableOpacity style={s.gpsMini} onPress={() => setShowGPSModalDepart(true)} activeOpacity={0.8}>
                         <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
                         <Text style={s.gpsMiniText}>
                             {selectedGPSDepart
-                                ? (t('covoiturageFormScreen.gpsDepartDefini') || 'GPS depart defini')
-                                : (t('covoiturageFormScreen.ajouterGpsDepart') || 'Ajouter GPS depart')}
+                                ? tr('covoiturageFormScreen.gpsDepartDefini', 'GPS depart defini')
+                                : tr('covoiturageFormScreen.ajouterGpsDepart', 'Ajouter GPS depart')}
                         </Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={s.gpsMini} onPress={() => setShowGPSModalDestination(true)} activeOpacity={0.8}>
                         <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
                         <Text style={s.gpsMiniText}>
                             {selectedGPSDestination
-                                ? (t('covoiturageFormScreen.gpsArriveeDefini') || 'GPS arrivee defini')
-                                : (t('covoiturageFormScreen.ajouterGpsArrivee') || 'Ajouter GPS arrivee')}
+                                ? tr('covoiturageFormScreen.gpsArriveeDefini', 'GPS arrivee definie')
+                                : tr('covoiturageFormScreen.ajouterGpsArrivee', 'Ajouter GPS arrivee')}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -461,8 +466,24 @@ const CovoiturageFormScreen: React.FC = () => {
 
             {/* Vehicle */}
             <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={[s.field, { flex: 1 }]}><NativeInput label={t('covoiturageForm.typeVehicule')} value={formData.type_vehicule} onChangeText={t => setFormData({ ...formData, type_vehicule: t })} placeholder={t('covoiturageForm.exBerline')} /></View>
-                <View style={[s.field, { flex: 1 }]}><NativeInput label={t('covoiturageForm.marquemodele')} value={formData.marque_modele} onChangeText={t => setFormData({ ...formData, marque_modele: t })} placeholder={t('covoiturageForm.exToyotaCorolla')} /></View>
+                <View style={[s.field, { flex: 1 }]}>
+                    <Text style={s.label}>{tr('covoiturageForm.typeVehicule', 'Type de vehicule')}</Text>
+                    <TextInput
+                        style={s.input}
+                        value={formData.type_vehicule}
+                        onChangeText={(v) => setFormData(prev => ({ ...prev, type_vehicule: v }))}
+                        placeholder={tr('covoiturageForm.exBerline', 'Ex: Berline')}
+                    />
+                </View>
+                <View style={[s.field, { flex: 1 }]}>
+                    <Text style={s.label}>{tr('covoiturageForm.marquemodele', 'Marque / modele')}</Text>
+                    <TextInput
+                        style={s.input}
+                        value={formData.marque_modele}
+                        onChangeText={(v) => setFormData(prev => ({ ...prev, marque_modele: v }))}
+                        placeholder={tr('covoiturageForm.exToyotaCorolla', 'Ex: Toyota Corolla')}
+                    />
+                </View>
             </View>
 
             {/* Photo */}
@@ -484,10 +505,27 @@ const CovoiturageFormScreen: React.FC = () => {
             {/* Places & Price */}
             <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={[s.field, { flex: 1 }]}>
-                    <NativeInput label={t('covoiturageForm.placesLabel')} value={formData.places_disponibles} onChangeText={t => { const n = t.replace(/\D/g, ''); if (!n || (parseInt(n) >= 1 && parseInt(n) <= 20)) setFormData({ ...formData, places_disponibles: n }); }} placeholder="3" keyboardType="numeric" />
+                    <Text style={s.label}>{tr('covoiturageForm.placesLabel', 'Places disponibles *')}</Text>
+                    <TextInput
+                        style={s.input}
+                        value={formData.places_disponibles}
+                        onChangeText={(value) => {
+                            const n = value.replace(/\D/g, '');
+                            if (!n || (parseInt(n) >= 1 && parseInt(n) <= 20)) setFormData(prev => ({ ...prev, places_disponibles: n }));
+                        }}
+                        placeholder="3"
+                        keyboardType="numeric"
+                    />
                 </View>
                 <View style={[s.field, { flex: 1 }]}>
-                    <NativeInput label={`${t('covoiturageFormScreen.pricePerSeat')} (${formData.devise}) *`} value={formData.prix_par_place} onChangeText={t => setFormData({ ...formData, prix_par_place: t.replace(/\D/g, '') })} placeholder="5000" keyboardType="numeric" />
+                    <Text style={s.label}>{`${tr('covoiturageFormScreen.pricePerSeat', 'Prix par place')} (${formData.devise}) *`}</Text>
+                    <TextInput
+                        style={s.input}
+                        value={formData.prix_par_place}
+                        onChangeText={(value) => setFormData(prev => ({ ...prev, prix_par_place: value.replace(/\D/g, '') }))}
+                        placeholder="5000"
+                        keyboardType="numeric"
+                    />
                 </View>
             </View>
 
@@ -673,6 +711,16 @@ const s = StyleSheet.create({
     // Form
     field: { marginBottom: 16 },
     label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 },
+    input: {
+        height: 48,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 10,
+        backgroundColor: '#F9FAFB',
+        paddingHorizontal: 12,
+        fontSize: 16,
+        color: '#111827',
+    },
     hint: { fontSize: 12, color: '#6B7280', marginTop: 2 },
     switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingVertical: 6 },
     switchLabel: { fontSize: 14, color: '#374151', fontWeight: '500' },

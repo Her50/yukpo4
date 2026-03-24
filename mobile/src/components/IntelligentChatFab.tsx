@@ -2,7 +2,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Dimensions,
   Easing,
+  PanResponder,
   Platform,
   StyleSheet,
   Text,
@@ -12,6 +14,7 @@ import {
 import SafeIcon from './SafeIcon';
 import { modernColors } from '../theme/modernTheme';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import SafeStorage from '../utils/safeStorage';
 
 interface IntelligentChatFabProps {
   onPress?: () => void;
@@ -23,6 +26,8 @@ interface IntelligentChatFabProps {
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 60;
 const FAB_SIZE = 48;
 const FAB_BOTTOM_OFFSET = TAB_BAR_HEIGHT + 12;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const FAB_POSITION_STORAGE_KEY = 'yukpo_ia_fab_position_v1';
 
 const SCREENS_WITH_BOTTOM_ACTION = [
   'ServiceDetail', 'PharmacieDetails', 'HopitalDetails', 'LaboratoireDetails',
@@ -41,10 +46,15 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const tooltipAnim = useRef(new Animated.Value(0)).current;
+  const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - FAB_SIZE - 14, y: SCREEN_HEIGHT - FAB_SIZE - FAB_BOTTOM_OFFSET })).current;
   const [isVisible, setIsVisible] = useState(visible);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const initializedRef = useRef(false);
+  const positionLoadedRef = useRef(false);
 
   const needsHigherPosition = screenName && SCREENS_WITH_BOTTOM_ACTION.includes(screenName);
   const bottomOffset = needsHigherPosition ? FAB_BOTTOM_OFFSET + 56 : FAB_BOTTOM_OFFSET;
@@ -106,6 +116,67 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
     };
   }, [screenName, visible, hideOnScreens]);
 
+  const clampX = useCallback((x: number) => Math.max(8, Math.min(x, SCREEN_WIDTH - FAB_SIZE - 8)), []);
+  const clampY = useCallback((y: number) => Math.max(8, Math.min(y, SCREEN_HEIGHT - FAB_SIZE - 8)), []);
+
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    pan.setValue({
+      x: clampX(SCREEN_WIDTH - FAB_SIZE - 14),
+      y: clampY(SCREEN_HEIGHT - FAB_SIZE - bottomOffset),
+    });
+  }, [bottomOffset, clampX, clampY, pan]);
+
+  useEffect(() => {
+    if (positionLoadedRef.current) return;
+    positionLoadedRef.current = true;
+
+    (async () => {
+      try {
+        const raw = await SafeStorage.getItem(FAB_POSITION_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.x !== 'number' || typeof parsed?.y !== 'number') return;
+        pan.setValue({ x: clampX(parsed.x), y: clampY(parsed.y) });
+      } catch {
+        // Position invalide en storage: ignorer silencieusement.
+      }
+    })();
+  }, [clampX, clampY, pan]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dx) > 4 || Math.abs(gestureState.dy) > 4,
+      onPanResponderGrant: () => {
+        setIsDragging(false);
+        dragStartRef.current = { x: (pan.x as any)._value || 0, y: (pan.y as any)._value || 0 };
+      },
+      onPanResponderMove: (_, gestureState) => {
+        setIsDragging(true);
+        const nextX = clampX(dragStartRef.current.x + gestureState.dx);
+        const nextY = clampY(dragStartRef.current.y + gestureState.dy);
+        pan.setValue({ x: nextX, y: nextY });
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        const moved = Math.abs(gestureState.dx) > 6 || Math.abs(gestureState.dy) > 6;
+        if (moved) {
+          const pos = { x: (pan.x as any)._value || 0, y: (pan.y as any)._value || 0 };
+          void SafeStorage.setItem(FAB_POSITION_STORAGE_KEY, JSON.stringify(pos));
+        }
+        if (!moved) {
+          handlePress();
+        }
+        setTimeout(() => setIsDragging(false), 0);
+      },
+      onPanResponderTerminate: () => {
+        setTimeout(() => setIsDragging(false), 0);
+      },
+      onShouldBlockNativeResponder: () => false,
+    }),
+  ).current;
+
   const handlePressIn = useCallback(() => {
     if (pulseRef.current) pulseRef.current.stop();
     Animated.spring(scaleAnim, {
@@ -128,10 +199,29 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
     onPress?.();
   }, [onPress, showTooltip]);
 
+  const handleResetPosition = useCallback(() => {
+    const resetPos = {
+      x: clampX(SCREEN_WIDTH - FAB_SIZE - 14),
+      y: clampY(SCREEN_HEIGHT - FAB_SIZE - bottomOffset),
+    };
+    pan.setValue(resetPos);
+    void SafeStorage.removeItem(FAB_POSITION_STORAGE_KEY);
+  }, [bottomOffset, clampX, clampY, pan]);
+
   if (!isVisible) return null;
 
   return (
-    <Animated.View style={[styles.container, { bottom: bottomOffset, opacity: fadeAnim }]}>
+    <Animated.View
+      {...panResponder.panHandlers}
+      style={[
+        styles.container,
+        {
+          opacity: fadeAnim,
+          left: pan.x,
+          top: pan.y,
+        },
+      ]}
+    >
       {showTooltip && (
         <Animated.View style={[styles.tooltip, { opacity: tooltipAnim, transform: [{ translateX: -8 }] }]}>
           <Text style={styles.tooltipText} numberOfLines={1} ellipsizeMode="clip">{tooltipLabel}</Text>
@@ -144,7 +234,9 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
           activeOpacity={0.8}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
-          onPress={handlePress}
+          onPress={() => { if (!isDragging) handlePress(); }}
+          onLongPress={handleResetPosition}
+          delayLongPress={650}
           style={styles.fab}
           accessibilityLabel={t('intelligentChat.title') || 'Assistant IA Yukpo'}
           accessibilityRole="button"
@@ -168,7 +260,6 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    right: 14,
     zIndex: 999,
     elevation: 10,
     alignItems: 'flex-end',

@@ -61,9 +61,24 @@ function mapYukpoSessionMessageToChat(m: {
   content: string;
   created_at: string;
 }): ChatMessage {
+  const normalizeSessionText = (raw: string) => {
+    const src = String(raw || '');
+    // Nettoyage défensif pour l'historique déjà stocké côté serveur.
+    const trimmedJsonTail = src.replace(
+      /\n\s*,?\s*"(?:type|confidence|suggested_actions|suggestedActions|visual_elements|visualElements)"\s*:[\s\S]*$/m,
+      '',
+    );
+    return trimmedJsonTail
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '  ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
   return {
     id: m.id,
-    text: m.content,
+    text: normalizeSessionText(m.content),
     isUser: m.role === 'user',
     timestamp: new Date(m.created_at),
     type: 'text',

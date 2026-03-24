@@ -3479,6 +3479,10 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
     if (mSug >= 40) cut(mSug);
     const mNext = s.search(/\s*"next_steps"\s*:\s*\[/);
     if (mNext >= 40) cut(mNext);
+    // Cas fréquent: la fuite commence sur une nouvelle ligne avec des clés JSON quoted
+    // ex: ... "🚨",\n"type":"navigation_help",\n"confidence":0.9
+    const mTypeLine = s.search(/\n\s*,?\s*"(?:type|confidence|suggested_actions|suggestedActions|visual_elements|visualElements)"\s*:/);
+    if (mTypeLine >= 40) cut(mTypeLine);
     return s;
   }
 
@@ -3524,6 +3528,13 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         }
       } catch { /* pas du JSON valide, garder tel quel */ }
     }
+
+    // Décoder les sauts de ligne échappés visibles ("\n") qui polluent l'UI.
+    // On le fait tardivement pour conserver d'abord le nettoyage JSON.
+    cleaned = cleaned
+      .replace(/\\r\\n/g, '\n')
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '  ');
 
     // Supprimer les lignes vides multiples
     cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
