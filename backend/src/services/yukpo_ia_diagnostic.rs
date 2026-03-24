@@ -1,5 +1,6 @@
 //! Diagnostic YukpoIA - Vérification rapide de l'état du système
 
+use chrono::Datelike;
 use serde_json::json;
 use sqlx::PgPool;
 
@@ -55,13 +56,14 @@ pub async fn diagnose_yukpo_ia_system(
     };
     diagnostic["checks"]["user"] = user_check;
 
-    // 3. Vérifier l'utilisation quotidienne
+    // 3. Vérifier l'utilisation gratuite du mois (clé = 1er jour du mois UTC)
     let today = chrono::Utc::now().date_naive();
+    let month_start = chrono::NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap_or(today);
     let usage_check = match sqlx::query(
         "SELECT free_token_units_consumed FROM yukpo_ia_daily_usage WHERE user_id = $1 AND usage_date = $2"
     )
     .bind(user_id)
-    .bind(today)
+    .bind(month_start)
     .fetch_optional(pool)
     .await?
     {
@@ -69,27 +71,32 @@ pub async fn diagnose_yukpo_ia_system(
             let used: i64 = row.get("free_token_units_consumed");
             json!({
                 "status": "found",
-                "date": today.to_string(),
+                "period_start": month_start.to_string(),
                 "free_used": used
             })
         }
         None => json!({
             "status": "not_found",
-            "date": today.to_string(),
+            "period_start": month_start.to_string(),
             "free_used": 0
         })
     };
-    diagnostic["checks"]["daily_usage"] = usage_check;
+    diagnostic["checks"]["monthly_free_usage"] = usage_check;
 
     // 4. Variables d'environnement
     diagnostic["checks"]["environment"] = json!({
         "billing_enabled": std::env::var("YUKPO_IA_BILLING_ENABLED")
             .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
             .unwrap_or(true),
-        "daily_budget": std::env::var("YUKPO_IA_DAILY_FREE_TOKEN_BUDGET")
+        "monthly_budget": std::env::var("YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(8000),
+            .or_else(|| {
+                std::env::var("YUKPO_IA_DAILY_FREE_TOKEN_BUDGET")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+            })
+            .unwrap_or(4000),
         "token_multiplier": std::env::var("YUKPO_IA_TOKEN_MULTIPLIER")
             .ok()
             .and_then(|s| s.parse().ok())

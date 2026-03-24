@@ -19,6 +19,9 @@ EMBEDDING_API_KEY=yukpo_embedding_key_2024
 EMBEDDING_SERVICE_URL=http://localhost:8000
 AI_SERVICE_URL=https://api.openai.com/v1
 
+# Yukpo IA — quota gratuit mensuel (unités app), UTC. Défaut code : 4000. Rétrocompat : YUKPO_IA_DAILY_FREE_TOKEN_BUDGET
+# YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET=4000
+
 # Paramètres coûts IA vidéo immersive
 IA_COST_PER_1K_TOKENS_USD=0.015
 VIDEO_DEFAULT_TOKENS_ESTIMATE=2400

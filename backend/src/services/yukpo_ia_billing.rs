@@ -1,8 +1,8 @@
-//! Facturation YukpoIA : quota gratuit 24h (UTC) puis prélèvement sur `users.tokens_balance`.
+//! Facturation YukpoIA : quota gratuit **mensuel** (UTC, mois calendaire) puis prélèvement sur `users.tokens_balance`.
 //! La « commission plateforme » est modélisée par le prélèvement intégral des unités facturées
 //! sur le wallet (multiplicateur configurable via `YUKPO_IA_TOKEN_MULTIPLIER`).
 
-use chrono::Utc;
+use chrono::{Datelike, NaiveDate, Utc};
 use serde_json::json;
 use sqlx::PgPool;
 
@@ -12,16 +12,29 @@ pub fn is_billing_enabled() -> bool {
         .unwrap_or(true)
 }
 
-fn daily_free_budget() -> i64 {
-    std::env::var("YUKPO_IA_DAILY_FREE_TOKEN_BUDGET")
+/// Quota gratuit **mensuel** (UTC) en unités d’app — défaut **4000** (`YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET`).
+/// Rétrocompat : si absent, lit encore `YUKPO_IA_DAILY_FREE_TOKEN_BUDGET` (anciens déploiements).
+fn monthly_free_budget() -> i64 {
+    std::env::var("YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(8000)
+        .or_else(|| {
+            std::env::var("YUKPO_IA_DAILY_FREE_TOKEN_BUDGET")
+                .ok()
+                .and_then(|s| s.parse().ok())
+        })
+        .unwrap_or(4000)
 }
 
-/// Quota gratuit journalier (UTC) en unités d’app — défaut **8000** (`YUKPO_IA_DAILY_FREE_TOKEN_BUDGET`).
+/// Premier jour du mois (UTC) — clé de période dans `yukpo_ia_daily_usage.usage_date`.
+fn current_month_start_utc() -> NaiveDate {
+    let today = Utc::now().date_naive();
+    NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap_or(today)
+}
+
+/// Alias pour métriques / logs : budget gratuit du mois en cours.
 pub fn daily_free_token_budget() -> i64 {
-    daily_free_budget()
+    monthly_free_budget()
 }
 
 fn token_multiplier() -> f64 {
@@ -47,7 +60,7 @@ pub fn whisper_app_charge_units() -> i64 {
     ((w as f64 * mult).ceil() as i64).max(1)
 }
 
-/// Débit commun : quota gratuit 24h (UTC) puis `tokens_balance`. Utilisé pour le chat et pour Whisper.
+/// Débit commun : quota gratuit mensuel (UTC) puis `tokens_balance`. Utilisé pour le chat et pour Whisper.
 pub async fn debit_yukpo_ia_units(
     pool: &PgPool,
     user_id: i32,
@@ -63,7 +76,8 @@ pub async fn debit_yukpo_ia_units(
             "enabled": false,
             "tokens_charged": 0,
             "from_free_quota": true,
-            "daily_free_remaining": daily_free_budget(),
+            "daily_free_remaining": monthly_free_budget(),
+            "monthly_free_remaining": monthly_free_budget(),
             "balance_after": null,
             "notice": null,
             "insufficient_balance": false,
@@ -71,8 +85,8 @@ pub async fn debit_yukpo_ia_units(
         }));
     }
 
-    let today = Utc::now().date_naive();
-    let budget = daily_free_budget();
+    let period_start = current_month_start_utc();
+    let budget = monthly_free_budget();
 
     let mut tx = pool.begin().await?;
 
@@ -87,7 +101,7 @@ pub async fn debit_yukpo_ia_units(
         "SELECT COALESCE(free_token_units_consumed, 0) FROM yukpo_ia_daily_usage WHERE user_id = $1 AND usage_date = $2",
     )
     .bind(user_id)
-    .bind(today)
+    .bind(period_start)
     .fetch_optional(&mut *tx)
     .await?
     .flatten()
@@ -108,7 +122,7 @@ pub async fn debit_yukpo_ia_units(
                  updated_at = NOW()"#,
         )
         .bind(user_id)
-        .bind(today)
+        .bind(period_start)
         .bind(from_free)
         .execute(&mut *tx)
         .await?;
@@ -137,12 +151,12 @@ pub async fn debit_yukpo_ia_units(
     tx.commit().await?;
 
     let new_free_used = free_used + from_free;
-    let daily_free_remaining = (budget - new_free_used).max(0);
+    let monthly_free_remaining = (budget - new_free_used).max(0);
 
     let notice = if from_free >= app_charge {
         format!(
-            "{} : {} unité(s) sur le quota gratuit du jour (reste {}).",
-            description, app_charge, daily_free_remaining
+            "{} : {} unité(s) sur le quota gratuit du mois (reste {}).",
+            description, app_charge, monthly_free_remaining
         )
     } else if paid_actual > 0 {
         format!(
@@ -157,7 +171,8 @@ pub async fn debit_yukpo_ia_units(
         "enabled": true,
         "tokens_charged": app_charge,
         "from_free_quota": from_free >= app_charge,
-        "daily_free_remaining": daily_free_remaining,
+        "daily_free_remaining": monthly_free_remaining,
+        "monthly_free_remaining": monthly_free_remaining,
         "balance_after": new_balance,
         "notice": notice,
         "insufficient_balance": false,
@@ -221,14 +236,14 @@ pub async fn precheck_can_use_yukpo_ia(
         }
     }
 
-    let today = Utc::now().date_naive();
-    let budget = daily_free_budget();
+    let period_start = current_month_start_utc();
+    let budget = monthly_free_budget();
 
     // ✅ DEBUG: Log des valeurs pour diagnostic
     log::info!(
-        "[YukpoIA] Quota check - User: {}, Today: {}, Budget: {}",
+        "[YukpoIA] Quota check - User: {}, MonthStart: {}, Budget: {}",
         user_id,
-        today,
+        period_start,
         budget
     );
 
@@ -247,14 +262,13 @@ pub async fn precheck_can_use_yukpo_ia(
         "SELECT COALESCE(free_token_units_consumed, 0) FROM yukpo_ia_daily_usage WHERE user_id = $1 AND usage_date = $2",
     )
     .bind(user_id)
-    .bind(today)
+    .bind(period_start)
     .fetch_optional(pool)
     .await?
     .flatten()
     .unwrap_or(0);
 
-    // ✅ DEBUG: Log de l'utilisation quotidienne
-    log::info!("[YukpoIA] Daily free used: {} / {}", free_used, budget);
+    log::info!("[YukpoIA] Monthly free used: {} / {}", free_used, budget);
 
     if free_used < budget {
         log::info!(
@@ -274,7 +288,7 @@ pub async fn precheck_can_use_yukpo_ia(
         balance
     );
     Ok(Err(json!({
-        "message": "Quota YukpoIA gratuit du jour épuisé et solde de jetons insuffisant. Rechargez votre compte pour continuer.",
+        "message": "Quota YukpoIA gratuit du mois épuisé et solde de jetons insuffisant. Rechargez votre compte pour continuer.",
         "type": "text",
         "confidence": 0.0,
         "billing": {
@@ -282,6 +296,7 @@ pub async fn precheck_can_use_yukpo_ia(
             "insufficient_balance": true,
             "recharge_required": true,
             "daily_free_remaining": 0,
+            "monthly_free_remaining": 0,
             "balance_after": 0
         }
     })))

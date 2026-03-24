@@ -582,7 +582,7 @@ jobs:
 
                 "GOOGLE_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
                 "YUKPO_IA_BILLING_ENABLED": "true",
-                "YUKPO_IA_DAILY_FREE_TOKEN_BUDGET": "8000",
+                "YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET": "4000",
                 "YUKPO_IA_TOKEN_MULTIPLIER": "1.0"
               }' > env-vars.json
           else
@@ -620,7 +620,7 @@ jobs:
             "JWT_EXPIRATION_HOURS": "24",
             "KYC_PROVIDER": "manual",
             "YUKPO_IA_BILLING_ENABLED": "true",
-            "YUKPO_IA_DAILY_FREE_TOKEN_BUDGET": "8000",
+            "YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET": "4000",
             "YUKPO_IA_TOKEN_MULTIPLIER": "1.0"
           }
           EOF

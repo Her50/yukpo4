@@ -343,7 +343,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                         />
                         <View style={styles.memberDetails}>
                             <Text style={styles.memberName}>{item.userName || t('serviceTeamManager.utilisateurInconnu')}</Text>
-                            <Text style={styles.memberEmail}>{item.userEmail || 'Email inconnu'}</Text>
+                            <Text style={styles.memberEmail}>{item.userEmail || t('serviceTeamManager.emailInconnu', 'Email inconnu')}</Text>
                         </View>
                     </View>
                     <View style={styles.memberActions}>
@@ -516,7 +516,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
 
                 <ScrollView style={styles.modalContent}>
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Email ou nom d'utilisateur</Text>
+                        <Text style={styles.inputLabel}>{t('serviceTeamManager.emailOuNom', 'Email ou nom d\'utilisateur')}</Text>
                         <TextInput
                             style={styles.textInput}
                             value={inviteEmail}
@@ -667,7 +667,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                             {validInvitations.map((invitation, index) => (
                                 <NativeCard key={invitation?.id || `invitation-${index}`} style={styles.invitationCard}>
                                     <View style={styles.invitationContent}>
-                                        <Text style={styles.invitationEmail}>{invitation?.email || 'Email inconnu'}</Text>
+                                        <Text style={styles.invitationEmail}>{invitation?.email || t('serviceTeamManager.emailInconnu', 'Email inconnu')}</Text>
                                         <Text style={styles.invitationRole}>{invitation?.role?.name || t('serviceTeamManager.roleInconnu')}</Text>
                                         <Text style={styles.invitationDate}>
                                             {invitation?.invitedAt

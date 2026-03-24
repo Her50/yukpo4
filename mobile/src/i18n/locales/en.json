@@ -176,7 +176,45 @@
         "activerSelection": "Enable multi-select",
         "menuNavigation": "Navigation menu",
         "menuVideoAssistant": "Video creation (assistant)",
-        "produit": "Product"
+        "produit": "Product",
+        "title": "Products",
+        "cannotChangeStatusGeneric": "Unable to change service status",
+        "deleteError": "Error during deletion",
+        "cannotOpenVideoCreation": "Unable to open video creation",
+        "flashPromoError": "Unable to open flash promo creation",
+        "promotionError": "Unable to open promotion management",
+        "needProductsForFlashPromo": "You must create products first before creating a flash promo.",
+        "needProductsForDelivery": "You must create products first before configuring delivery.",
+        "needProductsForTeam": "You must create products first before managing the team.",
+        "cannotOpenFlash": "Unable to open Flash Promotions",
+        "cannotOpenVideos": "Unable to open My Videos",
+        "cannotOpenVideoAnalytics": "Unable to open Video Analytics",
+        "manageTeam": "Manage team",
+        "sectionOthers": "Others",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "productsActivated": "{{count}} product(s) activated",
+        "productsDeactivated": "{{count}} product(s) deactivated",
+        "productsDeleted": "{{count}} product(s) deleted",
+        "memberAdded": "Member added to team successfully",
+        "memberRemoved": "Member removed from team successfully",
+        "selectAtLeastOneProduct": "Please select at least one product to create a flash promo.",
+        "noValidProductSelected": "No valid product selected.",
+        "cannotOpenFlashPromoCreation": "Unable to open flash promo creation",
+        "noProductSelected": "No product selected",
+        "createVideoA11y": "Create a video",
+        "flashPromoA11y": "Flash Promo Setup",
+        "deliveryA11y": "Delivery setup",
+        "menuOptionsA11y": "Options menu",
+        "menuNavA11y": "Navigation menu",
+        "disableBulk": "Disable multi-select",
+        "enableBulk": "Enable multi-select",
+        "loadProductsError": "Unable to load your products",
+        "addProductError": "Unable to open product creation form",
+        "editServiceError": "Unable to open service editor",
+        "viewServiceError": "Unable to open service viewer",
+        "shareSuccess": "Service shared successfully!",
+        "shareError": "Unable to share the service"
     },
     "interactions": {
         "title": "My Interactions",
@@ -10162,7 +10200,9 @@
         "equipeDuService": "Équipe of the service",
         "envoyerLInvitation": "Envoyer l'invitation",
         "impossibleDeChargerLesDonneesDeLEquipe": "Impossible de charger les données de l'équipe",
-        "membreRetireDeLEquipe": "Membre retiré de l'équipe"
+        "membreRetireDeLEquipe": "Membre retiré de l'équipe",
+        "emailInconnu": "Unknown email",
+        "emailOuNom": "Email or username"
     },
     "servicesDashboard": {
         "activiteRecente": "Activity Recent",
@@ -11632,7 +11672,19 @@
         "createdOn": "Created on",
         "voir": "Voir",
         "textTouchableopacityViewSecondeRangeeD": ")}</Text>\n                    </TouchableOpacity>\n                </View>\n\n                {/*  Seconof rangée d",
-        "desactiver": "Disable"
+        "desactiver": "Disable",
+        "statusActive": "Active",
+        "statusInactive": "Inactive",
+        "statusPending": "Pending",
+        "statusUnknown": "Unknown",
+        "unknownDate": "Unknown date",
+        "invalidDate": "Invalid date",
+        "deleteService": "Delete service",
+        "views": "views",
+        "productCount": "{{count}} product(s)",
+        "viewDetail": "View details",
+        "deactivate": "Deactivate",
+        "activate": "Activate"
     },
     "shareService": {
         "serviceYukpo": "service Yukpo",
@@ -15498,7 +15550,7 @@
         "attachFile": "File",
         "attachAudio": "Audio",
         "analyzeThis": "(Image attached — describe your question or send as-is for Yukpo UI / screenshot analysis)",
-        "billingNoticeFree": "YukpoIA: {{charged}} unit(s) from free quota ({{remaining}} left).",
+        "billingNoticeFree": "YukpoIA: {{charged}} unit(s) from monthly free quota ({{remaining}} left).",
         "billingNoticePaid": "YukpoIA: {{charged}} unit(s) charged from balance ({{balance}} left).",
         "billingNoticeGeneric": "YukpoIA: {{charged}} unit(s) consumed."
     },
@@ -15536,7 +15588,9 @@
         "followUpTitle": "You might also ask:",
         "shareTitle": "Yukpo assistant reply",
         "exportTitle": "Export reply",
-        "exportSubtitle": "A file is created on your device, then you can share it (TXT, Markdown or CSV). Advanced PDF/Excel can be attached by the AI when the backend returns a file URL.",
+        "exportPdf": "PDF",
+        "exportWord": "Word (.doc)",
+        "exportSubtitle": "Pick a format: the file is saved on your device with a name derived from the topic, then you can share it.",
         "downloadAttachment": "Open / download",
         "reactions": "React",
         "nav": {
@@ -15935,5 +15989,8 @@
         "deliveryCommission": "Commission livraison",
         "total": "Total",
         "noCommissions": "Aucune commission pour cette période"
+    },
+    "bulkActions": {
+        "selected": "{{count}} selected"
     }
 }

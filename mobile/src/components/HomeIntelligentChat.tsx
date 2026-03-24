@@ -27,7 +27,14 @@ import { ActionDescriptor } from '../hooks/useScreenContext';
 import { navigateToMesServicesHub } from '../navigation/mesServicesNavigation';
 import { ChatMessage, intelligentChatService } from '../services/intelligentChatService';
 import { modernColors } from '../theme/modernTheme';
-import { exportChatTextAsFile, openOrDownloadRemoteFile, stripSimpleMarkdownForExport } from '../utils/chatExportUtils';
+import {
+    buildExportBaseNameFromChat,
+    exportChatTextAsPdf,
+    exportChatTextAsWordDoc,
+    openOrDownloadRemoteFile,
+    stripSimpleMarkdownForExport,
+} from '../utils/chatExportUtils';
+import { FormattedChatText } from '../utils/chatMarkdown';
 import {
     cancelAudioRecording,
     pickDocumentForYukpoIa,
@@ -42,6 +49,22 @@ import SafeIcon from './SafeIcon';
 const { width, height } = Dimensions.get('window');
 
 const DEFAULT_SHARE_WEB = 'https://yukpomnang.com';
+
+const orderAndCapAssistantActions = (
+    actions: any[] | undefined,
+    max = 3,
+): { navLinks: any[]; otherActions: any[] } => {
+    if (!actions?.length) return { navLinks: [], otherActions: [] };
+    const recharge = actions.find((a) => a.id === 'yukpo-ia-recharge');
+    const rest = actions.filter((a) => a.id !== 'yukpo-ia-recharge');
+    const nav = rest.filter((a: any) => a.id?.startsWith('nav-'));
+    const other = rest.filter((a: any) => !a.id?.startsWith('nav-'));
+    const ordered = [...(recharge ? [recharge] : []), ...nav, ...other].slice(0, max);
+    return {
+        navLinks: ordered.filter((a: any) => a.id?.startsWith('nav-')),
+        otherActions: ordered.filter((a: any) => !a.id?.startsWith('nav-')),
+    };
+};
 
 interface HomeIntelligentChatProps {
     visible: boolean;
@@ -126,7 +149,7 @@ const HomeIntelligentChat: React.FC<HomeIntelligentChatProps> = ({
                 isUser: false,
                 timestamp: new Date(),
                 type: 'text',
-                suggestedActions: quickSuggestions.map(s => ({
+                suggestedActions: quickSuggestions.slice(0, 3).map(s => ({
                     id: s.id,
                     label: s.text,
                     icon: s.icon,
@@ -246,13 +269,19 @@ const HomeIntelligentChat: React.FC<HomeIntelligentChatProps> = ({
 
     const promptExportAssistant = useCallback(
         (message: ChatMessage) => {
+            const base = buildExportBaseNameFromChat(message.text, 'reponse-yukpo-ia');
             Alert.alert(
-                (t('intelligentChat.exportTitle') as string) || 'Exporter',
+                (t('intelligentChat.exportTitle') as string) || 'Enregistrer la réponse',
                 (t('intelligentChat.exportSubtitle') as string) || '',
                 [
-                    { text: 'TXT', onPress: () => { void exportChatTextAsFile(message.text, 'txt'); } },
-                    { text: 'Markdown', onPress: () => { void exportChatTextAsFile(message.text, 'md'); } },
-                    { text: 'CSV', onPress: () => { void exportChatTextAsFile(message.text, 'csv'); } },
+                    {
+                        text: (t('intelligentChat.exportPdf') as string) || 'PDF',
+                        onPress: () => { void exportChatTextAsPdf(message.text, base, { withYukpoIaFooter: true }); },
+                    },
+                    {
+                        text: (t('intelligentChat.exportWord') as string) || 'Word (.doc)',
+                        onPress: () => { void exportChatTextAsWordDoc(message.text, base, { withYukpoIaFooter: true }); },
+                    },
                     { text: (t('message.cancel') as string) || 'Annuler', style: 'cancel' },
                 ],
             );
@@ -281,17 +310,19 @@ const HomeIntelligentChat: React.FC<HomeIntelligentChatProps> = ({
                     styles.messageBubble,
                     isUserMessage ? styles.userBubble : styles.assistantBubble
                 ]}>
-                    <Text style={[
-                        styles.messageText,
-                        isUserMessage ? styles.userText : styles.assistantText
-                    ]}>
-                        {message.text}
-                    </Text>
+                    {isUserMessage ? (
+                        <Text style={[styles.messageText, styles.userText]}>{message.text}</Text>
+                    ) : (
+                        <FormattedChatText
+                            text={message.text}
+                            baseStyle={[styles.messageText, styles.assistantText]}
+                        />
+                    )}
 
                     {!isUserMessage && message.metadata?.billing?.enabled && message.metadata?.billing?.tokens_charged > 0 && !message.metadata?.billing?.insufficient_balance && (
                         <Text style={styles.billingChip}>
                             {message.metadata.billing.from_free_quota
-                                ? t('yukpoIa.billingNoticeFree', { charged: message.metadata.billing.tokens_charged, remaining: message.metadata.billing.daily_free_remaining ?? '?' })
+                                ? t('yukpoIa.billingNoticeFree', { charged: message.metadata.billing.tokens_charged, remaining: (message.metadata.billing.monthly_free_remaining ?? message.metadata.billing.daily_free_remaining) ?? '?' })
                                 : message.metadata.billing.units_from_wallet > 0
                                     ? t('yukpoIa.billingNoticePaid', { charged: message.metadata.billing.tokens_charged, balance: message.metadata.billing.balance_after ?? '?' })
                                     : t('yukpoIa.billingNoticeGeneric', { charged: message.metadata.billing.tokens_charged })
@@ -316,8 +347,7 @@ const HomeIntelligentChat: React.FC<HomeIntelligentChatProps> = ({
 
                     {/* Actions suggérées */}
                     {message.suggestedActions && message.suggestedActions.length > 0 && (() => {
-                        const navLinks = message.suggestedActions!.filter(a => a.id?.startsWith('nav-'));
-                        const otherActions = message.suggestedActions!.filter(a => !a.id?.startsWith('nav-'));
+                        const { navLinks, otherActions } = orderAndCapAssistantActions(message.suggestedActions, 3);
                         return (
                             <View style={styles.suggestedActionsContainer}>
                                 {otherActions.map((action, actionIndex) => (
@@ -400,7 +430,7 @@ const HomeIntelligentChat: React.FC<HomeIntelligentChatProps> = ({
                 <Text style={styles.suggestionsTitle}>💡 Suggestions rapides:</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                     <View style={styles.suggestionsScroll}>
-                        {quickSuggestions.map((suggestion, index) => (
+                        {quickSuggestions.slice(0, 3).map((suggestion, index) => (
                             <TouchableOpacity
                                 key={index}
                                 style={[

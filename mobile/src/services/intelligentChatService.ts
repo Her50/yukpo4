@@ -74,7 +74,9 @@ export interface YukpoIaBillingInfo {
   enabled?: boolean;
   tokens_charged?: number;
   from_free_quota?: boolean;
+  /** @deprecated Utiliser monthly_free_remaining — conservé pour anciennes réponses API */
   daily_free_remaining?: number;
+  monthly_free_remaining?: number;
   balance_after?: number | null;
   notice?: string | null;
   insufficient_balance?: boolean;
@@ -636,6 +638,24 @@ class IntelligentChatService {
       const res = await apiCall<{ ok?: boolean }>(`/ai/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' }, false);
       const data = res?.data as { ok?: boolean } | undefined;
       return Boolean(data?.ok) || res?.success === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Met à jour titre / archivage d’une session Yukpo IA (ex. titre auto après la 1ʳᵉ question). */
+  async patchYukpoIaSession(
+    sessionId: string,
+    body: { title?: string; is_archived?: boolean },
+  ): Promise<boolean> {
+    try {
+      const res = await apiCall<{ session?: { id?: string } }>(
+        `/ai/sessions/${encodeURIComponent(sessionId)}`,
+        { method: 'PATCH', body: JSON.stringify(body) },
+        false,
+      );
+      const d = res?.data ?? res;
+      return Boolean(d && typeof d === 'object' && (d as any).session?.id) || res?.success === true;
     } catch {
       return false;
     }
@@ -3292,7 +3312,18 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         enabled: b.enabled as boolean | undefined,
         tokens_charged: typeof b.tokens_charged === 'number' ? b.tokens_charged : undefined,
         from_free_quota: b.from_free_quota as boolean | undefined,
-        daily_free_remaining: typeof b.daily_free_remaining === 'number' ? b.daily_free_remaining : undefined,
+        daily_free_remaining:
+          typeof b.daily_free_remaining === 'number'
+            ? b.daily_free_remaining
+            : typeof b.monthly_free_remaining === 'number'
+              ? b.monthly_free_remaining
+              : undefined,
+        monthly_free_remaining:
+          typeof b.monthly_free_remaining === 'number'
+            ? b.monthly_free_remaining
+            : typeof b.daily_free_remaining === 'number'
+              ? b.daily_free_remaining
+              : undefined,
         balance_after: typeof b.balance_after === 'number' ? b.balance_after : (b.balance_after === null ? null : undefined),
         notice: typeof b.notice === 'string' ? b.notice : undefined,
         insufficient_balance: Boolean(b.insufficient_balance),
@@ -5037,7 +5068,7 @@ Explorez l'avenir dès maintenant ! 👇`,
     }
 
     matchedServices.sort((a, b) => b.score - a.score);
-    const topMatches = matchedServices.slice(0, 6);
+    const topMatches = matchedServices.slice(0, 3);
 
     const goToPrefix = i18n.t('intelligentChat.goTo', { defaultValue: 'Accéder →' }) as string;
 
@@ -5056,7 +5087,18 @@ Explorez l'avenir dès maintenant ! 👇`,
 
     this.ensurePinnedMultiIntentRoutes(intentNorm, actions, existingRoutes);
 
-    return this.dedupeNavigationActionsByRoute(actions);
+    return this.capSuggestedActions(this.dedupeNavigationActionsByRoute(actions), 3);
+  }
+
+  /** Limite le nombre de boutons d’action (priorité : recharge → liens nav → autres). */
+  private capSuggestedActions(actions: ActionDescriptor[], max: number): ActionDescriptor[] {
+    if (actions.length <= max) return actions;
+    const recharge = actions.find((a) => a.id === 'yukpo-ia-recharge');
+    const rest = actions.filter((a) => a.id !== 'yukpo-ia-recharge');
+    const nav = rest.filter((a) => a.id?.startsWith('nav-'));
+    const other = rest.filter((a) => !a.id?.startsWith('nav-'));
+    const ordered = [...(recharge ? [recharge] : []), ...nav, ...other];
+    return ordered.slice(0, max);
   }
 
   /** Une entrée par route (+ params) pour éviter nav-* et nav-pin-* en double. */

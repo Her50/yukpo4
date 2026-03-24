@@ -1,10 +1,10 @@
 import React from 'react';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { config } from '../config/environment';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { modernColors } from '../theme/modernTheme';
 import { theme } from '../theme/theme';
 import SafeIcon from './SafeIcon';
-import { useLanguageSafe } from '../contexts/LanguageContext';
 
 // Ô£à Helper pour construire l'URL compl├¿te d'un m├®dia (m├¬me logique que MesProduitsScreen)
 const buildServiceMediaUrl = (path?: string | null): string | null => {
@@ -93,17 +93,17 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
     };
 
     const getStatusText = (status: string | undefined | null) => {
-        if (!status || typeof status !== 'string') return 'Inconnu';
+        if (!status || typeof status !== 'string') return t('serviceCardModern.statusUnknown', 'Inconnu');
         switch (status) {
-            case 'active': return 'Actif';
-            case 'inactive': return 'Inactif';
-            case 'pending': return 'En attente';
-            default: return 'Inconnu';
+            case 'active': return t('serviceCardModern.statusActive', 'Actif');
+            case 'inactive': return t('serviceCardModern.statusInactive', 'Inactif');
+            case 'pending': return t('serviceCardModern.statusPending', 'En attente');
+            default: return t('serviceCardModern.statusUnknown', 'Inconnu');
         }
     };
 
     const formatDate = (dateString: string) => {
-        if (!dateString) return 'Date inconnue';
+        if (!dateString) return t('serviceCardModern.unknownDate', 'Date inconnue');
         try {
             const date = new Date(dateString);
             return date.toLocaleDateString('fr-FR', {
@@ -112,13 +112,13 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                 year: 'numeric'
             });
         } catch (error) {
-            return 'Date invalide';
+            return t('serviceCardModern.invalidDate', 'Date invalide');
         }
     };
 
     const handleDelete = () => {
         Alert.alert(
-            'Supprimer le service',
+            t('serviceCardModern.deleteService', 'Supprimer le service'),
             t('serviceCardModern.etesvousSurDeVouloirSupprimerDefinitivement', { service_title: service.title }),
             [
                 { text: t('common.cancel'), style: 'cancel' },
@@ -224,7 +224,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                 {service.views !== undefined && service.views != null && (
                     <View style={styles.infoRow}>
                         <SafeIcon name="eye" size={14} color="#3B82F6" />
-                        <Text style={styles.infoText}>{String(service.views || 0)} vues</Text>
+                        <Text style={styles.infoText}>{String(service.views || 0)} {t('serviceCardModern.views', 'vues')}</Text>
                     </View>
                 )}
                 {service.interactions !== undefined && service.interactions != null && (
@@ -248,7 +248,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         >
                             <SafeIcon name="package" size={14} color="#6366F1" />
                             <Text style={styles.productsStatText}>
-                                {produitsCount} produit{produitsCount > 1 ? 's' : ''}
+                                {t('serviceCardModern.productCount', '{{count}} produit(s)', { count: produitsCount })}
                             </Text>
                             <SafeIcon name="chevron-right" size={12} color="#6366F1" />
                         </TouchableOpacity>
@@ -274,10 +274,10 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                             <SafeIcon name="package" size={18} color="#FFFFFF" />
                             <View style={styles.productsBadgeTextContainer}>
                                 <Text style={styles.productsBadgeCount}>
-                                    {produitsCount} produit{produitsCount > 1 ? 's' : ''}
+                                    {t('serviceCardModern.productCount', '{{count}} produit(s)', { count: produitsCount })}
                                 </Text>
                                 <Text style={styles.productsBadgeAction}>
-                                    Voir le d├®tail ÔåÆ
+                                    {t('serviceCardModern.viewDetail', 'Voir le détail →')}
                                 </Text>
                             </View>
                         </View>
@@ -345,7 +345,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                             color={(service?.status || 'inactive') === 'active' ? '#F97316' : '#10B981'}
                         />
                         <Text style={[styles.actionLabel, { color: (service?.status || 'inactive') === 'active' ? '#F97316' : '#10B981' }]}>
-                            {(service?.status || 'inactive') === 'active' ? 'D├®sactiver' : 'Activer'}
+                            {(service?.status || 'inactive') === 'active' ? t('serviceCardModern.deactivate', 'D├®sactiver') : t('serviceCardModern.activate', 'Activer')}
                         </Text>
                     </TouchableOpacity>
                 </View>

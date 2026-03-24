@@ -117,6 +117,10 @@ jobs:
                 "EMBEDDING_MAX_RETRIES": "3",
                 "EMBEDDING_TIMEOUT_SECONDS": "60",
 
+                "YUKPO_IA_BILLING_ENABLED": "true",
+                "YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET": "4000",
+                "YUKPO_IA_TOKEN_MULTIPLIER": "1.0",
+
                 "GPU_ENABLED": "true",
                 "GPU_ENDPOINT": "http://34.78.117.187:8080",
                 "GPU_ZONE": "europe-west1-b",
@@ -263,7 +267,7 @@ jobs:
             "KYC_PROVIDER": "manual",
             "GOOGLE_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
             "YUKPO_IA_BILLING_ENABLED": "true",
-            "YUKPO_IA_DAILY_FREE_TOKEN_BUDGET": "8000",
+            "YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET": "4000",
             "YUKPO_IA_TOKEN_MULTIPLIER": "1.0"
           }
           EOF

@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
@@ -36,6 +37,7 @@ export const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
     onDeselectAll,
     onClose,
 }) => {
+    const { t } = useTranslation();
     const slideAnim = React.useRef(new Animated.Value(100)).current;
 
     React.useEffect(() => {
@@ -80,7 +82,7 @@ export const BulkActionsBar: React.FC<BulkActionsBarProps> = ({
                             {allSelected && <SafeIcon name="check" size={14} color="#fff" />}
                         </View>
                         <Text style={styles.selectionText}>
-                            {selectedCount} s├®lectionn├®{selectedCount > 1 ? 's' : ''}
+                            {t('bulkActions.selected', '{{count}} sélectionné(s)', { count: selectedCount })}
                         </Text>
                     </TouchableOpacity>
                 </View>

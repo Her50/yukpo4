@@ -544,6 +544,8 @@ const NavigationScreen: React.FC = () => {
     const [avoidFerries, setAvoidFerries] = useState(false);
     const [showPrefs, setShowPrefs] = useState(false);
     const [showMap, setShowMap] = useState(true);
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [showOptionsModal, setShowOptionsModal] = useState(false);
     const [showReportHelp, setShowReportHelp] = useState(false);
     const [loadingCheckpoints, setLoadingCheckpoints] = useState(false);
     const [isTracking, setIsTracking] = useState(false);
@@ -977,11 +979,18 @@ const NavigationScreen: React.FC = () => {
                 const errMsg = response?.error || response?.message || '';
                 console.warn('[Navigation] ❌ API error:', errMsg);
                 if (errMsg.toLowerCase().includes('mode') || errMsg.toLowerCase().includes('non disponible') || errMsg.toLowerCase().includes('zero_results')) {
-                    Alert.alert(t('navigation.modeUnavailable', { mode: modeLabel }), t('navigation.modeUnavailableMsg', { mode: modeLabel }), [
-                        { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
-                        { text: `🚶 ${t('navigation.walking')}`, onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
-                        { text: 'OK' }
-                    ]);
+                    const isTransitOrBike = travelMode === 'transit' || travelMode === 'bicycling';
+                    Alert.alert(
+                        t('navigation.modeUnavailable', { mode: modeLabel }),
+                        isTransitOrBike
+                            ? `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || `Le mode ${modeLabel} n'est pas disponible dans cette région.`}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}`
+                            : t('navigation.modeUnavailableMsg', { mode: modeLabel }),
+                        [
+                            { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                            { text: `🚶 ${t('navigation.walking')}`, onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                            { text: t('message.cancel') || 'OK', style: 'cancel' }
+                        ]
+                    );
                 } else { Alert.alert(t('message.error'), errMsg || t('navigation.serverError')); }
             }
             else if (response?.data?.routes?.length > 0) {
@@ -991,7 +1000,15 @@ const NavigationScreen: React.FC = () => {
                     console.warn('[Navigation] ⚠️ All routes filtered out! Raw routes:', JSON.stringify(response.data.routes.map((r: any) => ({ polyline: (r?.overview_polyline || '').substring(0, 20), dist: r?.distance_meters, dur: r?.duration_seconds, stepsType: typeof r?.steps }))));
                     Alert.alert(t('navigation.noRoute'), t('navigation.noRouteFound')); setLoading(false); return;
                 }
-                setRoutes(valid); setSelectedRoute(valid[0]);
+                // ✅ Filtrer les avertissements Google non pertinents (ex: "Walking directions are in beta...")
+                const cleanedRoutes = valid.map((r: any) => ({
+                    ...r,
+                    warnings: Array.isArray(r.warnings) ? r.warnings.filter((w: string) => {
+                        const wl = (w || '').toLowerCase();
+                        return !wl.includes('beta') && !wl.includes('use caution') && !wl.includes('may be missing sidewalks');
+                    }) : [],
+                }));
+                setRoutes(cleanedRoutes); setSelectedRoute(cleanedRoutes[0]);
                 // ✅ Éviter état POI / liste obsolète entre deux recherches (crash ou données incohérentes avant le useEffect)
                 setPointsOfInterest([]);
                 setPoiRequested(false);
@@ -1012,11 +1029,18 @@ const NavigationScreen: React.FC = () => {
             const errMsg = e?.data?.message || e?.data?.error || e?.message || e?.error || '';
             const errLower = errMsg.toLowerCase();
             if (errLower.includes('mode') || errLower.includes('non disponible') || errLower.includes('zero_results') || errLower.includes('aucun itin')) {
-                Alert.alert(t('navigation.modeUnavailable', { mode: modeLabel }), t('navigation.modeUnavailableMsg', { mode: modeLabel }), [
-                    { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
-                    { text: `🚶 ${t('navigation.walking')}`, onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
-                    { text: 'OK' }
-                ]);
+                const isTransitOrBike = travelMode === 'transit' || travelMode === 'bicycling';
+                Alert.alert(
+                    t('navigation.modeUnavailable', { mode: modeLabel }),
+                    isTransitOrBike
+                        ? `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || `Le mode ${modeLabel} n'est pas disponible dans cette région.`}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}`
+                        : t('navigation.modeUnavailableMsg', { mode: modeLabel }),
+                    [
+                        { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                        { text: `🚶 ${t('navigation.walking')}`, onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
+                        { text: t('message.cancel') || 'OK', style: 'cancel' }
+                    ]
+                );
             } else { Alert.alert(t('message.error'), errMsg || t('navigation.networkError')); }
         } finally { setLoading(false); }
     }, [destination, destinationCoords, selectedLocation, getCurrentPosition, geocodeDestination, avoidTolls, avoidHighways, avoidFerries, waypoints, travelMode, payMicroFeature]);
@@ -3366,19 +3390,30 @@ const NavigationScreen: React.FC = () => {
                                 </TouchableOpacity>
                                 {destinationCoords && (
                                     <View style={st.destActions}>
-                                        <TouchableOpacity style={st.actChip} onPress={() => Alert.alert(t('navigation.destinationSaved'), '', [{ text: '🏠 Domicile', onPress: () => saveDestination('domicile') }, { text: '💼 Bureau', onPress: () => saveDestination('bureau') }, { text: '⭐ Favori', onPress: () => saveDestination('autre', destination.substring(0, 30) || 'Favori') }, { text: t('message.cancel'), style: 'cancel' }])}>
+                                        <TouchableOpacity style={st.actChip} onPress={() => setShowSaveModal(true)}>
                                             <Text style={{ fontSize: 12 }}>🔖</Text>
                                             <Text style={st.actChipTxt}>Enregistrer</Text>
                                         </TouchableOpacity>
-                                        <TouchableOpacity style={st.actChip} onPress={() => setShowPrefs(!showPrefs)}>
+                                        <TouchableOpacity style={st.actChip} onPress={() => setShowOptionsModal(true)}>
                                             <Text style={{ fontSize: 12 }}>🎚️</Text>
                                             <Text style={st.actChipTxt}>Options</Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity style={st.actChip} onPress={async () => {
                                             const p = await getCurrentPosition();
                                             if (p) {
-                                                setWaypoints([...waypoints, { lat: p.lat, lng: p.lng, name: t('navigation.myPosition') }]);
-                                                Alert.alert(t('navigation.stepAdded'));
+                                                const waypointName = `${t('navigation.myPosition') || 'Ma position'} #${waypoints.length + 1}`;
+                                                setWaypoints([...waypoints, { lat: p.lat, lng: p.lng, name: waypointName }]);
+                                                Alert.alert(
+                                                    t('navigation.stepAdded') || 'Étape ajoutée',
+                                                    t('navigation.stepAddedMsg', {
+                                                        name: waypointName,
+                                                        count: waypoints.length + 1
+                                                    }) || `${waypointName} a été ajoutée à votre trajet.\n\nLes étapes vous permettent de:\n• Passer par des points intermédiaires\n• Optimiser votre trajet avec plusieurs arrêts\n• Partager un itinéraire complet avec des étapes précises\n\nL'itinéraire sera recalculé automatiquement.`
+                                                );
+                                                // Auto-recalculate route with new waypoint
+                                                if (routes.length > 0) {
+                                                    setTimeout(() => searchRoutesRef.current(), 500);
+                                                }
                                             }
                                         }}>
                                             <Text style={{ fontSize: 12 }}>➕</Text>
@@ -3639,7 +3674,7 @@ const NavigationScreen: React.FC = () => {
                                                                                 {poi.address && <Text style={st.poiAddr} numberOfLines={1}>{poi.address}</Text>}
                                                                                 <View style={st.poiMeta}>
                                                                                     {distFromUser > 0 && <Text style={st.poiDist}>📍 {formatDistance(distFromUser)}</Text>}
-                                                                                    <Text style={[st.poiDist, { color: '#6366F1' }]}>↔ {t('navigation.poiDistanceFromRoute', { distance: formatDistance(poi.distance_from_route_meters) }) || formatDistance(poi.distance_from_route_meters)}</Text>
+                                                                                    {poi.distance_from_route_meters != null && poi.distance_from_route_meters > 0 && <Text style={[st.poiDist, { color: '#6366F1' }]}>↔ {t('navigation.detour') || 'Détour'}: {formatDistance(poi.distance_from_route_meters)}</Text>}
                                                                                     {poi.rating != null && poi.rating > 0 && <Text style={st.poiRating}>⭐ {poi.rating}{poi.total_ratings ? ` (${poi.total_ratings})` : ''}</Text>}
                                                                                     {poi.price_level != null && poi.price_level > 0 && <Text style={st.poiPrice}>{'💰'.repeat(poi.price_level)}</Text>}
                                                                                     {poi.is_open != null && <View style={[st.openBadge, { backgroundColor: poi.is_open ? '#DCFCE7' : '#FEE2E2' }]}><Text style={[st.openText, { color: poi.is_open ? '#16A34A' : '#EF4444' }]}>{poi.is_open ? (t('navigation.poiOpen') || 'Ouvert') : (t('navigation.poiClosed') || 'Fermé')}</Text></View>}
@@ -3648,7 +3683,7 @@ const NavigationScreen: React.FC = () => {
                                                                             <View style={{ gap: 6 }}>
                                                                                 <TouchableOpacity style={st.poiNavBtn} onPress={() => navigateToPOI(poi)}><SafeIcon name="Navigation" size={14} color="#10B981" /></TouchableOpacity>
                                                                                 <TouchableOpacity style={st.poiAddBtn} onPress={() => addWaypoint(poi)}><SafeIcon name="Plus" size={14} color={modernColors.primary} /></TouchableOpacity>
-                                                                                <TouchableOpacity style={st.poiShareBtn} onPress={() => sharePOI(poi)}><SafeIcon name="Redo2" size={12} color={modernColors.textSecondary} /></TouchableOpacity>
+                                                                                <TouchableOpacity style={st.poiShareBtn} onPress={() => sharePOI(poi)}><SafeIcon name="Share2" size={12} color={modernColors.textSecondary} /></TouchableOpacity>
                                                                             </View>
                                                                         </View>
                                                                     );
@@ -3744,8 +3779,88 @@ const NavigationScreen: React.FC = () => {
                     guideText: t('intelligentChat.navigation.screenGuide') || 'Navigation Yukpo : itinéraires, alertes, POI, marche libre, statistiques & Coach IA.',
                 }}
             />
+
+            {/* Save Destination Modal */}
+            <Modal
+                visible={showSaveModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowSaveModal(false)}
+            >
+                <View style={st.modalOverlay}>
+                    <View style={st.modalContent}>
+                        <View style={st.modalHeader}>
+                            <Text style={st.modalTitle}>🔖 {t('navigation.saveDestination') || 'Enregistrer la destination'}</Text>
+                            <TouchableOpacity style={st.modalClose} onPress={() => setShowSaveModal(false)}>
+                                <SafeIcon name="X" size={20} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={st.modalBody}>
+                            <TouchableOpacity style={st.modalOption} onPress={() => { saveDestination('domicile'); setShowSaveModal(false); }}>
+                                <Text style={st.modalOptionIcon}>🏠</Text>
+                                <Text style={st.modalOptionText}>{t('navigation.home') || 'Domicile'}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={st.modalOption} onPress={() => { saveDestination('bureau'); setShowSaveModal(false); }}>
+                                <Text style={st.modalOptionIcon}>💼</Text>
+                                <Text style={st.modalOptionText}>{t('navigation.work') || 'Bureau'}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={st.modalOption} onPress={() => { saveDestination('autre', destination.substring(0, 30) || 'Favori'); setShowSaveModal(false); }}>
+                                <Text style={st.modalOptionIcon}>⭐</Text>
+                                <Text style={st.modalOptionText}>{t('navigation.favorite') || 'Favori'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Options Modal */}
+            <Modal
+                visible={showOptionsModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowOptionsModal(false)}
+            >
+                <View style={st.modalOverlay}>
+                    <View style={st.modalContent}>
+                        <View style={st.modalHeader}>
+                            <Text style={st.modalTitle}>🎚️ {t('navigation.preferences') || 'Options de trajet'}</Text>
+                            <TouchableOpacity style={st.modalClose} onPress={() => setShowOptionsModal(false)}>
+                                <SafeIcon name="X" size={20} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={st.modalBody}>
+                            <TouchableOpacity style={st.checkboxOption} onPress={() => setAvoidTolls(!avoidTolls)}>
+                                <View style={[st.checkbox, avoidTolls && st.checkboxChecked]}>
+                                    {avoidTolls && <SafeIcon name="Check" size={14} color="white" />}
+                                </View>
+                                <Text style={st.checkboxText}>{t('navigation.avoidTolls') || 'Éviter les péages'}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={st.checkboxOption} onPress={() => setAvoidHighways(!avoidHighways)}>
+                                <View style={[st.checkbox, avoidHighways && st.checkboxChecked]}>
+                                    {avoidHighways && <SafeIcon name="Check" size={14} color="white" />}
+                                </View>
+                                <Text style={st.checkboxText}>{t('navigation.avoidHighways') || 'Éviter les autoroutes'}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={st.checkboxOption} onPress={() => setAvoidFerries(!avoidFerries)}>
+                                <View style={[st.checkbox, avoidFerries && st.checkboxChecked]}>
+                                    {avoidFerries && <SafeIcon name="Check" size={14} color="white" />}
+                                </View>
+                                <Text style={st.checkboxText}>{t('navigation.avoidFerries') || 'Éviter les ferries'}</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={st.modalFooter}>
+                            <TouchableOpacity style={[st.modalBtn, st.modalBtnCancel]} onPress={() => setShowOptionsModal(false)}>
+                                <Text style={st.modalBtnCancelText}>{t('message.cancel') || 'Annuler'}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[st.modalBtn, st.modalBtnOk]} onPress={() => { setShowOptionsModal(false); if (routes.length > 0) setTimeout(() => searchRoutesRef.current(), 200); }}>
+                                <Text style={st.modalBtnOkText}>OK</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeNativeView >
-    );
+    };
 };
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -4145,6 +4260,120 @@ const st = StyleSheet.create({
 
     // LocationSelector override
     locationSelector: { marginTop: 4 },
+
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalContent: {
+        backgroundColor: modernColors.surface,
+        borderRadius: 16,
+        margin: 20,
+        maxWidth: 320,
+        width: '100%',
+        overflow: 'hidden',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    modalClose: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: modernColors.surfaceVariant,
+    },
+    modalBody: {
+        padding: 8,
+    },
+    modalOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        borderRadius: 8,
+        marginVertical: 2,
+    },
+    modalOptionIcon: {
+        fontSize: 20,
+    },
+    modalOptionText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    checkboxOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        borderRadius: 8,
+        marginVertical: 2,
+    },
+    checkbox: {
+        width: 22,
+        height: 22,
+        borderRadius: 4,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    checkboxChecked: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    checkboxText: {
+        fontSize: 16,
+        color: modernColors.text,
+        flex: 1,
+    },
+    modalFooter: {
+        flexDirection: 'row',
+        padding: 16,
+        gap: 12,
+        borderTopWidth: 1,
+        borderTopColor: modernColors.border,
+    },
+    modalBtn: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalBtnCancel: {
+        backgroundColor: modernColors.surfaceVariant,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    modalBtnOk: {
+        backgroundColor: modernColors.primary,
+    },
+    modalBtnCancelText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    modalBtnOkText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: 'white',
+    },
 });
 
 export default NavigationScreen;

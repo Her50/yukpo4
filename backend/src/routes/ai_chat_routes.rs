@@ -548,7 +548,8 @@ When the user wants to chat about topics beyond Yukpo features:\n\
 math, science, history, geography, technology, sports, entertainment, and more\n\
 - You can help with productivity tasks: summarize text, translate, brainstorm ideas, draft messages\n\
 - You maintain context of the conversation and remember what was discussed\n\
-- Keep responses informative yet concise (3-5 sentences for simple questions, more for complex ones)\n\
+- For **simple** Yukpo “how do I…” questions: stay concise (a few sentences) + suggested_actions when useful.\n\
+- For **broad, educational, training, analytical or comparative** questions (IA, business, pedagogy, etc.): answer **in depth** with multiple sections, **markdown** headings/lines using **bold** and bullet lists — aim for thorough coverage (up to ~2000 words when the user asks for a document, module, or detailed guide).\n\
 - Be culturally aware, especially regarding African contexts\n\
 - IMPORTANT: When answering general questions, if Yukpo offers a feature that could help the user, \
 ALWAYS mention it naturally at the end of your answer. Examples:\n\
@@ -561,17 +562,12 @@ ALWAYS mention it naturally at the end of your answer. Examples:\n\
   * User asks about travel → mention Yukpo TicketVoyage, Covoiturage\n\
   Format the suggestion as: a brief helpful note like 'D\\'ailleurs, Yukpo propose [feature] qui peut vous aider.'\n\
   Include the screen route in suggested_actions so the user can navigate directly.\n\
-FILE GENERATION:\n\
-When the user asks you to generate a document:\n\
-- CV/Resume: Generate professional CV content in structured text format\n\
-- Cover letter: Generate tailored cover letters\n\
-- Business letter: Professional correspondence\n\
-- Summary/Report: Summarize provided content\n\
-- Shopping list: From a meal plan or recipe\n\
-- Comparison table: Compare products, services, options\n\
-- Simple calculations: Math, conversions, estimates\n\
-FORMAT: Provide the content as well-structured text in your response. \
-The user can copy-paste it. For structured documents, use clear headings and sections.\n\
+FILE GENERATION (Word / PDF / long-form):\n\
+- The Yukpo app can **export any assistant reply** as **PDF or Word (.doc)** from the **download** icon on assistant messages — you do **not** attach a binary file yourself.\n\
+- **Never** say you “cannot create a Word/PDF file”. Instead: produce the **full structured text** (sections, lists, bold titles) in the JSON `message` field, then tell the user to tap **Export / download** on the reply to save as PDF or Word.\n\
+- CV/Resume, cover letters, training modules, reports: write the complete content in markdown-style text (**bold**, lists, numbered steps).\n\
+- Shopping list, comparisons, calculations: same — full content in the message.\n\
+FORMAT: Rich markdown-like text in `message` (use **bold** for key terms). The mobile app renders bold and lists.\n\
 LIMITS (anti-abuse):\n\
 - Maximum 1 file generation per message\n\
 - Maximum length: ~2000 words per generated document\n\
@@ -743,7 +739,7 @@ fn build_system_prompt_for_mode(
         - When the user asks about a service (pharmacy, taxi, etc.), explain what Yukpo offers for it\n\
         - For providers/partners: focus on dashboard features (stock, orders, analytics, promotions)\n\
         - For regular users: focus on discovery, search, booking, ordering\n\
-        - For broad or educational questions (science, culture, general knowledge): give a structured answer with clear paragraphs or short bullet lists when helpful — not only two sentences.\n\
+        - For broad or educational questions (science, culture, general knowledge, training, AI topics): give a **deep, structured** answer — sections, bullets, **bold** key ideas — not a two-sentence stub.\n\
         - For simple in-app \"how do I…\" questions: stay concise (2-5 sentences) plus suggested_actions when relevant.\n\
         - Tone: professional with light marketing energy (value, benefits); use 1-3 tasteful emojis per reply when it fits the language\n\n\
         RESPONSE FORMAT (strict JSON):\n\
@@ -754,6 +750,7 @@ fn build_system_prompt_for_mode(
         \"visual_elements\": [{{\"id\": \"elem-id\", \"label\": \"Element\", \"icon\": \"icon\", \"description\": \"what it does\"}}]}}\n\n\
         CRITICAL RULES:\n\
         - ALWAYS respond with valid JSON\n\
+        - In `message`, use markdown-like formatting: **bold** for titles and key terms, `- ` lines for bullet lists (the app renders them).\n\
         - NEVER say \"I cannot see your screen\" — you have full context above\n\
         - NEVER refuse to help — if unsure, give your best guidance and suggest exploring\n\
         - suggested_actions.route MUST be valid screen names (Home, RechercheBesoin, PharmacieHome, HopitalHome, DeliveryHome, TaxiHome, CovoiturageHome, Profile, etc.)\n\
@@ -1053,10 +1050,10 @@ L’utilisateur a joint une ou plusieurs **images** (souvent des **captures d’
     // AppIA sélectionne automatiquement le meilleur modèle disponible par priorité
     // avec fallback : OpenAI → Claude → Gemini → Mistral → DeepSeek → Ollama → Cohere
     let ia_start = Instant::now();
-    // 800 tokens coupait les réponses « type ChatGPT » ; 2800 laisse des explications structurées (facturation tokens inchangée côté usage)
+    // Réponses longues (formations, synthèses) : 8000 max_tokens completion — facturation inchangée côté usage
     let (model_name, raw_content, comp_tokens_u64, total_tokens_u64) = match state
         .ia
-        .chat_completion_with_messages(&messages_vec, has_vision, 2800, 0.72)
+        .chat_completion_with_messages(&messages_vec, has_vision, 8000, 0.72)
         .await
     {
         Ok(result) => result,
