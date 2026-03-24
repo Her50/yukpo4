@@ -370,7 +370,7 @@ const BayamSelamResultsScreen: React.FC = () => {
                             <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
                         </TouchableOpacity>
                         <View style={styles.headerTitleContainer}>
-                            <Text style={styles.headerTitle}>Résultats BayamSelam</Text>
+                            <Text style={styles.headerTitle}>{t('bayamSelamResults.resultatsBayamselam')}</Text>
                             <Text style={styles.headerSubtitle}>
                                 {products.length} produit{products.length > 1 ? 's' : ''} trouvé{products.length > 1 ? 's' : ''}
                             </Text>

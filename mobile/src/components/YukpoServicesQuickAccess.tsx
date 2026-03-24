@@ -122,7 +122,7 @@ const SERVICES_DATA: Service[] = [
     { id: 'orientation_scolaire', title: 'Orientation', titleKey: 'yukpoServicesQuickAccess.orientation', icon: 'book-open', gradient: ['#10B981', '#34D399'], description: 'Orientation scolaire', descriptionKey: 'yukpoServicesQuickAccess.orientationScolaire', comingSoon: false },
     { id: 'bourse_livre', title: 'Bourse du livre', titleKey: 'yukpoServicesQuickAccess.bourseDuLivre', icon: 'book-open', gradient: ['#8B5CF6', '#A78BFA'], description: 'Livres scolaires', descriptionKey: 'yukpoServicesQuickAccess.livresScolaires', comingSoon: false },
     { id: 'menu_planning', title: 'Mon menu', titleKey: 'yukpoServicesQuickAccess.monMenu', icon: 'utensils-crossed', gradient: ['#F59E0B', '#FBBF24'], description: 'Menus, repas', descriptionKey: 'yukpoServicesQuickAccess.menusRepas', comingSoon: false },
-    { id: 'bayamselam', title: 'BayamSelam', titleKey: 'yukpoServicesQuickAccess.bayamSelam', icon: 'trending-down', gradient: ['#10B981', '#34D399'], description: 'Comparatif prix', descriptionKey: 'yukpoServicesQuickAccess.comparatifPrix', comingSoon: false },
+    { id: 'bayamselam', title: 'Super marché', titleKey: 'yukpoServicesQuickAccess.bayamSelam', icon: 'shopping-cart', gradient: ['#10B981', '#34D399'], description: 'Produits & comparateur', descriptionKey: 'yukpoServicesQuickAccess.comparatifPrix', comingSoon: false },
     // Emploi
     { id: 'offres_emploi', title: 'Offres emploi', titleKey: 'yukpoServicesQuickAccess.offresEmploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], description: 'Recrutement', descriptionKey: 'yukpoServicesQuickAccess.recrutement', comingSoon: false },
     // Assurance

@@ -226,7 +226,7 @@ const [showChatModal, setShowChatModal] = useState(false);
             return 'truck';
         }
         // Commerce
-        if (categoryLower.includes('commerce') || categoryLower.includes('bayam') || categoryLower.includes('vente')) {
+        if (categoryLower.includes('commerce') || categoryLower.includes('bayam') || categoryLower.includes('supermarche') || categoryLower.includes('vente')) {
             return 'trending-down';
         }
         // Santé

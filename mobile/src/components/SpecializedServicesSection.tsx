@@ -2,7 +2,7 @@
 // Regroupement en 5 catégories avec détection prestataire/client
 
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     StyleSheet,
@@ -15,62 +15,6 @@ import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { useLanguageSafe } from '../contexts/LanguageContext';
-
-// ✅ Configuration des catégories et services
-const SERVICE_CATEGORIES = [
-    {
-        id: 'sante',
-        name: t('specializedServicesSection.sante'),
-        icon: 'heart-pulse',
-        color: '#10B981',
-        services: [
-            { id: 'pharmacie', name: 'Pharmacie', icon: 'pill', emoji: '💊', route: 'PharmacieForm', searchRoute: 'PharmacieHome' },
-            { id: 'hopital', name: t('specializedServicesSection.hopital'), icon: 'hospital', emoji: '🏥', route: 'HopitalForm', searchRoute: 'HopitalHome' },
-            { id: 'laboratoire', name: 'Laboratoire', icon: 'microscope', emoji: '🔬', route: 'LaboratoireForm', searchRoute: 'LaboratoireHome' },
-            { id: 'banque_sang', name: 'Banque Sang', icon: 'droplet', emoji: '🩸', route: 'BanqueSangForm', searchRoute: 'BanqueSangSearch' },
-        ],
-    },
-    {
-        id: 'transport',
-        name: 'TRANSPORT',
-        icon: 'car-front',
-        color: '#3B82F6',
-        services: [
-            { id: 'taxi', name: 'Taxi', icon: 'car', emoji: '🚕', route: 'TaxiForm', searchRoute: 'TaxiSearch' },
-            { id: 'covoiturage', name: 'Covoiturage', icon: 'users', emoji: '🚗', route: 'CovoiturageForm', searchRoute: 'CovoiturageSearch' },
-            { id: 'agence_voyage', name: 'Agence', icon: 'bus', emoji: '🚌', route: 'AgenceVoyageForm', searchRoute: 'AgenceVoyageSearch' },
-        ],
-    },
-    {
-        id: 'immobilier',
-        name: 'IMMOBILIER',
-        icon: 'home',
-        color: '#F59E0B',
-        services: [
-            { id: 'immobilier', name: 'Immobilier', icon: 'home', emoji: '🏠', route: 'ImmobilierSearch', searchRoute: 'ImmobilierSearch' },
-        ],
-    },
-    {
-        id: 'education',
-        name: t('specializedServicesSection.educationEmploi'),
-        icon: 'graduation-cap',
-        color: '#8B5CF6',
-        services: [
-            { id: 'orientation_scolaire', name: 'Orientation', icon: 'graduation-cap', emoji: '🎓', route: 'OrientationScolaireHub', searchRoute: 'OrientationScolaireHub' },
-            { id: 'offres_emploi', name: 'Emploi', icon: 'briefcase', emoji: '💼', route: 'OffresEmploiHub', searchRoute: 'OffresEmploiHub' },
-            { id: 'bourse_livre', name: 'Livres', icon: 'book-open', emoji: '📚', route: 'LivreScolaireHome', searchRoute: 'LivreScolaireHome' },
-        ],
-    },
-    {
-        id: 'menus',
-        name: 'CUISINE & MENUS',
-        icon: 'utensils-crossed',
-        color: '#EC4899',
-        services: [
-            { id: 'menu_planning', name: 'Menus', icon: 'utensils-crossed', emoji: '🍽️', route: 'MenuPlanningHub', searchRoute: 'MenuPlanningHub' },
-        ],
-    },
-];
 
 interface UserService {
     id: number;
@@ -93,6 +37,68 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
     const [loading, setLoading] = useState(true);
     const [userServices, setUserServices] = useState<UserService[]>([]);
     const [userServicesByCategory, setUserServicesByCategory] = useState<Record<string, UserService[]>>({});
+
+    const serviceCategories = useMemo(
+        () => [
+            {
+                id: 'sante',
+                name: t('specializedServicesSection.sante'),
+                icon: 'heart-pulse',
+                color: '#10B981',
+                services: [
+                    { id: 'pharmacie', name: t('specializedServicesSection.pharmacie'), icon: 'pill', emoji: '💊', route: 'PharmacieForm', searchRoute: 'PharmacieHome' },
+                    { id: 'hopital', name: t('specializedServicesSection.hopital'), icon: 'hospital', emoji: '🏥', route: 'HopitalForm', searchRoute: 'HopitalHome' },
+                    { id: 'laboratoire', name: t('specializedServicesSection.laboratoire'), icon: 'microscope', emoji: '🔬', route: 'LaboratoireForm', searchRoute: 'LaboratoireHome' },
+                    { id: 'banque_sang', name: t('specializedServicesSection.banqueSang'), icon: 'droplet', emoji: '🩸', route: 'BanqueSangForm', searchRoute: 'BanqueSangSearch' },
+                ],
+            },
+            {
+                id: 'transport',
+                name: t('specializedServicesSection.transport'),
+                icon: 'car-front',
+                color: '#3B82F6',
+                services: [
+                    { id: 'taxi', name: t('specializedServicesSection.taxi'), icon: 'car', emoji: '🚕', route: 'TaxiForm', searchRoute: 'TaxiHome' },
+                    { id: 'covoiturage', name: t('specializedServicesSection.covoiturage'), icon: 'users', emoji: '🚗', route: 'CovoiturageForm', searchRoute: 'CovoiturageHome' },
+                    { id: 'agence_voyage', name: t('specializedServicesSection.agenceVoyage'), icon: 'bus', emoji: '🚌', route: 'AgenceVoyageForm', searchRoute: 'TicketVoyageHome' },
+                    { id: 'automobile', name: t('specializedServicesSection.automobile'), icon: 'car', emoji: '🚘', route: 'AutomobileDashboard', searchRoute: 'AutoServicesSearch' },
+                ],
+            },
+            {
+                id: 'immobilier',
+                name: t('specializedServicesSection.immobilier'),
+                icon: 'home',
+                color: '#F59E0B',
+                services: [
+                    { id: 'immobilier', name: t('specializedServicesSection.immobilierService'), icon: 'home', emoji: '🏠', route: 'ImmobilierForm', searchRoute: 'ImmobilierHome' },
+                    { id: 'hotel', name: t('specializedServicesSection.hotel'), icon: 'building', emoji: '🏨', route: 'HotelDashboard', searchRoute: 'HotelSearch', searchParams: { mode: 'hotel' } },
+                    { id: 'meuble', name: t('specializedServicesSection.meuble'), icon: 'key', emoji: '🛋️', route: 'HotelDashboard', searchRoute: 'MeubleSearch', searchParams: { mode: 'meuble' } },
+                ],
+            },
+            {
+                id: 'education',
+                name: t('specializedServicesSection.educationEmploi'),
+                icon: 'graduation-cap',
+                color: '#8B5CF6',
+                services: [
+                    { id: 'orientation_scolaire', name: t('specializedServicesSection.orientation'), icon: 'graduation-cap', emoji: '🎓', route: 'OrientationScolaireHub', searchRoute: 'OrientationScolaireHub' },
+                    { id: 'offres_emploi', name: t('specializedServicesSection.emploi'), icon: 'briefcase', emoji: '💼', route: 'OffresEmploiHub', searchRoute: 'OffresEmploiHub' },
+                    { id: 'bourse_livre', name: t('specializedServicesSection.livres'), icon: 'book-open', emoji: '📚', route: 'LivreScolaireHome', searchRoute: 'LivreScolaireHome' },
+                ],
+            },
+            {
+                id: 'menus',
+                name: t('specializedServicesSection.cuisineMenus'),
+                icon: 'utensils-crossed',
+                color: '#EC4899',
+                services: [
+                    { id: 'menu_planning', name: t('specializedServicesSection.menus'), icon: 'utensils-crossed', emoji: '🍽️', route: 'MenuPlanningHub', searchRoute: 'MenuPlanningHub' },
+                    { id: 'bayamselam', name: t('specializedServicesSection.superMarche'), icon: 'shopping-cart', emoji: '🛒', route: 'SupermarketPartnerDashboard', searchRoute: 'SupermarketHome' },
+                ],
+            },
+        ],
+        [t]
+    );
 
     // ✅ CORRIGÉ: Cache pour éviter les requêtes redondantes
     const servicesCacheRef = React.useRef<{ data: UserService[]; timestamp: number } | null>(null);
@@ -157,20 +163,37 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
         }
     };
 
-    // ✅ Déterminer la catégorie d'un service
-    const getCategoryForServiceType = (serviceType: string): string | null => {
-        for (const category of SERVICE_CATEGORIES) {
-            const found = category.services.find(s =>
-                s.id === serviceType ||
-                serviceType.includes(s.id) ||
-                s.id.includes(serviceType)
-            );
-            if (found) {
-                return category.id;
+    // ✅ Déterminer la catégorie d'un service (backend peut envoyer supermarche / bayamselam, immo, etc.)
+    const getCategoryForServiceType = useCallback(
+        (serviceType: string): string | null => {
+            const st = serviceType.toLowerCase();
+            if (st === 'supermarche' || st.includes('supermarche')) {
+                return 'menus';
             }
-        }
-        return null;
-    };
+            for (const category of serviceCategories) {
+                const found = category.services.find((s) => {
+                    if (s.id === 'bayamselam') {
+                        return st === 'bayamselam' || st === 'supermarche' || st.includes('supermarche');
+                    }
+                    if (s.id === 'immobilier') {
+                        return st === 'immobilier' || st === 'immo' || st.includes('immobilier');
+                    }
+                    if (s.id === 'hotel') {
+                        return st === 'hotel' || st.includes('hotel');
+                    }
+                    if (s.id === 'meuble') {
+                        return st === 'meuble' || st.includes('meuble');
+                    }
+                    return s.id === st || st.includes(s.id) || s.id.includes(st);
+                });
+                if (found) {
+                    return category.id;
+                }
+            }
+            return null;
+        },
+        [serviceCategories]
+    );
 
     // ✅ Vérifier si l'utilisateur a des services dans une catégorie
     const hasServicesInCategory = (categoryId: string): boolean => {
@@ -179,17 +202,39 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
 
     // ✅ Vérifier si l'utilisateur a un service spécifique
     const hasService = (serviceId: string): UserService | null => {
-        const service = userServices.find(s => {
+        const service = userServices.find((s) => {
             const normalizedType = s.type.toLowerCase();
-            return normalizedType === serviceId ||
+            if (serviceId === 'bayamselam') {
+                return (
+                    normalizedType === 'bayamselam' ||
+                    normalizedType === 'supermarche' ||
+                    normalizedType.includes('supermarche')
+                );
+            }
+            if (serviceId === 'immobilier') {
+                return (
+                    normalizedType === 'immobilier' ||
+                    normalizedType === 'immo' ||
+                    normalizedType.includes('immobilier')
+                );
+            }
+            if (serviceId === 'hotel') {
+                return normalizedType === 'hotel' || normalizedType.includes('hotel');
+            }
+            if (serviceId === 'meuble') {
+                return normalizedType === 'meuble' || normalizedType.includes('meuble');
+            }
+            return (
+                normalizedType === serviceId ||
                 normalizedType.includes(serviceId) ||
-                serviceId.includes(normalizedType);
+                serviceId.includes(normalizedType)
+            );
         });
         return service || null;
     };
 
     // ✅ Gérer le tap sur une catégorie
-    const handleCategoryPress = (category: typeof SERVICE_CATEGORIES[0]) => {
+    const handleCategoryPress = (category: (typeof serviceCategories)[number]) => {
         if (hasServicesInCategory(category.id)) {
             // ✅ PRESTATAIRE avec services → GestionServicesSpecialisesScreen (filtré)
             (navigation as any).navigate('GestionServicesSpecialises', {
@@ -206,8 +251,8 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
 
     // ✅ Gérer le tap sur un service spécifique
     const handleServicePress = (
-        category: typeof SERVICE_CATEGORIES[0],
-        service: typeof SERVICE_CATEGORIES[0]['services'][0]
+        category: (typeof serviceCategories)[number],
+        service: (typeof serviceCategories)[number]['services'][number]
     ) => {
         const userService = hasService(service.id);
 
@@ -220,19 +265,18 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
         } else {
             // ✅ CLIENT ou PRESTATAIRE sans service → SearchScreen ou FormScreen (création)
             // Pour certains services, on peut créer directement
-            const canCreateDirectly = ['pharmacie', 'hopital', 'laboratoire', 'taxi', 'covoiturage'].includes(service.id);
+            const canCreateDirectly = ['pharmacie', 'hopital', 'laboratoire', 'taxi', 'covoiturage', 'automobile'].includes(service.id);
+
+            const extra = (service as { searchParams?: Record<string, unknown> }).searchParams || {};
+            const navParams = { specializedType: service.id, ...extra };
 
             if (canCreateDirectly && user?.id) {
                 // Modal de choix: Créer ou Rechercher
                 // Pour simplifier, on redirige vers la recherche
-                (navigation as any).navigate(service.searchRoute || 'SpecializedSearch', {
-                    specializedType: service.id,
-                });
+                (navigation as any).navigate(service.searchRoute || 'SpecializedSearch', navParams);
             } else {
                 // Recherche directe
-                (navigation as any).navigate(service.searchRoute || 'SpecializedSearch', {
-                    specializedType: service.id,
-                });
+                (navigation as any).navigate(service.searchRoute || 'SpecializedSearch', navParams);
             }
         }
     };
@@ -262,7 +306,7 @@ const SpecializedServicesSection: React.FC<SpecializedServicesSectionProps> = ({
             </View>
 
             {/* ✅ Catégories avec services */}
-            {SERVICE_CATEGORIES.map((category) => (
+            {serviceCategories.map((category) => (
                 <View key={category.id} style={styles.categoryContainer}>
                     {/* Header de catégorie */}
                     <TouchableOpacity

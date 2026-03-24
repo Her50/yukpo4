@@ -252,7 +252,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'svc-orientation', label: 'Orientation scolaire', icon: LUCIDE_ICONS.book, route: 'OrientationScolaireHub', category: 'navigation', description: 'OrientationScolaireHub.' },
       { id: 'svc-livres', label: 'Bourse du livre', icon: LUCIDE_ICONS.book, route: 'LivreScolaireHome', category: 'navigation', description: 'LivreScolaireHome.' },
       { id: 'svc-menu', label: 'Menu / repas (IA)', icon: LUCIDE_ICONS.utensils, route: 'MenuPlanningHub', category: 'navigation', description: 'MenuPlanningHub.' },
-      { id: 'svc-bayamselam', label: 'BayamSelam (prix)', icon: LUCIDE_ICONS.activity, route: 'BayamSelamSearch', category: 'navigation', description: 'BayamSelamSearch (supermarché / comparatif).' },
+      { id: 'svc-bayamselam', label: 'Super marché', icon: LUCIDE_ICONS.activity, route: 'SupermarketHome', category: 'navigation', description: 'SupermarketHome — catalogue, comparateur, promos.' },
       { id: 'svc-emploi', label: 'Offres d’emploi', icon: LUCIDE_ICONS.briefcase, route: 'OffresEmploiHub', category: 'navigation', description: 'OffresEmploiHub.' },
       { id: 'svc-immo', label: 'Immobilier', icon: LUCIDE_ICONS.building2, route: 'ImmobilierSearch', category: 'navigation', description: 'ImmobilierSearch.' },
       { id: 'svc-hotel', label: 'Hôtels', icon: LUCIDE_ICONS.hotel, route: 'HotelSearch', params: { mode: 'hotel' }, category: 'navigation', description: 'HotelSearch mode=hôtel.' },
@@ -2044,7 +2044,7 @@ const SCREEN_CONFIGS: Record<string, {
     elements: [
       { id: 'search-input', type: 'input', label: 'Recherche produit', actionable: true },
     ],
-    guide: 'BayamSelam — Comparez les prix des produits entre différents marchés et supermarchés pour trouver le meilleur prix.',
+    guide: 'Super marché — liste des enseignes proches ; sélection → flux courses / livraison. Pour catalogue complet (onglets magasins, produits, comparer, promos), utiliser **SupermarketHome**.',
   },
 
   HealthServicesHub: {

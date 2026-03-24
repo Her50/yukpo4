@@ -809,15 +809,15 @@ const HomeScreen: React.FC = () => {
                                     // Services Assurance (UTILISATEURS)
                                     'assurance': 'InsuranceServicesSearch', // ✅ Utilisateur: InsuranceServicesSearchScreen
                                     // Services Éducation (UTILISATEURS)
-                                    'orientation_scolaire': 'OrientationScolaireHub', // ✅ Utilisateur: OrientationScolaireHomeScreen
+                                    'orientation_scolaire': 'OrientationScolaireHub', // ✅ Hub orientation (établissements, IA, raccourcis)
                                     'bourse_livre': 'LivreScolaireHome',             // ✅ Utilisateur: LivreScolaireHomeScreen (V2 dashboard)
                                     // Services Emploi (UTILISATEURS)
-                                    'offres_emploi': 'OffresEmploiHub',    // ✅ Utilisateur: OffresEmploiHomeScreen
+                                    'offres_emploi': 'OffresEmploiHub',    // ✅ Hub emploi (candidat / employeur)
                                     // Services Vie quotidienne (UTILISATEURS)
                                     'menu_planning': 'MenuPlanningHub',    // ✅ Utilisateur: MenuPlanningHubScreen
-                                    'bayamselam': 'BayamSelamSearch',      // ✅ Utilisateur: SupermarketHomeScreen
+                                    'bayamselam': 'SupermarketHome',       // ✅ Catalogue supermarché (produits, promos, comparateur)
                                     // Services Immobilier (UTILISATEURS) - ✅ Routes séparées pour hôtel/meublé
-                                    'immo': 'ImmobilierSearch',           // ✅ Utilisateur: ImmobilierHomeScreen
+                                    'immo': 'ImmobilierHome',             // ✅ Hub immobilier catalogue (aligné accueil santé)
                                     'hotel': 'HotelSearch',              // ✅ Utilisateur: HotelMeubleHomeScreen (dédié hôtels)
                                     'meuble': 'MeubleSearch',            // ✅ Utilisateur: HotelMeubleHomeScreen (dédié meublés)
                                 };

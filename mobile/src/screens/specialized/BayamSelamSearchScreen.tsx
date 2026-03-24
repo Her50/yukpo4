@@ -141,7 +141,7 @@ const BayamSelamSearchScreen: React.FC = () => {
                         <View style={styles.headerIconContainer}>
                             <SafeIcon name="shopping-bag" size={32} color="#FFFFFF" type="lucide" />
                         </View>
-                        <Text style={styles.headerTitle}>BayamSelam</Text>
+                        <Text style={styles.headerTitle}>{t('bayamSelamSearch.screenTitle')}</Text>
                         <Text style={styles.headerSubtitle}>
                             Choisissez un supermarché pour faire vos achats en ligne
                         </Text>

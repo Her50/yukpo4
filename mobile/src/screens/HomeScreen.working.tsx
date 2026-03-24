@@ -804,38 +804,34 @@ const HomeScreen: React.FC = () => {
                                 // Ô£à CORRIG├ë: Mapping complet des services sp├®cialis├®s vers leurs ├®crans sp├®cifiques
                                 // ÔÜá´©Å IMPORTANT: Uniquement ├®crans UTILISATEURS (Home/Search/List/Details)
                                 // ÔØî JAMAIS d'├®crans PARTENAIRES (Form/Create/Manage) depuis HomeScreen
+                                // Aligné sur HomeScreen.tsx : hubs *Home / Hub (pas les anciens *Search seuls)
                                 const searchRoutes: Record<string, string> = {
-                                    // Services Santé — hubs utilisateur (aligné Transport: *Home)
                                     'pharmacie': 'PharmacieHome',
                                     'hopital': 'HopitalHome',
                                     'laboratoire': 'LaboratoireHome',
                                     'banque_sang': 'BanqueSangSearch',
-                                    // Services Transport - Navigation directe vers chaque ├®cran sp├®cifique (UTILISATEURS)
-                                    'agence_voyage': 'BusTicketSearch',    // Ô£à Utilisateur: TicketVoyageHomeScreen
-                                    'covoiturage': 'CovoiturageSearch',    // Ô£à Utilisateur: CovoiturageHomeScreen
-                                    'taxi': 'TaxiSearch',                  // Ô£à Utilisateur: TaxiHomeScreen
-                                    // Services ├ëducation (UTILISATEURS)
-                                    'orientation_scolaire': 'OrientationScolaireHub', // Ô£à Utilisateur: OrientationScolaireHomeScreen
-                                    'bourse_livre': 'LivreScolaireSearch',           // Ô£à Utilisateur: LivreScolaireHomeScreen
-                                    // Services Emploi (UTILISATEURS)
-                                    'offres_emploi': 'OffresEmploiHub',    // Ô£à Utilisateur: OffresEmploiHomeScreen
-                                    // Services Vie quotidienne (UTILISATEURS)
-                                    'menu_planning': 'MenuPlanningHub',    // Ô£à Utilisateur: MenuPlanningHubScreen
-                                    'bayamselam': 'BayamSelamSearch',      // Ô£à Utilisateur: SupermarketHomeScreen
-                                    // Services Immobilier (UTILISATEURS) - Ô£à Routes s├®par├®es pour h├┤tel/meubl├®
-                                    'immo': 'ImmobilierSearch',           // Ô£à Utilisateur: ImmobilierHomeScreen
-                                    'hotel': 'HotelSearch',              // Ô£à Utilisateur: ImmobilierHomeScreen (filtr├® pour h├┤tels)
-                                    'meuble': 'MeubleSearch',            // Ô£à Utilisateur: ImmobilierHomeScreen (filtr├® pour meubl├®s)
+                                    'agence_voyage': 'TicketVoyageHome',
+                                    'covoiturage': 'CovoiturageHome',
+                                    'taxi': 'TaxiHome',
+                                    'automobile': 'AutoServicesSearch',
+                                    'assurance': 'InsuranceServicesSearch',
+                                    'orientation_scolaire': 'OrientationScolaireHub',
+                                    'bourse_livre': 'LivreScolaireHome',
+                                    'offres_emploi': 'OffresEmploiHub',
+                                    'menu_planning': 'MenuPlanningHub',
+                                    'bayamselam': 'SupermarketHome',
+                                    'immo': 'ImmobilierHome',
+                                    'hotel': 'HotelSearch',
+                                    'meuble': 'MeubleSearch',
                                 };
                                 const route = searchRoutes[serviceId] || 'Home';
                                 console.log('[HomeScreen] Navigation vers:', route, 'pour service:', serviceId);
-                                
-                                // Ô£à NOUVEAU: Passer des param├¿tres de filtre pour h├┤tel/meubl├®
+
                                 const routeParams: any = {};
                                 if (serviceId === 'hotel') {
-                                    routeParams.initialFilter = { type_bien: 'hotel' };
+                                    routeParams.mode = 'hotel';
                                 } else if (serviceId === 'meuble') {
-                                    routeParams.initialFilter = { type_bien: 'meuble' };
+                                    routeParams.mode = 'meuble';
                                 }
                                 
                                 const success = navigate(route, routeParams);
