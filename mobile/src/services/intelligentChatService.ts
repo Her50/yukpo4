@@ -2871,7 +2871,7 @@ ${isCourier ? `COURSIER — GUIDE COMPLET DE LIVRAISON LIVRES:
 
 \uD83D\uDCE2 LISTES ÉTABLISSEMENT & NOTIFICATIONS:
 - Quand un **établissement** envoie des **manuels scolaires (établissement)** (référentiel Yukpo), les **librairies** du **même périmètre** (ville normalisée + **rayon GPS** km) reçoivent une **alerte** pour ajuster stock (**livres**, **cahiers**, **fournitures**).
-- **Succursales:** l’inscription librairie (**LibrairieRegistration**) permet plusieurs **points GPS** (siège + succursales, carte Yukpo) ; le backend teste **chaque** point (`librairie_partners` + table **librairie_lieux`) pour inclure le compte libraire si **au moins une** succursale est dans la ville ou le rayon.
+- **Succursales:** l’inscription librairie (**LibrairieRegistration**) permet plusieurs **points GPS** (siège + succursales, carte Yukpo) ; le backend teste **chaque** point (\`librairie_partners\` + table **librairie_lieux**) pour inclure le compte libraire si **au moins une** succursale est dans la ville ou le rayon.
 
 \uD83D\uDCDA LIVRES NEUFS:
 - Publier des livres neufs en lot via "Publier livres neufs"

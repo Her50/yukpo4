@@ -199,6 +199,23 @@ const LivreScolaireHomeScreen: React.FC = () => {
                                     : t('bourseLivre.devenirLibraire', 'Devenir libraire')}
                             </Text>
                         </TouchableOpacity>
+                        {isLibrairePartner && (
+                            <TouchableOpacity
+                                onPress={() => safeNavigate('LibrairieTeamPending')}
+                                style={styles.libraireHeaderBtn}
+                                activeOpacity={0.85}
+                            >
+                                <SafeIcon
+                                    name="package-check"
+                                    size={16}
+                                    color="#B45309"
+                                    type="lucide"
+                                />
+                                <Text style={styles.libraireHeaderBtnText} numberOfLines={1}>
+                                    {t('bourseLivre.equipeLibrairie', 'Equipe librairie')}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                         <TouchableOpacity
                             onPress={() => safeNavigate('EtablissementScolaire')}
                             style={styles.etablissementHeaderBtn}

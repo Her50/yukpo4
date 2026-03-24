@@ -48,6 +48,24 @@ spec:
             secretKeyRef:
               name: yukpomnang-secrets
               key: JWT_SECRET
+        - name: CINETPAY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: yukpomnang-secrets
+              key: CINETPAY_API_KEY
+              optional: true
+        - name: CINETPAY_API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: yukpomnang-secrets
+              key: CINETPAY_API_PASSWORD
+              optional: true
+        - name: CINETPAY_BASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: yukpomnang-secrets
+              key: CINETPAY_BASE_URL
+              optional: true
         resources:
           requests:
             cpu: "500m"

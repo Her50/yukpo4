@@ -456,7 +456,7 @@ pub struct WebhookVerification {
 pub struct AggregatorConfig {
     // CinetPay (zone CEMAC/UEMOA)
     pub cinetpay_api_key: String,
-    pub cinetpay_site_id: String,
+    pub cinetpay_api_password: String,
     pub cinetpay_secret_key: String,
     pub cinetpay_base_url: String,
 
@@ -477,7 +477,7 @@ impl AggregatorConfig {
 
         Self {
             cinetpay_api_key: std::env::var("CINETPAY_API_KEY").unwrap_or_default(),
-            cinetpay_site_id: std::env::var("CINETPAY_SITE_ID").unwrap_or_default(),
+            cinetpay_api_password: std::env::var("CINETPAY_API_PASSWORD").unwrap_or_default(),
             cinetpay_secret_key: std::env::var("CINETPAY_SECRET_KEY").unwrap_or_default(),
             cinetpay_base_url: std::env::var("CINETPAY_BASE_URL")
                 .unwrap_or_else(|_| "https://api-checkout.cinetpay.com".to_string()),
@@ -502,7 +502,7 @@ impl AggregatorConfig {
     }
 
     pub fn is_cinetpay_configured(&self) -> bool {
-        !self.cinetpay_api_key.is_empty() && !self.cinetpay_site_id.is_empty()
+        !self.cinetpay_api_key.is_empty() && !self.cinetpay_api_password.is_empty()
     }
 
     pub fn is_notchpay_configured(&self) -> bool {
@@ -693,7 +693,7 @@ impl PaymentAggregator {
             }
         }
 
-        Err("Aucun agrégateur de paiement configuré. Configurez CINETPAY_API_KEY, NOTCHPAY_PUBLIC_KEY ou FLUTTERWAVE_SECRET_KEY.".to_string())
+        Err("Aucun agrégateur de paiement configuré. Configurez CINETPAY_API_KEY + CINETPAY_API_PASSWORD, NOTCHPAY_PUBLIC_KEY ou FLUTTERWAVE_SECRET_KEY.".to_string())
     }
 
     /// Vérifier le statut d'un paiement
@@ -898,7 +898,7 @@ impl PaymentAggregator {
 
         let mut payload = serde_json::json!({
             "apikey": self.config.cinetpay_api_key,
-            "site_id": self.config.cinetpay_site_id,
+            "api_password": self.config.cinetpay_api_password,
             "transaction_id": transaction_id,
             "amount": request.amount,
             "currency": &request.currency,
@@ -1002,7 +1002,7 @@ impl PaymentAggregator {
     ) -> Result<CheckStatusResponse, String> {
         let payload = serde_json::json!({
             "apikey": self.config.cinetpay_api_key,
-            "site_id": self.config.cinetpay_site_id,
+            "api_password": self.config.cinetpay_api_password,
             "transaction_id": transaction_id,
         });
 
@@ -1303,7 +1303,7 @@ impl PaymentAggregator {
             return self.notchpay_transfer(phone, amount, method, reference).await;
         }
 
-        Err("Aucun agrégateur configuré pour le disbursement. Configurez CINETPAY_API_KEY ou NOTCHPAY_PUBLIC_KEY.".to_string())
+        Err("Aucun agrégateur configuré pour le disbursement. Configurez CINETPAY_API_KEY + CINETPAY_API_PASSWORD ou NOTCHPAY_PUBLIC_KEY.".to_string())
     }
 
     /// CinetPay Transfer API (POST /v2/transfer/money/send/contact)
@@ -1329,7 +1329,7 @@ impl PaymentAggregator {
 
         let payload = serde_json::json!({
             "apikey": self.config.cinetpay_api_key,
-            "site_id": self.config.cinetpay_site_id,
+            "api_password": self.config.cinetpay_api_password,
             "transaction_id": reference,
             "amount": amount,
             "currency": "XAF",

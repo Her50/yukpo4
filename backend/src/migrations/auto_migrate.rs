@@ -20967,6 +20967,29 @@ pub async fn ensure_book_delivery_packages_librairie_lieux_columns(
     .await
     .ok();
 
+    sqlx::query("ALTER TABLE book_purchases ADD COLUMN IF NOT EXISTS librairie_lieu_id INTEGER")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query(
+        "ALTER TABLE book_purchases ADD COLUMN IF NOT EXISTS succursale_label VARCHAR(255)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "ALTER TABLE book_purchases ADD COLUMN IF NOT EXISTS stock_disponible_succursale BOOLEAN",
+    )
+    .execute(pool)
+    .await
+    .ok();
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_book_purchases_lieu ON book_purchases(librairie_lieu_id)",
+    )
+    .execute(pool)
+    .await
+    .ok();
+
     info!("✅ Colonnes succursale book_delivery_packages OK");
     Ok(())
 }

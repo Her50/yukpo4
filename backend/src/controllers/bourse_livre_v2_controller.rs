@@ -1861,6 +1861,34 @@ fn haversine_km(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     R * c
 }
 
+/// Vérifie qu'une succursale est cohérente avec le matching courant (ville/rayon) du besoin.
+fn succursale_matches_current_scope(
+    target_gps: &Option<String>,
+    target_address: &Option<String>,
+    succursale_gps: &Option<String>,
+    succursale_ville: &Option<String>,
+    max_radius_km: f64,
+) -> bool {
+    if let (Some(tg), Some(sg)) = (target_gps.as_ref(), succursale_gps.as_ref()) {
+        if let (Some((tlat, tlng)), Some((slat, slng))) =
+            (parse_lat_lng_coords(tg), parse_lat_lng_coords(sg))
+        {
+            if haversine_km(tlat, tlng, slat, slng) <= max_radius_km {
+                return true;
+            }
+        }
+    }
+
+    if let (Some(addr), Some(ville)) = (target_address.as_ref(), succursale_ville.as_ref()) {
+        if ville_matches_hint(addr, ville) {
+            return true;
+        }
+    }
+
+    // Si aucune donnée exploitable (legacy), on ne bloque pas.
+    target_gps.is_none() && target_address.is_none()
+}
+
 /// Un couple (gps, ville) issu du profil utilisateur, de `librairie_partners` ou de `librairie_lieux` (succursales).
 fn partner_point_matches(
     ville_hint: Option<&str>,
@@ -5956,6 +5984,21 @@ pub async fn get_pending_packages_for_team(
     .await
     .unwrap_or_default();
 
+    // Succursales disponibles pour le picker côté équipe librairie.
+    let lieux = sqlx::query_as::<_, (i32, String, Option<String>, Option<String>, Option<String>)>(
+        r#"
+        SELECT ll.id, ll.libelle, ll.gps, ll.ville, ll.adresse
+        FROM librairie_lieux ll
+        INNER JOIN librairie_partners lp ON lp.id = ll.librairie_partner_id
+        WHERE lp.user_id = $1
+        ORDER BY ll.id ASC
+        "#,
+    )
+    .bind(owner_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
     // Stats rapides
     let a_constituer = pending.iter().filter(|p| p.statut == "a_constituer").count();
     let constitues = pending.iter().filter(|p| p.statut == "constitue").count();
@@ -5968,6 +6011,18 @@ pub async fn get_pending_packages_for_team(
             "constitues": pending.iter().filter(|p| p.statut == "constitue").collect::<Vec<_>>(),
         },
         "purchases_pending": purchases_pending,
+        "lieux": lieux
+            .iter()
+            .map(|(id, libelle, gps, ville, adresse)| {
+                json!({
+                    "id": id,
+                    "libelle": libelle,
+                    "gps": gps,
+                    "ville": ville,
+                    "adresse": adresse
+                })
+            })
+            .collect::<Vec<_>>(),
         "stats": {
             "a_constituer": a_constituer,
             "prets_pour_coursier": constitues,
@@ -6303,13 +6358,17 @@ pub async fn team_validate_order(
             _ => "a_constituer",
         };
 
-        if matches!(payload.action.as_str(), "constitue" | "pret") {
+        if matches!(
+            payload.action.as_str(),
+            "en_preparation" | "constitue" | "pret"
+        ) {
             let lieu_id = payload.librairie_lieu_id.ok_or_else(|| {
                 AppError::BadRequest(
                     "Sélectionnez la succursale concernée avant validation. Si cette succursale n'a pas le stock, ne validez pas la commande.".to_string(),
                 )
             })?;
-            if payload.stock_disponible_succursale != Some(true) {
+            let stock_ok = payload.stock_disponible_succursale == Some(true);
+            if matches!(payload.action.as_str(), "constitue" | "pret") && !stock_ok {
                 return Err(AppError::BadRequest(
                     "Stock indisponible sur la succursale sélectionnée: validation refusée. Choisissez une autre succursale ou laissez le statut en préparation.".to_string(),
                 ));
@@ -6324,27 +6383,52 @@ pub async fn team_validate_order(
             .map_err(|e| AppError::Internal(format!("Erreur vérification owner librairie: {}", e)))?
             .ok_or_else(|| AppError::Forbidden("Owner librairie introuvable".to_string()))?;
 
-            let lieu: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
-                r#"
-                SELECT ll.libelle, ll.gps, ll.adresse
+            let lieu: Option<(String, Option<String>, Option<String>, Option<String>)> =
+                sqlx::query_as(
+                    r#"
+                SELECT ll.libelle, ll.gps, ll.adresse, ll.ville
                 FROM librairie_lieux ll
                 INNER JOIN librairie_partners lp ON lp.id = ll.librairie_partner_id
                 WHERE ll.id = $1 AND lp.user_id = $2
                 LIMIT 1
                 "#,
-            )
-            .bind(lieu_id)
-            .bind(owner_user_id)
-            .fetch_optional(&state.pg)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur vérification succursale: {}", e)))?;
+                )
+                .bind(lieu_id)
+                .bind(owner_user_id)
+                .fetch_optional(&state.pg)
+                .await
+                .map_err(|e| {
+                    AppError::Internal(format!("Erreur vérification succursale: {}", e))
+                })?;
 
-            let (succursale_label, succ_gps, succ_addr) = lieu.ok_or_else(|| {
+            let (succursale_label, succ_gps, succ_addr, succ_ville) = lieu.ok_or_else(|| {
                 AppError::BadRequest(
                     "Succursale invalide pour cette librairie. Vérifiez la sélection avant validation."
                         .to_string(),
                 )
             })?;
+
+            // Contrainte de cohérence matching courant: la succursale doit rester dans le champ d'action (ville/rayon) du besoin.
+            let package_scope: Option<(Option<String>, Option<String>)> = sqlx::query_as(
+                "SELECT destinataire_gps, destinataire_adresse FROM book_delivery_packages WHERE id = $1",
+            )
+            .bind(pkg_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur lecture scope paquet: {}", e)))?;
+            let (target_gps, target_addr) = package_scope.unwrap_or((None, None));
+            if !succursale_matches_current_scope(
+                &target_gps,
+                &target_addr,
+                &succ_gps,
+                &succ_ville,
+                80.0,
+            ) {
+                return Err(AppError::BadRequest(
+                    "La succursale choisie est hors du matching courant (ville/rayon). Sélectionnez une succursale dans le champ d'action de la commande."
+                        .to_string(),
+                ));
+            }
 
             let updated = sqlx::query_scalar::<_, i32>(
                 r#"
@@ -6353,17 +6437,18 @@ pub async fn team_validate_order(
                     date_constitution = CASE WHEN $1 = 'constitue' THEN NOW() ELSE date_constitution END,
                     librairie_lieu_id = $2,
                     succursale_label = $3,
-                    stock_disponible_succursale = true,
-                    expediteur_gps = COALESCE($4, expediteur_gps),
-                    expediteur_adresse = COALESCE($5, expediteur_adresse),
+                    stock_disponible_succursale = $4,
+                    expediteur_gps = COALESCE($5, expediteur_gps),
+                    expediteur_adresse = COALESCE($6, expediteur_adresse),
                     updated_at = NOW()
-                WHERE id = $6
+                WHERE id = $7
                 RETURNING id
                 "#,
             )
             .bind(new_status)
             .bind(lieu_id)
             .bind(&succursale_label)
+            .bind(stock_ok)
             .bind(succ_gps)
             .bind(succ_addr)
             .bind(pkg_id)
@@ -6384,7 +6469,11 @@ pub async fn team_validate_order(
                 "role": role,
                 "librairie_lieu_id": lieu_id,
                 "succursale_label": succursale_label,
-                "message": "Commande validée sur la succursale sélectionnée."
+                "message": if new_status == "a_constituer" {
+                    "Commande affectée à la succursale (préparation en cours)."
+                } else {
+                    "Commande validée sur la succursale sélectionnée."
+                }
             })));
         }
 
@@ -6425,10 +6514,78 @@ pub async fn team_validate_order(
             _ => "en_preparation",
         };
 
+        let lieu_id = payload.librairie_lieu_id.ok_or_else(|| {
+            AppError::BadRequest(
+                "Sélectionnez la succursale concernée avant validation. Si cette succursale n'a pas le stock, ne validez pas cette partie de commande.".to_string(),
+            )
+        })?;
+        let stock_ok = payload.stock_disponible_succursale == Some(true);
+        if matches!(payload.action.as_str(), "constitue" | "pret") && !stock_ok {
+            return Err(AppError::BadRequest(
+                "Stock indisponible sur la succursale sélectionnée: validation refusée pour cette partie de commande.".to_string(),
+            ));
+        }
+
+        let owner_user_id: i32 = sqlx::query_scalar(
+            "SELECT user_id FROM libraire_team_members WHERE librairie_id = $1 AND role = 'owner' AND is_active = true LIMIT 1",
+        )
+        .bind(librairie_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur vérification owner librairie: {}", e)))?
+        .ok_or_else(|| AppError::Forbidden("Owner librairie introuvable".to_string()))?;
+
+        let lieu: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT ll.libelle, ll.gps, ll.ville
+            FROM librairie_lieux ll
+            INNER JOIN librairie_partners lp ON lp.id = ll.librairie_partner_id
+            WHERE ll.id = $1 AND lp.user_id = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(lieu_id)
+        .bind(owner_user_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur vérification succursale: {}", e)))?;
+
+        let (succursale_label, succ_gps, succ_ville) = lieu.ok_or_else(|| {
+            AppError::BadRequest(
+                "Succursale invalide pour cette librairie. Vérifiez la sélection avant validation."
+                    .to_string(),
+            )
+        })?;
+
+        // Même contrainte de scope pour validation partielle d'une commande (purchase).
+        let purchase_scope: Option<(Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT gps_livraison, adresse_livraison FROM book_purchases WHERE id = $1",
+        )
+        .bind(purchase_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur lecture scope achat: {}", e)))?;
+        let (target_gps, target_addr) = purchase_scope.unwrap_or((None, None));
+        if !succursale_matches_current_scope(
+            &target_gps,
+            &target_addr,
+            &succ_gps,
+            &succ_ville,
+            80.0,
+        ) {
+            return Err(AppError::BadRequest(
+                "La succursale choisie est hors du matching courant (ville/rayon). Sélectionnez une succursale dans le champ d'action de cette partie de commande."
+                    .to_string(),
+            ));
+        }
+
         let updated = sqlx::query_scalar::<_, i32>(
-            "UPDATE book_purchases SET statut = $1, updated_at = NOW() WHERE id = $2 RETURNING id",
+            "UPDATE book_purchases SET statut = $1, librairie_lieu_id = $2, succursale_label = $3, stock_disponible_succursale = $4, updated_at = NOW() WHERE id = $5 RETURNING id",
         )
         .bind(new_status)
+        .bind(lieu_id)
+        .bind(&succursale_label)
+        .bind(stock_ok)
         .bind(purchase_id)
         .fetch_optional(&state.pg)
         .await
@@ -6449,7 +6606,14 @@ pub async fn team_validate_order(
             "id": purchase_id,
             "new_status": new_status,
             "validated_by": user_id,
-            "role": role
+            "role": role,
+            "librairie_lieu_id": lieu_id,
+            "succursale_label": succursale_label,
+            "message": if new_status == "en_preparation" {
+                "Partie de commande affectée à la succursale (préparation en cours)."
+            } else {
+                "Partie de commande validée sur la succursale sélectionnée."
+            }
         })));
     }
 

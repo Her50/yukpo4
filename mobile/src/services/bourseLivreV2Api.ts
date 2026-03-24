@@ -183,6 +183,9 @@ export interface BookPurchase {
     paiement_reference?: string;
     paiement_methode?: string;
     statut: string;
+    librairie_lieu_id?: number;
+    succursale_label?: string;
+    stock_disponible_succursale?: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -1106,6 +1109,7 @@ export const bourseLivreV2Api = {
         librairie_id: number;
         packages: { a_constituer: any[]; constitues: any[] };
         purchases_pending: any[];
+        lieux: Array<{ id: number; libelle: string; gps?: string; ville?: string; adresse?: string }>;
         stats: { a_constituer: number; prets_pour_coursier: number; achats_a_preparer: number };
     }> => {
         const response = await apiGet<any>('/api/bourse-livre/v2/libraire/team/pending-packages');
@@ -1114,6 +1118,7 @@ export const bourseLivreV2Api = {
             librairie_id: r?.librairie_id || 0,
             packages: r?.packages || { a_constituer: [], constitues: [] },
             purchases_pending: r?.purchases_pending || [],
+            lieux: r?.lieux || [],
             stats: r?.stats || { a_constituer: 0, prets_pour_coursier: 0, achats_a_preparer: 0 },
         };
     },

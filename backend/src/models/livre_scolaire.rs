@@ -259,6 +259,12 @@ pub struct BookPurchase {
     pub paiement_reference: Option<String>,
     pub paiement_methode: Option<String>,
     pub statut: String,
+    #[sqlx(default)]
+    pub librairie_lieu_id: Option<i32>,
+    #[sqlx(default)]
+    pub succursale_label: Option<String>,
+    #[sqlx(default)]
+    pub stock_disponible_succursale: Option<bool>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -467,11 +473,16 @@ pub fn calculer_montant_net(
     (montant_net.max(0.0), commission)
 }
 
-/// Générer une référence simple pour un paquet (ex: "BL-A1B2")
+/// Générer une référence lisible et quasi-unique pour un paquet.
+/// Format: BL-YYMMDD-XXXXXX (ex: BL-260324-A7K9Q2)
+/// - lisible pour écriture manuelle,
+/// - triable par date pour archivage physique,
+/// - suffixe alphanumérique pour limiter les collisions.
 pub fn generer_reference_paquet() -> String {
     use rand::Rng;
+    let date = chrono::Utc::now().format("%y%m%d").to_string();
     let mut rng = rand::thread_rng();
     let chars: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".chars().collect();
-    let code: String = (0..4).map(|_| chars[rng.gen_range(0..chars.len())]).collect();
-    format!("BL-{}", code)
+    let code: String = (0..6).map(|_| chars[rng.gen_range(0..chars.len())]).collect();
+    format!("BL-{}-{}", date, code)
 }
