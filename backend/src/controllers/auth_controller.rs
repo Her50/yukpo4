@@ -1116,7 +1116,7 @@ pub async fn send_phone_verification_code(
 
     // ✅ SÉCURITÉ: Rate limiting par numéro
     let rate_limit_key = format!("sms_verification:{}", &phone_clean);
-    if let Err(e) = check_rate_limit(&rate_limit_key, 60, 3).await {
+    if let Err(_e) = check_rate_limit(&rate_limit_key, 60, 3).await {
         warn!(
             "[send_phone_verification_code] Rate limit dépassé pour téléphone: {}",
             log_safe_phone(&payload.phone)
