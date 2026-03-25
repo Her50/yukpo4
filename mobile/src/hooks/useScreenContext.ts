@@ -2389,9 +2389,14 @@ export const useScreenContext = (currentRouteName?: string, routeParams?: any): 
 
   const rawScreenName = currentRouteName || 'Unknown';
   // Unifier "Services / MesServices" vers l'écran réel de gestion catalogue.
-  const screenName = (rawScreenName === 'Services' || rawScreenName === 'MesServices')
-    ? 'MesProduits'
-    : rawScreenName;
+  // Conteneurs de navigation (tabs/stack) : ne pas envoyer "MainTabs" à l'IA — fuite de noms techniques.
+  const screenName = (() => {
+    if (rawScreenName === 'Services' || rawScreenName === 'MesServices') return 'MesProduits';
+    if (rawScreenName === 'MainTabs' || rawScreenName === 'MainStack' || rawScreenName === 'RootStack') {
+      return 'Home';
+    }
+    return rawScreenName;
+  })();
 
   const getScreenType = useCallback((): ScreenContext['screenType'] => {
     const config = SCREEN_CONFIGS[screenName];

@@ -734,7 +734,7 @@ const DeliveryPartnersAdminScreen: React.FC = () => {
                                     <Text style={styles.inputLabel}>{t('deliveryPartnersAdmin.telephone')}</Text>
                                     <TextInput
                                         style={styles.textInput}
-                                        placeholder="+237 6XX XXX XXX"
+                                        placeholder="+XXX XXXXXXXXX"
                                         value={editForm.contact_phone}
                                         onChangeText={(text) => setEditForm({ ...editForm, contact_phone: text })}
                                         keyboardType="phone-pad"

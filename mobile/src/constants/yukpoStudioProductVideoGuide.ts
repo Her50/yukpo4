@@ -9,7 +9,7 @@ export const YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE = `
 
 **Purpose:** Build a vertical marketing video for a catalog product in ~6 guided steps. The pipeline feeds **Yukpo Composer** / backend generation: selected media, style, script, audio, and publish options become **edit decisions** (shot order, duration, overlays, music/voice mix, subtitles, export formats).
 
-**Backend branding (default):** when `enable_watermark` is on, the server applies a **Yukpo end signature** on the **last seconds** of the export: **centered Yukpo logo** (scaled to the video width), optional **dark bottom band** for contrast, fade — not a tiny corner bug during the whole clip. Place `yukpo_logo.png` under `assets/logo/` or `backend/assets/logo/` on the server.
+**Backend branding (default):** when \`enable_watermark\` is on, the server applies a **Yukpo end signature** on the **last seconds** of the export: **centered Yukpo logo** (scaled to the video width), optional **dark bottom band** for contrast, fade — not a tiny corner bug during the whole clip. Place \`yukpo_logo.png\` under \`assets/logo/\` or \`backend/assets/logo/\` on the server.
 
 **Global concepts (montage impact):**
 - **Source media** define what the viewer sees: order, duration per clip, crops, and which assets appear in the final timeline.

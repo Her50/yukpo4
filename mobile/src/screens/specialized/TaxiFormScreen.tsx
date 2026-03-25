@@ -279,8 +279,8 @@ const TaxiFormScreen: React.FC = () => {
     const renderServiceForm = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
             <View style={s.field}><NativeInput label={t('taxiForm.nomDuChauffeur')} value={formData.nom_chauffeur} onChangeText={t => setFormData({ ...formData, nom_chauffeur: t })} placeholder={t('taxiForm.votreNom')} /></View>
-            <View style={s.field}><NativeInput label={t('taxiForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
-            <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+            <View style={s.field}><NativeInput label={t('taxiForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+XXX XXXXXXXXX" keyboardType="phone-pad" /></View>
+            <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+XXX XXXXXXXXX" keyboardType="phone-pad" /></View>
 
             <Text style={[s.sectionTitle, { marginTop: 8 }]}>{t('taxiForm.vehicule')}</Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>

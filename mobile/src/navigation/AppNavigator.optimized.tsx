@@ -753,7 +753,12 @@ function MainTabNavigator() {
               }
             })(),
             tabBarIcon: ({ focused, color, size }) => (
-              <SafeIcon name="home" size={size} color={focused ? modernColors.primary : color} type="lucide" />
+              <SafeIcon
+                name={focused ? 'home' : 'home-outline'}
+                size={size}
+                color={focused ? modernColors.primary : color}
+                type="ionicons"
+              />
             ),
           }}
         />
@@ -782,7 +787,12 @@ function MainTabNavigator() {
               }
             })(),
             tabBarIcon: ({ focused, color, size }) => (
-              <SafeIcon name="briefcase" size={size} color={focused ? modernColors.primary : color} type="lucide" />
+              <SafeIcon
+                name={focused ? 'briefcase' : 'briefcase-outline'}
+                size={size}
+                color={focused ? modernColors.primary : color}
+                type="ionicons"
+              />
             ),
           }}
         />
@@ -800,7 +810,12 @@ function MainTabNavigator() {
               }
             })(),
             tabBarIcon: ({ focused, color, size }) => (
-              <SafeIcon name="shopping-bag" size={size} color={focused ? modernColors.primary : color} type="lucide" />
+              <SafeIcon
+                name={focused ? 'bag' : 'bag-outline'}
+                size={size}
+                color={focused ? modernColors.primary : color}
+                type="ionicons"
+              />
             ),
           }}
         />
@@ -821,7 +836,12 @@ function MainTabNavigator() {
               }
             })(),
             tabBarIcon: ({ focused, color, size }) => (
-              <SafeIcon name="plus" size={size} color={focused ? modernColors.primary : color} type="lucide" />
+              <SafeIcon
+                name={focused ? 'add-circle' : 'add-circle-outline'}
+                size={size}
+                color={focused ? modernColors.primary : color}
+                type="ionicons"
+              />
             ),
           }}
         />
@@ -841,7 +861,12 @@ function MainTabNavigator() {
             }
           })(),
           tabBarIcon: ({ focused, color, size }) => (
-            <SafeIcon name="play" size={size} color={focused ? modernColors.primary : color} type="lucide" />
+            <SafeIcon
+              name={focused ? 'play-circle' : 'play-circle-outline'}
+              size={size}
+              color={focused ? modernColors.primary : color}
+              type="ionicons"
+            />
           ),
         }}
       />
@@ -861,7 +886,12 @@ function MainTabNavigator() {
               }
             })(),
             tabBarIcon: ({ focused, color, size }) => (
-              <SafeIcon name="truck" size={size} color={focused ? modernColors.primary : color} type="lucide" />
+              <SafeIcon
+                name={focused ? 'car' : 'car-outline'}
+                size={size}
+                color={focused ? modernColors.primary : color}
+                type="ionicons"
+              />
             ),
           }}
         />
@@ -881,7 +911,12 @@ function MainTabNavigator() {
             }
           })(),
           tabBarIcon: ({ focused, color, size }) => (
-            <SafeIcon name="user" size={size} color={focused ? modernColors.primary : color} type="lucide" />
+            <SafeIcon
+              name={focused ? 'person' : 'person-outline'}
+              size={size}
+              color={focused ? modernColors.primary : color}
+              type="ionicons"
+            />
           ),
         }}
       />

@@ -258,7 +258,7 @@ const HotelBookingScreen: React.FC = () => {
 
                     <Text style={s.label}>{t('hotelBooking.telephone')}</Text>
                     <TextInput style={s.input} value={telephoneClient} onChangeText={setTelephoneClient}
-                        placeholder="+237 6XX XXX XXX" placeholderTextColor="#9CA3AF" keyboardType="phone-pad" />
+                        placeholder="+XXX XXXXXXXXX" placeholderTextColor="#9CA3AF" keyboardType="phone-pad" />
 
                     <Text style={s.label}>{t('hotelDashboard.email')}</Text>
                     <TextInput style={s.input} value={emailClient} onChangeText={setEmailClient}

@@ -475,7 +475,7 @@ const CreateServiceScreen: React.FC = () => {
                 mode="outlined"
                 keyboardType="phone-pad"
                 style={styles.input}
-                placeholder="+237 6XX XXX XXX"
+                placeholder="+XXX XXXXXXXXX"
                 left={<TextInput.Icon icon="whatsapp" />}
                 error={!formData.whatsapp}
               />
@@ -490,7 +490,7 @@ const CreateServiceScreen: React.FC = () => {
                 mode="outlined"
                 keyboardType="phone-pad"
                 style={styles.input}
-                placeholder="+237 6XX XXX XXX"
+                placeholder="+XXX XXXXXXXXX"
                 left={<TextInput.Icon icon="phone" />}
               />
 

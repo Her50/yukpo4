@@ -635,7 +635,7 @@ const HomeScreen: React.FC = () => {
                         onPress={() => navigate('Navigation')}
                         activeOpacity={0.8}
                     >
-                        <SafeIcon name="navigation" size={22} color="#6366F1" />
+                        <SafeIcon name="compass" size={22} color="#6366F1" type="ionicons" />
                     </TouchableOpacity>
                 </View>
 

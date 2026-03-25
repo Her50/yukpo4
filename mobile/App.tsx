@@ -29,6 +29,7 @@ import { LocationProvider } from './src/contexts/LocationContext';
 import { ShoppingProvider } from './src/contexts/ShoppingContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { WebSocketProvider } from './src/contexts/WebSocketContext';
+import CommunityAlertBackgroundManager from './src/components/CommunityAlertBackgroundManager';
 
 // ✅ CORRECTION CRASH: africanLocations chargé en lazy loading pour éviter surcharge mémoire au démarrage
 import AppNavigator from './src/navigation/AppNavigator.optimized';
@@ -169,6 +170,7 @@ export default function App() {
                             <DeliveryProvider>
                               <ShoppingProvider>
                                 <StatusBar style="auto" />
+                                <CommunityAlertBackgroundManager />
                                 <GPSTrackingManager />
                                 <NavigationContainer
                                   linking={linking}

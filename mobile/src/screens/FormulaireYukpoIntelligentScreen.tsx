@@ -1190,8 +1190,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               fieldName === 'telephone' ? 'Téléphone' :
                 fieldName === 'email' ? 'Email' : 'Site web',
             required: fieldName === 'whatsapp', // Seul WhatsApp obligatoire
-            placeholder: fieldName === 'whatsapp' ? '+237 6XX XX XX XX' :
-              fieldName === 'telephone' ? '+237 6XX XX XX XX' :
+            placeholder: fieldName === 'whatsapp' ? '+XXX XXXXXXXXX' :
+              fieldName === 'telephone' ? '+XXX XXXXXXXXX' :
                 fieldName === 'email' ? 'contact@exemple.com' : 'https://...'
           } as any);
         }
@@ -1255,7 +1255,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const whatsappRegex = /^(\+?237|00237)?[0-9]{9}$/;
       const cleanValue = trimmedValue.replace(/\s/g, '');
       if (!whatsappRegex.test(cleanValue)) {
-        return { isValid: false, error: 'Numéro WhatsApp invalide (ex: +237 6XX XX XX XX)' };
+        return { isValid: false, error: 'Numéro WhatsApp invalide (ex: +XXX XXXXXXXXX)' };
       }
     }
 

@@ -369,8 +369,8 @@ const LaboratoireFormScreen: React.FC = () => {
             <View style={s.switchRow}><Text style={s.switchLbl}>{t('laboratoireForm.resultatsEnLigne')}</Text><Switch value={formData.resultats_en_ligne} onValueChange={v => setFormData({ ...formData, resultats_en_ligne: v })} trackColor={{ false: '#D1D5DB', true: '#0891B2' }} /></View>
             {user?.role !== 'partenaire' && (
                 <>
-                    <View style={s.field}><NativeInput label={t('laboratoireForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
-                    <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label={t('laboratoireForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+XXX XXXXXXXXX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+XXX XXXXXXXXX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="Email" value={formData.email} onChangeText={t => setFormData({ ...formData, email: t })} placeholder="labo@example.com" keyboardType="email-address" autoCapitalize="none" /></View>
                 </>
             )}

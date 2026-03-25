@@ -1,4 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
+import * as Localization from 'expo-localization';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,

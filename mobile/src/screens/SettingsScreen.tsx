@@ -306,7 +306,7 @@ const SettingsScreen: React.FC = () => {
           style={styles.input}
           value={settings.phone}
           onChangeText={(value) => updateSetting('phone', value)}
-          placeholder="+237 6XX XXX XXX"
+          placeholder="+XXX XXXXXXXXX"
           keyboardType="phone-pad"
         />
       </View>

@@ -392,7 +392,7 @@ const CreateEtablissementScreen: React.FC = () => {
                     <NativeInput
                         value={formData.telephone}
                         onChangeText={(text) => setFormData({ ...formData, telephone: text })}
-                        placeholder="+237 6XX XXX XXX"
+                        placeholder="+XXX XXXXXXXXX"
                         keyboardType="phone-pad"
                     />
                 </View>

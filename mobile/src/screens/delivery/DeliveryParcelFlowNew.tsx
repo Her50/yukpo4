@@ -1249,7 +1249,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 <Text style={styles.label}>Téléphone *</Text>
                 <View style={styles.phoneInputContainer}>
                     <NativeInput
-                        placeholder="+237"
+                        placeholder="+XXX"
                         value={recipientCountryCode}
                         onChangeText={setRecipientCountryCode}
                         keyboardType="phone-pad"

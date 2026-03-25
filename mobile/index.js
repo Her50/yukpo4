@@ -7,6 +7,9 @@ import { registerRootComponent } from 'expo';
 import { Platform, StyleSheet } from 'react-native';
 import 'react-native-gesture-handler';
 
+// ✅ Background tasks (doit être importé tôt pour enregistrer TaskManager.defineTask)
+import './src/background/communityAlertsTask';
+
 // Traduction globale (alignée sur translateShared / LanguageProvider)
 try {
     const { translateWithFallback } = require('./src/i18n/translateShared');

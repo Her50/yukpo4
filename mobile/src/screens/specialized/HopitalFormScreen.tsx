@@ -405,9 +405,9 @@ const HopitalFormScreen: React.FC = () => {
             <View style={s.switchRow}><View><Text style={s.switchLbl}>{t('hopitalFormScreen.rdvEnLigne') || 'RDV en ligne'}</Text><Text style={s.hint}>{t('hopitalFormScreen.permetLesPrisesDeRdv') || 'Permet les prises de RDV'}</Text></View><Switch value={formData.rdv_en_ligne} onValueChange={v => setFormData({ ...formData, rdv_en_ligne: v })} trackColor={{ false: '#D1D5DB', true: modernColors.primary }} /></View>
             {user?.role !== 'partenaire' && (
                 <>
-                    <View style={s.field}><NativeInput label={t('hopitalForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
-                    <View style={s.field}><NativeInput label="Urgence" value={formData.telephone_urgence} onChangeText={t => setFormData({ ...formData, telephone_urgence: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
-                    <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label={t('hopitalForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+XXX XXXXXXXXX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label="Urgence" value={formData.telephone_urgence} onChangeText={t => setFormData({ ...formData, telephone_urgence: t })} placeholder="+XXX XXXXXXXXX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+XXX XXXXXXXXX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="Email" value={formData.email} onChangeText={t => setFormData({ ...formData, email: t })} placeholder="hopital@example.com" keyboardType="email-address" autoCapitalize="none" /></View>
                     <View style={s.field}><NativeInput label="Site web" value={formData.site_web} onChangeText={t => setFormData({ ...formData, site_web: t })} placeholder="https://..." autoCapitalize="none" /></View>
                 </>

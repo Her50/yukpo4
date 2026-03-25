@@ -4,7 +4,7 @@ import { Picker } from '@react-native-picker/picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Building, CheckCircle, Envelope, Image as ImageIcon, Lock, LockKey, MapPin, Phone, WarningCircle, XCircle } from 'phosphor-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -19,6 +19,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { authApi } from '../../services/api';
 import { theme } from '../../theme/theme';
+import { getAllCountryDialCodes } from '../../utils/countryDialCodes';
 
 const PartnerRegisterScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -71,6 +72,9 @@ const PartnerRegisterScreen: React.FC = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [partnerPhoneCountryCode, setPartnerPhoneCountryCode] = useState('+237');
+
+  const countryCodeOptions = useMemo(() => getAllCountryDialCodes('CM'), []);
 
   // ✅ NOUVEAU: Mettre à jour le partner_type si fourni via les paramètres de route
   useEffect(() => {
@@ -247,7 +251,9 @@ const PartnerRegisterScreen: React.FC = () => {
         is_partner: true,
         partner_type: form.partner_type,
         partner_name: form.partner_name,
-        partner_phone: form.partner_phone,
+        partner_phone: form.partner_phone
+          ? `${partnerPhoneCountryCode}${form.partner_phone.replace(/\D/g, '')}`
+          : '',
         partner_address: form.partner_address,
         partner_country: form.partner_country,
       };
@@ -392,12 +398,24 @@ const PartnerRegisterScreen: React.FC = () => {
             <TextInput
               label={t('partnerRegister.telephoneDeLEtablissement')}
               value={form.partner_phone}
-              onChangeText={(text) => setForm({ ...form, partner_phone: text })}
+              onChangeText={(text) => setForm({ ...form, partner_phone: text.replace(/\D/g, '') })}
               keyboardType="phone-pad"
+              placeholder="6XXXXXXXX"
               disabled={loading}
               style={styles.input}
               left={<TextInput.Icon icon={() => <Phone size={20} color={theme.colors.textSecondary} />} />}
             />
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={partnerPhoneCountryCode}
+                onValueChange={(value) => setPartnerPhoneCountryCode(String(value))}
+                style={styles.picker}
+              >
+                {countryCodeOptions.map((country) => (
+                  <Picker.Item key={country.code} label={`${country.label} (${country.prefix})`} value={country.prefix} />
+                ))}
+              </Picker>
+            </View>
 
             {/* ✅ NOUVEAU: Champ de téléchargement de logo */}
             <Text style={styles.label}>{t('partnerRegister.logoDeLetablissement')}</Text>

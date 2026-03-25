@@ -137,7 +137,7 @@ const SERVICES_DATA: Service[] = [
 const CATEGORIES_DATA: Category[] = [
     { id: 'sante', title: 'Sante', titleKey: 'yukpoServicesQuickAccess.sante', icon: 'heart', gradient: ['#EC4899', '#F472B6'], serviceIds: ['pharmacie', 'hopital', 'laboratoire', 'banque_sang'] },
     { id: 'transport', title: 'Transport', titleKey: 'yukpoServicesQuickAccess.transport', icon: 'car', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['agence_voyage', 'covoiturage', 'taxi', 'automobile'] },
-    { id: 'vie_pratique', title: 'Vie pratique', titleKey: 'yukpoServicesQuickAccess.viePratique', icon: 'book-open', gradient: ['#3B82F6', '#60A5FA'], serviceIds: ['orientation_scolaire', 'offres_emploi', 'menu_planning', 'bayamselam'] },
+    { id: 'vie_pratique', title: 'Vie pratique', titleKey: 'yukpoServicesQuickAccess.viePratique', icon: 'layers', gradient: ['#3B82F6', '#60A5FA'], serviceIds: ['orientation_scolaire', 'offres_emploi', 'menu_planning', 'bayamselam'] },
     { id: 'bourse_livre_featured', title: 'Bourse du Livre', titleKey: 'yukpoServicesQuickAccess.bourseDuLivre', icon: 'book-open', gradient: ['#8B5CF6', '#A78BFA'], serviceIds: ['bourse_livre'] },
     { id: 'assurance', title: 'Assurance', titleKey: 'yukpoServicesQuickAccess.assurance', icon: 'shield', gradient: ['#0EA5E9', '#38BDF8'], serviceIds: ['assurance'] },
     { id: 'immobilier', title: 'Immobilier', titleKey: 'yukpoServicesQuickAccess.immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], serviceIds: ['immo', 'hotel', 'meuble'] },

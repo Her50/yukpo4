@@ -701,9 +701,12 @@ fn build_system_prompt_for_mode(
             .and_then(|v| v.as_array())
             .map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(", "))
             .unwrap_or_default();
+        let screen_user = user_facing_screen_hint(screen);
         format!(
-            "CURRENT SCREEN: \"{}\" (type: {})\nUSER ROLE: {}\nAVAILABLE ACTIONS: {}\nVISIBLE ELEMENTS: {}",
-            screen, screen_type, user_role, actions, elements,
+            "CURRENT SCREEN (for user-facing wording): \"{}\"\n\
+            TECHNICAL ROUTE (internal — use ONLY in suggested_actions[].route, NEVER in `message` text): \"{}\"\n\
+            SCREEN TYPE: {}\nUSER ROLE: {}\nAVAILABLE ACTIONS: {}\nVISIBLE ELEMENTS: {}",
+            screen_user, screen, screen_type, user_role, actions, elements,
         )
     } else {
         String::new()
@@ -734,7 +737,7 @@ fn build_system_prompt_for_mode(
         - You understand ANY question in ANY language and respond intelligently\n\
         - You know every feature, every screen, every button of the Yukpo app\n\
         - When the user asks \"how to...\", give step-by-step instructions referencing exact buttons/screens\n\
-        - When the user asks \"where is...\", provide the navigation path (screen names as route values)\n\
+        - When the user asks \"where is...\", describe the path in **clear French** (onglets, intitulés visibles). Put machine route names **only** in `suggested_actions[].route`, never in `message`.\n\
         - When the user seems lost, proactively explain the current screen's purpose and top 3 things they can do\n\
         - When the user asks about a service (pharmacy, taxi, etc.), explain what Yukpo offers for it\n\
         - For providers/partners: focus on dashboard features (stock, orders, analytics, promotions)\n\
@@ -753,6 +756,7 @@ fn build_system_prompt_for_mode(
         - In `message`, use markdown-like formatting: **bold** for titles and key terms, `- ` lines for bullet lists (the app renders them).\n\
         - NEVER say \"I cannot see your screen\" — you have full context above\n\
         - NEVER refuse to help — if unsure, give your best guidance and suggest exploring\n\
+        - NEVER expose internal React Navigation names in `message` (e.g. MainTabs, MainStack, Stack, Navigator) — users see \"Accueil\", \"Recherche\", etc.\n\
         - suggested_actions.route MUST be valid screen names (Home, RechercheBesoin, PharmacieHome, HopitalHome, DeliveryHome, TaxiHome, CovoiturageHome, Profile, etc.)\n\
         - Adapt complexity to the user: simple language for consumers, technical for providers",
         lang_instruction,
@@ -778,6 +782,17 @@ fn context_has_vision_images(ctx: &Option<serde_json::Value>) -> bool {
                 .map(|s| !s.trim().is_empty())
                 .unwrap_or(false)
     })
+}
+
+/// Noms de route React Navigation à ne jamais recopier dans le texte utilisateur du modèle.
+fn user_facing_screen_hint(screen: &str) -> String {
+    match screen.trim() {
+        "MainTabs" | "MainStack" | "RootStack" => {
+            "accueil de l’application (onglets du bas)".to_string()
+        }
+        "Unknown" | "" => "écran Yukpo (non précisé)".to_string(),
+        _ => screen.to_string(),
+    }
 }
 
 fn truncate_for_prompt(input: &str, max_len: usize) -> String {

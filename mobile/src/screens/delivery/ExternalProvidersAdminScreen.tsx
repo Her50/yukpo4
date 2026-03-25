@@ -373,7 +373,7 @@ const ExternalProvidersAdminScreen: React.FC = () => {
                                 <Text style={styles.inputLabel}>Téléphone (WhatsApp)</Text>
                                 <TextInput
                                     style={styles.textInput}
-                                    placeholder="+237 6XX XXX XXX"
+                                    placeholder="+XXX XXXXXXXXX"
                                     value={createForm.contact_phone}
                                     onChangeText={(text) => setCreateForm({ ...createForm, contact_phone: text })}
                                     keyboardType="phone-pad"

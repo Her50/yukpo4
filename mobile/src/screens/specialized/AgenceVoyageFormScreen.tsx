@@ -487,8 +487,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
 
             {user?.role !== 'partenaire' && (
                 <>
-                    <View style={s.field}><NativeInput label={t('agenceVoyageForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
-                    <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+237 6XX XX XX XX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label={t('agenceVoyageForm.telephone')} value={formData.telephone} onChangeText={t => setFormData({ ...formData, telephone: t })} placeholder="+XXX XXXXXXXXX" keyboardType="phone-pad" /></View>
+                    <View style={s.field}><NativeInput label="WhatsApp" value={formData.whatsapp} onChangeText={t => setFormData({ ...formData, whatsapp: t })} placeholder="+XXX XXXXXXXXX" keyboardType="phone-pad" /></View>
                     <View style={s.field}><NativeInput label="Email" value={formData.email} onChangeText={t => setFormData({ ...formData, email: t })} placeholder="agence@example.com" keyboardType="email-address" autoCapitalize="none" /></View>
                     <View style={s.field}><NativeInput label={t('agenceVoyageForm.siteWeb')} value={formData.site_web} onChangeText={t => setFormData({ ...formData, site_web: t })} placeholder="https://..." autoCapitalize="none" /></View>
                 </>

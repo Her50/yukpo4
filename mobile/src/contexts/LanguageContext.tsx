@@ -63,6 +63,8 @@ interface LanguageProviderProps {
 
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
     const [language, setLanguageState] = useState<string>('fr');
+    const LANGUAGE_KEY = 'app_language';
+    const LANGUAGE_USER_SELECTED_KEY = 'app_language_user_selected';
 
     // Charger la langue sauvegardée au démarrage
     useEffect(() => {
@@ -74,17 +76,20 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
 
     const loadLanguage = async () => {
         try {
-            const savedLanguage = await SafeStorage.getItem('app_language');
-            if (savedLanguage) {
+            const [savedLanguage, userSelected] = await Promise.all([
+                SafeStorage.getItem(LANGUAGE_KEY),
+                SafeStorage.getItem(LANGUAGE_USER_SELECTED_KEY),
+            ]);
+
+            // Si l'utilisateur a explicitement choisi une langue, on respecte ce choix.
+            if (savedLanguage && userSelected === '1') {
                 setLanguageState(savedLanguage);
-                // ✅ Synchroniser i18next avec la langue sauvegardée
                 await i18n.changeLanguage(savedLanguage);
             } else {
-                // ✅ PRIORITÉ ABSOLUE: choix utilisateur (langue système)
-                // Le GPS ne sert que pour le SmartSelector, jamais pour surcharger l'utilisateur
+                // Sinon, utiliser la langue système (comportement attendu au premier lancement).
                 const systemLang = getDeviceLanguage();
                 setLanguageState(systemLang);
-                await SafeStorage.setItem('app_language', systemLang);
+                await SafeStorage.setItem(LANGUAGE_KEY, systemLang);
                 await i18n.changeLanguage(systemLang);
             }
         } catch (error) {
@@ -100,8 +105,10 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
             const safeLang = supported.includes(lang) ? lang : 'fr';
 
             setLanguageState(safeLang);
-            await SafeStorage.setItem('app_language', safeLang);
-            // ✅ Synchroniser i18next
+            await Promise.all([
+                SafeStorage.setItem(LANGUAGE_KEY, safeLang),
+                SafeStorage.setItem(LANGUAGE_USER_SELECTED_KEY, '1'),
+            ]);
             await i18n.changeLanguage(safeLang);
             console.log('[Language] Langue changée:', safeLang);
         } catch (error) {

@@ -23,7 +23,7 @@ interface SafeIconProps {
     name: string | unknown;
     size?: number;
     color?: string;
-    type?: 'lucide' | 'ionicons' | 'emoji';
+    type?: 'auto' | 'lucide' | 'ionicons' | 'emoji';
     style?: any;
     onPress?: () => void;
 }
@@ -471,47 +471,64 @@ export const SafeIcon: React.FC<SafeIconProps> = ({
     name,
     size = 24,
     color = '#000',
-    type = 'lucide'
+    type = 'auto'
 }) => {
     const safeName = coerceIconName(name);
 
-    // ✅ Lucide exporte des forwardRef (typeof object) — valider avec react-is
-    if (type === 'lucide' && LucideIcons && typeof LucideIcons === 'object') {
-        if (safeName && LucideIcons[safeName]) {
-            const IconComponent = LucideIcons[safeName];
-            if (isValidElementType(IconComponent)) {
-                try {
-                    return <IconComponent size={size} color={color} accessibilityLabel="" accessibilityRole="none" />;
-                } catch (error) {
-                    console.warn(`[SafeIcon] Erreur avec l'icône Lucide ${safeName}:`, error);
+    const tryIonicons = (): React.ReactElement | null => {
+        if (Ionicons.default && Ionicons.default.getRawGlyphMap) {
+            try {
+                const glyphMap = Ionicons.default.getRawGlyphMap();
+                if (glyphMap[safeName]) {
+                    return (
+                        <Ionicons.default
+                            name={safeName}
+                            size={size}
+                            color={color}
+                            accessibilityLabel=""
+                            accessibilityRole="none"
+                        />
+                    );
                 }
+            } catch (error) {
+                console.warn(`[SafeIcon] Erreur avec l'icône Ionicons ${safeName}:`, error);
             }
         }
+        return null;
+    };
 
-        const pascalName = toPascalCase(safeName);
-        if (pascalName && pascalName !== safeName && LucideIcons[pascalName]) {
-            const IconComponent = LucideIcons[pascalName];
-            if (isValidElementType(IconComponent)) {
+    const tryLucide = (): React.ReactElement | null => {
+        if (LucideIcons && typeof LucideIcons === 'object') {
+            const tryName = (n: string): React.ReactElement | null => {
+                if (!n) return null;
+                const IconComponent = (LucideIcons as any)[n];
+                if (!IconComponent || !isValidElementType(IconComponent)) return null;
                 try {
-                    return <IconComponent size={size} color={color} accessibilityLabel="" accessibilityRole="none" />;
+                    // ✅ Rendu Lucide plus “dense” pour éviter l’effet icônes pâles
+                    return (
+                        <IconComponent
+                            size={size}
+                            color={color}
+                            strokeWidth={2.5}
+                            accessibilityLabel=""
+                            accessibilityRole="none"
+                        />
+                    );
                 } catch (error) {
-                    console.warn(`[SafeIcon] Erreur avec l'icône Lucide ${pascalName}:`, error);
+                    console.warn(`[SafeIcon] Erreur avec l'icône Lucide ${n}:`, error);
+                    return null;
                 }
-            }
-        }
-    }
+            };
 
-    // Essayer Ionicons en fallback
-    if (Ionicons.default && Ionicons.default.getRawGlyphMap) {
-        try {
-            const glyphMap = Ionicons.default.getRawGlyphMap();
-            if (glyphMap[safeName]) {
-                return <Ionicons.default name={safeName} size={size} color={color} accessibilityLabel="" accessibilityRole="none" />;
-            }
-        } catch (error) {
-            console.warn(`[SafeIcon] Erreur avec l'icône Ionicons ${safeName}:`, error);
+            return tryName(safeName) ?? tryName(toPascalCase(safeName));
         }
-    }
+        return null;
+    };
+
+    // ✅ Global: par défaut, préférer Ionicons (plus “pleins”), puis Lucide, puis emoji
+    if (type === 'ionicons') return tryIonicons() ?? tryLucide() ?? null;
+    if (type === 'lucide') return tryLucide() ?? tryIonicons() ?? null;
+    if (type === 'auto') return tryIonicons() ?? tryLucide() ?? null;
 
     // ✅ CORRIGÉ : Fallback vers emoji avec recherche améliorée
     const normalizedName = safeName.toLowerCase();

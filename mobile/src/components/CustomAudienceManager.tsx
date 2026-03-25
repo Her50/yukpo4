@@ -339,7 +339,7 @@ export const CustomAudienceManager: React.FC<CustomAudienceManagerProps> = ({
                             </View>
                             {customSource !== 'csv' && (
                                 <NativeInput
-                                    placeholder={customSource === 'email' ? 'emails@exemple.com, ...' : '+237 6XX XX XX XX, ...'}
+                                    placeholder={customSource === 'email' ? 'emails@exemple.com, ...' : '+XXX XXXXXXXXX, ...'}
                                     value={customData}
                                     onChangeText={setCustomData}
                                     style={styles.input}

@@ -6,7 +6,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { CheckCircle, Envelope, WarningCircle } from 'phosphor-react-native';
 import * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Platform,
@@ -23,6 +23,7 @@ import { API_BASE_URL } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { theme } from '../../theme/theme';
+import { getAllCountryDialCodes } from '../../utils/countryDialCodes';
 
 // Configuration WebBrowser pour OAuth
 try {
@@ -47,22 +48,8 @@ const RegisterScreen: React.FC = () => {
   const { t } = useLanguageSafe();
   const toaster = useToaster();
 
-  // Indicatifs téléphoniques par pays africain francophone
-  // IMPORTANT: doit rester dans le composant car dépend de t()
-  const COUNTRY_CODES = [
-    { code: 'CM', label: `🇨🇲 ${t('register.cameroun')}`, prefix: '+237' },
-    { code: 'CI', label: t('register.coteDivoire'), prefix: '+225' },
-    { code: 'SN', label: t('register.senegal'), prefix: '+221' },
-    { code: 'CD', label: `🇨🇩 ${t('register.rdCongo')}`, prefix: '+243' },
-    { code: 'GA', label: `🇬🇦 ${t('register.gabon')}`, prefix: '+241' },
-    { code: 'BF', label: `🇧🇫 ${t('register.burkinaFaso')}`, prefix: '+226' },
-    { code: 'ML', label: `🇲🇱 ${t('register.mali')}`, prefix: '+223' },
-    { code: 'GN', label: t('register.guinee'), prefix: '+224' },
-    { code: 'TD', label: `🇹🇩 ${t('register.tchad')}`, prefix: '+235' },
-    { code: 'CG', label: `🇨🇬 ${t('register.congo')}`, prefix: '+242' },
-    { code: 'FR', label: `🇫🇷 ${t('register.france')}`, prefix: '+33' },
-    { code: 'BE', label: `🇧🇪 ${t('register.belgique')}`, prefix: '+32' },
-  ];
+  // Génère automatiquement tous les indicatifs pays disponibles
+  const COUNTRY_CODES = useMemo(() => getAllCountryDialCodes('CM'), []);
 
   // États du formulaire
   const [form, setForm] = useState<RegisterForm>({

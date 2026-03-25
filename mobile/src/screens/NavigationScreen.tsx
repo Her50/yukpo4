@@ -550,6 +550,7 @@ const NavigationScreen: React.FC = () => {
     const [showReportHelp, setShowReportHelp] = useState(false);
     const [loadingCheckpoints, setLoadingCheckpoints] = useState(false);
     const [isTracking, setIsTracking] = useState(false);
+    const [isAlertMonitoringActive, setIsAlertMonitoringActive] = useState(false);
     const [currentSpeed, setCurrentSpeed] = useState<number>(0);
     const [currentHeading, setCurrentHeading] = useState<number>(0);
     const [livePosition, setLivePosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -564,6 +565,7 @@ const NavigationScreen: React.FC = () => {
     }>>([]);
     const [nearbyCheckpoint, setNearbyCheckpoint] = useState<{ id: string; checkpoint_type: string; distance: number; speed_limit?: number } | null>(null);
     const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+    const alertMonitorSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
     const checkpointsRef = useRef(checkpoints);
     checkpointsRef.current = checkpoints;
     const checkpointRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -888,6 +890,26 @@ const NavigationScreen: React.FC = () => {
             loadActivityStats(activityPeriod);
         }
     }, [route.params]);
+
+    // ── Alerte communautaire depuis notification (app fermée → tap) : rejouer son + TTS contextuels ──
+    useEffect(() => {
+        const params = route.params as any;
+        const payload = params?.playCommunityAlert;
+        if (!payload) return;
+        const checkpointType = String(payload?.checkpointType || '');
+        const distanceMeters = Number(payload?.distanceMeters || 0) || 0;
+        if (!checkpointType || !distanceMeters) return;
+
+        // Jouer le même pipeline que pendant une navigation active
+        playContextualAlert(checkpointType, distanceMeters, undefined, { lang: activeLang, t });
+
+        // Nettoyer le param pour éviter re-trigger au prochain render
+        try {
+            (navigation as any).setParams?.({ playCommunityAlert: undefined });
+        } catch {
+            /* ignore */
+        }
+    }, [route.params, activeLang, t, navigation]);
     useEffect(() => {
         const s1 = Keyboard.addListener('keyboardDidShow', (e) => { setKeyboardHeight(e.endCoordinates.height); setIsKeyboardVisible(true); });
         const s2 = Keyboard.addListener('keyboardDidHide', () => { setKeyboardHeight(0); setIsKeyboardVisible(false); });
@@ -1213,7 +1235,7 @@ const NavigationScreen: React.FC = () => {
         if (selectedRoute && destinationCoords) {
             oLat = origin.lat; oLng = origin.lng;
             dLat = destinationCoords.lat; dLng = destinationCoords.lng;
-        } else if (isFreeWalking || isTracking) {
+        } else if (isFreeWalking || isTracking || isAlertMonitoringActive) {
             oLat = origin.lat - 0.04; oLng = origin.lng - 0.04;
             dLat = origin.lat + 0.04; dLng = origin.lng + 0.04;
         } else {
@@ -1241,16 +1263,61 @@ const NavigationScreen: React.FC = () => {
         } finally {
             setLoadingCheckpoints(false);
         }
-    }, [selectedRoute, destinationCoords, getCurrentPosition, isFreeWalking, isTracking]);
+    }, [selectedRoute, destinationCoords, getCurrentPosition, isFreeWalking, isTracking, isAlertMonitoringActive]);
     loadCheckpointsSafelyRef.current = loadCheckpointsSafely;
 
-    // Charger les checkpoints dès que isFreeWalking/isTracking change (évite la closure périmée)
+    // Activer la surveillance "alertes communautaires" quand l'écran est visible,
+    // même sans navigation GPS active. Objectif: jouer les alertes sonores par proximité.
+    useFocusEffect(
+        useCallback(() => {
+            let alive = true;
+            // Ne pas démarrer un second watcher si on est déjà en tracking/freewalk (eux gèrent livePosition)
+            if (isTracking || isFreeWalking) {
+                setIsAlertMonitoringActive(false);
+                return () => { alive = false; };
+            }
+
+            setIsAlertMonitoringActive(true);
+
+            (async () => {
+                try {
+                    // Charger immédiatement les checkpoints autour de l'utilisateur
+                    await loadCheckpointsSafelyRef.current();
+                } catch { /* ignore */ }
+
+                try {
+                    // Watch position "léger" (moins fréquent) pour détecter la proximité des checkpoints
+                    alertMonitorSubscriptionRef.current = await Location.watchPositionAsync(
+                        { accuracy: Location.Accuracy.Balanced, distanceInterval: 120, timeInterval: 15000 },
+                        (loc) => {
+                            if (!alive) return;
+                            const pos = { lat: loc.coords.latitude, lng: loc.coords.longitude };
+                            setLivePosition(pos);
+                        }
+                    );
+                } catch (e) {
+                    console.warn('[Navigation] alert monitor watchPositionAsync failed:', e);
+                }
+            })();
+
+            return () => {
+                alive = false;
+                setIsAlertMonitoringActive(false);
+                if (alertMonitorSubscriptionRef.current) {
+                    try { alertMonitorSubscriptionRef.current.remove(); } catch { /* ignore */ }
+                    alertMonitorSubscriptionRef.current = null;
+                }
+            };
+        }, [isTracking, isFreeWalking])
+    );
+
+    // Charger les checkpoints dès que isFreeWalking/isTracking/monitoring change (évite la closure périmée)
     useEffect(() => {
-        if (!isFreeWalking && !isTracking) return;
+        if (!isFreeWalking && !isTracking && !isAlertMonitoringActive) return;
         loadCheckpointsSafely();
         const interval = setInterval(() => { loadCheckpointsSafelyRef.current(); }, 60000);
         return () => clearInterval(interval);
-    }, [isFreeWalking, isTracking, loadCheckpointsSafely]);
+    }, [isFreeWalking, isTracking, isAlertMonitoringActive, loadCheckpointsSafely]);
 
     const startNavigation = useCallback(async (route: RouteOption) => {
         if (!route || !destinationCoords) return;
@@ -1907,7 +1974,7 @@ const NavigationScreen: React.FC = () => {
 
     // ── Détection de proximité des checkpoints → alertes sonores/TTS ──
     useEffect(() => {
-        if (!isTracking && !isFreeWalking) return;
+        if (!isTracking && !isFreeWalking && !isAlertMonitoringActive) return;
         if (!livePosition) return;
         const cps = checkpointsRef.current;
         if (!cps || cps.length === 0) return;
@@ -1941,7 +2008,7 @@ const NavigationScreen: React.FC = () => {
         }
 
         setNearbyCheckpoint(nearest);
-    }, [livePosition, isTracking, isFreeWalking, haversineDistance, activeLang, t]);
+    }, [livePosition, isTracking, isFreeWalking, isAlertMonitoringActive, haversineDistance, activeLang, t]);
 
     // ── Détection de proximité des waypoints POI → annonces vocales TTS ──
     useEffect(() => {

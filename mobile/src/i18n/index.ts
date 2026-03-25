@@ -174,11 +174,51 @@ export const loadLanguage = (lang: string): void => {
     }
 };
 
+const LANGUAGE_ALIASES: Record<string, string> = {
+    fil: 'tl',
+    in: 'id',
+    iw: 'he',
+    ji: 'yi',
+};
+
+const normalizeToSupportedLanguage = (raw: string | null | undefined): SupportedLanguage | null => {
+    if (!raw) return null;
+    const supported = SUPPORTED_LANGUAGES.map((l) => l.code) as readonly string[];
+    const normalized = raw.toLowerCase().trim();
+    const withAlias = LANGUAGE_ALIASES[normalized] || normalized;
+
+    if (supported.includes(withAlias)) {
+        return withAlias as SupportedLanguage;
+    }
+
+    const base = withAlias.split(/[-_]/)[0];
+    if (supported.includes(base)) {
+        return base as SupportedLanguage;
+    }
+
+    return null;
+};
+
 const getDeviceLanguage = (): SupportedLanguage => {
     try {
-        const locale = Localization.locale?.split('-')[0] || 'fr';
-        const supported = SUPPORTED_LANGUAGES.map(l => l.code) as readonly string[];
-        return supported.includes(locale) ? (locale as SupportedLanguage) : 'fr';
+        // API moderne Expo: ex. "fr-CM", "en-US", etc.
+        const locales = typeof Localization.getLocales === 'function' ? Localization.getLocales() : [];
+        if (Array.isArray(locales) && locales.length > 0) {
+            const primaryLocale = locales[0];
+            const primaryCandidates = [
+                (primaryLocale as any)?.languageTag,
+                (primaryLocale as any)?.languageCode,
+            ];
+            for (const candidate of primaryCandidates) {
+                const resolved = normalizeToSupportedLanguage(candidate);
+                if (resolved) return resolved;
+            }
+        }
+
+        // Fallback compat anciennes versions
+        const legacyLocale = (Localization as any).locale as string | undefined;
+        const resolvedLegacy = normalizeToSupportedLanguage(legacyLocale);
+        return resolvedLegacy || 'fr';
     } catch {
         return 'fr';
     }

@@ -3428,7 +3428,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Téléphone d'urgence</Text>
                             <NativeInput
-                                placeholder="Ex: +237 6XX XX XX XX"
+                                placeholder="Ex: +XXX XXXXXXXXX"
                                 value={newProduct.telephoneUrgence || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, telephoneUrgence: text })}
                                 style={styles.fieldInput}

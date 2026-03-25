@@ -1152,7 +1152,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                             {loading ? (
                                 <ActivityIndicator size="small" color="#FFFFFF" />
                             ) : (
-                                <SafeIcon name="send" size={20} color="#FFFFFF" />
+                                <SafeIcon name="arrow-forward" size={20} color="#FFFFFF" type="ionicons" />
                             )}
                         </TouchableOpacity>
                     )}

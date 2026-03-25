@@ -50,6 +50,9 @@ module.exports = {
                 "applinks:yukpo-backend-376093909298.europe-west1.run.app"
             ],
             infoPlist: {
+                UIBackgroundModes: [
+                    "location"
+                ],
                 CFBundleURLTypes: [
                     {
                         CFBundleURLSchemes: [
@@ -60,7 +63,8 @@ module.exports = {
                 NSCameraUsageDescription: "Cette app utilise la caméra pour l'édition vidéo en réalité augmentée",
                 NSMicrophoneUsageDescription: "Cette app utilise le microphone pour enregistrer l'audio des vidéos AR immersives",
                 NSLocationWhenInUseUsageDescription: "Yukpo utilise votre position pour la navigation, les alertes communautaires et le suivi de vos activités",
-                NSLocationAlwaysAndWhenInUseUsageDescription: "Yukpo suit vos déplacements en arrière-plan pour enregistrer automatiquement vos activités physiques (marche, vélo) et calculer vos statistiques santé"
+                NSLocationAlwaysAndWhenInUseUsageDescription: "Yukpo suit vos déplacements en arrière-plan pour enregistrer automatiquement vos activités physiques (marche, vélo) et calculer vos statistiques santé",
+                NSLocationAlwaysUsageDescription: "Yukpo peut utiliser votre position en arrière-plan pour déclencher des alertes communautaires (radars, dangers, contrôles) à proximité, même quand l'application est fermée."
             }
         },
         android: {
@@ -188,7 +192,14 @@ module.exports = {
             "expo-image-picker",
             "expo-document-picker",
             "expo-file-system",
-            "expo-notifications",
+            [
+                "expo-notifications",
+                {
+                    sounds: [
+                        "../frontend/public/sounds/phone-ring.mp3"
+                    ]
+                }
+            ],
             // ✅ CORRIGÉ: react-native-webrtc retiré des plugins (géré par autolinking)
             [
                 "sentry-expo",

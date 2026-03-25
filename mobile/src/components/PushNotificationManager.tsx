@@ -308,6 +308,17 @@ const PushNotificationManager: React.FC = () => {
                 console.log('[PushNotificationManager] 📊 Tap alerte Publicité:', data.alert_type);
                 (navigation as any).navigate('PubliciteDashboard');
             }
+            // ✅ Tap sur alerte communautaire (navigation) → ouvrir NavigationScreen et rejouer l'audio/TTS contextuel
+            else if (data?.type === 'community_alert') {
+                const checkpointType = String((data as any)?.checkpoint_type || 'danger');
+                const distanceMeters = Number((data as any)?.distance_meters || 0) || 0;
+                (navigation as any).navigate('Navigation', {
+                    playCommunityAlert: {
+                        checkpointType,
+                        distanceMeters,
+                    }
+                });
+            }
         });
 
         // Gérer le cas "app fermée puis ouverte via tap notification"
@@ -339,6 +350,13 @@ const PushNotificationManager: React.FC = () => {
                             serviceId: data.primary_service_id,
                         });
                     }
+                }
+                else if (data.type === 'community_alert') {
+                    const checkpointType = String((data as any)?.checkpoint_type || 'danger');
+                    const distanceMeters = Number((data as any)?.distance_meters || 0) || 0;
+                    (navigation as any).navigate('Navigation', {
+                        playCommunityAlert: { checkpointType, distanceMeters }
+                    });
                 }
             })
             .catch((error) => {

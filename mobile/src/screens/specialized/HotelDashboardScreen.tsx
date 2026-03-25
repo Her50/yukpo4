@@ -817,7 +817,7 @@ const HotelDashboardScreen: React.FC = () => {
                             style={styles.input}
                             value={newReservation.telephone_client}
                             onChangeText={v => setNewReservation(prev => ({ ...prev, telephone_client: v }))}
-                            placeholder="Ex: +237 6XX XXX XXX"
+                            placeholder="Ex: +XXX XXXXXXXXX"
                             keyboardType="phone-pad"
                         />
 
