@@ -3812,7 +3812,8 @@
         "interessant": "Intéressant",
         "aReflechir": "À réfléchir",
         "decu": "Déçu",
-        "video": "Vidéo"
+        "video": "Vidéo",
+        "playbackFailed": "Cette vidéo ne peut pas être lue (réseau ou fichier)."
     },
     "generativeVideoWizard": {
         "modalTitle": "Yukpo Studio",

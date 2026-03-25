@@ -1154,6 +1154,11 @@ const MesProduitsScreen: React.FC = () => {
                 ? (typeof product.prix === 'string' ? parseFloat(product.prix) || undefined : product.prix)
                 : undefined;
 
+            const shareProductIndex =
+                typeof product.product_index === 'number'
+                    ? product.product_index
+                    : (typeof product.productIndex === 'number' ? product.productIndex : 0);
+
             // Générer le message de partage avec le format uniforme (description avant prix, lieu, lien intelligent unique)
             const shareMessage = generateProductShareMessage({
                 productName: product.nom,
@@ -1161,14 +1166,14 @@ const MesProduitsScreen: React.FC = () => {
                 price,
                 devise: product.devise || 'XAF',
                 location,
-                productId: product.id,
+                productId: shareProductIndex,
                 serviceId: product.serviceId,
             });
 
             // ✅ CORRIGÉ: Utiliser le lien intelligent (HTTPS) dans l'URL du Share
             // Le lien HTTPS sera intercepté par l'app si installée (via intentFilters)
             // Sinon, il ouvrira la page web. C'est un seul lien intelligent qui fonctionne partout.
-            const smartLink = generateSmartShareLink(product.id, product.serviceId);
+            const smartLink = generateSmartShareLink(shareProductIndex, product.serviceId);
 
             const result = await Share.share({
                 message: shareMessage,

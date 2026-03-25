@@ -564,6 +564,7 @@ async fn fetch_video_feed_from_media(
     for row in rows {
         let media_id: i32 = row.try_get("id")?;
         let service_id: i32 = row.try_get("service_id")?;
+        let product_index: Option<i32> = row.try_get("product_index").ok().flatten();
         let video_path: String = row.try_get("video_path")?;
         let hls_url: Option<String> = row.try_get("hls_url").ok().flatten();
         let thumbnail_path: Option<String> = row.try_get("thumbnail_path").ok().flatten();
@@ -623,6 +624,7 @@ async fn fetch_video_feed_from_media(
                 "seller_avatar": seller_avatar,
                 "hashtags": hashtags,
                 "titre_service": service_title,
+                "product_index": product_index,
             }),
             boost_level: None,
             frequency_ratio: None,

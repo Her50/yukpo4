@@ -3,6 +3,9 @@
  * avec un lien intelligent qui détecte automatiquement mobile/web
  */
 
+/** Liens HTTPS produits (universal links) : toujours le site public, pas l’URL API (EXPO_PUBLIC_SHARE_URL). */
+export const PUBLIC_PRODUCT_SHARE_WEB_BASE = 'https://yukpomnang.com';
+
 export interface ProductShareData {
   productName: string;
   productDescription?: string;
@@ -24,9 +27,7 @@ export const generateSmartShareLink = (
   productId: string | number,
   serviceId: string | number
 ): string => {
-  // ✅ CORRIGÉ 2026-03-15: Utiliser le domaine personnalisé yukpomnang.com (via Cloudflare Worker → Cloud Run)
-  const baseUrl = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
-  return `${baseUrl}/product/${productId}?serviceId=${serviceId}`;
+  return `${PUBLIC_PRODUCT_SHARE_WEB_BASE}/product/${productId}?serviceId=${serviceId}`;
 };
 
 /**

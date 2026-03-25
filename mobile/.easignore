@@ -88,14 +88,14 @@ node_modules/**/examples/
 node_modules/**/example/**
 node_modules/**/examples/**
 # Tous les dossiers build dans node_modules (très volumineux!)
+node_modules/**/build/
+node_modules/**/build/**
 node_modules/**/android/app/build/
 node_modules/**/android/app/build/**
 node_modules/**/android/build/
 node_modules/**/android/build/**
 node_modules/**/ios/build/
 node_modules/**/ios/build/**
-node_modules/**/build/
-node_modules/**/build/**
 node_modules/**/build/intermediates/
 node_modules/**/build/intermediates/**
 node_modules/**/build/outputs/
@@ -122,6 +122,9 @@ node_modules/**/*.aab
 # Archives volumineuses
 node_modules/**/*.tbz
 node_modules/**/*.tar.gz
+# EXCLUSION AGRESSIVE DE TOUS LES BUILD (nouveau)
+**/build/
+**/build/**
 
 # ============================================
 # FICHIERS LOURDS À LA RACINE DE mobile/ (4.31 MB de .md!)
@@ -197,6 +200,9 @@ android/**/generated/**
 dist/
 dist-test/
 web-build/
+# Sorties scripts d'analyse (source-map-explorer / metro) — ~700 Mo sur disque, inutiles pour EAS
+dist-bundle-analysis/
+.bundle-analysis/
 
 # Sorties EAS build:inspect (éviter d'uploader ~300+ MB)
 archive-inspect/

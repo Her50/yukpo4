@@ -26,6 +26,7 @@ import ProductMediaCarousel from './ProductMediaCarousel';
 import SafeIcon from './SafeIcon';
 import ServiceGalleryModal from './ServiceGalleryModal';
 import { ServiceRating } from './ServiceRating';
+import { generateSmartShareLink } from '../utils/productShareHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -168,9 +169,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
       const price = displayPrice > 0 ? `${displayPrice.toLocaleString()} ${devise}` : '';
       const location = chosenLocation || '';
 
-      const shareUrl = process.env.EXPO_PUBLIC_SHARE_URL
-        ? `${process.env.EXPO_PUBLIC_SHARE_URL}/service/${product.service_id || service?.id}`
-        : `https://yukpomnang.com/service/${product.service_id || service?.id}`;
+      const shareProductId = product.product_index ?? product.product_id ?? 0;
+      const shareServiceId = product.service_id || service?.id || 0;
+      const shareUrl = generateSmartShareLink(shareProductId, shareServiceId);
 
       const shareMessage = `­ƒøì´©Å ${productName}\n\n${productDesc ? `${productDesc}\n\n` : ''}${price ? `­ƒÆ░ Prix: ${price}\n` : ''}${location ? `­ƒôì ${location}\n\n` : '\n'}­ƒöù Voir ce produit:\n${shareUrl}`;
 

@@ -3714,7 +3714,8 @@
         "revenezPlusTard": "Revenez more tard or créez your première video.",
         "recharger": "Recharger",
         "commentaires": "Commentaires",
-        "rejouer": "Rejouer"
+        "rejouer": "Rejouer",
+        "playbackFailed": "This video can't be played (network or file)."
     },
     "generativeVideoWizard": {
         "modalTitle": "Yukpo Studio",

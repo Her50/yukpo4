@@ -290,6 +290,8 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
     const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
     const [pendingReaction, setPendingReaction] = useState<string | null>(null);
     const [bufferingMap, setBufferingMap] = useState<Record<string, boolean>>({});
+    /** Échec de chargement / lecture (expo-av) — évite spinner infini si URL 403, codec, etc. */
+    const [videoLoadErrorMap, setVideoLoadErrorMap] = useState<Record<string, boolean>>({});
     const [followMap, setFollowMap] = useState<Record<string, boolean>>({});
     const [expandedDescriptions, setExpandedDescriptions] = useState<Record<string, boolean>>({});
     const [page, setPage] = useState(1);
@@ -353,6 +355,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 setPausedMap({});
                 setProgressMap({});
                 setBufferingMap({});
+                setVideoLoadErrorMap({});
                 viewedSet.current.clear();
                 setPage(1);
             } else {
@@ -680,6 +683,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 setPausedMap({});
                 setProgressMap({});
                 setBufferingMap({});
+                setVideoLoadErrorMap({});
                 setMutedMap({});
                 setPlayCount({});
                 playCountRef.current = {};
@@ -930,6 +934,14 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     const handlePlaybackStatus = useCallback((contentId: string, index: number, status: AVPlaybackStatus) => {
         if (!status.isLoaded) {
+            // Échec définitif (réseau, 403, format) : expo renvoie error — sinon c’est encore le chargement
+            if ('error' in status && (status as { error?: string }).error) {
+                const err = (status as { error?: string }).error;
+                console.warn(`[VideoFeedScreen] Lecture impossible (${contentId}):`, err);
+                setVideoLoadErrorMap((prev) => (prev[contentId] ? prev : { ...prev, [contentId]: true }));
+                setBufferingMap((prev) => ({ ...prev, [contentId]: false }));
+                return;
+            }
             setBufferingMap((prev) => {
                 if (prev[contentId] === true) return prev;
                 return { ...prev, [contentId]: true };
@@ -1001,6 +1013,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
         const progress = progressMap[contentId] ?? 0;
         const isActive = index === currentIndex;
         const isBuffering = bufferingMap[contentId] ?? false;
+        const hasLoadError = videoLoadErrorMap[contentId] ?? false;
         const spinRotation = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
         return (
@@ -1015,17 +1028,28 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                         // qui flashent avant que la vidéo charge. Fond sombre (#111) + spinner = style TikTok/Reels
                         usePoster={false}
                         resizeMode={ResizeMode.COVER}
-                        shouldPlay={isActive && !paused && isFocused}
+                        shouldPlay={isActive && !paused && isFocused && !hasLoadError}
                         isLooping={false}
                         isMuted={muted}
                         useNativeControls={false}
                         progressUpdateIntervalMillis={500}
                         onPlaybackStatusUpdate={(status) => handlePlaybackStatus(contentId, index, status)}
-                        onError={(error) => console.error(`[VideoFeedScreen] Erreur vidéo ${index}:`, error)}
+                        onError={(error) => {
+                            console.error(`[VideoFeedScreen] Erreur vidéo ${index} (${contentId}):`, error);
+                            setVideoLoadErrorMap((prev) => (prev[contentId] ? prev : { ...prev, [contentId]: true }));
+                            setBufferingMap((prev) => ({ ...prev, [contentId]: false }));
+                        }}
                     />
 
-                    {/* ✅ FIX 2026-03-14: Spinner pendant buffering OU chargement initial (progress=0, jamais joué, pas en pause) */}
-                    {isActive && (isBuffering || (progress === 0 && !paused && (playCount[contentId] || 0) === 0)) && (
+                    {/* Erreur de lecture : URL expirée, 403 GCS, codec, etc. */}
+                    {isActive && hasLoadError && (
+                        <View style={[styles.bufferingOverlay, styles.videoErrorOverlay]} pointerEvents="none">
+                            <Text style={styles.videoErrorText}>{t('videoFeed.playbackFailed')}</Text>
+                        </View>
+                    )}
+
+                    {/* Spinner : chargement / buffering — pas si erreur (sinon spinner infini) */}
+                    {isActive && !hasLoadError && (isBuffering || (progress === 0 && !paused && (playCount[contentId] || 0) === 0)) && (
                         <View style={styles.bufferingOverlay}>
                             <ActivityIndicator size="large" color="#fff" />
                         </View>
@@ -1314,7 +1338,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
                 {/* ✅ SUPPRIMÉ 2026-03-14: Ancien picker horizontal en bas — remplacé par picker flottant au-dessus du coeur */}
             </View>
         );
-    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, spinAnim, filteredFeed.length, navigation, followMap, handleToggleFollow, playCount, expandedDescriptions, toggleDescription, handleDeliveryOrder, pageHeight, t]);
+    }, [likedMap, savedMap, pausedMap, mutedMap, progressMap, currentIndex, doubleTapHeart, heartAnim, handleTap, handleReaction, toggleSave, toggleMute, handleShare, handleViewProduct, handleOpenComments, registerRef, handlePlaybackStatus, isFocused, reactionsMap, showReactionPicker, pendingReaction, bufferingMap, videoLoadErrorMap, spinAnim, filteredFeed.length, navigation, followMap, handleToggleFollow, playCount, expandedDescriptions, toggleDescription, handleDeliveryOrder, pageHeight, t]);
 
     if (loading) {
         return (
@@ -1591,6 +1615,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(0,0,0,0.4)',
+    },
+    videoErrorOverlay: {
+        backgroundColor: 'rgba(0,0,0,0.65)',
+    },
+    videoErrorText: {
+        color: '#fff',
+        textAlign: 'center',
+        paddingHorizontal: 28,
+        fontSize: 15,
+        lineHeight: 22,
     },
     heartAnimation: {
         position: 'absolute',
