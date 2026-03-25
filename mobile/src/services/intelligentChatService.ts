@@ -1,3 +1,4 @@
+import { YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE } from '../constants/yukpoStudioProductVideoGuide';
 import { ActionDescriptor, ScreenContext } from '../hooks/useScreenContext';
 import i18n from '../i18n';
 import type { YukpoIaAttachmentPayload } from '../utils/yukpoIaAttachments';
@@ -20,6 +21,12 @@ function resolveActionLabel(raw: unknown): string {
   } catch {
     return '';
   }
+}
+
+/** Nom d'icône Lucide pour SafeIcon — l'IA peut renvoyer un objet ou autre non-string */
+function sanitizeLucideIconName(icon: unknown): string | undefined {
+  if (typeof icon === 'string' && icon.trim()) return icon.trim();
+  return undefined;
 }
 
 /**
@@ -1047,6 +1054,8 @@ User: "Wow c'est génial cette fonctionnalité!"
 
     /** Résultats recherche Yukpo globale — **ResultatBesoinScreen** ; **RechercheBesoin** = même composant (alias navigateur). */
     const onSearchResultsScreen = screenName === 'ResultatBesoin' || screenName === 'RechercheBesoin';
+    /** Wizard **ProductVideoCreationModal** — vidéo produit Yukpo Studio (6 étapes). */
+    const onProductVideoCreationModal = screenName === 'ProductVideoCreationModal';
 
     const onImmobilierModule =
       screenName === 'ImmobilierHome' ||
@@ -1180,7 +1189,10 @@ Santé Yukpo couvre pharmacies, hôpitaux, laboratoires… L'utilisateur est dan
                                                         : onSearchResultsScreen
                                                           ? `YUKPO (brief reminder only — detailed UI is in RESULTAT_BESOIN_DETAIL below):
 Global **AI search results** (**ResultatBesoinScreen**). Stack routes **ResultatBesoin** and **RechercheBesoin** point to the **same** screen. Prioritize **RESULTAT_BESOIN_DETAIL**; **do not** describe a dedicated **map of results** on this screen, and **do not** claim **ServiceDetail** as the default card tap target (cards open **PrestataireBoutique**).`
-                                                          : `YUKPO — THE DIGITAL REVOLUTION:
+                                                          : onProductVideoCreationModal
+                                                            ? `YUKPO (brief reminder only — detailed UI is in YUKPO_STUDIO_PRODUCT_VIDEO_DETAIL below):
+E-commerce & vidéo — **ProductVideoCreationModal** (assistant Yukpo Studio, 6 étapes : produit → médias → style & effets → script & montage → musique & voix → publication). Prioritize **YUKPO_STUDIO_PRODUCT_VIDEO_DETAIL** and the **CURRENT_WIZARD_STATE** JSON in **SCREEN GUIDE**.`
+                                                            : `YUKPO — THE DIGITAL REVOLUTION:
 Yukpo is the FIRST all-in-one super-app that digitalizes daily life across Africa and beyond:
 • 🏥 Health: Pharmacies (stock search, ordering), Hospitals (AI triage, appointments), Labs, Blood banks
 • 🏨 Real Estate: Hotels, furnished rentals, property management with AI pricing
@@ -1366,6 +1378,13 @@ IMMOBILIER_MODULE_MODE:
 - **Distinguish flows:** **ImmobilierHome** quick “Visite” uses an **in-place Alert + bookVisit** (fixed slot), while **ImmobilierDetails** opens **ImmobilierBooking** or **HotelBooking** for hôtel/meublé — do not merge them.
 - **IA disclaimer:** price estimates and investment text are **indicative**, not legal/financial advice.
 ` : ''}
+${onProductVideoCreationModal ? `
+YUKPO_STUDIO_PRODUCT_VIDEO_MODE:
+- **Prioritize** **YUKPO_STUDIO_PRODUCT_VIDEO_DETAIL** below — it is the authoritative functional map of this modal.
+- Act as a **video editing coach**: tie every control to **what changes in the final render** (timeline, pacing, crops, typography, audio mix, variants, publish surfaces).
+- If **SCREEN GUIDE** contains **CURRENT_WIZARD_STATE**, use **activeStep** to anchor explanations (“you are on step N…”).
+- **Language:** obey **langInstr** — the reference text may be English but **user-facing wording** must match UI locale.
+` : ''}
 ${yukpoCatalogBlock}
 
 CURRENT SCREEN: "${screenName}" (type: ${screenType})
@@ -1468,6 +1487,28 @@ When the user taps **"Arrêter la marche"** (stop button):
 - **Coaching subscription:** AI Coach requests cost 10 XAF each after free period, or 1000 XAF/month for unlimited access with 7-day free trial.
 - **Suspension policy:** After 3 unpaid uses, features may be suspended until debt is paid.
 - **Currency adaptation:** Prices automatically convert to user's local currency (XAF, XOF, EUR, USD, etc.).
+`;
+    }
+
+    if (onProductVideoCreationModal) {
+      prompt += `
+
+=== YUKPO_STUDIO_PRODUCT_VIDEO_DETAIL (authoritative — ProductVideoCreationModal, Yukpo Studio product video) ===
+
+**Screen identity:** Full-screen modal wizard **ProductVideoCreationModal** — builds a **vertical product marketing video** with Yukpo Composer / backend generation. The user moves through **6 steps** (see step bar): **Product → Media → Style & effects → Script & edit → Music & voice → Publishing**.
+
+**How to answer:** For **any** question about a button, section, or toggle in this flow:
+1. Say **which step** it belongs to and **why it exists**.
+2. Explain **how it affects the montage** (timeline, shot order, duration, overlays, color, audio balance, subtitles, export variants, distribution).
+3. If the user is stuck, suggest **the next concrete action** on the same step or the **minimum** move to unblock (e.g. select media before timeline).
+
+**Integration notes:**
+- **Generative wizard** (Runway / Pika / Sora style): optional path to attach **AI-generated clips** to the product — treat as **extra media sources** in the same pipeline.
+- **AR capture:** optional **custom take** merged like uploaded media — good for hero shots.
+- **Timeline / storyboard / coach IA / distribution IA** may appear depending on step; all feed the **same final render job** unless the UI shows separate preview-only states.
+
+**Reference — features & montage impact (do not contradict):**
+${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 `;
     }
 
@@ -3553,7 +3594,11 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
     );
 
     if (matchedAction) {
-      return matchedAction;
+      const icon =
+        sanitizeLucideIconName(matchedAction.icon) ||
+        sanitizeLucideIconName(aiAction?.icon) ||
+        'message-circle';
+      return { ...matchedAction, icon };
     }
 
     // Hub IA redondant : préférer l'écran Chat IA directement
@@ -3561,7 +3606,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
       return {
         id: aiAction.id || 'nav-ai-chat',
         label: aiLabelStr || 'Chat IA',
-        icon: aiAction.icon || 'message-circle',
+        icon: sanitizeLucideIconName(aiAction.icon) || 'message-circle',
         route: 'AIChat',
         category: 'navigation',
         description: typeof aiAction.description === 'string' ? aiAction.description : resolveActionLabel(aiAction.description),
@@ -3573,7 +3618,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
       return {
         id: aiAction.id || 'custom',
         label: aiLabelStr || resolveActionLabel(aiAction.description) || 'Action',
-        icon: aiAction.icon || 'arrow-right',
+        icon: sanitizeLucideIconName(aiAction.icon) || 'arrow-right',
         route: aiAction.route,
         params: aiAction.params,
         category: 'navigation',
@@ -3604,7 +3649,10 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         id: matchedElement.id,
         type: validType,
         label: matchedElement.label,
-        icon: matchedElement.icon,
+        icon:
+          sanitizeLucideIconName(matchedElement.icon) ||
+          sanitizeLucideIconName(aiElement?.icon) ||
+          undefined,
         description: typeof aiElement.description === 'string' ? aiElement.description : resolveActionLabel(aiElement.description) || matchedElement.label,
         position: aiElement.position,
       };

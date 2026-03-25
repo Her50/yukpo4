@@ -27,11 +27,19 @@ import { AIDistributionPlan, AIVideoBriefVariant, AIVideoStyleSuggestion, Genera
 import { extractDescription, extractServiceName } from '../utils/displayHelpers';
 import { getFieldValue } from '../utils/productNormalizer';
 import { apiCallWithRetry } from '../utils/retryWithBackoff';
+import { buildYukpoStudioGuideText } from '../constants/yukpoStudioProductVideoGuide';
+import {
+    getSuggestedSubtitleTranslationLang,
+    getSuggestedVoiceoverLanguageCodes,
+    STUDIO_VOICE_LANG_OPTIONS,
+} from '../constants/voiceoverLanguages';
 import { clearVideoDraft, loadVideoDraft, saveVideoDraft, type VideoDraft } from '../utils/videoDraftStorage';
 import ProductDeliveryConfigModal from './delivery/ProductDeliveryConfigModal';
 import { GenerativeVideoWizard, GenerativeVideoGeneratedPayload } from './GenerativeVideoWizard';
 import { NativeButton, NativeCard, NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
+import IntelligentChat from './IntelligentChat';
+import { StudioLangPickerModal } from './studio/StudioLangPickerModal';
 import { TimelineEditor } from './TimelineEditor';
 import { TimelinePreview, VideoTimeline as VideoTimelineType } from './TimelinePreview';
 // ✅ NOUVEAU: Composants IA avancés
@@ -86,15 +94,6 @@ interface ProductVideoCreationModalProps {
 /** Traductions clés productVideoCreationModal (utilisable hors composant) */
 const pvm = (key: string, opts?: Record<string, unknown>) =>
     String(i18n.t(`productVideoCreationModal.${key}`, opts ?? {}));
-
-const VOICE_LANG_OPTIONS = [
-    { value: 'fr', label: 'Français (FR)' },
-    { value: 'fr-fr', label: 'Français Premium' },
-    { value: 'en', label: 'English (US)' },
-    { value: 'en-gb', label: 'English (UK)' },
-    { value: 'pt-br', label: 'Português (BR)' },
-    { value: 'es', label: 'Español' },
-];
 
 // ✅ CORRIGÉ 2025-11-30: Utiliser l'endpoint /api/media/files pour les chemins uploads/
 const buildMediaUrl = (path: string | undefined | null): string => {
@@ -446,26 +445,6 @@ const validateStyleCohesion = (suggestion: AIVideoStyleSuggestion, product: Mana
     return { isValid, warnings, suggestions };
 };
 
-/** Corps d’alerte « validation IA » (warnings/suggestions déjà traduits côté validateAICohesion) */
-const buildBriefValidationAlertBody = (
-    invalidCount: number,
-    allWarnings: string[],
-    allSuggestions: string[],
-): string => {
-    let body = pvm('validationIaProblemsIntro', { count: invalidCount }) + '\n\n';
-    body += allWarnings.slice(0, 3).join('\n');
-    if (allWarnings.length > 3) {
-        body += '\n' + pvm('validationIaAndMoreLines', { n: allWarnings.length - 3 });
-    }
-    body += '\n\n' + pvm('validationIaSuggestionsHeader') + '\n';
-    body += allSuggestions.slice(0, 2).join('\n');
-    if (allSuggestions.length > 2) {
-        body += '\n' + pvm('validationIaAndMoreLines', { n: allSuggestions.length - 2 });
-    }
-    body += '\n\n' + pvm('validationIaContinueQuestion');
-    return body;
-};
-
 const buildStyleValidationAlertBody = (warnings: string[], suggestions: string[]): string =>
     pvm('styleGeneratedReservesBody', {
         warnings: warnings.slice(0, 2).join('\n'),
@@ -661,6 +640,11 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [generateSquareVariant, setGenerateSquareVariant] = useState<boolean>(true);
     const [generateLandscapeVariant, setGenerateLandscapeVariant] = useState<boolean>(false);
     const [subtitleLang, setSubtitleLang] = useState<string>('fr');
+    const [bilingualSubtitles, setBilingualSubtitles] = useState(false);
+    const [subtitleTranslationLang, setSubtitleTranslationLang] = useState<string | null>(null);
+    const [voiceLangModalVisible, setVoiceLangModalVisible] = useState(false);
+    const [subtitleLangModalVisible, setSubtitleLangModalVisible] = useState(false);
+    const [subtitleTransModalVisible, setSubtitleTransModalVisible] = useState(false);
     const [availableAudioTracks, setAvailableAudioTracks] = useState<MediaLibraryItem[]>([]);
     const [selectedMusicTrackId, setSelectedMusicTrackId] = useState<number | null>(null);
     const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set(['chat', 'product']));
@@ -733,6 +717,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [attachGenerativeLoading, setAttachGenerativeLoading] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+    const [studioGuideChatVisible, setStudioGuideChatVisible] = useState(false);
 
     // ✅ CORRIGÉ 2025-12-24: Ref pour le ScrollView principal pour scroller vers le haut lors du changement d'étape
     const mainScrollViewRef = useRef<ScrollView>(null);
@@ -2011,7 +1996,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             selectedMediaIds: Array.from(selectedMediaIds),
             musicMode,
             voiceoverEnabled,
-            voiceoverLang: voiceoverLang as 'fr' | 'en',
+            voiceoverLang,
             publishChat: publishToChat,
             publishCard: publishToProductCard,
             publishSocial: selectedChannels.has('shorts') || selectedChannels.has('instagram') || selectedChannels.has('youtube'),
@@ -2116,6 +2101,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 if (!response.success) {
                     throw new Error(response.error || 'Attache impossible');
                 }
+                const mediaId = (response.data as { media_id?: number } | null)?.media_id;
+                if (typeof mediaId === 'number' && !Number.isNaN(mediaId)) {
+                    setSelectedMusicTrackId(mediaId);
+                }
                 await refreshMedia(selectedProduct);
                 Alert.alert(pvm('alertAudioAjouteTitre'), pvm('alertAudioAjouteBody'));
             } catch (error) {
@@ -2217,48 +2206,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             }));
 
             const invalidVariants = validationResults.filter(r => !r.validation.isValid);
-
             if (invalidVariants.length > 0) {
-                console.warn('[ProductVideoCreationModal] ⚠️ Validation IA:', invalidVariants.map(r => r.validation.warnings));
-
-                // Afficher les warnings et suggestions à l'utilisateur
-                const allWarnings = invalidVariants.flatMap(r => r.validation.warnings);
-                const allSuggestions = invalidVariants.flatMap(r => r.validation.suggestions);
-
-                const warningMessage = buildBriefValidationAlertBody(
-                    invalidVariants.length,
-                    allWarnings,
-                    allSuggestions,
-                );
-
-                Alert.alert(
-                    pvm('validationIaDialogTitle'),
-                    warningMessage,
-                    [
-                        {
-                            text: pvm('btnContinueAnyway'),
-                            onPress: () => {
-                                if (variants.length === 1) {
-                                    applyBriefVariant(variants[0], setHeadline, setCallToAction, setScriptNotes, setVoiceoverScript, setVariantPickerVisible);
-                                    Alert.alert(pvm('alertBriefGenereTitre'), pvm('alertBriefGenereIncoherent'));
-                                } else {
-                                    setVariantPickerVisible(true);
-                                }
-                            }
-                        },
-                        {
-                            text: pvm('btnImproveBriefs'),
-                            onPress: () => {
-                                handleGenerateBriefWithEnhancedContext();
-                            }
-                        },
-                        {
-                            text: t('common.cancel'),
-                            style: 'cancel'
-                        }
-                    ]
-                );
-                return;
+                console.warn('[ProductVideoCreationModal] Validation IA (non bloquant):', invalidVariants.map(r => r.validation.warnings));
             }
 
             if (variants.length === 0) {
@@ -2278,97 +2227,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         } finally {
             setIsGeneratingBrief(false);
         }
-    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang, t]); // ✅ CORRIGÉ: applyBriefVariant est une fonction utilitaire stable, pas besoin de dépendance
-
-    // ✅ NOUVEAU - Fonction pour regénérer les briefs avec contexte amélioré
-    const handleGenerateBriefWithEnhancedContext = useCallback(async () => {
-        if (!selectedProduct) {
-            Alert.alert(pvm('alertArProduitRequisTitle'), pvm('alertSelectProduitEffets'));
-            return;
-        }
-
-        setIsGeneratingBrief(true);
-        try {
-            const priceLabel = computePriceLabel(selectedProduct);
-            const promotionValue = computePromotionLabel(selectedProduct);
-            const highlights = collectProductHighlights(selectedProduct);
-
-            // ✅ AMÉLIORÉ - Ajouter plus de contexte spécifique
-            const enhancedHighlights = [
-                ...highlights,
-                ...(selectedProduct.variants ? Object.keys(selectedProduct.variants).map(v => `Variant: ${v}`) : []),
-                ...(selectedProduct.images && selectedProduct.images.length > 0
-                    ? [`Available images: ${selectedProduct.images.length} visual references`]
-                    : []),
-                ...((selectedProduct as any)?.caracteristiques &&
-                Array.isArray((selectedProduct as any).caracteristiques)
-                    ? (selectedProduct as any).caracteristiques.slice(0, 3).map((c: string) => `Specification: ${c}`)
-                    : []),
-            ];
-
-            const response = await mediaApi.generateVideoBrief({
-                product_name: normalizeProductName(selectedProduct),
-                description: extractDescription(selectedProduct.description, ''),
-                price: priceLabel,
-                promotion: promotionValue,
-                highlights: enhancedHighlights, // ✅ Contexte enrichi
-                target_audience: Array.from(selectedChannels.values()).join(', '),
-                tone: stylePreset,
-                lang: subtitleLang || voiceoverLang,
-                variant_count: 3,
-                // ✅ NOUVEAU - Demander explicitement plus de détails
-                context_level: 'detailed', // Demander plus de contexte au backend
-                include_visual_references: selectedProduct.images && selectedProduct.images.length > 0,
-                include_variant_details: !!(selectedProduct.variants && Object.keys(selectedProduct.variants).length > 0)
-            });
-
-            if (!response.success || !(response.data as any)?.variants) {
-                throw new Error(response.error || 'Génération IA améliorée impossible');
-            }
-
-            const variants: AIVideoBriefVariant[] = (response.data as any).variants;
-            setBriefVariants(variants);
-
-            // ✅ Re-valider après amélioration
-            const validationResults = variants.map(variant => ({
-                variant,
-                validation: validateAICohesion(variant, selectedProduct)
-            }));
-
-            const validVariants = validationResults.filter(r => r.validation.isValid);
-
-            if (validVariants.length > 0) {
-                Alert.alert(
-                    pvm('briefImprovedSuccessTitle'),
-                    pvm('briefImprovedSuccessBody', {
-                        validCount: validVariants.length,
-                        totalCount: variants.length,
-                    }),
-                    [{ text: String(i18n.t('common.ok')) }]
-                );
-            } else {
-                Alert.alert(
-                    pvm('briefImprovementPartialTitle'),
-                    pvm('briefImprovementPartialBody'),
-                    [{ text: String(i18n.t('common.ok')) }]
-                );
-            }
-
-            if (variants.length === 1) {
-                applyBriefVariant(variants[0], setHeadline, setCallToAction, setScriptNotes, setVoiceoverScript, setVariantPickerVisible);
-            } else {
-                setVariantPickerVisible(true);
-            }
-        } catch (error) {
-            console.error('[ProductVideoCreationModal] Brief IA amélioré impossible:', error);
-            Alert.alert(
-                pvm('errorIaTitle'),
-                error instanceof Error ? error.message : pvm('errorIaBriefImprovedGeneric')
-            );
-        } finally {
-            setIsGeneratingBrief(false);
-        }
-    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang]);
+    }, [selectedProduct, selectedChannels, stylePreset, subtitleLang, voiceoverLang]); // applyBriefVariant stable
 
     const applyStyleSuggestion = useCallback((suggestion: AIVideoStyleSuggestion) => {
         setStyleSuggestion(suggestion);
@@ -3736,20 +3595,6 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 <NativeCard style={styles.sectionCard}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>{pvm('scriptMontageCardTitle')}</Text>
-                        <TouchableOpacity
-                            style={styles.linkButton}
-                            onPress={handleGenerateBrief}
-                            disabled={isGeneratingBrief}
-                        >
-                            {isGeneratingBrief ? (
-                                <ActivityIndicator size="small" color={modernColors.primary} />
-                            ) : (
-                                <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
-                            )}
-                            <Text style={styles.linkButtonText}>
-                                {isGeneratingBrief ? pvm('briefIaButtonLoading') : pvm('briefIaButton')}
-                            </Text>
-                        </TouchableOpacity>
                     </View>
                     <View style={styles.fieldGroup}>
                         <Text style={styles.fieldLabel}>{pvm('fieldLabelPunchyTitle')}</Text>
@@ -3772,9 +3617,27 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                         />
                     </View>
                     <View style={styles.fieldGroup}>
-                        <View style={styles.fieldLabelRow}>
-                            <Text style={styles.fieldLabel}>{pvm('scriptMontageFieldLabel')}</Text>
-                            <Text style={styles.fieldRequired}>*</Text>
+                        <View style={styles.scriptMontageLabelRow}>
+                            <View style={styles.scriptMontageLabelTextWrap}>
+                                <View style={styles.fieldLabelRow}>
+                                    <Text style={styles.fieldLabel}>{pvm('scriptMontageFieldLabel')}</Text>
+                                    <Text style={styles.fieldRequired}>*</Text>
+                                </View>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.briefIaInlineButton}
+                                onPress={handleGenerateBrief}
+                                disabled={isGeneratingBrief}
+                            >
+                                {isGeneratingBrief ? (
+                                    <ActivityIndicator size="small" color={modernColors.primary} />
+                                ) : (
+                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                                )}
+                                <Text style={styles.briefIaInlineButtonText} numberOfLines={1}>
+                                    {isGeneratingBrief ? pvm('briefIaButtonLoading') : pvm('briefIaButton')}
+                                </Text>
+                            </TouchableOpacity>
                         </View>
                         <Text style={styles.fieldHint}>
                             {pvm('scriptMontageHint')}
@@ -4321,30 +4184,43 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                     </Text>
                     {voiceoverEnabled && (
                         <>
+                            <Text style={styles.fieldLabel}>{pvm('voiceLangQuickTitle')}</Text>
                             <View style={styles.voiceRow}>
-                                {VOICE_LANG_OPTIONS.map((option) => {
-                                    const selected = voiceoverLang === option.value;
+                                {suggestedVoiceCodes.map((code) => {
+                                    const selected = voiceoverLang === code;
+                                    const option = STUDIO_VOICE_LANG_OPTIONS.find((o) => o.value === code);
                                     return (
                                         <TouchableOpacity
-                                            key={option.value}
+                                            key={code}
                                             style={[
                                                 styles.voiceChip,
                                                 selected && styles.voiceChipSelected,
                                             ]}
-                                            onPress={() => setVoiceoverLang(option.value)}
+                                            onPress={() => setVoiceoverLang(code)}
                                         >
                                             <Text
                                                 style={[
                                                     styles.voiceChipText,
                                                     selected && styles.voiceChipTextSelected,
                                                 ]}
+                                                numberOfLines={2}
                                             >
-                                                {option.label}
+                                                {option?.label ?? code}
                                             </Text>
                                         </TouchableOpacity>
                                     );
                                 })}
                             </View>
+                            <TouchableOpacity
+                                onPress={() => setVoiceLangModalVisible(true)}
+                                style={styles.voiceMoreLink}
+                            >
+                                <Text style={styles.voiceMoreLinkText}>{pvm('voiceLangMore')}</Text>
+                                <SafeIcon name="chevron-right" size={16} color={modernColors.primary} />
+                            </TouchableOpacity>
+                            <Text style={styles.voiceSelectedHint} numberOfLines={2}>
+                                {pvm('voiceLangActive')}: {studioLangLabel(voiceoverLang)}
+                            </Text>
                             <NativeInput
                                 value={voiceoverScript}
                                 onChangeText={setVoiceoverScript}
@@ -4352,6 +4228,89 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 multiline
                                 minLines={3}
                             />
+                        </>
+                    )}
+                </NativeCard>
+
+                <NativeCard style={styles.sectionCard}>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>{pvm('subtitleSectionTitle')}</Text>
+                    </View>
+                    <Text style={styles.sectionSubtitle}>{pvm('subtitleSectionHint')}</Text>
+                    <Text style={styles.fieldLabel}>{pvm('subtitlePrimary')}</Text>
+                    <View style={styles.voiceRow}>
+                        {suggestedVoiceCodes.map((code) => {
+                            const selected = subtitleLang === code;
+                            const option = STUDIO_VOICE_LANG_OPTIONS.find((o) => o.value === code);
+                            return (
+                                <TouchableOpacity
+                                    key={`sub-${code}`}
+                                    style={[
+                                        styles.voiceChip,
+                                        selected && styles.voiceChipSelected,
+                                    ]}
+                                    onPress={() => setSubtitleLang(code)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.voiceChipText,
+                                            selected && styles.voiceChipTextSelected,
+                                        ]}
+                                        numberOfLines={2}
+                                    >
+                                        {option?.label ?? code}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                    <TouchableOpacity
+                        onPress={() => setSubtitleLangModalVisible(true)}
+                        style={styles.voiceMoreLink}
+                    >
+                        <Text style={styles.voiceMoreLinkText}>{pvm('subtitleLangMore')}</Text>
+                        <SafeIcon name="chevron-right" size={16} color={modernColors.primary} />
+                    </TouchableOpacity>
+                    <View style={styles.toggleRow}>
+                        <View style={styles.toggleText}>
+                            <Text style={styles.toggleLabel}>{pvm('subtitleBilingual')}</Text>
+                            <Text style={styles.toggleDescription}>{pvm('subtitleBilingualHint')}</Text>
+                        </View>
+                        <Switch
+                            value={bilingualSubtitles}
+                            onValueChange={setBilingualSubtitles}
+                            trackColor={{ true: '#6366F1' }}
+                        />
+                    </View>
+                    {bilingualSubtitles && (
+                        <>
+                            <Text style={styles.fieldLabel}>{pvm('subtitleTranslation')}</Text>
+                            <TouchableOpacity
+                                style={[
+                                    styles.voiceChip,
+                                    subtitleTranslationLang ? styles.voiceChipSelected : null,
+                                    { alignSelf: 'flex-start', paddingVertical: 10, paddingHorizontal: 14 },
+                                ]}
+                                onPress={() => setSubtitleTransModalVisible(true)}
+                            >
+                                <Text
+                                    style={[
+                                        styles.voiceChipText,
+                                        subtitleTranslationLang && styles.voiceChipTextSelected,
+                                    ]}
+                                >
+                                    {subtitleTranslationLang
+                                        ? studioLangLabel(subtitleTranslationLang)
+                                        : pvm('subtitlePickTranslation')}
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setSubtitleTransModalVisible(true)} style={styles.voiceMoreLink}>
+                                <Text style={styles.voiceMoreLinkText}>
+                                    {subtitleTranslationLang
+                                        ? pvm('subtitleChangeTranslation')
+                                        : pvm('subtitleOpenTranslationList')}
+                                </Text>
+                            </TouchableOpacity>
                         </>
                     )}
                 </NativeCard>
@@ -5267,6 +5226,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             voiceover_lang: voiceoverEnabled ? voiceoverLang : undefined,
             voiceover_voice: voiceoverEnabled ? voiceoverLang : undefined,
             subtitle_lang: subtitleLang,
+            subtitle_translation_lang:
+                bilingualSubtitles && subtitleTranslationLang
+                    ? subtitleTranslationLang
+                    : undefined,
             generate_square_variant: generateSquareVariant,
             generate_landscape_variant: generateLandscapeVariant,
             distribute_channels: Array.from(selectedChannels.values()),
@@ -6166,6 +6129,106 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         }
     }, [selectedProduct, selectedChannels, mediaAnalysis, subtitleLang, voiceoverLang]);
 
+    const studioGuideScreenContext = useMemo(
+        () => ({
+            screenName: 'ProductVideoCreationModal',
+            screenType: 'form' as const,
+            guideText: buildYukpoStudioGuideText({
+                activeStep,
+                stepLabels: [
+                    pvm('uiStepProduct'),
+                    pvm('uiStepMedia'),
+                    pvm('uiStepStyle'),
+                    pvm('uiStepScript'),
+                    pvm('uiStepAudio'),
+                    pvm('uiStepPublish'),
+                ],
+                productName: selectedProduct ? normalizeProductName(selectedProduct) : undefined,
+                stylePreset,
+                durationTargetSec: duration,
+                musicMode,
+                voiceoverEnabled,
+                voiceoverLang,
+                subtitleLang,
+                bilingualSubtitles,
+                subtitleTranslationLang: subtitleTranslationLang ?? undefined,
+                selectedMediaCount: selectedMediaIds.size,
+                effectsCount: selectedEffects.size,
+                transitionsCount: selectedTransitions.size,
+                generativeWizardAvailable: true,
+            }),
+            serviceData: {
+                yukpo_studio_editor: true,
+                active_step: activeStep,
+            },
+            availableActions: [
+                {
+                    id: 'help-step-context',
+                    label: t('productVideoCreationModal.guideQuickCurrentStep'),
+                    icon: 'help-circle',
+                    category: 'help' as const,
+                    description: t('productVideoCreationModal.guideQuickCurrentStepDesc'),
+                },
+                {
+                    id: 'help-montage',
+                    label: t('productVideoCreationModal.guideQuickMontage'),
+                    icon: 'film',
+                    category: 'help' as const,
+                    description: t('productVideoCreationModal.guideQuickMontageDesc'),
+                },
+                {
+                    id: 'help-audio',
+                    label: t('productVideoCreationModal.guideQuickAudio'),
+                    icon: 'music',
+                    category: 'help' as const,
+                    description: t('productVideoCreationModal.guideQuickAudioDesc'),
+                },
+            ],
+        }),
+        [
+            activeStep,
+            selectedProduct,
+            stylePreset,
+            duration,
+            musicMode,
+            voiceoverEnabled,
+            voiceoverLang,
+            subtitleLang,
+            bilingualSubtitles,
+            subtitleTranslationLang,
+            selectedMediaIds,
+            selectedEffects,
+            selectedTransitions,
+            t,
+            i18n.language,
+        ],
+    );
+
+    const studioGuideWelcomeFollowUps = useMemo(
+        () => [
+            t('productVideoCreationModal.guideFollowMontage'),
+            t('productVideoCreationModal.guideFollowAudio'),
+            t('productVideoCreationModal.guideFollowPublish'),
+        ],
+        [t, i18n.language],
+    );
+
+    const deviceRegion = Localization.getLocales?.()[0]?.regionCode ?? null;
+    const suggestedVoiceCodes = useMemo(
+        () => getSuggestedVoiceoverLanguageCodes(i18n.language, deviceRegion),
+        [i18n.language, deviceRegion],
+    );
+
+    const studioLangLabel = useCallback((code: string) => {
+        return STUDIO_VOICE_LANG_OPTIONS.find((o) => o.value === code)?.label ?? code;
+    }, []);
+
+    useEffect(() => {
+        setSubtitleTranslationLang(
+            getSuggestedSubtitleTranslationLang(subtitleLang, i18n.language, deviceRegion),
+        );
+    }, [subtitleLang, i18n.language, deviceRegion]);
+
     return (
         <>
             <Modal
@@ -6198,6 +6261,15 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                             {globalProgress}%
                                         </Text>
                                     </View>
+                                    <TouchableOpacity
+                                        onPress={() => setStudioGuideChatVisible(true)}
+                                        disabled={isSubmitting}
+                                        style={styles.guideChatHeaderButton}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={t('productVideoCreationModal.guideChatButton')}
+                                    >
+                                        <SafeIcon name="message-circle" size={20} color={modernColors.primary} />
+                                    </TouchableOpacity>
                                     <TouchableOpacity onPress={onClose} disabled={isSubmitting} style={styles.closeButton}>
                                         <SafeIcon name="x" size={20} color="#EF4444" />
                                     </TouchableOpacity>
@@ -6556,6 +6628,39 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                 initialDescription={generativeInitialDescription}
                 onVideoGenerated={handleGenerativeVideoComplete}
             />
+
+            <IntelligentChat
+                visible={studioGuideChatVisible && visible}
+                onClose={() => setStudioGuideChatVisible(false)}
+                screenContext={studioGuideScreenContext}
+                welcomeMessageOverride={t('productVideoCreationModal.guideChatWelcome')}
+                welcomeFollowUpQuestions={studioGuideWelcomeFollowUps}
+            />
+
+            <StudioLangPickerModal
+                visible={voiceLangModalVisible}
+                title={pvm('voiceLangModalTitle')}
+                selectedValue={voiceoverLang}
+                onSelect={setVoiceoverLang}
+                onClose={() => setVoiceLangModalVisible(false)}
+                searchPlaceholder={pvm('langSearchPlaceholder')}
+            />
+            <StudioLangPickerModal
+                visible={subtitleLangModalVisible}
+                title={pvm('subtitleLangModalTitle')}
+                selectedValue={subtitleLang}
+                onSelect={setSubtitleLang}
+                onClose={() => setSubtitleLangModalVisible(false)}
+                searchPlaceholder={pvm('langSearchPlaceholder')}
+            />
+            <StudioLangPickerModal
+                visible={subtitleTransModalVisible}
+                title={pvm('subtitleTransModalTitle')}
+                selectedValue={subtitleTranslationLang || 'en'}
+                onSelect={(v) => setSubtitleTranslationLang(v)}
+                onClose={() => setSubtitleTransModalVisible(false)}
+                searchPlaceholder={pvm('langSearchPlaceholder')}
+            />
         </>
     );
 };
@@ -6608,6 +6713,14 @@ const styles = StyleSheet.create({
         height: 32,
         borderRadius: 16,
         backgroundColor: '#FEF2F2',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    guideChatHeaderButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#EEF2FF',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -6946,6 +7059,23 @@ const styles = StyleSheet.create({
     },
     voiceChipTextSelected: {
         color: modernColors.primary,
+    },
+    voiceMoreLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 8,
+        marginBottom: 4,
+    },
+    voiceMoreLinkText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    voiceSelectedHint: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        marginBottom: 8,
     },
     distributionHint: {
         fontSize: 11,
@@ -7413,6 +7543,33 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 4,
         marginBottom: 4,
+    },
+    scriptMontageLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 10,
+        marginBottom: 4,
+    },
+    scriptMontageLabelTextWrap: {
+        flex: 1,
+        minWidth: 0,
+    },
+    briefIaInlineButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: modernColors.primary + '18',
+        flexShrink: 0,
+    },
+    briefIaInlineButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+        maxWidth: 140,
     },
     fieldRequired: {
         fontSize: 14,

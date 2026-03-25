@@ -178,7 +178,7 @@ const VideoCreationWizardScreen: React.FC = () => {
     const [stylePack, setStylePack] = useState<'pulse' | 'story' | 'corporate'>('pulse');
     const [musicMode, setMusicMode] = useState<MusicMode>('pulse');
     const [voiceoverEnabled, setVoiceoverEnabled] = useState(true);
-    const [voiceoverLang, setVoiceoverLang] = useState<'fr' | 'en'>('fr');
+    const [voiceoverLang, setVoiceoverLang] = useState<string>('fr');
     const [selectedVoiceProfileId, setSelectedVoiceProfileId] = useState<number | undefined>();
     const [publishChat, setPublishChat] = useState(true);
     const [publishCard, setPublishCard] = useState(true);
@@ -2160,7 +2160,7 @@ const VideoCreationWizardScreen: React.FC = () => {
                                 serviceId={serviceId}
                                 voiceoverEnabled={voiceoverEnabled}
                                 onVoiceoverToggle={setVoiceoverEnabled}
-                                voiceoverLang={voiceoverLang as 'fr' | 'en'}
+                                voiceoverLang={voiceoverLang}
                                 onVoiceoverLangChange={setVoiceoverLang}
                                 voiceProfiles={voiceProfiles}
                                 selectedVoiceProfileId={selectedVoiceProfileId}

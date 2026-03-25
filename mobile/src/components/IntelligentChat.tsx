@@ -91,6 +91,10 @@ interface IntelligentChatProps {
   onClose: () => void;
   initialMessage?: string;
   screenContext?: any;
+  /** When set, replaces the default welcome text (use i18n from parent for multi-language UI). */
+  welcomeMessageOverride?: string;
+  /** Optional follow-up chips under the welcome bubble (non-home screens). */
+  welcomeFollowUpQuestions?: string[];
 }
 
 const FRIENDLY_SCREEN_NAMES: Record<string, string> = {
@@ -110,6 +114,7 @@ const FRIENDLY_SCREEN_NAMES: Record<string, string> = {
   HotelSearch: 'Recherche hôtels',
   MeubleSearch: 'Recherche meublés',
   HotelBooking: 'Réservation séjour',
+  ProductVideoCreationModal: 'Studio vidéo Yukpo',
   AssuranceDashboard: 'Assurance — espace partenaire',
   InsuranceServicesSearch: 'Recherche assurance',
   InsuranceServicesResults: 'Résultats assurance',
@@ -193,6 +198,45 @@ const dedupeActions = (actions: any[]): any[] => {
   return deduped;
 };
 
+/** Réponses IA / JSON : `icon` ou `route` non-string cassent SafeIcon / React Navigation. */
+function sanitizeSuggestedActionsForUi(actions: any[] | undefined): any[] | undefined {
+  if (!Array.isArray(actions) || actions.length === 0) return actions;
+  return actions
+    .map((a) => {
+      if (!a || typeof a !== 'object') return null;
+      const out = { ...a };
+      if (out.icon != null && typeof out.icon !== 'string') {
+        if (typeof out.icon === 'number' || typeof out.icon === 'boolean') {
+          out.icon = String(out.icon);
+        } else {
+          delete out.icon;
+        }
+      }
+      if (out.route != null && typeof out.route !== 'string') {
+        delete out.route;
+      }
+      if (out.params != null && (typeof out.params !== 'object' || Array.isArray(out.params))) {
+        delete out.params;
+      }
+      return out;
+    })
+    .filter(Boolean);
+}
+
+function sanitizeVisualElementsForUi(
+  elements: VisualElement[] | undefined,
+): VisualElement[] | undefined {
+  if (!Array.isArray(elements) || elements.length === 0) return elements;
+  return elements.map((el) => {
+    if (!el || typeof el !== 'object') return el;
+    const out = { ...el };
+    if (out.icon != null && typeof out.icon !== 'string') {
+      delete out.icon;
+    }
+    return out;
+  });
+}
+
 /** When `icon` is shown via SafeIcon, drop leading emoji from i18n labels ("🚗 Transport" → "Transport"). */
 const actionDisplayLabel = (action: { label?: string; icon?: string | null }): string => {
   const label = String(action.label ?? '');
@@ -255,6 +299,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
   onClose,
   initialMessage,
   screenContext: externalContext,
+  welcomeMessageOverride,
+  welcomeFollowUpQuestions,
 }) => {
   const navigation = useNavigation();
   const { t, language } = useLanguageSafe();
@@ -316,6 +362,9 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     };
   }, [externalContext, inferredContext]);
 
+  const latestScreenContextRef = useRef(screenContext);
+  latestScreenContextRef.current = screenContext;
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -371,12 +420,16 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
     let initialTimer: ReturnType<typeof setTimeout> | undefined;
 
     const run = async () => {
-      const screenLabel = humanizeScreenName(screenContext.screenName);
-      const userName = screenContext.userData?.name || screenContext.userData?.email?.split('@')[0] || '';
+      const ctx = latestScreenContextRef.current;
+      const sessionScreen = ctx.screenName ?? effectiveRouteName;
+      const screenLabel = humanizeScreenName(ctx.screenName);
+      const userName = ctx.userData?.name || ctx.userData?.email?.split('@')[0] || '';
       const isHomeScreen = screenLabel === 'Accueil';
 
       let greeting: string;
-      if (isHomeScreen) {
+      if (welcomeMessageOverride?.trim()) {
+        greeting = welcomeMessageOverride.trim();
+      } else if (isHomeScreen) {
         const homeKey = userName ? 'intelligentChat.welcomeHomeUser' : 'intelligentChat.welcomeHome';
         greeting = t(homeKey, { name: userName });
         if (!greeting || greeting.startsWith('intelligentChat.')) {
@@ -410,7 +463,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
 
       const contextActions = isHomeScreen
         ? welcomeActions.slice(0, 3)
-        : (Array.isArray(screenContext.availableActions) ? screenContext.availableActions : [])
+        : (Array.isArray(ctx.availableActions) ? ctx.availableActions : [])
           .filter((a: any) => a.id !== 'home' && a.id !== 'profile' && a.id !== 'services')
           .slice(0, 3);
 
@@ -421,13 +474,17 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         timestamp: new Date(),
         type: 'text',
         suggestedActions: contextActions.length ? contextActions : undefined,
-        metadata: isHomeScreen ? {
-          nextSteps: [
-            t('intelligentChat.followUp.whatIsYukpo') || "C'est quoi Yukpo ?",
-            t('intelligentChat.followUp.howCreateProduct') || 'Comment créer un produit/service ?',
-            t('intelligentChat.followUp.howPayment') || 'Quels moyens de paiement ?',
-          ],
-        } : undefined,
+        metadata: isHomeScreen
+          ? {
+            nextSteps: [
+              t('intelligentChat.followUp.whatIsYukpo') || "C'est quoi Yukpo ?",
+              t('intelligentChat.followUp.howCreateProduct') || 'Comment créer un produit/service ?',
+              t('intelligentChat.followUp.howPayment') || 'Quels moyens de paiement ?',
+            ],
+          }
+          : welcomeFollowUpQuestions?.length
+            ? { nextSteps: welcomeFollowUpQuestions }
+            : undefined,
       };
 
       Animated.timing(slideAnim, {
@@ -465,8 +522,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         }
 
         const created = await intelligentChatService.createYukpoIaSession({
-          context_screen: effectiveRouteName,
-          context_type: screenContext.screenType || 'general',
+          context_screen: sessionScreen,
+          context_type: ctx.screenType || 'general',
         });
         if (!cancelled && created?.id) {
           setActiveSessionId(created.id);
@@ -475,8 +532,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
       } catch (e) {
         console.warn('[IntelligentChat] session bootstrap', e);
         const fallback = await intelligentChatService.createYukpoIaSession({
-          context_screen: effectiveRouteName,
-          context_type: screenContext.screenType || 'general',
+          context_screen: sessionScreen,
+          context_type: ctx.screenType || 'general',
         });
         if (!cancelled && fallback?.id) {
           setActiveSessionId(fallback.id);
@@ -503,7 +560,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
       cancelled = true;
       if (initialTimer) clearTimeout(initialTimer);
     };
-  }, [visible, screenContext.screenName, initialMessage]);
+  }, [visible, initialMessage, welcomeMessageOverride, welcomeFollowUpQuestions]);
 
   const handleClose = useCallback(() => {
     Animated.timing(slideAnim, {
@@ -621,8 +678,8 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
         isUser: false,
         timestamp: new Date(),
         type: response.type,
-        suggestedActions: response.suggestedActions,
-        visualElements: response.visualElements,
+        suggestedActions: sanitizeSuggestedActionsForUi(response.suggestedActions),
+        visualElements: sanitizeVisualElementsForUi(response.visualElements),
         attachments: response.attachments,
         metadata: {
           confidence: response.confidence,
@@ -962,16 +1019,21 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
       (navigation as any).navigate('MesProduits', action.params || undefined);
       handleClose();
     } else if (action.route) {
+      const routeName = typeof action.route === 'string' ? action.route.trim() : '';
+      if (!routeName) {
+        if (action.label) handleSendMessage(String(action.label));
+        return;
+      }
       try {
         // @ts-ignore - dynamic route navigation
         if (action.params != null && typeof action.params === 'object') {
-          navigation.navigate(action.route, action.params);
+          navigation.navigate(routeName, action.params);
         } else {
-          navigation.navigate(action.route);
+          navigation.navigate(routeName);
         }
       } catch {
         // @ts-ignore - dynamic route navigation
-        navigation.navigate(action.route);
+        navigation.navigate(routeName);
       }
       handleClose();
     } else if (action.action && typeof action.action === 'function') {

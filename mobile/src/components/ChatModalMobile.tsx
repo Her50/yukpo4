@@ -8,7 +8,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Animated,
-    Easing,
     Image,
     Linking,
     Modal,
@@ -2031,8 +2030,20 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                                         onPress={() => {
                                                             if (action.route) {
                                                                 try {
-                                                                    (navigation as any).navigate(action.route, action.params);
-                                                                } catch { /* ignore */ }
+                                                                    // Validation de la route avant navigation
+                                                                    if (typeof action.route === 'string' && action.route.length > 0) {
+                                                                        (navigation as any).navigate(action.route, action.params || {});
+                                                                    } else {
+                                                                        console.warn('[ChatModalMobile] Route invalide:', action.route);
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error('[ChatModalMobile] Erreur navigation:', error);
+                                                                    // Fallback: afficher un message à l'utilisateur
+                                                                    Alert.alert(
+                                                                        t('common.error') || 'Erreur',
+                                                                        t('chatModalMobile.navigationError') || 'La navigation a échoué. Veuillez réessayer.'
+                                                                    );
+                                                                }
                                                             } else {
                                                                 handleChatbotQuery(action.label);
                                                             }

@@ -13,6 +13,7 @@ import {
     View
 } from 'react-native';
 import { apiGet } from '../services/api';
+import i18n from '../i18n';
 import { modernColors } from '../theme/modernTheme';
 import type { CuratedPlaylist, MusicTrack } from '../types/Music';
 import { SafeIcon } from './SafeIcon';
@@ -38,11 +39,11 @@ const MUSIC_CATEGORIES = [
 ];
 
 const MOOD_FILTERS = [
-    { key: 'energetic', label: t('trendingMusicLibrary.energique'), emoji: '🔥' },
+    { key: 'energetic', label: String(i18n.t('trendingMusicLibrary.energique')), emoji: '🔥' },
     { key: 'happy', label: 'Joyeux', emoji: '😊' },
     { key: 'romantic', label: 'Romantique', emoji: '💕' },
     { key: 'sad', label: 'Triste', emoji: '😢' },
-    { key: 'chill', label: t('trendingMusicLibrary.detendu'), emoji: '😌' },
+    { key: 'chill', label: String(i18n.t('trendingMusicLibrary.detendu')), emoji: '😌' },
     { key: 'dramatic', label: 'Dramatique', emoji: '🎭' },
 ];
 

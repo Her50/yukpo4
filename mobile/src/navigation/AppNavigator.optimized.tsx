@@ -82,8 +82,13 @@ function createLazy(importFn: () => Promise<any>, name: string): React.FC<any> {
       importFn()
         .then((mod) => {
           const c = mod?.default || mod;
-          _cache.set(name, c);
-          if (alive) setComp(() => c);
+          const { isValidElementType } = require('react-is');
+          if (typeof c === 'function' || isValidElementType(c)) {
+            _cache.set(name, c);
+            if (alive) setComp(() => c);
+          } else if (alive) {
+            setFailed(true);
+          }
         })
         .catch((err) => {
           console.warn(`[AppNav] Échec chargement écran "${name}":`, err?.message || err);

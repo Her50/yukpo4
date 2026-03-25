@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import i18n from '../i18n';
 import { apiPost } from '../services/api';
 import { trackUxEvent } from '../services/uxMetrics';
 import { modernColors } from '../theme/modernTheme';
@@ -46,10 +47,10 @@ const EXPRESS_STYLES = {
         generate_square_variant: false,
         generate_landscape_variant: false,
         enable_watermark: true,
-        description: t('expressVideoGenerator.narrationEleganteAvecAmbiancePremium')
+        description: String(i18n.t('expressVideoGenerator.narrationEleganteAvecAmbiancePremium')),
     },
     cinema_demo: {
-        name: t('expressVideoGenerator.cinemaDemo'),
+        name: String(i18n.t('expressVideoGenerator.cinemaDemo')),
         style: 'cinematic',
         music_mode: 'cinematic',
         duration_seconds: 30,
@@ -57,8 +58,8 @@ const EXPRESS_STYLES = {
         generate_square_variant: false,
         generate_landscape_variant: true,
         enable_watermark: true,
-        description: t('expressVideoGenerator.productionCinematographiqueImmersive')
-    }
+        description: String(i18n.t('expressVideoGenerator.productionCinematographiqueImmersive')),
+    },
 };
 
 export const ExpressVideoGenerator: React.FC<ExpressVideoGeneratorProps> = ({

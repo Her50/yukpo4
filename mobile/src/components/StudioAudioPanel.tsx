@@ -3,6 +3,7 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
+    ScrollView,
     StyleSheet,
     Switch,
     Text,
@@ -17,6 +18,8 @@ import * as DocumentPicker from 'expo-document-picker';
 import { NativeButton, NativeCard, NativeInput } from './SafeNativeDesign';
 import SafeIcon from './SafeIcon';
 
+import { VOICEOVER_LANG_OPTIONS } from '../constants/voiceoverLanguages';
+import i18n from '../i18n';
 import { mediaApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import type { CreateVoiceProfilePayload, MusicMode, VoiceProfileSummary } from '../types/audio';
@@ -26,8 +29,8 @@ interface StudioAudioPanelProps {
     serviceId?: number;
     voiceoverEnabled: boolean;
     onVoiceoverToggle: (next: boolean) => void;
-    voiceoverLang: 'fr' | 'en';
-    onVoiceoverLangChange: (lang: 'fr' | 'en') => void;
+    voiceoverLang: string;
+    onVoiceoverLangChange: (lang: string) => void;
     selectedVoiceProfileId?: number;
     onVoiceProfileSelect: (id?: number) => void;
     voiceProfiles: VoiceProfileSummary[];
@@ -40,16 +43,19 @@ interface StudioAudioPanelProps {
     onMusicModeChange: (mode: MusicMode) => void;
 }
 
-const langOptions: Array<{ value: 'fr' | 'en'; label: string }> = [
-    { value: 'fr', label: 'FR' },
-    { value: 'en', label: 'EN' },
-];
-
 const musicModePresets: Array<{ value: MusicMode; label: string; subtitle: string }> = [
     { value: 'pulse', label: 'Pulse', subtitle: 'Hook dynamique, format TikTok/Shorts' },
     { value: 'lofi', label: 'Lo-Fi', subtitle: 'Ambiance chill, storytelling intimiste' },
-    { value: 'ambient', label: 'Ambient', subtitle: t('studioAudioPanel.texturesAeriennesFocusProduitservice') },
-    { value: 'cinematic', label: 'Cinematic', subtitle: t('studioAudioPanel.transitionsHeroiquesEtRevealDramatique') },
+    {
+        value: 'ambient',
+        label: 'Ambient',
+        subtitle: String(i18n.t('studioAudioPanel.texturesAeriennesFocusProduitservice')),
+    },
+    {
+        value: 'cinematic',
+        label: 'Cinematic',
+        subtitle: String(i18n.t('studioAudioPanel.transitionsHeroiquesEtRevealDramatique')),
+    },
     { value: 'none', label: 'Silence', subtitle: 'Voix + SFX uniquement' },
 ];
 
@@ -343,8 +349,12 @@ export const StudioAudioPanel: React.FC<StudioAudioPanelProps> = ({
 
             {voiceoverEnabled && (
                 <>
-                    <View style={styles.langRow}>
-                        {langOptions.map((option) => (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.langRowScroll}
+                    >
+                        {VOICEOVER_LANG_OPTIONS.map((option) => (
                             <TouchableOpacity
                                 key={option.value}
                                 style={[
@@ -358,12 +368,13 @@ export const StudioAudioPanel: React.FC<StudioAudioPanelProps> = ({
                                         styles.langPillText,
                                         voiceoverLang === option.value && styles.langPillTextActive,
                                     ]}
+                                    numberOfLines={1}
                                 >
                                     {option.label}
                                 </Text>
                             </TouchableOpacity>
                         ))}
-                    </View>
+                    </ScrollView>
 
                     <View style={styles.profileActions}>
                         <NativeButton
@@ -579,10 +590,12 @@ const styles = StyleSheet.create({
         color: 'rgba(255,255,255,0.65)',
         marginTop: 2,
     },
-    langRow: {
+    langRowScroll: {
         flexDirection: 'row',
         gap: 10,
         marginTop: 12,
+        paddingRight: 8,
+        alignItems: 'center',
     },
     langPill: {
         paddingHorizontal: 16,

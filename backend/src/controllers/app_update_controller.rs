@@ -31,10 +31,53 @@ pub struct UpdateCheckResponse {
     pub server_time: String,
 }
 
-const LATEST_ANDROID_VERSION: i32 = 3;
-const LATEST_ANDROID_VERSION_NAME: &str = "3.0.0";
-const MIN_SUPPORTED_ANDROID_VERSION: i32 = 1;
-const APK_SIZE_BYTES: i64 = 132_331_530;
+/// Valeurs par defaut si les variables d'environnement ne sont pas definies (Cloud Run / secrets).
+/// IMPORTANT: le `versionCode` Android (EAS/Gradle) est souvent un entier eleve (ex. 42, 100+).
+/// Si `ANDROID_LATEST_VERSION_CODE` reste a 3 alors que les telephones ont deja `versionCode` >= 3,
+/// la comparaison `current < latest` est toujours fausse → **aucune mise a jour proposee**.
+/// A chaque nouvel APK public: definir `ANDROID_LATEST_VERSION_CODE` au moins egal au `versionCode`
+/// contenu dans cet APK (voir `android.defaultConfig.versionCode` / build EAS).
+const DEFAULT_LATEST_ANDROID_VERSION: i32 = 3;
+const DEFAULT_LATEST_ANDROID_VERSION_NAME: &str = "3.0.0";
+const DEFAULT_MIN_SUPPORTED_ANDROID_VERSION: i32 = 1;
+const DEFAULT_APK_SIZE_BYTES: i64 = 132_331_530;
+
+fn env_i32(key: &str, default: i32) -> i32 {
+    std::env::var(key).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(default)
+}
+
+fn env_i64(key: &str, default: i64) -> i64 {
+    std::env::var(key).ok().and_then(|s| s.trim().parse().ok()).unwrap_or(default)
+}
+
+fn env_string(key: &str, default: &str) -> String {
+    std::env::var(key).unwrap_or_else(|_| default.to_string())
+}
+
+fn latest_android_version_code() -> i32 {
+    env_i32(
+        "ANDROID_LATEST_VERSION_CODE",
+        DEFAULT_LATEST_ANDROID_VERSION,
+    )
+}
+
+fn latest_android_version_name() -> String {
+    env_string(
+        "ANDROID_LATEST_VERSION_NAME",
+        DEFAULT_LATEST_ANDROID_VERSION_NAME,
+    )
+}
+
+fn min_supported_android_version() -> i32 {
+    env_i32(
+        "ANDROID_MIN_SUPPORTED_VERSION_CODE",
+        DEFAULT_MIN_SUPPORTED_ANDROID_VERSION,
+    )
+}
+
+fn android_apk_size_bytes() -> i64 {
+    env_i64("ANDROID_APK_SIZE_BYTES", DEFAULT_APK_SIZE_BYTES)
+}
 
 // ======================================================================
 // DISPONIBILITE SUR LES STORES
@@ -83,12 +126,18 @@ pub async fn check_for_updates(
     let latest_version = if platform == "ios" {
         1
     } else {
-        LATEST_ANDROID_VERSION
+        latest_android_version_code()
     };
     let latest_name = if platform == "ios" {
         "1.0.0".to_string()
     } else {
-        LATEST_ANDROID_VERSION_NAME.to_string()
+        latest_android_version_name()
+    };
+
+    let min_supported = if platform == "android" {
+        min_supported_android_version()
+    } else {
+        1
     };
 
     let has_update = request.current_version_code < latest_version;
@@ -100,15 +149,15 @@ pub async fn check_for_updates(
             download_url,
             download_type,
             release_date: chrono::Utc::now().to_rfc3339(),
-            size_bytes: APK_SIZE_BYTES,
-            mandatory: request.current_version_code < MIN_SUPPORTED_ANDROID_VERSION,
+            size_bytes: android_apk_size_bytes(),
+            mandatory: request.current_version_code < min_supported,
             changelog: vec![
                 "Performance amelioree".into(),
                 "Correction de bugs critiques".into(),
                 "Nouvelle interface utilisateur".into(),
                 "Securite renforcee".into(),
             ],
-            min_supported_version: MIN_SUPPORTED_ANDROID_VERSION,
+            min_supported_version: min_supported,
         })
     } else {
         None
@@ -123,14 +172,15 @@ pub async fn check_for_updates(
 
 pub async fn get_update_info(State(_state): State<Arc<AppState>>) -> Json<AppVersionInfo> {
     let (download_url, download_type) = get_download_info("android", None);
+    let min_supported = min_supported_android_version();
 
     Json(AppVersionInfo {
-        version_code: LATEST_ANDROID_VERSION,
-        version_name: LATEST_ANDROID_VERSION_NAME.to_string(),
+        version_code: latest_android_version_code(),
+        version_name: latest_android_version_name(),
         download_url,
         download_type,
         release_date: chrono::Utc::now().to_rfc3339(),
-        size_bytes: APK_SIZE_BYTES,
+        size_bytes: android_apk_size_bytes(),
         mandatory: false,
         changelog: vec![
             "Performance amelioree".into(),
@@ -138,6 +188,6 @@ pub async fn get_update_info(State(_state): State<Arc<AppState>>) -> Json<AppVer
             "Nouvelle interface utilisateur".into(),
             "Securite renforcee".into(),
         ],
-        min_supported_version: MIN_SUPPORTED_ANDROID_VERSION,
+        min_supported_version: min_supported,
     })
 }

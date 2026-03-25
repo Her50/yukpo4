@@ -8,6 +8,66 @@ use tokio::process::Command;
 use crate::core::types::{AppError, AppResult};
 use crate::services::immersive_timeline::{AudioCueKind, ImmersiveTimeline};
 
+/// Avec `ffmpeg` exécuté depuis `working_dir`, un chemin relatif multi-segments (ex. `uploads/tmp/session/bg_music.mp3`)
+/// est interprété par rapport à `working_dir`, ce qui produit `working_dir/uploads/tmp/...` — fichier introuvable.
+/// On résout toujours vers un chemin absolu pointant vers un fichier existant.
+fn resolve_ffmpeg_media_path(working_dir: &Path, p: &Path) -> AppResult<PathBuf> {
+    if p.exists() {
+        return p.canonicalize().map_err(|e| {
+            AppError::Internal(format!(
+                "Fichier média introuvable (canonicalize {:?}): {e}",
+                p
+            ))
+        });
+    }
+    if !p.is_absolute() {
+        if let Some(name) = p.file_name() {
+            let in_wd = working_dir.join(name);
+            if in_wd.exists() {
+                return in_wd.canonicalize().map_err(|e| {
+                    AppError::Internal(format!(
+                        "Fichier média introuvable (canonicalize {:?}): {e}",
+                        in_wd
+                    ))
+                });
+            }
+        }
+        let nested = working_dir.join(p);
+        if nested.exists() {
+            return nested.canonicalize().map_err(|e| {
+                AppError::Internal(format!(
+                    "Fichier média introuvable (canonicalize {:?}): {e}",
+                    nested
+                ))
+            });
+        }
+        if let Ok(cwd) = std::env::current_dir() {
+            let from_root = cwd.join(p);
+            if from_root.exists() {
+                return from_root.canonicalize().map_err(|e| {
+                    AppError::Internal(format!(
+                        "Fichier média introuvable (canonicalize {:?}): {e}",
+                        from_root
+                    ))
+                });
+            }
+        }
+    }
+    Err(AppError::Internal(format!(
+        "Fichier média introuvable pour mixage audio: {:?} (dossier session {:?})",
+        p, working_dir
+    )))
+}
+
+fn trim_ffmpeg_stderr(stderr: &str) -> String {
+    const MAX: usize = 4500;
+    if stderr.len() <= MAX {
+        return stderr.to_string();
+    }
+    let tail = &stderr[stderr.len().saturating_sub(MAX)..];
+    format!("…(stderr tronqué)\n{tail}")
+}
+
 /// Mode de spatialisation (future extension)
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub enum SpatializationMode {
@@ -88,35 +148,53 @@ pub async fn mix_media_audio_tracks(
     sfx_tracks: &[AudioLayer],
     config: &AudioMixConfig,
 ) -> AppResult<PathBuf> {
+    let base_video_resolved = resolve_ffmpeg_media_path(working_dir, base_video_path)?;
     // ✅ CORRECTION: Vérifier si la vidéo a un stream audio avant de l'utiliser
-    let video_has_audio = has_audio_stream(base_video_path).await.unwrap_or(false);
+    let video_has_audio = has_audio_stream(&base_video_resolved).await.unwrap_or(false);
 
     if !video_has_audio {
         warn!(
             "[AudioPipeline] La vidéo {} n'a pas de stream audio, création d'un stream silencieux",
-            base_video_path.display()
+            base_video_resolved.display()
         );
+    }
+
+    let music_resolved: Option<PathBuf> = if let Some(t) = music_track {
+        Some(resolve_ffmpeg_media_path(working_dir, t)?)
+    } else {
+        None
+    };
+
+    let voice_resolved: Option<PathBuf> = if let Some(t) = voiceover_track {
+        Some(resolve_ffmpeg_media_path(working_dir, t)?)
+    } else {
+        None
+    };
+
+    let mut sfx_resolved: Vec<PathBuf> = Vec::with_capacity(sfx_tracks.len());
+    for layer in sfx_tracks {
+        sfx_resolved.push(resolve_ffmpeg_media_path(working_dir, &layer.path)?);
     }
 
     let mut args: Vec<String> = vec![
         "-y".to_string(),
         "-i".to_string(),
-        base_video_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
+        base_video_resolved.to_string_lossy().to_string(),
     ];
 
-    if let Some(track) = music_track {
+    if let Some(ref path) = music_resolved {
         args.push("-i".to_string());
-        args.push(track.to_string_lossy().to_string());
+        args.push(path.to_string_lossy().to_string());
     }
 
-    if let Some(track) = voiceover_track {
+    if let Some(ref path) = voice_resolved {
         args.push("-i".to_string());
-        args.push(track.to_string_lossy().to_string());
+        args.push(path.to_string_lossy().to_string());
     }
 
-    for layer in sfx_tracks {
+    for path in &sfx_resolved {
         args.push("-i".to_string());
-        args.push(layer.path.to_string_lossy().to_string());
+        args.push(path.to_string_lossy().to_string());
     }
 
     let mut filter_parts: Vec<String> = Vec::new();
@@ -136,7 +214,7 @@ pub async fn mix_media_audio_tracks(
     }
 
     // Musique
-    if music_track.is_some() {
+    if music_resolved.is_some() {
         filter_parts.push(format!(
             "[1:a]volume={:.3},dynaudnorm[a_music]",
             config.music_volume.clamp(0.0, 1.0)
@@ -146,8 +224,8 @@ pub async fn mix_media_audio_tracks(
     }
 
     // Voix off
-    if voiceover_track.is_some() {
-        let index = if music_track.is_some() { 2 } else { 1 };
+    if voice_resolved.is_some() {
+        let index = if music_resolved.is_some() { 2 } else { 1 };
         filter_parts.push(format!(
             "[{index}:a]volume={:.3},highpass=f=120,lowpass=f=4000[a_voice]",
             config.voice_volume.clamp(0.2, 2.0)
@@ -160,7 +238,7 @@ pub async fn mix_media_audio_tracks(
     if !sfx_tracks.is_empty() {
         for (idx, layer) in sfx_tracks.iter().enumerate() {
             let input_index =
-                music_track.is_some() as usize + voiceover_track.is_some() as usize + 1 + idx;
+                music_resolved.is_some() as usize + voice_resolved.is_some() as usize + 1 + idx;
             let gain = (config.sfx_volume * layer.gain).clamp(0.0, 2.0);
             filter_parts.push(format!(
                 "[{input}:a]volume={gain:.3},adelay={start}|{start}[a_sfx{idx}]",
@@ -227,8 +305,9 @@ pub async fn mix_media_audio_tracks(
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let trimmed = trim_ffmpeg_stderr(&stderr);
         return Err(AppError::Internal(format!(
-            "Échec mixage audio avancé: {stderr}"
+            "Échec mixage audio avancé: {trimmed}"
         )));
     }
 

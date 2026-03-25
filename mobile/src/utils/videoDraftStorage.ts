@@ -17,7 +17,7 @@ export interface VideoDraft {
     stylePack: 'pulse' | 'story' | 'corporate';
     musicMode: MusicMode | 'pulse' | 'story' | 'corporate'; // ✅ Support des deux types
     voiceoverEnabled: boolean;
-    voiceoverLang: 'fr' | 'en';
+    voiceoverLang: string;
     selectedVoiceProfileId?: number;
     autoStoryboard: boolean;
     mode: 'standard' | 'expert';

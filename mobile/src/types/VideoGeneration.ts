@@ -18,6 +18,7 @@ export interface GeneratedVideoResponse {
     additional_outputs: GeneratedVideoVariant[];
     subtitles_generated?: boolean;
     subtitle_url?: string | null;
+    subtitle_translation_url?: string | null;
     distribution_targets?: string[];
     quality_score: number;
     immersive_timeline?: ImmersiveTimeline | null;
@@ -124,6 +125,8 @@ export interface VideoGenerationPayload {
     auto_storyboard?: boolean;
     subtitle_mode?: string | null;
     subtitle_lang?: string | null;
+    /** 2ᵉ piste SRT (traduction), langue populaire dans la zone */
+    subtitle_translation_lang?: string | null;
     music_track_id?: number | null;
     distribute_channels?: string[] | null;
     use_ai_templates?: boolean;

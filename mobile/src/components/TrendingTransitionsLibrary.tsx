@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import i18n from '../i18n';
 import { effectLibraryService } from '../services/effectLibraryService';
 import { modernColors } from '../theme/modernTheme';
 import { SafeIcon } from './SafeIcon';
@@ -28,7 +29,7 @@ interface TrendingTransitionsLibraryProps {
 const CATEGORIES: { key: TransitionCategory; label: string; icon: string; color: string }[] = [
     { key: 'all', label: 'Toutes', icon: 'grid', color: modernColors.primary },
     { key: 'transitions_tiktok', label: '🔥 TikTok', icon: 'trending-up', color: '#FF0050' },
-    { key: 'transitions_creative', label: t('trendingTransitionsLibrary.creatives'), icon: 'sparkles', color: '#8B5CF6' },
+    { key: 'transitions_creative', label: String(i18n.t('trendingTransitionsLibrary.creatives')), icon: 'sparkles', color: '#8B5CF6' },
     { key: 'transitions_professional', label: '💼 Pro', icon: 'briefcase', color: '#3B82F6' },
     { key: 'transitions_glitch', label: '⚡ Glitch', icon: 'zap', color: '#10B981' },
     { key: 'transitions_nature', label: '🌿 Nature', icon: 'leaf', color: '#059669' },

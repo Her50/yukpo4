@@ -18,7 +18,8 @@
     "detox:build:ios": "expo prebuild -p ios && cd ios && xcodebuild -workspace Yukpomnang.xcworkspace -scheme Yukpomnang -configuration Debug -sdk iphonesimulator -derivedDataPath ../ios/build && cd ..",
     "detox:test:ios": "detox test -c ios.sim.debug",
     "maestro:test": "maestro test maestro/flows",
-    "i18n:sync-bourse-keys": "node scripts/sync-locale-keys-from-fr.mjs"
+    "i18n:sync-bourse-keys": "node scripts/sync-locale-keys-from-fr.mjs",
+    "i18n:sync-product-video-modal": "node scripts/sync-productVideoCreationModal-from-en.mjs"
   },
   "dependencies": {
     "@craftzdog/react-native-buffer": "^6.1.1",

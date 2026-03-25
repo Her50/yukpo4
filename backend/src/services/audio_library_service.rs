@@ -117,6 +117,18 @@ pub fn list_curated_audio_loops() -> Vec<CuratedAudioLoop> {
         .collect()
 }
 
+/// Fichiers locaux à essayer si le CDN / HTTP échoue (ordre de priorité).
+/// Doit rester aligné avec `audio_path` dans `AUDIO_LIBRARY` (ex. `audio/pulse_groove_120.mp3`),
+/// pas seulement `{loop_id}.mp3`.
+fn local_audio_file_candidates(audio_loop: &CuratedAudioLoop) -> Vec<PathBuf> {
+    let rel = PathBuf::from(audio_loop.audio_path.trim_start_matches('/'));
+    vec![
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets").join(&rel),
+        PathBuf::from("assets").join(&rel),
+        PathBuf::from("assets/audio").join(format!("{}.mp3", audio_loop.id)),
+    ]
+}
+
 pub async fn attach_loop_to_service(
     state: Arc<AppState>,
     user: &AuthenticatedUser,
@@ -210,45 +222,59 @@ pub async fn attach_loop_to_service(
         }
     }
 
-    // ✅ CORRECTION À LA SOURCE: Fallback vers stockage local si CDN inaccessible
+    // ✅ Fallback local si CDN indisponible (DNS, timeout, 5xx, 404 après retries, etc.)
     let bytes = if is_dns_error || response.is_none() {
-        // Essayer de charger depuis un dossier local
-        let local_path = PathBuf::from("assets/audio").join(format!("{}.mp3", loop_id));
-        if local_path.exists() {
-            info!(
-                "[AudioLibrary] Utilisation du fichier audio local: {}",
-                local_path.display()
-            );
-            tokio::fs::read(&local_path).await.map_err(|err| {
-                error!(
-                    "[AudioLibrary] Impossible de lire le fichier audio local {}: {}",
-                    local_path.display(),
-                    err
-                );
-                AppError::Internal(format!(
-                    "Impossible de lire le fichier audio local {}: {}",
-                    local_path.display(),
-                    err
-                ))
-            })?
+        let mut loaded: Option<(PathBuf, Vec<u8>)> = None;
+        for candidate in local_audio_file_candidates(audio_loop) {
+            if candidate.exists() {
+                match tokio::fs::read(&candidate).await {
+                    Ok(b) if !b.is_empty() => {
+                        info!(
+                            "[AudioLibrary] Utilisation du fichier audio local: {}",
+                            candidate.display()
+                        );
+                        loaded = Some((candidate, b));
+                        break;
+                    }
+                    Ok(_) => {
+                        warn!(
+                            "[AudioLibrary] Fichier local vide, ignoré: {}",
+                            candidate.display()
+                        );
+                    }
+                    Err(err) => {
+                        warn!(
+                            "[AudioLibrary] Lecture locale échouée pour {}: {}",
+                            candidate.display(),
+                            err
+                        );
+                    }
+                }
+            }
+        }
+
+        if let Some((_path, bytes)) = loaded {
+            bytes
         } else {
-            // ✅ CORRECTION: Ne pas faire échouer complètement, mais retourner une erreur claire
+            let tried: Vec<String> = local_audio_file_candidates(audio_loop)
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect();
             error!(
-                "[AudioLibrary] CDN inaccessible (DNS) et fichier local introuvable: {}. Service_id: {}, Loop_id: {}",
-                local_path.display(), service_id, loop_id
+                "[AudioLibrary] HTTP indisponible et aucun fichier local valide. service_id={} loop_id={} essayé: {:?}",
+                service_id, loop_id, tried
             );
             warn!(
-                "[AudioLibrary] 💡 Pour résoudre ce problème:\n\
-                1. Vérifiez que le CDN GCP (http://34.54.117.97) est accessible\n\
-                2. Ou ajoutez le fichier audio dans: assets/audio/{}.mp3\n\
-                3. Les fichiers audio requis: ambient_wave.mp3, pulse_groove.mp3, lofi_sunset.mp3, cinematic_rise.mp3",
-                loop_id
+                "[AudioLibrary] Déposez une copie sous le crate backend, par ex. {} (voir audio_path dans AUDIO_LIBRARY), ou corrigez PUBLIC_BASE_URL / UPLOAD_BASE_URL.",
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("assets")
+                    .join(audio_loop.audio_path.trim_start_matches('/'))
+                    .display()
             );
-            // ✅ CORRIGÉ: Retourner une erreur BadRequest au lieu de bloquer complètement
-            // Le système peut continuer sans cette boucle audio spécifique
             return Err(AppError::BadRequest(format!(
-                "Boucle audio '{}' temporairement indisponible. Le CDN est inaccessible et le fichier local n'est pas disponible dans assets/audio/. Une boucle audio par défaut sera utilisée.",
-                loop_id
+                "Boucle audio « {} » indisponible : téléchargement impossible et aucun fichier local trouvé (chemins essayés : {}).",
+                audio_loop.title,
+                tried.join(", ")
             )));
         }
     } else {

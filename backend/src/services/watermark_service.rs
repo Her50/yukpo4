@@ -10,32 +10,37 @@ use log::{error, info, warn};
 pub struct WatermarkConfig {
     /// Chemin vers le logo Yukpo (PNG avec transparence)
     pub logo_path: PathBuf,
-    /// Durée d'affichage en secondes (défaut: 2-3 secondes)
+    /// Durée d'affichage en secondes — **uniquement en fin de vidéo** (signature Yukpo)
     pub duration_seconds: f32,
-    /// Position du watermark : "bottom-right" | "center" | "bottom-left" | "top-right"
+    /// Position du logo sur la séquence de signature : "bottom-right" | "center" | "bottom-left" | "top-right"
+    /// Pour une vraie « carte » de fin, utiliser **center** (défaut).
     pub position: String,
-    /// Opacité (0.0 à 1.0, défaut: 0.85)
+    /// Opacité (0.0 à 1.0, défaut: 0.92)
     pub opacity: f32,
-    /// Taille du watermark en pourcentage de la largeur vidéo (défaut: 10%)
+    /// Largeur du logo en % de la **largeur de la vidéo** (via `scale2ref`, pas l’ancienne échelle erronée sur le PNG)
     pub size_percent: f32,
-    /// Activer/désactiver l'animation fade-in/fade-out
+    /// Activer/désactiver l'animation fade-in/fade-out sur le logo
     pub enable_animation: bool,
+    /// Bandeau sombre en bas pendant la signature (lisibilité du logo + aspect « fin de spot »)
+    pub signature_bottom_band: bool,
 }
 
 impl Default for WatermarkConfig {
     fn default() -> Self {
         Self {
             logo_path: PathBuf::from("backend/assets/logo/yukpo_logo.png"),
-            duration_seconds: 2.5,
-            position: "bottom-right".to_string(),
-            opacity: 0.85,
-            size_percent: 10.0,
+            duration_seconds: 2.8,
+            position: "center".to_string(),
+            opacity: 0.92,
+            size_percent: 28.0,
             enable_animation: true,
+            signature_bottom_band: true,
         }
     }
 }
 
-/// Service de watermark pour appliquer le branding Yukpo sur les vidéos
+/// Service de watermark : **signature Yukpo en fin de vidéo** (dernières secondes) avec logo,
+/// lisible et centrée par défaut — pas un logo discret sur tout le métrage.
 pub struct WatermarkService;
 
 impl WatermarkService {
@@ -44,7 +49,8 @@ impl WatermarkService {
         Self
     }
 
-    /// Applique le watermark Yukpo sur une vidéo
+    /// Applique la **signature vidéo Yukpo** : sur les **dernières** `duration_seconds`,
+    /// affichage du **logo Yukpo** (centré par défaut, bandeau optionnel pour le contraste).
     ///
     /// # Arguments
     /// * `input_video` - Chemin vers la vidéo source
@@ -70,11 +76,15 @@ impl WatermarkService {
         }
 
         // Vérifier que le logo existe (essayer plusieurs chemins possibles)
+        // En monorepo, l’icône Expo (`mobile/assets/icon.png`, voir app.config.js) peut servir de repli
+        // si `yukpo_logo.png` n’est pas encore déployé côté serveur.
         let possible_paths = vec![
             config.logo_path.clone(),
-            PathBuf::from("assets/logo/yukpo_logo.png"),
             PathBuf::from("backend/assets/logo/yukpo_logo.png"),
+            PathBuf::from("assets/logo/yukpo_logo.png"),
             PathBuf::from("../assets/logo/yukpo_logo.png"),
+            PathBuf::from("../mobile/assets/icon.png"),
+            PathBuf::from("mobile/assets/icon.png"),
         ];
 
         let mut logo_found = false;
@@ -92,7 +102,7 @@ impl WatermarkService {
                 possible_paths.iter().map(|p| p.display().to_string()).collect::<Vec<_>>()
             );
             warn!(
-                "[WatermarkService] 💡 Pour activer le watermark, ajoutez yukpo_logo.png dans l'un de ces dossiers: assets/logo/, backend/assets/logo/, ou configurez le chemin dans WatermarkConfig"
+                "[WatermarkService] 💡 Déposez yukpo_logo.png dans backend/assets/logo/ (prod), ou réutilisez l’icône app mobile/mobile/assets/icon.png si le backend tourne dans le monorepo. WatermarkConfig peut aussi fixer logo_path."
             );
             // Si le logo n'existe pas, copier la vidéo source sans watermark
             fs::copy(input_video, output_video).await.map_err(|err| {
@@ -134,7 +144,9 @@ impl WatermarkService {
         ffmpeg_args.push("-i".to_string());
         ffmpeg_args.push(input_video.to_string_lossy().to_string());
 
-        // Input logo (utiliser le logo_path trouvé dans config)
+        // PNG / image : boucler les frames pour couvrir toute la durée (overlay + fades)
+        ffmpeg_args.push("-loop".to_string());
+        ffmpeg_args.push("1".to_string());
         ffmpeg_args.push("-i".to_string());
         ffmpeg_args.push(config.logo_path.to_string_lossy().to_string());
 
@@ -146,6 +158,15 @@ impl WatermarkService {
         ffmpeg_args.push("-filter_complex".to_string());
         ffmpeg_args.push(filter_complex);
 
+        // Sortie vidéo = graphe [v] ; audio = piste 0 si la source en a une
+        ffmpeg_args.push("-map".to_string());
+        ffmpeg_args.push("[v]".to_string());
+        let has_audio = self.has_audio_stream(input_video).await.unwrap_or(false);
+        if has_audio {
+            ffmpeg_args.push("-map".to_string());
+            ffmpeg_args.push("0:a:0".to_string());
+        }
+
         // Codec vidéo (copier pour éviter la ré-encodage si possible)
         // Mais on doit ré-encoder car on ajoute un overlay
         ffmpeg_args.push("-c:v".to_string());
@@ -155,9 +176,10 @@ impl WatermarkService {
         ffmpeg_args.push("-crf".to_string());
         ffmpeg_args.push("23".to_string()); // Qualité bonne
 
-        // Copier l'audio
-        ffmpeg_args.push("-c:a".to_string());
-        ffmpeg_args.push("copy".to_string());
+        if has_audio {
+            ffmpeg_args.push("-c:a".to_string());
+            ffmpeg_args.push("copy".to_string());
+        }
 
         // Output
         ffmpeg_args.push(output_video.to_string_lossy().to_string());
@@ -198,6 +220,33 @@ impl WatermarkService {
         Ok(output_video.to_path_buf())
     }
 
+    /// Indique si le conteneur contient au moins une piste audio (ffprobe).
+    async fn has_audio_stream(&self, video_path: &Path) -> AppResult<bool> {
+        let output = Command::new("ffprobe")
+            .args([
+                "-v",
+                "error",
+                "-select_streams",
+                "a",
+                "-show_entries",
+                "stream=index",
+                "-of",
+                "csv=p=0",
+                &video_path.to_string_lossy(),
+            ])
+            .output()
+            .await
+            .map_err(|err| {
+                AppError::Internal(format!("Impossible d'exécuter ffprobe (audio): {}", err))
+            })?;
+
+        if !output.status.success() {
+            return Ok(false);
+        }
+
+        Ok(!String::from_utf8_lossy(&output.stdout).trim().is_empty())
+    }
+
     /// Obtient la durée d'une vidéo en secondes
     async fn get_video_duration(&self, video_path: &Path) -> AppResult<f32> {
         let output = Command::new("ffprobe")
@@ -232,7 +281,7 @@ impl WatermarkService {
             .map_err(|_| AppError::Internal("Durée vidéo invalide".to_string()))
     }
 
-    /// Construit le filtre complexe FFmpeg pour le watermark avec animation
+    /// Construit le filtre complexe FFmpeg : bandeau optionnel, `scale2ref` (logo = % largeur vidéo), overlay.
     fn build_filter_complex(
         &self,
         config: &WatermarkConfig,
@@ -240,62 +289,63 @@ impl WatermarkService {
         duration: f32,
         _video_duration: f32,
     ) -> AppResult<String> {
-        // Redimensionner le logo (size_percent% de la largeur vidéo)
-        let scale_filter = format!(
-            "scale=iw*{}:ih*{}",
-            config.size_percent / 100.0,
-            config.size_percent / 100.0
-        );
+        let end_t = start_time + duration;
+        let pct = config.size_percent / 100.0;
 
-        // Position du watermark
+        // Position du logo (signature)
         let overlay_position = match config.position.as_str() {
             "center" => "overlay=(W-w)/2:(H-h)/2",
-            "bottom-left" => "overlay=20:H-h-20",
-            "top-right" => "overlay=W-w-20:20",
-            "top-left" => "overlay=20:20",
-            _ => "overlay=W-w-20:H-h-20", // bottom-right par défaut
+            "bottom-left" => "overlay=24:H-h-24",
+            "top-right" => "overlay=W-w-24:24",
+            "top-left" => "overlay=24:24",
+            _ => "overlay=W-w-24:H-h-24", // bottom-right
         };
 
-        // Animation fade-in/fade-out
-        let fade_duration: f32 = if config.enable_animation { 0.5 } else { 0.0 };
-        let fade_in_start = start_time;
-        let fade_in_end = start_time + fade_duration.min((duration / 2.0) as f32);
-        let fade_out_start = (start_time + duration - fade_duration).max(fade_in_end);
-        let _fade_out_end = start_time + duration;
+        let fade_duration: f32 = if config.enable_animation { 0.45 } else { 0.0 };
+        let fade_out_start = (start_time + duration - fade_duration).max(start_time);
 
-        // Construire le filtre complexe
-        // [1:v] = logo, [0:v] = vidéo
-        let mut filters = Vec::new();
+        let mut filters: Vec<String> = Vec::new();
 
-        // Redimensionner le logo
-        filters.push(format!("[1:v]{}[logo_scaled]", scale_filter));
+        // Fond lisible pour la signature (bas de frame), uniquement sur la fenêtre de fin
+        if config.signature_bottom_band {
+            filters.push(format!(
+                "[0:v]drawbox=x=0:y=ih*0.52:w=iw:h=ih*0.48:color=black@0.38:t=fill:enable='between(t\\,{st}\\,{en})'[v0]",
+                st = start_time,
+                en = end_t
+            ));
+        } else {
+            filters.push("[0:v]format=yuv420p[v0]".to_string());
+        }
 
-        // Appliquer l'opacité
+        // scale2ref : iw/ih = dimensions de la **vidéo** de référence [v0], pas du PNG
+        filters.push(format!(
+            "[v0][1:v]scale2ref=w=iw*{pct}:h=-1[base][logo_scaled]",
+            pct = pct
+        ));
+
         filters.push(format!(
             "[logo_scaled]format=rgba,colorchannelmixer=aa={}[logo_alpha]",
             config.opacity
         ));
 
-        // Animation fade-in/fade-out avec enable conditionnel
         if config.enable_animation && fade_duration > 0.0 {
             filters.push(format!(
                 "[logo_alpha]fade=t=in:st={}:d={}:alpha=1[logo_fade_in]",
-                fade_in_start, fade_duration
+                start_time, fade_duration
             ));
             filters.push(format!(
                 "[logo_fade_in]fade=t=out:st={}:d={}:alpha=1[logo_ready]",
                 fade_out_start, fade_duration
             ));
         } else {
-            filters.push("[logo_alpha]copy[logo_ready]".to_string());
+            filters.push("[logo_alpha]format=rgba[logo_ready]".to_string());
         }
 
-        // Overlay avec enable conditionnel pour n'afficher que pendant la durée spécifiée
         filters.push(format!(
-            "[0:v][logo_ready]{}:enable='between(t,{},{})'[v]",
-            overlay_position,
-            start_time,
-            start_time + duration
+            "[base][logo_ready]{op}:enable='between(t\\,{st}\\,{en})'[v]",
+            op = overlay_position,
+            st = start_time,
+            en = end_t
         ));
 
         Ok(filters.join(";"))
@@ -324,11 +374,12 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = WatermarkConfig::default();
-        assert_eq!(config.duration_seconds, 2.5);
-        assert_eq!(config.position, "bottom-right");
-        assert_eq!(config.opacity, 0.85);
-        assert_eq!(config.size_percent, 10.0);
+        assert_eq!(config.duration_seconds, 2.8);
+        assert_eq!(config.position, "center");
+        assert_eq!(config.opacity, 0.92);
+        assert_eq!(config.size_percent, 28.0);
         assert!(config.enable_animation);
+        assert!(config.signature_bottom_band);
     }
 
     #[tokio::test]

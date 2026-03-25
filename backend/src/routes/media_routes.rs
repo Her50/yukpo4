@@ -7,7 +7,7 @@ use axum::{
 use std::sync::Arc;
 
 use crate::controllers::{
-    audio_library_controller::get_audio_library,
+    audio_library_controller::{attach_audio_loop, get_audio_library},
     ia_controller::{
         generate_distribution_plan, generate_video_brief, generate_video_style,
         generate_video_timeline,
@@ -100,6 +100,11 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         // ✅ NOUVEAU: Route pour bibliothèque audio (utilisée par le studio vidéo)
         .route("/api/audio-library", get(get_audio_library))
+        // ✅ Attacher une boucle Yukpo au service (upload côté serveur + ligne media)
+        .route(
+            "/api/audio-library/{loop_id}/attach/{service_id}",
+            post(attach_audio_loop),
+        )
         // ✅ CORRIGÉ 2026-01-02: Route pour récupérer le statut d'un job de génération vidéo
         // IMPORTANT: Cette route doit être AVANT la route générique /api/media/{*file_path}
         .route(

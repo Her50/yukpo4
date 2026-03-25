@@ -36,6 +36,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
     onEdit,
     onScenePress,
 }) => {
+    const { t } = useLanguageSafe();
     // ✅ NOUVEAU Phase 10: État pour thumbnails
     const [thumbnails, setThumbnails] = React.useState<Map<number, string>>(new Map());
     const [loadingThumbnails, setLoadingThumbnails] = React.useState<Set<number>>(new Set());

@@ -276,6 +276,7 @@ pub async fn attach_generative_job_to_product(
         additional_outputs: vec![],
         subtitles_generated: false,
         subtitle_url: None,
+        subtitle_translation_url: None,
         distribution_targets: vec![],
         quality_score: 0.95,
         immersive_timeline: None,
@@ -364,6 +365,8 @@ pub struct VideoGenerationPayload {
     pub auto_storyboard: Option<bool>,
     pub subtitle_mode: Option<String>,
     pub subtitle_lang: Option<String>,
+    /// Sous-titres générés dans une 2ᵉ langue (traduction), ex. anglais pour zone francophone
+    pub subtitle_translation_lang: Option<String>,
     pub music_track_id: Option<i32>,
     pub voice_profile_id: Option<i32>,
     pub distribute_channels: Option<Vec<String>>,
@@ -421,6 +424,8 @@ pub struct VideoGenerationResult {
     pub additional_outputs: Vec<AlternativeVideoFormat>,
     pub subtitles_generated: bool,
     pub subtitle_url: Option<String>,
+    #[serde(default)]
+    pub subtitle_translation_url: Option<String>,
     pub distribution_targets: Vec<String>,
     pub quality_score: f32,
     pub immersive_timeline: Option<ImmersiveTimeline>,
@@ -1095,6 +1100,7 @@ pub async fn generate_product_video(
                                 additional_outputs: vec![],
                                 subtitles_generated: false,
                                 subtitle_url: None,
+                                subtitle_translation_url: None,
                                 distribution_targets: vec![],
                                 quality_score: 0.95,
                                 immersive_timeline: None,
@@ -1680,6 +1686,44 @@ pub async fn generate_product_video(
                 fallback_subtitles().await
             }
         },
+    };
+
+    // Second fichier SRT (traduction) — même timeline, texte dans subtitle_translation_lang
+    let subtitle_translation_file: Option<PathBuf> = if subtitle_file.is_some() {
+        let primary = payload.subtitle_lang.as_deref().unwrap_or("fr").to_lowercase();
+        match payload.subtitle_translation_lang.as_ref().map(|s| s.trim().to_lowercase()) {
+            Some(tl) if !tl.is_empty() && tl != primary => {
+                match state
+                    .ia
+                    .generate_subtitles_srt(&product_name, &script_outline, &tl, duration_seconds)
+                    .await
+                {
+                    Ok(Some(srt)) => {
+                        let path = session_dir.join("subtitles_ai_translation.srt");
+                        match fs::write(&path, srt.as_bytes()).await {
+                            Ok(()) => Some(path),
+                            Err(err) => {
+                                warn!(
+                                    "[VideoGeneration] Impossible d'écrire sous-titres traduits: {err}"
+                                );
+                                None
+                            }
+                        }
+                    }
+                    Ok(None) => {
+                        warn!("[VideoGeneration] Sous-titres traduits IA vides");
+                        None
+                    }
+                    Err(err) => {
+                        warn!("[VideoGeneration] Sous-titres traduits IA indisponibles: {err}");
+                        None
+                    }
+                }
+            }
+            _ => None,
+        }
+    } else {
+        None
     };
 
     let headline_override = payload.headline.as_ref();
@@ -2340,13 +2384,22 @@ pub async fn generate_product_video(
     {
         Some(curated_track)
     } else {
-        generate_background_music(
+        match generate_background_music(
             &session_dir,
             duration_seconds,
             payload.music_mode.as_deref().unwrap_or("pulse"),
         )
         .await
-        .ok()
+        {
+            Ok(p) => Some(p),
+            Err(err) => {
+                warn!(
+                    "[VideoGeneration] Musique de fond synthétique indisponible ({}), suite sans piste musique",
+                    err
+                );
+                None
+            }
+        }
     };
 
     // Injecte les beats synthétiques dans la timeline immersive si un track musical est disponible
@@ -2686,17 +2739,57 @@ pub async fn generate_product_video(
         None
     };
 
+    let subtitle_translation_public_url = if let Some(ref tr_path) = subtitle_translation_file {
+        let tr_lang = payload
+            .subtitle_translation_lang
+            .as_deref()
+            .unwrap_or("tr")
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+            .collect::<String>();
+        let subtitle_tr_name = format!("subtitles_tr_{}_{}.srt", session_id, tr_lang);
+        let subtitle_tr_key = format!("services/{}", subtitle_tr_name);
+        match state
+            .media_storage
+            .store_file(tr_path, &subtitle_tr_key, Some("application/x-subrip"))
+            .await
+        {
+            Ok(result) => Some(result.public_url),
+            Err(err) => {
+                warn!("[VideoGeneration] Impossible de stocker les sous-titres traduits: {err}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     let absolute_output_path = state.media_storage.local_path_for(&storage_key);
 
     // ✅ CORRIGÉ: Rendre service_data mutable pour append_video_to_service_data
     let mut service_data_mut = service_data.clone();
+    let mut subtitle_entries: Vec<(String, Option<String>, Option<String>)> = Vec::new();
+    if let Some(ref u) = subtitle_public_url {
+        subtitle_entries.push((
+            u.clone(),
+            payload.subtitle_lang.clone(),
+            Some("primary".to_string()),
+        ));
+    }
+    if let Some(ref u) = subtitle_translation_public_url {
+        subtitle_entries.push((
+            u.clone(),
+            payload.subtitle_translation_lang.clone(),
+            Some("translation".to_string()),
+        ));
+    }
     append_video_to_service_data(
         &state,
         service_id,
         product_index,
         &mut service_data_mut,
         public_url.clone(),
-        subtitle_public_url.clone(),
+        subtitle_entries,
         &[],
     )
     .await?;
@@ -2871,6 +2964,9 @@ pub async fn generate_product_video(
         );
         if let Some(sub_url) = &subtitle_public_url {
             map.insert("subtitle_url".to_string(), json!(sub_url));
+        }
+        if let Some(tr_url) = &subtitle_translation_public_url {
+            map.insert("subtitle_translation_url".to_string(), json!(tr_url));
         }
         if !variant_urls.is_empty() {
             let variant_json: Vec<Value> = variant_urls
@@ -3103,6 +3199,7 @@ pub async fn generate_product_video(
         additional_outputs,
         subtitles_generated: subtitle_public_url.is_some(),
         subtitle_url: subtitle_public_url,
+        subtitle_translation_url: subtitle_translation_public_url,
         distribution_targets,
         quality_score,
         immersive_timeline,
@@ -3924,14 +4021,14 @@ async fn append_video_to_service_data(
     product_index: i32,
     _service_data: &mut Value,
     video_url: String,
-    subtitle_url: Option<String>,
+    subtitle_entries: Vec<(String, Option<String>, Option<String>)>,
     variant_urls: &[(String, String)],
 ) -> AppResult<()> {
     // ✅ CORRIGÉ 2026-01-23: Sauvegarder UNIQUEMENT dans service_products.product_data->'videos' (nouveau système)
     // Plus besoin d'écrire dans services.data->'produits' (ancien système supprimé)
     let pool = state.pg.clone();
     let video_url_clone = video_url.clone();
-    let subtitle_url_clone = subtitle_url.clone();
+    let subtitle_entries_clone = subtitle_entries.clone();
     let variant_urls_clone: Vec<(String, String)> = variant_urls.iter().cloned().collect();
 
     // Mettre à jour service_products.product_data->'videos' en utilisant jsonb_set
@@ -3939,7 +4036,7 @@ async fn append_video_to_service_data(
         &pool,
         || {
             let video_url_clone = video_url_clone.clone();
-            let subtitle_url_clone = subtitle_url_clone.clone();
+            let subtitle_entries_clone = subtitle_entries_clone.clone();
             let variant_urls_clone = variant_urls_clone.clone();
             let pool_clone = pool.clone();
             let service_id_clone = service_id;
@@ -3984,18 +4081,22 @@ async fn append_video_to_service_data(
                             }
                         }
 
-                        // Ajouter les sous-titres si disponibles
-                        if let Some(url) = subtitle_url_clone {
+                        // Sous-titres (principal + langue de traduction optionnelle)
+                        if !subtitle_entries_clone.is_empty() {
                             let mut current_subtitles = match obj.get_mut("videos_subtitles") {
                                 Some(Value::Array(existing)) => existing.clone(),
                                 Some(_) => Vec::new(),
                                 None => Vec::new(),
                             };
 
-                            current_subtitles.push(json!({
-                                "url": url,
-                                "created_at": Utc::now(),
-                            }));
+                            for (url, lang, kind) in subtitle_entries_clone.iter() {
+                                current_subtitles.push(json!({
+                                    "url": url,
+                                    "created_at": Utc::now(),
+                                    "lang": lang,
+                                    "kind": kind,
+                                }));
+                            }
                             obj.insert(
                                 "videos_subtitles".to_string(),
                                 Value::Array(current_subtitles),
@@ -4557,6 +4658,46 @@ fn resolve_media_absolute_path(raw: &str) -> PathBuf {
     }
 }
 
+/// Voix OpenAI TTS (`tts-1-hd`) : timbre ; la langue de lecture suit le texte source.
+fn select_openai_tts_voice(voice_profile: &str, lang: &str) -> &'static str {
+    let lang_lower = lang.to_lowercase();
+    let base = lang_lower.split('-').next().unwrap_or(lang_lower.as_str());
+    match voice_profile {
+        "fr_premium" | "fr" | "fr-fr" => "alloy",
+        "en_premium" | "en" | "en-us" | "en-gb" => "nova",
+        "es_premium" | "es" | "es-es" => "shimmer",
+        "de_premium" | "de" | "de-de" => "echo",
+        "zh_premium" | "zh" | "zh-cn" | "zh-hans" | "zh-hant" => "alloy",
+        "ru_premium" | "ru" => "onyx",
+        "ar_premium" | "ar" => "fable",
+        "ja_premium" | "ja" => "shimmer",
+        "pt_premium" | "pt" | "pt-br" => "nova",
+        "global_premium" => match base {
+            "ar" => "fable",
+            "ja" => "shimmer",
+            "ru" => "onyx",
+            "de" => "echo",
+            "zh" => "alloy",
+            "en" => "nova",
+            "fr" => "alloy",
+            "es" => "shimmer",
+            "pt" => "nova",
+            _ => "alloy",
+        },
+        _ => match base {
+            "en" => "nova",
+            "ja" => "shimmer",
+            "ru" => "onyx",
+            "de" => "echo",
+            "ar" => "fable",
+            "zh" => "alloy",
+            "es" => "shimmer",
+            "pt" => "nova",
+            _ => "alloy",
+        },
+    }
+}
+
 async fn generate_premium_voiceover(
     session_dir: &Path,
     script: &str,
@@ -4568,10 +4709,18 @@ async fn generate_premium_voiceover(
     }
 
     let preferred_voice = voice_hint.map(|value| value.to_string()).unwrap_or_else(|| {
-        match lang.to_lowercase().as_str() {
-            "en" | "en-us" | "en_usa" => "en_premium".to_string(),
-            "fr" | "fr-fr" | "fr_ca" => "fr_premium".to_string(),
-            "es" | "es-es" => "es_premium".to_string(),
+        let l = lang.to_lowercase();
+        let base = l.split('-').next().unwrap_or(l.as_str());
+        match base {
+            "en" => "en_premium".to_string(),
+            "fr" => "fr_premium".to_string(),
+            "es" => "es_premium".to_string(),
+            "de" => "de_premium".to_string(),
+            "zh" => "zh_premium".to_string(),
+            "ru" => "ru_premium".to_string(),
+            "ar" => "ar_premium".to_string(),
+            "ja" => "ja_premium".to_string(),
+            "pt" => "pt_premium".to_string(),
             _ => "global_premium".to_string(),
         }
     });
@@ -4595,19 +4744,18 @@ async fn generate_voiceover_audio(
         return Err(AppError::BadRequest("Script voix off vide.".to_string()));
     }
 
-    let filename = format!("voiceover_{}_{}.mp3", lang, Uuid::new_v4());
+    let lang_safe = lang
+        .chars()
+        .map(|c| if "/\\: ".contains(c) { '_' } else { c })
+        .collect::<String>();
+    let filename = format!("voiceover_{}_{}.mp3", lang_safe, Uuid::new_v4());
     let audio_path = session_dir.join(&filename);
 
     // ── Tentative 1: OpenAI TTS API (voix naturelle haute qualité) ──
     if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
         let api_key = api_key.trim().to_string();
         if !api_key.is_empty() {
-            let openai_voice = match voice {
-                "fr_premium" | "fr" | "fr-fr" => "alloy",
-                "en_premium" | "en" | "en-us" => "nova",
-                "es_premium" | "es" => "shimmer",
-                _ => "alloy",
-            };
+            let openai_voice = select_openai_tts_voice(voice, lang);
 
             info!(
                 "[VideoGeneration] 🎙️ Appel OpenAI TTS: voice={}, lang={}, script_len={}",
