@@ -634,8 +634,10 @@ const HomeScreen: React.FC = () => {
                         style={styles.navigationButton}
                         onPress={() => navigate('Navigation')}
                         activeOpacity={0.8}
+                        accessibilityLabel={t('userAvatarMenu.navigationIntelligente')}
                     >
-                        <SafeIcon name="compass" size={22} color="#6366F1" type="ionicons" />
+                        {/* Même sémantique que le menu avatar (🧭 Navigation) — picto vectoriel plus lisible */}
+                        <SafeIcon name="Compass" size={22} color="#3730A3" />
                     </TouchableOpacity>
                 </View>
 
@@ -659,7 +661,7 @@ const HomeScreen: React.FC = () => {
                         <SafeIcon
                             name="Bike"
                             size={22}
-                            color="#6B7280"
+                            color="#1D4ED8"
                         />
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -670,7 +672,7 @@ const HomeScreen: React.FC = () => {
                             setShowChatModal(true);
                         }}
                     >
-                        <SafeIcon name="message-circle" size={22} color="#6B7280" />
+                        <SafeIcon name="message-circle" size={22} color="#047857" />
                         {/* ✅ NOUVEAU: Badge rouge avec le nombre de messages chat non lus */}
                         {unreadChatCount > 0 && (
                             <View style={styles.notificationBadge}>
@@ -688,7 +690,7 @@ const HomeScreen: React.FC = () => {
                             setShowNotificationModal(true);
                         }}
                     >
-                        <SafeIcon name="bell" size={22} color="#6B7280" />
+                        <SafeIcon name="bell" size={22} color="#DC2626" />
                         {/* ✅ NOUVEAU: Badge rouge avec le nombre de notifications non lues */}
                         {unreadNotificationsCount > 0 && (
                             <View style={styles.notificationBadge}>
@@ -970,7 +972,9 @@ const styles = StyleSheet.create({
         width: 40, // ✅ AUGMENTÉ: De 32 à 40 pour plus grandes icônes
         height: 40, // ✅ AUGMENTÉ: De 32 à 40 pour plus grandes icônes
         borderRadius: 20, // ✅ AUGMENTÉ: De 16 à 20 pour proportion
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#E2E8F0',
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1003,16 +1007,16 @@ const styles = StyleSheet.create({
         width: 40, // ✅ AUGMENTÉ: Même taille que les autres boutons
         height: 40, // ✅ AUGMENTÉ: Même taille que les autres boutons
         borderRadius: 20, // ✅ AUGMENTÉ: Même proportion que les autres boutons
-        backgroundColor: '#EEF2FF',
+        backgroundColor: '#E0E7FF',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#C7D2FE',
-        shadowColor: '#6366F1',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        borderWidth: 1.5,
+        borderColor: '#6366F1',
+        shadowColor: '#4338CA',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.28,
+        shadowRadius: 3,
+        elevation: 3,
     },
     deliveryButtonIcon: {
         fontSize: 22, // ✅ Taille de l'emoji coursier

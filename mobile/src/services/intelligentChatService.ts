@@ -154,6 +154,18 @@ class IntelligentChatService {
     const success = rawResponse?.success;
     const text = String(data?.message || data?.error || rawResponse?.error || '').toLowerCase();
 
+    // Réponse métier facturation / quota : le backend renvoie un message lisible + billing — à afficher tel quel,
+    // pas remplacer par le fallback local (sinon réponses « incohérentes » vs YukpoIA réel).
+    const billing = data?.billing;
+    if (
+      billing &&
+      typeof data?.message === 'string' &&
+      data.message.trim().length > 0 &&
+      (billing.recharge_required === true || billing.insufficient_balance === true)
+    ) {
+      return false;
+    }
+
     if (success === false) return true;
     if (status >= 400) return true;
     if (/(erreur\s*500|internal server error|api openai|erreur de l'?api|api error)/i.test(text)) {
@@ -163,7 +175,7 @@ class IntelligentChatService {
     if (data?.debug_info?.error_type === 'missing_table' || data?.debug_info?.error_type === 'database_error') {
       return true;
     }
-    if (/(erreur de configuration|contacter le support|quota.*épuisé.*insuffisant)/i.test(text)) {
+    if (/(erreur de configuration|contacter le support)/i.test(text)) {
       return true;
     }
     // confidence === 0 with no real content is an error signal

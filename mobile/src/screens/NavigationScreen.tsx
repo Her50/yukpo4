@@ -2111,10 +2111,13 @@ const NavigationScreen: React.FC = () => {
                                     }
                                     navigation.goBack();
                                 }}
-                                style={st.headerIcon}
+                                style={st.headerBackHome}
                                 activeOpacity={0.8}
+                                accessibilityRole="button"
+                                accessibilityLabel={t('tabs.home') || 'Accueil'}
                             >
-                                <Text style={{ fontSize: 22 }}>🧭</Text>
+                                {/* Même picto / couleur que l’onglet Accueil (MainTabs → Home, Ionicons home) */}
+                                <SafeIcon name="home" size={24} color={modernColors.primaryDark} type="ionicons" />
                             </TouchableOpacity>
                             <View>
                                 <Text style={st.headerTitle}>Navigation</Text>
@@ -2175,7 +2178,7 @@ const NavigationScreen: React.FC = () => {
                                     );
                                 }}
                             >
-                                <SafeIcon name="AlertTriangle" size={14} color={showAlertHistory ? '#fff' : modernColors.text} />
+                                <SafeIcon name="AlertTriangle" size={16} color={showAlertHistory ? '#fff' : modernColors.text} />
                                 {checkpoints.length > 0 && (
                                     <View style={st.alertBadgeSmall}>
                                         <Text style={st.alertBadgeText}>{checkpoints.length}</Text>
@@ -2194,7 +2197,7 @@ const NavigationScreen: React.FC = () => {
                                     if (n) loadActivityStats(activityPeriod);
                                 }}
                             >
-                                <SafeIcon name={showActivityStats ? 'Compass' : 'BarChart3'} size={14} color={showActivityStats ? '#fff' : modernColors.text} />
+                                <SafeIcon name={showActivityStats ? 'Compass' : 'BarChart3'} size={16} color={showActivityStats ? '#fff' : modernColors.text} />
                             </TouchableOpacity>
                             {/* Bouton Covoiturage — pictogrammes vectoriels (Car + Users) pour un rendu homogène sur tous les appareils */}
                             <TouchableOpacity
@@ -2204,8 +2207,8 @@ const NavigationScreen: React.FC = () => {
                                 accessibilityLabel={t('navigation.covoiturage') || 'Covoiturage'}
                             >
                                 <View style={st.carpoolHeaderIconWrap}>
-                                    <SafeIcon name="Car" size={12} color={modernColors.text} />
-                                    <SafeIcon name="Users" size={10} color={modernColors.text} />
+                                    <SafeIcon name="Car" size={12} color={modernColors.primaryDark} />
+                                    <SafeIcon name="Users" size={10} color={modernColors.primaryDark} />
                                 </View>
                             </TouchableOpacity>
                         </View>
@@ -4026,11 +4029,21 @@ const st = StyleSheet.create({
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     backBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center', justifyContent: 'center' },
-    headerIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: modernColors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: modernColors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-    headerTitle: { fontSize: 22, fontWeight: '800', color: modernColors.text },
-    headerSub: { fontSize: 13, color: modernColors.textSecondary, marginTop: 1 },
+    /** Retour Accueil : aligné sur les boutons ronds du header HomeScreen + onglet Accueil (Ionicons home, fond discret) */
+    headerBackHome: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#E2E8F0',
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerTitle: { fontSize: 22, fontWeight: '800', color: '#0f172a' },
+    headerSub: { fontSize: 13, color: '#334155', marginTop: 1, fontWeight: '500' },
     headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-    headerBtnSmall: { width: 32, height: 32, borderRadius: 10, backgroundColor: modernColors.surface, borderWidth: 1.5, borderColor: modernColors.border, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+    headerBtnSmall: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#F1F5F9', borderWidth: 1.5, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center', position: 'relative' },
     carpoolHeaderIconWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 1 },
     headerBtnActive: { backgroundColor: modernColors.primary, borderColor: modernColors.primary },
     headerBtnWalkActive: { backgroundColor: '#10B98115', borderColor: '#10B981' },

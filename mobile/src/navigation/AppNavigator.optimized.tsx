@@ -717,8 +717,9 @@ function MainTabNavigator() {
       initialRouteName={isPartner && hasSpecializedServices ? 'GestionServicesSpecialises' : 'Home'}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: modernColors.primary,
-        tabBarInactiveTintColor: modernColors.textSecondary,
+        tabBarActiveTintColor: modernColors.primaryDark,
+        /* Inactifs plus lisibles (étaient trop pâles #475569) */
+        tabBarInactiveTintColor: '#334155',
         tabBarStyle: {
           backgroundColor: modernColors.background,
           borderTopColor: modernColors.border,
@@ -755,8 +756,8 @@ function MainTabNavigator() {
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon
                 name={focused ? 'home' : 'home-outline'}
-                size={size}
-                color={focused ? modernColors.primary : color}
+                size={(size ?? 24) + 2}
+                color={focused ? modernColors.primaryDark : color}
                 type="ionicons"
               />
             ),
@@ -789,8 +790,8 @@ function MainTabNavigator() {
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon
                 name={focused ? 'briefcase' : 'briefcase-outline'}
-                size={size}
-                color={focused ? modernColors.primary : color}
+                size={(size ?? 24) + 2}
+                color={focused ? modernColors.primaryDark : color}
                 type="ionicons"
               />
             ),
@@ -812,8 +813,8 @@ function MainTabNavigator() {
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon
                 name={focused ? 'bag' : 'bag-outline'}
-                size={size}
-                color={focused ? modernColors.primary : color}
+                size={(size ?? 24) + 2}
+                color={focused ? modernColors.primaryDark : color}
                 type="ionicons"
               />
             ),
@@ -838,8 +839,8 @@ function MainTabNavigator() {
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon
                 name={focused ? 'add-circle' : 'add-circle-outline'}
-                size={size}
-                color={focused ? modernColors.primary : color}
+                size={(size ?? 24) + 2}
+                color={focused ? modernColors.primaryDark : color}
                 type="ionicons"
               />
             ),
@@ -863,8 +864,8 @@ function MainTabNavigator() {
           tabBarIcon: ({ focused, color, size }) => (
             <SafeIcon
               name={focused ? 'play-circle' : 'play-circle-outline'}
-              size={size}
-              color={focused ? modernColors.primary : color}
+              size={(size ?? 24) + 2}
+              color={focused ? modernColors.primaryDark : color}
               type="ionicons"
             />
           ),
@@ -888,8 +889,8 @@ function MainTabNavigator() {
             tabBarIcon: ({ focused, color, size }) => (
               <SafeIcon
                 name={focused ? 'car' : 'car-outline'}
-                size={size}
-                color={focused ? modernColors.primary : color}
+                size={(size ?? 24) + 2}
+                color={focused ? modernColors.primaryDark : color}
                 type="ionicons"
               />
             ),
@@ -913,8 +914,8 @@ function MainTabNavigator() {
           tabBarIcon: ({ focused, color, size }) => (
             <SafeIcon
               name={focused ? 'person' : 'person-outline'}
-              size={size}
-              color={focused ? modernColors.primary : color}
+              size={(size ?? 24) + 2}
+              color={focused ? modernColors.primaryDark : color}
               type="ionicons"
             />
           ),

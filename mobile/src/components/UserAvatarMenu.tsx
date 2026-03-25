@@ -112,7 +112,7 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         {
             title: t('userAvatarMenu.navigationIntelligente'),
             icon: '🧭',
-            route: 'NavigationScreen',
+            route: 'Navigation',
             description: t('userAvatarMenu.trouvezLeMeilleurCheminAvecEmbouteillagesEtPoints'),
             highlighted: true
         },
