@@ -4608,9 +4608,15 @@ async fn report_checkpoint(
           AND lp.started_at >= NOW() - INTERVAL '24 hours'
           AND (
                 6371.0 * acos(
-                    cos(radians($2)) * cos(radians(lp.lat)) *
-                    cos(radians(lp.lng) - radians($3)) +
-                    sin(radians($2)) * sin(radians(lp.lat))
+                    LEAST(
+                        1.0,
+                        GREATEST(
+                            -1.0,
+                            cos(radians($2)) * cos(radians(lp.lat)) *
+                            cos(radians(lp.lng) - radians($3)) +
+                            sin(radians($2)) * sin(radians(lp.lat))
+                        )
+                    )
                 )
               ) <= 12.0
         LIMIT 200
@@ -4736,9 +4742,15 @@ async fn get_checkpoints_nearby(
           AND (cp.downvotes < cp.upvotes + 3)
           AND (
                 6371.0 * acos(
-                    cos(radians($1)) * cos(radians(cp.latitude)) *
-                    cos(radians(cp.longitude) - radians($2)) +
-                    sin(radians($1)) * sin(radians(cp.latitude))
+                    LEAST(
+                        1.0,
+                        GREATEST(
+                            -1.0,
+                            cos(radians($1)) * cos(radians(cp.latitude)) *
+                            cos(radians(cp.longitude) - radians($2)) +
+                            sin(radians($1)) * sin(radians(cp.latitude))
+                        )
+                    )
                 )
               ) <= $5
         ORDER BY distance_meters ASC, cp.created_at DESC

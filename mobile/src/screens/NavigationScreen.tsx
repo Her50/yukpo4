@@ -1605,9 +1605,12 @@ const NavigationScreen: React.FC = () => {
 
             console.log('[Navigation] Loading alert history for position:', pos);
 
-            // Utiliser l'endpoint "nearby" pour un vrai rayon autour de l'utilisateur
-            // (au lieu d'un filtrage par segment de route qui masquait des alertes valides).
-            const r = await apiGet(`/api/navigation/checkpoints/nearby?lat=${pos.lat}&lng=${pos.lng}&radius_km=12&limit=120`) as any;
+            // Endpoint principal: nearby (rayon réel). Fallback: along-route si indisponible.
+            let r = await apiGet(`/api/navigation/checkpoints/nearby?lat=${pos.lat}&lng=${pos.lng}&radius_km=12&limit=120`) as any;
+            if (!r?.success) {
+                console.warn('[Navigation] nearby endpoint failed, fallback to along-route');
+                r = await apiGet(`/api/navigation/checkpoints/along-route?origin_lat=${pos.lat - 0.05}&origin_lng=${pos.lng - 0.05}&dest_lat=${pos.lat + 0.05}&dest_lng=${pos.lng + 0.05}`) as any;
+            }
 
             console.log('[Navigation] Alert history API response:', r);
 
@@ -2250,7 +2253,7 @@ const NavigationScreen: React.FC = () => {
                                 <Text style={{ fontSize: 18 }}>🚨</Text>
                                 <View style={st.flex1}>
                                     <Text style={st.alertHistTitle}>{t('navigation.communityAlerts') || 'Alertes communautaires'}</Text>
-                                    <Text style={st.alertHistSub}>{checkpoints.length > 0 ? (t('navigation.activeAlerts', { count: checkpoints.length }) || `${checkpoints.length} alerte(s) active(s)`) : (t('navigation.noActiveAlerts') || 'Aucune alerte active')}</Text>
+                                    <Text style={st.alertHistSub}>{alertHistoryData.length > 0 ? (t('navigation.activeAlerts', { count: alertHistoryData.length }) || `${alertHistoryData.length} alerte(s) active(s)`) : (t('navigation.noActiveAlerts') || 'Aucune alerte active')}</Text>
                                 </View>
                                 <TouchableOpacity onPress={() => setShowAlertHistory(false)}>
                                     <SafeIcon name="X" size={16} color={modernColors.textSecondary} />

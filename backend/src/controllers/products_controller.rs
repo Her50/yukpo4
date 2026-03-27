@@ -437,7 +437,6 @@ pub async fn get_products_by_user(
         FROM service_products p
         INNER JOIN services s ON s.id = p.service_id
         WHERE s.user_id = $1
-        AND p.is_active = true
         AND s.is_active = true
         ORDER BY p.created_at DESC
         "#,
