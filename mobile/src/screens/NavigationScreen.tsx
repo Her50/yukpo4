@@ -1605,9 +1605,9 @@ const NavigationScreen: React.FC = () => {
 
             console.log('[Navigation] Loading alert history for position:', pos);
 
-            // Récupérer les checkpoints dans un rayon autour de la position actuelle
-            // Utiliser une bounding box de 0.1° (~11km) pour avoir un bon rayon de recherche
-            const r = await apiGet(`/api/navigation/checkpoints/along-route?origin_lat=${pos.lat - 0.05}&origin_lng=${pos.lng - 0.05}&dest_lat=${pos.lat + 0.05}&dest_lng=${pos.lng + 0.05}`) as any;
+            // Utiliser l'endpoint "nearby" pour un vrai rayon autour de l'utilisateur
+            // (au lieu d'un filtrage par segment de route qui masquait des alertes valides).
+            const r = await apiGet(`/api/navigation/checkpoints/nearby?lat=${pos.lat}&lng=${pos.lng}&radius_km=12&limit=120`) as any;
 
             console.log('[Navigation] Alert history API response:', r);
 
@@ -1624,12 +1624,8 @@ const NavigationScreen: React.FC = () => {
                 console.log('[Navigation] Filtered checkpoints:', rawCps);
             }
 
-            // ✅ FILTRAGE: Ne pas afficher les speed_bump (dos d'âne) dans la liste des alertes communautaires
-            // car ce sont des alertes fixes permanentes, mais on garde l'alerte sonore
-            const filteredForDisplay = rawCps.filter((cp: any) => cp.checkpoint_type !== 'speed_bump');
-
-            if (filteredForDisplay.length === 0) {
-                console.log('[Navigation] No non-speed_bump checkpoints found');
+            if (rawCps.length === 0) {
+                console.log('[Navigation] No nearby checkpoints found');
                 setAlertHistoryData([]);
                 setLoadingAlertHistory(false);
                 return;
@@ -1645,7 +1641,7 @@ const NavigationScreen: React.FC = () => {
                 const ms = cp?.created_at ? new Date(cp.created_at).getTime() : 0;
                 return Number.isFinite(ms) ? ms : 0;
             };
-            for (const cp of filteredForDisplay) {
+            for (const cp of rawCps) {
                 let added = false;
                 for (const cl of clusters) {
                     const main = cl.items[0];

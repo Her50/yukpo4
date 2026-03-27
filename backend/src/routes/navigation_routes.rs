@@ -4511,6 +4511,14 @@ struct CheckpointsAlongRouteQuery {
 }
 
 #[derive(Deserialize)]
+struct NearbyCheckpointsQuery {
+    lat: f64,
+    lng: f64,
+    radius_km: Option<f64>,
+    limit: Option<i64>,
+}
+
+#[derive(Deserialize)]
 struct VoteCheckpointRequest {
     vote: String, // "up" or "down"
 }
@@ -4579,6 +4587,77 @@ async fn report_checkpoint(
     .fetch_one(&state.pg)
     .await?;
 
+    // Diffusion proactive: pousser l'alerte aux utilisateurs récemment actifs à proximité.
+    // Ceci permet de recevoir l'alerte même hors NavigationScreen, et potentiellement app fermée via push OS.
+    let nearby_user_ids: Vec<i32> = sqlx::query_scalar(
+        r#"
+        WITH latest_positions AS (
+            SELECT DISTINCT ON (nal.user_id)
+                nal.user_id,
+                COALESCE(nal.dest_lat, nal.origin_lat) AS lat,
+                COALESCE(nal.dest_lng, nal.origin_lng) AS lng,
+                nal.started_at
+            FROM navigation_activity_log nal
+            WHERE (nal.origin_lat IS NOT NULL AND nal.origin_lng IS NOT NULL)
+               OR (nal.dest_lat IS NOT NULL AND nal.dest_lng IS NOT NULL)
+            ORDER BY nal.user_id, nal.started_at DESC
+        )
+        SELECT lp.user_id
+        FROM latest_positions lp
+        WHERE lp.user_id <> $1
+          AND lp.started_at >= NOW() - INTERVAL '24 hours'
+          AND (
+                6371.0 * acos(
+                    cos(radians($2)) * cos(radians(lp.lat)) *
+                    cos(radians(lp.lng) - radians($3)) +
+                    sin(radians($2)) * sin(radians(lp.lat))
+                )
+              ) <= 12.0
+        LIMIT 200
+        "#,
+    )
+    .bind(user.id)
+    .bind(request.latitude)
+    .bind(request.longitude)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    if !nearby_user_ids.is_empty() {
+        let push_title = match request.checkpoint_type.as_str() {
+            "radar" => "📸 Radar communautaire",
+            "police" | "transport_control" | "road_check" => "👮 Contrôle signalé",
+            "accident" => "🚨 Accident signalé",
+            "danger" => "⚠️ Danger signalé",
+            "road_works" => "🚧 Travaux signalés",
+            "speed_bump" => "🔶 Ralentisseur signalé",
+            _ => "⚠️ Alerte communautaire",
+        }
+        .to_string();
+        let push_body =
+            "Nouvelle alerte près de votre zone. Ouvrez Yukpo Navigation pour plus de détails."
+                .to_string();
+        let push_data = serde_json::json!({
+            "type": "community_alert",
+            "checkpoint_id": row.id.to_string(),
+            "checkpoint_type": request.checkpoint_type,
+            "latitude": row.latitude,
+            "longitude": row.longitude
+        });
+
+        for uid in nearby_user_ids {
+            let _ = crate::services::push_notification_service::send_push_notification(
+                &state.pg,
+                uid,
+                push_title.clone(),
+                push_body.clone(),
+                Some(push_data.clone()),
+                Some("community_alerts".to_string()),
+            )
+            .await;
+        }
+    }
+
     Ok(Json(serde_json::json!({
         "success": true,
         "checkpoint": {
@@ -4587,6 +4666,122 @@ async fn report_checkpoint(
             "latitude": row.latitude,
             "longitude": row.longitude,
         }
+    })))
+}
+
+#[derive(sqlx::FromRow)]
+struct NearbyCheckpointRow {
+    id: uuid::Uuid,
+    checkpoint_type: String,
+    latitude: f64,
+    longitude: f64,
+    description: Option<String>,
+    speed_limit: Option<i32>,
+    is_permanent: bool,
+    upvotes: i32,
+    downvotes: i32,
+    created_at: chrono::DateTime<chrono::Utc>,
+    comments_count: i64,
+    distance_meters: f64,
+}
+
+/// Obtenir les checkpoints proches d'une position (rayon circulaire).
+/// Endpoint conçu pour historique communautaire et tâches background.
+async fn get_checkpoints_nearby(
+    Query(params): Query<NearbyCheckpointsQuery>,
+    State(state): State<Arc<AppState>>,
+) -> AppResult<Json<serde_json::Value>> {
+    let radius_km = params.radius_km.unwrap_or(8.0).clamp(0.2, 50.0);
+    let limit = params.limit.unwrap_or(100).clamp(1, 200);
+
+    let _ = sqlx::query(
+        "UPDATE navigation_checkpoints SET is_active = false WHERE expires_at IS NOT NULL AND expires_at < NOW() AND is_active = true"
+    )
+    .execute(&state.pg)
+    .await;
+
+    let lat_delta = radius_km / 111.0;
+    let lng_delta = radius_km / (111.0 * params.lat.to_radians().cos().abs().max(0.1));
+
+    let rows = sqlx::query_as::<_, NearbyCheckpointRow>(
+        r#"
+        SELECT
+            cp.id,
+            cp.checkpoint_type,
+            cp.latitude,
+            cp.longitude,
+            cp.description,
+            cp.speed_limit,
+            cp.is_permanent,
+            cp.upvotes,
+            cp.downvotes,
+            cp.created_at,
+            COALESCE(
+                (SELECT COUNT(*)::bigint FROM navigation_checkpoint_comments c WHERE c.checkpoint_id = cp.id),
+                0
+            ) AS comments_count,
+            (
+                6371000.0 * 2.0 * asin(
+                    sqrt(
+                        power(sin(radians((cp.latitude - $1) / 2.0)), 2) +
+                        cos(radians($1)) * cos(radians(cp.latitude)) *
+                        power(sin(radians((cp.longitude - $2) / 2.0)), 2)
+                    )
+                )
+            ) AS distance_meters
+        FROM navigation_checkpoints cp
+        WHERE cp.is_active = true
+          AND cp.latitude BETWEEN ($1 - $3) AND ($1 + $3)
+          AND cp.longitude BETWEEN ($2 - $4) AND ($2 + $4)
+          AND (cp.downvotes < cp.upvotes + 3)
+          AND (
+                6371.0 * acos(
+                    cos(radians($1)) * cos(radians(cp.latitude)) *
+                    cos(radians(cp.longitude) - radians($2)) +
+                    sin(radians($1)) * sin(radians(cp.latitude))
+                )
+              ) <= $5
+        ORDER BY distance_meters ASC, cp.created_at DESC
+        LIMIT $6
+        "#,
+    )
+    .bind(params.lat)
+    .bind(params.lng)
+    .bind(lat_delta)
+    .bind(lng_delta)
+    .bind(radius_km)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await?;
+
+    let checkpoints: Vec<CheckpointResponse> = rows
+        .into_iter()
+        .map(|row| {
+            let total_votes = (row.upvotes + row.downvotes).max(1) as f64;
+            let confidence = row.upvotes as f64 / total_votes;
+            CheckpointResponse {
+                id: row.id.to_string(),
+                checkpoint_type: row.checkpoint_type,
+                latitude: row.latitude,
+                longitude: row.longitude,
+                description: row.description,
+                speed_limit: row.speed_limit,
+                is_permanent: row.is_permanent,
+                confidence,
+                distance_from_route_meters: Some(row.distance_meters),
+                created_at: row.created_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+                upvotes: row.upvotes,
+                downvotes: row.downvotes,
+                comments_count: row.comments_count,
+            }
+        })
+        .collect();
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "checkpoints": checkpoints,
+        "count": checkpoints.len(),
+        "radius_km": radius_km
     })))
 }
 
@@ -5201,6 +5396,10 @@ pub fn navigation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/navigation/checkpoints/along-route",
             get(get_checkpoints_along_route).layer(middleware::from_fn(jwt_auth)),
+        )
+        .route(
+            "/api/navigation/checkpoints/nearby",
+            get(get_checkpoints_nearby).layer(middleware::from_fn(jwt_auth)),
         )
         // ✅ NOUVEAU: Analyse IA contextuelle des checkpoints
         .route(
