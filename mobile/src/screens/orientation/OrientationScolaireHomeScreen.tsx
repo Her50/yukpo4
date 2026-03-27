@@ -150,6 +150,29 @@ const OrientationScolaireHomeScreen: React.FC = () => {
         if (response.success && response.data?.data) {
             setEtablissements(response.data.data);
             setTotalEtablissements(response.data.pagination?.total || 0);
+
+            const q = searchQuery.trim();
+            if (q.length > 0) {
+                const list = response.data.data;
+                const total = response.data.pagination?.total ?? list.length;
+                const maxTrack = 10;
+                const ids = list.slice(0, maxTrack).map((e) => e.id);
+                if (ids.length > 0) {
+                    void orientationScolaireService
+                        .trackFiliereSearchBatch({
+                            filiere: q,
+                            etablissement_ids: ids,
+                            source: 'orientation_search',
+                            metadata: {
+                                tab: 'etablissements',
+                                total_results: total,
+                                tracked_slice: maxTrack,
+                                type_filter: selectedType || undefined,
+                            },
+                        })
+                        .catch(() => {});
+                }
+            }
         }
     };
 

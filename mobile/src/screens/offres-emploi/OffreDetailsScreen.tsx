@@ -15,6 +15,7 @@ import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { offreEmploiService } from '../../services/offreEmploiService';
+import { orientationScolaireService } from '../../services/orientationScolaireService';
 import { modernColors } from '../../theme/modernTheme';
 
 interface OffreEmploi {
@@ -153,6 +154,18 @@ const OffreDetailsScreen: React.FC = () => {
             setPostulating(true);
             const response = await offreEmploiService.createCandidature(params.offreId);
             if (response.success) {
+                void orientationScolaireService
+                    .trackOrientationAnalytics({
+                        event_type: 'candidature_conversion',
+                        offre_id: params.offreId,
+                        source: 'offre_emploi',
+                        metadata: {
+                            offre_id: params.offreId,
+                            titre_poste: offre?.titre_poste,
+                            entreprise_id: offre?.entreprise_id,
+                        },
+                    })
+                    .catch(() => {});
                 Alert.alert(t('message.success'), t('offreDetails.applicationSent'), [
                     { text: 'OK', onPress: () => navigation.goBack() },
                 ]);
@@ -315,6 +328,15 @@ const OffreDetailsScreen: React.FC = () => {
                 >
                     <SafeIcon name="edit" size={16} color={modernColors.primary} type="lucide" />
                     <Text style={styles.profilLinkText}>{t('offreDetails.mettreAJourMonCv') || 'Mettre à jour mon CV'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.profilLink}
+                    onPress={() => {
+                        (navigation as any).navigate('OrientationScolaireHub');
+                    }}
+                >
+                    <SafeIcon name="graduation-cap" size={16} color={modernColors.primary} type="lucide" />
+                    <Text style={styles.profilLinkText}>Explorer les formations supérieures</Text>
                 </TouchableOpacity>
             </View>
         </View>

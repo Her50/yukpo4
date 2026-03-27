@@ -113,8 +113,6 @@ export interface BookDeliveryPackage {
 
 export interface ProgrammeScolaire {
     id: number;
-    /** Présent si la ligne vient du programme d’un établissement (prioritaire sur le référentiel national). */
-    etablissement_id?: number | null;
     pays: string;
     systeme_educatif: string;
     niveau: string;
@@ -402,14 +400,15 @@ export const bourseLivreV2Api = {
         classe?: string,
         matiere?: string,
         niveau?: string,
-        options?: { pays?: string; etablissementId?: number }
+        options?: { pays?: string; etablissementId?: number; nationalOnly?: boolean }
     ): Promise<ProgrammeScolaire[]> => {
-        const params: Record<string, string | number> = {};
+        const params: Record<string, string | number | boolean> = {};
         if (classe) params.classe = classe;
         if (matiere) params.matiere = matiere;
         if (niveau) params.niveau = niveau;
         if (options?.pays) params.pays = options.pays;
         if (options?.etablissementId != null) params.etablissement_id = options.etablissementId;
+        if (options?.nationalOnly === true) params.national_only = true;
 
         const response = await apiGet<{ success: boolean; programmes: ProgrammeScolaire[] }>(
             '/api/bourse-livre/v2/programmes',
@@ -417,6 +416,36 @@ export const bourseLivreV2Api = {
         );
         const r = response.data as any;
         return r?.programmes || [];
+    },
+
+    getLibrairieProgrammesSynthese: async (params?: {
+        rayon_km?: number;
+        limit?: number;
+    }): Promise<{
+        synthese: Array<{
+            titre_livre: string;
+            matiere: string;
+            classe: string;
+            niveau?: string;
+            periode?: string;
+            occurrences: number;
+            distance_km_min?: number;
+            etablissements_count: number;
+            plusieurs_etablissements: boolean;
+            etablissements_a_afficher: string[];
+            etablissements_resume: string;
+        }>;
+        meta?: { rayon_km: number; librairie_gps_detecte: boolean };
+    }> => {
+        const response = await apiGet<any>(
+            '/api/bourse-livre/v2/libraire/programmes/synthese',
+            { params }
+        );
+        const r = response.data as any;
+        return {
+            synthese: r?.synthese || [],
+            meta: r?.meta,
+        };
     },
 
     // ============================

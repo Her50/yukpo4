@@ -638,12 +638,29 @@ pub async fn get_programmes_scolaires(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ProgrammesQuery>,
 ) -> AppResult<impl IntoResponse> {
-    let programmes = if params.classe.is_some() && params.etablissement_id.is_some() {
-        let classe = params.classe.as_ref().unwrap().clone();
+    let classe_filtre = params
+        .classe
+        .as_ref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+
+    let programmes = if classe_filtre.is_some() && params.etablissement_id.is_some() {
+        let classe_raw = classe_filtre.unwrap();
+        let classe_variants = crate::utils::classe_normalization::classe_match_variants(&classe_raw);
         let eid = params.etablissement_id.unwrap();
 
-        let mut cond_etab = vec!["is_active = true".to_string(), "classe = $1".to_string()];
-        cond_etab.push(format!("etablissement_id = ${}", 2));
+        let classe_pred_etab = if classe_variants.len() <= 1 {
+            "classe = $1".to_string()
+        } else {
+            "classe = ANY($1)".to_string()
+        };
+
+        let mut cond_etab = vec![
+            "is_active = true".to_string(),
+            classe_pred_etab,
+            "etablissement_id = $2".to_string(),
+        ];
         let mut p = 3;
         if params.matiere.is_some() {
             cond_etab.push(format!("matiere = ${}", p));
@@ -656,7 +673,18 @@ pub async fn get_programmes_scolaires(
             "SELECT * FROM programmes_scolaires WHERE {} ORDER BY matiere, titre_livre",
             cond_etab.join(" AND ")
         );
-        let mut q_etab = sqlx::query_as::<_, ProgrammeScolaire>(&sql_etab).bind(&classe).bind(eid);
+        let mut q_etab = sqlx::query_as::<_, ProgrammeScolaire>(&sql_etab);
+        if classe_variants.len() <= 1 {
+            q_etab = q_etab.bind(
+                classe_variants
+                    .first()
+                    .cloned()
+                    .unwrap_or_else(|| classe_raw.clone()),
+            );
+        } else {
+            q_etab = q_etab.bind(classe_variants.clone());
+        }
+        q_etab = q_etab.bind(eid);
         if let Some(m) = &params.matiere {
             q_etab = q_etab.bind(m);
         }
@@ -665,9 +693,15 @@ pub async fn get_programmes_scolaires(
         }
         let etab_rows = q_etab.fetch_all(&state.pg).await.unwrap_or_default();
 
+        let classe_pred_nat = if classe_variants.len() <= 1 {
+            "classe = $1".to_string()
+        } else {
+            "classe = ANY($1)".to_string()
+        };
+
         let mut cond_nat = vec![
             "is_active = true".to_string(),
-            "classe = $1".to_string(),
+            classe_pred_nat,
             "etablissement_id IS NULL".to_string(),
         ];
         let mut next = 2;
@@ -686,7 +720,17 @@ pub async fn get_programmes_scolaires(
             "SELECT * FROM programmes_scolaires WHERE {} ORDER BY matiere, titre_livre",
             cond_nat.join(" AND ")
         );
-        let mut q_nat = sqlx::query_as::<_, ProgrammeScolaire>(&sql_nat).bind(&classe);
+        let mut q_nat = sqlx::query_as::<_, ProgrammeScolaire>(&sql_nat);
+        if classe_variants.len() <= 1 {
+            q_nat = q_nat.bind(
+                classe_variants
+                    .first()
+                    .cloned()
+                    .unwrap_or_else(|| classe_raw.clone()),
+            );
+        } else {
+            q_nat = q_nat.bind(classe_variants);
+        }
         if let Some(m) = &params.matiere {
             q_nat = q_nat.bind(m);
         }
@@ -699,12 +743,63 @@ pub async fn get_programmes_scolaires(
         let nat_rows = q_nat.fetch_all(&state.pg).await.unwrap_or_default();
 
         merge_programmes_etablissement_puis_national(etab_rows, nat_rows)
+    } else if params.etablissement_id.is_some() && classe_filtre.is_none() {
+        let eid = params.etablissement_id.unwrap();
+        let mut conditions = vec![
+            "is_active = true".to_string(),
+            format!("etablissement_id = ${}", 1),
+        ];
+        let mut next = 2;
+        if params.matiere.is_some() {
+            conditions.push(format!("matiere = ${}", next));
+            next += 1;
+        }
+        if params.niveau.is_some() {
+            conditions.push(format!("niveau = ${}", next));
+            next += 1;
+        }
+        if params.pays.is_some() {
+            conditions.push(format!("pays = ${}", next));
+        }
+        let sql = format!(
+            "SELECT * FROM programmes_scolaires WHERE {} ORDER BY classe, matiere, titre_livre",
+            conditions.join(" AND ")
+        );
+        let mut query = sqlx::query_as::<_, ProgrammeScolaire>(&sql).bind(eid);
+        if let Some(matiere) = &params.matiere {
+            query = query.bind(matiere);
+        }
+        if let Some(niveau) = &params.niveau {
+            query = query.bind(niveau);
+        }
+        if let Some(pays) = &params.pays {
+            query = query.bind(pays);
+        }
+        match query.fetch_all(&state.pg).await {
+            Ok(p) => p,
+            Err(e) => {
+                log::warn!(
+                    "[get_programmes_scolaires] DB error (etablissement only): {}",
+                    e
+                );
+                vec![]
+            }
+        }
     } else {
         let mut conditions = vec!["is_active = true".to_string()];
         let mut param_idx = 1;
 
-        if params.classe.is_some() {
-            conditions.push(format!("classe = ${}", param_idx));
+        let classe_variants_opt = classe_filtre
+            .as_ref()
+            .map(|c| crate::utils::classe_normalization::classe_match_variants(c));
+
+        if classe_variants_opt.is_some() {
+            let v = classe_variants_opt.as_ref().unwrap();
+            if v.len() <= 1 {
+                conditions.push(format!("classe = ${}", param_idx));
+            } else {
+                conditions.push(format!("classe = ANY(${})", param_idx));
+            }
             param_idx += 1;
         }
         if params.matiere.is_some() {
@@ -720,13 +815,17 @@ pub async fn get_programmes_scolaires(
         }
 
         let sql = format!(
-            "SELECT * FROM programmes_scolaires WHERE {} ORDER BY classe, matiere",
+            "SELECT * FROM programmes_scolaires WHERE {} ORDER BY classe, matiere, titre_livre",
             conditions.join(" AND ")
         );
 
         let mut query = sqlx::query_as::<_, ProgrammeScolaire>(&sql);
-        if let Some(classe) = &params.classe {
-            query = query.bind(classe);
+        if let Some(v) = &classe_variants_opt {
+            if v.len() <= 1 {
+                query = query.bind(v.first().cloned().unwrap_or_default());
+            } else {
+                query = query.bind(v.clone());
+            }
         }
         if let Some(matiere) = &params.matiere {
             query = query.bind(matiere);
@@ -751,6 +850,177 @@ pub async fn get_programmes_scolaires(
     };
 
     Ok(Json(json!({ "success": true, "programmes": programmes })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LibrairieProgrammesSyntheseQuery {
+    pub rayon_km: Option<f64>,
+    pub limit: Option<i64>,
+}
+
+/// GET /api/bourse-livre/v2/libraire/programmes/synthese
+/// Synthèse des livres récurrents demandés par les établissements proches d'une librairie.
+pub async fn get_librairie_programmes_synthese(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Query(params): Query<LibrairieProgrammesSyntheseQuery>,
+) -> AppResult<impl IntoResponse> {
+    let radius_km = params.rayon_km.unwrap_or(35.0).clamp(5.0, 300.0);
+    let limit = params.limit.unwrap_or(250).clamp(20, 1000);
+
+    let librairie_gps: Option<String> = sqlx::query_scalar(
+        r#"
+        SELECT COALESCE(
+            NULLIF(TRIM(lp.gps), ''),
+            NULLIF(TRIM(u.gps), '')
+        )
+        FROM users u
+        LEFT JOIN librairie_partners lp ON lp.user_id = u.id
+        WHERE u.id = $1
+        ORDER BY lp.id DESC NULLS LAST
+        LIMIT 1
+        "#,
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .unwrap_or(None);
+
+    let (lib_lat, lib_lon) = librairie_gps
+        .as_deref()
+        .and_then(parse_lat_lng_coords)
+        .unwrap_or((0.0, 0.0));
+    let has_lib_gps = librairie_gps
+        .as_deref()
+        .and_then(parse_lat_lng_coords)
+        .is_some();
+
+    let rows: Vec<sqlx::postgres::PgRow> = sqlx::query(
+        r#"
+        WITH base AS (
+            SELECT
+                ps.titre_livre,
+                ps.matiere,
+                ps.classe,
+                ps.niveau,
+                ps.periode_academique,
+                ps.annee_scolaire,
+                COALESCE(NULLIF(TRIM(e.nom_etablissement), ''), NULLIF(TRIM(u.nom_entreprise), ''), 'Établissement') AS etablissement_nom,
+                COALESCE(NULLIF(TRIM(e.ville), ''), NULLIF(TRIM(u.ville), '')) AS etablissement_ville,
+                COALESCE(NULLIF(TRIM(e.gps), ''), NULLIF(TRIM(u.gps), '')) AS etablissement_gps
+            FROM programmes_scolaires ps
+            LEFT JOIN users u ON u.id = ps.created_by
+            LEFT JOIN LATERAL (
+                SELECT es.nom_etablissement, es.ville, es.gps
+                FROM etablissements_scolaires es
+                WHERE es.user_id = ps.created_by
+                ORDER BY es.id DESC
+                LIMIT 1
+            ) e ON TRUE
+            WHERE ps.is_active = true
+              AND COALESCE(NULLIF(TRIM(ps.titre_livre), ''), '') <> ''
+        ),
+        filtered AS (
+            SELECT
+                *,
+                CASE
+                    WHEN $1::boolean = false THEN NULL::float8
+                    WHEN etablissement_gps IS NULL THEN NULL::float8
+                    ELSE 6371.0 * acos(
+                        cos(radians($2::float8))
+                        * cos(radians(CAST(SPLIT_PART(etablissement_gps, ',', 1) AS float8)))
+                        * cos(radians(CAST(SPLIT_PART(etablissement_gps, ',', 2) AS float8)) - radians($3::float8))
+                        + sin(radians($2::float8))
+                        * sin(radians(CAST(SPLIT_PART(etablissement_gps, ',', 1) AS float8)))
+                    )
+                END AS distance_km
+            FROM base
+        ),
+        scoped AS (
+            SELECT *
+            FROM filtered
+            WHERE $1::boolean = false
+               OR distance_km IS NULL
+               OR distance_km <= $4::float8
+        ),
+        grouped AS (
+            SELECT
+                titre_livre,
+                matiere,
+                classe,
+                niveau,
+                COALESCE(periode_academique, annee_scolaire) AS periode,
+                COUNT(*)::bigint AS occurrences,
+                COUNT(DISTINCT etablissement_nom)::bigint AS etablissements_count,
+                array_remove(array_agg(DISTINCT etablissement_nom ORDER BY etablissement_nom), NULL) AS etablissements,
+                MIN(distance_km) AS distance_km_min
+            FROM scoped
+            GROUP BY titre_livre, matiere, classe, niveau, COALESCE(periode_academique, annee_scolaire)
+        )
+        SELECT
+            titre_livre,
+            matiere,
+            classe,
+            niveau,
+            periode,
+            occurrences,
+            etablissements_count,
+            etablissements,
+            distance_km_min
+        FROM grouped
+        ORDER BY occurrences DESC, titre_livre ASC
+        LIMIT $5
+        "#,
+    )
+    .bind(has_lib_gps)
+    .bind(lib_lat)
+    .bind(lib_lon)
+    .bind(radius_km)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur synthèse programmes librairie: {}", e)))?;
+
+    use sqlx::Row;
+    let items: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|r| {
+            let etablissements: Vec<String> =
+                r.try_get::<Option<Vec<String>>, _>("etablissements")
+                    .unwrap_or(None)
+                    .unwrap_or_default();
+            let etablissements_count: i64 = r.get("etablissements_count");
+            let preview: Vec<String> = etablissements.iter().take(3).cloned().collect();
+            let show_exact = etablissements_count <= 3;
+
+            json!({
+                "titre_livre": r.get::<String, _>("titre_livre"),
+                "matiere": r.get::<String, _>("matiere"),
+                "classe": r.get::<String, _>("classe"),
+                "niveau": r.try_get::<Option<String>, _>("niveau").unwrap_or(None),
+                "periode": r.try_get::<Option<String>, _>("periode").unwrap_or(None),
+                "occurrences": r.get::<i64, _>("occurrences"),
+                "distance_km_min": r.try_get::<Option<f64>, _>("distance_km_min").unwrap_or(None),
+                "etablissements_count": etablissements_count,
+                "plusieurs_etablissements": etablissements_count > 1,
+                "etablissements_a_afficher": if show_exact { etablissements } else { preview },
+                "etablissements_resume": if show_exact {
+                    format!("{} établissement(s)", etablissements_count)
+                } else {
+                    format!("{} établissements concernés", etablissements_count)
+                }
+            })
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "success": true,
+        "synthese": items,
+        "meta": {
+            "rayon_km": radius_km,
+            "librairie_gps_detecte": has_lib_gps,
+        }
+    })))
 }
 
 // ============================================================================
@@ -1803,11 +2073,6 @@ pub struct SubmitProgrammesEtablissementRequest {
     pub commentaire: Option<String>,
     pub gps_coords: Option<String>,
     pub gps_address: Option<String>,
-    /// Si l'établissement existe déjà dans Yukpo (orientation).
-    pub etablissement_id: Option<i32>,
-    /// Rayon (km) pour cibler les librairies partenaires (défaut 75, max 300).
-    #[serde(default)]
-    pub notification_radius_km: Option<f64>,
     pub fichiers: Vec<SubmitProgrammeFichierIn>,
 }
 
@@ -2032,7 +2297,7 @@ fn infer_file_type_from_client_and_mime(client: &str, meta: Option<&String>) -> 
 }
 
 /// POST /api/bourse-livre/v2/programmes-scolaires/submit
-/// Établissement envoie PDF / Excel / images — extraction IA (AppIA) comme l'admin, rattachement optionnel `etablissement_id`.
+/// Établissement envoie PDF / Excel / images — extraction IA (AppIA) comme l'admin.
 pub async fn submit_programmes_scolaires_etablissement(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
@@ -2050,8 +2315,20 @@ pub async fn submit_programmes_scolaires_etablissement(
     let niveau_label = payload.niveaux.join(", ");
     let periode = payload.annee_scolaire.clone();
     let pays = payload.pays.clone().unwrap_or_else(|| "Cameroun".to_string());
-    let etab_id = payload.etablissement_id;
-
+    // Même table `etablissements_scolaires` que le service orientation : rattache les lignes « manuels » à l’établissement pour `GET /bourse-livre/v2/programmes?etablissement_id=`.
+    let etablissement_id: Option<i32> = sqlx::query_scalar(
+        r#"SELECT id FROM etablissements_scolaires WHERE user_id = $1 ORDER BY id DESC LIMIT 1"#,
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .unwrap_or(None);
+    if etablissement_id.is_none() {
+        info!(
+            "[submit_programmes_etab] user_id={} : aucun etablissements_scolaires — lignes insérées sans etablissement_id (référentiel national seul côté requêtes fusion)",
+            user_id
+        );
+    }
     let ai_service = BookExchangeAIService::new(state.ia.clone());
     let mut total_inserted = 0i32;
     let mut extractions = Vec::new();
@@ -2068,8 +2345,12 @@ pub async fn submit_programmes_scolaires_etablissement(
             Ok(r) => r,
             Err(e) => {
                 warn!(
-                    "[submit_programmes_etab] extraction fichier {}: {}",
-                    f.nom, e
+                    target: "yukpo.programme_extraction",
+                    "[submit_programmes_etab] extraction_failed user_id={} fichier={} file_kind={} err={}",
+                    user_id,
+                    f.nom,
+                    file_kind,
+                    e
                 );
                 continue;
             }
@@ -2117,7 +2398,7 @@ pub async fn submit_programmes_scolaires_etablissement(
             .bind(prix)
             .bind(user_id as i32)
             .bind(&periode)
-            .bind(etab_id)
+            .bind(etablissement_id)
             .execute(&state.pg)
             .await;
 
@@ -2137,30 +2418,10 @@ pub async fn submit_programmes_scolaires_etablissement(
     // Notifications librairies (ville / rayon GPS) — si au moins une ligne insérée
     let notifications_librairies = if total_inserted > 0 {
         let nom_etab = payload.nom_etablissement.trim();
-        let radius_km = payload.notification_radius_km.unwrap_or(75.0).clamp(5.0, 300.0);
+        let radius_km = 75.0f64;
 
-        let mut ville_owned = payload.ville.clone();
-        let mut origin = payload.gps_coords.as_deref().and_then(parse_lat_lng_coords);
-
-        if let Some(eid) = etab_id {
-            if let Ok(Some(row)) = sqlx::query_as::<_, (Option<String>, String)>(
-                "SELECT gps, ville FROM etablissements_scolaires WHERE id = $1",
-            )
-            .bind(eid)
-            .fetch_optional(&state.pg)
-            .await
-            {
-                let (g, v) = row;
-                if ville_owned.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true) {
-                    ville_owned = Some(v);
-                }
-                if origin.is_none() {
-                    if let Some(ref gs) = g {
-                        origin = parse_lat_lng_coords(gs);
-                    }
-                }
-            }
-        }
+        let ville_owned = payload.ville.clone();
+        let origin = payload.gps_coords.as_deref().and_then(parse_lat_lng_coords);
 
         let ville_hint = ville_owned.as_deref().filter(|s| !s.trim().is_empty());
         let lib_ids =
@@ -2207,6 +2468,7 @@ pub async fn submit_programmes_scolaires_etablissement(
         "success": true,
         "message": format!("{} ligne(s) enregistrée(s) dans le référentiel Yukpo (après extraction IA).", total_inserted),
         "lignes_inserees": total_inserted,
+        "etablissement_id": etablissement_id,
         "extractions": extractions,
         "notifications_librairies": notifications_librairies,
     })))

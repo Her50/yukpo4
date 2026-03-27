@@ -216,21 +216,6 @@ const LivreScolaireHomeScreen: React.FC = () => {
                                 </Text>
                             </TouchableOpacity>
                         )}
-                        <TouchableOpacity
-                            onPress={() => safeNavigate('EtablissementScolaire')}
-                            style={styles.etablissementHeaderBtn}
-                            activeOpacity={0.85}
-                        >
-                            <SafeIcon
-                                name="school"
-                                size={16}
-                                color="#059669"
-                                type="lucide"
-                            />
-                            <Text style={styles.etablissementHeaderBtnText} numberOfLines={1}>
-                                {t('bourseLivre.etablissementScolaire', 'Établissement scolaire')}
-                            </Text>
-                        </TouchableOpacity>
                     </View>
                 </LinearGradient>
             </View>
@@ -537,27 +522,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '700',
         color: '#92400E',
-    },
-    etablissementHeaderBtn: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 7,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 12,
-        backgroundColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.12,
-        shadowRadius: 3,
-        elevation: 2,
-    },
-    etablissementHeaderBtnText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#047857',
     },
     primaryActionsRow: {
         paddingHorizontal: 16,

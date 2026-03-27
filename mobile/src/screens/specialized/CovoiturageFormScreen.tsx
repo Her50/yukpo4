@@ -20,6 +20,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import LocationSelector, { LocationObject } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
@@ -407,7 +408,12 @@ const CovoiturageFormScreen: React.FC = () => {
 
     // ─── RENDER: Create Form Tab ─────────────────────────────────────────
     const renderCreateForm = () => (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}>
+        <KeyboardAwareScreen
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
+        >
             {/* Route Section */}
             <View style={s.routeCard}>
                 <Text style={s.routeCardTitle}>{t('covoiturageForm.itineraire')}</Text>
@@ -420,6 +426,8 @@ const CovoiturageFormScreen: React.FC = () => {
                             onSelect={(loc: LocationObject) => setFormData(prev => ({ ...prev, depart: normalizeSelectedLocation(loc) }))}
                             placeholder={tr('covoiturageForm.lieuDeDepart', 'Lieu de depart...')}
                             scope="all"
+                            enrichWithBackend={true}
+                            required={true}
                         />
                     </View>
                     <TouchableOpacity style={s.swapBtn} onPress={() => { const t = formData.depart; const tg = selectedGPSDepart; setFormData({ ...formData, depart: formData.destination, destination: t }); setSelectedGPSDepart(selectedGPSDestination); setSelectedGPSDestination(tg); }}>
@@ -433,6 +441,8 @@ const CovoiturageFormScreen: React.FC = () => {
                             onSelect={(loc: LocationObject) => setFormData(prev => ({ ...prev, destination: normalizeSelectedLocation(loc) }))}
                             placeholder={tr('covoiturageFormScreen.lieuDArrivee', 'Lieu d\'arrivee...')}
                             scope="all"
+                            enrichWithBackend={true}
+                            required={true}
                         />
                     </View>
                 </View>
@@ -606,7 +616,7 @@ const CovoiturageFormScreen: React.FC = () => {
                 disabled={loading || !formData.depart || !formData.destination || !formData.prix_par_place.trim() || (formData.is_recurring && (!formData.recurrence_type || (formData.recurrence_type === 'weekly' && formData.recurrence_days.length === 0)))}
                 variant="primary" size="large" style={{ marginTop: 24 }}
             />
-        </ScrollView>
+        </KeyboardAwareScreen>
     );
 
     // ─── RENDER: Stats Tab ───────────────────────────────────────────────

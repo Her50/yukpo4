@@ -380,6 +380,40 @@ export const orientationScolaireService = {
         return response;
     },
 
+    /**
+     * Événements normalisés (backend POST /api/orientation/analytics/track).
+     * — établissement : profile_view, contact_click, filiere_search
+     * — emploi : candidature_conversion avec offre_id (sans etablissement_id)
+     */
+    trackOrientationAnalytics: async (payload: {
+        etablissement_id?: number;
+        event_type: 'profile_view' | 'contact_click' | 'filiere_search' | 'candidature_conversion';
+        filiere?: string;
+        source?: string;
+        metadata?: Record<string, unknown>;
+        offre_id?: number;
+    }) => {
+        const response = await apiPost<{ success: boolean; message?: string }>(
+            '/api/orientation/analytics/track',
+            payload
+        );
+        return response;
+    },
+
+    /** Un seul appel HTTP pour plusieurs filiere_search (agrégation serveur). */
+    trackFiliereSearchBatch: async (payload: {
+        filiere: string;
+        etablissement_ids: number[];
+        source?: string;
+        metadata?: Record<string, unknown>;
+    }) => {
+        const response = await apiPost<{ success: boolean; message?: string; applied?: number }>(
+            '/api/orientation/analytics/track-filiere-search-batch',
+            payload
+        );
+        return response;
+    },
+
     // ✅ Recherche académique IA
     academicSearch: async (query: string, context?: Record<string, any>) => {
         const response = await apiPost<{ success: boolean; response: string }>(

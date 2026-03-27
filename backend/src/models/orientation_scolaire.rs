@@ -96,6 +96,8 @@ pub struct SearchEtablissementsRequest {
     pub region: Option<String>,
     pub filiere: Option<String>,
     pub specialite: Option<String>,
+    /// Recherche libre (nom d'établissement, ville)
+    pub q: Option<String>,
     pub gps_lat: Option<f64>,
     pub gps_lon: Option<f64>,
     pub rayon_km: Option<f64>, // Rayon de recherche en km (défaut: 10 km)

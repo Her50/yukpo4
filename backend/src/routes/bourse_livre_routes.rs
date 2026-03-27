@@ -287,6 +287,10 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/v2/libraire/publish",
             post(bourse_livre_v2_controller::libraire_publish_new_books),
         )
+        .route(
+            "/api/bourse-livre/v2/libraire/programmes/synthese",
+            get(bourse_livre_v2_controller::get_librairie_programmes_synthese),
+        )
         // Admin: Gestion des dons
         .route(
             "/api/bourse-livre/v2/admin/donations",

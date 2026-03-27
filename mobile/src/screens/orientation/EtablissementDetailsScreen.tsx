@@ -1,7 +1,7 @@
 // ✅ Écran de détails d'un établissement (Mobile)
 
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Linking,
@@ -14,6 +14,7 @@ import {
 import ChatModalMobile from '../../components/ChatModalMobile';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
+import { orientationScolaireService } from '../../services/orientationScolaireService';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface Etablissement {
@@ -41,10 +42,31 @@ const EtablissementDetailsScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [etablissement, setEtablissement] = useState<Etablissement | null>(null);
     const [showChat, setShowChat] = useState(false);
+    const profileViewTrackedRef = useRef(false);
+
+    useEffect(() => {
+        profileViewTrackedRef.current = false;
+    }, [id]);
 
     useEffect(() => {
         loadEtablissement();
     }, [id]);
+
+    useEffect(() => {
+        if (!etablissement?.id || profileViewTrackedRef.current) return;
+        profileViewTrackedRef.current = true;
+        void orientationScolaireService
+            .trackOrientationAnalytics({
+                etablissement_id: etablissement.id,
+                event_type: 'profile_view',
+                source: 'etablissement_details',
+                metadata: {
+                    type_etablissement: etablissement.type_etablissement,
+                    ville: etablissement.ville,
+                },
+            })
+            .catch(() => {});
+    }, [etablissement?.id, etablissement?.type_etablissement, etablissement?.ville]);
 
     const loadEtablissement = async () => {
         try {
@@ -60,6 +82,18 @@ const EtablissementDetailsScreen: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const trackContact = (channel: 'phone' | 'email' | 'website' | 'chat') => {
+        if (!etablissement?.id) return;
+        void orientationScolaireService
+            .trackOrientationAnalytics({
+                etablissement_id: etablissement.id,
+                event_type: 'contact_click',
+                source: channel,
+                metadata: { channel },
+            })
+            .catch(() => {});
     };
 
     if (loading) {
@@ -112,7 +146,10 @@ const EtablissementDetailsScreen: React.FC = () => {
                 )}
                 {etablissement.telephone && (
                     <TouchableOpacity
-                        onPress={() => Linking.openURL(`tel:${etablissement.telephone}`)}
+                        onPress={() => {
+                            trackContact('phone');
+                            Linking.openURL(`tel:${etablissement.telephone}`);
+                        }}
                     >
                         <Text style={[styles.sectionText, styles.link]}>
                             📞 {etablissement.telephone}
@@ -121,7 +158,10 @@ const EtablissementDetailsScreen: React.FC = () => {
                 )}
                 {etablissement.email && (
                     <TouchableOpacity
-                        onPress={() => Linking.openURL(`mailto:${etablissement.email}`)}
+                        onPress={() => {
+                            trackContact('email');
+                            Linking.openURL(`mailto:${etablissement.email}`);
+                        }}
                     >
                         <Text style={[styles.sectionText, styles.link]}>
                             ✉️ {etablissement.email}
@@ -130,7 +170,10 @@ const EtablissementDetailsScreen: React.FC = () => {
                 )}
                 {etablissement.site_web && (
                     <TouchableOpacity
-                        onPress={() => Linking.openURL(etablissement.site_web!)}
+                        onPress={() => {
+                            trackContact('website');
+                            Linking.openURL(etablissement.site_web!);
+                        }}
                     >
                         <Text style={[styles.sectionText, styles.link]}>
                             🌐 {etablissement.site_web}
@@ -205,7 +248,10 @@ const EtablissementDetailsScreen: React.FC = () => {
                 {/* Bouton Contacter */}
                 <TouchableOpacity
                     style={styles.contactButton}
-                    onPress={() => setShowChat(true)}
+                    onPress={() => {
+                        trackContact('chat');
+                        setShowChat(true);
+                    }}
                 >
                     <Text style={styles.contactButtonText}>{t('etablissementDetails.contacterLetablissement')}</Text>
                 </TouchableOpacity>

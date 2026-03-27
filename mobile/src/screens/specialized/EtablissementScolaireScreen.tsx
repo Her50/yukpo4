@@ -1,7 +1,6 @@
 // Collecte des manuels scolaires (établissement) — source Yukpo : PDF/Excel/images, année scolaire.
-// Rattachement optionnel à une fiche orientation (etablissement_id).
 
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
@@ -26,7 +25,6 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiPost } from '../../services/api';
-import { orientationScolaireApi } from '../../services/orientationScolaireApi';
 import { hapticPress } from '../../utils/hapticFeedback';
 import { logger } from '../../utils/logger';
 
@@ -37,26 +35,12 @@ const NIVEAUX = [
     { id: 'lycee', label: 'Lycée / Secondaire' },
 ] as const;
 
-const RAYON_PRESETS_KM = [25, 50, 75, 100, 150, 200] as const;
-
-function clampRadiusKm(n: number): number {
-    if (Number.isNaN(n)) return 75;
-    return Math.min(300, Math.max(5, Math.round(n)));
-}
-
 interface AttachedFile {
     id: string;
     uri: string;
     name: string;
     type: 'image' | 'pdf' | 'document';
     base64?: string;
-}
-
-interface MineEtab {
-    id: number;
-    nom_etablissement: string;
-    ville: string;
-    gps?: string | null;
 }
 
 const EtablissementScolaireScreen: React.FC = () => {
@@ -76,47 +60,6 @@ const EtablissementScolaireScreen: React.FC = () => {
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
-    const [mineEtabs, setMineEtabs] = useState<MineEtab[]>([]);
-    const [selectedEtabId, setSelectedEtabId] = useState<number | null>(null);
-    const [loadingMine, setLoadingMine] = useState(true);
-    const [notificationRadiusKm, setNotificationRadiusKm] = useState(75);
-    const [radiusCustomText, setRadiusCustomText] = useState('');
-
-    const loadMineEtabs = useCallback(async () => {
-        setLoadingMine(true);
-        try {
-            const { etablissements } = await orientationScolaireApi.getMyEtablissements();
-            const list: MineEtab[] = (etablissements || []).map((e: any) => ({
-                id: e.id,
-                nom_etablissement: e.nom_etablissement ?? '',
-                ville: e.ville ?? '',
-                gps: e.gps,
-            }));
-            setMineEtabs(list);
-            setSelectedEtabId(prev => {
-                if (prev != null && list.some(x => x.id === prev)) return prev;
-                if (list.length === 1) return list[0].id;
-                return prev;
-            });
-        } catch (e) {
-            logger.error('[EtablissementScolaire] getMyEtablissements:', e);
-        } finally {
-            setLoadingMine(false);
-        }
-    }, []);
-
-    useFocusEffect(
-        useCallback(() => {
-            loadMineEtabs();
-        }, [loadMineEtabs]),
-    );
-
-    const applyEtabSelection = useCallback((e: MineEtab) => {
-        setSelectedEtabId(e.id);
-        setNomEtablissement(e.nom_etablissement);
-        if (e.ville) setVille(e.ville);
-        if (e.gps) setGpsCoords(e.gps);
-    }, []);
 
     const toggleNiveau = useCallback((id: string) => {
         setNiveaux(prev => {
@@ -244,7 +187,13 @@ const EtablissementScolaireScreen: React.FC = () => {
             return;
         }
         if (files.length === 0) {
-            Alert.alert('Fichier requis', t('etablissementScolaire.fileRequired', 'Veuillez joindre au moins une image ou un fichier des manuels scolaires (établissement).'));
+            Alert.alert(
+                'Pièce jointe requise',
+                t(
+                    'etablissementScolaire.fileRequired',
+                    'Ajoutez au moins un document : photo (caméra ou galerie), ou fichier PDF / Excel.'
+                )
+            );
             return;
         }
         if (!gpsCoords && !ville.trim()) {
@@ -263,8 +212,6 @@ const EtablissementScolaireScreen: React.FC = () => {
                 commentaire: commentaire.trim() || undefined,
                 gps_coords: gpsCoords || undefined,
                 gps_address: gpsAddress || undefined,
-                etablissement_id: selectedEtabId ?? undefined,
-                notification_radius_km: clampRadiusKm(notificationRadiusKm),
                 fichiers: files.map(f => ({
                     nom: f.name,
                     type: f.type,
@@ -282,7 +229,7 @@ const EtablissementScolaireScreen: React.FC = () => {
         } finally {
             setSubmitting(false);
         }
-    }, [nomEtablissement, pays, ville, niveaux, anneeScolaire, commentaire, gpsCoords, gpsAddress, files, user, t, selectedEtabId, notificationRadiusKm]);
+    }, [nomEtablissement, pays, ville, niveaux, anneeScolaire, commentaire, gpsCoords, gpsAddress, files, user, t]);
 
     // ========================
     // Écran de succès
@@ -341,7 +288,10 @@ const EtablissementScolaireScreen: React.FC = () => {
                         {t('etablissementScolaire.title', 'Établissement scolaire')}
                     </Text>
                     <Text style={styles.headerSubtitle}>
-                        {t('etablissementScolaire.subtitle', 'Manuels scolaires (établissement) — source Yukpo')}
+                        {t(
+                            'etablissementScolaire.subtitle',
+                            'Programmes & listes officielles (établissement) — caméra, galerie ou fichier (PDF, Excel, photo)'
+                        )}
                     </Text>
                 </View>
                 <SafeIcon name="school" size={28} color="rgba(255,255,255,0.6)" type="lucide" />
@@ -360,62 +310,12 @@ const EtablissementScolaireScreen: React.FC = () => {
                     <View style={styles.infoBanner}>
                         <SafeIcon name="info" size={18} color="#1D4ED8" type="lucide" />
                         <Text style={styles.infoBannerText}>
-                            {t('etablissementScolaire.infoBanner', 'Photographiez ou joignez la liste officielle (manuels, cahiers, fournitures). Yukpo en extrait les lignes par IA (référentiel Bourse du livre).')}
+                            {t(
+                                'etablissementScolaire.infoBanner',
+                                'Programmes scolaires, listes de manuels ou fournitures : prenez une photo (caméra), choisissez dans la galerie, ou importez un fichier (PDF, Excel, image). Yukpo extrait les lignes par IA.'
+                            )}
                         </Text>
                     </View>
-
-                    {/* Fiche orientation (optionnel) */}
-                    {!loadingMine && mineEtabs.length === 0 && (
-                        <View style={styles.etabCta}>
-                            <Text style={styles.etabCtaTitle}>
-                                {t('etablissementScolaire.noEtabTitle', 'Pas encore de fiche établissement sur Yukpo ?')}
-                            </Text>
-                            <Text style={styles.etabCtaText}>
-                                {t('etablissementScolaire.noEtabBody', 'Créez votre établissement pour rattacher officiellement cette liste et faciliter les notifications aux librairies proches.')}
-                            </Text>
-                            <View style={styles.etabCtaRow}>
-                                <TouchableOpacity
-                                    style={[styles.etabCtaBtn, styles.etabCtaBtnPrimary]}
-                                    onPress={() => { hapticPress(); (navigation as any).navigate('CreateEtablissement'); }}
-                                >
-                                    <Text style={styles.etabCtaBtnTextPrimary}>{t('etablissementScolaire.createEtab', 'Créer ma fiche')}</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.etabCtaBtn}
-                                    onPress={() => { hapticPress(); (navigation as any).navigate('OrientationPartnerDashboard'); }}
-                                >
-                                    <Text style={styles.etabCtaBtnText}>{t('etablissementScolaire.dashboardPartner', 'Tableau de bord')}</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    )}
-
-                    {mineEtabs.length > 0 && (
-                        <View style={styles.etabPick}>
-                            <Text style={styles.label}>
-                                {t('etablissementScolaire.linkEtab', 'Rattacher à mon établissement Yukpo')}
-                            </Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.etabChips}>
-                                <TouchableOpacity
-                                    style={[styles.etabChip, selectedEtabId == null && styles.etabChipActive]}
-                                    onPress={() => { hapticPress(); setSelectedEtabId(null); }}
-                                >
-                                    <Text style={[styles.etabChipText, selectedEtabId == null && styles.etabChipTextActive]}>{t('etablissementScolaire.noLink', 'Aucun')}</Text>
-                                </TouchableOpacity>
-                                {mineEtabs.map(e => (
-                                    <TouchableOpacity
-                                        key={e.id}
-                                        style={[styles.etabChip, selectedEtabId === e.id && styles.etabChipActive]}
-                                        onPress={() => { hapticPress(); applyEtabSelection(e); }}
-                                    >
-                                        <Text style={[styles.etabChipText, selectedEtabId === e.id && styles.etabChipTextActive]} numberOfLines={1}>
-                                            {e.nom_etablissement}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </View>
-                    )}
 
                     {/* Nom de l'établissement */}
                     <Text style={styles.label}>
@@ -473,56 +373,6 @@ const EtablissementScolaireScreen: React.FC = () => {
                         </Text>
                     </TouchableOpacity>
 
-                    {/* Rayon notifications librairies */}
-                    <Text style={styles.label}>
-                        {t('etablissementScolaire.radiusLabel', 'Rayon pour prévenir les librairies (km)')}
-                    </Text>
-                    <Text style={styles.radiusHint}>
-                        {t('etablissementScolaire.radiusHint', 'Les partenaires dans cette zone (ville ou distance GPS) reçoivent une notification. Entre 5 et 300 km.')}
-                    </Text>
-                    <View style={styles.radiusPresets}>
-                        {RAYON_PRESETS_KM.map(km => (
-                            <TouchableOpacity
-                                key={km}
-                                style={[styles.radiusChip, notificationRadiusKm === km && styles.radiusChipActive]}
-                                onPress={() => {
-                                    hapticPress();
-                                    setNotificationRadiusKm(km);
-                                    setRadiusCustomText('');
-                                }}
-                            >
-                                <Text style={[styles.radiusChipText, notificationRadiusKm === km && styles.radiusChipTextActive]}>
-                                    {km}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                    <View style={styles.radiusCustomRow}>
-                        <Text style={styles.radiusCustomLabel}>{t('etablissementScolaire.radiusCustom', 'Autre')}</Text>
-                        <TextInput
-                            style={styles.radiusInput}
-                            keyboardType="number-pad"
-                            placeholder="5–300"
-                            placeholderTextColor="#9CA3AF"
-                            value={radiusCustomText}
-                            onChangeText={txt => {
-                                const digits = txt.replace(/[^0-9]/g, '');
-                                setRadiusCustomText(digits);
-                                if (digits.length > 0) {
-                                    const n = parseInt(digits, 10);
-                                    if (!Number.isNaN(n)) setNotificationRadiusKm(clampRadiusKm(n));
-                                }
-                            }}
-                            onBlur={() => {
-                                if (radiusCustomText.trim() === '') return;
-                                const n = clampRadiusKm(parseInt(radiusCustomText, 10));
-                                setNotificationRadiusKm(n);
-                                setRadiusCustomText('');
-                            }}
-                        />
-                        <Text style={styles.radiusKmSuffix}>km</Text>
-                    </View>
-
                     {/* Niveaux */}
                     <Text style={styles.label}>
                         {t('etablissementScolaire.niveauxLabel', 'Niveaux concernés')} *
@@ -555,7 +405,11 @@ const EtablissementScolaireScreen: React.FC = () => {
 
                     {/* Pièces jointes */}
                     <Text style={styles.label}>
-                        {t('etablissementScolaire.fichiersLabel', 'Manuels scolaires — PDF, Excel ou photos')} *
+                        {t(
+                            'etablissementScolaire.fichiersLabel',
+                            'Programmes / listes — caméra, galerie ou import fichier (PDF, Excel, photo)'
+                        )}{' '}
+                        *
                     </Text>
                     <View style={styles.attachActions}>
                         <TouchableOpacity style={styles.attachBtn} onPress={takePhoto}>
@@ -694,70 +548,6 @@ const styles = StyleSheet.create({
         padding: 14, marginBottom: 20, alignItems: 'flex-start',
     },
     infoBannerText: { flex: 1, fontSize: 13, color: '#1E40AF', lineHeight: 19 },
-    etabCta: {
-        backgroundColor: '#FFFBEB',
-        borderWidth: 1,
-        borderColor: '#FDE68A',
-        borderRadius: 12,
-        padding: 14,
-        marginBottom: 8,
-    },
-    etabCtaTitle: { fontSize: 15, fontWeight: '700', color: '#92400E', marginBottom: 6 },
-    etabCtaText: { fontSize: 13, color: '#78350F', lineHeight: 19, marginBottom: 12 },
-    etabCtaRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-    etabCtaBtn: {
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderRadius: 10,
-        backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#D97706',
-    },
-    etabCtaBtnPrimary: { backgroundColor: '#D97706', borderColor: '#D97706' },
-    etabCtaBtnText: { fontSize: 13, fontWeight: '600', color: '#92400E' },
-    etabCtaBtnTextPrimary: { fontSize: 13, fontWeight: '600', color: '#fff' },
-    etabPick: { marginBottom: 4 },
-    etabChips: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
-    etabChip: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#fff',
-        borderWidth: 1.5,
-        borderColor: '#D1D5DB',
-        maxWidth: 220,
-    },
-    etabChipActive: { backgroundColor: '#ECFDF5', borderColor: '#059669' },
-    etabChipText: { fontSize: 13, fontWeight: '600', color: '#4B5563' },
-    etabChipTextActive: { color: '#059669' },
-    radiusHint: { fontSize: 12, color: '#6B7280', lineHeight: 17, marginBottom: 10 },
-    radiusPresets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
-    radiusChip: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#fff',
-        borderWidth: 1.5,
-        borderColor: '#D1D5DB',
-    },
-    radiusChipActive: { backgroundColor: '#EFF6FF', borderColor: '#2563EB' },
-    radiusChipText: { fontSize: 13, fontWeight: '600', color: '#4B5563' },
-    radiusChipTextActive: { color: '#1D4ED8' },
-    radiusCustomRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
-    radiusCustomLabel: { fontSize: 13, color: '#6B7280', width: 44 },
-    radiusInput: {
-        flex: 1,
-        maxWidth: 100,
-        backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#D1D5DB',
-        borderRadius: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 15,
-        color: '#111827',
-    },
-    radiusKmSuffix: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
     label: { fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 16 },
     input: {
         backgroundColor: '#fff', borderWidth: 1, borderColor: '#D1D5DB',

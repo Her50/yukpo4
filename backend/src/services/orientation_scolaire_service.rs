@@ -160,6 +160,15 @@ impl OrientationScolaireService {
             query.push(" = ANY(e.specialites)");
         }
 
+        if let Some(q) = request.q.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()) {
+            let like = format!("%{}%", q.replace('%', "\\%").replace('_', "\\_"));
+            query.push(" AND (e.nom_etablissement ILIKE ");
+            query.push_bind(like.clone());
+            query.push(" OR e.ville ILIKE ");
+            query.push_bind(like);
+            query.push(")");
+        }
+
         // Gestion de la distance GPS
         let point_wkt_opt = if let (Some(lat), Some(lng)) = (request.gps_lat, request.gps_lon) {
             let point_wkt = format!("POINT({} {})", lng, lat);
@@ -226,6 +235,15 @@ impl OrientationScolaireService {
             count_query.push(" AND ");
             count_query.push_bind(specialite);
             count_query.push(" = ANY(e.specialites)");
+        }
+
+        if let Some(q) = request.q.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()) {
+            let like = format!("%{}%", q.replace('%', "\\%").replace('_', "\\_"));
+            count_query.push(" AND (e.nom_etablissement ILIKE ");
+            count_query.push_bind(like.clone());
+            count_query.push(" OR e.ville ILIKE ");
+            count_query.push_bind(like);
+            count_query.push(")");
         }
 
         if let (Some(lat), Some(lng)) = (request.gps_lat, request.gps_lon) {
@@ -385,6 +403,7 @@ impl OrientationScolaireService {
             region: request.region.clone(),
             filiere: request.filiere.clone(),
             specialite: None,
+            q: None,
             gps_lat: request.gps_lat,
             gps_lon: request.gps_lon,
             rayon_km: Some(50.0), // Rayon plus large pour suggestions
@@ -465,11 +484,12 @@ impl OrientationScolaireService {
     /// Clé de cache pour recherche
     fn cache_key_search(&self, request: &SearchEtablissementsRequest) -> String {
         format!(
-            "orientation:search:{}:{}:{}:{}:{}:{}",
+            "orientation:search:{}:{}:{}:{}:{}:{}:{}",
             request.type_etablissement.as_deref().unwrap_or("all"),
             request.ville.as_deref().unwrap_or("all"),
             request.region.as_deref().unwrap_or("all"),
             request.filiere.as_deref().unwrap_or("all"),
+            request.q.as_deref().unwrap_or("all"),
             request.page.unwrap_or(1),
             request.limit.unwrap_or(20)
         )

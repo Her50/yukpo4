@@ -1,14 +1,16 @@
 /**
- * Parcours « liste au programme » : plusieurs enfants sur un même écran,
- * classes selon le système du pays de l’utilisateur, programme établissement prioritaire puis Yukpo national.
+ * Liste scolaire : établissement (autocomplete) → classe → programme en tableau
+ * (prix neuf + choix neuf / occasion / rien), puis récapitulatif multi-enfants.
  */
 
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
+    Modal,
     ScrollView,
     StyleSheet,
     Text,
@@ -26,33 +28,51 @@ import { bourseLivreV2Api, ProgrammeScolaire } from '../../services/bourseLivreV
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 
-type EtatSouhaite = 'neuf' | 'occasion' | 'les_deux';
+type PrefLigne = 'neuf' | 'occasion';
 
 interface EtablissementLite {
     id: number;
     nom_etablissement: string;
     ville: string;
-    type_etablissement: string;
+    type_etablissement?: string;
 }
 
-interface ClasseRow {
-    classe: string;
-    niveau: string;
-    total_livres: number;
-    au_programme?: number;
-    entrees_programme?: number;
+interface ExtraLigne {
+    localId: string;
+    titre: string;
+    matiere: string;
+    prix_officiel?: number;
+    pref: PrefLigne;
 }
 
-/** Fallback : niveaux primaire → lycée du système éducatif du pays. */
-function fallbackClassesForCountry(codePays: string): ClasseRow[] {
-    const sys = getSystemeEducatif(codePays);
-    return sys.niveaux
-        .filter((n) => ['primaire', 'college', 'lycee'].includes(n.type))
-        .map((n) => ({
-            classe: n.nom,
-            niveau: n.type,
-            total_livres: 0,
-        }));
+interface EnfantSlot {
+    id: string;
+    prenom: string;
+    classe: string | null;
+    programmes: ProgrammeScolaire[];
+    progLoading: boolean;
+    /** id programme → neuf | occasion ; absence = ne souhaite pas ce livre */
+    choix: Record<number, PrefLigne | undefined>;
+    extraLignes: ExtraLigne[];
+}
+
+function newEnfantId(): string {
+    return `e_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function newExtraId(): string {
+    return `x_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`;
+}
+
+function prixOfficielPositif(v: unknown): number {
+    if (v == null) return 0;
+    const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\s/g, '').replace(',', '.'));
+    return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function livreEstNeuf(l: any): boolean {
+    const a = `${l?.etat_classification ?? ''} ${l?.etat_livre ?? ''}`.toLowerCase();
+    return a.includes('neuf');
 }
 
 function classeLabelForDisplay(classeApi: string, codePays: string): string {
@@ -63,314 +83,252 @@ function classeLabelForDisplay(classeApi: string, codePays: string): string {
     return short?.nom ?? classeApi;
 }
 
-function livreEstNeuf(l: any): boolean {
-    const a = `${l?.etat_classification ?? ''} ${l?.etat_livre ?? ''}`.toLowerCase();
-    return a.includes('neuf');
-}
-
-function filtrerSelonPreference(livres: any[], pref: EtatSouhaite): any[] {
-    if (pref === 'neuf') return livres.filter(livreEstNeuf);
-    if (pref === 'occasion') return livres.filter((l) => !livreEstNeuf(l));
-    return livres;
-}
-
-function prixOfficielPositif(v: unknown): number {
-    if (v == null) return 0;
-    const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\s/g, '').replace(',', '.'));
-    return Number.isFinite(n) && n > 0 ? n : 0;
-}
-
-function newEnfantId(): string {
-    return `e_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
-}
-
-interface EnfantSlot {
-    id: string;
-    prenom: string;
-    villeEtab: string;
-    etab: EtablissementLite | null;
-    etabs: EtablissementLite[];
-    etabLoading: boolean;
-    classe: string | null;
-    programmes: ProgrammeScolaire[];
-    progLoading: boolean;
-    checked: Record<number, EtatSouhaite>;
-}
-
 const emptyEnfant = (): EnfantSlot => ({
     id: newEnfantId(),
     prenom: '',
-    villeEtab: '',
-    etab: null,
-    etabs: [],
-    etabLoading: false,
     classe: null,
     programmes: [],
     progLoading: false,
-    checked: {},
+    choix: {},
+    extraLignes: [],
 });
 
 const ProgrammeBesoinsSelectorScreen: React.FC = () => {
     const navigation = useNavigation() as any;
     const { t } = useLanguageSafe();
     const { countryCode } = useUserCountry();
-
     const nomPays = useMemo(() => getSystemeEducatif(countryCode || 'CM').nomPays, [countryCode]);
 
     const [enfants, setEnfants] = useState<EnfantSlot[]>(() => [emptyEnfant()]);
     const [activeId, setActiveId] = useState(() => enfants[0].id);
 
-    const [classes, setClasses] = useState<ClasseRow[]>([]);
-    const [classesLoading, setClassesLoading] = useState(true);
-    const [classesLoadError, setClassesLoadError] = useState(false);
+    const [etabQuery, setEtabQuery] = useState('');
+    const [etabResults, setEtabResults] = useState<EtablissementLite[]>([]);
+    const [etabLoading, setEtabLoading] = useState(false);
+    const [selectedEtab, setSelectedEtab] = useState<EtablissementLite | null>(null);
+    const [classesEtab, setClassesEtab] = useState<string[]>([]);
+    const [classesEtabLoading, setClassesEtabLoading] = useState(false);
+    /** Référentiel national uniquement (établissement introuvable ou sans liste déposée) */
+    const [nationalFallback, setNationalFallback] = useState(false);
 
-    const [stepResultats, setStepResultats] = useState(false);
-    const [resultLoading, setResultLoading] = useState(false);
-    const [resultatsParEnfant, setResultatsParEnfant] = useState<
-        Array<{
-            enfantId: string;
-            enfantLabel: string;
-            prog: ProgrammeScolaire;
-            pref: EtatSouhaite;
-            livres: any[];
-        }>
+    const [stepRecap, setStepRecap] = useState(false);
+    const [modalExtra, setModalExtra] = useState(false);
+    const [extraTitre, setExtraTitre] = useState('');
+    const [extraMatiere, setExtraMatiere] = useState('');
+    const [extraPrix, setExtraPrix] = useState('');
+    const [extraPref, setExtraPref] = useState<PrefLigne>('neuf');
+
+    const [stepAnnonces, setStepAnnonces] = useState(false);
+    const [annoncesLoading, setAnnoncesLoading] = useState(false);
+    const [annoncesBlocs, setAnnoncesBlocs] = useState<
+        Array<{ enfantId: string; enfantLabel: string; prog: ProgrammeScolaire | null; extra?: ExtraLigne; pref: PrefLigne; livres: any[] }>
     >([]);
+
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const active = useMemo(() => enfants.find((e) => e.id === activeId) ?? enfants[0], [enfants, activeId]);
     const activeClasse = active?.classe ?? null;
-    const activeEtabId = active?.etab?.id;
-
-    const loadClasses = useCallback(async () => {
-        try {
-            setClassesLoading(true);
-            setClassesLoadError(false);
-            const rows = await bourseLivreV2Api.getClassesWithProgrammes();
-            const mapped: ClasseRow[] = (rows || []).map((r: any) => ({
-                classe: r.classe,
-                niveau: r.niveau,
-                total_livres: r.total_livres ?? 0,
-                au_programme: r.au_programme,
-                entrees_programme: r.entrees_programme,
-            }));
-            mapped.sort((a, b) => a.classe.localeCompare(b.classe, 'fr'));
-            setClasses(mapped);
-        } catch (e) {
-            console.error('[ProgrammeBesoins] classes', e);
-            setClasses([]);
-            setClassesLoadError(true);
-        } finally {
-            setClassesLoading(false);
-        }
-    }, []);
-
-    const displayClasses = useMemo(() => {
-        if (classes.length > 0) return classes;
-        if (!classesLoading) return fallbackClassesForCountry(countryCode || 'CM');
-        return [];
-    }, [classes, classesLoading, countryCode]);
-
-    const usingFallbackClasses = classes.length === 0 && !classesLoading;
-
-    useEffect(() => {
-        loadClasses();
-    }, [loadClasses]);
 
     const patchEnfant = useCallback((id: string, patch: Partial<EnfantSlot>) => {
         setEnfants((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
     }, []);
 
+    /** Autocomplete établissements */
+    useEffect(() => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        const q = etabQuery.trim();
+        if (q.length < 2) {
+            setEtabResults([]);
+            return;
+        }
+        debounceRef.current = setTimeout(async () => {
+            setEtabLoading(true);
+            try {
+                const params = new URLSearchParams({ page: '1', limit: '20', q });
+                const res = await apiGet<any>(`/api/orientation-scolaire/etablissements/search?${params.toString()}`);
+                // apiCall met le corps JSON dans res.data → { success, data: [...], pagination }
+                const body = (res?.data ?? res) as { data?: unknown[]; etablissements?: unknown[] };
+                const rows = body?.data ?? body?.etablissements ?? [];
+                const list: EtablissementLite[] = (Array.isArray(rows) ? rows : []).map((r: any) => ({
+                    id: r.id,
+                    nom_etablissement: r.nom_etablissement ?? '',
+                    ville: r.ville ?? '',
+                    type_etablissement: r.type_etablissement,
+                }));
+                setEtabResults(list);
+            } catch (e) {
+                console.warn('[ProgrammeBesoins] search etab', e);
+                setEtabResults([]);
+            } finally {
+                setEtabLoading(false);
+            }
+        }, 350);
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
+    }, [etabQuery]);
+
+    /** Classes proposées à partir du référentiel bourse pour cet établissement */
+    const loadClassesForEtab = useCallback(
+        async (etab: EtablissementLite) => {
+            setClassesEtabLoading(true);
+            try {
+                const all = await bourseLivreV2Api.getProgrammes(undefined, undefined, undefined, {
+                    etablissementId: etab.id,
+                });
+                const setCls = new Set<string>();
+                (all || []).forEach((p) => {
+                    if (p.classe && String(p.classe).trim()) setCls.add(String(p.classe).trim());
+                });
+                const sorted = [...setCls].sort((a, b) => a.localeCompare(b, 'fr'));
+                setClassesEtab(sorted);
+            } catch (e) {
+                console.warn('[ProgrammeBesoins] classes etab', e);
+                setClassesEtab([]);
+            } finally {
+                setClassesEtabLoading(false);
+            }
+        },
+        []
+    );
+
+    /** Classes distinctes du référentiel national (Yukpo), ou liste des niveaux du système éducatif si vide */
+    const loadClassesNational = useCallback(async () => {
+        setClassesEtabLoading(true);
+        try {
+            const all = await bourseLivreV2Api.getProgrammes(undefined, undefined, undefined, {
+                pays: nomPays,
+                nationalOnly: true,
+            });
+            const setCls = new Set<string>();
+            (all || []).forEach((p) => {
+                if (p.classe && String(p.classe).trim()) setCls.add(String(p.classe).trim());
+            });
+            let sorted = [...setCls].sort((a, b) => a.localeCompare(b, 'fr'));
+            if (sorted.length === 0) {
+                const sys = getSystemeEducatif(countryCode || 'CM');
+                sorted = sys.niveaux.map((n) => n.nom);
+            }
+            setClassesEtab(sorted);
+        } catch (e) {
+            console.warn('[ProgrammeBesoins] classes national', e);
+            const sys = getSystemeEducatif(countryCode || 'CM');
+            setClassesEtab(sys.niveaux.map((n) => n.nom));
+        } finally {
+            setClassesEtabLoading(false);
+        }
+    }, [nomPays, countryCode]);
+
+    const activerProgrammeNational = useCallback(() => {
+        hapticPress();
+        setNationalFallback(true);
+        setSelectedEtab(null);
+        setEtabQuery('');
+        setEtabResults([]);
+        setEnfants((prev) => prev.map((e) => ({ ...e, classe: null, programmes: [], choix: {}, progLoading: false })));
+        loadClassesNational();
+    }, [loadClassesNational]);
+
+    const revenirRechercheEtablissement = useCallback(() => {
+        hapticPress();
+        setNationalFallback(false);
+        setClassesEtab([]);
+        setEnfants((prev) => prev.map((e) => ({ ...e, classe: null, programmes: [], choix: {}, progLoading: false })));
+    }, []);
+
+    const onSelectEtab = useCallback(
+        (etab: EtablissementLite) => {
+            hapticPress();
+            setNationalFallback(false);
+            setSelectedEtab(etab);
+            setEtabQuery(etab.nom_etablissement);
+            setEtabResults([]);
+            setEnfants((prev) => prev.map((e) => ({ ...e, classe: null, programmes: [], choix: {}, progLoading: false })));
+            loadClassesForEtab(etab);
+        },
+        [loadClassesForEtab]
+    );
+
+    const clearEtab = useCallback(() => {
+        hapticPress();
+        setNationalFallback(false);
+        setSelectedEtab(null);
+        setEtabQuery('');
+        setEtabResults([]);
+        setClassesEtab([]);
+        setEnfants((prev) => prev.map((e) => ({ ...e, classe: null, programmes: [], choix: {}, extraLignes: [], progLoading: false })));
+    }, []);
+
+    /** Programme : fusion établissement + national, ou référentiel national seul */
     useEffect(() => {
         if (!activeClasse) {
-            patchEnfant(activeId, { programmes: [], checked: {} });
+            patchEnfant(activeId, { programmes: [], choix: {} });
+            return;
+        }
+        if (nationalFallback) {
+            let cancelled = false;
+            (async () => {
+                patchEnfant(activeId, { progLoading: true });
+                try {
+                    const list = await bourseLivreV2Api.getProgrammes(activeClasse, undefined, undefined, {
+                        pays: nomPays,
+                        nationalOnly: true,
+                    });
+                    if (!cancelled) {
+                        patchEnfant(activeId, { programmes: list, choix: {}, progLoading: false });
+                    }
+                } catch (err) {
+                    console.error('[ProgrammeBesoins] programmes national', err);
+                    if (!cancelled) patchEnfant(activeId, { programmes: [], progLoading: false });
+                }
+            })();
+            return () => {
+                cancelled = true;
+            };
+        }
+        if (!selectedEtab) {
+            patchEnfant(activeId, { programmes: [], choix: {} });
             return;
         }
         let cancelled = false;
         (async () => {
             patchEnfant(activeId, { progLoading: true });
             try {
-                const list = await bourseLivreV2Api.getProgrammes(activeClasse, undefined, undefined, {
+                let list = await bourseLivreV2Api.getProgrammes(activeClasse, undefined, undefined, {
                     pays: nomPays,
-                    etablissementId: activeEtabId,
+                    etablissementId: selectedEtab.id,
                 });
+                if (list.length === 0) {
+                    list = await bourseLivreV2Api.getProgrammes(activeClasse, undefined, undefined, {
+                        etablissementId: selectedEtab.id,
+                    });
+                }
                 if (!cancelled) {
-                    patchEnfant(activeId, { programmes: list, checked: {}, progLoading: false });
+                    patchEnfant(activeId, { programmes: list, choix: {}, progLoading: false });
                 }
             } catch (err) {
                 console.error('[ProgrammeBesoins] programmes', err);
-                if (!cancelled) {
-                    patchEnfant(activeId, { programmes: [], progLoading: false });
-                }
+                if (!cancelled) patchEnfant(activeId, { programmes: [], progLoading: false });
             }
         })();
         return () => {
             cancelled = true;
         };
-    }, [activeId, activeClasse, activeEtabId, nomPays, patchEnfant]);
+    }, [activeId, activeClasse, selectedEtab, nomPays, nationalFallback, patchEnfant]);
 
-    const rechercherEtabs = useCallback(async () => {
-        const e = enfants.find((x) => x.id === activeId);
-        if (!e) return;
-        try {
-            patchEnfant(activeId, { etabLoading: true });
-            const params = new URLSearchParams({ page: '1', limit: '25' });
-            if (e.villeEtab.trim()) params.append('ville', e.villeEtab.trim());
-            const response = await apiGet(`/api/orientation-scolaire/etablissements/search?${params}`);
-            const data = (response?.data || response) as any;
-            if (data?.success) {
-                patchEnfant(activeId, { etabs: data.data || [] });
-            } else {
-                patchEnfant(activeId, { etabs: [] });
-            }
-        } catch (err) {
-            console.error('[ProgrammeBesoins] etabs', err);
-            patchEnfant(activeId, { etabs: [] });
-        } finally {
-            patchEnfant(activeId, { etabLoading: false });
-        }
-    }, [activeId, enfants, patchEnfant]);
-
-    const toggleLigne = useCallback(
-        (idProg: number) => {
+    const setChoixProg = useCallback(
+        (progId: number, pref: PrefLigne) => {
             hapticPress();
             const e = enfants.find((x) => x.id === activeId);
             if (!e) return;
-            const prev = e.checked;
-            const next = { ...prev };
-            if (next[idProg]) delete next[idProg];
-            else next[idProg] = 'les_deux';
-            patchEnfant(activeId, { checked: next });
+            const cur = e.choix[progId];
+            const next = { ...e.choix };
+            if (cur === pref) delete next[progId];
+            else next[progId] = pref;
+            patchEnfant(activeId, { choix: next });
         },
         [activeId, enfants, patchEnfant]
     );
-
-    const setPref = useCallback(
-        (idProg: number, pref: EtatSouhaite) => {
-            hapticPress();
-            const e = enfants.find((x) => x.id === activeId);
-            if (!e) return;
-            patchEnfant(activeId, { checked: { ...e.checked, [idProg]: pref } });
-        },
-        [activeId, enfants, patchEnfant]
-    );
-
-    const toutCocher = useCallback(() => {
-        hapticPress();
-        const e = enfants.find((x) => x.id === activeId);
-        if (!e) return;
-        const next: Record<number, EtatSouhaite> = {};
-        e.programmes.forEach((p) => {
-            next[p.id] = e.checked[p.id] ?? 'les_deux';
-        });
-        patchEnfant(activeId, { checked: next });
-    }, [activeId, enfants, patchEnfant]);
-
-    const toutDecocher = useCallback(() => {
-        hapticPress();
-        patchEnfant(activeId, { checked: {} });
-    }, [activeId, patchEnfant]);
-
-    const selectionCountActive = useMemo(
-        () => Object.keys(active?.checked ?? {}).length,
-        [active?.checked]
-    );
-
-    const totalSelectionsTous = useMemo(
-        () => enfants.reduce((n, e) => n + Object.keys(e.checked).length, 0),
-        [enfants]
-    );
-
-    const budgetNeufSelection = useMemo(() => {
-        const e = active;
-        if (!e) return { sum: 0, withPrice: 0, withoutPrice: 0, countNeufPath: 0 };
-        let sum = 0;
-        let withPrice = 0;
-        let withoutPrice = 0;
-        let countNeufPath = 0;
-        for (const p of e.programmes) {
-            if (!e.checked[p.id]) continue;
-            const pref = e.checked[p.id];
-            if (pref === 'occasion') continue;
-            countNeufPath++;
-            const px = prixOfficielPositif(p.prix_officiel);
-            if (px > 0) {
-                sum += px;
-                withPrice++;
-            } else {
-                withoutPrice++;
-            }
-        }
-        return { sum, withPrice, withoutPrice, countNeufPath };
-    }, [active]);
-
-    const lancerRechercheAnnonces = useCallback(async () => {
-        hapticPress();
-        setResultLoading(true);
-        setStepResultats(true);
-        const blocs: Array<{
-            enfantId: string;
-            enfantLabel: string;
-            prog: ProgrammeScolaire;
-            pref: EtatSouhaite;
-            livres: any[];
-        }> = [];
-        try {
-            for (const enfant of enfants) {
-                if (!enfant.classe || Object.keys(enfant.checked).length === 0) continue;
-                const ids = Object.keys(enfant.checked).map(Number);
-                const lignes = enfant.programmes.filter((p) => ids.includes(p.id));
-                const label =
-                    enfant.prenom.trim() ||
-                    t('programmeBesoins.enfantSansNom', 'Enfant {{n}}', {
-                        n: enfants.indexOf(enfant) + 1,
-                    });
-                for (const prog of lignes) {
-                    const pref = enfant.checked[prog.id];
-                    const search = prog.titre_livre.length > 2 ? prog.titre_livre.slice(0, 80) : undefined;
-                    let livres = await bourseLivreV2Api.browseByClass(
-                        enfant.classe,
-                        prog.matiere,
-                        undefined,
-                        undefined,
-                        undefined,
-                        search,
-                        40
-                    );
-                    livres = filtrerSelonPreference(livres, pref);
-                    blocs.push({ enfantId: enfant.id, enfantLabel: label, prog, pref, livres });
-                }
-            }
-            if (blocs.length === 0) {
-                setStepResultats(false);
-                return;
-            }
-            setResultatsParEnfant(blocs);
-        } finally {
-            setResultLoading(false);
-        }
-    }, [enfants, t]);
-
-    const renderPrefChips = (progId: number) => {
-        const e = active;
-        if (!e) return null;
-        const pref = e.checked[progId] || 'les_deux';
-        const chip = (key: EtatSouhaite, label: string) => (
-            <TouchableOpacity
-                key={key}
-                style={[styles.prefChip, pref === key && styles.prefChipOn]}
-                onPress={() => setPref(progId, key)}
-                activeOpacity={0.85}
-            >
-                <Text style={[styles.prefChipText, pref === key && styles.prefChipTextOn]}>{label}</Text>
-            </TouchableOpacity>
-        );
-        return (
-            <View style={styles.prefRow}>
-                {chip('neuf', t('programmeBesoins.neuf', 'Neuf'))}
-                {chip('occasion', t('programmeBesoins.occasion', 'Occasion'))}
-                {chip('les_deux', t('programmeBesoins.lesDeux', 'Les deux'))}
-            </View>
-        );
-    };
 
     const ajouterEnfant = () => {
         hapticPress();
@@ -389,7 +347,173 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
         });
     };
 
-    if (stepResultats) {
+    const totalLignesSelectionnees = useMemo(() => {
+        return enfants.reduce((acc, e) => {
+            const nProg = Object.keys(e.choix).filter((k) => e.choix[Number(k)] != null).length;
+            const nExtra = e.extraLignes.length;
+            return acc + nProg + nExtra;
+        }, 0);
+    }, [enfants]);
+
+    const budgetParEnfant = useCallback(
+        (e: EnfantSlot) => {
+            let sumNeuf = 0;
+            let countNeuf = 0;
+            let countOcc = 0;
+            for (const p of e.programmes) {
+                const pr = e.choix[p.id];
+                if (pr === 'neuf') {
+                    countNeuf++;
+                    sumNeuf += prixOfficielPositif(p.prix_officiel);
+                } else if (pr === 'occasion') countOcc++;
+            }
+            for (const x of e.extraLignes) {
+                if (x.pref === 'neuf') {
+                    countNeuf++;
+                    sumNeuf += prixOfficielPositif(x.prix_officiel);
+                } else countOcc++;
+            }
+            return { sumNeuf, countNeuf, countOcc };
+        },
+        []
+    );
+
+    const ouvrirRecap = useCallback(() => {
+        hapticPress();
+        if (!nationalFallback && !selectedEtab) {
+            Alert.alert(t('programmeBesoins.etabRequis', 'Établissement requis'), t('programmeBesoins.etabRequisBody', 'Choisissez un établissement.'));
+            return;
+        }
+        if (totalLignesSelectionnees === 0) {
+            Alert.alert(
+                t('programmeBesoins.aucuneSelection', 'Aucune sélection'),
+                t('programmeBesoins.aucuneSelectionBody', 'Indiquez au moins un livre (neuf ou occasion) pour un enfant.')
+            );
+            return;
+        }
+        setStepRecap(true);
+    }, [nationalFallback, selectedEtab, totalLignesSelectionnees, t]);
+
+    const retirerLigneRecap = useCallback(
+        (enfantId: string, progId: number | null, extraLocalId?: string) => {
+            hapticPress();
+            setEnfants((prev) =>
+                prev.map((e) => {
+                    if (e.id !== enfantId) return e;
+                    if (extraLocalId) {
+                        return { ...e, extraLignes: e.extraLignes.filter((x) => x.localId !== extraLocalId) };
+                    }
+                    if (progId != null) {
+                        const next = { ...e.choix };
+                        delete next[progId];
+                        return { ...e, choix: next };
+                    }
+                    return e;
+                })
+            );
+        },
+        []
+    );
+
+    const ajouterExtraLigne = useCallback(() => {
+        hapticPress();
+        const titre = extraTitre.trim();
+        if (!titre) {
+            Alert.alert(t('programmeBesoins.titreRequis', 'Titre requis'));
+            return;
+        }
+        const prix = extraPrix.trim() ? parseFloat(extraPrix.replace(',', '.')) : undefined;
+        const ligne: ExtraLigne = {
+            localId: newExtraId(),
+            titre,
+            matiere: extraMatiere.trim() || '—',
+            prix_officiel: Number.isFinite(prix) && (prix as number) > 0 ? prix : undefined,
+            pref: extraPref,
+        };
+        setEnfants((prev) =>
+            prev.map((e) => (e.id === activeId ? { ...e, extraLignes: [...e.extraLignes, ligne] } : e))
+        );
+        setExtraTitre('');
+        setExtraMatiere('');
+        setExtraPrix('');
+        setExtraPref('neuf');
+        setModalExtra(false);
+    }, [activeId, extraMatiere, extraPrix, extraPref, extraTitre, t]);
+
+    const lancerRechercheAnnoncesOccasion = useCallback(async () => {
+        hapticPress();
+        setAnnoncesLoading(true);
+        setStepAnnonces(true);
+        setStepRecap(false);
+        const blocs: Array<{
+            enfantId: string;
+            enfantLabel: string;
+            prog: ProgrammeScolaire | null;
+            extra?: ExtraLigne;
+            pref: PrefLigne;
+            livres: any[];
+        }> = [];
+        try {
+            for (const enfant of enfants) {
+                const label =
+                    enfant.prenom.trim() ||
+                    t('programmeBesoins.enfantNum', 'Enfant {{n}}', { n: enfants.indexOf(enfant) + 1 });
+                if (!enfant.classe) continue;
+
+                for (const p of enfant.programmes) {
+                    if (enfant.choix[p.id] !== 'occasion') continue;
+                    const search = p.titre_livre.length > 2 ? p.titre_livre.slice(0, 80) : undefined;
+                    let livres = await bourseLivreV2Api.browseByClass(
+                        enfant.classe,
+                        p.matiere,
+                        undefined,
+                        undefined,
+                        undefined,
+                        search,
+                        40
+                    );
+                    livres = livres.filter((l: any) => !livreEstNeuf(l));
+                    blocs.push({ enfantId: enfant.id, enfantLabel: label, prog: p, pref: 'occasion', livres });
+                }
+                for (const x of enfant.extraLignes) {
+                    if (x.pref !== 'occasion') continue;
+                    const search = x.titre.length > 2 ? x.titre.slice(0, 80) : undefined;
+                    let livres = await bourseLivreV2Api.browseByClass(
+                        enfant.classe,
+                        x.matiere,
+                        undefined,
+                        undefined,
+                        undefined,
+                        search,
+                        40
+                    );
+                    livres = livres.filter((l: any) => !livreEstNeuf(l));
+                    blocs.push({ enfantId: enfant.id, enfantLabel: label, prog: null, extra: x, pref: 'occasion', livres });
+                }
+            }
+            setAnnoncesBlocs(blocs);
+
+            const nNeuf = enfants.reduce((n, e) => {
+                let k = 0;
+                for (const p of e.programmes) if (e.choix[p.id] === 'neuf') k++;
+                for (const x of e.extraLignes) if (x.pref === 'neuf') k++;
+                return n + k;
+            }, 0);
+
+            Alert.alert(
+                t('programmeBesoins.valideTitle', 'Demande enregistrée'),
+                t('programmeBesoins.valideBody', '{{occ}} recherche(s) occasion lancée(s). {{neuf}} ligne(s) neuf : les librairies partenaires peuvent être alertées selon le programme.', {
+                    occ: blocs.length,
+                    neuf: nNeuf,
+                })
+            );
+        } finally {
+            setAnnoncesLoading(false);
+        }
+    }, [enfants, t]);
+
+    /** Récap */
+    if (stepRecap) {
         return (
             <SafeNativeView style={styles.safe}>
                 <View style={styles.header}>
@@ -397,56 +521,235 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                         style={styles.backBtn}
                         onPress={() => {
                             hapticPress();
-                            setStepResultats(false);
+                            setStepRecap(false);
                         }}
                     >
                         <SafeIcon name="arrow-left" size={22} color={modernColors.primary} type="lucide" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{t('programmeBesoins.resultatsTitle', 'Annonces pour votre sélection')}</Text>
+                    <Text style={styles.headerTitle}>{t('programmeBesoins.recapTitle', 'Récapitulatif')}</Text>
                 </View>
-                {resultLoading ? (
+                <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+                    {nationalFallback ? (
+                        <View style={[styles.etabRecapBanner, { backgroundColor: '#ecfdf5', borderColor: '#6ee7b7' }]}>
+                            <SafeIcon name="book-marked" size={18} color="#047857" type="lucide" />
+                            <Text style={[styles.etabRecapText, { color: '#065f46' }]}>
+                                {t('programmeBesoins.recapNationalBanner', 'Programme national Yukpo (référentiel) — sans établissement sélectionné.')}
+                            </Text>
+                        </View>
+                    ) : null}
+                    {selectedEtab ? (
+                        <View style={styles.etabRecapBanner}>
+                            <SafeIcon name="school" size={18} color="#1e40af" type="lucide" />
+                            <Text style={styles.etabRecapText}>
+                                {selectedEtab.nom_etablissement} · {selectedEtab.ville}
+                            </Text>
+                        </View>
+                    ) : null}
+                    {enfants.map((e, idx) => {
+                        const label = e.prenom.trim() || t('programmeBesoins.enfantNum', 'Enfant {{n}}', { n: idx + 1 });
+                        const bud = budgetParEnfant(e);
+                        return (
+                            <View key={e.id} style={styles.recapCard}>
+                                <Text style={styles.recapEnfantTitle}>{label}</Text>
+                                {e.classe ? (
+                                    <Text style={styles.recapMeta}>
+                                        {t('programmeBesoins.classeLabel', 'Classe : {{c}}', { c: classeLabelForDisplay(e.classe, countryCode || 'CM') })}
+                                    </Text>
+                                ) : null}
+                                <Text style={styles.recapBudget}>
+                                    {t('programmeBesoins.budgetApprox', 'Budget neuf approx. : {{m}} XAF · {{cn}} neuf · {{co}} occasion', {
+                                        m: Math.round(bud.sumNeuf).toLocaleString(),
+                                        cn: bud.countNeuf,
+                                        co: bud.countOcc,
+                                    })}
+                                </Text>
+
+                                <Text style={styles.recapSectionLabel}>{t('programmeBesoins.sectionNeuf', 'Neuf')}</Text>
+                                {e.programmes
+                                    .filter((p) => e.choix[p.id] === 'neuf')
+                                    .map((p) => (
+                                        <View key={p.id} style={styles.recapRow}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.recapRowTitle} numberOfLines={2}>
+                                                    {p.titre_livre}
+                                                </Text>
+                                                <Text style={styles.recapRowMeta}>
+                                                    {p.matiere}
+                                                    {p.prix_officiel != null
+                                                        ? ` · ${Number(p.prix_officiel).toLocaleString()} ${p.devise || 'XAF'}`
+                                                        : ''}
+                                                </Text>
+                                            </View>
+                                            <TouchableOpacity onPress={() => retirerLigneRecap(e.id, p.id)} hitSlop={12}>
+                                                <SafeIcon name="trash-2" size={18} color="#dc2626" type="lucide" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                {e.extraLignes
+                                    .filter((x) => x.pref === 'neuf')
+                                    .map((x) => (
+                                        <View key={x.localId} style={styles.recapRow}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.recapRowTitle}>{x.titre}</Text>
+                                                <Text style={styles.recapRowMeta}>
+                                                    {x.matiere}
+                                                    {x.prix_officiel != null ? ` · ${x.prix_officiel.toLocaleString()} XAF` : ''}
+                                                </Text>
+                                            </View>
+                                            <TouchableOpacity onPress={() => retirerLigneRecap(e.id, null, x.localId)} hitSlop={12}>
+                                                <SafeIcon name="trash-2" size={18} color="#dc2626" type="lucide" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+
+                                <Text style={[styles.recapSectionLabel, { marginTop: 12 }]}>{t('programmeBesoins.sectionOccasion', 'Occasion')}</Text>
+                                {e.programmes
+                                    .filter((p) => e.choix[p.id] === 'occasion')
+                                    .map((p) => (
+                                        <View key={`o-${p.id}`} style={styles.recapRow}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.recapRowTitle} numberOfLines={2}>
+                                                    {p.titre_livre}
+                                                </Text>
+                                                <Text style={styles.recapRowMeta}>{p.matiere}</Text>
+                                            </View>
+                                            <TouchableOpacity onPress={() => retirerLigneRecap(e.id, p.id)} hitSlop={12}>
+                                                <SafeIcon name="trash-2" size={18} color="#dc2626" type="lucide" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                {e.extraLignes
+                                    .filter((x) => x.pref === 'occasion')
+                                    .map((x) => (
+                                        <View key={`xo-${x.localId}`} style={styles.recapRow}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={styles.recapRowTitle}>{x.titre}</Text>
+                                                <Text style={styles.recapRowMeta}>{x.matiere}</Text>
+                                            </View>
+                                            <TouchableOpacity onPress={() => retirerLigneRecap(e.id, null, x.localId)} hitSlop={12}>
+                                                <SafeIcon name="trash-2" size={18} color="#dc2626" type="lucide" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+
+                                <TouchableOpacity
+                                    style={styles.addLineBtn}
+                                    onPress={() => {
+                                        hapticPress();
+                                        setActiveId(e.id);
+                                        setModalExtra(true);
+                                    }}
+                                >
+                                    <SafeIcon name="plus" size={16} color="#2563eb" type="lucide" />
+                                    <Text style={styles.addLineBtnText}>{t('programmeBesoins.ajouterLivre', 'Ajouter un livre')}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        );
+                    })}
+
+                    <TouchableOpacity style={styles.cta} onPress={lancerRechercheAnnoncesOccasion}>
+                        <SafeIcon name="check" size={20} color="#fff" type="lucide" />
+                        <Text style={styles.ctaText}>{t('programmeBesoins.validerCommande', 'Valider et lancer les recherches occasion')}</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+
+                <Modal visible={modalExtra} transparent animationType="fade" onRequestClose={() => setModalExtra(false)}>
+                    <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setModalExtra(false)}>
+                        <TouchableOpacity style={styles.modalBox} activeOpacity={1} onPress={(ev) => ev.stopPropagation()}>
+                            <Text style={styles.modalTitle}>{t('programmeBesoins.ajouterLivre', 'Ajouter un livre')}</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder={t('programmeBesoins.titrePlaceholder', 'Titre')}
+                                value={extraTitre}
+                                onChangeText={setExtraTitre}
+                                placeholderTextColor="#9ca3af"
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder={t('programmeBesoins.matierePlaceholder', 'Matière')}
+                                value={extraMatiere}
+                                onChangeText={setExtraMatiere}
+                                placeholderTextColor="#9ca3af"
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder={t('programmeBesoins.prixPlaceholder', 'Prix neuf (optionnel)')}
+                                value={extraPrix}
+                                onChangeText={setExtraPrix}
+                                keyboardType="decimal-pad"
+                                placeholderTextColor="#9ca3af"
+                            />
+                            <View style={styles.modalPrefRow}>
+                                <TouchableOpacity
+                                    style={[styles.modalChip, extraPref === 'neuf' && styles.modalChipOn]}
+                                    onPress={() => setExtraPref('neuf')}
+                                >
+                                    <Text style={styles.modalChipText}>{t('programmeBesoins.neuf', 'Neuf')}</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.modalChip, extraPref === 'occasion' && styles.modalChipOn]}
+                                    onPress={() => setExtraPref('occasion')}
+                                >
+                                    <Text style={styles.modalChipText}>{t('programmeBesoins.occasion', 'Occasion')}</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <TouchableOpacity style={styles.cta} onPress={ajouterExtraLigne}>
+                                <Text style={styles.ctaText}>{t('programmeBesoins.ajouter', 'Ajouter')}</Text>
+                            </TouchableOpacity>
+                        </TouchableOpacity>
+                    </TouchableOpacity>
+                </Modal>
+            </SafeNativeView>
+        );
+    }
+
+    /** Annonces occasion (après validation) */
+    if (stepAnnonces) {
+        return (
+            <SafeNativeView style={styles.safe}>
+                <View style={styles.header}>
+                    <TouchableOpacity
+                        style={styles.backBtn}
+                        onPress={() => {
+                            hapticPress();
+                            setStepAnnonces(false);
+                            setStepRecap(true);
+                        }}
+                    >
+                        <SafeIcon name="arrow-left" size={22} color={modernColors.primary} type="lucide" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>{t('programmeBesoins.annoncesOccasion', 'Annonces occasion')}</Text>
+                </View>
+                {annoncesLoading ? (
                     <View style={styles.center}>
                         <ActivityIndicator size="large" color={modernColors.primary} />
-                        <Text style={styles.muted}>{t('programmeBesoins.chargement', 'Chargement…')}</Text>
                     </View>
                 ) : (
                     <FlatList
-                        data={resultatsParEnfant}
-                        keyExtractor={(item) => `${item.enfantId}-${item.prog.id}`}
+                        data={annoncesBlocs}
+                        keyExtractor={(item, i) => `${item.enfantId}-${item.prog?.id ?? 'x'}-${i}`}
                         contentContainerStyle={styles.listPad}
                         renderItem={({ item }) => (
                             <View style={styles.resultSection}>
                                 <Text style={styles.resultEnfantBadge}>{item.enfantLabel}</Text>
                                 <Text style={styles.resultSectionTitle} numberOfLines={2}>
-                                    {item.prog.titre_livre}
-                                </Text>
-                                <Text style={styles.resultSectionMeta}>
-                                    {item.prog.matiere} ·{' '}
-                                    {item.pref === 'neuf'
-                                        ? t('programmeBesoins.neuf', 'Neuf')
-                                        : item.pref === 'occasion'
-                                          ? t('programmeBesoins.occasion', 'Occasion')
-                                          : t('programmeBesoins.lesDeux', 'Les deux')}
+                                    {item.prog?.titre_livre ?? item.extra?.titre}
                                 </Text>
                                 {item.livres.length === 0 ? (
-                                    <Text style={styles.mutedLeft}>
-                                        {t('programmeBesoins.aucuneAnnonce', 'Aucune annonce pour ces critères.')}
-                                    </Text>
+                                    <Text style={styles.mutedLeft}>{t('programmeBesoins.aucuneAnnonce', 'Aucune annonce pour ces critères.')}</Text>
                                 ) : (
                                     item.livres.map((livre: any) => (
                                         <TouchableOpacity
                                             key={livre.id}
                                             style={styles.miniCard}
                                             onPress={() => navigation.navigate('LivreScolaireDetails', { livreId: livre.id })}
-                                            activeOpacity={0.88}
                                         >
                                             <View style={{ flex: 1 }}>
                                                 <Text style={styles.miniTitle} numberOfLines={2}>
                                                     {livre.titre}
                                                 </Text>
                                                 <Text style={styles.miniMeta} numberOfLines={1}>
-                                                    {(livre.etat_classification || livre.etat_livre || '—') +
-                                                        (livre.ville ? ` · ${livre.ville}` : '')}
+                                                    {(livre.etat_classification || livre.etat_livre || '—') + (livre.ville ? ` · ${livre.ville}` : '')}
                                                 </Text>
                                             </View>
                                             <SafeIcon name="chevron-right" size={18} color="#9ca3af" type="lucide" />
@@ -461,6 +764,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
         );
     }
 
+    /** Formulaire principal */
     return (
         <SafeNativeView style={styles.safe}>
             <LinearGradient colors={['#1e3a8a', '#2563eb', '#3b82f6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -481,17 +785,83 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                 <Text style={styles.heroTitle}>{t('programmeBesoins.title', 'Votre liste scolaire')}</Text>
                 <Text style={styles.heroSubtitle}>
                     {t(
-                        'programmeBesoins.heroSubtitle',
-                        'Classe, établissement optionnel, manuels — tout pour un ou plusieurs enfants.'
+                        'programmeBesoins.heroSubtitleV2',
+                        'Choisissez l’établissement, la classe, puis pour chaque livre : neuf, occasion, ou laissez vide si vous n’en avez pas besoin.'
                     )}
                 </Text>
             </LinearGradient>
 
             <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                {/* Établissement */}
+                <View style={styles.cardElevated}>
+                    <View style={styles.stepHeader}>
+                        <SafeIcon name="school" size={20} color="#059669" type="lucide" />
+                        <Text style={styles.stepTitle}>{t('programmeBesoins.etablissement', 'Établissement scolaire')}</Text>
+                    </View>
+                    <TextInput
+                        style={styles.input}
+                        placeholder={t('programmeBesoins.etabPlaceholder', 'Tapez le nom ou la ville…')}
+                        placeholderTextColor="#9ca3af"
+                        value={etabQuery}
+                        onChangeText={(txt) => {
+                            setEtabQuery(txt);
+                            if (selectedEtab && txt !== selectedEtab.nom_etablissement) setSelectedEtab(null);
+                        }}
+                    />
+                    {etabLoading ? <ActivityIndicator color={modernColors.primary} style={{ marginVertical: 8 }} /> : null}
+                    {!selectedEtab && etabResults.length > 0 ? (
+                        <View style={styles.autocompleteBox}>
+                            {etabResults.map((et) => (
+                                <TouchableOpacity key={et.id} style={styles.autocompleteRow} onPress={() => onSelectEtab(et)} activeOpacity={0.7}>
+                                    <Text style={styles.autocompleteName} numberOfLines={2}>
+                                        {et.nom_etablissement}
+                                    </Text>
+                                    <Text style={styles.autocompleteVille} numberOfLines={1}>
+                                        {et.ville}
+                                        {et.type_etablissement ? ` · ${et.type_etablissement}` : ''}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    ) : null}
+                    {selectedEtab ? (
+                        <View style={styles.etabSelectedRow}>
+                            <Text style={styles.etabSelectedText} numberOfLines={2}>
+                                ✓ {selectedEtab.nom_etablissement} ({selectedEtab.ville})
+                            </Text>
+                            <TouchableOpacity onPress={clearEtab}>
+                                <Text style={styles.link}>{t('programmeBesoins.changerEtab', 'Changer')}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : null}
+                    {nationalFallback ? (
+                        <View style={styles.nationalInfoBanner}>
+                            <SafeIcon name="book-marked" size={18} color="#047857" type="lucide" />
+                            <Text style={styles.nationalInfoText}>
+                                {t(
+                                    'programmeBesoins.modeNationalActif',
+                                    'Vous utilisez le référentiel national Yukpo (hors établissement). Les listes déposées par les écoles peuvent être plus précises.'
+                                )}
+                            </Text>
+                            <TouchableOpacity onPress={revenirRechercheEtablissement} style={styles.nationalBackBtn}>
+                                <Text style={styles.link}>{t('programmeBesoins.revenirEtab', 'Rechercher un établissement')}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : null}
+                    {!nationalFallback && !selectedEtab ? (
+                        <TouchableOpacity style={styles.fallbackLinkWrap} onPress={activerProgrammeNational} activeOpacity={0.7}>
+                            <Text style={styles.fallbackLink}>
+                                {t('programmeBesoins.fallbackNationalLink', 'Je ne trouve pas mon établissement — utiliser le programme national')}
+                            </Text>
+                        </TouchableOpacity>
+                    ) : null}
+                </View>
+
+                {/* Enfants */}
                 <View style={styles.enfantRow}>
                     <View style={styles.sectionTitleRow}>
                         <SafeIcon name="users" size={18} color={modernColors.primary} type="lucide" />
-                        <Text style={styles.sectionIconTitle}>{t('programmeBesoins.enfants', 'Mes enfants')}</Text>
+                        <Text style={styles.sectionIconTitle}>{t('programmeBesoins.enfants', 'Enfants')}</Text>
                     </View>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.enfantChips}>
                         {enfants.map((e, idx) => {
@@ -519,274 +889,157 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                         </TouchableOpacity>
                     </ScrollView>
                 </View>
-
                 {enfants.length > 1 && (
                     <TouchableOpacity style={styles.removeEnfantLink} onPress={() => retirerEnfant(activeId)}>
-                        <Text style={styles.linkMutedSmall}>
-                            {t('programmeBesoins.retirerEnfantActif', 'Retirer cet enfant du parcours')}
-                        </Text>
+                        <Text style={styles.linkMutedSmall}>{t('programmeBesoins.retirerEnfantActif', 'Retirer cet enfant')}</Text>
                     </TouchableOpacity>
                 )}
 
-                <View style={styles.cardElevated}>
-                    <View style={styles.stepHeader}>
-                        <SafeIcon name="smile" size={20} color="#6366f1" type="lucide" />
-                        <Text style={styles.stepTitle}>{t('programmeBesoins.prenomOptionnel', 'Prénom (optionnel)')}</Text>
-                    </View>
-                    <TextInput
-                        style={styles.input}
-                        placeholder={t('programmeBesoins.prenomPlaceholder', 'Ex. Marie')}
-                        placeholderTextColor="#9ca3af"
-                        value={active?.prenom ?? ''}
-                        onChangeText={(txt) => patchEnfant(activeId, { prenom: txt })}
-                    />
-                </View>
-
-                {classesLoadError ? (
-                    <View style={styles.warnBanner}>
-                        <SafeIcon name="wifi-off" size={18} color="#b45309" type="lucide" />
-                        <Text style={styles.warnBannerText}>
-                            {t(
-                                'programmeBesoins.classesLoadError',
-                                'Impossible de charger le référentiel en ligne. Classes standards affichées — vous pouvez réessayer.'
-                            )}
-                        </Text>
-                        <TouchableOpacity style={styles.warnBannerBtn} onPress={loadClasses}>
-                            <Text style={styles.warnBannerBtnText}>{t('programmeBesoins.retryClasses', 'Réessayer')}</Text>
-                        </TouchableOpacity>
-                    </View>
-                ) : null}
-
-                {usingFallbackClasses && !classesLoadError ? (
-                    <View style={styles.infoBanner}>
-                        <SafeIcon name="sparkles" size={18} color="#1d4ed8" type="lucide" />
-                        <Text style={styles.infoBannerText}>
-                            {t(
-                                'programmeBesoins.fallbackClassesBannerV2',
-                                'Niveaux selon le système {{pays}}. Les classes du référentiel Yukpo s’affichent si disponibles.',
-                                { pays: nomPays }
-                            )}
-                        </Text>
-                    </View>
-                ) : null}
-
-                <View style={styles.cardElevated}>
-                    <View style={styles.stepHeader}>
-                        <SafeIcon name="graduation-cap" size={20} color="#2563eb" type="lucide" />
-                        <Text style={styles.stepTitle}>{t('programmeBesoins.stepClasse', 'Classe')}</Text>
-                    </View>
-                    {classesLoading ? (
-                        <ActivityIndicator color={modernColors.primary} />
-                    ) : (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContent}>
-                            {displayClasses.map((c) => {
-                                const selected = active?.classe === c.classe;
-                                const sub = classeLabelForDisplay(c.classe, countryCode || 'CM');
-                                return (
-                                    <TouchableOpacity
-                                        key={c.classe}
-                                        style={[styles.chip, selected && styles.chipOn]}
-                                        onPress={() => {
-                                            hapticPress();
-                                            patchEnfant(activeId, { classe: c.classe });
-                                        }}
-                                    >
-                                        <Text style={[styles.chipText, selected && styles.chipTextOn]} numberOfLines={2}>
-                                            {sub !== c.classe ? sub : c.classe}
-                                        </Text>
-                                        {c.entrees_programme != null && c.entrees_programme > 0 ? (
-                                            <Text style={styles.chipSub}>
-                                                {t('programmeBesoins.refProgramme', '{{n}} au programme', { n: c.entrees_programme })}
-                                            </Text>
-                                        ) : c.total_livres > 0 ? (
-                                            <Text style={styles.chipSub}>
-                                                {t('programmeBesoins.annonces', '{{n}} annonces', { n: c.total_livres })}
-                                            </Text>
-                                        ) : null}
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-                    )}
-                </View>
-
-                <View style={styles.cardElevated}>
-                    <View style={styles.stepHeader}>
-                        <SafeIcon name="school" size={20} color="#059669" type="lucide" />
-                        <Text style={styles.stepTitle}>{t('programmeBesoins.stepEtablissement', 'Établissement (optionnel)')}</Text>
-                    </View>
-                    <Text style={styles.cardHintShort}>
-                        {t(
-                            'programmeBesoins.etablissementHintShort',
-                            'Si votre école a un programme dans Yukpo, il est prioritaire sur le référentiel national.'
-                        )}
-                    </Text>
-                    <View style={styles.rowInput}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder={t('programmeBesoins.villePlaceholder', 'Ville (ex. Douala)')}
-                            value={active?.villeEtab ?? ''}
-                            onChangeText={(txt) => patchEnfant(activeId, { villeEtab: txt })}
-                            placeholderTextColor="#9ca3af"
-                        />
-                        <TouchableOpacity style={styles.btnSecondary} onPress={rechercherEtabs}>
-                            <Text style={styles.btnSecondaryText}>{t('programmeBesoins.chercherEtab', 'Chercher')}</Text>
-                        </TouchableOpacity>
-                    </View>
-                    {active?.etabLoading && <ActivityIndicator color={modernColors.primary} />}
-                    {(active?.etabs?.length ?? 0) > 0 && (
-                        <FlatList
-                            scrollEnabled={false}
-                            data={active?.etabs ?? []}
-                            keyExtractor={(item) => String(item.id)}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={[styles.etabRow, active?.etab?.id === item.id && styles.etabRowOn]}
-                                    onPress={() => {
-                                        hapticPress();
-                                        patchEnfant(activeId, { etab: item });
-                                    }}
-                                >
-                                    <Text style={styles.etabName}>{item.nom_etablissement}</Text>
-                                    <Text style={styles.etabVille}>
-                                        {item.ville} · {item.type_etablissement}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                        />
-                    )}
-                    {active?.etab && (
-                        <View style={styles.etabActions}>
-                            <TouchableOpacity
-                                onPress={() => {
-                                    hapticPress();
-                                    navigation.navigate('ProgrammesScolaires', { etablissement_id: active.etab!.id });
-                                }}
-                            >
-                                <Text style={styles.link}>{t('programmeBesoins.voirPdfProgramme', 'Programmes / PDF de cet établissement')}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => patchEnfant(activeId, { etab: null })}>
-                                <Text style={styles.linkMuted}>{t('programmeBesoins.retirerEtab', 'Retirer')}</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                </View>
-
-                {active?.classe && (
+                {/* Classes (établissement ou référentiel national) */}
+                {selectedEtab || nationalFallback ? (
                     <View style={styles.cardElevated}>
-                        <View style={styles.rowBetween}>
-                            <View style={styles.stepHeader}>
-                                <SafeIcon name="library" size={20} color="#7c3aed" type="lucide" />
-                                <Text style={styles.stepTitle}>
-                                    {t('programmeBesoins.livresProgramme', 'Manuels')} — {active.classe}
+                        <View style={styles.stepHeader}>
+                            <SafeIcon name="graduation-cap" size={20} color="#2563eb" type="lucide" />
+                            <Text style={styles.stepTitle}>{t('programmeBesoins.stepClasse', 'Classe')}</Text>
+                        </View>
+                        {classesEtabLoading ? (
+                            <ActivityIndicator color={modernColors.primary} />
+                        ) : classesEtab.length === 0 ? (
+                            <>
+                                <Text style={styles.mutedLeft}>
+                                    {nationalFallback
+                                        ? t(
+                                              'programmeBesoins.noClassesNational',
+                                              'Aucune classe trouvée dans le référentiel national pour votre pays. Les administrateurs peuvent enrichir les données.'
+                                          )
+                                        : t(
+                                              'programmeBesoins.noClassesEtab',
+                                              'Aucune classe listée pour cet établissement dans Yukpo. Les dépôts de listes par l’établissement enrichissent cette section.'
+                                          )}
                                 </Text>
-                            </View>
-                            <View style={styles.bulkRow}>
-                                <TouchableOpacity onPress={toutCocher}>
-                                    <Text style={styles.link}>{t('programmeBesoins.toutCocher', 'Tout cocher')}</Text>
-                                </TouchableOpacity>
-                                <Text style={styles.dot}>·</Text>
-                                <TouchableOpacity onPress={toutDecocher}>
-                                    <Text style={styles.linkMuted}>{t('programmeBesoins.toutDecocher', 'Tout décocher')}</Text>
-                                </TouchableOpacity>
-                            </View>
+                                {!nationalFallback && selectedEtab ? (
+                                    <TouchableOpacity style={styles.fallbackLinkWrap} onPress={activerProgrammeNational} activeOpacity={0.7}>
+                                        <Text style={styles.fallbackLink}>
+                                            {t(
+                                                'programmeBesoins.fallbackNationalFromEtab',
+                                                'Utiliser le programme national Yukpo pour choisir une classe'
+                                            )}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ) : null}
+                            </>
+                        ) : (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContent}>
+                                {classesEtab.map((cl) => {
+                                    const selected = active?.classe === cl;
+                                    const sub = classeLabelForDisplay(cl, countryCode || 'CM');
+                                    return (
+                                        <TouchableOpacity
+                                            key={cl}
+                                            style={[styles.chip, selected && styles.chipOn]}
+                                            onPress={() => {
+                                                hapticPress();
+                                                patchEnfant(activeId, { classe: cl });
+                                            }}
+                                        >
+                                            <Text style={[styles.chipText, selected && styles.chipTextOn]} numberOfLines={2}>
+                                                {sub}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+                        )}
+                    </View>
+                ) : null}
+
+                {/* Tableau programme */}
+                {(nationalFallback || selectedEtab) && active?.classe ? (
+                    <View style={styles.cardElevated}>
+                        <View style={styles.stepHeader}>
+                            <SafeIcon name="library" size={20} color="#7c3aed" type="lucide" />
+                            <Text style={styles.stepTitle}>
+                                {t('programmeBesoins.tableProgramme', 'Programme — {{classe}}', {
+                                    classe: classeLabelForDisplay(active.classe!, countryCode || 'CM'),
+                                })}
+                            </Text>
+                        </View>
+                        <View style={styles.tableHeaderRow}>
+                            <Text style={[styles.th, { flex: 2.2 }]}>{t('programmeBesoins.colLivre', 'Livre')}</Text>
+                            <Text style={[styles.th, { flex: 0.9 }]}>{t('programmeBesoins.colMatiere', 'Matière')}</Text>
+                            <Text style={[styles.th, { flex: 0.9 }]}>{t('programmeBesoins.colPrixNeuf', 'Prix neuf')}</Text>
+                            <Text style={[styles.th, { flex: 1.1 }]}>{t('programmeBesoins.colSouhait', 'Souhait')}</Text>
                         </View>
                         {active.progLoading ? (
                             <ActivityIndicator color={modernColors.primary} style={{ marginVertical: 16 }} />
                         ) : active.programmes.length === 0 ? (
                             <Text style={styles.mutedLeft}>
-                                {t(
-                                    'programmeBesoins.emptyProgramme',
-                                    'Aucune entrée de programme pour cette classe dans la base. Essayez une autre classe ou utilisez la recherche libre.'
-                                )}
+                                {nationalFallback
+                                    ? t(
+                                          'programmeBesoins.emptyProgrammeNational',
+                                          'Aucune ligne du référentiel national pour cette classe. Elle sera affichée dès que les administrateurs auront importé les données.'
+                                      )
+                                    : t('programmeBesoins.emptyProgramme', 'Aucune ligne de programme pour cette classe.')}
                             </Text>
                         ) : (
                             active.programmes.map((p) => {
-                                const isOn = !!active.checked[p.id];
+                                const pref = active.choix[p.id];
                                 return (
-                                    <View key={p.id} style={[styles.ligne, isOn && styles.ligneOn]}>
-                                        <TouchableOpacity style={styles.ligneMain} onPress={() => toggleLigne(p.id)}>
-                                            <View style={[styles.checkbox, isOn && styles.checkboxOn]}>
-                                                {isOn && <SafeIcon name="check" size={14} color="#fff" type="lucide" />}
-                                            </View>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.ligneTitre} numberOfLines={2}>
-                                                    {p.titre_livre}
+                                    <View key={p.id} style={styles.tableRow}>
+                                        <Text style={[styles.td, { flex: 2.2 }]} numberOfLines={3}>
+                                            {p.titre_livre}
+                                        </Text>
+                                        <Text style={[styles.td, { flex: 0.9 }]} numberOfLines={2}>
+                                            {p.matiere}
+                                        </Text>
+                                        <Text style={[styles.td, { flex: 0.9 }]} numberOfLines={1}>
+                                            {p.prix_officiel != null
+                                                ? `${Number(p.prix_officiel).toLocaleString()} ${p.devise || 'XAF'}`
+                                                : '—'}
+                                        </Text>
+                                        <View style={[styles.tdActions, { flex: 1.1 }]}>
+                                            <TouchableOpacity
+                                                style={[styles.miniPref, pref === 'neuf' && styles.miniPrefOn]}
+                                                onPress={() => setChoixProg(p.id, 'neuf')}
+                                            >
+                                                <Text style={[styles.miniPrefText, pref === 'neuf' && styles.miniPrefTextOn]}>
+                                                    {t('programmeBesoins.neuf', 'Neuf')}
                                                 </Text>
-                                                <Text style={styles.ligneMeta}>
-                                                    {p.matiere}
-                                                    {p.prix_officiel != null
-                                                        ? ` · ${Number(p.prix_officiel).toLocaleString()} ${p.devise || 'XAF'}`
-                                                        : ''}
-                                                    {p.etablissement_id != null && p.etablissement_id > 0 ? (
-                                                        <Text style={styles.badgeEtab}> · {t('programmeBesoins.sourceEtab', 'Établissement')}</Text>
-                                                    ) : null}
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.miniPref, pref === 'occasion' && styles.miniPrefOnOcc]}
+                                                onPress={() => setChoixProg(p.id, 'occasion')}
+                                            >
+                                                <Text style={[styles.miniPrefText, pref === 'occasion' && styles.miniPrefTextOn]}>
+                                                    {t('programmeBesoins.occasion', 'Occas.')}
                                                 </Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                        {isOn && renderPrefChips(p.id)}
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 );
                             })
                         )}
-                    </View>
-                )}
-
-                {active?.classe && active.programmes.length > 0 && budgetNeufSelection.countNeufPath > 0 && selectionCountActive > 0 && (
-                    <View style={styles.budgetCard}>
-                        <Text style={styles.budgetCardTitle} numberOfLines={2}>
-                            {t('programmeBesoins.budgetNeufTitle', 'Budget neuf (prix catalogue officiel)')}
+                        <Text style={styles.hintSouhait}>
+                            {t(
+                                'programmeBesoins.hintSouhait',
+                                'Ne cochez rien si vous ne voulez pas ce livre. Neuf et occasion s’excluent.'
+                            )}
                         </Text>
-                        {budgetNeufSelection.sum > 0 ? (
-                            <Text style={styles.budgetCardMain}>
-                                {t('programmeBesoins.budgetNeufMontant', '{{montant}} XAF — {{withPrice}} / {{count}}', {
-                                    montant: Math.round(budgetNeufSelection.sum).toLocaleString(),
-                                    withPrice: budgetNeufSelection.withPrice,
-                                    count: budgetNeufSelection.countNeufPath,
-                                })}
-                            </Text>
-                        ) : (
-                            <Text style={styles.budgetCardMuted}>{t('programmeBesoins.budgetNeufSansTotal')}</Text>
-                        )}
-                        <TouchableOpacity
-                            style={styles.budgetLinkBtn}
-                            onPress={() => {
-                                hapticPress();
-                                navigation.navigate('NewBooks', { classe: active.classe! });
-                            }}
-                        >
-                            <Text style={styles.link}>{t('programmeBesoins.ouvrirComparateur', 'Comparateur neuf / occasion (budget détaillé)')}</Text>
-                        </TouchableOpacity>
                     </View>
-                )}
+                ) : null}
 
-                {active?.classe && active.programmes.length > 0 && (
+                {(nationalFallback || selectedEtab) && active?.classe && active.programmes.length > 0 ? (
                     <TouchableOpacity
-                        style={[styles.cta, totalSelectionsTous === 0 && styles.ctaDisabled]}
-                        disabled={totalSelectionsTous === 0}
-                        onPress={lancerRechercheAnnonces}
+                        style={[styles.ctaSecondary, totalLignesSelectionnees === 0 && styles.ctaDisabled]}
+                        disabled={totalLignesSelectionnees === 0}
+                        onPress={ouvrirRecap}
                     >
-                        <SafeIcon name="search" size={20} color="#fff" type="lucide" />
+                        <SafeIcon name="list-checks" size={20} color="#fff" type="lucide" />
                         <Text style={styles.ctaText}>
-                            {t('programmeBesoins.ctaRechercherTous', 'Voir les annonces ({{n}} sélection(s))', {
-                                n: totalSelectionsTous,
-                            })}
+                            {t('programmeBesoins.ctaRecap', 'Voir le récapitulatif ({{n}})', { n: totalLignesSelectionnees })}
                         </Text>
                     </TouchableOpacity>
-                )}
-
-                <TouchableOpacity style={styles.footerLink} onPress={() => navigation.navigate('LivreScolaireSearch')}>
-                    <Text style={styles.link}>{t('programmeBesoins.rechercheAvancee', 'Recherche avancée et filtres')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.footerLink}
-                    onPress={() => {
-                        hapticPress();
-                        navigation.navigate('NewBooks', active?.classe ? { classe: active.classe } : undefined);
-                    }}
-                >
-                    <Text style={styles.link}>{t('programmeBesoins.catalogueNeuf', 'Catalogue livres neufs & comparateur')}</Text>
-                </TouchableOpacity>
+                ) : null}
             </ScrollView>
         </SafeNativeView>
     );
@@ -801,12 +1054,7 @@ const styles = StyleSheet.create({
         borderBottomLeftRadius: 20,
         borderBottomRightRadius: 20,
     },
-    heroTop: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-    },
+    heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
     backBtnLight: { padding: 8 },
     heroIconWrap: {
         width: 48,
@@ -819,18 +1067,23 @@ const styles = StyleSheet.create({
     heroTitle: { fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 6 },
     heroSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.92)', lineHeight: 20 },
     scroll: { padding: 16, paddingBottom: 48 },
-    enfantRow: { marginBottom: 12 },
-    sectionTitleRow: {
+    header: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        marginBottom: 10,
+        paddingHorizontal: 8,
+        paddingVertical: 10,
+        backgroundColor: '#fff',
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: '#e5e7eb',
     },
-    sectionIconTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#0f172a',
-    },
+    backBtn: { padding: 8 },
+    headerTitle: { fontSize: 18, fontWeight: '700', color: '#0f172a', flex: 1 },
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+    mutedLeft: { color: '#64748b', fontSize: 14, marginTop: 8, textAlign: 'left' },
+    link: { fontSize: 13, fontWeight: '600', color: modernColors.primary },
+    enfantRow: { marginBottom: 12 },
+    sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+    sectionIconTitle: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
     enfantChips: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
     enfantChip: {
         paddingHorizontal: 16,
@@ -863,61 +1116,11 @@ const styles = StyleSheet.create({
         marginBottom: 14,
         borderWidth: 1,
         borderColor: '#e2e8f0',
-        shadowColor: '#0f172a',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
         elevation: 2,
     },
     stepHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
     stepTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a', flex: 1 },
-    cardHintShort: { fontSize: 13, color: '#64748b', marginBottom: 12, lineHeight: 18 },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 10,
-        backgroundColor: '#fff',
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#e5e7eb',
-    },
-    backBtn: { padding: 8 },
-    headerTitle: { fontSize: 18, fontWeight: '700', color: '#0f172a', flex: 1 },
-    warnBanner: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 10,
-        backgroundColor: '#fffbeb',
-        borderWidth: 1,
-        borderColor: '#fcd34d',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 14,
-    },
-    warnBannerText: { flex: 1, fontSize: 13, color: '#92400e', lineHeight: 18 },
-    warnBannerBtn: {
-        backgroundColor: '#f59e0b',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-        alignSelf: 'flex-start',
-    },
-    warnBannerBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-    infoBanner: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 10,
-        backgroundColor: '#eff6ff',
-        borderWidth: 1,
-        borderColor: '#bfdbfe',
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 14,
-    },
-    infoBannerText: { flex: 1, fontSize: 13, color: '#1e3a8a', lineHeight: 18 },
-    rowInput: { flexDirection: 'row', gap: 8, alignItems: 'center' },
     input: {
-        flex: 1,
         borderWidth: 1,
         borderColor: '#e2e8f0',
         borderRadius: 12,
@@ -927,24 +1130,32 @@ const styles = StyleSheet.create({
         color: '#0f172a',
         backgroundColor: '#f8fafc',
     },
-    btnSecondary: {
-        backgroundColor: '#e0f2fe',
-        paddingHorizontal: 14,
-        paddingVertical: 11,
+    autocompleteBox: {
+        marginTop: 8,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
         borderRadius: 12,
+        overflow: 'hidden',
+        maxHeight: 220,
     },
-    btnSecondaryText: { fontWeight: '600', color: '#0369a1', fontSize: 14 },
-    etabRow: {
-        paddingVertical: 10,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#f1f5f9',
+    autocompleteRow: { padding: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f1f5f9' },
+    autocompleteName: { fontSize: 15, fontWeight: '600', color: '#0f172a' },
+    autocompleteVille: { fontSize: 12, color: '#64748b', marginTop: 2 },
+    etabSelectedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, gap: 8 },
+    etabSelectedText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#065f46' },
+    nationalInfoBanner: {
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: '#ecfdf5',
+        borderWidth: 1,
+        borderColor: '#a7f3d0',
+        gap: 8,
     },
-    etabRowOn: { backgroundColor: '#eff6ff', marginHorizontal: -8, paddingHorizontal: 8, borderRadius: 8 },
-    etabName: { fontSize: 15, fontWeight: '600', color: '#0f172a' },
-    etabVille: { fontSize: 12, color: '#64748b', marginTop: 2 },
-    etabActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-    link: { fontSize: 13, fontWeight: '600', color: modernColors.primary },
-    linkMuted: { fontSize: 13, color: '#94a3b8' },
+    nationalInfoText: { fontSize: 13, color: '#065f46', lineHeight: 19 },
+    nationalBackBtn: { alignSelf: 'flex-start' },
+    fallbackLinkWrap: { marginTop: 10, paddingVertical: 4 },
+    fallbackLink: { fontSize: 14, fontWeight: '600', color: '#2563eb', textDecorationLine: 'underline' },
     chipsScrollContent: { flexGrow: 1, alignItems: 'center', paddingVertical: 4, gap: 8 },
     chip: {
         paddingHorizontal: 14,
@@ -959,46 +1170,24 @@ const styles = StyleSheet.create({
     chipOn: { backgroundColor: '#dbeafe', borderColor: modernColors.primary },
     chipText: { fontWeight: '600', color: '#475569', fontSize: 13 },
     chipTextOn: { color: modernColors.primary },
-    chipSub: { fontSize: 10, color: '#64748b', marginTop: 2 },
-    rowBetween: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 },
-    bulkRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
-    dot: { color: '#cbd5e1', marginHorizontal: 6 },
-    ligne: {
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-        borderRadius: 12,
-        padding: 10,
-        marginBottom: 10,
-        backgroundColor: '#fafafa',
-    },
-    ligneOn: { borderColor: '#93c5fd', backgroundColor: '#f8fbff' },
-    ligneMain: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-    checkbox: {
-        width: 22,
-        height: 22,
-        borderRadius: 6,
-        borderWidth: 2,
-        borderColor: '#cbd5e1',
-        marginTop: 2,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    checkboxOn: { backgroundColor: modernColors.primary, borderColor: modernColors.primary },
-    ligneTitre: { fontSize: 15, fontWeight: '600', color: '#0f172a' },
-    ligneMeta: { fontSize: 12, color: '#64748b', marginTop: 4 },
-    badgeEtab: { fontWeight: '700', color: '#059669' },
-    prefRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, marginLeft: 32 },
-    prefChip: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
+    tableHeaderRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingBottom: 8, marginBottom: 8 },
+    th: { fontSize: 11, fontWeight: '700', color: '#64748b', textTransform: 'uppercase' },
+    tableRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f1f5f9' },
+    td: { fontSize: 12, color: '#0f172a', paddingRight: 4 },
+    tdActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' },
+    miniPref: {
+        paddingHorizontal: 8,
+        paddingVertical: 5,
         borderRadius: 8,
         backgroundColor: '#f1f5f9',
         borderWidth: 1,
         borderColor: '#e2e8f0',
     },
-    prefChipOn: { backgroundColor: '#dbeafe', borderColor: modernColors.primary },
-    prefChipText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
-    prefChipTextOn: { color: modernColors.primary },
+    miniPrefOn: { backgroundColor: '#dcfce7', borderColor: '#16a34a' },
+    miniPrefOnOcc: { backgroundColor: '#ffedd5', borderColor: '#ea580c' },
+    miniPrefText: { fontSize: 10, fontWeight: '700', color: '#64748b' },
+    miniPrefTextOn: { color: '#0f172a' },
+    hintSouhait: { fontSize: 12, color: '#64748b', marginTop: 12, lineHeight: 17 },
     cta: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1009,28 +1198,79 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         marginBottom: 12,
     },
+    ctaSecondary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        backgroundColor: '#059669',
+        paddingVertical: 15,
+        borderRadius: 16,
+        marginTop: 8,
+    },
     ctaDisabled: { opacity: 0.45 },
     ctaText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-    footerLink: { marginBottom: 10 },
-    center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-    muted: { color: '#64748b', fontSize: 14, marginTop: 8, textAlign: 'center' },
-    mutedLeft: { color: '#64748b', fontSize: 14, marginTop: 8, textAlign: 'left' },
+    recapCard: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    etabRecapBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#eff6ff',
+        padding: 12,
+        borderRadius: 12,
+        marginBottom: 12,
+    },
+    etabRecapText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#1e3a8a' },
+    recapEnfantTitle: { fontSize: 17, fontWeight: '800', color: '#0f172a', marginBottom: 4 },
+    recapMeta: { fontSize: 13, color: '#64748b', marginBottom: 6 },
+    recapBudget: { fontSize: 14, fontWeight: '600', color: '#047857', marginBottom: 12 },
+    recapSectionLabel: { fontSize: 12, fontWeight: '800', color: '#64748b', textTransform: 'uppercase', marginBottom: 6 },
+    recapRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f1f5f9' },
+    recapRowTitle: { fontSize: 14, fontWeight: '600', color: '#0f172a' },
+    recapRowMeta: { fontSize: 12, color: '#64748b', marginTop: 2 },
+    addLineBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+    addLineBtnText: { fontSize: 14, fontWeight: '600', color: '#2563eb' },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        justifyContent: 'center',
+        padding: 24,
+    },
+    modalBox: { backgroundColor: '#fff', borderRadius: 16, padding: 16 },
+    modalTitle: { fontSize: 18, fontWeight: '800', marginBottom: 12, color: '#0f172a' },
+    modalPrefRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+    modalChip: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        alignItems: 'center',
+    },
+    modalChipOn: { backgroundColor: '#dbeafe', borderColor: modernColors.primary },
+    modalChipText: { fontWeight: '700', color: '#475569' },
     listPad: { padding: 16, paddingBottom: 32 },
     resultSection: { marginBottom: 22 },
     resultEnfantBadge: {
         alignSelf: 'flex-start',
         backgroundColor: '#e0e7ff',
-        color: '#3730a3',
         overflow: 'hidden',
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 8,
         fontSize: 12,
         fontWeight: '700',
+        color: '#3730a3',
         marginBottom: 8,
     },
     resultSectionTitle: { fontSize: 16, fontWeight: '700', color: '#0f172a' },
-    resultSectionMeta: { fontSize: 12, color: '#64748b', marginBottom: 8 },
     miniCard: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1043,18 +1283,6 @@ const styles = StyleSheet.create({
     },
     miniTitle: { fontSize: 14, fontWeight: '600', color: '#0f172a' },
     miniMeta: { fontSize: 12, color: '#64748b', marginTop: 4 },
-    budgetCard: {
-        backgroundColor: '#ecfdf5',
-        borderRadius: 14,
-        padding: 14,
-        marginBottom: 14,
-        borderWidth: 1,
-        borderColor: '#a7f3d0',
-    },
-    budgetCardTitle: { fontSize: 15, fontWeight: '800', color: '#065f46', marginBottom: 8 },
-    budgetCardMain: { fontSize: 16, fontWeight: '700', color: '#047857', marginBottom: 6 },
-    budgetCardMuted: { fontSize: 12, color: '#047857', opacity: 0.85, marginBottom: 6, lineHeight: 17 },
-    budgetLinkBtn: { marginTop: 4 },
 });
 
 export default ProgrammeBesoinsSelectorScreen;

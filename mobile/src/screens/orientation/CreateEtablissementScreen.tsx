@@ -15,6 +15,7 @@ import {
     View,
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
@@ -83,6 +84,11 @@ const CreateEtablissementScreen: React.FC = () => {
 
     const [filiereInput, setFiliereInput] = useState('');
     const [showStatsSection, setShowStatsSection] = useState(false);
+    const [showGPSModal, setShowGPSModal] = useState(false);
+    const [gpsPlaceLabel, setGpsPlaceLabel] = useState<string | null>(null);
+
+    const isK12 =
+        formData.type_etablissement === 'primaire' || formData.type_etablissement === 'secondaire';
 
     const typesEtablissement = [
         { value: 'primaire', label: 'Primaire' },
@@ -103,6 +109,16 @@ const CreateEtablissementScreen: React.FC = () => {
             const response = await apiGet(`/api/orientation-scolaire/etablissements/${etablissementId}`);
             if (response.success && response.data) {
                 const data = response.data as any;
+                const gpsStr = data.gps as string | undefined;
+                let latStr = data.gps_lat?.toString() || '';
+                let lonStr = data.gps_lon?.toString() || '';
+                if (gpsStr && typeof gpsStr === 'string' && gpsStr.includes(',')) {
+                    const p = gpsStr.split(',').map((x: string) => x.trim());
+                    if (p.length === 2) {
+                        latStr = latStr || p[0];
+                        lonStr = lonStr || p[1];
+                    }
+                }
                 setFormData({
                     nom_etablissement: data.nom_etablissement || '',
                     type_etablissement: data.type_etablissement || 'primaire',
@@ -113,8 +129,8 @@ const CreateEtablissementScreen: React.FC = () => {
                     telephone: data.telephone || '',
                     email: data.email || '',
                     site_web: data.site_web || '',
-                    gps_lat: data.gps_lat?.toString() || '',
-                    gps_lon: data.gps_lon?.toString() || '',
+                    gps_lat: latStr,
+                    gps_lon: lonStr,
                     description: data.description || '',
                     filieres: data.filieres || [],
                     nombre_eleves: data.nombre_eleves?.toString() || '',
@@ -169,6 +185,13 @@ const CreateEtablissementScreen: React.FC = () => {
             Alert.alert(t('message.error'), t('createEtablissement.fillRequired'));
             return;
         }
+        if (isK12 && (!formData.gps_lat?.trim() || !formData.gps_lon?.trim())) {
+            Alert.alert(
+                t('message.error'),
+                'Indiquez la position GPS de l’établissement (carte ou coordonnées) pour le primaire et le secondaire.',
+            );
+            return;
+        }
 
         try {
             setLoading(true);
@@ -188,7 +211,10 @@ const CreateEtablissementScreen: React.FC = () => {
             };
 
             if (formData.gps_lat && formData.gps_lon) {
-                payload.gps = `${formData.gps_lat},${formData.gps_lon}`;
+                payload.gps = `${formData.gps_lat.trim()},${formData.gps_lon.trim()}`;
+            }
+            if (isK12) {
+                payload.filieres = [];
             }
             if (formData.nombre_eleves) payload.nombre_eleves = parseInt(formData.nombre_eleves);
             if (formData.nombre_professeurs) payload.nombre_professeurs = parseInt(formData.nombre_professeurs);
@@ -276,7 +302,16 @@ const CreateEtablissementScreen: React.FC = () => {
                                     styles.chip,
                                     formData.type_etablissement === type.value && styles.chipSelected,
                                 ]}
-                                onPress={() => setFormData({ ...formData, type_etablissement: type.value as any })}
+                                onPress={() =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        type_etablissement: type.value as any,
+                                        filieres:
+                                            type.value === 'primaire' || type.value === 'secondaire'
+                                                ? []
+                                                : prev.filieres,
+                                    }))
+                                }
                             >
                                 <Text
                                     style={[
@@ -355,9 +390,29 @@ const CreateEtablissementScreen: React.FC = () => {
                     />
                 </View>
 
-                {/* GPS */}
+                {/* GPS — ModernGPS pour précision (recommandé primaire / secondaire) */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Coordonnées GPS</Text>
+                    <Text style={styles.label}>
+                        {isK12 ? 'Position GPS précise *' : 'Coordonnées GPS'}
+                    </Text>
+                    {isK12 && (
+                        <Text style={styles.k12Hint}>
+                            Pour le primaire et le secondaire, le cadre national est fixé par le pays : renseignez une position exacte sur la carte, puis chargez vos programmes et listes depuis le tableau de bord partenaire (photo caméra, galerie, ou import PDF / Excel).
+                        </Text>
+                    )}
+                    <TouchableOpacity
+                        style={styles.modernGpsBtn}
+                        onPress={() => setShowGPSModal(true)}
+                        activeOpacity={0.85}
+                    >
+                        <SafeIcon name="map" size={20} color="#fff" type="lucide" />
+                        <Text style={styles.modernGpsBtnText}>Choisir sur la carte (GPS précis)</Text>
+                    </TouchableOpacity>
+                    {(gpsPlaceLabel || (formData.gps_lat && formData.gps_lon)) ? (
+                        <Text style={styles.gpsSummary} numberOfLines={2}>
+                            {gpsPlaceLabel || `${formData.gps_lat}, ${formData.gps_lon}`}
+                        </Text>
+                    ) : null}
                     <View style={styles.gpsRow}>
                         <NativeInput
                             value={formData.gps_lat}
@@ -377,10 +432,19 @@ const CreateEtablissementScreen: React.FC = () => {
                             style={styles.gpsButton}
                             onPress={handleUseCurrentLocation}
                         >
-                            <SafeIcon name="map-pin" size={16} color="#FFFFFF" type="lucide" />
+                            <SafeIcon name="crosshair" size={16} color="#FFFFFF" type="lucide" />
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                {isK12 && (
+                    <View style={styles.k12DocsCard}>
+                        <Text style={styles.k12DocsTitle}>Programmes scolaires & performances</Text>
+                        <Text style={styles.k12DocsText}>
+                            Après création de la fiche, ouvrez le tableau de bord partenaire : vous pouvez photographier un document (caméra), choisir une image (galerie), ou importer un fichier (PDF, Excel), puis publier vos indicateurs de réussite (examens nationaux, etc.).
+                        </Text>
+                    </View>
+                )}
 
                 {/* Contact */}
                 <View style={styles.sectionTitle}>
@@ -463,31 +527,33 @@ const CreateEtablissementScreen: React.FC = () => {
                     />
                 </View>
 
-                {/* Filières */}
-                <View style={styles.field}>
-                    <Text style={styles.label}>Filières</Text>
-                    <View style={styles.addRow}>
-                        <NativeInput
-                            value={filiereInput}
-                            onChangeText={setFiliereInput}
-                            placeholder="Ajouter une filière"
-                            style={styles.addInput}
-                        />
-                        <TouchableOpacity style={styles.addButton} onPress={handleAddFiliere}>
-                            <Text style={styles.addButtonText}>+</Text>
-                        </TouchableOpacity>
+                {/* Filières — réservé au supérieur / formation (cadre national pour primaire-secondaire) */}
+                {!isK12 && (
+                    <View style={styles.field}>
+                        <Text style={styles.label}>Filières</Text>
+                        <View style={styles.addRow}>
+                            <NativeInput
+                                value={filiereInput}
+                                onChangeText={setFiliereInput}
+                                placeholder="Ajouter une filière"
+                                style={styles.addInput}
+                            />
+                            <TouchableOpacity style={styles.addButton} onPress={handleAddFiliere}>
+                                <Text style={styles.addButtonText}>+</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.tagsContainer}>
+                            {formData.filieres.map((filiere, idx) => (
+                                <View key={idx} style={styles.tag}>
+                                    <Text style={styles.tagText}>{filiere}</Text>
+                                    <TouchableOpacity onPress={() => handleRemoveFiliere(filiere)}>
+                                        <SafeIcon name="x" size={14} color={modernColors.textSecondary} type="lucide" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </View>
                     </View>
-                    <View style={styles.tagsContainer}>
-                        {formData.filieres.map((filiere, idx) => (
-                            <View key={idx} style={styles.tag}>
-                                <Text style={styles.tagText}>{filiere}</Text>
-                                <TouchableOpacity onPress={() => handleRemoveFiliere(filiere)}>
-                                    <SafeIcon name="x" size={14} color={modernColors.textSecondary} type="lucide" />
-                                </TouchableOpacity>
-                            </View>
-                        ))}
-                    </View>
-                </View>
+                )}
 
                 {/* Public/Privé */}
                 <View style={styles.switchRow}>
@@ -506,18 +572,24 @@ const CreateEtablissementScreen: React.FC = () => {
                             <Text style={styles.sectionTitleText}>Statistiques et Performances</Text>
                         </View>
 
-                        <View style={styles.field}>
-                            <Text style={styles.label}>Taux de réussite au Bac (%)</Text>
-                            <NativeInput
-                                value={formData.taux_reussite_bac || ''}
-                                onChangeText={(text) => setFormData({ ...formData, taux_reussite_bac: text })}
-                                keyboardType="numeric"
-                                placeholder="0"
-                            />
-                        </View>
+                        {formData.type_etablissement === 'secondaire' && (
+                            <View style={styles.field}>
+                                <Text style={styles.label}>Taux de réussite au Bac / examen terminal (%)</Text>
+                                <NativeInput
+                                    value={formData.taux_reussite_bac || ''}
+                                    onChangeText={(text) => setFormData({ ...formData, taux_reussite_bac: text })}
+                                    keyboardType="numeric"
+                                    placeholder="0"
+                                />
+                            </View>
+                        )}
 
                         <View style={styles.field}>
-                            <Text style={styles.label}>Taux de réussite aux examens (%)</Text>
+                            <Text style={styles.label}>
+                                {formData.type_etablissement === 'primaire'
+                                    ? 'Résultats / examens de fin de cycle (%)'
+                                    : 'Taux de réussite aux examens nationaux (%)'}
+                            </Text>
                             <NativeInput
                                 value={formData.taux_reussite_examens || ''}
                                 onChangeText={(text) => setFormData({ ...formData, taux_reussite_examens: text })}
@@ -553,6 +625,38 @@ const CreateEtablissementScreen: React.FC = () => {
                     style={styles.submitButton}
                 />
             </NativeCard>
+
+            <ModernGPSModal
+                visible={showGPSModal}
+                onClose={() => setShowGPSModal(false)}
+                onSelect={(coords: string) => {
+                    const part = coords.split('|')[0].trim();
+                    const seg = part.split(',');
+                    if (seg.length >= 2) {
+                        setFormData((prev) => ({
+                            ...prev,
+                            gps_lat: seg[0].trim(),
+                            gps_lon: seg[1].trim(),
+                        }));
+                    }
+                    setShowGPSModal(false);
+                }}
+                onSelectLocation={(loc) => {
+                    setFormData((prev) => ({
+                        ...prev,
+                        gps_lat: String(loc.latitude),
+                        gps_lon: String(loc.longitude),
+                    }));
+                    setGpsPlaceLabel(loc.placeName || loc.address || null);
+                    setShowGPSModal(false);
+                }}
+                currentLocation={
+                    location?.coords
+                        ? { lat: location.coords.latitude, lng: location.coords.longitude }
+                        : null
+                }
+                title="Position de l'établissement"
+            />
         </KeyboardAwareScreen>
     );
 };
@@ -715,6 +819,51 @@ const styles = StyleSheet.create({
     },
     submitButton: {
         marginTop: 8,
+    },
+    k12Hint: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        lineHeight: 19,
+        marginBottom: 10,
+    },
+    modernGpsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        backgroundColor: modernColors.primary,
+        paddingVertical: 14,
+        borderRadius: 12,
+        marginBottom: 10,
+    },
+    modernGpsBtnText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    gpsSummary: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginBottom: 8,
+    },
+    k12DocsCard: {
+        backgroundColor: '#ECFDF5',
+        borderWidth: 1,
+        borderColor: '#A7F3D0',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 8,
+    },
+    k12DocsTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#065F46',
+        marginBottom: 6,
+    },
+    k12DocsText: {
+        fontSize: 13,
+        color: '#047857',
+        lineHeight: 20,
     },
 });
 

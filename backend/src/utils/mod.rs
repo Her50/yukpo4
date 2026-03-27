@@ -1,3 +1,4 @@
+pub mod classe_normalization;
 pub mod currency;
 pub mod db_monitor;
 pub mod db_retry;

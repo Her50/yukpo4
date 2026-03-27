@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import { useCallback, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -14,6 +15,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { getSystemeEducatif } from '../../data/educationSystems';
+import useUserCountry from '../../hooks/useUserCountry';
 import { bourseLivreV2Api, ProgrammeExtractionResult } from '../../services/bourseLivreV2Api';
 
 const NIVEAUX = ['Maternelle', 'Primaire', 'Collège', 'Lycée', 'Université'];
@@ -25,8 +28,19 @@ const FICHIER_TYPES = [
 
 export default function AdminProgrammeUploadScreen({ navigation }: any) {
   const { t } = useTranslation();
+  const { countryCode } = useUserCountry();
+  const niveauxLabels = useMemo(
+    () => getSystemeEducatif(countryCode || 'CM').niveaux.map((n) => n.nom),
+    [countryCode]
+  );
+  const matieresLabels = useMemo(() => {
+    const rows = getSystemeEducatif(countryCode || 'CM').matieres;
+    return [...new Set(rows.map((r) => r.matiere))].sort((a, b) => a.localeCompare(b, 'fr'));
+  }, [countryCode]);
+
   const [niveau, setNiveau] = useState('');
   const [classe, setClasse] = useState('');
+  const [matiereHint, setMatiereHint] = useState('');
   const [periodeAcademique, setPeriodeAcademique] = useState('2025-2026');
   const [dateDebut, setDateDebut] = useState('2025-09-01');
   const [dateFin, setDateFin] = useState('2026-07-31');
@@ -39,6 +53,59 @@ export default function AdminProgrammeUploadScreen({ navigation }: any) {
     extraction: ProgrammeExtractionResult | null;
     message: string;
   } | null>(null);
+
+  const applyImageAssetBase64 = useCallback(async (asset: ImagePicker.ImagePickerAsset, fallbackName: string) => {
+    let base64 = asset.base64;
+    if (!base64) {
+      base64 = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    }
+    setFichierNom(asset.fileName || fallbackName);
+    setFichierBase64(base64);
+  }, []);
+
+  const takePhotoProgramme = useCallback(async () => {
+    if (fichierType !== 'image') return;
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission', t('bourseLivreV2.programmeUpload.cameraPermission', "Autorisez l'accès à la caméra pour photographier le programme."));
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.85,
+        base64: true,
+      });
+      if (!result.canceled && result.assets[0]) {
+        await applyImageAssetBase64(result.assets[0], `programme_${Date.now()}.jpg`);
+      }
+    } catch {
+      Alert.alert('Erreur', t('bourseLivreV2.programmeUpload.errorRead'));
+    }
+  }, [fichierType, applyImageAssetBase64, t]);
+
+  const pickImageGalleryProgramme = useCallback(async () => {
+    if (fichierType !== 'image') return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission', t('bourseLivreV2.programmeUpload.galleryPermission', "Autorisez l'accès à la galerie."));
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.85,
+        base64: true,
+      });
+      if (!result.canceled && result.assets[0]) {
+        await applyImageAssetBase64(result.assets[0], `programme_${Date.now()}.jpg`);
+      }
+    } catch {
+      Alert.alert('Erreur', t('bourseLivreV2.programmeUpload.errorRead'));
+    }
+  }, [fichierType, applyImageAssetBase64, t]);
 
   const pickFile = useCallback(async () => {
     try {
@@ -125,7 +192,7 @@ export default function AdminProgrammeUploadScreen({ navigation }: any) {
         ))}
       </View>
 
-      {/* Classe */}
+      {/* Classe — saisie + suggestions (référentiel pays) pour aligner les imports sur les filtres utilisateurs */}
       <Text style={styles.label}>{t('bourseLivreV2.programmeUpload.classe')}</Text>
       <TextInput
         style={styles.input}
@@ -134,6 +201,45 @@ export default function AdminProgrammeUploadScreen({ navigation }: any) {
         placeholder={t('bourseLivreV2.programmeUpload.classePlaceholder')}
         placeholderTextColor="#999"
       />
+      <Text style={styles.hintSmall}>
+        {t(
+          'bourseLivreV2.programmeUpload.classeHint',
+          'Choisissez une étiquette proche du programme officiel (ex. 6ème, CM2) pour faciliter l’autocomplete côté familles.'
+        )}
+      </Text>
+      <View style={styles.suggestRow}>
+        {niveauxLabels
+          .filter((n) => !classe.trim() || n.toLowerCase().includes(classe.trim().toLowerCase()))
+          .slice(0, 14)
+          .map((n) => (
+            <TouchableOpacity key={n} style={styles.suggestChip} onPress={() => setClasse(n)} activeOpacity={0.7}>
+              <Text style={styles.suggestChipText} numberOfLines={1}>
+                {n}
+              </Text>
+            </TouchableOpacity>
+          ))}
+      </View>
+
+      <Text style={styles.label}>{t('bourseLivreV2.programmeUpload.matiereHintLabel', 'Matière (indicatif, optionnel)')}</Text>
+      <TextInput
+        style={styles.input}
+        value={matiereHint}
+        onChangeText={setMatiereHint}
+        placeholder={t('bourseLivreV2.programmeUpload.matierePlaceholder', 'Filtre pour suggestions…')}
+        placeholderTextColor="#999"
+      />
+      <View style={styles.suggestRow}>
+        {matieresLabels
+          .filter((m) => !matiereHint.trim() || m.toLowerCase().includes(matiereHint.trim().toLowerCase()))
+          .slice(0, 12)
+          .map((m) => (
+            <TouchableOpacity key={m} style={styles.suggestChipAlt} onPress={() => setMatiereHint(m)} activeOpacity={0.7}>
+              <Text style={styles.suggestChipText} numberOfLines={1}>
+                {m}
+              </Text>
+            </TouchableOpacity>
+          ))}
+      </View>
 
       {/* Période académique */}
       <Text style={styles.label}>{t('bourseLivreV2.programmeUpload.periodeAcademique')} *</Text>
@@ -190,7 +296,29 @@ export default function AdminProgrammeUploadScreen({ navigation }: any) {
         ))}
       </View>
 
-      {/* Sélection fichier */}
+      {fichierType === 'image' ? (
+        <View style={styles.imageSourceRow}>
+          <TouchableOpacity style={styles.imageSourceBtn} onPress={takePhotoProgramme}>
+            <Ionicons name="camera" size={20} color="#fff" />
+            <Text style={styles.imageSourceBtnText}>
+              {t('bourseLivreV2.programmeUpload.camera', 'Caméra')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.imageSourceBtn, styles.imageSourceBtnAlt]} onPress={pickImageGalleryProgramme}>
+            <Ionicons name="images" size={20} color="#fff" />
+            <Text style={styles.imageSourceBtnText}>
+              {t('bourseLivreV2.programmeUpload.gallery', 'Galerie')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {/* Sélection fichier (import) */}
+      <Text style={styles.label}>
+        {fichierType === 'image'
+          ? t('bourseLivreV2.programmeUpload.orImportFile', 'Ou importer un fichier image')
+          : t('bourseLivreV2.programmeUpload.importFile', 'Importer un fichier')}
+      </Text>
       <TouchableOpacity style={styles.filePickerBtn} onPress={pickFile}>
         <Ionicons name="cloud-upload-outline" size={24} color="#4A90D9" />
         <Text style={styles.filePickerText}>
@@ -276,6 +404,25 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700', color: '#1A1A2E', marginBottom: 4 },
   subtitle: { fontSize: 14, color: '#666', marginBottom: 20, lineHeight: 20 },
   label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 6, marginTop: 12 },
+  hintSmall: { fontSize: 12, color: '#888', marginBottom: 8, lineHeight: 17 },
+  suggestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 4 },
+  suggestChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#E8F4FD',
+    borderWidth: 1,
+    borderColor: '#B6DDFF',
+  },
+  suggestChipAlt: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F3E8FF',
+    borderWidth: 1,
+    borderColor: '#D8C4F7',
+  },
+  suggestChipText: { fontSize: 12, color: '#333', fontWeight: '500' },
   input: {
     backgroundColor: '#fff',
     borderWidth: 1,
@@ -302,6 +449,23 @@ const styles = StyleSheet.create({
   chipTextActive: { color: '#fff', fontWeight: '600' },
   row: { flexDirection: 'row', gap: 12 },
   halfCol: { flex: 1 },
+  imageSourceRow: {
+    flexDirection: 'row',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  imageSourceBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#2563EB',
+    marginHorizontal: 4,
+  },
+  imageSourceBtnAlt: { backgroundColor: '#7C3AED' },
+  imageSourceBtnText: { color: '#fff', fontWeight: '600', fontSize: 14, marginLeft: 6 },
   filePickerBtn: {
     flexDirection: 'row',
     alignItems: 'center',

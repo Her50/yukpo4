@@ -76,6 +76,14 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/orientation-scolaire/conferences/{id}",
             get(orientation_scolaire_controller::get_conference_details),
+        )
+        .route(
+            "/api/orientation/analytics/track",
+            post(orientation_scolaire_controller::track_analytics_event),
+        )
+        .route(
+            "/api/orientation/analytics/track-filiere-search-batch",
+            post(orientation_scolaire_controller::track_filiere_search_batch),
         );
 
     // Routes protégées (avec JWT)
@@ -139,6 +147,10 @@ pub fn orientation_scolaire_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/orientation/analytics",
             get(orientation_scolaire_controller::get_analytics),
+        )
+        .route(
+            "/api/orientation/analytics/normalized",
+            get(orientation_scolaire_controller::get_analytics_normalized),
         )
         .route(
             "/api/orientation/ai/academic-search",
