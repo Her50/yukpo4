@@ -230,23 +230,22 @@ temp-apk-server/**
 # ============================================
 # FICHIERS BACKUP (ne doivent pas être inclus)
 # ============================================
-# Patterns génériques pour tous les fichiers backup
+# Patterns pour fichiers backup (éviter *backup* seul : trop ambigu avec certains outils d’archive)
 *.backup
 *.backup*
 *.backup2
 *.backup-current
 *.backup_*
-*backup*
+*_backup.*
+**/*_backup.*
 *.bak
 *.old
 **/*.backup
 **/*.backup*
-**/*backup*
 **/backup_*/
 **/backup-*/
 src/**/*.backup
 src/**/*.backup*
-src/**/*backup*
 
 # ============================================
 # DONNÉES VOLUMINEUSES (peuvent être chargées dynamiquement)
@@ -349,3 +348,9 @@ __tests__/
 # DOCS & ANALYSES
 # ============================================
 docs/
+
+# ============================================
+# Sources requis au bundle Metro (safelist — ne jamais exclure)
+# ============================================
+!src/components/CommunityAlertBackgroundManager.tsx
+!src/background/communityAlertsTask.ts

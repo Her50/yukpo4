@@ -11,7 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.preventAutoHideAsync().catch(() => { });
 
 // ✅ Import dynamique pour NavigationContainer (évite les erreurs TypeScript)
 const { NavigationContainer } = require('@react-navigation/native');
@@ -29,7 +29,6 @@ import { LocationProvider } from './src/contexts/LocationContext';
 import { ShoppingProvider } from './src/contexts/ShoppingContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { WebSocketProvider } from './src/contexts/WebSocketContext';
-import CommunityAlertBackgroundManager from './src/components/CommunityAlertBackgroundManager';
 
 // ✅ CORRECTION CRASH: africanLocations chargé en lazy loading pour éviter surcharge mémoire au démarrage
 import AppNavigator from './src/navigation/AppNavigator.optimized';
@@ -81,6 +80,15 @@ export default function App() {
       return require('./src/components/AppUpdateChecker').default;
     } catch (error) {
       console.warn('[App] ⚠️ AppUpdateChecker indisponible:', error);
+      return () => null;
+    }
+  }, []);
+
+  const CommunityAlertBackgroundManager = React.useMemo(() => {
+    try {
+      return require('./src/components/CommunityAlertBackgroundManager').default;
+    } catch (error) {
+      console.warn('[App] ⚠️ CommunityAlertBackgroundManager indisponible:', error);
       return () => null;
     }
   }, []);
@@ -176,7 +184,7 @@ export default function App() {
                                   linking={linking}
                                   fallback={null}
                                   onReady={() => {
-                                    SplashScreen.hideAsync().catch(() => {});
+                                    SplashScreen.hideAsync().catch(() => { });
                                   }}
                                   onStateChange={() => {
                                     console.log('[NavigationContainer] 📍 Navigation changée');
@@ -186,7 +194,7 @@ export default function App() {
                                   }}
                                 >
                                   <AppNavigator />
-                                <PushNotificationManager />
+                                  <PushNotificationManager />
                                 </NavigationContainer>
                               </ShoppingProvider>
                             </DeliveryProvider>

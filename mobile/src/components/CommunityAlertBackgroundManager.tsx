@@ -71,4 +71,3 @@ export default function CommunityAlertBackgroundManager() {
 
   return null;
 }
-

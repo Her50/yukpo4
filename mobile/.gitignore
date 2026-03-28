@@ -109,18 +109,18 @@ temp-apk-server/**
 *.aab
 *.apks
 
-# Fichiers backup (ne doivent pas être trackés)
+# Fichiers backup (ne doivent pas être trackés ; pas de *backup* seul — ambigu)
 *.backup
 *.backup*
 *.backup2
 *.backup-current
 *.backup_*
-*backup*
+*_backup.*
+**/*_backup.*
 *.bak
 *.old
 **/*.backup
 **/*.backup*
-**/*backup*
 **/backup_*/
 **/backup-*/
 
