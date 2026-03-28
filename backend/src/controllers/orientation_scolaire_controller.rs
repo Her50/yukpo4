@@ -42,13 +42,12 @@ async fn ensure_etablissement_owner(
     user_id: i32,
     etablissement_id: i32,
 ) -> AppResult<()> {
-    let owner: Option<i32> = sqlx::query_scalar(
-        "SELECT user_id FROM etablissements_scolaires WHERE id = $1",
-    )
-    .bind(etablissement_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur lecture établissement: {}", e)))?;
+    let owner: Option<i32> =
+        sqlx::query_scalar("SELECT user_id FROM etablissements_scolaires WHERE id = $1")
+            .bind(etablissement_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur lecture établissement: {}", e)))?;
     match owner {
         Some(uid) if uid == user_id => Ok(()),
         Some(_) => Err(AppError::Forbidden(
@@ -886,7 +885,9 @@ pub async fn get_analytics(
         })
     });
 
-    Ok(Json(json!({ "success": true, "analytics": analytics, "summary": summary })))
+    Ok(Json(
+        json!({ "success": true, "analytics": analytics, "summary": summary }),
+    ))
 }
 
 #[derive(Debug, Deserialize)]
@@ -991,8 +992,8 @@ async fn apply_filiere_search_for_etablissement(
             .await
             .map_err(|e| AppError::Internal(format!("Erreur lecture établissement: {}", e)))?;
 
-    let owner_user_id = owner_user_id
-        .ok_or_else(|| AppError::NotFound("Établissement introuvable".to_string()))?;
+    let owner_user_id =
+        owner_user_id.ok_or_else(|| AppError::NotFound("Établissement introuvable".to_string()))?;
 
     sqlx::query(
         r#"
@@ -1060,9 +1061,7 @@ async fn apply_filiere_search_for_etablissement(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur lecture repartition_filieres: {}", e)))?;
 
-    let mut map = current_map
-        .and_then(|v| v.as_object().cloned())
-        .unwrap_or_default();
+    let mut map = current_map.and_then(|v| v.as_object().cloned()).unwrap_or_default();
     let current = map.get(filiere).and_then(|v| v.as_i64()).unwrap_or(0);
     map.insert(filiere.to_string(), json!(current + 1));
 
@@ -1113,10 +1112,8 @@ pub async fn track_filiere_search_batch(
 
     let mut base = request.metadata.unwrap_or_else(|| json!({}));
     if let Some(obj) = base.as_object_mut() {
-        obj.entry("aggregated_batch".to_string())
-            .or_insert(json!(true));
-        obj.entry("batch_etablissement_count".to_string())
-            .or_insert(json!(ids.len()));
+        obj.entry("aggregated_batch".to_string()).or_insert(json!(true));
+        obj.entry("batch_etablissement_count".to_string()).or_insert(json!(ids.len()));
     }
 
     let mut applied: u32 = 0;
@@ -1238,8 +1235,8 @@ pub async fn track_analytics_event(
             .await
             .map_err(|e| AppError::Internal(format!("Erreur lecture établissement: {}", e)))?;
 
-    let owner_user_id = owner_user_id
-        .ok_or_else(|| AppError::NotFound("Établissement introuvable".to_string()))?;
+    let owner_user_id =
+        owner_user_id.ok_or_else(|| AppError::NotFound("Établissement introuvable".to_string()))?;
 
     let metadata = request.metadata.clone().unwrap_or_else(|| json!({}));
 
@@ -1321,7 +1318,9 @@ pub async fn get_analytics_normalized(
                 .bind(id)
                 .fetch_optional(&state.pg)
                 .await
-                .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
+                .map_err(|e| {
+                    AppError::Internal(format!("Erreur vérification propriétaire: {}", e))
+                })?;
         if owner != Some(user_id) {
             return Err(AppError::Forbidden(
                 "Accès analytics refusé pour cet établissement".to_string(),

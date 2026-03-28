@@ -160,7 +160,8 @@ impl OrientationScolaireService {
             query.push(" = ANY(e.specialites)");
         }
 
-        if let Some(q) = request.q.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()) {
+        if let Some(q) = request.q.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+        {
             let like = format!("%{}%", q.replace('%', "\\%").replace('_', "\\_"));
             query.push(" AND (e.nom_etablissement ILIKE ");
             query.push_bind(like.clone());
@@ -237,7 +238,8 @@ impl OrientationScolaireService {
             count_query.push(" = ANY(e.specialites)");
         }
 
-        if let Some(q) = request.q.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()) {
+        if let Some(q) = request.q.as_ref().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+        {
             let like = format!("%{}%", q.replace('%', "\\%").replace('_', "\\_"));
             count_query.push(" AND (e.nom_etablissement ILIKE ");
             count_query.push_bind(like.clone());

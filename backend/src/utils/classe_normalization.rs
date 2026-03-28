@@ -23,10 +23,7 @@ pub fn classe_match_variants(input: &str) -> Vec<String> {
         set.insert(sans_accent_eme.clone());
     }
     if lower.ends_with("ème") || lower.ends_with("eme") {
-        let stem = lower
-            .trim_end_matches("ème")
-            .trim_end_matches("eme")
-            .trim_end_matches('e');
+        let stem = lower.trim_end_matches("ème").trim_end_matches("eme").trim_end_matches('e');
         if !stem.is_empty() {
             set.insert(format!("{}e", stem));
             set.insert(format!("{}ème", stem));

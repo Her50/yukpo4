@@ -647,7 +647,8 @@ pub async fn get_programmes_scolaires(
 
     let programmes = if classe_filtre.is_some() && params.etablissement_id.is_some() {
         let classe_raw = classe_filtre.unwrap();
-        let classe_variants = crate::utils::classe_normalization::classe_match_variants(&classe_raw);
+        let classe_variants =
+            crate::utils::classe_normalization::classe_match_variants(&classe_raw);
         let eid = params.etablissement_id.unwrap();
 
         let classe_pred_etab = if classe_variants.len() <= 1 {
@@ -675,12 +676,8 @@ pub async fn get_programmes_scolaires(
         );
         let mut q_etab = sqlx::query_as::<_, ProgrammeScolaire>(&sql_etab);
         if classe_variants.len() <= 1 {
-            q_etab = q_etab.bind(
-                classe_variants
-                    .first()
-                    .cloned()
-                    .unwrap_or_else(|| classe_raw.clone()),
-            );
+            q_etab =
+                q_etab.bind(classe_variants.first().cloned().unwrap_or_else(|| classe_raw.clone()));
         } else {
             q_etab = q_etab.bind(classe_variants.clone());
         }
@@ -722,12 +719,8 @@ pub async fn get_programmes_scolaires(
         );
         let mut q_nat = sqlx::query_as::<_, ProgrammeScolaire>(&sql_nat);
         if classe_variants.len() <= 1 {
-            q_nat = q_nat.bind(
-                classe_variants
-                    .first()
-                    .cloned()
-                    .unwrap_or_else(|| classe_raw.clone()),
-            );
+            q_nat =
+                q_nat.bind(classe_variants.first().cloned().unwrap_or_else(|| classe_raw.clone()));
         } else {
             q_nat = q_nat.bind(classe_variants);
         }
@@ -886,14 +879,9 @@ pub async fn get_librairie_programmes_synthese(
     .await
     .unwrap_or(None);
 
-    let (lib_lat, lib_lon) = librairie_gps
-        .as_deref()
-        .and_then(parse_lat_lng_coords)
-        .unwrap_or((0.0, 0.0));
-    let has_lib_gps = librairie_gps
-        .as_deref()
-        .and_then(parse_lat_lng_coords)
-        .is_some();
+    let (lib_lat, lib_lon) =
+        librairie_gps.as_deref().and_then(parse_lat_lng_coords).unwrap_or((0.0, 0.0));
+    let has_lib_gps = librairie_gps.as_deref().and_then(parse_lat_lng_coords).is_some();
 
     let rows: Vec<sqlx::postgres::PgRow> = sqlx::query(
         r#"
@@ -985,10 +973,10 @@ pub async fn get_librairie_programmes_synthese(
     let items: Vec<serde_json::Value> = rows
         .into_iter()
         .map(|r| {
-            let etablissements: Vec<String> =
-                r.try_get::<Option<Vec<String>>, _>("etablissements")
-                    .unwrap_or(None)
-                    .unwrap_or_default();
+            let etablissements: Vec<String> = r
+                .try_get::<Option<Vec<String>>, _>("etablissements")
+                .unwrap_or(None)
+                .unwrap_or_default();
             let etablissements_count: i64 = r.get("etablissements_count");
             let preview: Vec<String> = etablissements.iter().take(3).cloned().collect();
             let show_exact = etablissements_count <= 3;
