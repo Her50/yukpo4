@@ -12,7 +12,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct LibrairiePartner {
     pub id: Uuid,
-    pub user_id: Uuid,
+    /// Compte applicatif (`users.id` / JWT `sub`), aligné sur le bind `i32` des routes librairie.
+    pub user_id: i32,
     pub nom: String,
     pub email: String,
     pub telephone: Option<String>,
@@ -76,6 +77,24 @@ pub enum CommandeStatut {
     Annulee,
 }
 
+impl CommandeStatut {
+    /// Valeur texte / enum PostgreSQL `commande_statut` (snake_case).
+    pub fn as_db_str(&self) -> &'static str {
+        match self {
+            Self::Edition => "edition",
+            Self::ValidationBudget => "validation_budget",
+            Self::EnvoyeeLibrairies => "envoyee_librairies",
+            Self::EnValidation => "en_validation",
+            Self::ValideePartielle => "validee_partielle",
+            Self::ValideeComplete => "validee_complete",
+            Self::EnPreparation => "en_preparation",
+            Self::EnLivraison => "en_livraison",
+            Self::Livree => "livree",
+            Self::Annulee => "annulee",
+        }
+    }
+}
+
 // ========================================
 // LIVRES DANS COMMANDE MIXTE
 // ========================================
@@ -98,6 +117,23 @@ pub struct CommandeLivreNeuf {
     pub est_au_programme: bool,
     pub librairie_validateur_id: Option<Uuid>, // Qui a validé ce livre
     pub statut_validation: LivreValidationStatut,
+    /// Si true : `prix_final` = prix catalogue officiel, non modifiable par la librairie.
+    #[serde(default)]
+    #[sqlx(default)]
+    pub prix_officiel_verrouille: bool,
+    /// Bornes marché (XAF) pour les manuels sans prix officiel — fixées par l’app.
+    #[serde(default)]
+    #[sqlx(default)]
+    pub prix_plancher: Option<f64>,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub prix_plafond: Option<f64>,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub prix_suggere: Option<f64>,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub bornes_source: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -374,6 +410,7 @@ pub struct ChaineLivraisonUnifiee {
     pub reference_chaine: String, // Format: CHN-2025-XXXXX
     pub statut: ChaineStatut,
     pub coursier_id: Option<Uuid>,
+    #[sqlx(json)]
     pub points_passage: Vec<PointPassage>,
     pub distance_totale_km: f64,
     pub duree_estimee_minutes: i32,

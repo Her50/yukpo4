@@ -195,6 +195,12 @@ const DeliveryHomeScreen: React.FC = () => {
     const handleOpenDelivery = useCallback((deliveryId: string) => {
         if (navigating) return;
 
+        const id = deliveryId != null && deliveryId !== '' ? String(deliveryId) : '';
+        if (!id) {
+            Alert.alert(t('message.error'), t('deliveryHome.cannotOpenTracking'));
+            return;
+        }
+
         // ✅ CORRIGÉ: Vérifier que navigation existe et a la méthode navigate
         if (!navigation || typeof navigation.navigate !== 'function') {
             console.error('[DeliveryHomeScreen] ❌ navigation.navigate n\'est pas disponible');
@@ -209,13 +215,13 @@ const DeliveryHomeScreen: React.FC = () => {
             return;
         }
 
-        console.log('[DeliveryHomeScreen] 📍 Ouverture livraison:', deliveryId);
+        console.log('[DeliveryHomeScreen] 📍 Ouverture livraison:', id);
         setNavigating(true);
-        setActiveDeliveryId(deliveryId);
+        setActiveDeliveryId(id);
 
         try {
             // Navigation directe vers le tracking
-            navigation.navigate('DeliveryShoppingTracking', { deliveryId });
+            navigation.navigate('DeliveryShoppingTracking', { deliveryId: id });
             console.log('[DeliveryHomeScreen] ✅ Navigation réussie vers DeliveryShoppingTracking');
             // ✅ OPTIMISÉ: Réinitialiser immédiatement (pas de setTimeout)
             setNavigating(false);

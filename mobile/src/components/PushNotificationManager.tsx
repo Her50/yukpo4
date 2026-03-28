@@ -14,6 +14,16 @@ import { setupForegroundNotificationHandler, setupNotificationResponseHandler } 
 import InAppCallModal from './InAppCallModal';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 
+/** Données push réseau librairies : commande mixte à traiter (bornes / prix neufs). */
+function navigateLibrairieCommandeMixteFromPayload(navigation: any, data: any) {
+    const kind = data?.type;
+    if (kind !== 'librairie_commande_mixte' && kind !== 'nouvelle_commande') return;
+    const raw = data?.commande_id ?? data?.commandeId;
+    const commandeId = raw != null && raw !== '' ? String(raw) : '';
+    if (!commandeId) return;
+    (navigation as any).navigate('LibrairieNetworkLignePrix', { commandeId });
+}
+
 const PushNotificationManager: React.FC = () => {
     const { user } = useAuth();
     const navigation = useNavigation();
@@ -308,6 +318,11 @@ const PushNotificationManager: React.FC = () => {
                 console.log('[PushNotificationManager] 📊 Tap alerte Publicité:', data.alert_type);
                 (navigation as any).navigate('PubliciteDashboard');
             }
+            // ✅ Commande mixte librairie (prix neufs / bornes)
+            else if (data?.type === 'librairie_commande_mixte' || data?.type === 'nouvelle_commande') {
+                console.log('[PushNotificationManager] 📚 Tap commande mixte librairie:', data?.commande_id);
+                navigateLibrairieCommandeMixteFromPayload(navigation, data);
+            }
             // ✅ Tap sur alerte communautaire (navigation) → ouvrir NavigationScreen et rejouer l'audio/TTS contextuel
             else if (data?.type === 'community_alert') {
                 const checkpointType = String((data as any)?.checkpoint_type || 'danger');
@@ -357,6 +372,8 @@ const PushNotificationManager: React.FC = () => {
                     (navigation as any).navigate('Navigation', {
                         playCommunityAlert: { checkpointType, distanceMeters }
                     });
+                } else if (data.type === 'librairie_commande_mixte' || data.type === 'nouvelle_commande') {
+                    navigateLibrairieCommandeMixteFromPayload(navigation, data);
                 }
             })
             .catch((error) => {

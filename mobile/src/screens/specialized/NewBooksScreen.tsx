@@ -55,6 +55,8 @@ const NewBooksScreen: React.FC = () => {
     const [selectedNiveau, setSelectedNiveau] = useState('all');
     const [selectedClasse, setSelectedClasse] = useState<string | undefined>();
     const [total, setTotal] = useState(0);
+    /** Sélection multi-lignes pour sous-total + comparaison par classe (comme liste scolaire). */
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
     // Comparaison de prix
     const [showComparison, setShowComparison] = useState(false);
@@ -89,6 +91,12 @@ const NewBooksScreen: React.FC = () => {
         loadNewBooks();
     }, [selectedNiveau, selectedClasse]);
 
+    /** Retire de la sélection les ids qui ne sont plus dans la liste (changement de filtre). */
+    useEffect(() => {
+        const ids = new Set(livres.map((l) => l.id));
+        setSelectedIds((prev) => prev.filter((id) => ids.has(id)));
+    }, [livres]);
+
     const classeFromRoute = (route.params as { classe?: string } | undefined)?.classe;
     useEffect(() => {
         if (classeFromRoute?.trim()) {
@@ -106,6 +114,50 @@ const NewBooksScreen: React.FC = () => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
+    const toggleSelectLivre = useCallback((id: number) => {
+        hapticPress();
+        setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    }, []);
+
+    const viderSelection = useCallback(() => {
+        hapticPress();
+        setSelectedIds([]);
+    }, []);
+
+    /** Statistiques sur la liste courante (filtres appliqués). */
+    const statsListe = useMemo(() => {
+        let sum = 0;
+        let avecPrix = 0;
+        let sansPrix = 0;
+        for (const l of livres) {
+            const p = prixToNumber(l.prix_neuf);
+            if (p > 0) {
+                sum += p;
+                avecPrix += 1;
+            } else {
+                sansPrix += 1;
+            }
+        }
+        return { sum, avecPrix, sansPrix, n: livres.length };
+    }, [livres]);
+
+    /** Sous-total sur les lignes cochées. */
+    const statsSelection = useMemo(() => {
+        const selected = livres.filter((l) => selectedIds.includes(l.id));
+        let sum = 0;
+        for (const l of selected) {
+            sum += prixToNumber(l.prix_neuf);
+        }
+        const classes = new Set(selected.map((l) => l.classe));
+        return {
+            sum,
+            n: selected.length,
+            sameClass: classes.size <= 1,
+            firstClasse: selected[0]?.classe,
+            firstMatiere: selected[0]?.matiere,
+        };
+    }, [livres, selectedIds]);
+
     // Comparer les prix pour une classe
     const handleCompare = useCallback(async (classe: string, matiere?: string) => {
         try {
@@ -119,7 +171,16 @@ const NewBooksScreen: React.FC = () => {
         } finally {
             setLoadingComparison(false);
         }
-    }, [t]);
+    }, [t, toaster]);
+
+    const comparerSelection = useCallback(() => {
+        if (statsSelection.n === 0) return;
+        if (!statsSelection.sameClass || !statsSelection.firstClasse) {
+            toaster.warning(t('livresNeufs.syntheseSelectionMixte'));
+            return;
+        }
+        handleCompare(statsSelection.firstClasse, statsSelection.firstMatiere);
+    }, [statsSelection, handleCompare, t, toaster]);
 
     // Acheter un livre neuf (réutilise le flow purchase existant)
     const handleBuyNew = useCallback(async (livre: NewBookListing) => {
@@ -159,10 +220,23 @@ const NewBooksScreen: React.FC = () => {
         return Array.from(classSet).sort();
     }, [livres]);
 
+    const isSelected = useCallback((id: number) => selectedIds.includes(id), [selectedIds]);
+
     // Render un livre neuf
     const renderNewBook = useCallback(({ item }: { item: NewBookListing }) => (
         <View style={styles.bookCard}>
             <View style={styles.bookHeader}>
+                <TouchableOpacity
+                    style={[styles.selectToggle, isSelected(item.id) && styles.selectToggleOn]}
+                    onPress={() => toggleSelectLivre(item.id)}
+                    accessibilityLabel={t('livresNeufs.toggleSelection', 'Cocher pour le sous-total')}
+                >
+                    <SafeIcon
+                        name={isSelected(item.id) ? 'check' : 'plus'}
+                        size={16}
+                        color={isSelected(item.id) ? '#fff' : '#6366f1'}
+                    />
+                </TouchableOpacity>
                 <View style={styles.badgeNeuf}>
                     <Text style={styles.badgeNeufText}>{t('livresNeufs.neuf')}</Text>
                 </View>
@@ -181,7 +255,9 @@ const NewBooksScreen: React.FC = () => {
             </View>
             <View style={styles.bookFooter}>
                 <Text style={styles.bookPrice}>
-                    {item.prix_neuf?.toLocaleString()} {item.devise || 'XAF'}
+                    {prixToNumber(item.prix_neuf) > 0
+                        ? `${item.prix_neuf?.toLocaleString()} ${item.devise || 'XAF'}`
+                        : '—'}
                 </Text>
                 <View style={styles.bookActions}>
                     <TouchableOpacity
@@ -207,7 +283,7 @@ const NewBooksScreen: React.FC = () => {
                 </Text>
             )}
         </View>
-    ), [t, handleCompare, handleBuyNew]);
+    ), [t, handleCompare, handleBuyNew, toggleSelectLivre, isSelected]);
 
     // Render comparaison prix
     const renderComparison = () => {
@@ -223,7 +299,13 @@ const NewBooksScreen: React.FC = () => {
                     </View>
                     {loadingComparison ? (
                         <ActivityIndicator size="large" color="#6366f1" style={{ marginVertical: 30 }} />
-                    ) : comparison ? (
+                    ) : comparison ? (() => {
+                        const sumProg = comparison.programme_officiel.reduce((s, p) => s + prixToNumber(p.prix_officiel), 0);
+                        const progSansPrix = comparison.programme_officiel.filter((p) => prixToNumber(p.prix_officiel) <= 0).length;
+                        const sumNeufsComp = comparison.neufs.reduce((s, n) => s + prixToNumber(n.prix), 0);
+                        const sumOcc = comparison.occasions.reduce((s, o) => s + prixToNumber(o.prix), 0);
+                        const occSansPrix = comparison.occasions.filter((o) => prixToNumber(o.prix) <= 0).length;
+                        return (
                         <ScrollView style={styles.comparisonBody}>
                             <Text style={styles.comparisonSubtitle}>
                                 {comparison.classe}{comparison.matiere ? ` • ${comparison.matiere}` : ''}
@@ -279,7 +361,9 @@ const NewBooksScreen: React.FC = () => {
                                                 <Text style={styles.compItemMeta}>{o.etat} • {o.source}</Text>
                                             </View>
                                             <Text style={[styles.compItemPrice, { color: '#d97706' }]}>
-                                                {Math.round(prixToNumber(o.prix)).toLocaleString()} XAF
+                                                {prixToNumber(o.prix) > 0
+                                                    ? `${Math.round(prixToNumber(o.prix)).toLocaleString()} XAF`
+                                                    : '—'}
                                             </Text>
                                         </View>
                                     ))}
@@ -291,41 +375,99 @@ const NewBooksScreen: React.FC = () => {
                             )}
 
                             <View style={styles.budgetBox}>
-                                <Text style={styles.budgetTitle}>{t('livresNeufs.budgetEstimationTitle')}</Text>
+                                <Text style={styles.budgetTitle}>{t('livresNeufs.budgetModalSyntheseTitle')}</Text>
                                 <Text style={styles.budgetLine}>
                                     <Text style={styles.budgetLabel}>{t('livresNeufs.budgetLigneProgramme')} </Text>
                                     <Text style={styles.budgetValue}>
-                                        {Math.round(
-                                            comparison.programme_officiel.reduce(
-                                                (s, p) => s + prixToNumber(p.prix_officiel),
-                                                0
-                                            )
-                                        ).toLocaleString()}{' '}
-                                        XAF
+                                        {Math.round(sumProg).toLocaleString()} XAF
                                     </Text>
                                 </Text>
+                                {progSansPrix > 0 ? (
+                                    <Text style={styles.budgetHint}>
+                                        {t('livresNeufs.budgetProgrammeSansPrix', { n: progSansPrix })}
+                                    </Text>
+                                ) : null}
                                 <Text style={styles.budgetLine}>
                                     <Text style={styles.budgetLabel}>{t('livresNeufs.budgetLigneNeufs')} </Text>
                                     <Text style={[styles.budgetValue, { color: '#059669' }]}>
-                                        {Math.round(comparison.neufs.reduce((s, n) => s + prixToNumber(n.prix), 0)).toLocaleString()}{' '}
-                                        XAF
+                                        {Math.round(sumNeufsComp).toLocaleString()} XAF
                                     </Text>
                                 </Text>
                                 <Text style={styles.budgetLine}>
                                     <Text style={styles.budgetLabel}>{t('livresNeufs.budgetLigneOccasions')} </Text>
                                     <Text style={[styles.budgetValue, { color: '#d97706' }]}>
-                                        {Math.round(comparison.occasions.reduce((s, o) => s + prixToNumber(o.prix), 0)).toLocaleString()}{' '}
-                                        XAF
+                                        {sumOcc > 0
+                                            ? `${Math.round(sumOcc).toLocaleString()} XAF`
+                                            : comparison.occasions.length > 0
+                                              ? '—'
+                                              : '0 XAF'}
                                     </Text>
                                 </Text>
+                                {comparison.occasions.length > 0 ? (
+                                    <Text style={styles.budgetHint}>
+                                        {occSansPrix > 0 && sumOcc > 0
+                                            ? t('livresNeufs.budgetOccasionMixte', {
+                                                  n: occSansPrix,
+                                                  m: Math.round(sumOcc).toLocaleString(),
+                                              })
+                                            : occSansPrix > 0
+                                              ? t('livresNeufs.budgetOccasionAdeterminer', { n: occSansPrix })
+                                              : t('livresNeufs.budgetOccasionTroc', {
+                                                    m: Math.round(sumOcc).toLocaleString(),
+                                                })}
+                                    </Text>
+                                ) : null}
                                 <Text style={styles.budgetDisclaimer}>{t('livresNeufs.budgetDisclaimer')}</Text>
                             </View>
                         </ScrollView>
-                    ) : null}
+                        );
+                    })() : null}
                 </View>
             </View>
         );
     };
+
+    const listHeader = useMemo(() => {
+        if (livres.length === 0) return null;
+        return (
+            <View style={styles.synthCard}>
+                <Text style={styles.synthTitle}>{t('livresNeufs.syntheseTitle')}</Text>
+                <Text style={styles.synthNeuf}>
+                    {t('livresNeufs.syntheseTotalNeuf', {
+                        m: Math.round(statsListe.sum).toLocaleString(),
+                        n: statsListe.avecPrix,
+                    })}
+                </Text>
+                <Text style={styles.synthMeta}>{t('livresNeufs.syntheseListeMeta', { n: statsListe.n })}</Text>
+                {statsListe.sansPrix > 0 ? (
+                    <Text style={styles.synthHint}>{t('livresNeufs.syntheseSansPrix', { n: statsListe.sansPrix })}</Text>
+                ) : null}
+                <Text style={styles.synthOcc}>{t('livresNeufs.syntheseOccasionHint')}</Text>
+                <Text style={styles.synthHintSmall}>{t('livresNeufs.syntheseAjouterHint')}</Text>
+                {statsSelection.n > 0 ? (
+                    <>
+                        <Text style={styles.synthSelection}>
+                            {t('livresNeufs.syntheseSelection', {
+                                n: statsSelection.n,
+                                m: Math.round(statsSelection.sum).toLocaleString(),
+                            })}
+                        </Text>
+                        <View style={styles.synthRow}>
+                            <TouchableOpacity style={styles.synthBtnSecondary} onPress={viderSelection}>
+                                <Text style={styles.synthBtnSecondaryText}>{t('livresNeufs.syntheseViderSelection')}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.synthBtnPrimary} onPress={comparerSelection}>
+                                <SafeIcon name="bar-chart-2" size={16} color="#fff" />
+                                <Text style={styles.synthBtnPrimaryText}>
+                                    {t('livresNeufs.syntheseComparerSelection')}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </>
+                ) : null}
+            </View>
+        );
+    }, [livres.length, statsListe, statsSelection, t, viderSelection, comparerSelection]);
 
     return (
         <View style={styles.container}>
@@ -422,6 +564,7 @@ const NewBooksScreen: React.FC = () => {
                     data={livres}
                     keyExtractor={(item) => String(item.id)}
                     renderItem={renderNewBook}
+                    ListHeaderComponent={listHeader}
                     contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
                     refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={() => loadNewBooks(true)} />
@@ -465,6 +608,17 @@ const styles = StyleSheet.create({
     emptySubText: { marginTop: 4, fontSize: 13, color: '#9ca3af', textAlign: 'center' },
 
     bookCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 2 },
+    selectToggle: {
+        width: 34,
+        height: 34,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#c7d2fe',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fff',
+    },
+    selectToggleOn: { backgroundColor: '#6366f1', borderColor: '#6366f1' },
     bookHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
     badgeNeuf: { backgroundColor: '#059669', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12 },
     badgeNeufText: { color: '#fff', fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
@@ -510,6 +664,46 @@ const styles = StyleSheet.create({
     budgetLabel: { fontSize: 13, color: '#64748b', flexShrink: 1 },
     budgetValue: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
     budgetDisclaimer: { fontSize: 11, color: '#94a3b8', marginTop: 10, lineHeight: 15 },
+    budgetHint: { fontSize: 12, color: '#64748b', marginBottom: 8, lineHeight: 17, fontStyle: 'italic' },
+
+    synthCard: {
+        marginBottom: 14,
+        padding: 14,
+        borderRadius: 14,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#c7d2fe',
+        borderLeftWidth: 4,
+        borderLeftColor: '#4f46e5',
+    },
+    synthTitle: { fontSize: 15, fontWeight: '800', color: '#312e81', marginBottom: 8 },
+    synthNeuf: { fontSize: 15, fontWeight: '700', color: '#047857', lineHeight: 22, marginBottom: 4 },
+    synthMeta: { fontSize: 12, color: '#64748b', marginBottom: 6 },
+    synthOcc: { fontSize: 13, fontWeight: '600', color: '#9a3412', lineHeight: 19, marginTop: 4, marginBottom: 4 },
+    synthHint: { fontSize: 12, color: '#64748b', lineHeight: 17, marginBottom: 4 },
+    synthHintSmall: { fontSize: 11, color: '#94a3b8', lineHeight: 15, marginBottom: 8 },
+    synthSelection: { fontSize: 14, fontWeight: '700', color: '#1e3a8a', marginTop: 4, marginBottom: 10 },
+    synthRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    synthBtnSecondary: {
+        flex: 1,
+        paddingVertical: 10,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+        alignItems: 'center',
+    },
+    synthBtnSecondaryText: { fontSize: 13, fontWeight: '600', color: '#475569' },
+    synthBtnPrimary: {
+        flex: 1.2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        borderRadius: 10,
+        backgroundColor: '#6366f1',
+    },
+    synthBtnPrimaryText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 });
 
 export default NewBooksScreen;

@@ -425,7 +425,9 @@ const apiCallInternal = async <T>(
                                 ? 30000  // ✅ 30s pour reviews et stats (peuvent être lents)
                                 : endpoint.includes('/prestataire/services')
                                   ? 30000  // ✅ 30s pour chargement services (peut être lent avec cache Redis)
-                                  : 15000;
+                                  : endpoint.includes('/api/bus-tickets/')
+                                    ? 45000  // ✅ Agence voyage : horaires / billets — cold start GCP ou requêtes plus lentes
+                                    : 15000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {

@@ -79,6 +79,8 @@ const PartnerDashboardLayout: React.FC<PartnerDashboardLayoutProps> = ({
     onRefresh,
     children,
 }) => {
+    const { t } = useLanguageSafe();
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -96,9 +98,9 @@ const PartnerDashboardLayout: React.FC<PartnerDashboardLayoutProps> = ({
                     <TouchableOpacity onPress={onBack} style={styles.backButton}>
                         <SafeIcon name="arrow-left" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle}>{title}</Text>
-                        {subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
+                    <View style={styles.headerTitleBlock}>
+                        <Text style={styles.headerTitle} numberOfLines={2}>{title}</Text>
+                        {subtitle ? <Text style={styles.headerSubtitle} numberOfLines={2}>{subtitle}</Text> : null}
                     </View>
                     {onScanQR && (
                         <TouchableOpacity onPress={onScanQR} style={styles.headerAction}>
@@ -107,8 +109,12 @@ const PartnerDashboardLayout: React.FC<PartnerDashboardLayoutProps> = ({
                     )}
                 </View>
 
-                {/* Tabs */}
-                <View style={styles.tabsContainer}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.tabsScrollContent}
+                    style={styles.tabsScroll}
+                >
                     {tabs.map(tab => (
                         <TouchableOpacity
                             key={tab.key}
@@ -117,16 +123,21 @@ const PartnerDashboardLayout: React.FC<PartnerDashboardLayoutProps> = ({
                         >
                             <SafeIcon
                                 name={tab.icon as any}
-                                size={15}
+                                size={18}
                                 color={activeTab === tab.key ? '#fff' : '#ffffff70'}
                             />
-                            <Text style={[
-                                styles.tabLabel,
-                                activeTab === tab.key && styles.tabLabelActive,
-                            ]}>{tab.label}</Text>
+                            <Text
+                                style={[
+                                    styles.tabLabel,
+                                    activeTab === tab.key && styles.tabLabelActive,
+                                ]}
+                                numberOfLines={2}
+                            >
+                                {tab.label}
+                            </Text>
                         </TouchableOpacity>
                     ))}
-                </View>
+                </ScrollView>
             </LinearGradient>
 
             {/* Content */}
@@ -158,7 +169,7 @@ export const QuickActionsRow: React.FC<{ actions: QuickAction[] }> = ({ actions 
                 <View style={[styles.quickActionIcon, { backgroundColor: action.color + '15' }]}>
                     <SafeIcon name={action.icon as any} size={22} color={action.color} />
                 </View>
-                <Text style={styles.quickActionLabel} numberOfLines={2}>{action.label}</Text>
+                <Text style={styles.quickActionLabel} numberOfLines={3}>{action.label}</Text>
             </TouchableOpacity>
         ))}
     </View>
@@ -166,19 +177,22 @@ export const QuickActionsRow: React.FC<{ actions: QuickAction[] }> = ({ actions 
 
 export const SectionTitle: React.FC<{ title: string; count?: number; onAction?: () => void; actionLabel?: string }> = ({
     title, count, onAction, actionLabel,
-}) => (
-    <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>
-            {title}{count !== undefined ? ` (${count})` : ''}
-        </Text>
-        {onAction && (
-            <TouchableOpacity onPress={onAction} style={styles.sectionAction}>
-                <Text style={styles.sectionActionText}>{actionLabel || t('partnerDashboardLayout.voirTout')}</Text>
-                <SafeIcon name="chevron-right" size={14} color={modernColors.primary} />
-            </TouchableOpacity>
-        )}
-    </View>
-);
+}) => {
+    const { t } = useLanguageSafe();
+    return (
+        <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+                {title}{count !== undefined ? ` (${count})` : ''}
+            </Text>
+            {onAction && (
+                <TouchableOpacity onPress={onAction} style={styles.sectionAction}>
+                    <Text style={styles.sectionActionText}>{actionLabel || t('partnerDashboardLayout.voirTout')}</Text>
+                    <SafeIcon name="chevron-right" size={14} color={modernColors.primary} />
+                </TouchableOpacity>
+            )}
+        </View>
+    );
+};
 
 export const EmptyState: React.FC<{
     icon: string;
@@ -233,21 +247,37 @@ const styles = StyleSheet.create({
     loadingText: { marginTop: 12, fontSize: 15, color: modernColors.textSecondary, fontWeight: '500' },
 
     // Header
-    header: { paddingTop: 50, paddingBottom: 8, paddingHorizontal: 16 },
-    headerTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-    backButton: { marginRight: 12, padding: 4 },
-    headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
-    headerSubtitle: { fontSize: 13, color: '#ffffffCC', marginTop: 2 },
-    headerAction: { padding: 8, backgroundColor: '#ffffff20', borderRadius: 10 },
+    header: { paddingTop: 50, paddingBottom: 10, paddingHorizontal: 16 },
+    headerTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+    backButton: { marginRight: 10, padding: 4, marginTop: 2 },
+    headerTitleBlock: { flex: 1, minWidth: 0 },
+    headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
+    headerSubtitle: { fontSize: 13, color: '#ffffffCC', marginTop: 4 },
+    headerAction: { padding: 8, backgroundColor: '#ffffff20', borderRadius: 10, marginTop: 2 },
 
     // Tabs
-    tabsContainer: { flexDirection: 'row', gap: 4, paddingBottom: 8 },
+    tabsScroll: { flexGrow: 0 },
+    tabsScrollContent: { flexDirection: 'row', alignItems: 'stretch', gap: 8, paddingBottom: 4, paddingRight: 4 },
     tab: {
-        flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        gap: 4, paddingVertical: 8, paddingHorizontal: 4, borderRadius: 8, backgroundColor: '#ffffff15',
+        width: 100,
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderRadius: 10,
+        backgroundColor: '#ffffff15',
     },
     tabActive: { backgroundColor: '#ffffff30' },
-    tabLabel: { fontSize: 11, color: '#ffffff70', fontWeight: '500' },
+    tabLabel: {
+        fontSize: 10,
+        color: '#ffffff70',
+        fontWeight: '600',
+        textAlign: 'center',
+        marginTop: 6,
+        lineHeight: 13,
+        width: '100%',
+    },
     tabLabelActive: { color: '#fff', fontWeight: '700' },
 
     // Content
@@ -264,10 +294,23 @@ const styles = StyleSheet.create({
     statLabel: { fontSize: 12, color: modernColors.textSecondary, marginTop: 2 },
 
     // Quick Actions
-    quickActionsRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-    quickAction: { flex: 1, alignItems: 'center', gap: 6 },
+    quickActionsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginBottom: 20,
+        justifyContent: 'space-between',
+    },
+    quickAction: { width: '31%', alignItems: 'center', gap: 8, marginBottom: 8 },
     quickActionIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-    quickActionLabel: { fontSize: 11, color: '#374151', fontWeight: '500', textAlign: 'center' },
+    quickActionLabel: {
+        fontSize: 11,
+        color: '#374151',
+        fontWeight: '500',
+        textAlign: 'center',
+        lineHeight: 14,
+        width: '100%',
+    },
 
     // Section
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },

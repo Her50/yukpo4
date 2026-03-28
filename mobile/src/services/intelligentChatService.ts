@@ -4603,7 +4603,8 @@ Explorez l'avenir dès maintenant ! 👇`,
           { id: 'book-etab', label: 'Manuels établissement', icon: 'building-2', route: 'EtablissementScolaire', category: 'navigation' as const, description: 'Dépôt liste établissement' },
           { id: 'lib-team-choose-branch', label: 'Choisir succursale', icon: 'map-pin', route: 'LibrairieTeamPending', category: 'action' as const, description: 'Sélectionner la succursale avant validation' },
           { id: 'lib-team-stock-check', label: 'Cocher stock dispo', icon: 'check-square', route: 'LibrairieTeamPending', category: 'action' as const, description: 'Confirmer disponibilité sur la succursale' },
-          { id: 'lib-team-keep-prep', label: 'Laisser en préparation', icon: 'clock', route: 'LibrairieTeamPending', category: 'action' as const, description: 'Ne pas valider si stock indisponible' }
+          { id: 'lib-team-keep-prep', label: 'Laisser en préparation', icon: 'clock', route: 'LibrairieTeamPending', category: 'action' as const, description: 'Ne pas valider si stock indisponible' },
+          { id: 'lib-mixte-prix', label: 'Prix commande mixte (neufs)', icon: 'tag', route: 'LibrairieNetworkLignePrix', category: 'navigation' as const, description: 'Liste commandes mixtes, bornes et saisie prix (notif: route + param commandeId)' }
         ]
       },
       {
@@ -5919,7 +5920,8 @@ Soyez précis, utilisez les fonctionnalités disponibles, et donnez des réponse
       { id: 'book-program', label: 'Verifier programme', icon: 'graduation-cap', route: 'LivreScolaireHome', category: 'action', description: 'Verifier programme scolaire' },
       { id: 'lib-team-choose-branch', label: 'Choisir succursale', icon: 'map-pin', route: 'LibrairieTeamPending', category: 'action', description: 'Sélectionner la succursale de traitement' },
       { id: 'lib-team-stock-check', label: 'Cocher stock dispo', icon: 'check-square', route: 'LibrairieTeamPending', category: 'action', description: 'Confirmer la dispo sur la succursale' },
-      { id: 'lib-team-keep-prep', label: 'Laisser en préparation', icon: 'clock', route: 'LibrairieTeamPending', category: 'action', description: 'Garder en préparation si stock indisponible' }
+      { id: 'lib-team-keep-prep', label: 'Laisser en préparation', icon: 'clock', route: 'LibrairieTeamPending', category: 'action', description: 'Garder en préparation si stock indisponible' },
+      { id: 'lib-mixte-prix', label: 'Prix commande mixte (neufs)', icon: 'tag', route: 'LibrairieNetworkLignePrix', category: 'navigation', description: 'Liste commandes, bornes; deep link: LibrairieNetworkLignePrix + commandeId' }
     ];
   }
 

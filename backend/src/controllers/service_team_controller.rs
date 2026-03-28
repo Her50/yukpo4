@@ -62,6 +62,8 @@ pub struct ServiceTeamInvitation {
 
 #[derive(Debug, Deserialize)]
 pub struct InviteMemberRequest {
+    /// Mobile envoie souvent `serviceId` (camelCase)
+    #[serde(alias = "serviceId")]
     pub service_id: Option<i32>,
     pub email: String,
     pub role: String,

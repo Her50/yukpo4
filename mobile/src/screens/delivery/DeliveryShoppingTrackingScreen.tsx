@@ -41,14 +41,17 @@ import { useLanguageSafe } from '../../contexts/LanguageContext';
 type TabType = 'timeline' | 'basket' | 'courier';
 
 interface RouteParams {
-    deliveryId: string;
+    deliveryId: string | number;
 }
 
 const DeliveryShoppingTrackingScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const params = route.params as RouteParams | undefined;
-    const deliveryId = params?.deliveryId || null;
+    const deliveryId =
+        params?.deliveryId !== undefined && params?.deliveryId !== null
+            ? String(params.deliveryId)
+            : null;
 
     const [activeTab, setActiveTab] = useState<TabType>('timeline');
     const [showCourierModal, setShowCourierModal] = useState(false);
@@ -467,7 +470,10 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
             >
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
-                        <Text style={styles.title}>Livraison #{delivery?.id?.slice(-6) || '...'}</Text>
+                        <Text style={styles.title}>
+                            Livraison #
+                            {delivery?.id != null ? String(delivery.id).slice(-6) : '...'}
+                        </Text>
                         <View style={styles.statusRow}>
                             <StatusIndicator
                                 status={delivery?.status || 'pending'}
@@ -605,7 +611,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                         {deliveryId && (
                             <ShareTrackingLink
                                 deliveryId={deliveryId}
-                                deliveryTitle={`Livraison #${deliveryId.slice(-6)}`}
+                                deliveryTitle={`Livraison #${String(deliveryId).slice(-6)}`}
                                 style={styles.share}
                             />
                         )}

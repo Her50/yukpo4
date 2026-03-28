@@ -36,24 +36,53 @@ use sqlx;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-/// Vérifie que l'établissement appartient à l'utilisateur (routes partenaire protégées).
-async fn ensure_etablissement_owner(
+/// Propriétaire de l'établissement **ou** membre actif de l'équipe du service Yukpo rattaché
+/// (`service_team_members` : rôles admin / manager / editor — `service_team_roles.level` ≤ 3).
+/// Le propriétaire invite via `POST /api/services/team/invite` avec le `service_id` de l'établissement.
+async fn ensure_etablissement_owner_or_team(
     pool: &sqlx::PgPool,
     user_id: i32,
     etablissement_id: i32,
 ) -> AppResult<()> {
-    let owner: Option<i32> =
-        sqlx::query_scalar("SELECT user_id FROM etablissements_scolaires WHERE id = $1")
+    let row: Option<(i32, i32)> =
+        sqlx::query_as("SELECT user_id, service_id FROM etablissements_scolaires WHERE id = $1")
             .bind(etablissement_id)
             .fetch_optional(pool)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur lecture établissement: {}", e)))?;
-    match owner {
-        Some(uid) if uid == user_id => Ok(()),
-        Some(_) => Err(AppError::Forbidden(
-            "Accès refusé : cet établissement ne vous appartient pas.".to_string(),
-        )),
-        None => Err(AppError::NotFound("Établissement introuvable".to_string())),
+
+    let (owner_uid, service_id) =
+        row.ok_or_else(|| AppError::NotFound("Établissement introuvable".to_string()))?;
+
+    if owner_uid == user_id {
+        return Ok(());
+    }
+
+    let allowed: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1
+            FROM service_team_members stm
+            JOIN service_team_roles str ON stm.role_id = str.id
+            WHERE stm.service_id = $1
+              AND stm.user_id = $2
+              AND stm.is_active = TRUE
+              AND str.level <= 3
+        )
+        "#,
+    )
+    .bind(service_id)
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification équipe service: {}", e)))?;
+
+    if allowed {
+        Ok(())
+    } else {
+        Err(AppError::Forbidden(
+            "Accès refusé : vous n'êtes pas autorisé à gérer cet établissement (propriétaire ou membre d'équipe autorisé).".to_string(),
+        ))
     }
 }
 
@@ -205,7 +234,7 @@ pub async fn update_statistiques_examens(
         user_id, etablissement_id
     );
 
-    ensure_etablissement_owner(&state.pg, user_id, etablissement_id).await?;
+    ensure_etablissement_owner_or_team(&state.pg, user_id, etablissement_id).await?;
 
     let service = OrientationScolaireService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let etablissement = service.update_statistiques_examens(etablissement_id, request).await?;
@@ -246,7 +275,7 @@ pub async fn upload_programme(
 ) -> AppResult<impl IntoResponse> {
     info!("[PROGRAMMES_SCOLAIRES] Upload: user_id={}", user_id);
 
-    ensure_etablissement_owner(&state.pg, user_id, request.etablissement_id).await?;
+    ensure_etablissement_owner_or_team(&state.pg, user_id, request.etablissement_id).await?;
 
     let service = ProgrammesScolairesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let programme = service.upload_programme(request).await?;
@@ -334,7 +363,7 @@ pub async fn upload_fournitures(
 ) -> AppResult<impl IntoResponse> {
     info!("[FOURNITURES_SCOLAIRES] Upload: user_id={}", user_id);
 
-    ensure_etablissement_owner(&state.pg, user_id, request.etablissement_id).await?;
+    ensure_etablissement_owner_or_team(&state.pg, user_id, request.etablissement_id).await?;
 
     let service = FournituresScolairesService::new(Arc::new(state.pg.clone()), Arc::clone(&state));
     let fournitures = service.upload_fournitures(request).await?;

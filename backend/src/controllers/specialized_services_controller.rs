@@ -3,6 +3,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::models::delivery_model::DeliveryApplicationStatus;
 use crate::services::delivery_ai_eta_service::DeliveryAIETAService;
 use crate::services::interior_design_ai_service::InteriorDesignAIService;
 use crate::services::land_analysis_ai_service::LandAnalysisAIService;
@@ -965,6 +966,62 @@ pub async fn create_travel_agency(
 // COVOITURAGE
 // ============================================================================
 
+/// Publication taxi / covoiturage : candidature coursier approuvée avec type `taxi` ou `carpooling`,
+/// ou compte driver / partenaire chauffeur (rétrocompatibilité).
+async fn ensure_user_can_publish_transport_offer(
+    pool: &sqlx::PgPool,
+    user_id: i32,
+) -> AppResult<()> {
+    let approved_profile: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM courier_applications ca
+            WHERE ca.user_id = $1
+              AND ca.status = $2
+              AND COALESCE(ca.profile_data->>'courier_type', ca.profile_data->>'courierType', '') IN ('taxi', 'carpooling')
+        )
+        "#,
+    )
+    .bind(user_id)
+    .bind(DeliveryApplicationStatus::Approved)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| {
+        error!("[transport_driver] lecture candidature: {}", e);
+        AppError::Internal(format!("Erreur vérification profil chauffeur: {}", e))
+    })?;
+
+    if approved_profile {
+        return Ok(());
+    }
+
+    let legacy: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM users u
+            WHERE u.id = $1
+              AND (
+                LOWER(TRIM(COALESCE(u.role::text, ''))) = 'driver'
+                OR LOWER(TRIM(COALESCE(u.partner_type::text, ''))) IN ('chauffeur', 'taxi', 'covoiturage')
+              )
+        )
+        "#,
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+
+    if legacy {
+        return Ok(());
+    }
+
+    Err(AppError::Forbidden(
+        "Publication réservée aux chauffeurs enregistrés (candidature taxi ou covoiturage approuvée)."
+            .to_string(),
+    ))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CreateCovoiturageRequest {
     pub service_id: i32,
@@ -1013,6 +1070,8 @@ pub async fn create_covoiturage(
             "Service non trouvé ou n'appartient pas à l'utilisateur".to_string(),
         ));
     }
+
+    ensure_user_can_publish_transport_offer(&state.pg, user_id).await?;
 
     // ✅ NOUVEAU : Vérifier si un covoiturage existe déjà pour ce service
     let existing_covoiturage: Option<i32> =
@@ -1229,6 +1288,8 @@ pub async fn create_taxi(
             "Service non trouvé ou n'appartient pas à l'utilisateur".to_string(),
         ));
     }
+
+    ensure_user_can_publish_transport_offer(&state.pg, user_id).await?;
 
     // ✅ NOUVEAU : Vérifier si un taxi existe déjà pour ce service
     let existing_taxi: Option<i32> =

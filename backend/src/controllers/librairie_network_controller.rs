@@ -19,10 +19,15 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     models::librairie_network::{
-        CommandeLivreNeuf, CommandeLivreOccasion, CommandeValidation, DestinationQR,
-        LivreQRReference, PointPassage, ValidationStatut,
+        ChaineLivraisonUnifiee, CommandeLivreNeuf, CommandeLivreOccasion, CommandeMixte,
+        CommandeStatut, CommandeValidation, DestinationQR, LibrairiePartner, LivreQRReference,
+        MethodePaiement, PointPassage, ValidationStatut,
     },
-    models::librairie_network_model::*,
+    models::librairie_network_model::{
+        CreateLibrairieRequest, LibrairieLieuIn, NotificationLibrairie, QRCodeCoursier,
+        TransactionAgregee,
+    },
+    services::librairie_prix_bornes_service,
     state::AppState,
     utils::{generate_qr_code, generate_reference, send_notification},
 };
@@ -123,6 +128,11 @@ pub struct ValidationLibrairieRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct PatchLigneNeufPrixBody {
+    pub prix_final: f64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct FinaliserCommandeRequest {
     pub commande_id: Uuid,
     pub methode_paiement: MethodePaiement,
@@ -160,6 +170,12 @@ pub struct GetLibrairiesQuery {
     pub gps_lat: Option<f64>,
     pub gps_lng: Option<f64>,
     pub limit: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GetLibrairieCommandesMixtesQuery {
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
 }
 
 // ========================================
@@ -261,9 +277,10 @@ pub async fn create_commande_mixte(
             r#"
             INSERT INTO commande_livres_neufs (
                 commande_id, programme_scolaire_id, titre, auteur, editeur, isbn,
-                classe, matiere, niveau, prix_officiel, prix_final, quantite, est_au_programme
+                classe, matiere, niveau, prix_officiel, prix_final, quantite, est_au_programme,
+                prix_officiel_verrouille
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             "#,
         )
         .bind(commande.id)
@@ -279,6 +296,9 @@ pub async fn create_commande_mixte(
         .bind(livre_req.prix_officiel)
         .bind(livre_req.quantite)
         .bind(livre_req.est_au_programme)
+        .bind(librairie_prix_bornes_service::est_prix_officiel_verrouille(
+            livre_req.prix_officiel,
+        ))
         .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur insertion livre neuf: {}", e)))?;
@@ -409,9 +429,10 @@ pub async fn update_commande_mixte(
                 r#"
                 INSERT INTO commande_livres_neufs (
                     commande_id, programme_scolaire_id, titre, auteur, editeur, isbn,
-                    classe, matiere, niveau, prix_officiel, prix_final, quantite, est_au_programme
+                    classe, matiere, niveau, prix_officiel, prix_final, quantite, est_au_programme,
+                    prix_officiel_verrouille
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 "#,
             )
             .bind(commande_id)
@@ -427,6 +448,9 @@ pub async fn update_commande_mixte(
             .bind(livre_req.prix_officiel)
             .bind(livre_req.quantite)
             .bind(livre_req.est_au_programme)
+            .bind(librairie_prix_bornes_service::est_prix_officiel_verrouille(
+                livre_req.prix_officiel,
+            ))
             .execute(&mut *tx)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur ajout livre neuf: {}", e)))?;
@@ -766,9 +790,10 @@ pub async fn broadcast_commande_librairies(
             "Nouvelle commande à valider",
             &notification.message,
             Some(serde_json::json!({
-                "type": "nouvelle_commande",
-                "commande_id": payload.commande_id,
-                "notification_id": notification.id
+                "type": "librairie_commande_mixte",
+                "commande_id": payload.commande_id.to_string(),
+                "commandeId": payload.commande_id.to_string(),
+                "notification_id": notification.id.to_string(),
             })),
         )
         .await
@@ -1380,7 +1405,7 @@ pub async fn get_mes_commandes(
     .to_string();
 
     if let Some(statut) = params.statut {
-        query.push_str(&format!(" AND cm.statut = '{}'", statut));
+        query.push_str(&format!(" AND cm.statut = '{}'", statut.as_db_str()));
     }
 
     query.push_str(" GROUP BY cm.id ORDER BY cm.created_at DESC LIMIT $2 OFFSET $3");
@@ -1405,6 +1430,63 @@ pub async fn get_mes_commandes(
             "created_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("created_at").unwrap_or(None),
         })
     }).collect();
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "commandes": commandes,
+        "total": commandes.len()
+    })))
+}
+
+/// Commandes mixtes où cette librairie a une entrée `commande_validations` (sans coller l’UUID).
+pub async fn get_librairie_mes_commandes_mixtes(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Query(params): Query<GetLibrairieCommandesMixtesQuery>,
+) -> AppResult<impl IntoResponse> {
+    info!("[get_librairie_mes_commandes_mixtes] User: {}", user_id);
+
+    let limit = params.limit.unwrap_or(30).min(100);
+    let offset = params.offset.unwrap_or(0);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT cm.id,
+               cm.reference_commande,
+               cm.statut::text AS statut,
+               cm.budget_total,
+               cm.created_at
+        FROM commandes_mixtes cm
+        WHERE EXISTS (
+            SELECT 1
+            FROM commande_validations cv
+            INNER JOIN librairie_partners lp ON lp.id = cv.librairie_id
+            WHERE cv.commande_id = cm.id
+              AND lp.user_id = $1
+        )
+        ORDER BY cm.created_at DESC
+        LIMIT $2 OFFSET $3
+        "#,
+    )
+    .bind(user_id)
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur liste commandes librairie: {}", e)))?;
+
+    let commandes: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            serde_json::json!({
+                "id": row.try_get::<Uuid, _>("id").ok(),
+                "reference_commande": row.try_get::<String, _>("reference_commande").ok(),
+                "statut": row.try_get::<String, _>("statut").ok(),
+                "budget_total": row.try_get::<f64, _>("budget_total").ok(),
+                "created_at": row.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok(),
+            })
+        })
+        .collect();
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -1472,7 +1554,7 @@ pub async fn get_librairies_proches(
         .iter()
         .map(|row| {
             serde_json::json!({
-                "id": row.try_get::<i32, _>("id").ok(),
+                "id": row.try_get::<Uuid, _>("id").ok(),
                 "nom": row.try_get::<String, _>("nom").ok(),
                 "ville": row.try_get::<Option<String>, _>("ville").unwrap_or(None),
                 "gps": row.try_get::<Option<String>, _>("gps").unwrap_or(None),
@@ -1501,17 +1583,201 @@ pub async fn get_commande_details(
         user_id, commande_id
     );
 
-    let details = fetch_commande_details(&state.pg, commande_id).await?;
-
-    // Vérifier autorisation
-    if details.commande.user_id != user_id {
+    let allowed = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM commandes_mixtes WHERE id = $1 AND user_id = $2)",
+    )
+    .bind(commande_id)
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur auth commande: {}", e)))?;
+    if !allowed {
         return Err(AppError::Forbidden("Accès non autorisé".to_string()));
     }
+
+    let details = fetch_commande_details(&state.pg, commande_id).await?;
 
     Ok(Json(serde_json::json!({
         "success": true,
         "details": details
     })))
+}
+
+/// GET bornes / état prix pour chaque ligne neuf (client propriétaire ou librairie liée à la commande).
+pub async fn get_lignes_neufs_bornes_commande(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(commande_id): Path<Uuid>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[get_lignes_neufs_bornes_commande] User: {}, Commande: {}",
+        user_id, commande_id
+    );
+
+    if !user_peut_acceder_bornes_commande(&state.pg, commande_id, user_id).await? {
+        return Err(AppError::Forbidden(
+            "Accès non autorisé à cette commande".to_string(),
+        ));
+    }
+
+    let lignes = sqlx::query_as::<_, CommandeLivreNeuf>(
+        "SELECT * FROM commande_livres_neufs WHERE commande_id = $1 ORDER BY created_at",
+    )
+    .bind(commande_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lignes neufs: {}", e)))?;
+
+    let mut lignes_bornes: Vec<librairie_prix_bornes_service::BornesPrixLigne> =
+        Vec::with_capacity(lignes.len());
+
+    for ligne in &lignes {
+        let verrou =
+            librairie_prix_bornes_service::est_prix_officiel_verrouille(ligne.prix_officiel)
+                || ligne.prix_officiel_verrouille;
+        let b = librairie_prix_bornes_service::assurer_bornes_persistees(
+            &state.pg,
+            ligne.id,
+            commande_id,
+            ligne.prix_officiel,
+            &ligne.classe,
+            &ligne.matiere,
+            &ligne.titre,
+            ligne.quantite,
+            verrou,
+        )
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur bornes: {}", e)))?;
+        lignes_bornes.push(b);
+    }
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "commande_id": commande_id,
+        "lignes": lignes_bornes
+    })))
+}
+
+/// PATCH `prix_final` pour une ligne neuf — réservé aux librairies associées à la commande (validation).
+pub async fn patch_ligne_neuf_prix(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path((commande_id, ligne_id)): Path<(Uuid, Uuid)>,
+    Json(body): Json<PatchLigneNeufPrixBody>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[patch_ligne_neuf_prix] User: {}, Commande: {}, Ligne: {}",
+        user_id, commande_id, ligne_id
+    );
+
+    if !user_est_librairie_avec_validation_commande(&state.pg, commande_id, user_id).await? {
+        return Err(AppError::Forbidden(
+            "Seule une librairie associée à cette commande peut modifier le prix.".to_string(),
+        ));
+    }
+
+    let ligne = sqlx::query_as::<_, CommandeLivreNeuf>(
+        "SELECT * FROM commande_livres_neufs WHERE id = $1 AND commande_id = $2",
+    )
+    .bind(ligne_id)
+    .bind(commande_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur ligne: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Ligne neuf introuvable".to_string()))?;
+
+    let verrou = librairie_prix_bornes_service::est_prix_officiel_verrouille(ligne.prix_officiel)
+        || ligne.prix_officiel_verrouille;
+
+    let bornes = librairie_prix_bornes_service::assurer_bornes_persistees(
+        &state.pg,
+        ligne.id,
+        commande_id,
+        ligne.prix_officiel,
+        &ligne.classe,
+        &ligne.matiere,
+        &ligne.titre,
+        ligne.quantite,
+        verrou,
+    )
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur bornes: {}", e)))?;
+
+    librairie_prix_bornes_service::valider_prix_final_contre_bornes(
+        bornes.prix_officiel_verrouille,
+        ligne.prix_officiel,
+        bornes.prix_plancher,
+        bornes.prix_plafond,
+        body.prix_final,
+    )
+    .map_err(AppError::BadRequest)?;
+
+    sqlx::query(
+        "UPDATE commande_livres_neufs SET prix_final = $1 WHERE id = $2 AND commande_id = $3",
+    )
+    .bind(body.prix_final)
+    .bind(ligne_id)
+    .bind(commande_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur mise à jour prix: {}", e)))?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "ligne_id": ligne_id,
+        "prix_final": body.prix_final
+    })))
+}
+
+async fn user_peut_acceder_bornes_commande(
+    pg: &sqlx::PgPool,
+    commande_id: Uuid,
+    user_id: i32,
+) -> Result<bool, AppError> {
+    let owner: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM commandes_mixtes WHERE id = $1 AND user_id = $2)",
+    )
+    .bind(commande_id)
+    .bind(user_id)
+    .fetch_one(pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Auth commande: {}", e)))?;
+
+    if owner {
+        return Ok(true);
+    }
+
+    sqlx::query_scalar(
+        r#"SELECT EXISTS(
+            SELECT 1 FROM commande_validations cv
+            INNER JOIN librairie_partners lp ON lp.id = cv.librairie_id
+            WHERE cv.commande_id = $1 AND lp.user_id = $2
+        )"#,
+    )
+    .bind(commande_id)
+    .bind(user_id)
+    .fetch_one(pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Auth librairie: {}", e)))
+}
+
+async fn user_est_librairie_avec_validation_commande(
+    pg: &sqlx::PgPool,
+    commande_id: Uuid,
+    user_id: i32,
+) -> Result<bool, AppError> {
+    sqlx::query_scalar(
+        r#"SELECT EXISTS(
+            SELECT 1 FROM commande_validations cv
+            INNER JOIN librairie_partners lp ON lp.id = cv.librairie_id
+            WHERE cv.commande_id = $1 AND lp.user_id = $2
+        )"#,
+    )
+    .bind(commande_id)
+    .bind(user_id)
+    .fetch_one(pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Auth librairie validation: {}", e)))
 }
 
 // ========================================

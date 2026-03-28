@@ -1,4 +1,4 @@
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -42,6 +42,7 @@ const BASE_ACTIONS: Array<'en_preparation' | 'constitue' | 'pret'> = ['en_prepar
 
 const LibrairieTeamPendingScreen: React.FC = () => {
   const { t } = useLanguageSafe();
+  const navigation = useNavigation<any>();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -213,6 +214,18 @@ const LibrairieTeamPendingScreen: React.FC = () => {
     <View style={styles.container}>
       <Text style={styles.title}>{t('librairieTeamPending.title', 'Equipe librairie - validations')}</Text>
 
+      <TouchableOpacity
+        style={styles.linkMixedPrix}
+        onPress={() => navigation.navigate('LibrairieNetworkLignePrix' as never)}
+        accessibilityRole="button"
+      >
+        <SafeIcon name="book" size={16} color={modernColors.primary} />
+        <Text style={styles.linkMixedPrixText}>
+          {t('librairieTeamPending.linkMixedOrderPrix', 'Commande mixte — bornes & prix neufs')}
+        </Text>
+        <SafeIcon name="chevron-right" size={18} color="#94a3b8" />
+      </TouchableOpacity>
+
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>{t('librairieTeamPending.panelBranch', '1) Succursale concernée')}</Text>
         <View style={styles.chipsWrap}>
@@ -361,6 +374,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc', padding: 14 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 10 },
+  linkMixedPrix: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e0e7ff',
+  },
+  linkMixedPrixText: { flex: 1, fontSize: 13, fontWeight: '700', color: '#1e3a8a' },
   panel: { backgroundColor: '#fff', borderRadius: 12, padding: 10, marginBottom: 10 },
   panelTitle: { fontSize: 13, fontWeight: '700', marginBottom: 8, color: '#374151' },
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

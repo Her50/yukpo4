@@ -660,6 +660,10 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/bus-tickets/agencies/schedules/{schedule_id}",
             delete(agency_schedule_controller::delete_schedule),
         )
+        .route(
+            "/api/bus-tickets/agencies/schedules/generate-products",
+            post(bus_ticket_controller::generate_products_from_schedules),
+        )
         // ✅ NOUVEAU: Endpoint unifié pour services spécialisés (remplace 6 appels par 1)
         .route(
             "/api/specialized-services/user",

@@ -10,11 +10,25 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use chrono::{Datelike, Duration as ChronoDuration, NaiveDate, NaiveTime, TimeZone, Utc, Weekday};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::Row;
 use std::sync::Arc;
+
+/// Jour PostgreSQL DOW : 0 = dimanche … 6 = samedi (aligné sur agency_departure_schedules.day_of_week)
+fn naive_date_to_pg_dow(d: NaiveDate) -> i32 {
+    match d.weekday() {
+        Weekday::Sun => 0,
+        Weekday::Mon => 1,
+        Weekday::Tue => 2,
+        Weekday::Wed => 3,
+        Weekday::Thu => 4,
+        Weekday::Fri => 5,
+        Weekday::Sat => 6,
+    }
+}
 
 // ============================================================================
 // RECHERCHE TICKETS BUS
@@ -930,6 +944,397 @@ pub async fn cancel_reservation(
             "cancellation_deadline_hours": result.get("cancellation_deadline_hours"),
             "hours_until_departure": result.get("hours_until_departure"),
             "booking_fee_retained": result.get("booking_fee_retained")
+        })),
+    ))
+}
+
+// ============================================================================
+// GÉNÉRATION PRODUITS ticket_voyage DEPUIS HORAIRES (alignement recherche Home)
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct GenerateProductsFromSchedulesRequest {
+    /// Si défini, uniquement cette ligne d'horaire (UUID text)
+    pub schedule_id: Option<String>,
+    /// Nombre de jours à partir d'aujourd'hui (défaut 14)
+    #[serde(default = "default_days_ahead_gen")]
+    pub days_ahead: u32,
+    /// Produit modèle (si absent : premier `modeles_bus` dans bus_products_config)
+    pub template_product_id: Option<String>,
+}
+
+fn default_days_ahead_gen() -> u32 {
+    14
+}
+
+/// POST /api/bus-tickets/agencies/schedules/generate-products
+/// Crée des lignes `products` datées à partir des plages `agency_departure_schedules`,
+/// en clonant sièges / prix depuis un produit `ticket_voyage` existant (modèle bus).
+pub async fn generate_products_from_schedules(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<GenerateProductsFromSchedulesRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[generate_products_from_schedules] user={} schedule_id={:?} days={}",
+        user_id, payload.schedule_id, payload.days_ahead
+    );
+
+    if payload.days_ahead == 0 || payload.days_ahead > 120 {
+        return Err(AppError::BadRequest(
+            "days_ahead doit être entre 1 et 120".to_string(),
+        ));
+    }
+
+    let agency: Option<(i32, i32)> = sqlx::query_as(
+        r#"SELECT id, service_id FROM agences_voyage WHERE user_id = $1 AND is_active = TRUE ORDER BY id LIMIT 1"#,
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[generate_products_from_schedules] agence: {}", e);
+        AppError::Internal(format!("Erreur agence: {}", e))
+    })?;
+
+    let (agency_id, agency_service_id) = match agency {
+        Some(a) => a,
+        None => {
+            return Err(AppError::NotFound(
+                "Aucune agence de voyage active pour ce compte".to_string(),
+            ));
+        }
+    };
+
+    let template_id: String = if let Some(ref pid) = payload.template_product_id {
+        let ok: Option<String> = sqlx::query_scalar(
+            r#"
+            SELECT p.id::text FROM products p
+            JOIN services s ON s.id = p.service_id
+            WHERE p.id::text = $1 AND s.user_id = $2 AND p.type = 'ticket_voyage' AND s.id = $3
+            "#,
+        )
+        .bind(pid)
+        .bind(user_id)
+        .bind(agency_service_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[generate_products_from_schedules] template: {}", e);
+            AppError::Internal(format!("Erreur produit modèle: {}", e))
+        })?;
+        ok.ok_or_else(|| {
+            AppError::BadRequest(
+                "template_product_id invalide ou ne correspond pas au service de l'agence"
+                    .to_string(),
+            )
+        })?
+    } else {
+        let config: Option<Value> =
+            sqlx::query_scalar("SELECT bus_products_config FROM agences_voyage WHERE id = $1")
+                .bind(agency_id)
+                .fetch_optional(&state.pg)
+                .await
+                .map_err(|e| {
+                    error!("[generate_products_from_schedules] config: {}", e);
+                    AppError::Internal(format!("Erreur config agence: {}", e))
+                })?;
+
+        let pid = config
+            .as_ref()
+            .and_then(|c| c.get("modeles_bus"))
+            .and_then(|m| m.as_array())
+            .and_then(|a| a.first())
+            .and_then(|x| x.get("product_id"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        pid.ok_or_else(|| {
+            AppError::BadRequest(
+                "Aucun modèle bus lié : créez un produit ticket_voyage (onglet Bus) ou passez template_product_id"
+                    .to_string(),
+            )
+        })?
+    };
+
+    let tpl = sqlx::query(
+        r#"
+        SELECT
+            p.id::text,
+            p.service_id,
+            p.name,
+            p.seat_map,
+            p.bus_configuration,
+            p.total_seats,
+            p.price_cents,
+            p.currency,
+            p.metadata,
+            p.numero_bus,
+            p.caution_reservation
+        FROM products p
+        JOIN services s ON s.id = p.service_id
+        WHERE p.id::text = $1 AND s.user_id = $2 AND p.type = 'ticket_voyage'
+        "#,
+    )
+    .bind(&template_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[generate_products_from_schedules] load template: {}", e);
+        AppError::Internal(format!("Erreur chargement modèle: {}", e))
+    })?
+    .ok_or_else(|| AppError::NotFound("Produit modèle introuvable".to_string()))?;
+
+    let tpl_service_id: i32 = tpl
+        .try_get("service_id")
+        .map_err(|e| AppError::Internal(format!("service_id modèle: {}", e)))?;
+    if tpl_service_id != agency_service_id {
+        return Err(AppError::BadRequest(
+            "Le produit modèle doit appartenir au même service que l'agence".to_string(),
+        ));
+    }
+
+    let seat_map: Value = tpl
+        .try_get::<Option<Value>, _>("seat_map")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| json!([]));
+    let bus_configuration: Value = tpl
+        .try_get::<Option<Value>, _>("bus_configuration")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| json!({}));
+    let total_seats: i32 =
+        tpl.try_get::<Option<i32>, _>("total_seats").ok().flatten().unwrap_or(50);
+    let price_cents: Option<i64> = tpl.try_get("price_cents").ok();
+    let currency: String = tpl
+        .try_get::<Option<String>, _>("currency")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "XAF".to_string());
+    let base_metadata: Value = tpl
+        .try_get::<Option<Value>, _>("metadata")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| json!({}));
+    let numero_bus: Option<String> = tpl.try_get("numero_bus").ok();
+    let caution: i32 = tpl
+        .try_get::<Option<i32>, _>("caution_reservation")
+        .ok()
+        .flatten()
+        .unwrap_or(500);
+
+    let price_xaf: i32 = price_cents.map(|c| (c / 100).max(1) as i32).unwrap_or(5000);
+
+    let schedule_rows = sqlx::query(
+        r#"
+        SELECT
+            ads.id::text AS sid,
+            ads.departure_city,
+            ads.arrival_city,
+            ads.day_of_week,
+            (SELECT string_agg(to_char(x, 'HH24:MI'), ',' ORDER BY x)
+             FROM unnest(ads.departure_times) AS x) AS times_str
+        FROM agency_departure_schedules ads
+        WHERE ads.agency_user_id = $1
+          AND ads.is_active = TRUE
+          AND ($2::text IS NULL OR ads.id::text = $2)
+        ORDER BY ads.departure_city, ads.arrival_city, ads.day_of_week NULLS FIRST
+        "#,
+    )
+    .bind(user_id)
+    .bind(&payload.schedule_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[generate_products_from_schedules] schedules: {}", e);
+        AppError::Internal(format!("Erreur horaires: {}", e))
+    })?;
+
+    if schedule_rows.is_empty() {
+        return Err(AppError::BadRequest(
+            "Aucun horaire actif à utiliser (créez des horaires ou vérifiez schedule_id)"
+                .to_string(),
+        ));
+    }
+
+    let today = Utc::now().date_naive();
+    let now = Utc::now();
+    let mut generated: i32 = 0;
+    let mut skipped_existing: i32 = 0;
+
+    for row in schedule_rows {
+        let schedule_id: String =
+            row.try_get("sid").map_err(|e| AppError::Internal(format!("sid: {}", e)))?;
+        let dep_city: String = row
+            .try_get("departure_city")
+            .map_err(|e| AppError::Internal(format!("departure_city: {}", e)))?;
+        let arr_city: String = row
+            .try_get("arrival_city")
+            .map_err(|e| AppError::Internal(format!("arrival_city: {}", e)))?;
+        let day_filter: Option<i32> = row.try_get("day_of_week").ok();
+        let times_str: Option<String> = row.try_get("times_str").ok();
+
+        let times_str = times_str.unwrap_or_default();
+        let time_parts: Vec<String> = times_str
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        if time_parts.is_empty() {
+            continue;
+        }
+
+        for day_offset in 0..payload.days_ahead {
+            let d = today + ChronoDuration::days(day_offset as i64);
+            if let Some(df) = day_filter {
+                if naive_date_to_pg_dow(d) != df {
+                    continue;
+                }
+            }
+
+            for tm in &time_parts {
+                let t = NaiveTime::parse_from_str(tm, "%H:%M")
+                    .or_else(|_| NaiveTime::parse_from_str(tm, "%H:%M:%S"))
+                    .map_err(|_| {
+                        AppError::Internal(format!("Heure invalide dans l'horaire: {}", tm))
+                    })?;
+
+                let ndt = d.and_time(t);
+                let dt = Utc.from_utc_datetime(&ndt);
+                if dt < now {
+                    continue;
+                }
+
+                let exists: bool = sqlx::query_scalar(
+                    r#"
+                    SELECT EXISTS(
+                        SELECT 1 FROM products
+                        WHERE source_schedule_id = $1
+                          AND date_depart = $2
+                          AND type = 'ticket_voyage'
+                    )
+                    "#,
+                )
+                .bind(&schedule_id)
+                .bind(dt)
+                .fetch_one(&state.pg)
+                .await
+                .map_err(|e| {
+                    error!("[generate_products_from_schedules] exists: {}", e);
+                    AppError::Internal(format!("Erreur doublon: {}", e))
+                })?;
+
+                if exists {
+                    skipped_existing += 1;
+                    continue;
+                }
+
+                let date_fr = d.format("%d/%m/%Y").to_string();
+                let time_fr = t.format("%H:%M").to_string();
+                let product_name =
+                    format!("{} → {} · {}", dep_city, arr_city, dt.format("%d/%m %H:%M"));
+
+                let mut meta = base_metadata.clone();
+                if let Some(obj) = meta.as_object_mut() {
+                    obj.insert("departure_city".to_string(), json!(dep_city.clone()));
+                    obj.insert("arrival_city".to_string(), json!(arr_city.clone()));
+                    obj.insert("departure_date".to_string(), json!(date_fr.clone()));
+                    obj.insert("departure_time".to_string(), json!(time_fr.clone()));
+                    obj.insert("source_schedule_id".to_string(), json!(schedule_id.clone()));
+                    obj.insert("generated_from_schedule".to_string(), json!(true));
+                }
+
+                let desc = format!("Départ généré depuis horaire {}", schedule_id);
+
+                let insert = sqlx::query(
+                    r#"
+                    INSERT INTO products (
+                        service_id, name, type, description,
+                        seat_map, bus_configuration, total_seats,
+                        price_cents, currency, metadata,
+                        depart, destination, date_depart, price, user_id, is_active, source_schedule_id,
+                        numero_bus, caution_reservation,
+                        created_at, updated_at
+                    ) VALUES (
+                        $1, $2, 'ticket_voyage', $3,
+                        $4, $5, $6,
+                        $7, $8, $9,
+                        $10, $11, $12, $13, $14, TRUE, $15,
+                        $16, $17,
+                        NOW(), NOW()
+                    )
+                    "#,
+                )
+                .bind(agency_service_id)
+                .bind(&product_name)
+                .bind(&desc)
+                .bind(&seat_map)
+                .bind(&bus_configuration)
+                .bind(total_seats)
+                .bind(price_cents)
+                .bind(&currency)
+                .bind(&meta)
+                .bind(&dep_city)
+                .bind(&arr_city)
+                .bind(dt)
+                .bind(price_xaf)
+                .bind(agency_id)
+                .bind(&schedule_id)
+                .bind(&numero_bus)
+                .bind(caution)
+                .execute(&state.pg)
+                .await;
+
+                match insert {
+                    Ok(r) if r.rows_affected() > 0 => {
+                        generated += 1;
+                        let new_id: Option<String> = sqlx::query_scalar(
+                            r#"SELECT id::text FROM products
+                               WHERE source_schedule_id = $1 AND date_depart = $2 AND type = 'ticket_voyage'
+                               ORDER BY created_at DESC LIMIT 1"#,
+                        )
+                        .bind(&schedule_id)
+                        .bind(dt)
+                        .fetch_optional(&state.pg)
+                        .await
+                        .ok()
+                        .flatten();
+
+                        if let Some(pid) = new_id {
+                            let _: Result<Option<i32>, _> = sqlx::query_scalar::<_, i32>(
+                                "SELECT auto_match_return_requests_for_product($1)",
+                            )
+                            .bind(&pid)
+                            .fetch_optional(&state.pg)
+                            .await;
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("[generate_products_from_schedules] insert: {}", e);
+                        return Err(AppError::Internal(format!(
+                            "Insertion produit échouée (migrations 20260328 appliquées ?): {}",
+                            e
+                        )));
+                    }
+                }
+            }
+        }
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "generated_count": generated,
+            "skipped_existing": skipped_existing,
+            "message": format!(
+                "{} départ(s) créé(s) pour la recherche billet ; {} créneau(x) déjà présents",
+                generated, skipped_existing
+            ),
         })),
     ))
 }

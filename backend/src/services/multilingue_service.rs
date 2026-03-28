@@ -121,15 +121,14 @@ impl MultilingueService {
         }
     }
 
-    /// Détecter la langue préférée de l'utilisateur
-    pub async fn detecter_langue_utilisateur(
+    /// Détecter la langue préférée (`users.id` entier, JWT `sub`).
+    pub async fn detecter_langue_utilisateur_app(
         &self,
-        user_id: Uuid,
+        user_id: i32,
         pg: &sqlx::PgPool,
     ) -> Result<String, AppError> {
-        // Priorité: langue profil > langue appareil > langue_defaut
         if let Ok(langue_opt) = sqlx::query_scalar::<_, Option<String>>(
-            "SELECT langue_preferee FROM users WHERE id = $1",
+            "SELECT preferred_lang FROM users WHERE id = $1",
         )
         .bind(user_id)
         .fetch_one(pg)
@@ -142,7 +141,16 @@ impl MultilingueService {
             }
         }
 
-        // TODO: Détecter langue depuis headers HTTP Accept-Language
+        Ok(self.langue_defaut.clone())
+    }
+
+    /// Variante historique : UUID (ex. clés liées à `transactions_agregees`).
+    /// Tant que `users.id` reste un entier, la résolution par UUID peut échouer : langue par défaut.
+    pub async fn detecter_langue_utilisateur(
+        &self,
+        _user_id: Uuid,
+        _pg: &sqlx::PgPool,
+    ) -> Result<String, AppError> {
         Ok(self.langue_defaut.clone())
     }
 
@@ -718,6 +726,51 @@ pub struct TraductionDefaut {
 // UTILITAIRES
 // ========================================
 
+/// Notification pour un compte applicatif (`users.id` = `i32`).
+pub async fn envoyer_notification_multilingue_user_app(
+    state: &AppState,
+    user_id: i32,
+    cle_template: &str,
+    variables: HashMap<String, String>,
+    donnees_supplementaires: Option<serde_json::Value>,
+) -> Result<(), AppError> {
+    let langue = state
+        .multilingue_service
+        .detecter_langue_utilisateur_app(user_id, &state.pg)
+        .await?;
+
+    let template = MessageTemplate {
+        cle: cle_template.to_string(),
+        variables,
+        langue: langue.clone(),
+    };
+
+    let message_localise = state.multilingue_service.generer_message(&template, &state.pg).await?;
+
+    let titre = message_localise.sujet.unwrap_or_else(|| "YukPo".to_string());
+    if let Err(e) = crate::utils::send_notification(
+        &Arc::new(state.clone()),
+        user_id,
+        &titre,
+        &message_localise.message,
+        donnees_supplementaires,
+    )
+    .await
+    {
+        log::warn!(
+            "[envoyer_notification_multilingue_user_app] Erreur push: {}",
+            e
+        );
+    }
+
+    info!(
+        "[envoyer_notification_multilingue_user_app] Notification {} envoyée à user {} en {}",
+        cle_template, user_id, langue
+    );
+
+    Ok(())
+}
+
 pub async fn envoyer_notification_multilingue(
     state: &AppState,
     user_id: Uuid,
@@ -745,7 +798,7 @@ pub async fn envoyer_notification_multilingue(
     let titre = message_localise.sujet.unwrap_or_else(|| "YukPo".to_string());
     if let Err(e) = crate::utils::send_notification(
         &Arc::new(state.clone()),
-        0, // placeholder — le service push résout le device token via user_id en interne
+        0,
         &titre,
         &message_localise.message,
         donnees_supplementaires,

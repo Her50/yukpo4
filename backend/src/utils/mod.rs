@@ -40,18 +40,54 @@ pub fn generate_qr_code(data: &str) -> Result<String, AppError> {
     ))
 }
 
+/// Expo (Android) attend des valeurs `data` en chaînes ; on aplatit un objet JSON.
+fn expo_push_data_strings(data: Option<serde_json::Value>) -> Option<serde_json::Value> {
+    let data = data?;
+    if let Some(obj) = data.as_object() {
+        let mut out = serde_json::Map::new();
+        for (k, v) in obj {
+            let s = match v {
+                serde_json::Value::String(s) => s.clone(),
+                serde_json::Value::Number(n) => n.to_string(),
+                serde_json::Value::Bool(b) => b.to_string(),
+                serde_json::Value::Null => String::new(),
+                serde_json::Value::Array(_) | serde_json::Value::Object(_) => v.to_string(),
+            };
+            out.insert(k.clone(), serde_json::Value::String(s));
+        }
+        return Some(serde_json::Value::Object(out));
+    }
+    Some(data)
+}
+
+/// Envoie une notification via Expo Push (`user_push_tokens`) avec titre, corps et `data` optionnel.
 pub async fn send_notification(
-    _state: &Arc<AppState>,
+    state: &Arc<AppState>,
     user_id: i32,
     title: &str,
     message: &str,
-    _extra_data: Option<serde_json::Value>,
+    extra_data: Option<serde_json::Value>,
 ) -> Result<(), AppError> {
+    let data = expo_push_data_strings(extra_data);
+
     ::log::info!(
-        "[send_notification] → user={} title={} msg={}",
+        "[send_notification] → user={} title={} msg={} data={:?}",
         user_id,
         title,
-        message
+        message,
+        data
     );
+
+    crate::services::push_notification_service::send_push_notification(
+        &state.pg,
+        user_id,
+        title.to_string(),
+        message.to_string(),
+        data,
+        Some("default".to_string()),
+    )
+    .await
+    .map_err(|e| AppError::Internal(format!("Expo push: {}", e)))?;
+
     Ok(())
 }

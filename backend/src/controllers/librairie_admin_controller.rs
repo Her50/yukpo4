@@ -26,7 +26,7 @@ use crate::{
 
 #[derive(Debug, Deserialize)]
 pub struct CreateLibrairiePartnerRequest {
-    pub user_id: Uuid,
+    pub user_id: i32,
     pub nom: String,
     pub email: String,
     pub telephone: Option<String>,
@@ -183,7 +183,7 @@ pub async fn create_librairie_partner(
     variables.insert("nom_librairie".to_string(), payload.nom.clone());
     variables.insert("ville".to_string(), payload.ville.clone());
 
-    if let Err(e) = crate::services::multilingue_service::envoyer_notification_multilingue(
+    if let Err(e) = crate::services::multilingue_service::envoyer_notification_multilingue_user_app(
         &state,
         payload.user_id,
         "librairie.compte_en_validation",
@@ -683,18 +683,19 @@ pub async fn valider_librairie_partner(
             let mut variables = std::collections::HashMap::new();
             variables.insert("nom_librairie".to_string(), librairie.nom.clone());
 
-            if let Err(e) = crate::services::multilingue_service::envoyer_notification_multilingue(
-                &state,
-                librairie.user_id,
-                "librairie.compte_valide",
-                variables,
-                Some(serde_json::json!({
-                    "type": "librairie_validation",
-                    "librairie_id": librairie_id,
-                    "action": "valide"
-                })),
-            )
-            .await
+            if let Err(e) =
+                crate::services::multilingue_service::envoyer_notification_multilingue_user_app(
+                    &state,
+                    librairie.user_id,
+                    "librairie.compte_valide",
+                    variables,
+                    Some(serde_json::json!({
+                        "type": "librairie_validation",
+                        "librairie_id": librairie_id,
+                        "action": "valide"
+                    })),
+                )
+                .await
             {
                 warn!("[valider_librairie_partner] Erreur notification: {}", e);
             }
@@ -725,19 +726,20 @@ pub async fn valider_librairie_partner(
                 payload.motif.clone().unwrap_or_default(),
             );
 
-            if let Err(e) = crate::services::multilingue_service::envoyer_notification_multilingue(
-                &state,
-                librairie.user_id,
-                "librairie.compte_rejete",
-                variables,
-                Some(serde_json::json!({
-                    "type": "librairie_validation",
-                    "librairie_id": librairie_id,
-                    "action": "rejete",
-                    "motif": payload.motif
-                })),
-            )
-            .await
+            if let Err(e) =
+                crate::services::multilingue_service::envoyer_notification_multilingue_user_app(
+                    &state,
+                    librairie.user_id,
+                    "librairie.compte_rejete",
+                    variables,
+                    Some(serde_json::json!({
+                        "type": "librairie_validation",
+                        "librairie_id": librairie_id,
+                        "action": "rejete",
+                        "motif": payload.motif
+                    })),
+                )
+                .await
             {
                 warn!("[valider_librairie_partner] Erreur notification: {}", e);
             }

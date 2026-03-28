@@ -28,6 +28,7 @@ import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { Covoiturage, covoiturageService, CreateCovoiturageRequest, SearchCovoituragesFilters } from '../../services/covoiturageService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useTransportDriverAccess } from '../../hooks/useTransportDriverAccess';
 
 type ViewMode = 'search' | 'create';
 
@@ -38,12 +39,11 @@ const CovoiturageHomeScreen: React.FC = () => {
     const { location } = useLocation();
     const toaster = useToaster();
 
-    // ✅ CORRIGÉ 2026-03-23: Le covoiturage est du partage de trajet pair-à-pair.
-    // Tout utilisateur authentifié peut proposer un trajet (comme BlaBlaCar).
-    // L'ancien check exigeait un rôle "driver" ou partner_type spécifique,
-    // ce qui bloquait les chauffeurs, coursiers et utilisateurs normaux.
-    const isDriverValidated = !!user?.id;
-    const checkingDriverStatus = false;
+    // Publication réservée aux chauffeurs enregistrés (candidature taxi ou covoiturage approuvée),
+    // ou rôles driver / partenaire chauffeur — même logique que l’écran Taxi (useTransportDriverAccess).
+    const { validated: isDriverValidated, checking: checkingDriverStatus } = useTransportDriverAccess(
+        user as Record<string, unknown> | null | undefined
+    );
 
     // Mode d'affichage : recherche ou création
     const [viewMode, setViewMode] = useState<ViewMode>('search');

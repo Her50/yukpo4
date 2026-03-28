@@ -462,6 +462,7 @@ reg('BookBuyDirect', () => import('../screens/bourse-livre/BookBuyDirectScreen')
 reg('AdminProgrammeUpload', () => import('../screens/bourse-livre/AdminProgrammeUploadScreen'));
 reg('BookDeliveryTracking', () => import('../screens/specialized/BookDeliveryTrackingScreen'));
 reg('LibrairieTeamPending', () => import('../screens/specialized/LibrairieTeamPendingScreen'));
+reg('LibrairieNetworkLignePrix', () => import('../screens/specialized/LibrairieNetworkLignePrixScreen'));
 reg('NewBooks', () => import('../screens/specialized/NewBooksScreen'));
 reg('ProgrammeBesoinsSelector', () => import('../screens/specialized/ProgrammeBesoinsSelectorScreen'));
 reg('MesBesoinsLivres', () => import('../screens/specialized/MesBesoinsLivresScreen'));
@@ -696,14 +697,20 @@ function MainTabNavigator() {
     return false;
   }, [user?.id, (user as any)?.partner_type, (user as any)?.role]);
 
-  // Détecter si l'utilisateur est coursier
+  // Détecter si l'utilisateur est coursier (endpoint réel : GET /api/courier/me)
   useEffect(() => {
-    if (!user?.id) { setIsCourier(false); return; }
+    if (!user?.id) {
+      setIsCourier(false);
+      return;
+    }
     const check = async () => {
       try {
-        const res: any = await apiGet('/api/delivery/courier/status');
-        const data = res?.data || res;
-        setIsCourier(data?.is_courier || false);
+        const res: any = await apiGet('/api/courier/me');
+        const data = res?.data ?? res;
+        const appSt = data?.application?.status;
+        const approved =
+          typeof appSt === 'string' && appSt.toLowerCase().replace(/"/g, '') === 'approved';
+        setIsCourier(Boolean(data?.is_courier) || approved);
       } catch {
         setIsCourier(false);
       }

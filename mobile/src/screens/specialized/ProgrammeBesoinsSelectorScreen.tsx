@@ -360,23 +360,60 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
             let sumNeuf = 0;
             let countNeuf = 0;
             let countOcc = 0;
+            let sumRefOcc = 0;
             for (const p of e.programmes) {
                 const pr = e.choix[p.id];
                 if (pr === 'neuf') {
                     countNeuf++;
                     sumNeuf += prixOfficielPositif(p.prix_officiel);
-                } else if (pr === 'occasion') countOcc++;
+                } else if (pr === 'occasion') {
+                    countOcc++;
+                    sumRefOcc += prixOfficielPositif(p.prix_officiel);
+                }
             }
             for (const x of e.extraLignes) {
                 if (x.pref === 'neuf') {
                     countNeuf++;
                     sumNeuf += prixOfficielPositif(x.prix_officiel);
-                } else countOcc++;
+                } else {
+                    countOcc++;
+                    sumRefOcc += prixOfficielPositif(x.prix_officiel);
+                }
             }
-            return { sumNeuf, countNeuf, countOcc };
+            return { sumNeuf, countNeuf, countOcc, sumRefOcc };
         },
         []
     );
+
+    /** Totaux sur tous les enfants : budget neuf catalogue + références occasion (indicatif troc). */
+    const totauxRecapGlobal = useMemo(() => {
+        let sumNeuf = 0;
+        let countNeuf = 0;
+        let countOcc = 0;
+        let sumRefOcc = 0;
+        for (const e of enfants) {
+            for (const p of e.programmes) {
+                const pr = e.choix[p.id];
+                if (pr === 'neuf') {
+                    countNeuf++;
+                    sumNeuf += prixOfficielPositif(p.prix_officiel);
+                } else if (pr === 'occasion') {
+                    countOcc++;
+                    sumRefOcc += prixOfficielPositif(p.prix_officiel);
+                }
+            }
+            for (const x of e.extraLignes) {
+                if (x.pref === 'neuf') {
+                    countNeuf++;
+                    sumNeuf += prixOfficielPositif(x.prix_officiel);
+                } else {
+                    countOcc++;
+                    sumRefOcc += prixOfficielPositif(x.prix_officiel);
+                }
+            }
+        }
+        return { sumNeuf, countNeuf, countOcc, sumRefOcc };
+    }, [enfants]);
 
     const ouvrirRecap = useCallback(() => {
         hapticPress();
@@ -545,6 +582,54 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                             </Text>
                         </View>
                     ) : null}
+
+                    <View style={styles.recapSynthCard}>
+                        <Text style={styles.recapSynthTitle}>
+                            {t('programmeBesoins.recapSyntheseTitle', 'Synthèse budgétaire')}
+                        </Text>
+                        <Text style={styles.recapSynthNeuf}>
+                            {t(
+                                'programmeBesoins.recapBudgetNeufGlobal',
+                                'Total livres neufs sélectionnés (prix catalogue) : {{m}} XAF · {{n}} titre(s)',
+                                {
+                                    m: Math.round(totauxRecapGlobal.sumNeuf).toLocaleString(),
+                                    n: totauxRecapGlobal.countNeuf,
+                                }
+                            )}
+                        </Text>
+                        {totauxRecapGlobal.countNeuf > 0 && totauxRecapGlobal.sumNeuf <= 0 ? (
+                            <Text style={styles.recapSynthHint}>
+                                {t(
+                                    'programmeBesoins.recapNeufSansPrix',
+                                    'Certains titres neufs n’ont pas de prix catalogue en base — complétez avec votre libraire ou le comparateur.'
+                                )}
+                            </Text>
+                        ) : null}
+                        <Text style={styles.recapSynthOcc}>
+                            {t(
+                                'programmeBesoins.recapOccasionTroc',
+                                'Occasion / troc : montant à déterminer selon les annonces et les échanges — {{n}} titre(s).',
+                                { n: totauxRecapGlobal.countOcc }
+                            )}
+                        </Text>
+                        {totauxRecapGlobal.countOcc > 0 && totauxRecapGlobal.sumRefOcc > 0 ? (
+                            <Text style={styles.recapSynthRef}>
+                                {t(
+                                    'programmeBesoins.recapOccasionRefCatalogue',
+                                    'Référence indicative (somme des prix neufs catalogue pour les titres « occasion ») : {{m}} XAF — utile pour estimer un troc ou une négociation, sans engagement.',
+                                    { m: Math.round(totauxRecapGlobal.sumRefOcc).toLocaleString() }
+                                )}
+                            </Text>
+                        ) : totauxRecapGlobal.countOcc > 0 ? (
+                            <Text style={styles.recapSynthHint}>
+                                {t(
+                                    'programmeBesoins.recapOccasionSansRef',
+                                    'Aucun prix catalogue pour ces titres occasion — le montant d’achat ou d’échange reste à déterminer sur les annonces.'
+                                )}
+                            </Text>
+                        ) : null}
+                    </View>
+
                     {enfants.map((e, idx) => {
                         const label = e.prenom.trim() || t('programmeBesoins.enfantNum', 'Enfant {{n}}', { n: idx + 1 });
                         const bud = budgetParEnfant(e);
@@ -557,11 +642,15 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                                     </Text>
                                 ) : null}
                                 <Text style={styles.recapBudget}>
-                                    {t('programmeBesoins.budgetApprox', 'Budget neuf approx. : {{m}} XAF · {{cn}} neuf · {{co}} occasion', {
-                                        m: Math.round(bud.sumNeuf).toLocaleString(),
-                                        cn: bud.countNeuf,
-                                        co: bud.countOcc,
-                                    })}
+                                    {t(
+                                        'programmeBesoins.budgetApprox',
+                                        'Budget neuf (catalogue) : {{m}} XAF · {{cn}} neuf · {{co}} occasion (troc à déterminer)',
+                                        {
+                                            m: Math.round(bud.sumNeuf).toLocaleString(),
+                                            cn: bud.countNeuf,
+                                            co: bud.countOcc,
+                                        }
+                                    )}
                                 </Text>
 
                                 <Text style={styles.recapSectionLabel}>{t('programmeBesoins.sectionNeuf', 'Neuf')}</Text>
@@ -611,7 +700,14 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                                                 <Text style={styles.recapRowTitle} numberOfLines={2}>
                                                     {p.titre_livre}
                                                 </Text>
-                                                <Text style={styles.recapRowMeta}>{p.matiere}</Text>
+                                                <Text style={styles.recapRowMeta}>
+                                                    {p.matiere}
+                                                    {prixOfficielPositif(p.prix_officiel) > 0
+                                                        ? ` · ${t('programmeBesoins.refNeufPourOccasion', 'Réf. neuf catalogue : {{m}} XAF — prix occasion/troc à déterminer', {
+                                                              m: Math.round(prixOfficielPositif(p.prix_officiel)).toLocaleString(),
+                                                          })}`
+                                                        : ` · ${t('programmeBesoins.occasionPrixAdeterminer', 'Prix occasion / troc à déterminer (annonces)')}`}
+                                                </Text>
                                             </View>
                                             <TouchableOpacity onPress={() => retirerLigneRecap(e.id, p.id)} hitSlop={12}>
                                                 <SafeIcon name="trash-2" size={18} color="#dc2626" type="lucide" />
@@ -624,7 +720,14 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                                         <View key={`xo-${x.localId}`} style={styles.recapRow}>
                                             <View style={{ flex: 1 }}>
                                                 <Text style={styles.recapRowTitle}>{x.titre}</Text>
-                                                <Text style={styles.recapRowMeta}>{x.matiere}</Text>
+                                                <Text style={styles.recapRowMeta}>
+                                                    {x.matiere}
+                                                    {prixOfficielPositif(x.prix_officiel) > 0
+                                                        ? ` · ${t('programmeBesoins.refNeufPourOccasion', 'Réf. neuf catalogue : {{m}} XAF — prix occasion/troc à déterminer', {
+                                                              m: Math.round(prixOfficielPositif(x.prix_officiel)).toLocaleString(),
+                                                          })}`
+                                                        : ` · ${t('programmeBesoins.occasionPrixAdeterminer', 'Prix occasion / troc à déterminer (annonces)')}`}
+                                                </Text>
                                             </View>
                                             <TouchableOpacity onPress={() => retirerLigneRecap(e.id, null, x.localId)} hitSlop={12}>
                                                 <SafeIcon name="trash-2" size={18} color="#dc2626" type="lucide" />
@@ -1228,6 +1331,21 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     etabRecapText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#1e3a8a' },
+    recapSynthCard: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: '#c7d2fe',
+        borderLeftWidth: 4,
+        borderLeftColor: '#4f46e5',
+    },
+    recapSynthTitle: { fontSize: 15, fontWeight: '800', color: '#312e81', marginBottom: 10 },
+    recapSynthNeuf: { fontSize: 15, fontWeight: '700', color: '#047857', lineHeight: 22, marginBottom: 8 },
+    recapSynthOcc: { fontSize: 14, fontWeight: '600', color: '#9a3412', lineHeight: 21, marginBottom: 8 },
+    recapSynthRef: { fontSize: 13, color: '#57534e', lineHeight: 19, marginBottom: 4 },
+    recapSynthHint: { fontSize: 12, color: '#64748b', lineHeight: 18, marginBottom: 6, fontStyle: 'italic' },
     recapEnfantTitle: { fontSize: 17, fontWeight: '800', color: '#0f172a', marginBottom: 4 },
     recapMeta: { fontSize: 13, color: '#64748b', marginBottom: 6 },
     recapBudget: { fontSize: 14, fontWeight: '600', color: '#047857', marginBottom: 12 },

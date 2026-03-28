@@ -39,13 +39,16 @@ interface UserMentionPickerProps {
     onClose: () => void;
     onSelectUser: (user: User) => void;
     currentQuery?: string; // Texte après le @
+    /** Invité équipe : recherche visible tout de suite (même API que les suggestions du champ email) */
+    teamInviteMode?: boolean;
 }
 
 const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
     visible,
     onClose,
     onSelectUser,
-    currentQuery = ''
+    currentQuery = '',
+    teamInviteMode = false,
 }) => {
     const { t } = useLanguageSafe();
     const [searchQuery, setSearchQuery] = useState(currentQuery);
@@ -54,17 +57,21 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'history' | 'search' | 'category'>('history');
 
-    // Charger l'historique des tags au montage
     useEffect(() => {
         if (visible) {
-            loadTagHistory();
-            if (currentQuery) {
-                setSearchQuery(currentQuery);
+            if (teamInviteMode) {
                 setActiveTab('search');
-                // searchUsers sera appelé par le second useEffect (debounced) via setSearchQuery
+                setSearchQuery(currentQuery || '');
+                setSearchResults([]);
+            } else {
+                loadTagHistory();
+                if (currentQuery) {
+                    setSearchQuery(currentQuery);
+                    setActiveTab('search');
+                }
             }
         }
-    }, [visible, currentQuery]);
+    }, [visible, currentQuery, teamInviteMode]);
 
     const loadTagHistory = async () => {
         try {
@@ -131,20 +138,21 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
         }
     };
 
-    // Recherche automatique quand l'utilisateur tape (améliorée)
+    const minSearchLen = teamInviteMode ? 2 : 1;
+
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (searchQuery.trim().length >= 1) {
+            if (searchQuery.trim().length >= minSearchLen) {
                 searchUsers(searchQuery);
                 setActiveTab('search');
             } else {
                 setSearchResults([]);
-                setActiveTab('history');
+                if (!teamInviteMode) setActiveTab('history');
             }
-        }, 200); // Debounce réduit à 200ms pour plus de réactivité
+        }, 200);
 
         return () => clearTimeout(timer);
-    }, [searchQuery]);
+    }, [searchQuery, minSearchLen, teamInviteMode]);
 
     const renderUserItem = (user: User | TagHistoryItem, fromHistory: boolean = false) => {
         const userId = 'user_id' in user ? user.user_id : user.id;
@@ -201,6 +209,8 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
         );
     };
 
+    const teamInviteTitle = t('userMentionPicker.choisirUnMembre', 'Choisir un membre');
+
     const categories = [
         { key: 'livraison', label: t('userMentionPicker.livraison'), icon: '🚚' },
         { key: 'plombier', label: 'Plomberie', icon: '🔧' },
@@ -208,6 +218,79 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
         { key: 'mécanicien', label: t('userMentionPicker.mecanique'), icon: '🔨' },
         { key: 'coiffeur', label: 'Coiffure', icon: '✂️' },
     ];
+
+    if (teamInviteMode) {
+        return (
+            <Modal
+                visible={visible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={onClose}
+            >
+                <View style={styles.overlay}>
+                    <View style={[styles.container, styles.containerTeamInvite]}>
+                        <View style={styles.header}>
+                            <Text style={styles.headerTitle}>{teamInviteTitle}</Text>
+                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                                <SafeIcon name="x" size={24} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.searchContainer}>
+                            <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder={t('userMentionPicker.nomOuEmailDeLa')}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                autoFocus
+                                autoCorrect={false}
+                                autoCapitalize="none"
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                    <SafeIcon name="x-circle" size={20} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        <View style={styles.teamInviteBody}>
+                            {loading ? (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator size="large" color={modernColors.primary} />
+                                    <Text style={styles.loadingText}>{t('userMentionPicker.rechercheEnCours')}</Text>
+                                </View>
+                            ) : searchQuery.trim().length < minSearchLen ? (
+                                <View style={styles.hintContainer}>
+                                    <SafeIcon name="search" size={32} color={modernColors.primary} />
+                                    <Text style={styles.hintText}>
+                                        {t('userMentionPicker.tapezPourRechercher', 'Tapez au moins 2 caractères (nom ou e-mail) — même recherche que le champ d’invitation.')}
+                                    </Text>
+                                </View>
+                            ) : searchResults.length > 0 ? (
+                                <FlatList
+                                    data={searchResults}
+                                    keyExtractor={(item) => String(item.id)}
+                                    renderItem={({ item }) => renderUserItem(item, false)}
+                                    showsVerticalScrollIndicator
+                                    keyboardShouldPersistTaps="handled"
+                                    contentContainerStyle={styles.teamInviteListContent}
+                                />
+                            ) : (
+                                <View style={styles.emptyState}>
+                                    <SafeIcon name="user-x" size={48} color={modernColors.textSecondary} />
+                                    <Text style={styles.emptyTitle}>{t('userMentionPicker.aucunResultat')}</Text>
+                                    <Text style={styles.emptyText}>
+                                        {`${t('userMentionPicker.aucunResultat')} — « ${searchQuery.trim()} »`}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        );
+    }
 
     return (
         <Modal
@@ -393,6 +476,21 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 20,
         maxHeight: '80%',
         paddingBottom: 20,
+    },
+    containerTeamInvite: {
+        maxHeight: '92%',
+        flex: 1,
+        width: '100%',
+    },
+    teamInviteBody: {
+        flex: 1,
+        minHeight: 280,
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+    },
+    teamInviteListContent: {
+        paddingBottom: 24,
+        flexGrow: 1,
     },
     header: {
         flexDirection: 'row',

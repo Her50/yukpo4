@@ -111,6 +111,7 @@ pub mod kyc_service; // ✅ NOUVEAU: Service KYC pour vérification identité
 pub mod lab_ai_service; // ✅ 2025-01-27: Service IA laboratoires (interprétation, anomalies)
 pub mod land_analysis_ai_service; // ✅ Service IA terrains (analyse viabilité, estimation prix)
 pub mod launch_phase_service; // ✅ NOUVEAU 2026-02-06: Service gestion phase de lancement (3 mois gratuits)
+pub mod librairie_prix_bornes_service; // ✅ 2026-03-28: Bornes prix lignes neufs commande mixte
 pub mod live_ai_service;
 pub mod live_audience_service;
 pub mod live_flash_sale_service;

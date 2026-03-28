@@ -44,14 +44,9 @@ const PartnerRegisterScreen: React.FC = () => {
     partner_phone: '',
     partner_address: '',
     partner_gps: null as { lat: number; lng: number } | null,
-    partner_country: '',
+    /** Code ISO pays (ex. CM) — aligné sur l’indicatif téléphonique */
+    partner_country: 'CM',
     partner_logo: null as string | null, // ✅ NOUVEAU: Logo du partenaire (base64)
-    // ✅ NOUVEAU: Champs spécifiques pour établissementscolaire
-    etablissement_type: '' as string, // primaire, secondaire, superieur, formation
-    filieres: [] as string[],
-    programmes_scolaires: [] as string[],
-    concours_organises: [] as string[],
-    anciennes_epreuves: [] as string[],
     // ✅ NOUVEAU: Champs spécifiques pour chauffeur
     driver_license_number: '' as string,
     driver_license_expiry: '' as string, // Format: YYYY-MM-DD
@@ -269,14 +264,6 @@ const PartnerRegisterScreen: React.FC = () => {
         registerData.partner_logo = form.partner_logo;
       }
 
-      // ✅ Ajouter les champs spécifiques pour établissementscolaire
-      if (form.partner_type === 'etablissementscolaire') {
-        registerData.etablissement_type = form.etablissement_type;
-        registerData.filieres = form.filieres;
-        registerData.programmes_scolaires = form.programmes_scolaires;
-        registerData.concours_organises = form.concours_organises;
-      }
-
       // ✅ NOUVEAU: Ajouter les champs spécifiques pour chauffeur
       if (form.partner_type === 'chauffeur') {
         registerData.driver_license_number = form.driver_license_number;
@@ -395,26 +382,39 @@ const PartnerRegisterScreen: React.FC = () => {
               left={<TextInput.Icon icon={() => <Building size={20} color={theme.colors.textSecondary} />} />}
             />
 
-            <TextInput
-              label={t('partnerRegister.telephoneDeLEtablissement')}
-              value={form.partner_phone}
-              onChangeText={(text) => setForm({ ...form, partner_phone: text.replace(/\D/g, '') })}
-              keyboardType="phone-pad"
-              placeholder="6XXXXXXXX"
-              disabled={loading}
-              style={styles.input}
-              left={<TextInput.Icon icon={() => <Phone size={20} color={theme.colors.textSecondary} />} />}
-            />
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={partnerPhoneCountryCode}
-                onValueChange={(value) => setPartnerPhoneCountryCode(String(value))}
-                style={styles.picker}
-              >
-                {countryCodeOptions.map((country) => (
-                  <Picker.Item key={country.code} label={`${country.label} (${country.prefix})`} value={country.prefix} />
-                ))}
-              </Picker>
+            <Text style={styles.label}>
+              {t('partnerRegister.indicatifEtTelephoneEtablissement', 'Indicatif pays et numéro de l\'établissement')}{' '}
+              <Text style={styles.optionalHint}>
+                ({t('partnerRegister.optionnel', 'optionnel')})
+              </Text>
+            </Text>
+            <View style={styles.phoneRow}>
+              <View style={styles.phoneCountryPickerWrap}>
+                <Picker
+                  selectedValue={partnerPhoneCountryCode}
+                  onValueChange={(value) => {
+                    const prefix = String(value);
+                    setPartnerPhoneCountryCode(prefix);
+                    const opt = countryCodeOptions.find((c) => c.prefix === prefix);
+                    setForm((prev) => ({ ...prev, partner_country: opt?.code || prev.partner_country }));
+                  }}
+                  style={styles.phoneCountryPicker}
+                >
+                  {countryCodeOptions.map((country) => (
+                    <Picker.Item key={country.code} label={`${country.label} (${country.prefix})`} value={country.prefix} />
+                  ))}
+                </Picker>
+              </View>
+              <TextInput
+                label={t('partnerRegister.numeroLocal', 'Numéro local')}
+                value={form.partner_phone}
+                onChangeText={(text) => setForm({ ...form, partner_phone: text.replace(/\D/g, '') })}
+                keyboardType="phone-pad"
+                placeholder="6XXXXXXXX"
+                disabled={loading}
+                style={[styles.input, styles.phoneNumberInput]}
+                left={<TextInput.Icon icon={() => <Phone size={20} color={theme.colors.textSecondary} />} />}
+              />
             </View>
 
             {/* ✅ NOUVEAU: Champ de téléchargement de logo */}
@@ -564,57 +564,15 @@ const PartnerRegisterScreen: React.FC = () => {
               )}
             </View>
 
-            {/* ✅ NOUVEAU: Champs conditionnels pour établissementscolaire */}
             {form.partner_type === 'etablissementscolaire' && (
-              <>
-                <Text style={styles.label}>{t('partnerRegister.typeDetablissementScolaire')}</Text>
-                <View style={styles.pickerContainer}>
-                  <Picker
-                    selectedValue={form.etablissement_type}
-                    onValueChange={(value) => setForm({ ...form, etablissement_type: value })}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label={t('partnerRegister.selectionnez')} value="" />
-                    <Picker.Item label="Primaire" value="primaire" />
-                    <Picker.Item label="Secondaire" value="secondaire" />
-                    <Picker.Item label={t('partnerRegister.superieurUniversite')} value="superieur" />
-                    <Picker.Item label={t('partnerRegister.ecoleDeFormation')} value="formation" />
-                  </Picker>
-                </View>
-
-                <TextInput
-                  label={t('partnerRegister.filieresProposeesSepareesParDes')}
-                  value={form.filieres.join(', ')}
-                  onChangeText={(text) => setForm({ ...form, filieres: text.split(',').map(f => f.trim()).filter(Boolean) })}
-                  placeholder={t('partnerRegister.exSciencesLitteratureTechniqueCommerce')}
-                  multiline
-                  numberOfLines={2}
-                  disabled={loading}
-                  style={[styles.input, styles.textArea]}
-                />
-
-                <TextInput
-                  label={t('partnerRegister.programmesScolairesSeparesParDes')}
-                  value={form.programmes_scolaires.join(', ')}
-                  onChangeText={(text) => setForm({ ...form, programmes_scolaires: text.split(',').map(p => p.trim()).filter(Boolean) })}
-                  placeholder={t('partnerRegister.exBaccalaureatBtsLicenceMaster')}
-                  multiline
-                  numberOfLines={2}
-                  disabled={loading}
-                  style={[styles.input, styles.textArea]}
-                />
-
-                <TextInput
-                  label={t('partnerRegister.concoursOrganisesSeparesParDes')}
-                  value={form.concours_organises.join(', ')}
-                  onChangeText={(text) => setForm({ ...form, concours_organises: text.split(',').map(c => c.trim()).filter(Boolean) })}
-                  placeholder="Ex: Concours d'entrée en 6ème, Concours d'entrée en 1ère"
-                  multiline
-                  numberOfLines={2}
-                  disabled={loading}
-                  style={[styles.input, styles.textArea]}
-                />
-              </>
+              <View style={styles.infoBanner}>
+                <Text style={styles.infoBannerText}>
+                  {t(
+                  'partnerRegister.etablissementScolaireHint',
+                  'Après validation de votre compte, complétez filières, programmes et concours depuis votre tableau de bord orientation.',
+                )}
+                </Text>
+              </View>
             )}
 
             {/* ✅ NOUVEAU: Champs conditionnels pour chauffeur - Informations personnelles */}
@@ -873,27 +831,31 @@ const PartnerRegisterScreen: React.FC = () => {
               const lng = parseFloat(firstPoint[1]);
 
               if (!isNaN(lat) && !isNaN(lng)) {
-                // Stocker les coordonnées GPS
-                setForm({ ...form, partner_gps: { lat, lng } });
+                setForm((prev) => ({ ...prev, partner_gps: { lat, lng } }));
 
-                // ✅ CORRIGÉ 2026-01-12: Utiliser reverseGeocodeWithRetry avec retry et fallback
                 try {
                   const { reverseGeocodeWithRetry } = await import('../../utils/reverseGeocoding');
                   const geocodeResult = await reverseGeocodeWithRetry(lat, lng);
                   if (geocodeResult) {
-                    const formattedAddress = geocodeResult.address;
-                    setForm({ ...form, partner_address: formattedAddress, partner_gps: { lat, lng } });
-                    if (address.country) {
-                      setForm(prev => ({ ...prev, partner_country: address.country || '' }));
-                    }
+                    setForm((prev) => ({
+                      ...prev,
+                      partner_address: geocodeResult.address,
+                      partner_gps: { lat, lng },
+                    }));
                   } else {
-                    // Fallback si pas de résultat de géocodage
-                    setForm({ ...form, partner_address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`, partner_gps: { lat, lng } });
+                    setForm((prev) => ({
+                      ...prev,
+                      partner_address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                      partner_gps: { lat, lng },
+                    }));
                   }
                 } catch (geocodeError) {
                   console.warn('[PartnerRegisterScreen] Erreur géocodage inverse:', geocodeError);
-                  // Fallback avec coordonnées
-                  setForm({ ...form, partner_address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`, partner_gps: { lat, lng } });
+                  setForm((prev) => ({
+                    ...prev,
+                    partner_address: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                    partner_gps: { lat, lng },
+                  }));
                 }
               }
             }
@@ -988,6 +950,49 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     color: theme.colors.text,
+  },
+  optionalHint: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: theme.colors.textSecondary,
+  },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 0,
+  },
+  phoneCountryPickerWrap: {
+    flex: 0.42,
+    minWidth: 118,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginBottom: 16,
+    marginRight: 8,
+    justifyContent: 'center',
+  },
+  phoneCountryPicker: {
+    height: 56,
+    color: theme.colors.text,
+  },
+  phoneNumberInput: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  infoBanner: {
+    backgroundColor: '#E8F4FD',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#B3D9F2',
+  },
+  infoBannerText: {
+    fontSize: 13,
+    color: theme.colors.text,
+    lineHeight: 18,
   },
   pickerContainer: {
     backgroundColor: theme.colors.surface,

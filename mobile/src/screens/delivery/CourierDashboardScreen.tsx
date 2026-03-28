@@ -118,7 +118,9 @@ const CourierDashboardScreen: React.FC = () => {
     };
 
     const handleOpenDelivery = (deliveryId: string) => {
-        navigation.navigate('DeliveryShoppingTracking' as never, { deliveryId } as never);
+        const id = deliveryId != null ? String(deliveryId) : '';
+        if (!id) return;
+        navigation.navigate('DeliveryShoppingTracking' as never, { deliveryId: id } as never);
     };
 
     if (loading) {
@@ -182,7 +184,8 @@ const CourierDashboardScreen: React.FC = () => {
                                     <NativeCard style={styles.deliveryCard}>
                                         <View style={styles.deliveryHeader}>
                                             <Text style={styles.deliveryId}>
-                                                {t('courierDashboard.deliveryNum', 'Livraison')} #{delivery.id.slice(-6)}
+                                                {t('courierDashboard.deliveryNum', 'Livraison')} #
+                                                {delivery?.id != null ? String(delivery.id).slice(-6) : '—'}
                                             </Text>
                                             <Text style={styles.deliveryStatus}>{delivery.status}</Text>
                                         </View>

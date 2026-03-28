@@ -32,6 +32,7 @@ import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { usePartnerData } from '../../hooks/usePartnerData';
+import { useTransportDriverAccess } from '../../hooks/useTransportDriverAccess';
 import { apiGet, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
@@ -115,6 +116,9 @@ const CovoiturageFormScreen: React.FC = () => {
     const [selectedGPSDestination, setSelectedGPSDestination] = useState<string | null>(null);
 
     const { partnerData } = usePartnerData(user?.role);
+    const { validated: isDriverValidated } = useTransportDriverAccess(
+        user as Record<string, unknown> | null | undefined
+    );
     const { errors, validateField, validateForm, setError } = useFormValidation({
         depart: { required: true },
         destination: { required: true },
@@ -218,6 +222,21 @@ const CovoiturageFormScreen: React.FC = () => {
 
     // ─── SUBMIT ──────────────────────────────────────────────────────────
     const handleSubmit = async () => {
+        if (!isDriverValidated) {
+            Alert.alert(
+                t('covoiturageHome.driverRegistrationRequired'),
+                t('covoiturage.createServiceFirst'),
+                [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    {
+                        text: t('covoiturageHome.devenirChauffeur'),
+                        onPress: () =>
+                            (navigation as any).navigate('CourierRegistration', { applicationType: 'driver' }),
+                    },
+                ]
+            );
+            return;
+        }
         if (!formData.depart || !formData.destination) { Alert.alert(t('message.error'), t('covoiturage.departDestRequired')); return; }
         if (!formData.prix_par_place.trim()) { Alert.alert(t('message.error'), t('covoiturage.priceRequired')); return; }
         const now = new Date(); now.setHours(0, 0, 0, 0);

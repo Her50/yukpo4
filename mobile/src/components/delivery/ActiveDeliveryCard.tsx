@@ -109,6 +109,8 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
         ? delivery.dropoff!.address!
         : null;
 
+    const deliveryIdStr = delivery?.id != null ? String(delivery.id) : '';
+
     return (
         <NativeCard style={styles.card}>
             <View style={styles.header}>
@@ -178,14 +180,14 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
                         title={t('activeDeliveryCard.modifier')}
                         variant="outline"
                         size="small"
-                        onPress={() => onPress(delivery.id)}
+                        onPress={() => deliveryIdStr && onPress(deliveryIdStr)}
                         style={styles.modifyButton}
                     />
                     <NativeButton
                         title="Suivre"
                         variant="primary"
                         size="small"
-                        onPress={() => onPress(delivery.id)}
+                        onPress={() => deliveryIdStr && onPress(deliveryIdStr)}
                     />
                 </View>
             </View>

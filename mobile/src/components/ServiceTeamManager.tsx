@@ -7,7 +7,9 @@ import {
     Alert,
     FlatList,
     Image,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     ScrollView,
     Text,
     TextInput,
@@ -142,6 +144,29 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
         };
     };
 
+    /** Réponses API { success, data: { members, invitations } } ou enveloppe plate */
+    const unwrapTeamPayload = (raw: any): { members: any[]; invitations: any[] } => {
+        if (!raw || typeof raw !== 'object') return { members: [], invitations: [] };
+        const inner = raw.data != null && typeof raw.data === 'object' && !Array.isArray(raw.data)
+            ? raw.data
+            : raw;
+        const members = inner.members ?? inner.members_list ?? [];
+        const invitations = inner.invitations ?? inner.invitations_list ?? [];
+        return {
+            members: Array.isArray(members) ? members : [],
+            invitations: Array.isArray(invitations) ? invitations : [],
+        };
+    };
+
+    const isApiEnvelopeSuccess = (response: { success?: boolean; data?: any }): boolean => {
+        if (!response.success) return false;
+        const root = response.data as any;
+        if (root && typeof root === 'object' && 'success' in root && root.success === false) {
+            return false;
+        }
+        return true;
+    };
+
     const loadTeamData = async () => {
         try {
             setLoading(true);
@@ -150,17 +175,8 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                 : '/api/user/services/team';
 
             const response = await apiGet(endpoint);
-            if (response.success) {
-                // ✅ CORRECTION: Vérifier que data existe et est un objet
-                const data = response.data || {};
-
-                // ✅ PROTECTION: S'assurer que members et invitations sont des tableaux valides
-                const membersData = (data && typeof data === 'object')
-                    ? ((data as any).members || (data as any).members_list || [])
-                    : [];
-                const invitationsData = (data && typeof data === 'object')
-                    ? ((data as any).invitations || (data as any).invitations_list || [])
-                    : [];
+            if (isApiEnvelopeSuccess(response)) {
+                const { members: membersData, invitations: invitationsData } = unwrapTeamPayload(response.data);
 
                 // ✅ CORRECTION CRITIQUE: Mapper les membres du backend vers le format frontend
                 const mappedMembers = Array.isArray(membersData)
@@ -211,8 +227,18 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
     };
 
     const handleInviteUser = async () => {
-        if (!inviteEmail || !inviteRole) {
-            Alert.alert('Erreur', 'Veuillez remplir tous les champs');
+        const emailTrim = inviteEmail.trim();
+        if (!emailTrim || !inviteRole) {
+            Alert.alert('Erreur', t('serviceTeamManager.remplirTousLesChamps', 'Veuillez remplir tous les champs'));
+            return;
+        }
+        if (!serviceId) {
+            Alert.alert('Erreur', t('serviceTeamManager.serviceIdManquant', 'Identifiant du service manquant. Rechargez l’écran ou contactez le support.'));
+            return;
+        }
+        const sid = parseInt(String(serviceId), 10);
+        if (!Number.isFinite(sid) || sid <= 0) {
+            Alert.alert('Erreur', t('serviceTeamManager.serviceIdInvalide', 'Identifiant de service invalide.'));
             return;
         }
 
@@ -223,24 +249,27 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                 : [];
 
             const response = await apiPost('/api/services/team/invite', {
-                serviceId,
-                email: inviteEmail,
+                service_id: sid,
+                email: emailTrim,
                 role: inviteRole.id,
                 permissions: Array.isArray(rolePerms) ? rolePerms : []
             });
 
-            if (response.success) {
+            const root = response.data as any;
+            const ok = isApiEnvelopeSuccess(response) && root?.success !== false;
+            if (ok) {
                 Alert.alert(t('serviceTeamManager.succes'), t('serviceTeamManager.invitationEnvoyeeAvecSucces'));
                 setShowInviteModal(false);
                 setInviteEmail('');
                 setInviteRole(null);
                 loadTeamData();
             } else {
-                Alert.alert('Erreur', response.message || 'Erreur lors de l\'invitation');
+                const msg = root?.message || response.message || response.error || t('serviceTeamManager.erreurInvitation', 'Erreur lors de l\'invitation');
+                Alert.alert(t('message.error'), String(msg));
             }
         } catch (error) {
             console.error('Erreur invitation:', error);
-            Alert.alert('Erreur', 'Impossible d\'envoyer l\'invitation');
+            Alert.alert('Erreur', t('serviceTeamManager.impossibleEnvoyerInvitation', 'Impossible d\'envoyer l\'invitation'));
         }
     };
 
@@ -256,10 +285,13 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                     onPress: async () => {
                         try {
                             const response = await apiDelete(`/api/services/team/members/${memberId}`);
-                            if (response.success) {
+                            const root = response.data as any;
+                            if (isApiEnvelopeSuccess(response) && root?.success !== false) {
                                 setMembers(members.filter(m => m.id !== memberId));
                                 onMemberRemoved?.(memberId);
                                 Alert.alert(t('serviceTeamManager.succes'), t('serviceTeamManager.membreRetireDeLEquipe'));
+                            } else {
+                                Alert.alert(t('message.error'), String(root?.message || response.error || t('serviceTeamManager.suppressionImpossible', 'Impossible de retirer le membre')));
                             }
                         } catch (error) {
                             console.error('Erreur suppression membre:', error);
@@ -283,7 +315,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                 permissions: Array.isArray(rolePerms) ? rolePerms : []
             });
 
-            if (response.success) {
+            if (isApiEnvelopeSuccess(response) && (response.data as any)?.success !== false) {
                 // ✅ PROTECTION CRITIQUE: Vérifier que members est un tableau avant map()
                 if (!Array.isArray(members)) {
                     console.error('[ServiceTeamManager] members n\'est pas un tableau:', members);
@@ -303,6 +335,9 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                         : m;
                 }));
                 Alert.alert(t('serviceTeamManager.succes'), t('serviceTeamManager.roleMisAJourAvecSucces'));
+            } else {
+                const root = response.data as any;
+                Alert.alert(t('message.error'), String(root?.message || response.error || t('serviceTeamManager.impossibleDeMettreAJourLe')));
             }
         } catch (error) {
             console.error('Erreur mise à jour rôle:', error);
@@ -506,6 +541,11 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             animationType="slide"
             presentationStyle="pageSheet"
         >
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+            >
             <LinearGradient colors={(Array.isArray(modernColors.primaryGradient) && modernColors.primaryGradient.length >= 2) ? modernColors.primaryGradient as [string, string, ...string[]] : ['#6366F1', '#8B5CF6'] as [string, string]} style={styles.modalContainer}>
                 <View style={styles.modalHeader}>
                     <Text style={styles.modalTitle}>Inviter un membre</Text>
@@ -514,7 +554,12 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.modalContent}>
+                <ScrollView
+                    style={styles.modalScrollFill}
+                    contentContainerStyle={styles.inviteModalScrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator
+                >
                     <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>{t('serviceTeamManager.emailOuNom', 'Email ou nom d\'utilisateur')}</Text>
                         <TextInput
@@ -595,6 +640,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
                     />
                 </ScrollView>
             </LinearGradient>
+            </KeyboardAvoidingView>
         </Modal>
     );
 
@@ -688,6 +734,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             {showUserPicker && (
                 <UserMentionPicker
                     visible={showUserPicker}
+                    teamInviteMode
                     onClose={() => setShowUserPicker(false)}
                     onSelectUser={(user) => {
                         setInviteEmail(user.email || user.nom_complet || '');
@@ -900,6 +947,17 @@ const styles = {
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 20,
+    },
+    modalScrollFill: {
+        flex: 1,
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+    },
+    inviteModalScrollContent: {
+        padding: 20,
+        paddingBottom: 48,
+        flexGrow: 1,
     },
     inputGroup: {
         marginBottom: 24,

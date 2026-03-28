@@ -243,6 +243,20 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
         ? `https://yukpomnang.com/orientation/etablissement/${selectedEtab.id}`
         : '';
 
+    /** Bourse du livre : enregistre les manuels extraits avec `etablissement_id` pour la checklist parent (ProgrammeBesoins). */
+    const navigateToProgrammeUpload = useCallback(() => {
+        const e = selectedEtab;
+        if (e?.id) {
+            (navigation as any).navigate('EtablissementScolaire', {
+                etablissementId: e.id,
+                nomEtablissement: e.nom_etablissement,
+                typeEtablissement: e.type_etablissement,
+            });
+        } else {
+            (navigation as any).navigate('EtablissementScolaire');
+        }
+    }, [navigation, selectedEtab]);
+
     const sharePublicProfile = async () => {
         if (!publicProfileUrl) return;
         try {
@@ -371,13 +385,13 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                     { label: t('orientationPartnerDashboard.modifierEtablissement'), icon: 'edit', color: '#2563EB', onPress: () => (navigation as any).navigate('CreateEtablissement', { mode: 'edit', etablissementId: selectedEtab?.id }) },
                     ...(isK12
                         ? [
-                            { label: 'Programmes (caméra ou fichier)', icon: 'file-up', color: '#10B981', onPress: () => (navigation as any).navigate('EtablissementScolaire') },
+                            { label: 'Programmes (caméra ou fichier)', icon: 'file-up', color: '#10B981', onPress: navigateToProgrammeUpload },
                             { label: 'Liste programmes Yukpo', icon: 'book-open', color: '#F59E0B', onPress: () => (navigation as any).navigate('ProgrammesList', { etablissement_id: selectedEtab?.id }) },
                             { label: 'Stats & réussite', icon: 'trending-up', color: '#7C3AED', onPress: () => (navigation as any).navigate('CreateEtablissement', { etablissementId: selectedEtab?.id }) },
                         ]
                         : [
                             { label: 'Ajouter/éditer formations', icon: 'book-plus', color: '#10B981', onPress: () => (navigation as any).navigate('CreateEtablissement', { tab: 'programs' }) },
-                            { label: 'Charger programmes (caméra / fichier)', icon: 'file-up', color: '#7C3AED', onPress: () => (navigation as any).navigate('EtablissementScolaire') },
+                            { label: 'Charger programmes (caméra / fichier)', icon: 'file-up', color: '#7C3AED', onPress: navigateToProgrammeUpload },
                             { label: 'Concours & programmes', icon: 'graduation-cap', color: '#F59E0B', onPress: () => (navigation as any).navigate('ProgrammesList') },
                         ]),
                     { label: 'Hub Orientation public', icon: 'compass', color: '#0EA5E9', onPress: () => (navigation as any).navigate('OrientationScolaireHub') },
@@ -465,7 +479,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
             ) : (
                 <>
                     <NativeButton title="Ajouter une formation/filière" onPress={() => (navigation as any).navigate('CreateEtablissement', { tab: 'programs' })} variant="primary" style={{ marginBottom: 12 }} />
-                    <NativeButton title="Charger brochure (photo ou fichier)" onPress={() => (navigation as any).navigate('EtablissementScolaire')} variant="outline" style={{ marginBottom: 16 }} />
+                    <NativeButton title="Charger brochure (photo ou fichier)" onPress={navigateToProgrammeUpload} variant="outline" style={{ marginBottom: 16 }} />
                 </>
             )}
             {programs.length === 0 ? (

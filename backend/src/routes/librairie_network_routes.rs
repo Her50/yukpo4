@@ -66,6 +66,14 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(crate::controllers::librairie_network_controller::get_commande_details),
         )
         .route(
+            "/api/librairie-network/commandes/{commande_id}/lignes-neufs/bornes",
+            get(crate::controllers::librairie_network_controller::get_lignes_neufs_bornes_commande),
+        )
+        .route(
+            "/api/librairie-network/commandes/{commande_id}/lignes-neufs/{ligne_id}/prix",
+            patch(crate::controllers::librairie_network_controller::patch_ligne_neuf_prix),
+        )
+        .route(
             "/api/librairie-network/commandes/{commande_id}/broadcast",
             post(crate::controllers::librairie_network_controller::broadcast_commande_librairies),
         )
@@ -76,6 +84,10 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/librairie-network/mes-commandes",
             get(crate::controllers::librairie_network_controller::get_mes_commandes),
+        )
+        .route(
+            "/api/librairie-network/librairie/mes-commandes-mixtes",
+            get(crate::controllers::librairie_network_controller::get_librairie_mes_commandes_mixtes),
         )
         // ========================================
         // QR CODES PARTAGEABLES

@@ -1,11 +1,11 @@
 // Collecte des manuels scolaires (établissement) — source Yukpo : PDF/Excel/images, année scolaire.
 
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -43,12 +43,23 @@ interface AttachedFile {
     base64?: string;
 }
 
+type EtabRouteParams = {
+    etablissementId?: number;
+    nomEtablissement?: string;
+    /** orientation: primaire | secondaire | superieur | formation */
+    typeEtablissement?: string;
+};
+
 const EtablissementScolaireScreen: React.FC = () => {
     const navigation = useNavigation();
+    const route = useRoute();
+    const params = (route.params || {}) as EtabRouteParams;
     const { t } = useLanguageSafe();
     const { user } = useAuth();
 
-    const [nomEtablissement, setNomEtablissement] = useState(user?.nom_entreprise || '');
+    const [nomEtablissement, setNomEtablissement] = useState(
+        params.nomEtablissement?.trim() || user?.nom_entreprise || ''
+    );
     const [pays, setPays] = useState('');
     const [ville, setVille] = useState('');
     const [niveaux, setNiveaux] = useState<Set<string>>(new Set());
@@ -69,6 +80,17 @@ const EtablissementScolaireScreen: React.FC = () => {
             return next;
         });
     }, []);
+
+    /** Primaire / secondaire : pré-sélection des niveaux pour coller au cadre national (bourse du livre + classes). */
+    useEffect(() => {
+        const typ = params.typeEtablissement?.toLowerCase()?.trim();
+        if (!typ) return;
+        if (typ === 'primaire') {
+            setNiveaux(new Set(['primaire']));
+        } else if (typ === 'secondaire') {
+            setNiveaux(new Set(['college', 'lycee']));
+        }
+    }, [params.typeEtablissement]);
 
     // ========================
     // Capture image (caméra)
@@ -218,9 +240,18 @@ const EtablissementScolaireScreen: React.FC = () => {
                     base64: f.base64,
                 })),
                 user_id: user?.id,
+                /** Rattache chaque ligne extraite à l'établissement orientation (liste manuels côté bourse). */
+                etablissement_id: typeof params.etablissementId === 'number' ? params.etablissementId : undefined,
             };
 
-            await apiPost('/api/bourse-livre/v2/programmes-scolaires/submit', payload);
+            const res = await apiPost('/api/bourse-livre/v2/programmes-scolaires/submit', payload);
+            if (!res?.success) {
+                Alert.alert(
+                    t('message.error'),
+                    (res as any)?.error || t('etablissementScolaire.submitError', 'Impossible d\'envoyer le programme. Réessayez.')
+                );
+                return;
+            }
             setSubmitted(true);
             hapticPress();
         } catch (err: any) {
@@ -229,7 +260,7 @@ const EtablissementScolaireScreen: React.FC = () => {
         } finally {
             setSubmitting(false);
         }
-    }, [nomEtablissement, pays, ville, niveaux, anneeScolaire, commentaire, gpsCoords, gpsAddress, files, user, t]);
+    }, [nomEtablissement, pays, ville, niveaux, anneeScolaire, commentaire, gpsCoords, gpsAddress, files, user, t, params.etablissementId]);
 
     // ========================
     // Écran de succès

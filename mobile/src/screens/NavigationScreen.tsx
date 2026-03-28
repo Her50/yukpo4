@@ -1593,8 +1593,12 @@ const NavigationScreen: React.FC = () => {
     }, [getCurrentPosition, showConfirmationToast]);
 
     // ── Historique des alertes avec clustering et noms de lieux ──
-    const loadAlertHistory = useCallback(async () => {
-        setLoadingAlertHistory(true);
+    /** `silent`: recharger sans masquer la liste (ex. après vote) pour mettre à jour les compteurs sans spinner plein écran. */
+    const loadAlertHistory = useCallback(async (opts?: { silent?: boolean }) => {
+        const silent = Boolean(opts?.silent);
+        if (!silent) {
+            setLoadingAlertHistory(true);
+        }
         try {
             const pos = await getCurrentPosition();
             if (!pos) {
@@ -1630,7 +1634,6 @@ const NavigationScreen: React.FC = () => {
             if (rawCps.length === 0) {
                 console.log('[Navigation] No nearby checkpoints found');
                 setAlertHistoryData([]);
-                setLoadingAlertHistory(false);
                 return;
             }
 
@@ -1704,15 +1707,19 @@ const NavigationScreen: React.FC = () => {
     // ── Vote/confirm a checkpoint (upvote = confirmer, downvote = infirmer) ──
     const voteCheckpoint = useCallback(async (checkpointId: string, vote: 'up' | 'down') => {
         try {
-            await apiPost(`/api/navigation/checkpoints/${checkpointId}/vote`, { vote });
+            const res = await apiPost(`/api/navigation/checkpoints/${checkpointId}/vote`, { vote });
+            if (!res?.success) {
+                Alert.alert(t('message.error'), res?.error || t('navigation.voteFailed'));
+                return;
+            }
             const isUp = vote === 'up';
             showConfirmationToast(isUp ? `✅ ${t('navigation.alertConfirmed') || 'Alerte confirmée !'}` : `❌ ${t('navigation.alertDenied') || 'Alerte infirmée'}`, isUp ? '👍' : '👎');
-            // Recharger l'historique pour refléter les nouveaux votes
-            setTimeout(() => loadAlertHistory(), 500);
+            // Rechargement silencieux : évite le spinner qui remplace toute la liste (compteurs visibles tout de suite après maj serveur)
+            await loadAlertHistory({ silent: true });
         } catch {
             Alert.alert(t('message.error'), t('navigation.voteFailed'));
         }
-    }, [showConfirmationToast, loadAlertHistory]);
+    }, [showConfirmationToast, loadAlertHistory, t]);
 
     /** Ouvre Google Maps / Apple Plans ET démarre le suivi in-app (checkpoints + alertes). */
     const startTracking = useCallback(async () => {

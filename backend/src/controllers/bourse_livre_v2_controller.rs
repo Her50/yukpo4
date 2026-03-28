@@ -593,6 +593,8 @@ pub async fn create_programme_scolaire(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur création programme: {}", e)))?;
 
+    invalidate_bourse_livre_cache(&state).await;
+
     Ok((
         StatusCode::CREATED,
         Json(json!({ "success": true, "programme": programme })),
@@ -2001,6 +2003,8 @@ pub async fn upload_programme_file(
                 .await;
             }
 
+            invalidate_bourse_livre_cache(&state).await;
+
             info!(
                 "[upload_programme_file] ✅ {} livres extraits du programme {}",
                 result.nombre_total, programme_id
@@ -2062,6 +2066,8 @@ pub struct SubmitProgrammesEtablissementRequest {
     pub gps_coords: Option<String>,
     pub gps_address: Option<String>,
     pub fichiers: Vec<SubmitProgrammeFichierIn>,
+    /// Optionnel (mobile dashboard) : rattache chaque ligne `programmes_scolaires` à cet établissement pour la bourse du livre (`GET .../programmes?etablissement_id=`).
+    pub etablissement_id: Option<i32>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -2304,13 +2310,68 @@ pub async fn submit_programmes_scolaires_etablissement(
     let periode = payload.annee_scolaire.clone();
     let pays = payload.pays.clone().unwrap_or_else(|| "Cameroun".to_string());
     // Même table `etablissements_scolaires` que le service orientation : rattache les lignes « manuels » à l’établissement pour `GET /bourse-livre/v2/programmes?etablissement_id=`.
-    let etablissement_id: Option<i32> = sqlx::query_scalar(
+    // Priorité : `etablissement_id` explicite (dashboard) si l’utilisateur y a accès ; sinon propriétaire `user_id` ; sinon membre d’équipe service.
+    let etab_from_payload_ok: Option<i32> = if let Some(eid) = payload.etablissement_id {
+        let allowed: bool = sqlx::query_scalar(
+            r#"
+            SELECT
+                EXISTS(
+                    SELECT 1 FROM etablissements_scolaires es
+                    WHERE es.id = $1 AND es.user_id = $2
+                )
+                OR EXISTS(
+                    SELECT 1 FROM etablissements_scolaires es
+                    INNER JOIN service_team_members stm ON stm.service_id = es.service_id
+                    INNER JOIN service_team_roles str ON stm.role_id = str.id
+                    WHERE es.id = $1 AND stm.user_id = $2 AND stm.is_active = TRUE AND str.level <= 3
+                )
+            "#,
+        )
+        .bind(eid)
+        .bind(user_id)
+        .fetch_one(&state.pg)
+        .await
+        .unwrap_or(false);
+        if allowed {
+            Some(eid)
+        } else {
+            warn!(
+                "[submit_programmes_etab] etablissement_id={} refusé pour user_id={} — fallback lookup",
+                eid, user_id
+            );
+            None
+        }
+    } else {
+        None
+    };
+
+    let etablissement_owner: Option<i32> = sqlx::query_scalar(
         r#"SELECT id FROM etablissements_scolaires WHERE user_id = $1 ORDER BY id DESC LIMIT 1"#,
     )
     .bind(user_id)
     .fetch_optional(&state.pg)
     .await
     .unwrap_or(None);
+
+    let etablissement_team: Option<i32> = sqlx::query_scalar(
+        r#"
+        SELECT es.id
+        FROM etablissements_scolaires es
+        INNER JOIN service_team_members stm ON stm.service_id = es.service_id
+        INNER JOIN service_team_roles str ON stm.role_id = str.id
+        WHERE stm.user_id = $1 AND stm.is_active = TRUE AND str.level <= 3
+        ORDER BY es.id DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .unwrap_or(None);
+
+    let etablissement_id: Option<i32> =
+        etab_from_payload_ok.or(etablissement_owner).or(etablissement_team);
+
     if etablissement_id.is_none() {
         info!(
             "[submit_programmes_etab] user_id={} : aucun etablissements_scolaires — lignes insérées sans etablissement_id (référentiel national seul côté requêtes fusion)",
@@ -2356,7 +2417,7 @@ pub async fn submit_programmes_scolaires_etablissement(
 
             let prix = livre.prix_officiel.and_then(rust_decimal::Decimal::from_f64_retain);
 
-            let ins = sqlx::query(
+            let ins = sqlx::query_scalar::<_, i32>(
                 r#"
                 INSERT INTO programmes_scolaires (
                     pays, systeme_educatif, niveau, classe, matiere, titre_livre,
@@ -2370,7 +2431,7 @@ pub async fn submit_programmes_scolaires_etablissement(
                     $9, COALESCE($10, true), $11, true, $12,
                     $13, 'done', $14
                 )
-                ON CONFLICT DO NOTHING
+                RETURNING id
                 "#,
             )
             .bind(&pays)
@@ -2387,11 +2448,32 @@ pub async fn submit_programmes_scolaires_etablissement(
             .bind(user_id as i32)
             .bind(&periode)
             .bind(etablissement_id)
-            .execute(&state.pg)
+            .fetch_one(&state.pg)
             .await;
 
-            if let Ok(r) = ins {
-                total_inserted += r.rows_affected() as i32;
+            if let Ok(row_id) = ins {
+                total_inserted += 1;
+                if etablissement_id.is_some() {
+                    let besoin_prix =
+                        prix.map(|p| p <= rust_decimal::Decimal::ZERO).unwrap_or(true);
+                    if besoin_prix {
+                        ai_service
+                            .enrich_etablissement_row_prix_depuis_national(
+                                &state.pg,
+                                Some(&state.redis_client),
+                                row_id,
+                                &livre.titre,
+                                livre.auteur.as_deref(),
+                                &classe,
+                                &matiere,
+                                livre.isbn.as_deref(),
+                                &pays,
+                                &periode,
+                                prix,
+                            )
+                            .await;
+                    }
+                }
             }
         }
     }
@@ -5741,6 +5823,11 @@ pub async fn invalidate_bourse_livre_cache(state: &AppState) {
     let _ = state.cache_service.delete_pattern("bourse_livre:browse:*").await;
     let _ = state.cache_service.delete("bourse_livre:classes_programmes").await;
     let _ = state.cache_service.delete("bourse_livre:classes_programmes_v2").await;
+    let _ = crate::utils::redis_helper::delete_pattern(
+        &state.redis_client,
+        "bourse:livre_prix_national:v1:*",
+    )
+    .await;
 }
 
 // ============================================================================

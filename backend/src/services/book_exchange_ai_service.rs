@@ -7,10 +7,17 @@
 //! - Analyse de compatibilité échanges
 
 use crate::core::types::AppResult;
+use crate::models::livre_scolaire::ProgrammeScolaire;
 use crate::services::app_ia::AppIA;
 use crate::services::ia::prompt_loader::load_prompt_section_with_vars;
+use redis::Client as RedisClient;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use std::str::FromStr;
 use std::sync::Arc;
 
 // ============================================================================
@@ -1990,6 +1997,278 @@ RÉPONSE ATTENDUE (JSON strict) :
         };
 
         Ok(result)
+    }
+
+    /// Clé Redis stable pour le cache prix national ↔ ligne établissement.
+    fn prix_national_cache_key(
+        pays: &str,
+        periode: &str,
+        classe: &str,
+        matiere: &str,
+        titre: &str,
+        isbn: Option<&str>,
+    ) -> String {
+        let mut h = DefaultHasher::new();
+        pays.to_lowercase().hash(&mut h);
+        periode.to_lowercase().hash(&mut h);
+        classe.to_lowercase().hash(&mut h);
+        matiere.to_lowercase().hash(&mut h);
+        titre.trim().to_lowercase().hash(&mut h);
+        isbn.unwrap_or("").to_lowercase().hash(&mut h);
+        format!("bourse:livre_prix_national:v1:{:x}", h.finish())
+    }
+
+    /// Rapprochement heuristique (ISBN, titre, classe, matière) sur le référentiel national.
+    fn best_national_match_for_etablissement(
+        programmes: &[ProgrammeScolaire],
+        titre: &str,
+        classe: &str,
+        matiere: &str,
+        isbn: Option<&str>,
+    ) -> Option<(i32, Decimal)> {
+        let isbn_k = isbn.map(Self::normalize_isbn_key).filter(|s| !s.is_empty());
+        let titre_u = titre.trim().to_lowercase();
+        let classe_u = classe.trim().to_lowercase();
+        let matiere_u = matiere.trim().to_lowercase();
+
+        let mut best_score: i32 = 0;
+        let mut best_price = Decimal::ZERO;
+        let mut best_id: Option<i32> = None;
+
+        for prog in programmes.iter().filter(|p| p.is_active) {
+            let Some(v) = prog.prix_officiel else {
+                continue;
+            };
+            if v <= Decimal::ZERO {
+                continue;
+            }
+
+            let mut score: i32 = 0;
+            if let Some(ref ik) = isbn_k {
+                if prog.isbn_livre.as_deref().map(Self::normalize_isbn_key).as_ref() == Some(ik) {
+                    score += 100;
+                }
+            }
+            if !titre_u.is_empty() {
+                let tp = prog.titre_livre.to_lowercase();
+                if tp.contains(&titre_u) || titre_u.contains(&tp) {
+                    score += 45;
+                }
+            }
+            if !classe_u.is_empty() && prog.classe.to_lowercase().trim() == classe_u {
+                score += 28;
+            }
+            if !matiere_u.is_empty() && prog.matiere.to_lowercase().trim() == matiere_u {
+                score += 22;
+            }
+
+            if score >= 50 && (score > best_score || (score == best_score && v > best_price)) {
+                best_score = score;
+                best_price = v;
+                best_id = Some(prog.id);
+            }
+        }
+
+        best_id.map(|id| (id, best_price))
+    }
+
+    async fn apply_prix_to_etablissement_row(
+        pool: &PgPool,
+        row_id: i32,
+        prix: Decimal,
+        national_id: i32,
+    ) {
+        if prix <= Decimal::ZERO {
+            return;
+        }
+        if let Err(e) = sqlx::query(
+            r#"
+            UPDATE programmes_scolaires
+            SET prix_officiel = $1, updated_at = NOW()
+            WHERE id = $2 AND etablissement_id IS NOT NULL
+            "#,
+        )
+        .bind(prix)
+        .bind(row_id)
+        .execute(pool)
+        .await
+        {
+            log::warn!(
+                "[BookExchangeAIService] enrich_prix MAJ programmes_scolaires id={} national_id={}: {}",
+                row_id,
+                national_id,
+                e
+            );
+        }
+    }
+
+    /// Complète `prix_officiel` (prix neuf référentiel) pour une ligne établissement :
+    /// 1) cache Redis, 2) rapprochement SQL/heuristique sur programmes nationaux (`etablissement_id` NULL),
+    /// 3) AppIA (`match_livre_to_programme`) si nécessaire, puis re-cache Redis (TTL 7 j).
+    pub async fn enrich_etablissement_row_prix_depuis_national(
+        &self,
+        pool: &PgPool,
+        redis: Option<&RedisClient>,
+        row_id: i32,
+        titre: &str,
+        auteur: Option<&str>,
+        classe: &str,
+        matiere: &str,
+        isbn: Option<&str>,
+        pays: &str,
+        periode: &str,
+        prix_actuel: Option<Decimal>,
+    ) {
+        if prix_actuel.map(|p| p > Decimal::ZERO).unwrap_or(false) {
+            return;
+        }
+
+        let cache_key = Self::prix_national_cache_key(pays, periode, classe, matiere, titre, isbn);
+
+        #[derive(Serialize, Deserialize)]
+        struct PrixNationalCache {
+            prix: String,
+            programme_national_id: i32,
+        }
+
+        if let Some(client) = redis {
+            match crate::utils::redis_helper::get_with_retry(client, &cache_key).await {
+                Ok(Some(raw)) => {
+                    if let Ok(cached) = serde_json::from_str::<PrixNationalCache>(&raw) {
+                        if let Ok(d) = Decimal::from_str_exact(&cached.prix)
+                            .or_else(|_| Decimal::from_str(&cached.prix))
+                        {
+                            Self::apply_prix_to_etablissement_row(
+                                pool,
+                                row_id,
+                                d,
+                                cached.programme_national_id,
+                            )
+                            .await;
+                            log::info!(
+                                target: "yukpo.programme_prix",
+                                "[enrich_etablissement_row_prix] cache_hit row_id={}",
+                                row_id
+                            );
+                            return;
+                        }
+                    }
+                }
+                Ok(None) => {}
+                Err(e) => log::debug!(
+                    "[BookExchangeAIService] Redis cache miss/err enrich prix: {}",
+                    e
+                ),
+            }
+        }
+
+        let programmes: Vec<ProgrammeScolaire> = sqlx::query_as(
+            r#"
+            SELECT * FROM programmes_scolaires
+            WHERE is_active = true
+              AND etablissement_id IS NULL
+              AND pays = $1
+              AND (periode_academique = $2 OR COALESCE(annee_scolaire, '') = $2)
+              AND prix_officiel IS NOT NULL AND prix_officiel > 0
+              AND (
+                  extraction_status IS NULL
+                  OR extraction_status = 'done'
+                  OR extraction_status = ''
+              )
+            ORDER BY id DESC
+            LIMIT 280
+            "#,
+        )
+        .bind(pays)
+        .bind(periode)
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
+
+        if let Some((nid, best_price)) =
+            Self::best_national_match_for_etablissement(&programmes, titre, classe, matiere, isbn)
+        {
+            Self::apply_prix_to_etablissement_row(pool, row_id, best_price, nid).await;
+            if let Some(client) = redis {
+                let c = PrixNationalCache {
+                    prix: best_price.to_string(),
+                    programme_national_id: nid,
+                };
+                if let Ok(json) = serde_json::to_string(&c) {
+                    let _ = crate::utils::redis_helper::set_with_retry(
+                        client,
+                        &cache_key,
+                        &json,
+                        Some(604_800),
+                    )
+                    .await;
+                }
+            }
+            log::info!(
+                target: "yukpo.programme_prix",
+                "[enrich_etablissement_row_prix] heuristic row_id={} national_id={}",
+                row_id,
+                nid
+            );
+            return;
+        }
+
+        if programmes.is_empty() {
+            log::debug!(
+                "[BookExchangeAIService] Aucun programme national pour pays={} période={} — pas d'enrichissement IA",
+                pays,
+                periode
+            );
+            return;
+        }
+
+        let slice: Vec<&ProgrammeScolaire> = programmes.iter().take(100).collect();
+        let programmes_json = serde_json::to_string(&slice).unwrap_or_else(|_| "[]".to_string());
+        let date_troc = chrono::Utc::now().format("%Y-%m-%d").to_string();
+
+        let match_result = self
+            .match_livre_to_programme(titre, auteur, classe, matiere, &date_troc, &programmes_json)
+            .await;
+
+        let Ok(m) = match_result else {
+            return;
+        };
+        if !m.matched || m.score_match < 0.48 {
+            return;
+        }
+        let Some(p) = m.prix_officiel.filter(|x| x.is_finite() && *x > 0.0) else {
+            return;
+        };
+        let Some(nid) = m.programme_scolaire_id else {
+            return;
+        };
+        let Some(d) = Decimal::from_f64_retain(p) else {
+            return;
+        };
+
+        Self::apply_prix_to_etablissement_row(pool, row_id, d, nid).await;
+        if let Some(client) = redis {
+            let c = PrixNationalCache {
+                prix: d.to_string(),
+                programme_national_id: nid,
+            };
+            if let Ok(json) = serde_json::to_string(&c) {
+                let _ = crate::utils::redis_helper::set_with_retry(
+                    client,
+                    &cache_key,
+                    &json,
+                    Some(604_800),
+                )
+                .await;
+            }
+        }
+        log::info!(
+            target: "yukpo.programme_prix",
+            "[enrich_etablissement_row_prix] app_ia row_id={} national_id={} score={:.2}",
+            row_id,
+            nid,
+            m.score_match
+        );
     }
 
     /// ✅ V2 Phase 2: Matching intelligent livre ↔ programme scolaire

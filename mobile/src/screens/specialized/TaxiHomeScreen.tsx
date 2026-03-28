@@ -28,6 +28,7 @@ import { useCurrencyDetection } from '../../hooks/useCurrencyDetection';
 import { CreateTaxiRequest, SearchTaxisFilters, Taxi, taxiService } from '../../services/taxiService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
+import { useTransportDriverAccess } from '../../hooks/useTransportDriverAccess';
 
 type ViewMode = 'search' | 'create';
 
@@ -38,66 +39,9 @@ const TaxiHomeScreen: React.FC = () => {
     const toaster = useToaster();
     const { t } = useLanguageSafe();
 
-    // ✅ NOUVEAU: Vérifier si l'utilisateur est un chauffeur validé
-    const [isDriverValidated, setIsDriverValidated] = useState(false);
-    const [checkingDriverStatus, setCheckingDriverStatus] = useState(true);
-
-    // ✅ NOUVEAU: Vérifier le statut chauffeur depuis l'API
-    useEffect(() => {
-        const checkDriverStatus = async () => {
-            if (!user?.id) {
-                setIsDriverValidated(false);
-                setCheckingDriverStatus(false);
-                return;
-            }
-
-            try {
-                // Vérifier depuis les données utilisateur locales d'abord
-                const localCheck = user?.role === 'driver' ||
-                    (user as any)?.is_driver === true ||
-                    (user as any)?.driver_status === 'validated' ||
-                    (user as any)?.driver_status === 'approved';
-
-                // ✅ FIX 2026-03-14: Reconnaître aussi les partenaires chauffeur/taxi/covoiturage
-                const partnerType = ((user as any)?.partner_type || '').toLowerCase().trim();
-                const isPartnerDriver = user?.role === 'partenaire' &&
-                    ['chauffeur', 'taxi', 'covoiturage'].includes(partnerType);
-
-                if (localCheck || isPartnerDriver) {
-                    setIsDriverValidated(true);
-                    setCheckingDriverStatus(false);
-                    return;
-                }
-
-                // Si pas trouvé localement, vérifier via API
-                const { apiGet } = await import('../../services/api');
-                const response = await apiGet(`/api/users/${user.id}/driver-status`);
-
-                if (response.success && response.data) {
-                    const r = response.data as any;
-                    const driverStatus = r?.driver_status || r?.is_driver;
-                    setIsDriverValidated(driverStatus === 'validated' || driverStatus === 'approved' || driverStatus === true);
-                } else {
-                    setIsDriverValidated(false);
-                }
-            } catch (error) {
-                console.warn('[TaxiHomeScreen] Erreur vérification statut chauffeur:', error);
-                // En cas d'erreur, utiliser la vérification locale
-                const pt = ((user as any)?.partner_type || '').toLowerCase().trim();
-                setIsDriverValidated(
-                    user?.role === 'driver' ||
-                    (user as any)?.is_driver === true ||
-                    (user as any)?.driver_status === 'validated' ||
-                    (user as any)?.driver_status === 'approved' ||
-                    (user?.role === 'partenaire' && ['chauffeur', 'taxi', 'covoiturage'].includes(pt))
-                );
-            } finally {
-                setCheckingDriverStatus(false);
-            }
-        };
-
-        checkDriverStatus();
-    }, [user]);
+    const { validated: isDriverValidated, checking: checkingDriverStatus } = useTransportDriverAccess(
+        user as Record<string, unknown> | null | undefined
+    );
 
     // Mode d'affichage : recherche ou création
     const [viewMode, setViewMode] = useState<ViewMode>('search');

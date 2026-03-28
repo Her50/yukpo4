@@ -3195,12 +3195,18 @@ async fn get_my_courier_status(
         })),
         "application": application.map(|a| {
             // ✅ NOUVEAU: Retourner les données complètes si c'est un brouillon
+            let courier_type = a
+                .profile_data
+                .get("courier_type")
+                .cloned()
+                .or_else(|| a.profile_data.get("courierType").cloned());
             let mut app_json = json!({
                 "id": a.id,
                 "status": format!("{:?}", a.status),
                 "submitted_at": a.submitted_at,
                 "reviewed_at": a.reviewed_at,
                 "rejection_reason": a.rejection_reason,
+                "courier_type": courier_type,
             });
 
             // Si c'est un brouillon, inclure les données complètes pour permettre la reprise

@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, TouchableOpacity } from 'react-native';
+import { Animated, Easing, View } from 'react-native';
 import { DeliverySummary } from '../../types/delivery';
 import ActiveDeliveryCard from './ActiveDeliveryCard';
 
@@ -22,7 +22,6 @@ const AnimatedDeliveryCard: React.FC<AnimatedDeliveryCardProps> = React.memo(({
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const scaleAnim = useRef(new Animated.Value(0.95)).current;
-    const pressAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         // Animation d'entrée avec délai selon l'index
@@ -64,42 +63,19 @@ const AnimatedDeliveryCard: React.FC<AnimatedDeliveryCardProps> = React.memo(({
         }
     }, [index, fadeAnim, slideAnim, scaleAnim]);
 
-    const handlePressIn = () => {
-        Animated.spring(pressAnim, {
-            toValue: 0.96,
-            tension: 300,
-            friction: 10,
-            useNativeDriver: true,
-        }).start();
-    };
-
-    const handlePressOut = () => {
-        Animated.spring(pressAnim, {
-            toValue: 1,
-            tension: 300,
-            friction: 10,
-            useNativeDriver: true,
-        }).start();
-    };
-
     const animatedStyle = {
         opacity: fadeAnim,
-        transform: [
-            { translateY: slideAnim },
-            { scale: Animated.multiply(scaleAnim, pressAnim) },
-        ],
+        transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
     };
+
+    const deliveryKey = delivery?.id != null ? String(delivery.id) : '';
 
     return (
         <Animated.View style={animatedStyle as any}>
-            <TouchableOpacity
-                onPress={() => onPress(delivery.id)}
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-                activeOpacity={1}
-            >
-                <ActiveDeliveryCard delivery={delivery} onPress={onPress} />
-            </TouchableOpacity>
+            {/* Pas de Touchable parent : les boutons Modifier / Suivre sont dans la carte (évite touchables imbriqués + double navigation). */}
+            <View>
+                <ActiveDeliveryCard delivery={delivery} onPress={() => onPress(deliveryKey)} />
+            </View>
         </Animated.View>
     );
 }, (prevProps, nextProps) => {

@@ -8855,6 +8855,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto agency_departure_schedules: {}", e),
     }
 
+    // ✅ 2026-03-28 : Colonnes products (depart, date_depart, source_schedule_id, …) pour génération depuis horaires
+    match ensure_products_bus_schedule_alignment(pool).await {
+        Ok(_) => info!("✅ Migration auto: products bus/schedule alignment OK"),
+        Err(e) => error!("❌ Erreur migration auto products bus schedule: {}", e),
+    }
+
     // ✅ 2025-11-27 : Colonnes return_date et return_time dans bus_ticket_payments
     match ensure_return_time_columns(pool).await {
         Ok(_) => info!("✅ Migration auto: return_time columns OK"),
@@ -9188,6 +9194,15 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_librairie_network_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: librairie_network tables OK"),
         Err(e) => error!("❌ Erreur migration auto librairie_network: {}", e),
+    }
+
+    // ✅ 2026-03-28 : Colonnes bornes / verrou prix officiel sur commande_livres_neufs
+    match ensure_commande_livres_neufs_bornes_columns(pool).await {
+        Ok(_) => info!("✅ Migration auto: commande_livres_neufs bornes columns OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto commande_livres_neufs bornes: {}",
+            e
+        ),
     }
 
     // ✅ 2026-03-24 : Points de vente / succursales (GPS) par librairie — notifications géo
@@ -16604,6 +16619,29 @@ pub async fn ensure_agency_departure_schedules(pool: &PgPool) -> Result<(), sqlx
     Ok(())
 }
 
+/// ✅ 2026-03-28 : Colonnes products pour recherche billets + liaison horaires récurrents
+pub async fn ensure_products_bus_schedule_alignment(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification colonnes products (bus / horaires)...");
+
+    let col_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'products' AND column_name = 'source_schedule_id')",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+
+    if !col_exists {
+        let migration_sql =
+            include_str!("../../migrations/20260328_products_bus_schedule_alignment.sql");
+        execute_migration_sql_safe(pool, migration_sql).await?;
+        info!("✅ Colonnes products (depart, date_depart, source_schedule_id, …) appliquées");
+    } else {
+        info!("✅ Colonnes products bus/schedule déjà présentes");
+    }
+
+    Ok(())
+}
+
 /// ✅ NOUVEAU 2025-11-27 : Ajoute les colonnes return_date et return_time à bus_ticket_payments
 /// Compatible SQLx offline mode
 pub async fn ensure_return_time_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -20870,6 +20908,62 @@ pub async fn ensure_librairie_network_tables(pool: &PgPool) -> Result<(), sqlx::
     execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables réseau de librairies créées");
+    Ok(())
+}
+
+/// Colonnes verrou officiel + bornes marché pour les lignes neufs (commandes mixtes).
+pub async fn ensure_commande_livres_neufs_bornes_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'commande_livres_neufs')",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+
+    if !exists {
+        info!("⚠️ commande_livres_neufs absent — skip colonnes bornes");
+        return Ok(());
+    }
+
+    sqlx::query(
+        "ALTER TABLE commande_livres_neufs ADD COLUMN IF NOT EXISTS prix_officiel_verrouille BOOLEAN NOT NULL DEFAULT false",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "ALTER TABLE commande_livres_neufs ADD COLUMN IF NOT EXISTS prix_plancher DOUBLE PRECISION",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "ALTER TABLE commande_livres_neufs ADD COLUMN IF NOT EXISTS prix_plafond DOUBLE PRECISION",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "ALTER TABLE commande_livres_neufs ADD COLUMN IF NOT EXISTS prix_suggere DOUBLE PRECISION",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "ALTER TABLE commande_livres_neufs ADD COLUMN IF NOT EXISTS bornes_source VARCHAR(64)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        UPDATE commande_livres_neufs
+        SET prix_officiel_verrouille = true
+        WHERE prix_officiel > 0.01::numeric
+          AND prix_officiel_verrouille = false
+        "#,
+    )
+    .execute(pool)
+    .await
+    .ok();
+
+    info!("✅ Colonnes bornes commande_livres_neufs OK");
     Ok(())
 }
 

@@ -8,7 +8,9 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -47,6 +49,74 @@ const DAYS_OF_WEEK = [
     { value: 7, label: 'Dimanche', short: 'Dim' },
 ];
 const SERVICES_OPTIONS = ['Billetterie bus', 'Billetterie avion', 'Organisation voyages', 'Visa'];
+
+/** UI : 1=Lun … 7=Dim — API / Postgres : 0=Dim, 1=Lun … 6=Sam */
+const dayOfWeekToApi = (uiDay: number | null): number | null => {
+    if (uiDay == null) return null;
+    if (uiDay === 7) return 0;
+    return uiDay;
+};
+const dayOfWeekFromApi = (apiDay: number | null | undefined): number | null => {
+    if (apiDay == null || apiDay === undefined) return null;
+    if (apiDay === 0) return 7;
+    return apiDay;
+};
+
+/** Backend NaiveTime attend %H:%M (ex. 08:00, pas 8:0) */
+const normalizeDepartureTimes = (times: string[]): string[] =>
+    times.map(raw => {
+        const s = raw.trim();
+        const m = s.match(/^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$/);
+        if (!m) return s;
+        return `${m[1].padStart(2, '0')}:${m[2].padStart(2, '0')}`;
+    });
+
+/** Métadonnées optionnelles dans notes (en attendant colonnes API dédiées) */
+const buildScheduleNotes = (userNotes: string, busModel: string | null, carrier: string): string | null => {
+    const parts: string[] = [];
+    if (busModel?.trim()) parts.push(`bus:${busModel.trim()}`);
+    if (carrier.trim()) parts.push(`compagnie:${carrier.trim()}`);
+    const meta = parts.length ? `[${parts.join('|')}]` : '';
+    const body = userNotes.trim();
+    if (!meta && !body) return null;
+    if (meta && body) return `${meta}\n${body}`;
+    return meta || body;
+};
+
+const parseScheduleNotes = (raw: string | null | undefined): { clean: string; bus: string | null; carrier: string | null } => {
+    if (!raw?.trim()) return { clean: '', bus: null, carrier: null };
+    const m = raw.trim().match(/^\[([^\]]+)\]\s*/);
+    if (!m) return { clean: raw.trim(), bus: null, carrier: null };
+    const inner = m[1];
+    const bus = inner.match(/bus:([^|]+)/)?.[1]?.trim() || null;
+    const carrier = inner.match(/compagnie:([^|]+)/)?.[1]?.trim() || null;
+    return { clean: raw.trim().slice(m[0].length), bus, carrier };
+};
+
+type ScheduleRecurrence = 'all' | 'weekly';
+
+type ScheduleFormState = {
+    departure_city: string;
+    arrival_city: string;
+    departure_times: string[];
+    recurrenceMode: ScheduleRecurrence;
+    /** 1=Lun … 7=Dim ; utilisé si recurrenceMode === 'weekly' */
+    selectedDaysUi: number[];
+    notes: string;
+    carrierName: string;
+    busModelName: string | null;
+};
+
+const emptyScheduleForm = (): ScheduleFormState => ({
+    departure_city: '',
+    arrival_city: '',
+    departure_times: ['08:00'],
+    recurrenceMode: 'weekly',
+    selectedDaysUi: [1, 2, 3, 4, 5],
+    notes: '',
+    carrierName: '',
+    busModelName: null,
+});
 
 const AgenceVoyageFormScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -97,9 +167,10 @@ const AgenceVoyageFormScreen: React.FC = () => {
     // Schedules
     const [schedules, setSchedules] = useState<any[]>([]);
     const [loadingSchedules, setLoadingSchedules] = useState(false);
+    const [generatingProducts, setGeneratingProducts] = useState(false);
     const [showScheduleModal, setShowScheduleModal] = useState(false);
     const [editingSchedule, setEditingSchedule] = useState<any | null>(null);
-    const [scheduleForm, setScheduleForm] = useState({ departure_city: '', arrival_city: '', departure_times: [] as string[], day_of_week: null as number | null, notes: '' });
+    const [scheduleForm, setScheduleForm] = useState<ScheduleFormState>(emptyScheduleForm);
 
     // Agency Tickets (sold tickets management)
     const [agencyTickets, setAgencyTickets] = useState<any[]>([]);
@@ -226,6 +297,60 @@ const AgenceVoyageFormScreen: React.FC = () => {
         } catch (e) { console.log('[AgenceVoyage] Schedules:', e); } finally { setLoadingSchedules(false); }
     };
 
+    /** Appel API génération départs (recherche) — utilisé par le bouton et après sauvegarde d'horaire */
+    const requestGenerateProducts = async (scheduleId?: string | null): Promise<{
+        success: boolean;
+        generated_count: number;
+        message?: string;
+        error?: string;
+    }> => {
+        try {
+            const body: { days_ahead: number; schedule_id?: string } = { days_ahead: 14 };
+            if (scheduleId) body.schedule_id = scheduleId;
+            const resp = await apiPost('/api/bus-tickets/agencies/schedules/generate-products', body);
+            if (!resp.success) {
+                return { success: false, generated_count: 0, error: resp.error };
+            }
+            const d = (resp.data || {}) as {
+                success?: boolean;
+                generated_count?: number;
+                message?: string;
+                error?: string;
+            };
+            if (d.success) {
+                return { success: true, generated_count: d.generated_count ?? 0, message: d.message };
+            }
+            return { success: false, generated_count: 0, error: d.error || d.message };
+        } catch (e: any) {
+            return { success: false, generated_count: 0, error: e?.message };
+        }
+    };
+
+    /** Crée des produits ticket_voyage datés (recherche app / Home) à partir des horaires + modèle bus */
+    const handleGenerateSearchProducts = async () => {
+        setGeneratingProducts(true);
+        try {
+            const r = await requestGenerateProducts(null);
+            if (!r.success) {
+                Alert.alert(t('message.error'), r.error || t('agenceVoyageForm.generateProductsFail'));
+                return;
+            }
+            Alert.alert(
+                t('message.success'),
+                r.message ||
+                    t('agenceVoyageForm.generateProductsOk', {
+                        n: r.generated_count ?? 0,
+                        defaultValue:
+                            '{{n}} départ(s) créé(s) pour la recherche (créneaux déjà présents ignorés).',
+                    }),
+            );
+        } catch (e: any) {
+            Alert.alert(t('message.error'), e?.response?.data?.error || e?.message || t('agenceVoyageForm.generateProductsFail'));
+        } finally {
+            setGeneratingProducts(false);
+        }
+    };
+
     const handleRefresh = async () => { setRefreshing(true); await loadSchedules(); await loadAgencyTickets(); setRefreshing(false); };
 
     const loadAgencyTickets = async () => {
@@ -302,13 +427,113 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const handleSaveSchedule = async () => {
         if (!scheduleForm.departure_city.trim() || !scheduleForm.arrival_city.trim()) { Alert.alert(t('message.error'), t('agenceVoyage.citiesRequired')); return; }
         if (scheduleForm.departure_times.length === 0) { Alert.alert(t('message.error'), t('agenceVoyage.scheduleTimeRequired')); return; }
+        if (scheduleForm.recurrenceMode === 'weekly' && scheduleForm.selectedDaysUi.length === 0) {
+            Alert.alert(t('message.error'), t('agenceVoyageForm.selectionnezAuMoinsUnJour', 'Sélectionnez au moins un jour de la semaine, ou passez en « Tous les jours ».'));
+            return;
+        }
+        const timesNorm = normalizeDepartureTimes(scheduleForm.departure_times);
+        for (const tm of timesNorm) {
+            if (!/^\d{2}:\d{2}$/.test(tm.trim())) {
+                Alert.alert(t('message.error'), t('agenceVoyage.invalidTimeFormat', 'Heure invalide. Utilisez le format HH:MM (ex. 08:00).'));
+                return;
+            }
+        }
+        const notesPayload = buildScheduleNotes(scheduleForm.notes, scheduleForm.busModelName, scheduleForm.carrierName);
+
         try {
             setLoading(true);
-            const payload = { departure_city: scheduleForm.departure_city.trim(), arrival_city: scheduleForm.arrival_city.trim(), departure_times: scheduleForm.departure_times, day_of_week: scheduleForm.day_of_week, notes: scheduleForm.notes.trim() || null };
-            const resp = editingSchedule ? await apiPut(`/api/bus-tickets/agencies/schedules/${editingSchedule.id}`, payload) : await apiPost('/api/bus-tickets/agencies/schedules', payload);
-            if (resp.success) { Alert.alert(t('message.success'), editingSchedule ? t('agenceVoyage.scheduleModified') : t('agenceVoyage.scheduleCreated')); setShowScheduleModal(false); setEditingSchedule(null); await loadSchedules(); }
-            else { Alert.alert(t('message.error'), (resp as any).error || t('agenceVoyage.cannotSave')); }
-        } catch (e: any) { Alert.alert(t('message.error'), e.message || t('message.error')); } finally { setLoading(false); }
+
+            if (editingSchedule) {
+                const putBody: Record<string, unknown> = {
+                    departure_times: timesNorm,
+                    notes: notesPayload,
+                };
+                if (scheduleForm.recurrenceMode === 'all') {
+                    putBody.day_of_week = null;
+                } else {
+                    const first = scheduleForm.selectedDaysUi[0];
+                    putBody.day_of_week = first != null ? dayOfWeekToApi(first) : null;
+                }
+                const scheduleIdForGen = editingSchedule?.id != null ? String(editingSchedule.id) : null;
+                const resp = await apiPut(`/api/bus-tickets/agencies/schedules/${editingSchedule.id}`, putBody);
+                const root = resp.data as any;
+                const ok = resp.success && root?.success !== false;
+                if (ok) {
+                    await loadSchedules();
+                    let genSuffix = '';
+                    try {
+                        const gen = await requestGenerateProducts(scheduleIdForGen);
+                        if (gen.success && (gen.generated_count ?? 0) > 0) {
+                            genSuffix =
+                                '\n\n' +
+                                t('agenceVoyageForm.autoGenAfterSave', {
+                                    n: gen.generated_count,
+                                    defaultValue:
+                                        '{{n}} départ(s) ajouté(s) pour la recherche de billets.',
+                                });
+                        }
+                    } catch { /* génération optionnelle */ }
+                    Alert.alert(t('message.success'), t('agenceVoyage.scheduleModified') + genSuffix);
+                    setShowScheduleModal(false);
+                    setEditingSchedule(null);
+                    setScheduleForm(emptyScheduleForm());
+                } else {
+                    Alert.alert(t('message.error'), String(root?.message || root?.error || (resp as any).error || t('agenceVoyage.cannotSave')));
+                }
+                return;
+            }
+
+            const base = {
+                departure_city: scheduleForm.departure_city.trim(),
+                arrival_city: scheduleForm.arrival_city.trim(),
+                departure_times: timesNorm,
+                notes: notesPayload,
+            };
+
+            const daysApi: (number | null)[] = scheduleForm.recurrenceMode === 'all'
+                ? [null]
+                : [...new Set(scheduleForm.selectedDaysUi)].map(d => dayOfWeekToApi(d));
+
+            let okCount = 0;
+            let lastErr = '';
+            for (const dow of daysApi) {
+                const payload = { ...base, day_of_week: dow };
+                const resp = await apiPost('/api/bus-tickets/agencies/schedules', payload);
+                const root = resp.data as any;
+                if (resp.success && root?.success !== false) okCount++;
+                else lastErr = String(root?.message || root?.error || (resp as any).error || '');
+            }
+
+            if (okCount > 0) {
+                await loadSchedules();
+                let genSuffix = '';
+                try {
+                    const gen = await requestGenerateProducts(null);
+                    if (gen.success && (gen.generated_count ?? 0) > 0) {
+                        genSuffix =
+                            '\n\n' +
+                            t('agenceVoyageForm.autoGenAfterSave', {
+                                n: gen.generated_count,
+                                defaultValue:
+                                    '{{n}} départ(s) ajouté(s) pour la recherche de billets.',
+                            });
+                    }
+                } catch { /* génération optionnelle */ }
+                const baseMsg =
+                    daysApi.length > 1
+                        ? t('agenceVoyageForm.horairesCreesCount', { count: okCount, defaultValue: `${okCount} ligne(s) d'horaire enregistrée(s).` })
+                        : t('agenceVoyage.scheduleCreated');
+                Alert.alert(t('message.success'), baseMsg + genSuffix);
+                setShowScheduleModal(false);
+                setScheduleForm(emptyScheduleForm());
+            } else {
+                Alert.alert(t('message.error'), lastErr || t('agenceVoyage.cannotSave'));
+            }
+        } catch (e: any) {
+            Alert.alert(t('message.error'), e.message || t('message.error'));
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleDeleteSchedule = async (id: number) => {
@@ -378,7 +603,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             {/* Quick Actions */}
             <View style={s.quickRow}>
                 {[
-                    { label: t('agenceVoyageForm.ajouterHoraire'), icon: 'plus-circle', color: '#2563EB', onPress: () => { setEditingSchedule(null); setScheduleForm({ departure_city: '', arrival_city: '', departure_times: [], day_of_week: null, notes: '' }); setShowScheduleModal(true); } },
+                    { label: t('agenceVoyageForm.ajouterHoraire'), icon: 'plus-circle', color: '#2563EB', onPress: () => { setEditingSchedule(null); setScheduleForm(emptyScheduleForm()); setShowScheduleModal(true); } },
                     { label: t('agenceVoyageForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
                     { label: t('agenceVoyageForm.modelesBus'), icon: 'truck', color: '#8B5CF6', onPress: () => setActiveTab('bus') },
                     { label: t('agenceVoyageForm.iaConseils'), icon: 'sparkles', color: '#7C3AED', onPress: handleAISuggest },
@@ -430,7 +655,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
                                 <Text style={s.scheduleRoute}>{sch.departure_city} → {sch.arrival_city}</Text>
                                 <Text style={s.scheduleTimes}>{(sch.departure_times || []).join(' · ')}</Text>
                             </View>
-                            {sch.day_of_week && <View style={s.dayBadge}><Text style={s.dayBadgeText}>{getDayShort(sch.day_of_week)}</Text></View>}
+                            {sch.day_of_week !== null && sch.day_of_week !== undefined && (
+                                <View style={s.dayBadge}><Text style={s.dayBadgeText}>{getDayShort(dayOfWeekFromApi(Number(sch.day_of_week))!)}</Text></View>
+                            )}
                         </View>
                     ))}
                 </>
@@ -501,10 +728,20 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const renderSchedulesTab = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                <TouchableOpacity style={s.addBtn} onPress={() => { setEditingSchedule(null); setScheduleForm({ departure_city: '', arrival_city: '', departure_times: [], day_of_week: null, notes: '' }); setShowScheduleModal(true); }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                <TouchableOpacity style={s.addBtn} onPress={() => { setEditingSchedule(null); setScheduleForm(emptyScheduleForm()); setShowScheduleModal(true); }}>
                     <SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addBtnText}>{t('agenceVoyageFormScreen.ajouter')}</Text>
                 </TouchableOpacity>
+                {schedules.length > 0 && (
+                    <TouchableOpacity
+                        style={[s.addBtn, { backgroundColor: '#059669', opacity: generatingProducts ? 0.7 : 1 }]}
+                        disabled={generatingProducts}
+                        onPress={handleGenerateSearchProducts}
+                    >
+                        {generatingProducts ? <ActivityIndicator size="small" color="#fff" /> : <SafeIcon name="calendar-check" size={18} color="#fff" />}
+                        <Text style={s.addBtnText}>{t('agenceVoyageForm.generateSearchProducts', 'Départs pour la recherche')}</Text>
+                    </TouchableOpacity>
+                )}
             </View>
             {loadingSchedules ? <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 32 }} /> :
                 schedules.length === 0 ? (
@@ -515,11 +752,27 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             <View style={{ flex: 1 }}>
                                 <Text style={s.scheduleRoute}>{sch.departure_city} → {sch.arrival_city}</Text>
                                 <Text style={s.scheduleTimes}>{(sch.departure_times || []).join(' · ')}</Text>
-                                {sch.day_of_week && <Text style={s.scheduleDay}>{getDayLabel(sch.day_of_week)}</Text>}
+                                {sch.day_of_week !== null && sch.day_of_week !== undefined && (
+                                    <Text style={s.scheduleDay}>{getDayLabel(dayOfWeekFromApi(Number(sch.day_of_week))!)}</Text>
+                                )}
                                 {sch.notes && <Text style={s.scheduleNotes}>{sch.notes}</Text>}
                             </View>
                             <View style={{ flexDirection: 'row', gap: 8 }}>
-                                <TouchableOpacity onPress={() => { setEditingSchedule(sch); setScheduleForm({ departure_city: sch.departure_city || '', arrival_city: sch.arrival_city || '', departure_times: sch.departure_times || [], day_of_week: sch.day_of_week || null, notes: sch.notes || '' }); setShowScheduleModal(true); }}><SafeIcon name="edit" size={18} color="#2563EB" /></TouchableOpacity>
+                                <TouchableOpacity onPress={() => {
+                                    const parsed = parseScheduleNotes(sch.notes);
+                                    setEditingSchedule(sch);
+                                    setScheduleForm({
+                                        departure_city: sch.departure_city || '',
+                                        arrival_city: sch.arrival_city || '',
+                                        departure_times: sch.departure_times?.length ? sch.departure_times : ['08:00'],
+                                        recurrenceMode: (sch.day_of_week === null || sch.day_of_week === undefined) ? 'all' : 'weekly',
+                                        selectedDaysUi: (sch.day_of_week !== null && sch.day_of_week !== undefined) ? [dayOfWeekFromApi(Number(sch.day_of_week))!] : [],
+                                        notes: parsed.clean,
+                                        carrierName: parsed.carrier || '',
+                                        busModelName: parsed.bus,
+                                    });
+                                    setShowScheduleModal(true);
+                                }}><SafeIcon name="edit" size={18} color="#2563EB" /></TouchableOpacity>
                                 <TouchableOpacity onPress={() => handleDeleteSchedule(sch.id)}><SafeIcon name="trash-2" size={18} color="#EF4444" /></TouchableOpacity>
                             </View>
                         </View>
@@ -551,40 +804,147 @@ const AgenceVoyageFormScreen: React.FC = () => {
         </ScrollView>
     );
 
-    // ─── RENDER: Schedule Modal ──────────────────────────────────────────
+    const destCityLabel = (d: LocationObject | any) => String(d?.place_name || d?.raw || d?.name || '').trim();
+
+    const toggleScheduleWeekday = (value: number) => {
+        if (editingSchedule) {
+            setScheduleForm(prev => ({ ...prev, recurrenceMode: 'weekly', selectedDaysUi: [value] }));
+            return;
+        }
+        setScheduleForm(prev => {
+            const has = prev.selectedDaysUi.includes(value);
+            const selectedDaysUi = has
+                ? prev.selectedDaysUi.filter(x => x !== value)
+                : [...prev.selectedDaysUi, value].sort((a, b) => a - b);
+            return { ...prev, selectedDaysUi };
+        });
+    };
+
+    // ─── RENDER: Schedule Modal (planification trajet récurrent + bus / compagnie) ─
     const renderScheduleModal = () => (
         <Modal visible={showScheduleModal} animationType="slide" transparent onRequestClose={() => setShowScheduleModal(false)}>
-            <View style={s.modalOverlay}><View style={s.modalContent}>
-                <View style={s.modalHeader}>
-                    <Text style={s.modalTitle}>{editingSchedule ? t('agenceVoyageForm.modifier') : t('agenceVoyageForm.nouvelHoraire')}</Text>
-                    <TouchableOpacity onPress={() => setShowScheduleModal(false)}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
-                </View>
-                <ScrollView style={{ padding: 16, maxHeight: 450 }}>
-                    <View style={s.field}><NativeInput label={t('agenceVoyageForm.villeDepart')} value={scheduleForm.departure_city} onChangeText={t => setScheduleForm({ ...scheduleForm, departure_city: t })} placeholder={t('agenceVoyageForm.exDouala')} /></View>
-                    <View style={s.field}><NativeInput label={t('agenceVoyageForm.villeArrivee')} value={scheduleForm.arrival_city} onChangeText={t => setScheduleForm({ ...scheduleForm, arrival_city: t })} placeholder={t('agenceVoyageForm.exYaounde')} /></View>
-                    <Text style={s.label}>{t('agenceVoyageForm.horairesDeDepart')}</Text>
-                    {scheduleForm.departure_times.map((t, i) => (
-                        <View key={i} style={s.timeRow}>
-                            <NativeInput value={t} onChangeText={v => { const u = [...scheduleForm.departure_times]; u[i] = v; setScheduleForm({ ...scheduleForm, departure_times: u }); }} placeholder="08:00" style={{ flex: 1 }} />
-                            <TouchableOpacity onPress={() => setScheduleForm({ ...scheduleForm, departure_times: scheduleForm.departure_times.filter((_, j) => j !== i) })}><SafeIcon name="x" size={18} color="#EF4444" /></TouchableOpacity>
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                <View style={s.modalOverlay}>
+                    <View style={s.modalContent}>
+                        <View style={s.modalHeader}>
+                            <Text style={s.modalTitle}>{editingSchedule ? t('agenceVoyageForm.modifier') : t('agenceVoyageForm.nouvelHoraire')}</Text>
+                            <TouchableOpacity onPress={() => setShowScheduleModal(false)}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
                         </View>
-                    ))}
-                    <TouchableOpacity style={s.addTimeBtn} onPress={() => setScheduleForm({ ...scheduleForm, departure_times: [...scheduleForm.departure_times, '08:00'] })}>
-                        <SafeIcon name="plus" size={16} color="#2563EB" /><Text style={s.addTimeBtnText}>{t('agenceVoyageForm.ajouterUnHoraire')}</Text>
-                    </TouchableOpacity>
-                    <Text style={[s.label, { marginTop: 16 }]}>{t('agenceVoyageForm.jourOptionnel')}</Text>
-                    <View style={s.daysRow}>{DAYS_OF_WEEK.map(d => (
-                        <TouchableOpacity key={d.value} style={[s.dayBtn, scheduleForm.day_of_week === d.value && s.dayBtnOn]} onPress={() => setScheduleForm({ ...scheduleForm, day_of_week: scheduleForm.day_of_week === d.value ? null : d.value })}>
-                            <Text style={[s.dayBtnText, scheduleForm.day_of_week === d.value && s.dayBtnTextOn]}>{d.short}</Text>
-                        </TouchableOpacity>
-                    ))}</View>
-                    <View style={[s.field, { marginTop: 16 }]}><NativeInput label={t('agenceVoyageForm.notesLabel')} value={scheduleForm.notes} onChangeText={t => setScheduleForm({ ...scheduleForm, notes: t })} placeholder={t('agenceVoyageForm.notesPlaceholder')} multiline /></View>
-                </ScrollView>
-                <View style={s.modalFooter}>
-                    <NativeButton title={t('agenceVoyageFormScreen.annuler')} onPress={() => setShowScheduleModal(false)} variant="secondary" style={{ flex: 1 }} />
-                    <NativeButton title={editingSchedule ? t('agenceVoyageForm.modifier') : t('agenceVoyageFormScreen.creer')} onPress={handleSaveSchedule} variant="primary" style={{ flex: 1 }} disabled={loading || !scheduleForm.departure_city.trim() || !scheduleForm.arrival_city.trim() || scheduleForm.departure_times.length === 0} />
+                        <ScrollView style={{ padding: 16, maxHeight: 520 }} keyboardShouldPersistTaps="handled">
+                            <Text style={s.scheduleSectionTitle}>{t('agenceVoyageForm.planifSectionTrajet', 'Trajet')}</Text>
+                            {selectedDestinations.length > 0 && (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                        {selectedDestinations.map((d, idx) => {
+                                            const lab = destCityLabel(d);
+                                            if (!lab) return null;
+                                            return (
+                                                <View key={idx} style={{ flexDirection: 'row', gap: 6 }}>
+                                                    <TouchableOpacity style={s.cityQuickChip} onPress={() => setScheduleForm(p => ({ ...p, departure_city: lab }))}>
+                                                        <Text style={s.cityQuickChipText}>↗ {lab}</Text>
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity style={s.cityQuickChip} onPress={() => setScheduleForm(p => ({ ...p, arrival_city: lab }))}>
+                                                        <Text style={s.cityQuickChipText}>→ {lab}</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                </ScrollView>
+                            )}
+                            <View style={s.field}><NativeInput label={t('agenceVoyageForm.villeDepart')} value={scheduleForm.departure_city} onChangeText={txt => setScheduleForm({ ...scheduleForm, departure_city: txt })} placeholder={t('agenceVoyageForm.exDouala')} /></View>
+                            <View style={s.field}><NativeInput label={t('agenceVoyageForm.villeArrivee')} value={scheduleForm.arrival_city} onChangeText={txt => setScheduleForm({ ...scheduleForm, arrival_city: txt })} placeholder={t('agenceVoyageForm.exYaounde')} /></View>
+
+                            <Text style={s.scheduleSectionTitle}>{t('agenceVoyageForm.planifSectionHoraires', 'Horaires de départ')}</Text>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                                {(['06:00', '07:00', '08:00', '12:00', '18:00', '22:00'] as const).map(h => (
+                                    <TouchableOpacity key={h} style={s.presetChip} onPress={() => setScheduleForm(p => ({ ...p, departure_times: [...p.departure_times, h] }))}>
+                                        <Text style={s.presetChipText}>+ {h}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                            {scheduleForm.departure_times.map((tm, i) => (
+                                <View key={i} style={s.timeRow}>
+                                    <NativeInput value={tm} onChangeText={v => { const u = [...scheduleForm.departure_times]; u[i] = v; setScheduleForm({ ...scheduleForm, departure_times: u }); }} placeholder="08:00" style={{ flex: 1 }} />
+                                    <TouchableOpacity onPress={() => setScheduleForm({ ...scheduleForm, departure_times: scheduleForm.departure_times.filter((_, j) => j !== i) })}><SafeIcon name="x" size={18} color="#EF4444" /></TouchableOpacity>
+                                </View>
+                            ))}
+                            <TouchableOpacity style={s.addTimeBtn} onPress={() => setScheduleForm({ ...scheduleForm, departure_times: [...scheduleForm.departure_times, '08:00'] })}>
+                                <SafeIcon name="plus" size={16} color="#2563EB" /><Text style={s.addTimeBtnText}>{t('agenceVoyageForm.ajouterUnHoraire')}</Text>
+                            </TouchableOpacity>
+
+                            <View style={s.recurrenceRow}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={s.label}>{t('agenceVoyageForm.recurrenceLabel', 'Récurrence')}</Text>
+                                    <Text style={s.recurrenceHint}>{t('agenceVoyageForm.recurrenceHint', '« Tous les jours » = une ligne unique. Sinon cochez les jours (une ligne API par jour).')}</Text>
+                                </View>
+                                <Switch
+                                    value={scheduleForm.recurrenceMode === 'weekly'}
+                                    onValueChange={v => setScheduleForm(prev => ({
+                                        ...prev,
+                                        recurrenceMode: v ? 'weekly' : 'all',
+                                        selectedDaysUi: v ? (prev.selectedDaysUi.length ? prev.selectedDaysUi : [1, 2, 3, 4, 5]) : [],
+                                    }))}
+                                />
+                            </View>
+                            <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 8 }}>
+                                {scheduleForm.recurrenceMode === 'all' ? t('agenceVoyageForm.tousLesJours', 'Tous les jours de la semaine') : t('agenceVoyageForm.joursPrecis', 'Jours précis')}
+                            </Text>
+                            {scheduleForm.recurrenceMode === 'weekly' && (
+                                <View style={s.daysRow}>{DAYS_OF_WEEK.map(d => (
+                                    <TouchableOpacity key={d.value} style={[s.dayBtn, scheduleForm.selectedDaysUi.includes(d.value) && s.dayBtnOn]} onPress={() => toggleScheduleWeekday(d.value)}>
+                                        <Text style={[s.dayBtnText, scheduleForm.selectedDaysUi.includes(d.value) && s.dayBtnTextOn]}>{d.short}</Text>
+                                    </TouchableOpacity>
+                                ))}</View>
+                            )}
+
+                            <Text style={[s.scheduleSectionTitle, { marginTop: 16 }]}>{t('agenceVoyageForm.planifSectionExploitation', 'Exploitation (info voyageurs)')}</Text>
+                            <Text style={s.recurrenceHint}>{t('agenceVoyageForm.exploitationHint', 'Associé aux notes jusqu’à extension API — utile pour votre équipe et pour préparer les fiches horaires.')}</Text>
+                            {busModels.length > 0 && (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 8 }}>
+                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                        <TouchableOpacity style={[s.metaChip, !scheduleForm.busModelName && s.metaChipOn]} onPress={() => setScheduleForm({ ...scheduleForm, busModelName: null })}>
+                                            <Text style={s.metaChipText}>{t('agenceVoyageForm.busParDefaut', 'Non spécifié')}</Text>
+                                        </TouchableOpacity>
+                                        {busModels.map((m, i) => (
+                                            <TouchableOpacity key={i} style={[s.metaChip, scheduleForm.busModelName === m.nom_modele && s.metaChipOn]} onPress={() => setScheduleForm({ ...scheduleForm, busModelName: m.nom_modele })}>
+                                                <Text style={s.metaChipText} numberOfLines={1}>{m.nom_modele}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            )}
+                            {selectedCompagnies.length > 0 && (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                        {selectedCompagnies.map((c, i) => (
+                                            <TouchableOpacity key={i} style={[s.metaChip, scheduleForm.carrierName === c.name && s.metaChipOn]} onPress={() => setScheduleForm({ ...scheduleForm, carrierName: c.name || '' })}>
+                                                <Text style={s.metaChipText} numberOfLines={1}>{c.name}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            )}
+                            <View style={s.field}><NativeInput label={t('agenceVoyageForm.compagnieLibre', 'Compagnie (texte libre)')} value={scheduleForm.carrierName} onChangeText={txt => setScheduleForm({ ...scheduleForm, carrierName: txt })} placeholder={t('agenceVoyageForm.compagniePlaceholder', 'ex. Nom transporteur')}/></View>
+
+                            <View style={[s.field, { marginTop: 8 }]}><NativeInput label={t('agenceVoyageForm.notesLabel')} value={scheduleForm.notes} onChangeText={txt => setScheduleForm({ ...scheduleForm, notes: txt })} placeholder={t('agenceVoyageForm.notesPlaceholder')} multiline /></View>
+
+                            {!editingSchedule && (
+                                <View style={s.coherenceBanner}>
+                                    <SafeIcon name="info" size={16} color="#1D4ED8" />
+                                    <Text style={s.coherenceBannerText}>
+                                        {t('agenceVoyageForm.coherenceHomeSearch', 'Les voyageurs voient surtout les départs issus des billets créés (onglet Bus / produits). Les horaires ici servent de grille récurrente : complétez avec des lignes de bus datées pour apparaître dans la recherche d’accueil.')}
+                                    </Text>
+                                </View>
+                            )}
+                        </ScrollView>
+                        <View style={s.modalFooter}>
+                            <NativeButton title={t('agenceVoyageFormScreen.annuler')} onPress={() => setShowScheduleModal(false)} variant="secondary" style={{ flex: 1 }} />
+                            <NativeButton title={editingSchedule ? t('agenceVoyageForm.modifier') : t('agenceVoyageFormScreen.creer')} onPress={handleSaveSchedule} variant="primary" style={{ flex: 1 }} disabled={loading || !scheduleForm.departure_city.trim() || !scheduleForm.arrival_city.trim() || scheduleForm.departure_times.length === 0} />
+                        </View>
+                    </View>
                 </View>
-            </View></View>
+            </KeyboardAvoidingView>
         </Modal>
     );
 
@@ -826,6 +1186,18 @@ const s = StyleSheet.create({
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
     modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
     modalFooter: { flexDirection: 'row', gap: 12, padding: 16, borderTopWidth: 1, borderTopColor: '#E5E7EB' },
+    scheduleSectionTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 10, marginTop: 4 },
+    cityQuickChip: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#EFF6FF', borderRadius: 8, borderWidth: 1, borderColor: '#BFDBFE' },
+    cityQuickChipText: { fontSize: 12, color: '#1D4ED8', fontWeight: '600' },
+    presetChip: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#F3F4F6', borderRadius: 8 },
+    presetChipText: { fontSize: 12, color: '#374151', fontWeight: '500' },
+    recurrenceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, marginBottom: 4 },
+    recurrenceHint: { fontSize: 11, color: '#6B7280', lineHeight: 15, marginTop: 4 },
+    metaChip: { paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#F3F4F6', borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB', maxWidth: 160 },
+    metaChipOn: { backgroundColor: '#DBEAFE', borderColor: '#2563EB' },
+    metaChipText: { fontSize: 12, color: '#374151', fontWeight: '600' },
+    coherenceBanner: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 12, backgroundColor: '#EFF6FF', borderRadius: 10, marginTop: 12, borderWidth: 1, borderColor: '#BFDBFE' },
+    coherenceBannerText: { flex: 1, fontSize: 12, color: '#1E3A8A', lineHeight: 17 },
 });
 
 export default AgenceVoyageFormScreen;

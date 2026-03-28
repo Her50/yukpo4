@@ -356,53 +356,60 @@ const HotelDashboardScreen: React.FC = () => {
                 </View>
             </View>
 
-            {/* Quick Actions */}
+            {/* Actions rapides : grille 3 + 2 ; déconnexion séparée en bas */}
             <Text style={styles.sectionTitle}>{t('hotelDashboard.actionsRapides')}</Text>
-            <View style={styles.quickActionsRow}>
-                <TouchableOpacity style={styles.quickAction} onPress={handleAddProperty}>
-                    <View style={[styles.quickActionIcon, { backgroundColor: '#3B82F615' }]}>
-                        <SafeIcon name="plus" size={22} color="#3B82F6" />
-                    </View>
-                    <Text style={styles.quickActionLabel}>{t('hotelDashboard.ajouterUnBien')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickAction} onPress={() => setShowNewReservationModal(true)}>
-                    <View style={[styles.quickActionIcon, { backgroundColor: '#10B98115' }]}>
-                        <SafeIcon name="calendar-plus" size={22} color="#10B981" />
-                    </View>
-                    <Text style={styles.quickActionLabel}>{t('hotelDashboard.nouvelleReservation')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickAction} onPress={handleScanQR}>
-                    <View style={[styles.quickActionIcon, { backgroundColor: '#8B5CF615' }]}>
-                        <SafeIcon name="scan" size={22} color="#8B5CF6" />
-                    </View>
-                    <Text style={styles.quickActionLabel}>{t('hotelDashboard.scannerQr')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickAction} onPress={() => setActiveTab('ai')}>
-                    <View style={[styles.quickActionIcon, { backgroundColor: '#F59E0B15' }]}>
-                        <SafeIcon name="sparkles" size={22} color="#F59E0B" />
-                    </View>
-                    <Text style={styles.quickActionLabel}>{t('hotelDashboard.iaInsights')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickAction} onPress={() => (navigation as any).navigate('WalletFinancial')}>
-                    <View style={[styles.quickActionIcon, { backgroundColor: '#10B98115' }]}>
-                        <SafeIcon name="wallet" size={22} color="#10B981" />
-                    </View>
-                    <Text style={styles.quickActionLabel}>{t('hotelDashboard.portefeuille')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.quickAction} onPress={() => {
-                    Alert.alert(
-                        t('common.deconnexion'),
-                        t('common.confirmDeconnexion'),
-                        [
-                            { text: t('common.cancel'), style: 'cancel' },
-                            { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }
-                        ]
-                    );
-                }}>
-                    <View style={[styles.quickActionIcon, { backgroundColor: '#DC262615' }]}>
-                        <SafeIcon name="log-out" size={22} color="#DC2626" />
-                    </View>
-                    <Text style={styles.quickActionLabel}>{t('common.sortir')}</Text>
+            <View style={styles.quickActionsBlock}>
+                <View style={styles.quickActionsRow}>
+                    <TouchableOpacity style={styles.quickAction} onPress={handleAddProperty}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: '#3B82F615' }]}>
+                            <SafeIcon name="plus" size={22} color="#3B82F6" />
+                        </View>
+                        <Text style={styles.quickActionLabel} numberOfLines={3}>{t('hotelDashboard.ajouterUnBien')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickAction} onPress={() => setShowNewReservationModal(true)}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: '#10B98115' }]}>
+                            <SafeIcon name="calendar-plus" size={22} color="#10B981" />
+                        </View>
+                        <Text style={styles.quickActionLabel} numberOfLines={3}>{t('hotelDashboard.nouvelleReservation')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickAction} onPress={handleScanQR}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: '#8B5CF615' }]}>
+                            <SafeIcon name="scan" size={22} color="#8B5CF6" />
+                        </View>
+                        <Text style={styles.quickActionLabel} numberOfLines={3}>{t('hotelDashboard.scannerQr')}</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={[styles.quickActionsRow, styles.quickActionsRowPair]}>
+                    <TouchableOpacity style={styles.quickActionWide} onPress={() => setActiveTab('ai')}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: '#F59E0B15' }]}>
+                            <SafeIcon name="sparkles" size={22} color="#F59E0B" />
+                        </View>
+                        <Text style={styles.quickActionLabel} numberOfLines={3}>{t('hotelDashboard.iaInsights')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.quickActionWide} onPress={() => (navigation as any).navigate('WalletFinancial')}>
+                        <View style={[styles.quickActionIcon, { backgroundColor: '#10B98115' }]}>
+                            <SafeIcon name="wallet" size={22} color="#10B981" />
+                        </View>
+                        <Text style={styles.quickActionLabel} numberOfLines={3}>{t('hotelDashboard.portefeuille')}</Text>
+                    </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                    style={styles.logoutActionRow}
+                    onPress={() => {
+                        Alert.alert(
+                            t('common.deconnexion'),
+                            t('common.confirmDeconnexion'),
+                            [
+                                { text: t('common.cancel'), style: 'cancel' },
+                                { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }
+                            ]
+                        );
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('common.sortir')}
+                >
+                    <SafeIcon name="log-out" size={20} color="#DC2626" />
+                    <Text style={styles.logoutActionText}>{t('common.sortir')}</Text>
                 </TouchableOpacity>
             </View>
 
@@ -931,22 +938,40 @@ const HotelDashboardScreen: React.FC = () => {
                 style={styles.header}
             >
                 <View style={styles.headerTop}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <SafeIcon name="arrow-left" size={24} color="#fff" />
-                    </TouchableOpacity>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle}>{t('hotelDashboard.dashboard', { partnerLabel })}</Text>
-                        <Text style={styles.headerSubtitle}>
-                            {stats.totalProperties} {t('hotelDashboard.biens')} · {stats.checkedIn} {t('hotelDashboard.enSejour').toLowerCase()}
+                    <View style={styles.headerTitleBlock}>
+                        <View style={styles.headerTitleRow}>
+                            <Text style={styles.headerTitle} numberOfLines={1}>
+                                {t('hotelDashboard.headerTitle')}
+                            </Text>
+                            <View style={styles.partnerBadge}>
+                                <Text style={styles.partnerBadgeText} numberOfLines={1}>
+                                    {partnerLabel}
+                                </Text>
+                            </View>
+                        </View>
+                        <Text style={styles.headerSubtitle} numberOfLines={1}>
+                            {t('hotelDashboard.headerSubtitleStats', {
+                                count: stats.totalProperties,
+                                staying: stats.checkedIn,
+                            })}
                         </Text>
                     </View>
-                    <TouchableOpacity onPress={handleScanQR} style={styles.scanButton}>
+                    <TouchableOpacity
+                        onPress={handleScanQR}
+                        style={styles.scanButton}
+                        accessibilityLabel={t('hotelDashboard.scannerQr')}
+                    >
                         <SafeIcon name="scan" size={22} color="#fff" />
                     </TouchableOpacity>
                 </View>
 
-                {/* Tabs */}
-                <View style={styles.tabsContainer}>
+                {/* Tabs — défilement horizontal + libellés lisibles (évite les coupures au milieu des mots) */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.tabsScrollContent}
+                    style={styles.tabsScroll}
+                >
                     {([
                         { key: 'overview', label: t('hotelDashboard.vueDensemble'), icon: 'layout-dashboard' },
                         { key: 'reservations', label: t('hotelDashboard.reservations'), icon: 'calendar' },
@@ -958,19 +983,26 @@ const HotelDashboardScreen: React.FC = () => {
                             key={tab.key}
                             style={[styles.tab, activeTab === tab.key && styles.tabActive]}
                             onPress={() => setActiveTab(tab.key)}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: activeTab === tab.key }}
                         >
                             <SafeIcon
                                 name={tab.icon as any}
-                                size={16}
+                                size={18}
                                 color={activeTab === tab.key ? '#fff' : '#ffffff80'}
                             />
-                            <Text style={[
-                                styles.tabLabel,
-                                activeTab === tab.key && styles.tabLabelActive,
-                            ]}>{tab.label}</Text>
+                            <Text
+                                style={[
+                                    styles.tabLabel,
+                                    activeTab === tab.key && styles.tabLabelActive,
+                                ]}
+                                numberOfLines={2}
+                            >
+                                {tab.label}
+                            </Text>
                         </TouchableOpacity>
                     ))}
-                </View>
+                </ScrollView>
             </LinearGradient>
 
             {/* Content */}
@@ -999,7 +1031,7 @@ const HotelDashboardScreen: React.FC = () => {
                     screenType: 'dashboard',
                     userData: { role: user?.role, partner_type: user?.partner_type, name: user?.name },
                     serviceData: {
-                        nom: t('hotelDashboard.dashboard', { partnerLabel }),
+                        nom: `${t('hotelDashboard.headerTitle')} · ${partnerLabel}`,
                         produits: properties.map(p => ({ nom: p.titre, prix: p.prix_location_mensuel })),
                     },
                 }}
@@ -1014,18 +1046,46 @@ const styles = StyleSheet.create({
     loadingText: { marginTop: 12, fontSize: 15, color: modernColors.textSecondary, fontWeight: '500' },
 
     // Header
-    header: { paddingTop: 50, paddingBottom: 8, paddingHorizontal: 16 },
-    headerTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-    backButton: { marginRight: 12, padding: 4 },
-    headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
-    headerSubtitle: { fontSize: 13, color: '#ffffffCC', marginTop: 2 },
-    scanButton: { padding: 8, backgroundColor: '#ffffff20', borderRadius: 10 },
+    header: { paddingTop: 50, paddingBottom: 10, paddingHorizontal: 16 },
+    headerTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+    headerTitleBlock: { flex: 1, minWidth: 0 },
+    headerTitleRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+    headerTitle: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },
+    partnerBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 999,
+        backgroundColor: 'rgba(255,255,255,0.22)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.35)',
+    },
+    partnerBadgeText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+    headerSubtitle: { fontSize: 13, color: '#ffffffCC', marginTop: 4 },
+    scanButton: { padding: 8, backgroundColor: '#ffffff20', borderRadius: 10, marginTop: 2 },
 
-    // Tabs
-    tabsContainer: { flexDirection: 'row', gap: 4, paddingBottom: 8 },
-    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 6, borderRadius: 8, backgroundColor: '#ffffff15' },
+    // Tabs (scroll horizontal, colonne icône + texte)
+    tabsScroll: { flexGrow: 0 },
+    tabsScrollContent: { flexDirection: 'row', alignItems: 'stretch', gap: 8, paddingBottom: 4, paddingRight: 4 },
+    tab: {
+        width: 100,
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderRadius: 10,
+        backgroundColor: '#ffffff15',
+    },
     tabActive: { backgroundColor: '#ffffff30' },
-    tabLabel: { fontSize: 11, color: '#ffffff80', fontWeight: '500' },
+    tabLabel: {
+        fontSize: 10,
+        color: '#ffffff80',
+        fontWeight: '600',
+        textAlign: 'center',
+        marginTop: 6,
+        lineHeight: 13,
+        width: '100%',
+    },
     tabLabelActive: { color: '#fff', fontWeight: '700' },
 
     // Content
@@ -1037,12 +1097,48 @@ const styles = StyleSheet.create({
     statValue: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 8 },
     statLabel: { fontSize: 12, color: modernColors.textSecondary, marginTop: 2 },
 
-    // Quick Actions
+    // Actions rapides : 3 + 2 puis ligne déconnexion
     sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
-    quickActionsRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-    quickAction: { flex: 1, alignItems: 'center', gap: 6 },
+    quickActionsBlock: { marginBottom: 8 },
+    quickActionsRow: {
+        flexDirection: 'row',
+        flexWrap: 'nowrap',
+        gap: 10,
+        marginBottom: 12,
+        justifyContent: 'space-between',
+    },
+    quickActionsRowPair: {
+        justifyContent: 'center',
+        gap: 16,
+        paddingHorizontal: 4,
+        marginBottom: 14,
+    },
+    quickAction: { flex: 1, minWidth: 0, alignItems: 'center', gap: 8 },
+    quickActionWide: { flex: 1, minWidth: 0, alignItems: 'center', gap: 8 },
     quickActionIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-    quickActionLabel: { fontSize: 11, color: '#374151', fontWeight: '500', textAlign: 'center' },
+    quickActionLabel: {
+        fontSize: 11,
+        color: '#374151',
+        fontWeight: '500',
+        textAlign: 'center',
+        lineHeight: 15,
+        width: '100%',
+    },
+    logoutActionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        marginTop: 4,
+        marginBottom: 16,
+        backgroundColor: '#FEF2F2',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FECACA',
+    },
+    logoutActionText: { fontSize: 15, fontWeight: '600', color: '#B91C1C' },
 
     // Reservation Card
     reservationCard: { marginBottom: 12, padding: 14, borderRadius: 12, backgroundColor: '#fff' },
