@@ -3002,7 +3002,7 @@ ${isCourier ? `COURSIER — GUIDE COMPLET DE LIVRAISON LIVRES:
 - **Établissement — manuels scolaires (établissement):** **EtablissementScolaire** → **POST /api/bourse-livre/v2/programmes-scolaires/submit** ; extraction IA ; **notif librairies** (ville + rayon). **Ne pas** confondre les deux parcours.
 - **Librairie partenaire — commande mixte (réseau):** **LibrairieTeamPending** (succursale/stock équipe) ; **LibrairieNetworkValidation** (disponibilité par ligne neuf, multi-paniers) ; **LibrairieNetworkLignePrix** (bornes & prix). Notification push → **LibrairieNetworkValidation** avec param **commandeId**.
 
-KEY SCREENS: LivreScolaireHome (accueil bourse), EtablissementScolaire (dépôt manuels établissement), ProgrammeBesoinsSelector (besoins famille), LibrairieTeamPending, LibrairieNetworkValidation, LibrairieNetworkLignePrix, BookUploadV2 (envoyer livres), BookRecapV2 (récap session), BookPackages (paquets), MesLivres (mes livres), TrocMatching (matching), BookBuyDirect (achat direct), NewBooks (catalogue neufs)`;
+KEY SCREENS: LivreScolaireHome (accueil bourse), EtablissementScolaire (dépôt manuels établissement), ProgrammeBesoinsSelector (besoins famille), LibrairieTeamPending, LibrairieNetworkValidation, LibrairieNetworkLignePrix, BookUploadV2 (envoyer livres), BookRecapV2 (récap session), BookPackages (paquets), MesLivres (mes livres), TrocMatching (matching), BookBuyDirect (achat direct), NewBooks (catalogue neufs)`}`;
     }
 
     // Financial / Recharge / Wallet context for users AND partners
