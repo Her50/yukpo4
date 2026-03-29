@@ -21,7 +21,7 @@ function navigateLibrairieCommandeMixteFromPayload(navigation: any, data: any) {
     const raw = data?.commande_id ?? data?.commandeId;
     const commandeId = raw != null && raw !== '' ? String(raw) : '';
     if (!commandeId) return;
-    (navigation as any).navigate('LibrairieNetworkLignePrix', { commandeId });
+    (navigation as any).navigate('LibrairieNetworkValidation', { commandeId });
 }
 
 const PushNotificationManager: React.FC = () => {
@@ -334,6 +334,16 @@ const PushNotificationManager: React.FC = () => {
                     }
                 });
             }
+            // Coach IA (tap) — historique + ouverture stats / santé / perf
+            else if (data?.type === 'coaching') {
+                const title = String(response.notification.request.content.title || 'Coach IA');
+                const body = String(response.notification.request.content.body || '');
+                const subtype = String((data as any)?.subtype || 'midday_activity');
+                void coachingNotificationService
+                    .recordFromNotification(subtype as any, title, body, data as any)
+                    .catch(() => { });
+                (navigation as any).navigate('Navigation', { tab: 'stats' });
+            }
         });
 
         // Gérer le cas "app fermée puis ouverte via tap notification"
@@ -374,6 +384,14 @@ const PushNotificationManager: React.FC = () => {
                     });
                 } else if (data.type === 'librairie_commande_mixte' || data.type === 'nouvelle_commande') {
                     navigateLibrairieCommandeMixteFromPayload(navigation, data);
+                } else if (data.type === 'coaching') {
+                    const title = String(lastResponse.notification.request.content.title || 'Coach IA');
+                    const body = String(lastResponse.notification.request.content.body || '');
+                    const subtype = String(data?.subtype || 'midday_activity');
+                    void coachingNotificationService
+                        .recordFromNotification(subtype as any, title, body, data)
+                        .catch(() => { });
+                    (navigation as any).navigate('Navigation', { tab: 'stats' });
                 }
             })
             .catch((error) => {

@@ -226,6 +226,18 @@ const LibrairieTeamPendingScreen: React.FC = () => {
         <SafeIcon name="chevron-right" size={18} color="#94a3b8" />
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={styles.linkMixedPrix}
+        onPress={() => navigation.navigate('LibrairieNetworkValidation' as never)}
+        accessibilityRole="button"
+      >
+        <SafeIcon name="check-circle" size={16} color={modernColors.primary} />
+        <Text style={styles.linkMixedPrixText}>
+          {t('librairieTeamPending.linkMixedValidation', 'Commande mixte — disponibilité & validation')}
+        </Text>
+        <SafeIcon name="chevron-right" size={18} color="#94a3b8" />
+      </TouchableOpacity>
+
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>{t('librairieTeamPending.panelBranch', '1) Succursale concernée')}</Text>
         <View style={styles.chipsWrap}>

@@ -18,6 +18,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import BourseJourneySteps from '../../components/bourse/BourseJourneySteps';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { getSystemeEducatif } from '../../data/educationSystems';
@@ -566,6 +567,9 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                     <Text style={styles.headerTitle}>{t('programmeBesoins.recapTitle', 'Récapitulatif')}</Text>
                 </View>
                 <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+                    <View style={styles.journeyCard}>
+                        <BourseJourneySteps steps={journeySteps} currentIndex={journeyIndex} />
+                    </View>
                     {nationalFallback ? (
                         <View style={[styles.etabRecapBanner, { backgroundColor: '#ecfdf5', borderColor: '#6ee7b7' }]}>
                             <SafeIcon name="book-marked" size={18} color="#047857" type="lucide" />
@@ -832,6 +836,17 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                         data={annoncesBlocs}
                         keyExtractor={(item, i) => `${item.enfantId}-${item.prog?.id ?? 'x'}-${i}`}
                         contentContainerStyle={styles.listPad}
+                        ListHeaderComponent={
+                            <View style={styles.journeyCard}>
+                                <BourseJourneySteps steps={journeySteps} currentIndex={journeyIndex} />
+                                <Text style={styles.journeyHint}>
+                                    {t(
+                                        'bourseUx.resultsHint',
+                                        'Les prix affichés sur les fiches sont ceux des vendeurs. Pour le neuf, les librairies partenaires peuvent être alertées après validation.'
+                                    )}
+                                </Text>
+                            </View>
+                        }
                         renderItem={({ item }) => (
                             <View style={styles.resultSection}>
                                 <Text style={styles.resultEnfantBadge}>{item.enfantLabel}</Text>
@@ -839,7 +854,12 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                                     {item.prog?.titre_livre ?? item.extra?.titre}
                                 </Text>
                                 {item.livres.length === 0 ? (
-                                    <Text style={styles.mutedLeft}>{t('programmeBesoins.aucuneAnnonce', 'Aucune annonce pour ces critères.')}</Text>
+                                    <Text style={styles.mutedLeft}>
+                                        {t(
+                                            'bourseUx.noListingHint',
+                                            'Aucune annonce pour ce titre — élargissez la recherche dans le catalogue ou le comparateur neuf/occasion.'
+                                        )}
+                                    </Text>
                                 ) : (
                                     item.livres.map((livre: any) => (
                                         <TouchableOpacity
@@ -895,6 +915,9 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
             </LinearGradient>
 
             <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <View style={styles.journeyCard}>
+                    <BourseJourneySteps steps={journeySteps} currentIndex={journeyIndex} />
+                </View>
                 {/* Établissement */}
                 <View style={styles.cardElevated}>
                     <View style={styles.stepHeader}>
@@ -1290,6 +1313,22 @@ const styles = StyleSheet.create({
     miniPrefOnOcc: { backgroundColor: '#ffedd5', borderColor: '#ea580c' },
     miniPrefText: { fontSize: 10, fontWeight: '700', color: '#64748b' },
     miniPrefTextOn: { color: '#0f172a' },
+    journeyCard: {
+        backgroundColor: '#fff',
+        borderRadius: 14,
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
+    },
+    journeyHint: {
+        fontSize: 12,
+        color: '#64748b',
+        lineHeight: 17,
+        marginTop: 4,
+        marginBottom: 8,
+    },
     hintSouhait: { fontSize: 12, color: '#64748b', marginTop: 12, lineHeight: 17 },
     cta: {
         flexDirection: 'row',

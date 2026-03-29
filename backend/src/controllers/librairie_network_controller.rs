@@ -1,5 +1,9 @@
-// ✅ CONTROLLER RÉSEAU LIBRAIRIES - Système intelligent de distribution
-// Gestion des commandes mixtes, validation compétitive, QR codes, paiements agrégés
+//! Réseau librairies — commandes mixtes, QR, paiements agrégés.
+//!
+//! **Multi-paniers / multi-librairies** : la commande d’un parent (utilisateur) n’est pas
+//! supposée être entièrement traitée par une seule librairie. Plusieurs partenaires peuvent
+//! chacun valider un sous-ensemble de lignes (neufs) ; les lignes restantes restent disponibles
+//! pour d’autres librairies jusqu’à couverture complète ou indisponibilité explicite.
 
 use axum::{
     extract::{Path, Query, State},
@@ -123,7 +127,11 @@ pub struct BroadcastCommandeRequest {
 #[derive(Debug, Deserialize)]
 pub struct ValidationLibrairieRequest {
     pub commande_id: Uuid,
-    pub livres_valides: Vec<Uuid>, // IDs des livres_neufs validés
+    /// Lignes neufs que **cette** librairie fournit (les autres lignes `en_attente` restent pour d’autres partenaires).
+    pub livres_valides: Vec<Uuid>,
+    /// Lignes que cette librairie ne peut pas fournir — uniquement celles-ci passent en `indisponible`.
+    #[serde(default)]
+    pub livres_indisponibles: Vec<Uuid>,
     pub notes_validation: Option<String>,
 }
 
@@ -815,7 +823,8 @@ pub async fn broadcast_commande_librairies(
         "message": "Commande diffusée aux librairies proches",
         "librairies_notifiees": librairies.len(),
         "rayon_recherche": rayon,
-        "delai_validation": ConfigurationSysteme::DELAI_VALIDATION_MAX
+        "delai_validation": ConfigurationSysteme::DELAI_VALIDATION_MAX,
+        "note_multi_paniers": "La commande parent peut être répartie entre plusieurs librairies (sous-ensembles de lignes) ; aucune librairie n'est tenue de tout couvrir seule."
     })))
 }
 
@@ -911,21 +920,24 @@ pub async fn valider_livres_commande(
         }
     }
 
-    // Marquer les livres non validés comme indisponibles
-    sqlx::query(
-        r#"
-        UPDATE commande_livres_neufs 
-        SET statut_validation = 'indisponible'
-        WHERE commande_id = $1 
-          AND statut_validation = 'en_attente'
-          AND id != ALL($2)
-        "#,
-    )
-    .bind(payload.commande_id)
-    .bind(&payload.livres_valides)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur marquage indisponibles: {}", e)))?;
+    // Indisponibilité **explicite** uniquement : les autres lignes restent `en_attente` pour d'autres librairies.
+    for lid in &payload.livres_indisponibles {
+        if payload.livres_valides.contains(lid) {
+            continue;
+        }
+        sqlx::query(
+            r#"
+            UPDATE commande_livres_neufs 
+            SET statut_validation = 'indisponible'
+            WHERE id = $1 AND commande_id = $2 AND statut_validation = 'en_attente'
+            "#,
+        )
+        .bind(lid)
+        .bind(payload.commande_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur marquage indisponible: {}", e)))?;
+    }
 
     // Déterminer le statut de validation
     let total_livres_neufs: i64 = sqlx::query_scalar::<_, Option<i64>>(
@@ -991,20 +1003,6 @@ pub async fn valider_livres_commande(
             .execute(&mut *tx)
             .await
                 .map_err(|e| AppError::Internal(format!("Erreur update commande: {}", e)))?;
-
-            // Libérer les autres librairies pour les livres restants
-            sqlx::query(
-                r#"
-                UPDATE commande_validations 
-                SET statut = 'abandonne', verrou_exclusif = false
-                WHERE commande_id = $1 AND librairie_id != $2 AND statut = 'en_cours'
-                "#,
-            )
-            .bind(payload.commande_id)
-            .bind(librairie.id)
-            .execute(&mut *tx)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur libération autres: {}", e)))?;
         }
         _ => {
             sqlx::query(
@@ -1032,7 +1030,7 @@ pub async fn valider_livres_commande(
         "statut_validation": format!("{:?}", statut_validation),
         "message": match statut_validation {
             ValidationStatut::ValideComplet => "Tous les livres validés. Commande prête pour paiement.",
-            ValidationStatut::ValidePartiel => "Validation partielle. Les autres librairies peuvent valider les livres restants.",
+            ValidationStatut::ValidePartiel => "Validation partielle. D'autres librairies peuvent constituer leurs paniers sur les lignes encore en attente.",
             _ => "Aucun livre validé. Commande reste en attente."
         }
     })))
@@ -1651,10 +1649,27 @@ pub async fn get_lignes_neufs_bornes_commande(
         lignes_bornes.push(b);
     }
 
+    let lignes_out: Vec<serde_json::Value> = lignes
+        .iter()
+        .zip(lignes_bornes.iter())
+        .map(|(ligne, b)| {
+            let mut v = serde_json::to_value(b).unwrap_or(serde_json::json!({}));
+            if let Some(obj) = v.as_object_mut() {
+                obj.insert(
+                    "statut_validation".into(),
+                    serde_json::json!(ligne.statut_validation.as_api_str()),
+                );
+                obj.insert("classe".into(), serde_json::json!(ligne.classe));
+                obj.insert("matiere".into(), serde_json::json!(ligne.matiere));
+            }
+            v
+        })
+        .collect();
+
     Ok(Json(serde_json::json!({
         "success": true,
         "commande_id": commande_id,
-        "lignes": lignes_bornes
+        "lignes": lignes_out
     })))
 }
 

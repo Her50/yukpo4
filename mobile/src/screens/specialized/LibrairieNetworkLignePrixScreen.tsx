@@ -1,4 +1,9 @@
-import { useFocusEffect, useRoute } from '@react-navigation/native';
+/**
+ * Prix / bornes pour les lignes « neufs » d’une commande parent.
+ * Une même commande peut être couverte par plusieurs librairies (panier partiel chacune) ;
+ * cet écran ne représente que la part gérée par le partenaire connecté.
+ */
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -10,6 +15,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import YukpoContextHelpChip from '../../components/bourse/YukpoContextHelpChip';
 import SafeIcon from '../../components/SafeIcon';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import {
@@ -25,6 +31,7 @@ type RouteParams = { commandeId?: string };
 
 const LibrairieNetworkLignePrixScreen: React.FC = () => {
     const { t } = useLanguageSafe();
+    const navigation = useNavigation();
     const route = useRoute();
     const params = (route.params ?? {}) as RouteParams;
 
@@ -140,9 +147,34 @@ const LibrairieNetworkLignePrixScreen: React.FC = () => {
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.inner}>
-            <Text style={styles.title}>
-                {t('librairieNetworkPrix.title', 'Commande mixte — prix neufs')}
-            </Text>
+            <View style={styles.titleRow}>
+                <Text style={[styles.title, styles.titleFlex]}>
+                    {t('librairieNetworkPrix.title', 'Commande mixte — prix neufs')}
+                </Text>
+                <YukpoContextHelpChip
+                    messageKey="bourseUx.librairieYukpoSeedLignePrix"
+                    defaultMessage="Je suis sur l’écran « Commande mixte — prix neufs » (partenaire librairie). Aide-moi : comment fixer un prix dans les bornes, ce qu’est une commande multi-librairies, et quand passer à la validation des lignes."
+                    a11yKey="bourseUx.librairieYukpoHelpLignePrixA11y"
+                    defaultA11y="Yukpo IA — aide prix neufs commande mixte"
+                />
+            </View>
+            {commandeId.trim() ? (
+                <TouchableOpacity
+                    style={styles.linkRow}
+                    onPress={() =>
+                        navigation.navigate(
+                            'LibrairieNetworkValidation' as never,
+                            { commandeId: commandeId.trim() } as never
+                        )
+                    }
+                >
+                    <SafeIcon name="check-circle" size={18} color={modernColors.primary} />
+                    <Text style={styles.linkText}>
+                        {t('librairieNetworkPrix.gotoValidation', 'Disponibilité / validation des lignes')}
+                    </Text>
+                    <SafeIcon name="chevron-right" size={18} color="#94a3b8" />
+                </TouchableOpacity>
+            ) : null}
             <Text style={styles.hint}>
                 {t(
                     'librairieNetworkPrix.hint2',
@@ -279,7 +311,27 @@ const LibrairieNetworkLignePrixScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
     inner: { padding: 14, paddingBottom: 32 },
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 10,
+        marginBottom: 6,
+    },
     title: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 6 },
+    titleFlex: { flex: 1, marginBottom: 0 },
+    linkRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+        padding: 10,
+        backgroundColor: '#fffbeb',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#fcd34d',
+    },
+    linkText: { flex: 1, fontSize: 13, fontWeight: '600', color: '#92400e' },
     hint: { fontSize: 12, color: '#6b7280', marginBottom: 12 },
     sectionLabel: { fontSize: 13, fontWeight: '700', color: '#374151', marginBottom: 8 },
     emptyList: { fontSize: 12, color: '#94a3b8', marginBottom: 8 },
@@ -293,7 +345,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#e5e7eb',
     },
-    cmdRowActive: { borderColor: modernColors.primary, backgroundColor: '#eef2ff' },
+    cmdRowActive: { borderColor: '#ea580c', backgroundColor: '#fffbeb' },
     cmdRef: { fontSize: 14, fontWeight: '800', color: '#1f2937' },
     cmdMeta: { fontSize: 12, color: '#6b7280', marginTop: 2 },
     input: {

@@ -1,4 +1,4 @@
-import { apiGet, apiPatch } from './api';
+import { apiGet, apiPatch, apiPost } from './api';
 
 export type CommandeMixteListeItem = {
     id: string;
@@ -19,6 +19,10 @@ export type LigneNeufBornes = {
     prix_plafond?: number | null;
     prix_suggere?: number | null;
     bornes_source?: string | null;
+    /** `en_attente` | `valide` | `indisponible` | `en_cours_validation` */
+    statut_validation?: string | null;
+    classe?: string | null;
+    matiere?: string | null;
 };
 
 type BornesResponseBody = {
@@ -57,4 +61,32 @@ export async function patchLigneNeufPrix(commandeId: string, ligneId: string, pr
     if (!r.success) {
         throw new Error((r as { error?: string }).error || 'Enregistrement refusé');
     }
+}
+
+export type ValiderLignesResponse = {
+    success?: boolean;
+    message?: string;
+    statut_validation?: string;
+    livres_valides?: number;
+};
+
+/** POST /api/librairie-network/validation/valider — panier partiel multi-librairies. */
+export async function postValiderLignesCommande(
+    commandeId: string,
+    payload: {
+        livres_valides: string[];
+        livres_indisponibles: string[];
+        notes_validation?: string;
+    }
+): Promise<ValiderLignesResponse> {
+    const r = await apiPost<ValiderLignesResponse>('/api/librairie-network/validation/valider', {
+        commande_id: commandeId,
+        livres_valides: payload.livres_valides,
+        livres_indisponibles: payload.livres_indisponibles,
+        notes_validation: payload.notes_validation?.trim() || undefined,
+    });
+    if (!r.success) {
+        throw new Error((r as { error?: string }).error || 'Validation refusée');
+    }
+    return (r.data ?? {}) as ValiderLignesResponse;
 }

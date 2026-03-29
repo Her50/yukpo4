@@ -20,6 +20,37 @@ export type YukpoIaAttachmentPayload = {
   transcript?: string;
 };
 
+/**
+ * expo-image-picker ne renvoie pas toujours `base64` (galerie Android, grosses images, certains HEIC).
+ * On lit alors le fichier local en base64 — même stratégie que l’audio dans stopAudioRecordingForYukpoIa.
+ */
+async function readImageBase64FromPickerAsset(a: ImagePicker.ImagePickerAsset): Promise<string | null> {
+  if (a.base64) {
+    return a.base64;
+  }
+  if (!a.uri) {
+    return null;
+  }
+  const read = async (uri: string) =>
+    FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+
+  try {
+    return await read(a.uri);
+  } catch {
+    // Android : parfois content:// illisible directement → copie en cache puis lecture
+    if (a.uri.startsWith('content://') && FileSystem.cacheDirectory) {
+      const dest = `${FileSystem.cacheDirectory}yukpo_ia_pick_${Date.now()}.bin`;
+      try {
+        await FileSystem.copyAsync({ from: a.uri, to: dest });
+        return await read(dest);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
 export async function pickImageForYukpoIa(): Promise<YukpoIaAttachmentPayload | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) return null;
@@ -31,8 +62,9 @@ export async function pickImageForYukpoIa(): Promise<YukpoIaAttachmentPayload | 
   if (res.canceled || !res.assets?.[0]) return null;
   const a = res.assets[0];
   const mime = a.mimeType || 'image/jpeg';
-  if (!a.base64) return null;
-  return { kind: 'image', mime, data_base64: a.base64 };
+  const dataBase64 = await readImageBase64FromPickerAsset(a);
+  if (!dataBase64) return null;
+  return { kind: 'image', mime, data_base64: dataBase64 };
 }
 
 /** Photo directe depuis l’appareil photo (chat Yukpo IA). */
@@ -47,8 +79,9 @@ export async function takePhotoForYukpoIa(): Promise<YukpoIaAttachmentPayload | 
   if (res.canceled || !res.assets?.[0]) return null;
   const a = res.assets[0];
   const mime = a.mimeType || 'image/jpeg';
-  if (!a.base64) return null;
-  return { kind: 'image', mime, data_base64: a.base64, name: `photo_${Date.now()}.jpg` };
+  const dataBase64 = await readImageBase64FromPickerAsset(a);
+  if (!dataBase64) return null;
+  return { kind: 'image', mime, data_base64: dataBase64, name: `photo_${Date.now()}.jpg` };
 }
 
 export async function pickDocumentForYukpoIa(): Promise<YukpoIaAttachmentPayload | null> {

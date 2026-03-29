@@ -1418,7 +1418,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const goToNextBlock = () => {
     // ✅ CORRIGÉ 2026-03-03: Validation OBLIGATOIRE du champ "Nom de votre structure"
     // Ce champ n'est JAMAIS pré-rempli par l'IA — l'utilisateur DOIT le saisir lui-même
-    const titreServiceValue = valeursFormulaire.titre_service;
+    // ✅ 2026-03-29: Pendant la saisie, la valeur est dans pendingValuesRef jusqu'au blur — sans cela,
+    // « Suivant » voyait un champ vide si l'utilisateur n'avait pas quitté le champ avant de cliquer.
+    const titreServiceValue =
+      pendingValuesRef.current.titre_service !== undefined
+        ? pendingValuesRef.current.titre_service
+        : valeursFormulaire.titre_service;
 
     // ✅ CORRECTION CRITIQUE: Extraire la valeur correctement (comme dans validateField)
     const extractStringValue = (val: any): string => {

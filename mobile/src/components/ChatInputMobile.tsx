@@ -381,8 +381,18 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                 base64: true,
             });
 
-            if (!result.canceled && result.assets[0].base64) {
-                const imageBase64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+            if (result.canceled || !result.assets?.[0]) {
+                return;
+            }
+            const asset = result.assets[0];
+            const hasImageData =
+                !!asset.base64 ||
+                (!!asset.uri && (asset.uri.startsWith('file://') || asset.uri.startsWith('content://')));
+
+            if (hasImageData) {
+                const imageUriForChat = asset.base64
+                    ? `data:image/jpeg;base64,${asset.base64}`
+                    : asset.uri!;
 
                 // Demander confirmation à l'utilisateur
                 Alert.alert(
@@ -396,9 +406,35 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
                         },
                         {
                             text: 'Utiliser',
-                            onPress: () => {
-                                setImages([...images, imageBase64]);
-                                console.log('[ChatInputMobile] Photo confirmée');
+                            onPress: async () => {
+                                // ✅ Sans base64 : upload cloud (les URLs sont attendues dans `images`)
+                                if (asset.base64) {
+                                    setImages([...images, imageUriForChat]);
+                                    console.log('[ChatInputMobile] Photo confirmée');
+                                    return;
+                                }
+                                setIsUploading(true);
+                                setUploadProgress('Envoi de la photo...');
+                                try {
+                                    const uploadResults = await uploadMultipleToCloud(
+                                        [{ uri: asset.uri!, name: `photo_${Date.now()}.jpg` }],
+                                        'image',
+                                        undefined
+                                    );
+                                    const url = uploadResults.find(r => r.success && r.url)?.url;
+                                    if (url) {
+                                        setImages([...images, url]);
+                                        console.log('[ChatInputMobile] Photo uploadée (sans base64 picker)');
+                                    } else {
+                                        Alert.alert('Erreur', 'Impossible d\'envoyer la photo.');
+                                    }
+                                } catch (e) {
+                                    console.error(e);
+                                    Alert.alert('Erreur', 'Impossible d\'envoyer la photo.');
+                                } finally {
+                                    setIsUploading(false);
+                                    setUploadProgress('');
+                                }
                             }
                         }
                     ]
@@ -415,54 +451,76 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = React.memo(({
         const hasPermission = await requestPermissions();
         if (!hasPermission) return;
 
-        // ✅ CORRIGÉ: Utiliser 'images' as any pour compatibilité avec toutes les versions d'expo-image-picker
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: 'images' as any,
-            allowsMultipleSelection: true,
-            quality: 0.8,
-            base64: true,
-        });
+        let result: ImagePicker.ImagePickerResult;
+        try {
+            // ✅ CORRIGÉ: Utiliser 'images' as any pour compatibilité avec toutes les versions d'expo-image-picker
+            result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: 'images' as any,
+                allowsMultipleSelection: true,
+                quality: 0.8,
+                base64: true,
+            });
+        } catch (e) {
+            console.error('[ChatInputMobile] Erreur ouverture galerie:', e);
+            Alert.alert('Erreur', 'Impossible d\'ouvrir la galerie photos.');
+            return;
+        }
 
-        if (!result.canceled && result.assets.length > 0) {
-            setIsUploading(true);
-            setUploadProgress('Upload des images...');
+        if (result.canceled || result.assets.length === 0) return;
 
-            try {
-                // Préparer les fichiers pour l'upload
-                const filesToUpload = result.assets
-                    .filter(asset => asset.base64)
-                    .map(asset => ({
-                        uri: `data:image/jpeg;base64,${asset.base64}`,
-                        name: asset.fileName || `image_${Date.now()}.jpg`
-                    }));
+        setIsUploading(true);
+        setUploadProgress('Upload des images...');
 
-                // Upload vers le cloud
-                const uploadResults = await uploadMultipleToCloud(
-                    filesToUpload,
-                    'image',
-                    (completed, total) => {
-                        setUploadProgress(`Upload ${completed}/${total} images...`);
-                    }
-                );
-
-                // Récupérer les URLs des images uploadées
-                const uploadedUrls = uploadResults
-                    .filter(result => result.success && result.url)
-                    .map(result => result.url!);
-
-                if (uploadedUrls.length > 0) {
-                    setImages([...images, ...uploadedUrls]);
-                    console.log('[ChatInputMobile] Images uploadées:', uploadedUrls.length);
-                } else {
-                    Alert.alert('Erreur', 'Impossible d\'uploader les images');
+        try {
+            // ✅ Sans base64 (souvent sur Android / grosses images), uploadToCloud sait lire file://
+            const filesToUpload: Array<{ uri: string; name: string }> = [];
+            for (let i = 0; i < result.assets.length; i++) {
+                const asset = result.assets[i];
+                const name = asset.fileName || `image_${Date.now()}_${i}.jpg`;
+                if (asset.base64) {
+                    const isPng =
+                        asset.mimeType?.includes('png') ||
+                        name.toLowerCase().endsWith('.png');
+                    filesToUpload.push({
+                        uri: isPng
+                            ? `data:image/png;base64,${asset.base64}`
+                            : `data:image/jpeg;base64,${asset.base64}`,
+                        name,
+                    });
+                } else if (asset.uri) {
+                    filesToUpload.push({ uri: asset.uri, name });
                 }
-            } catch (error) {
-                console.error('Erreur upload images:', error);
-                Alert.alert('Erreur', 'Échec de l\'upload des images');
-            } finally {
-                setIsUploading(false);
-                setUploadProgress('');
             }
+
+            if (filesToUpload.length === 0) {
+                Alert.alert('Erreur', 'Impossible de lire les images sélectionnées.');
+                return;
+            }
+
+            const uploadResults = await uploadMultipleToCloud(
+                filesToUpload,
+                'image',
+                (completed, total) => {
+                    setUploadProgress(`Upload ${completed}/${total} images...`);
+                }
+            );
+
+            const uploadedUrls = uploadResults
+                .filter(r => r.success && r.url)
+                .map(r => r.url!);
+
+            if (uploadedUrls.length > 0) {
+                setImages([...images, ...uploadedUrls]);
+                console.log('[ChatInputMobile] Images uploadées:', uploadedUrls.length);
+            } else {
+                Alert.alert('Erreur', 'Impossible d\'uploader les images');
+            }
+        } catch (error) {
+            console.error('Erreur upload images:', error);
+            Alert.alert('Erreur', 'Échec de l\'upload des images');
+        } finally {
+            setIsUploading(false);
+            setUploadProgress('');
         }
     };
 

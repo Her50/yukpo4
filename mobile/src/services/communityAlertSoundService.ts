@@ -6,8 +6,15 @@
 // Intégré au système de paiement existant via useNavigationPayment
 
 import * as Notifications from 'expo-notifications';
+import { AndroidNotificationPriority } from 'expo-notifications';
 import i18n from 'i18next';
 import { Platform, Vibration } from 'react-native';
+
+/**
+ * Canal Android v2 (importance MAX) : meilleure restitution sonore / heads-up quand l’app n’est pas au premier plan
+ * ou que l’écran est verrouillé (l’OS peut toujours limiter selon DND / mode silencieux matériel).
+ */
+export const ANDROID_COMMUNITY_ALERTS_CHANNEL_ID = 'community_alerts_v2';
 import { useNavigationPayment } from '../hooks/useNavigationPayment';
 import { formatPriceInCurrency, getMicroFeaturePrice } from './navigationPricing';
 
@@ -80,15 +87,18 @@ class CommunityAlertSoundService {
         if (this.isInitialized) return;
 
         try {
-            // Configurer le canal Android pour les alertes communautaires
+            // Canal Android : importance MAX + visibilité écran de verrouillage (autre app / téléphone en veille)
             if (Platform.OS === 'android') {
-                await Notifications.setNotificationChannelAsync('community_alerts', {
+                await Notifications.setNotificationChannelAsync(ANDROID_COMMUNITY_ALERTS_CHANNEL_ID, {
                     name: 'Alertes Communautaires',
-                    description: 'Notifications sonores des alertes communautaires',
-                    importance: Notifications.AndroidImportance.HIGH,
-                    vibrationPattern: [0, 200, 100, 200],
+                    description:
+                        'Son et vibration à l’approche d’une alerte (y compris autre application ou écran éteint)',
+                    importance: Notifications.AndroidImportance.MAX,
+                    vibrationPattern: [0, 250, 120, 250],
                     lightColor: '#EF4444',
                     sound: 'default',
+                    enableVibrate: true,
+                    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
                 });
             }
 
@@ -173,14 +183,20 @@ class CommunityAlertSoundService {
                 } catch { }
             }
 
-            // Notification locale immédiate
+            // Notification locale immédiate (système : son même en arrière-plan / écran verrouillé si autorisé)
             await Notifications.scheduleNotificationAsync({
                 content: {
                     title,
                     body,
                     data: { type: 'community_alert_sound', subtype: type, ...extraData },
                     sound: notificationOverrides?.sound ?? soundConfig.sound,
-                    ...(Platform.OS === 'android' ? { channelId: 'community_alerts' } : {}),
+                    ...(Platform.OS === 'android'
+                        ? {
+                              channelId: ANDROID_COMMUNITY_ALERTS_CHANNEL_ID,
+                              vibrate: [0, 250, 120, 250],
+                              priority: AndroidNotificationPriority.MAX,
+                          }
+                        : { interruptionLevel: 'timeSensitive' as const }),
                 },
                 trigger: null, // Immédiat
             });

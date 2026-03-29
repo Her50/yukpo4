@@ -125,6 +125,8 @@ const FRIENDLY_SCREEN_NAMES: Record<string, string> = {
   TaxiHome: 'Taxi',
   DeliveryHome: 'Livraison',
   LivreScolaireHome: 'Bourse du livre',
+  LibrairieNetworkLignePrix: 'Librairie — prix neufs (commande mixte)',
+  LibrairieNetworkValidation: 'Librairie — validation lignes neufs',
   WalletFinancial: 'Portefeuille',
 };
 

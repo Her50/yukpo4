@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradient pour le fond -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0F172A;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1E293B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F172A;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient pour le Y -->
+    <linearGradient id="yGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F7971E;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FFD200;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6366F1;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Motif Ndop - Losanges répétitifs (COULEURS TRADITIONNELLES : INDIGO/BLEU FONCÉ) -->
+    <pattern id="ndopPattern" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+      <!-- Losange principal - INDIGO FONCÉ traditionnel (couleur authentique du ndop) -->
+      <path d="M 40 0 L 80 40 L 40 80 L 0 40 Z" 
+            fill="none" 
+            stroke="#1A1D5A" 
+            stroke-width="4" 
+            opacity="0.9"/>
+      
+      <!-- Losange intérieur - BLEU FONCÉ pour contraste -->
+      <path d="M 40 20 L 60 40 L 40 60 L 20 40 Z" 
+            fill="none" 
+            stroke="#334155" 
+            stroke-width="3.5" 
+            opacity="0.85"/>
+      
+      <!-- Lignes diagonales (motif Ndop classique) - INDIGO traditionnel -->
+      <line x1="0" y1="0" x2="80" y2="80" stroke="#1A1D5A" stroke-width="3.5" opacity="0.8"/>
+      <line x1="80" y1="0" x2="0" y2="80" stroke="#1A1D5A" stroke-width="3.5" opacity="0.8"/>
+      
+      <!-- Lignes diagonales secondaires pour plus de texture -->
+      <line x1="20" y1="0" x2="60" y2="80" stroke="#334155" stroke-width="2.5" opacity="0.7"/>
+      <line x1="60" y1="0" x2="20" y2="80" stroke="#334155" stroke-width="2.5" opacity="0.7"/>
+      
+      <!-- Points d'accent - BLANC/CLAIR pour contraste (traditionnel ndop) -->
+      <circle cx="40" cy="40" r="4" fill="#F8F9FA" opacity="0.9"/>
+      <circle cx="20" cy="20" r="3" fill="#E2E8F0" opacity="0.8"/>
+      <circle cx="60" cy="60" r="3" fill="#E2E8F0" opacity="0.8"/>
+      <circle cx="20" cy="60" r="2.5" fill="#CBD5E1" opacity="0.75"/>
+      <circle cx="60" cy="20" r="2.5" fill="#CBD5E1" opacity="0.75"/>
+    </pattern>
+    
+    <!-- Motif Ndop - Zigzags (symbole de dynamisme) - COULEURS TRADITIONNELLES -->
+    <pattern id="ndopZigzag" x="0" y="0" width="60" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 0 20 L 15 0 L 30 20 L 45 0 L 60 20" 
+            fill="none" 
+            stroke="#1A1D5A" 
+            stroke-width="5" 
+            opacity="0.9"/>
+      <path d="M 0 20 L 15 40 L 30 20 L 45 40 L 60 20" 
+            fill="none" 
+            stroke="#334155" 
+            stroke-width="5" 
+            opacity="0.85"/>
+    </pattern>
+    
+    <!-- Motif Ndop supplémentaire - Triangles (motif traditionnel) - COULEURS TRADITIONNELLES -->
+    <pattern id="ndopTriangles" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+      <path d="M 50 0 L 100 50 L 50 100 L 0 50 Z" 
+            fill="none" 
+            stroke="#1A1D5A" 
+            stroke-width="3.5" 
+            opacity="0.8"/>
+      <path d="M 25 25 L 75 25 L 50 75 Z" 
+            fill="none" 
+            stroke="#334155" 
+            stroke-width="3" 
+            opacity="0.75"/>
+      <!-- Triangles supplémentaires pour plus de texture -->
+      <path d="M 0 0 L 50 50 L 0 100 Z" 
+            fill="none" 
+            stroke="#475569" 
+            stroke-width="2.5" 
+            opacity="0.7"/>
+      <path d="M 100 0 L 50 50 L 100 100 Z" 
+            fill="none" 
+            stroke="#475569" 
+            stroke-width="2.5" 
+            opacity="0.7"/>
+    </pattern>
+    
+    <!-- Ombre portée pour le Y -->
+    <filter id="yShadow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="8" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Brillance sur le Y -->
+    <linearGradient id="yShine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Fond avec gradient -->
+  <rect width="1024" height="1024" fill="url(#bgGradient)" rx="180"/>
+  
+  <!-- Couche de motif Ndop - Losanges (VISIBLE - OPACITÉ MAXIMALE) -->
+  <rect width="1024" height="1024" fill="url(#ndopPattern)" rx="180" opacity="1.0"/>
+  
+  <!-- Couche de motif Ndop - Triangles (pour plus de texture - OPACITÉ AUGMENTÉE) -->
+  <rect width="1024" height="1024" fill="url(#ndopTriangles)" rx="180" opacity="0.85"/>
+  
+  <!-- Couche de motif Ndop - Zigzags (sur les bords) - OPACITÉ MAXIMALE -->
+  <rect x="0" y="0" width="1024" height="250" fill="url(#ndopZigzag)" opacity="1.0"/>
+  <rect x="0" y="774" width="1024" height="250" fill="url(#ndopZigzag)" opacity="1.0"/>
+  <rect x="0" y="0" width="250" height="1024" fill="url(#ndopZigzag)" opacity="1.0"/>
+  <rect x="774" y="0" width="250" height="1024" fill="url(#ndopZigzag)" opacity="1.0"/>
+  
+  <!-- Cercle central très subtil pour mettre en valeur le Y (OPACITÉ RÉDUITE pour laisser voir le ndop) -->
+  <circle cx="512" cy="512" r="380" fill="#1E293B" opacity="0.08"/>
+  <circle cx="512" cy="512" r="380" fill="none" stroke="url(#yGradient)" stroke-width="2" opacity="0.2"/>
+  
+  <!-- La lettre Y stylisée et moderne -->
+  <g filter="url(#yShadow)">
+    <!-- Branche gauche du Y -->
+    <path d="M 280 280 L 512 520 L 480 550 L 248 310 Z" 
+          fill="url(#yGradient)" 
+          stroke="url(#yGradient)" 
+          stroke-width="4" 
+          stroke-linejoin="round"/>
+    
+    <!-- Branche droite du Y -->
+    <path d="M 744 280 L 512 520 L 544 550 L 776 310 Z" 
+          fill="url(#yGradient)" 
+          stroke="url(#yGradient)" 
+          stroke-width="4" 
+          stroke-linejoin="round"/>
+    
+    <!-- Tige centrale du Y -->
+    <path d="M 480 520 L 544 520 L 544 780 L 480 780 Z" 
+          fill="url(#yGradient)" 
+          stroke="url(#yGradient)" 
+          stroke-width="4" 
+          stroke-linejoin="round"/>
+    
+    <!-- Effet de brillance sur le Y -->
+    <path d="M 290 290 L 512 530 L 490 550 L 268 320 Z" 
+          fill="url(#yShine)" 
+          opacity="0.4"/>
+    <path d="M 734 290 L 512 530 L 534 550 L 756 320 Z" 
+          fill="url(#yShine)" 
+          opacity="0.4"/>
+    <path d="M 490 530 L 534 530 L 534 750 L 490 750 Z" 
+          fill="url(#yShine)" 
+          opacity="0.4"/>
+  </g>
+  
+  <!-- Accent subtil en bas (symbole Ndop de l'araignée - sagesse) -->
+  <g opacity="0.3">
+    <circle cx="512" cy="920" r="8" fill="#FFD200"/>
+    <line x1="512" y1="920" x2="490" y2="940" stroke="#FFD200" stroke-width="2"/>
+    <line x1="512" y1="920" x2="534" y2="940" stroke="#FFD200" stroke-width="2"/>
+    <line x1="512" y1="920" x2="490" y2="900" stroke="#FFD200" stroke-width="2"/>
+    <line x1="512" y1="920" x2="534" y2="900" stroke="#FFD200" stroke-width="2"/>
+  </g>
+</svg>
+
+
+
+

@@ -25,7 +25,8 @@ import { useLocationSafe } from '../contexts/LocationContext';
 import { useNavigationPayment } from '../hooks/useNavigationPayment';
 import { apiGet, apiPost } from '../services/api';
 import { coachingNotificationService } from '../services/coachingNotificationService';
-import { communityAlertSoundService } from '../services/communityAlertSoundService';
+import { ANDROID_COMMUNITY_ALERTS_CHANNEL_ID, communityAlertSoundService } from '../services/communityAlertSoundService';
+import { clearStoredEncounteredRecord, mergeStoredEncounteredIntoMap, persistCheckpointsForBackground, recordEncounteredThreshold } from '../services/communityAlertBackground';
 import { FreeWalkSessionService } from '../services/FreeWalkSessionService';
 import { estimatePoiCost, getPoiPrices } from '../services/navigationPricing';
 import { PassiveActivityTracker } from '../services/PassiveActivityTracker';
@@ -444,7 +445,7 @@ const playContextualAlert = async (
         if (!soundPlayed) {
             try {
                 await Notifications.scheduleNotificationAsync({
-                    content: { title: `${CHECKPOINT_LABELS[checkpointType]?.icon || '⚠️'} Alerte`, body: `${checkpointType} à ${Math.round(distanceMeters)}m`, sound: true, ...(Platform.OS === 'android' ? { channelId: 'community_alerts' } : {}) },
+                    content: { title: `${CHECKPOINT_LABELS[checkpointType]?.icon || '⚠️'} Alerte`, body: `${checkpointType} à ${Math.round(distanceMeters)}m`, sound: true, ...(Platform.OS === 'android' ? { channelId: ANDROID_COMMUNITY_ALERTS_CHANNEL_ID } : {}) },
                     trigger: null,
                 });
             } catch { }
@@ -563,6 +564,9 @@ const NavigationScreen: React.FC = () => {
         id: string; checkpoint_type: string; latitude: number; longitude: number;
         description?: string; speed_limit?: number; confidence: number; distance_from_route_meters?: number;
     }>>([]);
+    useEffect(() => {
+        persistCheckpointsForBackground(checkpoints).catch(() => { /* ignore */ });
+    }, [checkpoints]);
     const [nearbyCheckpoint, setNearbyCheckpoint] = useState<{ id: string; checkpoint_type: string; distance: number; speed_limit?: number } | null>(null);
     const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
     const alertMonitorSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
@@ -580,6 +584,10 @@ const NavigationScreen: React.FC = () => {
     const checkpointsEncounteredRef = useRef<number>(0);
     const wasOffRouteRef = useRef<boolean>(false);
     const encounteredCheckpointIdsRef = useRef<Map<string, number>>(new Map());
+    /** Synchroniser avec les alertes déjà déclenchées en tâche arrière-plan (conduite, app non au premier plan) */
+    useEffect(() => {
+        mergeStoredEncounteredIntoMap(encounteredCheckpointIdsRef.current).catch(() => { /* ignore */ });
+    }, []);
     const announcedWaypointsRef = useRef<Map<string, number>>(new Map());
     const [isFreeWalking, setIsFreeWalking] = useState(false);
     const [freeWalkStarting, setFreeWalkStarting] = useState(false);
@@ -1737,6 +1745,7 @@ const NavigationScreen: React.FC = () => {
         checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false;
         encounteredCheckpointIdsRef.current = new Map();
         announcedWaypointsRef.current = new Map();
+        void clearStoredEncounteredRecord();
         setIsTracking(true);
 
         // Démarrer la souscription GPS pour mettre à jour livePosition
@@ -1803,6 +1812,7 @@ const NavigationScreen: React.FC = () => {
             lastPositionRef.current = null; checkpointsReportedRef.current = 0;
             checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false;
             encounteredCheckpointIdsRef.current = new Map();
+            void clearStoredEncounteredRecord();
             setIsFreeWalking(true); setIsTracking(true); setTravelMode('walking');
             setFreeWalkTick((x) => x + 1);
             showToast(`🚶 ${t('navigation.freeWalkStarted') || 'Marche libre démarrée !'} `);
@@ -2004,6 +2014,7 @@ const NavigationScreen: React.FC = () => {
 
             if (currentThreshold < lastAlertedThreshold) {
                 encountered.set(cp.id, currentThreshold);
+                void recordEncounteredThreshold(cp.id, currentThreshold);
                 checkpointsEncounteredRef.current += 1;
                 playContextualAlert(cp.checkpoint_type, Math.round(dist), cp.speed_limit, { lang: activeLang, t });
             }
@@ -2039,7 +2050,7 @@ const NavigationScreen: React.FC = () => {
                 Speech.speak(msg, { language: ttsLang, rate: 0.95, pitch: 1.0 });
                 try {
                     Notifications.scheduleNotificationAsync({
-                        content: { title: `📍 ${t('navigation.waypointArrivedTitle') || 'Arrêt atteint'}`, body: wp.name, sound: true, ...(Platform.OS === 'android' ? { channelId: 'community_alerts' } : {}) },
+                        content: { title: `📍 ${t('navigation.waypointArrivedTitle') || 'Arrêt atteint'}`, body: wp.name, sound: true, ...(Platform.OS === 'android' ? { channelId: ANDROID_COMMUNITY_ALERTS_CHANNEL_ID } : {}) },
                         trigger: null,
                     });
                 } catch { }

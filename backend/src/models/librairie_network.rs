@@ -44,6 +44,9 @@ pub enum LibrairieStatut {
 // COMMANDE MIXTE (Neufs + Occasion)
 // ========================================
 
+/// Commande parent (utilisateur / famille). Une même commande peut être **répartie entre
+/// plusieurs librairies** : chaque partenaire ne couvre qu’un sous-ensemble (panier / lignes) ;
+/// l’app ne suppose pas qu’une seule librairie boucle l’intégralité du besoin.
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct CommandeMixte {
     pub id: Uuid,
@@ -69,11 +72,13 @@ pub enum CommandeStatut {
     ValidationBudget,  // Client valide budget
     EnvoyeeLibrairies, // Envoyée au réseau
     EnValidation,      // Librairie en train de valider
-    ValideePartielle,  // Validation partielle
-    ValideeComplete,   // Validation complète
-    EnPreparation,     // Librairie prépare paquet
-    EnLivraison,       // En cours de livraison
-    Livree,            // Livrée
+    /// Au moins une ligne validée par une librairie ; d’autres lignes peuvent encore être prises en charge ailleurs.
+    ValideePartielle,
+    /// Toutes les lignes « neufs » concernées sont validées (éventuellement par plusieurs librairies).
+    ValideeComplete,
+    EnPreparation, // Librairie prépare paquet
+    EnLivraison,   // En cours de livraison
+    Livree,        // Livrée
     Annulee,
 }
 
@@ -115,7 +120,8 @@ pub struct CommandeLivreNeuf {
     pub prix_final: f64,    // Prix final (ne change pas)
     pub quantite: i32,
     pub est_au_programme: bool,
-    pub librairie_validateur_id: Option<Uuid>, // Qui a validé ce livre
+    /// Librairie qui a validé **cette ligne** ; une autre ligne du même parent peut être validée ailleurs.
+    pub librairie_validateur_id: Option<Uuid>,
     pub statut_validation: LivreValidationStatut,
     /// Si true : `prix_final` = prix catalogue officiel, non modifiable par la librairie.
     #[serde(default)]
@@ -161,6 +167,17 @@ pub enum LivreValidationStatut {
     Valide,            // Validé par librairie
     Indisponible,      // Librairie n'a pas ce livre
     EnCoursValidation, // Librairie en train de valider
+}
+
+impl LivreValidationStatut {
+    pub fn as_api_str(&self) -> &'static str {
+        match self {
+            Self::EnAttente => "en_attente",
+            Self::Valide => "valide",
+            Self::Indisponible => "indisponible",
+            Self::EnCoursValidation => "en_cours_validation",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]

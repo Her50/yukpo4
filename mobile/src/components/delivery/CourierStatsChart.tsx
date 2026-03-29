@@ -28,6 +28,8 @@ const CourierStatsChart: React.FC<CourierStatsChartProps> = ({
     successRate,
     style,
 }) => {
+    const { t } = useLanguageSafe();
+
     // ✅ CORRIGÉ: S'assurer que toutes les valeurs sont définies et numériques AVANT les animations
     const safeCurrentMonthEarnings = typeof currentMonthEarnings === 'number' && !isNaN(currentMonthEarnings) ? currentMonthEarnings : 0;
     const safeCompletedDeliveries = typeof completedDeliveries === 'number' && !isNaN(completedDeliveries) ? completedDeliveries : 0;

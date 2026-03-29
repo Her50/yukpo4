@@ -4,16 +4,19 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     FlatList,
     Image,
     RefreshControl,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import BourseBookCardSkeleton from '../../components/bourse/BourseBookCardSkeleton';
+import LibrairieOnboardingModal, { hasCompletedLibrairieOnboarding } from '../../components/bourse/LibrairieOnboardingModal';
+import YukpoContextHelpChip from '../../components/bourse/YukpoContextHelpChip';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useAuth } from '../../contexts/AuthContext';
@@ -44,6 +47,7 @@ const LivreScolaireHomeScreen: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [opsLoading, setOpsLoading] = useState(false);
+    const [showLibrairieOnboarding, setShowLibrairieOnboarding] = useState(false);
     const [opsStats, setOpsStats] = useState({
         achatsEnCours: 0,
         paquetsARecevoir: 0,
@@ -60,6 +64,18 @@ const LivreScolaireHomeScreen: React.FC = () => {
     useEffect(() => {
         loadOperationsDashboard();
     }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            if (!isLibrairePartner) return;
+            const done = await hasCompletedLibrairieOnboarding();
+            if (!cancelled && !done) setShowLibrairieOnboarding(true);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [isLibrairePartner]);
 
     const loadNearbyBooks = useCallback(async () => {
         try {
@@ -160,6 +176,10 @@ const LivreScolaireHomeScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
+            <LibrairieOnboardingModal
+                visible={showLibrairieOnboarding}
+                onClose={() => setShowLibrairieOnboarding(false)}
+            />
             <View style={styles.headerContainer}>
                 <LinearGradient
                     colors={['#D97706', '#F59E0B', '#FBBF24']}
@@ -289,6 +309,70 @@ const LivreScolaireHomeScreen: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
+            <View style={styles.userFlowSection}>
+                <Text style={styles.userFlowTitle}>{t('bourseUx.userFlowTitle', 'Votre parcours')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.userFlowScroll}>
+                    <TouchableOpacity style={styles.userFlowChip} onPress={() => safeNavigate('ProgrammeBesoinsSelector')} activeOpacity={0.88}>
+                        <SafeIcon name="list-checks" size={16} color="#1d4ed8" type="lucide" />
+                        <Text style={styles.userFlowChipText}>{t('bourseUx.flowList', 'Liste scolaire')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.userFlowChip} onPress={() => safeNavigate('BookPackages')} activeOpacity={0.88}>
+                        <SafeIcon name="package" size={16} color="#1d4ed8" type="lucide" />
+                        <Text style={styles.userFlowChipText}>{t('bourseUx.flowPackages', 'Mes paquets')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.userFlowChip} onPress={() => safeNavigate('MesBesoinsLivres')} activeOpacity={0.88}>
+                        <SafeIcon name="heart-handshake" size={16} color="#1d4ed8" type="lucide" />
+                        <Text style={styles.userFlowChipText}>{t('bourseUx.flowBesoins', 'Mes besoins')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.userFlowChip} onPress={() => safeNavigate('NewBooks')} activeOpacity={0.88}>
+                        <SafeIcon name="scale" size={16} color="#1d4ed8" type="lucide" />
+                        <Text style={styles.userFlowChipText}>{t('bourseUx.flowCompare', 'Comparer')}</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </View>
+
+            {isLibrairePartner ? (
+                <View style={styles.librairieOpsCard}>
+                    <View style={styles.librairieOpsTitleRow}>
+                        <Text style={styles.librairieOpsTitle}>{t('bourseUx.librairieOpsTitle', 'Librairie — actions rapides')}</Text>
+                        <YukpoContextHelpChip
+                            messageKey="bourseUx.librairieYukpoSeedHome"
+                            defaultMessage="Je suis partenaire librairie sur la Bourse du livre (carte « actions rapides »). Explique-moi : à quoi servent Réseau & prix, Validation et le catalogue ; comment les familles voient mes réponses ; et un conseil concret pour les commandes mixtes."
+                            a11yKey="bourseUx.librairieYukpoHelpA11y"
+                            defaultA11y="Yukpo IA — aide partenaire librairie"
+                        />
+                    </View>
+                    <Text style={styles.librairieOpsSub}>{t('bourseUx.librairieOpsSub', 'Prix réseau, validation et fiche catalogue.')}</Text>
+                    <TouchableOpacity
+                        onPress={() => {
+                            hapticPress();
+                            setShowLibrairieOnboarding(true);
+                        }}
+                        activeOpacity={0.85}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('bourseUx.librairieTutorialA11y', 'Tutoriel rapide trois étapes')}
+                    >
+                        <Text style={styles.librairieTutorialLink}>
+                            {t('bourseUx.librairieTutorialShort', 'Tutoriel rapide (3 étapes)')}
+                        </Text>
+                    </TouchableOpacity>
+                    <View style={styles.librairieOpsRow}>
+                        <TouchableOpacity style={styles.librairieOpsBtn} onPress={() => safeNavigate('LibrairieNetworkLignePrix')} activeOpacity={0.88}>
+                            <SafeIcon name="network" size={16} color="#fff" type="lucide" />
+                            <Text style={styles.librairieOpsBtnText}>{t('bourseUx.librairieLignePrix', 'Réseau & prix')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.librairieOpsBtn, styles.librairieOpsBtnAlt]} onPress={() => safeNavigate('LibrairieNetworkValidation')} activeOpacity={0.88}>
+                            <SafeIcon name="shield-check" size={16} color="#c2410c" type="lucide" />
+                            <Text style={[styles.librairieOpsBtnText, { color: '#1c1917' }]}>{t('bourseUx.librairieValidation', 'Validation')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.librairieOpsBtn, styles.librairieOpsBtnAlt]} onPress={() => safeNavigate('LivreScolaireForm')} activeOpacity={0.88}>
+                            <SafeIcon name="book-plus" size={16} color="#c2410c" type="lucide" />
+                            <Text style={[styles.librairieOpsBtnText, { color: '#1c1917' }]}>{t('bourseUx.librairieCatalogue', 'Catalogue')}</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            ) : null}
+
             <View style={styles.dashboardSection}>
                 <View style={styles.dashboardHeader}>
                     <Text style={styles.dashboardTitle}>
@@ -350,8 +434,10 @@ const LivreScolaireHomeScreen: React.FC = () => {
 
             {/* Liste des livres */}
             {loading && livres.length === 0 ? (
-                <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color={modernColors.primary} />
+                <View style={styles.skeletonListWrap}>
+                    <BourseBookCardSkeleton />
+                    <BourseBookCardSkeleton />
+                    <BourseBookCardSkeleton />
                     <Text style={styles.loadingText}>{t('livreScolaireHome.rechercheDeLivresAProximite')}</Text>
                 </View>
             ) : error && livres.length === 0 ? (
@@ -391,6 +477,15 @@ const LivreScolaireHomeScreen: React.FC = () => {
                         <View style={styles.emptyContainer}>
                             <SafeIcon name="book" size={64} color="#9CA3AF" />
                             <Text style={styles.emptyText}>{t('livreScolaireHome.aucunLivreTrouve')}</Text>
+                            <Text style={styles.emptyNextSteps}>
+                                {t(
+                                    'bourseUx.emptyNearbyNext',
+                                    'Élargissez le comparateur neuf/occasion, créez votre liste scolaire ou consultez Mes besoins.'
+                                )}
+                            </Text>
+                            <TouchableOpacity style={styles.emptyCta} onPress={() => safeNavigate('NewBooks')} activeOpacity={0.88}>
+                                <Text style={styles.emptyCtaText}>{t('bourseUx.emptyCtaCompare', 'Ouvrir le comparateur')}</Text>
+                            </TouchableOpacity>
                         </View>
                     }
                 />
@@ -616,6 +711,115 @@ const styles = StyleSheet.create({
         color: '#6d28d9',
         opacity: 0.9,
     },
+    userFlowSection: {
+        marginHorizontal: 16,
+        marginTop: 4,
+        marginBottom: 8,
+    },
+    userFlowTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#0f172a',
+        marginBottom: 8,
+    },
+    userFlowScroll: {
+        flexDirection: 'row',
+        gap: 8,
+        paddingRight: 8,
+    },
+    userFlowChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#fff',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#bfdbfe',
+        marginRight: 8,
+    },
+    userFlowChipText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#1e40af',
+    },
+    librairieOpsCard: {
+        marginHorizontal: 16,
+        marginBottom: 10,
+        padding: 14,
+        borderRadius: 14,
+        backgroundColor: '#fffbeb',
+        borderWidth: 1,
+        borderColor: '#fcd34d',
+    },
+    librairieTutorialLink: {
+        marginTop: 8,
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#b45309',
+        textDecorationLine: 'underline',
+    },
+    librairieOpsTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+    },
+    librairieOpsTitle: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#92400e',
+        flex: 1,
+    },
+    librairieOpsSub: {
+        fontSize: 12,
+        color: '#a16207',
+        marginTop: 4,
+        marginBottom: 10,
+    },
+    librairieOpsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    librairieOpsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#ea580c',
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 10,
+    },
+    librairieOpsBtnAlt: {
+        backgroundColor: '#ffedd5',
+    },
+    librairieOpsBtnText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#fff',
+    },
+    emptyNextSteps: {
+        marginTop: 10,
+        fontSize: 14,
+        color: '#64748b',
+        textAlign: 'center',
+        lineHeight: 20,
+        paddingHorizontal: 12,
+    },
+    emptyCta: {
+        marginTop: 16,
+        backgroundColor: modernColors.primary,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+    },
+    emptyCtaText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '700',
+    },
     dashboardSection: {
         marginHorizontal: 16,
         marginTop: 2,
@@ -700,6 +904,10 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#0F766E',
         fontWeight: '600',
+    },
+    skeletonListWrap: {
+        paddingHorizontal: 16,
+        paddingBottom: 24,
     },
     centerContainer: {
         flex: 1,

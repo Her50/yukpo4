@@ -1,10 +1,9 @@
 // ✅ V2: Écran Paquets Livres - Vue coursier et utilisateur
 // Affiche les paquets avec références simples, statuts, et actions de mise à jour
 
-import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     FlatList,
     RefreshControl,
@@ -13,9 +12,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import BookPackageCardSkeleton from '../../components/bourse/BookPackageCardSkeleton';
+import NetworkRetryBanner from '../../components/bourse/NetworkRetryBanner';
 import SafeIcon from '../../components/SafeIcon';
 import { useToaster } from '../../components/ToasterProvider';
-import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { BookDeliveryPackage, BookPurchase, bourseLivreV2Api } from '../../services/bourseLivreV2Api';
 import { modernColors } from '../../theme/modernTheme';
@@ -29,11 +29,16 @@ const NEXT_STATUS: Record<string, string> = {
 };
 
 interface Props {
-    mode?: 'user' | 'courier'; // default: 'user'
+    mode?: 'user' | 'courier'; // default: 'user' — surchargé par route.params.mode
 }
 
-const BookPackagesScreen: React.FC<Props> = ({ mode = 'user' }) => {
-    const { user } = useAuth();
+const BookPackagesScreen: React.FC<Props> = ({ mode: modeProp = 'user' }) => {
+    const route = useRoute();
+    const mode = useMemo(() => {
+        const m = (route.params as { mode?: 'user' | 'courier' } | undefined)?.mode;
+        return m === 'courier' || m === 'user' ? m : modeProp;
+    }, [route.params, modeProp]);
+
     const toaster = useToaster();
     const { t } = useLanguageSafe();
 
@@ -64,11 +69,13 @@ const BookPackagesScreen: React.FC<Props> = ({ mode = 'user' }) => {
     const [purchases, setPurchases] = useState<BookPurchase[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [loadError, setLoadError] = useState(false);
 
     const loadData = useCallback(async (isRefresh = false) => {
         try {
             if (isRefresh) setRefreshing(true);
             else setLoading(true);
+            setLoadError(false);
 
             const pkgResult = mode === 'courier'
                 ? await bourseLivreV2Api.getCourierPackages()
@@ -83,6 +90,7 @@ const BookPackagesScreen: React.FC<Props> = ({ mode = 'user' }) => {
             }
         } catch (error: any) {
             console.error('[BookPackagesScreen] Erreur:', error);
+            setLoadError(true);
             Alert.alert(t('message.error', 'Erreur'), t('bourseLivreV2.packages.erreurChargement'));
         } finally {
             setLoading(false);
@@ -313,9 +321,22 @@ const BookPackagesScreen: React.FC<Props> = ({ mode = 'user' }) => {
 
     if (loading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={modernColors.primary} />
-                <Text style={styles.loadingText}>{t('common.loading', 'Chargement...')}</Text>
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <SafeIcon name="package" size={24} color={modernColors.primary} />
+                    <Text style={styles.headerTitle}>
+                        {mode === 'courier'
+                            ? t('bourseUx.packagesCourierTitle', 'Paquets — tournée livres')
+                            : t('bourseLivreV2.packages.title')}
+                    </Text>
+                    <Text style={[styles.headerCount, { opacity: 0.4 }]}>0</Text>
+                </View>
+                <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+                    <BookPackageCardSkeleton />
+                    <BookPackageCardSkeleton />
+                    <BookPackageCardSkeleton />
+                    <Text style={styles.loadingText}>{t('common.loading', 'Chargement...')}</Text>
+                </View>
             </View>
         );
     }
@@ -329,12 +350,24 @@ const BookPackagesScreen: React.FC<Props> = ({ mode = 'user' }) => {
             <View style={styles.header}>
                 <SafeIcon name="package" size={24} color={modernColors.primary} />
                 <Text style={styles.headerTitle}>
-                    {t('bourseLivreV2.packages.title')}
+                    {mode === 'courier'
+                        ? t('bourseUx.packagesCourierTitle', 'Paquets — tournée livres')
+                        : t('bourseLivreV2.packages.title')}
                 </Text>
                 <Text style={styles.headerCount}>
                     {activeTab === 'packages' ? packages.length : purchases.length}
                 </Text>
             </View>
+
+            {loadError && packages.length === 0 ? (
+                <View style={{ paddingHorizontal: 16 }}>
+                    <NetworkRetryBanner
+                        message={t('bourseUx.networkError', 'Connexion instable. Vérifiez le réseau et réessayez.')}
+                        retryLabel={t('bourseUx.retry', 'Réessayer')}
+                        onRetry={() => loadData(true)}
+                    />
+                </View>
+            ) : null}
 
             {/* Tabs (user mode only, when purchases exist) */}
             {mode === 'user' && hasPurchases && (
@@ -366,7 +399,9 @@ const BookPackagesScreen: React.FC<Props> = ({ mode = 'user' }) => {
                         <SafeIcon name="inbox" size={64} color="#d1d5db" />
                         <Text style={styles.emptyTitle}>{t('bourseLivreV2.packages.aucunPaquet')}</Text>
                         <Text style={styles.emptySubtitle}>
-                            {t('bourseLivreV2.packages.aucunPaquetDesc')}
+                            {mode === 'courier'
+                                ? t('bourseUx.emptyPackagesCourier', 'Les paquets qui vous sont assignés apparaîtront ici. Actualisez régulièrement.')
+                                : t('bourseLivreV2.packages.aucunPaquetDesc')}
                         </Text>
                     </View>
                 ) : (
@@ -405,7 +440,6 @@ const BookPackagesScreen: React.FC<Props> = ({ mode = 'user' }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { marginTop: 12, fontSize: 14, color: '#6b7280' },
 
     header: {

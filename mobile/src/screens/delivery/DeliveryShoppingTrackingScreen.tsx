@@ -63,6 +63,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
     const { delivery, timeline, refresh, loading } = useDeliveryTracking(deliveryId);
     const { refreshDelivery, updateRecipientLocation, setActiveDeliveryId } = useDeliveryContext();
     const { user } = useAuth();
+    const { t } = useLanguageSafe();
     const { toast, showSuccess, showError, showWarning, hideToast } = useToast();
     const prevStatusRef = useRef<string | null>(null);
 

@@ -164,6 +164,62 @@ pub async fn get_user_push_tokens(pool: &PgPool, user_id: i32) -> Result<Vec<Str
     Ok(result)
 }
 
+/// Interprète la réponse JSON v2 d’Expo (`data[]`). Retourne `true` si au moins un ticket `ok`.
+/// Désactive le token en base si Expo signale `DeviceNotRegistered`.
+async fn expo_push_apply_response(pool: &PgPool, token: &str, http_ok: bool, body: &str) -> bool {
+    if !http_ok {
+        warn!(
+            "[PushService] HTTP non-OK push token {}… body={}",
+            &token[..20.min(token.len())],
+            body.chars().take(280).collect::<String>()
+        );
+        return false;
+    }
+    let v: serde_json::Value = match serde_json::from_str(body) {
+        Ok(v) => v,
+        Err(e) => {
+            warn!(
+                "[PushService] Réponse Expo non JSON ({}): {}",
+                e,
+                body.chars().take(200).collect::<String>()
+            );
+            return false;
+        }
+    };
+    let Some(arr) = v.get("data").and_then(|d| d.as_array()) else {
+        return true;
+    };
+    let mut any_ok = false;
+    for item in arr {
+        let st = item.get("status").and_then(|s| s.as_str()).unwrap_or("");
+        if st == "ok" {
+            any_ok = true;
+            continue;
+        }
+        if st != "error" {
+            continue;
+        }
+        let err_kind = item
+            .get("details")
+            .and_then(|d| d.get("error"))
+            .and_then(|e| e.as_str())
+            .unwrap_or("");
+        let msg = item.get("message").and_then(|m| m.as_str()).unwrap_or("");
+        warn!("[PushService] Ticket Expo error [{}] : {}", err_kind, msg);
+        if err_kind == "DeviceNotRegistered" {
+            match deactivate_push_token(pool, token.to_string()).await {
+                Ok(true) => info!(
+                    "[PushService] Token désactivé (DeviceNotRegistered) {}…",
+                    &token[..20.min(token.len())]
+                ),
+                Ok(false) => {}
+                Err(e) => warn!("[PushService] Désactivation token: {}", e),
+            }
+        }
+    }
+    any_ok
+}
+
 /// Envoyer une push notification via Expo Push Notifications
 pub async fn send_push_notification(
     pool: &PgPool,
@@ -219,17 +275,13 @@ pub async fn send_push_notification(
 
         match response {
             Ok(resp) => {
-                if resp.status().is_success() {
-                    info!(
-                        "[PushService] ✅ Push envoyé avec succès au token {}",
-                        &token[..20]
-                    );
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                if expo_push_apply_response(pool, token, status.is_success(), &body).await {
                     success_count += 1;
-                } else {
-                    error!(
-                        "[PushService] ❌ Erreur push ({}): {:?}",
-                        resp.status(),
-                        resp.text().await
+                    info!(
+                        "[PushService] ✅ Push accepté par Expo (token {}…)",
+                        &token[..20.min(token.len())]
                     );
                 }
             }

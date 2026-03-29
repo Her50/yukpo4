@@ -5,6 +5,7 @@
 // Conditionné par l'abonnement coaching mensuel actif (prix défaut ~1000 FCFA dans navigationPricing.coaching_monthly)
 
 import * as Notifications from 'expo-notifications';
+import { AndroidNotificationPriority } from 'expo-notifications';
 import i18n from 'i18next';
 import { Platform, Vibration } from 'react-native';
 import { notificationUiPreferences } from './notificationUiPreferences';
@@ -90,6 +91,10 @@ const PUSH_SCHEDULE = {
     weekly: { weekday: 1, hour: 10, minute: 0 }, // Dimanche 10h — Bilan hebdo
 };
 
+/** Canaux Android v2 (importance MAX) — nouveaux ids car l’OS ne met pas à jour l’importance d’un canal existant */
+const ANDROID_CHANNEL_COACH_SOUND = 'coaching_ia_sound_max';
+const ANDROID_CHANNEL_COACH_QUIET = 'coaching_ia_quiet_vib';
+
 const COACHING_NOTIF_STORAGE_KEY = 'coaching_scheduled_ids';
 const COACHING_LAST_ACTIVITY_KEY = 'coaching_last_activity_ts';
 const COACHING_STATS_KEY = 'coaching_notification_stats';
@@ -103,6 +108,23 @@ const COACHING_ENABLED_KEY = 'coaching_notifications_enabled';
 class CoachingNotificationService {
     private scheduledIds: string[] = [];
     private isActive = false;
+
+    /**
+     * Coaching autorisé : mémoire OU persistance (évite les ratés si activate() n’a pas fini ou après redémarrage).
+     */
+    private async isPushEnabledForUser(): Promise<boolean> {
+        if (this.isActive) return true;
+        try {
+            const v = await SafeStorage.getItem(COACHING_ENABLED_KEY).catch(() => null);
+            if (v === 'true') {
+                this.isActive = true;
+                return true;
+            }
+        } catch {
+            /* ignore */
+        }
+        return false;
+    }
 
     /**
      * Activer le coaching push automatique
@@ -119,17 +141,23 @@ class CoachingNotificationService {
             }
         }
 
-        // Configurer le canal Android pour le coaching
+        // Persister tout de suite pour que sendInstant / stats ne soient pas bloqués pendant la planification
+        await SafeStorage.setItem(COACHING_ENABLED_KEY, 'true').catch(() => { });
+        this.isActive = true;
+
+        // Configurer le canal Android pour le coaching (MAX = son + heads-up fiables)
         if (Platform.OS === 'android') {
-            await Notifications.setNotificationChannelAsync('coaching', {
+            await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_COACH_SOUND, {
                 name: 'Coach IA Yukpo',
-                description: 'Notifications automatiques du coach IA personnalisé',
-                importance: Notifications.AndroidImportance.HIGH,
-                vibrationPattern: [0, 200, 100, 200],
+                description: 'Santé, marche, performances — rappels et alertes avec son',
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 220, 110, 220],
                 lightColor: '#7C3AED',
                 sound: 'default',
+                enableVibrate: true,
+                lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
             });
-            await Notifications.setNotificationChannelAsync('coaching_quiet', {
+            await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_COACH_QUIET, {
                 name: 'Coach IA Yukpo (sans son)',
                 description: 'Visuel + vibration, sans son',
                 importance: Notifications.AndroidImportance.HIGH,
@@ -137,13 +165,12 @@ class CoachingNotificationService {
                 lightColor: '#7C3AED',
                 enableVibrate: true,
                 sound: null,
+                lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
             });
         }
 
         // Planifier les 3 push quotidiens + 1 hebdo
         await this.scheduleAllNotifications();
-        this.isActive = true;
-        await SafeStorage.setItem(COACHING_ENABLED_KEY, 'true').catch(() => { });
         console.log('[CoachingNotif] ✅ Coaching push activé — 3 notifs/jour + 1 hebdo');
     }
 
@@ -191,7 +218,7 @@ class CoachingNotificationService {
         const playSound = globalOn && !subtypeMuted && !!msg.sound;
         return {
             playSound,
-            channelId: playSound ? 'coaching' : 'coaching_quiet',
+            channelId: playSound ? ANDROID_CHANNEL_COACH_SOUND : ANDROID_CHANNEL_COACH_QUIET,
         };
     }
 
@@ -261,7 +288,9 @@ class CoachingNotificationService {
                     body,
                     data: { type: 'coaching', subtype: type },
                     sound: playSound,
-                    ...(Platform.OS === 'android' ? { channelId } : {}),
+                    ...(Platform.OS === 'android'
+                        ? { channelId, priority: playSound ? AndroidNotificationPriority.MAX : AndroidNotificationPriority.DEFAULT }
+                        : { interruptionLevel: 'timeSensitive' as const }),
                 },
                 trigger: {
                     type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -297,7 +326,9 @@ class CoachingNotificationService {
                     body,
                     data: { type: 'coaching', subtype: type },
                     sound: playSound,
-                    ...(Platform.OS === 'android' ? { channelId } : {}),
+                    ...(Platform.OS === 'android'
+                        ? { channelId, priority: playSound ? AndroidNotificationPriority.MAX : AndroidNotificationPriority.DEFAULT }
+                        : { interruptionLevel: 'timeSensitive' as const }),
                 },
                 trigger: {
                     type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
@@ -362,7 +393,10 @@ class CoachingNotificationService {
      * Envoyer une notification coaching instantanée (événement temps réel)
      */
     async sendInstant(type: CoachingNotificationType, extraData?: Record<string, any>): Promise<void> {
-        if (!this.isActive) return;
+        if (!(await this.isPushEnabledForUser())) {
+            console.warn('[CoachingNotif] ⏭ sendInstant ignoré — coaching non activé côté persistance');
+            return;
+        }
 
         const msg = this.pickRandomMessage(type);
         let title = `${msg.emoji} ${i18n.t(msg.titleKey)}`;
@@ -391,7 +425,9 @@ class CoachingNotificationService {
                     body,
                     data: { type: 'coaching', subtype: type, ...extraData },
                     sound: playSound,
-                    ...(Platform.OS === 'android' ? { channelId } : {}),
+                    ...(Platform.OS === 'android'
+                        ? { channelId, priority: playSound ? AndroidNotificationPriority.MAX : AndroidNotificationPriority.DEFAULT }
+                        : { interruptionLevel: 'timeSensitive' as const }),
                 },
                 trigger: null, // Immédiat
             });
@@ -407,7 +443,7 @@ class CoachingNotificationService {
      * Vérifier l'inactivité et envoyer un rappel de série
      */
     async checkStreakAndNotify(): Promise<void> {
-        if (!this.isActive) return;
+        if (!(await this.isPushEnabledForUser())) return;
         try {
             const lastActivity = await SafeStorage.getItem(COACHING_LAST_ACTIVITY_KEY).catch(() => null);
             if (!lastActivity) return;

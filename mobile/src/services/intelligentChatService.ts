@@ -962,6 +962,11 @@ User: "Wow c'est génial cette fonctionnalité!"
     const onProductHubScreen = screenName === 'Services' || screenName === 'MesServices';
     const onMesProduitsScreen = screenName === 'MesProduits';
     const onBookExchangeHome = screenName === 'LivreScolaireHome' || screenName === 'BourseLivre';
+    /** Réseau librairies : commande mixte, validation lignes neufs, bornes prix (multi-paniers / plusieurs librairies). */
+    const onLibrairieNetworkScreens =
+      screenName === 'LibrairieNetworkLignePrix' ||
+      screenName === 'LibrairieNetworkValidation' ||
+      screenName === 'LibrairieTeamPending';
     /** Dépôt « manuels scolaires (établissement) » — PDF/Excel/images, IA Yukpo, librairies notifiées (ville / rayon). */
     const onEtablissementScolaireScreen = screenName === 'EtablissementScolaire';
     const onTicketVoyageHome = screenName === 'TicketVoyageHome';
@@ -1129,7 +1134,10 @@ Yukpo connects sellers and buyers. The user is on **Mes produits** (catalog mana
           : onBookExchangeHome
             ? `YUKPO (brief reminder only — detailed UI is in BOURSE_DU_LIVRE_HOME_DETAIL below):
 Yukpo is the all-in-one super-app (health, education, wallet, delivery, e‑commerce…). The user is on the **Bourse du Livre home** (**LivreScolaireHomeScreen**, routes **LivreScolaireHome** or **BourseLivre**). Prioritize **BOURSE_DU_LIVRE_HOME_DETAIL**; **do not** describe the deprecated **BourseLivreScreen** (search bar + filter panel + purple "Recommandations IA" header buttons) as the current UI.`
-            : onEtablissementScolaireScreen
+            : onLibrairieNetworkScreens
+              ? `YUKPO (brief reminder only — detailed UI is in LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL below):
+Commerce livres — **réseau librairies partenaires** : commandes **mixtes** (neufs + occasion), **notifications push** vers les librairies, **validation de disponibilité** ligne par ligne, **saisie de prix** dans les bornes marché. Une commande **parent** peut être **répartie entre plusieurs librairies** (multi-paniers) — ce n’est pas toujours une seule librairie qui tout couvre. The user is on **LibrairieNetworkValidation**, **LibrairieNetworkLignePrix**, or **LibrairieTeamPending**. Prioritize **LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL**; do not confuse with **ProgrammeBesoinsSelector** (famille) nor **EtablissementScolaire** (dépôt liste officielle).`
+              : onEtablissementScolaireScreen
               ? `YUKPO (brief reminder only — detailed UI is in ETABLISSEMENT_SCOLAIRE_DETAIL below):
 Éducation — **manuels scolaires (établissement)** : dépôt de fichiers pour extraction IA Yukpo et rattachement au référentiel. The user is on **EtablissementScolaire** (**EtablissementScolaireScreen**). Prioritize **ETABLISSEMENT_SCOLAIRE_DETAIL**; **do not** confuse with **ProgrammeBesoinsSelector** (liste besoins **famille** au programme officiel) nor the generic book marketplace alone.`
               : onTicketVoyageHome
@@ -1249,6 +1257,13 @@ ${onBookExchangeHome ? `
 BOURSE_DU_LIVRE_HOME_MODE:
 - **Prioritize** **BOURSE_DU_LIVRE_HOME_DETAIL** below over generic Yukpo education bullets or the legacy **BourseLivreScreen** story.
 - The live home UI is **LivreScolaireHomeScreen** (stack names **LivreScolaireHome** or **BourseLivre** — same component).
+- **Partenaires librairie (réseau):** orienter vers **LibrairieTeamPending** (équipe / succursale), puis **LibrairieNetworkValidation** (disponibilité « je fournis / indisponible / laisser aux autres ») et **LibrairieNetworkLignePrix** (bornes & prix neufs) — voir **LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL** si l’utilisateur pose des questions détaillées depuis l’accueil bourse.
+` : ''}
+${onLibrairieNetworkScreens ? `
+LIBRAIRIE_RESEAU_COMMANDE_MIXTE_MODE:
+- **Prioritize** **LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL** below.
+- Rappeler l’ordre conseillé pour une librairie notifiée : **validation disponibilité** (écran **LibrairieNetworkValidation**) puis **prix** dans les bornes (**LibrairieNetworkLignePrix**) ; lien croisé entre les deux écrans dans l’app.
+- **Ne pas** promettre qu’une seule librairie boucle toute la commande parent : le produit supporte le **multi-paniers**.
 ` : ''}
 ${onEtablissementScolaireScreen ? `
 ETABLISSEMENT_SCOLAIRE_MODE:
@@ -1601,6 +1616,26 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - Pour « liste de classe / manuels officiels » (parcours **famille**): pointer **carte bleue** → **ProgrammeBesoinsSelector**.
 - Pour **dépôt liste établissement** (partenaire école / admin): **Établissement scolaire** → **EtablissementScolaire** (voir **ETABLISSEMENT_SCOLAIRE_DETAIL**).
 - Pour livraison / QR / paquets: **dashboard** + **BookPackages** + rappel QR (les paquets peuvent inclure **livres / cahiers / fournitures** selon \`type_article\`).
+- **Partenaire librairie — réseau commandes mixtes:** depuis l’entête **librairie** ou **Équipe librairie** → **LibrairieTeamPending** (succursale + stock) ; **commande mixte** diffusée aux librairies → **LibrairieNetworkValidation** (**POST** \`/api/librairie-network/validation/valider\` : \`livres_valides\`, \`livres_indisponibles\`, notes) puis **LibrairieNetworkLignePrix** (**GET** lignes neufs/bornes, **PATCH** prix). **Notification push** (tap) → **LibrairieNetworkValidation** avec \`commandeId\`. **Multi-paniers** : d’autres librairies peuvent prendre les lignes restantes \`en_attente\`.
+`;
+    }
+
+    if (onLibrairieNetworkScreens) {
+      prompt += `
+
+=== LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL (authoritative — LibrairieNetworkValidationScreen, LibrairieNetworkLignePrixScreen, LibrairieTeamPendingScreen) ===
+
+**Rôle:** Parcours **partenaire librairie** pour les **commandes mixtes** (manuels neufs + occasion) du **réseau Yukpo** : une famille valide un budget, diffuse aux librairies proches ; **chaque** librairie peut ne couvrir qu’**un sous-ensemble** de lignes (**multi-paniers**). **Aucune obligation** qu’une seule librairie honore toute la commande.
+
+**LibrairieTeamPending** (**LibrairieTeamPending**): équipe / **succursale** (GPS), cases **stock disponible**, validations métiers liées aux paquets — **ne pas** confondre avec la saisie **prix** ou **disponibilité ligne neuf** de la commande mixte réseau.
+
+**LibrairieNetworkValidation** (**LibrairieNetworkValidation**): pour une \`commandeId\`, liste des **lignes neufs** avec \`statut_validation\` ; pour chaque ligne **en_attente** : **Ne pas décider** (laisser d’autres librairies), **Je fournis** → \`livres_valides\`, **Indisponible ici** → \`livres_indisponibles\` ; notes optionnelles ; envoi **POST** \`/api/librairie-network/validation/valider\`. Lien vers **LibrairieNetworkLignePrix** (même commande).
+
+**LibrairieNetworkLignePrix** (**LibrairieNetworkLignePrix**): **GET** \`/api/librairie-network/commandes/{id}/lignes-neufs/bornes\` ; **PATCH** prix si non verrouillé officiel ; liste **Mes commandes mixtes** (librairie associée). Lien vers **LibrairieNetworkValidation**.
+
+**Notifications:** type **librairie_commande_mixte** / données \`commande_id\` — à l’ouverture, **LibrairieNetworkValidation** avec param \`commandeId\`.
+
+**Hard rules:** Ne pas dire que « la librairie doit tout valider d’un coup » ; ne pas inventer d’**achat direct** sur ces écrans ; orienter les **familles** vers **LivreScolaireHome** / **ProgrammeBesoinsSelector** (pas ces écrans partenaires).
 `;
     }
 
@@ -2853,7 +2888,7 @@ Key screens: HotelMeubleHome / HotelSearch / MeubleSearch (user listing), HotelB
     }
 
     // Bourse du Livre / Coursier Livres context
-    const bookScreens = ['BookPackages', 'BookUploadV2', 'BookRecapV2', 'BookBuyDirect', 'LivreScolaireHome', 'LivreScolaireSearch', 'LivreScolaireDetails', 'LivreScolaireForm', 'LivreScolaireList', 'MesLivres', 'MesBesoinsLivres', 'ProgrammeBesoinsSelector', 'MesTrocs', 'TrocMatching', 'TrocDetails', 'TrocLiveValidation', 'NewBooks', 'AdminProgrammeUpload', 'AdminDonations', 'BourseLivre', 'EtablissementScolaire'];
+    const bookScreens = ['BookPackages', 'BookUploadV2', 'BookRecapV2', 'BookBuyDirect', 'LivreScolaireHome', 'LivreScolaireSearch', 'LivreScolaireDetails', 'LivreScolaireForm', 'LivreScolaireList', 'MesLivres', 'MesBesoinsLivres', 'ProgrammeBesoinsSelector', 'MesTrocs', 'TrocMatching', 'TrocDetails', 'TrocLiveValidation', 'NewBooks', 'AdminProgrammeUpload', 'AdminDonations', 'BourseLivre', 'EtablissementScolaire', 'LibrairieNetworkLignePrix', 'LibrairieNetworkValidation', 'LibrairieTeamPending'];
     if (bookScreens.some(s => screenName.includes(s) || screenName.includes('Livre') || screenName.includes('Troc') || screenName.includes('BookPackage') || screenName.includes('Bourse'))) {
       const isCourier = userRole === 'coursier' || userData?.is_courier || screenName.includes('courier') || screenName === 'BookPackages';
       const isLibraire =
@@ -2964,9 +2999,10 @@ ${isCourier ? `COURSIER — GUIDE COMPLET DE LIVRAISON LIVRES:
 
 \uD83D\uDCCA MANUELS & PROGRAMMES (deux parcours):
 - **Famille / élève — liste au programme officiel:** **ProgrammeBesoinsSelector** depuis **LivreScolaireHome** (carte bleue) : coches besoins, arbitrage neuf / occasion ; s’appuie sur le **référentiel Yukpo** (programmes scolaires).
-- **Établissement — manuels scolaires (établissement):** **EtablissementScolaire** → **POST /api/bourse-livre/v2/programmes-scolaires/submit** ; extraction IA ; **notif librairies** (ville + rayon). **Ne pas** confondre les deux parcours.`}
+- **Établissement — manuels scolaires (établissement):** **EtablissementScolaire** → **POST /api/bourse-livre/v2/programmes-scolaires/submit** ; extraction IA ; **notif librairies** (ville + rayon). **Ne pas** confondre les deux parcours.
+- **Librairie partenaire — commande mixte (réseau):** **LibrairieTeamPending** (succursale/stock équipe) ; **LibrairieNetworkValidation** (disponibilité par ligne neuf, multi-paniers) ; **LibrairieNetworkLignePrix** (bornes & prix). Notification push → **LibrairieNetworkValidation** avec param **commandeId**.
 
-KEY SCREENS: LivreScolaireHome (accueil bourse), EtablissementScolaire (dépôt manuels établissement), ProgrammeBesoinsSelector (besoins famille), BookUploadV2 (envoyer livres), BookRecapV2 (récap session), BookPackages (paquets), MesLivres (mes livres), TrocMatching (matching), BookBuyDirect (achat direct), NewBooks (catalogue neufs)`;
+KEY SCREENS: LivreScolaireHome (accueil bourse), EtablissementScolaire (dépôt manuels établissement), ProgrammeBesoinsSelector (besoins famille), LibrairieTeamPending, LibrairieNetworkValidation, LibrairieNetworkLignePrix, BookUploadV2 (envoyer livres), BookRecapV2 (récap session), BookPackages (paquets), MesLivres (mes livres), TrocMatching (matching), BookBuyDirect (achat direct), NewBooks (catalogue neufs)`;
     }
 
     // Financial / Recharge / Wallet context for users AND partners
@@ -3057,6 +3093,7 @@ RESPONSE FORMAT (JSON):
     if (onProductHubScreen) injectedScreens.add('MesServices');
     if (onMesProduitsScreen) injectedScreens.add('MesProduits');
     if (onBookExchangeHome) injectedScreens.add('BourseLivre');
+    if (onLibrairieNetworkScreens) injectedScreens.add('LibrairieReseau');
     if (onEtablissementScolaireScreen) injectedScreens.add('EtablissementScolaire');
     if (onTicketVoyageHome) injectedScreens.add('TicketVoyage');
     if (onCovoiturageHome) injectedScreens.add('Covoiturage');
@@ -4368,6 +4405,15 @@ Explorez l'avenir dès maintenant ! 👇`,
       'OffresEmploiHome': t('intelligentChat.screenDesc.jobs') || 'Emplois : recherche et publication.',
       'OrientationScolaireHome': t('intelligentChat.screenDesc.orientation') || 'Orientation scolaire avec IA.',
       'LivreScolaireHome': t('intelligentChat.screenDesc.books') || 'Livres scolaires : achat, vente, troc.',
+      'LibrairieNetworkValidation':
+        t('intelligentChat.screenDesc.librairieNetworkValidation') ||
+        'Librairie partenaire : disponibilité des lignes neufs (commande mixte réseau), multi-paniers.',
+      'LibrairieNetworkLignePrix':
+        t('intelligentChat.screenDesc.librairieNetworkLignePrix') ||
+        'Librairie partenaire : bornes et prix des manuels neufs (commande mixte).',
+      'LibrairieTeamPending':
+        t('intelligentChat.screenDesc.librairieTeamPending') ||
+        'Équipe librairie : succursale, stock, validations paquets bourse.',
       'EtablissementScolaire': t('intelligentChat.screenDesc.etablissementScolaire') || 'Manuels scolaires (établissement) : dépôt fichiers, IA Yukpo, notifications librairies.',
       'Navigation': t('intelligentChat.screenDesc.navigation') || 'GPS avec guidage vocal et alertes.',
       'RechargeTokens': t('intelligentChat.screenDesc.recharge') || 'Rechargez votre solde. Bonus jusqu\'à +20%.',
@@ -4593,10 +4639,11 @@ Explorez l'avenir dès maintenant ! 👇`,
           'livre', 'ecole', 'education', 'etude', 'cours', 'manuel', 'bourse', 'troc', 'achat',
           'eleve', 'etudiant', 'classe', 'matiere', 'scolaire', 'universitaire', 'bourse du livre',
           'bouquin', 'librairie', 'acheter livre', 'vendre livre', 'programme besoins', 'liste scolaire',
-          'etablissement scolaire', 'manuels etablissement', 'rayon librairie'
+          'etablissement scolaire', 'manuels etablissement', 'rayon librairie',
+          'commande mixte', 'reseau librairie', 'validation librairie', 'bornes prix', 'manuels neufs'
         ],
         contextualPrompt:
-          'Bourse du livre : hub V2 (annonces proches, dashboard paquets/trocs/besoins). **Famille** : carte bleue → **ProgrammeBesoinsSelector** (liste au programme officiel). **Établissement** : bouton **Établissement scolaire** → **EtablissementScolaire** (dépôt PDF/Excel/images, **POST programmes-scolaires/submit**, IA Yukpo, notif librairies ville/rayon). **Librairie** : paquets **livres / cahiers / fournitures** selon le référentiel.',
+          'Bourse du livre : hub V2 (annonces proches, dashboard paquets/trocs/besoins). **Famille** : carte bleue → **ProgrammeBesoinsSelector** (liste au programme officiel). **Établissement** : bouton **Établissement scolaire** → **EtablissementScolaire** (dépôt PDF/Excel/images, **POST programmes-scolaires/submit**, IA Yukpo, notif librairies ville/rayon). **Librairie partenaire** : **LibrairieTeamPending** (équipe/succursale) ; **commandes mixtes réseau** → **LibrairieNetworkValidation** (disponibilité lignes neufs, multi-paniers) puis **LibrairieNetworkLignePrix** (bornes & prix). **Notif push** commande mixte → **LibrairieNetworkValidation** + `commandeId`.',
         suggestedActions: [
           { id: 'book-exchange', label: 'Troc livres', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation' as const, description: 'Échanger des livres' },
           { id: 'book-programme', label: 'Liste programme (famille)', icon: 'list-checks', route: 'ProgrammeBesoinsSelector', category: 'navigation' as const, description: 'Manuels au programme officiel' },
@@ -4604,7 +4651,47 @@ Explorez l'avenir dès maintenant ! 👇`,
           { id: 'lib-team-choose-branch', label: 'Choisir succursale', icon: 'map-pin', route: 'LibrairieTeamPending', category: 'action' as const, description: 'Sélectionner la succursale avant validation' },
           { id: 'lib-team-stock-check', label: 'Cocher stock dispo', icon: 'check-square', route: 'LibrairieTeamPending', category: 'action' as const, description: 'Confirmer disponibilité sur la succursale' },
           { id: 'lib-team-keep-prep', label: 'Laisser en préparation', icon: 'clock', route: 'LibrairieTeamPending', category: 'action' as const, description: 'Ne pas valider si stock indisponible' },
+          { id: 'lib-mixte-validation', label: 'Validation commande mixte (disponibilité)', icon: 'check-circle', route: 'LibrairieNetworkValidation', category: 'navigation' as const, description: 'Lignes neufs: je fournis / indisponible / laisser aux autres librairies; param commandeId' },
           { id: 'lib-mixte-prix', label: 'Prix commande mixte (neufs)', icon: 'tag', route: 'LibrairieNetworkLignePrix', category: 'navigation' as const, description: 'Liste commandes mixtes, bornes et saisie prix (notif: route + param commandeId)' }
+        ]
+      },
+      {
+        screen: 'LibrairieNetworkValidation',
+        keywords: [
+          'commande mixte', 'validation librairie', 'disponibilite', 'lignes neufs', 'je fournis',
+          'indisponible', 'multi librairie', 'panier', 'notif librairie', 'reseau librairie',
+          'livres valides', 'commande parent'
+        ],
+        contextualPrompt:
+          '**LibrairieNetworkValidation** : pour une commande mixte, indiquer par ligne **en_attente** si la librairie fournit, refuse, ou laisse aux autres (**multi-paniers**). Envoi **POST /api/librairie-network/validation/valider**. Lien vers **LibrairieNetworkLignePrix** (prix).',
+        suggestedActions: [
+          { id: 'lib-val-prix', label: 'Prix & bornes', icon: 'tag', route: 'LibrairieNetworkLignePrix', category: 'navigation' as const, description: 'Même commandeId' },
+          { id: 'lib-val-team', label: 'Équipe librairie', icon: 'users', route: 'LibrairieTeamPending', category: 'navigation' as const, description: 'Succursale / stock' },
+        ]
+      },
+      {
+        screen: 'LibrairieNetworkLignePrix',
+        keywords: [
+          'bornes prix', 'prix neufs', 'commande mixte', 'librairie', 'saisie prix', 'manuel neuf',
+          'plancher', 'plafond', 'ligne neuf'
+        ],
+        contextualPrompt:
+          '**LibrairieNetworkLignePrix** : **GET** lignes neufs + bornes, **PATCH** prix si non verrouillé ; liste des commandes mixtes de la librairie. Lien vers **LibrairieNetworkValidation**.',
+        suggestedActions: [
+          { id: 'lib-prix-validation', label: 'Disponibilité', icon: 'check-circle', route: 'LibrairieNetworkValidation', category: 'navigation' as const, description: 'Valider les lignes' },
+          { id: 'lib-prix-bourse', label: 'Accueil bourse', icon: 'book-open', route: 'LivreScolaireHome', category: 'navigation' as const, description: 'Hub livres' },
+        ]
+      },
+      {
+        screen: 'LibrairieTeamPending',
+        keywords: [
+          'equipe librairie', 'succursale', 'stock librairie', 'validation paquet', 'librairie partenaire'
+        ],
+        contextualPrompt:
+          '**LibrairieTeamPending** : équipe librairie — **succursale**, stock, validations liées aux **paquets** / achats bourse. Pour les **commandes mixtes réseau** (neufs + occasion), orienter vers **LibrairieNetworkValidation** puis **LibrairieNetworkLignePrix**.',
+        suggestedActions: [
+          { id: 'lib-team-validation', label: 'Commande mixte (validation)', icon: 'check-circle', route: 'LibrairieNetworkValidation', category: 'navigation' as const, description: '' },
+          { id: 'lib-team-prix', label: 'Prix neufs', icon: 'tag', route: 'LibrairieNetworkLignePrix', category: 'navigation' as const, description: '' },
         ]
       },
       {
@@ -5538,11 +5625,44 @@ Explorez l'avenir dès maintenant ! 👇`,
         screenName: 'LivreScolaireHome',
         screenType: 'specialized',
         contextData: {
-          features: ['troc', 'vente', 'scan_livre', 'programmes', 'estimation', 'programme_besoins_famille', 'depot_manuels_etablissement'],
+          features: [
+            'troc', 'vente', 'scan_livre', 'programmes', 'estimation', 'programme_besoins_famille',
+            'depot_manuels_etablissement', 'librairie_reseau_commande_mixte', 'validation_disponibilite', 'bornes_prix_neufs'
+          ],
           educationLevel: 'all', // primaire, secondaire, supérieur
           location: 'current'
         },
-        availableFeatures: ['book_exchange', 'book_scan', 'price_estimation', 'program_check', 'etablissement_upload']
+        availableFeatures: [
+          'book_exchange', 'book_scan', 'price_estimation', 'program_check', 'etablissement_upload',
+          'librairie_team_pending', 'librairie_network_validation', 'librairie_network_ligne_prix'
+        ]
+      },
+      'LibrairieNetworkValidation': {
+        screenName: 'LibrairieNetworkValidation',
+        screenType: 'specialized',
+        contextData: {
+          features: ['commande_mixte', 'lignes_neufs', 'multi_paniers', 'livres_valides', 'livres_indisponibles', 'push_commandeId'],
+          userProfile: 'librairie_partenaire'
+        },
+        availableFeatures: ['post_validation_valider', 'load_lignes_bornes', 'navigate_prix_meme_commande']
+      },
+      'LibrairieNetworkLignePrix': {
+        screenName: 'LibrairieNetworkLignePrix',
+        screenType: 'specialized',
+        contextData: {
+          features: ['bornes_marche', 'prix_officiel_verrouille', 'patch_prix_ligne', 'mes_commandes_mixtes'],
+          userProfile: 'librairie_partenaire'
+        },
+        availableFeatures: ['get_lignes_neufs_bornes', 'patch_ligne_prix', 'navigate_validation']
+      },
+      'LibrairieTeamPending': {
+        screenName: 'LibrairieTeamPending',
+        screenType: 'specialized',
+        contextData: {
+          features: ['succursale', 'stock', 'paquets_bourse', 'commande_mixte_reseau_redirect'],
+          userProfile: 'librairie_equipe'
+        },
+        availableFeatures: ['select_branch', 'stock_checkbox', 'open_librairie_network_validation']
       },
       'EtablissementScolaire': {
         screenName: 'EtablissementScolaire',
@@ -5921,6 +6041,7 @@ Soyez précis, utilisez les fonctionnalités disponibles, et donnez des réponse
       { id: 'lib-team-choose-branch', label: 'Choisir succursale', icon: 'map-pin', route: 'LibrairieTeamPending', category: 'action', description: 'Sélectionner la succursale de traitement' },
       { id: 'lib-team-stock-check', label: 'Cocher stock dispo', icon: 'check-square', route: 'LibrairieTeamPending', category: 'action', description: 'Confirmer la dispo sur la succursale' },
       { id: 'lib-team-keep-prep', label: 'Laisser en préparation', icon: 'clock', route: 'LibrairieTeamPending', category: 'action', description: 'Garder en préparation si stock indisponible' },
+      { id: 'lib-mixte-validation', label: 'Validation commande mixte (disponibilité)', icon: 'check-circle', route: 'LibrairieNetworkValidation', category: 'navigation', description: 'Disponibilité lignes neufs; deep link: LibrairieNetworkValidation + commandeId' },
       { id: 'lib-mixte-prix', label: 'Prix commande mixte (neufs)', icon: 'tag', route: 'LibrairieNetworkLignePrix', category: 'navigation', description: 'Liste commandes, bornes; deep link: LibrairieNetworkLignePrix + commandeId' }
     ];
   }

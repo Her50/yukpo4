@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
+import { processBackgroundCommunityAlerts } from './communityAlertBackground';
 import { apiPost } from './api';
 
 // ── Constantes ──
@@ -279,6 +280,19 @@ const registerBackgroundTask = () => {
             await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
         } else {
             await AsyncStorage.removeItem(STORAGE_KEY_SESSION);
+        }
+
+        // Alertes communautaires (notification sonore même si Navigation / l’app n’est pas au premier plan)
+        const lastLoc = data.locations[data.locations.length - 1];
+        if (lastLoc?.coords) {
+            try {
+                await processBackgroundCommunityAlerts(
+                    lastLoc.coords.latitude,
+                    lastLoc.coords.longitude,
+                );
+            } catch (bgErr) {
+                console.warn('[PassiveTracker] Community alert background:', bgErr);
+            }
         }
     } catch (e) {
         console.warn('[PassiveTracker] Erreur traitement positions:', e);

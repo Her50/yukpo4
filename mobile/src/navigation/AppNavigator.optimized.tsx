@@ -463,6 +463,7 @@ reg('AdminProgrammeUpload', () => import('../screens/bourse-livre/AdminProgramme
 reg('BookDeliveryTracking', () => import('../screens/specialized/BookDeliveryTrackingScreen'));
 reg('LibrairieTeamPending', () => import('../screens/specialized/LibrairieTeamPendingScreen'));
 reg('LibrairieNetworkLignePrix', () => import('../screens/specialized/LibrairieNetworkLignePrixScreen'));
+reg('LibrairieNetworkValidation', () => import('../screens/specialized/LibrairieNetworkValidationScreen'));
 reg('NewBooks', () => import('../screens/specialized/NewBooksScreen'));
 reg('ProgrammeBesoinsSelector', () => import('../screens/specialized/ProgrammeBesoinsSelectorScreen'));
 reg('MesBesoinsLivres', () => import('../screens/specialized/MesBesoinsLivresScreen'));

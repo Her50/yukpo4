@@ -113,7 +113,7 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 **Caractéristiques qui génèrent automatiquement des variations de prix :**
 - **Vêtements** : taille (S, M, L, XL), couleur (si prix différent selon couleur)
 - **Chaussures** : pointure (38, 39, 40, etc.)
-- **Aliments** : quantité (1kg, 2kg, 5kg), volume (500ml, 1L, 2L)
+- **Aliments** : quantité (1kg, 2kg, 5kg), volume (500ml, 1L, 2L), **grammage / poids net** (40g, 150g, 300g pour snacks, chips, sachets — même si une seule valeur est visible sur l’emballage, propose les formats habituels de la gamme)
 - **Électronique** : capacité (32GB, 64GB, 128GB), stockage (500GB, 1TB)
 - **Services** : durée (1h, 2h, journée), fréquence (ponctuel, mensuel, annuel)
 - **Prestations** : niveau (débutant, avancé, expert), package (basique, premium, VIP)
@@ -137,6 +137,12 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 ```
 
 **RÈGLE CRITIQUE** : Si tu détectes des sous-caractéristiques comme `taille`, `pointure`, `quantite`, `volume`, `capacite`, `poids`, `duree`, etc. dans le champ `produits.sous_caracteristiques`, **GÉNÈRE AUTOMATIQUEMENT** un champ `variabilite_prix` avec ces caractéristiques comme modalités, même si les prix ne sont pas mentionnés (mets 0 pour que l'utilisateur les remplisse).
+
+### 🍿 Cas particulier — **snacks, chips, biscuits, sachets, aliments conditionnés** (poids net / grammage)
+
+- Même si l’image ou la vidéo ne montre **qu’un seul** emballage (ex. **une** référence « 150 g » sur un paquet de **chips de plantain**), le vendeur vend souvent **la même marque / saveur** sous **plusieurs grammages** (40 g, 80 g, 150 g, 300 g…).  
+- **Tu DOIS** alors ajouter `variabilite_prix` avec `variable` = `"poids"` ou `"grammage"` (ou `"quantite"` si cohérent avec `sous_caracteristiques`), et **plusieurs** modalités : **au minimum** le poids visible, **plus** 2 à 4 formats **courants du marché** pour ce type de produit (même si non visibles sur la photo), avec `prix: 0` et `devise: "XAF"` si le prix n’est pas lisible.  
+- **Ne te limite pas** aux seuls exemples « riz 1 kg / 5 kg » : les **variantes par poids** concernent aussi les **épicerie fine**, chips, confiseries, boissons en petit format, etc.
 
 ### 🔤 Type `autocomplete` - POUR CARACTÉRISTIQUES FILTRABLES
 
@@ -399,15 +405,15 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 
 **NOTES IMPORTANTES** :
 - `prix_produit` peut être un nombre si identifié dans l'image/texte, ou null si non identifié
-- `variabilite_prix` est OPTIONNEL - seulement si le produit a des variantes avec prix différents
+- `variabilite_prix` : **OBLIGATOIRE dès qu’une dimension de vente peut faire varier le prix** (pointure, taille, **poids / grammage / volume**, durée, capacité…). Ce n’est pas « optionnel » pour ces cas : si tu as mis `poids` / `grammage` / `quantite` dans `sous_caracteristiques` avec une logique commerciale multi-format, **ajoute** `variabilite_prix`. Seuls les produits **strictement mono-SKU** sans aucune variante plausible peuvent s’en passer.
 - Les prix dans `variabilite_prix.modalites` peuvent être renseignés s'ils sont identifiés, sinon laisse 0 pour que l'utilisateur les renseigne manuellement
 
-## VARIABILITÉ DE PRIX (OPTIONNEL - EN PLUS DES 6 CHAMPS DE BASE)
+## VARIABILITÉ DE PRIX (EN PLUS DES 6 CHAMPS DE BASE)
 
-Pour les produits avec variantes ayant des prix différents (taille, pointure, quantité, etc.), ajoute EN PLUS un champ `variabilite_prix` avec le type `price_variant`.
+Pour les produits avec variantes ayant des prix différents (taille, pointure, quantité, **grammage**, etc.), ajoute EN PLUS un champ `variabilite_prix` avec le type `price_variant`.
 
 **IMPORTANT** :
-- `variabilite_prix` est un champ **OPTIONNEL** qui s'ajoute aux 6 champs de base
+- `variabilite_prix` s'ajoute aux 6 champs de base (sauf vrai produit sans aucune variante)
 - Les 6 champs de base sont TOUJOURS générés, même si `variabilite_prix` est présent
 - **PRIX NUMÉRIQUES** : TOUS les champs prix doivent être de type `number` (jamais `string`)
 - ✅ Correct : `"prix": 15000`
@@ -418,7 +424,8 @@ Pour les produits avec variantes ayant des prix différents (taille, pointure, q
 
 - **Vêtements** : variable="taille", modalites avec S/M/L/XL/XXL
 - **Chaussures** : variable="pointure", modalites avec 38/39/40/41/42/43/44/45
-- **Aliments** : variable="quantite", modalites avec 1kg/2kg/5kg/10kg
+- **Aliments (vrac : riz, farine, etc.)** : variable="quantite", modalites avec 1kg/2kg/5kg/10kg
+- **Snacks / chips / biscuits / sachets** : variable="poids" ou "grammage", modalites avec 40g/80g/150g/300g (adapter aux usages réels du produit)
 - **Boissons** : variable="volume", modalites avec 500ml/1L/2L/5L
 - **Électronique** : variable="capacite", modalites avec 32GB/64GB/128GB/256GB
 - **Services** : variable="duree", modalites avec 1h/2h/demi-journee/journee
@@ -483,6 +490,7 @@ Avant de générer ta réponse JSON, vérifie que tu as bien inclus :
 ✅ **5. Enrichissement contextuel :**
 - [ ] Champs additionnels pertinents selon la catégorie
 - [ ] Caractéristiques autocomplete complètes (minimum 6-8, idéal 8-12)
+- [ ] Produit alimentaire **conditionné** (chips, snack, sachet, boisson…) avec **poids net** visible ou déductible → `variabilite_prix` avec **plusieurs** modalités poids/grammage (prix à 0 si inconnus)
 
 **⚠️ RAPPEL CRITIQUE : Ne JAMAIS oublier `type_offre` car il détermine si le frontend affiche "Nom du produit" ou "Nom de la prestation" !**
 

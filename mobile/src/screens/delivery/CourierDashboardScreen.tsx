@@ -1,7 +1,7 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import { hapticPress } from '../../utils/hapticFeedback';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     Animated,
     RefreshControl,
@@ -22,17 +22,56 @@ import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { deliveryApi } from '../../services/api';
 import { notificationSoundService } from '../../services/notificationSoundService';
 import { modernColors } from '../../theme/modernTheme';
-import { DeliverySummary } from '../../types/delivery';
+import { DeliveryStatus, DeliverySummary } from '../../types/delivery';
 import { useScreenEnter } from '../../utils/animations';
+
+/** Ordre d’affichage « tournée » (plus tôt = plus haut dans la liste). */
+const COURIER_STATUS_ORDER: Partial<Record<DeliveryStatus, number>> = {
+    pending: 5,
+    requested: 10,
+    awaiting_courier: 15,
+    awaiting_courier_confirmation: 16,
+    assigned: 20,
+    accepted: 25,
+    en_route_pickup: 30,
+    arrival_pickup: 35,
+    picked_up: 40,
+    shopping_pending: 42,
+    shopping_in_progress: 44,
+    shopping_completed: 46,
+    en_route_delivery: 50,
+    arrival_destination: 55,
+    delivered: 80,
+    completed: 85,
+    cancelled: 99,
+    refunded: 100,
+};
+
+function groupActiveDeliveriesByStatus(deliveries: DeliverySummary[]): { status: string; items: DeliverySummary[] }[] {
+    const map = new Map<string, DeliverySummary[]>();
+    for (const d of deliveries) {
+        const s = String(d.status || 'unknown');
+        if (!map.has(s)) map.set(s, []);
+        map.get(s)!.push(d);
+    }
+    return Array.from(map.entries())
+        .sort(
+            (a, b) =>
+                (COURIER_STATUS_ORDER[a[0] as DeliveryStatus] ?? 100) -
+                (COURIER_STATUS_ORDER[b[0] as DeliveryStatus] ?? 100)
+        )
+        .map(([status, items]) => ({ status, items }));
+}
 
 const CourierDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
     const { t } = useLanguageSafe();
     const [loading, setLoading] = useState(true);
+    const [initialLoadDone, setInitialLoadDone] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [activeDeliveries, setActiveDeliveries] = useState<DeliverySummary[]>([]);
-    const [lastDeliveryCount, setLastDeliveryCount] = useState(0);
+    const lastDeliveryCountRef = useRef(0);
     const [stats, setStats] = useState({
         totalDeliveries: 0,
         completedDeliveries: 0,
@@ -55,26 +94,9 @@ const CourierDashboardScreen: React.FC = () => {
     // ✅ NOUVEAU: Animation d'entrée
     const screenEnterStyle = useScreenEnter();
 
-    useFocusEffect(
-        useCallback(() => {
-            // ✅ FIX 2026-03-03: Initialiser le service audio + polling pour nouvelles livraisons
-            notificationSoundService.initialize().catch(console.error);
-            loadData();
-
-            // Polling toutes les 15 secondes pour détecter les nouvelles livraisons
-            const interval = setInterval(() => {
-                loadData();
-            }, 15000);
-
-            return () => {
-                clearInterval(interval);
-            };
-        }, [])
-    );
-
-    const loadData = async () => {
+    const loadData = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             // Charger les livraisons actives
             const deliveriesResponse = await deliveryApi.listActiveDeliveries();
             const deliveries = deliveriesResponse.data?.deliveries || deliveriesResponse.data || [];
@@ -82,10 +104,11 @@ const CourierDashboardScreen: React.FC = () => {
             setActiveDeliveries(deliveriesList);
 
             // ✅ FIX 2026-03-03: Notification sonore si nouvelle livraison détectée
-            if (deliveriesList.length > lastDeliveryCount && lastDeliveryCount > 0) {
+            const prev = lastDeliveryCountRef.current;
+            if (deliveriesList.length > prev && prev > 0) {
                 notificationSoundService.playSoundWithVibration('delivery_request').catch(console.error);
             }
-            setLastDeliveryCount(deliveriesList.length);
+            lastDeliveryCountRef.current = deliveriesList.length;
 
             // ✅ FIX 2026-03-05: Charger les stats réelles depuis l'API
             try {
@@ -107,13 +130,36 @@ const CourierDashboardScreen: React.FC = () => {
         } catch (error) {
             console.error('[CourierDashboardScreen] Erreur chargement:', error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
+            setInitialLoadDone(true);
         }
     };
 
+    useFocusEffect(
+        useCallback(() => {
+            // ✅ FIX 2026-03-03: Initialiser le service audio + polling pour nouvelles livraisons
+            notificationSoundService.initialize().catch(console.error);
+            void loadData(false);
+
+            // Polling toutes les 15 secondes pour détecter les nouvelles livraisons
+            const interval = setInterval(() => {
+                void loadData(true);
+            }, 15000);
+
+            return () => {
+                clearInterval(interval);
+            };
+        }, [])
+    );
+
+    const deliveriesByStatus = useMemo(
+        () => groupActiveDeliveriesByStatus(activeDeliveries),
+        [activeDeliveries]
+    );
+
     const handleRefresh = async () => {
         setRefreshing(true);
-        await loadData();
+        await loadData(false);
         setRefreshing(false);
     };
 
@@ -123,11 +169,13 @@ const CourierDashboardScreen: React.FC = () => {
         navigation.navigate('DeliveryShoppingTracking' as never, { deliveryId: id } as never);
     };
 
-    if (loading) {
+    if (!initialLoadDone) {
         return (
             <SafeNativeView style={styles.container}>
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={modernColors.primary} />
+                    <SkeletonDeliveryCard />
+                    <SkeletonDeliveryCard />
+                    <SkeletonDeliveryCard />
                     <Text style={styles.loadingText}>{t('common.loading', 'Chargement...')}</Text>
                 </View>
             </SafeNativeView>
@@ -146,6 +194,46 @@ const CourierDashboardScreen: React.FC = () => {
                         <Text style={styles.subtitle}>{t('courierDashboard.subtitle', 'Suivez vos performances et livraisons')}</Text>
                     </View>
 
+                    <View style={styles.courierTourCard}>
+                        <Text style={styles.courierTourTitle}>{t('bourseUx.courierTourTitle', 'Parcours livres scolaires')}</Text>
+                        <Text style={styles.courierTourSub}>{t('bourseUx.courierTourSub', 'Paquets, historique et retraits au même endroit.')}</Text>
+                        <View style={styles.courierTourRow}>
+                            <TouchableOpacity
+                                style={styles.courierTourBtn}
+                                onPress={() => {
+                                    hapticPress();
+                                    (navigation as any).navigate('BookPackages', { mode: 'courier' });
+                                }}
+                                activeOpacity={0.85}
+                            >
+                                <SafeIcon name="package" size={18} color="#fff" type="lucide" />
+                                <Text style={styles.courierTourBtnText}>{t('bourseUx.courierBtnPackages', 'Paquets livres')}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.courierTourBtn, styles.courierTourBtnAlt]}
+                                onPress={() => {
+                                    hapticPress();
+                                    (navigation as any).navigate('CourierHistory');
+                                }}
+                                activeOpacity={0.85}
+                            >
+                                <SafeIcon name="history" size={18} color="#1e40af" type="lucide" />
+                                <Text style={[styles.courierTourBtnText, { color: '#1e40af' }]}>{t('bourseUx.courierBtnHistory', 'Historique')}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.courierTourBtn, styles.courierTourBtnAlt]}
+                                onPress={() => {
+                                    hapticPress();
+                                    (navigation as any).navigate('CourierWithdrawal');
+                                }}
+                                activeOpacity={0.85}
+                            >
+                                <SafeIcon name="wallet" size={18} color="#1e40af" type="lucide" />
+                                <Text style={[styles.courierTourBtnText, { color: '#1e40af' }]}>{t('bourseUx.courierBtnWithdraw', 'Retraits')}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
                     {/* ✅ NOUVEAU: Graphiques de statistiques animés */}
                     <CourierStatsChart
                         completedDeliveries={safeStats.completedDeliveries}
@@ -158,7 +246,7 @@ const CourierDashboardScreen: React.FC = () => {
                     {/* ✅ PHASE 3: Sous-dashboard Livres Scolaires */}
                     <BookCourierSubDashboard onRefresh={handleRefresh} />
 
-                    {/* Livraisons actives */}
+                    {/* Livraisons actives — regroupées par statut (tournée) */}
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>{t('courierDashboard.activeDeliveries', 'Livraisons actives')}</Text>
                         {loading && activeDeliveries.length === 0 ? (
@@ -175,47 +263,54 @@ const CourierDashboardScreen: React.FC = () => {
                                 </Text>
                             </NativeCard>
                         ) : (
-                            activeDeliveries.map((delivery, index) => (
-                                <TouchableOpacity
-                                    key={delivery.id}
-                                    onPress={() => handleOpenDelivery(delivery.id)}
-                                    style={styles.deliveryCardWrapper}
-                                >
-                                    <NativeCard style={styles.deliveryCard}>
-                                        <View style={styles.deliveryHeader}>
-                                            <Text style={styles.deliveryId}>
-                                                {t('courierDashboard.deliveryNum', 'Livraison')} #
-                                                {delivery?.id != null ? String(delivery.id).slice(-6) : '—'}
-                                            </Text>
-                                            <Text style={styles.deliveryStatus}>{delivery.status}</Text>
-                                        </View>
-                                        <View style={styles.deliveryInfo}>
-                                            <View style={styles.deliveryRow}>
-                                                <SafeIcon name="map-pin" size={16} color={modernColors.textSecondary} />
-                                                <Text style={styles.deliveryText}>
-                                                    {delivery.pickup?.label || t('courierDashboard.pickup')}
-                                                </Text>
-                                            </View>
-                                            <View style={styles.deliveryRow}>
-                                                <SafeIcon name="navigation" size={16} color={modernColors.textSecondary} />
-                                                <Text style={styles.deliveryText}>
-                                                    {delivery.dropoff?.label || t('courierDashboard.dropoff')}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                        {/* Bouton code de vérification pour le prestataire */}
+                            deliveriesByStatus.map(({ status, items }) => (
+                                <View key={status} style={styles.statusGroup}>
+                                    <Text style={styles.statusSectionTitle}>
+                                        {t(`courierDashboard.deliveryStatus.${status}`, status.replace(/_/g, ' '))}
+                                        <Text style={styles.statusSectionCount}> ({items.length})</Text>
+                                    </Text>
+                                    {items.map((delivery) => (
                                         <TouchableOpacity
-                                            style={styles.verificationCodeButton}
-                                            onPress={(e) => {
-                                                e.stopPropagation();
-                                                (navigation as any).navigate('CourierVerificationCode', { deliveryId: delivery.id });
-                                            }}
+                                            key={delivery.id}
+                                            onPress={() => handleOpenDelivery(delivery.id)}
+                                            style={styles.deliveryCardWrapper}
                                         >
-                                            <SafeIcon name="shield" size={16} color={modernColors.primary} />
-                                            <Text style={styles.verificationCodeButtonText}>{t('courierDashboard.myVerificationCode', 'Mon code de vérification')}</Text>
+                                            <NativeCard style={styles.deliveryCard}>
+                                                <View style={styles.deliveryHeader}>
+                                                    <Text style={styles.deliveryId}>
+                                                        {t('courierDashboard.deliveryNum', 'Livraison')} #
+                                                        {delivery?.id != null ? String(delivery.id).slice(-6) : '—'}
+                                                    </Text>
+                                                    <Text style={styles.deliveryStatus}>{delivery.status}</Text>
+                                                </View>
+                                                <View style={styles.deliveryInfo}>
+                                                    <View style={styles.deliveryRow}>
+                                                        <SafeIcon name="map-pin" size={16} color={modernColors.textSecondary} />
+                                                        <Text style={styles.deliveryText}>
+                                                            {delivery.pickup?.label || t('courierDashboard.pickup')}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.deliveryRow}>
+                                                        <SafeIcon name="navigation" size={16} color={modernColors.textSecondary} />
+                                                        <Text style={styles.deliveryText}>
+                                                            {delivery.dropoff?.label || t('courierDashboard.dropoff')}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                                <TouchableOpacity
+                                                    style={styles.verificationCodeButton}
+                                                    onPress={(e) => {
+                                                        e.stopPropagation();
+                                                        (navigation as any).navigate('CourierVerificationCode', { deliveryId: delivery.id });
+                                                    }}
+                                                >
+                                                    <SafeIcon name="shield" size={16} color={modernColors.primary} />
+                                                    <Text style={styles.verificationCodeButtonText}>{t('courierDashboard.myVerificationCode', 'Mon code de vérification')}</Text>
+                                                </TouchableOpacity>
+                                            </NativeCard>
                                         </TouchableOpacity>
-                                    </NativeCard>
-                                </TouchableOpacity>
+                                    ))}
+                                </View>
                             ))
                         )}
                     </View>
@@ -287,6 +382,48 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.textSecondary,
     },
+    courierTourCard: {
+        marginHorizontal: 16,
+        marginBottom: 16,
+        padding: 14,
+        borderRadius: 16,
+        backgroundColor: '#f0fdf4',
+        borderWidth: 1,
+        borderColor: '#bbf7d0',
+    },
+    courierTourTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 4,
+    },
+    courierTourSub: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        marginBottom: 12,
+    },
+    courierTourRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    courierTourBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#059669',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+    },
+    courierTourBtnAlt: {
+        backgroundColor: '#e0f2fe',
+    },
+    courierTourBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#fff',
+    },
     statsContainer: {
         flexDirection: 'row',
         paddingHorizontal: 16,
@@ -318,6 +455,22 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: modernColors.text,
         marginBottom: 12,
+    },
+    statusGroup: {
+        marginBottom: 8,
+    },
+    statusSectionTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: modernColors.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.6,
+        marginBottom: 10,
+        marginTop: 4,
+    },
+    statusSectionCount: {
+        fontWeight: '600',
+        opacity: 0.85,
     },
     emptyCard: {
         alignItems: 'center',
