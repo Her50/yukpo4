@@ -45,7 +45,13 @@ import DeliveryAutoConfigPromptModal from '../components/delivery/DeliveryAutoCo
 import ProductDeliveryConfigModal from '../components/delivery/ProductDeliveryConfigModal';
 import { modernColors } from '../theme/modernTheme';
 import { DynamicField, IASuggestion, processIASuggestion } from '../utils/formDispatcher';
-import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
+import {
+  MAX_PRODUCT_IMAGES,
+  mergeImageSources,
+  orderImagesWithPrimary,
+  pickCanonicalImageList,
+  pickCanonicalMediaStrings
+} from '../utils/mediaHelpers';
 // ✅ NOUVEAU 2026-02-10: Import de la modal Google Business
 import GoogleBusinessModal from '../components/GoogleBusinessModal';
 // ✅ NOUVEAU: Import des fonctions de synchronisation prix_variation <-> sous-caractéristiques
@@ -3906,26 +3912,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return compressedMediaCache;
       };
 
-      const mergeMediaArrays = (existing: any, incoming: any, maxImages?: number): any[] => {
-        // ✅ CORRIGÉ 2026-02-27: Gérer le format {valeur: [...]} du formulaire dynamique IA
-        const extractArray = (input: any): any[] => {
-          if (Array.isArray(input)) return input;
-          if (input && typeof input === 'object' && Array.isArray(input.valeur)) return input.valeur;
-          if (input && typeof input === 'string') return [input];
-          return [];
-        };
-        const base = extractArray(incoming);
-        const current = extractArray(existing);
-        const merged = [...base, ...current];
-        const unique = merged.filter(Boolean).filter((value, index, self) => self.indexOf(value) === index);
-        // ✅ CORRECTION: Limiter les images si maxImages est spécifié (pour respecter la limite backend de 10)
-        if (maxImages !== undefined && unique.length > maxImages) {
-          console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ ${unique.length} images détectées, limitées à ${maxImages} (maximum backend)`);
-          return unique.slice(0, maxImages);
-        }
-        return unique;
-      };
-
       const ensurePrimaryMediaForFirstProduct = (
         produitsNode: any,
         media: any,
@@ -4059,66 +4045,36 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               produitsArray.push(buildBaseProduct());
             } else {
               const firstProduct: any = { ...produitsArray[0] };
-              const newImages = Array.isArray(media.images)
-                ? media.images.filter(Boolean)
-                : [];
-              // ✅ CORRIGÉ 2026-03-03: Si l'utilisateur a fourni des images (newImages), ne PAS fusionner
-              // avec les images existantes du produit IA (firstProduct.images) car elles sont des copies
-              // floues/ré-encodées des mêmes photos envoyées à l'IA.
-              // On utilise existingImages UNIQUEMENT si l'utilisateur n'a PAS fourni de nouvelles images.
-              const existingImages = newImages.length > 0
-                ? []
-                : (Array.isArray(firstProduct.images) ? firstProduct.images.filter(Boolean) : []);
-              const mergedImages = [...newImages, ...existingImages].filter((value, index, self) => self.indexOf(value) === index);
-              // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)
-              const limitedImages = mergedImages.slice(0, 10);
-              if (limitedImages.length > 0) {
-                firstProduct.images = limitedImages;
-                firstProduct.base64_image = limitedImages;
-              }
-              if (mergedImages.length > 10) {
-                console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ ${mergedImages.length} images détectées, limitées à 10 (maximum backend)`);
+              // Source de vérité : médias issus de compressAllMedia(mediaFiles) ; sinon formulaire / IA.
+              const mergedImages = pickCanonicalImageList(
+                Array.isArray(media.images) ? media.images : [],
+                firstProduct.images,
+                10
+              );
+              if (mergedImages.length > 0) {
+                firstProduct.images = mergedImages;
+                firstProduct.base64_image = mergedImages;
               }
 
-              if (media.videos?.length) {
-                const mergedVideos = mergeMediaArrays(
-                  firstProduct.videos,
-                  media.videos
-                );
-                if (mergedVideos.length > 0) {
-                  firstProduct.videos = mergedVideos;
-                  firstProduct.video_base64 = mergedVideos;
-                }
+              const mergedVideos = pickCanonicalMediaStrings(media.videos, firstProduct.videos);
+              if (mergedVideos.length > 0) {
+                firstProduct.videos = mergedVideos;
+                firstProduct.video_base64 = mergedVideos;
               }
 
-              if (media.audios?.length) {
-                const mergedAudios = mergeMediaArrays(
-                  firstProduct.audio_base64,
-                  media.audios
-                );
-                if (mergedAudios.length > 0) {
-                  firstProduct.audio_base64 = mergedAudios;
-                }
+              const mergedAudios = pickCanonicalMediaStrings(media.audios, firstProduct.audio_base64);
+              if (mergedAudios.length > 0) {
+                firstProduct.audio_base64 = mergedAudios;
               }
 
-              if (media.documents?.length) {
-                const mergedDocs = mergeMediaArrays(
-                  firstProduct.doc_base64,
-                  media.documents
-                );
-                if (mergedDocs.length > 0) {
-                  firstProduct.doc_base64 = mergedDocs;
-                }
+              const mergedDocs = pickCanonicalMediaStrings(media.documents, firstProduct.doc_base64);
+              if (mergedDocs.length > 0) {
+                firstProduct.doc_base64 = mergedDocs;
               }
 
-              if (media.excel?.length) {
-                const mergedExcel = mergeMediaArrays(
-                  firstProduct.excel_base64,
-                  media.excel
-                );
-                if (mergedExcel.length > 0) {
-                  firstProduct.excel_base64 = mergedExcel;
-                }
+              const mergedExcel = pickCanonicalMediaStrings(media.excel, firstProduct.excel_base64);
+              if (mergedExcel.length > 0) {
+                firstProduct.excel_base64 = mergedExcel;
               }
 
               if (!firstProduct.nom) {
@@ -4250,53 +4206,43 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         const compressedMedia = await getCompressedMedia();
 
-        if (compressedMedia?.images?.length) {
-          // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)
-          const mergedImages = mergeMediaArrays(nouveauProduit.images, compressedMedia.images, 10);
-          if (mergedImages.length > 0) {
-            nouveauProduit.images = mergedImages;
-            nouveauProduit.base64_image = mergedImages;
-
-            // ✅ NOUVEAU: Logger pour diagnostic
-            console.log(`[FormulaireYukpoIntelligentScreen] ✅ ${mergedImages.length} image(s) fusionnée(s) et assignée(s) à 'images' et 'base64_image'`);
-          } else {
-            console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Aucune image après fusion (mergedImages vide)');
-          }
-        } else {
-          // ✅ NOUVEAU: S'assurer que les images existantes sont aussi dans base64_image
-          if (nouveauProduit.images && nouveauProduit.images.length > 0 && !nouveauProduit.base64_image) {
-            nouveauProduit.base64_image = nouveauProduit.images;
-            console.log(`[FormulaireYukpoIntelligentScreen] ✅ Copié ${nouveauProduit.images.length} image(s) de 'images' vers 'base64_image'`);
-          }
+        const canonicalImages = pickCanonicalImageList(
+          compressedMedia?.images,
+          nouveauProduit.images,
+          10
+        );
+        if (canonicalImages.length > 0) {
+          nouveauProduit.images = canonicalImages;
+          nouveauProduit.base64_image = canonicalImages;
+          console.log(
+            `[FormulaireYukpoIntelligentScreen] ✅ ${canonicalImages.length} image(s) canonique(s) → 'images' / 'base64_image'`
+          );
+        } else if (nouveauProduit.images && nouveauProduit.images.length > 0 && !nouveauProduit.base64_image) {
+          nouveauProduit.base64_image = nouveauProduit.images;
+          console.log(
+            `[FormulaireYukpoIntelligentScreen] ✅ Copié ${nouveauProduit.images.length} image(s) de 'images' vers 'base64_image'`
+          );
         }
 
-        if (compressedMedia?.videos?.length) {
-          const mergedVideos = mergeMediaArrays(nouveauProduit.videos, compressedMedia.videos);
-          if (mergedVideos.length > 0) {
-            nouveauProduit.videos = mergedVideos;
-            nouveauProduit.video_base64 = mergedVideos;
-          }
+        const canonicalVideos = pickCanonicalMediaStrings(compressedMedia?.videos, nouveauProduit.videos);
+        if (canonicalVideos.length > 0) {
+          nouveauProduit.videos = canonicalVideos;
+          nouveauProduit.video_base64 = canonicalVideos;
         }
 
-        if (compressedMedia?.audios?.length) {
-          const mergedAudios = mergeMediaArrays(nouveauProduit.audio_base64, compressedMedia.audios);
-          if (mergedAudios.length > 0) {
-            nouveauProduit.audio_base64 = mergedAudios;
-          }
+        const canonicalAudios = pickCanonicalMediaStrings(compressedMedia?.audios, nouveauProduit.audio_base64);
+        if (canonicalAudios.length > 0) {
+          nouveauProduit.audio_base64 = canonicalAudios;
         }
 
-        if (compressedMedia?.documents?.length) {
-          const mergedDocs = mergeMediaArrays(nouveauProduit.doc_base64, compressedMedia.documents);
-          if (mergedDocs.length > 0) {
-            nouveauProduit.doc_base64 = mergedDocs;
-          }
+        const canonicalDocs = pickCanonicalMediaStrings(compressedMedia?.documents, nouveauProduit.doc_base64);
+        if (canonicalDocs.length > 0) {
+          nouveauProduit.doc_base64 = canonicalDocs;
         }
 
-        if (compressedMedia?.excel?.length) {
-          const mergedExcel = mergeMediaArrays(nouveauProduit.excel_base64, compressedMedia.excel);
-          if (mergedExcel.length > 0) {
-            nouveauProduit.excel_base64 = mergedExcel;
-          }
+        const canonicalExcel = pickCanonicalMediaStrings(compressedMedia?.excel, nouveauProduit.excel_base64);
+        if (canonicalExcel.length > 0) {
+          nouveauProduit.excel_base64 = canonicalExcel;
         }
 
         // ✅ NOUVEAU: Vérifier et logger le format des images avant envoi
@@ -5287,41 +5233,44 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     });
                   }
 
-                  if (compressedMedia?.images?.length) {
-                    // ✅ CORRECTION: Limiter à 10 images maximum (limite backend)
-                    const mergedImages = mergeMediaArrays(produitObj.images, compressedMedia.images, 10);
-                    if (mergedImages.length > 0) {
-                      produitObj.images = mergedImages;
-                      produitObj.base64_image = mergedImages;
+                  {
+                    const canonicalImgs = pickCanonicalImageList(
+                      compressedMedia?.images,
+                      produitObj.images,
+                      10
+                    );
+                    if (canonicalImgs.length > 0) {
+                      produitObj.images = canonicalImgs;
+                      produitObj.base64_image = canonicalImgs;
                     }
                   }
 
-                  if (compressedMedia?.videos?.length) {
-                    const mergedVideos = mergeMediaArrays(produitObj.videos, compressedMedia.videos);
-                    if (mergedVideos.length > 0) {
-                      produitObj.videos = mergedVideos;
-                      produitObj.video_base64 = mergedVideos;
+                  {
+                    const v = pickCanonicalMediaStrings(compressedMedia?.videos, produitObj.videos);
+                    if (v.length > 0) {
+                      produitObj.videos = v;
+                      produitObj.video_base64 = v;
                     }
                   }
 
-                  if (compressedMedia?.audios?.length) {
-                    const mergedAudios = mergeMediaArrays(produitObj.audio_base64, compressedMedia.audios);
-                    if (mergedAudios.length > 0) {
-                      produitObj.audio_base64 = mergedAudios;
+                  {
+                    const a = pickCanonicalMediaStrings(compressedMedia?.audios, produitObj.audio_base64);
+                    if (a.length > 0) {
+                      produitObj.audio_base64 = a;
                     }
                   }
 
-                  if (compressedMedia?.documents?.length) {
-                    const mergedDocs = mergeMediaArrays(produitObj.doc_base64, compressedMedia.documents);
-                    if (mergedDocs.length > 0) {
-                      produitObj.doc_base64 = mergedDocs;
+                  {
+                    const d = pickCanonicalMediaStrings(compressedMedia?.documents, produitObj.doc_base64);
+                    if (d.length > 0) {
+                      produitObj.doc_base64 = d;
                     }
                   }
 
-                  if (compressedMedia?.excel?.length) {
-                    const mergedExcel = mergeMediaArrays(produitObj.excel_base64, compressedMedia.excel);
-                    if (mergedExcel.length > 0) {
-                      produitObj.excel_base64 = mergedExcel;
+                  {
+                    const x = pickCanonicalMediaStrings(compressedMedia?.excel, produitObj.excel_base64);
+                    if (x.length > 0) {
+                      produitObj.excel_base64 = x;
                     }
                   }
 

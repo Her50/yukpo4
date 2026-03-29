@@ -141,4 +141,50 @@ export const orderImagesWithPrimary = (
     };
 };
 
+const extractFlexibleMediaArray = (input: any): string[] => {
+    if (input == null) {
+        return [];
+    }
+    if (Array.isArray(input)) {
+        return input.filter((x): x is string => typeof x === 'string' && x.length > 0);
+    }
+    if (typeof input === 'object' && Array.isArray((input as { valeur?: unknown }).valeur)) {
+        return ((input as { valeur: unknown[] }).valeur).filter(
+            (x): x is string => typeof x === 'string' && x.length > 0
+        );
+    }
+    if (typeof input === 'string') {
+        return [input];
+    }
+    return [];
+};
+
+/**
+ * Évite les doublons à la soumission : les images issues de compressAllMedia(mediaFiles)
+ * sont la source de vérité (upload utilisateur). Les chaînes du formulaire / IA sont ignorées
+ * si la compression a produit au moins une image (même photo = encodages différents sinon).
+ */
+export const pickCanonicalImageList = (
+    compressedImages: string[] | undefined | null,
+    formImages: any,
+    limit: number = MAX_PRODUCT_IMAGES
+): string[] => {
+    const fromCompressed = sanitizeImageArray(compressedImages, limit);
+    if (fromCompressed.length > 0) {
+        return fromCompressed;
+    }
+    return sanitizeImageArray(formImages, limit);
+};
+
+/** Même logique que les images pour vidéos / audios / docs (préfère le média issu de mediaFiles). */
+export const pickCanonicalMediaStrings = (
+    compressed: string[] | undefined | null,
+    formValue: any
+): string[] => {
+    const fromCompressed = extractFlexibleMediaArray(compressed);
+    if (fromCompressed.length > 0) {
+        return fromCompressed;
+    }
+    return extractFlexibleMediaArray(formValue);
+};
 

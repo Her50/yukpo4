@@ -2,7 +2,7 @@
  * Indicateur de parcours (liste scolaire / bourse) — UX moderne, étapes lisibles.
  */
 
-import React, { Fragment } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import SafeIcon from '../SafeIcon';
 import { modernColors } from '../../theme/modernTheme';
@@ -56,7 +56,7 @@ const BourseJourneySteps: React.FC<Props> = ({ steps, currentIndex }) => {
                             {i < steps.length - 1 ? (
                                 <View style={[styles.dash, i < currentIndex && styles.dashDone]} />
                             ) : null}
-                        </Fragment>
+                        </React.Fragment>
                     );
                 })}
             </View>
