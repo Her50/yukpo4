@@ -450,7 +450,7 @@ pub async fn send_message(
         .await;
 
         match insert_result {
-            Ok(Some(row)) => row.get::<Option<_>, _>("id").unwrap_or(new_conv_id.clone()),
+            Ok(Some(row)) => row.get::<Option<String>, _>("id").unwrap_or(new_conv_id.clone()),
             _ => new_conv_id,
         }
     };
@@ -540,7 +540,8 @@ pub async fn send_message(
     });
 
     // Envoyer la push notification (non bloquant)
-    let push_result = push_notification_service::send_push_notification(
+    // map_err convertit Box<dyn Error> (!Send) en String (Send) avant tout await ultérieur
+    match push_notification_service::send_push_notification(
         &state.pg,
         payload.recipient_id,
         push_title.clone(),
@@ -548,9 +549,9 @@ pub async fn send_message(
         Some(notification_data.clone()),
         Some("message_notification.mp3".to_string()),
     )
-    .await;
-
-    match push_result {
+    .await
+    .map_err(|e| e.to_string())
+    {
         Ok(count) => {
             log::info!(
                 "[ChatController] ✅ {} push notifications envoyées pour message {}",
@@ -561,10 +562,10 @@ pub async fn send_message(
                 .notifications_sent_total
                 .fetch_add(count as u64, std::sync::atomic::Ordering::Relaxed);
         }
-        Err(e) => {
+        Err(e_str) => {
             log::warn!(
                 "[ChatController] ⚠️ Push notification échouée (message toujours sauvegardé): {}",
-                e
+                e_str
             );
         }
     }

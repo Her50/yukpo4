@@ -716,7 +716,8 @@ pub async fn broadcast_commande_librairies(
             cmd_nb_occasion,
             payload.rayon_recherche_km,
         )
-        .await;
+        .await
+        .map(|r| r.into_response());
     }
 
     // ====================================================================
