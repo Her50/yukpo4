@@ -76,9 +76,11 @@ const LoginScreen: React.FC = () => {
   // Gérer la réponse Google OAuth
   useEffect(() => {
     if (googleResponse?.type === 'success') {
-      const { id_token } = googleResponse.authentication || {};
-      if (id_token) {
-        handleOAuthLogin('google', id_token);
+      // expo-auth-session retourne idToken (camelCase), pas id_token
+      const idToken = (googleResponse.authentication as any)?.idToken
+        || (googleResponse.authentication as any)?.id_token;
+      if (idToken) {
+        handleOAuthLogin('google', idToken);
       }
     } else if (googleResponse?.type === 'error') {
       console.error('[LoginScreen] Erreur Google OAuth complète:', JSON.stringify(googleResponse, null, 2));

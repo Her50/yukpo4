@@ -1133,6 +1133,9 @@ pub struct PhoneVerificationResponse {
     pub success: bool,
     pub message: String,
     pub phone_verified: bool,
+    /// Code OTP visible uniquement en mode développement (ENVIRONMENT=development) quand Twilio n'est pas configuré
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dev_code: Option<String>,
 }
 
 /// ? Envoi du code de vérification par SMS
@@ -1158,6 +1161,7 @@ pub async fn send_phone_verification_code(
             success: false,
             message: "Numéro de téléphone invalide".to_string(),
             phone_verified: false,
+            dev_code: None,
         }));
     }
 
@@ -1172,6 +1176,7 @@ pub async fn send_phone_verification_code(
             success: false,
             message: "Trop de tentatives. Veuillez attendre avant de réessayer.".to_string(),
             phone_verified: false,
+            dev_code: None,
         }));
     }
 
@@ -1223,6 +1228,7 @@ pub async fn send_phone_verification_code(
                     success: true,
                     message: "Code de vérification envoyé par SMS".to_string(),
                     phone_verified: false,
+                    dev_code: None,
                 }))
             } else {
                 error!(
@@ -1233,16 +1239,37 @@ pub async fn send_phone_verification_code(
                     success: false,
                     message: "Échec de l'envoi du SMS. Veuillez réessayer.".to_string(),
                     phone_verified: false,
+                    dev_code: None,
                 }))
             }
         }
         Err(e) => {
             error!("[send_phone_verification_code] Erreur service SMS: {:?}", e);
-            Ok(Json(PhoneVerificationResponse {
-                success: false,
-                message: "Service SMS indisponible. Veuillez réessayer plus tard.".to_string(),
-                phone_verified: false,
-            }))
+            // Mode développement : retourner le code directement quand Twilio n'est pas configuré
+            let is_dev =
+                std::env::var("ENVIRONMENT").unwrap_or_default().to_lowercase() == "development";
+            if is_dev {
+                warn!(
+                    "[send_phone_verification_code] MODE DEV — code OTP: {}",
+                    verification_code
+                );
+                Ok(Json(PhoneVerificationResponse {
+                    success: true,
+                    message: format!(
+                        "⚠️ Dev — Twilio non configuré. Code OTP : {}",
+                        verification_code
+                    ),
+                    phone_verified: false,
+                    dev_code: Some(verification_code),
+                }))
+            } else {
+                Ok(Json(PhoneVerificationResponse {
+                    success: false,
+                    message: "Service SMS indisponible. Veuillez réessayer plus tard.".to_string(),
+                    phone_verified: false,
+                    dev_code: None,
+                }))
+            }
         }
     }
 }

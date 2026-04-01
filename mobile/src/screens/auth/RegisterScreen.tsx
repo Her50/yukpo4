@@ -96,9 +96,11 @@ const RegisterScreen: React.FC = () => {
   // Gérer la réponse Google OAuth
   useEffect(() => {
     if (googleResponse?.type === 'success') {
-      const { id_token } = googleResponse.authentication || {};
-      if (id_token) {
-        handleOAuthRegister('google', id_token);
+      // expo-auth-session retourne idToken (camelCase), pas id_token
+      const idToken = (googleResponse.authentication as any)?.idToken
+        || (googleResponse.authentication as any)?.id_token;
+      if (idToken) {
+        handleOAuthRegister('google', idToken);
       }
     } else if (googleResponse?.type === 'error') {
       console.error('[RegisterScreen] Erreur Google OAuth complète:', JSON.stringify(googleResponse, null, 2));
