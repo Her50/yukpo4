@@ -2696,8 +2696,8 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
   - gym/sport/fitness → **GymScreen**
   - spa/beauté/coiffure → **SpaScreen**
   - auto/automobile/garage → **AutoServicesSearch** (vente véhicules + pièces)
-  - location_vehicule → **AutoServicesSearch** `{ mode: "location" }` (véhicules à louer — produits créés normalement comme tous les autres produits Yukpo)
-  - vente_vehicule → **AutoServicesSearch** `{ mode: "vente" }` (vente de véhicules)
+  - location_vehicule → **AutoServicesSearch** \`{ mode: "location" }\` (véhicules à louer — produits créés normalement comme tous les autres produits Yukpo)
+  - vente_vehicule → **AutoServicesSearch** \`{ mode: "vente" }\` (vente de véhicules)
   - librairie → **LibrairieScreen**
 - **Debounce:** 400ms after typing stops; minimum 2 characters; auto-updates when query or GPS location changes.
 - **No results in this section ≠ no results overall** — the main AI section below may still have matches.
