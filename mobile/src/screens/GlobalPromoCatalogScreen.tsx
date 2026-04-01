@@ -39,12 +39,13 @@ const getSnapshotImage = (snapshot: any): string | undefined => {
     return undefined;
 };
 
-const formatPrice = (value?: number | null) =>
-    value ? `${value.toLocaleString('fr-FR')} CFA` : t('globalPromoCatalogScreen.prixCommuniqueLorsDuLive');
-
 const GlobalPromoCatalogScreen: React.FC = () => {
     const navigation = useNavigation();
     const { t } = useLanguageSafe();
+
+    // formatPrice doit être déclaré DANS le composant pour accéder à t()
+    const formatPrice = (value?: number | null) =>
+        value ? `${value.toLocaleString('fr-FR')} CFA` : t('globalPromoCatalogScreen.prixCommuniqueLorsDuLive');
     const [pageData, setPageData] = useState<GlobalPromoCatalogItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);

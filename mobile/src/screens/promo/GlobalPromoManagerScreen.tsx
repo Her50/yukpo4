@@ -38,14 +38,15 @@ const slugify = (value: string) =>
         .replace(/^-+|-+$/g, '')
         .slice(0, 60);
 
-const availabilityOptions = [
-    { value: 'online', label: t('globalPromoManager.catalogueEnLigne') },
-    { value: 'live', label: t('globalPromoManager.ventesLiveUniquement') },
-    { value: 'both', label: t('globalPromoManager.catalogueLive') },
-];
-
 const GlobalPromoManagerScreen: React.FC = () => {
     const { t } = useLanguageSafe();
+
+    // availabilityOptions doit être déclaré DANS le composant pour accéder à t()
+    const availabilityOptions = [
+        { value: 'online', label: t('globalPromoManager.catalogueEnLigne') },
+        { value: 'live', label: t('globalPromoManager.ventesLiveUniquement') },
+        { value: 'both', label: t('globalPromoManager.catalogueLive') },
+    ];
     const {
         events,
         entries,

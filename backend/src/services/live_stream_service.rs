@@ -609,7 +609,7 @@ impl LiveStreamingService {
             result.provisioning_source = "fallback_srs".to_string();
         }
 
-        // Ensure fallback configuration
+        // Fallback SRS
         result.used_fallback = true;
         result.stream_key = Some(generate_stream_key());
         result.host_identity = Some(format!(
@@ -634,6 +634,25 @@ impl LiveStreamingService {
             } else {
                 result.fallback_hls_url = Some(normalized.to_string());
             }
+        }
+
+        // Si aucun service de streaming n'est disponible, refuser la création
+        // plutôt que de créer une session avec des URLs nulles inutilisables.
+        let has_any_stream_url = result.webrtc_url.is_some()
+            || result.hls_url.is_some()
+            || result.fallback_rtmp_url.is_some()
+            || result.fallback_hls_url.is_some();
+
+        if !has_any_stream_url {
+            log::error!(
+                "[live] Aucun service de streaming disponible (LiveKit inaccessible, SRS non configuré). \
+                 Définissez LIVEKIT_API_URL/LIVEKIT_API_KEY/LIVEKIT_API_SECRET ou SRS_RTMP_URL/SRS_HLS_URL."
+            );
+            return Err(AppError::ServiceUnavailable(
+                "Le service de streaming est temporairement indisponible. \
+                 Réessayez dans quelques minutes ou contactez le support."
+                    .to_string(),
+            ));
         }
 
         Ok(result)

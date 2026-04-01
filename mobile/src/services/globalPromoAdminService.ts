@@ -44,8 +44,12 @@ const mapEntry = (raw: any): GlobalPromoEntry => ({
 export const fetchGlobalPromoEvents = async (includeArchived = false): Promise<GlobalPromoEvent[]> => {
     const query = includeArchived ? '?include_archived=true' : '';
     const response = await apiGet<GlobalPromoEvent[]>(`/api/global-promos/events${query}`);
-    if (response.success && Array.isArray(response.data)) {
+    // Accepter les deux formes : { success, data: [...] } ou directement [...]
+    if (Array.isArray(response.data)) {
         return response.data.map(mapEvent);
+    }
+    if (Array.isArray(response)) {
+        return (response as unknown as any[]).map(mapEvent);
     }
     return [];
 };
@@ -75,8 +79,12 @@ export const createGlobalPromoEvent = async (payload: CreateGlobalPromoEventPayl
 
 export const fetchGlobalPromoEntries = async (eventId: string): Promise<GlobalPromoEntry[]> => {
     const response = await apiGet<GlobalPromoEntry[]>(`/api/global-promos/events/${eventId}/entries`);
-    if (response.success && Array.isArray(response.data)) {
+    // Accepter les deux formes : { success, data: [...] } ou directement [...]
+    if (Array.isArray(response.data)) {
         return response.data.map(mapEntry);
+    }
+    if (Array.isArray(response)) {
+        return (response as unknown as any[]).map(mapEntry);
     }
     return [];
 };

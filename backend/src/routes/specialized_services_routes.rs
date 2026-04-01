@@ -455,10 +455,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/payments/{id}/status",
             get(specialized_services_controller::get_payment_status),
         )
-        .route(
-            "/api/payments/history",
-            get(specialized_services_controller::get_user_payments),
-        )
+        // ✅ SUPPRIMÉ 2026-04-01: /api/payments/history dupliqué (déjà dans payment_routes.rs)
         // ✅ NOUVEAU 2026-04-01: Notations post-trajet
         .route(
             "/api/reservations/rate",

@@ -209,7 +209,9 @@ const GoLivePage: React.FC = () => {
             toast.success('Live créé avec succès !');
         } catch (error: any) {
             console.error('[GoLivePage] Erreur création live', error);
+            // Le backend Rust peut retourner { error: "...", message: "..." }
             const message =
+                error?.response?.data?.error ||
                 error?.response?.data?.message ||
                 error?.message ||
                 'Impossible de créer le live. Veuillez réessayer.';
