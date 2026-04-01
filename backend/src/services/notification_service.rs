@@ -52,6 +52,10 @@ pub enum NotificationType {
     // ✅ NOUVEAU 2026-03-14: Partage interne + mention
     ProductShared,
     UserMention,
+    // ✅ Notifications emploi
+    JobApplicationReceived,      // Employeur reçoit une candidature
+    JobApplicationStatusUpdated, // Candidat: statut candidature mis à jour
+    NewJobMatching,              // Candidat: nouvelle offre correspondante
 }
 
 impl NotificationType {
@@ -103,6 +107,10 @@ impl NotificationType {
             // ✅ NOUVEAU 2026-03-14
             NotificationType::ProductShared => "product_shared",
             NotificationType::UserMention => "user_mention",
+            // Emploi
+            NotificationType::JobApplicationReceived => "job_application_received",
+            NotificationType::JobApplicationStatusUpdated => "job_application_status_updated",
+            NotificationType::NewJobMatching => "new_job_matching",
         }
     }
 }

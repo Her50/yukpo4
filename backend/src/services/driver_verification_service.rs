@@ -1,7 +1,7 @@
 // ✅ Service KYC vérification conducteur — CNI + selfie
 // Analyse automatique via Google Cloud Vision API (document_ai_service)
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SubmitVerificationRequest {
@@ -57,7 +57,7 @@ impl DriverVerificationService {
         }
 
         // ── 1. Insertion / mise à jour en base ────────────────────────────────
-        let row = sqlx::query!(
+        let row = sqlx::query(
             r#"INSERT INTO driver_verifications
                (user_id, service_type, cni_front_url, cni_back_url, selfie_url, status)
                VALUES ($1,$2,$3,$4,$5,'pending')
@@ -70,25 +70,34 @@ impl DriverVerificationService {
                      submitted_at  = NOW()
                RETURNING id, status, submitted_at, reviewed_at, rejection_reason,
                          cni_front_url, cni_back_url, selfie_url"#,
-            user_id,
-            stype,
-            req.cni_front_url,
-            req.cni_back_url,
-            req.selfie_url,
         )
+        .bind(user_id)
+        .bind(stype.clone())
+        .bind(req.cni_front_url.clone())
+        .bind(req.cni_back_url.clone())
+        .bind(req.selfie_url.clone())
         .fetch_one(&self.pool)
         .await
         .map_err(|e| format!("DB: {}", e))?;
 
+        let row_id: i64 = row.get("id");
+        let row_status: String = row.get("status");
+        let row_submitted_at: chrono::DateTime<chrono::Utc> = row.get("submitted_at");
+        let row_reviewed_at: Option<chrono::DateTime<chrono::Utc>> = row.get("reviewed_at");
+        let row_rejection_reason: Option<String> = row.get("rejection_reason");
+        let row_cni_front_url: Option<String> = row.get("cni_front_url");
+        let row_cni_back_url: Option<String> = row.get("cni_back_url");
+        let row_selfie_url: Option<String> = row.get("selfie_url");
+
         let is_complete =
-            row.cni_front_url.is_some() && row.cni_back_url.is_some() && row.selfie_url.is_some();
+            row_cni_front_url.is_some() && row_cni_back_url.is_some() && row_selfie_url.is_some();
 
         // Passage en under_review si documents complets (sans IA)
         if is_complete {
-            let _ = sqlx::query!(
+            let _ = sqlx::query(
                 "UPDATE driver_verifications SET status='under_review' WHERE id=$1 AND status='pending'",
-                row.id
             )
+            .bind(row_id)
             .execute(&self.pool)
             .await;
         }
@@ -96,7 +105,7 @@ impl DriverVerificationService {
         let mut final_status = if is_complete {
             "under_review".to_string()
         } else {
-            row.status.clone()
+            row_status.clone()
         };
         let mut ai_score: Option<i32> = None;
         let mut ai_decision: Option<String> = None;
@@ -122,7 +131,7 @@ impl DriverVerificationService {
                     serde_json::to_string(&result.details).unwrap_or_else(|_| "[]".to_string());
 
                 // Mise à jour DB avec résultat IA
-                let _ = sqlx::query!(
+                let _ = sqlx::query(
                     r#"UPDATE driver_verifications
                        SET ai_score          = $1,
                            ai_decision       = $2,
@@ -131,13 +140,13 @@ impl DriverVerificationService {
                            ai_details        = $5,
                            status            = $2
                        WHERE id = $6"#,
-                    score_i32,
-                    result.decision,
-                    result.extracted_name,
-                    result.extracted_id_number,
-                    details_json,
-                    row.id,
                 )
+                .bind(score_i32)
+                .bind(result.decision.clone())
+                .bind(result.extracted_name.clone())
+                .bind(result.extracted_id_number.clone())
+                .bind(details_json.clone())
+                .bind(row_id)
                 .execute(&self.pool)
                 .await;
 
@@ -158,16 +167,16 @@ impl DriverVerificationService {
         }
 
         Ok(VerificationStatus {
-            id: row.id,
+            id: row_id,
             user_id,
             service_type: stype,
-            cni_front_url: row.cni_front_url,
-            cni_back_url: row.cni_back_url,
-            selfie_url: row.selfie_url,
+            cni_front_url: row_cni_front_url,
+            cni_back_url: row_cni_back_url,
+            selfie_url: row_selfie_url,
             status: final_status,
-            rejection_reason: row.rejection_reason,
-            submitted_at: row.submitted_at.to_rfc3339(),
-            reviewed_at: row.reviewed_at.map(|t| t.to_rfc3339()),
+            rejection_reason: row_rejection_reason,
+            submitted_at: row_submitted_at.to_rfc3339(),
+            reviewed_at: row_reviewed_at.map(|t| t.to_rfc3339()),
             is_complete,
             ai_score,
             ai_decision,
@@ -182,49 +191,55 @@ impl DriverVerificationService {
         user_id: i32,
         service_type: &str,
     ) -> Result<Option<VerificationStatus>, String> {
-        let row = sqlx::query!(
+        let row = sqlx::query(
             r#"SELECT id, service_type, cni_front_url, cni_back_url, selfie_url,
                status, rejection_reason, submitted_at, reviewed_at,
                ai_score, ai_decision, ai_extracted_name, ai_extracted_id, ai_details
                FROM driver_verifications WHERE user_id=$1 AND service_type=$2"#,
-            user_id,
-            service_type,
         )
+        .bind(user_id)
+        .bind(service_type)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| e.to_string())?;
 
         Ok(row.map(|r| {
-            let is_complete =
-                r.cni_front_url.is_some() && r.cni_back_url.is_some() && r.selfie_url.is_some();
+            let cni_front: Option<String> = r.get("cni_front_url");
+            let cni_back: Option<String> = r.get("cni_back_url");
+            let selfie: Option<String> = r.get("selfie_url");
+            let is_complete = cni_front.is_some() && cni_back.is_some() && selfie.is_some();
             VerificationStatus {
-                id: r.id,
+                id: r.get("id"),
                 user_id,
-                service_type: r.service_type,
-                cni_front_url: r.cni_front_url,
-                cni_back_url: r.cni_back_url,
-                selfie_url: r.selfie_url,
-                status: r.status,
-                rejection_reason: r.rejection_reason,
-                submitted_at: r.submitted_at.to_rfc3339(),
-                reviewed_at: r.reviewed_at.map(|t| t.to_rfc3339()),
+                service_type: r.get("service_type"),
+                cni_front_url: cni_front,
+                cni_back_url: cni_back,
+                selfie_url: selfie,
+                status: r.get("status"),
+                rejection_reason: r.get("rejection_reason"),
+                submitted_at: r
+                    .get::<chrono::DateTime<chrono::Utc>, _>("submitted_at")
+                    .to_rfc3339(),
+                reviewed_at: r
+                    .get::<Option<chrono::DateTime<chrono::Utc>>, _>("reviewed_at")
+                    .map(|t| t.to_rfc3339()),
                 is_complete,
-                ai_score: r.ai_score,
-                ai_decision: r.ai_decision,
-                ai_extracted_name: r.ai_extracted_name,
-                ai_extracted_id: r.ai_extracted_id,
-                ai_details: r.ai_details,
+                ai_score: r.get("ai_score"),
+                ai_decision: r.get("ai_decision"),
+                ai_extracted_name: r.get("ai_extracted_name"),
+                ai_extracted_id: r.get("ai_extracted_id"),
+                ai_details: r.get("ai_details"),
             }
         }))
     }
 
     /// Approbation manuelle par un admin
     pub async fn approve(&self, verif_id: i64, reviewer_id: i32) -> Result<(), String> {
-        sqlx::query!(
+        sqlx::query(
             "UPDATE driver_verifications SET status='approved', reviewed_by=$1, reviewed_at=NOW() WHERE id=$2",
-            reviewer_id,
-            verif_id,
         )
+        .bind(reviewer_id)
+        .bind(verif_id)
         .execute(&self.pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -237,12 +252,12 @@ impl DriverVerificationService {
         reviewer_id: i32,
         reason: &str,
     ) -> Result<(), String> {
-        sqlx::query!(
+        sqlx::query(
             "UPDATE driver_verifications SET status='rejected', reviewed_by=$1, reviewed_at=NOW(), rejection_reason=$2 WHERE id=$3",
-            reviewer_id,
-            reason,
-            verif_id,
         )
+        .bind(reviewer_id)
+        .bind(reason)
+        .bind(verif_id)
         .execute(&self.pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -250,14 +265,13 @@ impl DriverVerificationService {
     }
 
     pub async fn is_verified(&self, user_id: i32, service_type: &str) -> bool {
-        sqlx::query_scalar!(
+        sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM driver_verifications WHERE user_id=$1 AND service_type=$2 AND status='approved')",
-            user_id,
-            service_type,
         )
+        .bind(user_id)
+        .bind(service_type)
         .fetch_one(&self.pool)
         .await
-        .unwrap_or(Some(false))
         .unwrap_or(false)
     }
 }

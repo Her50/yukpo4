@@ -7,8 +7,7 @@
 ///   - Prix/km            : TARIF_KM_FCFA    (défaut 350 FCFA/km)
 ///   - Supplément nuit    : +20 % entre 22h et 6h
 ///   - Supplément rush    : +15 % 7h-9h et 17h-20h
-use crate::core::errors::AppError;
-use crate::core::types::AppResult;
+use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;
 use axum::{

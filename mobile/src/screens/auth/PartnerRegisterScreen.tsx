@@ -54,9 +54,10 @@ const PartnerRegisterScreen: React.FC = () => {
     driver_id_photo: null as string | null, // Photo de la carte d'identité (base64)
     driver_vehicle_type: '' as string, // taxi, covoiturage, les_deux
     driver_experience_years: '' as string,
+    driver_niu: '' as string,  // NIU fiscal obligatoire pour chauffeurs/coursiers
     // ✅ NOUVEAU: Documents administratifs entreprise (Cameroun)
     rccm: '' as string,              // Registre du Commerce et du Crédit Mobilier
-    numero_contribuable: '' as string, // Numéro contribuable/fiscal
+    numero_contribuable: '' as string, // Numéro contribuable/fiscal (entreprises)
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -244,10 +245,22 @@ const PartnerRegisterScreen: React.FC = () => {
         setError(t('partnerRegister.veuillezSelectionnerLeTypeDe'));
         return;
       }
+      if (!form.driver_niu?.trim()) {
+        setError('Le Numéro d\'Identifiant Unique (NIU) est obligatoire pour les chauffeurs');
+        return;
+      }
+    }
+
+    // ✅ NIU obligatoire pour les coursiers (livraison)
+    if (form.partner_type === 'livraison' || form.partner_type === 'livraison_courses_marche') {
+      if (!form.driver_niu?.trim()) {
+        setError('Le Numéro d\'Identifiant Unique (NIU) est obligatoire pour les coursiers');
+        return;
+      }
     }
 
     // ✅ NOUVEAU: Validation documents administratifs pour structures commerciales
-    if (form.partner_type && form.partner_type !== 'chauffeur') {
+    if (form.partner_type && form.partner_type !== 'chauffeur' && form.partner_type !== 'livraison' && form.partner_type !== 'livraison_courses_marche') {
       if (!form.rccm?.trim()) {
         setError('Le numéro RCCM est obligatoire pour les partenaires professionnels');
         return;
@@ -294,10 +307,16 @@ const PartnerRegisterScreen: React.FC = () => {
         registerData.driver_id_photo = form.driver_id_photo;
         registerData.driver_vehicle_type = form.driver_vehicle_type;
         registerData.driver_experience_years = form.driver_experience_years;
+        registerData.numero_contribuable = form.driver_niu.trim(); // NIU pour chauffeur
       }
 
-      // ✅ NOUVEAU: Documents administratifs entreprise
-      if (form.partner_type !== 'chauffeur') {
+      // NIU pour coursiers
+      if (form.partner_type === 'livraison' || form.partner_type === 'livraison_courses_marche') {
+        registerData.numero_contribuable = form.driver_niu.trim();
+      }
+
+      // ✅ NOUVEAU: Documents administratifs entreprise (RCCM + NIU)
+      if (form.partner_type !== 'chauffeur' && form.partner_type !== 'livraison' && form.partner_type !== 'livraison_courses_marche') {
         registerData.rccm = form.rccm.trim();
         registerData.numero_contribuable = form.numero_contribuable.trim();
       }
@@ -752,11 +771,47 @@ const PartnerRegisterScreen: React.FC = () => {
                   disabled={loading}
                   style={styles.input}
                 />
+
+                <TextInput
+                  label="Numéro Identifiant Unique (NIU) *"
+                  value={form.driver_niu}
+                  onChangeText={(text) => setForm({ ...form, driver_niu: text.toUpperCase() })}
+                  placeholder="Ex: M012345678901A"
+                  autoCapitalize="characters"
+                  disabled={loading}
+                  style={styles.input}
+                />
+                <Text style={styles.helperText}>
+                  NIU délivré par la Direction Générale des Impôts du Cameroun — obligatoire pour exercer
+                </Text>
               </>
             )}
 
-            {/* ✅ NOUVEAU: Section documents administratifs — pour toutes structures non-chauffeur */}
-            {form.partner_type !== '' && form.partner_type !== 'chauffeur' && (
+            {/* ✅ NIU obligatoire pour les coursiers */}
+            {(form.partner_type === 'livraison' || form.partner_type === 'livraison_courses_marche') && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.sectionHeader}>
+                  <Building size={20} color={theme.colors.primary} />
+                  <Title style={styles.sectionTitle}>Document fiscal obligatoire</Title>
+                </View>
+                <TextInput
+                  label="Numéro Identifiant Unique (NIU) *"
+                  value={form.driver_niu}
+                  onChangeText={(text) => setForm({ ...form, driver_niu: text.toUpperCase() })}
+                  placeholder="Ex: M012345678901A"
+                  autoCapitalize="characters"
+                  disabled={loading}
+                  style={styles.input}
+                />
+                <Text style={styles.helperText}>
+                  NIU délivré par la Direction Générale des Impôts — obligatoire pour les coursiers professionnels
+                </Text>
+              </>
+            )}
+
+            {/* ✅ NOUVEAU: Section documents administratifs — entreprises (RCCM + NIU) */}
+            {form.partner_type !== '' && form.partner_type !== 'chauffeur' && form.partner_type !== 'livraison' && form.partner_type !== 'livraison_courses_marche' && (
               <>
                 <View style={styles.divider} />
                 <View style={styles.sectionHeader}>

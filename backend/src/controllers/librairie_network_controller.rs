@@ -725,7 +725,7 @@ pub async fn broadcast_commande_librairies(
     // ====================================================================
 
     // Chercher YukpoLibrairie (super libraire actif unique)
-    let super_librairie = sqlx::query!(
+    let super_librairie = sqlx::query(
         r#"
         SELECT id, user_id, delai_validation_super_librairie_s
         FROM librairie_partners
@@ -733,17 +733,22 @@ pub async fn broadcast_commande_librairies(
           AND est_actif = true
           AND statut = 'actif'
         LIMIT 1
-        "#
+        "#,
     )
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur recherche super librairie: {}", e)))?;
 
     if let Some(sl) = super_librairie {
+        use sqlx::Row as _;
         // ----------------------------------------------------------------
         // Routage vers YukpoLibrairie
         // ----------------------------------------------------------------
-        let delai_s = sl.delai_validation_super_librairie_s as i64;
+        let sl_id: uuid::Uuid = sl.get("id");
+        let sl_user_id: i32 = sl.get("user_id");
+        let delai_s: i32 =
+            sl.get::<Option<i32>, _>("delai_validation_super_librairie_s").unwrap_or(300);
+        let delai_s = delai_s as i64;
         let timeout_at = Utc::now() + chrono::Duration::seconds(delai_s);
 
         let mut tx = state
@@ -763,7 +768,7 @@ pub async fn broadcast_commande_librairies(
             WHERE id = $3
             "#,
         )
-        .bind(sl.id)
+        .bind(sl_id)
         .bind(timeout_at)
         .bind(payload.commande_id)
         .execute(&mut *tx)
@@ -779,7 +784,7 @@ pub async fn broadcast_commande_librairies(
             "#,
         )
         .bind(payload.commande_id)
-        .bind(sl.id)
+        .bind(sl_id)
         .execute(&mut *tx)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur validation super librairie: {}", e)))?;
@@ -797,7 +802,7 @@ pub async fn broadcast_commande_librairies(
             VALUES ($1, $2, 'nouvelle_commande', $3, 'envoyee')
             "#,
         )
-        .bind(sl.id)
+        .bind(sl_id)
         .bind(payload.commande_id)
         .bind(&message)
         .execute(&mut *tx)
@@ -828,7 +833,7 @@ pub async fn broadcast_commande_librairies(
         // Notification push à YukpoLibrairie
         let _ = send_notification(
             &state,
-            sl.user_id,
+            sl_user_id,
             "Nouvelle commande prioritaire",
             &message,
             Some(serde_json::json!({
@@ -1022,23 +1027,23 @@ pub async fn super_librairie_dashboard(
 ) -> AppResult<impl IntoResponse> {
     // Admins/superadmins accèdent directement ; le super libraire accède via son user_id
     let is_admin = role == "admin" || role == "super_admin";
-    let sl = if is_admin {
-        sqlx::query!(
-            "SELECT id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1"
+    let sl_row = if is_admin {
+        sqlx::query(
+            "SELECT id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1",
         )
         .fetch_optional(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
         .ok_or_else(|| AppError::NotFound("Aucun super libraire actif".to_string()))?
     } else {
-        sqlx::query!(
+        sqlx::query(
             r#"
             SELECT id FROM librairie_partners
             WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true
             LIMIT 1
             "#,
-            user_id
         )
+        .bind(user_id)
         .fetch_optional(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
@@ -1048,6 +1053,8 @@ pub async fn super_librairie_dashboard(
             )
         })?
     };
+    use sqlx::Row as _;
+    let sl_id: uuid::Uuid = sl_row.get("id");
 
     let limit = params.limit.unwrap_or(50);
     let offset = params.offset.unwrap_or(0);
@@ -1086,7 +1093,7 @@ pub async fn super_librairie_dashboard(
         LIMIT $2 OFFSET $3
         "#,
     )
-    .bind(sl.id)
+    .bind(sl_id)
     .bind(limit)
     .bind(offset)
     .fetch_all(&state.pg)
@@ -1137,21 +1144,24 @@ pub async fn super_librairie_liberer_commande(
     Json(payload): Json<LibererCommandePayload>,
 ) -> AppResult<impl IntoResponse> {
     // Vérifier super libraire
-    let sl = sqlx::query!(
+    let sl_row = sqlx::query(
         r#"
         SELECT id FROM librairie_partners
         WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true
         LIMIT 1
         "#,
-        user_id
     )
+    .bind(user_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
     .ok_or_else(|| AppError::Forbidden("Accès réservé au super libraire".to_string()))?;
 
+    use sqlx::Row as _;
+    let sl_id: uuid::Uuid = sl_row.get("id");
+
     // Vérifier que la commande est bien chez le super libraire
-    let commande_row = sqlx::query!(
+    let commande_row = sqlx::query(
         r#"
         SELECT id, gps_livraison, reference_commande,
                COUNT(cln.id) OVER() AS nb_neufs,
@@ -1164,29 +1174,32 @@ pub async fn super_librairie_liberer_commande(
           AND cm.super_librairie_fallback_at IS NULL
         LIMIT 1
         "#,
-        commande_id
     )
+    .bind(commande_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Commande non trouvée ou déjà libérée".to_string()))?;
 
-    let gps = commande_row.gps_livraison.unwrap_or_default();
-    let reference = commande_row.reference_commande.unwrap_or_default();
+    let gps: String = commande_row.get::<Option<String>, _>("gps_livraison").unwrap_or_default();
+    let reference: String =
+        commande_row.get::<Option<String>, _>("reference_commande").unwrap_or_default();
+    let nb_neufs: i64 = commande_row.get::<Option<i64>, _>("nb_neufs").unwrap_or(0);
+    let nb_occasion: i64 = commande_row.get::<Option<i64>, _>("nb_occasion").unwrap_or(0);
 
     // Log audit avant de transférer
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO super_librairie_audit_log (commande_id, evenement, details)
         VALUES ($1, 'liberation_manuelle', $2)
         "#,
-        commande_id,
-        serde_json::json!({
-            "motif": payload.motif,
-            "libere_par": user_id,
-            "super_librairie_id": sl.id.to_string(),
-        })
     )
+    .bind(commande_id)
+    .bind(serde_json::json!({
+        "motif": payload.motif,
+        "libere_par": user_id,
+        "super_librairie_id": sl_id.to_string(),
+    }))
     .execute(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur audit: {}", e)))?;
@@ -1197,8 +1210,8 @@ pub async fn super_librairie_liberer_commande(
         commande_id,
         &gps,
         &reference,
-        commande_row.nb_neufs.unwrap_or(0),
-        commande_row.nb_occasion.unwrap_or(0),
+        nb_neufs,
+        nb_occasion,
         payload.rayon_km.map(|r| r as i32),
     )
     .await

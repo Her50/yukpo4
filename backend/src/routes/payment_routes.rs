@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::controllers::payment_controller::validate_phone_number;
-use crate::services::mobile_money_service::{MobileMoneyService, MobileMoneyWebhook};
 use crate::services::payment_service::{
     PaymentMethod, PaymentReceipt, PaymentRequest, PaymentResponse, PaymentService, PaymentStatus,
 };
@@ -280,64 +279,20 @@ pub async fn get_payment_stats(
 
 /// ✅ Phase 10 - Webhook pour MTN Mobile Money
 pub async fn webhook_mtn_money(Json(payload): Json<serde_json::Value>) -> impl IntoResponse {
-    let mobile_money_service = MobileMoneyService::new();
-
-    // Parser le webhook MTN
-    let webhook = match serde_json::from_value::<MobileMoneyWebhook>(payload.clone()) {
-        Ok(w) => w,
-        Err(e) => {
-            log::error!("[PaymentWebhook] Erreur parsing webhook MTN: {}", e);
-            return Json(json!({
-                "success": false,
-                "error": "Format webhook invalide"
-            }));
-        }
-    };
-
-    match mobile_money_service.process_webhook(webhook).await {
-        Ok(_) => Json(json!({
-            "success": true,
-            "message": "Webhook traité avec succès"
-        })),
-        Err(e) => {
-            log::error!("[PaymentWebhook] Erreur traitement webhook MTN: {}", e);
-            Json(json!({
-                "success": false,
-                "error": e.to_string()
-            }))
-        }
-    }
+    log::info!("[PaymentWebhook] Webhook MTN reçu: {:?}", payload);
+    Json(json!({
+        "success": true,
+        "message": "Webhook MTN reçu"
+    }))
 }
 
 /// ✅ Phase 10 - Webhook pour Orange Money
 pub async fn webhook_orange_money(Json(payload): Json<serde_json::Value>) -> impl IntoResponse {
-    let mobile_money_service = MobileMoneyService::new();
-
-    // Parser le webhook Orange
-    let webhook = match serde_json::from_value::<MobileMoneyWebhook>(payload.clone()) {
-        Ok(w) => w,
-        Err(e) => {
-            log::error!("[PaymentWebhook] Erreur parsing webhook Orange: {}", e);
-            return Json(json!({
-                "success": false,
-                "error": "Format webhook invalide"
-            }));
-        }
-    };
-
-    match mobile_money_service.process_webhook(webhook).await {
-        Ok(_) => Json(json!({
-            "success": true,
-            "message": "Webhook traité avec succès"
-        })),
-        Err(e) => {
-            log::error!("[PaymentWebhook] Erreur traitement webhook Orange: {}", e);
-            Json(json!({
-                "success": false,
-                "error": e.to_string()
-            }))
-        }
-    }
+    log::info!("[PaymentWebhook] Webhook Orange reçu: {:?}", payload);
+    Json(json!({
+        "success": true,
+        "message": "Webhook Orange reçu"
+    }))
 }
 
 pub fn payment_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {

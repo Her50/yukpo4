@@ -196,7 +196,7 @@ pub async fn create_candidature(
         if let Err(e) = notification_service::create_notification(
             &state.pg,
             emp_id,
-            notification_service::NotificationType::SystemAlert, // TODO: Créer un type spécifique
+            notification_service::NotificationType::JobApplicationReceived,
             "Nouvelle candidature".to_string(),
             format!(
                 "{} a postulé à votre offre: {}",
@@ -245,7 +245,7 @@ pub async fn create_candidature(
     if let Err(e) = notification_service::create_notification(
         &state.pg,
         user_id,
-        notification_service::NotificationType::SystemAlert,
+        notification_service::NotificationType::JobApplicationReceived,
         "Candidature envoyée".to_string(),
         format!(
             "Votre candidature pour l'offre \"{}\" a été envoyée avec succès",
@@ -623,7 +623,7 @@ pub async fn update_statut_candidature(
         if let Err(e) = notification_service::create_notification(
             &state.pg,
             cand_id,
-            notification_service::NotificationType::SystemAlert,
+            notification_service::NotificationType::JobApplicationStatusUpdated,
             title.clone(),
             body.clone(),
             Some(notification_data.clone()),

@@ -2426,7 +2426,7 @@ async fn get_courier_stats(
         0.0
     };
 
-    let rating_avg = num_traits::ToPrimitive::to_f64(&courier.rating_average).unwrap_or(0.0);
+    let rating_avg = bigdecimal::ToPrimitive::to_f64(&courier.rating_average).unwrap_or(0.0);
 
     // Temps moyen de livraison (minutes) sur les 30 derniers jours
     let avg_delivery_time_min: f64 = sqlx::query_scalar::<_, Option<f64>>(

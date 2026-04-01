@@ -363,7 +363,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
     let gpu = crate::routes::gpu_routes::gpu_routes(state.clone()); // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
     let hotel_management = hotel_room_management_routes(state.clone()); // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
     let hotel_financial = hotel_financial_routes(state.clone()); // ✅ 2026-03-17: Routes financières hôtel/meublé
-    let hotel_groups = hotel_group_routes::hotel_group_routes(state.clone()); // ✅ 2026-04-01: Routes groupes, form config, profils clients
+    let hotel_groups = hotel_group_routes(state.clone()); // ✅ 2026-04-01: Routes groupes, form config, profils clients
     let assurance = assurance_routes(state.clone()); // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
     let auto_search = auto_search_routes(state.clone()); // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente
     let supermarket = supermarket_routes(state.clone()); // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)

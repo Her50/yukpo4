@@ -2,10 +2,6 @@ use crate::state::AppState;
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
-    services::mobile_money_service::{
-        MobileMoneyPaymentRequest, MobileMoneyProvider, MobileMoneyService,
-        PaymentStatus as MobileMoneyStatus,
-    },
     services::phone_validation_service::{PhoneValidationRequest, PhoneValidationService},
 };
 use axum::{
@@ -202,111 +198,15 @@ pub async fn initiate_payment(
                     "Numéro requis pour Orange Money / MTN MoMo".to_string(),
                 ));
             }
-
-            let mobile_service = MobileMoneyService::new();
-            let direct_provider = if req.payment_method == "mtn_momo" {
-                MobileMoneyProvider::MTN
-            } else {
-                MobileMoneyProvider::Orange
-            };
-
-            let direct_available = mobile_service.is_provider_available(&direct_provider);
-
-            if direct_available {
-                let callback_base = std::env::var("WEBHOOK_BASE_URL")
-                    .or_else(|_| std::env::var("BACKEND_URL"))
-                    .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
-                let callback_url = if req.payment_method == "mtn_momo" {
-                    format!("{}/webhook/mtn", callback_base)
-                } else {
-                    format!("{}/webhook/orange", callback_base)
-                };
-
-                let direct_request = MobileMoneyPaymentRequest {
-                    provider: direct_provider.clone(),
-                    phone_number: phone.clone(),
-                    amount: req.amount_xaf as f64,
-                    currency: actual_currency.clone(),
-                    transaction_reference: payment_id.clone(),
-                    description: Some(format!("Recharge Yukpo {} {}", req.amount_xaf, actual_currency)),
-                    callback_url: Some(callback_url),
-                };
-
-                match mobile_service.initiate_payment(direct_request).await {
-                    Ok(direct_response) if direct_response.success => {
-                        let provider_label = match direct_provider {
-                            MobileMoneyProvider::MTN => "mtn_direct",
-                            MobileMoneyProvider::Orange => "orange_direct",
-                        };
-                        let direct_status = match direct_response.status {
-                            MobileMoneyStatus::Completed => "success",
-                            MobileMoneyStatus::Processing => "processing",
-                            MobileMoneyStatus::Cancelled => "cancelled",
-                            MobileMoneyStatus::Failed => "failed",
-                            MobileMoneyStatus::Pending => "pending",
-                        };
-
-                        let _ = sqlx::query(
-                            "UPDATE payment_attempts SET status = $1, transaction_id = $2, aggregator_provider = $3, aggregator_ref = $4, payment_url = $5 WHERE payment_id = $6"
-                        )
-                        .bind(direct_status)
-                        .bind(direct_response.provider_transaction_id.as_deref().unwrap_or(&payment_id))
-                        .bind(provider_label)
-                        .bind(direct_response.provider_transaction_id.as_deref().unwrap_or(&payment_id))
-                        .bind(Option::<String>::None)
-                        .bind(&payment_id)
-                        .execute(&state.pg)
-                        .await;
-
-                        let instr = direct_response.instructions.unwrap_or_else(|| {
-                            "Confirmez le paiement sur votre téléphone.".to_string()
-                        });
-                        (None, instr, Some(provider_label.to_string()))
-                    }
-                    Ok(direct_response) => {
-                        log::warn!(
-                            "[initiate_payment] API directe {} indisponible/échouée, fallback agrégateur: {:?}",
-                            req.payment_method,
-                            direct_response.error
-                        );
-                        initiate_via_aggregator(
-                            &state,
-                            &payment_id,
-                            user_id,
-                            &req,
-                            &actual_currency,
-                            "fallback_after_direct",
-                        )
-                        .await?
-                    }
-                    Err(e) => {
-                        log::warn!(
-                            "[initiate_payment] API directe {} erreur, fallback agrégateur: {}",
-                            req.payment_method,
-                            e
-                        );
-                        initiate_via_aggregator(
-                            &state,
-                            &payment_id,
-                            user_id,
-                            &req,
-                            &actual_currency,
-                            "fallback_after_direct_error",
-                        )
-                        .await?
-                    }
-                }
-            } else {
-                initiate_via_aggregator(
-                    &state,
-                    &payment_id,
-                    user_id,
-                    &req,
-                    &actual_currency,
-                    "aggregator_only",
-                )
-                .await?
-            }
+            initiate_via_aggregator(
+                &state,
+                &payment_id,
+                user_id,
+                &req,
+                &actual_currency,
+                "aggregator_only",
+            )
+            .await?
         }
         "visa" | "mastercard" | "mobile_money" | "wave" | "moov_money" | "airtel_money"
         | "mpesa" | "vodafone_cash" | "free_money" | "tigo_pesa" | "ecocash" => {

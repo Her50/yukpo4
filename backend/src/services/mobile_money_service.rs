@@ -1,6 +1,6 @@
 // ✅ Service Paiement Mobile Money — MTN MoMo & Orange Money (Cameroun)
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -67,13 +67,24 @@ impl MobileMoneyService {
         );
         let currency = req.currency.unwrap_or_else(|| "XAF".to_string());
 
-        let row = sqlx::query!(
+        let row = sqlx::query(
             r#"INSERT INTO mobile_money_payments
                (reservation_id, user_id, amount, currency, phone_number, provider, transaction_ref, status)
                VALUES ($1, $2, $3, $4, $5, $6, $7, 'processing')
                RETURNING id"#,
-            req.reservation_id, user_id, req.amount, currency, phone, provider, transaction_ref,
-        ).fetch_one(&self.pool).await.map_err(|e| format!("DB: {}", e))?;
+        )
+        .bind(req.reservation_id)
+        .bind(user_id)
+        .bind(req.amount)
+        .bind(&currency)
+        .bind(&phone)
+        .bind(&provider)
+        .bind(&transaction_ref)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| format!("DB: {}", e))?;
+
+        let payment_id: i64 = row.get("id");
 
         let ussd_code = match provider.as_str() {
             "mtn" => Some(format!("*126*1*{}*{}#", phone, req.amount as i64)),
@@ -81,10 +92,10 @@ impl MobileMoneyService {
             _ => None,
         };
 
-        self.simulate_completion(row.id).await;
+        self.simulate_completion(payment_id).await;
 
         Ok(PaymentResult {
-            payment_id: row.id,
+            payment_id,
             transaction_ref,
             status: "processing".to_string(),
             message: format!(
@@ -100,29 +111,31 @@ impl MobileMoneyService {
         payment_id: i64,
         user_id: i32,
     ) -> Result<PaymentStatusResult, String> {
-        let r = sqlx::query!(
+        let r = sqlx::query(
             r#"SELECT id, transaction_ref, status, amount, currency, provider, phone_number,
                initiated_at, completed_at, error_message
                FROM mobile_money_payments WHERE id = $1 AND user_id = $2"#,
-            payment_id,
-            user_id,
         )
+        .bind(payment_id)
+        .bind(user_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| e.to_string())?
         .ok_or("Paiement introuvable.")?;
 
         Ok(PaymentStatusResult {
-            payment_id: r.id,
-            transaction_ref: r.transaction_ref.unwrap_or_default(),
-            status: r.status,
-            amount: r.amount,
-            currency: r.currency,
-            provider: r.provider,
-            phone_number: r.phone_number,
-            initiated_at: r.initiated_at.to_rfc3339(),
-            completed_at: r.completed_at.map(|t| t.to_rfc3339()),
-            error_message: r.error_message,
+            payment_id: r.get("id"),
+            transaction_ref: r.get::<Option<String>, _>("transaction_ref").unwrap_or_default(),
+            status: r.get("status"),
+            amount: r.get("amount"),
+            currency: r.get("currency"),
+            provider: r.get("provider"),
+            phone_number: r.get("phone_number"),
+            initiated_at: r.get::<chrono::DateTime<chrono::Utc>, _>("initiated_at").to_rfc3339(),
+            completed_at: r
+                .get::<Option<chrono::DateTime<chrono::Utc>>, _>("completed_at")
+                .map(|t| t.to_rfc3339()),
+            error_message: r.get("error_message"),
         })
     }
 
@@ -130,12 +143,12 @@ impl MobileMoneyService {
         &self,
         user_id: i32,
     ) -> Result<Vec<PaymentStatusResult>, String> {
-        let rows = sqlx::query!(
+        let rows = sqlx::query(
             r#"SELECT id, transaction_ref, status, amount, currency, provider, phone_number,
                initiated_at, completed_at, error_message
                FROM mobile_money_payments WHERE user_id = $1 ORDER BY initiated_at DESC LIMIT 50"#,
-            user_id,
         )
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| e.to_string())?;
@@ -143,34 +156,39 @@ impl MobileMoneyService {
         Ok(rows
             .into_iter()
             .map(|r| PaymentStatusResult {
-                payment_id: r.id,
-                transaction_ref: r.transaction_ref.unwrap_or_default(),
-                status: r.status,
-                amount: r.amount,
-                currency: r.currency,
-                provider: r.provider,
-                phone_number: r.phone_number,
-                initiated_at: r.initiated_at.to_rfc3339(),
-                completed_at: r.completed_at.map(|t| t.to_rfc3339()),
-                error_message: r.error_message,
+                payment_id: r.get("id"),
+                transaction_ref: r.get::<Option<String>, _>("transaction_ref").unwrap_or_default(),
+                status: r.get("status"),
+                amount: r.get("amount"),
+                currency: r.get("currency"),
+                provider: r.get("provider"),
+                phone_number: r.get("phone_number"),
+                initiated_at: r
+                    .get::<chrono::DateTime<chrono::Utc>, _>("initiated_at")
+                    .to_rfc3339(),
+                completed_at: r
+                    .get::<Option<chrono::DateTime<chrono::Utc>>, _>("completed_at")
+                    .map(|t| t.to_rfc3339()),
+                error_message: r.get("error_message"),
             })
             .collect())
     }
 
-    /// Simulation completion (dev). En prod: webhook MTN/Orange callback.
     async fn simulate_completion(&self, payment_id: i64) {
         let pool = self.pool.clone();
         tokio::spawn(async move {
             tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-            let _ = sqlx::query!(
+            let _ = sqlx::query(
                 "UPDATE mobile_money_payments SET status='completed', completed_at=NOW() WHERE id=$1",
-                payment_id
-            ).execute(&pool).await;
-            let _ = sqlx::query!(
+            )
+            .bind(payment_id)
+            .execute(&pool)
+            .await;
+            let _ = sqlx::query(
                 r#"UPDATE specialized_reservations sr SET payment_status='paid'
                    FROM mobile_money_payments mp WHERE mp.id=$1 AND mp.reservation_id=sr.id"#,
-                payment_id
             )
+            .bind(payment_id)
             .execute(&pool)
             .await;
         });

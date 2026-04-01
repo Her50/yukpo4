@@ -5,7 +5,6 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     ScrollView,
     StyleSheet,
     Text,
@@ -210,8 +209,7 @@ const AnalyseCVScreen: React.FC = () => {
                         <NativeButton
                             title="Voir suggestions formations"
                             onPress={() => {
-                                // TODO: Navigation vers suggestions formations
-                                Alert.alert('À venir', 'Fonctionnalité à implémenter');
+                                navigation.navigate('AISuggestFormations');
                             }}
                             variant="secondary"
                             style={styles.actionButton}

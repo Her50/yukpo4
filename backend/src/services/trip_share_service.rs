@@ -1,6 +1,6 @@
 // ✅ Service partage trajet temps réel — token public, lien partageable
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TripShareInfo {
@@ -34,120 +34,118 @@ impl TripShareService {
         Self { pool }
     }
 
-    /// Crée ou renouvelle un lien de partage pour une réservation
     pub async fn create_share(
         &self,
         user_id: i32,
         reservation_id: i32,
     ) -> Result<TripShareInfo, String> {
-        // Vérifier que la réservation appartient à l'utilisateur
-        let exists = sqlx::query_scalar!(
+        let exists: bool = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM specialized_reservations WHERE id=$1 AND user_id=$2)",
-            reservation_id,
-            user_id,
         )
+        .bind(reservation_id)
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| e.to_string())?
-        .unwrap_or(false);
+        .map_err(|e| e.to_string())?;
 
         if !exists {
             return Err("Réservation introuvable ou non autorisée.".to_string());
         }
 
-        // Upsert — renouveler si déjà existant
-        let row = sqlx::query!(
+        let row = sqlx::query(
             r#"INSERT INTO trip_shares (reservation_id, user_id)
                VALUES ($1, $2)
                ON CONFLICT (reservation_id) DO UPDATE
                  SET expires_at = NOW() + INTERVAL '24 hours'
                RETURNING token, expires_at"#,
-            reservation_id,
-            user_id,
         )
+        .bind(reservation_id)
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| format!("DB: {}", e))?;
 
-        let share_url = format!("https://yukpo.app/track/{}", row.token);
+        let token: String = row.get("token");
+        let expires_at: chrono::DateTime<chrono::Utc> = row.get("expires_at");
+        let share_url = format!("https://yukpo.app/track/{}", token);
 
         Ok(TripShareInfo {
-            token: row.token.clone(),
+            token,
             share_url,
-            expires_at: row.expires_at.to_rfc3339(),
+            expires_at: expires_at.to_rfc3339(),
             reservation_id,
         })
     }
 
-    /// Données publiques du trajet (sans auth) — pour la page de suivi partagée
     pub async fn get_public_data(&self, token: &str) -> Result<PublicTripData, String> {
-        // Vérifier que le token est valide et non expiré
-        let share = sqlx::query!(
+        let share = sqlx::query(
             "SELECT reservation_id, expires_at FROM trip_shares WHERE token=$1 AND expires_at > NOW()",
-            token,
-        ).fetch_optional(&self.pool).await.map_err(|e| e.to_string())?
-         .ok_or("Lien expiré ou invalide.")?;
+        )
+        .bind(token)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Lien expiré ou invalide.")?;
 
-        // Récupérer les infos de la réservation
-        let res = sqlx::query!(
+        let reservation_id: i32 = share.get("reservation_id");
+        let share_expires_at: chrono::DateTime<chrono::Utc> = share.get("expires_at");
+
+        let res = sqlx::query(
             r#"SELECT sr.status, sr.service_type, sr.reservation_date, sr.reservation_time,
                u.nom, u.prenom, u.telephone,
-               ss.name AS service_name,
                sr.details
                FROM specialized_reservations sr
                JOIN users u ON u.id = sr.service_user_id
-               JOIN specialized_services ss ON ss.id = sr.service_id
                WHERE sr.id = $1"#,
-            share.reservation_id,
         )
+        .bind(reservation_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| e.to_string())?
         .ok_or("Réservation introuvable.")?;
 
-        // GPS actuel du chauffeur (table taxis)
-        let gps = sqlx::query_scalar!(
+        let gps: Option<String> = sqlx::query_scalar::<_, Option<String>>(
             r#"SELECT t.gps_actuel FROM taxis t
                JOIN specialized_services ss ON ss.id = t.service_id
                JOIN specialized_reservations sr ON sr.service_id = ss.id
                WHERE sr.id = $1"#,
-            share.reservation_id,
         )
+        .bind(reservation_id)
         .fetch_optional(&self.pool)
         .await
         .unwrap_or(None)
         .flatten();
 
-        let details: serde_json::Value = res
-            .details
-            .and_then(|d| serde_json::from_value(d).ok())
-            .unwrap_or(serde_json::Value::Null);
+        let details_raw: Option<serde_json::Value> = res.get("details");
+        let details = details_raw.unwrap_or(serde_json::Value::Null);
+        let nom: Option<String> = res.get("nom");
+        let prenom: Option<String> = res.get("prenom");
+        let driver_name = nom.map(|n| format!("{} {}", n, prenom.unwrap_or_default()));
 
         Ok(PublicTripData {
             token: token.to_string(),
-            service_type: res.service_type,
-            status: res.status,
-            driver_name: res.nom.map(|n| format!("{} {}", n, res.prenom.unwrap_or_default())),
-            driver_phone: res.telephone,
+            service_type: res.get("service_type"),
+            status: res.get("status"),
+            driver_name,
+            driver_phone: res.get("telephone"),
             gps_actuel: gps,
-            reservation_date: res.reservation_date.map(|d| d.to_string()),
-            reservation_time: res.reservation_time,
+            reservation_date: res
+                .get::<Option<chrono::NaiveDate>, _>("reservation_date")
+                .map(|d| d.to_string()),
+            reservation_time: res.get("reservation_time"),
             depart: details.get("depart").and_then(|v| v.as_str()).map(String::from),
             destination: details.get("destination").and_then(|v| v.as_str()).map(String::from),
-            expires_at: share.expires_at.to_rfc3339(),
+            expires_at: share_expires_at.to_rfc3339(),
         })
     }
 
-    /// Révoque un lien de partage
     pub async fn revoke(&self, user_id: i32, reservation_id: i32) -> Result<(), String> {
-        sqlx::query!(
-            "DELETE FROM trip_shares WHERE reservation_id=$1 AND user_id=$2",
-            reservation_id,
-            user_id,
-        )
-        .execute(&self.pool)
-        .await
-        .map_err(|e| e.to_string())?;
+        sqlx::query("DELETE FROM trip_shares WHERE reservation_id=$1 AND user_id=$2")
+            .bind(reservation_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 }

@@ -138,6 +138,224 @@ impl DocumentAiService {
         (is_cameroon && is_id_doc, extracted_name, id_number)
     }
 
+    /// Vérifie si le texte correspond à un RCCM camerounais
+    /// Retourne (valide, numéro_extrait, nom_entreprise_extrait)
+    fn parse_cameroon_rccm(text: &str) -> (bool, Option<String>, Option<String>) {
+        let is_cameroon = text.contains("CAMEROUN") || text.contains("CAMEROON");
+        let is_rccm = text.contains("REGISTRE DU COMMERCE")
+            || text.contains("REGISTRE COMMERCE")
+            || text.contains("RCCM")
+            || text.contains("TRIBUNAL DE COMMERCE")
+            || text.contains("GREFFE");
+
+        // Numéro RCCM : format RC/XXX/YYYY/L/NNNNN ou variantes
+        let rccm_number = text.split_whitespace().find_map(|w| {
+            let up = w.to_uppercase();
+            if (up.starts_with("RC/") || up.starts_with("RC-")) && up.len() >= 8 {
+                Some(up)
+            } else {
+                None
+            }
+        });
+
+        // Nom entreprise : ligne après "DENOMINATION" ou "NOM"
+        let company_name = extract_field_after(
+            text,
+            &[
+                "DENOMINATION",
+                "NOM DE LA SOCIETE",
+                "RAISON SOCIALE",
+                "SOCIETE",
+            ],
+        );
+
+        (is_cameroon && is_rccm, rccm_number, company_name)
+    }
+
+    /// Vérifie si le texte correspond à un certificat NIU camerounais
+    fn parse_cameroon_niu(text: &str) -> (bool, Option<String>) {
+        let is_cameroon = text.contains("CAMEROUN") || text.contains("CAMEROON");
+        let is_niu = text.contains("IDENTIFIANT UNIQUE")
+            || text.contains("NIU")
+            || text.contains("DIRECTION GENERALE DES IMPOTS")
+            || text.contains("DGI")
+            || text.contains("CONTRIBUABLE");
+
+        // NIU : lettre + suite alphanumérique de 8-14 caractères
+        let niu_number = text.split_whitespace().find_map(|w| {
+            let up = w.to_uppercase();
+            let clean: String = up.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+            if clean.len() >= 8
+                && clean.len() <= 15
+                && clean.chars().next().map(|c| c.is_ascii_alphabetic()).unwrap_or(false)
+                && clean.chars().skip(1).any(|c| c.is_ascii_digit())
+            {
+                Some(clean)
+            } else {
+                None
+            }
+        });
+
+        (is_cameroon && is_niu, niu_number)
+    }
+
+    /// Analyse document RCCM : retourne score (0-100) et décision
+    pub async fn analyze_rccm(&self, rccm_doc_base64: &str) -> KycAnalysisResult {
+        let mut score: u8 = 0;
+        let mut details: Vec<String> = Vec::new();
+
+        let (text, _, _) = self.analyze_image(rccm_doc_base64).await;
+
+        if text.is_empty() {
+            details.push("❌ Document illisible ou image de mauvaise qualité".to_string());
+            return KycAnalysisResult {
+                score: 0,
+                decision: "rejected".to_string(),
+                extracted_name: None,
+                extracted_id_number: None,
+                cni_front_valid: false,
+                cni_back_valid: false,
+                selfie_has_face: false,
+                cni_has_face: false,
+                details,
+            };
+        }
+
+        let (rccm_valid, rccm_number, company_name) = Self::parse_cameroon_rccm(&text);
+
+        if rccm_valid {
+            score = score.saturating_add(70);
+            details.push("✅ Document RCCM camerounais authentifié".to_string());
+        } else {
+            // Document lisible mais pas reconnu comme RCCM
+            score = score.saturating_add(20);
+            details
+                .push("⚠️ Document lisible mais non identifié comme RCCM camerounais".to_string());
+        }
+
+        if rccm_number.is_some() {
+            score = score.saturating_add(20);
+            details.push(format!(
+                "✅ Numéro RCCM extrait : {}",
+                rccm_number.as_deref().unwrap_or("")
+            ));
+        } else {
+            details.push("⚠️ Numéro RCCM non détecté — vérification manuelle requise".to_string());
+        }
+
+        if let Some(ref name) = company_name {
+            details.push(format!("✅ Dénomination sociale : {}", name));
+        }
+
+        let decision = if score >= 80 {
+            "approved"
+        } else if score >= 40 {
+            "under_review"
+        } else {
+            "rejected"
+        }
+        .to_string();
+        details.push(format!(
+            "Score RCCM : {}/100 → {}",
+            score,
+            decision.to_uppercase()
+        ));
+
+        log::info!(
+            "[DocumentAI] Analyse RCCM terminée — score={}, décision={}",
+            score,
+            decision
+        );
+
+        KycAnalysisResult {
+            score,
+            decision,
+            extracted_name: company_name,
+            extracted_id_number: rccm_number,
+            cni_front_valid: rccm_valid,
+            cni_back_valid: false,
+            selfie_has_face: false,
+            cni_has_face: false,
+            details,
+        }
+    }
+
+    /// Analyse document NIU fiscal : retourne score (0-100) et décision
+    pub async fn analyze_niu(&self, niu_doc_base64: &str) -> KycAnalysisResult {
+        let mut score: u8 = 0;
+        let mut details: Vec<String> = Vec::new();
+
+        let (text, _, _) = self.analyze_image(niu_doc_base64).await;
+
+        if text.is_empty() {
+            details.push("❌ Document NIU illisible ou image de mauvaise qualité".to_string());
+            return KycAnalysisResult {
+                score: 0,
+                decision: "rejected".to_string(),
+                extracted_name: None,
+                extracted_id_number: None,
+                cni_front_valid: false,
+                cni_back_valid: false,
+                selfie_has_face: false,
+                cni_has_face: false,
+                details,
+            };
+        }
+
+        let (niu_valid, niu_number) = Self::parse_cameroon_niu(&text);
+
+        if niu_valid {
+            score = score.saturating_add(70);
+            details.push("✅ Certificat NIU fiscal camerounais authentifié".to_string());
+        } else {
+            score = score.saturating_add(20);
+            details
+                .push("⚠️ Document lisible mais non identifié comme attestation NIU".to_string());
+        }
+
+        if niu_number.is_some() {
+            score = score.saturating_add(30);
+            details.push(format!(
+                "✅ NIU extrait : {}",
+                niu_number.as_deref().unwrap_or("")
+            ));
+        } else {
+            details.push("⚠️ Numéro NIU non extrait — vérification manuelle requise".to_string());
+        }
+
+        let decision = if score >= 80 {
+            "approved"
+        } else if score >= 40 {
+            "under_review"
+        } else {
+            "rejected"
+        }
+        .to_string();
+        details.push(format!(
+            "Score NIU : {}/100 → {}",
+            score,
+            decision.to_uppercase()
+        ));
+
+        log::info!(
+            "[DocumentAI] Analyse NIU terminée — score={}, décision={}",
+            score,
+            decision
+        );
+
+        KycAnalysisResult {
+            score,
+            decision,
+            extracted_name: None,
+            extracted_id_number: niu_number,
+            cni_front_valid: false,
+            cni_back_valid: niu_valid,
+            selfie_has_face: false,
+            cni_has_face: false,
+            details,
+        }
+    }
+
     /// Analyse KYC complète : CNI recto + verso + selfie
     /// Score max = 100 (40 + 15 + 30 + 15)
     pub async fn analyze_kyc(

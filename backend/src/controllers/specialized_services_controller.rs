@@ -9483,12 +9483,12 @@ pub struct InitiatePaymentBody {
 }
 
 pub async fn initiate_mobile_money_payment(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(body): Json<InitiatePaymentBody>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     use crate::services::mobile_money_service::{InitiatePaymentRequest, MobileMoneyService};
-    let svc = MobileMoneyService::new(pool);
+    let svc = MobileMoneyService::new(state.pg.clone());
     let req = InitiatePaymentRequest {
         reservation_id: body.reservation_id,
         amount: body.amount,
@@ -9496,7 +9496,7 @@ pub async fn initiate_mobile_money_payment(
         provider: body.provider,
         currency: body.currency,
     };
-    match svc.initiate_payment(current_user.id, req).await {
+    match svc.initiate_payment(user_id, req).await {
         Ok(result) => Ok(Json(json!({ "success": true, "payment": result }))),
         Err(e) => Err((
             axum::http::StatusCode::BAD_REQUEST,
@@ -9506,13 +9506,13 @@ pub async fn initiate_mobile_money_payment(
 }
 
 pub async fn get_payment_status(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     axum::extract::Path(payment_id): axum::extract::Path<i64>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     use crate::services::mobile_money_service::MobileMoneyService;
-    let svc = MobileMoneyService::new(pool);
-    match svc.get_payment_status(payment_id, current_user.id).await {
+    let svc = MobileMoneyService::new(state.pg.clone());
+    match svc.get_payment_status(payment_id, user_id).await {
         Ok(result) => Ok(Json(json!({ "success": true, "payment": result }))),
         Err(e) => Err((
             axum::http::StatusCode::NOT_FOUND,
@@ -9522,12 +9522,12 @@ pub async fn get_payment_status(
 }
 
 pub async fn get_user_payments(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     use crate::services::mobile_money_service::MobileMoneyService;
-    let svc = MobileMoneyService::new(pool);
-    match svc.get_user_payments(current_user.id).await {
+    let svc = MobileMoneyService::new(state.pg.clone());
+    match svc.get_user_payments(user_id).await {
         Ok(payments) => Ok(Json(json!({ "success": true, "payments": payments }))),
         Err(e) => Err((
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -9550,12 +9550,12 @@ pub struct SubmitRatingBody {
 }
 
 pub async fn submit_trip_rating(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(body): Json<SubmitRatingBody>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     use crate::services::trip_rating_service::{SubmitRatingRequest, TripRatingService};
-    let svc = TripRatingService::new(pool);
+    let svc = TripRatingService::new(state.pg.clone());
     let req = SubmitRatingRequest {
         reservation_id: body.reservation_id,
         rated_user_id: body.rated_user_id,
@@ -9563,7 +9563,7 @@ pub async fn submit_trip_rating(
         comment: body.comment,
         service_type: body.service_type,
     };
-    match svc.submit_rating(current_user.id, req).await {
+    match svc.submit_rating(user_id, req).await {
         Ok(entry) => Ok(Json(
             json!({ "success": true, "rating": entry, "message": "Merci pour votre avis !" }),
         )),
@@ -9575,11 +9575,11 @@ pub async fn submit_trip_rating(
 }
 
 pub async fn get_driver_ratings(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
     axum::extract::Path((driver_user_id, service_type)): axum::extract::Path<(i32, String)>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     use crate::services::trip_rating_service::TripRatingService;
-    let svc = TripRatingService::new(pool);
+    let svc = TripRatingService::new(state.pg.clone());
     match svc.get_driver_ratings(driver_user_id, &service_type).await {
         Ok((summary, ratings)) => Ok(Json(
             json!({ "success": true, "summary": summary, "ratings": ratings }),
@@ -9592,13 +9592,13 @@ pub async fn get_driver_ratings(
 }
 
 pub async fn check_rating_status(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     axum::extract::Path(reservation_id): axum::extract::Path<i32>,
 ) -> Json<serde_json::Value> {
     use crate::services::trip_rating_service::TripRatingService;
-    let svc = TripRatingService::new(pool);
-    let has_rated = svc.has_rated(reservation_id, current_user.id).await;
+    let svc = TripRatingService::new(state.pg.clone());
+    let has_rated = svc.has_rated(reservation_id, user_id).await;
     Json(json!({ "success": true, "has_rated": has_rated, "reservation_id": reservation_id }))
 }
 
@@ -9619,17 +9619,17 @@ pub struct SubmitKycBody {
 }
 
 pub async fn submit_driver_verification(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(body): Json<SubmitKycBody>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     use crate::services::driver_verification_service::{
         DriverVerificationService, SubmitVerificationRequest,
     };
-    let svc = DriverVerificationService::new(pool);
+    let svc = DriverVerificationService::new(state.pg.clone());
     match svc
         .submit(
-            current_user.id,
+            user_id,
             SubmitVerificationRequest {
                 service_type: body.service_type,
                 cni_front_url: body.cni_front_url,
@@ -9670,13 +9670,13 @@ pub async fn submit_driver_verification(
 }
 
 pub async fn get_driver_verification_status(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     axum::extract::Path(service_type): axum::extract::Path<String>,
 ) -> Json<serde_json::Value> {
     use crate::services::driver_verification_service::DriverVerificationService;
-    let svc = DriverVerificationService::new(pool);
-    match svc.get_status(current_user.id, &service_type).await {
+    let svc = DriverVerificationService::new(state.pg.clone());
+    match svc.get_status(user_id, &service_type).await {
         Ok(Some(v)) => Json(json!({ "success": true, "verification": v })),
         Ok(None) => Json(
             json!({ "success": true, "verification": null, "message": "Aucune vérification soumise." }),
@@ -9690,18 +9690,18 @@ pub async fn get_driver_verification_status(
 // ═══════════════════════════════════════════════════════════════════════════
 
 pub async fn get_loyalty_balance(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     use crate::services::loyalty_service::LoyaltyService;
-    let svc = LoyaltyService::new(pool.clone());
-    let balance = svc.get_balance(current_user.id).await.map_err(|e| {
+    let svc = LoyaltyService::new(state.pg.clone());
+    let balance = svc.get_balance(user_id).await.map_err(|e| {
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "success": false, "error": e })),
         )
     })?;
-    let history = svc.get_history(current_user.id).await.unwrap_or_default();
+    let history = svc.get_history(user_id).await.unwrap_or_default();
     let rewards = svc.get_rewards().await.unwrap_or_default();
     Ok(Json(
         json!({ "success": true, "balance": balance, "history": history, "rewards": rewards }),
@@ -9714,13 +9714,13 @@ pub struct RedeemRewardBody {
 }
 
 pub async fn redeem_loyalty_reward(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(body): Json<RedeemRewardBody>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     use crate::services::loyalty_service::LoyaltyService;
-    let svc = LoyaltyService::new(pool);
-    match svc.redeem(current_user.id, body.reward_id).await {
+    let svc = LoyaltyService::new(state.pg.clone());
+    match svc.redeem(user_id, body.reward_id).await {
         Ok(r) => Ok(Json(json!({ "success": true, "redemption": r,
             "message": format!("Coupon {} activé ! Valable 30 jours.", r.coupon_code) }))),
         Err(e) => Err((
@@ -9735,13 +9735,13 @@ pub async fn redeem_loyalty_reward(
 // ═══════════════════════════════════════════════════════════════════════════
 
 pub async fn create_trip_share(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     axum::extract::Path(reservation_id): axum::extract::Path<i32>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     use crate::services::trip_share_service::TripShareService;
-    let svc = TripShareService::new(pool);
-    match svc.create_share(current_user.id, reservation_id).await {
+    let svc = TripShareService::new(state.pg.clone());
+    match svc.create_share(user_id, reservation_id).await {
         Ok(share) => Ok(Json(json!({ "success": true, "share": share }))),
         Err(e) => Err((
             axum::http::StatusCode::BAD_REQUEST,
@@ -9751,11 +9751,11 @@ pub async fn create_trip_share(
 }
 
 pub async fn get_public_trip_data(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
     axum::extract::Path(token): axum::extract::Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     use crate::services::trip_share_service::TripShareService;
-    let svc = TripShareService::new(pool);
+    let svc = TripShareService::new(state.pg.clone());
     match svc.get_public_data(&token).await {
         Ok(data) => Ok(Json(json!({ "success": true, "trip": data }))),
         Err(e) => Err((
@@ -9766,13 +9766,13 @@ pub async fn get_public_trip_data(
 }
 
 pub async fn revoke_trip_share(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     axum::extract::Path(reservation_id): axum::extract::Path<i32>,
 ) -> Json<serde_json::Value> {
     use crate::services::trip_share_service::TripShareService;
-    let svc = TripShareService::new(pool);
-    match svc.revoke(current_user.id, reservation_id).await {
+    let svc = TripShareService::new(state.pg.clone());
+    match svc.revoke(user_id, reservation_id).await {
         Ok(_) => Json(json!({ "success": true, "message": "Lien de partage révoqué." })),
         Err(e) => Json(json!({ "success": false, "error": e })),
     }
@@ -9782,15 +9782,15 @@ pub async fn revoke_trip_share(
 // CRÉDITER POINTS FIDÉLITÉ (appelé après confirmation trajet terminé)
 // ═══════════════════════════════════════════════════════════════════════════
 pub async fn credit_trip_loyalty_points(
-    State(pool): State<PgPool>,
-    Extension(current_user): Extension<crate::models::user::User>,
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     axum::extract::Path(reservation_id): axum::extract::Path<i32>,
 ) -> Json<serde_json::Value> {
     use crate::services::loyalty_service::LoyaltyService;
-    let svc = LoyaltyService::new(pool);
-    match svc.on_trip_completed(current_user.id, reservation_id).await {
+    let svc = LoyaltyService::new(state.pg.clone());
+    match svc.on_trip_completed(user_id, reservation_id).await {
         Ok(_) => {
-            let balance = svc.get_balance(current_user.id).await.ok();
+            let balance = svc.get_balance(user_id).await.ok();
             Json(json!({
                 "success": true,
                 "message": "Points de fidélité crédités !",

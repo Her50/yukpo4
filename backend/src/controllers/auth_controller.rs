@@ -193,6 +193,9 @@ pub struct RegisterInput {
     // ✅ NOUVEAU: Documents administratifs entreprise (Cameroun)
     pub rccm: Option<String>, // Registre du Commerce et du Crédit Mobilier
     pub numero_contribuable: Option<String>, // Numéro contribuable / NIU fiscal
+    // ✅ NOUVEAU: Images base64 pour vérification Vision API
+    pub rccm_doc_base64: Option<String>, // Scan/photo du certificat RCCM
+    pub niu_doc_base64: Option<String>,  // Scan/photo de l'attestation NIU (chauffeurs/coursiers)
 }
 
 /// ? Inscription manuelle
@@ -290,6 +293,52 @@ pub async fn register_user(
             return Err(AppError::BadRequest(
                 "partner_name est requis pour un partenaire".into(),
             ));
+        }
+
+        // ✅ NOUVEAU: Validation NIU obligatoire pour chauffeurs et coursiers
+        let is_driver_type = payload
+            .partner_type
+            .as_ref()
+            .map(|t| {
+                let pt = t.trim();
+                pt == "chauffeur" || pt == "livraison" || pt == "livraison_courses_marche"
+            })
+            .unwrap_or(false);
+        if is_driver_type {
+            let niu = payload.numero_contribuable.as_deref().unwrap_or("").trim().to_uppercase();
+            if niu.is_empty() {
+                return Err(AppError::BadRequest(
+                    "Le Numéro d'Identifiant Unique (NIU) est obligatoire pour les chauffeurs et coursiers.".into(),
+                ));
+            }
+            // Format NIU camerounais: commence par M ou P, suivi de chiffres et lettres (minimum 8 caractères)
+            if niu.len() < 8 {
+                return Err(AppError::BadRequest(
+                    "Format NIU invalide. Exemple: M012345678901A".into(),
+                ));
+            }
+        }
+
+        // ✅ NOUVEAU: Validation RCCM pour entreprises (non chauffeur/coursier)
+        let requires_rccm = payload
+            .partner_type
+            .as_ref()
+            .map(|t| {
+                let pt = t.trim();
+                pt != "chauffeur" && pt != "livraison" && pt != "livraison_courses_marche"
+            })
+            .unwrap_or(false);
+        if requires_rccm {
+            if payload.rccm.as_deref().unwrap_or("").trim().is_empty() {
+                return Err(AppError::BadRequest(
+                    "Le numéro RCCM est obligatoire pour les partenaires professionnels.".into(),
+                ));
+            }
+            if payload.numero_contribuable.as_deref().unwrap_or("").trim().is_empty() {
+                return Err(AppError::BadRequest(
+                    "Le numéro contribuable (NIU) est obligatoire pour les partenaires professionnels.".into(),
+                ));
+            }
         }
 
         // Code partenaire restaurant (optionnel) : si fourni, doit exister et être actif
@@ -1466,17 +1515,24 @@ pub async fn oauth_login_handler(
                 }
             }
 
-            // ✅ SÉCURITÉ: Vérifier l'audience (optionnel si GOOGLE_CLIENT_ID est défini)
-            if let Ok(expected_aud) = std::env::var("GOOGLE_CLIENT_ID") {
-                if let Some(actual_aud) = user_data.get("aud").and_then(|v| v.as_str()) {
-                    if actual_aud != expected_aud {
-                        error!(
-                            "[oauth_login_handler] Audience Google invalide: attendu {}, reçu {}",
-                            expected_aud, actual_aud
-                        );
-                        return Err(AppError::Unauthorized(
-                            "Token Google pour une autre application".into(),
-                        ));
+            // ✅ SÉCURITÉ: Vérifier l'audience si GOOGLE_CLIENT_ID est configuré (liste séparée par virgules)
+            if let Ok(client_ids_raw) = std::env::var("GOOGLE_CLIENT_ID") {
+                let client_ids: Vec<&str> = client_ids_raw
+                    .split(',')
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty() && *s != "votre_client_id")
+                    .collect();
+                if !client_ids.is_empty() {
+                    if let Some(actual_aud) = user_data.get("aud").and_then(|v| v.as_str()) {
+                        if !client_ids.contains(&actual_aud) {
+                            error!(
+                                "[oauth_login_handler] Audience Google invalide: reçu {}, attendu l'un de {:?}",
+                                actual_aud, client_ids
+                            );
+                            return Err(AppError::Unauthorized(
+                                "Token Google pour une autre application".into(),
+                            ));
+                        }
                     }
                 }
             }
