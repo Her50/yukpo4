@@ -77,8 +77,11 @@ DO $$ BEGIN
         EXECUTE 'CREATE INDEX IF NOT EXISTS idx_programmes_classe_matiere ON programmes_scolaires(classe, matiere) WHERE is_active = true';
     END IF;
 END $$;
-CREATE INDEX IF NOT EXISTS idx_programmes_pays_niveau 
-    ON programmes_scolaires(pays, niveau, classe) WHERE is_active = true;
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='programmes_scolaires' AND column_name='pays') THEN
+        EXECUTE 'CREATE INDEX IF NOT EXISTS idx_programmes_pays_niveau ON programmes_scolaires(pays, niveau, classe) WHERE is_active = true';
+    END IF;
+END $$;
 
 DO $$
 BEGIN
