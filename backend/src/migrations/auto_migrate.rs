@@ -9324,6 +9324,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto universal_search_indexes: {}", e),
     }
 
+    // ✅ 2026-04-01 : KYC conducteur (driver_verifications + fidélité + partage trajet + colonnes IA)
+    match ensure_driver_verifications_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: driver_verifications + loyalty + trip_shares OK"),
+        Err(e) => error!("❌ Erreur migration auto driver_verifications: {}", e),
+    }
+
+    // ✅ 2026-04-01 : Flow course taxi — taxi_rides + commissions_yukpo + vue v_revenus_yukpo
+    match ensure_taxi_rides_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: taxi_rides + commissions_yukpo OK"),
+        Err(e) => error!("❌ Erreur migration auto taxi_rides: {}", e),
+    }
+
     info!("🎉 Toutes les migrations automatiques ont été appliquées avec succès !");
 }
 
@@ -21711,5 +21723,28 @@ pub async fn ensure_universal_search_indexes(pool: &PgPool) -> Result<(), sqlx::
     let migration_sql = include_str!("../../migrations/20260401_universal_search_indexes.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Index trigram recherche universelle appliqués");
+    Ok(())
+}
+
+/// Tables KYC conducteur (driver_verifications), fidélité et partage trajet.
+/// Inclut les colonnes IA Vision API (ai_score, ai_decision, ai_extracted_name, ai_extracted_id, ai_details).
+pub async fn ensure_driver_verifications_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    // 1. Table principale + fidélité + partage trajet
+    let sql_base = include_str!("../../migrations/20260401_driver_verif_loyalty_share.sql");
+    execute_migration_sql_safe(pool, sql_base).await?;
+
+    // 2. Colonnes IA (idempotent — ADD COLUMN IF NOT EXISTS)
+    let sql_ai = include_str!("../../migrations/20260401_kyc_ai_analysis.sql");
+    execute_migration_sql_safe(pool, sql_ai).await?;
+
+    info!("✅ Tables driver_verifications + fidélité + partage trajet + colonnes IA OK");
+    Ok(())
+}
+
+/// Tables taxi_rides (flow accept/refuse + tarification GPS) et commissions_yukpo (traçabilité revenus).
+pub async fn ensure_taxi_rides_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let migration_sql = include_str!("../../migrations/20260401_taxi_rides_and_commissions.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    info!("✅ Tables taxi_rides + commissions_yukpo + vue v_revenus_yukpo OK");
     Ok(())
 }

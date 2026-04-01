@@ -1,77 +1,45 @@
-# .gcloudignore — Fichiers exclus de l'upload Cloud Build
-# Cloud Build utilise ce fichier (pas .dockerignore) pour filtrer l'upload
+# .gcloudignore pour gcloud builds submit depuis backend/
+# Exclut les fichiers lourds inutiles pour le build Docker GCP
 
-# Build artifacts (souvent > 10 GiB)
+# Build Rust (très lourd)
 target/
+target-check-tmp/
 
-# Blender binaries (265 MB - téléchargé dans Dockerfile)
-blender/
+# Blender tar (trop lourd ~160MB, géré par le Dockerfile au runtime)
+blender/*.tar.xz
+blender/*.tar
 
-# Modèles et données volumineuses
-models/
-uploads/
-
-# Analyses et rapports
-analyses_db/
-
-# Documentation
-*.md
-!README.md
-!ia_intentions_instructions.md
-!ia_prompts/*.md
-
-# Scripts dev
-*.ps1
-*.bat
-*.sh
-!scripts/start-cloud.sh
-!scripts/start-cloud-run.sh
-!scripts/start-health-server.sh
-!scripts/health-server-simple.sh
-!scripts/health-server-python.py
-!scripts/startup-wrapper.sh
-!scripts/docker-entrypoint.sh
-
-# Logs
-*.log
-*.tmp
-*.backup
-*.bak
-
-# IDE
-.vscode/
-.idea/
+# Fichiers temporaires
+*.pdb
+*.dSYM
+*.swp
+*.swo
+*~
+.DS_Store
 
 # Git
 .git/
 .gitignore
 .gitattributes
 
-# CI/CD
-.github/
+# IDE
+.vscode/
+.idea/
 
-# Tests
+# Logs
+*.log
+logs/
+tmp/
+temp/
+
+# Tests locaux
 tests/
 test/
+coverage/
 
-# Data
-data/*.json
-data/*.csv
+# CI/CD
+.github/
+.gitlab-ci.yml
 
-# Env files
-.env
-.env.*
-
-# Docker meta (déjà dans le contexte)
+# Docker
 docker-compose*.yml
-.dockerignore
-
-# Clés/certs
-*.pem
-*.key
-*.crt
-
-# Anciens fichiers
-migrations_old/
-*.orig
-*.rej

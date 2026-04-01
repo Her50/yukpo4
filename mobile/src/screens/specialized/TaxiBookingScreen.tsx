@@ -240,66 +240,43 @@ const TaxiBookingScreen: React.FC = () => {
         try {
             setBooking(true);
 
-            const response = await apiPost(`/api/taxis/${params.taxiId}/book`, {
-                departure_gps: departureGPS,
-                arrival_gps: arrivalGPS,
-                estimated_price: estimatedPrice,
+            // Extraire les coordonnées GPS
+            const [pickupLat, pickupLon] = departureGPS.split(',').map(Number);
+            const [destLat, destLon] = arrivalGPS.split(',').map(Number);
+
+            // Appeler le nouvel endpoint qui calcule le tarif dynamiquement
+            const response = await apiPost('/api/taxis/rides/request', {
+                taxi_id: params.taxiId,
+                pickup_lat: pickupLat,
+                pickup_lon: pickupLon,
+                dest_lat: destLat,
+                dest_lon: destLon,
+                pickup_address: departureGPS,
+                dest_address: arrivalGPS,
                 notes: notes || t('taxiBooking.reservationDepuisLapplicationMobile'),
             });
 
             const r = response.data as any;
-            if (response.success && r?.reservation) {
-                const resId = r.reservation.id;
-                setReservationId(resId);
+            if (response.success && r?.ride_id) {
+                setReservationId(r.ride_id);
                 setBookingSuccess(true);
 
-                // Créer assurance si sélectionnée
-                if (selectedInsurance) {
-                    try {
-                        await apiPost(`/api/reservations/${resId}/insurance`, {
-                            reservation_id: resId,
-                            coverage_type: selectedInsurance,
-                        });
-                    } catch (err) {
-                        console.error('Erreur création assurance:', err);
-                    }
-                }
-
-                // Générer QR code
-                try {
-                    await apiPost(`/api/reservations/${resId}/qr-code`, {});
-                } catch (err) {
-                    console.error('Erreur génération QR code:', err);
-                }
-
-                // Planifier notifications proactives
-                try {
-                    await PushNotificationService.registerForPushNotifications();
-                } catch (err) {
-                    console.error('Erreur notifications:', err);
-                }
-
-                Alert.alert(
-                    t('taxiBooking.bookingConfirmed'),
-                    t('taxiBooking.bookingConfirmedMsg', { price: estimatedPrice ? `\n${t('taxiBooking.estimatedPrice')}: ${estimatedPrice.toLocaleString('fr-FR')} FCFA` : '' }),
-                    [
-                        {
-                            text: 'Payer maintenant',
-                            onPress: () => (navigation as any).navigate('PaiementCourse', {
-                                rideId: (response as any)?.data?.ride_id || (response as any)?.reservation_id,
-                                taxiId: taxi?.id,
-                                departure: departureAddress,
-                                destination: arrivalAddress,
-                                estimatedFare: estimatedPrice,
-                                driverName: taxi?.nom || taxi?.nom_etablissement,
-                            }),
-                        },
-                        {
-                            text: t('taxiBooking.voirMesReservations'),
-                            onPress: () => navigation.navigate('MesReservations' as never)
-                        },
-                    ]
-                );
+                // Naviguer vers l'écran d'attente — le chauffeur doit accepter ou refuser
+                (navigation as any).replace('TaxiRequestWaiting', {
+                    rideId: r.ride_id,
+                    taxiId: params.taxiId,
+                    departure: departureGPS,
+                    destination: arrivalGPS,
+                    tarifEstime: r.tarif_estime,
+                    distanceKm: r.distance_km,
+                    dureeMin: r.duree_estimee_min,
+                    driverName: taxi?.nom || taxi?.nom_etablissement,
+                    driverPhone: taxi?.telephone,
+                    pickupLat,
+                    pickupLon,
+                    destLat,
+                    destLon,
+                });
             } else {
                 Alert.alert(t('message.error'), response.error || t('taxiBooking.cannotCreateBooking'));
             }

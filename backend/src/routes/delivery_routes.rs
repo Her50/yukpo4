@@ -2368,8 +2368,8 @@ async fn get_courier_stats(
         r#"
         SELECT
             COUNT(*) FILTER (WHERE status IN ('completed', 'delivered', 'cancelled')) AS total,
-            COUNT(*) FILTER (WHERE status IN ('completed', 'delivered')) AS completed,
-            COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled
+            COUNT(*) FILTER (WHERE status IN ('completed', 'delivered'))          AS completed,
+            COUNT(*) FILTER (WHERE status = 'cancelled')                          AS cancelled
         FROM deliveries
         WHERE courier_id = $1
         "#,

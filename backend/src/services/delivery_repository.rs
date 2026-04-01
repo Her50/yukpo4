@@ -4513,7 +4513,7 @@ impl DeliveryRepository {
             SELECT id
             FROM deliveries
             WHERE courier_id = $1
-              AND status IN ('completed', 'delivered', 'cancelled', 'refunded')
+              AND status IN ('completed', 'delivered', 'cancelled')
             ORDER BY updated_at DESC
             LIMIT $2 OFFSET $3
             "#,
