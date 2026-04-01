@@ -362,6 +362,9 @@ reg('BloodDonationMatches', () => import('../screens/specialized/BloodDonationMa
 reg('BloodDonationRequest', () => import('../screens/specialized/BloodDonationRequestScreen'));
 reg('BloodDonation', () => import('../screens/specialized/BloodDonationScreen'));
 reg('MyBloodDonations', () => import('../screens/specialized/MyBloodDonationsScreen'));
+reg('CarteCampagnesDon', () => import('../screens/specialized/CarteCampagnesDonScreen'));
+reg('SOSBlood', () => import('../screens/specialized/SOSBloodScreen'));
+reg('BadgesDonneur', () => import('../screens/specialized/BadgesDonneurScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Bayam Selam (2)
@@ -383,6 +386,10 @@ reg('BusTicketQR', () => import('../screens/specialized/BusTicketQRScreen'));
 reg('BusTicketSearch', () => import('../screens/specialized/BusTicketSearchScreen'));
 reg('TicketVoyageHome', () => import('../screens/specialized/TicketVoyageHomeScreen'));
 reg('MyTrips', () => import('../screens/specialized/MyTripsScreen'));
+reg('BusTracking', () => import('../screens/specialized/BusTrackingScreen'));
+reg('ModifierTicket', () => import('../screens/specialized/ModifierTicketScreen'));
+reg('RemboursementTicket', () => import('../screens/specialized/RemboursementTicketScreen'));
+reg('AbonnementBus', () => import('../screens/specialized/AbonnementBusScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Covoiturage (8)
@@ -395,6 +402,10 @@ reg('CovoiturageIntelligentSearch', () => import('../screens/specialized/Covoitu
 reg('CovoiturageList', () => import('../screens/specialized/CovoiturageListScreen'));
 reg('CovoiturageSearch', () => import('../screens/specialized/CovoiturageSearchScreen'));
 reg('MesReservationsCovoiturage', () => import('../screens/specialized/MesReservationsCovoiturageScreen'));
+reg('AnnulationCovoiturage', () => import('../screens/specialized/AnnulationCovoiturageScreen'));
+reg('CovoiturageChat', () => import('../screens/specialized/CovoiturageChatScreen'));
+reg('AlertesTrajet', () => import('../screens/specialized/AlertesTrajetScreen'));
+reg('CovoiturageRecurrent', () => import('../screens/specialized/CovoiturageRecurrentScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Famille (1)
@@ -414,6 +425,17 @@ reg('HospitalAIRecommendations', () => import('../screens/specialized/HospitalAI
 reg('HospitalAnalytics', () => import('../screens/specialized/HospitalAnalyticsScreen'));
 reg('BookAppointment', () => import('../screens/specialized/BookAppointmentScreen'));
 reg('MyConsultations', () => import('../screens/specialized/MyConsultationsScreen'));
+reg('DoctorReview', () => import('../screens/specialized/DoctorReviewScreen'));
+reg('FileAttente', () => import('../screens/specialized/FileAttenteScreen'));
+reg('OrdonnanceUpload', () => import('../screens/specialized/OrdonnanceUploadScreen'));
+reg('MedicamentScan', () => import('../screens/specialized/MedicamentScanScreen'));
+reg('RappelsMedicaments', () => import('../screens/specialized/RappelsMedicamentsScreen'));
+reg('MesRdv', () => import('../screens/specialized/MesRdvScreen'));
+reg('OrdonnanceDetails', () => import('../screens/specialized/OrdonnanceDetailsScreen'));
+reg('PostConsultationFeedback', () => import('../screens/specialized/PostConsultationFeedbackScreen'));
+reg('DossierPatient', () => import('../screens/specialized/DossierPatientScreen'));
+reg('HistoriqueMedicaments', () => import('../screens/specialized/HistoriqueMedicamentsScreen'));
+reg('ComparaisonPrix', () => import('../screens/specialized/ComparaisonPrixScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Hôtel / Immobilier (12)
@@ -421,6 +443,9 @@ reg('MyConsultations', () => import('../screens/specialized/MyConsultationsScree
 reg('HotelBookingPayment', () => import('../screens/specialized/HotelBookingPaymentScreen'));
 reg('HotelBooking', () => import('../screens/specialized/HotelBookingScreen'));
 reg('HotelDashboard', () => import('../screens/specialized/HotelDashboardScreen'));
+reg('HotelMeublePartnerForm', () => import('../screens/specialized/HotelMeublePartnerFormScreen'));
+reg('HotelUnitsInventory', () => import('../screens/specialized/HotelUnitsInventoryScreen'));
+reg('HotelUnitSelection', () => import('../screens/specialized/HotelUnitSelectionScreen'));
 reg('HotelQRScanner', () => import('../screens/specialized/HotelQRScannerScreen'));
 reg('ImmobilierBooking', () => import('../screens/specialized/ImmobilierBookingScreen'));
 reg('ImmobilierCompare', () => import('../screens/specialized/ImmobilierCompareScreen'));
@@ -432,6 +457,13 @@ reg('ImmobilierPriceAlerts', () => import('../screens/specialized/ImmobilierPric
 reg('ImmobilierSearch', () => import('../screens/specialized/ImmobilierSearchScreen'));
 reg('MesReservations', () => import('../screens/specialized/MesReservationsScreen'));
 reg('HotelMeubleHome', () => import('../screens/specialized/HotelMeubleHomeScreen'));
+reg('ScoreQuartier', () => import('../screens/specialized/ScoreQuartierScreen'));
+reg('DossierLocation', () => import('../screens/specialized/DossierLocationScreen'));
+reg('HistoriquePrixMarche', () => import('../screens/specialized/HistoriquePrixMarcheScreen'));
+reg('Negociation', () => import('../screens/specialized/NegociationScreen'));
+reg('CalculateurLoyerAchat', () => import('../screens/specialized/CalculateurLoyerAchatScreen'));
+reg('VisiteVideoLive', () => import('../screens/specialized/VisiteVideoLiveScreen'));
+reg('ImmobilierMap', () => import('../screens/specialized/ImmobilierMapScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Laboratoire (7)
@@ -444,6 +476,10 @@ reg('LaboratoireHome', () => import('../screens/specialized/LaboratoireHomeScree
 reg('LaboratoireList', () => import('../screens/specialized/LaboratoireListScreen'));
 reg('LaboratoireSearch', () => import('../screens/specialized/LaboratoireSearchScreen'));
 reg('MyLabExaminations', () => import('../screens/specialized/MyLabExaminationsScreen'));
+reg('LabResultDetails', () => import('../screens/specialized/LabResultDetailsScreen'));
+reg('InstructionsPreparation', () => import('../screens/specialized/InstructionsPreparationScreen'));
+reg('CollecteADomicile', () => import('../screens/specialized/CollecteADomicileScreen'));
+reg('ResultatsTendances', () => import('../screens/specialized/ResultatsTendancesScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Livres scolaires (6)
@@ -462,6 +498,7 @@ reg('BookBuyDirect', () => import('../screens/bourse-livre/BookBuyDirectScreen')
 reg('AdminProgrammeUpload', () => import('../screens/bourse-livre/AdminProgrammeUploadScreen'));
 reg('BookDeliveryTracking', () => import('../screens/specialized/BookDeliveryTrackingScreen'));
 reg('LibrairieTeamPending', () => import('../screens/specialized/LibrairieTeamPendingScreen'));
+reg('SuperLibraireAdmin', () => import('../screens/specialized/SuperLibraireAdminScreen'));
 reg('LibrairieNetworkLignePrix', () => import('../screens/specialized/LibrairieNetworkLignePrixScreen'));
 reg('LibrairieNetworkValidation', () => import('../screens/specialized/LibrairieNetworkValidationScreen'));
 reg('NewBooks', () => import('../screens/specialized/NewBooksScreen'));
@@ -489,6 +526,7 @@ reg('PharmacieList', () => import('../screens/specialized/PharmacieListScreen'))
 reg('PharmacieSearch', () => import('../screens/specialized/PharmacieSearchScreen'));
 reg('PharmacyAIInteractions', () => import('../screens/specialized/PharmacyAIInteractionsScreen'));
 reg('PharmacyAnalytics', () => import('../screens/specialized/PharmacyAnalyticsScreen'));
+reg('PharmacyFinancial', () => import('../screens/specialized/PharmacyFinancialScreen'));
 reg('MyPharmacyOrders', () => import('../screens/specialized/MyPharmacyOrdersScreen'));
 
 // ---------------------------------------------------------------------------
@@ -503,7 +541,13 @@ reg('TaxiIntelligentSearch', () => import('../screens/specialized/TaxiIntelligen
 reg('TaxiList', () => import('../screens/specialized/TaxiListScreen'));
 reg('TaxiSearch', () => import('../screens/specialized/TaxiSearchScreen'));
 reg('TaxiTracking', () => import('../screens/specialized/TaxiTrackingScreen'));
+reg('MesReservationsTaxi', () => import('../screens/specialized/MesReservationsTaxiScreen'));
 reg('MesTaxis', () => import('../screens/specialized/MesTaxisScreen'));
+reg('DriverVerification', () => import('../screens/specialized/DriverVerificationScreen'));
+reg('Loyalty', () => import('../screens/specialized/LoyaltyScreen'));
+reg('TaxiScheduledRide', () => import('../screens/specialized/TaxiScheduledRideScreen'));
+reg('TaxiRating', () => import('../screens/specialized/TaxiRatingScreen'));
+reg('HistoriqueCourses', () => import('../screens/specialized/HistoriqueCoursesScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Troc (4)
@@ -514,11 +558,14 @@ reg('TrocMatching', () => import('../screens/specialized/TrocMatchingScreen'));
 reg('MesTrocs', () => import('../screens/specialized/MesTrocsScreen'));
 
 // ---------------------------------------------------------------------------
-// Specialized - Supermarché / Restaurant (3)
+// Specialized - Supermarché / Restaurant (4)
 // ---------------------------------------------------------------------------
 reg('SupermarketHome', () => import('../screens/specialized/SupermarketHomeScreen'));
+reg('EcommerceHub', () => import('../screens/specialized/EcommerceHubScreen')); // ✅ 2026-04-01: Hub e-commerce universel (toutes catégories de boutiques)
+reg('EcommercePartnerConnect', () => import('../screens/specialized/EcommercePartnerConnectScreen')); // ✅ 2026-04-01: Wizard partenaire connexion boutique
 reg('SupermarketPartnerDashboard', () => import('../screens/specialized/SupermarketPartnerDashboardScreen'));
 reg('RestaurantDashboard', () => import('../screens/specialized/RestaurantDashboardScreen'));
+reg('RestaurantClient', () => import('../screens/specialized/RestaurantClientScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Autres (7)

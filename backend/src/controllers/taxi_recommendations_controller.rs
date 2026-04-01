@@ -4,6 +4,9 @@
 
 use crate::core::types::AppResult;
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::services::taxi_personalized_recommendations_service::{
+    MatchFactor, PersonalizedRecommendation, TaxiPersonalizedRecommendationsService,
+};
 use crate::state::AppState;
 use axum::{
     extract::{Extension, Query, State},
@@ -11,57 +14,9 @@ use axum::{
     Json,
 };
 use log::info;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
-
-/// Recommandation personnalisée
-#[derive(Debug, Serialize)]
-pub struct PersonalizedRecommendation {
-    pub service_id: i32,
-    pub service_type: String,      // "taxi" | "covoiturage"
-    pub recommendation_score: f64, // 0.0-100.0
-    pub reasons: Vec<String>,      // Raisons de la recommandation
-    pub match_factors: Vec<MatchFactor>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct MatchFactor {
-    pub factor: String, // "historique", "proximité", "prix", "rating"
-    pub weight: f64,
-    pub score: f64,
-}
-
-/// ✅ GET /api/taxi/personalized-recommendations
-/// Obtenir recommandations personnalisées pour un utilisateur
-pub async fn get_personalized_recommendations(
-    State(_state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
-    Query(_params): Query<RecommendationsQuery>,
-) -> AppResult<impl IntoResponse> {
-    info!(
-        "[get_personalized_recommendations] User {} demande recommandations",
-        user_id
-    );
-
-    // TODO: Implémenter système de recommandations réel
-    // - Collaborative filtering
-    // - Content-based filtering
-    // - Analyse historique
-
-    let recommendations = Vec::<PersonalizedRecommendation>::new();
-
-    info!(
-        "[get_personalized_recommendations] ✅ {} recommandations trouvées",
-        recommendations.len()
-    );
-
-    Ok(Json(json!({
-        "success": true,
-        "data": recommendations,
-        "message": "Service de recommandations en développement - structure créée"
-    })))
-}
 
 #[derive(Debug, Deserialize)]
 pub struct RecommendationsQuery {
@@ -72,4 +27,38 @@ pub struct RecommendationsQuery {
     pub radius_km: Option<f64>,
 }
 
-// TODO: Implémenter service réel de recommandations avec ML
+/// ✅ GET /api/taxi/personalized-recommendations
+/// Obtenir recommandations personnalisées pour un utilisateur
+pub async fn get_personalized_recommendations(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Query(params): Query<RecommendationsQuery>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[get_personalized_recommendations] User {} demande recommandations",
+        user_id
+    );
+
+    let svc = TaxiPersonalizedRecommendationsService::new(Arc::new(state.pg.clone()));
+    let recommendations = svc
+        .get_recommendations(
+            user_id,
+            params.service_type,
+            params.location_lat,
+            params.location_lng,
+            params.radius_km,
+            params.limit,
+        )
+        .await?;
+
+    info!(
+        "[get_personalized_recommendations] ✅ {} recommandations trouvées",
+        recommendations.len()
+    );
+
+    Ok(Json(json!({
+        "success": true,
+        "data": recommendations,
+        "count": recommendations.len(),
+    })))
+}

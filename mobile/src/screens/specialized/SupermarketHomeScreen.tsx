@@ -53,6 +53,13 @@ const SupermarketHomeScreen: React.FC = () => {
     const [loadingSupermarkets, setLoadingSupermarkets] = useState(true);
     const [searchSupermarketQuery, setSearchSupermarketQuery] = useState('');
 
+    // Recherche unifiée (magasin OU produit) dans l'écran de sélection
+    type GlobalSearchMode = 'store' | 'product';
+    const [globalSearchMode, setGlobalSearchMode] = useState<GlobalSearchMode>('store');
+    const [globalProductResults, setGlobalProductResults] = useState<SupermarketProduct[]>([]);
+    const [searchingGlobal, setSearchingGlobal] = useState(false);
+    const globalSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     // États pour produits
     const [products, setProducts] = useState<SupermarketProduct[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(false);
@@ -92,6 +99,32 @@ const SupermarketHomeScreen: React.FC = () => {
             }
         }
     }, [route.params, supermarkets]);
+
+    // Recherche produit cross-supermarchés avec debounce
+    useEffect(() => {
+        if (viewMode !== 'select' || globalSearchMode !== 'product') return;
+        if (globalSearchTimeout.current) clearTimeout(globalSearchTimeout.current);
+        if (searchSupermarketQuery.length < 2) {
+            setGlobalProductResults([]);
+            return;
+        }
+        globalSearchTimeout.current = setTimeout(async () => {
+            setSearchingGlobal(true);
+            try {
+                const resp = await supermarketService.searchProduct(
+                    searchSupermarketQuery,
+                    location?.coords?.latitude,
+                    location?.coords?.longitude,
+                );
+                const products = (resp.data as any)?.products || [];
+                setGlobalProductResults(products);
+            } catch {
+                setGlobalProductResults([]);
+            } finally {
+                setSearchingGlobal(false);
+            }
+        }, 400);
+    }, [searchSupermarketQuery, globalSearchMode, viewMode]);
 
     const loadSupermarkets = useCallback(async () => {
         try {
@@ -331,19 +364,47 @@ const SupermarketHomeScreen: React.FC = () => {
                                 <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
                                 <TextInput
                                     style={styles.searchInput}
-                                    placeholder={t('supermarketHome.rechercherUnSupermarche')}
+                                    placeholder={globalSearchMode === 'store'
+                                        ? t('supermarketHome.rechercherUnSupermarche')
+                                        : 'Rechercher un produit dans tous les magasins…'}
                                     placeholderTextColor="#9CA3AF"
                                     value={searchSupermarketQuery}
-                                    onChangeText={setSearchSupermarketQuery}
+                                    onChangeText={v => {
+                                        setSearchSupermarketQuery(v);
+                                        setGlobalProductResults([]);
+                                    }}
                                 />
-                                {searchSupermarketQuery.length > 0 && (
+                                {searchingGlobal && <ActivityIndicator size="small" color="#10B981" />}
+                                {searchSupermarketQuery.length > 0 && !searchingGlobal && (
                                     <TouchableOpacity
-                                        onPress={() => setSearchSupermarketQuery('')}
+                                        onPress={() => { setSearchSupermarketQuery(''); setGlobalProductResults([]); }}
                                         style={styles.clearButton}
                                     >
                                         <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
                                     </TouchableOpacity>
                                 )}
+                            </View>
+                            {/* Toggle Magasin / Produit */}
+                            <View style={styles.globalSearchToggle}>
+                                {(['store', 'product'] as GlobalSearchMode[]).map(mode => (
+                                    <TouchableOpacity
+                                        key={mode}
+                                        style={[styles.globalSearchToggleBtn, globalSearchMode === mode && styles.globalSearchToggleActive]}
+                                        onPress={() => {
+                                            setGlobalSearchMode(mode);
+                                            setGlobalProductResults([]);
+                                        }}>
+                                        <SafeIcon
+                                            name={mode === 'store' ? 'store' : 'package'}
+                                            size={13}
+                                            color={globalSearchMode === mode ? '#fff' : '#6B7280'}
+                                            type="lucide"
+                                        />
+                                        <Text style={[styles.globalSearchToggleText, globalSearchMode === mode && styles.globalSearchToggleTextActive]}>
+                                            {mode === 'store' ? 'Magasins' : 'Produits'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
                         </View>
                     )}
@@ -463,7 +524,80 @@ const SupermarketHomeScreen: React.FC = () => {
             </View>
 
             {/* Contenu selon le mode */}
-            {viewMode === 'select' && (
+            {viewMode === 'select' && globalSearchMode === 'product' && searchSupermarketQuery.length >= 2 ? (
+                // Résultats de recherche produit cross-magasins
+                <FlatList
+                    data={globalProductResults}
+                    keyExtractor={(item, i) => `${item.id ?? i}`}
+                    contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
+                    ListHeaderComponent={
+                        !searchingGlobal && globalProductResults.length > 0 ? (
+                            <Text style={styles.globalSearchResultsLabel}>
+                                {globalProductResults.length} produit(s) trouvé(s)
+                            </Text>
+                        ) : null
+                    }
+                    ListEmptyComponent={
+                        !searchingGlobal ? (
+                            <View style={styles.emptyContainer}>
+                                <SafeIcon name="package" size={48} color="#9CA3AF" type="lucide" />
+                                <Text style={styles.emptyText}>Aucun produit trouvé</Text>
+                                <Text style={styles.emptySubtext}>Essayez un autre nom ou catégorie.</Text>
+                            </View>
+                        ) : null
+                    }
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={styles.globalProductCard}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                                // Trouver le supermarché correspondant et naviguer vers ses produits
+                                const supermarketId = (item as any).supermarket_id ?? (item as any).service_id;
+                                const supermarketName = (item as any).supermarket_name ?? (item as any).store_name ?? 'Magasin';
+                                const matchedStore = supermarkets.find(sm =>
+                                    sm.id.toString() === supermarketId?.toString()
+                                ) || {
+                                    id: supermarketId,
+                                    name: supermarketName,
+                                    address: (item as any).address || '',
+                                    latitude: 0,
+                                    longitude: 0,
+                                } as Supermarket;
+                                setProductSearchQuery(item.name);
+                                handleSelectSupermarket(matchedStore);
+                            }}>
+                            <View style={styles.globalProductLeft}>
+                                {item.image_url ? (
+                                    <Image source={{ uri: item.image_url }} style={styles.globalProductImage} />
+                                ) : (
+                                    <View style={styles.globalProductIconBox}>
+                                        <SafeIcon name="package" size={22} color="#10B981" type="lucide" />
+                                    </View>
+                                )}
+                                <View style={{ flex: 1, marginLeft: 10 }}>
+                                    <Text style={styles.globalProductName} numberOfLines={2}>{item.name}</Text>
+                                    {(item as any).supermarket_name || (item as any).store_name ? (
+                                        <Text style={styles.globalProductStore}>
+                                            🏪 {(item as any).supermarket_name || (item as any).store_name}
+                                        </Text>
+                                    ) : null}
+                                    {item.category ? (
+                                        <Text style={styles.globalProductCategory}>{item.category}</Text>
+                                    ) : null}
+                                </View>
+                            </View>
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={styles.globalProductPrice}>{formatPrice(item.price, item.currency)}</Text>
+                                {item.original_price && item.original_price > item.price ? (
+                                    <View style={styles.globalProductPromoBadge}>
+                                        <Text style={styles.globalProductPromoBadgeText}>Promo</Text>
+                                    </View>
+                                ) : null}
+                            </View>
+                        </TouchableOpacity>
+                    )}
+                />
+            ) : viewMode === 'select' ? (
                 <SupermarketSelectionView
                     supermarkets={filteredSupermarkets}
                     loading={loadingSupermarkets}
@@ -471,7 +605,7 @@ const SupermarketHomeScreen: React.FC = () => {
                     onRefresh={loadSupermarkets}
                     formatDistance={formatDistance}
                 />
-            )}
+            ) : null}
 
             {viewMode === 'products' && selectedSupermarket && (
                 <ProductsView
@@ -1167,6 +1301,108 @@ const styles = StyleSheet.create({
     },
     compareButton: {
         padding: 8,
+    },
+    // Toggle magasin / produit (recherche globale)
+    globalSearchToggle: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 10,
+    },
+    globalSearchToggleBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.4)',
+    },
+    globalSearchToggleActive: {
+        backgroundColor: '#fff',
+        borderColor: '#fff',
+    },
+    globalSearchToggleText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.85)',
+    },
+    globalSearchToggleTextActive: {
+        color: '#10B981',
+    },
+    globalSearchResultsLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontStyle: 'italic',
+        marginBottom: 8,
+        paddingHorizontal: 4,
+    },
+    // Cards résultats produits cross-magasins
+    globalProductCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#fff',
+        borderRadius: 14,
+        padding: 12,
+        marginBottom: 10,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+    },
+    globalProductLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    globalProductImage: {
+        width: 52,
+        height: 52,
+        borderRadius: 10,
+        backgroundColor: '#F3F4F6',
+    },
+    globalProductIconBox: {
+        width: 52,
+        height: 52,
+        borderRadius: 10,
+        backgroundColor: '#ECFDF5',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    globalProductName: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1F2937',
+    },
+    globalProductStore: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 2,
+    },
+    globalProductCategory: {
+        fontSize: 11,
+        color: '#9CA3AF',
+        marginTop: 2,
+    },
+    globalProductPrice: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#10B981',
+        marginBottom: 4,
+    },
+    globalProductPromoBadge: {
+        backgroundColor: '#FEE2E2',
+        borderRadius: 6,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+    },
+    globalProductPromoBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#DC2626',
     },
     centerContainer: {
         flex: 1,

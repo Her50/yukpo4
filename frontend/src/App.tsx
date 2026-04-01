@@ -477,6 +477,16 @@ function App() {
                             <CovoiturageForm />
                           </RequireAuth>
                         } />
+                        <Route path="/covoiturages/create" element={
+                          <RequireAuth>
+                            <CovoiturageForm />
+                          </RequireAuth>
+                        } />
+                        <Route path="/specialized/covoiturage/create" element={
+                          <RequireAuth>
+                            <CovoiturageForm />
+                          </RequireAuth>
+                        } />
                         {/* ✅ Phase 5: Routes recherche Taxi et Covoiturage */}
                         <Route path="/taxis/search" element={<TaxiSearchPage />} />
                         <Route path="/taxis/list" element={<TaxiListPage />} />

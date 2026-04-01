@@ -347,8 +347,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             // This gives the chatbot awareness of: current screen, available actions,
             // visible elements, user role, service data, navigation map (50+ destinations),
             // and specialized context (covoiturage, taxi, emploi, hotel, pharmacie, etc.)
+            const serviceCategory = chatbotIntelligentService.detectServiceCategory(service);
             const enrichedContext = {
                 ...screenContext,
+                chatbotMode: 'chatbot_service',
+                chatbotSystemPrompt: chatbotIntelligentService.buildCategoryPrompt(serviceCategory, service, language || 'fr', chatHistory.length),
                 serviceData: {
                     ...screenContext.serviceData,
                     ...(service?.data || {}),
@@ -356,6 +359,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     prix: service?.data?.prix?.valeur || service?.data?.prix || service?.prix,
                     description: service?.data?.description?.valeur || service?.data?.description,
                     products: service?.products || service?.produits || [],
+                    category: serviceCategory,
                 },
             };
 
@@ -441,26 +445,15 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         if (!showChatbotPanel) {
             setShowChatbotPanel(true);
             if (chatbotMessages.length === 0) {
-                const serviceName = service?.nom || service?.name || 'Yukpo';
-                const welcomeText = t('intelligentChat.welcomeChat', { name: serviceName })
-                    || `Je suis votre assistant IA pour "${serviceName}". Comment puis-je vous aider ?`;
-                const defaultQuickReplies = [
-                    t('chatbot.describeService') || 'Présenter ce service',
-                    t('chatbot.seeProducts') || 'Voir les produits',
-                    t('chatbot.negotiatePrice') || 'Négocier le prix',
-                    t('chatbot.chatFeatures') || 'Fonctionnalités du chat',
-                ];
+                const welcomeConfig = chatbotIntelligentService.getWelcomeConfig(service, language || 'fr');
                 setChatbotMessages([{
                     id: `welcome_${Date.now()}`,
-                    text: welcomeText,
+                    text: welcomeConfig.message,
                     isUser: false,
                     response: {
-                        message: welcomeText,
-                        icons: [
-                            { icon: 'info', label: t('chatbot.details') || 'Détails', color: '#6366f1' },
-                            { icon: 'message-circle', label: t('chatbot.contact') || 'Contact', color: '#10b981' },
-                        ],
-                        quickReplies: defaultQuickReplies,
+                        message: welcomeConfig.message,
+                        icons: welcomeConfig.icons,
+                        quickReplies: welcomeConfig.quickReplies,
                     },
                 }]);
             }

@@ -73,6 +73,7 @@ const PharmacieDetailsScreen: React.FC = () => {
     // Recherche médicament
     const [searchMedication, setSearchMedication] = useState('');
     const [medicationAvailability, setMedicationAvailability] = useState<MedicationAvailability | null>(null);
+    const [lastReservationId, setLastReservationId] = useState<string | null>(null);
     const [checkingAvailability, setCheckingAvailability] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
 
@@ -173,10 +174,50 @@ const PharmacieDetailsScreen: React.FC = () => {
         try {
             const response = await pharmacyService.reserveMedication(params.pharmacieId, medicationAvailability.medication.name, medicationAvailability.requested_quantity || 1);
             if (response.success && response.data) {
+                setLastReservationId(response.data.reservation_id);
                 Alert.alert(t('pharmacieDetails.reservationSuccess'), `ID: ${response.data.reservation_id} — ${t('pharmacieDetails.expiresAt')} ${new Date(response.data.expiry_time).toLocaleString()}`);
-                setMedicationAvailability(null); setSearchMedication('');
             } else Alert.alert(t('message.error'), response.error || t('pharmacieDetails.cannotReserve'));
         } catch (error: any) { Alert.alert(t('message.error'), error.message || t('pharmacieDetails.cannotReserve')); }
+    };
+
+    const handleCreateOrder = async () => {
+        if (!medicationAvailability?.available || !user) {
+            Alert.alert(t('message.error'), t('pharmacieDetails.medicationUnavailable'));
+            return;
+        }
+        const quantity = Math.max(1, medicationAvailability.requested_quantity || 1);
+        const medicationName = medicationAvailability.medication.name;
+        const productId = (medicationAvailability as any)?.medication?.id as number | undefined;
+        const idempotencyKey = `pharm_${params.pharmacieId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+        try {
+            const response = await pharmacyService.createOrder(params.pharmacieId, {
+                medications: [{
+                    product_id: productId,
+                    medication_name: medicationName,
+                    quantity,
+                }],
+                delivery_method: 'pickup',
+                reservation_id: lastReservationId || undefined,
+                idempotency_key: idempotencyKey,
+            });
+
+            const payload = (response.data || response) as any;
+            const orderId = payload?.order_id || payload?.data?.order_id;
+            if (response.success && orderId) {
+                Alert.alert(
+                    t('pharmacieDetails.orderSuccess') || 'Commande créée',
+                    `ID: ${orderId}`
+                );
+                setMedicationAvailability(null);
+                setSearchMedication('');
+                setLastReservationId(null);
+            } else {
+                Alert.alert(t('message.error'), response.error || t('pharmacieDetails.cannotCreateOrder') || 'Impossible de créer la commande');
+            }
+        } catch (error: any) {
+            Alert.alert(t('message.error'), error.message || t('pharmacieDetails.cannotCreateOrder') || 'Impossible de créer la commande');
+        }
     };
 
     const handleCheckInteractions = async () => {
@@ -377,6 +418,10 @@ const PharmacieDetailsScreen: React.FC = () => {
                                     <TouchableOpacity style={st.reserveBtn} onPress={handleReserveMedication}>
                                         <SafeIcon name="shopping-bag" size={16} color="#fff" />
                                         <Text style={st.reserveBtnText}>{t('pharmacieDetails.reserverCeMedicament')}</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[st.reserveBtn, { backgroundColor: '#2563EB', marginTop: 8 }]} onPress={handleCreateOrder}>
+                                        <SafeIcon name="credit-card" size={16} color="#fff" />
+                                        <Text style={st.reserveBtnText}>{t('pharmacieDetails.commanderMaintenant') || 'Commander maintenant'}</Text>
                                     </TouchableOpacity>
                                 </>
                             )}

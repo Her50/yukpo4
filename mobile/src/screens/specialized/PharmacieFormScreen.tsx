@@ -3,6 +3,8 @@
 // Mode Création (nouvelle pharmacie): Formulaire guidé avec header gradient
 // Exploite endpoints: CRUD pharmacie, produits, commandes, garde, analytics, IA interactions/dosage
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
@@ -33,6 +35,7 @@ import { usePartnerData } from '../../hooks/usePartnerData';
 import { apiDelete, apiGet, apiPatch, apiPost, servicesApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import * as XLSX from 'xlsx';
 
 const STORAGE_KEY = '@pharmacie_form';
 type TabType = 'overview' | 'service' | 'products' | 'analytics' | 'team';
@@ -143,6 +146,13 @@ const PharmacieFormScreen: React.FC = () => {
     const [bulkImportOverwrite, setBulkImportOverwrite] = useState(false);
     const [loadingBulkImport, setLoadingBulkImport] = useState(false);
     const [showBulkGuide, setShowBulkGuide] = useState(false);
+    const [importWizardStep, setImportWizardStep] = useState<1 | 2 | 3>(1);
+    const [importSource, setImportSource] = useState<'paste' | 'file' | 'external'>('paste');
+    const [previewProducts, setPreviewProducts] = useState<any[]>([]);
+    const [invalidLines, setInvalidLines] = useState<string[]>([]);
+    const [externalApiUrl, setExternalApiUrl] = useState('');
+    const [externalItemsPath, setExternalItemsPath] = useState('items');
+    const [externalBearerToken, setExternalBearerToken] = useState('');
 
     const { partnerData } = usePartnerData(user?.role, 'pharmacie');
     const { errors, validateField, validateForm, setError } = useFormValidation({
@@ -348,38 +358,119 @@ const PharmacieFormScreen: React.FC = () => {
         Alert.alert('Export', t('pharmacie.exportDone', { count: products.length }));
     };
 
+    const parseBulkImportInput = (inputText: string) => {
+        const parsedProducts: any[] = [];
+        const invalids: string[] = [];
+        const trimmed = inputText.trim();
+        if (!trimmed) {
+            return { parsedProducts, invalids };
+        }
+
+        if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+            const parsed = JSON.parse(trimmed);
+            const rows = Array.isArray(parsed) ? parsed : [parsed];
+            rows.forEach((row: any, idx: number) => {
+                const nom = String(row?.nom_produit || row?.nom || row?.product_name || '').trim();
+                if (!nom) {
+                    invalids.push(`Ligne ${idx + 1}: nom_produit manquant`);
+                    return;
+                }
+                parsedProducts.push({
+                    nom_produit: nom,
+                    prix: Number(row?.prix ?? row?.price ?? 0) || 0,
+                    stock: Number(row?.stock ?? row?.quantity ?? 0) || 0,
+                    unite: row?.unite || row?.unit || t('pharmacieForm.unite'),
+                    code_barre: row?.code_barre || row?.barcode || undefined,
+                    categorie: row?.categorie || row?.category || undefined,
+                    description: row?.description || undefined,
+                });
+            });
+            return { parsedProducts, invalids };
+        }
+
+        const lines = trimmed.split('\n').filter(l => l.trim());
+        const firstLower = lines[0]?.toLowerCase() || '';
+        const hasHeader = firstLower.includes('nom') || firstLower.includes('prix') || firstLower.includes('product');
+        const dataLines = hasHeader ? lines.slice(1) : lines;
+        dataLines.forEach((line, idx) => {
+            const parts = line.split(/[,;\t]/).map(s => s.trim().replace(/^"|"$/g, ''));
+            const nom = (parts[0] || '').trim();
+            if (!nom) {
+                invalids.push(`Ligne ${idx + 1}: nom_produit manquant`);
+                return;
+            }
+            const rawPrice = parts[1]?.replace(',', '.');
+            const rawStock = parts[2];
+            const prix = parseFloat(rawPrice || '0');
+            const stock = parseInt(rawStock || '0');
+            if (Number.isNaN(prix) || prix < 0) {
+                invalids.push(`Ligne ${idx + 1}: prix invalide`);
+                return;
+            }
+            if (Number.isNaN(stock) || stock < 0) {
+                invalids.push(`Ligne ${idx + 1}: stock invalide`);
+                return;
+            }
+            parsedProducts.push({
+                nom_produit: nom,
+                prix,
+                stock,
+                unite: parts[3] || t('pharmacieForm.unite'),
+                code_barre: parts[4] || undefined,
+                categorie: parts[5] || undefined,
+                description: parts[6] || undefined,
+            });
+        });
+        return { parsedProducts, invalids };
+    };
+
+    const resetImportWizard = () => {
+        setImportWizardStep(1);
+        setImportSource('paste');
+        setPreviewProducts([]);
+        setInvalidLines([]);
+        setBulkImportText('');
+    };
+
+    const handlePreviewBulkImport = () => {
+        if (importSource !== 'external' && !bulkImportText.trim()) {
+            Alert.alert(t('message.error'), 'Ajoutez des données avant la prévisualisation.');
+            return;
+        }
+        if (importSource === 'external') {
+            setImportWizardStep(3);
+            return;
+        }
+        try {
+            const { parsedProducts, invalids } = parseBulkImportInput(bulkImportText);
+            setPreviewProducts(parsedProducts);
+            setInvalidLines(invalids);
+            if (parsedProducts.length === 0) {
+                Alert.alert(t('message.error'), t('pharmacie.noProductsDetected'));
+                return;
+            }
+            setImportWizardStep(2);
+        } catch (e: any) {
+            const msg = e?.message || 'Format invalide';
+            if (msg.includes('JSON')) {
+                Alert.alert(t('pharmacie.jsonFormatError'), t('pharmacie.jsonFormatErrorMsg'));
+            } else {
+                Alert.alert(t('message.error'), msg);
+            }
+        }
+    };
+
     const handleBulkImport = async () => {
-        if (!bulkImportText.trim()) return;
         const pid = pharmacyData?.service_id || serviceId;
         if (!pid) { Alert.alert(t('message.error'), t('pharmacie.pharmacyNotRegistered')); return; }
         setLoadingBulkImport(true);
         try {
-            let parsedProducts: any[] = [];
-            const trimmed = bulkImportText.trim();
-            if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-                // JSON
-                const parsed = JSON.parse(trimmed);
-                parsedProducts = Array.isArray(parsed) ? parsed : [parsed];
-            } else {
-                // CSV: nom_produit,prix,stock,unite,code_barre,categorie,description
-                const lines = trimmed.split('\n').filter(l => l.trim());
-                const firstLower = lines[0]?.toLowerCase() || '';
-                const hasHeader = firstLower.includes('nom') || firstLower.includes('prix') || firstLower.includes('product');
-                const dataLines = hasHeader ? lines.slice(1) : lines;
-                for (const line of dataLines) {
-                    const parts = line.split(/[,;\t]/).map(s => s.trim().replace(/^"|"$/g, ''));
-                    if (!parts[0]) continue;
-                    parsedProducts.push({
-                        nom_produit: parts[0],
-                        prix: parseFloat(parts[1]?.replace(',', '.')) || 0,
-                        stock: parseInt(parts[2]) || 0,
-                        unite: parts[3] || t('pharmacieForm.unite'),
-                        code_barre: parts[4] || undefined,
-                        categorie: parts[5] || undefined,
-                        description: parts[6] || undefined,
-                    });
-                }
+            if (importSource === 'external') {
+                await handleExternalApiSync();
+                return;
             }
+
+            const parsedProducts = previewProducts.length > 0 ? previewProducts : parseBulkImportInput(bulkImportText).parsedProducts;
             if (parsedProducts.length === 0) { Alert.alert(t('message.error'), t('pharmacie.noProductsDetected')); setLoadingBulkImport(false); return; }
             const resp: any = await apiPost('/api/pharmacies/products/bulk-import', {
                 pharmacy_service_id: pid,
@@ -387,7 +478,8 @@ const PharmacieFormScreen: React.FC = () => {
                 overwrite_existing: bulkImportOverwrite,
             });
             const data = resp?.data as any;
-            setShowBulkImportModal(false); setBulkImportText('');
+            setShowBulkImportModal(false);
+            resetImportWizard();
             loadProducts(pid);
             Alert.alert(
                 'Import',
@@ -398,6 +490,94 @@ const PharmacieFormScreen: React.FC = () => {
             if (msg.includes('JSON')) { Alert.alert(t('pharmacie.jsonFormatError'), t('pharmacie.jsonFormatErrorMsg')); }
             else { Alert.alert(t('message.error'), msg); }
         } finally { setLoadingBulkImport(false); }
+    };
+
+    const handlePickImportFile = async () => {
+        try {
+            setImportSource('file');
+            const result = await DocumentPicker.getDocumentAsync({
+                type: [
+                    'text/csv',
+                    'text/plain',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'application/vnd.ms-excel',
+                ],
+                copyToCacheDirectory: true,
+                multiple: false,
+            });
+            if (result.canceled || !result.assets?.[0]) return;
+            const asset = result.assets[0];
+            const fileName = (asset.name || '').toLowerCase();
+            const uri = asset.uri;
+            if (!uri) return;
+
+            if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+                const wb = XLSX.read(base64, { type: 'base64' });
+                const firstSheet = wb.SheetNames[0];
+                if (!firstSheet) {
+                    Alert.alert(t('message.error'), 'Fichier Excel vide');
+                    return;
+                }
+                const ws = wb.Sheets[firstSheet];
+                const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+                if (!rows.length) {
+                    Alert.alert(t('message.error'), 'Aucune ligne détectée dans le fichier Excel');
+                    return;
+                }
+                const normalized = rows.map((row: any) => ({
+                    nom_produit: row.nom_produit || row.nom || row.product_name || '',
+                    prix: Number(row.prix ?? row.price ?? 0),
+                    stock: Number(row.stock ?? row.quantity ?? 0),
+                    unite: row.unite || row.unit || 'unité',
+                    code_barre: row.code_barre || row.barcode || undefined,
+                    categorie: row.categorie || row.category || undefined,
+                    description: row.description || undefined,
+                })).filter((r: any) => String(r.nom_produit || '').trim().length > 0);
+                setBulkImportText(JSON.stringify(normalized, null, 2));
+                Alert.alert('Import', `${normalized.length} produit(s) détecté(s) dans Excel.`);
+                return;
+            }
+
+            const text = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.UTF8 });
+            setBulkImportText(text);
+            Alert.alert('Import', 'Fichier CSV chargé. Vérifiez puis importez.');
+        } catch (e: any) {
+            Alert.alert(t('message.error'), e?.message || 'Impossible de lire le fichier importé');
+        }
+    };
+
+    const handleExternalApiSync = async () => {
+        const pid = pharmacyData?.service_id || serviceId;
+        if (!pid) {
+            Alert.alert(t('message.error'), t('pharmacie.pharmacyNotRegistered'));
+            return;
+        }
+        if (!externalApiUrl.trim()) {
+            Alert.alert(t('message.error'), 'URL API externe requise');
+            return;
+        }
+        setLoadingBulkImport(true);
+        try {
+            const resp: any = await apiPost('/api/pharmacies/products/sync-external', {
+                pharmacy_service_id: pid,
+                api_url: externalApiUrl.trim(),
+                overwrite_existing: bulkImportOverwrite,
+                items_path: externalItemsPath.trim() || 'items',
+                auth_bearer_token: externalBearerToken.trim() || undefined,
+            });
+            const data = resp?.data ?? resp;
+            loadProducts(pid);
+            Alert.alert(
+                'Sync API',
+                `Créés: ${data?.created || 0}, Mis à jour: ${data?.updated || 0}` +
+                (data?.errors?.length ? `\nErreurs: ${data.errors.slice(0, 3).join('\n')}` : ''),
+            );
+        } catch (e: any) {
+            Alert.alert(t('message.error'), e?.message || 'Erreur sync API externe');
+        } finally {
+            setLoadingBulkImport(false);
+        }
     };
 
     const handleSubmit = async () => {
@@ -469,6 +649,7 @@ const PharmacieFormScreen: React.FC = () => {
                     { label: t('pharmacieForm.ajouterProduit'), icon: 'plus-circle', color: '#3B82F6', onPress: () => { setActiveTab('products'); setTimeout(() => openProductModal(), 200); } },
                     { label: 'IA Interactions', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('PharmacyAIInteractions', { serviceId }) },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('PharmacyAnalytics', { serviceId }) },
+                    { label: 'Finances pharmacie', icon: 'wallet', color: '#0EA5E9', onPress: () => (navigation as any).navigate('PharmacyFinancial') },
                     { label: t('financialTracking.wallet') || 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
                     { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
                 ].map((a, i) => (
@@ -608,7 +789,7 @@ const PharmacieFormScreen: React.FC = () => {
                 <TouchableOpacity style={s.addProdBtn} onPress={() => openProductModal()}>
                     <SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addProdText}>{t('pharmacieFormScreen.ajouter')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.bulkBtn} onPress={() => setShowBulkImportModal(true)}>
+                <TouchableOpacity style={s.bulkBtn} onPress={() => { resetImportWizard(); setShowBulkImportModal(true); }}>
                     <SafeIcon name="upload" size={16} color="#fff" />
                 </TouchableOpacity>
                 {products.length > 0 && (
@@ -724,77 +905,173 @@ const PharmacieFormScreen: React.FC = () => {
 
     // ─── RENDER: Bulk Import Modal ───────────────────────────────────────
     const renderBulkImportModal = () => (
-        <Modal visible={showBulkImportModal} animationType="slide" transparent onRequestClose={() => setShowBulkImportModal(false)}>
+        <Modal visible={showBulkImportModal} animationType="slide" transparent onRequestClose={() => { setShowBulkImportModal(false); resetImportWizard(); }}>
             <View style={s.modalOverlay}><View style={s.modalContent}>
                 <View style={s.modalHeader}>
-                    <Text style={s.modalTitle}>Import en masse</Text>
-                    <TouchableOpacity onPress={() => setShowBulkImportModal(false)}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
+                    <Text style={s.modalTitle}>Import en masse (Etape {importWizardStep}/3)</Text>
+                    <TouchableOpacity onPress={() => { setShowBulkImportModal(false); resetImportWizard(); }}><SafeIcon name="x" size={24} color="#6B7280" /></TouchableOpacity>
                 </View>
                 <ScrollView style={{ padding: 16, maxHeight: 500 }}>
-                    {/* Guide / Aide */}
-                    <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, backgroundColor: '#EFF6FF', borderRadius: 8, marginBottom: 12 }} onPress={() => setShowBulkGuide(!showBulkGuide)}>
-                        <SafeIcon name="help-circle" size={18} color="#3B82F6" />
-                        <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: '#3B82F6' }}>Comment preparer mes donnees ?</Text>
-                        <SafeIcon name={showBulkGuide ? 'chevron-up' : 'chevron-down'} size={16} color="#3B82F6" />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', marginBottom: 12, gap: 8 }}>
+                        {[1, 2, 3].map((step) => (
+                            <View key={step} style={{ flex: 1, height: 6, borderRadius: 999, backgroundColor: importWizardStep >= step ? '#10B981' : '#E5E7EB' }} />
+                        ))}
+                    </View>
 
-                    {showBulkGuide && (
-                        <View style={{ backgroundColor: '#F9FAFB', borderRadius: 10, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB' }}>
-                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#1F2937', marginBottom: 4 }}>Format CSV (recommande)</Text>
-                            <Text style={{ fontSize: 12, color: '#4B5563', lineHeight: 18 }}>
-                                Chaque ligne = 1 produit. Colonnes separees par virgule, point-virgule ou tabulation.
-                            </Text>
-                            <View style={{ backgroundColor: '#1F2937', borderRadius: 8, padding: 10, marginVertical: 6 }}>
-                                <Text style={{ fontSize: 11, color: '#A5F3FC', fontFamily: 'monospace' }}>
-                                    {`nom_produit;prix;stock;unite;code_barre;categorie\nParacetamol 500mg;1500;200;boite;3401560123;analgesique\nAmoxicilline 1g;3500;50;boite;;antibiotique\nVitamine C 1000mg;2000;100;tube;;;`}
-                                </Text>
-                            </View>
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginTop: 10, marginBottom: 4 }}>Colonnes disponibles (dans l'ordre) :</Text>
-                            <Text style={{ fontSize: 12, color: '#4B5563', lineHeight: 18 }}>
-                                1. nom_produit (obligatoire){"\n"}
-                                2. prix{"\n"}
-                                3. stock (quantite){"\n"}
-                                4. unite (boite, tube, flacon, sachet...){"\n"}
-                                5. code_barre{"\n"}
-                                6. categorie (analgesique, antibiotique, vitamines...){"\n"}
-                                7. description
-                            </Text>
-
-                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#1F2937', marginTop: 12, marginBottom: 4 }}>Format JSON</Text>
-                            <View style={{ backgroundColor: '#1F2937', borderRadius: 8, padding: 10, marginVertical: 6 }}>
-                                <Text style={{ fontSize: 11, color: '#A5F3FC', fontFamily: 'monospace' }}>
-                                    {`[\n  {"nom_produit": "Paracetamol 500mg", "prix": 1500, "stock": 200, "unite": "boite"},\n  {"nom_produit": "Amoxicilline 1g", "prix": 3500, "stock": 50}\n]`}
-                                </Text>
+                    {importWizardStep === 1 && (
+                        <>
+                            <Text style={{ fontSize: 13, fontWeight: '700', marginBottom: 8, color: '#111827' }}>Choix source</Text>
+                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                                <TouchableOpacity onPress={() => setImportSource('paste')} style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: importSource === 'paste' ? '#DBEAFE' : '#F3F4F6' }}>
+                                    <Text style={{ textAlign: 'center', fontWeight: '700', color: '#1E3A8A' }}>Coller texte</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setImportSource('file')} style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: importSource === 'file' ? '#DBEAFE' : '#F3F4F6' }}>
+                                    <Text style={{ textAlign: 'center', fontWeight: '700', color: '#1E3A8A' }}>Fichier CSV/Excel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setImportSource('external')} style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: importSource === 'external' ? '#DBEAFE' : '#F3F4F6' }}>
+                                    <Text style={{ textAlign: 'center', fontWeight: '700', color: '#1E3A8A' }}>API externe</Text>
+                                </TouchableOpacity>
                             </View>
 
-                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#1F2937', marginTop: 12, marginBottom: 4 }}>Conseils</Text>
-                            <Text style={{ fontSize: 12, color: '#4B5563', lineHeight: 18 }}>
-                                - Vous pouvez copier-coller depuis Excel ou Google Sheets{"\n"}
-                                - Seul le nom_produit est obligatoire{"\n"}
-                                - L'en-tete est detecte automatiquement{"\n"}
-                                - Activez "Remplacer existants" pour mettre a jour prix/stocks
-                            </Text>
-                        </View>
+                            {/* Guide / Aide */}
+                            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, backgroundColor: '#EFF6FF', borderRadius: 8, marginBottom: 12 }} onPress={() => setShowBulkGuide(!showBulkGuide)}>
+                                <SafeIcon name="help-circle" size={18} color="#3B82F6" />
+                                <Text style={{ flex: 1, fontSize: 13, fontWeight: '600', color: '#3B82F6' }}>Guide format CSV/Excel attendu</Text>
+                                <SafeIcon name={showBulkGuide ? 'chevron-up' : 'chevron-down'} size={16} color="#3B82F6" />
+                            </TouchableOpacity>
+
+                            {showBulkGuide && (
+                                <View style={{ backgroundColor: '#F9FAFB', borderRadius: 10, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#1F2937', marginBottom: 4 }}>Colonnes attendues</Text>
+                                    <Text style={{ fontSize: 12, color: '#4B5563', lineHeight: 18 }}>
+                                        Obligatoire: nom_produit{"\n"}
+                                        Optionnelles: prix, stock, unite, code_barre, categorie, description
+                                    </Text>
+                                    <View style={{ backgroundColor: '#1F2937', borderRadius: 8, padding: 10, marginVertical: 6 }}>
+                                        <Text style={{ fontSize: 11, color: '#A5F3FC', fontFamily: 'monospace' }}>
+                                            {`nom_produit;prix;stock;unite;code_barre;categorie;description\nParacetamol 500mg;1500;200;boite;3401560123;analgesique;Douleurs et fièvre`}
+                                        </Text>
+                                    </View>
+                                    <Text style={{ fontSize: 12, color: '#4B5563', lineHeight: 18 }}>
+                                        En mode "Remplacer existants" désactivé: les stocks existants sont incrémentés.{"\n"}
+                                        En mode activé: prix/stock/champs sont remplacés pour les produits déjà existants.
+                                    </Text>
+                                </View>
+                            )}
+
+                            {importSource !== 'external' && (
+                                <>
+                                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Collez vos données ici (CSV/JSON) :</Text>
+                                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                                        <TouchableOpacity
+                                            style={{ flex: 1, backgroundColor: '#2563EB', borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
+                                            onPress={handlePickImportFile}
+                                        >
+                                            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Charger fichier CSV/Excel</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    <NativeInput value={bulkImportText} onChangeText={setBulkImportText} placeholder={`nom_produit;prix;stock;unite;categorie\nParacetamol 500mg;1500;200;boite;analgesique`} multiline style={{ minHeight: 150, fontFamily: 'monospace', fontSize: 12 }} />
+                                </>
+                            )}
+
+                            {importSource === 'external' && (
+                                <View style={{ marginTop: 6 }}>
+                                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 6 }}>Connecteur API externe</Text>
+                                    <NativeInput value={externalApiUrl} onChangeText={setExternalApiUrl} placeholder="https://api.ma-pharmacie.com/catalog" />
+                                    <NativeInput value={externalItemsPath} onChangeText={setExternalItemsPath} placeholder="items ou data.items" style={{ marginTop: 8 }} />
+                                    <NativeInput value={externalBearerToken} onChangeText={setExternalBearerToken} placeholder="Bearer token (optionnel)" style={{ marginTop: 8 }} />
+                                </View>
+                            )}
+                        </>
                     )}
 
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Collez vos donnees ici (CSV ou JSON) :</Text>
-                    <NativeInput value={bulkImportText} onChangeText={setBulkImportText} placeholder={`nom_produit;prix;stock;unite;categorie\nParacetamol 500mg;1500;200;boite;analgesique\nAmoxicilline 1g;3500;50;boite;antibiotique`} multiline style={{ minHeight: 150, fontFamily: 'monospace', fontSize: 12 }} />
-                    <View style={[s.switchRow, { marginTop: 16 }]}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.label}>Remplacer existants</Text>
-                            <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>Si un produit avec le meme nom existe, il sera mis a jour</Text>
-                        </View>
-                        <Switch value={bulkImportOverwrite} onValueChange={setBulkImportOverwrite} trackColor={{ false: '#D1D5DB', true: modernColors.primary }} />
-                    </View>
-                    {bulkImportText.trim().length > 0 && (
-                        <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 8, fontStyle: 'italic' }}>
-                            Environ {bulkImportText.trim().split('\n').filter(l => l.trim()).length} ligne(s) detectee(s)
-                        </Text>
+                    {importWizardStep === 2 && (
+                        <>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>Prévisualisation</Text>
+                            <Text style={{ marginTop: 4, marginBottom: 10, color: '#4B5563' }}>
+                                Lignes valides: {previewProducts.length} · Lignes invalides: {invalidLines.length}
+                            </Text>
+                            {invalidLines.length > 0 && (
+                                <View style={{ backgroundColor: '#FEF2F2', borderRadius: 8, padding: 10, marginBottom: 10 }}>
+                                    <Text style={{ fontWeight: '700', color: '#991B1B', marginBottom: 6 }}>Lignes invalides détectées</Text>
+                                    {invalidLines.slice(0, 20).map((err, idx) => (
+                                        <Text key={`inv-${idx}`} style={{ color: '#B91C1C', fontSize: 12 }}>- {err}</Text>
+                                    ))}
+                                </View>
+                            )}
+                            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 8, padding: 10 }}>
+                                <Text style={{ fontWeight: '700', color: '#1F2937', marginBottom: 6 }}>Aperçu produits valides (max 10)</Text>
+                                {previewProducts.slice(0, 10).map((p, idx) => (
+                                    <Text key={`pv-${idx}`} style={{ fontSize: 12, color: '#374151' }}>
+                                        {idx + 1}. {p.nom_produit} | Prix: {p.prix} | Stock: {p.stock} | Unité: {p.unite}
+                                    </Text>
+                                ))}
+                            </View>
+                        </>
+                    )}
+
+                    {importWizardStep === 3 && (
+                        <>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 8 }}>Confirmation import</Text>
+                            <View style={[s.switchRow, { marginTop: 6 }]}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={s.label}>Remplacer existants</Text>
+                                    <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
+                                        OFF: cumule stock existant · ON: remplace prix/stock/champs des produits existants
+                                    </Text>
+                                </View>
+                                <Switch value={bulkImportOverwrite} onValueChange={setBulkImportOverwrite} trackColor={{ false: '#D1D5DB', true: modernColors.primary }} />
+                            </View>
+                            {importSource === 'external' ? (
+                                <Text style={{ marginTop: 8, color: '#4B5563' }}>Prêt à synchroniser via API externe.</Text>
+                            ) : (
+                                <Text style={{ marginTop: 8, color: '#4B5563' }}>Produits valides prêts à importer: {previewProducts.length}</Text>
+                            )}
+                        </>
                     )}
                 </ScrollView>
                 <View style={s.modalFooter}>
-                    <NativeButton title={t('pharmacieFormScreen.cancel')} onPress={() => { setShowBulkImportModal(false); setBulkImportText(''); }} variant="secondary" style={{ flex: 1 }} />
-                    <NativeButton title={loadingBulkImport ? 'Import...' : 'Importer'} onPress={handleBulkImport} variant="primary" style={{ flex: 1 }} disabled={loadingBulkImport || !bulkImportText.trim()} />
+                    <NativeButton
+                        title={importWizardStep === 1 ? t('pharmacieFormScreen.cancel') : 'Retour'}
+                        onPress={() => {
+                            if (importWizardStep === 1) {
+                                setShowBulkImportModal(false);
+                                resetImportWizard();
+                            } else {
+                                setImportWizardStep((prev) => (prev === 3 ? 2 : 1));
+                            }
+                        }}
+                        variant="secondary"
+                        style={{ flex: 1 }}
+                    />
+                    {importWizardStep < 3 ? (
+                        <NativeButton
+                            title={importWizardStep === 1 ? 'Prévisualiser' : 'Confirmer la prévisualisation'}
+                            onPress={() => {
+                                if (importWizardStep === 1) {
+                                    handlePreviewBulkImport();
+                                } else {
+                                    setImportWizardStep(3);
+                                }
+                            }}
+                            variant="primary"
+                            style={{ flex: 1 }}
+                            disabled={
+                                loadingBulkImport ||
+                                (importWizardStep === 1 && importSource !== 'external' && !bulkImportText.trim()) ||
+                                (importWizardStep === 1 && importSource === 'external' && !externalApiUrl.trim()) ||
+                                (importWizardStep === 2 && previewProducts.length === 0)
+                            }
+                        />
+                    ) : (
+                        <NativeButton
+                            title={loadingBulkImport ? 'Import...' : (importSource === 'external' ? 'Lancer la synchronisation' : 'Importer maintenant')}
+                            onPress={handleBulkImport}
+                            variant="primary"
+                            style={{ flex: 1 }}
+                            disabled={loadingBulkImport || (importSource !== 'external' && previewProducts.length === 0)}
+                        />
+                    )}
                 </View>
             </View></View>
         </Modal>

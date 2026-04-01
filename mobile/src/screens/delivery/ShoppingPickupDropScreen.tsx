@@ -1,4 +1,4 @@
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, BackHandler, StyleSheet, Text, View } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
@@ -8,6 +8,7 @@ import ModernGPSModal from '../../components/ModernGPSModal';
 import { NativeButton, NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';
+import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 type ModalType = 'pickup' | 'dropoff' | null;
@@ -26,10 +27,15 @@ const parseCoordinates = (value: string) => {
 
 const ShoppingPickupDropScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const route = useRoute() as any;
+    const routeParams = (route?.params ?? {}) as { mode?: 'create' | 'edit'; deliveryId?: string | number };
+    const isEditMode = routeParams?.mode === 'edit';
+    const editDeliveryId = routeParams?.deliveryId != null ? String(routeParams.deliveryId) : '';
     const { pickup, setPickup, dropoff, setDropoff } = useShoppingBasket();
     const [modalType, setModalType] = useState<ModalType>(null);
     const [pickupLabel, setPickupLabel] = useState(pickup?.label ?? '');
     const [dropoffLabel, setDropoffLabel] = useState(dropoff?.label ?? '');
+    const [prefillDone, setPrefillDone] = useState(false);
 
     const pickupCoordinates = useMemo(
         () => (pickup?.latitude && pickup?.longitude ? { lat: pickup.latitude, lng: pickup.longitude } : null),
@@ -58,6 +64,55 @@ const ShoppingPickupDropScreen: React.FC = () => {
 
         return () => backHandler.remove();
     }, [navigation, modalType]);
+
+    useEffect(() => {
+        let mounted = true;
+
+        const loadEditDelivery = async () => {
+            if (!isEditMode || !editDeliveryId || prefillDone) return;
+
+            try {
+                const response = await deliveryApi.getDeliveryById(editDeliveryId);
+                const delivery = (response as any)?.data?.delivery ?? (response as any)?.data;
+                if (!mounted || !delivery) return;
+
+                const pickupLocation = delivery.pickup?.location;
+                const dropoffLocation = delivery.dropoff?.location;
+                const pickupAddress = delivery.pickup?.address ?? delivery.pickup?.label ?? '';
+                const dropoffAddress = delivery.dropoff?.address ?? delivery.dropoff?.label ?? '';
+
+                if (pickupLocation?.lat != null && pickupLocation?.lng != null) {
+                    setPickup({
+                        label: delivery.pickup?.label || pickupAddress || 'Supermarché',
+                        latitude: Number(pickupLocation.lat),
+                        longitude: Number(pickupLocation.lng),
+                        address: pickupAddress,
+                    });
+                    setPickupLabel(delivery.pickup?.label || pickupAddress || 'Supermarché');
+                }
+
+                if (dropoffLocation?.lat != null && dropoffLocation?.lng != null) {
+                    setDropoff({
+                        label: delivery.dropoff?.label || dropoffAddress || 'Livraison',
+                        latitude: Number(dropoffLocation.lat),
+                        longitude: Number(dropoffLocation.lng),
+                        address: dropoffAddress,
+                    });
+                    setDropoffLabel(delivery.dropoff?.label || dropoffAddress || 'Livraison');
+                }
+
+                setPrefillDone(true);
+            } catch (error) {
+                console.error('[ShoppingPickupDropScreen] prefill edit error:', error);
+            }
+        };
+
+        loadEditDelivery();
+
+        return () => {
+            mounted = false;
+        };
+    }, [editDeliveryId, isEditMode, prefillDone, setDropoff, setPickup]);
 
     const handleOpenModal = (type: ModalType) => setModalType(type);
 
@@ -93,7 +148,10 @@ const ShoppingPickupDropScreen: React.FC = () => {
             Alert.alert('Localisations manquantes', 'Sélectionne le point de retrait et de dépôt.');
             return;
         }
-        navigation.navigate('ShoppingSummary');
+        navigation.navigate('ShoppingSummary', {
+            mode: isEditMode ? 'edit' : 'create',
+            deliveryId: editDeliveryId || undefined,
+        });
     };
 
     return (

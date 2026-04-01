@@ -23,6 +23,8 @@ interface ServiceDetailScreenProps {
             serviceId: number;
             serviceType?: string;
             showReviews?: boolean;
+            openChat?: boolean;
+            initialConversationId?: string;
         };
     };
     navigation: any;
@@ -30,7 +32,7 @@ interface ServiceDetailScreenProps {
 
 const ServiceDetailScreen: React.FC<ServiceDetailScreenProps> = ({ route, navigation }) => {
     const { user } = useAuth();
-    const { serviceId, serviceType, showReviews } = route.params;
+    const { serviceId, serviceType, showReviews, openChat, initialConversationId } = route.params;
     const scrollViewRef = useRef<ScrollView>(null);
     const commentsSectionY = useRef<number>(0);
 
@@ -39,7 +41,7 @@ const [loading, setLoading] = useState(true);
     const [service, setService] = useState<any>(null);
     const [prestataire, setPrestataire] = useState<any>(null);
     const [showChat, setShowChat] = useState(false);
-    const [conversationId, setConversationId] = useState<string | null>(null);
+    const [conversationId, setConversationId] = useState<string | null>(initialConversationId || null);
     const [ratingStats, setRatingStats] = useState<any>(null);
     const [detectedServiceType, setDetectedServiceType] = useState<string>(serviceType || '');
 
@@ -47,6 +49,13 @@ const [loading, setLoading] = useState(true);
         loadServiceDetails();
         loadRatingStats();
     }, [serviceId]);
+
+    // Ouvrir automatiquement le chat si demandé (depuis une notification tap)
+    useEffect(() => {
+        if (openChat && !loading && service) {
+            setShowChat(true);
+        }
+    }, [openChat, loading, service]);
 
     // ✅ NOUVEAU 2026-03-03: Auto-scroll vers les commentaires si showReviews est true
     useEffect(() => {

@@ -57,6 +57,7 @@ import { TimelineVariantSelector } from './TimelineVariantSelector';
 
 type VideoStylePreset = 'tiktok' | 'story' | 'cinematic' | 'carousel';
 type MusicMode = 'pulse' | 'lofi' | 'ambient' | 'cinematic' | 'none';
+type CreationMode = 'video' | 'visual';
 
 interface MediaLibraryItem {
     id: number;
@@ -598,6 +599,8 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     );
 
     const [activeStep, setActiveStep] = useState<ModalStep>(1);
+    // Mode de création: vidéo animée ou visuel statique (image/affiche/bannière)
+    const [creationMode, setCreationMode] = useState<CreationMode>('video');
     // ✅ NOUVEAU: Tracking des étapes complétées
     const [completedSteps, setCompletedSteps] = useState<Set<ModalStep>>(new Set());
     const [selectedProduct, setSelectedProduct] = useState<ManagedProduct | null>(primaryProduct);
@@ -3963,6 +3966,30 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
 
     const renderStep5 = () => {
         // Étape 5 : Audio uniquement (musique + voiceover)
+        // En mode visuel, l'étape audio n'est pas applicable
+        if (creationMode === 'visual') {
+            return (
+                <NativeCard style={styles.sectionCard}>
+                    <View style={{ alignItems: 'center', padding: 24 }}>
+                        <SafeIcon name="image" size={48} color={modernColors.primary} />
+                        <Text style={[styles.sectionTitle, { textAlign: 'center', marginTop: 16 }]}>
+                            Non applicable en mode Visuel
+                        </Text>
+                        <Text style={[styles.sectionSubtitle, { textAlign: 'center', marginTop: 8 }]}>
+                            La musique et la narration ne s'appliquent pas aux visuels statiques.{'\n'}
+                            Passez à l'étape suivante pour publier votre visuel.
+                        </Text>
+                        <TouchableOpacity
+                            style={{ marginTop: 20, paddingVertical: 10, paddingHorizontal: 24, borderRadius: 8, backgroundColor: modernColors.primary }}
+                            onPress={() => handleStepChange(6)}
+                        >
+                            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Étape suivante →</Text>
+                        </TouchableOpacity>
+                    </View>
+                </NativeCard>
+            );
+        }
+
         if (!selectedProduct) {
             return renderEmptyProductState('emptyRefAudio');
         }
@@ -5144,6 +5171,52 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return;
         }
 
+        // En mode visuel, on ne vérifie pas le script ni la durée ni le voiceover
+        if (creationMode === 'visual') {
+            const visualPayload: VideoGenerationPayload = {
+                style: stylePreset,
+                duration_seconds: 0,
+                headline: headline.trim(),
+                call_to_action: callToAction.trim(),
+                include_price: includePrice,
+                include_promotion: includePromotion,
+                include_contact: includeContact,
+                selected_media_ids: Array.from(selectedMediaIds.values()),
+                related_product_indices: Array.from(selectedRelatedProducts.values()),
+                use_product_gallery: useProductGallery,
+                use_service_mediatech: useMediatechLibrary,
+                include_publicite_assets: includePubliciteAssets,
+                publish_to_chat: publishToChat,
+                publish_to_product_card: publishToProductCard,
+                storyboard: scriptNotes.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0),
+                music_mode: 'none',
+                distribute_channels: Array.from(selectedChannels.values()),
+                style_effects: selectedEffects.size > 0 ? Array.from(selectedEffects) : undefined,
+                style_color_palette: colorPalette.trim().length > 0 ? colorPalette.trim() : undefined,
+                auto_generate_images: true,
+                creation_mode: 'visual',
+            } as any;
+            setIsSubmitting(true);
+            try {
+                const response = await mediaApi.generateProductVisual(
+                    selectedProduct.serviceId,
+                    selectedProduct.product_index,
+                    visualPayload
+                );
+                if (!response.success || !response.data) {
+                    throw new Error(response.error || 'Génération impossible');
+                }
+                const result = response.data as any;
+                await onSuccess(result);
+                onClose();
+            } catch (err: any) {
+                Alert.alert('Erreur', err?.message || 'Impossible de générer le visuel.');
+            } finally {
+                setIsSubmitting(false);
+            }
+            return;
+        }
+
         // ✅ CORRIGÉ: Vérifier que le script est rempli OU qu'un storyboard/brief existe
         const hasScript = scriptNotes.trim().length > 0;
         const hasStoryboard = storyboard && storyboard.scenes.length > 0;
@@ -6307,6 +6380,26 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                 </TouchableOpacity>
                             )}
 
+                            {/* Sélecteur de mode: Vidéo ou Visuel */}
+                            <View style={{ flexDirection: 'row', marginBottom: 12, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: modernColors.primary }}>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 6, backgroundColor: creationMode === 'video' ? modernColors.primary : 'transparent' }}
+                                    onPress={() => { setCreationMode('video'); if (activeStep === 5) setActiveStep(4); }}
+                                    activeOpacity={0.8}
+                                >
+                                    <SafeIcon name="video" size={15} color={creationMode === 'video' ? '#fff' : modernColors.primary} />
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: creationMode === 'video' ? '#fff' : modernColors.primary }}>Vidéo</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 6, backgroundColor: creationMode === 'visual' ? modernColors.primary : 'transparent' }}
+                                    onPress={() => setCreationMode('visual')}
+                                    activeOpacity={0.8}
+                                >
+                                    <SafeIcon name="image" size={15} color={creationMode === 'visual' ? '#fff' : modernColors.primary} />
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: creationMode === 'visual' ? '#fff' : modernColors.primary }}>Visuel</Text>
+                                </TouchableOpacity>
+                            </View>
+
                             {/* Ligne 3: Indicateur d'étapes pleine largeur */}
                             <View style={styles.stepsIndicator}>
                                 {([
@@ -6485,13 +6578,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         title={pvm('uiPrevious')}
                                         variant="secondary"
                                         onPress={() => handleStepChange(3)}
-                                        style={styles.navigationButtonLeft} // ✅ AJOUTÉ: Style pour positionner à gauche
+                                        style={styles.navigationButtonLeft}
                                     />
                                     <NativeButton
                                         title={pvm('uiNext')}
                                         variant="primary"
-                                        onPress={() => handleStepChange(5)}
-                                        style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
+                                        onPress={() => handleStepChange(creationMode === 'visual' ? 6 : 5)}
+                                        style={styles.navigationButtonRight}
                                     />
                                 </View>
                             )}
@@ -6501,27 +6594,29 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         title={pvm('uiPrevious')}
                                         variant="secondary"
                                         onPress={() => handleStepChange(4)}
-                                        style={styles.navigationButtonLeft} // ✅ AJOUTÉ: Style pour positionner à gauche
+                                        style={styles.navigationButtonLeft}
                                     />
                                     <NativeButton
                                         title={pvm('uiNext')}
                                         variant="primary"
                                         onPress={() => handleStepChange(6)}
-                                        style={styles.navigationButtonRight} // ✅ AJOUTÉ: Style pour positionner à droite
+                                        style={styles.navigationButtonRight}
                                     />
                                 </View>
                             )}
                             {activeStep === 6 && (
                                 <View style={styles.step6BottomContainer}>
                                     <View style={styles.generateInfoRow}>
+                                        {creationMode === 'video' && (
+                                            <View style={styles.generateInfoItem}>
+                                                <SafeIcon name="clock" size={12} color={modernColors.textSecondary} />
+                                                <Text style={styles.generateInfoText}>~{duration}s</Text>
+                                            </View>
+                                        )}
                                         <View style={styles.generateInfoItem}>
-                                            <SafeIcon name="clock" size={12} color={modernColors.textSecondary} />
-                                            <Text style={styles.generateInfoText}>~{duration}s</Text>
-                                        </View>
-                                        <View style={styles.generateInfoItem}>
-                                            <SafeIcon name="film" size={12} color={modernColors.textSecondary} />
+                                            <SafeIcon name={creationMode === 'visual' ? 'image' : 'film'} size={12} color={modernColors.textSecondary} />
                                             <Text style={styles.generateInfoText}>
-                                                {videoStyleOptions.find(o => o.key === stylePreset)?.label || stylePreset}
+                                                {creationMode === 'visual' ? 'Visuel' : (videoStyleOptions.find(o => o.key === stylePreset)?.label || stylePreset)}
                                             </Text>
                                         </View>
                                         {selectedMediaIds.size > 0 && (
@@ -6537,10 +6632,10 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
                                         <NativeButton
                                             title={pvm('uiPrevious')}
                                             variant="secondary"
-                                            onPress={() => handleStepChange(5)}
+                                            onPress={() => handleStepChange(creationMode === 'visual' ? 4 : 5)}
                                         />
                                         <NativeButton
-                                            title={isSubmitting ? pvm('uiGenerating') : pvm('uiGenerateVideo')}
+                                            title={isSubmitting ? pvm('uiGenerating') : (creationMode === 'visual' ? 'Générer le Visuel' : pvm('uiGenerateVideo'))}
                                             variant="primary"
                                             onPress={handleSubmit}
                                             disabled={isSubmitting || !selectedProduct}

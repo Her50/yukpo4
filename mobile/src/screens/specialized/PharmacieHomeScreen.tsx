@@ -28,7 +28,12 @@ import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
 import { useAIWithFallback } from '../../hooks/useAIWithFallback';
 import { imageAnalysisService } from '../../services/imageAnalysisService';
-import { PharmacyProduct, pharmacyProductService, ProductSearchFilters } from '../../services/pharmacyProductService';
+import {
+    NearbyMedicineFilters,
+    PharmacyProduct,
+    pharmacyProductService,
+    ProductSearchFilters
+} from '../../services/pharmacyProductService';
 import { DosageRecommendation, MedicationInteraction, pharmacyService } from '../../services/pharmacyService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
@@ -51,12 +56,14 @@ const PharmacieHomeScreen: React.FC = () => {
     const [page, setPage] = useState(1);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
+    const [lastNearbyRawResults, setLastNearbyRawResults] = useState<any[]>([]);
 
     // États UI
     const [sortBy, setSortBy] = useState<SortOption>('relevance');
     const [showFilters, setShowFilters] = useState(false);
     const [showSortModal, setShowSortModal] = useState(false);
     const [searchFocused, setSearchFocused] = useState(false);
+    const [onDutyOnly, setOnDutyOnly] = useState(false);
 
     // États de filtres
     const [filters, setFilters] = useState<ProductSearchFilters>({
@@ -109,6 +116,7 @@ const PharmacieHomeScreen: React.FC = () => {
         () => [
             { id: 'proche', label: t('pharmacieHome.chipNearMe'), icon: 'map-pin', distance: 10 },
             { id: 'disponible', label: t('pharmacieHome.chipAvailable'), icon: 'check-circle', available: true },
+            { id: 'garde', label: t('pharmacieHome.onDutyOnly') || 'De garde', icon: 'shield-check' },
             { id: 'prix_bas', label: t('pharmacieHomeScreen.prixBas'), icon: 'tag' },
         ],
         [t]
@@ -137,8 +145,9 @@ const PharmacieHomeScreen: React.FC = () => {
         if (filters.min_price || filters.max_price) count++;
         if (filters.radius_km && filters.radius_km < 50) count++;
         if (filters.only_available) count++;
+        if (onDutyOnly) count++;
         setActiveFiltersCount(count);
-    }, [filters]);
+    }, [filters, onDutyOnly]);
 
     // Charger les médicaments
     const loadMedications = useCallback(async (initialLoad: boolean = false) => {
@@ -148,17 +157,45 @@ const PharmacieHomeScreen: React.FC = () => {
                 setError(null);
             }
 
-            const searchFilters: ProductSearchFilters = {
-                ...filters,
-                query: searchQuery.trim() || '', // Charger tous les produits disponibles si pas de recherche
+            const nearbyFilters: NearbyMedicineFilters = {
+                q: (searchQuery.trim() || filters.query || '').trim(),
+                lat: filters.lat,
+                lng: filters.lng,
+                radius_km: filters.radius_km,
+                quantity: 1,
+                max_price: filters.max_price as number | undefined,
+                on_duty_only: onDutyOnly,
+                limit: filters.limit || 20,
             };
 
-            const response = await pharmacyProductService.searchProducts(searchFilters);
+            const response = await pharmacyProductService.searchNearbyMedicines(nearbyFilters);
 
             const r = response.data as any;
-            if (response.success && r?.products) {
-                let results = r.products;
-                setHasMore(results.length >= 20);
+            if (response.success && r?.items) {
+                const items = Array.isArray(r.items) ? r.items : [];
+                setLastNearbyRawResults(items);
+
+                let results: PharmacyProduct[] = items.map((item: any) => ({
+                    id: item.id,
+                    pharmacy_service_id: item.pharmacy_service_id,
+                    nom_produit: item.nom_produit,
+                    description: item.description,
+                    prix: item.prix,
+                    stock: item.stock,
+                    unite: item.unite,
+                    code_barre: item.code_barre,
+                    categorie: item.categorie,
+                    distance_km: item.distance_km,
+                    pharmacy_name: item.pharmacy_nom || item.pharmacy_name,
+                    pharmacy_ville: item.pharmacy_ville,
+                    pharmacy_quartier: item.pharmacy_quartier,
+                    pharmacy_gps: item.pharmacy_gps,
+                    pharmacy_telephone: item.pharmacy_telephone || item.telephone,
+                    pharmacy_whatsapp: item.pharmacy_whatsapp,
+                    created_at: item.created_at,
+                    updated_at: item.updated_at,
+                }));
+                setHasMore(items.length >= (nearbyFilters.limit || 20));
 
                 // Tri côté client
                 if (sortBy !== 'relevance') {
@@ -181,16 +218,18 @@ const PharmacieHomeScreen: React.FC = () => {
                 }
 
                 setMedications(results);
-                setTotalResults(r.total || results.length);
+                setTotalResults(results.length);
                 setPage(1);
             } else {
                 setError(t('pharmacieHome.aucunMedicamentTrouve'));
                 setMedications([]);
+                setLastNearbyRawResults([]);
             }
         } catch (err: any) {
             console.error('[PharmacieHomeScreen] Erreur chargement:', err);
             setError(err.message || t('pharmacieHome.errorLoadingList'));
             setMedications([]);
+            setLastNearbyRawResults([]);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -208,22 +247,58 @@ const PharmacieHomeScreen: React.FC = () => {
         setLoadingMore(true);
         try {
             const nextPage = page + 1;
-            const searchFilters = {
-                ...filters,
-                query: searchQuery.trim() || '',
-                limit: 20,
-                offset: (nextPage - 1) * 20,
-            } as any;
-            const response = await pharmacyProductService.searchProducts(searchFilters);
+            const nextLimit = nextPage * 20;
+            const searchFilters: NearbyMedicineFilters = {
+                q: (searchQuery.trim() || filters.query || '').trim(),
+                lat: filters.lat,
+                lng: filters.lng,
+                radius_km: filters.radius_km,
+                quantity: 1,
+                max_price: filters.max_price as number | undefined,
+                on_duty_only: onDutyOnly,
+                limit: nextLimit,
+            };
+            const response = await pharmacyProductService.searchNearbyMedicines(searchFilters);
             const r = response.data as any;
-            if (response.success && r?.products) {
-                const newResults = r.products;
-                if (newResults.length === 0) { setHasMore(false); }
-                else { setMedications(prev => [...prev, ...newResults]); setPage(nextPage); setHasMore(newResults.length >= 20); }
+            if (response.success && r?.items) {
+                const allItems = Array.isArray(r.items) ? r.items : [];
+                const prevCount = lastNearbyRawResults.length;
+                const appended = allItems.slice(prevCount);
+
+                const mappedAppended: PharmacyProduct[] = appended.map((item: any) => ({
+                    id: item.id,
+                    pharmacy_service_id: item.pharmacy_service_id,
+                    nom_produit: item.nom_produit,
+                    description: item.description,
+                    prix: item.prix,
+                    stock: item.stock,
+                    unite: item.unite,
+                    code_barre: item.code_barre,
+                    categorie: item.categorie,
+                    distance_km: item.distance_km,
+                    pharmacy_name: item.pharmacy_nom || item.pharmacy_name,
+                    pharmacy_ville: item.pharmacy_ville,
+                    pharmacy_quartier: item.pharmacy_quartier,
+                    pharmacy_gps: item.pharmacy_gps,
+                    pharmacy_telephone: item.pharmacy_telephone || item.telephone,
+                    pharmacy_whatsapp: item.pharmacy_whatsapp,
+                    created_at: item.created_at,
+                    updated_at: item.updated_at,
+                }));
+
+                if (mappedAppended.length === 0) {
+                    setHasMore(false);
+                } else {
+                    setMedications(prev => [...prev, ...mappedAppended]);
+                    setLastNearbyRawResults(allItems);
+                    setPage(nextPage);
+                    setHasMore(allItems.length >= nextLimit);
+                    setTotalResults(allItems.length);
+                }
             }
         } catch (err) { console.warn('[PharmacieHome] Load more error:', err); }
         finally { setLoadingMore(false); }
-    }, [page, loadingMore, hasMore, filters, searchQuery]);
+    }, [page, loadingMore, hasMore, filters, searchQuery, lastNearbyRawResults, onDutyOnly]);
 
     const handleMedicationPress = (medication: PharmacyProduct) => {
         hapticPress();
@@ -248,6 +323,9 @@ const PharmacieHomeScreen: React.FC = () => {
         if (filter.id === 'prix_bas') {
             setSortBy('price_asc');
         }
+        if (filter.id === 'garde') {
+            setOnDutyOnly((prev) => !prev);
+        }
         loadMedications(false);
     };
 
@@ -261,6 +339,7 @@ const PharmacieHomeScreen: React.FC = () => {
             lng: location?.coords?.longitude,
             radius_km: 20,
         });
+        setOnDutyOnly(false);
         setSearchQuery('');
         loadMedications(false);
     };
@@ -577,6 +656,14 @@ const PharmacieHomeScreen: React.FC = () => {
                             )}
                         </TouchableOpacity>
                     </View>
+                    {onDutyOnly && (
+                        <View style={styles.onDutyBadge}>
+                            <SafeIcon name="shield-check" size={14} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.onDutyBadgeText}>
+                                {t('pharmacieHome.onDutyOnly') || 'De garde seulement'}
+                            </Text>
+                        </View>
+                    )}
 
                     {/* Barre de recherche */}
                     <View style={styles.searchContainer}>
@@ -934,6 +1021,8 @@ const PharmacieHomeScreen: React.FC = () => {
                 onClose={() => setShowFilters(false)}
                 filters={filters}
                 onFiltersChange={setFilters}
+                onDutyOnly={onDutyOnly}
+                onDutyOnlyChange={setOnDutyOnly}
                 location={location}
                 onSearch={handleSearch}
             />
@@ -1087,6 +1176,8 @@ interface FiltersModalProps {
     onClose: () => void;
     filters: ProductSearchFilters;
     onFiltersChange: (filters: ProductSearchFilters) => void;
+    onDutyOnly: boolean;
+    onDutyOnlyChange: (value: boolean) => void;
     location: any;
     onSearch: () => void;
 }
@@ -1096,6 +1187,8 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
     onClose,
     filters,
     onFiltersChange,
+    onDutyOnly,
+    onDutyOnlyChange,
     location,
     onSearch,
 }) => {
@@ -1211,6 +1304,20 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
                                     onPress={() => setOnlyAvailable(!onlyAvailable as any)}
                                 >
                                     <View style={[styles.switchThumb, onlyAvailable && styles.switchThumbActive]} />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.switchRow}>
+                                <View style={styles.switchLabel}>
+                                    <SafeIcon name="shield-check" size={20} color="#2563EB" type="lucide" />
+                                    <Text style={styles.switchLabelText}>
+                                        {t('pharmacieHome.onDutyOnly') || 'Pharmacies de garde uniquement'}
+                                    </Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={[styles.switch, onDutyOnly && styles.switchActive]}
+                                    onPress={() => onDutyOnlyChange(!onDutyOnly)}
+                                >
+                                    <View style={[styles.switchThumb, onDutyOnly && styles.switchThumbActive]} />
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -1731,6 +1838,22 @@ const styles = StyleSheet.create({
     filterBadgeText: {
         color: '#FFFFFF',
         fontSize: 11,
+        fontWeight: '700',
+    },
+    onDutyBadge: {
+        alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(37, 99, 235, 0.9)',
+        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        gap: 6,
+        marginBottom: 10,
+    },
+    onDutyBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 12,
         fontWeight: '700',
     },
     searchContainer: {

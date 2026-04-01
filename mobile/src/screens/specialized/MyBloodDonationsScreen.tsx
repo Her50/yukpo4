@@ -1,4 +1,6 @@
 import { useNavigation } from '@react-navigation/native';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -13,9 +15,10 @@ import {
 import { NativeButton } from '../../components/SafeNativeDesign';
 import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet } from '../../services/api';
-import { modernColors } from '../../theme/modernTheme';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { apiGet } from '../../services/api';
+import { bloodDonationService } from '../../services/bloodDonationService';
+import { modernColors } from '../../theme/modernTheme';
 
 interface BloodDonationRequest {
     id: string;
@@ -120,6 +123,98 @@ const MyBloodDonationsScreen: React.FC = () => {
         if (!bloodGroup || !bloodGroup.next_donation_available_date) return true;
         const nextDate = new Date(bloodGroup.next_donation_available_date);
         return nextDate <= new Date();
+    };
+
+    // === B1 - Programmer rappel prochain don ===
+    const handleScheduleReminder = async () => {
+        if (!bloodGroup?.last_donation_date) {
+            Alert.alert('Rappel', 'Aucune date de dernier don enregistrée.');
+            return;
+        }
+        try {
+            const id = await bloodDonationService.scheduleNextDonationReminder(bloodGroup.last_donation_date);
+            if (id) {
+                const nextDate = new Date(bloodGroup.last_donation_date);
+                nextDate.setDate(nextDate.getDate() + 90);
+                Alert.alert(
+                    'Rappel programmé',
+                    `Vous serez notifié le ${nextDate.toLocaleDateString('fr-FR')} pour votre prochain don.`
+                );
+            } else {
+                Alert.alert('Info', 'Vous pouvez déjà donner votre sang aujourd\'hui.');
+            }
+        } catch {
+            Alert.alert('Erreur', 'Impossible de programmer le rappel.');
+        }
+    };
+
+    const getNextDonationDate = (): string | null => {
+        if (!bloodGroup?.last_donation_date) return null;
+        const next = new Date(bloodGroup.last_donation_date);
+        next.setDate(next.getDate() + 90);
+        return next.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    };
+
+    // === B5 - Générer certificat PDF ===
+    const handleGenerateCertificate = async (donationId: string) => {
+        try {
+            const response = await bloodDonationService.getDonationCertificateData(Number(donationId));
+            const cert = (response as any)?.data || {};
+            const donorName = cert.donor_name || user?.name || 'Donneur';
+            const donationDate = cert.donation_date ? formatDate(cert.donation_date) : formatDate(donationId);
+            const bloodType = cert.blood_group || bloodGroup?.groupe_sanguin || 'N/A';
+            const bankName = cert.banque_nom || 'Banque de Sang';
+            const certNumber = cert.certificate_number || `CERT-${donationId}-${Date.now()}`;
+
+            const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <style>
+    body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; color: #111; }
+    .header { text-align: center; border-bottom: 3px solid #DC2626; padding-bottom: 20px; margin-bottom: 30px; }
+    .title { font-size: 28px; font-weight: bold; color: #DC2626; margin-bottom: 8px; }
+    .subtitle { font-size: 14px; color: #6B7280; }
+    .content { padding: 20px; background: #FEF2F2; border-radius: 8px; margin-bottom: 30px; }
+    .row { display: flex; justify-content: space-between; margin-bottom: 12px; }
+    .label { color: #6B7280; font-size: 13px; }
+    .value { font-weight: bold; font-size: 14px; }
+    .cert-number { text-align: center; font-size: 12px; color: #9CA3AF; margin-top: 20px; }
+    .signature { margin-top: 40px; text-align: right; }
+    .signature-line { border-top: 1px solid #111; width: 200px; margin-left: auto; padding-top: 4px; font-size: 12px; color: #6B7280; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">CERTIFICAT DE DON DE SANG</div>
+    <div class="subtitle">Délivré par ${bankName}</div>
+  </div>
+  <p>Le présent certificat atteste que :</p>
+  <div class="content">
+    <div class="row"><span class="label">Nom du donneur</span><span class="value">${donorName}</span></div>
+    <div class="row"><span class="label">Groupe sanguin</span><span class="value">${bloodType}</span></div>
+    <div class="row"><span class="label">Date du don</span><span class="value">${donationDate}</span></div>
+    <div class="row"><span class="label">Établissement</span><span class="value">${bankName}</span></div>
+  </div>
+  <p>a effectué un don de sang volontaire et bénévole, contribuant ainsi à sauver des vies.</p>
+  <div class="signature">
+    <div class="signature-line">Responsable médical - ${bankName}</div>
+  </div>
+  <div class="cert-number">N° ${certNumber}</div>
+</body>
+</html>`;
+
+            const { uri } = await Print.printToFileAsync({ html });
+            if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Certificat de don de sang' });
+            } else {
+                Alert.alert('PDF créé', `Fichier disponible : ${uri}`);
+            }
+        } catch (error: any) {
+            console.error('[B5] Erreur génération PDF:', error);
+            Alert.alert('Erreur', 'Impossible de générer le certificat PDF.');
+        }
     };
 
     if (loading) {

@@ -50,6 +50,16 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/taxis/{id}",
             get(specialized_services_controller::get_taxi_details),
         )
+        // ✅ NOUVEAU: Notations chauffeur publiques
+        .route(
+            "/api/drivers/{driver_id}/ratings/{service_type}",
+            get(specialized_services_controller::get_driver_ratings),
+        )
+        // ✅ NOUVEAU 2026-04-01: Suivi partagé public (sans auth)
+        .route(
+            "/api/track/{token}",
+            get(specialized_services_controller::get_public_trip_data),
+        )
         .route(
             "/api/covoiturages",
             get(specialized_services_controller::list_covoiturages_public),
@@ -118,6 +128,10 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/pharmacies/{id}",
             get(pharmacy_controller::get_pharmacy),
         )
+        .route(
+            "/api/medicines/nearby",
+            get(pharmacy_product_controller::search_nearby_medicines),
+        )
         // Routes Banques de sang (publiques pour recherche)
         .route(
             "/api/banques-sang/search",
@@ -159,13 +173,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/livres-scolaires/{id}",
             get(livres_scolaires_controller::get_livre_details),
         )
-        // ✅ NOUVEAU 2025-01-29: Routes trajets récurrents (publiques pour cron)
-        // Note: Ces endpoints sont publics mais devraient être protégés par token API en production
-        // TODO: Implémenter generate_recurring_instances
-        // .route(
-        //     "/api/covoiturages/recurring/generate",
-        //     post(specialized_services_controller::generate_recurring_instances),
-        // )
+        // ✅ Routes trajets récurrents (protégées JWT — conducteur/admin déclenche)
+        .route(
+            "/api/covoiturages/recurring/generate",
+            post(specialized_services_controller::generate_recurring_instances),
+        )
         // ✅ Routes Immobilier (publiques pour recherche)
         .route(
             "/api/immobilier/biens",
@@ -232,12 +244,6 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/immobilier/biens/{id}/virtual-tours",
             get(specialized_services_controller::get_property_virtual_tours),
         );
-    // TODO: Implémenter activate_pending_recurring_instances
-    // .route(
-    //     "/api/covoiturages/recurring/activate",
-    //     post(specialized_services_controller::activate_pending_recurring_instances),
-    // );
-
     // Routes protégées (avec JWT)
     let protected_routes = Router::new()
         // Routes protégées (création) - middleware appliqué au Router
@@ -270,6 +276,19 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/pharmacies/products/bulk-import",
             post(pharmacy_product_controller::bulk_import_products),
+        )
+        .route(
+            "/api/pharmacies/products/sync-external",
+            post(pharmacy_product_controller::sync_products_from_external_api),
+        )
+        // ✅ Partenaire pharmacie : gestion commandes reçues
+        .route(
+            "/api/pharmacies/{id}/partner-orders",
+            get(pharmacy_product_controller::get_partner_orders),
+        )
+        .route(
+            "/api/pharmacies/orders/{order_id}/status",
+            axum::routing::patch(pharmacy_product_controller::update_pharmacy_order_status),
         )
         .route(
             "/api/hopitaux",
@@ -335,29 +354,52 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/immobilier/my-visits",
             get(specialized_services_controller::get_my_visits),
         )
-        // ✅ Routes Terrains
+        // ✅ Routes Terrains (partenaire)
         .route(
             "/api/immobilier/terrains",
-            get(specialized_services_controller::search_lands),
+            get(specialized_services_controller::search_lands)
+                .post(specialized_services_controller::create_land),
+        )
+        .route(
+            "/api/immobilier/terrains/my-listings",
+            get(specialized_services_controller::get_my_land_listings),
         )
         .route(
             "/api/immobilier/terrains/{id}",
-            get(specialized_services_controller::get_land_details),
+            get(specialized_services_controller::get_land_details)
+                .put(specialized_services_controller::update_land),
+        )
+        .route(
+            "/api/immobilier/terrains/{id}/book-visit",
+            post(specialized_services_controller::book_land_visit),
         )
         .route(
             "/api/immobilier/terrains/ai/analysis",
             post(specialized_services_controller::analyze_land),
         )
-        // ✅ Routes Décoration
+        // ✅ Routes Décoration (partenaire + utilisateur)
         .route(
             "/api/decoration/decorateurs",
-            get(specialized_services_controller::search_decorators),
+            get(specialized_services_controller::search_decorators)
+                .post(specialized_services_controller::create_decorator),
         )
         .route(
             "/api/decoration/ai/suggestions",
             post(specialized_services_controller::get_decoration_suggestions),
         )
-        // ✅ Routes Déménagement (intégré livraison IA)
+        .route(
+            "/api/decoration/consultations",
+            post(specialized_services_controller::create_design_consultation),
+        )
+        .route(
+            "/api/decoration/my-consultations",
+            get(specialized_services_controller::get_my_design_consultations),
+        )
+        .route(
+            "/api/decoration/consultations/{id}/respond",
+            put(specialized_services_controller::respond_design_consultation),
+        )
+        // ✅ Routes Déménagement (intégré livraison IA + dashboard partenaire)
         .route(
             "/api/demenagement/quote",
             post(specialized_services_controller::create_moving_quote),
@@ -370,38 +412,97 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/demenagement/tracking/{id}",
             get(specialized_services_controller::get_moving_tracking),
         )
-        // TODO: Implémenter ces fonctions
-        // .route(
-        //     "/api/reservations/{id}/insurance",
-        //     post(specialized_services_controller::create_reservation_insurance),
-        // )
-        // .route(
-        //     "/api/reservations/{id}/qr-code",
-        //     post(specialized_services_controller::generate_reservation_qr_code),
-        // )
-        // .route(
-        //     "/api/reservations/validate-qr",
-        //     post(specialized_services_controller::validate_qr_code),
-        // )
-        // .route(
-        //     "/api/reservations/{id}/schedule-notifications",
-        //     post(specialized_services_controller::schedule_proactive_notifications),
-        // )
-        // ✅ INTÉGRATION TAXI - Fonctionnalités covoiturage
-        // TODO: Implémenter ces fonctions
-        // .route(
-        //     "/api/taxis/intelligent-matching",
-        //     post(specialized_services_controller::taxi_intelligent_matching),
-        // )
-        // .route(
-        //     "/api/taxis/{id}/verify-driver",
-        //     post(specialized_services_controller::verify_taxi_driver),
-        // )
-        // TODO: Implémenter get_taxi_details_enhanced
-        // .route(
-        //     "/api/taxis/{id}/details-enhanced",
-        //     get(specialized_services_controller::get_taxi_details_enhanced),
-        // )
+        .route(
+            "/api/demenagement/my-bookings",
+            get(specialized_services_controller::get_my_moving_bookings),
+        )
+        .route(
+            "/api/demenagement/bookings/{id}/respond",
+            put(specialized_services_controller::respond_moving_booking),
+        )
+        .route(
+            "/api/demenagement/bookings/{id}/location",
+            put(specialized_services_controller::update_moving_location),
+        )
+        .route(
+            "/api/reservations/{id}/insurance",
+            post(specialized_services_controller::create_reservation_insurance),
+        )
+        .route(
+            "/api/reservations/{id}/qr-code",
+            post(specialized_services_controller::generate_reservation_qr_code),
+        )
+        .route(
+            "/api/reservations/validate-qr",
+            post(specialized_services_controller::validate_qr_code),
+        )
+        .route(
+            "/api/reservations/{id}/schedule-notifications",
+            post(specialized_services_controller::schedule_proactive_notifications),
+        )
+        // ✅ NOUVEAU 2026-04-01: Paiement Mobile Money
+        .route(
+            "/api/payments/mobile-money",
+            post(specialized_services_controller::initiate_mobile_money_payment),
+        )
+        .route(
+            "/api/payments/{id}/status",
+            get(specialized_services_controller::get_payment_status),
+        )
+        .route(
+            "/api/payments/history",
+            get(specialized_services_controller::get_user_payments),
+        )
+        // ✅ NOUVEAU 2026-04-01: Notations post-trajet
+        .route(
+            "/api/reservations/rate",
+            post(specialized_services_controller::submit_trip_rating),
+        )
+        .route(
+            "/api/reservations/{id}/rating-status",
+            get(specialized_services_controller::check_rating_status),
+        )
+        // ✅ NOUVEAU 2026-04-01: KYC vérification conducteur
+        .route(
+            "/api/driver/verification",
+            post(specialized_services_controller::submit_driver_verification),
+        )
+        .route(
+            "/api/driver/verification/{service_type}",
+            get(specialized_services_controller::get_driver_verification_status),
+        )
+        // ✅ NOUVEAU 2026-04-01: Programme fidélité
+        .route(
+            "/api/loyalty/balance",
+            get(specialized_services_controller::get_loyalty_balance),
+        )
+        .route(
+            "/api/loyalty/redeem",
+            post(specialized_services_controller::redeem_loyalty_reward),
+        )
+        .route(
+            "/api/reservations/{id}/loyalty-credit",
+            post(specialized_services_controller::credit_trip_loyalty_points),
+        )
+        // ✅ NOUVEAU 2026-04-01: Partage trajet
+        .route(
+            "/api/reservations/{id}/share",
+            post(specialized_services_controller::create_trip_share)
+            .delete(specialized_services_controller::revoke_trip_share),
+        )
+        .route(
+            "/api/covoiturages/recurring/activate",
+            post(specialized_services_controller::activate_pending_recurring_instances),
+        )
+        // ✅ INTÉGRATION TAXI - Matching intelligent + Détails enrichis
+        .route(
+            "/api/taxis/intelligent-matching",
+            post(specialized_services_controller::taxi_intelligent_matching),
+        )
+        .route(
+            "/api/taxis/{id}/details-enhanced",
+            get(specialized_services_controller::get_taxi_details_enhanced),
+        )
         .route(
             "/api/taxis",
             post(specialized_services_controller::create_taxi), // GET est dans public_routes
@@ -889,6 +990,14 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/pharmacies/my-orders",
             get(specialized_services_controller::get_my_pharmacy_orders),
+        )
+        .route(
+            "/api/pharmacies/me/financial-movements",
+            get(specialized_services_controller::get_pharmacy_financial_movements),
+        )
+        .route(
+            "/api/pharmacies/me/withdrawals",
+            post(specialized_services_controller::request_pharmacy_withdrawal),
         )
         .route(
             "/api/pharmacies/{id}/analytics",

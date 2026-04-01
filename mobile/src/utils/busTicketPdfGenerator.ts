@@ -1,22 +1,32 @@
 /**
  * Générateur de ticket PDF pour les réservations de bus
  * Génère un ticket de voyage professionnel avec toutes les informations
- * Inclut un QR Code pour validation du ticket
+ * Inclut un QR Code pour validation du ticket — généré localement, aucune dépendance externe
  */
 
+import QRCode from 'qrcode';
+
 /**
- * Génère un QR Code complet pour validation du ticket
- * Encode toutes les informations critiques du voyage
+ * Génère un QR Code en SVG inline — 100 % hors-ligne, aucun service tiers.
+ * Utilise le niveau de correction d'erreur H pour une robustesse maximale.
  */
-async function generateQRCode(data: string): Promise<string> {
+async function generateQRCodeSVG(data: string): Promise<string> {
     try {
-        // API gratuite QR Server avec paramètres optimaux pour tickets
-        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(data)}&format=png&bgcolor=FFFFFF&color=000000&qzone=3&margin=15&ecc=H`;
-        return qrCodeUrl;
+        const svg = await QRCode.toString(data, {
+            type: 'svg',
+            errorCorrectionLevel: 'H',
+            width: 220,
+            margin: 4,
+            color: { dark: '#000000', light: '#FFFFFF' },
+        });
+        return svg;
     } catch (error) {
-        console.error('Erreur génération QR code:', error);
-        // Fallback: QR code basique
-        return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(data)}`;
+        console.error('Erreur génération QR code SVG:', error);
+        // Fallback: affichage textuel de l'identifiant
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">
+            <rect width="220" height="220" fill="#F3F4F6"/>
+            <text x="110" y="110" text-anchor="middle" font-family="monospace" font-size="12" fill="#374151">QR indisponible</text>
+        </svg>`;
     }
 }
 
@@ -46,7 +56,13 @@ export interface BusTicketData {
     escales?: string;
     conditionsVoyage?: string;
 
-    // QR Code pour validation
+    // Champs pour signature HMAC (retournés par POST /api/bus-tickets/payment/process)
+    paymentId?: string;
+    productId?: string;
+    userId?: number;
+    qrSignature?: string; // Signature HMAC-SHA256 générée par le backend
+
+    // QR Code pour validation (optionnel, sinon construit depuis les champs ci-dessus)
     qrCodeData?: string;
 }
 
@@ -57,8 +73,9 @@ export interface BusTicketData {
 export async function generateBusTicketHTML(ticketData: BusTicketData): Promise<string> {
     const now = new Date().toLocaleString('fr-FR');
     
-    // Créer le contenu structuré du QR Code
-    const qrData = JSON.stringify({
+    // Construire le payload QR avec signature HMAC si disponible
+    // Le champ 'sig' est la signature retournée par POST /api/bus-tickets/payment/process
+    const qrPayload: Record<string, unknown> = {
         type: 'BUS_TICKET_YUKPOMNANG',
         id: ticketData.reservationId,
         passenger: ticketData.passengerName,
@@ -67,12 +84,19 @@ export async function generateBusTicketHTML(ticketData: BusTicketData): Promise<
         route: `${ticketData.depart}-${ticketData.destination}`,
         departure: `${ticketData.dateDepart} ${ticketData.heureDepart}`,
         price: ticketData.prix,
-        companycompagnie: ticketData.compagnie,
-        validated: false,
-        timestamp: new Date().toISOString()
-    });
-    
-    const qrCodeUrl = await generateQRCode(qrData);
+        compagnie: ticketData.compagnie,
+        timestamp: new Date().toISOString(),
+    };
+
+    // Ajouter les champs nécessaires à la vérification HMAC côté backend
+    if (ticketData.paymentId)  qrPayload.payment_id  = ticketData.paymentId;
+    if (ticketData.productId)  qrPayload.product_id  = ticketData.productId;
+    if (ticketData.userId)     qrPayload.user_id     = ticketData.userId;
+    if (ticketData.qrSignature) qrPayload.sig        = ticketData.qrSignature;
+
+    const qrData = ticketData.qrCodeData ?? JSON.stringify(qrPayload);
+
+    const qrSvg = await generateQRCodeSVG(qrData);
 
     return `
 <!DOCTYPE html>
@@ -267,18 +291,6 @@ export async function generateBusTicketHTML(ticketData: BusTicketData): Promise<
             background: #F9FAFB;
             border-radius: 12px;
         }
-        .qr-placeholder {
-            width: 150px;
-            height: 150px;
-            background: white;
-            border: 2px solid #E5E7EB;
-            border-radius: 10px;
-            margin: 0 auto 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 48px;
-        }
         .reservation-id {
             font-size: 14px;
             color: #6B7280;
@@ -400,9 +412,11 @@ export async function generateBusTicketHTML(ticketData: BusTicketData): Promise<
             </div>
             ` : ''}
 
-            <!-- QR Code -->
+            <!-- QR Code — généré localement, sans service tiers -->
             <div class="qr-code-section">
-                <img src="${qrCodeUrl}" alt="QR Code" style="width: 180px; height: 180px; border-radius: 10px; border: 3px solid #E5E7EB;" />
+                <div style="width: 220px; height: 220px; margin: 0 auto; border-radius: 10px; border: 3px solid #E5E7EB; overflow: hidden; background: white;">
+                    ${qrSvg}
+                </div>
                 <div style="font-size: 13px; color: #6B7280; margin-top: 12px; font-weight: 600;">\uD83D\uDCF1 Scannez pour valider le ticket</div>
                 <div class="reservation-id">
                     ID: ${ticketData.reservationId}

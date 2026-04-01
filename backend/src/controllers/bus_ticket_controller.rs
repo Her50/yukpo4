@@ -1095,38 +1095,6 @@ pub async fn generate_products_from_schedules(
         ));
     }
 
-    let seat_map: Value = tpl
-        .try_get::<Option<Value>, _>("seat_map")
-        .ok()
-        .flatten()
-        .unwrap_or_else(|| json!([]));
-    let bus_configuration: Value = tpl
-        .try_get::<Option<Value>, _>("bus_configuration")
-        .ok()
-        .flatten()
-        .unwrap_or_else(|| json!({}));
-    let total_seats: i32 =
-        tpl.try_get::<Option<i32>, _>("total_seats").ok().flatten().unwrap_or(50);
-    let price_cents: Option<i64> = tpl.try_get("price_cents").ok();
-    let currency: String = tpl
-        .try_get::<Option<String>, _>("currency")
-        .ok()
-        .flatten()
-        .unwrap_or_else(|| "XAF".to_string());
-    let base_metadata: Value = tpl
-        .try_get::<Option<Value>, _>("metadata")
-        .ok()
-        .flatten()
-        .unwrap_or_else(|| json!({}));
-    let numero_bus: Option<String> = tpl.try_get("numero_bus").ok();
-    let caution: i32 = tpl
-        .try_get::<Option<i32>, _>("caution_reservation")
-        .ok()
-        .flatten()
-        .unwrap_or(500);
-
-    let price_xaf: i32 = price_cents.map(|c| (c / 100).max(1) as i32).unwrap_or(5000);
-
     let schedule_rows = sqlx::query(
         r#"
         SELECT
@@ -1134,6 +1102,7 @@ pub async fn generate_products_from_schedules(
             ads.departure_city,
             ads.arrival_city,
             ads.day_of_week,
+            ads.bus_model_id::text AS schedule_bus_model_id,
             (SELECT string_agg(to_char(x, 'HH24:MI'), ',' ORDER BY x)
              FROM unnest(ads.departure_times) AS x) AS times_str
         FROM agency_departure_schedules ads
@@ -1174,6 +1143,7 @@ pub async fn generate_products_from_schedules(
             .try_get("arrival_city")
             .map_err(|e| AppError::Internal(format!("arrival_city: {}", e)))?;
         let day_filter: Option<i32> = row.try_get("day_of_week").ok();
+        let schedule_bus_model_id: Option<String> = row.try_get("schedule_bus_model_id").ok();
         let times_str: Option<String> = row.try_get("times_str").ok();
 
         let times_str = times_str.unwrap_or_default();
@@ -1186,6 +1156,95 @@ pub async fn generate_products_from_schedules(
         if time_parts.is_empty() {
             continue;
         }
+
+        let effective_template_id = schedule_bus_model_id
+            .clone()
+            .filter(|v| !v.trim().is_empty())
+            .unwrap_or_else(|| template_id.clone());
+
+        let current_tpl = if effective_template_id == template_id {
+            None
+        } else {
+            Some(
+                sqlx::query(
+                    r#"
+                    SELECT
+                        p.id::text,
+                        p.service_id,
+                        p.name,
+                        p.seat_map,
+                        p.bus_configuration,
+                        p.total_seats,
+                        p.price_cents,
+                        p.currency,
+                        p.metadata,
+                        p.numero_bus,
+                        p.caution_reservation
+                    FROM products p
+                    JOIN services s ON s.id = p.service_id
+                    WHERE p.id::text = $1 AND s.user_id = $2 AND p.type = 'ticket_voyage'
+                    "#,
+                )
+                .bind(&effective_template_id)
+                .bind(user_id)
+                .fetch_optional(&state.pg)
+                .await
+                .map_err(|e| {
+                    error!("[generate_products_from_schedules] load schedule template: {}", e);
+                    AppError::Internal(format!("Erreur chargement modèle horaire: {}", e))
+                })?
+                .ok_or_else(|| {
+                    AppError::BadRequest(format!(
+                        "Le bus_model_id lié à l'horaire {} est invalide ou inaccessible",
+                        schedule_id
+                    ))
+                })?,
+            )
+        };
+
+        let tpl_row = current_tpl.as_ref().unwrap_or(&tpl);
+        let tpl_service_id: i32 = tpl_row
+            .try_get("service_id")
+            .map_err(|e| AppError::Internal(format!("service_id modèle horaire: {}", e)))?;
+        if tpl_service_id != agency_service_id {
+            return Err(AppError::BadRequest(
+                "Le bus lié à un horaire doit appartenir au même service que l'agence".to_string(),
+            ));
+        }
+
+        let row_seat_map: Value = tpl_row
+            .try_get::<Option<Value>, _>("seat_map")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| json!([]));
+        let row_bus_configuration: Value = tpl_row
+            .try_get::<Option<Value>, _>("bus_configuration")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| json!({}));
+        let row_total_seats: i32 = tpl_row
+            .try_get::<Option<i32>, _>("total_seats")
+            .ok()
+            .flatten()
+            .unwrap_or(50);
+        let row_price_cents: Option<i64> = tpl_row.try_get("price_cents").ok();
+        let row_currency: String = tpl_row
+            .try_get::<Option<String>, _>("currency")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "XAF".to_string());
+        let row_base_metadata: Value = tpl_row
+            .try_get::<Option<Value>, _>("metadata")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| json!({}));
+        let row_numero_bus: Option<String> = tpl_row.try_get("numero_bus").ok();
+        let row_caution: i32 = tpl_row
+            .try_get::<Option<i32>, _>("caution_reservation")
+            .ok()
+            .flatten()
+            .unwrap_or(500);
+        let row_price_xaf: i32 = row_price_cents.map(|c| (c / 100).max(1) as i32).unwrap_or(5000);
 
         for day_offset in 0..payload.days_ahead {
             let d = today + ChronoDuration::days(day_offset as i64);
@@ -1237,7 +1296,7 @@ pub async fn generate_products_from_schedules(
                 let product_name =
                     format!("{} → {} · {}", dep_city, arr_city, dt.format("%d/%m %H:%M"));
 
-                let mut meta = base_metadata.clone();
+                let mut meta = row_base_metadata.clone();
                 if let Some(obj) = meta.as_object_mut() {
                     obj.insert("departure_city".to_string(), json!(dep_city.clone()));
                     obj.insert("arrival_city".to_string(), json!(arr_city.clone()));
@@ -1245,6 +1304,7 @@ pub async fn generate_products_from_schedules(
                     obj.insert("departure_time".to_string(), json!(time_fr.clone()));
                     obj.insert("source_schedule_id".to_string(), json!(schedule_id.clone()));
                     obj.insert("generated_from_schedule".to_string(), json!(true));
+                    obj.insert("bus_model_id".to_string(), json!(effective_template_id.clone()));
                 }
 
                 let desc = format!("Départ généré depuis horaire {}", schedule_id);
@@ -1271,20 +1331,20 @@ pub async fn generate_products_from_schedules(
                 .bind(agency_service_id)
                 .bind(&product_name)
                 .bind(&desc)
-                .bind(&seat_map)
-                .bind(&bus_configuration)
-                .bind(total_seats)
-                .bind(price_cents)
-                .bind(&currency)
+                .bind(&row_seat_map)
+                .bind(&row_bus_configuration)
+                .bind(row_total_seats)
+                .bind(row_price_cents)
+                .bind(&row_currency)
                 .bind(&meta)
                 .bind(&dep_city)
                 .bind(&arr_city)
                 .bind(dt)
-                .bind(price_xaf)
+                .bind(row_price_xaf)
                 .bind(agency_id)
                 .bind(&schedule_id)
-                .bind(&numero_bus)
-                .bind(caution)
+                .bind(&row_numero_bus)
+                .bind(row_caution)
                 .execute(&state.pg)
                 .await;
 

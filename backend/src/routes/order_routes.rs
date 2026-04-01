@@ -33,6 +33,10 @@ pub fn order_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         .route("/api/delivery/orders/{order_id}/reject", post(reject_order))
         .route(
+            "/api/delivery/orders/{order_id}/ready",
+            post(mark_order_ready),
+        )
+        .route(
             "/api/delivery/orders/{order_id}/similar",
             get(get_similar_products),
         )
@@ -206,6 +210,43 @@ async fn validate_order(
         "success": true,
         "order": updated_order,
         "message": "Commande validée avec succès"
+    })))
+}
+
+/// POST /api/delivery/orders/{order_id}/ready - Prestataire marque la commande comme prête
+async fn mark_order_ready(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(order_id): Path<Uuid>,
+) -> Result<Json<Value>, AppError> {
+    let provider_user_id: Option<i32> =
+        sqlx::query("SELECT provider_user_id FROM product_orders WHERE id = $1")
+            .bind(order_id)
+            .map(|row: sqlx::postgres::PgRow| row.get::<i32, _>("provider_user_id"))
+            .fetch_optional(&state.pg)
+            .await?;
+
+    let provider_user_id =
+        provider_user_id.ok_or_else(|| AppError::NotFound("Commande non trouvée".to_string()))?;
+
+    if provider_user_id != user.id {
+        return Err(AppError::Unauthorized(
+            "Vous n'êtes pas le prestataire de cette commande".to_string(),
+        ));
+    }
+
+    let order_service = OrderPreparationService::new(state.pg.clone());
+    let updated_order = order_service.mark_as_ready(order_id).await?;
+
+    let notification_service = SmartNotificationService::new(state.pg.clone());
+    notification_service
+        .notify_client_order_ready(updated_order.client_user_id, order_id)
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "order": updated_order,
+        "message": "Commande marquée comme prête"
     })))
 }
 

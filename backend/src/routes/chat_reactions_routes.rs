@@ -303,7 +303,7 @@ pub async fn get_message_reactions(
             json_agg(
                 json_build_object(
                     'id', u.id,
-                    'name', COALESCE(u.nom_complet, u.name, u.email),
+                    'name', COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email),
                     'avatar', u.avatar_url
                 )
             ) as users

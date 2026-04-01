@@ -313,12 +313,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             const pushModule = await import('../services/pushNotifications');
             if (pushModule?.registerForPushNotificationsAsync) {
-              pushModule.registerForPushNotificationsAsync(token).catch(() => {
-                // Push échoue silencieusement
+              pushModule.registerForPushNotificationsAsync(token).catch((err: any) => {
+                console.warn('[AuthContext] ⚠️ Enregistrement token push échoué:', err?.message || err);
               });
             }
-          } catch (pushError) {
-            // Ne pas bloquer le login si push échoue
+          } catch (pushError: any) {
+            console.warn('[AuthContext] ⚠️ Import module push échoué:', pushError?.message || pushError);
           }
 
           // ✅ Auto-démarrer le tracking passif des déplacements

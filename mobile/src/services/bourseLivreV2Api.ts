@@ -1276,3 +1276,53 @@ export const bourseLivreV2Api = {
         };
     },
 };
+
+// ============================================================================
+// SUPER LIBRAIRIE — API ADMIN
+// ============================================================================
+
+export const superLibraireApi = {
+    // Dashboard commandes (admin ou super libraire)
+    getDashboard: async (params?: { limit?: number; offset?: number }): Promise<{
+        commandes: any[];
+        total: number;
+    }> => {
+        const { apiGet } = await import('./api');
+        const qs = params ? `?limit=${params.limit ?? 50}&offset=${params.offset ?? 0}` : '';
+        const response = await apiGet<any>(`/api/librairie-network/super-librairie/commandes${qs}`);
+        const r = response.data as any;
+        return { commandes: r?.commandes || [], total: r?.total || 0 };
+    },
+
+    // Libérer manuellement une commande
+    libererCommande: async (commandeId: string, motif?: string, rayonKm?: number): Promise<void> => {
+        const { apiPost } = await import('./api');
+        await apiPost(`/api/librairie-network/super-librairie/liberer/${commandeId}`, {
+            motif,
+            rayon_km: rayonKm,
+        });
+    },
+
+    // Liste des membres de l'équipe
+    listTeam: async (): Promise<{ librairie_id: string; members: any[]; total: number }> => {
+        const { apiGet } = await import('./api');
+        const response = await apiGet<any>('/api/librairie-network/super-librairie/team');
+        const r = response.data as any;
+        return { librairie_id: r?.librairie_id || '', members: r?.members || [], total: r?.total || 0 };
+    },
+
+    // Inviter un membre
+    inviteTeam: async (telephone: string, role: 'manager' | 'preparer' | 'cashier', nom?: string): Promise<any> => {
+        const { apiPost } = await import('./api');
+        const response = await apiPost<any>('/api/librairie-network/super-librairie/team/invite', {
+            telephone, role, nom,
+        });
+        return (response.data as any);
+    },
+
+    // Retirer un membre
+    removeTeamMember: async (memberId: number): Promise<void> => {
+        const { apiDelete } = await import('./api');
+        await apiDelete(`/api/librairie-network/super-librairie/team/${memberId}`);
+    },
+};

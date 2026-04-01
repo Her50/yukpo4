@@ -66,6 +66,7 @@ use crate::routes::{
     // health_structure_routes::health_structure_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     history_routes::history_routes,
     hotel_financial_routes::hotel_financial_routes, // ✅ 2026-03-17: Routes financières hôtel/meublé
+    hotel_group_routes::hotel_group_routes, // ✅ 2026-04-01: Routes groupes, form config, profils clients
     hotel_room_management_routes::hotel_room_management_routes, // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
     ia_routes::ia_routes,
     kyc_admin_routes::kyc_admin_routes, // ✅ NOUVEAU 2025-01-29: Routes admin KYC
@@ -82,6 +83,7 @@ use crate::routes::{
     notification_routes::notification_routes,
     offres_emploi_routes::offres_emploi_routes, // ✅ NOUVEAU 2025-01-28: Routes offres d'emploi
     order_routes::order_routes,
+    restaurant_routes::restaurant_routes,
     orientation_scolaire_routes::orientation_scolaire_routes,
     payment_routes::payment_routes,
     phone_verification_routes::phone_verification_routes, // ✅ NOUVEAU 2026-02-25: Routes vérification OTP téléphone
@@ -114,6 +116,8 @@ use crate::routes::{
     stock_media_routes::stock_media_routes, // ✅ NOUVEAU Phase 2: Routes Stock Media Integration
     studio_routes::studio_routes, // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
     supermarket_routes::supermarket_routes, // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
+    ecommerce_platform_routes::ecommerce_platform_routes, // ✅ 2026-04-01: Routes e-commerce universel
+    universal_search_routes::universal_search_routes,     // ✅ 2026-04-01: Recherche universelle cross-services
     system_health_routes::system_health_routes,
     token_pack_routes::token_pack_routes,
     token_stats_routes::token_stats_routes,
@@ -280,6 +284,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
     let notifications = notification_routes(state.clone());
     let shopping = shopping_routes(state.clone());
     let orders = order_routes(state.clone());
+    let restaurant = restaurant_routes(state.clone());
     let autocomplete = autocomplete_routes(state.clone());
     let combinations = combination_routes(state.clone());
     let content = content_routes(state.clone());
@@ -358,9 +363,12 @@ pub fn build_app(state: Arc<AppState>) -> Router {
     let gpu = crate::routes::gpu_routes::gpu_routes(state.clone()); // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
     let hotel_management = hotel_room_management_routes(state.clone()); // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
     let hotel_financial = hotel_financial_routes(state.clone()); // ✅ 2026-03-17: Routes financières hôtel/meublé
+    let hotel_groups = hotel_group_routes::hotel_group_routes(state.clone()); // ✅ 2026-04-01: Routes groupes, form config, profils clients
     let assurance = assurance_routes(state.clone()); // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
     let auto_search = auto_search_routes(state.clone()); // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente
     let supermarket = supermarket_routes(state.clone()); // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
+    let ecommerce_platform = ecommerce_platform_routes(state.clone()); // ✅ 2026-04-01: Routes e-commerce universel
+    let universal_search = universal_search_routes(state.clone());     // ✅ 2026-04-01: Recherche universelle cross-services
     let followers = followers_routes(state.clone()); // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
 
     // ✅ NOUVEAU 2026-03-16: Routes pour le réseau de librairies
@@ -437,6 +445,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .merge(notifications)
         .merge(shopping)
         .merge(orders)
+        .merge(restaurant)
         .merge(autocomplete)
         .merge(combinations)
         .merge(content)
@@ -475,9 +484,12 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .merge(gpu) // ✅ NOUVEAU 2026-02-14: Routes pour gestion GPU GCP
         .merge(hotel_management) // ✅ 2026-03-01: Routes gestion hôtels/meublés (chambres, réservations, QR)
         .merge(hotel_financial) // ✅ 2026-03-17: Routes financières hôtel/meublé
+        .merge(hotel_groups) // ✅ 2026-04-01: Routes groupes, form config, profils clients
         .merge(assurance) // ✅ NOUVEAU: Routes assurance dédiées (recherche, devis IA, comparaison)
         .merge(auto_search) // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente
         .merge(supermarket) // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
+        .merge(ecommerce_platform) // ✅ 2026-04-01: Routes e-commerce universel
+        .merge(universal_search)   // ✅ 2026-04-01: Recherche universelle cross-services
         .merge(followers) // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
         .merge(librairie_network) // ✅ NOUVEAU 2026-03-16: Routes réseau de librairies
         .merge(paiement_agrege) // ✅ NOUVEAU 2026-03-16: Routes paiements agrégés

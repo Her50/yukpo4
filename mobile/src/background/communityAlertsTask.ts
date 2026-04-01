@@ -247,12 +247,18 @@ TaskManager.defineTask(COMMUNITY_ALERTS_TASK, async ({ data, error }: any) => {
       const title = `${icon} ${titleForType(p.type)}`;
       const body = `${titleForType(p.type)} à ${Math.round(p.dist)} m`;
 
+      const isUrgent = channelForType(p.type) === 'community_alerts_urgent';
       await Notifications.scheduleNotificationAsync({
         content: {
           title,
           body,
           sound: soundForType(p.type),
-          ...(Platform.OS === 'android' ? { channelId: channelForType(p.type) } : {}),
+          ...(Platform.OS === 'android'
+            ? { channelId: channelForType(p.type) }
+            : {
+                // iOS 15+ : passe en mode timeSensitive pour couper le Focus Mode
+                interruptionLevel: (isUrgent ? 'timeSensitive' : 'active') as any,
+              }),
           data: {
             type: 'community_alert',
             checkpoint_type: p.type,

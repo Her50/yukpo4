@@ -286,6 +286,10 @@ const ResultatBesoinScreen: React.FC = () => {
     // Avant: const searchQuery = routeParams.searchQuery (jamais mis à jour → scoring produit avec requête périmée)
     const [searchQuery, setSearchQuery] = useState(routeParams.searchQuery || routeParams.query || '');
 
+    // ✅ 2026-04-01: Résultats universels cross-services (produits, menus, services spécialisés)
+    const [universalResults, setUniversalResults] = useState<any[]>([]);
+    const [universalLoading, setUniversalLoading] = useState(false);
+
     // ✅ CORRECTION 2025-12-30: useRef pour éviter les re-renders infinis
     const hasProcessedInitialResults = useRef(false);
     const initialResultsLength = useRef(initialResults?.length || 0);
@@ -1610,6 +1614,44 @@ const ResultatBesoinScreen: React.FC = () => {
         };
     }, [initialResults?.length]); // ✅ CORRECTION: Dépendre seulement de la longueur, pas de l'objet complet
 
+    // ✅ 2026-04-01: Recherche universelle cross-services (produits, menus, services spécialisés)
+    useEffect(() => {
+        if (!searchQuery || searchQuery.trim().length < 2) {
+            setUniversalResults([]);
+            return;
+        }
+        let cancelled = false;
+        const fetchUniversal = async () => {
+            setUniversalLoading(true);
+            try {
+                const lat = (location as any)?.coords?.latitude;
+                const lng = (location as any)?.coords?.longitude;
+                const params: Record<string, string> = { q: searchQuery.trim(), limit: '20' };
+                if (lat && lng) { params.lat = String(lat); params.lng = String(lng); params.radius_km = '30'; }
+                const qs = Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+                const resp = await apiGet(`/api/search/universal?${qs}`);
+                if (!cancelled && resp?.success && Array.isArray(resp.results)) {
+                    setUniversalResults(resp.results);
+                }
+            } catch (_) {}
+            if (!cancelled) setUniversalLoading(false);
+        };
+        const timer = setTimeout(fetchUniversal, 400);
+        return () => { cancelled = true; clearTimeout(timer); };
+    }, [searchQuery, location]);
+
+    // Navigation vers l'écran spécialisé selon deep_link
+    const handleUniversalResultPress = useCallback((item: any) => {
+        const dl = item?.deep_link;
+        if (!dl?.screen) return;
+        try {
+            (navigation as any).navigate(dl.screen, dl.params || {});
+        } catch (_) {
+            // Écran non enregistré → fallback vers ResultatBesoin
+            (navigation as any).navigate('ResultatBesoin', { searchQuery: item.title, results: [] });
+        }
+    }, [navigation]);
+
     // ✅ CORRIGÉ 2026-03-06: Fonction pour arrêter toutes les vidéos actuelles
     const stopAllVideos = useCallback(() => {
         stopAllVideosAndClearQueue();
@@ -2696,6 +2738,58 @@ const ResultatBesoinScreen: React.FC = () => {
                             initialFilters={categoryFilters}
                         />
 
+                        {/* ✅ 2026-04-01: Résultats directs cross-services (produits, menus, services spécialisés) */}
+                        {(universalLoading || universalResults.length > 0) && (
+                            <View style={styles.universalSection}>
+                                <View style={styles.universalHeader}>
+                                    <SafeIcon name="globe" size={16} color="#6366F1" />
+                                    <Text style={styles.universalTitle}>Résultats directs</Text>
+                                    {universalLoading && <ActivityIndicator size="small" color="#6366F1" style={{ marginLeft: 8 }} />}
+                                </View>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.universalScroll}>
+                                    {universalResults.map((item: any, idx: number) => (
+                                        <TouchableOpacity
+                                            key={`univ-${item.result_type}-${item.id}-${idx}`}
+                                            style={styles.universalCard}
+                                            onPress={() => handleUniversalResultPress(item)}
+                                            activeOpacity={0.85}
+                                        >
+                                            {/* Badge catégorie */}
+                                            <View style={styles.universalBadge}>
+                                                <SafeIcon name={item.category_icon || 'search'} size={11} color="#FFFFFF" />
+                                                <Text style={styles.universalBadgeText} numberOfLines={1}>{item.category_label}</Text>
+                                            </View>
+                                            {/* Titre */}
+                                            <Text style={styles.universalCardTitle} numberOfLines={2}>{item.title}</Text>
+                                            {/* Sous-titre (nom du commerce) */}
+                                            {item.subtitle ? (
+                                                <Text style={styles.universalCardSub} numberOfLines={1}>{item.subtitle}</Text>
+                                            ) : null}
+                                            {/* Caractéristiques spécifiques au type de service */}
+                                            {item.description ? (
+                                                <Text style={styles.universalCardDesc} numberOfLines={1}>{item.description}</Text>
+                                            ) : null}
+                                            {/* Prix */}
+                                            {item.price != null ? (
+                                                <Text style={styles.universalCardPrice}>
+                                                    {Number(item.price).toLocaleString('fr-FR')} {item.currency || 'XAF'}
+                                                    {item.is_promotion ? ' 🏷️' : ''}
+                                                </Text>
+                                            ) : null}
+                                            {/* Distance */}
+                                            {item.distance_km != null && item.distance_km < 100 ? (
+                                                <Text style={styles.universalCardDist}>📍 {item.distance_km < 1 ? `${Math.round(item.distance_km * 1000)}m` : `${item.distance_km.toFixed(1)}km`}</Text>
+                                            ) : null}
+                                            {/* Bouton voir */}
+                                            <View style={styles.universalBtn}>
+                                                <Text style={styles.universalBtnText}>Voir →</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
+
                         {/* ✅ CORRIGÉ 2026-03-06: FlatList optimisée avec gestion des vidéos */}
                         {allResults.length > 0 ? (
                             <FlatList
@@ -2924,6 +3018,102 @@ const styles = StyleSheet.create({
     },
     modeButtonTextActive: {
         color: '#FFFFFF',
+    },
+    // ✅ 2026-04-01: Styles résultats universels cross-services
+    universalSection: {
+        marginHorizontal: 16,
+        marginBottom: 12,
+        marginTop: 4,
+    },
+    universalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    universalTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#6366F1',
+        marginLeft: 6,
+        letterSpacing: 0.3,
+    },
+    universalScroll: {
+        paddingRight: 8,
+        gap: 10,
+    },
+    universalCard: {
+        width: 160,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        padding: 12,
+        marginRight: 10,
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: '#EEF2FF',
+    },
+    universalBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#6366F1',
+        borderRadius: 20,
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        alignSelf: 'flex-start',
+        marginBottom: 7,
+        gap: 4,
+    },
+    universalBadgeText: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        letterSpacing: 0.3,
+        textTransform: 'uppercase',
+    },
+    universalCardTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 3,
+        lineHeight: 18,
+    },
+    universalCardSub: {
+        fontSize: 11,
+        color: '#6B7280',
+        marginBottom: 2,
+    },
+    universalCardDesc: {
+        fontSize: 10,
+        color: '#8B5CF6',
+        fontStyle: 'italic',
+        marginBottom: 4,
+    },
+    universalCardPrice: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#059669',
+        marginBottom: 3,
+    },
+    universalCardDist: {
+        fontSize: 10,
+        color: '#9CA3AF',
+        marginBottom: 6,
+    },
+    universalBtn: {
+        backgroundColor: '#EEF2FF',
+        borderRadius: 8,
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        alignSelf: 'flex-start',
+        marginTop: 4,
+    },
+    universalBtnText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#6366F1',
     },
     emptyState: {
         padding: 48,

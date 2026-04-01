@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import ServiceCardActions from './ServiceCardActions';
 
 interface TaxiResultCardProps {
     taxi: {
@@ -136,6 +137,14 @@ const TaxiResultCard: React.FC<TaxiResultCardProps> = ({ taxi, onPress }) => {
                     )}
                 </View>
             </View>
+            {/* ── Partage · Avis · Chat ─────────────────────────────────── */}
+            <ServiceCardActions
+                serviceId={taxi.service_id}
+                serviceTitle={taxi.nom_chauffeur || `Taxi ${taxi.telephone}`}
+                serviceType="taxi"
+                serviceDescription={taxi.zone_intervention?.join(', ')}
+                whatsapp={taxi.whatsapp}
+            />
         </TouchableOpacity>
     );
 };

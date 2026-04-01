@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import ServiceCardActions from './ServiceCardActions';
 
 interface HopitalResultCardProps {
     hospital: {
@@ -28,6 +29,14 @@ interface HopitalResultCardProps {
         // ✅ 2025-01-27: Statistiques ratings
         average_rating?: number;
         total_ratings?: number;
+        // H3: Médecins de l'hôpital
+        doctors?: Array<{
+            id: number;
+            nom: string;
+            specialite: string;
+            photo_url?: string;
+            rating?: number;
+        }>;
     };
     onPress?: () => void;
     onContact?: () => void;
@@ -170,6 +179,35 @@ const HopitalResultCard: React.FC<HopitalResultCardProps> = ({ hospital, onPress
                     )}
                 </View>
             </View>
+            {/* H3: Premier médecin de l'hôpital */}
+            {hospital.doctors && hospital.doctors.length > 0 && (() => {
+                const doc = hospital.doctors[0];
+                return (
+                    <View style={styles.doctorRow}>
+                        <View style={styles.doctorAvatar}>
+                            <SafeIcon name="user" size={16} color={modernColors.primary} />
+                        </View>
+                        <View>
+                            <Text style={styles.doctorName}>{doc.nom}</Text>
+                            <Text style={styles.doctorSpecialite}>{doc.specialite}</Text>
+                        </View>
+                        {doc.rating !== undefined && (
+                            <View style={styles.doctorRatingBadge}>
+                                <SafeIcon name="star" size={11} color="#F59E0B" />
+                                <Text style={styles.doctorRatingText}>{doc.rating.toFixed(1)}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+            })()}
+            {/* ── Partage · Avis · Chat ─────────────────────────────────── */}
+            <ServiceCardActions
+                serviceId={hospital.service_id}
+                serviceTitle={hospital.nom}
+                serviceType="hopital"
+                serviceDescription={hospital.prestations_medicales?.slice(0, 3).join(', ')}
+                whatsapp={hospital.whatsapp}
+            />
         </TouchableOpacity>
     );
 };
@@ -347,6 +385,29 @@ const styles = StyleSheet.create({
     chatButtonText: {
         color: '#fff',
     },
+    // H3: Médecin affiché sur la carte
+    doctorRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 10,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
+        marginTop: 8,
+    },
+    doctorAvatar: {
+        width: 32, height: 32, borderRadius: 16,
+        backgroundColor: modernColors.primary + '18',
+        justifyContent: 'center', alignItems: 'center',
+    },
+    doctorName: { fontSize: 13, fontWeight: '600', color: '#111827' },
+    doctorSpecialite: { fontSize: 11, color: '#6B7280' },
+    doctorRatingBadge: {
+        marginLeft: 'auto', flexDirection: 'row', alignItems: 'center',
+        gap: 3, backgroundColor: '#FFFBEB', paddingHorizontal: 7,
+        paddingVertical: 3, borderRadius: 10,
+    },
+    doctorRatingText: { fontSize: 12, fontWeight: '700', color: '#92400E' },
 });
 
 export default HopitalResultCard;

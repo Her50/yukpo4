@@ -41,20 +41,24 @@ const ImmobilierFormScreen: React.FC = () => {
     const route = useRoute();
     const { user, logout } = useAuth();
     const { t } = useLanguageSafe();
+    const tr = (key: string, fallback: string) => {
+        const translated = t(key) as unknown as string;
+        return translated && translated !== key ? translated : fallback;
+    };
 
     const TYPES_BIEN = [
-        { key: 'maison', label: t('immobilierForm.maison'), icon: 'home' },
-        { key: 'appartement', label: t('immobilierForm.appartement'), icon: 'building' },
-        { key: 'terrain', label: t('immobilierForm.terrain'), icon: 'map' },
-        { key: 'bureau', label: t('immobilierForm.bureau'), icon: 'briefcase' },
-        { key: 'local_commercial', label: t('immobilierForm.localCommercial'), icon: 'store' },
-        { key: 'hotel', label: t('immobilierForm.hotel'), icon: 'building' },
-        { key: 'meuble', label: t('immobilierForm.meubleLocationMeublee'), icon: 'home' },
+        { key: 'maison', label: tr('immobilierForm.maison', 'Maison'), icon: 'home' },
+        { key: 'appartement', label: tr('immobilierForm.appartement', 'Appartement'), icon: 'building' },
+        { key: 'terrain', label: tr('immobilierForm.terrain', 'Terrain'), icon: 'map' },
+        { key: 'bureau', label: tr('immobilierForm.bureau', 'Bureau'), icon: 'briefcase' },
+        { key: 'local_commercial', label: tr('immobilierForm.localCommercial', 'Local commercial'), icon: 'store' },
+        { key: 'hotel', label: tr('immobilierForm.hotel', 'Hotel'), icon: 'building' },
+        { key: 'meuble', label: tr('immobilierForm.meubleLocationMeublee', 'Meuble / Location meublee'), icon: 'home' },
     ];
     const STATUTS = [
-        { key: 'vente', label: t('immobilierForm.vente'), icon: 'tag' },
-        { key: 'location', label: t('immobilierForm.location'), icon: 'key' },
-        { key: 'les_deux', label: t('immobilierForm.lesDeux'), icon: 'layers' },
+        { key: 'vente', label: tr('immobilierForm.vente', 'Vente'), icon: 'tag' },
+        { key: 'location', label: tr('immobilierForm.location', 'Location'), icon: 'key' },
+        { key: 'les_deux', label: tr('immobilierForm.lesDeux', 'Les deux'), icon: 'layers' },
     ];
     const STANDINGS = [t('immobilierFormScreen.economique'), t('immobilierFormScreen.moyen'), t('immobilierFormScreen.hautDeGamme'), t('immobilierFormScreen.luxe')];
     const ETATS = [t('immobilierFormScreen.neuf'), t('immobilierFormScreen.bonEtat'), t('immobilierFormScreen.arenover'), t('immobilierFormScreen.renove')];
@@ -221,7 +225,7 @@ const ImmobilierFormScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={24} color="#fff" />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={st.headerTitle}>{mode === 'edit' ? t('immobilierFormScreen.modifierLeBien') : t('immobilierForm.nouveauBienImmobilier')}</Text>
+                    <Text style={st.headerTitle}>{mode === 'edit' ? t('immobilierFormScreen.modifierLeBien') : tr('immobilierForm.nouveauBienImmobilier', 'Nouveau bien immobilier')}</Text>
                     <Text style={st.headerSub}>{formData.type_bien ? formatLabel(formData.type_bien) : 'Maison'} · {formatLabel(formData.statut)}</Text>
                 </View>
             </LinearGradient>
@@ -230,8 +234,8 @@ const ImmobilierFormScreen: React.FC = () => {
                 {/* Section: Informations */}
                 <View style={st.section}>
                     <View style={st.sectionHdr}><SafeIcon name="file-text" size={18} color="#7C3AED" /><Text style={st.sectionTitle}>{t('immobilierForm.informationsGenerales')}</Text></View>
-                    <View style={st.field}><NativeInput label={`${t('immobilierForm.titre')} *`} value={formData.titre} onChangeText={v => setFormData({ ...formData, titre: v })} placeholder={t('immobilierForm.titrePlaceholder')} /></View>
-                    <View style={st.field}><NativeInput label={`${t('immobilierForm.description')} *`} value={formData.description} onChangeText={v => setFormData({ ...formData, description: v })} placeholder={t('immobilierForm.descriptionDetailleeDuBien')} multiline style={{ minHeight: 100, textAlignVertical: 'top' }} /></View>
+                    <View style={st.field}><NativeInput label={`${tr('immobilierForm.titre', 'Titre')} *`} value={formData.titre} onChangeText={v => setFormData({ ...formData, titre: v })} placeholder={tr('immobilierForm.titrePlaceholder', 'Ex: Residence meublée Akwa')} /></View>
+                    <View style={st.field}><NativeInput label={`${tr('immobilierForm.description', 'Description')} *`} value={formData.description} onChangeText={v => setFormData({ ...formData, description: v })} placeholder={tr('immobilierForm.descriptionDetailleeDuBien', 'Description detaillee du bien...')} multiline style={{ minHeight: 100, textAlignVertical: 'top' }} /></View>
                 </View>
 
                 {/* Section: Type & Statut */}
@@ -462,8 +466,8 @@ const st = StyleSheet.create({
     // Header
     header: { paddingTop: 50, paddingBottom: 16, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' },
     backBtn: { marginRight: 12, padding: 4 },
-    headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
-    headerSub: { fontSize: 13, color: '#ffffffCC', marginTop: 2 },
+    headerTitle: { fontSize: 22, fontWeight: '700', color: '#fff', flexShrink: 1, lineHeight: 28 },
+    headerSub: { fontSize: 13, color: '#ffffffCC', marginTop: 2, flexShrink: 1 },
 
     // Sections
     section: { backgroundColor: '#fff', borderRadius: 12, marginHorizontal: 16, marginTop: 12, padding: 16, elevation: 1, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
@@ -477,9 +481,9 @@ const st = StyleSheet.create({
 
     // Type Grid
     typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    typeCard: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' },
+    typeCard: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB', maxWidth: '100%' },
     typeCardOn: { backgroundColor: '#7C3AED', borderColor: '#7C3AED' },
-    typeText: { fontSize: 13, fontWeight: '500', color: '#374151' },
+    typeText: { fontSize: 13, fontWeight: '500', color: '#374151', flexShrink: 1 },
     typeTextOn: { color: '#fff', fontWeight: '700' },
 
     // Statut

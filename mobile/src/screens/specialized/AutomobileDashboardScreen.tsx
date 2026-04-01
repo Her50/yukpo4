@@ -14,11 +14,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import ProductVideoCreationModal from '../../components/ProductVideoCreationModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet } from '../../services/api';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import { ManagedProduct } from '../../types/ManagedProduct';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 type TabType = 'overview' | 'vehicles' | 'analytics';
@@ -50,6 +52,8 @@ const AutomobileDashboardScreen: React.FC = () => {
     const { user, logout } = useAuth();
 
     const [activeTab, setActiveTab] = useState<TabType>('overview');
+    const [showStudioModal, setShowStudioModal] = useState(false);
+    const [studioProduct, setStudioProduct] = useState<ManagedProduct | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -186,6 +190,25 @@ const AutomobileDashboardScreen: React.FC = () => {
                                 {v.prix ? ` · ${v.prix.toLocaleString()} ${devise}` : ''}
                             </Text>
                         </View>
+                        <TouchableOpacity
+                            style={{ backgroundColor: '#8B5CF620', borderRadius: 6, padding: 6, marginRight: 6 }}
+                            onPress={() => {
+                                const mp: ManagedProduct = {
+                                    id: String(v.id),
+                                    nom: `${v.marque} ${v.modele}`,
+                                    serviceId: String(v.id),
+                                    serviceTitre: 'Automobile',
+                                    prix: v.prix,
+                                    type: v.type_vehicule,
+                                    product_index: i,
+                                    images: v.images || [],
+                                };
+                                setStudioProduct(mp);
+                                setShowStudioModal(true);
+                            }}
+                        >
+                            <SafeIcon name="film" size={14} color="#8B5CF6" />
+                        </TouchableOpacity>
                         <View style={[s.statusDot, { backgroundColor: v.is_active !== false ? '#10B981' : '#EF4444' }]} />
                     </View>
                 ))
@@ -240,6 +263,14 @@ const AutomobileDashboardScreen: React.FC = () => {
                 {activeTab === 'vehicles' && renderVehicles()}
                 {activeTab === 'analytics' && renderAnalytics()}
             </View>
+            <ProductVideoCreationModal
+                visible={showStudioModal}
+                primaryProduct={studioProduct}
+                products={studioProduct ? [studioProduct] : []}
+                onClose={() => { setShowStudioModal(false); setStudioProduct(null); }}
+                onSuccess={() => { setShowStudioModal(false); setStudioProduct(null); }}
+                navigation={navigation}
+            />
         </View>
     );
 };

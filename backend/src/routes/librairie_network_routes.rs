@@ -145,6 +145,29 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(crate::controllers::paiement_agrege_controller::crediter_wallet),
         )
         // ========================================
+        // SUPER LIBRAIRIE (YukpoLibrairie — prioritaire + admin)
+        // ========================================
+        .route(
+            "/api/librairie-network/super-librairie/commandes",
+            get(crate::controllers::librairie_network_controller::super_librairie_dashboard),
+        )
+        .route(
+            "/api/librairie-network/super-librairie/liberer/{commande_id}",
+            post(crate::controllers::librairie_network_controller::super_librairie_liberer_commande),
+        )
+        .route(
+            "/api/librairie-network/super-librairie/team",
+            get(crate::controllers::librairie_network_controller::super_librairie_list_team),
+        )
+        .route(
+            "/api/librairie-network/super-librairie/team/invite",
+            post(crate::controllers::librairie_network_controller::super_librairie_invite_team),
+        )
+        .route(
+            "/api/librairie-network/super-librairie/team/{member_id}",
+            axum::routing::delete(crate::controllers::librairie_network_controller::super_librairie_remove_team),
+        )
+        // ========================================
         // ADMINISTRATION
         // ========================================
         .route(

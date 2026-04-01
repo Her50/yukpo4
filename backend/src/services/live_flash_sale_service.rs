@@ -347,7 +347,7 @@ impl LiveFlashSaleService {
                 r.user_id,
                 r.quantity,
                 r.reserved_at,
-                u.name,
+                u.nom_complet as name,
                 u.prenom,
                 u.nom
             FROM live_flash_sale_reservations r

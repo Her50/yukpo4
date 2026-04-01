@@ -4,21 +4,25 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, View } from 'react-native';
+import { Animated, Easing, Platform, View, useWindowDimensions } from 'react-native';
 import { DeliverySummary } from '../../types/delivery';
 import ActiveDeliveryCard from './ActiveDeliveryCard';
 
 interface AnimatedDeliveryCardProps {
     delivery: DeliverySummary;
-    onPress: (deliveryId: string) => void;
+    onTrackPress: (deliveryId: string) => void;
+    onEditPress: (deliveryId: string) => void;
     index?: number;
 }
 
 const AnimatedDeliveryCard: React.FC<AnimatedDeliveryCardProps> = React.memo(({
     delivery,
-    onPress,
+    onTrackPress,
+    onEditPress,
     index = 0,
 }) => {
+    const { width } = useWindowDimensions();
+    const isCompactAndroid = Platform.OS === 'android' && width <= 360;
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -71,10 +75,14 @@ const AnimatedDeliveryCard: React.FC<AnimatedDeliveryCardProps> = React.memo(({
     const deliveryKey = delivery?.id != null ? String(delivery.id) : '';
 
     return (
-        <Animated.View style={animatedStyle as any}>
+        <Animated.View style={[animatedStyle as any, isCompactAndroid && { marginBottom: 2 }]}>
             {/* Pas de Touchable parent : les boutons Modifier / Suivre sont dans la carte (évite touchables imbriqués + double navigation). */}
             <View>
-                <ActiveDeliveryCard delivery={delivery} onPress={() => onPress(deliveryKey)} />
+                <ActiveDeliveryCard
+                    delivery={delivery}
+                    onTrackPress={() => onTrackPress(deliveryKey)}
+                    onEditPress={() => onEditPress(deliveryKey)}
+                />
             </View>
         </Animated.View>
     );

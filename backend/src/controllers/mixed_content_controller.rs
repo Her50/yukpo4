@@ -511,7 +511,7 @@ async fn fetch_video_feed_from_media(
             s.data as service_data,
             s.category,
             s.user_id as seller_user_id,
-            u.name as seller_name,
+            COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as seller_name,
             u.avatar_url as seller_avatar,
             -- ✅ URL HLS transcodée si disponible (meilleure qualité adaptative)
             m.hls_url as hls_url,

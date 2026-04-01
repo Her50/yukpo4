@@ -3266,6 +3266,26 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     // ✅ YukpoIA : worker file Redis (chat async)
     tasks::yukpo_ia_queue_worker::start_yukpo_ia_queue_worker(app_state.clone());
 
+    // ✅ 2026-04-01: Génération automatique produits ticket_voyage depuis les horaires agences (cron 6h)
+    tasks::bus_schedule_product_generator::start_bus_schedule_product_generator(app_state.clone());
+
+    // ✅ Bourse du livre : reversements automatiques vendeurs
+    {
+        let pool_reversement = Arc::new(app_state.pg.clone());
+        let config_reversement =
+            tasks::book_reversement_worker::BookReversementWorkerConfig::default();
+        let _ = tokio::spawn(async move {
+            tasks::book_reversement_worker::run_book_reversement_worker(
+                pool_reversement,
+                config_reversement,
+            )
+            .await;
+        });
+    }
+
+    // ✅ Bourse du livre : timeout super libraire → fallback broadcast librairies proches
+    tasks::super_librairie_timeout_worker::start_super_librairie_timeout_worker(app_state.clone());
+
     // ✅ NOUVEAU: Healthcheck périodique Redis pour détecter les changements d'état
     // ✅ CORRIGÉ: Réduit la fréquence à toutes les 5 minutes (au lieu de chaque minute)
     // Le cache interne de check_redis_health gère déjà les logs de changement d'état

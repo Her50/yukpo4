@@ -147,14 +147,14 @@ pub struct CommandeLivreNeuf {
 pub struct CommandeLivreOccasion {
     pub id: Uuid,
     pub commande_id: Uuid,
-    pub livre_scolaire_id: Uuid, // Référence au livre d'occasion
+    pub livre_scolaire_id: i32, // livres_scolaires.id est INTEGER (SERIAL)
     pub titre: String,
     pub auteur: Option<String>,
     pub classe: String,
     pub matiere: String,
     pub etat_livre: String,
     pub prix: f64,
-    pub vendeur_id: Uuid,
+    pub vendeur_id: i32, // users.id est INTEGER (SERIAL)
     pub quantite: i32,
     pub statut: LivreOccasionStatut,
     pub created_at: DateTime<Utc>,

@@ -149,7 +149,7 @@ pub async fn get_top_videos(
             m.path as video_path,
             s.category,
             s.user_id as creator_id,
-            u.name as creator_name,
+            COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as creator_name,
             (
                 SELECT m2.path FROM media m2 
                 WHERE m2.service_id = m.service_id 

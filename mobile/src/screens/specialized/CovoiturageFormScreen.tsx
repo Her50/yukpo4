@@ -632,7 +632,7 @@ const CovoiturageFormScreen: React.FC = () => {
             <NativeButton
                 title={loading ? t('covoiturageFormScreen.creation') : (mode === 'edit' ? t('covoiturageFormScreen.mettreAJour') : t('covoiturageFormScreen.creerLeTrajet'))}
                 onPress={handleSubmit}
-                disabled={loading || !formData.depart || !formData.destination || !formData.prix_par_place.trim() || (formData.is_recurring && (!formData.recurrence_type || (formData.recurrence_type === 'weekly' && formData.recurrence_days.length === 0)))}
+                disabled={loading}
                 variant="primary" size="large" style={{ marginTop: 24 }}
             />
         </KeyboardAwareScreen>

@@ -31,6 +31,8 @@ interface BusSeatSelectorProps {
     productId: string;
     ticketPrice: number;
     currency?: string;
+    /** Nombre maximum de sièges sélectionnables par réservation (défaut: 10) */
+    maxSelectableSeats?: number;
     onReserve: (selectedSeats: SelectedSeat[], totalPrice: number) => void;
 }
 
@@ -40,6 +42,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     productId,
     ticketPrice,
     currency = 'XAF',
+    maxSelectableSeats = 10,
     onReserve,
 }) => {
     const { t } = useLanguageSafe();
@@ -48,7 +51,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     const [reservedSeats, setReservedSeats] = useState<string[]>([]);
     const [blockedSeats, setBlockedSeats] = useState<string[]>([]);
     const [selectedSeats, setSelectedSeats] = useState<SelectedSeat[]>([]);
-    const [maxSeats] = useState(10); // Limite de sélection
+    const maxSeats = maxSelectableSeats;
 
     useEffect(() => {
         if (visible && productId) {
@@ -70,7 +73,8 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
 
             if (resData.success && resData.availability) {
                 const availability = resData.availability;
-                setSeatMap(availability.seat_map || []);
+                // Backend may expose seat list as `seats` (SQL function) or `seat_map`.
+                setSeatMap(availability.seat_map || availability.seats || []);
                 setReservedSeats(availability.reserved_seats || []);
                 setBlockedSeats(availability.blocked_seats || []);
             } else {

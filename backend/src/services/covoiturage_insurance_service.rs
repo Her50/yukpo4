@@ -82,16 +82,16 @@ impl CovoiturageInsuranceService {
             AppError::Internal(format!("Erreur création assurance: {}", e))
         })?;
 
-        // Mettre à jour réservation
+        // Mettre à jour réservation spécialisée
         sqlx::query(
-            "UPDATE reservations SET insurance_included = true, insurance_coverage_amount = $1 WHERE id = $2"
+            "UPDATE specialized_reservations SET insurance_included = true, insurance_coverage_amount = $1 WHERE id = $2"
         )
         .bind(coverage_amount)
         .bind(reservation_id)
         .execute(&self.pool)
         .await
         .map_err(|e| {
-            error!("[CovoiturageInsurance] Erreur mise à jour réservation: {}", e);
+            error!("[CovoiturageInsurance] Erreur mise à jour specialized_reservation: {}", e);
             AppError::Internal(format!("Erreur mise à jour réservation: {}", e))
         })?;
 

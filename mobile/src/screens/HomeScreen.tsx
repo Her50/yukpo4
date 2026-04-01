@@ -808,6 +808,8 @@ const HomeScreen: React.FC = () => {
                                     'covoiturage': 'CovoiturageHome',      // ✅ Utilisateur: CovoiturageHomeScreen
                                     'taxi': 'TaxiHome',                     // ✅ Utilisateur: TaxiHomeScreen
                                     'automobile': 'AutoServicesSearch',    // ✅ Utilisateur: AutoServicesSearchScreen
+                                    // Restaurant (UTILISATEURS)
+                                    'restaurant': 'RestaurantClient',       // ✅ Utilisateur: parcourir restaurants, menu, commander
                                     // Services Assurance (UTILISATEURS)
                                     'assurance': 'InsuranceServicesSearch', // ✅ Utilisateur: InsuranceServicesSearchScreen
                                     // Services Éducation (UTILISATEURS)

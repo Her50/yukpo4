@@ -74,10 +74,11 @@ const PushNotificationManager: React.FC = () => {
                         {
                             text: t('common.view'),
                             onPress: () => {
-                                // Ouvrir l'historique des conversations ou le service
                                 if (data.service_id) {
                                     (navigation as any).navigate('ServiceDetail', {
-                                        serviceId: data.service_id
+                                        serviceId: data.service_id,
+                                        openChat: true,
+                                        initialConversationId: data.conversation_id || undefined,
                                     });
                                 }
                             }
@@ -207,6 +208,28 @@ const PushNotificationManager: React.FC = () => {
                     ]
                 );
             }
+            // ✅ Offre de négociation de prix reçue en foreground
+            else if (data?.type === 'price_negotiation') {
+                console.log('[PushNotificationManager] 💰 Offre négociation reçue:', data.offer_id);
+                Alert.alert(
+                    notification.request.content.title || '💰 Offre de prix',
+                    notification.request.content.body || '',
+                    [
+                        { text: t('common.close'), style: 'cancel' },
+                        {
+                            text: t('common.view'),
+                            onPress: () => {
+                                if (data.service_id) {
+                                    (navigation as any).navigate('ServiceDetail', {
+                                        serviceId: data.service_id,
+                                        openChat: true,
+                                    });
+                                }
+                            }
+                        }
+                    ]
+                );
+            }
             // ✅ Alertes Publicités (performance faible, CTR bas, CPC élevé, fin imminente)
             else if (data?.type === 'publicite_alert') {
                 console.log('[PushNotificationManager] 📊 Alerte Publicité:', data.alert_type, data.campaign_id);
@@ -264,15 +287,15 @@ const PushNotificationManager: React.FC = () => {
                     serviceId: data.service_id,
                 });
             }
-            // ✅ NOUVEAU: Gérer les notifications de messages
+            // ✅ Gérer les notifications de messages — tap ouvre directement la conversation
             else if (data?.type === 'new_message') {
-                console.log('[PushNotificationManager] 💬 Navigation vers le service pour voir le message');
+                console.log('[PushNotificationManager] 💬 Navigation vers la conversation:', data.conversation_id);
 
-                // Naviguer vers le service ou le chat
                 if (data.service_id) {
                     (navigation as any).navigate('ServiceDetail', {
                         serviceId: data.service_id,
-                        openChat: true // Flag pour ouvrir automatiquement le chat
+                        openChat: true,
+                        initialConversationId: data.conversation_id || undefined,
                     });
                 }
             }
@@ -318,6 +341,16 @@ const PushNotificationManager: React.FC = () => {
                 console.log('[PushNotificationManager] 📊 Tap alerte Publicité:', data.alert_type);
                 (navigation as any).navigate('PubliciteDashboard');
             }
+            // ✅ Offre de négociation de prix reçue → ouvrir le service avec le chat
+            else if (data?.type === 'price_negotiation') {
+                console.log('[PushNotificationManager] 💰 Tap offre négociation:', data.offer_id);
+                if (data.service_id) {
+                    (navigation as any).navigate('ServiceDetail', {
+                        serviceId: data.service_id,
+                        openChat: true,
+                    });
+                }
+            }
             // ✅ Commande mixte librairie (prix neufs / bornes)
             else if (data?.type === 'librairie_commande_mixte' || data?.type === 'nouvelle_commande') {
                 console.log('[PushNotificationManager] 📚 Tap commande mixte librairie:', data?.commande_id);
@@ -358,6 +391,7 @@ const PushNotificationManager: React.FC = () => {
                     (navigation as any).navigate('ServiceDetail', {
                         serviceId: data.service_id,
                         openChat: true,
+                        initialConversationId: data.conversation_id || undefined,
                     });
                 } else if (data.type === 'delivery_available' && data.delivery_id) {
                     (navigation as any).navigate('DeliveryShoppingTracking', {

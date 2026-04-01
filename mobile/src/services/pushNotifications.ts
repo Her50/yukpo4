@@ -155,7 +155,9 @@ export async function registerForPushNotificationsAsync(userToken: string): Prom
                 importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 250, 250, 250, 250, 250],
                 lightColor: '#F59E0B',
-                sound: 'delivery_alert', // Son personnalisé pour les livraisons
+                // Use system default for reliability even when app is closed.
+                // Custom sound can fail on some devices/builds if asset is missing.
+                sound: 'default',
                 enableVibrate: true,
                 showBadge: true,
                 lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,

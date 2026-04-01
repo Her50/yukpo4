@@ -20,6 +20,9 @@ interface Pharmacie {
     telephone?: string;
     telephone_urgence?: string;
     distance_km?: number;
+    nom_produit?: string;
+    prix?: number;
+    can_fulfill_quantity?: boolean;
 }
 
 const PharmacieListPage: React.FC = () => {
@@ -58,11 +61,30 @@ const PharmacieListPage: React.FC = () => {
             queryParams.append('page', currentPage.toString());
             queryParams.append('limit', '20');
 
-            const response = await apiGet(`/api/pharmacies/search?${queryParams.toString()}`);
+            const hasProductSearch = Boolean(filters.product_search);
+            const response = hasProductSearch
+                ? await apiGet(`/api/medicines/nearby?q=${encodeURIComponent(filters.product_search)}${filters.lat ? `&lat=${filters.lat}` : ''}${filters.lng ? `&lng=${filters.lng}` : ''}${filters.max_distance_km ? `&radius_km=${filters.max_distance_km}` : ''}${filters.on_duty_only ? '&on_duty_only=true' : ''}&limit=20`)
+                : await apiGet(`/api/pharmacies/search?${queryParams.toString()}`);
             const data = await response.json();
 
-            if (data.success && data.data) {
-                const newPharmacies = data.data.data || [];
+            if (data.success) {
+                const newPharmacies = hasProductSearch
+                    ? (data.items || []).map((item: any) => ({
+                        id: item.pharmacy_id || item.id,
+                        service_id: item.pharmacy_service_id || item.service_id,
+                        user_id: item.user_id || 0,
+                        nom: item.pharmacy_nom || 'Pharmacie',
+                        ville: item.ville,
+                        quartier: item.quartier,
+                        is_available_now: true,
+                        is_on_duty: !!item.is_on_duty_now,
+                        telephone: item.telephone,
+                        distance_km: item.distance_km,
+                        nom_produit: item.nom_produit,
+                        prix: item.prix,
+                        can_fulfill_quantity: !!item.can_fulfill_quantity,
+                    }))
+                    : (data.data?.data || []);
                 if (isRefresh || currentPage === 1) {
                     setPharmacies(newPharmacies);
                 } else {
@@ -185,6 +207,13 @@ const PharmacieListPage: React.FC = () => {
                                         <div className="flex items-center text-sm text-gray-600">
                                             <Phone className="w-4 h-4 mr-2" />
                                             {pharmacie.telephone}
+                                        </div>
+                                    )}
+                                    {pharmacie.nom_produit && (
+                                        <div className="flex items-center text-sm text-gray-600">
+                                            <Pill className="w-4 h-4 mr-2" />
+                                            {pharmacie.nom_produit}
+                                            {pharmacie.prix ? ` • ${Number(pharmacie.prix).toLocaleString()} FCFA` : ''}
                                         </div>
                                     )}
                                 </div>

@@ -895,7 +895,7 @@ pub async fn search_auto_products(
             s.gps as service_gps,
             s.user_id,
             {},
-            u.name as vendeur_nom
+            COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as vendeur_nom
         FROM service_products sp
         INNER JOIN services s ON s.id = sp.service_id
         LEFT JOIN users u ON u.id = s.user_id

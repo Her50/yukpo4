@@ -293,11 +293,21 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
         ws.current.onopen = () => {
             console.log('[WebRTC] Connecté au serveur de signaling');
 
-            // ✅ NOUVEAU: Envoyer une push notification au destinataire
-            sendCallPushNotification();
-
-            // Envoyer l'offre d'appel
-            createOffer();
+            if (!isIncoming) {
+                // Côté APPELANT: envoyer la notification push + créer l'offre SDP
+                sendCallPushNotification();
+                createOffer();
+            } else {
+                // Côté DESTINATAIRE: s'enregistrer auprès du serveur de signaling
+                // et attendre l'offre de l'appelant
+                console.log('[WebRTC] 📲 Mode entrant — en attente de l\'offre SDP de l\'appelant');
+                setCallState('ringing');
+                ws.current?.send(JSON.stringify({
+                    type: 'ping',
+                    from: currentUserId,
+                    to: recipientId,
+                }));
+            }
         };
 
         ws.current.onmessage = async (event) => {
@@ -361,7 +371,32 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     // Gérer les messages de signaling
     const handleSignalingMessage = async (message: any) => {
         switch (message.type) {
+            case 'offer':
+                // Côté DESTINATAIRE: recevoir l'offre SDP et créer un answer
+                try {
+                    console.log('[WebRTC] 📨 Offre SDP reçue, création de l\'answer...');
+                    await peerConnection.current?.setRemoteDescription(
+                        new RTCSessionDescription(message.sdp)
+                    );
+                    const answer = await peerConnection.current?.createAnswer();
+                    await peerConnection.current?.setLocalDescription(answer);
+                    sendSignalingMessage({
+                        type: 'answer',
+                        sdp: answer,
+                        to: message.from,
+                        from: currentUserId,
+                    });
+                    setCallState('active');
+                    console.log('[WebRTC] ✅ Answer envoyé, appel actif');
+                } catch (error) {
+                    console.error('[WebRTC] ❌ Erreur traitement offre:', error);
+                    Alert.alert('Erreur', 'Impossible de rejoindre l\'appel. Veuillez réessayer.');
+                    onClose();
+                }
+                break;
+
             case 'answer':
+                // Côté APPELANT: recevoir le answer du destinataire
                 await peerConnection.current?.setRemoteDescription(
                     new RTCSessionDescription(message.sdp)
                 );
@@ -382,6 +417,10 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
 
             case 'call-ended':
                 endCall();
+                break;
+
+            case 'error':
+                console.warn('[WebRTC] ⚠️ Erreur signaling reçue:', message.message);
                 break;
         }
     };
@@ -582,24 +621,9 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             });
 
             if (response.success) {
-                console.log('[WebRTC] ✅ Notification API envoyée avec succès');
+                console.log('[WebRTC] ✅ Notification d\'appel envoyée avec succès');
             } else {
-                console.warn('[WebRTC] ⚠️ Erreur envoi notification API:', response.status);
-            }
-
-            // ✅ MÉTHODE 2: Envoyer également via WebSocket pour notification temps réel
-            // Utiliser le WebSocket de signaling pour envoyer la notification
-            if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-                ws.current.send(JSON.stringify({
-                    type: 'call_notification',
-                    to: recipientId,
-                    from: currentUserId,
-                    caller_name: recipientName || 'Un utilisateur',
-                    call_type: callType,
-                    service_id: serviceId,
-                    timestamp: new Date().toISOString()
-                }));
-                console.log('[WebRTC] ✅ Notification WebSocket envoyée');
+                console.warn('[WebRTC] ⚠️ Erreur envoi notification d\'appel:', response.status);
             }
 
         } catch (error) {

@@ -188,6 +188,8 @@ pub struct RegisterInput {
     pub partner_lat: Option<f64>, // ✅ NOUVEAU: Latitude GPS
     pub partner_lng: Option<f64>, // ✅ NOUVEAU: Longitude GPS
     pub payment_methods: Option<serde_json::Value>, // ✅ NOUVEAU: Moyens de paiement (MTN/Orange Money)
+    /// Code d'invitation émis par un restaurant (table `restaurant_partner_codes`), optionnel
+    pub restaurant_partner_code: Option<String>,
 }
 
 /// ? Inscription manuelle
@@ -237,6 +239,9 @@ pub async fn register_user(
             "hotel",
             "meuble",
             "libraire",
+            "restaurant",
+            "boulangerie",
+            "traiteur",
         ];
 
         // ✅ CORRIGÉ: Ajouter des logs de debug pour identifier le problème
@@ -282,6 +287,38 @@ pub async fn register_user(
             return Err(AppError::BadRequest(
                 "partner_name est requis pour un partenaire".into(),
             ));
+        }
+
+        // Code partenaire restaurant (optionnel) : si fourni, doit exister et être actif
+        if let Some(ref pt) = payload.partner_type {
+            let pt_trimmed = pt.trim();
+            if pt_trimmed == "restaurant"
+                || pt_trimmed == "boulangerie"
+                || pt_trimmed == "traiteur"
+            {
+                if let Some(ref raw_code) = payload.restaurant_partner_code {
+                    let code_trim = raw_code.trim();
+                    if !code_trim.is_empty() {
+                        let valid: bool = sqlx::query_scalar(
+                            r#"
+                            SELECT EXISTS(
+                              SELECT 1 FROM restaurant_partner_codes
+                              WHERE UPPER(code) = UPPER($1) AND is_active = TRUE
+                            )
+                            "#,
+                        )
+                        .bind(code_trim)
+                        .fetch_one(&state.pg)
+                        .await
+                        .unwrap_or(false);
+                        if !valid {
+                            return Err(AppError::BadRequest(
+                                "Code partenaire restaurant invalide ou inactif.".into(),
+                            ));
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -950,6 +987,19 @@ pub async fn register_user(
                 }
             }
         } // Fin du bloc de création du partenaire
+
+        // ✅ Stocker partner_phone comme users.phone pour que ChatModalMobile puisse l'utiliser comme WhatsApp
+        if let Some(ref phone) = payload.partner_phone {
+            if !phone.trim().is_empty() {
+                let _ = sqlx::query(
+                    "UPDATE users SET phone = $1, updated_at = NOW() WHERE id = $2"
+                )
+                .bind(phone.trim())
+                .bind(new.id)
+                .execute(db)
+                .await;
+            }
+        }
     }
 
     if let Err(e) = send_verification_email(&payload.email).await {

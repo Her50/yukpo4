@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
 use std::sync::Arc;
+use uuid::Uuid;
 
 // ============================================================================
 // STRUCTURES DE REQUÊTE/RÉPONSE
@@ -27,14 +28,19 @@ pub struct CreateScheduleRequest {
     pub arrival_city: String,
     pub departure_times: Vec<String>, // ["08:00", "14:00", "20:00"]
     pub day_of_week: Option<i32>,     // 0=Dimanche, 1=Lundi, ..., 6=Samedi (NULL = tous les jours)
+    pub bus_model_id: Option<String>, // UUID products.id (ticket_voyage)
     pub notes: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateScheduleRequest {
     pub departure_times: Option<Vec<String>>,
+    /// Convention PostgreSQL DOW : 0=Dimanche, 1=Lundi, 2=Mardi, 3=Mercredi,
+    /// 4=Jeudi, 5=Vendredi, 6=Samedi.  NULL = actif tous les jours.
+    /// Cohérent avec EXTRACT(DOW FROM ...) et naive_date_to_pg_dow() dans le cron.
     pub day_of_week: Option<i32>,
     pub is_active: Option<bool>,
+    pub bus_model_id: Option<String>, // UUID products.id (ticket_voyage)
     pub notes: Option<String>,
 }
 
@@ -46,6 +52,12 @@ pub struct ScheduleResponse {
     pub arrival_city: String,
     pub departure_times: Vec<String>,
     pub day_of_week: Option<i32>,
+    pub bus_model_id: Option<String>,
+    pub bus_model_name: Option<String>,
+    pub total_seats: Option<i32>,
+    pub occupied_seats: i32,
+    pub available_seats: i32,
+    pub next_departure_at: Option<String>,
     pub is_active: bool,
     pub notes: Option<String>,
     pub created_at: String,
@@ -65,6 +77,15 @@ pub struct GetAvailableTimesQuery {
     pub from: String,         // departure_city
     pub to: String,           // arrival_city
     pub date: Option<String>, // Format YYYY-MM-DD (optionnel)
+}
+
+fn parse_optional_uuid(value: &Option<String>, field_name: &str) -> Result<Option<Uuid>, AppError> {
+    match value {
+        Some(raw) if !raw.trim().is_empty() => Uuid::parse_str(raw.trim())
+            .map(Some)
+            .map_err(|_| AppError::BadRequest(format!("{} invalide (UUID attendu)", field_name))),
+        _ => Ok(None),
+    }
 }
 
 // ============================================================================
@@ -130,6 +151,7 @@ pub async fn create_schedule(
     // Convertir en TIME[] pour PostgreSQL
     let times_array: Vec<String> =
         validated_times.iter().map(|t| t.format("%H:%M:%S").to_string()).collect();
+    let bus_model_uuid = parse_optional_uuid(&payload.bus_model_id, "bus_model_id")?;
 
     // Insérer l'horaire
     let schedule_id: String = sqlx::query_scalar(
@@ -140,13 +162,15 @@ pub async fn create_schedule(
             arrival_city,
             departure_times,
             day_of_week,
+            bus_model_id,
             notes,
             is_active
         )
-        VALUES ($1, $2, $3, $4::TIME[], $5, $6, TRUE)
+        VALUES ($1, $2, $3, $4::TIME[], $5, $6, $7, TRUE)
         ON CONFLICT (agency_user_id, departure_city, arrival_city, day_of_week)
         DO UPDATE SET
             departure_times = EXCLUDED.departure_times,
+            bus_model_id = COALESCE(EXCLUDED.bus_model_id, agency_departure_schedules.bus_model_id),
             notes = EXCLUDED.notes,
             updated_at = NOW()
         RETURNING id
@@ -157,6 +181,7 @@ pub async fn create_schedule(
     .bind(&payload.arrival_city)
     .bind(&times_array)
     .bind(&payload.day_of_week)
+    .bind(bus_model_uuid)
     .bind(&payload.notes)
     .fetch_one(&state.pg)
     .await
@@ -192,18 +217,44 @@ pub async fn get_agency_schedules(
     let mut sql = String::from(
         r#"
         SELECT 
-            id,
-            agency_user_id,
-            departure_city,
-            arrival_city,
-            departure_times,
-            day_of_week,
-            is_active,
-            notes,
-            created_at,
-            updated_at
-        FROM agency_departure_schedules
-        WHERE agency_user_id = $1
+            ads.id,
+            ads.agency_user_id,
+            ads.departure_city,
+            ads.arrival_city,
+            ads.departure_times,
+            ads.day_of_week,
+            ads.bus_model_id::text AS bus_model_id,
+            bp.name AS bus_model_name,
+            COALESCE(occ.total_seats, bp.total_seats) AS total_seats,
+            COALESCE(occ.occupied_seats, 0) AS occupied_seats,
+            GREATEST(0, COALESCE(occ.total_seats, bp.total_seats, 0) - COALESCE(occ.occupied_seats, 0)) AS available_seats,
+            occ.next_departure_at,
+            ads.is_active,
+            ads.notes,
+            ads.created_at,
+            ads.updated_at
+        FROM agency_departure_schedules ads
+        LEFT JOIN products bp ON bp.id = ads.bus_model_id
+        LEFT JOIN LATERAL (
+            SELECT
+                p.id::text AS product_id,
+                p.total_seats,
+                p.date_depart AS next_departure_at,
+                COALESCE((
+                    SELECT COUNT(*)::INTEGER
+                    FROM bus_reservations br
+                    WHERE br.product_id = p.id::text
+                      AND br.status IN ('pending', 'confirmed')
+                      AND (br.expires_at IS NULL OR br.expires_at > NOW())
+                ), 0) AS occupied_seats
+            FROM products p
+            WHERE p.source_schedule_id = ads.id
+              AND p.type = 'ticket_voyage'
+              AND p.date_depart >= NOW()
+            ORDER BY p.date_depart ASC
+            LIMIT 1
+        ) occ ON TRUE
+        WHERE ads.agency_user_id = $1
         "#,
     );
 
@@ -211,25 +262,25 @@ pub async fn get_agency_schedules(
     let mut param_index = 2;
 
     if let Some(ref city) = query.departure_city {
-        sql.push_str(&format!(" AND departure_city = ${}", param_index));
+        sql.push_str(&format!(" AND ads.departure_city = ${}", param_index));
         params.push(city.clone());
         param_index += 1;
     }
 
     if let Some(ref city) = query.arrival_city {
-        sql.push_str(&format!(" AND arrival_city = ${}", param_index));
+        sql.push_str(&format!(" AND ads.arrival_city = ${}", param_index));
         params.push(city.clone());
         param_index += 1;
     }
 
     if let Some(day) = query.day_of_week {
-        sql.push_str(&format!(" AND day_of_week = ${}", param_index));
+        sql.push_str(&format!(" AND ads.day_of_week = ${}", param_index));
         params.push(day.to_string());
         param_index += 1;
     }
 
     if let Some(active) = query.is_active {
-        sql.push_str(&format!(" AND is_active = ${}", param_index));
+        sql.push_str(&format!(" AND ads.is_active = ${}", param_index));
         params.push(active.to_string());
         param_index += 1;
     }
@@ -237,7 +288,7 @@ pub async fn get_agency_schedules(
     // param_index est utilisé dans les format! ci-dessus pour construire la requête SQL
     let _ = param_index;
 
-    sql.push_str(" ORDER BY departure_city, arrival_city, day_of_week NULLS FIRST");
+    sql.push_str(" ORDER BY ads.departure_city, ads.arrival_city, ads.day_of_week NULLS FIRST");
 
     // Construire la requête dynamique
     let mut query_builder = sqlx::query(&sql).bind(user_id);
@@ -268,12 +319,20 @@ pub async fn get_agency_schedules(
             departure_times.iter().map(|t| t.format("%H:%M").to_string()).collect();
 
         schedules.push(ScheduleResponse {
-            id: row.get::<i32, _>("id").to_string(),
+            id: row.get::<String, _>("id"),
             agency_user_id: row.get::<i32, _>("agency_user_id"),
             departure_city: row.get::<String, _>("departure_city"),
             arrival_city: row.get::<String, _>("arrival_city"),
             departure_times: times_str,
             day_of_week: row.get::<Option<i32>, _>("day_of_week"),
+            bus_model_id: row.get::<Option<String>, _>("bus_model_id"),
+            bus_model_name: row.get::<Option<String>, _>("bus_model_name"),
+            total_seats: row.get::<Option<i32>, _>("total_seats"),
+            occupied_seats: row.get::<i32, _>("occupied_seats"),
+            available_seats: row.get::<i32, _>("available_seats"),
+            next_departure_at: row
+                .get::<Option<chrono::DateTime<chrono::Utc>>, _>("next_departure_at")
+                .map(|dt| dt.to_rfc3339()),
             is_active: row.get::<bool, _>("is_active"),
             notes: row.get::<Option<String>, _>("notes"),
             created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
@@ -402,6 +461,7 @@ pub async fn update_schedule(
     if payload.departure_times.is_none()
         && payload.day_of_week.is_none()
         && payload.is_active.is_none()
+        && payload.bus_model_id.is_none()
         && payload.notes.is_none()
     {
         return Err(AppError::BadRequest(
@@ -409,10 +469,20 @@ pub async fn update_schedule(
         ));
     }
 
+    // Valider day_of_week si fourni (0=Dim … 6=Sam, cohérent avec PostgreSQL DOW)
+    if let Some(day) = payload.day_of_week {
+        if !(0..=6).contains(&day) {
+            return Err(AppError::BadRequest(
+                "day_of_week doit être entre 0 (Dimanche) et 6 (Samedi)".to_string(),
+            ));
+        }
+    }
+
     // Approche simplifiée : requêtes séparées selon les champs modifiés
     if payload.departure_times.is_some()
         || payload.day_of_week.is_some()
         || payload.is_active.is_some()
+        || payload.bus_model_id.is_some()
         || payload.notes.is_some()
     {
         let times_array = if let Some(ref times) = payload.departure_times {
@@ -437,6 +507,7 @@ pub async fn update_schedule(
         } else {
             None
         };
+        let bus_model_uuid = parse_optional_uuid(&payload.bus_model_id, "bus_model_id")?;
 
         sqlx::query(
             r#"
@@ -445,14 +516,16 @@ pub async fn update_schedule(
                 departure_times = COALESCE($1::TIME[], departure_times),
                 day_of_week = COALESCE($2, day_of_week),
                 is_active = COALESCE($3, is_active),
-                notes = COALESCE($4, notes),
+                bus_model_id = COALESCE($4, bus_model_id),
+                notes = COALESCE($5, notes),
                 updated_at = NOW()
-            WHERE id = $5
+            WHERE id = $6
             "#,
         )
         .bind(&times_array)
         .bind(&payload.day_of_week)
         .bind(&payload.is_active)
+        .bind(bus_model_uuid)
         .bind(&payload.notes)
         .bind(&schedule_id)
         .execute(&state.pg)
@@ -541,18 +614,44 @@ async fn get_schedule_by_id(
     let row = sqlx::query(
         r#"
         SELECT 
-            id,
-            agency_user_id,
-            departure_city,
-            arrival_city,
-            departure_times,
-            day_of_week,
-            is_active,
-            notes,
-            created_at,
-            updated_at
-        FROM agency_departure_schedules
-        WHERE id = $1
+            ads.id,
+            ads.agency_user_id,
+            ads.departure_city,
+            ads.arrival_city,
+            ads.departure_times,
+            ads.day_of_week,
+            ads.bus_model_id::text AS bus_model_id,
+            bp.name AS bus_model_name,
+            COALESCE(occ.total_seats, bp.total_seats) AS total_seats,
+            COALESCE(occ.occupied_seats, 0) AS occupied_seats,
+            GREATEST(0, COALESCE(occ.total_seats, bp.total_seats, 0) - COALESCE(occ.occupied_seats, 0)) AS available_seats,
+            occ.next_departure_at,
+            ads.is_active,
+            ads.notes,
+            ads.created_at,
+            ads.updated_at
+        FROM agency_departure_schedules ads
+        LEFT JOIN products bp ON bp.id = ads.bus_model_id
+        LEFT JOIN LATERAL (
+            SELECT
+                p.id::text AS product_id,
+                p.total_seats,
+                p.date_depart AS next_departure_at,
+                COALESCE((
+                    SELECT COUNT(*)::INTEGER
+                    FROM bus_reservations br
+                    WHERE br.product_id = p.id::text
+                      AND br.status IN ('pending', 'confirmed')
+                      AND (br.expires_at IS NULL OR br.expires_at > NOW())
+                ), 0) AS occupied_seats
+            FROM products p
+            WHERE p.source_schedule_id = ads.id
+              AND p.type = 'ticket_voyage'
+              AND p.date_depart >= NOW()
+            ORDER BY p.date_depart ASC
+            LIMIT 1
+        ) occ ON TRUE
+        WHERE ads.id = $1
         "#,
     )
     .bind(schedule_id)
@@ -571,12 +670,20 @@ async fn get_schedule_by_id(
                 departure_times.iter().map(|t| t.format("%H:%M").to_string()).collect();
 
             Ok(ScheduleResponse {
-                id: row.get::<i32, _>("id").to_string(),
+                id: row.get::<String, _>("id"),
                 agency_user_id: row.get::<i32, _>("agency_user_id"),
                 departure_city: row.get::<String, _>("departure_city"),
                 arrival_city: row.get::<String, _>("arrival_city"),
                 departure_times: times_str,
                 day_of_week: row.get::<Option<i32>, _>("day_of_week"),
+                bus_model_id: row.get::<Option<String>, _>("bus_model_id"),
+                bus_model_name: row.get::<Option<String>, _>("bus_model_name"),
+                total_seats: row.get::<Option<i32>, _>("total_seats"),
+                occupied_seats: row.get::<i32, _>("occupied_seats"),
+                available_seats: row.get::<i32, _>("available_seats"),
+                next_departure_at: row
+                    .get::<Option<chrono::DateTime<chrono::Utc>>, _>("next_departure_at")
+                    .map(|dt| dt.to_rfc3339()),
                 is_active: row.get::<bool, _>("is_active"),
                 notes: row.get::<Option<String>, _>("notes"),
                 created_at: row.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),

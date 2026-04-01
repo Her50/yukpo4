@@ -308,12 +308,7 @@ export default function CovoiturageForm() {
                             <Button
                                 type="submit"
                                 variant="primary"
-                                disabled={
-                                    loading ||
-                                    !formData.point_depart.trim() ||
-                                    !formData.point_arrivee.trim() ||
-                                    !formData.prix_place.trim()
-                                }
+                                disabled={loading}
                             >
                                 {loading ? 'Création...' : 'Créer le Trajet'}
                             </Button>

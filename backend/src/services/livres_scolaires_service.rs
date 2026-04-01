@@ -128,16 +128,18 @@ impl LivresScolairesService {
         let distance_select = if has_gps {
             let lat_idx = param_index;
             let lon_idx = param_index + 1;
-            param_index += 2; // ✅ FIX: avancer param_index pour GPS (lat + lon)
-                              // Utiliser la formule Haversine pour calculer la distance
+            param_index += 2;
+            // Formule Haversine — distance en km
             format!(
                 r#"
                 6371.0 * acos(
-                    cos(radians(${})) * 
-                    cos(radians(CAST(SPLIT_PART(gps, ',', 1) AS FLOAT))) *
-                    cos(radians(CAST(SPLIT_PART(gps, ',', 2) AS FLOAT)) - radians(${})) +
-                    sin(radians(${})) *
-                    sin(radians(CAST(SPLIT_PART(gps, ',', 1) AS FLOAT)))
+                    LEAST(1.0, GREATEST(-1.0,
+                        cos(radians(${})) *
+                        cos(radians(CAST(SPLIT_PART(gps, ',', 1) AS FLOAT))) *
+                        cos(radians(CAST(SPLIT_PART(gps, ',', 2) AS FLOAT)) - radians(${})) +
+                        sin(radians(${})) *
+                        sin(radians(CAST(SPLIT_PART(gps, ',', 1) AS FLOAT)))
+                    ))
                 ) as distance_km
                 "#,
                 lat_idx, lon_idx, lat_idx
@@ -146,15 +148,38 @@ impl LivresScolairesService {
             "NULL::FLOAT as distance_km".to_string()
         };
 
+        // Filtrer par rayon si GPS présent
+        if has_gps {
+            let rayon = request.rayon_km.unwrap_or(10.0);
+            let lat_idx = param_index - 2;
+            let lon_idx = param_index - 1;
+            // Utiliser le même param_index pour le filtre de rayon (réutilise lat/lon déjà bindés)
+            // On ajoute un filtre WHERE via une sous-requête
+            conditions.push(format!(
+                r#"
+                gps IS NOT NULL AND TRIM(gps) <> '' AND
+                6371.0 * acos(
+                    LEAST(1.0, GREATEST(-1.0,
+                        cos(radians(${})) *
+                        cos(radians(CAST(SPLIT_PART(gps, ',', 1) AS FLOAT))) *
+                        cos(radians(CAST(SPLIT_PART(gps, ',', 2) AS FLOAT)) - radians(${})) +
+                        sin(radians(${})) *
+                        sin(radians(CAST(SPLIT_PART(gps, ',', 1) AS FLOAT)))
+                    ))
+                ) <= {}
+                "#,
+                lat_idx, lon_idx, lat_idx, rayon
+            ));
+        }
+
         let where_clause = conditions.join(" AND ");
 
-        // ✅ FIX: LIMIT/OFFSET utilisent param_index (correct que GPS soit présent ou non)
         let limit_idx = param_index;
         let offset_idx = param_index + 1;
 
         let sql = format!(
             r#"
-            SELECT 
+            SELECT
                 l.*,
                 {}
             FROM livres_scolaires l
@@ -194,9 +219,6 @@ impl LivresScolairesService {
         // Bind des coordonnées GPS si présentes
         if let (Some(lat), Some(lon)) = (request.gps_lat, request.gps_lon) {
             query = query.bind(lat).bind(lon);
-            // Filtrer par rayon si spécifié
-            // Note: Pour l'instant on récupère tous les résultats, le filtrage par rayon
-            // sera fait en post-traitement ou avec un filtre WHERE supplémentaire
         }
 
         query = query.bind(limit).bind(offset);
@@ -415,8 +437,80 @@ impl LivresScolairesService {
             updates.push(format!("is_active = ${}", param_index));
             param_index += 1;
         }
+        // ✅ V2: champs manquants
+        if request.image_recto.is_some() {
+            updates.push(format!("image_recto = ${}", param_index));
+            param_index += 1;
+        }
+        if request.image_verso.is_some() {
+            updates.push(format!("image_verso = ${}", param_index));
+            param_index += 1;
+        }
+        if request.mode_listing.is_some() {
+            updates.push(format!("mode_listing = ${}", param_index));
+            param_index += 1;
+        }
+        if request.prix_detecte.is_some() {
+            updates.push(format!("prix_detecte = ${}", param_index));
+            param_index += 1;
+        }
+        if request.devise_detectee.is_some() {
+            updates.push(format!("devise_detectee = ${}", param_index));
+            param_index += 1;
+        }
+        if request.valeur_calculee.is_some() {
+            updates.push(format!("valeur_calculee = ${}", param_index));
+            param_index += 1;
+        }
+        if request.ratio_etat.is_some() {
+            updates.push(format!("ratio_etat = ${}", param_index));
+            param_index += 1;
+        }
+        if request.etat_classification.is_some() {
+            updates.push(format!("etat_classification = ${}", param_index));
+            param_index += 1;
+        }
+        if request.programme_scolaire_id.is_some() {
+            updates.push(format!("programme_scolaire_id = ${}", param_index));
+            param_index += 1;
+        }
+        if request.est_au_programme.is_some() {
+            updates.push(format!("est_au_programme = ${}", param_index));
+            param_index += 1;
+        }
+        if request.ia_analysis_result.is_some() {
+            updates.push(format!("ia_analysis_result = ${}", param_index));
+            param_index += 1;
+        }
+        if request.ia_confidence.is_some() {
+            updates.push(format!("ia_confidence = ${}", param_index));
+            param_index += 1;
+        }
+        if request.ia_analysis_status.is_some() {
+            updates.push(format!("ia_analysis_status = ${}", param_index));
+            param_index += 1;
+        }
+        if request.situation_troc.is_some() {
+            updates.push(format!("situation_troc = ${}", param_index));
+            param_index += 1;
+        }
+        if request.offre_matchee.is_some() {
+            updates.push(format!("offre_matchee = ${}", param_index));
+            param_index += 1;
+        }
+        if request.upload_session_id.is_some() {
+            updates.push(format!("upload_session_id = ${}", param_index));
+            param_index += 1;
+        }
+        if request.disponibilite_debut.is_some() {
+            updates.push(format!("disponibilite_debut = ${}", param_index));
+            param_index += 1;
+        }
+        if request.disponibilite_fin.is_some() {
+            updates.push(format!("disponibilite_fin = ${}", param_index));
+            param_index += 1;
+        }
 
-        // ✅ FIX: Toujours mettre à jour updated_at
         updates.push("updated_at = NOW()".to_string());
 
         let sql = format!(
@@ -428,7 +522,7 @@ impl LivresScolairesService {
 
         let mut query = sqlx::query_as::<_, LivreScolaire>(&sql);
 
-        // Bind des valeurs
+        // Bind des valeurs V1
         if let Some(titre) = request.titre {
             query = query.bind(titre);
         }
@@ -479,6 +573,61 @@ impl LivresScolairesService {
         }
         if let Some(is_active) = request.is_active {
             query = query.bind(is_active);
+        }
+        // Bind des valeurs V2
+        if let Some(image_recto) = request.image_recto {
+            query = query.bind(image_recto);
+        }
+        if let Some(image_verso) = request.image_verso {
+            query = query.bind(image_verso);
+        }
+        if let Some(mode_listing) = request.mode_listing {
+            query = query.bind(mode_listing);
+        }
+        if let Some(prix_detecte) = request.prix_detecte {
+            query = query.bind(rust_decimal::Decimal::try_from(prix_detecte).unwrap_or_default());
+        }
+        if let Some(devise_detectee) = request.devise_detectee {
+            query = query.bind(devise_detectee);
+        }
+        if let Some(valeur_calculee) = request.valeur_calculee {
+            query = query.bind(rust_decimal::Decimal::try_from(valeur_calculee).unwrap_or_default());
+        }
+        if let Some(ratio_etat) = request.ratio_etat {
+            query = query.bind(rust_decimal::Decimal::try_from(ratio_etat).unwrap_or_default());
+        }
+        if let Some(etat_classification) = request.etat_classification {
+            query = query.bind(etat_classification);
+        }
+        if let Some(programme_scolaire_id) = request.programme_scolaire_id {
+            query = query.bind(programme_scolaire_id);
+        }
+        if let Some(est_au_programme) = request.est_au_programme {
+            query = query.bind(est_au_programme);
+        }
+        if let Some(ia_analysis_result) = request.ia_analysis_result {
+            query = query.bind(ia_analysis_result);
+        }
+        if let Some(ia_confidence) = request.ia_confidence {
+            query = query.bind(rust_decimal::Decimal::try_from(ia_confidence).unwrap_or_default());
+        }
+        if let Some(ia_analysis_status) = request.ia_analysis_status {
+            query = query.bind(ia_analysis_status);
+        }
+        if let Some(situation_troc) = request.situation_troc {
+            query = query.bind(situation_troc);
+        }
+        if let Some(offre_matchee) = request.offre_matchee {
+            query = query.bind(offre_matchee);
+        }
+        if let Some(upload_session_id) = request.upload_session_id {
+            query = query.bind(upload_session_id);
+        }
+        if let Some(disponibilite_debut) = request.disponibilite_debut {
+            query = query.bind(disponibilite_debut);
+        }
+        if let Some(disponibilite_fin) = request.disponibilite_fin {
+            query = query.bind(disponibilite_fin);
         }
 
         query = query.bind(livre_id).bind(user_id);

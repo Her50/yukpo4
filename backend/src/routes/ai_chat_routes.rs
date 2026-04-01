@@ -249,7 +249,7 @@ Actions available:\n\
 Specialized dashboards:\n\
 - Supermarket: SupermarketPartnerDashboard → catalogue, stocks, commandes en cours, promotions flash, statistiques\n\
 - Pharmacy: PharmaciePartnerDashboard → médicaments, commandes, pharmacie de garde, IA dosage, gestion ordonnances\n\
-- Restaurant: RestaurantDashboard → menu, plats, commandes, horaires d'ouverture, statistiques\n\
+- Restaurant: RestaurantDashboard → 5 onglets: Accueil (stats+actions rapides), Menu (CRUD plats par catégorie, toggle disponibilité), Commandes (flux pending→accepted→preparing→ready→completed avec boutons d'action), Horaires (configuration par jour), Stats; génération de codes partenaires\n\
 - Hotel: HotelDashboard → chambres, tarifs, réservations, check-in/check-out QR, gestion équipe\n\
 Routes: MesProduits, MesServices, ProductDetail, ProductManagerMobile, ProductStats, AnalyticsDashboard\n\n\
 === HOW TO CREATE A VIDEO ===\n\
@@ -378,10 +378,43 @@ User: search supermarkets, browse catalogs, order products.\n\
 Partner: manage catalog (add/edit/delete products, set prices, stock), process orders, \
 create flash promotions, view sales analytics.\n\
 Routes: SupermarketHome, SupermarketPartnerDashboard\n\n\
---- RESTAURANT (RestaurantDashboard) ---\n\
-Partner: manage menu (categories, dishes, prices, photos), process orders, \
-set opening hours, view order analytics.\n\
+--- RESTAURANT (RestaurantDashboard / RestaurantClient) ---\n\
+=== PARTNER SIDE (RestaurantDashboard) ===\n\
+Dashboard tabs: Accueil (overview), Menu, Commandes, Horaires, Stats.\n\
+MENU MANAGEMENT:\n\
+- Tab 'Menu' → see all dishes grouped by category (Entrées, Plats, Desserts, Boissons, Spécialités)\n\
+- '+ Ajouter un plat' button → modal form: nom, prix, description, catégorie (choose chip), disponible toggle\n\
+- Each dish: toggle disponibilité (switch), edit (pencil icon), delete (trash icon)\n\
+- Changes saved instantly to the server\n\
+ORDERS MANAGEMENT:\n\
+- Tab 'Commandes' → see all active orders in real-time\n\
+- Each order shows: client name, phone, order type (sur place/à emporter/livraison), items list, total\n\
+- Status flow: En attente → Acceptée → En préparation → Prête → Terminée\n\
+- Action buttons: 'Accepter' (new orders), 'Commencer prépa.', 'Marquer prête', 'Refuser' (cancel pending)\n\
+- Badge indicator on header shows count of pending orders\n\
+OPENING HOURS (Tab 'Horaires'):\n\
+- Click any day (Lundi…Dimanche) to edit its hours\n\
+- Toggle 'Fermé ce jour' or set open_time/close_time (format HH:MM)\n\
+- Hours saved per day, affects client-side display\n\
+SETTINGS (overview):\n\
+- Toggle restaurant open/closed (top switch on Overview)\n\
+- Quick actions: add dish, view orders, view hours, stats, wallet, logout\n\
+PARTNER CODES:\n\
+- Generate a partner code to allow new staff to register as restaurant partners\n\
 Routes: RestaurantDashboard\n\n\
+=== CLIENT/USER SIDE (RestaurantClient) ===\n\
+- Browse list of all active restaurants near you\n\
+- Search by name or city\n\
+- Click a restaurant → see its menu, opening hours, and order options\n\
+- Menu items grouped by category with filter buttons at the top\n\
+- Add items to cart: tap '+' button next to each dish\n\
+- Adjust quantities: '+'/'-' buttons\n\
+- Floating cart button shows total and item count\n\
+- Tap cart → order modal: choose type (À emporter / Sur place), add instructions, confirm\n\
+- 'Réserver une table' button → reservation modal: date/time, number of people, special notes\n\
+- Order/reservation sent to restaurant, confirmation message shown\n\
+Routes: RestaurantClient\n\
+Navigation: from Home or search → restaurant category → RestaurantClient\n\n\
 --- TROC (TrocMatching) ---\n\
 Features: propose items for exchange, AI matching with other users' items, negotiate exchanges.\n\
 Routes: TrocMatching\n\n\
@@ -526,7 +559,8 @@ Main screens and their navigation names:\n\
 - Insurance → AssuranceDashboard\n\
 - Automobile → AutoServicesSearch\n\
 - Supermarket → SupermarketHome\n\
-- Restaurant → RestaurantDashboard\n\
+- Restaurant (client/user: browse & order) → RestaurantClient\n\
+- Restaurant (partner: manage menu & orders) → RestaurantDashboard\n\
 - Video Creation → VideoCreationIntro\n\
 - GPS Navigation → Navigation\n\
 - Menu Planning → MenuPlanningHub\n\
@@ -592,6 +626,71 @@ fn knowledge_base_with_session(kb: &str, session_continuity: bool) -> String {
     }
 }
 
+fn build_sentiment_instruction(ctx: &serde_json::Value) -> String {
+    let sc = match ctx.get("sentiment_context") {
+        Some(v) => v,
+        None => return String::new(),
+    };
+    let emotion = sc.get("emotion").and_then(|v| v.as_str()).unwrap_or("neutral");
+    let dominant = sc.get("dominant_sentiment").and_then(|v| v.as_str()).unwrap_or(emotion);
+    let is_correction = sc.get("is_correction").and_then(|v| v.as_bool()).unwrap_or(false);
+    let is_recadrage = sc.get("is_recadrage").and_then(|v| v.as_bool()).unwrap_or(false);
+    let turn = sc.get("conversation_turn_count").and_then(|v| v.as_u64()).unwrap_or(0);
+    let emotional_prefix = sc.get("emotional_prefix").and_then(|v| v.as_str()).unwrap_or("");
+
+    let tone_instruction = match dominant {
+        "frustration" => "\nTONE OVERRIDE — USER IS FRUSTRATED:\n\
+            - Start with a genuine apology or empathy (e.g. 'I understand your frustration, sorry for the confusion.')\n\
+            - Be EXTRA clear and simple — avoid technical jargon\n\
+            - Offer a concrete immediate solution, not a general explanation\n\
+            - Keep it SHORT (2-3 sentences max) then ask one clarifying question",
+        "correction" => "\nTONE OVERRIDE — USER IS CORRECTING YOU:\n\
+            - Start by acknowledging their correction explicitly (e.g. 'You're absolutely right, I apologize for the mistake.')\n\
+            - DO NOT repeat the wrong information\n\
+            - Provide the corrected answer directly\n\
+            - End with a reassurance that you've understood",
+        "recadrage" => "\nTONE OVERRIDE — USER IS REDIRECTING THE CONVERSATION:\n\
+            - Accept the redirect gracefully: 'Of course, let me refocus.'\n\
+            - Directly address what the user actually wants\n\
+            - Do NOT continue with what you were explaining before",
+        "gratitude" => "\nTONE OVERRIDE — USER IS EXPRESSING GRATITUDE:\n\
+            - Respond warmly and match their positive energy\n\
+            - Use this moment to proactively suggest the next logical step or feature\n\
+            - Keep it brief and enthusiastic",
+        "confusion" => "\nTONE OVERRIDE — USER IS CONFUSED:\n\
+            - Use simple numbered steps, avoid all jargon\n\
+            - Be patient and explicit — assume zero prior knowledge\n\
+            - Offer to re-explain differently if needed\n\
+            - Add a reassurance ('No worries, it's simple!')",
+        "excitement" => "\nTONE OVERRIDE — USER IS EXCITED:\n\
+            - Match their energy with enthusiasm\n\
+            - Highlight the best features related to their question\n\
+            - Suggest next steps to keep the momentum",
+        _ => "",
+    };
+
+    let correction_note = if is_correction || is_recadrage {
+        "\n⚠️ CRITICAL: The user has explicitly corrected or redirected you. \
+        Do NOT repeat previous information. Acknowledge and correct immediately."
+    } else {
+        ""
+    };
+
+    let prefix_note = if !emotional_prefix.is_empty() {
+        format!("\nSUGGESTED OPENING TONE: Start with or adapt from: \"{}\"", emotional_prefix)
+    } else {
+        String::new()
+    };
+
+    format!(
+        "{tone}{correction}{prefix}\n[Turn #{turn} of conversation]",
+        tone = tone_instruction,
+        correction = correction_note,
+        prefix = prefix_note,
+        turn = turn,
+    )
+}
+
 fn build_system_prompt_for_mode(
     context: &Option<serde_json::Value>,
     lang_instruction: &str,
@@ -618,17 +717,40 @@ fn build_system_prompt_for_mode(
         let products_summary = ctx.get("products_summary").and_then(|v| v.as_str()).unwrap_or("");
         let products_count = ctx.get("products_count").and_then(|v| v.as_u64()).unwrap_or(0);
 
+        // If mobile sends a specialized category system_prompt, use it directly (prepend knowledge base)
+        if let Some(client_prompt) = ctx.get("system_prompt").and_then(|v| v.as_str()) {
+            if !client_prompt.is_empty() {
+                let client_prompt = truncate_for_prompt(client_prompt, 6000);
+                let sentiment_info = build_sentiment_instruction(&ctx);
+                return format!(
+                    "{client_prompt}\n\n\
+                    {lang}\n\n\
+                    {knowledge}\
+                    RESPONSE FORMAT (strict JSON):\n\
+                    {{\"message\": \"your response\", \"type\": \"text\", \"confidence\": 0.9, \
+                    \"quick_replies\": [\"2-4 relevant follow-up suggestions\"], \
+                    \"icons\": [{{\"icon\": \"lucide-icon-name\", \"label\": \"...\", \"color\": \"#hex\"}}]}}\n\
+                    TONE: Warm, concise (3-5 sentences + quick_replies). Always valid JSON.{sentiment}",
+                    client_prompt = client_prompt,
+                    lang = lang_instruction,
+                    knowledge = knowledge_base_with_session(YUKPO_KNOWLEDGE_BASE, session_continuity),
+                    sentiment = sentiment_info,
+                );
+            }
+        }
+
+        let sentiment_info = build_sentiment_instruction(&ctx);
         return format!(
             "You are Yukpo Product Assistant — an AI concierge embedded in the chat between a customer \
             and a service provider on the Yukpo marketplace app.\n\
-            {}\n\n\
-            {}\n\n\
+            {lang}\n\n\
+            {knowledge}\n\
             THIS SERVICE CONTEXT:\n\
-            - Name: \"{}\"\n\
-            - Category: {}\n\
-            - Price: {}\n\
-            - Description: {}\n\
-            - Products ({} items): {}\n\n\
+            - Name: \"{service_name}\"\n\
+            - Category: {category}\n\
+            - Price: {price}\n\
+            - Description: {desc}\n\
+            - Products ({count} items): {products}\n\n\
             YOUR MISSION — You are the 24/7 intelligent support that replaces manual provider responses:\n\
             1. Answer ANY customer question about this service/product with precision using the data above\n\
             2. If the customer asks about a product's features, price, availability — answer directly from catalog data\n\
@@ -641,16 +763,17 @@ fn build_system_prompt_for_mode(
             RESPONSE FORMAT (strict JSON):\n\
             {{\"message\": \"your response\", \"type\": \"text\", \"confidence\": 0.9, \
             \"quick_replies\": [\"2-4 relevant follow-up suggestions\"], \
-            \"icons\": [{{\"icon\": \"lucide-icon-name\", \"label\": \"...\", \"color\": \"#hex\"}}]}}\n\n\
-            TONE: Warm, knowledgeable, concise (3-5 sentences + quick_replies). Always valid JSON.",
-            lang_instruction,
-            knowledge_base_with_session(YUKPO_KNOWLEDGE_BASE, session_continuity),
-            service_name,
-            if category.is_empty() { "general" } else { category },
-            if service_price.is_empty() { "Not displayed — suggest asking provider" } else { service_price },
-            if service_desc.is_empty() { "No description available" } else { service_desc },
-            products_count,
-            if products_summary.is_empty() { "No catalog listed — suggest asking provider" } else { products_summary },
+            \"icons\": [{{\"icon\": \"lucide-icon-name\", \"label\": \"...\", \"color\": \"#hex\"}}]}}\n\
+            TONE: Warm, knowledgeable, concise (3-5 sentences + quick_replies). Always valid JSON.{sentiment}",
+            lang = lang_instruction,
+            knowledge = knowledge_base_with_session(YUKPO_KNOWLEDGE_BASE, session_continuity),
+            service_name = service_name,
+            category = if category.is_empty() { "general" } else { category },
+            price = if service_price.is_empty() { "Not displayed — suggest asking provider" } else { service_price },
+            desc = if service_desc.is_empty() { "No description available" } else { service_desc },
+            count = products_count,
+            products = if products_summary.is_empty() { "No catalog listed — suggest asking provider" } else { products_summary },
+            sentiment = sentiment_info,
         );
     }
 

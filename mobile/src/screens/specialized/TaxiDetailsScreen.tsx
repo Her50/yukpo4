@@ -19,8 +19,9 @@ import {
 import SafeIcon from '../../components/SafeIcon';
 import { InsuranceSelector } from '../../components/covoiturage/InsuranceSelector';
 import { QRCodeDisplay } from '../../components/covoiturage/QRCodeDisplay';
+import ChatModalMobile from '../../components/ChatModalMobile';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet, apiPost } from '../../services/api';
+import { apiGet, apiPatch, apiPost } from '../../services/api';
 import PushNotificationService from '../../services/pushNotificationService';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 
@@ -76,6 +77,8 @@ const TaxiDetailsScreen: React.FC = () => {
     const [showInsuranceSelector, setShowInsuranceSelector] = useState(false);
     const [reservationId, setReservationId] = useState<number | null>(null);
     const [bookingSuccess, setBookingSuccess] = useState(false);
+    const [showChat, setShowChat] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
 
     useEffect(() => { loadTaxiDetails(); }, []);
 
@@ -135,6 +138,30 @@ const TaxiDetailsScreen: React.FC = () => {
             }
         } catch (error: any) { Alert.alert(t('message.error'), error.message || t('taxiDetailsScreen.erreurDeReservation')); }
         finally { setBooking(false); }
+    };
+
+    const handleCancelReservation = () => {
+        if (!reservationId) return;
+        Alert.alert('Annuler la réservation', 'Voulez-vous vraiment annuler cette réservation ?', [
+            { text: 'Non', style: 'cancel' },
+            {
+                text: 'Oui, annuler',
+                style: 'destructive',
+                onPress: async () => {
+                    try {
+                        setCancelling(true);
+                        await apiPatch(`/api/specialized-services/reservations/${reservationId}/cancel`, { reason: 'Annulé par le client' });
+                        setBookingSuccess(false);
+                        setReservationId(null);
+                        Alert.alert('Annulé', 'Votre réservation a été annulée.');
+                    } catch {
+                        Alert.alert('Erreur', "Impossible d'annuler la réservation.");
+                    } finally {
+                        setCancelling(false);
+                    }
+                },
+            },
+        ]);
     };
 
     if (loading) return (<View style={st.center}><ActivityIndicator size="large" color="#F59E0B" /><Text style={st.centerText}>{t('taxiDetails.chargement')}</Text></View>);
@@ -198,6 +225,7 @@ const TaxiDetailsScreen: React.FC = () => {
                         taxi.telephone && { icon: 'phone', label: t('taxiBooking.call'), color: '#D97706', onPress: handleCall },
                         { icon: 'message-circle', label: 'WhatsApp', color: '#25D366', onPress: handleWhatsApp },
                         taxi.email && { icon: 'mail', label: 'Email', color: '#3B82F6', onPress: handleEmail },
+                        { icon: 'message-square', label: 'Chat', color: '#6366F1', onPress: () => setShowChat(true) },
                         { icon: 'share-2', label: t('taxiDetailsScreen.partager'), color: '#8B5CF6', onPress: handleShare },
                     ].filter(Boolean).map((a: any, i) => (
                         <TouchableOpacity key={i} style={st.quickAction} onPress={a.onPress}>
@@ -321,14 +349,37 @@ const TaxiDetailsScreen: React.FC = () => {
                 )}
 
                 {bookingSuccess && (
-                    <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
-                        <TouchableOpacity style={st.bookBtn} onPress={() => navigation.navigate('MesReservations' as never)}>
+                    <View style={{ paddingHorizontal: 16, marginTop: 8, gap: 8 }}>
+                        <TouchableOpacity style={st.bookBtn} onPress={() => navigation.navigate('MesReservationsTaxi' as never)}>
                             <SafeIcon name="list" size={20} color="#fff" />
                             <Text style={st.bookBtnText}>{t('taxiDetails.voirMesReservations')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[st.bookBtn, { backgroundColor: '#EF4444', shadowColor: '#EF4444' }]}
+                            onPress={handleCancelReservation}
+                            disabled={cancelling}
+                        >
+                            {cancelling ? <ActivityIndicator color="#fff" /> : <SafeIcon name="x-circle" size={20} color="#fff" />}
+                            <Text style={st.bookBtnText}>Annuler la réservation</Text>
                         </TouchableOpacity>
                     </View>
                 )}
             </ScrollView>
+
+            {/* Chat Modal */}
+            {showChat && taxi && user && (
+                <ChatModalMobile
+                    visible={showChat}
+                    onClose={() => setShowChat(false)}
+                    service={{
+                        id: taxi.service_id || taxi.id,
+                        titre_service: `Taxi ${taxi.zone}`,
+                        user_id: taxi.user_id,
+                    }}
+                    prestataireInfo={taxi.prestataire || { user_id: taxi.user_id }}
+                    user={user}
+                />
+            )}
         </View>
     );
 };

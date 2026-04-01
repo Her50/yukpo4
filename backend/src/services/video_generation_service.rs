@@ -4658,7 +4658,7 @@ fn resolve_media_absolute_path(raw: &str) -> PathBuf {
     }
 }
 
-/// Voix OpenAI TTS (`tts-1-hd`) : timbre ; la langue de lecture suit le texte source.
+/// Voix OpenAI TTS (`tts-1`) : timbre ; la langue de lecture suit le texte source.
 fn select_openai_tts_voice(voice_profile: &str, lang: &str) -> &'static str {
     let lang_lower = lang.to_lowercase();
     let base = lang_lower.split('-').next().unwrap_or(lang_lower.as_str());
@@ -4766,7 +4766,7 @@ async fn generate_voiceover_audio(
 
             let client = reqwest::Client::new();
             let payload = serde_json::json!({
-                "model": "tts-1-hd",
+                "model": "tts-1", // ✅ Réduction coûts 50%: tts-1 ($0.015/1K) vs tts-1-hd ($0.030/1K)
                 "voice": openai_voice,
                 "input": script,
                 "response_format": "mp3",
@@ -4793,7 +4793,7 @@ async fn generate_voiceover_audio(
                         );
 
                         let transcript_name = format!("voiceover_{}.txt", Uuid::new_v4());
-                        let transcript_content = format!("lang={lang}\nvoice={voice}\nopenai_voice={openai_voice}\nmodel=tts-1-hd\n\n{script}");
+                        let transcript_content = format!("lang={lang}\nvoice={voice}\nopenai_voice={openai_voice}\nmodel=tts-1\n\n{script}");
                         let _ = fs::write(
                             session_dir.join(transcript_name),
                             transcript_content.as_bytes(),

@@ -9,6 +9,7 @@
 //! - GET  /api/supermarkets/promotions/nearby       - Promotions à proximité
 //! - GET  /api/supermarkets/{id}/categories         - Catégories d'un supermarché
 //! - POST /api/supermarkets/products/bulk-import    - Import en masse de produits
+//! - POST /api/supermarkets/products/sync-external  - Sync catalogue API externe
 
 use crate::controllers::supermarket_controller;
 use crate::state::AppState;
@@ -51,6 +52,10 @@ pub fn supermarket_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/supermarkets/products/bulk-import",
             post(supermarket_controller::bulk_import_products),
+        )
+        .route(
+            "/api/supermarkets/products/sync-external",
+            post(supermarket_controller::sync_products_from_external_api),
         )
         .with_state(state)
 }

@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS book_exchange_commissions (
     
     -- Montants
     valeur_livre DECIMAL(12,2) NOT NULL,
-    taux_commission DECIMAL(4,2) NOT NULL DEFAULT 0.10, -- 10% par défaut
+    taux_commission DECIMAL(4,2) NOT NULL DEFAULT 0.05, -- 5% (harmonisé avec logique applicative)
     montant_commission DECIMAL(12,2) NOT NULL,
     montant_reversement_vendeur DECIMAL(12,2) DEFAULT 0,
     devise TEXT DEFAULT 'XAF',

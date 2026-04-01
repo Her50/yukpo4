@@ -28,7 +28,11 @@ pub fn est_prix_officiel_verrouille(prix_officiel: f64) -> bool {
     prix_officiel > 0.01
 }
 
-/// Médiane des prix neufs publiés sur Yukpo pour cette classe/matière.
+/// Médiane des prix du marché Yukpo pour une classe/matière donnée.
+/// Utilise TOUS les modes (neuf, troc, vente, occasion) avec pondération :
+/// - livres neufs    : prix_detecte (valeur catalogue → poids 1.0)
+/// - livres occasion : prix_detecte / ratio_etat reconstitué (valeur neuf estimée → poids 0.6)
+/// La moyenne pondérée donne une médiane de marché représentative même sans stocks neufs.
 async fn mediane_prix_neufs_marche(
     pool: &PgPool,
     classe: &str,
@@ -36,17 +40,30 @@ async fn mediane_prix_neufs_marche(
 ) -> Result<Option<f64>, sqlx::Error> {
     let med: Option<f64> = sqlx::query_scalar(
         r#"
-        SELECT AVG(sub.p)
+        SELECT AVG(sub.p_pondere)
         FROM (
-            SELECT CAST(NULLIF(TRIM(prix_detecte::text), '') AS DOUBLE PRECISION) AS p
+            SELECT
+                CASE
+                    -- Livre neuf : prix catalogue direct
+                    WHEN COALESCE(mode_listing, 'troc') = 'neuf'
+                        THEN CAST(NULLIF(TRIM(prix_detecte::text), '') AS DOUBLE PRECISION)
+                    -- Livre occasion avec ratio état connu : reconstituer valeur neuf
+                    WHEN ratio_etat IS NOT NULL AND ratio_etat > 0
+                        THEN CAST(NULLIF(TRIM(prix_detecte::text), '') AS DOUBLE PRECISION)
+                             / CAST(NULLIF(TRIM(ratio_etat::text), '') AS DOUBLE PRECISION)
+                    -- Occasion sans ratio : utiliser prix_detecte avec facteur correctif 0.60 (état moyen)
+                    ELSE CAST(NULLIF(TRIM(prix_detecte::text), '') AS DOUBLE PRECISION) / 0.60
+                END AS p_pondere
             FROM livres_scolaires
-            WHERE COALESCE(mode_listing, '') = 'neuf'
+            WHERE is_active = true
               AND classe_actuelle = $1
               AND matiere = $2
               AND prix_detecte IS NOT NULL
               AND TRIM(prix_detecte::text) <> ''
         ) AS sub
-        WHERE sub.p > 0.0 AND sub.p < 10000000.0
+        WHERE sub.p_pondere IS NOT NULL
+          AND sub.p_pondere > 0.0
+          AND sub.p_pondere < 10000000.0
         "#,
     )
     .bind(classe)

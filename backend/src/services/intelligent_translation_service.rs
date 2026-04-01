@@ -31,12 +31,29 @@ impl IntelligentTranslationService {
             client: Client::new(),
             api_key,
             cache: HashMap::new(),
+            // 62 langues supportées — alignées avec MultilingueService et les fichiers locales mobile
             supported_languages: vec![
-                "fr".to_string(),
-                "en".to_string(),
-                "pt".to_string(),
-                "ar".to_string(),
-                "ff".to_string(),
+                "af".to_string(), "am".to_string(), "ar".to_string(),
+                "bas".to_string(), "bbj".to_string(), "bci".to_string(),
+                "bet".to_string(), "bm".to_string(), "bn".to_string(),
+                "bum".to_string(), "de".to_string(), "dje".to_string(),
+                "dua".to_string(), "dyu".to_string(), "ee".to_string(),
+                "en".to_string(), "es".to_string(), "ewo".to_string(),
+                "fan".to_string(), "ff".to_string(), "fr".to_string(),
+                "ha".to_string(), "hi".to_string(), "ht".to_string(),
+                "id".to_string(), "ig".to_string(), "it".to_string(),
+                "ja".to_string(), "kbp".to_string(), "kg".to_string(),
+                "ko".to_string(), "ln".to_string(), "lua".to_string(),
+                "mg".to_string(), "mos".to_string(), "ms".to_string(),
+                "nl".to_string(), "pap".to_string(), "pcm".to_string(),
+                "pl".to_string(), "pt".to_string(), "rn".to_string(),
+                "ru".to_string(), "rw".to_string(), "sar".to_string(),
+                "sg".to_string(), "sn".to_string(), "so".to_string(),
+                "srr".to_string(), "st".to_string(), "sw".to_string(),
+                "th".to_string(), "ti".to_string(), "tl".to_string(),
+                "tr".to_string(), "uk".to_string(), "vi".to_string(),
+                "wo".to_string(), "xh".to_string(), "yo".to_string(),
+                "zh".to_string(), "zu".to_string(),
             ],
         })
     }
@@ -48,44 +65,54 @@ impl IntelligentTranslationService {
         user_language: &str,
         context: &str,
     ) -> Result<String, AppError> {
-        // Si la langue est déjà l'anglais ou non supportée, retourner le prompt original
-        if user_language == "en" || !self.supported_languages.contains(&user_language.to_string()) {
-            info!("🌍 [IntelligentTranslation] Langue {} non supportée ou déjà en anglais, retour du prompt original", user_language);
+        // Si la langue est déjà le français (langue des prompts) ou non supportée, retourner le prompt original
+        // Les prompts IA sont en français — on ne traduit que si l'utilisateur parle une autre langue
+        if user_language == "fr" {
+            return Ok(prompt.to_string());
+        }
+        // Pour les langues africaines non supportées par Google Translate (dialectes locaux),
+        // utiliser le français comme langue de fallback intelligible
+        let effective_language = if !self.supported_languages.contains(&user_language.to_string()) {
+            info!("🌍 [IntelligentTranslation] Langue {} non dans la liste Google Translate, fallback fr", user_language);
+            "fr"
+        } else {
+            user_language
+        };
+        // Langues que Google Translate supporte parmi nos 62
+        // Les dialectes locaux (bas, bbj, bum, dua, ewo, fan, kbp, mos, pap, sar, srr) → fallback fr
+        let google_supported = [
+            "af", "am", "ar", "bm", "bn", "de", "ee", "en", "es", "ff", "fr",
+            "ha", "hi", "ht", "id", "ig", "it", "ja", "kg", "ko", "ln", "mg",
+            "ms", "nl", "pl", "pt", "rn", "ru", "rw", "sg", "sn", "so", "st",
+            "sw", "th", "ti", "tl", "tr", "uk", "vi", "wo", "xh", "yo", "zh", "zu",
+        ];
+        let target_lang = if google_supported.contains(&effective_language) {
+            effective_language
+        } else {
+            "fr"
+        };
+        if target_lang == "fr" {
             return Ok(prompt.to_string());
         }
 
-        // Vérifier le cache
-        let cache_key = format!("{}:{}:{}", prompt, user_language, context);
+        // Vérifier le cache (utiliser target_lang comme clé pour éviter doublons)
+        let cache_key = format!("{}:{}:{}", &prompt[..prompt.len().min(200)], target_lang, context);
         if let Some(cached_translation) = self.cache.get(&cache_key) {
             info!("🌍 [IntelligentTranslation] Cache hit pour le prompt");
             return Ok(cached_translation.clone());
         }
 
-        // Détecter la langue du prompt
-        let detected_language = self.detect_language(prompt).await?;
-
-        // Si le prompt est déjà dans la langue de l'utilisateur, pas de traduction nécessaire
-        if detected_language == user_language {
-            info!(
-                "🌍 [IntelligentTranslation] Prompt déjà dans la langue de l'utilisateur: {}",
-                user_language
-            );
-            return Ok(prompt.to_string());
-        }
-
-        // Traduire le prompt
+        // Les prompts sont rédigés en français — traduction directe fr → target_lang
         let translated_prompt =
-            self.translate_text(prompt, &detected_language, user_language).await?;
+            self.translate_text(prompt, "fr", target_lang).await?;
 
         // Mettre en cache
         self.cache.insert(cache_key, translated_prompt.clone());
 
         info!(
-            "🌍 [IntelligentTranslation] Prompt traduit: {} -> {} ({} -> {})",
-            prompt.chars().take(50).collect::<String>(),
+            "🌍 [IntelligentTranslation] Prompt traduit fr→{}: {}…",
+            target_lang,
             translated_prompt.chars().take(50).collect::<String>(),
-            detected_language,
-            user_language
         );
 
         Ok(translated_prompt)
@@ -335,7 +362,7 @@ impl Default for IntelligentTranslationService {
                 client: Client::new(),
                 api_key: String::new(),
                 cache: HashMap::new(),
-                supported_languages: vec!["en".to_string()],
+                supported_languages: vec!["fr".to_string(), "en".to_string()],
             }
         })
     }

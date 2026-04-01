@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { modernColors } from '../../theme/modernTheme';
 import { DeliverySummary } from '../../types/delivery';
@@ -9,7 +9,8 @@ import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface ActiveDeliveryCardProps {
     delivery: DeliverySummary;
-    onPress: (deliveryId: string) => void;
+    onTrackPress: (deliveryId: string) => void;
+    onEditPress: (deliveryId: string) => void;
 }
 
 const statusColorMap: Record<string, string> = {
@@ -52,8 +53,10 @@ const iconMap: Record<string, string> = {
     cancelled: 'alert-circle',
 };
 
-const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPress }) => {
+const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onTrackPress, onEditPress }) => {
     const { t } = useLanguageSafe();
+    const { width } = useWindowDimensions();
+    const isCompactAndroid = Platform.OS === 'android' && width <= 360;
 
     const statusLabelMap = useMemo(
         () => ({
@@ -112,33 +115,37 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
     const deliveryIdStr = delivery?.id != null ? String(delivery.id) : '';
 
     return (
-        <NativeCard style={styles.card}>
+        <NativeCard style={[styles.card, isCompactAndroid && styles.cardCompact]}>
             <View style={styles.header}>
                 <NativeBadge
                     text={deliveryTypeLabel}
                     variant={delivery.kind === 'shopping' ? 'primary' : 'secondary'}
                     size="small"
                 />
-                <View style={styles.statusPill}>
-                    <SafeIcon name={statusIcon} size={14} color={statusColor} />
-                    <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+                <View style={[styles.statusPill, isCompactAndroid && styles.statusPillCompact]}>
+                    <SafeIcon name={statusIcon} size={isCompactAndroid ? 12 : 14} color={statusColor} />
+                    <Text style={[styles.statusText, isCompactAndroid && styles.statusTextCompact, { color: statusColor }]}>{statusLabel}</Text>
                 </View>
             </View>
 
-            <View style={styles.body}>
-                <View style={styles.row}>
-                    <SafeIcon name="store" size={16} color={modernColors.textSecondary} />
-                    <Text style={styles.locationText}>{delivery.pickup?.label ?? t('activeDeliveryCard.supermarche')}</Text>
+            <View style={[styles.body, isCompactAndroid && styles.bodyCompact]}>
+                <View style={[styles.row, isCompactAndroid && styles.rowCompact]}>
+                    <SafeIcon name="store" size={isCompactAndroid ? 14 : 16} color={modernColors.textSecondary} />
+                    <Text style={[styles.locationText, isCompactAndroid && styles.locationTextCompact]} numberOfLines={1}>
+                        {delivery.pickup?.label ?? t('activeDeliveryCard.supermarche')}
+                    </Text>
                 </View>
-                <View style={styles.row}>
+                <View style={[styles.row, isCompactAndroid && styles.rowCompact]}>
                     <SafeIcon
                         name="navigation"
-                        size={16}
+                        size={isCompactAndroid ? 14 : 16}
                         color={dropoffPending ? modernColors.warning : modernColors.textSecondary}
                     />
                     <View style={styles.dropoffContainer}>
                         <View style={styles.dropoffHeader}>
-                            <Text style={styles.locationText}>{delivery.dropoff?.label ?? 'Destinataire'}</Text>
+                            <Text style={[styles.locationText, isCompactAndroid && styles.locationTextCompact]} numberOfLines={1}>
+                                {delivery.dropoff?.label ?? 'Destinataire'}
+                            </Text>
                             {/* ✅ Phase 9 - Amélioration 30 : Badge "Adresse à confirmer" si dropoff pending */}
                             {dropoffPending && (
                                 <NativeBadge
@@ -149,45 +156,56 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
                             )}
                         </View>
                         {displayAddress && (
-                            <Text style={[styles.dropoffAddress, dropoffPending && styles.dropoffAddressPending]}>
+                            <Text
+                                style={[
+                                    styles.dropoffAddress,
+                                    isCompactAndroid && styles.dropoffAddressCompact,
+                                    dropoffPending && styles.dropoffAddressPending,
+                                ]}
+                                numberOfLines={2}
+                            >
                                 {displayAddress}
                             </Text>
                         )}
                     </View>
                 </View>
                 {delivery.recipient?.name ? (
-                    <View style={styles.row}>
-                        <SafeIcon name="profile" size={16} color={modernColors.textSecondary} />
-                        <Text style={styles.locationText}>{delivery.recipient.name}</Text>
+                    <View style={[styles.row, isCompactAndroid && styles.rowCompact]}>
+                        <SafeIcon name="profile" size={isCompactAndroid ? 14 : 16} color={modernColors.textSecondary} />
+                        <Text style={[styles.locationText, isCompactAndroid && styles.locationTextCompact]} numberOfLines={1}>
+                            {delivery.recipient.name}
+                        </Text>
                     </View>
                 ) : null}
                 {lastCheckpoint?.note ? (
-                    <View style={styles.noteBox}>
-                        <SafeIcon name="info" size={14} color={modernColors.textSecondary} />
-                        <Text style={styles.noteText}>{lastCheckpoint.note}</Text>
+                    <View style={[styles.noteBox, isCompactAndroid && styles.noteBoxCompact]}>
+                        <SafeIcon name="info" size={isCompactAndroid ? 12 : 14} color={modernColors.textSecondary} />
+                        <Text style={[styles.noteText, isCompactAndroid && styles.noteTextCompact]} numberOfLines={2}>
+                            {lastCheckpoint.note}
+                        </Text>
                     </View>
                 ) : null}
             </View>
 
-            <View style={styles.footer}>
+            <View style={[styles.footer, isCompactAndroid && styles.footerCompact]}>
                 <View>
-                    <Text style={styles.footerLabel}>{t('activeDeliveryCard.derniereMiseAJour')}</Text>
-                    <Text style={styles.footerValue}>{lastUpdate ?? t('activeDeliveryCard.enAttente')}</Text>
+                    <Text style={[styles.footerLabel, isCompactAndroid && styles.footerLabelCompact]}>{t('activeDeliveryCard.derniereMiseAJour')}</Text>
+                    <Text style={[styles.footerValue, isCompactAndroid && styles.footerValueCompact]}>{lastUpdate ?? t('activeDeliveryCard.enAttente')}</Text>
                 </View>
-                <View style={styles.footerButtons}>
+                <View style={[styles.footerButtons, isCompactAndroid && styles.footerButtonsCompact]}>
                     {/* ✅ Phase 9 - Amélioration 30 : Bouton "Modifier l'adresse" toujours visible */}
                     <NativeButton
                         title={t('activeDeliveryCard.modifier')}
                         variant="outline"
                         size="small"
-                        onPress={() => deliveryIdStr && onPress(deliveryIdStr)}
+                        onPress={() => deliveryIdStr && onEditPress(deliveryIdStr)}
                         style={styles.modifyButton}
                     />
                     <NativeButton
                         title="Suivre"
                         variant="primary"
                         size="small"
-                        onPress={() => deliveryIdStr && onPress(deliveryIdStr)}
+                        onPress={() => deliveryIdStr && onTrackPress(deliveryIdStr)}
                     />
                 </View>
             </View>
@@ -198,6 +216,11 @@ const ActiveDeliveryCard: React.FC<ActiveDeliveryCardProps> = ({ delivery, onPre
 const styles = StyleSheet.create({
     card: {
         gap: 16,
+    },
+    cardCompact: {
+        gap: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 10,
     },
     header: {
         flexDirection: 'row',
@@ -213,23 +236,40 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 6,
     },
+    statusPillCompact: {
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
     statusText: {
         fontSize: 13,
         fontWeight: '600',
         textTransform: 'uppercase',
     },
+    statusTextCompact: {
+        fontSize: 11,
+    },
     body: {
         gap: 10,
+    },
+    bodyCompact: {
+        gap: 8,
     },
     row: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
     },
+    rowCompact: {
+        gap: 6,
+    },
     locationText: {
         fontSize: 14,
         color: modernColors.text,
         flex: 1,
+    },
+    locationTextCompact: {
+        fontSize: 13,
     },
     noteBox: {
         flexDirection: 'row',
@@ -239,28 +279,47 @@ const styles = StyleSheet.create({
         padding: 10,
         borderRadius: 12,
     },
+    noteBoxCompact: {
+        padding: 8,
+        borderRadius: 10,
+    },
     noteText: {
         fontSize: 13,
         color: modernColors.textSecondary,
         flex: 1,
+    },
+    noteTextCompact: {
+        fontSize: 12,
     },
     footer: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
+    footerCompact: {
+        alignItems: 'flex-end',
+    },
     footerLabel: {
         fontSize: 12,
         color: modernColors.textSecondary,
+    },
+    footerLabelCompact: {
+        fontSize: 11,
     },
     footerValue: {
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.text,
     },
+    footerValueCompact: {
+        fontSize: 13,
+    },
     footerButtons: {
         flexDirection: 'row',
         gap: 8,
+    },
+    footerButtonsCompact: {
+        gap: 6,
     },
     modifyButton: {
         marginRight: 0,
@@ -278,6 +337,9 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: modernColors.textSecondary,
         fontStyle: 'normal',
+    },
+    dropoffAddressCompact: {
+        fontSize: 12,
     },
     dropoffAddressPending: {
         color: modernColors.warning,

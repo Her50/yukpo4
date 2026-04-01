@@ -1,4 +1,5 @@
 // ✅ Service API pour Taxi avec toutes les fonctionnalités backend
+import * as Notifications from 'expo-notifications';
 import { apiGet, apiPost } from './api';
 
 // Types pour les taxis
@@ -61,6 +62,33 @@ export interface CreateTaxiRequest {
     paiement_carte?: boolean;
     climatisation?: boolean;
     wifi?: boolean;
+}
+
+export interface Waypoint {
+    lat: number;
+    lng: number;
+    address: string;
+    label?: string;
+}
+
+export interface TaxiRide {
+    id: number;
+    taxi_id: number;
+    user_id: number;
+    departure_gps?: string;
+    arrival_gps?: string;
+    departure_address?: string;
+    arrival_address?: string;
+    waypoints?: Waypoint[];
+    status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+    scheduled_at?: string;
+    fare?: number;
+    driver_name?: string;
+    vehicle_info?: string;
+    duration_minutes?: number;
+    notes?: string;
+    created_at: string;
+    rating?: number;
 }
 
 export interface RouteOptimization {
@@ -275,6 +303,142 @@ export const taxiService = {
     getDriverLocation: async (taxiId: number) => {
         const response = await apiGet<{ success: boolean; data: { latitude: number; longitude: number; heading?: number; status?: string } }>(
             `/api/taxis/${taxiId}/location`
+        );
+        return response;
+    },
+
+    // === T1 - ESTIMATION TARIFAIRE ===
+
+    estimateFare: async (params: {
+        origin: { lat: number; lng: number };
+        destination: { lat: number; lng: number };
+        taxiId?: number;
+    }) => {
+        // Calcul distance approximative (Haversine)
+        const R = 6371;
+        const dLat = (params.destination.lat - params.origin.lat) * Math.PI / 180;
+        const dLon = (params.destination.lng - params.origin.lng) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(params.origin.lat * Math.PI / 180) *
+            Math.cos(params.destination.lat * Math.PI / 180) *
+            Math.sin(dLon / 2) ** 2;
+        const distance_km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        const response = await taxiService.calculateDynamicPrice({
+            base_price: 500,
+            distance_km,
+            zone_id: `${params.origin.lat},${params.origin.lng}`,
+            latitude: params.origin.lat,
+            longitude: params.origin.lng,
+            radius_km: 10,
+            vehicle_type: 'taxi',
+        });
+        return response;
+    },
+
+    // === T2 - COURSE PLANIFIÉE ===
+
+    scheduleTaxiRide: async (taxiId: number, data: {
+        origin: string;
+        destination: string;
+        scheduled_at: string;
+        notes?: string;
+    }) => {
+        const response = await apiPost<{ success: boolean; reservation_id: number; message: string }>(
+            `/api/taxis/${taxiId}/schedule`,
+            data
+        );
+        // Programmer notification locale 30min avant
+        if (response.success) {
+            const rideDate = new Date(data.scheduled_at);
+            const notifDate = new Date(rideDate.getTime() - 30 * 60 * 1000);
+            if (notifDate > new Date()) {
+                const { status } = await Notifications.requestPermissionsAsync();
+                if (status === 'granted') {
+                    await Notifications.scheduleNotificationAsync({
+                        content: {
+                            title: 'Rappel de course planifiée',
+                            body: `Votre taxi part dans 30 minutes : ${data.origin} → ${data.destination}`,
+                            data: { type: 'taxi_scheduled_reminder', taxiId },
+                        },
+                        trigger: {
+                            type: Notifications.SchedulableTriggerInputTypes.DATE,
+                            date: notifDate,
+                        },
+                    });
+                }
+            }
+        }
+        return response;
+    },
+
+    // === T3 - RÉSERVATION AVEC WAYPOINTS (extension bookTaxi) ===
+
+    bookTaxiWithWaypoints: async (taxiId: number, data: {
+        departure_gps?: string;
+        arrival_gps?: string;
+        notes?: string;
+        insurance_type?: string;
+        waypoints?: Waypoint[];
+    }) => {
+        const response = await apiPost<{ success: boolean; reservation_id: number; message: string }>(
+            `/api/taxis/${taxiId}/book`,
+            data
+        );
+        return response;
+    },
+
+    // === T4 - RATING BIDIRECTIONNEL ===
+
+    submitRating: async (rideId: number, rating: number, comment?: string, tags?: string[]) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            `/api/taxis/rides/${rideId}/rating`,
+            { rating, comment, tags }
+        );
+        return response;
+    },
+
+    getMyRides: async (page?: number) => {
+        const response = await apiGet<{ success: boolean; data: TaxiRide[]; total: number }>(
+            '/api/taxis/rides/my-history',
+            { params: { page } }
+        );
+        return response;
+    },
+
+    // === T5 - HISTORIQUE COURSES ===
+
+    getMyRidesHistory: async (page?: number, limit?: number) => {
+        const response = await apiGet<{ success: boolean; data: TaxiRide[]; total: number }>(
+            '/api/taxis/rides/my-history',
+            { params: { page, limit } }
+        );
+        return response;
+    },
+
+    // === T6 - SOS SÉCURITÉ ===
+
+    sendSOSAlert: async (rideId: number, lat: number, lng: number) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            `/api/taxis/rides/${rideId}/sos`,
+            { latitude: lat, longitude: lng }
+        );
+        return response;
+    },
+
+    // === T7 - SUIVI GPS ===
+
+    getDriverLocationByRide: async (rideId: number) => {
+        const response = await apiGet<{ success: boolean; data: { latitude: number; longitude: number; heading?: number; status?: string } }>(
+            `/api/taxis/rides/${rideId}/driver-location`
+        );
+        return response;
+    },
+
+    updateMyLocation: async (rideId: number, lat: number, lng: number) => {
+        const response = await apiPost<{ success: boolean }>(
+            `/api/taxis/rides/${rideId}/driver-location`,
+            { latitude: lat, longitude: lng }
         );
         return response;
     },

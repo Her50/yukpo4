@@ -16,6 +16,7 @@ import ChatModalMobile from '../ChatModalMobile';
 import OrderDeliveryModal from '../delivery/OrderDeliveryModal';
 import SafeIcon from '../SafeIcon';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import ServiceCardActions from './ServiceCardActions';
 
 interface BloodBankResultCardProps {
     banque: {
@@ -355,7 +356,18 @@ const BloodBankResultCard: React.FC<BloodBankResultCardProps> = ({ banque }) => 
                 productName={`Sang - ${banque.nom}`}
                 onSuccess={(deliveryId) => {
                     setShowDeliveryModal(false);
-                    // Optionnel: navigation ou notification
+                }}
+            />
+            {/* ── Partage · Avis · Chat ─────────────────────────────────── */}
+            <ServiceCardActions
+                serviceId={banque.service_id}
+                serviceTitle={banque.nom}
+                serviceType="sang"
+                prestataireInfo={{
+                    id: banque.service_id,
+                    nom: banque.nom,
+                    telephone: banque.telephone,
+                    whatsapp: banque.whatsapp,
                 }}
             />
         </TouchableOpacity>

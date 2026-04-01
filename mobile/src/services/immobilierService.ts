@@ -28,6 +28,28 @@ export interface RealEstateProperty {
     whatsapp?: string;
 }
 
+export interface HotelUnit {
+    id: number;
+    property_id: number;
+    unit_number: string;
+    unit_type?: string;
+    standing?: string;
+    capacite_max_total?: number;
+    capacite_max_adultes?: number;
+    capacite_max_enfants?: number;
+    prix_nuitee?: number;
+    photos?: string[];
+    virtual_tour_url?: string;
+    video_urls?: string[];
+    virtual_tour_media?: string[];
+    floor_number?: number;
+    room_position?: number;
+    status?: 'available' | 'occupied' | 'blocked' | 'disabled';
+    is_active?: boolean;
+    is_available?: boolean;
+    notes?: string;
+}
+
 export interface PropertySearchFilters {
     ville?: string;
     quartier?: string | string[]; // Support multiple quartiers
@@ -591,6 +613,7 @@ export const immobilierService = {
     // ✅ Réserver un séjour hôtel/meublé (côté utilisateur)
     bookHotelStay: async (data: {
         property_id: number;
+        unit_id?: number;
         date_arrivee: string;
         date_depart: string;
         nombre_adultes: number;
@@ -602,10 +625,241 @@ export const immobilierService = {
         prix_nuitee?: number;
         prix_total?: number;
         notes?: string;
+        notify_partner_push?: boolean;
     }) => {
         const response = await apiPost<{ success: boolean; data: any }>(
             '/api/hotel/reservations/request',
             data
+        );
+        return response;
+    },
+
+    // ✅ Unités/chambres d'une propriété (dashboard partenaire)
+    getPropertyUnits: async (propertyId: number) => {
+        const response = await apiGet<{ success: boolean; data: HotelUnit[] }>(
+            `/api/hotel/properties/${propertyId}/units`
+        );
+        return response;
+    },
+
+    createPropertyUnit: async (
+        propertyId: number,
+        payload: {
+            unit_number: string;
+            unit_type?: string;
+            standing?: string;
+            capacite_max_adultes?: number;
+            capacite_max_enfants?: number;
+            superficie_m2?: number;
+            prix_nuitee?: number;
+            notes?: string;
+            photos?: string[];
+            virtual_tour_url?: string;
+            video_urls?: string[];
+            virtual_tour_media?: string[];
+            floor_number?: number;
+            room_position?: number;
+        }
+    ) => {
+        const response = await apiPost<{ success: boolean; id: number }>(
+            `/api/hotel/properties/${propertyId}/units`,
+            payload
+        );
+        return response;
+    },
+
+    updatePropertyUnit: async (
+        unitId: number,
+        payload: {
+            unit_number?: string;
+            unit_type?: string;
+            standing?: string;
+            capacite_max_adultes?: number;
+            capacite_max_enfants?: number;
+            superficie_m2?: number;
+            prix_nuitee?: number;
+            notes?: string;
+            photos?: string[];
+            is_active?: boolean;
+            is_available?: boolean;
+            virtual_tour_url?: string;
+            video_urls?: string[];
+            virtual_tour_media?: string[];
+            floor_number?: number;
+            room_position?: number;
+        }
+    ) => {
+        const { apiPut } = await import('./api');
+        const response = await apiPut<{ success: boolean }>(
+            `/api/hotel/units/${unitId}`,
+            payload
+        );
+        return response;
+    },
+
+    // ✅ Mini-plan visuel: état de chaque unité (dispo/occupé/bloqué)
+    getUnitsPlan: async (
+        propertyId: number,
+        params: { date_arrivee: string; date_depart: string }
+    ) => {
+        const query = new URLSearchParams({
+            date_arrivee: params.date_arrivee,
+            date_depart: params.date_depart,
+        });
+        const response = await apiGet<{ success: boolean; data: HotelUnit[] }>(
+            `/api/hotel/properties/${propertyId}/units/plan?${query.toString()}`
+        );
+        return response;
+    },
+
+    deletePropertyUnit: async (unitId: number) => {
+        const response = await apiDelete<{ success: boolean }>(`/api/hotel/units/${unitId}`);
+        return response;
+    },
+
+    // ============================================================================
+    // GROUPES MULTI-PROPRIÉTÉS (chaînes hôtelières, réseaux meublés)
+    // ============================================================================
+
+    // ✅ Créer un groupe
+    createPropertyGroup: async (data: {
+        group_name: string;
+        description?: string;
+        logo_url?: string;
+        company_name?: string;
+        tax_id?: string;
+        address?: string;
+        phone?: string;
+        email?: string;
+    }) => {
+        const { apiPost } = await import('./api');
+        return apiPost<{ success: boolean; id: number; message: string }>('/api/hotel/groups', data);
+    },
+
+    // ✅ Lister mes groupes
+    listMyGroups: async () => {
+        return apiGet<{ success: boolean; data: any[]; total: number }>('/api/hotel/groups');
+    },
+
+    // ✅ Détail groupe + propriétés membres
+    getGroupDetails: async (groupId: number) => {
+        return apiGet<{ success: boolean; data: any }>(`/api/hotel/groups/${groupId}`);
+    },
+
+    // ✅ Modifier un groupe
+    updatePropertyGroup: async (groupId: number, data: {
+        group_name?: string;
+        description?: string;
+        logo_url?: string;
+        company_name?: string;
+        tax_id?: string;
+        address?: string;
+        phone?: string;
+        email?: string;
+    }) => {
+        const { apiPut } = await import('./api');
+        return apiPut<{ success: boolean; message: string }>(`/api/hotel/groups/${groupId}`, data);
+    },
+
+    // ✅ Supprimer un groupe
+    deletePropertyGroup: async (groupId: number) => {
+        return apiDelete<{ success: boolean; message: string }>(`/api/hotel/groups/${groupId}`);
+    },
+
+    // ✅ Ajouter une propriété au groupe
+    addPropertyToGroup: async (groupId: number, data: {
+        property_id: number;
+        location_name?: string;
+        location_address?: string;
+        location_gps?: string;
+        display_order?: number;
+    }) => {
+        const { apiPost } = await import('./api');
+        return apiPost<{ success: boolean; member_id: number }>(`/api/hotel/groups/${groupId}/members`, data);
+    },
+
+    // ✅ Retirer une propriété du groupe
+    removePropertyFromGroup: async (groupId: number, propertyId: number) => {
+        return apiDelete<{ success: boolean; message: string }>(`/api/hotel/groups/${groupId}/members/${propertyId}`);
+    },
+
+    // ✅ Vue financière consolidée du groupe
+    getGroupFinancialOverview: async (groupId: number) => {
+        return apiGet<{ success: boolean; data: any }>(`/api/hotel/groups/${groupId}/financial`);
+    },
+
+    // ============================================================================
+    // FORMULAIRES CLIENT PERSONNALISÉS
+    // ============================================================================
+
+    // ✅ Récupérer la configuration du formulaire
+    getFormConfig: async (propertyId: number) => {
+        return apiGet<{ success: boolean; data: any | null }>(`/api/hotel/properties/${propertyId}/form-config`);
+    },
+
+    // ✅ Sauvegarder/mettre à jour la configuration du formulaire
+    upsertFormConfig: async (propertyId: number, config: {
+        form_fields?: any[];
+        required_fields?: string[];
+        default_values?: Record<string, any>;
+        logo_url?: string;
+        header_text?: string;
+        footer_text?: string;
+        company_info?: Record<string, any>;
+    }) => {
+        const { apiPut } = await import('./api');
+        return apiPut<{ success: boolean; message: string }>(`/api/hotel/properties/${propertyId}/form-config`, config);
+    },
+
+    // ============================================================================
+    // PROFILS CLIENTS (pré-remplissage)
+    // ============================================================================
+
+    // ✅ Récupérer mon profil client sauvegardé
+    getClientProfile: async () => {
+        return apiGet<{ success: boolean; data: any | null }>('/api/hotel/client-profile');
+    },
+
+    // ✅ Sauvegarder mon profil client
+    saveClientProfile: async (profile: {
+        nom_complet?: string;
+        prenom?: string;
+        nom_famille?: string;
+        date_naissance?: string;
+        lieu_naissance?: string;
+        nationalite?: string;
+        type_piece_identite?: string;
+        numero_piece_identite?: string;
+        date_expiration_piece?: string;
+        telephone?: string;
+        email?: string;
+        adresse?: string;
+        ville?: string;
+        pays?: string;
+        preferences?: Record<string, any>;
+    }) => {
+        const { apiPut } = await import('./api');
+        return apiPut<{ success: boolean; message: string }>('/api/hotel/client-profile', profile);
+    },
+
+    // ✅ Unités disponibles côté client selon dates
+    getAvailableUnits: async (
+        propertyId: number,
+        params: {
+            date_arrivee: string;
+            date_depart: string;
+            nombre_adultes?: number;
+            nombre_enfants?: number;
+        }
+    ) => {
+        const query = new URLSearchParams({
+            date_arrivee: params.date_arrivee,
+            date_depart: params.date_depart,
+            ...(params.nombre_adultes != null ? { nombre_adultes: String(params.nombre_adultes) } : {}),
+            ...(params.nombre_enfants != null ? { nombre_enfants: String(params.nombre_enfants) } : {}),
+        });
+        const response = await apiGet<{ success: boolean; data: HotelUnit[] }>(
+            `/api/hotel/properties/${propertyId}/units/available?${query.toString()}`
         );
         return response;
     },
@@ -630,6 +884,182 @@ export const immobilierService = {
             montant_avance: montantAvance,
         });
         return response;
+    },
+
+    // ============================================================================
+    // TERRAINS — Gestion partenaire
+    // ============================================================================
+
+    // ✅ Créer une annonce de terrain (partenaire)
+    createLand: async (data: {
+        service_id: number;
+        titre: string;
+        description?: string;
+        type_terrain?: string; // "Résidentiel" | "Commercial" | "Agricole" | "Industriel" | "Mixte"
+        superficie_m2: number; // Obligatoire
+        adresse?: string;
+        quartier?: string;
+        ville?: string;
+        gps?: string;
+        prix_total: number; // Obligatoire
+        viabilise?: boolean;
+        acces_route?: boolean;
+        bornage?: boolean;
+        zonage?: string;
+        telephone?: string;
+        whatsapp?: string;
+        email?: string;
+        documents?: any;
+    }) => {
+        const response = await apiPost<{ success: boolean; id: number; message: string }>(
+            '/api/immobilier/terrains',
+            data
+        );
+        return response;
+    },
+
+    // ✅ Modifier un terrain (partenaire)
+    updateLand: async (landId: number, data: {
+        titre?: string;
+        description?: string;
+        type_terrain?: string;
+        superficie_m2?: number;
+        adresse?: string;
+        quartier?: string;
+        ville?: string;
+        prix_total?: number;
+        viabilise?: boolean;
+        acces_route?: boolean;
+        bornage?: boolean;
+        zonage?: string;
+        telephone?: string;
+        whatsapp?: string;
+        email?: string;
+        is_active?: boolean;
+    }) => {
+        const { apiPut } = await import('./api');
+        return apiPut<{ success: boolean; message: string }>(`/api/immobilier/terrains/${landId}`, data);
+    },
+
+    // ✅ Mes annonces terrains (partenaire)
+    getMyLandListings: async () => {
+        return apiGet<{ success: boolean; data: any[]; total: number }>('/api/immobilier/terrains/my-listings');
+    },
+
+    // ✅ Réserver une visite de terrain (utilisateur)
+    bookLandVisit: async (landId: number, data: {
+        date_visite: string; // ISO datetime ex: "2026-04-15T10:00:00"
+        notes?: string;
+    }) => {
+        const response = await apiPost<{ success: boolean; visit_id: number; message: string }>(
+            `/api/immobilier/terrains/${landId}/book-visit`,
+            data
+        );
+        return response;
+    },
+
+    // ============================================================================
+    // DÉCORATION — Partenaire et consultations
+    // ============================================================================
+
+    // ✅ Créer/mettre à jour profil décorateur (partenaire)
+    createDecorator: async (data: {
+        service_id: number;
+        nom_entreprise: string;
+        description?: string;
+        styles?: string[];
+        specialites?: string[];
+        tarif_consultation?: number;
+        tarif_journalier?: number;
+        portfolio_urls?: string[];
+        logo_url?: string;
+        telephone?: string;
+        whatsapp?: string;
+        email?: string;
+        ville?: string;
+        quartier?: string;
+        gps?: string;
+        annees_experience?: number;
+    }) => {
+        const response = await apiPost<{ success: boolean; id: number; message: string }>(
+            '/api/decoration/decorateurs',
+            data
+        );
+        return response;
+    },
+
+    // ✅ Demander une consultation décoration (utilisateur)
+    createDesignConsultation: async (data: {
+        decorator_id: number;
+        type_consultation?: 'physique' | 'video' | 'chat';
+        date_souhaitee: string;
+        duree_minutes?: number;
+        sujet: string;
+        description?: string;
+        budget_estime?: number;
+        adresse_projet?: string;
+        ville_projet?: string;
+        photos_projet?: string[];
+    }) => {
+        const response = await apiPost<{ success: boolean; id: number; message: string }>(
+            '/api/decoration/consultations',
+            data
+        );
+        return response;
+    },
+
+    // ✅ Mes consultations (partenaire = reçues / utilisateur = envoyées)
+    getMyDesignConsultations: async () => {
+        return apiGet<{ success: boolean; data: any[]; total: number }>('/api/decoration/my-consultations');
+    },
+
+    // ✅ Répondre à une consultation (partenaire)
+    respondDesignConsultation: async (consultationId: number, data: {
+        action: 'confirm' | 'reject' | 'complete';
+        notes_partenaire?: string;
+        montant?: number;
+    }) => {
+        const { apiPut } = await import('./api');
+        return apiPut<{ success: boolean; message: string }>(
+            `/api/decoration/consultations/${consultationId}/respond`,
+            data
+        );
+    },
+
+    // ============================================================================
+    // DÉMÉNAGEMENT — Dashboard partenaire
+    // ============================================================================
+
+    // ✅ Mes commandes déménagement reçues (partenaire)
+    getMyMovingBookings: async () => {
+        return apiGet<{ success: boolean; data: any[]; total: number }>('/api/demenagement/my-bookings');
+    },
+
+    // ✅ Confirmer / Compléter / Annuler une réservation (partenaire)
+    respondMovingBooking: async (bookingId: number, data: {
+        action: 'confirm' | 'complete' | 'cancel';
+        partner_notes?: string;
+        cancellation_reason?: string;
+    }) => {
+        const { apiPut } = await import('./api');
+        return apiPut<{ success: boolean; message: string }>(
+            `/api/demenagement/bookings/${bookingId}/respond`,
+            data
+        );
+    },
+
+    // ✅ Mettre à jour la position GPS en temps réel (partenaire)
+    updateMovingLocation: async (bookingId: number, data: {
+        gps_current: string; // "lat,lng"
+        eta_minutes?: number;
+        etape?: string;
+        message_client?: string;
+    }) => {
+        const { apiPut } = await import('./api');
+        return apiPut<{ success: boolean; message: string }>(
+            `/api/demenagement/bookings/${bookingId}/location`,
+            data
+        );
     },
 };
 

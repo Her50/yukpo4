@@ -52,8 +52,9 @@ const STATUS_ICON: Partial<Record<DeliveryStatus, string>> = {
 };
 
 const TimelineStepper: React.FC<TimelineStepperProps> = ({ checkpoints, currentStatus }) => {
-    const timeline = useMemo(() => {
     const { t } = useLanguageSafe();
+
+    const timeline = useMemo(() => {
         const entries = STATUS_ORDER.map(status => {
             const match = checkpoints.find(item => item.status === status);
             return {
@@ -98,7 +99,7 @@ const TimelineStepper: React.FC<TimelineStepperProps> = ({ checkpoints, currentS
                         </View>
                         <View style={styles.contentColumn}>
                             <Text style={[styles.statusLabel, isActive && styles.statusLabelActive]}>
-                                {statusToLabel(entry.status)}
+                                {statusToLabel(entry.status, t)}
                             </Text>
                             {entry.timestamp ? (
                                 <Text style={styles.timestamp}>
@@ -117,7 +118,7 @@ const TimelineStepper: React.FC<TimelineStepperProps> = ({ checkpoints, currentS
     );
 };
 
-const statusToLabel = (status: DeliveryStatus): string => {
+const statusToLabel = (status: DeliveryStatus, t: (key: string) => string): string => {
     switch (status) {
         case 'pending':
         case 'requested':

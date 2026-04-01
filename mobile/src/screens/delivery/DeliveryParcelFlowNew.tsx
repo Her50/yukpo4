@@ -41,6 +41,9 @@ interface DeliveryParcelFlowNewProps {
     visible: boolean;
     onClose: () => void;
     onSuccess?: (deliveryId: string) => void;
+    mode?: 'create' | 'edit';
+    deliveryId?: string;
+    initialDeliveryData?: any | null;
 }
 
 interface LocationData {
@@ -53,6 +56,9 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     visible,
     onClose,
     onSuccess,
+    mode = 'create',
+    deliveryId,
+    initialDeliveryData = null,
 }) => {
     const { location: userLocation } = useLocation();
     const navigation = useNavigation();
@@ -124,6 +130,7 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
     const [recipientConsentGranted, setRecipientConsentGranted] = useState<boolean>(false);
     const [recipientInstructions, setRecipientInstructions] = useState<string>('');
     const [recipientAllowTracking, setRecipientAllowTracking] = useState<boolean>(false);
+    const [editPrefilled, setEditPrefilled] = useState<boolean>(false);
 
     // Animation d'entrée
     const screenEnterStyle = useScreenEnter();
@@ -314,6 +321,79 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
             });
         }
     }, [visible, userLocation]);
+
+    useEffect(() => {
+        if (!visible || mode !== 'edit' || !initialDeliveryData || editPrefilled) {
+            return;
+        }
+
+        const pickup = initialDeliveryData.pickup;
+        const dropoff = initialDeliveryData.dropoff;
+        const recipient = initialDeliveryData.recipient;
+        const metadata = initialDeliveryData.metadata ?? {};
+        const constraints = initialDeliveryData.parcel?.constraints ?? metadata?.parcel_constraints ?? {};
+
+        if (pickup?.location?.lat != null && pickup?.location?.lng != null) {
+            setPickupLocation({
+                latitude: Number(pickup.location.lat),
+                longitude: Number(pickup.location.lng),
+                address: pickup.address || pickup.label || '',
+            });
+        }
+
+        if (dropoff?.location?.lat != null && dropoff?.location?.lng != null) {
+            setDropoffLocation({
+                latitude: Number(dropoff.location.lat),
+                longitude: Number(dropoff.location.lng),
+                address: dropoff.address || dropoff.label || '',
+            });
+        }
+
+        setParcelType((metadata?.parcel_type as any) || 'package');
+        setTransportMode(metadata?.preferred_vehicle_type || initialDeliveryData?.preferred_vehicle_type || '');
+        setWeight(
+            constraints?.weight != null
+                ? String(constraints.weight)
+                : metadata?.weight != null
+                    ? String(metadata.weight)
+                    : ''
+        );
+        setVolume(
+            constraints?.volume != null
+                ? String(constraints.volume)
+                : metadata?.volume != null
+                    ? String(metadata.volume)
+                    : ''
+        );
+        setDeclaredValue(
+            constraints?.declared_value != null
+                ? String(constraints.declared_value)
+                : metadata?.declared_value != null
+                    ? String(metadata.declared_value)
+                    : ''
+        );
+        setNumberOfItems(
+            constraints?.number_of_items != null
+                ? String(constraints.number_of_items)
+                : metadata?.number_of_items != null
+                    ? String(metadata.number_of_items)
+                    : ''
+        );
+        setNotes(initialDeliveryData?.parcel?.notes || metadata?.notes || '');
+
+        setRecipientName(recipient?.name || recipient?.contact_name || '');
+        setRecipientPhone(recipient?.phone || recipient?.contact_phone || '');
+        setRecipientCountryCode(recipient?.countryCode || recipient?.country_code || '+237');
+        setRecipientConsentGranted(
+            Boolean(recipient?.consentGranted ?? recipient?.consent_granted ?? false)
+        );
+        setRecipientInstructions(recipient?.instructions || recipient?.notes || '');
+        setRecipientAllowTracking(
+            Boolean(recipient?.allowTracking ?? recipient?.allow_tracking ?? false)
+        );
+
+        setEditPrefilled(true);
+    }, [visible, mode, initialDeliveryData, editPrefilled]);
 
     const handleUseCurrentLocation = async (isPickup: boolean) => {
         setLoadingLocation(true);
@@ -620,22 +700,29 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                 initial_event_payload: {},
             };
 
-            const result = await deliveryApi.createDeliveryRequest(payload);
+            const result = mode === 'edit' && deliveryId
+                ? await deliveryApi.updateDeliveryRequest(deliveryId, payload as any)
+                : await deliveryApi.createDeliveryRequest(payload);
 
-            if (result.success && result.data?.id) {
+            const resultingDeliveryId =
+                result?.data?.id || result?.data?.delivery?.id || deliveryId;
+
+            if (result.success && resultingDeliveryId) {
                 // ✅ Nettoyer la commande en attente si elle existait
                 await SafeStorage.removeItem('pending_delivery');
                 setPendingDeliveryData(null);
 
                 Alert.alert(
-                    t('deliveryParcel.deliveryCreated'),
-                    t('deliveryParcel.deliveryCreatedMsg'),
+                    mode === 'edit' ? t('common.success') : t('deliveryParcel.deliveryCreated'),
+                    mode === 'edit'
+                        ? (t('deliveryHome.editFlowOpened') || 'Livraison mise a jour avec succes.')
+                        : t('deliveryParcel.deliveryCreatedMsg'),
                     [
                         {
                             text: 'OK',
                             onPress: () => {
                                 if (onSuccess) {
-                                    onSuccess(result.data.id);
+                                    onSuccess(String(resultingDeliveryId));
                                 }
                                 onClose();
                             },
@@ -643,7 +730,12 @@ const DeliveryParcelFlowNew: React.FC<DeliveryParcelFlowNewProps> = ({
                     ]
                 );
             } else {
-                Alert.alert(t('message.error'), (result as any).error || t('deliveryParcel.cannotCreateDelivery'));
+                Alert.alert(
+                    t('message.error'),
+                    (result as any).error || (mode === 'edit'
+                        ? 'Impossible de mettre a jour la livraison.'
+                        : t('deliveryParcel.cannotCreateDelivery'))
+                );
             }
         } catch (error: any) {
             console.error('Erreur création livraison:', error);

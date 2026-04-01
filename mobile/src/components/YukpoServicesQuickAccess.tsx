@@ -127,6 +127,8 @@ const SERVICES_DATA: Service[] = [
     { id: 'offres_emploi', title: 'Offres emploi', titleKey: 'yukpoServicesQuickAccess.offresEmploi', icon: 'briefcase', gradient: ['#6366F1', '#818CF8'], description: 'Recrutement', descriptionKey: 'yukpoServicesQuickAccess.recrutement', comingSoon: false },
     // Assurance
     { id: 'assurance', title: 'Assurance', titleKey: 'yukpoServicesQuickAccess.assurance', icon: 'shield', gradient: ['#0EA5E9', '#38BDF8'], description: 'Assurances, mutuelles', descriptionKey: 'yukpoServicesQuickAccess.assurancesMutuelles', comingSoon: false },
+    // Restaurant
+    { id: 'restaurant', title: 'Restaurant', titleKey: 'yukpoServicesQuickAccess.restaurant', icon: 'utensils', gradient: ['#DC2626', '#EF4444'], description: 'Commander, réserver', descriptionKey: 'yukpoServicesQuickAccess.restaurantDesc', comingSoon: false },
     // Immobilier
     { id: 'immo', title: 'Immobilier', titleKey: 'yukpoServicesQuickAccess.immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], description: 'Biens immobiliers', descriptionKey: 'yukpoServicesQuickAccess.biensImmobiliers', comingSoon: false },
     { id: 'hotel', title: 'Hotel', titleKey: 'yukpoServicesQuickAccess.hotel', icon: 'building', gradient: ['#F59E0B', '#FBBF24'], description: 'Hotels et hebergements', descriptionKey: 'yukpoServicesQuickAccess.hotelsEtHebergements', comingSoon: false },
@@ -137,9 +139,9 @@ const SERVICES_DATA: Service[] = [
 const CATEGORIES_DATA: Category[] = [
     { id: 'sante', title: 'Sante', titleKey: 'yukpoServicesQuickAccess.sante', icon: 'heart', gradient: ['#EC4899', '#F472B6'], serviceIds: ['pharmacie', 'hopital', 'laboratoire', 'banque_sang'] },
     { id: 'transport', title: 'Transport', titleKey: 'yukpoServicesQuickAccess.transport', icon: 'car', gradient: ['#F59E0B', '#FBBF24'], serviceIds: ['agence_voyage', 'covoiturage', 'taxi', 'automobile'] },
-    { id: 'vie_pratique', title: 'Vie pratique', titleKey: 'yukpoServicesQuickAccess.viePratique', icon: 'layers', gradient: ['#3B82F6', '#60A5FA'], serviceIds: ['orientation_scolaire', 'offres_emploi', 'menu_planning', 'bayamselam'] },
+    { id: 'vie_pratique', title: 'Vie pratique', titleKey: 'yukpoServicesQuickAccess.viePratique', icon: 'layers', gradient: ['#3B82F6', '#60A5FA'], serviceIds: ['assurance', 'orientation_scolaire', 'offres_emploi', 'menu_planning', 'bayamselam'] },
     { id: 'bourse_livre_featured', title: 'Bourse du Livre', titleKey: 'yukpoServicesQuickAccess.bourseDuLivre', icon: 'book-open', gradient: ['#8B5CF6', '#A78BFA'], serviceIds: ['bourse_livre'] },
-    { id: 'assurance', title: 'Assurance', titleKey: 'yukpoServicesQuickAccess.assurance', icon: 'shield', gradient: ['#0EA5E9', '#38BDF8'], serviceIds: ['assurance'] },
+    { id: 'restaurant', title: 'Restaurant', titleKey: 'yukpoServicesQuickAccess.restaurant', icon: 'utensils', gradient: ['#DC2626', '#EF4444'], serviceIds: ['restaurant'] },
     { id: 'immobilier', title: 'Immobilier', titleKey: 'yukpoServicesQuickAccess.immobilier', icon: 'home', gradient: ['#8B5CF6', '#A78BFA'], serviceIds: ['immo', 'hotel', 'meuble'] },
 ];
 

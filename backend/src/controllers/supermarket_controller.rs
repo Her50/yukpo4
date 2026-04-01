@@ -21,6 +21,7 @@ use log::{error, info};
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::Row;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 // ═══════════════════════════════════════════════════════════════
@@ -1063,6 +1064,8 @@ pub struct BulkImportSupermarketRequest {
     pub products: Option<Vec<BulkSupermarketProduct>>,
     pub csv_data: Option<String>,
     pub overwrite_existing: Option<bool>,
+    pub store_category: Option<String>,           // ✅ 2026-04-01: catégorie boutique (supermarche, mode, electronique, etc.)
+    pub platform_integration_id: Option<i32>,     // ✅ 2026-04-01: ID intégration source (traçabilité)
 }
 
 #[derive(Debug, Deserialize)]
@@ -1078,6 +1081,17 @@ pub struct BulkSupermarketProduct {
     pub en_promotion: Option<bool>,
     pub prix_promo: Option<f64>,
     pub image_url: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExternalSupermarketSyncRequest {
+    pub service_id: i32,
+    pub api_url: String,
+    pub overwrite_existing: Option<bool>,
+    pub items_path: Option<String>,
+    pub headers: Option<HashMap<String, String>>,
+    pub auth_bearer_token: Option<String>,
+    pub field_mapping: Option<HashMap<String, String>>,
 }
 
 /// POST /api/supermarkets/products/bulk-import
@@ -1132,9 +1146,9 @@ pub async fn bulk_import_products(
         return Err(AppError::BadRequest("Aucun produit à importer".to_string()));
     }
 
-    if products.len() > 500 {
+    if products.len() > 2000 {
         return Err(AppError::BadRequest(
-            "Maximum 500 produits par import. Divisez en plusieurs imports.".to_string(),
+            "Maximum 2000 produits par import. Divisez en plusieurs imports.".to_string(),
         ));
     }
 
@@ -1234,11 +1248,15 @@ pub async fn bulk_import_products(
 
         // Insérer nouveau produit
         match sqlx::query(
-            "INSERT INTO service_products (service_id, product_index, product_data, is_active) VALUES ($1, $2, $3, true)",
+            r#"INSERT INTO service_products
+               (service_id, product_index, product_data, is_active, platform_integration_id, store_category)
+               VALUES ($1, $2, $3, true, $4, $5)"#,
         )
         .bind(payload.service_id)
         .bind(next_index)
         .bind(&product_data)
+        .bind(payload.platform_integration_id)
+        .bind(payload.store_category.as_deref().unwrap_or("supermarche"))
         .execute(&state.pg)
         .await
         {
@@ -1268,6 +1286,135 @@ pub async fn bulk_import_products(
             "message": format!("{} produits créés, {} mis à jour", created, updated)
         })),
     ))
+}
+
+fn extract_json_path<'a>(value: &'a serde_json::Value, path: &str) -> Option<&'a serde_json::Value> {
+    let mut current = value;
+    for segment in path.split('.').filter(|s| !s.trim().is_empty()) {
+        current = current.get(segment)?;
+    }
+    Some(current)
+}
+
+/// POST /api/supermarkets/products/sync-external
+/// Synchronisation catalogue depuis API JSON externe (service propriétaire uniquement).
+pub async fn sync_products_from_external_api(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<ExternalSupermarketSyncRequest>,
+) -> AppResult<impl IntoResponse> {
+    let is_owner: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM services WHERE id = $1 AND user_id = $2)")
+            .bind(payload.service_id)
+            .bind(user.id)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
+    if !is_owner {
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de ce service supermarché".to_string(),
+        ));
+    }
+
+    let mut req = reqwest::Client::new().get(payload.api_url.trim());
+    if let Some(token) = payload.auth_bearer_token.as_ref().map(|v| v.trim()).filter(|v| !v.is_empty()) {
+        req = req.bearer_auth(token);
+    }
+    if let Some(headers) = &payload.headers {
+        for (k, v) in headers {
+            req = req.header(k, v);
+        }
+    }
+
+    let upstream_json: serde_json::Value = req
+        .send()
+        .await
+        .map_err(|e| AppError::BadRequest(format!("Erreur appel API externe: {}", e)))?
+        .error_for_status()
+        .map_err(|e| AppError::BadRequest(format!("API externe en erreur: {}", e)))?
+        .json()
+        .await
+        .map_err(|e| AppError::BadRequest(format!("Réponse JSON invalide: {}", e)))?;
+
+    let items_path = payload
+        .items_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .unwrap_or("items");
+    let items_value = extract_json_path(&upstream_json, items_path).unwrap_or(&upstream_json);
+    let items = items_value
+        .as_array()
+        .ok_or_else(|| AppError::BadRequest("Impossible de trouver la liste de produits".to_string()))?;
+
+    let mapping = payload.field_mapping.unwrap_or_default();
+    let name_key = mapping.get("nom").cloned().unwrap_or_else(|| "nom".to_string());
+    let price_key = mapping.get("prix").cloned().unwrap_or_else(|| "prix".to_string());
+    let stock_key = mapping.get("stock").cloned().unwrap_or_else(|| "stock".to_string());
+    let category_key = mapping.get("categorie").cloned().unwrap_or_else(|| "categorie".to_string());
+    let brand_key = mapping.get("marque").cloned().unwrap_or_else(|| "marque".to_string());
+    let unit_key = mapping.get("unite").cloned().unwrap_or_else(|| "unite".to_string());
+    let desc_key = mapping.get("description").cloned().unwrap_or_else(|| "description".to_string());
+    let barcode_key = mapping.get("code_barre").cloned().unwrap_or_else(|| "code_barre".to_string());
+    let promo_key = mapping.get("en_promotion").cloned().unwrap_or_else(|| "en_promotion".to_string());
+    let promo_price_key = mapping.get("prix_promo").cloned().unwrap_or_else(|| "prix_promo".to_string());
+    let image_key = mapping.get("image_url").cloned().unwrap_or_else(|| "image_url".to_string());
+
+    let products: Vec<BulkSupermarketProduct> = items
+        .iter()
+        .filter_map(|it| it.as_object())
+        .map(|obj| {
+            let nom = obj
+                .get(&name_key)
+                .and_then(|v| v.as_str())
+                .map(|v| v.trim().to_string())
+                .unwrap_or_default();
+            let prix = obj
+                .get(&price_key)
+                .and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.replace(',', ".").parse::<f64>().ok())));
+            let stock = obj
+                .get(&stock_key)
+                .and_then(|v| v.as_i64().or_else(|| v.as_str().and_then(|s| s.parse::<i64>().ok())))
+                .map(|v| v.max(0) as i32);
+            let en_promotion = obj
+                .get(&promo_key)
+                .and_then(|v| v.as_bool().or_else(|| v.as_str().map(|s| matches!(s.to_lowercase().as_str(), "1" | "true" | "oui" | "yes"))));
+            let prix_promo = obj
+                .get(&promo_price_key)
+                .and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.replace(',', ".").parse::<f64>().ok())));
+
+            BulkSupermarketProduct {
+                nom,
+                description: obj.get(&desc_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
+                prix,
+                categorie: obj.get(&category_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
+                marque: obj.get(&brand_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
+                unite: obj.get(&unit_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
+                stock,
+                code_barre: obj.get(&barcode_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
+                en_promotion,
+                prix_promo,
+                image_url: obj.get(&image_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
+            }
+        })
+        .filter(|p| !p.nom.trim().is_empty())
+        .collect();
+
+    let response = bulk_import_products(
+        State(state),
+        Extension(user),
+        Json(BulkImportSupermarketRequest {
+            service_id: payload.service_id,
+            products: Some(products),
+            csv_data: None,
+            overwrite_existing: payload.overwrite_existing,
+            store_category: Some("supermarche".to_string()),
+            platform_integration_id: None,
+        }),
+    )
+    .await?;
+
+    Ok(response)
 }
 
 /// Parser du CSV en produits supermarché

@@ -230,7 +230,7 @@ pub async fn get_my_following(
             uf.id as follow_id,
             uf.followed_id,
             uf.created_at as followed_at,
-            u.name as seller_name,
+            COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as seller_name,
             u.email as seller_email,
             s.id as service_id,
             s.category,

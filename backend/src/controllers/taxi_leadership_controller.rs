@@ -189,12 +189,13 @@ pub async fn get_prediction_metrics(
 
     let prediction_service = TaxiDemandPredictionService::new(Arc::new(state.pg.clone()));
     let metrics = prediction_service.get_metrics();
+    let cache_size = prediction_service.get_cache_size().await;
 
     Ok(Json(json!({
         "success": true,
         "data": {
             "metrics": metrics,
-            "cache_size": 0, // TODO: Ajouter taille cache
+            "cache_size": cache_size,
         }
     })))
 }

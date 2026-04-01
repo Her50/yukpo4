@@ -17,6 +17,7 @@ import {
     Switch,
     Text,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from 'react-native';
 import BusModelForm, { BusModel } from '../../components/bus/BusModelForm';
@@ -93,6 +94,18 @@ const parseScheduleNotes = (raw: string | null | undefined): { clean: string; bu
     return { clean: raw.trim().slice(m[0].length), bus, carrier };
 };
 
+const formatNextDeparture = (iso: string | null | undefined): string | null => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = String(d.getFullYear());
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+};
+
 type ScheduleRecurrence = 'all' | 'weekly';
 
 type ScheduleFormState = {
@@ -105,6 +118,7 @@ type ScheduleFormState = {
     notes: string;
     carrierName: string;
     busModelName: string | null;
+    busModelId: string | null;
 };
 
 const emptyScheduleForm = (): ScheduleFormState => ({
@@ -116,6 +130,7 @@ const emptyScheduleForm = (): ScheduleFormState => ({
     notes: '',
     carrierName: '',
     busModelName: null,
+    busModelId: null,
 });
 
 const AgenceVoyageFormScreen: React.FC = () => {
@@ -123,10 +138,17 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const route = useRoute();
     const { user, logout } = useAuth();
     const { t, language: activeLang } = useLanguageSafe();
+    const tr = (key: string, fallback: string) => {
+        const translated = t(key) as unknown as string;
+        return translated && translated !== key ? translated : fallback;
+    };
     const getDayLabel = (value: number) => ({ 1: t('agenceVoyageForm.jourLundi'), 2: t('agenceVoyageForm.jourMardi'), 3: t('agenceVoyageForm.jourMercredi'), 4: t('agenceVoyageForm.jourJeudi'), 5: t('agenceVoyageForm.jourVendredi'), 6: t('agenceVoyageForm.jourSamedi'), 7: t('agenceVoyageForm.jourDimanche') }[value] || '');
     const getDayShort = (value: number) => ({ 1: t('agenceVoyageForm.jourLun'), 2: t('agenceVoyageForm.jourMar'), 3: t('agenceVoyageForm.jourMer'), 4: t('agenceVoyageForm.jourJeu'), 5: t('agenceVoyageForm.jourVen'), 6: t('agenceVoyageForm.jourSam'), 7: t('agenceVoyageForm.jourDim') }[value] || '');
     const servicesLabel = (svc: string) => ({ 'Billetterie bus': t('agenceVoyageForm.billetterieBus'), 'Billetterie avion': t('agenceVoyageForm.billetterieAvion'), 'Organisation voyages': t('agenceVoyageForm.organisationVoyages'), 'Visa': t('agenceVoyageForm.visaService') }[svc] || svc);
     const { location } = useLocation();
+    const { width } = useWindowDimensions();
+    const isCompactAndroid = Platform.OS === 'android' && width <= 360;
+    const isUltraCompact320 = Platform.OS === 'android' && width <= 320;
     const [serviceId, setServiceId] = useState<number | null>((route.params as any)?.serviceId || null);
     const specializedServiceId = (route.params as any)?.specializedServiceId as number | undefined;
     const mode = (route.params as any)?.mode as string | undefined;
@@ -235,6 +257,20 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     if (agencies.length > 0) {
                         const myAgency = agencies[0];
                         setAgencyData(myAgency);
+                        const linkedModels = Array.isArray(myAgency?.bus_products_config?.modeles_bus)
+                            ? myAgency.bus_products_config.modeles_bus
+                                .map((m: any) => ({
+                                    id: m?.product_id ? String(m.product_id) : undefined,
+                                    nom_modele: String(m?.nom_modele || m?.name || ''),
+                                    name: String(m?.nom_modele || m?.name || ''),
+                                    total_seats: Number(m?.total_seats || 0),
+                                    classe: String(m?.classe || 'Standard'),
+                                    prix_base: Number(m?.prix_base || 0),
+                                    equipements: Array.isArray(m?.equipements) ? m.equipements : [],
+                                }))
+                                .filter((m: BusModel) => m.nom_modele.trim().length > 0)
+                            : [];
+                        if (linkedModels.length > 0) setBusModels(linkedModels);
                         setIsDashboardMode(true);
                         if (!serviceId && myAgency.service_id) setServiceId(myAgency.service_id);
                         loadSchedules();
@@ -293,7 +329,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
             setLoadingSchedules(true);
             const resp = await apiGet('/api/bus-tickets/agencies/schedules');
             const d = (resp?.data || resp) as any;
-            setSchedules(Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []);
+            setSchedules(Array.isArray(d?.schedules) ? d.schedules : Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : []);
         } catch (e) { console.log('[AgenceVoyage] Schedules:', e); } finally { setLoadingSchedules(false); }
     };
 
@@ -413,6 +449,9 @@ const AgenceVoyageFormScreen: React.FC = () => {
             });
             const d = (resp?.data || resp) as any;
             if (d.success && d.id) {
+                setBusModels(prev => prev.map(m => (
+                    m.nom_modele === model.nom_modele && !m.id ? { ...m, id: String(d.id), name: m.name || m.nom_modele } : m
+                )));
                 if (agencyData?.id) {
                     await apiPost('/api/bus-tickets/link', {
                         agency_id: agencyData.id, product_id: d.id, nom_modele: model.nom_modele,
@@ -427,6 +466,13 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const handleSaveSchedule = async () => {
         if (!scheduleForm.departure_city.trim() || !scheduleForm.arrival_city.trim()) { Alert.alert(t('message.error'), t('agenceVoyage.citiesRequired')); return; }
         if (scheduleForm.departure_times.length === 0) { Alert.alert(t('message.error'), t('agenceVoyage.scheduleTimeRequired')); return; }
+        if (busModels.length > 0 && !scheduleForm.busModelId?.trim()) {
+            Alert.alert(
+                t('message.error'),
+                t('agenceVoyageForm.busAssociationRequired', 'Sélectionnez un modèle de bus pour lier cet horaire à un bus précis.')
+            );
+            return;
+        }
         if (scheduleForm.recurrenceMode === 'weekly' && scheduleForm.selectedDaysUi.length === 0) {
             Alert.alert(t('message.error'), t('agenceVoyageForm.selectionnezAuMoinsUnJour', 'Sélectionnez au moins un jour de la semaine, ou passez en « Tous les jours ».'));
             return;
@@ -447,6 +493,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 const putBody: Record<string, unknown> = {
                     departure_times: timesNorm,
                     notes: notesPayload,
+                    bus_model_id: scheduleForm.busModelId || null,
                 };
                 if (scheduleForm.recurrenceMode === 'all') {
                     putBody.day_of_week = null;
@@ -488,6 +535,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                 arrival_city: scheduleForm.arrival_city.trim(),
                 departure_times: timesNorm,
                 notes: notesPayload,
+                bus_model_id: scheduleForm.busModelId || null,
             };
 
             const daysApi: (number | null)[] = scheduleForm.recurrenceMode === 'all'
@@ -536,7 +584,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
         }
     };
 
-    const handleDeleteSchedule = async (id: number) => {
+    const handleDeleteSchedule = async (id: string | number) => {
         Alert.alert(t('message.confirm'), t('agenceVoyage.confirmDelete'), [
             { text: t('message.cancel'), style: 'cancel' },
             { text: t('message.delete'), style: 'destructive', onPress: async () => { try { await apiDelete(`/api/bus-tickets/agencies/schedules/${id}`); await loadSchedules(); } catch (e) { Alert.alert(t('message.error'), t('agenceVoyage.cannotDelete')); } } },
@@ -585,34 +633,36 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const renderOverview = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-            <View style={s.statsGrid}>
+            <View style={[s.statsGrid, isCompactAndroid && s.statsGridCompact]}>
                 {[
                     { label: t('agenceVoyageForm.destinations'), value: selectedDestinations.length, icon: 'map-pin', color: '#2563EB' },
                     { label: t('agenceVoyageForm.compagnies'), value: selectedCompagnies.length, icon: 'bus', color: '#F59E0B' },
                     { label: t('agenceVoyageForm.horaires'), value: schedules.length, icon: 'clock', color: '#10B981' },
                     { label: t('agenceVoyageForm.ticketsLabel'), value: agencyTickets.length, icon: 'ticket', color: '#EF4444' },
                 ].map((st, i) => (
-                    <View key={i} style={[s.statCard, { borderLeftColor: st.color }]}>
+                    <View key={i} style={[s.statCard, isCompactAndroid && s.statCardCompact, { borderLeftColor: st.color }]}>
                         <SafeIcon name={st.icon as any} size={18} color={st.color} />
-                        <Text style={s.statValue}>{st.value}</Text>
-                        <Text style={s.statLabel}>{st.label}</Text>
+                        <Text style={[s.statValue, isCompactAndroid && s.statValueCompact]}>{st.value}</Text>
+                        <Text style={[s.statLabel, isCompactAndroid && s.statLabelCompact]} numberOfLines={1}>{st.label}</Text>
                     </View>
                 ))}
             </View>
 
             {/* Quick Actions */}
-            <View style={s.quickRow}>
+            <View style={[s.quickRow, isCompactAndroid && s.quickRowCompact, isUltraCompact320 && s.quickRowUltra]}>
                 {[
-                    { label: t('agenceVoyageForm.ajouterHoraire'), icon: 'plus-circle', color: '#2563EB', onPress: () => { setEditingSchedule(null); setScheduleForm(emptyScheduleForm()); setShowScheduleModal(true); } },
-                    { label: t('agenceVoyageForm.monService'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
-                    { label: t('agenceVoyageForm.modelesBus'), icon: 'truck', color: '#8B5CF6', onPress: () => setActiveTab('bus') },
-                    { label: t('agenceVoyageForm.iaConseils'), icon: 'sparkles', color: '#7C3AED', onPress: handleAISuggest },
-                    { label: t('financialTracking.wallet') || 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
-                    { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
+                    { label: tr('agenceVoyageForm.ajouterHoraire', 'Ajouter horaire'), compactLabel: tr('agenceVoyageForm.ajouterHoraire', 'Horaire'), icon: 'plus-circle', color: '#2563EB', onPress: () => { setEditingSchedule(null); setScheduleForm(emptyScheduleForm()); setShowScheduleModal(true); } },
+                    { label: tr('agenceVoyageForm.monService', 'Mon service'), compactLabel: tr('agenceVoyageForm.monService', 'Service'), icon: 'settings', color: '#6B7280', onPress: () => setActiveTab('service') },
+                    { label: tr('agenceVoyageForm.modelesBus', 'Modeles bus'), compactLabel: tr('agenceVoyageForm.modelesBus', 'Bus'), icon: 'truck', color: '#8B5CF6', onPress: () => setActiveTab('bus') },
+                    { label: tr('agenceVoyageForm.iaConseils', 'IA Conseils'), compactLabel: tr('agenceVoyageForm.iaConseils', 'IA'), icon: 'sparkles', color: '#7C3AED', onPress: handleAISuggest },
+                    { label: tr('financialTracking.wallet', 'Portefeuille'), compactLabel: tr('financialTracking.wallet', 'Wallet'), icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
+                    { label: tr('common.sortir', 'Sortir'), compactLabel: tr('common.sortir', 'Sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
                 ].map((a, i) => (
-                    <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
-                        <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon as any} size={22} color={a.color} /></View>
-                        <Text style={s.quickLabel}>{a.label}</Text>
+                    <TouchableOpacity key={i} style={[s.quickAction, isCompactAndroid && s.quickActionCompact, isUltraCompact320 && s.quickActionUltra]} onPress={a.onPress}>
+                        <View style={[s.quickIcon, isCompactAndroid && s.quickIconCompact, isUltraCompact320 && s.quickIconUltra, { backgroundColor: a.color + '15' }]}><SafeIcon name={a.icon as any} size={isUltraCompact320 ? 18 : isCompactAndroid ? 20 : 22} color={a.color} /></View>
+                        <Text style={[s.quickLabel, isCompactAndroid && s.quickLabelCompact, isUltraCompact320 && s.quickLabelUltra]} numberOfLines={2}>
+                            {isCompactAndroid ? (a.compactLabel || a.label) : a.label}
+                        </Text>
                     </TouchableOpacity>
                 ))}
             </View>
@@ -728,6 +778,14 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const renderSchedulesTab = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+            <View style={[s.infoCard, { alignItems: 'flex-start', flexDirection: 'column' }]}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E3A8A' }}>
+                    {t('agenceVoyageForm.busScheduleLinkTitle', 'Lien bus ↔ horaire (comment ça marche)')}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#374151', lineHeight: 18 }}>
+                    {t('agenceVoyageForm.busScheduleLinkBody', '1) Créez un modèle de bus. 2) Dans “Horaires”, sélectionnez ce bus pour chaque horaire. 3) Générez les départs pour la recherche. 4) Le remplissage et les places occupées se suivent dans l’onglet Tickets/embarquement.')}
+                </Text>
+            </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                 <TouchableOpacity style={s.addBtn} onPress={() => { setEditingSchedule(null); setScheduleForm(emptyScheduleForm()); setShowScheduleModal(true); }}>
                     <SafeIcon name="plus" size={18} color="#fff" /><Text style={s.addBtnText}>{t('agenceVoyageFormScreen.ajouter')}</Text>
@@ -750,12 +808,44 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     schedules.map((sch: any, i: number) => (
                         <View key={i} style={s.scheduleCardFull}>
                             <View style={{ flex: 1 }}>
+                                {(() => {
+                                    const parsed = parseScheduleNotes(sch.notes);
+                                    const modelLabel = sch.bus_model_name || parsed.bus || t('agenceVoyageForm.busNonDefini', 'Bus non défini');
+                                    const occupied = Number(sch.occupied_seats || 0);
+                                    const total = Number(sch.total_seats || 0);
+                                    const nextDeparture = formatNextDeparture(sch.next_departure_at);
+                                    return (
+                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                                            <View style={[s.metaChip, s.metaChipOn]}>
+                                                <Text style={s.metaChipText}>{modelLabel}</Text>
+                                            </View>
+                                            {total > 0 ? (
+                                                <View style={s.metaChip}>
+                                                    <Text style={s.metaChipText}>{`${occupied}/${total} ${t('agenceVoyageForm.placesOccupees', 'places occupées')}`}</Text>
+                                                </View>
+                                            ) : null}
+                                            {parsed.carrier ? (
+                                                <View style={s.metaChip}>
+                                                    <Text style={s.metaChipText}>{parsed.carrier}</Text>
+                                                </View>
+                                            ) : null}
+                                            {nextDeparture ? (
+                                                <View style={s.metaChip}>
+                                                    <Text style={s.metaChipText}>{`${tr('agenceVoyageForm.prochainDepart', 'Prochain départ')}: ${nextDeparture}`}</Text>
+                                                </View>
+                                            ) : null}
+                                        </View>
+                                    );
+                                })()}
                                 <Text style={s.scheduleRoute}>{sch.departure_city} → {sch.arrival_city}</Text>
                                 <Text style={s.scheduleTimes}>{(sch.departure_times || []).join(' · ')}</Text>
                                 {sch.day_of_week !== null && sch.day_of_week !== undefined && (
                                     <Text style={s.scheduleDay}>{getDayLabel(dayOfWeekFromApi(Number(sch.day_of_week))!)}</Text>
                                 )}
                                 {sch.notes && <Text style={s.scheduleNotes}>{sch.notes}</Text>}
+                                <TouchableOpacity onPress={() => setActiveTab('tickets')} style={{ marginTop: 6 }}>
+                                    <Text style={s.seeAll}>{t('agenceVoyageForm.voirRemplissage', 'Voir remplissage / places occupées')}</Text>
+                                </TouchableOpacity>
                             </View>
                             <View style={{ flexDirection: 'row', gap: 8 }}>
                                 <TouchableOpacity onPress={() => {
@@ -769,7 +859,8 @@ const AgenceVoyageFormScreen: React.FC = () => {
                                         selectedDaysUi: (sch.day_of_week !== null && sch.day_of_week !== undefined) ? [dayOfWeekFromApi(Number(sch.day_of_week))!] : [],
                                         notes: parsed.clean,
                                         carrierName: parsed.carrier || '',
-                                        busModelName: parsed.bus,
+                                        busModelName: sch.bus_model_name || parsed.bus,
+                                        busModelId: sch.bus_model_id ? String(sch.bus_model_id) : null,
                                     });
                                     setShowScheduleModal(true);
                                 }}><SafeIcon name="edit" size={18} color="#2563EB" /></TouchableOpacity>
@@ -903,11 +994,15 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             {busModels.length > 0 && (
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 8 }}>
                                     <View style={{ flexDirection: 'row', gap: 8 }}>
-                                        <TouchableOpacity style={[s.metaChip, !scheduleForm.busModelName && s.metaChipOn]} onPress={() => setScheduleForm({ ...scheduleForm, busModelName: null })}>
+                                        <TouchableOpacity style={[s.metaChip, !scheduleForm.busModelId && s.metaChipOn]} onPress={() => setScheduleForm({ ...scheduleForm, busModelName: null, busModelId: null })}>
                                             <Text style={s.metaChipText}>{t('agenceVoyageForm.busParDefaut', 'Non spécifié')}</Text>
                                         </TouchableOpacity>
                                         {busModels.map((m, i) => (
-                                            <TouchableOpacity key={i} style={[s.metaChip, scheduleForm.busModelName === m.nom_modele && s.metaChipOn]} onPress={() => setScheduleForm({ ...scheduleForm, busModelName: m.nom_modele })}>
+                                            <TouchableOpacity
+                                                key={i}
+                                                style={[s.metaChip, scheduleForm.busModelId === m.id && s.metaChipOn]}
+                                                onPress={() => setScheduleForm({ ...scheduleForm, busModelName: m.nom_modele, busModelId: m.id || null })}
+                                            >
                                                 <Text style={s.metaChipText} numberOfLines={1}>{m.nom_modele}</Text>
                                             </TouchableOpacity>
                                         ))}
@@ -1076,12 +1171,23 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             <Text style={s.dashSub}>{t('agenceVoyageForm.destinationsEtHoraires', { destinations: selectedDestinations.length, dPlural: selectedDestinations.length > 1 ? 's' : '', schedules: schedules.length, sPlural: schedules.length > 1 ? 's' : '' })}</Text>
                         </View>
                     </View>
-                    <View style={s.tabsRow}>{tabs.map(t => (
-                        <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabOn]} onPress={() => setActiveTab(t.key)}>
-                            <SafeIcon name={t.icon as any} size={14} color={activeTab === t.key ? '#fff' : '#ffffff70'} />
-                            <Text style={[s.tabText, activeTab === t.key && s.tabTextOn]}>{t.label}</Text>
-                        </TouchableOpacity>
-                    ))}</View>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={[
+                            s.tabsRowContent,
+                            isCompactAndroid && s.tabsRowContentCompact,
+                            isUltraCompact320 && s.tabsRowContentUltra,
+                        ]}
+                        style={[s.tabsScroll, isUltraCompact320 && s.tabsScrollUltra]}
+                    >
+                        {tabs.map(t => (
+                            <TouchableOpacity key={t.key} style={[s.tab, isCompactAndroid && s.tabCompact, isUltraCompact320 && s.tabUltra, activeTab === t.key && s.tabOn]} onPress={() => setActiveTab(t.key)}>
+                                <SafeIcon name={t.icon as any} size={isUltraCompact320 ? 12 : 13} color={activeTab === t.key ? '#fff' : '#ffffffAA'} />
+                                <Text numberOfLines={1} style={[s.tabText, isCompactAndroid && s.tabTextCompact, isUltraCompact320 && s.tabTextUltra, activeTab === t.key && s.tabTextOn]}>{t.label}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
                 </LinearGradient>
                 <View style={s.dashContent}>
                     {activeTab === 'overview' && renderOverview()}
@@ -1117,27 +1223,47 @@ const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F3F4F6' },
     loadingScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
     loadingText: { marginTop: 12, fontSize: 15, color: '#6B7280', fontWeight: '500' },
-    dashHeader: { paddingTop: 50, paddingBottom: 8, paddingHorizontal: 16 },
+    dashHeader: { paddingTop: 50, paddingBottom: 10, paddingHorizontal: 16 },
     dashHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
     backBtn: { marginRight: 12, padding: 4 },
-    dashTitle: { fontSize: 22, fontWeight: '700', color: '#fff' },
-    dashSub: { fontSize: 13, color: '#ffffffCC', marginTop: 2 },
+    dashTitle: { fontSize: 22, fontWeight: '700', color: '#fff', flexShrink: 1, lineHeight: 28 },
+    dashSub: { fontSize: 13, color: '#ffffffCC', marginTop: 2, flexShrink: 1 },
     dashContent: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
     createHeader: { paddingTop: 50, paddingBottom: 16, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' },
     createTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
-    tabsRow: { flexDirection: 'row', gap: 4, paddingBottom: 8 },
-    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 8, backgroundColor: '#ffffff15' },
+    tabsScroll: { marginHorizontal: -2 },
+    tabsScrollUltra: { marginHorizontal: -4 },
+    tabsRowContent: { flexDirection: 'row', gap: 6, paddingBottom: 8, paddingHorizontal: 2 },
+    tabsRowContentCompact: { gap: 5, paddingBottom: 6 },
+    tabsRowContentUltra: { gap: 4, paddingBottom: 4, paddingHorizontal: 1 },
+    tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: '#ffffff15', minWidth: 82 },
+    tabCompact: { minWidth: 78, paddingHorizontal: 9, paddingVertical: 7 },
+    tabUltra: { minWidth: 70, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 9, gap: 3 },
     tabOn: { backgroundColor: '#ffffff30' },
-    tabText: { fontSize: 11, color: '#ffffff70', fontWeight: '500' },
+    tabText: { fontSize: 11, color: '#ffffffAA', fontWeight: '600', maxWidth: 90 },
+    tabTextCompact: { maxWidth: 84 },
+    tabTextUltra: { fontSize: 10, maxWidth: 70 },
     tabTextOn: { color: '#fff', fontWeight: '700' },
     statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+    statsGridCompact: { gap: 6, marginBottom: 14 },
     statCard: { flex: 1, minWidth: '45%', backgroundColor: '#fff', borderRadius: 12, padding: 14, borderLeftWidth: 3, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
+    statCardCompact: { minWidth: '47%', padding: 10, borderRadius: 10 },
     statValue: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 8 },
+    statValueCompact: { fontSize: 18, marginTop: 6 },
     statLabel: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    statLabelCompact: { fontSize: 11 },
     quickRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    quickRowCompact: { gap: 8, marginBottom: 14 },
+    quickRowUltra: { gap: 6, marginBottom: 12 },
     quickAction: { flex: 1, alignItems: 'center', gap: 6 },
+    quickActionCompact: { gap: 4 },
+    quickActionUltra: { gap: 3 },
     quickIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+    quickIconCompact: { width: 42, height: 42, borderRadius: 12 },
+    quickIconUltra: { width: 36, height: 36, borderRadius: 10 },
     quickLabel: { fontSize: 11, color: '#374151', fontWeight: '500', textAlign: 'center' },
+    quickLabelCompact: { fontSize: 10, lineHeight: 13 },
+    quickLabelUltra: { fontSize: 9, lineHeight: 12 },
     sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
     sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     seeAll: { fontSize: 13, color: '#2563EB', fontWeight: '600' },

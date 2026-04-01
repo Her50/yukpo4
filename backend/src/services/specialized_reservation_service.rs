@@ -54,6 +54,35 @@ impl SpecializedReservationService {
                     }
                 }
             }
+            "restaurant" => {
+                if let Some(table_id) = details.get("table_id").and_then(|v| v.as_i64()) {
+                    let cap: Option<i32> = sqlx::query_scalar(
+                        r#"
+                        SELECT capacity FROM restaurant_tables
+                        WHERE id = $1 AND service_id = $2 AND is_active = TRUE
+                        "#,
+                    )
+                    .bind(table_id as i32)
+                    .bind(service_id)
+                    .fetch_optional(&*self.pool)
+                    .await?;
+
+                    if cap.is_none() {
+                        return Err(AppError::BadRequest(
+                            "Table inconnue ou inactive pour ce restaurant".to_string(),
+                        ));
+                    }
+                    let people = details["people_count"].as_i64().unwrap_or(1) as i32;
+                    if let Some(c) = cap {
+                        if people > c {
+                            return Err(AppError::BadRequest(format!(
+                                "Nombre de couverts supérieur à la capacité de la table ({})",
+                                c
+                            )));
+                        }
+                    }
+                }
+            }
             "hopital" | "laboratoire" => {
                 // Vérifier si le service accepte les RDV en ligne
                 let rdv_enabled = if service_type == "hopital" {

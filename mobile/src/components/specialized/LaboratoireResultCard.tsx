@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
+import ServiceCardActions from './ServiceCardActions';
 
 interface LaboratoireResultCardProps {
     laboratory: {
@@ -151,6 +152,14 @@ const LaboratoireResultCard: React.FC<LaboratoireResultCardProps> = ({ laborator
                     )}
                 </View>
             </View>
+            {/* ── Partage · Avis · Chat ─────────────────────────────────── */}
+            <ServiceCardActions
+                serviceId={laboratory.service_id}
+                serviceTitle={laboratory.nom}
+                serviceType="laboratoire"
+                serviceDescription={laboratory.analyses_disponibles?.slice(0, 2).join(', ')}
+                whatsapp={laboratory.whatsapp}
+            />
         </TouchableOpacity>
     );
 };

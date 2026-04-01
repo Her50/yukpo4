@@ -15,6 +15,7 @@ import { mediaService } from '../../services/mediaService';
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import ServiceCardActions from './ServiceCardActions';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -259,6 +260,14 @@ const ImmobilierResultCard: React.FC<ImmobilierResultCardProps> = ({ property, o
                     </View>
                 </View>
             </View>
+            {/* ── Partage · Avis · Chat ─────────────────────────────────── */}
+            <ServiceCardActions
+                serviceId={property.service_id}
+                serviceTitle={property.titre}
+                serviceType="immobilier"
+                serviceDescription={[property.type_bien, property.ville].filter(Boolean).join(' · ')}
+                whatsapp={property.whatsapp}
+            />
         </TouchableOpacity>
     );
 };

@@ -70,6 +70,25 @@ pub fn hotel_room_management_routes(_state: Arc<AppState>) -> Router<Arc<AppStat
             "/api/hotel/properties/{property_id}/blockages/manual",
             get(hotel_room_management_controller::list_manual_blockages),
         )
+        // Inventaire unités/chambres
+        .route(
+            "/api/hotel/properties/{property_id}/units",
+            get(hotel_room_management_controller::list_property_units)
+                .post(hotel_room_management_controller::create_property_unit),
+        )
+        .route(
+            "/api/hotel/units/{unit_id}",
+            axum::routing::put(hotel_room_management_controller::update_property_unit)
+                .delete(hotel_room_management_controller::delete_property_unit),
+        )
+        .route(
+            "/api/hotel/properties/{property_id}/units/available",
+            get(hotel_room_management_controller::list_available_units_for_dates),
+        )
+        .route(
+            "/api/hotel/properties/{property_id}/units/plan",
+            get(hotel_room_management_controller::get_units_plan_status),
+        )
         // IA tarification et insights
         .route(
             "/api/hotel/units/{unit_id}/ai-pricing",

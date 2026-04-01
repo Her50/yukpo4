@@ -94,6 +94,7 @@ const PartnerRegisterScreen: React.FC = () => {
     { value: 'livraison_courses_marche', label: t('partnerRegister.livraisonCoursesAuMarche') }, // ✅ NOUVEAU: Type partenaire pour courses au marché (coursier spécialisé)
     { value: 'meuble', label: t('partnerRegister.meubleLocationMeublee') },
     { value: 'pharmacie', label: 'Pharmacie' },
+    { value: 'restaurant', label: 'Restaurant' },
     { value: 'supermarche', label: t('partnerRegister.supermarche') },
     { value: 'telecom', label: t('partnerRegister.telecom') },
     { value: 'transport', label: 'Transport' },
@@ -203,6 +204,12 @@ const PartnerRegisterScreen: React.FC = () => {
     // ✅ RENFORCÉ: Validation stricte du type de partenaire
     if (!form.partner_type || form.partner_type.trim() === '') {
       setError(t('partnerRegister.leTypeDetablissementEstObligatoireVeuillezSelectionner'));
+      return;
+    }
+
+    // ✅ Validation WhatsApp obligatoire
+    if (!form.partner_phone || form.partner_phone.trim() === '') {
+      setError(t('partnerRegister.leNumeroWhatsAppEstObligatoire', 'Le numéro WhatsApp de l\'établissement est obligatoire'));
       return;
     }
 
@@ -383,10 +390,8 @@ const PartnerRegisterScreen: React.FC = () => {
             />
 
             <Text style={styles.label}>
-              {t('partnerRegister.indicatifEtTelephoneEtablissement', 'Indicatif pays et numéro de l\'établissement')}{' '}
-              <Text style={styles.optionalHint}>
-                ({t('partnerRegister.optionnel', 'optionnel')})
-              </Text>
+              {t('partnerRegister.numeroWhatsAppEtablissement', 'Numéro WhatsApp de l\'établissement')}{' '}
+              <Text style={styles.requiredStar}>*</Text>
             </Text>
             <View style={styles.phoneRow}>
               <View style={styles.phoneCountryPickerWrap}>
@@ -406,7 +411,7 @@ const PartnerRegisterScreen: React.FC = () => {
                 </Picker>
               </View>
               <TextInput
-                label={t('partnerRegister.numeroLocal', 'Numéro local')}
+                label={t('partnerRegister.numeroWhatsApp', 'Numéro WhatsApp')}
                 value={form.partner_phone}
                 onChangeText={(text) => setForm({ ...form, partner_phone: text.replace(/\D/g, '') })}
                 keyboardType="phone-pad"
@@ -950,6 +955,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     color: theme.colors.text,
+  },
+  requiredStar: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#EF4444',
   },
   optionalHint: {
     fontSize: 13,

@@ -4,10 +4,12 @@
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::models::delivery_model::DeliveryApplicationStatus;
+use crate::services::delivery_service::{CreateDeliveryParams, LocationInput, NewDeliveryParcelInput};
 use crate::services::delivery_ai_eta_service::DeliveryAIETAService;
 use crate::services::interior_design_ai_service::InteriorDesignAIService;
 use crate::services::land_analysis_ai_service::LandAnalysisAIService;
 use crate::services::moving_ai_service::MovingAIService;
+use crate::services::push_notification_service;
 use crate::services::real_estate_ai_service::RealEstateAIService;
 use crate::state::AppState;
 use axum::{
@@ -179,7 +181,7 @@ pub async fn list_covoiturages_public(
                   c.nombre_places, c.places_disponibles, c.prix_par_place, c.devise,
                   c.bagages_autorises, c.animaux_autorises, c.fumeur_autorise, c.climatisation,
                   c.statut, c.is_recurring, c.recurrence_type, c.created_at,
-                  u.name as driver_name
+                  COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as driver_name
            FROM covoiturages c
            JOIN services s ON s.id = c.service_id
            LEFT JOIN users u ON u.id = c.user_id
@@ -3946,7 +3948,7 @@ pub async fn get_taxi_details(
                   t.paiement_mobile_money, t.paiement_carte, t.climatisation, t.wifi,
                   t.is_on_duty, t.created_at AS taxi_created_at, t.updated_at AS taxi_updated_at,
                   s.nom AS service_nom, s.ville, s.quartier, s.gps AS service_gps,
-                  u.name AS owner_name
+                  COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) AS owner_name
            FROM taxis_ville t
            INNER JOIN services s ON s.id = t.service_id
            LEFT JOIN users u ON u.id = t.user_id
@@ -4031,7 +4033,7 @@ pub async fn search_covoiturages(
                   c.nombre_places, c.places_disponibles, c.prix_par_place, c.devise,
                   c.bagages_autorises, c.animaux_autorises, c.fumeur_autorise, c.climatisation,
                   c.statut, c.is_recurring, c.recurrence_type, c.created_at,
-                  u.name as driver_name
+                  COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as driver_name
            FROM covoiturages c
            JOIN services s ON s.id = c.service_id
            LEFT JOIN users u ON u.id = c.user_id
@@ -4126,7 +4128,7 @@ pub async fn search_covoiturages_nearby(
                   c.nombre_places, c.places_disponibles, c.prix_par_place, c.devise,
                   c.bagages_autorises, c.animaux_autorises, c.fumeur_autorise, c.climatisation,
                   c.statut, c.is_recurring, c.recurrence_type, c.created_at,
-                  u.name as driver_name
+                  COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as driver_name
            FROM covoiturages c
            JOIN services s ON s.id = c.service_id
            LEFT JOIN users u ON u.id = c.user_id
@@ -4233,7 +4235,7 @@ pub async fn get_covoiturage_details(
                   c.bagages_autorises, c.animaux_autorises, c.fumeur_autorise, c.climatisation,
                   c.statut, c.is_active, c.is_recurring, c.recurrence_type,
                   c.recurrence_days, c.recurrence_end_date, c.created_at,
-                  u.name as driver_name, u.avatar_url as driver_avatar
+                  COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as driver_name, u.avatar_url as driver_avatar
            FROM covoiturages c
            JOIN services s ON s.id = c.service_id
            LEFT JOIN users u ON u.id = c.user_id
@@ -4297,7 +4299,7 @@ pub async fn get_covoiturage_reviews(
 
     let rows = sqlx::query(
         r#"SELECT pc.id, pc.user_id, pc.rating, pc.content, pc.created_at,
-                  u.name as user_name, u.avatar_url as user_avatar
+                  COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as user_name, u.avatar_url as user_avatar
            FROM product_comments pc
            LEFT JOIN users u ON u.id = pc.user_id
            WHERE pc.service_id = $1 AND pc.parent_comment_id IS NULL
@@ -5406,13 +5408,16 @@ pub struct CreatePharmacyOrderRequest {
     pub medications: Vec<CreatePharmacyOrderItem>,
     pub delivery_method: Option<String>, // pickup | delivery
     pub delivery_address: Option<String>,
+    pub delivery_fee_cents: Option<i64>,
+    pub reservation_id: Option<String>,
+    pub idempotency_key: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePharmacyOrderItem {
+    pub product_id: Option<i32>,
     pub medication_name: String,
     pub quantity: i32,
-    pub price: f64,
 }
 
 pub async fn create_pharmacy_order(
@@ -5426,21 +5431,29 @@ pub async fn create_pharmacy_order(
         pharmacy_id, user_id
     );
 
-    // Vérifier pharmacie existe
-    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pharmacies WHERE id = $1)")
-        .bind(pharmacy_id)
-        .fetch_one(&state.pg)
-        .await
-        .map_err(|e| {
-            error!(
-                "[create_pharmacy_order] Erreur vérification pharmacie: {}",
-                e
-            );
-            AppError::Internal("Erreur vérification pharmacie".to_string())
-        })?;
-    if !exists {
-        return Err(AppError::NotFound("Pharmacie non trouvée".to_string()));
-    }
+    let pharmacy_row = sqlx::query(
+        r#"
+        SELECT id, service_id, user_id, nom, gps
+        FROM pharmacies
+        WHERE id = $1
+        "#,
+    )
+    .bind(pharmacy_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!(
+            "[create_pharmacy_order] Erreur vérification pharmacie: {}",
+            e
+        );
+        AppError::Internal("Erreur vérification pharmacie".to_string())
+    })?
+    .ok_or_else(|| AppError::NotFound("Pharmacie non trouvée".to_string()))?;
+
+    let service_id = pharmacy_row.get::<i32, _>("service_id");
+    let pharmacy_owner_user_id = pharmacy_row.get::<i32, _>("user_id");
+    let pharmacy_name = pharmacy_row.get::<String, _>("nom");
+    let pharmacy_gps = pharmacy_row.get::<Option<String>, _>("gps");
 
     if request.medications.is_empty() {
         return Err(AppError::BadRequest(
@@ -5462,10 +5475,46 @@ pub async fn create_pharmacy_order(
         ));
     }
 
-    let mut total: f64 = 0.0;
-    for it in &request.medications {
-        let q = it.quantity.max(1) as f64;
-        total += it.price.max(0.0) * q;
+    let normalized_idempotency = request
+        .idempotency_key
+        .as_ref()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty());
+
+    if let Some(key) = &normalized_idempotency {
+        let existing_id: Option<uuid::Uuid> = sqlx::query_scalar(
+            r#"
+            SELECT id
+            FROM pharmacy_orders
+            WHERE user_id = $1 AND idempotency_key = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(user_id)
+        .bind(key)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[create_pharmacy_order] Erreur idempotency lookup: {}", e);
+            AppError::Internal("Erreur vérification idempotency".to_string())
+        })?;
+
+        if let Some(order_id) = existing_id {
+            return Ok((
+                StatusCode::OK,
+                Json(json!({
+                    "success": true,
+                    "data": {
+                        "order_id": order_id.to_string(),
+                        "status": "pending",
+                        "message": "Commande déjà créée (idempotency)"
+                    },
+                    "order_id": order_id.to_string(),
+                    "status": "pending",
+                    "message": "Commande déjà créée (idempotency)"
+                })),
+            ));
+        }
     }
 
     let mut tx = state.pg.begin().await.map_err(|e| {
@@ -5473,18 +5522,252 @@ pub async fn create_pharmacy_order(
         AppError::Internal("Erreur transaction".to_string())
     })?;
 
+    let mut line_items: Vec<(i32, String, i32, rust_decimal::Decimal)> = Vec::new();
+    let mut total_amount = rust_decimal::Decimal::ZERO;
+
+    for it in &request.medications {
+        let qty = it.quantity.max(1);
+        let product_row = if let Some(product_id) = it.product_id {
+            sqlx::query(
+                r#"
+                SELECT id, nom_produit, prix, stock
+                FROM pharmacy_products
+                WHERE id = $1
+                  AND pharmacy_service_id = $2
+                FOR UPDATE
+                "#,
+            )
+            .bind(product_id)
+            .bind(service_id)
+            .fetch_optional(&mut *tx)
+            .await
+        } else {
+            sqlx::query(
+                r#"
+                SELECT id, nom_produit, prix, stock
+                FROM pharmacy_products
+                WHERE pharmacy_service_id = $1
+                  AND lower(nom_produit) LIKE lower($2)
+                ORDER BY stock DESC, updated_at DESC
+                LIMIT 1
+                FOR UPDATE
+                "#,
+            )
+            .bind(service_id)
+            .bind(format!("%{}%", it.medication_name.trim()))
+            .fetch_optional(&mut *tx)
+            .await
+        }
+        .map_err(|e| {
+            error!("[create_pharmacy_order] Erreur chargement produit: {}", e);
+            AppError::Internal("Erreur chargement produit".to_string())
+        })?
+        .ok_or_else(|| {
+            AppError::BadRequest(format!("Médicament introuvable: {}", it.medication_name))
+        })?;
+
+        let product_id = product_row.get::<i32, _>("id");
+        let product_name = product_row.get::<String, _>("nom_produit");
+        let unit_price = product_row.get::<rust_decimal::Decimal, _>("prix");
+        let current_stock = product_row.get::<i32, _>("stock");
+
+        if current_stock < qty {
+            return Err(AppError::BadRequest(format!(
+                "Stock insuffisant pour {} (stock: {}, demandé: {})",
+                product_name, current_stock, qty
+            )));
+        }
+
+        let new_stock = current_stock - qty;
+        sqlx::query(
+            r#"
+            UPDATE pharmacy_products
+            SET stock = $1, disponible = ($1 > 0), updated_at = NOW()
+            WHERE id = $2
+            "#,
+        )
+        .bind(new_stock)
+        .bind(product_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            error!("[create_pharmacy_order] Erreur décrément stock: {}", e);
+            AppError::Internal("Erreur mise à jour stock".to_string())
+        })?;
+
+        total_amount += unit_price * rust_decimal::Decimal::from(qty);
+        line_items.push((product_id, product_name, qty, unit_price));
+    }
+
+    let medication_total_cents: i64 = (total_amount * rust_decimal::Decimal::new(100, 0))
+        .round_dp(0)
+        .to_string()
+        .parse::<i64>()
+        .unwrap_or(0);
+    let delivery_fee_cents = request.delivery_fee_cents.unwrap_or(0).max(0);
+    let delivery_fee_decimal = rust_decimal::Decimal::new(delivery_fee_cents, 2);
+    let total_reserved_cents = medication_total_cents + delivery_fee_cents;
+
+    let _ = sqlx::query(
+        r#"
+        INSERT INTO user_wallets (user_id, balance_cents, currency, created_at, updated_at)
+        VALUES ($1, 0, 'XAF', NOW(), NOW())
+        ON CONFLICT (user_id, currency) DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await;
+
+    let balance_before: i64 = sqlx::query_scalar(
+        r#"SELECT COALESCE(balance_cents, 0) FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'"#,
+    )
+    .bind(user_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| {
+        error!("[create_pharmacy_order] Erreur lecture wallet: {}", e);
+        AppError::Internal("Erreur lecture wallet".to_string())
+    })?;
+
+    if balance_before < total_reserved_cents {
+        return Err(AppError::BadRequest(format!(
+            "Solde wallet insuffisant. Requis: {} XAF, disponible: {} XAF",
+            total_reserved_cents / 100,
+            balance_before / 100
+        )));
+    }
+
+    let balance_after = balance_before - total_reserved_cents;
+    sqlx::query(
+        r#"
+        UPDATE user_wallets
+        SET balance_cents = $1, updated_at = NOW()
+        WHERE user_id = $2 AND currency = 'XAF'
+        "#,
+    )
+    .bind(balance_after)
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| {
+        error!("[create_pharmacy_order] Erreur débit wallet: {}", e);
+        AppError::Internal("Erreur réservation wallet".to_string())
+    })?;
+
+    let wallet_reference = format!("pharmacy_order:{}:{}", pharmacy_id, uuid::Uuid::new_v4());
+    sqlx::query(
+        r#"
+        INSERT INTO wallet_transactions (
+            user_id, transaction_type, amount_cents, balance_before_cents, balance_after_cents,
+            currency, reference_type, reference_id, description, created_at
+        )
+        VALUES ($1, 'debit', $2, $3, $4, 'XAF', 'pharmacy_order_reservation', $5, $6, NOW())
+        "#,
+    )
+    .bind(user_id)
+    .bind(total_reserved_cents)
+    .bind(balance_before)
+    .bind(balance_after)
+    .bind(&wallet_reference)
+    .bind(format!(
+        "Réservation wallet commande pharmacie #{} ({})",
+        pharmacy_id, delivery_method
+    ))
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| {
+        error!("[create_pharmacy_order] Erreur log wallet txn: {}", e);
+        AppError::Internal("Erreur traçabilité wallet".to_string())
+    })?;
+
+    let mut linked_delivery_id: Option<uuid::Uuid> = None;
+    if delivery_method == "delivery" {
+        let user_gps: Option<String> = sqlx::query_scalar("SELECT gps FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| {
+                error!("[create_pharmacy_order] Erreur lecture gps user: {}", e);
+                AppError::Internal("Erreur lecture position utilisateur".to_string())
+            })?
+            .flatten();
+
+        let pickup = pharmacy_gps
+            .as_deref()
+            .and_then(parse_gps)
+            .ok_or_else(|| AppError::BadRequest("GPS pharmacie introuvable".to_string()))?;
+        let dropoff = user_gps
+            .as_deref()
+            .and_then(parse_gps)
+            .ok_or_else(|| AppError::BadRequest("GPS utilisateur introuvable".to_string()))?;
+
+        let delivery_summary = state
+            .delivery_service
+            .create_delivery_request(CreateDeliveryParams {
+                creator_id: user_id,
+                parcel: NewDeliveryParcelInput {
+                    type_id: None,
+                    weight_kg: None,
+                    volume_cm3: None,
+                    declared_value: None,
+                    notes: Some("Commande pharmacie Yukpo".to_string()),
+                    photos: serde_json::Value::Array(vec![]),
+                    constraints: serde_json::Value::Object(Default::default()),
+                },
+                pickup: LocationInput {
+                    latitude: pickup.0,
+                    longitude: pickup.1,
+                    address: Some(format!("{} (pharmacie)", pharmacy_name)),
+                },
+                dropoff: LocationInput {
+                    latitude: dropoff.0,
+                    longitude: dropoff.1,
+                    address: request.delivery_address.clone(),
+                },
+                recipient: None,
+                distance_meters: None,
+                estimated_duration_seconds: None,
+                metadata: json!({
+                    "source": "pharmacy_order",
+                    "pharmacy_id": pharmacy_id,
+                    "service_id": service_id
+                }),
+                initial_event_payload: json!({
+                    "source": "pharmacy_order"
+                }),
+            })
+            .await
+            .map_err(|e| {
+                error!(
+                    "[create_pharmacy_order] Erreur création livraison automatique: {}",
+                    e
+                );
+                AppError::Internal("Erreur création livraison".to_string())
+            })?;
+        linked_delivery_id = Some(delivery_summary.id);
+    }
+
     let order_id: uuid::Uuid = sqlx::query_scalar(
         r#"
-        INSERT INTO pharmacy_orders (pharmacy_id, user_id, status, total_amount, delivery_method, delivery_address)
-        VALUES ($1, $2, 'pending', $3, $4, $5)
+        INSERT INTO pharmacy_orders (
+            pharmacy_id, user_id, status, total_amount, delivery_method, delivery_address, idempotency_key,
+            delivery_fee, payment_status, wallet_reserved_cents, wallet_reference, linked_delivery_id
+        )
+        VALUES ($1, $2, 'pending', $3, $4, $5, $6, $7, 'paid', $8, $9, $10)
         RETURNING id
         "#,
     )
     .bind(pharmacy_id)
     .bind(user_id)
-    .bind(rust_decimal::Decimal::from_f64_retain(total).unwrap_or_else(|| rust_decimal::Decimal::ZERO))
+    .bind(total_amount)
     .bind(&delivery_method)
     .bind(request.delivery_address.as_ref())
+    .bind(normalized_idempotency.as_ref())
+    .bind(delivery_fee_decimal)
+    .bind(total_reserved_cents)
+    .bind(&wallet_reference)
+    .bind(linked_delivery_id)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| {
@@ -5492,21 +5775,18 @@ pub async fn create_pharmacy_order(
         AppError::Internal("Erreur création commande".to_string())
     })?;
 
-    for it in &request.medications {
-        let qty = it.quantity.max(1);
-        let unit_price = rust_decimal::Decimal::from_f64_retain(it.price.max(0.0))
-            .unwrap_or_else(|| rust_decimal::Decimal::ZERO);
-
+    for (product_id, medication_name, qty, unit_price) in &line_items {
         sqlx::query(
             r#"
-            INSERT INTO pharmacy_order_items (order_id, medication_name, quantity, unit_price)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO pharmacy_order_items (order_id, product_id, medication_name, quantity, unit_price)
+            VALUES ($1, $2, $3, $4, $5)
             "#,
         )
         .bind(order_id)
-        .bind(it.medication_name.trim())
-        .bind(qty)
-        .bind(unit_price)
+        .bind(*product_id)
+        .bind(medication_name)
+        .bind(*qty)
+        .bind(*unit_price)
         .execute(&mut *tx)
         .await
         .map_err(|e| {
@@ -5515,10 +5795,61 @@ pub async fn create_pharmacy_order(
         })?;
     }
 
+    if let Some(res_id) = request
+        .reservation_id
+        .as_ref()
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+    {
+        let updated = sqlx::query(
+            r#"
+            UPDATE pharmacy_medication_reservations
+            SET status = 'fulfilled',
+                consumed_at = NOW(),
+                order_id = $1
+            WHERE id = $2::uuid
+              AND pharmacy_id = $3
+              AND user_id = $4
+              AND status = 'active'
+              AND expires_at > NOW()
+            "#,
+        )
+        .bind(order_id)
+        .bind(res_id)
+        .bind(pharmacy_id)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            error!("[create_pharmacy_order] Erreur consommation réservation: {}", e);
+            AppError::Internal("Erreur mise à jour réservation".to_string())
+        })?;
+
+        if updated.rows_affected() == 0 {
+            return Err(AppError::BadRequest(
+                "reservation_id invalide, expirée ou déjà consommée".to_string(),
+            ));
+        }
+    }
+
     tx.commit().await.map_err(|e| {
         error!("[create_pharmacy_order] Erreur commit: {}", e);
         AppError::Internal("Erreur finalisation commande".to_string())
     })?;
+
+    let _ = push_notification_service::send_push_notification(
+        &state.pg,
+        pharmacy_owner_user_id,
+        "Nouvelle commande pharmacie".to_string(),
+        format!("Nouvelle commande #{} à traiter", order_id),
+        Some(json!({
+            "type": "pharmacy_new_order",
+            "order_id": order_id.to_string(),
+            "pharmacy_id": pharmacy_id
+        })),
+        Some("default".to_string()),
+    )
+    .await;
 
     Ok((
         StatusCode::CREATED,
@@ -5526,14 +5857,218 @@ pub async fn create_pharmacy_order(
             "success": true,
             "data": {
                 "order_id": order_id.to_string(),
-                "total_amount": format!("{:.2}", total),
+                "total_amount": total_amount.to_string(),
+                "wallet_reserved_cents": total_reserved_cents,
+                "linked_delivery_id": linked_delivery_id.map(|id| id.to_string()),
                 "status": "pending",
                 "message": "Commande créée"
             },
             "order_id": order_id.to_string(),
-            "total_amount": format!("{:.2}", total),
+            "total_amount": total_amount.to_string(),
+            "wallet_reserved_cents": total_reserved_cents,
+            "linked_delivery_id": linked_delivery_id.map(|id| id.to_string()),
             "status": "pending",
             "message": "Commande créée"
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PharmacyFinancialMovementsQuery {
+    pub limit: Option<i64>,
+}
+
+/// Espace pharmacien: mouvements financiers détaillés (ventes + wallet)
+pub async fn get_pharmacy_financial_movements(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Query(query): Query<PharmacyFinancialMovementsQuery>,
+) -> AppResult<impl IntoResponse> {
+    let limit = query.limit.unwrap_or(50).clamp(1, 200);
+
+    let pharmacy = sqlx::query(
+        "SELECT id FROM pharmacies WHERE user_id = $1 ORDER BY id ASC LIMIT 1",
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur chargement pharmacie: {e}")))?
+    .ok_or_else(|| AppError::BadRequest("Aucune pharmacie liée à ce compte".to_string()))?;
+    let pharmacy_id: i32 = pharmacy.get("id");
+
+    let orders = sqlx::query(
+        r#"
+        SELECT id, status, payment_status, total_amount, delivery_fee, created_at
+        FROM pharmacy_orders
+        WHERE pharmacy_id = $1
+        ORDER BY created_at DESC
+        LIMIT $2
+        "#,
+    )
+    .bind(pharmacy_id)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let wallet_moves = sqlx::query(
+        r#"
+        SELECT id, amount_cents, COALESCE(transaction_type, direction, 'unknown') AS tx_type,
+               reference_type, reference_id, description, created_at
+        FROM wallet_transactions
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+        LIMIT $2
+        "#,
+    )
+    .bind(user_id)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let total_sales: Option<rust_decimal::Decimal> = sqlx::query_scalar(
+        r#"
+        SELECT COALESCE(SUM(total_amount + COALESCE(delivery_fee, 0)), 0)
+        FROM pharmacy_orders
+        WHERE pharmacy_id = $1
+          AND status <> 'cancelled'
+        "#,
+    )
+    .bind(pharmacy_id)
+    .fetch_optional(&state.pg)
+    .await
+    .unwrap_or(None);
+
+    let wallet_balance: i64 = sqlx::query_scalar(
+        r#"SELECT COALESCE(balance_cents, 0) FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'"#,
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .unwrap_or(Some(0))
+    .unwrap_or(0);
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "pharmacy_id": pharmacy_id,
+            "summary": {
+                "wallet_balance_cents": wallet_balance,
+                "total_sales_xaf": total_sales.unwrap_or(rust_decimal::Decimal::ZERO).to_string(),
+                "orders_count": orders.len()
+            },
+            "orders": orders.into_iter().map(|row| json!({
+                "id": row.try_get::<uuid::Uuid, _>("id").ok().map(|v| v.to_string()),
+                "status": row.try_get::<String, _>("status").unwrap_or_else(|_| "unknown".to_string()),
+                "payment_status": row.try_get::<Option<String>, _>("payment_status").ok().flatten(),
+                "total_amount": row.try_get::<rust_decimal::Decimal, _>("total_amount").unwrap_or(rust_decimal::Decimal::ZERO).to_string(),
+                "delivery_fee": row.try_get::<Option<rust_decimal::Decimal>, _>("delivery_fee").ok().flatten().unwrap_or(rust_decimal::Decimal::ZERO).to_string(),
+                "created_at": row.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok().map(|v| v.to_rfc3339()),
+            })).collect::<Vec<_>>(),
+            "wallet_movements": wallet_moves.into_iter().map(|row| json!({
+                "id": row.try_get::<i64, _>("id").unwrap_or(0),
+                "amount_cents": row.try_get::<i64, _>("amount_cents").unwrap_or(0),
+                "transaction_type": row.try_get::<String, _>("tx_type").unwrap_or_else(|_| "unknown".to_string()),
+                "reference_type": row.try_get::<Option<String>, _>("reference_type").ok().flatten(),
+                "reference_id": row.try_get::<Option<String>, _>("reference_id").ok().flatten(),
+                "description": row.try_get::<Option<String>, _>("description").ok().flatten(),
+                "created_at": row.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok().map(|v| v.to_rfc3339()),
+            })).collect::<Vec<_>>()
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PharmacyWithdrawRequest {
+    pub amount_cents: i64,
+    pub method: Option<String>,
+    pub phone: Option<String>,
+}
+
+/// Espace pharmacien: demande de retrait wallet
+pub async fn request_pharmacy_withdrawal(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<PharmacyWithdrawRequest>,
+) -> AppResult<impl IntoResponse> {
+    if payload.amount_cents <= 0 {
+        return Err(AppError::BadRequest("Montant de retrait invalide".to_string()));
+    }
+
+    let mut tx = state.pg.begin().await.map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let current_balance: i64 = sqlx::query_scalar(
+        r#"SELECT COALESCE(balance_cents, 0) FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'"#,
+    )
+    .bind(user_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .unwrap_or(Some(0))
+    .unwrap_or(0);
+
+    if current_balance < payload.amount_cents {
+        return Err(AppError::BadRequest("Solde insuffisant pour retrait".to_string()));
+    }
+
+    let new_balance = current_balance - payload.amount_cents;
+    sqlx::query(
+        "UPDATE user_wallets SET balance_cents = $1, updated_at = NOW() WHERE user_id = $2 AND currency = 'XAF'",
+    )
+    .bind(new_balance)
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur débit wallet: {e}")))?;
+
+    let reference = uuid::Uuid::new_v4().to_string();
+    sqlx::query(
+        r#"
+        INSERT INTO wallet_transactions (
+            user_id, transaction_type, amount_cents, balance_before_cents, balance_after_cents,
+            currency, reference_type, reference_id, description, created_at
+        )
+        VALUES ($1, 'debit', $2, $3, $4, 'XAF', 'pharmacy_withdrawal', $5, $6, NOW())
+        "#,
+    )
+    .bind(user_id)
+    .bind(payload.amount_cents)
+    .bind(current_balance)
+    .bind(new_balance)
+    .bind(&reference)
+    .bind("Demande de retrait pharmacien")
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur transaction retrait: {e}")))?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO disbursement_requests (
+            recipient_user_id, amount_cents, currency, recipient_phone, recipient_method, status, reason, metadata, created_at
+        )
+        VALUES ($1, $2, 'XAF', $3, $4, 'pending', 'pharmacy_withdrawal', $5, NOW())
+        "#,
+    )
+    .bind(user_id)
+    .bind(payload.amount_cents)
+    .bind(payload.phone.as_deref())
+    .bind(payload.method.as_deref().unwrap_or("mobile_money"))
+    .bind(json!({ "reference": reference }))
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur création demande payout: {e}")))?;
+
+    tx.commit().await.map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": "Demande de retrait enregistrée",
+            "reference": reference,
+            "amount_cents": payload.amount_cents,
+            "balance_after_cents": new_balance
         })),
     ))
 }
@@ -7109,7 +7644,7 @@ pub async fn get_my_trips(
                c.depart, c.destination, c.date_depart, c.heure_depart,
                c.prix_par_place, c.devise, c.type_vehicule, c.marque_modele,
                c.statut as trip_status,
-               u.name as driver_name
+               COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as driver_name
         FROM specialized_reservations sr
         JOIN covoiturages c ON c.service_id = sr.service_id
         LEFT JOIN users u ON u.id = c.user_id
@@ -7332,4 +7867,1828 @@ pub async fn book_laboratory(
             "message": "Rendez-vous laboratoire créé"
         })),
     ))
+}
+
+// ─── QR Code de réservation générique ─────────────────────────────────────────
+
+/// Génère un QR Code de validation pour une réservation existante.
+/// POST /api/reservations/{id}/qr-code
+pub async fn generate_reservation_qr_code(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(reservation_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[generate_reservation_qr_code] reservation_id={}, user_id={}",
+        reservation_id, user_id
+    );
+
+    // Vérifier que la réservation appartient à l'utilisateur et récupérer ses infos
+    let row = sqlx::query(
+        r#"
+        SELECT sr.id, sr.user_id, sr.service_type, sr.status,
+               sr.reservation_date, sr.reservation_time,
+               s.name AS service_name
+        FROM specialized_reservations sr
+        JOIN services s ON s.id = sr.service_id
+        WHERE sr.id = $1 AND sr.user_id = $2
+        "#,
+    )
+    .bind(reservation_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[generate_reservation_qr_code] DB error: {}", e);
+        AppError::Internal("Erreur récupération réservation".to_string())
+    })?
+    .ok_or_else(|| AppError::NotFound("Réservation non trouvée".to_string()))?;
+
+    let status: String = row.try_get("status").unwrap_or_default();
+    if status == "cancelled" {
+        return Err(AppError::BadRequest(
+            "Impossible de générer un QR pour une réservation annulée".to_string(),
+        ));
+    }
+
+    let service_type: String = row.try_get("service_type").unwrap_or_default();
+    let service_name: String = row.try_get("service_name").unwrap_or_default();
+    let reservation_date: Option<chrono::NaiveDate> = row.try_get("reservation_date").ok();
+    let reservation_time: Option<String> = row.try_get("reservation_time").ok();
+
+    // Construire le payload QR (sans données sensibles — pas de token dans ce payload)
+    let qr_payload = json!({
+        "type": "RESERVATION_YUKPOMNANG",
+        "id": reservation_id,
+        "user_id": user_id,
+        "service_type": service_type,
+        "service_name": service_name,
+        "date": reservation_date.map(|d| d.to_string()),
+        "time": reservation_time,
+        "status": status,
+        "generated_at": chrono::Utc::now().to_rfc3339(),
+    });
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "reservation_id": reservation_id,
+            "qr_payload": qr_payload.to_string(),
+            "message": "QR code généré — encodez qr_payload côté client"
+        })),
+    ))
+}
+
+/// Structure pour la requête de validation QR
+#[derive(Deserialize)]
+pub struct ValidateQrRequest {
+    pub qr_payload: String,
+}
+
+/// Valide un QR Code de réservation générique (scan par le prestataire).
+/// POST /api/reservations/validate-qr
+pub async fn validate_qr_code(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: validator_user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<ValidateQrRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[validate_qr_code] validator_user_id={} scanning QR",
+        validator_user_id
+    );
+
+    // Décoder le payload JSON du QR
+    let qr: serde_json::Value = serde_json::from_str(&payload.qr_payload).map_err(|_| {
+        AppError::BadRequest("QR code invalide (JSON malformé)".to_string())
+    })?;
+
+    // Vérifier le type
+    if qr.get("type").and_then(|v| v.as_str()) != Some("RESERVATION_YUKPOMNANG") {
+        return Err(AppError::BadRequest("QR code non reconnu".to_string()));
+    }
+
+    let reservation_id = qr
+        .get("id")
+        .and_then(|v| v.as_i64())
+        .ok_or_else(|| AppError::BadRequest("ID réservation manquant".to_string()))? as i32;
+
+    // Récupérer la réservation en base
+    let row = sqlx::query(
+        r#"
+        SELECT sr.id, sr.user_id, sr.service_type, sr.status,
+               sr.reservation_date, sr.reservation_time,
+               s.name AS service_name
+        FROM specialized_reservations sr
+        JOIN services s ON s.id = sr.service_id
+        WHERE sr.id = $1
+        "#,
+    )
+    .bind(reservation_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[validate_qr_code] DB error: {}", e);
+        AppError::Internal("Erreur vérification réservation".to_string())
+    })?
+    .ok_or_else(|| AppError::NotFound("Réservation introuvable".to_string()))?;
+
+    let status: String = row.try_get("status").unwrap_or_default();
+    let service_name: String = row.try_get("service_name").unwrap_or_default();
+    let is_valid = matches!(status.as_str(), "confirmed" | "pending");
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "valid": is_valid,
+            "reservation_id": reservation_id,
+            "status": status,
+            "service_name": service_name,
+            "message": if is_valid { "QR valide — réservation confirmée" } else { "QR invalide — statut: annulé ou expiré" }
+        })),
+    ))
+}
+
+// ============================================================================
+// ✅ 2026-04-01: TERRAIN — Gestion partenaire (création, mise à jour, visite)
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct CreateLandRequest {
+    pub service_id: i32,
+    pub titre: String,
+    pub description: Option<String>,
+    pub type_terrain: Option<String>, // "Résidentiel", "Commercial", "Agricole", "Industriel", "Mixte"
+    pub superficie_m2: f64,           // Obligatoire côté DB (NOT NULL)
+    pub adresse: Option<String>,
+    pub quartier: Option<String>,
+    pub ville: Option<String>,
+    pub gps: Option<String>,
+    pub prix_total: f64,              // Obligatoire côté DB (NOT NULL)
+    pub viabilise: Option<bool>,
+    pub acces_route: Option<bool>,
+    pub bornage: Option<bool>,
+    pub zonage: Option<String>,
+    pub telephone: Option<String>,
+    pub whatsapp: Option<String>,
+    pub email: Option<String>,
+    pub documents: Option<serde_json::Value>,
+}
+
+/// POST /api/immobilier/terrains (protégé JWT)
+/// Partenaire : créer une annonce de terrain
+pub async fn create_land(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(request): Json<CreateLandRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[create_land] user_id={}", user_id);
+
+    if request.titre.trim().is_empty() {
+        return Err(AppError::BadRequest("Le titre est requis".to_string()));
+    }
+
+    // Vérifier que le service appartient à l'utilisateur
+    let service_ok: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM services WHERE id = $1 AND user_id = $2 AND is_active = TRUE)",
+    )
+    .bind(request.service_id)
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if !service_ok {
+        return Err(AppError::Forbidden("Service non autorisé".to_string()));
+    }
+
+    let id: i32 = sqlx::query_scalar(
+        r#"
+        INSERT INTO land_properties
+            (service_id, user_id, titre, description, type_terrain, superficie_m2,
+             adresse, quartier, ville, gps, prix_total, viabilise, acces_route,
+             bornage, zonage, telephone, whatsapp, email, documents, is_active)
+        VALUES ($1, $2, $3, $4, COALESCE($5, 'Résidentiel'), $6,
+                $7, $8, $9, $10, $11,
+                COALESCE($12, FALSE), COALESCE($13, FALSE), COALESCE($14, FALSE),
+                $15, $16, $17, $18, $19, TRUE)
+        RETURNING id
+        "#,
+    )
+    .bind(request.service_id)
+    .bind(user_id)
+    .bind(request.titre.trim())
+    .bind(&request.description)
+    .bind(&request.type_terrain)
+    .bind(request.superficie_m2)
+    .bind(&request.adresse)
+    .bind(&request.quartier)
+    .bind(&request.ville)
+    .bind(&request.gps)
+    .bind(request.prix_total)
+    .bind(request.viabilise)
+    .bind(request.acces_route)
+    .bind(request.bornage)
+    .bind(&request.zonage)
+    .bind(&request.telephone)
+    .bind(&request.whatsapp)
+    .bind(&request.email)
+    .bind(&request.documents)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_land] Erreur: {}", e);
+        AppError::Internal("Erreur création terrain".to_string())
+    })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "message": "Terrain créé avec succès",
+            "id": id
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateLandRequest {
+    pub titre: Option<String>,
+    pub description: Option<String>,
+    pub type_terrain: Option<String>,
+    pub superficie_m2: Option<f64>,
+    pub adresse: Option<String>,
+    pub quartier: Option<String>,
+    pub ville: Option<String>,
+    pub gps: Option<String>,
+    pub prix_total: Option<f64>,
+    pub viabilise: Option<bool>,
+    pub acces_route: Option<bool>,
+    pub bornage: Option<bool>,
+    pub zonage: Option<String>,
+    pub telephone: Option<String>,
+    pub whatsapp: Option<String>,
+    pub email: Option<String>,
+    pub is_active: Option<bool>,
+}
+
+/// PUT /api/immobilier/terrains/{id} (protégé JWT)
+/// Partenaire : modifier une annonce de terrain
+pub async fn update_land(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(land_id): Path<i32>,
+    Json(request): Json<UpdateLandRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[update_land] land_id={}, user_id={}", land_id, user_id);
+
+    let rows_affected = sqlx::query(
+        r#"
+        UPDATE land_properties SET
+            titre        = COALESCE($1, titre),
+            description  = COALESCE($2, description),
+            type_terrain = COALESCE($3, type_terrain),
+            superficie_m2= COALESCE($4, superficie_m2),
+            adresse      = COALESCE($5, adresse),
+            quartier     = COALESCE($6, quartier),
+            ville        = COALESCE($7, ville),
+            gps          = COALESCE($8, gps),
+            prix_total   = COALESCE($9, prix_total),
+            viabilise    = COALESCE($10, viabilise),
+            acces_route  = COALESCE($11, acces_route),
+            bornage      = COALESCE($12, bornage),
+            zonage       = COALESCE($13, zonage),
+            telephone    = COALESCE($14, telephone),
+            whatsapp     = COALESCE($15, whatsapp),
+            email        = COALESCE($16, email),
+            is_active    = COALESCE($17, is_active),
+            updated_at   = NOW()
+        WHERE id = $18 AND user_id = $19
+        "#,
+    )
+    .bind(&request.titre)
+    .bind(&request.description)
+    .bind(&request.type_terrain)
+    .bind(request.superficie_m2)
+    .bind(&request.adresse)
+    .bind(&request.quartier)
+    .bind(&request.ville)
+    .bind(&request.gps)
+    .bind(request.prix_total)
+    .bind(request.viabilise)
+    .bind(request.acces_route)
+    .bind(request.bornage)
+    .bind(&request.zonage)
+    .bind(&request.telephone)
+    .bind(&request.whatsapp)
+    .bind(&request.email)
+    .bind(request.is_active)
+    .bind(land_id)
+    .bind(user_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[update_land] Erreur: {}", e);
+        AppError::Internal("Erreur mise à jour terrain".to_string())
+    })?
+    .rows_affected();
+
+    if rows_affected == 0 {
+        return Err(AppError::NotFound("Terrain non trouvé ou non autorisé".to_string()));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": "Terrain mis à jour"
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BookLandVisitRequest {
+    pub date_visite: String,  // ISO datetime ou date "YYYY-MM-DD"
+    pub notes: Option<String>,
+}
+
+/// POST /api/immobilier/terrains/{id}/book-visit (protégé JWT)
+/// Réserver une visite de terrain
+pub async fn book_land_visit(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(land_id): Path<i32>,
+    Json(request): Json<BookLandVisitRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[book_land_visit] land_id={}, user_id={}", land_id, user_id);
+
+    // Vérifier que le terrain existe et est actif
+    let land_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM land_properties WHERE id = $1 AND is_active = TRUE)",
+    )
+    .bind(land_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if !land_exists {
+        return Err(AppError::NotFound("Terrain non trouvé".to_string()));
+    }
+
+    let visit_id: i32 = sqlx::query_scalar(
+        r#"
+        INSERT INTO land_visits (land_id, user_id, date_visite, status, notes)
+        VALUES ($1, $2, $3::TIMESTAMPTZ, 'pending', $4)
+        RETURNING id
+        "#,
+    )
+    .bind(land_id)
+    .bind(user_id)
+    .bind(&request.date_visite)
+    .bind(&request.notes)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[book_land_visit] Erreur: {}", e);
+        AppError::Internal("Erreur réservation visite terrain".to_string())
+    })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "message": "Visite terrain réservée",
+            "visit_id": visit_id
+        })),
+    ))
+}
+
+/// GET /api/immobilier/terrains/my-listings (protégé JWT)
+/// Partenaire : liste de ses terrains
+pub async fn get_my_land_listings(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[get_my_land_listings] user_id={}", user_id);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT id, service_id, titre, description, type_terrain, superficie_m2,
+               adresse, quartier, ville, gps, prix_total, viabilise, acces_route,
+               bornage, zonage, telephone, whatsapp, email, is_active,
+               created_at, updated_at
+        FROM land_properties
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_my_land_listings] Erreur: {}", e);
+        AppError::Internal("Erreur chargement terrains".to_string())
+    })?;
+
+    let lands: Vec<serde_json::Value> = rows.iter().map(|r| json!({
+        "id": r.try_get::<i32, _>("id").unwrap_or(0),
+        "titre": r.try_get::<String, _>("titre").unwrap_or_default(),
+        "type_terrain": r.try_get::<String, _>("type_terrain").unwrap_or_default(),
+        "superficie_m2": r.try_get::<rust_decimal::Decimal, _>("superficie_m2").ok().map(|d| d.to_string()),
+        "ville": r.try_get::<Option<String>, _>("ville").ok().flatten(),
+        "quartier": r.try_get::<Option<String>, _>("quartier").ok().flatten(),
+        "prix_total": r.try_get::<rust_decimal::Decimal, _>("prix_total").ok().map(|d| d.to_string()),
+        "viabilise": r.try_get::<bool, _>("viabilise").unwrap_or(false),
+        "acces_route": r.try_get::<bool, _>("acces_route").unwrap_or(false),
+        "is_active": r.try_get::<bool, _>("is_active").unwrap_or(true),
+        "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok().map(|d| d.to_rfc3339()),
+    })).collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": lands,
+            "total": lands.len()
+        })),
+    ))
+}
+
+// ============================================================================
+// ✅ 2026-04-01: DÉCORATION — Enregistrement partenaire et consultations
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct CreateDecoratorRequest {
+    pub service_id: i32,
+    pub nom_entreprise: String,
+    pub description: Option<String>,
+    pub styles: Option<Vec<String>>,
+    pub specialites: Option<Vec<String>>,
+    pub tarif_consultation: Option<f64>,
+    pub tarif_journalier: Option<f64>,
+    pub portfolio_urls: Option<Vec<String>>,
+    pub logo_url: Option<String>,
+    pub telephone: Option<String>,
+    pub whatsapp: Option<String>,
+    pub email: Option<String>,
+    pub ville: Option<String>,
+    pub quartier: Option<String>,
+    pub gps: Option<String>,
+    pub annees_experience: Option<i32>,
+}
+
+/// POST /api/decoration/decorateurs (protégé JWT)
+/// Partenaire : créer/enregistrer son profil décorateur
+pub async fn create_decorator(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(request): Json<CreateDecoratorRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[create_decorator] user_id={}", user_id);
+
+    if request.nom_entreprise.trim().is_empty() {
+        return Err(AppError::BadRequest("Le nom de l'entreprise est requis".to_string()));
+    }
+
+    let service_ok: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM services WHERE id = $1 AND user_id = $2 AND is_active = TRUE)",
+    )
+    .bind(request.service_id)
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if !service_ok {
+        return Err(AppError::Forbidden("Service non autorisé".to_string()));
+    }
+
+    let id: i32 = sqlx::query_scalar(
+        r#"
+        INSERT INTO decorator_profiles
+            (service_id, user_id, nom_entreprise, description, styles, specialites,
+             tarif_consultation, tarif_journalier, portfolio_urls, logo_url,
+             telephone, whatsapp, email, ville, quartier, gps, annees_experience)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        ON CONFLICT (service_id) DO UPDATE SET
+            nom_entreprise    = EXCLUDED.nom_entreprise,
+            description       = COALESCE(EXCLUDED.description, decorator_profiles.description),
+            styles            = COALESCE(EXCLUDED.styles, decorator_profiles.styles),
+            specialites       = COALESCE(EXCLUDED.specialites, decorator_profiles.specialites),
+            tarif_consultation= COALESCE(EXCLUDED.tarif_consultation, decorator_profiles.tarif_consultation),
+            tarif_journalier  = COALESCE(EXCLUDED.tarif_journalier, decorator_profiles.tarif_journalier),
+            portfolio_urls    = COALESCE(EXCLUDED.portfolio_urls, decorator_profiles.portfolio_urls),
+            logo_url          = COALESCE(EXCLUDED.logo_url, decorator_profiles.logo_url),
+            telephone         = COALESCE(EXCLUDED.telephone, decorator_profiles.telephone),
+            whatsapp          = COALESCE(EXCLUDED.whatsapp, decorator_profiles.whatsapp),
+            email             = COALESCE(EXCLUDED.email, decorator_profiles.email),
+            ville             = COALESCE(EXCLUDED.ville, decorator_profiles.ville),
+            quartier          = COALESCE(EXCLUDED.quartier, decorator_profiles.quartier),
+            gps               = COALESCE(EXCLUDED.gps, decorator_profiles.gps),
+            annees_experience = COALESCE(EXCLUDED.annees_experience, decorator_profiles.annees_experience),
+            updated_at        = NOW()
+        RETURNING id
+        "#,
+    )
+    .bind(request.service_id)
+    .bind(user_id)
+    .bind(request.nom_entreprise.trim())
+    .bind(&request.description)
+    .bind(&request.styles)
+    .bind(&request.specialites)
+    .bind(request.tarif_consultation)
+    .bind(request.tarif_journalier)
+    .bind(&request.portfolio_urls)
+    .bind(&request.logo_url)
+    .bind(&request.telephone)
+    .bind(&request.whatsapp)
+    .bind(&request.email)
+    .bind(&request.ville)
+    .bind(&request.quartier)
+    .bind(&request.gps)
+    .bind(request.annees_experience.unwrap_or(0))
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_decorator] Erreur: {}", e);
+        AppError::Internal("Erreur création profil décorateur".to_string())
+    })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "message": "Profil décorateur créé/mis à jour",
+            "id": id
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateConsultationRequest {
+    pub decorator_id: i32,
+    pub type_consultation: Option<String>,
+    pub date_souhaitee: String,
+    pub duree_minutes: Option<i32>,
+    pub sujet: String,
+    pub description: Option<String>,
+    pub budget_estime: Option<f64>,
+    pub adresse_projet: Option<String>,
+    pub ville_projet: Option<String>,
+    pub photos_projet: Option<Vec<String>>,
+}
+
+/// POST /api/decoration/consultations (protégé JWT)
+/// Utilisateur : demander une consultation décoration
+pub async fn create_design_consultation(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(request): Json<CreateConsultationRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[create_design_consultation] user_id={}, decorator_id={}", user_id, request.decorator_id);
+
+    if request.sujet.trim().is_empty() {
+        return Err(AppError::BadRequest("Le sujet est requis".to_string()));
+    }
+
+    // Vérifier que le décorateur existe et est actif
+    let decorator_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM decorator_profiles WHERE id = $1 AND is_active = TRUE)",
+    )
+    .bind(request.decorator_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if !decorator_exists {
+        return Err(AppError::NotFound("Décorateur non trouvé".to_string()));
+    }
+
+    let id: i32 = sqlx::query_scalar(
+        r#"
+        INSERT INTO decoration_consultation_requests
+            (decorator_id, user_id, type_consultation, date_souhaitee, duree_minutes,
+             sujet, description, budget_estime, adresse_projet, ville_projet, photos_projet)
+        VALUES ($1, $2, COALESCE($3, 'physique'), $4::TIMESTAMPTZ, COALESCE($5, 60),
+                $6, $7, $8, $9, $10, $11)
+        RETURNING id
+        "#,
+    )
+    .bind(request.decorator_id)
+    .bind(user_id)
+    .bind(&request.type_consultation)
+    .bind(&request.date_souhaitee)
+    .bind(request.duree_minutes)
+    .bind(request.sujet.trim())
+    .bind(&request.description)
+    .bind(request.budget_estime)
+    .bind(&request.adresse_projet)
+    .bind(&request.ville_projet)
+    .bind(&request.photos_projet)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_design_consultation] Erreur: {}", e);
+        AppError::Internal("Erreur création demande de consultation".to_string())
+    })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "message": "Demande de consultation envoyée",
+            "id": id
+        })),
+    ))
+}
+
+/// GET /api/decoration/my-consultations (protégé JWT)
+/// Lister les consultations (partenaire = les siennes reçues / utilisateur = les siennes envoyées)
+pub async fn get_my_design_consultations(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, role, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[get_my_design_consultations] user_id={}, role={}", user_id, role);
+
+    let is_partner = role == "partenaire";
+
+    let rows = if is_partner {
+        // Partenaire : consultations reçues pour ses profils décorateurs
+        sqlx::query(
+            r#"
+            SELECT dcr.id, dcr.decorator_id, dcr.user_id, dcr.type_consultation,
+                   dcr.date_souhaitee, dcr.duree_minutes, dcr.sujet, dcr.description,
+                   dcr.budget_estime, dcr.adresse_projet, dcr.ville_projet,
+                   dcr.status, dcr.notes_partenaire, dcr.montant, dcr.payment_status,
+                   dcr.created_at, dcr.updated_at,
+                   u.nom_complet AS client_nom, u.telephone AS client_telephone,
+                   dp.nom_entreprise AS decorator_nom
+            FROM decoration_consultation_requests dcr
+            JOIN decorator_profiles dp ON dp.id = dcr.decorator_id
+            JOIN users u ON u.id = dcr.user_id
+            WHERE dp.user_id = $1
+            ORDER BY dcr.created_at DESC
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&state.pg)
+        .await
+    } else {
+        // Utilisateur : consultations qu'il a demandées
+        sqlx::query(
+            r#"
+            SELECT dcr.id, dcr.decorator_id, dcr.user_id, dcr.type_consultation,
+                   dcr.date_souhaitee, dcr.duree_minutes, dcr.sujet, dcr.description,
+                   dcr.budget_estime, dcr.adresse_projet, dcr.ville_projet,
+                   dcr.status, dcr.notes_partenaire, dcr.montant, dcr.payment_status,
+                   dcr.created_at, dcr.updated_at,
+                   NULL::TEXT AS client_nom, NULL::TEXT AS client_telephone,
+                   dp.nom_entreprise AS decorator_nom
+            FROM decoration_consultation_requests dcr
+            JOIN decorator_profiles dp ON dp.id = dcr.decorator_id
+            WHERE dcr.user_id = $1
+            ORDER BY dcr.created_at DESC
+            "#,
+        )
+        .bind(user_id)
+        .fetch_all(&state.pg)
+        .await
+    }
+    .map_err(|e| {
+        error!("[get_my_design_consultations] Erreur: {}", e);
+        AppError::Internal("Erreur chargement consultations".to_string())
+    })?;
+
+    let consultations: Vec<serde_json::Value> = rows.iter().map(|r| json!({
+        "id": r.try_get::<i32, _>("id").unwrap_or(0),
+        "decorator_id": r.try_get::<i32, _>("decorator_id").unwrap_or(0),
+        "decorator_nom": r.try_get::<Option<String>, _>("decorator_nom").ok().flatten(),
+        "client_nom": r.try_get::<Option<String>, _>("client_nom").ok().flatten(),
+        "client_telephone": r.try_get::<Option<String>, _>("client_telephone").ok().flatten(),
+        "type_consultation": r.try_get::<String, _>("type_consultation").unwrap_or_default(),
+        "date_souhaitee": r.try_get::<chrono::DateTime<chrono::Utc>, _>("date_souhaitee").ok().map(|d| d.to_rfc3339()),
+        "duree_minutes": r.try_get::<i32, _>("duree_minutes").unwrap_or(60),
+        "sujet": r.try_get::<String, _>("sujet").unwrap_or_default(),
+        "description": r.try_get::<Option<String>, _>("description").ok().flatten(),
+        "budget_estime": r.try_get::<Option<rust_decimal::Decimal>, _>("budget_estime").ok().flatten(),
+        "adresse_projet": r.try_get::<Option<String>, _>("adresse_projet").ok().flatten(),
+        "ville_projet": r.try_get::<Option<String>, _>("ville_projet").ok().flatten(),
+        "status": r.try_get::<String, _>("status").unwrap_or_default(),
+        "notes_partenaire": r.try_get::<Option<String>, _>("notes_partenaire").ok().flatten(),
+        "montant": r.try_get::<Option<rust_decimal::Decimal>, _>("montant").ok().flatten(),
+        "payment_status": r.try_get::<Option<String>, _>("payment_status").ok().flatten(),
+        "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok().map(|d| d.to_rfc3339()),
+    })).collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": consultations,
+            "total": consultations.len()
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConfirmConsultationRequest {
+    pub notes_partenaire: Option<String>,
+    pub montant: Option<f64>,
+    pub action: String, // "confirm" | "reject" | "complete"
+}
+
+/// PUT /api/decoration/consultations/{id}/respond (protégé JWT — partenaire)
+/// Partenaire : confirmer, rejeter ou compléter une consultation
+pub async fn respond_design_consultation(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(consultation_id): Path<i32>,
+    Json(request): Json<ConfirmConsultationRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[respond_design_consultation] consultation_id={}, user_id={}, action={}",
+        consultation_id, user_id, request.action
+    );
+
+    let new_status = match request.action.as_str() {
+        "confirm" => "confirmed",
+        "reject" => "rejected",
+        "complete" => "completed",
+        _ => return Err(AppError::BadRequest("Action invalide (confirm|reject|complete)".to_string())),
+    };
+
+    let rows_affected = sqlx::query(
+        r#"
+        UPDATE decoration_consultation_requests dcr SET
+            status           = $1,
+            notes_partenaire = COALESCE($2, dcr.notes_partenaire),
+            montant          = COALESCE($3, dcr.montant),
+            updated_at       = NOW()
+        FROM decorator_profiles dp
+        WHERE dcr.id = $4
+          AND dcr.decorator_id = dp.id
+          AND dp.user_id = $5
+        "#,
+    )
+    .bind(new_status)
+    .bind(&request.notes_partenaire)
+    .bind(request.montant)
+    .bind(consultation_id)
+    .bind(user_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[respond_design_consultation] Erreur: {}", e);
+        AppError::Internal("Erreur mise à jour consultation".to_string())
+    })?
+    .rows_affected();
+
+    if rows_affected == 0 {
+        return Err(AppError::NotFound("Consultation non trouvée ou non autorisée".to_string()));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": format!("Consultation {}", new_status)
+        })),
+    ))
+}
+
+// ============================================================================
+// ✅ 2026-04-01: DÉMÉNAGEMENT — Dashboard partenaire
+// ============================================================================
+
+/// GET /api/demenagement/my-bookings (protégé JWT — partenaire)
+/// Partenaire déménagement : liste de ses commandes reçues
+pub async fn get_my_moving_bookings(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!("[get_my_moving_bookings] user_id={}", user_id);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            b.id, b.status, b.date_demenagement, b.montant_total, b.payment_status,
+            b.confirmed_at, b.completed_at, b.cancelled_at, b.cancellation_reason,
+            b.partner_notes, b.gps_current, b.eta_minutes, b.created_at,
+            q.adresse_depart, q.adresse_arrivee, q.gps_depart, q.gps_arrivee,
+            q.volume_m3, q.distance_km, q.nb_pieces,
+            u.nom_complet AS client_nom, u.telephone AS client_telephone
+        FROM moving_bookings b
+        JOIN moving_quotes q ON q.id = b.quote_id
+        JOIN services s ON s.id = q.service_id
+        JOIN users u ON u.id = b.user_id
+        WHERE s.user_id = $1
+        ORDER BY b.created_at DESC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_my_moving_bookings] Erreur: {}", e);
+        AppError::Internal("Erreur chargement réservations déménagement".to_string())
+    })?;
+
+    let bookings: Vec<serde_json::Value> = rows.iter().map(|r| json!({
+        "id": r.try_get::<i32, _>("id").unwrap_or(0),
+        "status": r.try_get::<Option<String>, _>("status").ok().flatten(),
+        "date_demenagement": r.try_get::<Option<chrono::NaiveDate>, _>("date_demenagement").ok().flatten().map(|d| d.to_string()),
+        "montant_total": r.try_get::<Option<rust_decimal::Decimal>, _>("montant_total").ok().flatten(),
+        "payment_status": r.try_get::<Option<String>, _>("payment_status").ok().flatten(),
+        "adresse_depart": r.try_get::<Option<String>, _>("adresse_depart").ok().flatten(),
+        "adresse_arrivee": r.try_get::<Option<String>, _>("adresse_arrivee").ok().flatten(),
+        "volume_m3": r.try_get::<Option<rust_decimal::Decimal>, _>("volume_m3").ok().flatten(),
+        "distance_km": r.try_get::<Option<rust_decimal::Decimal>, _>("distance_km").ok().flatten(),
+        "nb_pieces": r.try_get::<Option<i32>, _>("nb_pieces").ok().flatten(),
+        "client_nom": r.try_get::<Option<String>, _>("client_nom").ok().flatten(),
+        "client_telephone": r.try_get::<Option<String>, _>("client_telephone").ok().flatten(),
+        "partner_notes": r.try_get::<Option<String>, _>("partner_notes").ok().flatten(),
+        "gps_current": r.try_get::<Option<String>, _>("gps_current").ok().flatten(),
+        "eta_minutes": r.try_get::<Option<i32>, _>("eta_minutes").ok().flatten(),
+        "confirmed_at": r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("confirmed_at").ok().flatten().map(|d| d.to_rfc3339()),
+        "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok().map(|d| d.to_rfc3339()),
+    })).collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "data": bookings,
+            "total": bookings.len()
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConfirmMovingBookingRequest {
+    pub action: String, // "confirm" | "complete" | "cancel"
+    pub partner_notes: Option<String>,
+    pub cancellation_reason: Option<String>,
+}
+
+/// PUT /api/demenagement/bookings/{id}/respond (protégé JWT — partenaire)
+/// Partenaire : confirmer ou annuler une réservation déménagement
+pub async fn respond_moving_booking(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(booking_id): Path<i32>,
+    Json(request): Json<ConfirmMovingBookingRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[respond_moving_booking] booking_id={}, user_id={}, action={}",
+        booking_id, user_id, request.action
+    );
+
+    let (new_status, timestamp_col) = match request.action.as_str() {
+        "confirm" => ("confirmed", "confirmed_at"),
+        "complete" => ("completed", "completed_at"),
+        "cancel" => ("cancelled", "cancelled_at"),
+        _ => return Err(AppError::BadRequest("Action invalide (confirm|complete|cancel)".to_string())),
+    };
+
+    let sql = format!(
+        r#"
+        UPDATE moving_bookings b SET
+            status             = $1,
+            {timestamp_col}    = NOW(),
+            partner_notes      = COALESCE($2, b.partner_notes),
+            cancellation_reason= COALESCE($3, b.cancellation_reason),
+            updated_at         = NOW()
+        FROM moving_quotes q
+        JOIN services s ON s.id = q.service_id
+        WHERE b.id = $4
+          AND b.quote_id = q.id
+          AND s.user_id = $5
+        "#,
+        timestamp_col = timestamp_col
+    );
+
+    let rows_affected = sqlx::query(&sql)
+        .bind(new_status)
+        .bind(&request.partner_notes)
+        .bind(&request.cancellation_reason)
+        .bind(booking_id)
+        .bind(user_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!("[respond_moving_booking] Erreur: {}", e);
+            AppError::Internal("Erreur mise à jour réservation".to_string())
+        })?
+        .rows_affected();
+
+    if rows_affected == 0 {
+        return Err(AppError::NotFound("Réservation non trouvée ou non autorisée".to_string()));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": format!("Réservation {}", new_status)
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateMovingLocationRequest {
+    pub gps_current: String,
+    pub eta_minutes: Option<i32>,
+    pub etape: Option<String>,
+    pub message_client: Option<String>,
+}
+
+/// PUT /api/demenagement/bookings/{id}/location (protégé JWT — partenaire)
+/// Partenaire : mettre à jour la position GPS en temps réel
+pub async fn update_moving_location(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(booking_id): Path<i32>,
+    Json(request): Json<UpdateMovingLocationRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[update_moving_location] booking_id={}, user_id={}, gps={}",
+        booking_id, user_id, request.gps_current
+    );
+
+    // Parser le GPS "lat,lng"
+    let parts: Vec<&str> = request.gps_current.split(',').collect();
+    let (gps_lat, gps_lng) = if parts.len() == 2 {
+        (parts[0].trim().parse::<f64>().ok(), parts[1].trim().parse::<f64>().ok())
+    } else {
+        (None, None)
+    };
+
+    let rows_affected = sqlx::query(
+        r#"
+        UPDATE moving_bookings b SET
+            gps_current = $1,
+            eta_minutes = COALESCE($2, b.eta_minutes),
+            updated_at  = NOW()
+        FROM moving_quotes q
+        JOIN services s ON s.id = q.service_id
+        WHERE b.id = $3
+          AND b.quote_id = q.id
+          AND s.user_id = $4
+          AND b.status = 'confirmed'
+        "#,
+    )
+    .bind(&request.gps_current)
+    .bind(request.eta_minutes)
+    .bind(booking_id)
+    .bind(user_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[update_moving_location] Erreur: {}", e);
+        AppError::Internal("Erreur mise à jour position".to_string())
+    })?
+    .rows_affected();
+
+    if rows_affected == 0 {
+        return Err(AppError::NotFound("Réservation non trouvée, non autorisée ou non confirmée".to_string()));
+    }
+
+    // Insérer une entrée dans moving_tracking
+    let _ = sqlx::query(
+        r#"
+        INSERT INTO moving_tracking (booking_id, gps_lat, gps_lng, etape, message_partenaire)
+        VALUES ($1, $2, $3, $4, $5)
+        "#,
+    )
+    .bind(booking_id)
+    .bind(gps_lat)
+    .bind(gps_lng)
+    .bind(&request.etape)
+    .bind(&request.message_client)
+    .execute(&state.pg)
+    .await;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": "Position mise à jour"
+        })),
+    ))
+}
+
+// ============================================================================
+// ✅ ASSURANCE COVOITURAGE
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct CreateInsuranceRequest {
+    pub coverage_type: String, // "basic" | "premium" | "full"
+}
+
+/// POST /api/reservations/{id}/insurance
+/// Souscrire une assurance passager pour une réservation covoiturage
+pub async fn create_reservation_insurance(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(reservation_id): Path<i32>,
+    Json(payload): Json<CreateInsuranceRequest>,
+) -> AppResult<impl IntoResponse> {
+    use crate::services::covoiturage_insurance_service::{
+        CovoiturageInsuranceService, CoverageType,
+    };
+
+    info!(
+        "[create_reservation_insurance] reservation_id={}, user_id={}, coverage={}",
+        reservation_id, user_id, payload.coverage_type
+    );
+
+    // Vérifier que la réservation appartient à l'utilisateur et est de type covoiturage
+    let row = sqlx::query(
+        r#"
+        SELECT sr.id, sr.user_id, sr.service_type, sr.status,
+               sr.reservation_date, sr.reservation_time
+        FROM specialized_reservations sr
+        WHERE sr.id = $1 AND sr.user_id = $2
+        "#,
+    )
+    .bind(reservation_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[create_reservation_insurance] DB error: {}", e);
+        AppError::Internal("Erreur récupération réservation".to_string())
+    })?
+    .ok_or_else(|| AppError::NotFound("Réservation non trouvée".to_string()))?;
+
+    let service_type: String = row.try_get("service_type").unwrap_or_default();
+    if service_type != "covoiturage" {
+        return Err(AppError::BadRequest(
+            "L'assurance passager est uniquement disponible pour le covoiturage".to_string(),
+        ));
+    }
+
+    let status: String = row.try_get("status").unwrap_or_default();
+    if status == "cancelled" || status == "completed" {
+        return Err(AppError::BadRequest(
+            "Impossible de souscrire une assurance pour une réservation annulée ou terminée"
+                .to_string(),
+        ));
+    }
+
+    let coverage_type = match payload.coverage_type.as_str() {
+        "basic" => CoverageType::Basic,
+        "premium" => CoverageType::Premium,
+        "full" => CoverageType::Full,
+        _ => {
+            return Err(AppError::BadRequest(
+                "Type de couverture invalide. Utilisez: basic, premium ou full".to_string(),
+            ));
+        }
+    };
+
+    // Dates du trajet (utiliser reservation_date si disponible, sinon now..+1h)
+    let reservation_date: Option<chrono::NaiveDate> = row.try_get("reservation_date").ok();
+    let start_date = reservation_date
+        .map(|d| {
+            chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(
+                d.and_hms_opt(0, 0, 0).unwrap_or_default(),
+                chrono::Utc,
+            )
+        })
+        .unwrap_or_else(chrono::Utc::now);
+    let end_date = start_date + chrono::Duration::hours(8);
+
+    let insurance_service = CovoiturageInsuranceService::new(state.pg.clone());
+    let insurance_id = insurance_service
+        .create_insurance(
+            reservation_id,
+            user_id,
+            coverage_type.clone(),
+            start_date,
+            end_date,
+        )
+        .await?;
+
+    let (coverage_label, coverage_amount, price_xaf) = match coverage_type {
+        CoverageType::Basic => ("Couverture de base", "50 000 XAF", 500),
+        CoverageType::Premium => ("Couverture premium", "200 000 XAF", 1500),
+        CoverageType::Full => ("Couverture complète", "500 000 XAF", 3000),
+    };
+
+    info!(
+        "[create_reservation_insurance] ✅ Assurance ID={} créée pour réservation {}",
+        insurance_id, reservation_id
+    );
+
+    Ok(Json(json!({
+        "success": true,
+        "insurance_id": insurance_id,
+        "reservation_id": reservation_id,
+        "coverage_type": payload.coverage_type,
+        "coverage_label": coverage_label,
+        "coverage_amount": coverage_amount,
+        "price_xaf": price_xaf,
+        "message": format!("{} souscrite avec succès", coverage_label),
+    })))
+}
+
+// ============================================================================
+// ✅ NOTIFICATIONS PROACTIVES (rappels de trajet)
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct ScheduleNotificationsRequest {
+    pub reminder_minutes_before: Option<Vec<i32>>, // ex: [60, 15, 5]
+}
+
+/// POST /api/reservations/{id}/schedule-notifications
+/// Programmer des rappels de trajet pour une réservation
+pub async fn schedule_proactive_notifications(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(reservation_id): Path<i32>,
+    Json(payload): Json<ScheduleNotificationsRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[schedule_proactive_notifications] reservation_id={}, user_id={}",
+        reservation_id, user_id
+    );
+
+    // Vérifier que la réservation appartient à l'utilisateur
+    let row = sqlx::query(
+        r#"
+        SELECT sr.id, sr.user_id, sr.service_type, sr.status,
+               sr.reservation_date, sr.reservation_time,
+               s.name AS service_name
+        FROM specialized_reservations sr
+        JOIN services s ON s.id = sr.service_id
+        WHERE sr.id = $1 AND sr.user_id = $2
+        "#,
+    )
+    .bind(reservation_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("DB error: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Réservation non trouvée".to_string()))?;
+
+    let status: String = row.try_get("status").unwrap_or_default();
+    if status == "cancelled" || status == "completed" {
+        return Err(AppError::BadRequest(
+            "Impossible de programmer des rappels pour une réservation annulée ou terminée"
+                .to_string(),
+        ));
+    }
+
+    let service_name: String = row.try_get("service_name").unwrap_or_default();
+    let reminders = payload
+        .reminder_minutes_before
+        .unwrap_or_else(|| vec![60, 15]);
+
+    // Enregistrer les rappels en base (table notifications_scheduled si existante, sinon log)
+    let scheduled_count = sqlx::query(
+        r#"
+        INSERT INTO notification_schedules (user_id, reservation_id, reminder_minutes, status)
+        SELECT $1, $2, unnest($3::int[]), 'pending'
+        ON CONFLICT DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .bind(reservation_id)
+    .bind(&reminders)
+    .execute(&state.pg)
+    .await
+    .map(|r| r.rows_affected())
+    .unwrap_or(0);
+
+    info!(
+        "[schedule_proactive_notifications] ✅ {} rappels programmés pour réservation {}",
+        scheduled_count, reservation_id
+    );
+
+    Ok(Json(json!({
+        "success": true,
+        "reservation_id": reservation_id,
+        "service_name": service_name,
+        "reminders_scheduled": reminders,
+        "scheduled_count": scheduled_count,
+        "message": format!("{} rappel(s) programmé(s) avant le trajet", reminders.len()),
+    })))
+}
+
+// ============================================================================
+// ✅ TRAJETS RÉCURRENTS COVOITURAGE
+// ============================================================================
+
+/// POST /api/covoiturages/recurring/generate
+/// Génère les instances futures d'un trajet récurrent
+pub async fn generate_recurring_instances(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[generate_recurring_instances] Déclenchement par user_id={}",
+        user_id
+    );
+
+    // Générer des instances pour les 30 prochains jours pour tous les trajets récurrents actifs
+    let rows_created: i64 = sqlx::query_scalar(
+        r#"
+        WITH recurring AS (
+            SELECT
+                s.id AS service_id,
+                sr_template.id AS template_reservation_id,
+                sr_template.user_id,
+                sr_template.prestataire_id,
+                sr_template.amount,
+                s.data->>'recurrence_days' AS recurrence_days,
+                s.data->>'heure_depart' AS heure_depart
+            FROM services s
+            JOIN specialized_reservations sr_template ON sr_template.service_id = s.id
+            WHERE s.specialized_type = 'covoiturage'
+            AND s.data->>'is_recurring' = 'true'
+            AND sr_template.status = 'confirmed'
+            AND sr_template.id IN (
+                SELECT MIN(id) FROM specialized_reservations
+                WHERE service_type = 'covoiturage'
+                GROUP BY service_id
+            )
+        ),
+        dates AS (
+            SELECT generate_series(
+                CURRENT_DATE + 1,
+                CURRENT_DATE + 30,
+                '1 day'::interval
+            )::date AS trip_date
+        ),
+        to_insert AS (
+            SELECT
+                r.service_id,
+                r.user_id,
+                r.prestataire_id,
+                r.amount,
+                d.trip_date AS reservation_date,
+                r.heure_depart AS reservation_time
+            FROM recurring r
+            CROSS JOIN dates d
+            WHERE NOT EXISTS (
+                SELECT 1 FROM specialized_reservations existing
+                WHERE existing.service_id = r.service_id
+                AND existing.user_id = r.user_id
+                AND existing.reservation_date = d.trip_date
+                AND existing.status != 'cancelled'
+            )
+        )
+        INSERT INTO specialized_reservations
+            (service_id, user_id, prestataire_id, service_type, status, payment_status,
+             amount, reservation_date, reservation_time, created_at, updated_at)
+        SELECT
+            service_id, user_id, prestataire_id, 'covoiturage', 'pending', 'unpaid',
+            amount, reservation_date, reservation_time, NOW(), NOW()
+        FROM to_insert
+        RETURNING id
+        "#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map(|rows| rows.len() as i64)
+    .unwrap_or(0);
+
+    Ok(Json(json!({
+        "success": true,
+        "instances_created": rows_created,
+        "message": format!("{} instance(s) récurrente(s) générée(s) pour les 30 prochains jours", rows_created),
+    })))
+}
+
+/// POST /api/covoiturages/recurring/activate
+/// Active les instances récurrentes en attente (passage pending → confirmed)
+pub async fn activate_pending_recurring_instances(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[activate_pending_recurring_instances] Déclenchement par user_id={}",
+        user_id
+    );
+
+    let activated: u64 = sqlx::query(
+        r#"
+        UPDATE specialized_reservations
+        SET status = 'confirmed', updated_at = NOW()
+        WHERE service_type = 'covoiturage'
+        AND status = 'pending'
+        AND reservation_date >= CURRENT_DATE
+        AND service_id IN (
+            SELECT id FROM services
+            WHERE specialized_type = 'covoiturage'
+            AND data->>'is_recurring' = 'true'
+        )
+        "#,
+    )
+    .execute(&state.pg)
+    .await
+    .map(|r| r.rows_affected())
+    .unwrap_or(0);
+
+    Ok(Json(json!({
+        "success": true,
+        "activated_count": activated,
+        "message": format!("{} réservation(s) récurrente(s) activée(s)", activated),
+    })))
+}
+
+// ============================================================================
+// ✅ TAXI - MATCHING INTELLIGENT & DÉTAILS ENRICHIS
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct TaxiIntelligentMatchingRequest {
+    pub latitude: f64,
+    pub longitude: f64,
+    pub destination_lat: Option<f64>,
+    pub destination_lng: Option<f64>,
+    pub vehicle_type: Option<String>,
+    pub max_wait_minutes: Option<i32>,
+    pub passengers: Option<i32>,
+}
+
+/// POST /api/taxis/intelligent-matching
+/// Matching intelligent conducteur-passager avec score de compatibilité
+pub async fn taxi_intelligent_matching(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<TaxiIntelligentMatchingRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[taxi_intelligent_matching] user_id={}, lat={}, lng={}",
+        user_id, payload.latitude, payload.longitude
+    );
+
+    let radius_km = payload.max_wait_minutes.unwrap_or(10) as f64 * 0.5; // ~0.5 km/min
+
+    // Rechercher taxis disponibles + calculer score de matching
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            s.id AS service_id,
+            s.name AS service_name,
+            COALESCE((s.data->>'gps_lat')::float, 0) AS driver_lat,
+            COALESCE((s.data->>'gps_lng')::float, 0) AS driver_lng,
+            s.data->>'vehicle_type' AS vehicle_type,
+            s.data->>'seats' AS seats,
+            COALESCE(AVG(rat.rating), 0)::float AS avg_rating,
+            COUNT(rat.id)::int AS rating_count,
+            (6371 * acos(
+                LEAST(1.0,
+                    cos(radians($1)) * cos(radians(COALESCE((s.data->>'gps_lat')::float, $1))) *
+                    cos(radians(COALESCE((s.data->>'gps_lng')::float, $2)) - radians($2)) +
+                    sin(radians($1)) * sin(radians(COALESCE((s.data->>'gps_lat')::float, $1)))
+                )
+            )) AS distance_km
+        FROM services s
+        LEFT JOIN specialized_ratings rat ON rat.service_id = s.id
+        WHERE s.specialized_type = 'taxi'
+        AND s.is_active = TRUE
+        AND (s.data->>'disponible')::boolean IS NOT FALSE
+        GROUP BY s.id, s.name, driver_lat, driver_lng, vehicle_type, seats
+        HAVING (6371 * acos(
+            LEAST(1.0,
+                cos(radians($1)) * cos(radians(COALESCE((s.data->>'gps_lat')::float, $1))) *
+                cos(radians(COALESCE((s.data->>'gps_lng')::float, $2)) - radians($2)) +
+                sin(radians($1)) * sin(radians(COALESCE((s.data->>'gps_lat')::float, $1)))
+            )
+        )) <= $3
+        ORDER BY distance_km ASC
+        LIMIT 10
+        "#,
+    )
+    .bind(payload.latitude)
+    .bind(payload.longitude)
+    .bind(radius_km)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    use sqlx::Row;
+    let matches: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|row| {
+            let service_id: i32 = row.get("service_id");
+            let service_name: String = row.get("service_name");
+            let avg_rating: f64 = row.get("avg_rating");
+            let rating_count: i32 = row.get("rating_count");
+            let distance_km: f64 = row.get("distance_km");
+            let vehicle_type: Option<String> = row.get("vehicle_type");
+
+            // Score: distance (40%) + rating (40%) + popularité (20%)
+            let distance_score = (1.0 - (distance_km / radius_km).min(1.0)) * 40.0;
+            let rating_score = (avg_rating / 5.0) * 40.0;
+            let popularity_score = ((rating_count as f64) / 50.0).min(1.0) * 20.0;
+            let matching_score = distance_score + rating_score + popularity_score;
+
+            let estimated_wait_minutes = (distance_km / 0.5) as i32; // ~0.5 km/min
+
+            json!({
+                "service_id": service_id,
+                "service_name": service_name,
+                "vehicle_type": vehicle_type,
+                "distance_km": (distance_km * 10.0).round() / 10.0,
+                "estimated_wait_minutes": estimated_wait_minutes,
+                "avg_rating": (avg_rating * 10.0).round() / 10.0,
+                "rating_count": rating_count,
+                "matching_score": (matching_score * 10.0).round() / 10.0,
+            })
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "success": true,
+        "data": matches,
+        "count": matches.len(),
+        "search_radius_km": radius_km,
+    })))
+}
+
+/// GET /api/taxis/{id}/details-enhanced
+/// Détails enrichis d'un taxi: stats, avis, disponibilité temps réel
+pub async fn get_taxi_details_enhanced(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: _user_id, .. }): Extension<AuthenticatedUser>,
+    Path(service_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[get_taxi_details_enhanced] service_id={}",
+        service_id
+    );
+
+    // Infos de base du service
+    let service_row = sqlx::query(
+        r#"
+        SELECT s.id, s.name, s.description, s.price, s.data, s.is_active,
+               u.nom, u.prenom, u.email
+        FROM services s
+        LEFT JOIN users u ON u.id = s.prestataire_id
+        WHERE s.id = $1 AND s.specialized_type = 'taxi'
+        "#,
+    )
+    .bind(service_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("DB error: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Taxi non trouvé".to_string()))?;
+
+    use sqlx::Row;
+    let name: String = service_row.get("name");
+    let description: Option<String> = service_row.get("description");
+    let price: Option<sqlx::types::Decimal> = service_row.get("price");
+    let data: Option<serde_json::Value> = service_row.get("data");
+    let nom: Option<String> = service_row.get("nom");
+    let prenom: Option<String> = service_row.get("prenom");
+
+    // Stats derniers 30 jours
+    let stats_row = sqlx::query(
+        r#"
+        SELECT
+            COUNT(*)::bigint AS total_trips,
+            COUNT(*) FILTER (WHERE status = 'completed')::bigint AS completed_trips,
+            COALESCE(SUM(amount) FILTER (WHERE payment_status = 'paid'), 0)::float AS total_revenue,
+            COALESCE(AVG(rat.rating), 0)::float AS avg_rating,
+            COUNT(rat.id)::int AS rating_count
+        FROM specialized_reservations sr
+        LEFT JOIN specialized_ratings rat ON rat.reservation_id = sr.id
+        WHERE sr.service_id = $1
+        AND sr.created_at >= NOW() - INTERVAL '30 days'
+        "#,
+    )
+    .bind(service_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or_else(|_| panic!("stats query failed"));
+
+    let total_trips: i64 = stats_row.get("total_trips");
+    let completed_trips: i64 = stats_row.get("completed_trips");
+    let total_revenue: f64 = stats_row.get("total_revenue");
+    let avg_rating: f64 = stats_row.get("avg_rating");
+    let rating_count: i32 = stats_row.get("rating_count");
+
+    // Derniers avis
+    let reviews = sqlx::query(
+        r#"
+        SELECT rat.rating, rat.comment, rat.created_at,
+               u.nom, u.prenom
+        FROM specialized_ratings rat
+        LEFT JOIN users u ON u.id = rat.user_id
+        WHERE rat.service_id = $1
+        ORDER BY rat.created_at DESC
+        LIMIT 5
+        "#,
+    )
+    .bind(service_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let reviews_json: Vec<serde_json::Value> = reviews
+        .into_iter()
+        .map(|r| {
+            json!({
+                "rating": r.get::<f64, _>("rating"),
+                "comment": r.get::<Option<String>, _>("comment"),
+                "nom": r.get::<Option<String>, _>("nom"),
+                "prenom": r.get::<Option<String>, _>("prenom"),
+                "created_at": r.get::<Option<chrono::DateTime<chrono::Utc>>, _>("created_at"),
+            })
+        })
+        .collect();
+
+    let completion_rate = if total_trips > 0 {
+        (completed_trips as f64 / total_trips as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "service_id": service_id,
+            "name": name,
+            "description": description,
+            "price": price.map(|d| d.to_string()),
+            "driver": { "nom": nom, "prenom": prenom },
+            "details": data,
+            "stats_30_days": {
+                "total_trips": total_trips,
+                "completed_trips": completed_trips,
+                "completion_rate": (completion_rate * 10.0).round() / 10.0,
+                "total_revenue": total_revenue,
+                "avg_rating": (avg_rating * 10.0).round() / 10.0,
+                "rating_count": rating_count,
+            },
+            "recent_reviews": reviews_json,
+        }
+    })))
+}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAIEMENT MOBILE MONEY
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[derive(serde::Deserialize)]
+pub struct InitiatePaymentBody {
+    pub reservation_id: Option<i32>,
+    pub amount: f64,
+    pub phone_number: String,
+    pub provider: String,
+    pub currency: Option<String>,
+}
+
+pub async fn initiate_mobile_money_payment(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+    Json(body): Json<InitiatePaymentBody>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    use crate::services::mobile_money_service::{MobileMoneyService, InitiatePaymentRequest};
+    let svc = MobileMoneyService::new(pool);
+    let req = InitiatePaymentRequest {
+        reservation_id: body.reservation_id,
+        amount: body.amount,
+        phone_number: body.phone_number,
+        provider: body.provider,
+        currency: body.currency,
+    };
+    match svc.initiate_payment(current_user.id, req).await {
+        Ok(result) => Ok(Json(json!({ "success": true, "payment": result }))),
+        Err(e) => Err((axum::http::StatusCode::BAD_REQUEST, Json(json!({ "success": false, "error": e })))),
+    }
+}
+
+pub async fn get_payment_status(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+    axum::extract::Path(payment_id): axum::extract::Path<i64>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    use crate::services::mobile_money_service::MobileMoneyService;
+    let svc = MobileMoneyService::new(pool);
+    match svc.get_payment_status(payment_id, current_user.id).await {
+        Ok(result) => Ok(Json(json!({ "success": true, "payment": result }))),
+        Err(e) => Err((axum::http::StatusCode::NOT_FOUND, Json(json!({ "success": false, "error": e })))),
+    }
+}
+
+pub async fn get_user_payments(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    use crate::services::mobile_money_service::MobileMoneyService;
+    let svc = MobileMoneyService::new(pool);
+    match svc.get_user_payments(current_user.id).await {
+        Ok(payments) => Ok(Json(json!({ "success": true, "payments": payments }))),
+        Err(e) => Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "success": false, "error": e })))),
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NOTATION POST-TRAJET
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[derive(serde::Deserialize)]
+pub struct SubmitRatingBody {
+    pub reservation_id: i32,
+    pub rated_user_id: i32,
+    pub rating: f64,
+    pub comment: Option<String>,
+    pub service_type: String,
+}
+
+pub async fn submit_trip_rating(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+    Json(body): Json<SubmitRatingBody>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    use crate::services::trip_rating_service::{TripRatingService, SubmitRatingRequest};
+    let svc = TripRatingService::new(pool);
+    let req = SubmitRatingRequest {
+        reservation_id: body.reservation_id,
+        rated_user_id: body.rated_user_id,
+        rating: body.rating,
+        comment: body.comment,
+        service_type: body.service_type,
+    };
+    match svc.submit_rating(current_user.id, req).await {
+        Ok(entry) => Ok(Json(json!({ "success": true, "rating": entry, "message": "Merci pour votre avis !" }))),
+        Err(e) => Err((axum::http::StatusCode::BAD_REQUEST, Json(json!({ "success": false, "error": e })))),
+    }
+}
+
+pub async fn get_driver_ratings(
+    State(pool): State<PgPool>,
+    axum::extract::Path((driver_user_id, service_type)): axum::extract::Path<(i32, String)>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    use crate::services::trip_rating_service::TripRatingService;
+    let svc = TripRatingService::new(pool);
+    match svc.get_driver_ratings(driver_user_id, &service_type).await {
+        Ok((summary, ratings)) => Ok(Json(json!({ "success": true, "summary": summary, "ratings": ratings }))),
+        Err(e) => Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "success": false, "error": e })))),
+    }
+}
+
+pub async fn check_rating_status(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+    axum::extract::Path(reservation_id): axum::extract::Path<i32>,
+) -> Json<serde_json::Value> {
+    use crate::services::trip_rating_service::TripRatingService;
+    let svc = TripRatingService::new(pool);
+    let has_rated = svc.has_rated(reservation_id, current_user.id).await;
+    Json(json!({ "success": true, "has_rated": has_rated, "reservation_id": reservation_id }))
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// KYC — VÉRIFICATION CONDUCTEUR
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[derive(serde::Deserialize)]
+pub struct SubmitKycBody {
+    pub service_type: String,
+    pub cni_front_url: Option<String>,
+    pub cni_back_url: Option<String>,
+    pub selfie_url: Option<String>,
+}
+
+pub async fn submit_driver_verification(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+    Json(body): Json<SubmitKycBody>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    use crate::services::driver_verification_service::{DriverVerificationService, SubmitVerificationRequest};
+    let svc = DriverVerificationService::new(pool);
+    match svc.submit(current_user.id, SubmitVerificationRequest {
+        service_type: body.service_type,
+        cni_front_url: body.cni_front_url,
+        cni_back_url: body.cni_back_url,
+        selfie_url: body.selfie_url,
+    }).await {
+        Ok(v) => Ok(Json(json!({ "success": true, "verification": v,
+            "message": "Documents soumis. Votre compte sera vérifié sous 24h." }))),
+        Err(e) => Err((axum::http::StatusCode::BAD_REQUEST, Json(json!({ "success": false, "error": e })))),
+    }
+}
+
+pub async fn get_driver_verification_status(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+    axum::extract::Path(service_type): axum::extract::Path<String>,
+) -> Json<serde_json::Value> {
+    use crate::services::driver_verification_service::DriverVerificationService;
+    let svc = DriverVerificationService::new(pool);
+    match svc.get_status(current_user.id, &service_type).await {
+        Ok(Some(v)) => Json(json!({ "success": true, "verification": v })),
+        Ok(None) => Json(json!({ "success": true, "verification": null, "message": "Aucune vérification soumise." })),
+        Err(e) => Json(json!({ "success": false, "error": e })),
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROGRAMME FIDÉLITÉ
+// ═══════════════════════════════════════════════════════════════════════════
+
+pub async fn get_loyalty_balance(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    use crate::services::loyalty_service::LoyaltyService;
+    let svc = LoyaltyService::new(pool.clone());
+    let balance = svc.get_balance(current_user.id).await
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "success": false, "error": e }))))?;
+    let history = svc.get_history(current_user.id).await.unwrap_or_default();
+    let rewards = svc.get_rewards().await.unwrap_or_default();
+    Ok(Json(json!({ "success": true, "balance": balance, "history": history, "rewards": rewards })))
+}
+
+#[derive(serde::Deserialize)]
+pub struct RedeemRewardBody { pub reward_id: i32 }
+
+pub async fn redeem_loyalty_reward(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+    Json(body): Json<RedeemRewardBody>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    use crate::services::loyalty_service::LoyaltyService;
+    let svc = LoyaltyService::new(pool);
+    match svc.redeem(current_user.id, body.reward_id).await {
+        Ok(r) => Ok(Json(json!({ "success": true, "redemption": r,
+            "message": format!("Coupon {} activé ! Valable 30 jours.", r.coupon_code) }))),
+        Err(e) => Err((axum::http::StatusCode::BAD_REQUEST, Json(json!({ "success": false, "error": e })))),
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PARTAGE TRAJET TEMPS RÉEL
+// ═══════════════════════════════════════════════════════════════════════════
+
+pub async fn create_trip_share(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+    axum::extract::Path(reservation_id): axum::extract::Path<i32>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    use crate::services::trip_share_service::TripShareService;
+    let svc = TripShareService::new(pool);
+    match svc.create_share(current_user.id, reservation_id).await {
+        Ok(share) => Ok(Json(json!({ "success": true, "share": share }))),
+        Err(e) => Err((axum::http::StatusCode::BAD_REQUEST, Json(json!({ "success": false, "error": e })))),
+    }
+}
+
+pub async fn get_public_trip_data(
+    State(pool): State<PgPool>,
+    axum::extract::Path(token): axum::extract::Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    use crate::services::trip_share_service::TripShareService;
+    let svc = TripShareService::new(pool);
+    match svc.get_public_data(&token).await {
+        Ok(data) => Ok(Json(json!({ "success": true, "trip": data }))),
+        Err(e) => Err((axum::http::StatusCode::NOT_FOUND, Json(json!({ "success": false, "error": e })))),
+    }
+}
+
+pub async fn revoke_trip_share(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+    axum::extract::Path(reservation_id): axum::extract::Path<i32>,
+) -> Json<serde_json::Value> {
+    use crate::services::trip_share_service::TripShareService;
+    let svc = TripShareService::new(pool);
+    match svc.revoke(current_user.id, reservation_id).await {
+        Ok(_) => Json(json!({ "success": true, "message": "Lien de partage révoqué." })),
+        Err(e) => Json(json!({ "success": false, "error": e })),
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CRÉDITER POINTS FIDÉLITÉ (appelé après confirmation trajet terminé)
+// ═══════════════════════════════════════════════════════════════════════════
+pub async fn credit_trip_loyalty_points(
+    State(pool): State<PgPool>,
+    Extension(current_user): Extension<crate::models::user::User>,
+    axum::extract::Path(reservation_id): axum::extract::Path<i32>,
+) -> Json<serde_json::Value> {
+    use crate::services::loyalty_service::LoyaltyService;
+    let svc = LoyaltyService::new(pool);
+    match svc.on_trip_completed(current_user.id, reservation_id).await {
+        Ok(_) => {
+            let balance = svc.get_balance(current_user.id).await.ok();
+            Json(json!({
+                "success": true,
+                "message": "Points de fidélité crédités !",
+                "new_balance": balance.map(|b| b.balance)
+            }))
+        }
+        Err(e) => Json(json!({ "success": false, "error": e })),
+    }
 }

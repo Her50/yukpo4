@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { modernColors } from '../../theme/modernTheme';
 import OrderDeliveryModal from '../delivery/OrderDeliveryModal';
 import SafeIcon from '../SafeIcon';
+import ServiceCardActions from './ServiceCardActions';
 
 interface PharmacieResultCardProps {
     pharmacy: {
@@ -169,8 +170,15 @@ const PharmacieResultCard: React.FC<PharmacieResultCardProps> = ({ pharmacy, onP
                 productName={`Pharmacie - ${pharmacy.nom}`}
                 onSuccess={(deliveryId) => {
                     setShowDeliveryModal(false);
-                    // Optionnel: navigation ou notification
                 }}
+            />
+            {/* ── Partage · Avis · Chat ─────────────────────────────────── */}
+            <ServiceCardActions
+                serviceId={pharmacy.service_id}
+                serviceTitle={pharmacy.nom}
+                serviceType="pharmacie"
+                serviceDescription={pharmacy.services?.slice(0, 2).join(', ')}
+                whatsapp={pharmacy.whatsapp}
             />
         </TouchableOpacity>
     );

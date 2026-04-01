@@ -14,6 +14,7 @@ use log::info;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 #[derive(Debug, Deserialize)]
@@ -40,13 +41,26 @@ pub struct UpdateProductRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct SearchProductsQuery {
-    pub query: String,
+    pub query: Option<String>,
+    pub categorie: Option<String>,
     pub lat: Option<f64>,
     pub lng: Option<f64>,
     pub radius_km: Option<f64>,
     pub min_price: Option<Decimal>,
     pub max_price: Option<Decimal>,
     pub only_available: Option<bool>,
+    pub limit: Option<i32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NearbyMedicinesQuery {
+    pub q: String,
+    pub lat: Option<f64>,
+    pub lng: Option<f64>,
+    pub radius_km: Option<f64>,
+    pub quantity: Option<i32>,
+    pub max_price: Option<Decimal>,
+    pub on_duty_only: Option<bool>,
     pub limit: Option<i32>,
 }
 
@@ -115,17 +129,28 @@ pub async fn create_product(
 }
 
 /// GET /api/pharmacies/products/search
-/// Rechercher des produits
+/// Rechercher des produits par nom ou catégorie
 pub async fn search_products(
     State(state): State<Arc<AppState>>,
     Query(params): Query<SearchProductsQuery>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[search_products] Query: {}", params.query);
+    let q = params.query.as_deref().unwrap_or("").trim().to_string();
+    let categorie = params.categorie.as_deref().map(|s| s.trim().to_lowercase());
+
+    if q.is_empty() && categorie.is_none() {
+        return Err(AppError::BadRequest(
+            "Le paramètre query ou categorie est requis".to_string(),
+        ));
+    }
+
+    info!("[search_products] query={:?} categorie={:?}", q, categorie);
 
     let service = Service::new(Arc::new(state.pg.clone()));
-    let products = service
+    // Si seulement catégorie sans nom, passer "*" comme wildcard
+    let effective_query = if q.is_empty() { "".to_string() } else { q };
+    let mut products = service
         .search_products(
-            &params.query,
+            &effective_query,
             params.lat,
             params.lng,
             params.radius_km,
@@ -136,7 +161,48 @@ pub async fn search_products(
         )
         .await?;
 
+    // Post-filtre par catégorie si fournie
+    if let Some(ref cat) = categorie {
+        products.retain(|p| {
+            p.product
+                .categorie
+                .as_deref()
+                .map(|c| c.to_lowercase().contains(cat.as_str()))
+                .unwrap_or(false)
+        });
+    }
+
     Ok(Json(json!({ "success": true, "products": products })))
+}
+
+/// GET /api/medicines/nearby
+/// Recherche unifiee "disponible + proche"
+pub async fn search_nearby_medicines(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<NearbyMedicinesQuery>,
+) -> AppResult<impl IntoResponse> {
+    let q = params.q.trim();
+    if q.is_empty() {
+        return Err(AppError::BadRequest(
+            "Le parametre q est requis".to_string(),
+        ));
+    }
+
+    let service = Service::new(Arc::new(state.pg.clone()));
+    let items = service
+        .search_available_medicines_nearby(
+            q,
+            params.lat,
+            params.lng,
+            params.radius_km,
+            params.quantity.unwrap_or(1),
+            params.max_price,
+            params.on_duty_only.unwrap_or(false),
+            params.limit,
+        )
+        .await?;
+
+    Ok(Json(json!({ "success": true, "items": items })))
 }
 
 /// POST /api/pharmacies/products/budget
@@ -263,6 +329,17 @@ pub struct BulkImportResponse {
     pub errors: Vec<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ExternalCatalogSyncRequest {
+    pub pharmacy_service_id: i32,
+    pub api_url: String,
+    pub overwrite_existing: Option<bool>,
+    pub items_path: Option<String>, // ex: "data.items"
+    pub headers: Option<HashMap<String, String>>,
+    pub auth_bearer_token: Option<String>,
+    pub field_mapping: Option<HashMap<String, String>>,
+}
+
 /// POST /api/pharmacies/products/bulk-import
 /// Import en masse de produits
 pub async fn bulk_import_products(
@@ -345,6 +422,160 @@ pub async fn bulk_import_products(
     })))
 }
 
+fn extract_by_path<'a>(value: &'a serde_json::Value, path: &str) -> Option<&'a serde_json::Value> {
+    let mut current = value;
+    for segment in path.split('.').filter(|s| !s.trim().is_empty()) {
+        current = current.get(segment)?;
+    }
+    Some(current)
+}
+
+/// POST /api/pharmacies/products/sync-external
+/// Synchroniser le catalogue depuis une API externe JSON.
+pub async fn sync_products_from_external_api(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<ExternalCatalogSyncRequest>,
+) -> AppResult<impl IntoResponse> {
+    let is_owner: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM services
+            WHERE id = $1 AND user_id = $2 AND specialized_type = 'pharmacie'
+        )
+        "#,
+    )
+    .bind(payload.pharmacy_service_id)
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
+
+    if !is_owner {
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de cette pharmacie".to_string(),
+        ));
+    }
+
+    let mut req = reqwest::Client::new().get(payload.api_url.trim());
+    if let Some(token) = payload.auth_bearer_token.as_ref().map(|v| v.trim()).filter(|v| !v.is_empty()) {
+        req = req.bearer_auth(token);
+    }
+    if let Some(headers) = &payload.headers {
+        for (k, v) in headers {
+            req = req.header(k, v);
+        }
+    }
+
+    let upstream_json: serde_json::Value = req
+        .send()
+        .await
+        .map_err(|e| AppError::BadRequest(format!("Erreur appel API externe: {}", e)))?
+        .error_for_status()
+        .map_err(|e| AppError::BadRequest(format!("API externe en erreur: {}", e)))?
+        .json()
+        .await
+        .map_err(|e| AppError::BadRequest(format!("Réponse JSON invalide: {}", e)))?;
+
+    let items_path = payload
+        .items_path
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .unwrap_or("items");
+    let items_value = extract_by_path(&upstream_json, items_path).unwrap_or(&upstream_json);
+    let items = items_value
+        .as_array()
+        .ok_or_else(|| AppError::BadRequest("Impossible de trouver la liste de produits dans la réponse API".to_string()))?;
+
+    let mapping = payload.field_mapping.unwrap_or_default();
+    let name_key = mapping.get("nom_produit").cloned().unwrap_or_else(|| "nom_produit".to_string());
+    let price_key = mapping.get("prix").cloned().unwrap_or_else(|| "prix".to_string());
+    let stock_key = mapping.get("stock").cloned().unwrap_or_else(|| "stock".to_string());
+    let unit_key = mapping.get("unite").cloned().unwrap_or_else(|| "unite".to_string());
+    let code_key = mapping.get("code_barre").cloned().unwrap_or_else(|| "code_barre".to_string());
+    let category_key = mapping.get("categorie").cloned().unwrap_or_else(|| "categorie".to_string());
+    let description_key = mapping.get("description").cloned().unwrap_or_else(|| "description".to_string());
+
+    let service = Service::new(Arc::new(state.pg.clone()));
+    let overwrite = payload.overwrite_existing.unwrap_or(false);
+    let mut created = 0;
+    let mut updated = 0;
+    let mut errors: Vec<String> = Vec::new();
+
+    for (idx, raw_item) in items.iter().enumerate() {
+        let obj = match raw_item.as_object() {
+            Some(v) => v,
+            None => {
+                errors.push(format!("Ligne {}: item non objet JSON", idx + 1));
+                continue;
+            }
+        };
+
+        let name = obj
+            .get(&name_key)
+            .and_then(|v| v.as_str())
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty());
+        let Some(nom_produit) = name else {
+            errors.push(format!("Ligne {}: nom_produit manquant", idx + 1));
+            continue;
+        };
+
+        let price_dec = obj
+            .get(&price_key)
+            .and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.replace(',', ".").parse::<f64>().ok())))
+            .and_then(Decimal::from_f64_retain)
+            .unwrap_or(Decimal::ZERO);
+        let stock = obj
+            .get(&stock_key)
+            .and_then(|v| v.as_i64().or_else(|| v.as_str().and_then(|s| s.parse::<i64>().ok())))
+            .unwrap_or(0)
+            .max(0) as i32;
+        let unite = obj
+            .get(&unit_key)
+            .and_then(|v| v.as_str())
+            .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty())
+            .unwrap_or_else(|| "unité".to_string());
+        let code_barre = obj.get(&code_key).and_then(|v| v.as_str()).map(|v| v.trim().to_string());
+        let categorie = obj.get(&category_key).and_then(|v| v.as_str()).map(|v| v.trim().to_string());
+        let description = obj.get(&description_key).and_then(|v| v.as_str()).map(|v| v.trim().to_string());
+
+        match service
+            .bulk_import_product(
+                payload.pharmacy_service_id,
+                nom_produit,
+                price_dec,
+                stock,
+                unite,
+                description,
+                code_barre,
+                categorie,
+                overwrite,
+            )
+            .await
+        {
+            Ok(result) => {
+                if result.created {
+                    created += 1;
+                } else {
+                    updated += 1;
+                }
+            }
+            Err(e) => errors.push(format!("Ligne {}: {}", idx + 1, e)),
+        }
+    }
+
+    Ok(Json(json!({
+        "success": errors.is_empty(),
+        "created": created,
+        "updated": updated,
+        "errors": errors,
+        "source_count": items.len()
+    })))
+}
+
 /// DELETE /api/pharmacies/products/:id
 /// Supprimer un produit
 pub async fn delete_product(
@@ -395,4 +626,192 @@ pub async fn delete_product(
     Ok(Json(
         json!({ "success": true, "message": "Produit supprimé" }),
     ))
+}
+
+/// GET /api/pharmacies/{id}/partner-orders
+/// Partenaire : liste les commandes reçues pour sa pharmacie
+pub async fn get_partner_orders(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(pharmacy_id): Path<i32>,
+    Query(params): Query<HashMap<String, String>>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[get_partner_orders] pharmacy_id={}, user_id={}",
+        pharmacy_id, user_id
+    );
+
+    // Vérifier propriété : la pharmacie appartient bien à cet utilisateur
+    let is_owner: bool = sqlx::query_scalar(
+        r#"SELECT EXISTS(SELECT 1 FROM pharmacies WHERE id = $1 AND user_id = $2)"#,
+    )
+    .bind(pharmacy_id)
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
+
+    if !is_owner {
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de cette pharmacie".to_string(),
+        ));
+    }
+
+    let status_filter = params.get("status").cloned();
+    let page: i64 = params.get("page").and_then(|v| v.parse().ok()).unwrap_or(1).max(1);
+    let limit: i64 = params.get("limit").and_then(|v| v.parse().ok()).unwrap_or(20).min(100);
+    let offset = (page - 1) * limit;
+
+    let rows = if let Some(ref s) = status_filter {
+        sqlx::query(
+            r#"
+            SELECT o.id::text, o.user_id, o.status, o.total_amount, o.delivery_method,
+                   o.delivery_address, o.created_at, o.updated_at,
+                   COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as user_name, u.phone as user_phone,
+                   (
+                       SELECT json_agg(json_build_object(
+                           'id', i.id, 'medication_name', i.medication_name,
+                           'quantity', i.quantity, 'unit_price', i.unit_price
+                       ))
+                       FROM pharmacy_order_items i WHERE i.order_id = o.id
+                   ) as items
+            FROM pharmacy_orders o
+            LEFT JOIN users u ON u.id = o.user_id
+            WHERE o.pharmacy_id = $1 AND o.status = $2
+            ORDER BY o.created_at DESC
+            LIMIT $3 OFFSET $4
+            "#,
+        )
+        .bind(pharmacy_id)
+        .bind(s)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur liste commandes: {}", e)))?
+    } else {
+        sqlx::query(
+            r#"
+            SELECT o.id::text, o.user_id, o.status, o.total_amount, o.delivery_method,
+                   o.delivery_address, o.created_at, o.updated_at,
+                   COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as user_name, u.phone as user_phone,
+                   (
+                       SELECT json_agg(json_build_object(
+                           'id', i.id, 'medication_name', i.medication_name,
+                           'quantity', i.quantity, 'unit_price', i.unit_price
+                       ))
+                       FROM pharmacy_order_items i WHERE i.order_id = o.id
+                   ) as items
+            FROM pharmacy_orders o
+            LEFT JOIN users u ON u.id = o.user_id
+            WHERE o.pharmacy_id = $1
+            ORDER BY o.created_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(pharmacy_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur liste commandes: {}", e)))?
+    };
+
+    let orders: Vec<serde_json::Value> = rows.iter().map(|row| {
+        json!({
+            "id": row.try_get::<String, _>("id").unwrap_or_default(),
+            "user_id": row.try_get::<i32, _>("user_id").unwrap_or(0),
+            "user_name": row.try_get::<Option<String>, _>("user_name").ok().flatten(),
+            "user_phone": row.try_get::<Option<String>, _>("user_phone").ok().flatten(),
+            "status": row.try_get::<String, _>("status").unwrap_or_default(),
+            "total_amount": row.try_get::<rust_decimal::Decimal, _>("total_amount").ok().map(|d| d.to_string()),
+            "delivery_method": row.try_get::<String, _>("delivery_method").unwrap_or_default(),
+            "delivery_address": row.try_get::<Option<String>, _>("delivery_address").ok().flatten(),
+            "items": row.try_get::<Option<serde_json::Value>, _>("items").ok().flatten(),
+            "created_at": row.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok().map(|d| d.to_rfc3339()),
+            "updated_at": row.try_get::<chrono::DateTime<chrono::Utc>, _>("updated_at").ok().map(|d| d.to_rfc3339()),
+        })
+    }).collect();
+
+    Ok(Json(json!({ "success": true, "orders": orders, "page": page, "limit": limit })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateOrderStatusRequest {
+    pub status: String, // 'confirmed' | 'processing' | 'ready' | 'delivered' | 'cancelled'
+    pub note: Option<String>,
+}
+
+/// PATCH /api/pharmacies/orders/{order_id}/status
+/// Partenaire : mettre à jour le statut d'une commande
+pub async fn update_pharmacy_order_status(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(order_id): Path<String>,
+    Json(payload): Json<UpdateOrderStatusRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[update_pharmacy_order_status] order_id={}, user_id={}, status={}",
+        order_id, user_id, payload.status
+    );
+
+    let valid_statuses = ["confirmed", "processing", "ready", "delivered", "cancelled"];
+    if !valid_statuses.contains(&payload.status.as_str()) {
+        return Err(AppError::BadRequest(format!(
+            "Statut invalide. Valeurs acceptées: {}",
+            valid_statuses.join(", ")
+        )));
+    }
+
+    // Vérifier que la commande appartient à une pharmacie que l'utilisateur possède
+    let pharmacy_id: Option<i32> = sqlx::query_scalar(
+        r#"
+        SELECT o.pharmacy_id FROM pharmacy_orders o
+        JOIN pharmacies p ON p.id = o.pharmacy_id
+        WHERE o.id = $1::uuid AND p.user_id = $2
+        "#,
+    )
+    .bind(&order_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
+
+    if pharmacy_id.is_none() {
+        return Err(AppError::Forbidden(
+            "Commande non trouvée ou accès non autorisé".to_string(),
+        ));
+    }
+
+    let mut metadata_update = String::new();
+    if let Some(ref note) = payload.note {
+        metadata_update = format!(
+            ", metadata = metadata || '{{\"partner_note\": \"{}\"}}'::jsonb",
+            note.replace('"', "\\\"")
+        );
+    }
+
+    let sql = format!(
+        r#"
+        UPDATE pharmacy_orders
+        SET status = $1, updated_at = NOW(){}
+        WHERE id = $2::uuid
+        RETURNING id::text, status, updated_at
+        "#,
+        metadata_update
+    );
+
+    let row = sqlx::query(&sql)
+        .bind(&payload.status)
+        .bind(&order_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur mise à jour: {}", e)))?;
+
+    Ok(Json(json!({
+        "success": true,
+        "order_id": row.try_get::<String, _>("id").unwrap_or_default(),
+        "status": row.try_get::<String, _>("status").unwrap_or_default(),
+        "message": "Statut de commande mis à jour"
+    })))
 }

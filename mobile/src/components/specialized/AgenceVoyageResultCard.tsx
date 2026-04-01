@@ -13,6 +13,7 @@ import BusSeatSelector, { SelectedSeat } from '../bus/BusSeatSelector';
 import BusTicketCard, { BusTicketData } from '../bus/BusTicketCard';
 import SafeIcon from '../SafeIcon';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import ServiceCardActions from './ServiceCardActions';
 
 interface AgenceVoyageResultCardProps {
     agency: {
@@ -221,6 +222,14 @@ const AgenceVoyageResultCard: React.FC<AgenceVoyageResultCardProps> = ({
                     onReserve={handleSeatSelectorReserve}
                 />
             )}
+            {/* ── Partage · Avis · Chat ─────────────────────────────────── */}
+            <ServiceCardActions
+                serviceId={agency.service_id}
+                serviceTitle={agency.nom_agence}
+                serviceType="agence_voyage"
+                serviceDescription={agency.services_voyage?.slice(0, 2).join(', ')}
+                whatsapp={agency.whatsapp}
+            />
         </TouchableOpacity>
     );
 };

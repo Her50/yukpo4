@@ -51,7 +51,9 @@ module.exports = {
             ],
             infoPlist: {
                 UIBackgroundModes: [
-                    "location"
+                    "location",
+                    "remote-notification",
+                    "fetch"
                 ],
                 CFBundleURLTypes: [
                     {
@@ -86,6 +88,14 @@ module.exports = {
                 "android.permission.RECORD_AUDIO",
                 "android.permission.MODIFY_AUDIO_SETTINGS",
                 "android.permission.POST_NOTIFICATIONS",
+                "android.permission.SCHEDULE_EXACT_ALARM",
+                "android.permission.USE_EXACT_ALARM",
+                "android.permission.RECEIVE_BOOT_COMPLETED",
+                "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+                "android.permission.WAKE_LOCK",
+                "android.permission.FOREGROUND_SERVICE",
+                "android.permission.FOREGROUND_SERVICE_LOCATION",
+                "android.permission.ACCESS_BACKGROUND_LOCATION",
                 "android.permission.WRITE_EXTERNAL_STORAGE",
                 "android.permission.READ_EXTERNAL_STORAGE",
                 "android.permission.INTERNET"

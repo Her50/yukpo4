@@ -743,6 +743,18 @@ class IntelligentChatService {
         user_role: screenContext.userData?.role || 'guest',
         service_data: screenContext.serviceData || null,
         context_prompt: contextPrompt,
+        ...(screenContext.chatbotMode ? { mode: screenContext.chatbotMode } : {}),
+        ...(screenContext.chatbotSystemPrompt ? { system_prompt: screenContext.chatbotSystemPrompt } : {}),
+        ...(screenContext.chatbotMode === 'chatbot_service' && screenContext.serviceData ? {
+          service_name: screenContext.serviceData.nom || screenContext.serviceData.name || '',
+          service_price: String(screenContext.serviceData.prix || screenContext.serviceData.price || ''),
+          service_description: String(screenContext.serviceData.description || '').substring(0, 300),
+          products_summary: (screenContext.serviceData.products || []).slice(0, 6).map((p: any) =>
+            `${p.nom || p.name || '?'}${p.prix ? ` (${p.prix} XAF)` : ''}`
+          ).join(', '),
+          products_count: (screenContext.serviceData.products || []).length,
+          category: screenContext.serviceData.category || '',
+        } : {}),
         sentiment_context: {
           dominant_sentiment: dominantSentiment,
           is_correction: correction.isCorrection,
@@ -798,16 +810,20 @@ class IntelligentChatService {
       if (data?.message) {
         const parsed = this.parseAIResponse(data, screenContext, contextualUserMessage);
         // Ne PAS doubler le préfixe : le backend reçoit déjà le tone hint via
-        // [ASSISTANT_TONE_PREFIX] et le sentiment_context — il intègre le ton
-        // dans sa réponse. On ne prépend que si la réponse est très courte
-        // (fallback basique sans ton) et que le sentiment est fort.
+        // [ASSISTANT_TONE_PREFIX] et le sentiment_context — il intègre le ton.
+        // On ne prépend QUE si la réponse est très courte (<60 chars) ET que
+        // le prefix (vérifié sur 20 chars) n'est PAS déjà dans les 80 premiers
+        // caractères de la réponse — protection robuste contre le doublement.
+        const prefixSnippet = emotionalPrefix.trim().substring(0, 20).toLowerCase();
+        const responseHead = (parsed.message || '').substring(0, 80).toLowerCase();
         if (
           emotionalPrefix &&
           parsed.message &&
           dominantSentiment !== 'neutral' &&
           dominantSentiment !== 'follow_up' &&
           parsed.message.length < 60 &&
-          !parsed.message.startsWith(emotionalPrefix.trim().substring(0, 8))
+          prefixSnippet.length > 0 &&
+          !responseHead.includes(prefixSnippet)
         ) {
           parsed.message = emotionalPrefix + parsed.message;
         }
@@ -974,6 +990,7 @@ User: "Wow c'est génial cette fonctionnalité!"
     const onCovoiturageHome = screenName === 'CovoiturageHome';
     const onTaxiHome = screenName === 'TaxiHome';
     const onSupermarketHome = screenName === 'SupermarketHome';
+    const onSupermarketPartnerDashboard = screenName === 'SupermarketPartnerDashboard';
     const onOffresEmploiHome = screenName === 'OffresEmploiHome';
     const onOffresEmploiHub = screenName === 'OffresEmploiHub';
 
@@ -1216,7 +1233,7 @@ E-commerce & vidéo — **ProductVideoCreationModal** (assistant Yukpo Studio, 6
 Yukpo is the FIRST all-in-one super-app that digitalizes daily life across Africa and beyond:
 • 🏥 Health: Pharmacies (stock search, ordering), Hospitals (AI triage, appointments), Labs, Blood banks
 • 🏨 Real Estate: Hotels, furnished rentals, property management with AI pricing
-• 🚗 Transport: Taxi (AI dynamic pricing), Carpooling, Bus tickets (seat selection, QR boarding)
+• 🚗 Transport & Auto: Taxi (AI dynamic pricing), Carpooling, Bus tickets (seat selection, QR boarding), **Vehicle sales & rental** (cars for sale or rent — searchable via ChatInputMobile like any product)
 • 📦 Delivery: Parcels, grocery shopping, fleet management, real-time tracking
 • 💼 Jobs: AI CV analysis, salary prediction, training suggestions, smart matching
 • 🎓 Education: School orientation AI, book exchange (Bourse du Livre with AI matching & trocchains)
@@ -1786,6 +1803,26 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 **Devise:** prices formatted with **useCurrencyDetection** when product currency omitted.
 
 **Hard rules:** Do **not** describe **code-barre** or **trigram** similarity on this screen — comparison is **by product name** via \`compareProductPrices\`. Do **not** list **MenuPlanningHub**, **ShoppingList**, or **DeliveryShoppingFlowNew** as buttons on **SupermarketHome**; cite them only as **other Yukpo modules** if the user asks. Do not claim all four tabs are visible before a supermarket is chosen.
+`;
+    }
+
+    if (onSupermarketPartnerDashboard) {
+      prompt += `
+
+=== SUPERMARKET_PARTNER_DASHBOARD_DETAIL (authoritative — SupermarketPartnerDashboardScreen) ===
+
+**Role:** dashboard partenaire supermarché pour catalogues, promos, commandes pickup, analytics, et import.
+
+**Import wizard 3 étapes:** dans le modal import:
+1) **Choix source** (coller texte CSV/JSON, fichier CSV/Excel, API externe),
+2) **Prévisualisation** (lignes valides + erreurs détectées),
+3) **Confirmation import** (option \`overwrite_existing\`).
+
+**Upload CSV/Excel guidé:** sélection fichier via DocumentPicker; CSV lu en texte; Excel converti en JSON importable.
+
+**Sync API externe:** endpoint **POST** \`/api/supermarkets/products/sync-external\` avec \`service_id\`, \`api_url\`, \`items_path\`, \`auth_bearer_token\` optionnel, \`overwrite_existing\`.
+
+**Règles d’explication:** ne pas dire “full replace” de la base par défaut. Avec \`overwrite_existing=false\`, on ajoute/insère; avec \`true\`, on met à jour les existants correspondant.
 `;
     }
 
@@ -2432,6 +2469,9 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 ### PharmacieForm (partner)
 - **Existing pharmacy:** dashboard tabs **overview**, **service**, **products**, **analytics**, **team** — manage pharmacy profile (GPS, hours, guard days, services), **product/stock** CRUD, **bulk import**, orders, **ServiceTeamManager**, stats.
+- **Bulk import wizard (3 étapes):** **Choix source** (coller texte / fichier CSV-Excel / API externe) → **Prévisualisation lignes invalides** → **Confirmation import** avec option *Remplacer existants*.
+- **Connecteur API externe:** sync JSON via URL API + chemin des items (ex. \`items\`, \`data.items\`) + token Bearer optionnel.
+- **Finances pharmacie:** accès à **PharmacyFinancial** (mouvements détaillés + demande de retrait wallet pharmacien).
 - **Creation / edit mode** (route \`mode\`): guided form with autosave, **LocationSelector**, **GuardDaysSelector**, prestations.
 
 ### MyPharmacyOrders / PharmacyAnalytics
@@ -2622,6 +2662,58 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - Preferred strategy: **one product sheet + variants**, instead of many near-identical products.
 
 **Hard rules:** When the user asks where to manage products after publishing, point to the **Mes services** tab (internal name **Services**, component **MesServicesScreen**) or pile route **MesServices**. **Do not** tell them to use pile route **ServicesActivity** (legacy ServicesScreen). Never claim the tab opens **RechercheBesoin** or **PharmacieHome**.
+`;
+    }
+
+    if (onSearchResultsScreen) {
+      prompt += `
+
+=== RESULTAT_BESOIN_DETAIL (authoritative — ResultatBesoinScreen / RechercheBesoin) ===
+
+**What this screen is:** Global AI search results for ALL Yukpo services. Stack routes **ResultatBesoin** and **RechercheBesoin** point to the **same screen** (**ResultatBesoinScreen**). Triggered by **ChatInputMobile** on HomeScreen (mode Rechercher → rechercherServices) or the search bar inside this screen itself.
+
+**Two result sections (coexist on the same scroll):**
+
+### 1. "Résultats directs" — Universal cross-service search (NEW)
+- Horizontal **ScrollView** of purple cards at the TOP of the screen, before the main list.
+- API: **GET /api/search/universal?q=...&lat=...&lng=...&radius_km=30&limit=20**
+- Sources searched: **service_products** (supermarché, pharmacie, e-commerce), **restaurant_menu_items** (menus restaurants), **services** table (ALL specialized services: hôpital, labo, transport, taxi, covoiturage, hôtel, immobilier, assurance, emploi, vétérinaire, gym, spa, auto, librairie…)
+- Each card shows: category icon + label, title, subtitle/address, price (if applicable), distance (if GPS available).
+- **Tap on a card → navigates directly** to the specialized screen for that service type:
+  - supermarché → **SupermarketHome**
+  - restaurant → **RestaurantClient**
+  - pharmacie → **PharmacieSearchPage**
+  - hôpital/santé/clinique → **HopitalSearchScreen**
+  - laboratoire → **LaboratoireSearchScreen**
+  - transport/agence_voyage/bus → **BusSearchScreen**
+  - taxi → **TaxiScreen**
+  - covoiturage → **CovoiturageSearchScreen**
+  - hôtel/meublé/hébergement → **HotelSearchScreen**
+  - immobilier → **ImmobilierSearchScreen**
+  - assurance → **AssuranceScreen**
+  - emploi → **EmploiScreen**
+  - vétérinaire → **VeterinaireScreen**
+  - gym/sport/fitness → **GymScreen**
+  - spa/beauté/coiffure → **SpaScreen**
+  - auto/automobile/garage → **AutoServicesSearch** (vente véhicules + pièces)
+  - location_vehicule → **AutoServicesSearch** `{ mode: "location" }` (véhicules à louer — produits créés normalement comme tous les autres produits Yukpo)
+  - vente_vehicule → **AutoServicesSearch** `{ mode: "vente" }` (vente de véhicules)
+  - librairie → **LibrairieScreen**
+- **Debounce:** 400ms after typing stops; minimum 2 characters; auto-updates when query or GPS location changes.
+- **No results in this section ≠ no results overall** — the main AI section below may still have matches.
+
+### 2. Main AI search results — General services FlatList
+- Classic **FlatList** of service/product cards from the Yukpo AI semantic engine (**rechercherServices**).
+- Cards tap → **PrestataireBoutique** (provider storefront), **not** ServiceDetail.
+- Supports filters, sort, map view toggle.
+
+**Search bar (top):** re-searches on submit; updates both sections simultaneously.
+
+**Answering guidelines:**
+- If user finds nothing in universal results but sees AI results → explain the two sections serve different scopes.
+- To find a **specific specialized service** (hôpital, labo, taxi, pharmacie…): tap the card in "Résultats directs" → goes to the right specialized screen.
+- To find **general offers, stores, negotiations** → use the main FlatList section.
+- If user wants to refine search for a specialized service: guide them to the dedicated screen (e.g. **PharmacieHome** for medications, **HopitalHome** for hospital appointments, **TicketVoyageHome** for bus tickets).
 `;
     }
 
@@ -2888,7 +2980,7 @@ Key screens: HotelMeubleHome / HotelSearch / MeubleSearch (user listing), HotelB
     }
 
     // Bourse du Livre / Coursier Livres context
-    const bookScreens = ['BookPackages', 'BookUploadV2', 'BookRecapV2', 'BookBuyDirect', 'LivreScolaireHome', 'LivreScolaireSearch', 'LivreScolaireDetails', 'LivreScolaireForm', 'LivreScolaireList', 'MesLivres', 'MesBesoinsLivres', 'ProgrammeBesoinsSelector', 'MesTrocs', 'TrocMatching', 'TrocDetails', 'TrocLiveValidation', 'NewBooks', 'AdminProgrammeUpload', 'AdminDonations', 'BourseLivre', 'EtablissementScolaire', 'LibrairieNetworkLignePrix', 'LibrairieNetworkValidation', 'LibrairieTeamPending'];
+    const bookScreens = ['BookPackages', 'BookUploadV2', 'BookRecapV2', 'BookBuyDirect', 'LivreScolaireHome', 'LivreScolaireSearch', 'LivreScolaireDetails', 'LivreScolaireForm', 'LivreScolaireList', 'MesLivres', 'MesBesoinsLivres', 'ProgrammeBesoinsSelector', 'MesTrocs', 'TrocMatching', 'TrocDetails', 'TrocLiveValidation', 'NewBooks', 'AdminProgrammeUpload', 'AdminDonations', 'BourseLivre', 'EtablissementScolaire', 'LibrairieNetworkLignePrix', 'LibrairieNetworkValidation', 'LibrairieTeamPending', 'SuperLibraireAdmin'];
     if (bookScreens.some(s => screenName.includes(s) || screenName.includes('Livre') || screenName.includes('Troc') || screenName.includes('BookPackage') || screenName.includes('Bourse'))) {
       const isCourier = userRole === 'coursier' || userData?.is_courier || screenName.includes('courier') || screenName === 'BookPackages';
       const isLibraire =
@@ -3166,7 +3258,7 @@ RESPONSE FORMAT (JSON):
       { keywords: ['coursier', 'dashboard coursier', 'livraisons actives', 'devenir coursier'], screen: 'Courier', label: 'Dashboard Coursier' },
       { keywords: ['menu', 'repas', 'recette', 'planifier repas', 'liste de courses', 'regime', 'nutrition', 'famille repas'], screen: 'MenuPlanning', label: 'Menu Planning' },
       { keywords: ['orientation', 'ecole', 'inscription scolaire', 'choix ecole', 'etablissement scolaire', 'filiere'], screen: 'Orientation', label: 'Orientation Scolaire' },
-      { keywords: ['automobile', 'voiture', 'vehicule', 'acheter voiture', 'piece auto', 'parking', 'garage'], screen: 'Auto', label: 'Automobile' },
+      { keywords: ['automobile', 'voiture', 'vehicule', 'acheter voiture', 'piece auto', 'parking', 'garage', 'louer voiture', 'location vehicule', 'location voiture', 'voiture a louer', 'vehicule a louer', 'location auto', 'vente vehicule', 'vente voiture', 'acheter vehicule'], screen: 'Auto', label: 'Automobile & Location Véhicule' },
       { keywords: ['flotte', 'gerer flotte', 'fleet', 'chauffeurs', 'demenagement'], screen: 'Fleet', label: 'Gestion Flotte' },
     ];
 
@@ -3332,8 +3424,10 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
       if (detectedCrossScreens.includes('Auto')) {
         prompt += `
 === AUTO_DETAIL (cross-screen — user asked about automobile from ${screenName}) ===
-**What this screen is:** Auto marketplace: search vehicles, parts, compare, filters (brand, price, type).
-**How to access:** Navigate to AutoServicesSearch.
+**What this screen is:** Auto marketplace: search vehicles for **sale**, **vehicle rental** (location de véhicule), parts, compare, filters (brand, price, type, mode).
+**How to access:** Navigate to **AutoServicesSearch** (with optional \`mode: "vente"\` or \`mode: "location"\` param).
+**Vehicle rental:** Véhicules à louer = produits normaux Yukpo créés avec \`store_category: "location_vehicule"\`. Trouvables via **ChatInputMobile** (recherche "location voiture", "voiture à louer"…) → **ResultatBesoin** → section "Résultats directs" → card Location de Véhicule → **AutoServicesSearch**. **Pas** un écran séparé : c'est le même catalogue produit que la vente, filtré par type/mode.
+**Vehicle sales:** Idem mais \`store_category: "vente_vehicule"\` ou \`category: "auto"\`.
 `;
       }
 
@@ -3533,6 +3627,12 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
       response.nextSteps = aiData.nextSteps;
     } else if (aiData.follow_up_questions && Array.isArray(aiData.follow_up_questions)) {
       response.nextSteps = aiData.follow_up_questions;
+    }
+    // quick_replies from chatbot_service mode — merge into nextSteps if nextSteps empty
+    if (aiData.quick_replies && Array.isArray(aiData.quick_replies) && aiData.quick_replies.length > 0) {
+      if (!response.nextSteps || response.nextSteps.length === 0) {
+        response.nextSteps = aiData.quick_replies;
+      }
     }
 
     // Injecter des liens de navigation proactifs (question utilisateur + texte nettoyé — évite les faux négatifs si le modèle a collé du JSON)
@@ -4304,6 +4404,9 @@ Explorez l'avenir dès maintenant ! 👇`,
   private static readonly NAV_MAP: Array<{ keywords: string[]; action: ActionDescriptor }> = [
     { keywords: ['accueil', 'home', 'nyumbani', 'gida'], action: { id: 'home', label: 'Accueil', icon: 'home', route: 'Home', category: 'navigation', description: '' } },
     { keywords: ['pharmacie', 'pharmacy', 'duka la dawa', 'kantin magani'], action: { id: 'pharmacy', label: 'Pharmacie', icon: 'pill', route: 'PharmacieHome', category: 'navigation', description: '' } },
+    { keywords: ['import csv pharmacie', 'import excel pharmacie', 'import produits pharmacie', 'bulk import pharmacie', 'charger fichier pharmacie'], action: { id: 'pharmacy-import-csv', label: 'Import CSV/Excel pharmacie', icon: 'upload', route: 'PharmacieForm', category: 'navigation', description: 'Ouvre le dashboard partenaire pharmacie (wizard import 3 étapes).' } },
+    { keywords: ['sync api pharmacie', 'synchroniser api pharmacie', 'connecteur api pharmacie', 'api externe pharmacie', 'catalogue api pharmacie'], action: { id: 'pharmacy-sync-api', label: 'Sync API pharmacie', icon: 'refresh-cw', route: 'PharmacieForm', category: 'navigation', description: 'Connecteur API externe catalogue pharmacie (items_path + token).' } },
+    { keywords: ['retrait pharmacien', 'retrait pharmacie', 'withdraw pharmacien', 'mouvements financiers pharmacie', 'wallet pharmacien'], action: { id: 'pharmacy-withdraw', label: 'Retrait pharmacien', icon: 'wallet', route: 'PharmacyFinancial', category: 'navigation', description: 'Finances pharmacie: mouvements détaillés + demande de retrait.' } },
     { keywords: ['hopital', 'hospital', 'clinique', 'clinic', 'hospitali', 'asibiti'], action: { id: 'hospital', label: 'Hôpital', icon: 'building', route: 'HopitalHome', category: 'navigation', description: '' } },
     { keywords: ['sante', 'health', 'salud', 'gesundheit', 'afya', 'lafiya'], action: { id: 'health', label: 'Santé', icon: 'heart', route: 'HopitalHome', category: 'navigation', description: '' } },
     { keywords: ['urgence', 'emergency', 'dharura', 'gaggawa'], action: { id: 'emergency', label: 'Urgences', icon: 'alert-circle', route: 'HopitalHome', category: 'navigation', description: '' } },
@@ -4331,6 +4434,8 @@ Explorez l'avenir dès maintenant ! 👇`,
     { keywords: ['sang', 'blood', 'damu', 'jini'], action: { id: 'blood', label: 'Don de sang', icon: 'droplet', route: 'BloodDonation', category: 'navigation', description: '' } },
     { keywords: ['bus', 'autobus', 'basi'], action: { id: 'bus', label: 'Bus', icon: 'bus', route: 'TicketVoyageHome', category: 'navigation', description: '' } },
     { keywords: ['supermarche', 'supermarket', 'duka kubwa'], action: { id: 'supermarket', label: 'Supermarché', icon: 'shopping-cart', route: 'SupermarketHome', category: 'navigation', description: '' } },
+    { keywords: ['import csv supermarche', 'import excel supermarche', 'import catalogue supermarche', 'bulk import supermarche'], action: { id: 'supermarket-import-csv', label: 'Import CSV/Excel supermarché', icon: 'upload', route: 'SupermarketPartnerDashboard', category: 'navigation', description: 'Wizard 3 étapes: source, preview erreurs, confirmation.' } },
+    { keywords: ['sync api supermarche', 'api externe supermarche', 'connecteur api supermarche', 'synchroniser catalogue supermarche'], action: { id: 'supermarket-sync-api', label: 'Sync API supermarché', icon: 'refresh-cw', route: 'SupermarketPartnerDashboard', category: 'navigation', description: 'Synchronisation API externe catalogue supermarché.' } },
     { keywords: ['menu', 'repas', 'meal', 'mlo'], action: { id: 'menu', label: 'Menu', icon: 'calendar', route: 'MenuPlanningHub', category: 'navigation', description: '' } },
     { keywords: ['video', 'clip'], action: { id: 'video', label: 'Vidéo', icon: 'video', route: 'MesServices', params: { openVideoSelector: true }, category: 'navigation', description: 'Ouvre le sélecteur vidéo local (modal-first)' } },
     { keywords: ['navigation', 'gps', 'carte', 'map', 'ramani'], action: { id: 'nav', label: 'Navigation GPS', icon: 'map', route: 'Navigation', category: 'navigation', description: '' } },
@@ -4418,6 +4523,7 @@ Explorez l'avenir dès maintenant ! 👇`,
       'Navigation': t('intelligentChat.screenDesc.navigation') || 'GPS avec guidage vocal et alertes.',
       'RechargeTokens': t('intelligentChat.screenDesc.recharge') || 'Rechargez votre solde. Bonus jusqu\'à +20%.',
       'WalletFinancial': t('intelligentChat.screenDesc.wallet') || 'Suivi financier détaillé.',
+      'PharmacyFinancial': t('intelligentChat.screenDesc.pharmacyFinancial') || 'Finances pharmacie : mouvements détaillés, solde wallet et demande de retrait.',
       'SupermarketHome': t('intelligentChat.screenDesc.supermarket') || 'Supermarché : magasins, produits, comparaison IA.',
       'AssuranceDashboard': t('intelligentChat.screenDesc.assurancePartner') || 'Partenaire assurance : produits, polices, sinistres, stats ; loupe = marché utilisateur.',
       'InsuranceServicesSearch': t('intelligentChat.screenDesc.insuranceSearch') || 'Recherche / catalogue assurance utilisateur (API search, devis IA).',

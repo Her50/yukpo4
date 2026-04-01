@@ -134,6 +134,25 @@ pub struct UpdateLivreScolaireRequest {
     pub quartier: Option<String>,
     pub is_available: Option<bool>,
     pub is_active: Option<bool>,
+    // ✅ V2: champs manquants
+    pub image_recto: Option<String>,
+    pub image_verso: Option<String>,
+    pub mode_listing: Option<String>,
+    pub prix_detecte: Option<f64>,
+    pub devise_detectee: Option<String>,
+    pub valeur_calculee: Option<f64>,
+    pub ratio_etat: Option<f64>,
+    pub etat_classification: Option<String>,
+    pub programme_scolaire_id: Option<i32>,
+    pub est_au_programme: Option<bool>,
+    pub ia_analysis_result: Option<serde_json::Value>,
+    pub ia_confidence: Option<f64>,
+    pub ia_analysis_status: Option<String>,
+    pub situation_troc: Option<String>,
+    pub offre_matchee: Option<bool>,
+    pub upload_session_id: Option<String>,
+    pub disponibilite_debut: Option<chrono::DateTime<chrono::Utc>>,
+    pub disponibilite_fin: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

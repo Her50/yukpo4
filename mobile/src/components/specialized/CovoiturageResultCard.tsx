@@ -9,6 +9,7 @@ import {
 import { modernColors } from '../../theme/modernTheme';
 import SafeIcon from '../SafeIcon';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import ServiceCardActions from './ServiceCardActions';
 
 interface CovoiturageResultCardProps {
     covoiturage: {
@@ -135,6 +136,13 @@ const CovoiturageResultCard: React.FC<CovoiturageResultCardProps> = ({ covoitura
                     </TouchableOpacity>
                 </View>
             </View>
+            {/* ── Partage · Avis · Chat ─────────────────────────────────── */}
+            <ServiceCardActions
+                serviceId={covoiturage.service_id}
+                serviceTitle={`${covoiturage.depart} → ${covoiturage.destination}`}
+                serviceType="covoiturage"
+                serviceDescription={`${covoiturage.places_disponibles} place(s) · ${covoiturage.prix_par_place} ${covoiturage.devise}`}
+            />
         </TouchableOpacity>
     );
 };

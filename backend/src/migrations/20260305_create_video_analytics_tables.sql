@@ -115,7 +115,7 @@ GROUP BY e.video_id, m.path, s.user_id, s.category;
 CREATE OR REPLACE VIEW creator_analytics_summary AS
 SELECT 
     s.user_id as creator_id,
-    u.name as creator_name,
+    COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email) as creator_name,
     COUNT(DISTINCT m.id) as total_videos,
     COALESCE(SUM(avs.total_views), 0) as total_views,
     COALESCE(SUM(avs.unique_viewers), 0) as total_unique_viewers,
@@ -139,7 +139,7 @@ JOIN users u ON u.id = s.user_id
 LEFT JOIN media m ON m.service_id = s.id AND m.type = 'video'
 LEFT JOIN video_analytics_summary avs ON avs.video_id = m.id
 WHERE s.is_active = true
-GROUP BY s.user_id, u.name;
+GROUP BY s.user_id, COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email);
 
 -- Partitionnement mensuel pour les événements (optionnel pour gros volumes)
 -- CREATE TABLE video_analytics_events_y2026m03 PARTITION OF video_analytics_events

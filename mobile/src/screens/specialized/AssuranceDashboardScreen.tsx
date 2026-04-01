@@ -19,7 +19,9 @@ import {
 } from 'react-native';
 import IntelligentChat from '../../components/IntelligentChat';
 import IntelligentChatFab from '../../components/IntelligentChatFab';
+import ProductVideoCreationModal from '../../components/ProductVideoCreationModal';
 import SafeIcon from '../../components/SafeIcon';
+import { ManagedProduct } from '../../types/ManagedProduct';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import assuranceService, {
@@ -105,6 +107,9 @@ const AssuranceDashboardScreen: React.FC = () => {
     const [claims, setClaims] = useState<InsuranceClaim[]>([]);
     const [dashStats, setDashStats] = useState<DashboardStats | null>(null);
 
+    // Studio modal
+    const [showStudioModal, setShowStudioModal] = useState(false);
+    const [studioProduct, setStudioProduct] = useState<ManagedProduct | null>(null);
     // Product creation modal
     const [showProductModal, setShowProductModal] = useState(false);
     const [newProduct, setNewProduct] = useState<Partial<CreateProductPayload>>({
@@ -424,6 +429,24 @@ const AssuranceDashboardScreen: React.FC = () => {
                                 <SafeIcon name={p.is_active ? 'toggle-right' : 'toggle-left'} size={20} color={p.is_active ? '#059669' : '#DC2626'} />
                             </TouchableOpacity>
                             <Text style={{ fontSize: 10, color: p.is_active ? '#059669' : '#DC2626' }}>{p.is_active ? 'Actif' : 'Inactif'}</Text>
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#8B5CF620', borderRadius: 6, padding: 6 }}
+                                onPress={() => {
+                                    const mp: ManagedProduct = {
+                                        id: String(p.id),
+                                        nom: p.nom_produit,
+                                        serviceId: String(serviceId),
+                                        serviceTitre: 'Assurance',
+                                        prix: p.prime_mensuelle ? parseFloat(p.prime_mensuelle) : undefined,
+                                        type: p.type_assurance,
+                                        product_index: p.id,
+                                    };
+                                    setStudioProduct(mp);
+                                    setShowStudioModal(true);
+                                }}
+                            >
+                                <SafeIcon name="film" size={16} color="#8B5CF6" />
+                            </TouchableOpacity>
                         </View>
                     </View>
                 ))
@@ -768,6 +791,14 @@ const AssuranceDashboardScreen: React.FC = () => {
                     userData: { role: user?.role, partner_type: user?.partner_type, name: user?.name },
                     serviceData: { service_id: serviceId },
                 }}
+            />
+            <ProductVideoCreationModal
+                visible={showStudioModal}
+                primaryProduct={studioProduct}
+                products={studioProduct ? [studioProduct] : []}
+                onClose={() => { setShowStudioModal(false); setStudioProduct(null); }}
+                onSuccess={() => { setShowStudioModal(false); setStudioProduct(null); }}
+                navigation={navigation}
             />
         </View>
     );

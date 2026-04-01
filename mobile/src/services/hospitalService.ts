@@ -1,5 +1,6 @@
 // ✅ Service API pour Hôpitaux avec fonctionnalités IA
-import { apiGet, apiPost } from './api';
+import { apiGet, apiPost, apiPatch } from './api';
+import { notificationSchedulerService } from './notificationSchedulerService';
 
 // Types pour les prestations médicales
 export interface MedicalService {
@@ -192,6 +193,118 @@ export const hospitalService = {
             appointment_id: string;
             message: string;
         }>(`/api/hopitaux/${hospitalId}/book`, bookingData);
+
+        // H1: Planifier rappel automatique si date fournie
+        if (response.success && bookingData.preferred_date) {
+            try {
+                const dateStr = bookingData.preferred_time
+                    ? `${bookingData.preferred_date}T${bookingData.preferred_time}`
+                    : bookingData.preferred_date;
+                const rdvDate = new Date(dateStr);
+                if (!isNaN(rdvDate.getTime())) {
+                    await notificationSchedulerService.scheduleRDVReminder(
+                        rdvDate,
+                        'Rappel rendez-vous médical',
+                        `Votre RDV ${bookingData.service_name ? 'pour ' + bookingData.service_name : ''} est demain`,
+                        `rdv_${response.appointment_id || Date.now()}`
+                    );
+                }
+            } catch (e) {
+                console.warn('[hospitalService] Impossible de planifier le rappel RDV:', e);
+            }
+        }
+        return response;
+    },
+
+    // H1: Récupérer mes RDV
+    getMyAppointments: async (params?: { status?: string; page?: number; limit?: number }) => {
+        const response = await apiGet<{ success: boolean; appointments: any[]; total: number }>(
+            '/api/hopitaux/my-appointments',
+            { params }
+        );
+        return response;
+    },
+
+    // H2: Récupérer une ordonnance
+    getOrdonnance: async (consultationId: number) => {
+        const response = await apiGet<{ success: boolean; data: any }>(
+            `/api/hopitaux/consultations/${consultationId}/ordonnance`
+        );
+        return response;
+    },
+
+    // H2: Générer un lien de partage sécurisé
+    generateShareLink: async (consultationId: number) => {
+        const response = await apiPost<{ success: boolean; share_url: string; expires_at: string }>(
+            `/api/hopitaux/consultations/${consultationId}/ordonnance/share-link`,
+            {}
+        );
+        return response;
+    },
+
+    // H3: Soumettre avis sur médecin
+    submitDoctorReview: async (doctorId: number, rating: number, comment: string) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            `/api/hopitaux/doctors/${doctorId}/reviews`,
+            { rating, comment }
+        );
+        return response;
+    },
+
+    // H3: Récupérer avis d'un médecin
+    getDoctorReviews: async (doctorId: number) => {
+        const response = await apiGet<{ success: boolean; reviews: any[]; average_rating: number }>(
+            `/api/hopitaux/doctors/${doctorId}/reviews`
+        );
+        return response;
+    },
+
+    // H3: Médecins d'un hôpital
+    getHospitalDoctors: async (hospitalId: number) => {
+        const response = await apiGet<{ success: boolean; doctors: any[] }>(
+            `/api/hopitaux/${hospitalId}/doctors`
+        );
+        return response;
+    },
+
+    // H4: File d'attente virtuelle
+    joinVirtualQueue: async (hospitalId: number, departement: string) => {
+        const response = await apiPost<{ success: boolean; ticket_id: string; position: number; estimated_wait_minutes: number }>(
+            `/api/hopitaux/${hospitalId}/queue/join`,
+            { departement }
+        );
+        return response;
+    },
+
+    getQueuePosition: async (hospitalId: number, ticketId: string) => {
+        const response = await apiGet<{ success: boolean; position: number; estimated_wait_minutes: number; total_ahead: number }>(
+            `/api/hopitaux/${hospitalId}/queue/position/${ticketId}`
+        );
+        return response;
+    },
+
+    leaveQueue: async (hospitalId: number, ticketId: string) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            `/api/hopitaux/${hospitalId}/queue/${ticketId}`,
+            { _method: 'DELETE' }
+        );
+        return response;
+    },
+
+    // H6: Feedback post-consultation
+    submitPostConsultationFeedback: async (
+        consultationId: number,
+        data: {
+            overall_rating: number;
+            persistent_symptoms: boolean;
+            needs_followup: boolean;
+            comment?: string;
+        }
+    ) => {
+        const response = await apiPost<{ success: boolean; message: string }>(
+            `/api/hopitaux/consultations/${consultationId}/feedback`,
+            data
+        );
         return response;
     },
 

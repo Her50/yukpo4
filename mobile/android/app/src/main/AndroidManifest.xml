@@ -1,17 +1,33 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+  <!-- Localisation en arrière-plan (tâche alertes communautaires) -->
+  <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
   <uses-permission android:name="android.permission.BLUETOOTH"/>
   <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
   <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
   <uses-permission android:name="android.permission.CAMERA"/>
+  <!-- Service foreground persistant (alertes communautaires background) -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+  <!-- Notifications Android 13+ (POST_NOTIFICATIONS) -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+  <!-- Bypass optimisation batterie (Xiaomi, Huawei, Samsung agressifs) -->
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+  <!-- Alarmes exactes Android 12+ (notifications Coach IA planifiées 7h/12h30/19h) -->
+  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+  <!-- Android 13+ : alarme exacte sans restriction d'usage -->
+  <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
+  <!-- Réveiller le CPU pour déclencher la notification (écran verrouillé) -->
+  <uses-permission android:name="android.permission.WAKE_LOCK"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
   <uses-feature android:name="android.hardware.camera" android:required="false"/>
   <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>

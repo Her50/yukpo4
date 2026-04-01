@@ -91,6 +91,14 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
             highlighted: true,
             adminOnly: true
         },
+        {
+            title: 'YukpoLibrairie — Super libraire',
+            icon: '📚',
+            route: 'SuperLibraireAdmin',
+            description: 'Tableau de bord et équipe du super libraire natif',
+            highlighted: true,
+            adminOnly: true
+        },
         // ✅ SÉPARATEUR VISUEL: Déconnexion toujours visible en bas
         {
             title: t('userAvatarMenu.deconnexion'),

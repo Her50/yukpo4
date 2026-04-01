@@ -21,6 +21,7 @@ import { NativeButton } from '../../components/SafeNativeDesign';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { immobilierService } from '../../services/immobilierService';
+import { notificationSoundService } from '../../services/notificationSoundService';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 type RouteParams = {
@@ -29,6 +30,13 @@ type RouteParams = {
     typeBien?: string;
     prixNuitee?: number;
     ville?: string;
+    selectedUnit?: {
+        id: number;
+        unit_number?: string;
+        prix_nuitee?: number;
+        virtual_tour_url?: string | null;
+        virtual_tour_media?: string[];
+    };
 };
 
 const HotelBookingScreen: React.FC = () => {
@@ -57,6 +65,15 @@ const HotelBookingScreen: React.FC = () => {
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
     const [showChat, setShowChat] = useState(false);
+    const [selectedUnit, setSelectedUnit] = useState<RouteParams['selectedUnit'] | null>(
+        params.selectedUnit || null
+    );
+
+    React.useEffect(() => {
+        if (params.selectedUnit?.id) {
+            setSelectedUnit(params.selectedUnit);
+        }
+    }, [params.selectedUnit]);
 
     const nbNuits = (() => {
         try {
@@ -100,6 +117,7 @@ const HotelBookingScreen: React.FC = () => {
             setLoading(true);
             const response = await immobilierService.bookHotelStay({
                 property_id: propertyId,
+                unit_id: selectedUnit?.id,
                 date_arrivee: dateArrivee.trim(),
                 date_depart: dateDepart.trim(),
                 nombre_adultes: parseInt(nombreAdultes) || 1,
@@ -111,10 +129,12 @@ const HotelBookingScreen: React.FC = () => {
                 prix_nuitee: prixNuitee || undefined,
                 prix_total: prixTotal || undefined,
                 notes: notes.trim() || undefined,
+                notify_partner_push: true,
             });
 
             const resData = (response?.data || response) as any;
             if (resData?.success) {
+                await notificationSoundService.playSound('ready');
                 const reservationId = resData?.data?.id || resData?.data?.reservation_id;
                 Alert.alert(
                     t('hotelBooking.reservationSent'),
@@ -204,6 +224,33 @@ const HotelBookingScreen: React.FC = () => {
                     {nbNuits > 0 && (
                         <Text style={s.hint}>{nbNuits} {nbNuits > 1 ? t('hotelBookingScreen.nuits') : t('hotelBookingScreen.nuit')}</Text>
                     )}
+
+                    <Text style={s.sectionTitle}>Chambre</Text>
+                    <TouchableOpacity
+                        style={s.unitPicker}
+                        onPress={() => {
+                            if (!dateArrivee.trim() || !dateDepart.trim()) {
+                                Alert.alert(t('message.error'), t('hotelBooking.enterDates'));
+                                return;
+                            }
+                            (navigation as any).navigate('HotelUnitSelection', {
+                                propertyId,
+                                dateArrivee: dateArrivee.trim(),
+                                dateDepart: dateDepart.trim(),
+                                nombreAdultes: parseInt(nombreAdultes) || 1,
+                                nombreEnfants: parseInt(nombreEnfants) || 0,
+                            });
+                        }}
+                    >
+                        <SafeIcon name="bed-double" size={18} color="#6366F1" />
+                        <Text style={s.unitPickerText}>
+                            {selectedUnit?.unit_number ? `Chambre ${selectedUnit.unit_number}` : 'Choisir une chambre disponible'}
+                        </Text>
+                        <SafeIcon name="chevron-right" size={18} color="#9CA3AF" />
+                    </TouchableOpacity>
+                    {selectedUnit?.virtual_tour_url || (selectedUnit?.virtual_tour_media || []).length > 0 ? (
+                        <Text style={s.virtualLink}>Visite de chambre disponible dans l'ecran de selection.</Text>
+                    ) : null}
 
                     <Text style={s.sectionTitle}>{t('hotelBookingScreen.occupants')}</Text>
                     <View style={s.row}>
@@ -317,6 +364,20 @@ const HotelBookingScreen: React.FC = () => {
                         ville,
                         prix: prixNuitee > 0 ? `${prixNuitee} ${devise}/${t('hotelMeubleHome.nuit')}` : undefined,
                         description: `${typeBien === 'meuble' ? t('hotelBookingScreen.locationMeublee') : t('hotelBookingScreen.hotel')} · ${ville}`,
+                        booking_features: [
+                            'choose_my_room_with_unit_id',
+                            'virtual_tour_video_in_app',
+                            'mini_plan_live_availability',
+                            'partner_push_on_booking',
+                            'local_sound_confirmation',
+                        ],
+                        booking_context: {
+                            selected_unit: selectedUnit?.unit_number || null,
+                            date_arrivee: dateArrivee || null,
+                            date_depart: dateDepart || null,
+                            adults: parseInt(nombreAdultes) || 1,
+                            children: parseInt(nombreEnfants) || 0,
+                        },
                     },
                 }}
             />
@@ -338,6 +399,19 @@ const s = StyleSheet.create({
     label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 8 },
     input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#111827' },
     hint: { fontSize: 12, color: '#6366F1', fontWeight: '500', marginTop: 4 },
+    unitPicker: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        gap: 10,
+    },
+    unitPickerText: { flex: 1, color: '#111827', fontSize: 14, fontWeight: '600' },
+    virtualLink: { marginTop: 6, color: '#7C3AED', fontSize: 12, fontWeight: '600' },
     row: { flexDirection: 'row' },
     stepper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingVertical: 4 },
     stepBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },

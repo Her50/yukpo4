@@ -10,11 +10,108 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use log::{error, info};
+use hmac::{Hmac, Mac};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sha2::Sha256;
 use sqlx::Row;
 use std::sync::Arc;
+
+type HmacSha256 = Hmac<Sha256>;
+
+// ============================================================================
+// VÉRIFICATION HMAC-SHA256 DU QR CODE
+// ============================================================================
+
+/// Retourne la clé secrète HMAC pour les QR bus.
+/// Priorité : variable d'environnement BUS_QR_HMAC_SECRET > platform_config en BDD.
+async fn get_qr_secret(pg: &sqlx::PgPool) -> String {
+    if let Ok(secret) = std::env::var("BUS_QR_HMAC_SECRET") {
+        if !secret.is_empty() && secret != "CHANGEME_SET_VIA_ENV_QR_SECRET_MIN_32_CHARS" {
+            return secret;
+        }
+    }
+    // Fallback : lire depuis platform_config
+    let db_secret: Option<String> =
+        sqlx::query_scalar("SELECT value FROM platform_config WHERE key = 'qr_hmac_secret'")
+            .fetch_optional(pg)
+            .await
+            .ok()
+            .flatten();
+    db_secret.unwrap_or_else(|| "CHANGEME_SET_VIA_ENV_QR_SECRET_MIN_32_CHARS".to_string())
+}
+
+/// Calcule la signature HMAC-SHA256 d'un QR code bus.
+/// Payload signé : "payment_id:product_id:user_id"
+pub fn compute_qr_hmac(payment_id: &str, product_id: &str, user_id: i32, secret: &str) -> String {
+    let payload = format!("{}:{}:{}", payment_id, product_id, user_id);
+    let mut mac =
+        HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC accepte n'importe quelle taille");
+    mac.update(payload.as_bytes());
+    let result = mac.finalize();
+    hex::encode(result.into_bytes())
+}
+
+/// Vérifie la signature d'un QR code.
+/// Retourne (is_valid, is_legacy) :
+///   - is_valid=true  : signature correcte OU ticket legacy sans signature en BDD
+///   - is_legacy=true : ticket créé avant l'introduction des signatures (compat)
+async fn verify_qr_signature(
+    pg: &sqlx::PgPool,
+    qr_data: &Value,
+    secret: &str,
+) -> (bool, bool) {
+    let sig = qr_data.get("sig").and_then(|v| v.as_str());
+    let payment_id = qr_data.get("payment_id").and_then(|v| v.as_str());
+    let product_id = qr_data.get("product_id").and_then(|v| v.as_str());
+    let user_id = qr_data.get("user_id").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+
+    // Si le QR n'a pas de champ sig, vérifier si c'est un ticket legacy (avant migration)
+    if sig.is_none() {
+        if let Some(pid) = payment_id {
+            let stored_sig: Option<Option<String>> = sqlx::query_scalar(
+                "SELECT qr_hmac_signature FROM bus_ticket_payments WHERE id = $1",
+            )
+            .bind(pid)
+            .fetch_optional(pg)
+            .await
+            .ok()
+            .flatten();
+
+            if let Some(stored) = stored_sig {
+                if stored.is_none() {
+                    // Ticket legacy : pas de signature en BDD → autoriser avec warning
+                    warn!(
+                        "[verify_qr_signature] Ticket legacy sans signature: payment_id={}. \
+                         Autorisation accordée (mode rétrocompatibilité).",
+                        pid
+                    );
+                    return (true, true);
+                }
+                // Ticket récent mais sig absente du QR → refuser
+                return (false, false);
+            }
+        }
+        return (false, false);
+    }
+
+    // Vérifier la signature HMAC
+    if let (Some(sig_val), Some(pid), Some(prid)) = (sig, payment_id, product_id) {
+        let expected = compute_qr_hmac(pid, prid, user_id, secret);
+        let valid = sig_val == expected;
+        if !valid {
+            warn!(
+                "[verify_qr_signature] Signature invalide pour payment_id={}. \
+                 Possible tentative de falsification.",
+                pid
+            );
+        }
+        return (valid, false);
+    }
+
+    (false, false)
+}
 
 // ============================================================================
 // STRUCTURES DE REQUÊTE/RÉPONSE
@@ -85,14 +182,34 @@ pub async fn validate_ticket_qr(
         validator_user_id, payload.product_id
     );
 
-    // Vérifier que le validateur est propriétaire de l'agence ou chauffeur
-    // (Cette vérification sera faite dans la fonction SQL si nécessaire)
+    // ── Vérification HMAC-SHA256 avant tout accès BDD ────────────────────────
+    let secret = get_qr_secret(&state.pg).await;
+    let (sig_valid, is_legacy) = verify_qr_signature(&state.pg, &payload.qr_code_data, &secret).await;
 
-    // Appeler la fonction SQL de validation
-    let result: Value = sqlx::query_scalar("SELECT validate_bus_ticket($1, $2, $3)")
+    if !sig_valid {
+        return Ok((
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "success": false,
+                "error": "QR code invalide ou falsifié. Présentez votre ticket original.",
+                "already_boarded": false
+            })),
+        ));
+    }
+
+    if is_legacy {
+        info!(
+            "[validate_ticket_qr] Ticket legacy (avant migration HMAC) accepté pour validator={}",
+            validator_user_id
+        );
+    }
+
+    // Appeler la fonction SQL de validation (avec flag signature valide)
+    let result: Value = sqlx::query_scalar("SELECT validate_bus_ticket($1, $2, $3, $4)")
         .bind(&payload.qr_code_data)
         .bind(validator_user_id)
         .bind(&payload.product_id)
+        .bind(true) // p_signature_valid — vérifiée ci-dessus en Rust
         .fetch_one(&state.pg)
         .await
         .map_err(|e| {

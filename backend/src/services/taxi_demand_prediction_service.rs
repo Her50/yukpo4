@@ -546,8 +546,8 @@ Retourne UNIQUEMENT un JSON avec:
         let month = target.month() as u8;
         let is_weekend = day_of_week >= 5;
 
-        // TODO: Vérifier jours fériés (base locale)
-        let is_holiday = false;
+        // Vérifier jours fériés camerounais (liste fixe + calcul Pâques)
+        let is_holiday = is_cameroon_public_holiday(target);
 
         // Facteur météo (utiliser service météo existant)
         let weather_factor = self.get_weather_factor(zone.latitude, zone.longitude).await?;
@@ -638,6 +638,16 @@ Retourne UNIQUEMENT un JSON avec:
             ),
         ])
     }
+
+    /// Obtenir la taille du cache de prédictions (entrées non expirées)
+    pub async fn get_cache_size(&self) -> usize {
+        let cache_guard = self.cache.read().await;
+        let now = Utc::now();
+        cache_guard
+            .values()
+            .filter(|(_, cached_time)| (now - *cached_time).num_seconds() < 3600)
+            .count()
+    }
 }
 
 /// Données historiques
@@ -648,4 +658,77 @@ struct HistoricalData {
     avg_demand: f64,
     trend: f64,
     total_count: i32,
+}
+
+/// Vérifie si une date est un jour férié au Cameroun.
+/// Inclut les fêtes civiles, religieuses chrétiennes fixes et Pâques (algorithmique).
+/// Note : les fêtes musulmanes (Aïd) varient chaque année — non incluses ici.
+fn is_cameroon_public_holiday(date: &DateTime<Utc>) -> bool {
+    use chrono::Datelike;
+
+    let month = date.month() as u8;
+    let day = date.day() as u8;
+    let year = date.year();
+
+    // ── Jours fériés fixes ────────────────────────────────────────────────────
+    let fixed_holidays: &[(u8, u8)] = &[
+        (1, 1),   // Nouvel An
+        (2, 11),  // Fête de la Jeunesse
+        (3, 8),   // Journée internationale de la femme (demi-journée; traité comme férié)
+        (5, 1),   // Fête du Travail
+        (5, 20),  // Fête Nationale
+        (8, 15),  // Assomption
+        (10, 1),  // Réunification
+        (11, 6),  // Fête des Forces Armées (fêté localement)
+        (12, 25), // Noël
+    ];
+
+    if fixed_holidays.contains(&(month, day)) {
+        return true;
+    }
+
+    // ── Pâques et jours associés (algorithme de Meeus/Jones/Butcher) ──────────
+    let (good_friday, easter_monday) = compute_easter_days(year);
+    let naive_date = date.date_naive();
+    if naive_date == good_friday || naive_date == easter_monday {
+        return true;
+    }
+
+    // ── Ascension (39 jours après Pâques) ────────────────────────────────────
+    let (_, easter_sunday) = compute_easter(year);
+    let ascension = easter_sunday + chrono::Duration::days(39);
+    if naive_date == ascension {
+        return true;
+    }
+
+    false
+}
+
+/// Retourne (Vendredi Saint, Lundi de Pâques) pour l'année donnée.
+fn compute_easter_days(year: i32) -> (chrono::NaiveDate, chrono::NaiveDate) {
+    let (_, easter) = compute_easter(year);
+    let good_friday = easter - chrono::Duration::days(2);
+    let easter_monday = easter + chrono::Duration::days(1);
+    (good_friday, easter_monday)
+}
+
+/// Calcule le dimanche de Pâques (algorithme de Meeus/Jones/Butcher).
+fn compute_easter(year: i32) -> (i32, chrono::NaiveDate) {
+    let a = year % 19;
+    let b = year / 100;
+    let c = year % 100;
+    let d = b / 4;
+    let e = b % 4;
+    let f = (b + 8) / 25;
+    let g = (b - f + 1) / 3;
+    let h = (19 * a + b - d - g + 15) % 30;
+    let i = c / 4;
+    let k = c % 4;
+    let l = (32 + 2 * e + 2 * i - h - k) % 7;
+    let m = (a + 11 * h + 22 * l) / 451;
+    let month = (h + l - 7 * m + 114) / 31;
+    let day = ((h + l - 7 * m + 114) % 31) + 1;
+    let easter = chrono::NaiveDate::from_ymd_opt(year, month as u32, day as u32)
+        .unwrap_or_else(|| chrono::NaiveDate::from_ymd_opt(year, 4, 12).unwrap());
+    (year, easter)
 }

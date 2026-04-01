@@ -24,7 +24,8 @@ export interface PharmacyProduct {
 }
 
 export interface ProductSearchFilters {
-    query: string;
+    query?: string;
+    categorie?: string;
     lat?: number;
     lng?: number;
     radius_km?: number;
@@ -32,6 +33,25 @@ export interface ProductSearchFilters {
     max_price?: number;
     only_available?: boolean;
     limit?: number;
+}
+
+export interface NearbyMedicineFilters {
+    q: string;
+    lat?: number;
+    lng?: number;
+    radius_km?: number;
+    quantity?: number;
+    max_price?: number;
+    on_duty_only?: boolean;
+    limit?: number;
+}
+
+export interface NearbyMedicineItem extends PharmacyProduct {
+    pharmacy_id?: number;
+    pharmacy_nom?: string;
+    pharmacy_adresse?: string;
+    is_on_duty_now?: boolean;
+    can_fulfill_quantity?: boolean;
 }
 
 export interface BudgetComparison {
@@ -57,6 +77,14 @@ export const pharmacyProductService = {
     searchProducts: async (filters: ProductSearchFilters) => {
         const response = await apiGet<{ success: boolean; products: PharmacyProduct[] }>(
             '/api/pharmacies/products/search',
+            { params: filters }
+        );
+        return response;
+    },
+
+    searchNearbyMedicines: async (filters: NearbyMedicineFilters) => {
+        const response = await apiGet<{ success: boolean; items: NearbyMedicineItem[] }>(
+            '/api/medicines/nearby',
             { params: filters }
         );
         return response;

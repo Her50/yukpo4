@@ -1,4 +1,8 @@
 // Module pour exécuter automatiquement les migrations au démarrage
+use crate::migrations::auto_migrate_agences_patch::{
+    ensure_agences_voyage_cancellation_deadline, ensure_bus_qr_hmac_signing,
+    ensure_platform_config_and_yukpo_user, ensure_seat_map_alias_in_availability,
+};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use serde_json::json;
@@ -4571,7 +4575,7 @@ pub async fn ensure_product_comments_tables(pool: &PgPool) -> Result<(), sqlx::E
             pc.updated_at,
             pc.edited_at,
             pc.is_deleted,
-            COALESCE(u.nom_complet, u.name, CONCAT(u.prenom, ' ', u.nom), u.email, 'Utilisateur')::TEXT AS user_name,
+            COALESCE(u.nom_complet, CONCAT(u.prenom, ' ', u.nom), u.email, 'Utilisateur')::TEXT AS user_name,
             COALESCE(u.avatar_url, ''::VARCHAR(500)) AS user_avatar,
             (
                 SELECT jsonb_object_agg(reaction_type, reaction_count)
@@ -8492,6 +8496,24 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto pharmacy orders tables: {}", e),
     }
 
+    // ✅ 2026-03-31 : nearby medicines + commandes fiables (idempotency, reservation consumption)
+    match ensure_pharmacy_nearby_order_reliability(pool).await {
+        Ok(_) => info!("✅ Migration auto: pharmacy nearby/order reliability OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto pharmacy nearby/order reliability: {}",
+            e
+        ),
+    }
+
+    // ✅ 2026-03-31 : livraison auto + réservation wallet + traçabilité financière pharmacie
+    match ensure_pharmacy_delivery_wallet_financials(pool).await {
+        Ok(_) => info!("✅ Migration auto: pharmacy delivery/wallet financials OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto pharmacy delivery/wallet financials: {}",
+            e
+        ),
+    }
+
     match ensure_pharmacy_advanced_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: pharmacy advanced tables OK"),
         Err(e) => error!("❌ Erreur migration auto pharmacy advanced tables: {}", e),
@@ -8861,6 +8883,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto products bus schedule: {}", e),
     }
 
+    // ✅ 2026-03-31 : Liaison forte horaires -> modèle bus (bus_model_id)
+    match ensure_agency_schedule_bus_model_link(pool).await {
+        Ok(_) => info!("✅ Migration auto: agency schedule bus_model link OK"),
+        Err(e) => error!("❌ Erreur migration auto agency schedule bus_model link: {}", e),
+    }
+
     // ✅ 2025-11-27 : Colonnes return_date et return_time dans bus_ticket_payments
     match ensure_return_time_columns(pool).await {
         Ok(_) => info!("✅ Migration auto: return_time columns OK"),
@@ -9228,6 +9256,66 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_bus_ticket_escrow_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: bus_ticket_escrow_credit_system OK"),
         Err(e) => error!("❌ Erreur migration auto bus_ticket_escrow: {}", e),
+    }
+
+    // ✅ NOUVEAU 2026-04-01 : Registre plateformes e-commerce + intégrations partenaires
+    match ensure_ecommerce_platform_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: ecommerce_platforms OK"),
+        Err(e) => error!("❌ Erreur migration auto ecommerce_platforms: {}", e),
+    }
+
+    // ✅ 2026-04-01 : Fix types UUID→INTEGER librairie network (idempotent)
+    match ensure_librairie_network_types_fix(pool).await {
+        Ok(_) => info!("✅ Migration auto: fix_librairie_network_types OK"),
+        Err(e) => error!("❌ Erreur migration auto fix_librairie_network_types: {}", e),
+    }
+
+    // ✅ 2026-04-01 : Super librairie YukpoLibrairie — colonnes, enum, audit, bootstrap
+    match ensure_super_librairie_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: yukpolibrairie_super_libraire OK"),
+        Err(e) => error!("❌ Erreur migration auto super_librairie: {}", e),
+    }
+
+    // ✅ 2026-04-01 : Correction taux commission bourse livre 10%→5% (si table existante)
+    match ensure_commission_rate_fix(pool).await {
+        Ok(_) => info!("✅ Migration auto: fix_commission_rate OK"),
+        Err(e) => error!("❌ Erreur migration auto fix_commission_rate: {}", e),
+    }
+
+    // ✅ 2026-04-01 : Tables restaurant (opérations, menu, commandes, vidéo, commission 2%)
+    match ensure_restaurant_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: restaurant tables OK"),
+        Err(e) => error!("❌ Erreur migration auto restaurant: {}", e),
+    }
+
+    // ✅ 2026-04-01 : platform_config + user_id Yukpo dynamique (Fix 1)
+    match ensure_platform_config_and_yukpo_user(pool).await {
+        Ok(_) => info!("✅ Migration auto: platform_config + yukpo_platform_user_id OK"),
+        Err(e) => error!("❌ Erreur migration auto platform_config: {}", e),
+    }
+
+    // ✅ 2026-04-01 : Signature HMAC-SHA256 QR tickets bus (Fix 2)
+    match ensure_bus_qr_hmac_signing(pool).await {
+        Ok(_) => info!("✅ Migration auto: bus_qr_hmac_signing OK"),
+        Err(e) => error!("❌ Erreur migration auto bus_qr_hmac: {}", e),
+    }
+
+    // ✅ 2026-04-01 : Alias seat_map dans get_bus_seat_availability() (Fix 5)
+    match ensure_seat_map_alias_in_availability(pool).await {
+        Ok(_) => info!("✅ Migration auto: seat_map alias OK"),
+        Err(e) => error!("❌ Erreur migration auto seat_map_alias: {}", e),
+    }
+
+    // ✅ 2026-04-01 : Colonne cancellation_deadline_hours sur agences_voyage (Fix 8)
+    match ensure_agences_voyage_cancellation_deadline(pool).await {
+        Ok(_) => info!("✅ Migration auto: cancellation_deadline_hours OK"),
+        Err(e) => error!("❌ Erreur migration auto cancellation_deadline: {}", e),
+    }
+
+    // ✅ 2026-04-01 : Index trigram pour la recherche universelle cross-services
+    match ensure_universal_search_indexes(pool).await {
+        Ok(_) => info!("✅ Migration auto: universal_search_indexes OK"),
+        Err(e) => error!("❌ Erreur migration auto universal_search_indexes: {}", e),
     }
 
     info!("🎉 Toutes les migrations automatiques ont été appliquées avec succès !");
@@ -16642,6 +16730,29 @@ pub async fn ensure_products_bus_schedule_alignment(pool: &PgPool) -> Result<(),
     Ok(())
 }
 
+/// ✅ 2026-03-31 : Colonne bus_model_id sur agency_departure_schedules
+pub async fn ensure_agency_schedule_bus_model_link(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification colonne bus_model_id sur agency_departure_schedules...");
+
+    let col_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'agency_departure_schedules' AND column_name = 'bus_model_id')",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+
+    if !col_exists {
+        let migration_sql =
+            include_str!("../../migrations/20260331_add_bus_model_id_to_agency_schedules.sql");
+        execute_migration_sql_safe(pool, migration_sql).await?;
+        info!("✅ Colonne bus_model_id (agency_departure_schedules) appliquée");
+    } else {
+        info!("✅ Colonne bus_model_id (agency_departure_schedules) déjà présente");
+    }
+
+    Ok(())
+}
+
 /// ✅ NOUVEAU 2025-11-27 : Ajoute les colonnes return_date et return_time à bus_ticket_payments
 /// Compatible SQLx offline mode
 pub async fn ensure_return_time_columns(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -17397,6 +17508,33 @@ pub async fn ensure_pharmacy_orders_tables(pool: &PgPool) -> Result<(), sqlx::Er
     execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Tables pharmacy_orders + reservations créées/vérifiées");
+    Ok(())
+}
+
+/// ✅ 2026-03-31 : Nearby medicines + fiabilité commandes pharmacie
+/// Migration: 20260331_001_nearby_medicines_and_reliable_pharmacy_orders.sql
+pub async fn ensure_pharmacy_nearby_order_reliability(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des éléments nearby medicines + commandes fiables...");
+
+    let migration_sql = include_str!(
+        "../../migrations/20260331_001_nearby_medicines_and_reliable_pharmacy_orders.sql"
+    );
+    execute_migration_sql_safe(pool, migration_sql).await?;
+
+    info!("✅ Nearby medicines + fiabilité commandes pharmacie OK");
+    Ok(())
+}
+
+/// ✅ 2026-03-31 : Livraison auto + réserve wallet + mouvements financiers pharmacie
+/// Migration: 20260331_002_pharmacy_delivery_wallet_financials.sql
+pub async fn ensure_pharmacy_delivery_wallet_financials(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création des éléments livraison+wallet pharmacie...");
+
+    let migration_sql =
+        include_str!("../../migrations/20260331_002_pharmacy_delivery_wallet_financials.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+
+    info!("✅ Livraison auto + réserve wallet + finances pharmacie OK");
     Ok(())
 }
 
@@ -21353,5 +21491,180 @@ pub async fn ensure_bus_ticket_escrow_tables(pool: &PgPool) -> Result<(), sqlx::
     execute_migration_sql_safe(pool, migration_sql).await?;
 
     info!("✅ Système escrow/crédit tickets bus appliqué");
+    Ok(())
+}
+
+/// ✅ 2026-04-01: Crée les tables du registre e-commerce universel
+pub async fn ensure_ecommerce_platform_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🛒 Vérification tables e-commerce universel (plateformes, intégrations, logs)...");
+
+    let already_applied = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'ecommerce_platforms')"
+    )
+    .fetch_one(pool)
+    .await?;
+    if already_applied {
+        // Appliquer seulement les colonnes manquantes sur service_products
+        let _ = sqlx::query(
+            "ALTER TABLE service_products ADD COLUMN IF NOT EXISTS platform_integration_id INTEGER"
+        ).execute(pool).await;
+        let _ = sqlx::query(
+            "ALTER TABLE service_products ADD COLUMN IF NOT EXISTS external_product_id TEXT"
+        ).execute(pool).await;
+        let _ = sqlx::query(
+            "ALTER TABLE service_products ADD COLUMN IF NOT EXISTS store_category VARCHAR(50)"
+        ).execute(pool).await;
+        info!("✅ Tables e-commerce déjà présentes (skip migration, colonnes ALTER IF NOT EXISTS appliquées)");
+        return Ok(());
+    }
+
+    let migration_sql = include_str!("../../migrations/20260401_ecommerce_platforms.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+
+    info!("✅ Tables e-commerce universel créées avec succès");
+    Ok(())
+}
+
+/// ✅ 2026-04-01 : Fix types UUID→INTEGER dans commande_livres_occasion / librairie_partners / commandes_mixtes
+pub async fn ensure_librairie_network_types_fix(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let migration_sql =
+        include_str!("../../migrations/20260401_fix_librairie_network_types.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    Ok(())
+}
+
+/// ✅ 2026-04-01 : Super librairie YukpoLibrairie — colonnes timeout, enum, audit log, bootstrap
+pub async fn ensure_super_librairie_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    // Vérifier si déjà appliqué (colonne sentinelle)
+    let already_applied = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.columns \
+         WHERE table_name='librairie_partners' AND column_name='est_super_librairie')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if already_applied {
+        // S'assurer que le compte YukpoLibrairie existe (bootstrap idempotent)
+        let user_exists = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM users WHERE email = 'super@yukpolibrairie.app')",
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !user_exists {
+            sqlx::query(
+                "INSERT INTO users (nom, email, phone, password_hash, role, is_active, created_at, updated_at) \
+                 VALUES ('YukpoLibrairie','super@yukpolibrairie.app','+237000000000', \
+                         '$2b$12$PLACEHOLDER_HASH_CHANGE_AT_FIRST_BOOT','partenaire',true,NOW(),NOW()) \
+                 ON CONFLICT (email) DO NOTHING",
+            )
+            .execute(pool)
+            .await?;
+        }
+
+        let partner_exists = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM librairie_partners WHERE est_super_librairie = true)",
+        )
+        .fetch_one(pool)
+        .await?;
+
+        if !partner_exists {
+            let user_id: i32 = sqlx::query_scalar(
+                "SELECT id FROM users WHERE email = 'super@yukpolibrairie.app' LIMIT 1",
+            )
+            .fetch_one(pool)
+            .await?;
+
+            sqlx::query(
+                "INSERT INTO librairie_partners \
+                 (user_id,nom,email,telephone,gps,ville,quartier,rayon_service_km,statut,rating, \
+                  temps_moyen_validation,commission_app,est_actif,est_super_librairie, \
+                  delai_validation_super_librairie_s,horaires_ouverture,created_at,updated_at) \
+                 VALUES ($1,'YukpoLibrairie','super@yukpolibrairie.app','+237000000000', \
+                         '3.8667,11.5167','Yaounde','National',9999,'actif',5.0,5, \
+                         0.0500,true,true,900,'00:00-24:00',NOW(),NOW()) \
+                 ON CONFLICT DO NOTHING",
+            )
+            .bind(user_id)
+            .execute(pool)
+            .await?;
+        }
+
+        info!("✅ Super librairie déjà présent (colonnes OK, bootstrap vérifié)");
+        return Ok(());
+    }
+
+    let migration_sql =
+        include_str!("../../migrations/20260401_yukpolibrairie_super_libraire.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    info!("✅ Tables super librairie créées et YukpoLibrairie bootstrappé");
+    Ok(())
+}
+
+/// ✅ 2026-04-01 : Correction taux commission bourse livre 10%→5% (skip si table absente)
+pub async fn ensure_commission_rate_fix(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let table_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables \
+         WHERE table_name = 'book_exchange_commissions')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !table_exists {
+        info!("ℹ️ book_exchange_commissions absente — fix commission ignoré (sera appliqué au prochain boot)");
+        return Ok(());
+    }
+
+    let migration_sql =
+        include_str!("../../migrations/20260401_fix_commission_rate.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    info!("✅ Taux commission bourse livre harmonisé à 5%");
+    Ok(())
+}
+
+/// ✅ 2026-04-01 : Tables restaurant (opérations, menu, commandes, vidéo, commission 2%)
+pub async fn ensure_restaurant_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🍽️ Vérification tables restaurant...");
+
+    let tables_ok = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'restaurant_menu_items')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !tables_ok {
+        info!("🍽️ Création des tables restaurant (opérations + menu + commandes)...");
+        let sql1 = include_str!("../../migrations/20260331_003_restaurant_operations.sql");
+        execute_migration_sql_safe(pool, sql1).await?;
+        let sql2 = include_str!("../../migrations/20260401_001_restaurant_menu_orders.sql");
+        execute_migration_sql_safe(pool, sql2).await?;
+        info!("✅ Tables restaurant créées");
+    } else {
+        info!("✅ Tables restaurant déjà présentes (skip création)");
+    }
+
+    // Toujours appliquer les colonnes et le taux : idempotent via IF NOT EXISTS / ON CONFLICT
+    let sql3 = include_str!("../../migrations/20260401_002_restaurant_video_commission.sql");
+    execute_migration_sql_safe(pool, sql3).await?;
+    info!("✅ Restaurant : video_url + commission 2% vérifiés");
+
+    // QR codes livraison + frais livraison/assurance sur restaurant_orders
+    let sql4 = include_str!("../../migrations/20260401_003_restaurant_qr_delivery_fees.sql");
+    execute_migration_sql_safe(pool, sql4).await?;
+    info!("✅ Restaurant : QR codes + frais livraison vérifiés");
+
+    Ok(())
+}
+
+/// Index trigram pg_trgm pour la recherche universelle cross-services.
+/// Active l'extension pg_trgm et crée des index GIN sur :
+///   - service_products.product_name / description
+///   - restaurant_menu_items.nom / description
+///   - services.data->>'nom' / data->>'description' / category / specialized_type / gps
+pub async fn ensure_universal_search_indexes(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let migration_sql =
+        include_str!("../../migrations/20260401_universal_search_indexes.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    info!("✅ Index trigram recherche universelle appliqués");
     Ok(())
 }

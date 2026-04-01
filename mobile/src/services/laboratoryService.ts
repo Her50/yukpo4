@@ -192,6 +192,62 @@ export const laboratoryService = {
         return response;
     },
 
+    // ✅ Réserver un examen dans un laboratoire
+    bookExamination: async (
+        laboratoryId: number,
+        params: {
+            examination_type_id?: number;
+            examination_name: string;
+            preferred_date: string; // 'YYYY-MM-DD'
+            preferred_time?: string;
+            notes?: string;
+            patient_age?: number;
+            requires_fasting?: boolean;
+        }
+    ) => {
+        return apiPost<{ success: boolean; booking_id: number; message: string }>(
+            `/api/laboratoires/${laboratoryId}/book-examination`,
+            params
+        );
+    },
+
+    // ✅ Réserver via book générique (slot spécifique)
+    bookLaboratory: async (
+        laboratoryId: number,
+        params: {
+            service_type: string;
+            preferred_date: string;
+            preferred_time?: string;
+            notes?: string;
+        }
+    ) => {
+        return apiPost<{ success: boolean; reservation_id: number; message: string }>(
+            `/api/laboratoires/${laboratoryId}/book`,
+            params
+        );
+    },
+
+    // ✅ Créneaux disponibles d'un laboratoire
+    getAvailableSlots: async (laboratoryId: number, date?: string) => {
+        return apiGet<{ success: boolean; slots: Array<{
+            id: number;
+            date: string;
+            start_time: string;
+            end_time: string;
+            available: boolean;
+        }> }>(
+            `/api/laboratoires/${laboratoryId}/available-slots`,
+            { params: date ? { date } : {} }
+        );
+    },
+
+    // ✅ Analytics du laboratoire (partenaire)
+    getAnalytics: async (laboratoryId: number) => {
+        return apiGet<{ success: boolean; analytics: any }>(
+            `/api/laboratoires/${laboratoryId}/analytics`
+        );
+    },
+
     // ✅ Recherche avec système de disponibilité (utilise search_with_scheduling)
     searchWithAvailability: async (
         query: string,

@@ -40,6 +40,7 @@ pub mod health_routes;
 pub mod health_structure_routes;
 pub mod history_routes;
 pub mod hotel_financial_routes; // ✅ 2026-03-17: Routes financières pour partenaires hôtel/meublé
+pub mod hotel_group_routes; // ✅ 2026-04-01: Routes groupes, form config, profils clients hôtel/meublé
 pub mod hotel_room_management_routes; // ✅ 2026-01-27: Routes gestion chambres/unités hôtels et meublés
 pub mod ia_routes;
 pub mod image_search_routes;
@@ -60,6 +61,7 @@ pub mod negotiated_price_routes;
 pub mod notification_routes; // ✅ Routes de notifications
 pub mod offres_emploi_routes;
 pub mod order_routes;
+pub mod restaurant_routes;
 pub mod orientation_scolaire_routes;
 pub mod paiement_agrege_routes;
 pub mod partner_validation_routes; // ✅ NOUVEAU: Routes pour validation des partenaires
@@ -98,6 +100,8 @@ pub mod specialized_services_routes;
 pub mod stock_media_routes;
 pub mod studio_routes; // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
 pub mod supermarket_routes; // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
+pub mod ecommerce_platform_routes;  // ✅ 2026-04-01: Routes e-commerce universel (toutes plateformes, intégrations partenaires)
+pub mod universal_search_routes;    // ✅ 2026-04-01: Routes recherche universelle cross-services
 pub mod system_health_routes;
 pub mod taxi_realtime_metrics_routes;
 pub mod test_routes; // ✅ Routes pour page de téléchargement APK test

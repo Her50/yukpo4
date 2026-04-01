@@ -501,6 +501,76 @@ pub async fn send_message(
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 
+    // ✅ 4. Envoyer une push notification au destinataire
+    // Récupérer le nom de l'expéditeur depuis la base de données
+    let sender_name_result = sqlx::query(
+        "SELECT COALESCE(nom_complet, email, 'Utilisateur') as display_name FROM users WHERE id = $1"
+    )
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await;
+
+    let sender_name = match sender_name_result {
+        Ok(Some(row)) => row.get::<Option<String>, _>("display_name").unwrap_or_else(|| "Utilisateur".to_string()),
+        _ => "Utilisateur".to_string(),
+    };
+
+    let push_title = format!("💬 {}", sender_name);
+    let push_body = if payload.content.len() > 100 {
+        format!("{}...", &payload.content[..100])
+    } else if payload.content.is_empty() {
+        match message_type.as_str() {
+            "image" => "📷 Image".to_string(),
+            "audio" => "🎤 Message vocal".to_string(),
+            "file" => "📎 Document".to_string(),
+            _ => "Nouveau message".to_string(),
+        }
+    } else {
+        payload.content.clone()
+    };
+
+    let notification_data = json!({
+        "type": "new_message",
+        "service_id": payload.service_id,
+        "sender_id": user.id,
+        "sender_name": sender_name,
+        "conversation_id": conversation_id,
+    });
+
+    // Envoyer la push notification (non bloquant)
+    let push_result = push_notification_service::send_push_notification(
+        &state.pg,
+        payload.recipient_id,
+        push_title.clone(),
+        push_body.clone(),
+        Some(notification_data.clone()),
+        Some("message_notification.mp3".to_string()),
+    )
+    .await;
+
+    match push_result {
+        Ok(count) => {
+            log::info!("[ChatController] ✅ {} push notifications envoyées pour message {}", count, message_id);
+            crate::metrics::CHAT_METRICS
+                .notifications_sent_total
+                .fetch_add(count as u64, std::sync::atomic::Ordering::Relaxed);
+        }
+        Err(e) => {
+            log::warn!("[ChatController] ⚠️ Push notification échouée (message toujours sauvegardé): {}", e);
+        }
+    }
+
+    // Créer également une notification en base de données
+    let _ = notification_service::create_notification(
+        &state.pg,
+        payload.recipient_id,
+        notification_service::NotificationType::NewMessage,
+        push_title,
+        push_body,
+        Some(notification_data),
+    )
+    .await;
+
     Ok(Json(json!({
         "success": true,
         "message_id": message_id,

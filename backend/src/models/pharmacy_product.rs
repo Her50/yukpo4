@@ -31,6 +31,18 @@ pub struct PharmacyProductWithDistance {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NearbyMedicationResult {
+    #[serde(flatten)]
+    pub product: PharmacyProduct,
+    pub pharmacy_id: i32,
+    pub pharmacy_nom: Option<String>,
+    pub pharmacy_adresse: Option<String>,
+    pub distance_km: Option<f64>,
+    pub is_on_duty_now: bool,
+    pub can_fulfill_quantity: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BudgetCalculationItem {
     pub product_id: i32,
     pub nom_produit: String,

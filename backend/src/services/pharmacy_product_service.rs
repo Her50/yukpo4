@@ -2,8 +2,8 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::models::pharmacy_product::{
-    BudgetCalculation, BudgetCalculationItem, BudgetComparison, PharmacyProduct,
-    PharmacyProductWithDistance,
+    BudgetCalculation, BudgetCalculationItem, BudgetComparison, NearbyMedicationResult,
+    PharmacyProduct, PharmacyProductWithDistance,
 };
 use chrono::{DateTime, Utc};
 use sqlx::{PgPool, Row};
@@ -259,6 +259,115 @@ impl PharmacyProductService {
             .collect();
 
         Ok(products)
+    }
+
+    /// Recherche unifiee: medicament disponible + pharmacie proche
+    pub async fn search_available_medicines_nearby(
+        &self,
+        query: &str,
+        user_lat: Option<f64>,
+        user_lng: Option<f64>,
+        radius_km: Option<f64>,
+        quantity: i32,
+        max_price: Option<rust_decimal::Decimal>,
+        on_duty_only: bool,
+        limit: Option<i32>,
+    ) -> AppResult<Vec<NearbyMedicationResult>> {
+        let search_pattern = format!("%{}%", query.trim());
+        let qty = quantity.max(1);
+        let lim = limit.unwrap_or(30).clamp(1, 100);
+
+        let mut sql = String::from(
+            r#"
+            SELECT
+                pp.*,
+                ph.id as pharmacy_id,
+                ph.is_on_duty_now,
+                s.nom as pharmacy_nom,
+                s.adresse as pharmacy_adresse,
+                CASE
+                    WHEN $2 IS NOT NULL AND $3 IS NOT NULL AND s.gps IS NOT NULL
+                    THEN (
+                        6371 * acos(
+                            cos(radians($2)) * cos(radians((s.gps->>'lat')::float))
+                            * cos(radians((s.gps->>'lng')::float) - radians($3))
+                            + sin(radians($2)) * sin(radians((s.gps->>'lat')::float))
+                        )
+                    )
+                    ELSE NULL
+                END as distance_km,
+                (pp.stock >= $4) as can_fulfill_quantity
+            FROM pharmacy_products pp
+            JOIN services s ON pp.pharmacy_service_id = s.id
+            JOIN pharmacies ph ON ph.service_id = s.id
+            WHERE pp.disponible = true
+              AND pp.stock > 0
+              AND pp.stock >= $4
+              AND lower(pp.nom_produit) LIKE lower($1)
+              AND s.is_active = true
+              AND ph.is_active = true
+            "#,
+        );
+
+        if max_price.is_some() {
+            sql.push_str(" AND pp.prix <= $5");
+        }
+        if on_duty_only {
+            sql.push_str(" AND ph.is_on_duty_now = true");
+        }
+        if user_lat.is_some() && user_lng.is_some() && radius_km.is_some() {
+            let radius_bind = if max_price.is_some() { 6 } else { 5 };
+            sql.push_str(&format!(" AND distance_km <= ${}", radius_bind));
+        }
+        sql.push_str(
+            " ORDER BY can_fulfill_quantity DESC, distance_km ASC NULLS LAST, pp.prix ASC, pp.updated_at DESC",
+        );
+        sql.push_str(&format!(" LIMIT {}", lim));
+
+        let mut query_builder = sqlx::query(&sql)
+            .bind(&search_pattern)
+            .bind(user_lat)
+            .bind(user_lng)
+            .bind(qty);
+        if let Some(p) = max_price {
+            query_builder = query_builder.bind(p);
+        }
+        if let Some(r) = radius_km {
+            query_builder = query_builder.bind(r);
+        }
+
+        let rows = query_builder
+            .fetch_all(&*self.pool)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur recherche nearby: {}", e)))?;
+
+        let results = rows
+            .into_iter()
+            .map(|row| NearbyMedicationResult {
+                product: PharmacyProduct {
+                    id: row.get::<i32, _>("id"),
+                    pharmacy_service_id: row.get::<i32, _>("pharmacy_service_id"),
+                    nom_produit: row.get::<String, _>("nom_produit"),
+                    description: row.get::<Option<String>, _>("description"),
+                    prix: row.get::<rust_decimal::Decimal, _>("prix"),
+                    stock: row.get::<i32, _>("stock"),
+                    disponible: row.get::<bool, _>("disponible"),
+                    unite: row.get::<String, _>("unite"),
+                    code_barre: row.get::<Option<String>, _>("code_barre"),
+                    categorie: row.get::<Option<String>, _>("categorie"),
+                    created_at: row.get::<DateTime<Utc>, _>("created_at"),
+                    updated_at: row.get::<DateTime<Utc>, _>("updated_at"),
+                },
+                pharmacy_id: row.get::<i32, _>("pharmacy_id"),
+                pharmacy_nom: row.get::<Option<String>, _>("pharmacy_nom"),
+                pharmacy_adresse: row.get::<Option<String>, _>("pharmacy_adresse"),
+                distance_km: row.get::<Option<f64>, _>("distance_km"),
+                is_on_duty_now: row.get::<bool, _>("is_on_duty_now"),
+                can_fulfill_quantity: row.get::<bool, _>("can_fulfill_quantity"),
+            })
+            .collect();
+
+        Ok(results)
     }
 
     /// Calculer budget global

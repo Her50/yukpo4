@@ -15,6 +15,8 @@ pub mod prestataire_controller;
 pub mod service_controller;
 pub mod stock_media_controller; // ✅ NOUVEAU Phase 2: Controller pour Stock Media Integration
 pub mod supermarket_controller; // ✅ NOUVEAU: Contrôleur supermarché dédié (produits, comparaison, promotions)
+pub mod ecommerce_platform_controller; // ✅ 2026-04-01: Contrôleur e-commerce universel (toutes plateformes, intégrations partenaires)
+pub mod universal_search_controller;   // ✅ 2026-04-01: Recherche universelle cross-services (produits, menus, services spécialisés)
 pub mod token_pack_controller;
 pub mod upload_controller; // ✅ NOUVEAU: Contrôleur pour upload préalable de fichiers
 pub mod user_controller;
@@ -53,6 +55,7 @@ pub mod hashtag_controller; // ✅ NOUVEAU: Contrôleur pour gestion hashtags
 pub mod health_structure_controller; // ✅ NOUVEAU: Contrôleur pour structures de santé (autocomplete)
 pub mod history_controller;
 pub mod hotel_financial_controller; // ✅ 2026-03-17: Contrôleur financier pour partenaires hôtel/meublé
+pub mod hotel_group_controller; // ✅ 2026-04-01: Contrôleur groupes multi-biens, form config, profils clients
 pub mod hotel_room_management_controller; // ✅ NOUVEAU 2026-01-27: Contrôleur gestion chambres/unités hôtels et meublés
 pub mod image_search_controller; // ✅ NOUVEAU: Contrôleur pour recherche par image
 pub mod intelligent_service_controller;
@@ -95,6 +98,7 @@ pub mod prometheus_metrics_controller; // ✅ Phase 3: Endpoint Prometheus centr
 pub mod publicite_controller; // ✅ NOUVEAU: Contrôleur pour système de publicité payante
 pub mod push_controller; // ✅ Contrôleur de push notifications
 pub mod recommendation_controller; // ✅ NOUVEAU: Contrôleur pour recommandations et tracking visibilité
+pub mod restaurant_controller; // ✅ 2026-03-31: Gestion restaurant (salle, plan, codes partenaires)
 pub mod scheduling_search_controller; // ✅ NOUVEAU: Contrôleur pour recherche avec planifications
 pub mod scoring_controller; // ✅ Contrôleur pour scoring de services
 pub mod search_history_controller; // ✅ NOUVEAU: Contrôleur pour historique de recherche

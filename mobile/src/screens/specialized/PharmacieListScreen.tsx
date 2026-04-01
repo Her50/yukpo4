@@ -29,6 +29,9 @@ interface Pharmacie {
     is_on_duty: boolean;
     telephone?: string;
     distance_km?: number;
+    nom_produit?: string;
+    prix?: number;
+    can_fulfill_quantity?: boolean;
 }
 
 const PharmacieListScreen: React.FC = () => {
@@ -69,10 +72,40 @@ const PharmacieListScreen: React.FC = () => {
             queryParams.append('page', currentPage.toString());
             queryParams.append('limit', '20');
 
-            const response = await apiGet(`/api/pharmacies/search?${queryParams.toString()}`);
+            const hasProductSearch = Boolean(filters.product_search);
+            const response = hasProductSearch
+                ? await apiGet('/api/medicines/nearby', {
+                    params: {
+                        q: filters.product_search,
+                        lat: filters.lat,
+                        lng: filters.lng,
+                        radius_km: filters.max_distance_km,
+                        quantity: 1,
+                        on_duty_only: filters.on_duty_only ? true : undefined,
+                        limit: 20,
+                    }
+                })
+                : await apiGet(`/api/pharmacies/search?${queryParams.toString()}`);
 
             if (response.success && response.data) {
-                const newPharmacies = (response.data as any).data || [];
+                const rawData = response.data as any;
+                const newPharmacies = hasProductSearch
+                    ? (rawData.items || []).map((item: any) => ({
+                        id: item.pharmacy_id || item.id,
+                        service_id: item.pharmacy_service_id || item.service_id,
+                        user_id: item.user_id || 0,
+                        nom: item.pharmacy_nom || 'Pharmacie',
+                        ville: item.ville,
+                        quartier: item.quartier,
+                        is_available_now: true,
+                        is_on_duty: !!item.is_on_duty_now,
+                        telephone: item.telephone,
+                        distance_km: item.distance_km,
+                        nom_produit: item.nom_produit,
+                        prix: item.prix,
+                        can_fulfill_quantity: !!item.can_fulfill_quantity,
+                    }))
+                    : (rawData.data || []);
                 if (isRefresh || currentPage === 1) {
                     setPharmacies(newPharmacies);
                 } else {
@@ -136,6 +169,15 @@ const PharmacieListScreen: React.FC = () => {
                     <View style={styles.distanceRow}>
                         <SafeIcon name="map-pin" size={14} color={modernColors.textSecondary} />
                         <Text style={styles.distanceText}>{item.distance_km.toFixed(1)} km</Text>
+                    </View>
+                )}
+                {item.nom_produit && (
+                    <View style={styles.distanceRow}>
+                        <SafeIcon name="pill" size={14} color={modernColors.textSecondary} />
+                        <Text style={styles.distanceText}>
+                            {item.nom_produit}
+                            {item.prix ? ` • ${Number(item.prix).toLocaleString()} FCFA` : ''}
+                        </Text>
                     </View>
                 )}
 

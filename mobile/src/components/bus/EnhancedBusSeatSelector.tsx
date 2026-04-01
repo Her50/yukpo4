@@ -35,6 +35,8 @@ interface EnhancedBusSeatSelectorProps {
     productId: string;
     ticketPrice: number;
     currency?: string;
+    /** Nombre maximum de sièges sélectionnables par réservation (défaut: 10) */
+    maxSelectableSeats?: number;
     onReserve: (selectedSeats: SelectedSeat[], totalPrice: number) => void;
 }
 
@@ -54,6 +56,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
     productId,
     ticketPrice,
     currency = 'XAF',
+    maxSelectableSeats = 10,
     onReserve,
 }) => {
     const { t } = useLanguageSafe();
@@ -65,7 +68,7 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
     const [recommendations, setRecommendations] = useState<SeatRecommendation[]>([]);
     const [showPremiumOnly, setShowPremiumOnly] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
-    const maxSeats = 10;
+    const maxSeats = maxSelectableSeats;
 
     // Animations pour zoom
     const scale = useSharedValue(1);
@@ -100,12 +103,13 @@ const EnhancedBusSeatSelector: React.FC<EnhancedBusSeatSelectorProps> = ({
 
             if (resData.success && resData.availability) {
                 const availability = resData.availability;
-                setSeatMap(availability.seat_map || []);
+                const seats = availability.seat_map || availability.seats || [];
+                setSeatMap(seats);
                 setReservedSeats(availability.reserved_seats || []);
                 setBlockedSeats(availability.blocked_seats || []);
 
                 // Générer recommandations intelligentes
-                generateRecommendations(availability.seat_map || [], availability.reserved_seats || []);
+                generateRecommendations(seats, availability.reserved_seats || []);
             } else {
                 Alert.alert('Erreur', resData.error || t('enhancedBusSeatSelector.impossibleDeChargerLaDisponibilite'));
             }

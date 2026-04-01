@@ -1,4 +1,4 @@
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useMemo } from 'react';
 import { Alert, BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -8,10 +8,15 @@ import { NativeButton } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useDeliveryContext } from '../../contexts/DeliveryContext';
 import { useShoppingBasket } from '../../hooks/useShoppingBasket';
+import { deliveryApi } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 
 const ShoppingSummaryScreen: React.FC = () => {
     const navigation = useNavigation() as any;
+    const route = useRoute() as any;
+    const routeParams = (route?.params ?? {}) as { mode?: 'create' | 'edit'; deliveryId?: string | number };
+    const isEditMode = routeParams?.mode === 'edit';
+    const editDeliveryId = routeParams?.deliveryId != null ? String(routeParams.deliveryId) : '';
     const { setActiveDeliveryId } = useDeliveryContext();
     const {
         items,
@@ -41,6 +46,49 @@ const ShoppingSummaryScreen: React.FC = () => {
     const handleConfirm = async () => {
         if (!pickup?.latitude || !dropoff?.latitude) {
             Alert.alert('Informations manquantes', 'Vérifie les adresses avant de confirmer.');
+            return;
+        }
+
+        if (isEditMode && editDeliveryId) {
+            const basketTotal = items.reduce((acc, item) => acc + (item.estimatedPrice ?? 0) * item.quantity, 0);
+            const updatePayload = {
+                pickup: {
+                    latitude: pickup.latitude,
+                    longitude: pickup.longitude,
+                    address: pickup.address,
+                    label: pickup.label,
+                },
+                dropoff: {
+                    latitude: dropoff.latitude,
+                    longitude: dropoff.longitude,
+                    address: dropoff.address,
+                    label: dropoff.label,
+                },
+                parcel: {
+                    notes: comment || undefined,
+                    photos: [],
+                    constraints: {},
+                },
+                metadata: {
+                    kind: 'shopping',
+                    basket_items: items.map(item => ({
+                        name: item.label,
+                        quantity: item.quantity,
+                        unit: item.unit,
+                        estimated_price: item.estimatedPrice ?? undefined,
+                    })),
+                    basket_total: basketTotal,
+                },
+            };
+
+            const updateResponse = await deliveryApi.updateDeliveryRequest(editDeliveryId, updatePayload as any);
+            if (!updateResponse.success) {
+                Alert.alert('Erreur', updateResponse.error ?? 'Impossible de mettre à jour la livraison.');
+                return;
+            }
+
+            setActiveDeliveryId(editDeliveryId);
+            navigation.navigate('DeliveryShoppingTracking', { deliveryId: editDeliveryId });
             return;
         }
 

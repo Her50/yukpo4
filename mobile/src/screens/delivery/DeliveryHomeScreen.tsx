@@ -1,6 +1,6 @@
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, BackHandler, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, BackHandler, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 
 import AnimatedDeliveryCard from '../../components/delivery/AnimatedDeliveryCard';
 import DeliveryAvatarBubble from '../../components/delivery/DeliveryAvatarBubble';
@@ -19,6 +19,8 @@ import { useScreenEnter } from '../../utils/animations';
 const DeliveryHomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { t } = useLanguageSafe();
+    const { width } = useWindowDimensions();
+    const isCompactAndroid = Platform.OS === 'android' && width <= 360;
     const {
         deliveries,
         refreshActiveDeliveries,
@@ -192,7 +194,7 @@ const DeliveryHomeScreen: React.FC = () => {
         }
     }, [navigation, navigating]);
 
-    const handleOpenDelivery = useCallback((deliveryId: string) => {
+    const handleOpenDeliveryTracking = useCallback((deliveryId: string) => {
         if (navigating) return;
 
         const id = deliveryId != null && deliveryId !== '' ? String(deliveryId) : '';
@@ -236,11 +238,60 @@ const DeliveryHomeScreen: React.FC = () => {
         }
     }, [navigation, setActiveDeliveryId, navigating]);
 
+    const handleOpenDeliveryEdit = useCallback((deliveryId: string) => {
+        if (navigating) return;
+        const id = deliveryId != null && deliveryId !== '' ? String(deliveryId) : '';
+        if (!id) {
+            Alert.alert(t('message.error'), t('deliveryHome.cannotOpenTracking'));
+            return;
+        }
+
+        const targetDelivery = activeDeliveries.find((d) => String(d.id) === id);
+        if (!targetDelivery) {
+            Alert.alert(t('message.error'), t('deliveryHome.cannotOpenTracking'));
+            return;
+        }
+
+        if (targetDelivery.status === 'delivered' || targetDelivery.status === 'completed' || targetDelivery.status === 'cancelled') {
+            Alert.alert(
+                t('message.error'),
+                t('deliveryHome.editUnavailableAfterCompletion') || 'Cette livraison ne peut plus être modifiée.'
+            );
+            return;
+        }
+
+        try {
+            setNavigating(true);
+            if (targetDelivery.kind === 'parcel') {
+                navigation.navigate('DeliveryParcelFlowNew' as never, {
+                    mode: 'edit',
+                    deliveryId: id,
+                    fromActiveDelivery: true,
+                } as never);
+            } else {
+                navigation.navigate('ShoppingPickupDrop' as never, {
+                    mode: 'edit',
+                    deliveryId: id,
+                    fromActiveDelivery: true,
+                } as never);
+            }
+            setNavigating(false);
+        } catch (error: any) {
+            console.error('[DeliveryHomeScreen] ❌ Erreur navigation edition:', error);
+            setNavigating(false);
+            Alert.alert(
+                t('message.error'),
+                t('deliveryHome.cannotOpenEditFlow') || 'Impossible d’ouvrir l’écran de modification.',
+                [{ text: 'OK' }]
+            );
+        }
+    }, [activeDeliveries, navigation, navigating, t]);
+
     return (
         <SafeNativeView style={styles.container} backgroundColor={modernColors.background}>
             <Animated.View style={[styles.animatedContainer, safeScreenEnterStyle as any]}>
                 <ScrollView
-                    contentContainerStyle={styles.scroll}
+                    contentContainerStyle={[styles.scroll, isCompactAndroid && styles.scrollCompact]}
                     showsVerticalScrollIndicator={false}
                     refreshControl={
                         <RefreshControl refreshing={refreshing && !loading} onRefresh={handleRefresh} />
@@ -253,11 +304,11 @@ const DeliveryHomeScreen: React.FC = () => {
 
                     {/* ✅ CORRIGÉ: Afficher uniquement si réseau offline (pas pour WebSocket limité) */}
                     {!isNetworkOnline && (
-                        <NativeCard style={[styles.card, styles.warningCard]}>
-                            <Text style={styles.warningTitle}>
+                        <NativeCard style={[styles.card, isCompactAndroid && styles.cardCompact, styles.warningCard]}>
+                            <Text style={[styles.warningTitle, isCompactAndroid && styles.warningTitleCompact]}>
                                 Connexion réseau indisponible
                             </Text>
-                            <Text style={styles.warningSubtitle}>
+                            <Text style={[styles.warningSubtitle, isCompactAndroid && styles.warningSubtitleCompact]}>
                                 Votre connexion internet est indisponible. Les actions seront synchronisées automatiquement dès le retour en ligne.
                             </Text>
                             <NativeButton
@@ -278,9 +329,9 @@ const DeliveryHomeScreen: React.FC = () => {
                     )}
 
                     {pendingMutationCount > 0 && (
-                        <NativeCard style={[styles.card, styles.infoCard]}>
-                            <Text style={styles.infoTitle}>Actions en attente</Text>
-                            <Text style={styles.infoSubtitle}>
+                        <NativeCard style={[styles.card, isCompactAndroid && styles.cardCompact, styles.infoCard]}>
+                            <Text style={[styles.infoTitle, isCompactAndroid && styles.infoTitleCompact]}>Actions en attente</Text>
+                            <Text style={[styles.infoSubtitle, isCompactAndroid && styles.infoSubtitleCompact]}>
                                 {pendingMutationCount} action(s) seront rejouées automatiquement dès que la connexion sera rétablie.
                             </Text>
                             <NativeButton
@@ -304,7 +355,7 @@ const DeliveryHomeScreen: React.FC = () => {
                     {activeDeliveries.length > 0 && (
                         <>
                             <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>{t('deliveryHome.vosLivraisonsActives')}</Text>
+                                <Text style={[styles.sectionTitle, isCompactAndroid && styles.sectionTitleCompact]}>{t('deliveryHome.vosLivraisonsActives')}</Text>
                                 <TouchableOpacity
                                     onPress={handleRefresh}
                                     disabled={loading || refreshing}
@@ -323,12 +374,13 @@ const DeliveryHomeScreen: React.FC = () => {
                                     </Text>
                                 </TouchableOpacity>
                             </View>
-                            <View style={styles.deliveriesList}>
+                            <View style={[styles.deliveriesList, isCompactAndroid && styles.deliveriesListCompact]}>
                                 {activeDeliveries.map((delivery, index) => (
                                     <AnimatedDeliveryCard
                                         key={delivery.id}
                                         delivery={delivery}
-                                        onPress={handleOpenDelivery}
+                                        onTrackPress={handleOpenDeliveryTracking}
+                                        onEditPress={handleOpenDeliveryEdit}
                                         index={index}
                                     />
                                 ))}
@@ -346,7 +398,7 @@ const DeliveryHomeScreen: React.FC = () => {
 
                     {/* ✅ NOUVEAU: Section pour créer une nouvelle livraison */}
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>{t('deliveryHome.nouvelleLivraison')}</Text>
+                        <Text style={[styles.sectionTitle, isCompactAndroid && styles.sectionTitleCompact]}>{t('deliveryHome.nouvelleLivraison')}</Text>
                     </View>
 
                     {/* ✅ CORRIGÉ: Livraison de colis AVANT courses supermarché */}
@@ -420,8 +472,16 @@ const styles = StyleSheet.create({
         gap: 20,
         paddingBottom: 120,
     },
+    scrollCompact: {
+        padding: 14,
+        gap: 14,
+        paddingBottom: 96,
+    },
     card: {
         gap: 12,
+    },
+    cardCompact: {
+        gap: 8,
     },
     cardTitle: {
         fontSize: 20,
@@ -441,6 +501,9 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
         color: modernColors.text,
+    },
+    sectionTitleCompact: {
+        fontSize: 16,
     },
     emptyState: {
         alignItems: 'center',
@@ -482,9 +545,15 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#854D0E',
     },
+    warningTitleCompact: {
+        fontSize: 14,
+    },
     warningSubtitle: {
         fontSize: 13,
         color: '#854D0E',
+    },
+    warningSubtitleCompact: {
+        fontSize: 12,
     },
     infoCard: {
         borderWidth: 1,
@@ -496,9 +565,15 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#0C4A6E',
     },
+    infoTitleCompact: {
+        fontSize: 14,
+    },
     infoSubtitle: {
         fontSize: 13,
         color: '#0C4A6E',
+    },
+    infoSubtitleCompact: {
+        fontSize: 12,
     },
     actionButton: {
         marginTop: 8,
@@ -536,6 +611,9 @@ const styles = StyleSheet.create({
     },
     deliveriesList: {
         gap: 16,
+    },
+    deliveriesListCompact: {
+        gap: 10,
     },
 });
 

@@ -1,4 +1,5 @@
 // ✅ Service API pour Don de Sang - Matching Donneur/Receveur
+import * as Notifications from 'expo-notifications';
 import { apiGet, apiPost } from './api';
 
 export interface BloodDonationRequest {
@@ -135,6 +136,90 @@ export const bloodDonationService = {
     getBanqueStatistics: async (banqueId: number) => {
         return await apiGet<{ success: boolean; data: any }>(
             `/api/banques-sang/${banqueId}/statistics`
+        );
+    },
+
+    // === B1 - RAPPEL AUTOMATIQUE DON ===
+
+    scheduleNextDonationReminder: async (lastDonationDate: string): Promise<string | null> => {
+        const nextDate = new Date(lastDonationDate);
+        nextDate.setDate(nextDate.getDate() + 90);
+        if (nextDate <= new Date()) return null;
+
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') return null;
+
+        const id = await Notifications.scheduleNotificationAsync({
+            content: {
+                title: 'Don de sang - Rappel',
+                body: 'Vous pouvez à nouveau donner votre sang aujourd\'hui. Merci pour votre générosité !',
+                data: { type: 'blood_donation_reminder' },
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: nextDate,
+            },
+        });
+        return id;
+    },
+
+    // === B2 - CAMPAGNES DE DON ===
+
+    getCampagnesDon: async (lat?: number, lng?: number, radius?: number) => {
+        return await apiGet<{ success: boolean; data: any[] }>(
+            '/api/banques-sang/campagnes',
+            { params: { lat, lng, radius } }
+        );
+    },
+
+    participerCampagne: async (campagneId: number) => {
+        return await apiPost<{ success: boolean; message: string }>(
+            `/api/banques-sang/campagnes/${campagneId}/participations`,
+            {}
+        );
+    },
+
+    // === B3 - RÉSEAU SOS DONNEURS ===
+
+    createSOSRequest: async (data: {
+        groupe_sanguin: string;
+        quantite: number;
+        hopital: string;
+        message?: string;
+        urgency: 'normal' | 'urgent' | 'critical';
+    }) => {
+        return await apiPost<{ success: boolean; data: any }>(
+            '/api/banques-sang/sos-requests',
+            data
+        );
+    },
+
+    getCompatibleDonors: async (groupeSanguin: string, lat?: number, lng?: number) => {
+        return await apiGet<{ success: boolean; data: any[] }>(
+            '/api/banques-sang/sos-requests/compatible-donors',
+            { params: { groupe: groupeSanguin, lat, lng } }
+        );
+    },
+
+    // === B4 - GAMIFICATION BADGES DONNEURS ===
+
+    getDonorBadges: async () => {
+        return await apiGet<{ success: boolean; data: any[] }>(
+            '/api/users/blood-donor-badges'
+        );
+    },
+
+    getDonorStats: async () => {
+        return await apiGet<{ success: boolean; data: any }>(
+            '/api/banques-sang/my-donor-stats'
+        );
+    },
+
+    // === B5 - CERTIFICAT DE DON PDF ===
+
+    getDonationCertificateData: async (donationId: number) => {
+        return await apiGet<{ success: boolean; data: any }>(
+            `/api/banques-sang/donations/${donationId}/certificate`
         );
     },
 };

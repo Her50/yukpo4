@@ -16,9 +16,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import ProductVideoCreationModal from '../../components/ProductVideoCreationModal';
 import SafeIcon from '../../components/SafeIcon';
 import SmartLanguageSelector from '../../components/SmartLanguageSelector';
 import { NativeButton } from '../../components/SafeNativeDesign';
+import { ManagedProduct } from '../../types/ManagedProduct';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { SUPPORTED_LANGUAGES } from '../../i18n';
@@ -87,6 +89,8 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
     const { t, setLanguage } = useLanguageSafe();
 
     const [activeTab, setActiveTab] = useState<TabType>('vitrine');
+    const [showStudioModal, setShowStudioModal] = useState(false);
+    const [studioProduct, setStudioProduct] = useState<ManagedProduct | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [programs, setPrograms] = useState<Program[]>([]);
@@ -501,6 +505,24 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                                 {p.niveau || ''}{p.duree ? ` · ${p.duree}` : ''}{p.places_disponibles ? ` · ${p.places_disponibles} places` : ''}
                             </Text>
                         </View>
+                        <TouchableOpacity
+                            style={{ backgroundColor: '#8B5CF620', borderRadius: 6, padding: 6, marginRight: 6 }}
+                            onPress={() => {
+                                const mp: ManagedProduct = {
+                                    id: String(p.id || i),
+                                    nom: p.nom,
+                                    serviceId: String(selectedEtab?.id || selectedEtabId || ''),
+                                    serviceTitre: selectedEtab?.nom_etablissement || 'Établissement',
+                                    type: p.niveau,
+                                    description: p.duree,
+                                    product_index: i,
+                                };
+                                setStudioProduct(mp);
+                                setShowStudioModal(true);
+                            }}
+                        >
+                            <SafeIcon name="film" size={14} color="#8B5CF6" />
+                        </TouchableOpacity>
                         <View style={[s.statusDot, { backgroundColor: p.is_active !== false ? '#10B981' : '#EF4444' }]} />
                     </View>
                 ))
@@ -614,6 +636,14 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                 {activeTab === 'admissions' && renderAdmissions()}
                 {activeTab === 'analytics' && renderAnalytics()}
             </View>
+            <ProductVideoCreationModal
+                visible={showStudioModal}
+                primaryProduct={studioProduct}
+                products={studioProduct ? [studioProduct] : []}
+                onClose={() => { setShowStudioModal(false); setStudioProduct(null); }}
+                onSuccess={() => { setShowStudioModal(false); setStudioProduct(null); }}
+                navigation={navigation}
+            />
         </View>
     );
 };

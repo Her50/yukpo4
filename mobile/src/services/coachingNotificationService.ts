@@ -287,7 +287,7 @@ class CoachingNotificationService {
                     title,
                     body,
                     data: { type: 'coaching', subtype: type },
-                    sound: playSound,
+                    sound: playSound ? 'default' : null,
                     ...(Platform.OS === 'android'
                         ? { channelId, priority: playSound ? AndroidNotificationPriority.MAX : AndroidNotificationPriority.DEFAULT }
                         : { interruptionLevel: 'timeSensitive' as const }),
@@ -325,7 +325,7 @@ class CoachingNotificationService {
                     title,
                     body,
                     data: { type: 'coaching', subtype: type },
-                    sound: playSound,
+                    sound: playSound ? 'default' : null,
                     ...(Platform.OS === 'android'
                         ? { channelId, priority: playSound ? AndroidNotificationPriority.MAX : AndroidNotificationPriority.DEFAULT }
                         : { interruptionLevel: 'timeSensitive' as const }),
@@ -424,7 +424,7 @@ class CoachingNotificationService {
                     title,
                     body,
                     data: { type: 'coaching', subtype: type, ...extraData },
-                    sound: playSound,
+                    sound: playSound ? 'default' : null,
                     ...(Platform.OS === 'android'
                         ? { channelId, priority: playSound ? AndroidNotificationPriority.MAX : AndroidNotificationPriority.DEFAULT }
                         : { interruptionLevel: 'timeSensitive' as const }),

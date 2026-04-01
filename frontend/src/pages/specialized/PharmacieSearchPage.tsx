@@ -15,6 +15,7 @@ interface PharmacieSearchFilters {
     max_distance_km?: number;
     on_duty_only?: boolean;
     available_only?: boolean;
+    product_search?: string;
 }
 
 const PharmacieSearchPage: React.FC = () => {
@@ -27,6 +28,7 @@ const PharmacieSearchPage: React.FC = () => {
     const [onDutyOnly, setOnDutyOnly] = useState(false);
     const [availableOnly, setAvailableOnly] = useState(true);
     const [loading, setLoading] = useState(false);
+    const [productSearch, setProductSearch] = useState('');
 
     const handleUseCurrentLocation = () => {
         if (navigator.geolocation) {
@@ -47,7 +49,7 @@ const PharmacieSearchPage: React.FC = () => {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!ville.trim() && !quartier.trim() && !gpsString.trim()) {
+        if (!ville.trim() && !quartier.trim() && !gpsString.trim() && !productSearch.trim()) {
             alert('Veuillez renseigner une ville/quartier ou un point GPS');
             return;
         }
@@ -65,6 +67,7 @@ const PharmacieSearchPage: React.FC = () => {
         if (maxDistance > 0) filters.max_distance_km = maxDistance;
         if (onDutyOnly) filters.on_duty_only = true;
         if (availableOnly) filters.available_only = true;
+        if (productSearch.trim()) filters.product_search = productSearch.trim();
 
         navigate('/pharmacies/list', { state: { filters } });
     };
@@ -83,6 +86,17 @@ const PharmacieSearchPage: React.FC = () => {
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSearch} className="space-y-6">
+                            {/* Ville */}
+                            <div>
+                                <Label htmlFor="productSearch">Médicament / produit (optionnel)</Label>
+                                <Input
+                                    id="productSearch"
+                                    value={productSearch}
+                                    onChange={(e) => setProductSearch(e.target.value)}
+                                    placeholder="Ex: paracétamol, amoxicilline"
+                                />
+                            </div>
+
                             {/* Ville */}
                             <div>
                                 <Label htmlFor="ville">Ville</Label>

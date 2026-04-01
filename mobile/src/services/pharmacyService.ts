@@ -1,5 +1,5 @@
 // ✅ Service API pour Pharmacies - Nouvelles fonctionnalités IA
-import { apiGet, apiPost } from './api';
+import { apiGet, apiPatch, apiPost } from './api';
 
 // Types pour les réponses
 export interface MedicationInteraction {
@@ -84,12 +84,15 @@ export const pharmacyService = {
         pharmacyId: number,
         orderData: {
             medications: Array<{
+                product_id?: number;
                 medication_name: string;
                 quantity: number;
-                price: number;
             }>;
             delivery_method: 'pickup' | 'delivery';
             delivery_address?: string;
+            delivery_fee_cents?: number;
+            reservation_id?: string;
+            idempotency_key?: string;
         }
     ) => {
         const response = await apiPost<{
@@ -212,6 +215,39 @@ export const pharmacyService = {
             [key: string]: any;
         }>(`/api/pharmacies/${pharmacyId}`);
         return response;
+    },
+
+    // ✅ Partenaire : liste les commandes reçues pour sa pharmacie
+    getPartnerOrders: async (
+        pharmacyId: number,
+        params?: { status?: string; page?: number; limit?: number }
+    ) => {
+        return apiGet<{ success: boolean; orders: PharmacyOrder[]; page: number; limit: number }>(
+            `/api/pharmacies/${pharmacyId}/partner-orders`,
+            { params }
+        );
+    },
+
+    // ✅ Partenaire : mettre à jour le statut d'une commande
+    updateOrderStatus: async (
+        orderId: string,
+        status: 'confirmed' | 'processing' | 'ready' | 'delivered' | 'cancelled',
+        note?: string
+    ) => {
+        return apiPatch<{ success: boolean; order_id: string; status: string; message: string }>(
+            `/api/pharmacies/orders/${orderId}/status`,
+            { status, note }
+        );
+    },
+
+    getFinancialMovements: async (limit: number = 50) => {
+        return apiGet<any>('/api/pharmacies/me/financial-movements', {
+            params: { limit },
+        });
+    },
+
+    requestWithdrawal: async (payload: { amount_cents: number; method?: string; phone?: string }) => {
+        return apiPost<any>('/api/pharmacies/me/withdrawals', payload);
     },
 };
 

@@ -32,6 +32,8 @@ interface CovoiturageSearchFilters {
     ville_destination?: string;
     quartier_destination?: string;
     date_depart?: string;
+    heure_depart_min?: string;
+    heure_depart_max?: string;
     min_places?: number;
     max_prix?: number;
     lat?: number;
@@ -74,6 +76,10 @@ const CovoiturageSearchScreen: React.FC = () => {
     const [trajetRecurrent, setTrajetRecurrent] = useState(false);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [showMatching, setShowMatching] = useState(false);
+    const [heureDepart, setHeureDepart] = useState<Date | null>(null);
+    const [showTimePicker, setShowTimePicker] = useState(false);
+    const [flexibleTime, setFlexibleTime] = useState(false);
+    const [flexWindow, setFlexWindow] = useState(60); // minutes ±
 
     useEffect(() => {
         if (searchNearby && location) {
@@ -119,6 +125,7 @@ const CovoiturageSearchScreen: React.FC = () => {
             if (fumeurAutorise) filters.fumeur_autorise = true;
             if (bagages) filters.bagages = true;
             if (trajetRecurrent) filters.trajet_recurrent = true;
+            applyTimeFilters(filters);
             navigation.navigate('CovoiturageList' as never, { filters, searchType: 'nearby' } as never);
         } else {
             // Recherche classique
@@ -161,12 +168,30 @@ const CovoiturageSearchScreen: React.FC = () => {
                 if (fumeurAutorise) filters.fumeur_autorise = true;
                 if (bagages) filters.bagages = true;
                 if (trajetRecurrent) filters.trajet_recurrent = true;
+                applyTimeFilters(filters);
 
                 navigation.navigate('CovoiturageList' as never, { filters, searchType: 'classic' } as never);
             } catch (error: any) {
                 Alert.alert('Erreur', error.message || 'Erreur lors de la recherche');
             } finally {
                 setLoading(false);
+            }
+        }
+    };
+
+    const formatHeure = (date: Date) =>
+        `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+
+    const applyTimeFilters = (filters: CovoiturageSearchFilters) => {
+        if (heureDepart) {
+            if (flexibleTime) {
+                const minT = new Date(heureDepart.getTime() - flexWindow * 60000);
+                const maxT = new Date(heureDepart.getTime() + flexWindow * 60000);
+                filters.heure_depart_min = formatHeure(minT);
+                filters.heure_depart_max = formatHeure(maxT);
+            } else {
+                filters.heure_depart_min = formatHeure(heureDepart);
+                filters.heure_depart_max = formatHeure(heureDepart);
             }
         }
     };
@@ -536,6 +561,75 @@ const CovoiturageSearchScreen: React.FC = () => {
                                 }}
                             />
                         )}
+
+                        {/* ✅ NOUVEAU: Heure de départ + plage horaire flexible */}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>
+                                <SafeIcon name="clock" size={14} color={modernColors.primary} type="lucide" /> Heure de départ (optionnel)
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.dateButton}
+                                onPress={() => { hapticPress(); setShowTimePicker(true); }}
+                            >
+                                <SafeIcon name="clock" size={20} color="#10B981" type="lucide" />
+                                <Text style={styles.dateButtonText}>
+                                    {heureDepart ? formatHeure(heureDepart) : 'Toute heure'}
+                                </Text>
+                                {heureDepart && (
+                                    <TouchableOpacity onPress={() => { setHeureDepart(null); setFlexibleTime(false); }}>
+                                        <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
+                                    </TouchableOpacity>
+                                )}
+                                {!heureDepart && <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />}
+                            </TouchableOpacity>
+                            {showTimePicker && (
+                                <DateTimePicker
+                                    value={heureDepart || new Date()}
+                                    mode="time"
+                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                    onChange={(event, selectedTime) => {
+                                        setShowTimePicker(Platform.OS === 'ios');
+                                        if (selectedTime) setHeureDepart(selectedTime);
+                                    }}
+                                />
+                            )}
+                            {heureDepart && (
+                                <View style={styles.optionCard}>
+                                    <View style={styles.optionContent}>
+                                        <View style={styles.optionIconContainer}>
+                                            <SafeIcon name="sliders" size={18} color="#10B981" type="lucide" />
+                                        </View>
+                                        <View style={styles.optionTextContainer}>
+                                            <Text style={styles.optionTitle}>Plage horaire flexible</Text>
+                                            <Text style={styles.optionDescription}>
+                                                {flexibleTime ? `±${flexWindow / 60}h autour de ${formatHeure(heureDepart)}` : 'Heure exacte uniquement'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Switch
+                                        value={flexibleTime}
+                                        onValueChange={(v) => { hapticPress(); setFlexibleTime(v); }}
+                                        trackColor={{ false: '#D1D5DB', true: '#10B981' }}
+                                        thumbColor="#FFFFFF"
+                                    />
+                                </View>
+                            )}
+                            {heureDepart && flexibleTime && (
+                                <View style={styles.radiusButtons}>
+                                    {[30, 60, 120, 180].map((min) => (
+                                        <TouchableOpacity
+                                            key={min}
+                                            style={[styles.radiusButton, flexWindow === min && styles.radiusButtonActive]}
+                                            onPress={() => { hapticPress(); setFlexWindow(min); }}
+                                        >
+                                            <Text style={[styles.radiusButtonText, flexWindow === min && styles.radiusButtonTextActive]}>
+                                                ±{min / 60}h
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
+                        </View>
 
                         {/* Places min */}
                         <View style={styles.inputGroup}>

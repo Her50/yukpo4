@@ -768,6 +768,8 @@ export const authApi = {
     partner_address?: string;
     partner_city?: string;
     partner_country?: string;
+    /** Code d'invitation restaurant (optionnel, validé côté backend) */
+    restaurant_partner_code?: string;
   }) => {
     // Payload identique au frontend
     const payload: any = {
@@ -794,6 +796,9 @@ export const authApi = {
       payload.partner_address = userData.partner_address;
       payload.partner_city = userData.partner_city;
       payload.partner_country = userData.partner_country;
+      if (userData.restaurant_partner_code?.trim()) {
+        payload.restaurant_partner_code = userData.restaurant_partner_code.trim();
+      }
     }
 
     const response = await apiCall<{ success?: boolean; token?: string; tokens_balance?: number; message?: string }>('/api/auth/register', {
@@ -1053,6 +1058,22 @@ export const deliveryApi = {
   },
   getDeliveryById: async (deliveryId: string) => {
     return apiCall(`/api/deliveries/${deliveryId}`);
+  },
+  updateDeliveryRequest: async (
+    deliveryId: string,
+    payload: Partial<CreateDeliveryRequestPayload> & Record<string, any>
+  ) => {
+    // Backend may expose either PUT or PATCH depending on deployment.
+    const putResponse = await apiCall(`/api/deliveries/${deliveryId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+    if (putResponse?.success) return putResponse;
+
+    return apiCall(`/api/deliveries/${deliveryId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
   },
   createDeliveryRequest: async (payload: CreateDeliveryRequestPayload) => {
     const response = await apiCall<{ delivery?: any; id?: string; status?: string; metadata?: any; shopping_required?: boolean }>(`/api/delivery`, {
@@ -1591,6 +1612,16 @@ export const mediaApi = {
     payload: Record<string, any>
   ) => {
     return apiCall(`/api/media/product/${serviceId}/${productIndex}/generate-video`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  generateProductVisual: async (
+    serviceId: string | number,
+    productIndex: string | number,
+    payload: Record<string, any>
+  ) => {
+    return apiCall(`/api/media/product/${serviceId}/${productIndex}/generate-visual`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });

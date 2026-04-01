@@ -16,6 +16,7 @@ import LocationSelector, { LocationObject } from '../../components/LocationSelec
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
+import TaxiMapView from '../../components/taxi/TaxiMapView';
 import { useLocation } from '../../contexts/LocationContext';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
@@ -48,6 +49,8 @@ const TaxiSearchScreen: React.FC = () => {
     const [availableOnly, setAvailableOnly] = useState(true);
     const [typeVehicule, setTypeVehicule] = useState<string>('');
     const [loading, setLoading] = useState(false);
+    const [showMap, setShowMap] = useState(false);
+    const [nearbyTaxis, setNearbyTaxis] = useState<any[]>([]);
 
     // Initialiser GPS avec position actuelle
     React.useEffect(() => {
@@ -94,6 +97,25 @@ const TaxiSearchScreen: React.FC = () => {
         if (typeVehicule) filters.type_vehicule = typeVehicule;
 
         navigation.navigate('TaxiList' as never, { filters } as never);
+    };
+
+    const loadNearbyTaxis = async () => {
+        if (!gpsData) return;
+        try {
+            setLoading(true);
+            const { apiGet } = require('../../services/api');
+            const response = await apiGet(
+                `/api/taxis/nearby?lat=${gpsData.lat}&lng=${gpsData.lng}&radius_km=${maxDistance}&available_only=${availableOnly}`
+            );
+            if (response.success && response.data) {
+                setNearbyTaxis(response.data.data || response.data || []);
+                setShowMap(true);
+            }
+        } catch (error: any) {
+            console.error('[TaxiSearchScreen] Erreur chargement taxis proches:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const typesVehicules = ['Berline', 'SUV', 'Van', 'Moto', t('taxiSearchScreen.velo')];
@@ -163,6 +185,24 @@ const TaxiSearchScreen: React.FC = () => {
                 </View>
             </LinearGradient>
 
+            {showMap && gpsData ? (
+                <View style={{ flex: 1 }}>
+                    <TaxiMapView
+                        taxis={nearbyTaxis}
+                        currentLocation={{ latitude: gpsData.lat, longitude: gpsData.lng }}
+                        radiusKm={maxDistance}
+                        onTaxiPress={(taxi) => {
+                            navigation.navigate('TaxiDetails' as never, { taxiId: taxi.id } as never);
+                        }}
+                    />
+                    <TouchableOpacity
+                        style={styles.closeMapButton}
+                        onPress={() => setShowMap(false)}
+                    >
+                        <SafeIcon name="x" size={24} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+            ) : (
             <KeyboardAwareScreen
                 style={styles.content}
                 contentContainerStyle={styles.contentContainer}
@@ -277,6 +317,23 @@ const TaxiSearchScreen: React.FC = () => {
                             <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
                         </TouchableOpacity>
                     </View>
+
+                    {/* Bouton carte GPS */}
+                    {gpsData && (
+                        <View style={styles.inputGroup}>
+                            <TouchableOpacity
+                                style={[styles.quickSearchButton, { backgroundColor: '#06B6D4' }]}
+                                onPress={() => { hapticPress(); loadNearbyTaxis(); }}
+                                disabled={loading}
+                                activeOpacity={0.8}
+                            >
+                                <SafeIcon name="map" size={18} color="#fff" type="lucide" />
+                                <Text style={styles.quickSearchButtonText}>
+                                    {loading ? 'Chargement...' : `Voir les taxis sur la carte (${maxDistance} km)`}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
                     {/* Distance max */}
                     <View style={styles.inputGroup}>
@@ -417,6 +474,7 @@ const TaxiSearchScreen: React.FC = () => {
                 </View>
             </KeyboardAwareScreen>
 
+            )}
             <ModernGPSModal
                 visible={showGPSModal}
                 onClose={() => setShowGPSModal(false)}
@@ -760,6 +818,17 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '700',
+    },
+    closeMapButton: {
+        position: 'absolute',
+        top: 12,
+        left: 12,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     // ✅ NOUVEAU: Styles pour bannière fonctionnalités IA
     aiFeaturesBanner: {

@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import IntelligentChat from '../../components/IntelligentChat';
 import IntelligentChatFab from '../../components/IntelligentChatFab';
+import ProductVideoCreationModal from '../../components/ProductVideoCreationModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard } from '../../components/SafeNativeDesign';
 import ServiceTeamManager from '../../components/ServiceTeamManager';
@@ -27,6 +28,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { immobilierService } from '../../services/immobilierService';
 import { modernColors } from '../../theme/modernTheme';
+import { ManagedProduct } from '../../types/ManagedProduct';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 type TabType = 'overview' | 'reservations' | 'properties' | 'ai' | 'team';
@@ -90,6 +92,8 @@ const HotelDashboardScreen: React.FC = () => {
     const [showBlockageModal, setShowBlockageModal] = useState(false);
     const [selectedProperty, setSelectedProperty] = useState<HotelProperty | null>(null);
     const [showChat, setShowChat] = useState(false);
+    const [showStudioModal, setShowStudioModal] = useState(false);
+    const [studioProduct, setStudioProduct] = useState<ManagedProduct | null>(null);
 
     // New reservation form
     const [newReservation, setNewReservation] = useState({
@@ -106,6 +110,13 @@ const HotelDashboardScreen: React.FC = () => {
     });
 
     const devise = getCurrencyIntelligently() || 'FCFA';
+    const receptionEntryLabel = t('hotelDashboard.receptionEntryLabel', {
+        defaultValue: 'Front desk entry (off-app)',
+    });
+    const receptionEntryHelp = t('hotelDashboard.receptionEntryHelp', {
+        defaultValue:
+            'Alternative flow for walk-in guests or phone/WhatsApp bookings. In-app customers should book by themselves.',
+    });
 
     const formatPrice = (price: number) => {
         if (price >= 1000000) return `${(price / 1000000).toFixed(1)}M ${devise}`;
@@ -296,7 +307,7 @@ const HotelDashboardScreen: React.FC = () => {
     // ✅ Navigate to add property
     const handleAddProperty = () => {
         const partnerType = user?.partner_type || 'hotel';
-        (navigation as any).navigate('ImmobilierForm', {
+        (navigation as any).navigate('HotelMeublePartnerForm', {
             mode: 'create',
             initialTypeBien: partnerType === 'meuble' ? 'meuble' : 'hotel',
         });
@@ -366,11 +377,30 @@ const HotelDashboardScreen: React.FC = () => {
                         </View>
                         <Text style={styles.quickActionLabel} numberOfLines={3}>{t('hotelDashboard.ajouterUnBien')}</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.quickAction}
+                        onPress={() => {
+                            if (!properties.length) {
+                                Alert.alert(t('message.error'), t('hotelDashboard.ajouterPremierBien'));
+                                return;
+                            }
+                            const first = properties[0];
+                            (navigation as any).navigate('HotelUnitsInventory', {
+                                propertyId: first.id,
+                                propertyName: first.titre,
+                            });
+                        }}
+                    >
+                        <View style={[styles.quickActionIcon, { backgroundColor: '#06B6D415' }]}>
+                            <SafeIcon name="bed-double" size={22} color="#06B6D4" />
+                        </View>
+                        <Text style={styles.quickActionLabel} numberOfLines={3}>Inventaire chambres</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.quickAction} onPress={() => setShowNewReservationModal(true)}>
                         <View style={[styles.quickActionIcon, { backgroundColor: '#10B98115' }]}>
                             <SafeIcon name="calendar-plus" size={22} color="#10B981" />
                         </View>
-                        <Text style={styles.quickActionLabel} numberOfLines={3}>{t('hotelDashboard.nouvelleReservation')}</Text>
+                        <Text style={styles.quickActionLabel} numberOfLines={3}>{receptionEntryLabel}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.quickAction} onPress={handleScanQR}>
                         <View style={[styles.quickActionIcon, { backgroundColor: '#8B5CF615' }]}>
@@ -567,7 +597,7 @@ const HotelDashboardScreen: React.FC = () => {
                             {t('hotelDashboard.reservationsApparaitront')}
                         </Text>
                         <NativeButton
-                            title={t('hotelDashboard.nouvelleReservation')}
+                            title={receptionEntryLabel}
                             onPress={() => setShowNewReservationModal(true)}
                             style={{ marginTop: 16 }}
                         />
@@ -644,14 +674,25 @@ const HotelDashboardScreen: React.FC = () => {
                     <View style={styles.propertyActions}>
                         <TouchableOpacity
                             style={[styles.actionBtn, { backgroundColor: modernColors.primary }]}
-                            onPress={() => (navigation as any).navigate('ImmobilierForm', {
+                            onPress={() => (navigation as any).navigate('HotelMeublePartnerForm', {
                                 propertyId: item.id,
                                 serviceId: item.service_id,
                                 mode: 'edit',
+                                initialTypeBien: item.type_bien === 'meuble' ? 'meuble' : 'hotel',
                             })}
                         >
                             <SafeIcon name="edit" size={16} color="#fff" />
                             <Text style={styles.actionBtnText}>{t('hotelDashboardScreen.modifier')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.actionBtn, { backgroundColor: '#06B6D4' }]}
+                            onPress={() => (navigation as any).navigate('HotelUnitsInventory', {
+                                propertyId: item.id,
+                                propertyName: item.titre,
+                            })}
+                        >
+                            <SafeIcon name="bed-double" size={16} color="#fff" />
+                            <Text style={styles.actionBtnText}>Unités</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
@@ -659,6 +700,26 @@ const HotelDashboardScreen: React.FC = () => {
                         >
                             <SafeIcon name="sparkles" size={16} color="#fff" />
                             <Text style={styles.actionBtnText}>{t('hotelDashboard.iaTarifs')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.actionBtn, { backgroundColor: '#8B5CF6' }]}
+                            onPress={() => {
+                                const mp: ManagedProduct = {
+                                    id: String(item.id),
+                                    nom: item.titre,
+                                    serviceId: String(item.service_id),
+                                    serviceTitre: 'Hôtel / Meublé',
+                                    prix: item.prix_location_mensuel || item.prix_vente,
+                                    type: item.type_bien,
+                                    product_index: item.id,
+                                    images: item.photos || [],
+                                };
+                                setStudioProduct(mp);
+                                setShowStudioModal(true);
+                            }}
+                        >
+                            <SafeIcon name="film" size={16} color="#fff" />
+                            <Text style={styles.actionBtnText}>Studio</Text>
                         </TouchableOpacity>
                     </View>
                 </NativeCard>
@@ -784,10 +845,14 @@ const HotelDashboardScreen: React.FC = () => {
             <View style={styles.modalOverlay}>
                 <View style={styles.modalContent}>
                     <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>{t('hotelDashboard.nouvelleReservation')}</Text>
+                        <Text style={styles.modalTitle}>{receptionEntryLabel}</Text>
                         <TouchableOpacity onPress={() => setShowNewReservationModal(false)}>
                             <SafeIcon name="x" size={24} color="#111827" />
                         </TouchableOpacity>
+                    </View>
+                    <View style={styles.receptionInfoBox}>
+                        <SafeIcon name="info" size={14} color="#1D4ED8" />
+                        <Text style={styles.receptionInfoText}>{receptionEntryHelp}</Text>
                     </View>
 
                     <ScrollView showsVerticalScrollIndicator={false}>
@@ -1033,8 +1098,29 @@ const HotelDashboardScreen: React.FC = () => {
                     serviceData: {
                         nom: `${t('hotelDashboard.headerTitle')} · ${partnerLabel}`,
                         produits: properties.map(p => ({ nom: p.titre, prix: p.prix_location_mensuel })),
+                        features_hotel_v2: [
+                            'inventaire_unites_crud',
+                            'selection_unite_par_dates',
+                            'mini_plan_temps_reel_multi_etage',
+                            'media_unite_photos_videos_360',
+                            'reservation_client_avec_unit_id',
+                            'saisie_reception_hors_app',
+                        ],
+                        kpi: {
+                            total_properties: stats.totalProperties,
+                            total_reservations: stats.totalReservations,
+                            checked_in: stats.checkedIn,
+                        },
                     },
                 }}
+            />
+            <ProductVideoCreationModal
+                visible={showStudioModal}
+                primaryProduct={studioProduct}
+                products={studioProduct ? [studioProduct] : []}
+                onClose={() => { setShowStudioModal(false); setStudioProduct(null); }}
+                onSuccess={() => { setShowStudioModal(false); setStudioProduct(null); }}
+                navigation={navigation}
             />
         </View>
     );
@@ -1197,6 +1283,19 @@ const styles = StyleSheet.create({
     modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%', padding: 20 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
+    receptionInfoBox: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        backgroundColor: '#DBEAFE',
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        marginBottom: 10,
+    },
+    receptionInfoText: { flex: 1, fontSize: 12, color: '#1E3A8A', lineHeight: 16, fontWeight: '500' },
     inputLabel: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 12 },
     input: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#111827' },
     rowInputs: { flexDirection: 'row' },

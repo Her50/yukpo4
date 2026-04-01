@@ -2,6 +2,7 @@
 
 //! Regroupe tous les jobs planifi?s ou r?currents de votre application.
 
+pub mod bus_schedule_product_generator; // Génération auto produits ticket_voyage depuis horaires agences (cron 6h)
 pub mod archived_service_cleaner;
 pub mod audio_cache_cleanup; // ✅ NOUVEAU 2025-12-30: Nettoyage automatique du cache audio
 pub mod delivery_archive_worker; // ✅ Phase 2 : Archivage automatique des livraisons
@@ -31,7 +32,5 @@ pub mod stats_recalculation; // ✅ NOUVEAU : Recalcul périodique des statistiq
 pub mod troc_expiration_monitor; // Expiration automatique des trocs en attente (72h TTL)
 pub mod video_weekly_report; // ✅ NOUVEAU 2025-01-29: Tâche cron pour trajets récurrents
 pub mod yukpo_ia_queue_worker; // ✅ YukpoIA — worker file Redis chat async
-
-// ajoute ici d'autres modules de tâches, par ex.
-// pub mod notification_scheduler;
-// pub mod clean_old_logs;
+pub mod book_reversement_worker; // ✅ Reversements automatiques vendeurs bourse du livre
+pub mod super_librairie_timeout_worker; // ✅ Timeout YukpoLibrairie → fallback broadcast proches

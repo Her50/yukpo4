@@ -52,11 +52,13 @@ export default function CommunityAlertBackgroundManager() {
             notificationBody: 'Surveillance des alertes communautaires',
             notificationColor: '#6366F1',
           },
-          showsBackgroundLocationIndicator: false,
-          pausesUpdatesAutomatically: true,
+          // iOS: ne jamais laisser le système mettre en pause la localisation
+          // (sinon les alertes proche s'arrêtent quand l'utilisateur est immobile)
+          showsBackgroundLocationIndicator: true,
+          pausesUpdatesAutomatically: false,
           deferredUpdatesInterval: 60_000,
           deferredUpdatesDistance: 250,
-          activityType: Location.ActivityType.Other,
+          activityType: Location.ActivityType.AutomotiveNavigation,
         } as any);
       } catch (e) {
         // ignore

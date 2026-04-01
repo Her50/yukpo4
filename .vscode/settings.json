@@ -1,5 +1,5 @@
 {
-    "workbench.colorTheme": "Default Dark+",
+    "workbench.colorTheme": "Dark+",
     "typescript.suggest.autoImports": true,
     "typescript.preferences.importModuleSpecifier": "relative",
     "cursor.cpp.disabledLanguages": [

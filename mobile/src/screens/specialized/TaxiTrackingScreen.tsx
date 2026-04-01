@@ -14,7 +14,8 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
-import { apiGet } from '../../services/api';
+import { Share } from 'react-native';
+import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
@@ -48,6 +49,7 @@ const TaxiTrackingScreen: React.FC = () => {
     const [status, setStatus] = useState<'waiting' | 'coming' | 'arrived' | 'on_way'>('waiting');
     const mapRef = useRef<MapView>(null);
     const trackingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const [shareUrl, setShareUrl] = useState<string | null>(null);
 
     useEffect(() => {
         startTracking();
@@ -63,10 +65,10 @@ const TaxiTrackingScreen: React.FC = () => {
             setLoading(true);
             await fetchDriverLocation();
 
-            // ✅ Polling toutes les 5 secondes pour mettre à jour la position
+            // ✅ Polling toutes les 2 secondes pour mettre à jour la position (suivi temps réel)
             trackingIntervalRef.current = setInterval(async () => {
                 await fetchDriverLocation();
-            }, 5000);
+            }, 2000);
         } catch (error: any) {
             console.error('[TaxiTrackingScreen] Erreur démarrage suivi:', error);
             Alert.alert(t('message.error'), t('taxiTrackingScreen.impossibleDeDemarrerLeSuivi'));
@@ -75,32 +77,58 @@ const TaxiTrackingScreen: React.FC = () => {
         }
     };
 
+    /** ETA réel via OSRM (open source, gratuit, pas de clé API) */
+    const fetchRealETA = async (
+        fromLat: number, fromLng: number,
+        toLat: number, toLng: number
+    ): Promise<number | null> => {
+        try {
+            const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=false`;
+            const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+            const json = await res.json();
+            if (json?.routes?.[0]?.duration) {
+                return Math.round(json.routes[0].duration / 60); // secondes → minutes
+            }
+        } catch { /* fallback ci-dessous */ }
+        return null;
+    };
+
     const fetchDriverLocation = async () => {
         try {
             const response = await apiGet(`/api/taxis/${params.taxiId}/location`);
             const r = response.data as any;
             if (response.success && r) {
                 const loc = r;
-                setDriverLocation({
+                const newDriverLoc = {
                     latitude: loc.latitude || loc.lat,
                     longitude: loc.longitude || loc.lng,
                     heading: loc.heading,
-                });
+                };
+                setDriverLocation(newDriverLoc);
 
-                // Calculer la distance et l'ETA
-                if (userLocation?.coords && driverLocation) {
+                // Calculer distance + ETA réel via OSRM
+                if (userLocation?.coords) {
                     const dist = calculateDistance(
                         userLocation.coords.latitude,
                         userLocation.coords.longitude,
-                        driverLocation.latitude,
-                        driverLocation.longitude
+                        newDriverLoc.latitude,
+                        newDriverLoc.longitude
                     );
                     setDistance(dist);
 
-                    // Estimation: 30 km/h en moyenne en ville
-                    const avgSpeed = 30; // km/h
-                    const etaMinutes = Math.round((dist / avgSpeed) * 60);
-                    setEstimatedArrival(etaMinutes);
+                    // Essai OSRM, fallback Haversine avec facteur trafic
+                    const osrmEta = await fetchRealETA(
+                        newDriverLoc.latitude, newDriverLoc.longitude,
+                        userLocation.coords.latitude, userLocation.coords.longitude,
+                    );
+                    if (osrmEta !== null) {
+                        setEstimatedArrival(osrmEta);
+                    } else {
+                        const hour = new Date().getHours();
+                        const trafficFactor = (hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19) ? 0.6 : 0.8;
+                        const avgSpeed = 30 * trafficFactor;
+                        setEstimatedArrival(Math.round((dist / avgSpeed) * 60));
+                    }
                 }
 
                 // Mettre à jour le statut
@@ -109,10 +137,10 @@ const TaxiTrackingScreen: React.FC = () => {
                 }
 
                 // Centrer la carte sur le chauffeur
-                if (mapRef.current && driverLocation) {
+                if (mapRef.current) {
                     mapRef.current.animateToRegion({
-                        latitude: driverLocation.latitude,
-                        longitude: driverLocation.longitude,
+                        latitude: newDriverLoc.latitude,
+                        longitude: newDriverLoc.longitude,
                         latitudeDelta: 0.01,
                         longitudeDelta: 0.01,
                     }, 1000);
@@ -156,6 +184,30 @@ const TaxiTrackingScreen: React.FC = () => {
             case 'on_way': return t('taxiTrackingScreen.enRouteVersDestination');
             default: return t('taxiTrackingScreen.enCours');
         }
+    };
+
+    const handleShareLocation = async () => {
+        try {
+            if (!params.bookingId) {
+                Alert.alert('Partage', 'Numéro de réservation requis pour partager.');
+                return;
+            }
+            let url = shareUrl;
+            if (!url) {
+                const res = await apiPost(`/api/reservations/${params.bookingId}/share`, {});
+                const data = (res?.data || res) as any;
+                if (data?.success) {
+                    url = data.share?.share_url;
+                    setShareUrl(url ?? null);
+                }
+            }
+            if (url) {
+                await Share.share({
+                    message: `Suivez mon taxi en temps réel :\n${url}`,
+                    title: 'Suivre mon trajet Yukpo',
+                });
+            }
+        } catch { }
     };
 
     const getStatusColor = (): string => {
@@ -297,16 +349,25 @@ const TaxiTrackingScreen: React.FC = () => {
                     </View>
                 )}
 
-                <TouchableOpacity
-                    style={styles.callButton}
-                    onPress={() => {
-                        hapticPress();
-                        Alert.alert(t('taxiTrackingScreen.appeler'), t('taxiTrackingScreen.fonctionnaliteAppelAVenir'));
-                    }}
-                >
-                    <SafeIcon name="phone" size={20} color="#FFFFFF" type="lucide" />
-                    <Text style={styles.callButtonText}>{t('taxiTrackingScreen.appelerLeChauffeur')}</Text>
-                </TouchableOpacity>
+                <View style={styles.actionButtonsRow}>
+                    <TouchableOpacity
+                        style={[styles.callButton, { flex: 1 }]}
+                        onPress={() => {
+                            hapticPress();
+                            Alert.alert(t('taxiTrackingScreen.appeler'), t('taxiTrackingScreen.fonctionnaliteAppelAVenir'));
+                        }}
+                    >
+                        <SafeIcon name="phone" size={20} color="#FFFFFF" type="lucide" />
+                        <Text style={styles.callButtonText}>{t('taxiTrackingScreen.appelerLeChauffeur')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.shareButton}
+                        onPress={() => { hapticPress(); handleShareLocation(); }}
+                    >
+                        <SafeIcon name="share-2" size={20} color="#FFFFFF" type="lucide" />
+                        <Text style={styles.callButtonText}>Partager</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </SafeNativeView>
     );
@@ -458,6 +519,10 @@ const styles = StyleSheet.create({
         marginLeft: 5,
         marginVertical: 4,
     },
+    actionButtonsRow: {
+        flexDirection: 'row',
+        gap: 10,
+    },
     callButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -467,8 +532,18 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingVertical: 14,
     },
+    shareButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        backgroundColor: '#6366F1',
+        borderRadius: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 18,
+    },
     callButtonText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
         color: '#FFFFFF',
     },

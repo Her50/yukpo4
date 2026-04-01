@@ -1,6 +1,7 @@
 // Contrôleur pour le paiement complet des tickets bus avec commission
 // Gère la création du paiement, calcul de commission, reversement et génération PDF
 
+use crate::controllers::bus_ticket_validation_controller::compute_qr_hmac;
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;
@@ -290,9 +291,26 @@ pub async fn process_ticket_payment(
         .map(|v| v as i32)
         .unwrap_or(0);
 
-    // TODO: Générer le PDF du ticket
-    // Pour l'instant, on laisse ticket_pdf_url à NULL
-    // Il sera généré par un service séparé ou via webhook
+    // ── Générer et stocker la signature HMAC-SHA256 du QR code ───────────────
+    let qr_secret = std::env::var("BUS_QR_HMAC_SECRET").unwrap_or_else(|_| {
+        // Fallback synchrone : valeur par défaut (en production, TOUJOURS configurer l'env var)
+        "CHANGEME_SET_VIA_ENV_QR_SECRET_MIN_32_CHARS".to_string()
+    });
+    let qr_signature = compute_qr_hmac(&payment_id, &payload.product_id, user_id, &qr_secret);
+
+    sqlx::query(
+        "UPDATE bus_ticket_payments SET qr_hmac_signature = $1 WHERE id = $2",
+    )
+    .bind(&qr_signature)
+    .bind(&payment_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[process_ticket_payment] Erreur stockage signature QR: {}", e);
+        AppError::Internal(format!("Erreur stockage signature QR: {}", e))
+    })?;
+
+    // Pour l'instant, ticket_pdf_url est généré côté mobile avec la signature incluse
     let ticket_pdf_url: Option<String> = None;
 
     // Confirmer les réservations
@@ -324,7 +342,7 @@ pub async fn process_ticket_payment(
 
     let response = TicketPaymentResponse {
         success: true,
-        payment_id: Some(payment_id),
+        payment_id: Some(payment_id.clone()),
         subtotal: Some(subtotal),
         yukpo_commission: Some(yukpo_commission),
         agency_payout: Some(agency_payout),
@@ -335,7 +353,21 @@ pub async fn process_ticket_payment(
         error: None,
     };
 
-    Ok((StatusCode::OK, Json(json!(response))))
+    // Inclure la signature QR dans la réponse pour que le mobile l'intègre au QR code
+    Ok((StatusCode::OK, Json(json!({
+        "success":          response.success,
+        "payment_id":       response.payment_id,
+        "subtotal":         response.subtotal,
+        "yukpo_commission": response.yukpo_commission,
+        "agency_payout":    response.agency_payout,
+        "total_amount":     response.total_amount,
+        "booking_fee":      response.booking_fee,
+        "payout_status":    response.payout_status,
+        "ticket_pdf_url":   response.ticket_pdf_url,
+        "qr_signature":     qr_signature,  // Signature à intégrer dans le QR JSON
+        "product_id":       payload.product_id,
+        "user_id":          user_id
+    }))))
 }
 
 // ============================================================================

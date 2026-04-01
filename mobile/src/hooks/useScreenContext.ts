@@ -38,6 +38,8 @@ export interface ScreenContext {
   breadcrumbs?: string[];
   previousScreen?: string;
   guideText?: string;
+  chatbotMode?: string;
+  chatbotSystemPrompt?: string;
 }
 
 const LUCIDE_ICONS: Record<string, string> = {
