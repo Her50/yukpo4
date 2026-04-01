@@ -2669,39 +2669,19 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     ));
 
     // ✅ OPTIMISÉ Cloud Run 2026-02-14: Lancer toutes les migrations SQLx en arrière-plan pour Cloud Run
-    // ✅ CORRIGÉ 2026-02-14: Pool séparé pour migrations (évite saturation du pool principal)
+    // ✅ CORRIGÉ 2026-04-01: Réutiliser pg_pool (déjà configuré avec PgConnectOptions + attente socket)
+    //    au lieu de créer un nouveau pool avec connect_lazy(URL) qui échoue pour les Unix sockets Cloud SQL
     if is_cloud_run {
-        // Créer un pool séparé pour les migrations SQLx (évite saturation du pool principal)
-        let database_url_for_migrations = db_url.clone();
+        let pg_for_migrations = pg_pool.clone();
 
-        log::info!("✅ Pool séparé créé pour migrations SQLx (max=10, min=2)");
+        log::info!("✅ Cloud Run: Migrations SQLx utiliseront le pool principal (déjà connecté via Unix socket)");
 
         tokio::spawn(async move {
             log::info!("🚀 Cloud Run: Démarrage des migrations SQLx en arrière-plan...");
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await; // Attendre 2s pour laisser la DB se connecter
+            // Attendre que le pool principal ait établi au moins une connexion
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
-            // ✅ CORRIGÉ 2026-03-19: Utiliser connect_lazy pour éviter l'erreur "empty host"
-            // avec les URLs Cloud SQL Unix socket (format: postgresql://user:pass@/db?host=/cloudsql/...)
-            let pg_for_migrations = match PgPoolOptions::new()
-                .max_connections(5)
-                .min_connections(0) // ✅ CORRIGÉ: 0 pour lazy connect
-                .acquire_timeout(std::time::Duration::from_secs(60))
-                .idle_timeout(Some(std::time::Duration::from_secs(300)))
-                .max_lifetime(Some(std::time::Duration::from_secs(600)))
-                .test_before_acquire(true)
-                .connect_lazy(&database_url_for_migrations)
-            {
-                Ok(pool) => pool,
-                Err(e) => {
-                    log::error!(
-                        "❌ [MIGRATIONS SQLX Cloud Run] Erreur connexion pool migrations: {}",
-                        e
-                    );
-                    return;
-                }
-            };
-
-            // Exécuter sqlx::migrate!() en arrière-plan avec pool séparé
+            // Exécuter sqlx::migrate!() en arrière-plan avec le pool principal
             log::info!("🔄 [MIGRATIONS SQLX Cloud Run] Application de toutes les migrations SQLx standard en arrière-plan...");
             match sqlx::migrate!("./migrations").run(&pg_for_migrations).await {
                 Ok(_) => {
@@ -2713,7 +2693,7 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
             }
         });
         log::info!(
-            "✅ Cloud Run: Migrations SQLx lancées en arrière-plan avec pool séparé, serveur démarre immédiatement"
+            "✅ Cloud Run: Migrations SQLx lancées en arrière-plan avec pool principal, serveur démarre immédiatement"
         );
     }
 
