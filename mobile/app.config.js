@@ -53,7 +53,8 @@ module.exports = {
                 UIBackgroundModes: [
                     "location",
                     "remote-notification",
-                    "fetch"
+                    "fetch",
+                    "audio"
                 ],
                 CFBundleURLTypes: [
                     {

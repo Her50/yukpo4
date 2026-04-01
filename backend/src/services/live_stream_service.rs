@@ -102,9 +102,12 @@ impl LiveStreamingService {
             ));
         }
 
-        if payload.scheduled_start < Utc::now() - Duration::minutes(5) {
+        // Tolérance de 15 minutes dans le passé pour absorber les décalages
+        // d'horloge client, les fuseaux horaires mal gérés et les latences réseau.
+        if payload.scheduled_start < Utc::now() - Duration::minutes(15) {
             return Err(AppError::BadRequest(
-                "La date de démarrage doit être dans le futur proche".to_string(),
+                "La date de démarrage du live est trop ancienne (plus de 15 min dans le passé)"
+                    .to_string(),
             ));
         }
 

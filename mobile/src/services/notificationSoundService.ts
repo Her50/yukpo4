@@ -17,6 +17,7 @@ class NotificationSoundService {
 
     /**
      * Initialise le service audio
+     * iOS: nécessite UIBackgroundModes "audio" dans app.config.js pour staysActiveInBackground
      */
     async initialize(): Promise<void> {
         if (this.isInitialized) {
@@ -24,11 +25,13 @@ class NotificationSoundService {
         }
 
         try {
-            // Configurer le mode audio pour les notifications
             await Audio.setAudioModeAsync({
-                playsInSilentModeIOS: true,
-                staysActiveInBackground: true, // ✅ Activer pour les coursiers
-                shouldDuckAndroid: true,
+                playsInSilentModeIOS: true,       // Son même en mode silencieux iOS
+                staysActiveInBackground: true,     // Actif en arrière-plan (requiert UIBackgroundModes: audio)
+                shouldDuckAndroid: true,           // Baisser autres sons Android
+                allowsRecordingIOS: false,
+                interruptionModeIOS: 1,            // DO_NOT_MIX
+                interruptionModeAndroid: 1,        // DO_NOT_MIX
             });
 
             this.isInitialized = true;
@@ -39,10 +42,27 @@ class NotificationSoundService {
     }
 
     /**
-     * Charge un son de notification avec fallback en ligne si le fichier local manque
+     * Résout la source sonore pour un type donné.
+     * Tous les types utilisent le même fichier local delivery_alert.mp3.
+     * Pas de fallback réseau — si le fichier est absent, la notification
+     * push système (shouldPlaySound: true) prend le relais.
+     */
+    private getSoundSource(_type: NotificationSoundType): any {
+        try {
+            return require('../../assets/sounds/delivery_alert.mp3');
+        } catch {
+            // Le fichier n'est pas bundlé : retourner null,
+            // la notification push système jouera le son par défaut.
+            console.warn('[NotificationSoundService] ⚠️ delivery_alert.mp3 absent du bundle');
+            return null;
+        }
+    }
+
+    /**
+     * Charge un son de notification depuis le bundle local.
+     * Aucune requête réseau : fonctionne hors-ligne, en poche, à moto.
      */
     private async loadSound(type: NotificationSoundType): Promise<Audio.Sound | null> {
-        // Vérifier si le son est déjà chargé
         if (this.sounds.has(type) && this.sounds.get(type)) {
             return this.sounds.get(type)!;
         }
@@ -50,37 +70,27 @@ class NotificationSoundService {
         try {
             await this.initialize();
 
-            let soundSource: any;
-
-            try {
-                // Essayer de charger le fichier local d'abord
-                soundSource = require('../../assets/sounds/delivery_alert.mp3');
-            } catch (localError) {
-                // Fallback: utiliser une URL en ligne (son plus court et instantané)
-                console.warn('[NotificationSoundService] ⚠️ Fichier local absent, fallback en ligne');
-                soundSource = {
-                    uri: 'https://actions.google.com/sounds/v1/notifications/notification_simple.ogg'
-                };
+            const soundSource = this.getSoundSource(type);
+            if (!soundSource) {
+                return null;
             }
 
-            // Créer le son avec volume plus élevé pour la bienvenue
             const { sound } = await Audio.Sound.createAsync(
                 soundSource,
                 {
                     shouldPlay: false,
-                    volume: type === 'ready' ? 0.8 : 0.7, // Volume plus élevé pour bienvenue
+                    volume: type === 'ready' ? 0.8 : 0.7,
                     isLooping: false,
                 },
                 (status) => {
                     if (status.isLoaded && status.didJustFinish) {
-                        // Son terminé, replacer au début pour prochaine utilisation
                         sound.setPositionAsync(0).catch(() => { });
                     }
                 }
             );
 
             this.sounds.set(type, sound);
-            console.log(`[NotificationSoundService] ✅ Son ${type} chargé avec succès`);
+            console.log(`[NotificationSoundService] ✅ Son ${type} chargé`);
             return sound;
         } catch (error) {
             console.error(`[NotificationSoundService] ❌ Erreur chargement son ${type}:`, error);
@@ -424,7 +434,9 @@ class NotificationSoundService {
             }, 1500);
         }
 
-        // 4. Notification push locale (visible même app fermée / en arrière-plan)
+        // 4. Notification push locale (visible même app en arrière-plan / écran verrouillé)
+        // Utilise le canal Android 'delivery_notifications' (importance MAX, lockscreen PUBLIC)
+        // pour garantir la sonnerie même téléphone en poche sur moto.
         if (opts.pushNotification) {
             const t = i18n.t.bind(i18n);
             const titleMap: Record<string, string> = {
@@ -448,6 +460,11 @@ class NotificationSoundService {
                         title: titleMap[eventType] || t('delivery_notifications.push_default'),
                         body: message,
                         sound: true,
+                        // Android: canal delivery_notifications (importance MAX, lockscreen PUBLIC)
+                        // iOS: son système joué grâce à playsInSilentModeIOS + UIBackgroundModes audio
+                        ...(require('react-native').Platform.OS === 'android' && {
+                            channelId: 'delivery_notifications',
+                        }),
                         data: { type: 'delivery_event', eventType, ...details },
                     },
                     trigger: null, // Immédiat

@@ -56,14 +56,18 @@ CREATE TABLE IF NOT EXISTS loyalty_rewards (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Récompenses par défaut
-INSERT INTO loyalty_rewards (title, description, points_cost, reward_type, reward_value)
-VALUES
-    ('Réduction 10%',     '10% sur votre prochain trajet',          100, 'discount_pct',   10),
-    ('Réduction 20%',     '20% sur votre prochain trajet',          200, 'discount_pct',   20),
-    ('Trajet offert',     'Un trajet gratuit jusqu''à 5 000 XAF',   500, 'free_trip',     5000),
-    ('Assurance offerte', 'Assurance de base offerte',              300, 'free_insurance',  500)
-ON CONFLICT DO NOTHING;
+-- Récompenses par défaut (skip si la table a un schéma différent)
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='loyalty_rewards' AND column_name='title') THEN
+        INSERT INTO loyalty_rewards (title, description, points_cost, reward_type, reward_value)
+        VALUES
+            ('Réduction 10%',     '10% sur votre prochain trajet',          100, 'discount_pct',   10),
+            ('Réduction 20%',     '20% sur votre prochain trajet',          200, 'discount_pct',   20),
+            ('Trajet offert',     'Un trajet gratuit jusqu''à 5 000 XAF',   500, 'free_trip',     5000),
+            ('Assurance offerte', 'Assurance de base offerte',              300, 'free_insurance',  500)
+        ON CONFLICT DO NOTHING;
+    END IF;
+END $$;
 
 -- Historique des rachats de récompenses
 CREATE TABLE IF NOT EXISTS loyalty_redemptions (

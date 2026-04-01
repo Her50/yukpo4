@@ -6,7 +6,8 @@ use std::time::Instant;
 
 use crate::core::types::AppError;
 
-const DEFAULT_SERVER_TOKEN_TTL_SECS: i64 = 60;
+// 300s pour absorber les cold starts GCP Cloud Run + latence réseau
+const DEFAULT_SERVER_TOKEN_TTL_SECS: i64 = 300;
 
 #[derive(Debug, Serialize)]
 struct LiveKitServerClaims<'a> {
