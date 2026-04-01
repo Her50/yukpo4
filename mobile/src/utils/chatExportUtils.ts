@@ -251,7 +251,7 @@ export async function openOrDownloadRemoteFile(url: string, filenameHint?: strin
     } else if (Platform.OS === 'android') {
       await Share.share({ message: u, title: name });
     } else {
-      Alert.alert('Téléchargement', 'Impossible d'ouvrir le fichier sur cet appareil.');
+      Alert.alert('Téléchargement', "Impossible d'ouvrir le fichier sur cet appareil.");
     }
   } catch (e) {
     console.warn('[chatExportUtils] download failed', e);

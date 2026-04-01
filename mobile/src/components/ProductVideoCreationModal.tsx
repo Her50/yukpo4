@@ -575,6 +575,13 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         [t],
     );
 
+    const visualFormatOptions = [
+        { key: 'affiche', label: 'Affiche', description: 'Portrait vertical — promotions, annonces, événements' },
+        { key: 'banniere', label: 'Bannière', description: 'Format large horizontal — campagnes web, publicité' },
+        { key: 'carre', label: 'Carré', description: 'Format 1:1 — Instagram, réseaux sociaux' },
+        { key: 'produit', label: 'Produit', description: 'Mise en valeur produit — fond neutre, prix et infos' },
+    ];
+
     const musicModeOptions = useMemo(
         () =>
             [
@@ -612,6 +619,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
     const [mediaLoading, setMediaLoading] = useState(false);
 
     const [stylePreset, setStylePreset] = useState<VideoStylePreset>('tiktok');
+    const [visualFormatPreset, setVisualFormatPreset] = useState<string>('affiche');
     const [duration, setDuration] = useState<string>('28');
     const [headline, setHeadline] = useState<string>('');
     const [callToAction, setCallToAction] = useState<string>(() => pvm('defaultCallToAction'));
@@ -3342,6 +3350,41 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
             return renderEmptyProductState('emptyRefStyle');
         }
 
+        if (creationMode === 'visual') {
+            return (
+                <NativeCard style={styles.sectionCard}>
+                    {renderStepTip(3)}
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Format du visuel</Text>
+                    </View>
+                    <Text style={styles.sectionSubtitle}>Choisissez le format de votre visuel publicitaire.</Text>
+                    <View style={styles.styleRow}>
+                        {visualFormatOptions.map((option) => {
+                            const selected = visualFormatPreset === option.key;
+                            return (
+                                <TouchableOpacity
+                                    key={option.key}
+                                    style={[styles.styleChip, selected && styles.styleChipSelected]}
+                                    onPress={() => setVisualFormatPreset(option.key)}
+                                >
+                                    <Text style={[styles.styleChipLabel, selected && styles.styleChipLabelSelected]}>{option.label}</Text>
+                                    <Text style={styles.styleChipDescription} numberOfLines={1}>{option.description}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                    <View style={styles.fieldGroup}>
+                        <Text style={styles.fieldLabel}>Palette de couleurs (optionnel)</Text>
+                        <NativeInput
+                            value={colorPalette}
+                            onChangeText={setColorPalette}
+                            placeholder="ex: #FFD700 / #1E3A8A — laissez vide pour auto"
+                        />
+                    </View>
+                </NativeCard>
+            );
+        }
+
         return (
             <NativeCard style={styles.sectionCard}>
                 {renderStepTip(3)}
@@ -3495,6 +3538,48 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         // Étape 4 : Script et timeline uniquement
         if (!selectedProduct) {
             return renderEmptyProductState('emptyRefScript');
+        }
+
+        if (creationMode === 'visual') {
+            return (
+                <NativeCard style={styles.sectionCard}>
+                    {renderStepTip(4)}
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Brief du visuel</Text>
+                    </View>
+                    <Text style={styles.sectionSubtitle}>Définissez le message principal et l'appel à l'action de votre visuel.</Text>
+                    <View style={styles.fieldGroup}>
+                        <Text style={styles.fieldLabel}>{pvm('fieldLabelPunchyTitle')}</Text>
+                        <NativeInput
+                            value={headline}
+                            onChangeText={setHeadline}
+                            placeholder={pvm('fieldPlaceholderPunchyTitle')}
+                            multiline
+                            minLines={2}
+                        />
+                    </View>
+                    <View style={styles.fieldGroup}>
+                        <Text style={styles.fieldLabel}>{pvm('fieldLabelCallToAction')}</Text>
+                        <NativeInput
+                            value={callToAction}
+                            onChangeText={setCallToAction}
+                            placeholder={pvm('fieldPlaceholderCallToAction')}
+                            multiline
+                            minLines={2}
+                        />
+                    </View>
+                    <View style={styles.fieldGroup}>
+                        <Text style={styles.fieldLabel}>Notes de composition (optionnel)</Text>
+                        <NativeInput
+                            value={scriptNotes}
+                            onChangeText={setScriptNotes}
+                            placeholder="ex: fond sombre avec le produit centré, prix en gros en bas…"
+                            multiline
+                            minLines={3}
+                        />
+                    </View>
+                </NativeCard>
+            );
         }
 
         return (
@@ -5174,7 +5259,7 @@ const ProductVideoCreationModal: React.FC<ProductVideoCreationModalProps> = ({
         // En mode visuel, on ne vérifie pas le script ni la durée ni le voiceover
         if (creationMode === 'visual') {
             const visualPayload: VideoGenerationPayload = {
-                style: stylePreset,
+                style: visualFormatPreset,
                 duration_seconds: 0,
                 headline: headline.trim(),
                 call_to_action: callToAction.trim(),

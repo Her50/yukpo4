@@ -296,7 +296,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
       onChange?.();
     } catch (e) {
       console.error(e);
-      Alert.alert('Erreur', 'Impossible d'enregistrer la préférence');
+      Alert.alert('Erreur', "Impossible d'enregistrer la préférence");
     }
   };
 
@@ -448,7 +448,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
               </Text>
               {notifications.length > 0 && (
                 <Text style={styles.emptySubtext}>
-                  {String(notifications.length)} notification(s) disponible(s) avec d'autres filtres
+                  {String(notifications.length)} notification(s) disponible(s) avec d'autres filtres'
                 </Text>
               )}
             </View>
@@ -517,7 +517,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
                   <View style={styles.notificationActions}>
                     <View style={styles.actionButtons}>
-                      {/* ✅ NOUVEAU : Bouton d'action si un lien est disponible (ex: Participer au Black Friday) */}
+                      {/* ✅ NOUVEAU : Bouton d'action si un lien est disponible (ex: Participer au Black Friday) */}'
                       {notification.actionUrl && notification.actionText && (
                         <TouchableOpacity
                           style={[styles.actionButton, styles.primaryActionButton]}

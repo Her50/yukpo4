@@ -288,10 +288,10 @@ const BusTicketSearchScreen: React.FC = () => {
                         />
                     </View>
 
-                    {/* Ville d'arrivée */}
+                    {/* Ville d'arrivée */}'
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="navigation" size={14} color={modernColors.primary} type="lucide" /> Ville d'arrivée *
+                            <SafeIcon name="navigation" size={14} color={modernColors.primary} type="lucide" /> Ville d'arrivée *'
                         </Text>
                         <CityAutocomplete
                             label=""
@@ -538,10 +538,10 @@ const BusTicketSearchScreen: React.FC = () => {
                             <Text style={styles.infoTitle}>💡 Bon à savoir</Text>
                         </View>
                         <Text style={styles.infoText}>
-                            • Réservez vos tickets à l'avance pour garantir votre place{'\n'}
+                            • Réservez vos tickets à l'avance pour garantir votre place{'\n'}'
                             • Les prix peuvent varier selon la période et la disponibilité{'\n'}
                             • Vérifiez les horaires de départ avant de réserver{'\n'}
-                            • L'option aller-retour permet d'économiser sur les trajets réguliers
+                            • L"option aller-retour permet d'économiser sur les trajets réguliers"
                         </Text>
                     </View>
                 )}

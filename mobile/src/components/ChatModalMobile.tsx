@@ -1167,7 +1167,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     </View>
                                 ) : (
                                     <>
-                                        {/* ✅ NOUVEAU: Afficher lt('chatModalMobile.imageSiPresenteMessagetype')image' && message.imageUrl && (
+                                        {/* ✅ NOUVEAU: Afficher lt('chatModalMobile.imageSiPresenteMessagetype')image' && message.imageUrl && ('
                                             <Image
                                                 source={{ uri: message.imageUrl }}
                                                 style={styles.messageImage}
@@ -1175,7 +1175,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             />
                                         )}
 
-                                        {/* ✅ NOUVEAU: Afficher lt('chatModalMobile.audioSiPresentMessagetype')audio' && message.audioUrl && (
+                                        {/* ✅ NOUVEAU: Afficher lt('chatModalMobile.audioSiPresentMessagetype')audio' && message.audioUrl && ('
                                             <View style={styles.audioContainer}>
                                                 <SafeIcon name="mic" size={20} color={message.from === 'client' ? '#FFFFFF' : modernColors.primary} />
                                                 <Text style={[
@@ -1398,7 +1398,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         </ScrollView>
                     )}
 
-                    {/* Boutons d'actions média */}
+                    {/* Boutons d'actions média */}'
                     <View style={styles.mediaActionsRow}>
                         <TouchableOpacity style={styles.mediaButton} onPress={pickImage}>
                             <SafeIcon name="image" size={18} color={modernColors.primary} />
@@ -1424,7 +1424,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         </TouchableOpacity>
 
                         {/* ✅ NOUVEAU 2026-01-23: Bouton "Commander" avec texte (comme ProductCard) */}
-                        {/* ✅ Utilise maintenant l'API /api/services/:id/products au lieu de l'ancien format JSONB */}
+                        {/* ✅ Utilise maintenant l"API /api/services/:id/products au lieu de l'ancien format JSONB */}"
                         {/* ✅ Vérifie la configuration de livraison et prend en compte le prix négocié */}
                         {service?.id ? (
                             <TouchableOpacity
@@ -1694,7 +1694,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="smile" size={20} color={modernColors.textSecondary} />
                         </TouchableOpacity>
 
-                        {/* Bouton d'assistance IA — ouvre le panneau chatbot inline */}
+                        {/* Bouton d'assistance IA — ouvre le panneau chatbot inline */}'
                         <TouchableOpacity
                             style={[styles.aiButton, showChatbotPanel && styles.aiButtonActive]}
                             onPress={openChatbotPanel}
@@ -1761,7 +1761,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 onSelectMedia={handleSelectGalleryMedia}
             />
 
-            {/* Modal d'appel interne (audio/vidéo) */}
+            {/* Modal d'appel interne (audio/vidéo) */}'
             <InAppCallModal
                 visible={showCallModal}
                 onClose={() => setShowCallModal(false)}

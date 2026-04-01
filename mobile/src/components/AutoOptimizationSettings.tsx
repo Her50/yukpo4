@@ -137,7 +137,7 @@ const [expanded, setExpanded] = useState(false);
                 <View>
                     <Text style={styles.title}>⚡ Optimisation Automatique</Text>
                     <Text style={styles.subtitle}>
-                        Laissez l'IA optimiser vos campagnes automatiquement
+                        Laissez l'IA optimiser vos campagnes automatiquement'
                     </Text>
                 </View>
                 <TouchableOpacity onPress={() => setExpanded(false)}>
@@ -155,9 +155,9 @@ const [expanded, setExpanded] = useState(false);
                     <View style={styles.section}>
                         <View style={styles.settingRow}>
                             <View style={styles.settingInfo}>
-                                <Text style={styles.settingLabel}>Activer l'optimisation automatique</Text>
+                                <Text style={styles.settingLabel}>Activer l'optimisation automatique</Text>'
                                 <Text style={styles.settingDescription}>
-                                    L'IA analysera et optimisera vos campagnes selon vos préférences
+                                    L'IA analysera et optimisera vos campagnes selon vos préférences'
                                 </Text>
                             </View>
                             <Switch
@@ -171,9 +171,9 @@ const [expanded, setExpanded] = useState(false);
 
                     {settings.enabled && (
                         <>
-                            {/* Types d'optimisation */}
+                            {/* Types d'optimisation */}'
                             <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Types d'optimisation</Text>
+                                <Text style={styles.sectionTitle}>Types d'optimisation</Text>'
 
                                 <View style={styles.settingRow}>
                                     <View style={styles.settingInfo}>
@@ -239,7 +239,7 @@ const [expanded, setExpanded] = useState(false);
                                     <View style={styles.settingInfo}>
                                         <Text style={styles.settingLabel}>{t('autoOptimizationSettings.strategieDencheres')}</Text>
                                         <Text style={styles.settingDescription}>
-                                            Ajuster automatiquement la stratégie d'enchères
+                                            Ajuster automatiquement la stratégie d'enchères'
                                         </Text>
                                     </View>
                                     <Switch
@@ -259,7 +259,7 @@ const [expanded, setExpanded] = useState(false);
                                     <View style={styles.settingInfo}>
                                         <Text style={styles.settingLabel}>{t('autoOptimizationSettings.frequenceDoptimisation')}</Text>
                                         <Text style={styles.settingDescription}>
-                                            À quelle fréquence l'IA doit-elle analyser et optimiser ?
+                                            À quelle fréquence l'IA doit-elle analyser et optimiser ?'
                                         </Text>
                                     </View>
                                     <View style={styles.frequencySelector}>
@@ -288,7 +288,7 @@ const [expanded, setExpanded] = useState(false);
                                 <View style={styles.settingRow}>
                                     <View style={styles.settingInfo}>
                                         <Text style={styles.settingLabel}>
-                                            Seuil d'application automatique: {(settings.auto_apply_threshold * 100).toFixed(0)}%
+                                            Seuil d'application automatique: {(settings.auto_apply_threshold * 100).toFixed(0)}%'
                                         </Text>
                                         <Text style={styles.settingDescription}>
                                             Confiance minimale pour appliquer automatiquement les optimisations
@@ -326,10 +326,10 @@ const [expanded, setExpanded] = useState(false);
                                 <View style={styles.settingRow}>
                                     <View style={styles.settingInfo}>
                                         <Text style={styles.settingLabel}>
-                                            Limite d'ajustement de budget: {settings.budget_adjustment_limit}%
+                                            Limite d'ajustement de budget: {settings.budget_adjustment_limit}%'
                                         </Text>
                                         <Text style={styles.settingDescription}>
-                                            Variation maximale du budget lors d'une optimisation
+                                            Variation maximale du budget lors d'une optimisation'
                                         </Text>
                                     </View>
                                     <View style={styles.sliderContainer}>
@@ -365,7 +365,7 @@ const [expanded, setExpanded] = useState(false);
                             <View style={styles.infoBox}>
                                 <SafeIcon name="info" size={16} color={modernColors.info} />
                                 <Text style={styles.infoText}>
-                                    L'optimisation automatique utilise l'IA pour analyser vos campagnes et appliquer
+                                    L"optimisation automatique utilise l'IA pour analyser vos campagnes et appliquer"
                                     les meilleures pratiques. Vous recevrez des notifications pour chaque optimisation appliquée.
                                 </Text>
                             </View>

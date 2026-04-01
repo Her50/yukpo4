@@ -169,6 +169,64 @@ const PartnerRegisterScreen: React.FC = () => {
     return null;
   };
 
+  const pickDocumentImageOrCamera = async (): Promise<string | null> => {
+    return new Promise((resolve) => {
+      Alert.alert(
+        'Source photo',
+        'Choisissez la source',
+        [
+          {
+            text: 'Appareil photo',
+            onPress: async () => {
+              const perm = await ImagePicker.requestCameraPermissionsAsync();
+              if (!perm.granted) {
+                Alert.alert('Permission refusée', 'Accès à la caméra requis.');
+                resolve(null);
+                return;
+              }
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: 'images' as any,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.8,
+                base64: true,
+              });
+              if (!result.canceled && result.assets?.[0]?.base64) {
+                resolve(`data:image/jpeg;base64,${result.assets[0].base64}`);
+              } else {
+                resolve(null);
+              }
+            },
+          },
+          {
+            text: 'Galerie',
+            onPress: async () => {
+              const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (!perm.granted) {
+                Alert.alert('Permission refusée', 'Accès à la galerie requis.');
+                resolve(null);
+                return;
+              }
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: 'images' as any,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.8,
+                base64: true,
+              });
+              if (!result.canceled && result.assets?.[0]?.base64) {
+                resolve(`data:image/jpeg;base64,${result.assets[0].base64}`);
+              } else {
+                resolve(null);
+              }
+            },
+          },
+          { text: 'Annuler', style: 'cancel', onPress: () => resolve(null) },
+        ]
+      );
+    });
+  };
+
   // ✅ NOUVEAU: Fonction pour sélectionner et uploader le logo
   const handlePickLogo = async () => {
     try {
@@ -282,17 +340,7 @@ const PartnerRegisterScreen: React.FC = () => {
       }
     }
 
-    // ✅ NOUVEAU: Validation documents administratifs pour structures commerciales
-    if (form.partner_type && form.partner_type !== 'chauffeur' && form.partner_type !== 'livraison' && form.partner_type !== 'livraison_courses_marche') {
-      if (!form.rccm?.trim()) {
-        setError('Le numéro RCCM est obligatoire pour les partenaires professionnels');
-        return;
-      }
-      if (!form.numero_contribuable?.trim()) {
-        setError('Le numéro contribuable est obligatoire pour les partenaires professionnels');
-        return;
-      }
-    }
+    // Documents administratifs facultatifs pour structures commerciales
 
     setLoading(true);
     try {
@@ -906,11 +954,11 @@ const PartnerRegisterScreen: React.FC = () => {
                   <Title style={styles.sectionTitle}>Documents administratifs</Title>
                 </View>
                 <Paragraph style={styles.sectionSubtitle}>
-                  Documents obligatoires pour les partenaires professionnels au Cameroun
+                  Documents facultatifs pour les partenaires professionnels au Cameroun
                 </Paragraph>
 
                 <TextInput
-                  label="Numéro RCCM *"
+                  label="Numéro RCCM (optionnel)"
                   value={form.rccm}
                   onChangeText={(text) => setForm({ ...form, rccm: text })}
                   placeholder="Ex: RC/DLA/2024/B/12345"
@@ -918,13 +966,13 @@ const PartnerRegisterScreen: React.FC = () => {
                   style={styles.input}
                 />
                 <Text style={styles.helperText}>
-                  Registre du Commerce et du Crédit Mobilier — délivré au greffe du tribunal de commerce
+                  Registre du Commerce et du Crédit Mobilier — optionnel, délivré au greffe du tribunal de commerce
                 </Text>
 
-                <Text style={styles.label}>Photo du certificat RCCM <Text style={styles.requiredAsterisk}>*</Text></Text>
+                <Text style={styles.label}>Photo du certificat RCCM (optionnel)</Text>
                 <TouchableOpacity
                   onPress={async () => {
-                    const b64 = await pickDocumentImage();
+                    const b64 = await pickDocumentImageOrCamera();
                     if (b64) setForm({ ...form, rccm_doc: b64 });
                   }}
                   disabled={loading}
@@ -941,13 +989,13 @@ const PartnerRegisterScreen: React.FC = () => {
                     <View style={styles.logoPlaceholder}>
                       <ImageIcon size={36} color={theme.colors.textSecondary} />
                       <Text style={styles.logoPlaceholderText}>Photo extrait RCCM</Text>
-                      <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Vérifié automatiquement par IA Vision</Text>
+                      <Text style={styles.photoSourceHint}>📷 Galerie ou appareil photo</Text>
                     </View>
                   )}
                 </TouchableOpacity>
 
                 <TextInput
-                  label="Numéro contribuable (NIU) *"
+                  label="Numéro contribuable (NIU) — optionnel"
                   value={form.numero_contribuable}
                   onChangeText={(text) => setForm({ ...form, numero_contribuable: text.toUpperCase() })}
                   placeholder="Ex: M012345678901A"
@@ -956,13 +1004,13 @@ const PartnerRegisterScreen: React.FC = () => {
                   style={styles.input}
                 />
                 <Text style={styles.helperText}>
-                  Numéro d'Identifiant Unique (NIU) délivré par la Direction Générale des Impôts
+                  Numéro d'Identifiant Unique (NIU) — optionnel, délivré par la Direction Générale des Impôts
                 </Text>
 
-                <Text style={styles.label}>Photo de l'attestation NIU <Text style={styles.requiredAsterisk}>*</Text></Text>
+                <Text style={styles.label}>Photo de l'attestation NIU (optionnel)</Text>
                 <TouchableOpacity
                   onPress={async () => {
-                    const b64 = await pickDocumentImage();
+                    const b64 = await pickDocumentImageOrCamera();
                     if (b64) setForm({ ...form, niu_doc: b64 });
                   }}
                   disabled={loading}
@@ -979,7 +1027,7 @@ const PartnerRegisterScreen: React.FC = () => {
                     <View style={styles.logoPlaceholder}>
                       <ImageIcon size={36} color={theme.colors.textSecondary} />
                       <Text style={styles.logoPlaceholderText}>Photo attestation NIU</Text>
-                      <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Vérifié automatiquement par IA Vision</Text>
+                      <Text style={styles.photoSourceHint}>📷 Galerie ou appareil photo</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -1466,6 +1514,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 14,
     color: theme.colors.textSecondary,
+  },
+  photoSourceHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 2,
   },
 });
 

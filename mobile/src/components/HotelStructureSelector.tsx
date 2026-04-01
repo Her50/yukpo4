@@ -193,7 +193,7 @@ export const HotelStructureSelector: React.FC<HotelStructureSelectorProps> = ({
                 </View>
             </Modal>
 
-            {/* Modale d'ajout d'hôtel personnalisé */}
+            {/* Modale d"ajout d'hôtel personnalisé */}"
             <Modal visible={showAddModal} transparent animationType="fade" onRequestClose={() => setShowAddModal(false)}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.addModalContainer}>

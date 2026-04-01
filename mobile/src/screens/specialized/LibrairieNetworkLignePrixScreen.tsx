@@ -191,7 +191,7 @@ const LibrairieNetworkLignePrixScreen: React.FC = () => {
                 <Text style={styles.emptyList}>
                     {t(
                         'librairieNetworkPrix.noCommandes',
-                        'Aucune commande liée à votre librairie pour l'instant.'
+                        "Aucune commande liée à votre librairie pour l'instant."
                     )}
                 </Text>
             ) : (

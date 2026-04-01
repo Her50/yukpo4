@@ -310,7 +310,7 @@ const HopitalFormScreen: React.FC = () => {
                         onPress: () => {
                             const hid = resolveHospitalEntityId();
                             if (hid == null) {
-                                Alert.alert(t('message.error'), t('hopitalFormScreen.hospitalIdRequiredForStats') || 'Fiche hôpital non chargée : enregistrez l'établissement ou rafraîchissez.');
+                                Alert.alert(t('message.error'), t('hopitalFormScreen.hospitalIdRequiredForStats') || "Fiche hôpital non chargée : enregistrez l'établissement ou rafraîchissez.");
                                 return;
                             }
                             (navigation as any).navigate('HospitalAnalytics', { hospitalId: hid });

@@ -264,7 +264,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                                 <View style={styles.hintContainer}>
                                     <SafeIcon name="search" size={32} color={modernColors.primary} />
                                     <Text style={styles.hintText}>
-                                        {t('userMentionPicker.tapezPourRechercher', 'Tapez au moins 2 caractères (nom ou e-mail) — même recherche que le champ d'invitation.')}
+                                        {t('userMentionPicker.tapezPourRechercher', "Tapez au moins 2 caractères (nom ou e-mail) — même recherche que le champ d'invitation.")}
                                     </Text>
                                 </View>
                             ) : searchResults.length > 0 ? (
@@ -303,7 +303,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                 <View style={styles.container}>
                     {/* Header */}
                     <View style={styles.header}>
-                        <Text style={styles.headerTitle}>@Mentionner quelqu'un</Text>
+                        <Text style={styles.headerTitle}>@Mentionner quelqu'un</Text>'
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
@@ -359,7 +359,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                         </View>
                     )}
 
-                    {/* Contenu selon l'onglet actif */}
+                    {/* Contenu selon l'onglet actif */}'
                     <View style={styles.content}>
                         {loading ? (
                             <View style={styles.loadingContainer}>
@@ -386,7 +386,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                                                 <SafeIcon name="clock" size={48} color={modernColors.textSecondary} />
                                                 <Text style={styles.emptyTitle}>{t('userMentionPicker.aucunHistorique')}</Text>
                                                 <Text style={styles.emptyText}>
-                                                    Vous n'avez encore tagué personne
+                                                    Vous n'avez encore tagué personne'
                                                 </Text>
                                             </View>
                                         )}

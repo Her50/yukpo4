@@ -16,12 +16,12 @@ const AboutScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <Text style={styles.title}>
-            <YukpoBrand>Yukpo</YukpoBrand> � l'�coute qui comprend vraiment
+            <YukpoBrand>Yukpo</YukpoBrand> � l'�coute qui comprend vraiment'
           </Text>
 
           <Text style={styles.paragraph}>
-            Aussi appel� <YukpoBrand>Yukpo</YukpoBrand>, le nom de la plateforme signifie � l'�coute des gens � en langue Bayangam,
-            parl�e au c�ur de l'Afrique centrale par un peuple Bamil�k� du Cameroun.
+            Aussi appel� <YukpoBrand>Yukpo</YukpoBrand>, le nom de la plateforme signifie � l'�coute des gens � en langue Bayangam,'
+            parl�e au c�ur de l'Afrique centrale par un peuple Bamil�k� du Cameroun.'
           </Text>
 
           <Text style={styles.paragraph}>
@@ -33,7 +33,7 @@ const AboutScreen: React.FC = () => {
             Gr�ce � son infrastructure multilingue, <YukpoBrand /> comprend et transmet les besoins dans plusieurs langues parl�es sur le continent africain :
             <Text style={styles.highlightBlue}>
               fulfuld�, lingala, ew�, swahili, wolof, baoul�, moor�, bambara, haoussa, sango
-            </Text>, mais aussi dans les langues internationales comme le fran�ais, l'anglais, l'arabe ou le portugais.
+            </Text>, mais aussi dans les langues internationales comme le fran�ais, l"anglais, l'arabe ou le portugais."
           </Text>
 
           <Text style={styles.paragraph}>
@@ -44,7 +44,7 @@ const AboutScreen: React.FC = () => {
           <Text style={styles.paragraph}>
             Que vous soyez <Text style={styles.highlightRed}>citoyen, entrepreneur, diaspora ou acteur public</Text>,
             <YukpoBrand>Yukpo</YukpoBrand> vous accompagne � chaque �tape : recherche, recommandation, mise en relation.
-            C'est un r�seau de confiance, enracin� dans la culture et tourn� vers l'avenir.
+            C"est un r�seau de confiance, enracin� dans la culture et tourn� vers l'avenir."
           </Text>
 
           <Text style={styles.footer}>

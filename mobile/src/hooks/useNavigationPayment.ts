@@ -241,7 +241,7 @@ export function useNavigationPayment() {
 
         // Gratuité exceptionnelle Navigation jusqu'au 31/03/2026
         if (isNavigationFreePeriod) {
-            const freeMsg = (t('navPayment.freeUntilDate') || 'Services navigation gratuits jusqu'au {{date}}.')
+            const freeMsg = (t('navPayment.freeUntilDate') || 'Services navigation gratuits jusqu'au {{date}}.')'
                 .replace('{{date}}', NAVIGATION_FREE_UNTIL_LABEL);
             toaster.info(freeMsg);
             return { success: true, newBalance: currentBalance };
@@ -368,13 +368,13 @@ export function useNavigationPayment() {
                 .map((cat) => `  • ${categoryLabels[cat] || cat}: ${formatPriceInCurrency(estimatePoiCost([cat]), userCurrency)}`)
                 .join('\n');
             const freeBody = (t('navPayment.poiConfirmFreeMsg') ||
-                'Catégories :\n{{categories}}\n\nTarif indicatif après le {{date}} (TTC) : {{total}}\n\nAucun prélèvement pendant la période offerte (jusqu'au {{date}}).')
+                'Catégories :\n{{categories}}\n\nTarif indicatif après le {{date}} (TTC) : {{total}}\n\nAucun prélèvement pendant la période offerte (jusqu'au {{date}}).')'
                 .replace('{{categories}}', categoryLines)
                 .replace('{{total}}', formatPriceInCurrency(totalCost, userCurrency))
                 .replace(/\{\{date\}\}/g, NAVIGATION_FREE_UNTIL_LABEL);
 
             Alert.alert(
-                t('navPayment.poiConfirmFreeTitle') || 'Recherche de points d'intérêt',
+                t('navPayment.poiConfirmFreeTitle') || "Recherche de points d'intérêt",
                 freeBody,
                 [
                     { text: t('common.cancel') || 'Annuler', style: 'cancel', onPress: onCancel },

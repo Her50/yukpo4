@@ -160,9 +160,9 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
         ].join('\n');
         try {
             await Clipboard.setStringAsync(body);
-            Alert.alert('Copié', 'Le rapport a été copié. Collez-le dans un message pour l'équipe.');
+            Alert.alert('Copié', "Le rapport a été copié. Collez-le dans un message pour l'équipe.");
         } catch {
-            Alert.alert('Erreur', 'Impossible de copier. Faites une capture d'écran.');
+            Alert.alert('Erreur', "Impossible de copier. Faites une capture d'écran.");
         }
     };
 
@@ -189,7 +189,7 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                             <SafeIcon name="alert-circle" size={48} color="#FFF" />
                             <Text style={styles.diagTitle}>Erreur — Mes services</Text>
                             <Text style={styles.diagSubtitle}>
-                                Touchez le bouton bleu pour copier tout le rapport d'un seul coup, puis envoyez-le au support.
+                                Touchez le bouton bleu pour copier tout le rapport d'un seul coup, puis envoyez-le au support.'
                             </Text>
                         </View>
                         <TouchableOpacity style={styles.diagCopyBig} onPress={this.copyFullReport} activeOpacity={0.85}>
@@ -227,10 +227,10 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
                             <SafeIcon name="alert-circle" size={64} color={modernColors.error} />
                         </View>
 
-                        <Text style={styles.title}>Oups ! Une erreur s'est produite</Text>
+                        <Text style={styles.title}>Oups ! Une erreur s'est produite</Text>'
 
                         <Text style={styles.message}>
-                            L'application a rencontré une erreur inattendue.{canRetry ? ' Tentative de récupération automatique...' : ''}
+                            L'application a rencontré une erreur inattendue.{canRetry ? ' Tentative de récupération automatique...' : ''}'
                         </Text>
 
                         {isRetrying && (
@@ -284,7 +284,7 @@ export class ErrorBoundaryWithRetry extends Component<Props, State> {
 
                         {!canRetry && (
                             <Text style={styles.maxRetriesText}>
-                                Nombre maximum de tentatives atteint. Veuillez redémarrer l'application.
+                                Nombre maximum de tentatives atteint. Veuillez redémarrer l'application.'
                             </Text>
                         )}
                     </View>

@@ -559,7 +559,7 @@ const EcommerceHubScreen: React.FC = () => {
                 <View style={styles.emptyState}>
                     <Text style={styles.emptyStateIcon}>🛍️</Text>
                     <Text style={styles.emptyStateTitle}>Sélectionnez une boutique</Text>
-                    <Text style={styles.emptyStateSubtitle}>Choisissez d'abord une boutique dans l'onglet "Boutiques"</Text>
+                    <Text style={styles.emptyStateSubtitle}>Choisissez d"abord une boutique dans l'onglet \"Boutiques\"</Text>"
                     <TouchableOpacity style={[styles.actionBtn, { backgroundColor: activeColors.gradient[0] }]} onPress={() => switchTab('stores')}>
                         <Text style={styles.actionBtnText}>Voir les boutiques</Text>
                     </TouchableOpacity>
@@ -795,7 +795,7 @@ const EcommerceHubScreen: React.FC = () => {
                                         <Text style={styles.promoDiscount}>-{item.discount_percentage}%</Text>
                                     )}
                                     <Text style={styles.promoDates}>
-                                        Jusqu'au {new Date(item.end_date).toLocaleDateString('fr-FR')}
+                                        Jusqu'au {new Date(item.end_date).toLocaleDateString('fr-FR')}'
                                     </Text>
                                 </View>
                             </View>

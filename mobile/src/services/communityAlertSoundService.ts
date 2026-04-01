@@ -92,7 +92,7 @@ class CommunityAlertSoundService {
                 await Notifications.setNotificationChannelAsync(ANDROID_COMMUNITY_ALERTS_CHANNEL_ID, {
                     name: 'Alertes Communautaires',
                     description:
-                        'Son et vibration à l'approche d'une alerte (y compris autre application ou écran éteint)',
+                        "Son et vibration à l'approche d'une alerte (y compris autre application ou écran éteint)",
                     importance: Notifications.AndroidImportance.MAX,
                     vibrationPattern: [0, 250, 120, 250],
                     lightColor: '#EF4444',

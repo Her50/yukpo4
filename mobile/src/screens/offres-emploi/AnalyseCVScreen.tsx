@@ -58,7 +58,7 @@ const AnalyseCVScreen: React.FC = () => {
             <View style={styles.header}>
                 <Text style={styles.title}>Analyse CV IA</Text>
                 <Text style={styles.subtitle}>
-                    Analysez votre CV avec l'IA pour obtenir des suggestions d'amélioration
+                    Analysez votre CV avec l"IA pour obtenir des suggestions d'amélioration"
                 </Text>
             </View>
 
@@ -104,7 +104,7 @@ const AnalyseCVScreen: React.FC = () => {
                 <View>
                     {/* Scores */}
                     <NativeCard style={styles.card}>
-                        <Text style={styles.sectionTitle}>Scores d'analyse</Text>
+                        <Text style={styles.sectionTitle}>Scores d'analyse</Text>'
                         <View style={styles.scoresContainer}>
                             <View style={styles.scoreItem}>
                                 <Text style={styles.scoreLabel}>Complétude</Text>
@@ -157,7 +157,7 @@ const AnalyseCVScreen: React.FC = () => {
                         )}
                         {analysis.niveau_etude_extracted && (
                             <View style={styles.infoRow}>
-                                <Text style={styles.infoLabel}>Niveau d'étude:</Text>
+                                <Text style={styles.infoLabel}>Niveau d'étude:</Text>'
                                 <Text style={styles.infoValue}>
                                     {analysis.niveau_etude_extracted}
                                 </Text>
@@ -165,10 +165,10 @@ const AnalyseCVScreen: React.FC = () => {
                         )}
                     </NativeCard>
 
-                    {/* Suggestions d'amélioration */}
+                    {/* Suggestions d'amélioration */}'
                     {analysis.suggestions_amelioration && analysis.suggestions_amelioration.length > 0 && (
                         <NativeCard style={styles.card}>
-                            <Text style={styles.sectionTitle}>Suggestions d'amélioration</Text>
+                            <Text style={styles.sectionTitle}>Suggestions d'amélioration</Text>'
                             {analysis.suggestions_amelioration.map((suggestion: string, index: number) => (
                                 <View key={index} style={styles.suggestionItem}>
                                     <SafeIcon name="check-circle" size={16} color={modernColors.primary} />

@@ -318,7 +318,7 @@ const LibrairieTeamPendingScreen: React.FC = () => {
             {!selectedLieuId
               ? t(
                   'librairieTeamPending.guardChooseBranch',
-                  'Validation verrouillée: choisissez d'abord une succursale.'
+                  "Validation verrouillée: choisissez d'abord une succursale."
                 )
               : t(
                   'librairieTeamPending.guardStockRequired',

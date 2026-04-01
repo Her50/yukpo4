@@ -869,7 +869,7 @@ const RechargeTokensScreen: React.FC = () => {
         )}
       />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Bannière dette - s'affiche quand l'utilisateur est redirigé avec une dette */}
+        {/* Bannière dette - s"affiche quand l'utilisateur est redirigé avec une dette */}"
         {hasDebt && (
           <View style={styles.debtBanner}>
             <View style={styles.debtBannerHeader}>

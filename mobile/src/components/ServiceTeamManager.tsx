@@ -233,7 +233,7 @@ const ServiceTeamManager: React.FC<ServiceTeamManagerProps> = ({
             return;
         }
         if (!serviceId) {
-            Alert.alert('Erreur', t('serviceTeamManager.serviceIdManquant', 'Identifiant du service manquant. Rechargez l'écran ou contactez le support.'));
+            Alert.alert('Erreur', t('serviceTeamManager.serviceIdManquant', "Identifiant du service manquant. Rechargez l'écran ou contactez le support."));
             return;
         }
         const sid = parseInt(String(serviceId), 10);

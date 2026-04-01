@@ -1021,7 +1021,7 @@ const NavigationScreen: React.FC = () => {
                 if (isTransitOrBike && isModeUnavailable) {
                     Alert.alert(
                         t('navigation.modeUnavailable', { mode: modeLabel }),
-                        `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || `Le mode ${modeLabel} n'est pas disponible dans cette région.`}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}\n\nErreur: ${errMsg}`,
+                        `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || `Le mode ${modeLabel} n'est pas disponible dans cette région.`}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}\n\nErreur: ${errMsg}`,'
                         [
                             { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
                             { text: `🚶 ${t('navigation.walking')}`, onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
@@ -1083,7 +1083,7 @@ const NavigationScreen: React.FC = () => {
                 Alert.alert(
                     t('navigation.modeUnavailable', { mode: modeLabel }),
                     isTransitOrBike
-                        ? `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || `Le mode ${modeLabel} n'est pas disponible dans cette région.`}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}`
+                        ? `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || `Le mode ${modeLabel} n'est pas disponible dans cette région.`}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}`'
                         : t('navigation.modeUnavailableMsg', { mode: modeLabel }),
                     [
                         { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
@@ -1798,7 +1798,7 @@ const NavigationScreen: React.FC = () => {
     const startFreeWalking = useCallback(async () => {
         if (isFreeWalking) return;
         if (isTracking && selectedRoute) {
-            showToast(`📡 ${t('navigation.stopRouteTrackingFirst') || 'Arrêtez d'abord le suivi d'itinéraire pour lancer la marche libre.'}`);
+            showToast(`📡 ${t('navigation.stopRouteTrackingFirst') || "Arrêtez d'abord le suivi d'itinéraire pour lancer la marche libre."}`);
             return;
         }
         setFreeWalkStarting(true);
@@ -2133,7 +2133,7 @@ const NavigationScreen: React.FC = () => {
                                 accessibilityRole="button"
                                 accessibilityLabel={t('tabs.home') || 'Accueil'}
                             >
-                                {/* Même picto / couleur que l'onglet Accueil (MainTabs → Home, Ionicons home) */}
+                                {/* Même picto / couleur que l'onglet Accueil (MainTabs → Home, Ionicons home) */}'
                                 <SafeIcon name="home" size={24} color={modernColors.primaryDark} type="ionicons" />
                             </TouchableOpacity>
                             <View>
@@ -2191,7 +2191,7 @@ const NavigationScreen: React.FC = () => {
                                             setShowActivityStats(false);
                                             loadAlertHistory();
                                         },
-                                        () => { /* suspendu — le hook affiche déjà l'alerte */ }
+                                        () => { /* suspendu — le hook affiche déjà l'alerte */ }'
                                     );
                                 }}
                             >
@@ -2231,7 +2231,7 @@ const NavigationScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* Solde minimal (une seule pastille, le reste en toasts) — masqué sur l'écran stats pour gagner de la place */}
+                    {/* Solde minimal (une seule pastille, le reste en toasts) — masqué sur l'écran stats pour gagner de la place */}'
                     {user && !showActivityStats && (
                         <TouchableOpacity
                             style={{
@@ -2395,7 +2395,7 @@ const NavigationScreen: React.FC = () => {
                         </NativeCard>
                     )}
 
-                    {/* ━━ BARRE D'ALERTES COMMUNAUTAIRES (compacte, toggle) ━━ */}
+                    {/* ━━ BARRE D'ALERTES COMMUNAUTAIRES (compacte, toggle) ━━ */}'
                     <TouchableOpacity style={st.alertToggle} onPress={() => setShowReportBar(!showReportBar)} activeOpacity={0.7}>
                         <SafeIcon name="AlertTriangle" size={14} color={modernColors.textSecondary} />
                         <Text style={st.alertToggleText}>Signaler une alerte</Text>
@@ -2760,7 +2760,7 @@ const NavigationScreen: React.FC = () => {
                                                     </Text>
                                                 </Text>
                                             ) : (
-                                                <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>{statsModality === 'all' ? tr('navigation.notEnoughHistoryForComparison', 'Pas assez d'historique pour la comparaison.') : tr('navigation.trendOnlyForAllView', 'Passe en « Tout combiné » pour la tendance sur la période.')}</Text>
+                                                <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>{statsModality === 'all' ? tr('navigation.notEnoughHistoryForComparison', "Pas assez d'historique pour la comparaison.") : tr('navigation.trendOnlyForAllView', 'Passe en « Tout combiné » pour la tendance sur la période.')}</Text>
                                             )}
                                             <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: modernColors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <Text style={{ fontSize: 12, color: modernColors.textSecondary }}>{tr('navigation.estimatedCo2Saved', 'CO2 estimé économisé')}</Text>
@@ -2839,7 +2839,7 @@ const NavigationScreen: React.FC = () => {
                                                 <Text style={{ fontSize: 10, color: modernColors.textSecondary, textAlign: 'right' as any, maxWidth: '48%' as any }} numberOfLines={2}>{statsPeriodMenuLabel} · {statsModalityMenuLabel}</Text>
                                             </View>
                                             <Text style={{ fontSize: 10, color: modernColors.textSecondary, marginBottom: 8 }}>
-                                                {tr('navigation.mostVisitedExplainer', 'Comptage par destination d'arrivée (adresses identiques regroupées, sans tenir compte des majuscules). Vue « Tout combiné » : données serveur.')}
+                                                {tr('navigation.mostVisitedExplainer', "Comptage par destination d'arrivée (adresses identiques regroupées, sans tenir compte des majuscules). Vue « Tout combiné » : données serveur.")}
                                             </Text>
                                             {(statsDashboardSummary.most_visited_places || []).slice(0, 5).map((place: any, i: number) => {
                                                 const name = typeof place?.name === 'string' ? place.name : (t('navigation.unknownPlace') || 'Lieu inconnu');
@@ -3357,7 +3357,7 @@ const NavigationScreen: React.FC = () => {
                                         </>
                                     ) : statsModality === 'all' && !freeWalkFilterRange && !loadingActivity ? (
                                         <Text style={{ fontSize: 12, color: modernColors.textSecondary, textAlign: 'center', paddingVertical: 10, paddingHorizontal: 8, lineHeight: 18 }}>
-                                            {tr('navigation.coachIaCompactHint', 'Les analyses détaillées du Coach IA (score santé, défis, CO₂…) s'affichent ici quand elles sont disponibles. Les données se chargent déjà à l'ouverture des statistiques.')}
+                                            {tr('navigation.coachIaCompactHint', "Les analyses détaillées du Coach IA (score santé, défis, CO₂…) s'affichent ici quand elles sont disponibles. Les données se chargent déjà à l'ouverture des statistiques.")}
                                         </Text>
                                     ) : null}
                                     {statsModality === 'all' && !freeWalkFilterRange ? (
@@ -3723,7 +3723,7 @@ const NavigationScreen: React.FC = () => {
                                         {isNavigationFreePeriod ? (
                                             <View style={{ alignSelf: 'flex-start', backgroundColor: '#ECFDF5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8, borderWidth: 1, borderColor: '#A7F3D0' }}>
                                                 <Text style={{ fontSize: 11, color: '#047857', fontWeight: '700' }}>
-                                                    {tr('navigation.poiFreeBadge', 'Offert jusqu'au {{date}}').replace('{{date}}', navigationFreeUntilLabel)}
+                                                    {tr('navigation.poiFreeBadge', 'Offert jusqu'au {{date}}').replace('{{date}}', navigationFreeUntilLabel)}'
                                                 </Text>
                                             </View>
                                         ) : null}

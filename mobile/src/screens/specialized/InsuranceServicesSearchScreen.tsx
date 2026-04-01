@@ -452,7 +452,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                         <Text style={styles.tipText}>
                             {t(
                                 'insurancePublic.tip',
-                                'Les garanties et exclusions varient selon les produits. Un devis personnalisé permet d'ajuster la couverture à votre profil.',
+                                "Les garanties et exclusions varient selon les produits. Un devis personnalisé permet d'ajuster la couverture à votre profil.",
                             )}
                         </Text>
                     </View>

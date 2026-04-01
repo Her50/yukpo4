@@ -180,7 +180,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                         </View>
                         <Text style={styles.headerTitle}>Rechercher un laboratoire</Text>
                         <Text style={styles.headerSubtitle}>
-                            Trouvez rapidement un laboratoire d'analyses ou d'imagerie
+                            Trouvez rapidement un laboratoire d"analyses ou d'imagerie"
                         </Text>
                     </View>
                 </View>
@@ -246,15 +246,15 @@ const LaboratoireSearchScreen: React.FC = () => {
 
                 {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur examens */}
                 <View style={styles.searchFormCard}>
-                    <Text style={styles.sectionTitle}>🔬 Recherche d'examens</Text>
+                    <Text style={styles.sectionTitle}>🔬 Recherche d'examens</Text>'
                     <Text style={styles.sectionDescription}>
-                        Recherchez un type d'examen médical spécifique
+                        Recherchez un type d'examen médical spécifique'
                     </Text>
 
-                    {/* Type d'examen recherché (PRIORITAIRE) */}
+                    {/* Type d'examen recherché (PRIORITAIRE) */}'
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="microscope" size={14} color={modernColors.primary} type="lucide" /> Type d'examen recherché
+                            <SafeIcon name="microscope" size={14} color={modernColors.primary} type="lucide" /> Type d'examen recherché'
                         </Text>
                         <NativeInput
                             value={prestationAnalyse}
@@ -264,7 +264,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                         />
                     </View>
 
-                    {/* Localisation (optionnelle pour recherche d'examens) */}
+                    {/* Localisation (optionnelle pour recherche d'examens) */}'
                     <Text style={styles.sectionTitle}>📍 Localisation (optionnelle)</Text>
                     <Text style={styles.sectionDescription}>
                         Ajoutez votre position pour trouver des examens à proximité
@@ -324,7 +324,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                     {/* Type établissement */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" /> Type d'établissement
+                            <SafeIcon name="building" size={14} color={modernColors.primary} type="lucide" /> Type d'établissement'
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
                             <TouchableOpacity
@@ -355,10 +355,10 @@ const LaboratoireSearchScreen: React.FC = () => {
                         </ScrollView>
                     </View>
 
-                    {/* Prestation d'analyse */}
+                    {/* Prestation d'analyse */}'
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="test-tube" size={14} color={modernColors.primary} type="lucide" /> Type d'analyse
+                            <SafeIcon name="test-tube" size={14} color={modernColors.primary} type="lucide" /> Type d'analyse'
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipContainer}>
                             <TouchableOpacity
@@ -399,18 +399,18 @@ const LaboratoireSearchScreen: React.FC = () => {
                     >
                         <SafeIcon name={showAdvancedFilters ? "chevron-up" : "chevron-down"} size={20} color="#6366F1" type="lucide" />
                         <Text style={styles.advancedFiltersButtonText}>
-                            {showAdvancedFilters ? 'Masquer' : 'Afficher'} les types d'examens
+                            {showAdvancedFilters ? 'Masquer' : 'Afficher'} les types d'examens'
                         </Text>
                     </TouchableOpacity>
 
-                    {/* ✅ NOUVEAU: Filtres avancés - Types d'examens */}
+                    {/* ✅ NOUVEAU: Filtres avancés - Types d'examens */}'
                     {showAdvancedFilters && (
                         <View style={styles.advancedFiltersCard}>
                             <Text style={styles.label}>
-                                <SafeIcon name="list" size={14} color={modernColors.primary} type="lucide" /> Types d'examens disponibles
+                                <SafeIcon name="list" size={14} color={modernColors.primary} type="lucide" /> Types d'examens disponibles'
                             </Text>
                             <Text style={styles.advancedFiltersDescription}>
-                                Sélectionnez les types d'examens que vous recherchez
+                                Sélectionnez les types d'examens que vous recherchez'
                             </Text>
                             <View style={styles.servicesGrid}>
                                 {typesExamens.map((type) => {
@@ -479,7 +479,7 @@ const LaboratoireSearchScreen: React.FC = () => {
                                 <View style={styles.optionTextContainer}>
                                     <Text style={styles.optionTitle}>Disponibles maintenant</Text>
                                     <Text style={styles.optionDescription}>
-                                        Filtrer selon les horaires d'ouverture actuels
+                                        Filtrer selon les horaires d'ouverture actuels'
                                     </Text>
                                 </View>
                             </View>
@@ -519,9 +519,9 @@ const LaboratoireSearchScreen: React.FC = () => {
                     </View>
                     <Text style={styles.infoText}>
                         • Certains laboratoires proposent la consultation des résultats en ligne{'\n'}
-                        • Vérifiez les horaires d'ouverture avant de vous déplacer{'\n'}
-                        • La prise de rendez-vous en ligne permet d'éviter les files d'attente{'\n'}
-                        • Les résultats peuvent être disponibles sous 24-48h selon le type d'analyse
+                        • Vérifiez les horaires d'ouverture avant de vous déplacer{'\n'}'
+                        • La prise de rendez-vous en ligne permet d"éviter les files d'attente{"\n'}'
+                        • Les résultats peuvent être disponibles sous 24-48h selon le type d'analyse'
                     </Text>
                 </View>
             </KeyboardAwareScreen>
