@@ -1,7 +1,7 @@
 // ✅ Service Paiement Mobile Money — MTN MoMo & Orange Money (Cameroun)
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InitiatePaymentRequest {
@@ -44,16 +44,27 @@ impl MobileMoneyService {
         Self { pool }
     }
 
-    pub async fn initiate_payment(&self, user_id: i32, req: InitiatePaymentRequest) -> Result<PaymentResult, String> {
+    pub async fn initiate_payment(
+        &self,
+        user_id: i32,
+        req: InitiatePaymentRequest,
+    ) -> Result<PaymentResult, String> {
         let provider = req.provider.to_lowercase();
         if provider != "mtn" && provider != "orange" {
             return Err("Opérateur invalide. Utilisez 'mtn' ou 'orange'.".to_string());
         }
         let phone = normalize_phone(&req.phone_number);
         if !is_valid_cameroon_number(&phone, &provider) {
-            return Err(format!("Numéro invalide pour {}. MTN: 650-659,670-689 / Orange: 655-659,690-699", provider.to_uppercase()));
+            return Err(format!(
+                "Numéro invalide pour {}. MTN: 650-659,670-689 / Orange: 655-659,690-699",
+                provider.to_uppercase()
+            ));
         }
-        let transaction_ref = format!("YUKPO-{}-{}", provider.to_uppercase(), &Uuid::new_v4().to_string()[..12].to_uppercase());
+        let transaction_ref = format!(
+            "YUKPO-{}-{}",
+            provider.to_uppercase(),
+            &Uuid::new_v4().to_string()[..12].to_uppercase()
+        );
         let currency = req.currency.unwrap_or_else(|| "XAF".to_string());
 
         let row = sqlx::query!(
@@ -65,9 +76,9 @@ impl MobileMoneyService {
         ).fetch_one(&self.pool).await.map_err(|e| format!("DB: {}", e))?;
 
         let ussd_code = match provider.as_str() {
-            "mtn"    => Some(format!("*126*1*{}*{}#", phone, req.amount as i64)),
+            "mtn" => Some(format!("*126*1*{}*{}#", phone, req.amount as i64)),
             "orange" => Some(format!("#150*50*{}*{}#", phone, req.amount as i64)),
-            _        => None,
+            _ => None,
         };
 
         self.simulate_completion(row.id).await;
@@ -76,45 +87,74 @@ impl MobileMoneyService {
             payment_id: row.id,
             transaction_ref,
             status: "processing".to_string(),
-            message: format!("Paiement initié sur {}. Confirmez sur votre téléphone.", phone),
+            message: format!(
+                "Paiement initié sur {}. Confirmez sur votre téléphone.",
+                phone
+            ),
             ussd_code,
         })
     }
 
-    pub async fn get_payment_status(&self, payment_id: i64, user_id: i32) -> Result<PaymentStatusResult, String> {
+    pub async fn get_payment_status(
+        &self,
+        payment_id: i64,
+        user_id: i32,
+    ) -> Result<PaymentStatusResult, String> {
         let r = sqlx::query!(
             r#"SELECT id, transaction_ref, status, amount, currency, provider, phone_number,
                initiated_at, completed_at, error_message
                FROM mobile_money_payments WHERE id = $1 AND user_id = $2"#,
-            payment_id, user_id,
-        ).fetch_optional(&self.pool).await.map_err(|e| e.to_string())?.ok_or("Paiement introuvable.")?;
+            payment_id,
+            user_id,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Paiement introuvable.")?;
 
         Ok(PaymentStatusResult {
-            payment_id: r.id, transaction_ref: r.transaction_ref.unwrap_or_default(),
-            status: r.status, amount: r.amount, currency: r.currency,
-            provider: r.provider, phone_number: r.phone_number,
+            payment_id: r.id,
+            transaction_ref: r.transaction_ref.unwrap_or_default(),
+            status: r.status,
+            amount: r.amount,
+            currency: r.currency,
+            provider: r.provider,
+            phone_number: r.phone_number,
             initiated_at: r.initiated_at.to_rfc3339(),
             completed_at: r.completed_at.map(|t| t.to_rfc3339()),
             error_message: r.error_message,
         })
     }
 
-    pub async fn get_user_payments(&self, user_id: i32) -> Result<Vec<PaymentStatusResult>, String> {
+    pub async fn get_user_payments(
+        &self,
+        user_id: i32,
+    ) -> Result<Vec<PaymentStatusResult>, String> {
         let rows = sqlx::query!(
             r#"SELECT id, transaction_ref, status, amount, currency, provider, phone_number,
                initiated_at, completed_at, error_message
                FROM mobile_money_payments WHERE user_id = $1 ORDER BY initiated_at DESC LIMIT 50"#,
             user_id,
-        ).fetch_all(&self.pool).await.map_err(|e| e.to_string())?;
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
-        Ok(rows.into_iter().map(|r| PaymentStatusResult {
-            payment_id: r.id, transaction_ref: r.transaction_ref.unwrap_or_default(),
-            status: r.status, amount: r.amount, currency: r.currency,
-            provider: r.provider, phone_number: r.phone_number,
-            initiated_at: r.initiated_at.to_rfc3339(),
-            completed_at: r.completed_at.map(|t| t.to_rfc3339()),
-            error_message: r.error_message,
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| PaymentStatusResult {
+                payment_id: r.id,
+                transaction_ref: r.transaction_ref.unwrap_or_default(),
+                status: r.status,
+                amount: r.amount,
+                currency: r.currency,
+                provider: r.provider,
+                phone_number: r.phone_number,
+                initiated_at: r.initiated_at.to_rfc3339(),
+                completed_at: r.completed_at.map(|t| t.to_rfc3339()),
+                error_message: r.error_message,
+            })
+            .collect())
     }
 
     /// Simulation completion (dev). En prod: webhook MTN/Orange callback.
@@ -130,24 +170,32 @@ impl MobileMoneyService {
                 r#"UPDATE specialized_reservations sr SET payment_status='paid'
                    FROM mobile_money_payments mp WHERE mp.id=$1 AND mp.reservation_id=sr.id"#,
                 payment_id
-            ).execute(&pool).await;
+            )
+            .execute(&pool)
+            .await;
         });
     }
 }
 
 fn normalize_phone(phone: &str) -> String {
     let digits: String = phone.chars().filter(|c| c.is_ascii_digit()).collect();
-    if digits.starts_with("237") { digits }
-    else if digits.len() == 9 { format!("237{}", digits) }
-    else { digits }
+    if digits.starts_with("237") {
+        digits
+    } else if digits.len() == 9 {
+        format!("237{}", digits)
+    } else {
+        digits
+    }
 }
 
 fn is_valid_cameroon_number(phone: &str, provider: &str) -> bool {
-    if phone.len() != 12 || !phone.starts_with("237") { return false; }
+    if phone.len() != 12 || !phone.starts_with("237") {
+        return false;
+    }
     let prefix3: u32 = phone[3..6].parse().unwrap_or(0);
     match provider {
-        "mtn"    => matches!(prefix3, 650..=659 | 670..=689),
+        "mtn" => matches!(prefix3, 650..=659 | 670..=689),
         "orange" => matches!(prefix3, 655..=659 | 690..=699),
-        _        => false,
+        _ => false,
     }
 }

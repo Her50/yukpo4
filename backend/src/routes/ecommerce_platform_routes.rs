@@ -64,8 +64,5 @@ pub fn ecommerce_platform_routes(state: Arc<AppState>) -> Router<Arc<AppState>> 
         )
         .layer(middleware::from_fn(jwt_auth));
 
-    Router::new()
-        .merge(public)
-        .merge(authenticated)
-        .with_state(state)
+    Router::new().merge(public).merge(authenticated).with_state(state)
 }

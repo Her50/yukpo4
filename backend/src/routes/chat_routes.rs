@@ -511,7 +511,9 @@ pub async fn send_message(
     .await;
 
     let sender_name = match sender_name_result {
-        Ok(Some(row)) => row.get::<Option<String>, _>("display_name").unwrap_or_else(|| "Utilisateur".to_string()),
+        Ok(Some(row)) => row
+            .get::<Option<String>, _>("display_name")
+            .unwrap_or_else(|| "Utilisateur".to_string()),
         _ => "Utilisateur".to_string(),
     };
 
@@ -550,13 +552,20 @@ pub async fn send_message(
 
     match push_result {
         Ok(count) => {
-            log::info!("[ChatController] ✅ {} push notifications envoyées pour message {}", count, message_id);
+            log::info!(
+                "[ChatController] ✅ {} push notifications envoyées pour message {}",
+                count,
+                message_id
+            );
             crate::metrics::CHAT_METRICS
                 .notifications_sent_total
                 .fetch_add(count as u64, std::sync::atomic::Ordering::Relaxed);
         }
         Err(e) => {
-            log::warn!("[ChatController] ⚠️ Push notification échouée (message toujours sauvegardé): {}", e);
+            log::warn!(
+                "[ChatController] ⚠️ Push notification échouée (message toujours sauvegardé): {}",
+                e
+            );
         }
     }
 

@@ -46,11 +46,9 @@ pub async fn ensure_platform_config_and_yukpo_user(pool: &PgPool) -> Result<(), 
 
 /// Fix 2 — Ajoute qr_hmac_signature sur bus_ticket_payments
 pub async fn ensure_bus_qr_hmac_signing(pool: &PgPool) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "ALTER TABLE bus_ticket_payments ADD COLUMN IF NOT EXISTS qr_hmac_signature TEXT",
-    )
-    .execute(pool)
-    .await?;
+    sqlx::query("ALTER TABLE bus_ticket_payments ADD COLUMN IF NOT EXISTS qr_hmac_signature TEXT")
+        .execute(pool)
+        .await?;
 
     info!("[ensure_bus_qr_hmac_signing] colonne qr_hmac_signature OK");
     Ok(())

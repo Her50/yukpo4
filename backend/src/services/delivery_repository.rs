@@ -4500,4 +4500,37 @@ impl DeliveryRepository {
 
         Ok(summaries)
     }
+
+    /// Récupère les courses terminées/annulées d'un coursier (historique)
+    pub async fn get_courier_completed_deliveries(
+        &self,
+        courier_id: Uuid,
+        limit: i64,
+        offset: i64,
+    ) -> AppResult<Vec<DeliverySummary>> {
+        let delivery_ids: Vec<Uuid> = sqlx::query_scalar(
+            r#"
+            SELECT id
+            FROM deliveries
+            WHERE courier_id = $1
+              AND status IN ('completed', 'delivered', 'cancelled', 'refunded')
+            ORDER BY updated_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+        )
+        .bind(courier_id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut summaries = Vec::new();
+        for delivery_id in delivery_ids {
+            if let Some(summary) = self.get_delivery_summary(delivery_id).await? {
+                summaries.push(summary);
+            }
+        }
+
+        Ok(summaries)
+    }
 }

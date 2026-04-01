@@ -23,7 +23,10 @@ const FALLBACK_RAYON_KM: f64 = 20.0;
 /// Démarre le worker dans une tokio task infinie.
 pub fn start_super_librairie_timeout_worker(state: Arc<AppState>) {
     tokio::spawn(async move {
-        info!("[SuperLibrairieWorker] Démarré — poll toutes les {}s", POLL_INTERVAL_SECS);
+        info!(
+            "[SuperLibrairieWorker] Démarré — poll toutes les {}s",
+            POLL_INTERVAL_SECS
+        );
         loop {
             if let Err(e) = process_expired_super_librairie_commandes(&state).await {
                 error!("[SuperLibrairieWorker] Erreur: {}", e);

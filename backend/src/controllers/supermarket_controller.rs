@@ -1064,8 +1064,8 @@ pub struct BulkImportSupermarketRequest {
     pub products: Option<Vec<BulkSupermarketProduct>>,
     pub csv_data: Option<String>,
     pub overwrite_existing: Option<bool>,
-    pub store_category: Option<String>,           // ✅ 2026-04-01: catégorie boutique (supermarche, mode, electronique, etc.)
-    pub platform_integration_id: Option<i32>,     // ✅ 2026-04-01: ID intégration source (traçabilité)
+    pub store_category: Option<String>, // ✅ 2026-04-01: catégorie boutique (supermarche, mode, electronique, etc.)
+    pub platform_integration_id: Option<i32>, // ✅ 2026-04-01: ID intégration source (traçabilité)
 }
 
 #[derive(Debug, Deserialize)]
@@ -1288,7 +1288,10 @@ pub async fn bulk_import_products(
     ))
 }
 
-fn extract_json_path<'a>(value: &'a serde_json::Value, path: &str) -> Option<&'a serde_json::Value> {
+fn extract_json_path<'a>(
+    value: &'a serde_json::Value,
+    path: &str,
+) -> Option<&'a serde_json::Value> {
     let mut current = value;
     for segment in path.split('.').filter(|s| !s.trim().is_empty()) {
         current = current.get(segment)?;
@@ -1317,7 +1320,9 @@ pub async fn sync_products_from_external_api(
     }
 
     let mut req = reqwest::Client::new().get(payload.api_url.trim());
-    if let Some(token) = payload.auth_bearer_token.as_ref().map(|v| v.trim()).filter(|v| !v.is_empty()) {
+    if let Some(token) =
+        payload.auth_bearer_token.as_ref().map(|v| v.trim()).filter(|v| !v.is_empty())
+    {
         req = req.bearer_auth(token);
     }
     if let Some(headers) = &payload.headers {
@@ -1343,9 +1348,9 @@ pub async fn sync_products_from_external_api(
         .filter(|v| !v.is_empty())
         .unwrap_or("items");
     let items_value = extract_json_path(&upstream_json, items_path).unwrap_or(&upstream_json);
-    let items = items_value
-        .as_array()
-        .ok_or_else(|| AppError::BadRequest("Impossible de trouver la liste de produits".to_string()))?;
+    let items = items_value.as_array().ok_or_else(|| {
+        AppError::BadRequest("Impossible de trouver la liste de produits".to_string())
+    })?;
 
     let mapping = payload.field_mapping.unwrap_or_default();
     let name_key = mapping.get("nom").cloned().unwrap_or_else(|| "nom".to_string());
@@ -1355,9 +1360,14 @@ pub async fn sync_products_from_external_api(
     let brand_key = mapping.get("marque").cloned().unwrap_or_else(|| "marque".to_string());
     let unit_key = mapping.get("unite").cloned().unwrap_or_else(|| "unite".to_string());
     let desc_key = mapping.get("description").cloned().unwrap_or_else(|| "description".to_string());
-    let barcode_key = mapping.get("code_barre").cloned().unwrap_or_else(|| "code_barre".to_string());
-    let promo_key = mapping.get("en_promotion").cloned().unwrap_or_else(|| "en_promotion".to_string());
-    let promo_price_key = mapping.get("prix_promo").cloned().unwrap_or_else(|| "prix_promo".to_string());
+    let barcode_key =
+        mapping.get("code_barre").cloned().unwrap_or_else(|| "code_barre".to_string());
+    let promo_key = mapping
+        .get("en_promotion")
+        .cloned()
+        .unwrap_or_else(|| "en_promotion".to_string());
+    let promo_price_key =
+        mapping.get("prix_promo").cloned().unwrap_or_else(|| "prix_promo".to_string());
     let image_key = mapping.get("image_url").cloned().unwrap_or_else(|| "image_url".to_string());
 
     let products: Vec<BulkSupermarketProduct> = items
@@ -1369,32 +1379,49 @@ pub async fn sync_products_from_external_api(
                 .and_then(|v| v.as_str())
                 .map(|v| v.trim().to_string())
                 .unwrap_or_default();
-            let prix = obj
-                .get(&price_key)
-                .and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.replace(',', ".").parse::<f64>().ok())));
+            let prix = obj.get(&price_key).and_then(|v| {
+                v.as_f64()
+                    .or_else(|| v.as_str().and_then(|s| s.replace(',', ".").parse::<f64>().ok()))
+            });
             let stock = obj
                 .get(&stock_key)
                 .and_then(|v| v.as_i64().or_else(|| v.as_str().and_then(|s| s.parse::<i64>().ok())))
                 .map(|v| v.max(0) as i32);
-            let en_promotion = obj
-                .get(&promo_key)
-                .and_then(|v| v.as_bool().or_else(|| v.as_str().map(|s| matches!(s.to_lowercase().as_str(), "1" | "true" | "oui" | "yes"))));
-            let prix_promo = obj
-                .get(&promo_price_key)
-                .and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.replace(',', ".").parse::<f64>().ok())));
+            let en_promotion = obj.get(&promo_key).and_then(|v| {
+                v.as_bool().or_else(|| {
+                    v.as_str()
+                        .map(|s| matches!(s.to_lowercase().as_str(), "1" | "true" | "oui" | "yes"))
+                })
+            });
+            let prix_promo = obj.get(&promo_price_key).and_then(|v| {
+                v.as_f64()
+                    .or_else(|| v.as_str().and_then(|s| s.replace(',', ".").parse::<f64>().ok()))
+            });
 
             BulkSupermarketProduct {
                 nom,
-                description: obj.get(&desc_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
+                description: obj
+                    .get(&desc_key)
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim().to_string()),
                 prix,
-                categorie: obj.get(&category_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
+                categorie: obj
+                    .get(&category_key)
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim().to_string()),
                 marque: obj.get(&brand_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
                 unite: obj.get(&unit_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
                 stock,
-                code_barre: obj.get(&barcode_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
+                code_barre: obj
+                    .get(&barcode_key)
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim().to_string()),
                 en_promotion,
                 prix_promo,
-                image_url: obj.get(&image_key).and_then(|v| v.as_str()).map(|s| s.trim().to_string()),
+                image_url: obj
+                    .get(&image_key)
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.trim().to_string()),
             }
         })
         .filter(|p| !p.nom.trim().is_empty())

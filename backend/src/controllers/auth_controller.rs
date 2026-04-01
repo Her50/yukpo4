@@ -292,9 +292,7 @@ pub async fn register_user(
         // Code partenaire restaurant (optionnel) : si fourni, doit exister et être actif
         if let Some(ref pt) = payload.partner_type {
             let pt_trimmed = pt.trim();
-            if pt_trimmed == "restaurant"
-                || pt_trimmed == "boulangerie"
-                || pt_trimmed == "traiteur"
+            if pt_trimmed == "restaurant" || pt_trimmed == "boulangerie" || pt_trimmed == "traiteur"
             {
                 if let Some(ref raw_code) = payload.restaurant_partner_code {
                     let code_trim = raw_code.trim();
@@ -991,13 +989,12 @@ pub async fn register_user(
         // ✅ Stocker partner_phone comme users.phone pour que ChatModalMobile puisse l'utiliser comme WhatsApp
         if let Some(ref phone) = payload.partner_phone {
             if !phone.trim().is_empty() {
-                let _ = sqlx::query(
-                    "UPDATE users SET phone = $1, updated_at = NOW() WHERE id = $2"
-                )
-                .bind(phone.trim())
-                .bind(new.id)
-                .execute(db)
-                .await;
+                let _ =
+                    sqlx::query("UPDATE users SET phone = $1, updated_at = NOW() WHERE id = $2")
+                        .bind(phone.trim())
+                        .bind(new.id)
+                        .execute(db)
+                        .await;
             }
         }
     }

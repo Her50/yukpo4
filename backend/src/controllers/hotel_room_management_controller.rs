@@ -112,10 +112,7 @@ async fn notify_property_managers_new_hotel_reservation(
             "date_depart": date_depart,
             "unit_number": unit_label,
         });
-        if send_notification(state, uid, title, &body, Some(payload))
-            .await
-            .is_ok()
-        {
+        if send_notification(state, uid, title, &body, Some(payload)).await.is_ok() {
             sent += 1;
         }
     }
@@ -348,8 +345,8 @@ pub async fn request_hotel_reservation(
         .await
         .map_err(|e| AppError::Internal(format!("Erreur vérification unité: {}", e)))?;
 
-        let unit_row =
-            unit_row.ok_or_else(|| AppError::BadRequest("Unité introuvable ou indisponible".to_string()))?;
+        let unit_row = unit_row
+            .ok_or_else(|| AppError::BadRequest("Unité introuvable ou indisponible".to_string()))?;
 
         let unit_number = unit_row.get::<String, _>("unit_number");
         let capacity = unit_row.get::<i32, _>("capacite_max_total");
@@ -508,7 +505,8 @@ pub async fn list_property_units(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(property_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    HotelRoomManagementService::ensure_user_can_manage_property(&state.pg, user_id, property_id).await?;
+    HotelRoomManagementService::ensure_user_can_manage_property(&state.pg, user_id, property_id)
+        .await?;
     let rows = sqlx::query(
         r#"
         SELECT
@@ -560,7 +558,10 @@ pub async fn list_property_units(
         })
         .collect();
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "data": units }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "data": units })),
+    ))
 }
 
 /// POST /api/hotel/properties/{property_id}/units
@@ -570,7 +571,8 @@ pub async fn create_property_unit(
     Path(property_id): Path<i32>,
     Json(payload): Json<CreateHotelUnitRequest>,
 ) -> AppResult<impl IntoResponse> {
-    HotelRoomManagementService::ensure_user_can_manage_property(&state.pg, user_id, property_id).await?;
+    HotelRoomManagementService::ensure_user_can_manage_property(&state.pg, user_id, property_id)
+        .await?;
     if payload.unit_number.trim().is_empty() {
         return Err(AppError::BadRequest("unit_number est requis".to_string()));
     }
@@ -619,7 +621,10 @@ pub async fn create_property_unit(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur création unité: {}", e)))?;
 
-    Ok((StatusCode::CREATED, Json(json!({ "success": true, "id": id }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "success": true, "id": id })),
+    ))
 }
 
 /// PUT /api/hotel/units/{unit_id}
@@ -629,19 +634,24 @@ pub async fn update_property_unit(
     Path(unit_id): Path<i32>,
     Json(payload): Json<UpdateHotelUnitRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let property_id: Option<i32> = sqlx::query_scalar("SELECT property_id FROM hotel_meuble_units WHERE id = $1")
-        .bind(unit_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur vérification unité: {}", e)))?;
-    let property_id = property_id.ok_or_else(|| AppError::NotFound("Unité introuvable".to_string()))?;
-    HotelRoomManagementService::ensure_user_can_manage_property(&state.pg, user_id, property_id).await?;
+    let property_id: Option<i32> =
+        sqlx::query_scalar("SELECT property_id FROM hotel_meuble_units WHERE id = $1")
+            .bind(unit_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification unité: {}", e)))?;
+    let property_id =
+        property_id.ok_or_else(|| AppError::NotFound("Unité introuvable".to_string()))?;
+    HotelRoomManagementService::ensure_user_can_manage_property(&state.pg, user_id, property_id)
+        .await?;
 
-    let current_eq: serde_json::Value = sqlx::query_scalar("SELECT COALESCE(equipements, '{}'::jsonb) FROM hotel_meuble_units WHERE id = $1")
-        .bind(unit_id)
-        .fetch_one(&state.pg)
-        .await
-        .unwrap_or_else(|_| json!({}));
+    let current_eq: serde_json::Value = sqlx::query_scalar(
+        "SELECT COALESCE(equipements, '{}'::jsonb) FROM hotel_meuble_units WHERE id = $1",
+    )
+    .bind(unit_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or_else(|_| json!({}));
     let mut merged_eq = current_eq;
     if let Some(url) = &payload.virtual_tour_url {
         merged_eq["virtual_tour_url"] = json!(url);
@@ -715,13 +725,16 @@ pub async fn delete_property_unit(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(unit_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    let property_id: Option<i32> = sqlx::query_scalar("SELECT property_id FROM hotel_meuble_units WHERE id = $1")
-        .bind(unit_id)
-        .fetch_optional(&state.pg)
-        .await
-        .map_err(|e| AppError::Internal(format!("Erreur vérification unité: {}", e)))?;
-    let property_id = property_id.ok_or_else(|| AppError::NotFound("Unité introuvable".to_string()))?;
-    HotelRoomManagementService::ensure_user_can_manage_property(&state.pg, user_id, property_id).await?;
+    let property_id: Option<i32> =
+        sqlx::query_scalar("SELECT property_id FROM hotel_meuble_units WHERE id = $1")
+            .bind(unit_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification unité: {}", e)))?;
+    let property_id =
+        property_id.ok_or_else(|| AppError::NotFound("Unité introuvable".to_string()))?;
+    HotelRoomManagementService::ensure_user_can_manage_property(&state.pg, user_id, property_id)
+        .await?;
     sqlx::query("DELETE FROM hotel_meuble_units WHERE id = $1")
         .bind(unit_id)
         .execute(&state.pg)
@@ -801,7 +814,10 @@ pub async fn list_available_units_for_dates(
         })
         .collect();
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "data": data }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "data": data })),
+    ))
 }
 
 /// GET /api/hotel/properties/{property_id}/units/plan
@@ -873,7 +889,10 @@ pub async fn get_units_plan_status(
         })
         .collect();
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "data": data }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "data": data })),
+    ))
 }
 
 /// GET /api/hotel/my-properties

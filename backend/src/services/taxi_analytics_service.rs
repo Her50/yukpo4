@@ -326,7 +326,11 @@ impl TaxiAnalyticsService {
                     hour: hour as u8,
                     demand,
                     supply,
-                    ratio: if supply > 0.0 { demand / supply } else { demand },
+                    ratio: if supply > 0.0 {
+                        demand / supply
+                    } else {
+                        demand
+                    },
                 }
             })
             .collect();
@@ -526,11 +530,8 @@ impl TaxiAnalyticsService {
             0.0
         };
 
-        let peak_hour = peak_hour_map
-            .into_iter()
-            .max_by_key(|(_, v)| *v)
-            .map(|(h, _)| h)
-            .unwrap_or(8);
+        let peak_hour =
+            peak_hour_map.into_iter().max_by_key(|(_, v)| *v).map(|(h, _)| h).unwrap_or(8);
 
         let peak_day_of_week = "Lundi".to_string(); // Simplifié — à enrichir si besoin
 
@@ -611,18 +612,25 @@ impl TaxiAnalyticsService {
                     service_type: row.get("service_type"),
                     revenue,
                     trip_count,
-                    avg_per_trip: if trip_count > 0 { revenue / trip_count as f64 } else { 0.0 },
+                    avg_per_trip: if trip_count > 0 {
+                        revenue / trip_count as f64
+                    } else {
+                        0.0
+                    },
                 }
             })
             .collect();
 
         // Totaux
-        let total_revenue: f64 =
-            revenue_by_service.iter().map(|r| r.revenue).sum();
+        let total_revenue: f64 = revenue_by_service.iter().map(|r| r.revenue).sum();
         let total_trips: i64 = revenue_by_service.iter().map(|r| r.trip_count).sum();
         let platform_commission = total_revenue * 0.15; // 15% commission plateforme
         let driver_earnings = total_revenue - platform_commission;
-        let avg_trip = if total_trips > 0 { total_revenue / total_trips as f64 } else { 0.0 };
+        let avg_trip = if total_trips > 0 {
+            total_revenue / total_trips as f64
+        } else {
+            0.0
+        };
 
         Ok(RevenueAnalyticsData {
             total_revenue,
@@ -756,7 +764,10 @@ impl TaxiAnalyticsService {
         };
 
         if top_drivers.is_empty() {
-            warn!("[TaxiAnalytics] Aucun conducteur trouvé pour la période {:?}-{:?}", start, end);
+            warn!(
+                "[TaxiAnalytics] Aucun conducteur trouvé pour la période {:?}-{:?}",
+                start, end
+            );
         }
 
         Ok(DriverPerformanceData {

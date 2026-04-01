@@ -33,27 +33,68 @@ impl IntelligentTranslationService {
             cache: HashMap::new(),
             // 62 langues supportées — alignées avec MultilingueService et les fichiers locales mobile
             supported_languages: vec![
-                "af".to_string(), "am".to_string(), "ar".to_string(),
-                "bas".to_string(), "bbj".to_string(), "bci".to_string(),
-                "bet".to_string(), "bm".to_string(), "bn".to_string(),
-                "bum".to_string(), "de".to_string(), "dje".to_string(),
-                "dua".to_string(), "dyu".to_string(), "ee".to_string(),
-                "en".to_string(), "es".to_string(), "ewo".to_string(),
-                "fan".to_string(), "ff".to_string(), "fr".to_string(),
-                "ha".to_string(), "hi".to_string(), "ht".to_string(),
-                "id".to_string(), "ig".to_string(), "it".to_string(),
-                "ja".to_string(), "kbp".to_string(), "kg".to_string(),
-                "ko".to_string(), "ln".to_string(), "lua".to_string(),
-                "mg".to_string(), "mos".to_string(), "ms".to_string(),
-                "nl".to_string(), "pap".to_string(), "pcm".to_string(),
-                "pl".to_string(), "pt".to_string(), "rn".to_string(),
-                "ru".to_string(), "rw".to_string(), "sar".to_string(),
-                "sg".to_string(), "sn".to_string(), "so".to_string(),
-                "srr".to_string(), "st".to_string(), "sw".to_string(),
-                "th".to_string(), "ti".to_string(), "tl".to_string(),
-                "tr".to_string(), "uk".to_string(), "vi".to_string(),
-                "wo".to_string(), "xh".to_string(), "yo".to_string(),
-                "zh".to_string(), "zu".to_string(),
+                "af".to_string(),
+                "am".to_string(),
+                "ar".to_string(),
+                "bas".to_string(),
+                "bbj".to_string(),
+                "bci".to_string(),
+                "bet".to_string(),
+                "bm".to_string(),
+                "bn".to_string(),
+                "bum".to_string(),
+                "de".to_string(),
+                "dje".to_string(),
+                "dua".to_string(),
+                "dyu".to_string(),
+                "ee".to_string(),
+                "en".to_string(),
+                "es".to_string(),
+                "ewo".to_string(),
+                "fan".to_string(),
+                "ff".to_string(),
+                "fr".to_string(),
+                "ha".to_string(),
+                "hi".to_string(),
+                "ht".to_string(),
+                "id".to_string(),
+                "ig".to_string(),
+                "it".to_string(),
+                "ja".to_string(),
+                "kbp".to_string(),
+                "kg".to_string(),
+                "ko".to_string(),
+                "ln".to_string(),
+                "lua".to_string(),
+                "mg".to_string(),
+                "mos".to_string(),
+                "ms".to_string(),
+                "nl".to_string(),
+                "pap".to_string(),
+                "pcm".to_string(),
+                "pl".to_string(),
+                "pt".to_string(),
+                "rn".to_string(),
+                "ru".to_string(),
+                "rw".to_string(),
+                "sar".to_string(),
+                "sg".to_string(),
+                "sn".to_string(),
+                "so".to_string(),
+                "srr".to_string(),
+                "st".to_string(),
+                "sw".to_string(),
+                "th".to_string(),
+                "ti".to_string(),
+                "tl".to_string(),
+                "tr".to_string(),
+                "uk".to_string(),
+                "vi".to_string(),
+                "wo".to_string(),
+                "xh".to_string(),
+                "yo".to_string(),
+                "zh".to_string(),
+                "zu".to_string(),
             ],
         })
     }
@@ -81,10 +122,10 @@ impl IntelligentTranslationService {
         // Langues que Google Translate supporte parmi nos 62
         // Les dialectes locaux (bas, bbj, bum, dua, ewo, fan, kbp, mos, pap, sar, srr) → fallback fr
         let google_supported = [
-            "af", "am", "ar", "bm", "bn", "de", "ee", "en", "es", "ff", "fr",
-            "ha", "hi", "ht", "id", "ig", "it", "ja", "kg", "ko", "ln", "mg",
-            "ms", "nl", "pl", "pt", "rn", "ru", "rw", "sg", "sn", "so", "st",
-            "sw", "th", "ti", "tl", "tr", "uk", "vi", "wo", "xh", "yo", "zh", "zu",
+            "af", "am", "ar", "bm", "bn", "de", "ee", "en", "es", "ff", "fr", "ha", "hi", "ht",
+            "id", "ig", "it", "ja", "kg", "ko", "ln", "mg", "ms", "nl", "pl", "pt", "rn", "ru",
+            "rw", "sg", "sn", "so", "st", "sw", "th", "ti", "tl", "tr", "uk", "vi", "wo", "xh",
+            "yo", "zh", "zu",
         ];
         let target_lang = if google_supported.contains(&effective_language) {
             effective_language
@@ -96,15 +137,19 @@ impl IntelligentTranslationService {
         }
 
         // Vérifier le cache (utiliser target_lang comme clé pour éviter doublons)
-        let cache_key = format!("{}:{}:{}", &prompt[..prompt.len().min(200)], target_lang, context);
+        let cache_key = format!(
+            "{}:{}:{}",
+            &prompt[..prompt.len().min(200)],
+            target_lang,
+            context
+        );
         if let Some(cached_translation) = self.cache.get(&cache_key) {
             info!("🌍 [IntelligentTranslation] Cache hit pour le prompt");
             return Ok(cached_translation.clone());
         }
 
         // Les prompts sont rédigés en français — traduction directe fr → target_lang
-        let translated_prompt =
-            self.translate_text(prompt, "fr", target_lang).await?;
+        let translated_prompt = self.translate_text(prompt, "fr", target_lang).await?;
 
         // Mettre en cache
         self.cache.insert(cache_key, translated_prompt.clone());

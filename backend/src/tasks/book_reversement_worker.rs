@@ -35,7 +35,10 @@ impl Default for BookReversementWorkerConfig {
             .unwrap_or_else(|_| "100".to_string())
             .parse()
             .unwrap_or(100);
-        Self { interval_seconds, batch_size }
+        Self {
+            interval_seconds,
+            batch_size,
+        }
     }
 }
 
@@ -93,12 +96,16 @@ async fn process_pending_reversements(pool: &PgPool, batch_size: i64) -> Result<
     for row in rows {
         let commission_id: i32 = row.try_get("commission_id").unwrap_or_default();
         let vendeur_id: Option<i32> = row.try_get("vendeur_id").ok().flatten();
-        let montant: Option<rust_decimal::Decimal> = row.try_get("montant_reversement_vendeur").ok().flatten();
+        let montant: Option<rust_decimal::Decimal> =
+            row.try_get("montant_reversement_vendeur").ok().flatten();
 
         let vendeur_id = match vendeur_id {
             Some(v) => v,
             None => {
-                warn!("[BookReversement] Commission {} sans vendeur_id, ignorée", commission_id);
+                warn!(
+                    "[BookReversement] Commission {} sans vendeur_id, ignorée",
+                    commission_id
+                );
                 continue;
             }
         };

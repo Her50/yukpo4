@@ -1,6 +1,6 @@
 // ✅ Service notations post-trajet — taxi & covoiturage
-use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SubmitRatingRequest {
@@ -44,7 +44,11 @@ impl TripRatingService {
         Self { pool }
     }
 
-    pub async fn submit_rating(&self, rater_user_id: i32, req: SubmitRatingRequest) -> Result<RatingEntry, String> {
+    pub async fn submit_rating(
+        &self,
+        rater_user_id: i32,
+        req: SubmitRatingRequest,
+    ) -> Result<RatingEntry, String> {
         if req.rating < 1.0 || req.rating > 5.0 {
             return Err("La note doit être entre 1 et 5.".to_string());
         }
@@ -57,9 +61,13 @@ impl TripRatingService {
         let res = sqlx::query!(
             r#"SELECT id, status FROM specialized_reservations
                WHERE id = $1 AND user_id = $2"#,
-            req.reservation_id, rater_user_id,
-        ).fetch_optional(&self.pool).await.map_err(|e| e.to_string())?
-         .ok_or("Réservation introuvable ou non autorisée.")?;
+            req.reservation_id,
+            rater_user_id,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Réservation introuvable ou non autorisée.")?;
 
         if res.status != "completed" {
             return Err("Vous ne pouvez noter qu'un trajet terminé.".to_string());
@@ -75,22 +83,37 @@ impl TripRatingService {
                ON CONFLICT (reservation_id, rater_user_id) DO UPDATE
                    SET rating = EXCLUDED.rating, comment = EXCLUDED.comment
                RETURNING id, created_at"#,
-            req.reservation_id, rater_user_id, req.rated_user_id,
-            rating_dec, req.comment, service_type,
-        ).fetch_one(&self.pool).await.map_err(|e| format!("DB: {}", e))?;
+            req.reservation_id,
+            rater_user_id,
+            req.rated_user_id,
+            rating_dec,
+            req.comment,
+            service_type,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| format!("DB: {}", e))?;
 
         // Mettre à jour le rating moyen sur le service
         let _ = self.refresh_service_rating(req.rated_user_id, &service_type).await;
 
         Ok(RatingEntry {
-            id: row.id, reservation_id: req.reservation_id,
-            rater_user_id, rated_user_id: req.rated_user_id,
-            rating: req.rating, comment: req.comment,
-            service_type, created_at: row.created_at.to_rfc3339(),
+            id: row.id,
+            reservation_id: req.reservation_id,
+            rater_user_id,
+            rated_user_id: req.rated_user_id,
+            rating: req.rating,
+            comment: req.comment,
+            service_type,
+            created_at: row.created_at.to_rfc3339(),
         })
     }
 
-    pub async fn get_driver_ratings(&self, driver_user_id: i32, service_type: &str) -> Result<(DriverRatingSummary, Vec<RatingEntry>), String> {
+    pub async fn get_driver_ratings(
+        &self,
+        driver_user_id: i32,
+        service_type: &str,
+    ) -> Result<(DriverRatingSummary, Vec<RatingEntry>), String> {
         let summary_row = sqlx::query!(
             r#"SELECT
                COUNT(*)                                      AS total,
@@ -102,8 +125,12 @@ impl TripRatingService {
                COUNT(*) FILTER (WHERE rating < 2)            AS one_star
                FROM trip_ratings
                WHERE rated_user_id = $1 AND service_type = $2"#,
-            driver_user_id, service_type,
-        ).fetch_one(&self.pool).await.map_err(|e| e.to_string())?;
+            driver_user_id,
+            service_type,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
         let entries = sqlx::query!(
             r#"SELECT id, reservation_id, rater_user_id, rated_user_id,
@@ -111,8 +138,12 @@ impl TripRatingService {
                FROM trip_ratings
                WHERE rated_user_id = $1 AND service_type = $2
                ORDER BY created_at DESC LIMIT 20"#,
-            driver_user_id, service_type,
-        ).fetch_all(&self.pool).await.map_err(|e| e.to_string())?;
+            driver_user_id,
+            service_type,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
         let summary = DriverRatingSummary {
             rated_user_id: driver_user_id,
@@ -125,12 +156,19 @@ impl TripRatingService {
             one_star: summary_row.one_star.unwrap_or(0),
         };
 
-        let rating_list = entries.into_iter().map(|r| RatingEntry {
-            id: r.id, reservation_id: r.reservation_id,
-            rater_user_id: r.rater_user_id, rated_user_id: r.rated_user_id,
-            rating: r.rating.unwrap_or(0.0), comment: r.comment,
-            service_type: r.service_type, created_at: r.created_at.to_rfc3339(),
-        }).collect();
+        let rating_list = entries
+            .into_iter()
+            .map(|r| RatingEntry {
+                id: r.id,
+                reservation_id: r.reservation_id,
+                rater_user_id: r.rater_user_id,
+                rated_user_id: r.rated_user_id,
+                rating: r.rating.unwrap_or(0.0),
+                comment: r.comment,
+                service_type: r.service_type,
+                created_at: r.created_at.to_rfc3339(),
+            })
+            .collect();
 
         Ok((summary, rating_list))
     }
@@ -143,7 +181,11 @@ impl TripRatingService {
     }
 
     /// Met à jour le champ rating dans la table service (taxis / covoiturages)
-    async fn refresh_service_rating(&self, driver_user_id: i32, service_type: &str) -> Result<(), sqlx::Error> {
+    async fn refresh_service_rating(
+        &self,
+        driver_user_id: i32,
+        service_type: &str,
+    ) -> Result<(), sqlx::Error> {
         let avg: Option<f64> = sqlx::query_scalar!(
             "SELECT AVG(rating)::float8 FROM trip_ratings WHERE rated_user_id=$1 AND service_type=$2",
             driver_user_id, service_type,
@@ -156,18 +198,26 @@ impl TripRatingService {
                         r#"UPDATE specialized_services ss SET description = description
                            WHERE user_id=$1 AND service_type='taxi'"#,
                         driver_user_id,
-                    ).execute(&self.pool).await;
+                    )
+                    .execute(&self.pool)
+                    .await;
                     // Mettre à jour le champ rating s'il existe dans la table taxis
                     let _ = sqlx::query!(
                         "UPDATE taxis SET rating=$1 WHERE user_id=$2",
-                        avg_val, driver_user_id,
-                    ).execute(&self.pool).await;
+                        avg_val,
+                        driver_user_id,
+                    )
+                    .execute(&self.pool)
+                    .await;
                 }
                 "covoiturage" => {
                     let _ = sqlx::query!(
                         "UPDATE covoiturages SET rating=$1 WHERE user_id=$2",
-                        avg_val, driver_user_id,
-                    ).execute(&self.pool).await;
+                        avg_val,
+                        driver_user_id,
+                    )
+                    .execute(&self.pool)
+                    .await;
                 }
                 _ => {}
             }

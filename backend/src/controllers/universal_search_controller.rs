@@ -40,15 +40,27 @@ pub struct UniversalSearchQuery {
 
 /// Extrait les caractéristiques clés d'un produit JSONB selon sa catégorie
 /// et les formate en une description courte (1 ligne) pour la carte.
-fn enrich_product_description(data: &Value, category: &str, fallback: Option<&str>) -> Option<String> {
-    let s = |key: &str| -> Option<&str> { data.get(key).and_then(|v| v.as_str()).filter(|s| !s.is_empty()) };
+fn enrich_product_description(
+    data: &Value,
+    category: &str,
+    fallback: Option<&str>,
+) -> Option<String> {
+    let s = |key: &str| -> Option<&str> {
+        data.get(key).and_then(|v| v.as_str()).filter(|s| !s.is_empty())
+    };
 
     let parts: Vec<&str> = match category {
         // Véhicule : marque · modèle · année · transmission · carburant
-        "auto" | "automobile" | "garage" | "location_vehicule" | "vente_vehicule" => {
-            [s("marque"), s("modele"), s("annee"), s("transmission"), s("carburant")]
-                .into_iter().flatten().collect()
-        }
+        "auto" | "automobile" | "garage" | "location_vehicule" | "vente_vehicule" => [
+            s("marque"),
+            s("modele"),
+            s("annee"),
+            s("transmission"),
+            s("carburant"),
+        ]
+        .into_iter()
+        .flatten()
+        .collect(),
         // Pharmacie : forme · dosage · sur ordonnance
         "pharmacie" => {
             let mut v: Vec<&str> = [s("forme"), s("dosage")].into_iter().flatten().collect();
@@ -58,9 +70,7 @@ fn enrich_product_description(data: &Value, category: &str, fallback: Option<&st
             v
         }
         // Restaurant/menu : catégorie du plat · allergènes
-        "restaurant" => {
-            [s("categorie"), s("allergenes")].into_iter().flatten().collect()
-        }
+        "restaurant" => [s("categorie"), s("allergenes")].into_iter().flatten().collect(),
         // Hôtel/hébergement : type chambre · équipements
         "hotel" | "meuble" | "hebergement" => {
             [s("type_chambre"), s("equipements")].into_iter().flatten().collect()
@@ -70,17 +80,13 @@ fn enrich_product_description(data: &Value, category: &str, fallback: Option<&st
             [s("specialites"), s("services_disponibles")].into_iter().flatten().collect()
         }
         // Laboratoire : types analyses
-        "laboratoire" => {
-            [s("types_analyses"), s("services")].into_iter().flatten().collect()
-        }
+        "laboratoire" => [s("types_analyses"), s("services")].into_iter().flatten().collect(),
         // Immobilier : type bien · surface · nb pièces
         "immobilier" => {
             [s("type_bien"), s("surface"), s("nb_pieces")].into_iter().flatten().collect()
         }
         // Emploi : contrat · lieu · secteur
-        "emploi" => {
-            [s("type_contrat"), s("lieu"), s("secteur")].into_iter().flatten().collect()
-        }
+        "emploi" => [s("type_contrat"), s("lieu"), s("secteur")].into_iter().flatten().collect(),
         // Transport/Bus : origine → destination
         "transport" | "agence_voyage" | "bus" => {
             [s("origine"), s("destination")].into_iter().flatten().collect()
@@ -94,13 +100,9 @@ fn enrich_product_description(data: &Value, category: &str, fallback: Option<&st
             [s("prestations"), s("services")].into_iter().flatten().collect()
         }
         // Assurance : type couverture
-        "assurance" => {
-            [s("type_couverture"), s("garanties")].into_iter().flatten().collect()
-        }
+        "assurance" => [s("type_couverture"), s("garanties")].into_iter().flatten().collect(),
         // Librairie : auteur · niveau · matière
-        "librairie" => {
-            [s("auteur"), s("niveau"), s("matiere")].into_iter().flatten().collect()
-        }
+        "librairie" => [s("auteur"), s("niveau"), s("matiere")].into_iter().flatten().collect(),
         _ => vec![],
     };
 
@@ -110,19 +112,31 @@ fn enrich_product_description(data: &Value, category: &str, fallback: Option<&st
         // Fallback : description générique tronquée
         fallback.map(|d| {
             let d = d.trim();
-            if d.len() > 80 { format!("{}…", &d[..77]) } else { d.to_string() }
+            if d.len() > 80 {
+                format!("{}…", &d[..77])
+            } else {
+                d.to_string()
+            }
         })
     }
 }
 
 /// Extrait une description courte pour un service spécialisé (table `services`)
 fn enrich_service_description(data: &Value, category: &str) -> Option<String> {
-    enrich_product_description(data, category, data.get("description").and_then(|v| v.as_str()))
+    enrich_product_description(
+        data,
+        category,
+        data.get("description").and_then(|v| v.as_str()),
+    )
 }
 
 // ─── Deep-link mapping : category → écran mobile + params ───────────────────
 
-fn deep_link_for_product(service_id: i32, store_category: Option<&str>, product_type: Option<&str>) -> Value {
+fn deep_link_for_product(
+    service_id: i32,
+    store_category: Option<&str>,
+    product_type: Option<&str>,
+) -> Value {
     // La location et la vente de véhicules sont des produits normaux (store_category = "auto"/"automobile")
     // On les oriente vers AutoServicesSearch avec un filtre contextuel
     match store_category.unwrap_or("supermarche") {
@@ -133,7 +147,8 @@ fn deep_link_for_product(service_id: i32, store_category: Option<&str>, product_
         "auto" | "automobile" | "location_vehicule" | "vente_vehicule" | "garage" => {
             // Distinguer location vs vente selon product_type ou store_category
             let mode = if store_category == Some("location_vehicule")
-                || product_type.map(|t| t.contains("location")).unwrap_or(false) {
+                || product_type.map(|t| t.contains("location")).unwrap_or(false)
+            {
                 "location"
             } else {
                 "vente"
@@ -143,11 +158,18 @@ fn deep_link_for_product(service_id: i32, store_category: Option<&str>, product_
                 "params": { "service_id": service_id, "mode": mode, "store_category": store_category }
             })
         }
-        cat if cat.starts_with("mode") || cat == "electronique" || cat == "ecommerce"
-               || cat == "sport" || cat == "maison" || cat == "autres" => json!({
-            "screen": "EcommerceHub",
-            "params": { "service_id": service_id, "store_category": cat }
-        }),
+        cat if cat.starts_with("mode")
+            || cat == "electronique"
+            || cat == "ecommerce"
+            || cat == "sport"
+            || cat == "maison"
+            || cat == "autres" =>
+        {
+            json!({
+                "screen": "EcommerceHub",
+                "params": { "service_id": service_id, "store_category": cat }
+            })
+        }
         _ => json!({
             "screen": "SupermarketHome",
             "params": { "service_id": service_id }
@@ -171,7 +193,11 @@ fn deep_link_for_service(service_id: i32, category: &str, specialized_type: Opti
         "hopital" | "sante" | "clinique" => "HopitalSearchScreen",
         "laboratoire" => "LaboratoireSearchScreen",
         "transport" | "agence_voyage" => {
-            if specialized_type == Some("bus") { "BusSearchScreen" } else { "TransportScreen" }
+            if specialized_type == Some("bus") {
+                "BusSearchScreen"
+            } else {
+                "TransportScreen"
+            }
         }
         "taxi" => "TaxiScreen",
         "covoiturage" => "CovoiturageSearchScreen",
@@ -182,17 +208,31 @@ fn deep_link_for_service(service_id: i32, category: &str, specialized_type: Opti
         "veterinaire" => "VeterinaireScreen",
         "gym" | "sport" | "fitness" => "GymScreen",
         "spa" | "beaute" | "coiffure" => "SpaScreen",
-        "auto" | "automobile" | "garage" | "location_vehicule" | "vente_vehicule" => "AutoServicesSearch",
+        "auto" | "automobile" | "garage" | "location_vehicule" | "vente_vehicule" => {
+            "AutoServicesSearch"
+        }
         "librairie" => "LibrairieScreen",
         _ => "ResultatBesoin",
     };
 
     // Pour l'auto, on passe un filtre de mode (location vs vente) selon le specialized_type
     let params = match category {
-        "location_vehicule" => json!({ "service_id": service_id, "category": category, "mode": "location" }),
-        "vente_vehicule" => json!({ "service_id": service_id, "category": category, "mode": "vente" }),
+        "location_vehicule" => {
+            json!({ "service_id": service_id, "category": category, "mode": "location" })
+        }
+        "vente_vehicule" => {
+            json!({ "service_id": service_id, "category": category, "mode": "vente" })
+        }
         "auto" | "automobile" | "garage" => {
-            let mode = specialized_type.map(|t| if t.contains("location") { "location" } else { "vente" }).unwrap_or("vente");
+            let mode = specialized_type
+                .map(|t| {
+                    if t.contains("location") {
+                        "location"
+                    } else {
+                        "vente"
+                    }
+                })
+                .unwrap_or("vente");
             json!({ "service_id": service_id, "category": category, "mode": mode })
         }
         _ => json!({ "service_id": service_id, "category": category }),
@@ -266,7 +306,9 @@ fn haversine_km(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
 
 fn parse_gps(gps: &str) -> Option<(f64, f64)> {
     let parts: Vec<&str> = gps.split(',').collect();
-    if parts.len() < 2 { return None; }
+    if parts.len() < 2 {
+        return None;
+    }
     let lat = parts[0].trim().parse::<f64>().ok()?;
     let lng = parts[1].trim().parse::<f64>().ok()?;
     Some((lat, lng))
@@ -291,7 +333,10 @@ pub async fn universal_search(
 
     // Filtres catégories optionnels
     let cat_filter: Option<Vec<String>> = params.categories.as_ref().map(|c| {
-        c.split(',').map(|s| s.trim().to_lowercase()).filter(|s| !s.is_empty()).collect()
+        c.split(',')
+            .map(|s| s.trim().to_lowercase())
+            .filter(|s| !s.is_empty())
+            .collect()
     });
 
     let mut results: Vec<Value> = Vec::new();
@@ -300,10 +345,23 @@ pub async fn universal_search(
     // 1. service_products (supermarché / e-commerce / pharmacie / mode)
     // ══════════════════════════════════════════════════════════════
     let include_products = cat_filter.as_ref().map_or(true, |cats| {
-        cats.iter().any(|c| matches!(c.as_str(),
-            "supermarche" | "ecommerce" | "pharmacie" | "mode" | "electronique" | "sport"
-            | "maison" | "auto" | "automobile" | "location_vehicule" | "vente_vehicule" | "garage"
-        ))
+        cats.iter().any(|c| {
+            matches!(
+                c.as_str(),
+                "supermarche"
+                    | "ecommerce"
+                    | "pharmacie"
+                    | "mode"
+                    | "electronique"
+                    | "sport"
+                    | "maison"
+                    | "auto"
+                    | "automobile"
+                    | "location_vehicule"
+                    | "vente_vehicule"
+                    | "garage"
+            )
+        })
     });
 
     if include_products {
@@ -343,21 +401,27 @@ pub async fn universal_search(
             let store_cat: Option<String> = row.try_get("store_category").ok().flatten();
             let service_cat: Option<String> = row.try_get("category").ok().flatten();
             let product_type_val: Option<String> = row.try_get("product_type").ok().flatten();
-            let effective_cat = store_cat.as_deref()
-                .or(service_cat.as_deref())
-                .unwrap_or("supermarche");
+            let effective_cat =
+                store_cat.as_deref().or(service_cat.as_deref()).unwrap_or("supermarche");
 
-            let prix: Option<f64> = row.try_get::<Option<rust_decimal::Decimal>, _>("product_price")
-                .ok().flatten()
+            let prix: Option<f64> = row
+                .try_get::<Option<rust_decimal::Decimal>, _>("product_price")
+                .ok()
+                .flatten()
                 .and_then(|d| d.to_string().parse().ok());
 
             let gps_str: Option<String> = row.try_get("service_gps").ok().flatten();
             let distance_km = params.lat.zip(params.lng).and_then(|(ulat, ulng)| {
-                gps_str.as_deref().and_then(parse_gps).map(|(slat, slng)| haversine_km(ulat, ulng, slat, slng))
+                gps_str
+                    .as_deref()
+                    .and_then(parse_gps)
+                    .map(|(slat, slng)| haversine_km(ulat, ulng, slat, slng))
             });
 
             if let Some(d) = distance_km {
-                if d > radius { continue; }
+                if d > radius {
+                    continue;
+                }
             }
 
             results.push(json!({
@@ -390,7 +454,8 @@ pub async fn universal_search(
     // ══════════════════════════════════════════════════════════════
     // 2. restaurant_menu_items
     // ══════════════════════════════════════════════════════════════
-    let include_restaurant = cat_filter.as_ref().map_or(true, |cats| cats.iter().any(|c| c == "restaurant"));
+    let include_restaurant =
+        cat_filter.as_ref().map_or(true, |cats| cats.iter().any(|c| c == "restaurant"));
 
     if include_restaurant {
         let menu_rows = sqlx::query(
@@ -423,13 +488,22 @@ pub async fn universal_search(
             let service_id: i32 = row.try_get("service_id").unwrap_or_default();
             let gps_str: Option<String> = row.try_get("service_gps").ok().flatten();
             let distance_km = params.lat.zip(params.lng).and_then(|(ulat, ulng)| {
-                gps_str.as_deref().and_then(parse_gps).map(|(slat, slng)| haversine_km(ulat, ulng, slat, slng))
+                gps_str
+                    .as_deref()
+                    .and_then(parse_gps)
+                    .map(|(slat, slng)| haversine_km(ulat, ulng, slat, slng))
             });
 
-            if let Some(d) = distance_km { if d > radius { continue; } }
+            if let Some(d) = distance_km {
+                if d > radius {
+                    continue;
+                }
+            }
 
-            let prix: Option<f64> = row.try_get::<Option<rust_decimal::Decimal>, _>("prix")
-                .ok().flatten()
+            let prix: Option<f64> = row
+                .try_get::<Option<rust_decimal::Decimal>, _>("prix")
+                .ok()
+                .flatten()
                 .and_then(|d| d.to_string().parse().ok());
 
             results.push(json!({
@@ -459,30 +533,61 @@ pub async fn universal_search(
     // 3. services spécialisés (transport, santé, immobilier, assurance…)
     // ══════════════════════════════════════════════════════════════
     let include_services = cat_filter.as_ref().map_or(true, |cats| {
-        cats.iter().any(|c| matches!(c.as_str(),
-            "transport" | "bus" | "taxi" | "covoiturage" | "hopital" | "sante" |
-            "laboratoire" | "hotel" | "meuble" | "immobilier" | "assurance" |
-            "emploi" | "veterinaire" | "gym" | "spa" | "auto" | "automobile" |
-            "garage" | "location_vehicule" | "vente_vehicule" | "librairie"))
+        cats.iter().any(|c| {
+            matches!(
+                c.as_str(),
+                "transport"
+                    | "bus"
+                    | "taxi"
+                    | "covoiturage"
+                    | "hopital"
+                    | "sante"
+                    | "laboratoire"
+                    | "hotel"
+                    | "meuble"
+                    | "immobilier"
+                    | "assurance"
+                    | "emploi"
+                    | "veterinaire"
+                    | "gym"
+                    | "spa"
+                    | "auto"
+                    | "automobile"
+                    | "garage"
+                    | "location_vehicule"
+                    | "vente_vehicule"
+                    | "librairie"
+            )
+        })
     });
 
     if include_services {
         // Catégories à exclure (déjà traitées via service_products / menu_items)
         let excluded = vec!["supermarche", "ecommerce", "restaurant"];
         let cat_sql_filter: String = if let Some(ref cats) = cat_filter {
-            let joined = cats.iter()
+            let joined = cats
+                .iter()
                 .filter(|c| !excluded.contains(&c.as_str()))
                 .map(|c| format!("'{}'", c.replace('\'', "''")))
                 .collect::<Vec<_>>()
                 .join(", ");
             if joined.is_empty() {
-                return Ok((StatusCode::OK, Json(json!({
-                    "success": true, "query": q, "results": results, "total": results.len()
-                }))));
+                return Ok((
+                    StatusCode::OK,
+                    Json(json!({
+                        "success": true, "query": q, "results": results, "total": results.len()
+                    })),
+                ));
             }
-            format!("AND (s.category IN ({}) OR s.specialized_type IN ({}))", joined, joined)
+            format!(
+                "AND (s.category IN ({}) OR s.specialized_type IN ({}))",
+                joined, joined
+            )
         } else {
-            format!("AND s.category NOT IN ({})", excluded.iter().map(|c| format!("'{}'", c)).collect::<Vec<_>>().join(", "))
+            format!(
+                "AND s.category NOT IN ({})",
+                excluded.iter().map(|c| format!("'{}'", c)).collect::<Vec<_>>().join(", ")
+            )
         };
 
         let service_sql = format!(
@@ -519,19 +624,30 @@ pub async fn universal_search(
             .bind(offset)
             .fetch_all(&state.pg)
             .await
-            .unwrap_or_else(|e| { error!("[universal_search] Erreur services: {}", e); vec![] });
+            .unwrap_or_else(|e| {
+                error!("[universal_search] Erreur services: {}", e);
+                vec![]
+            });
 
         for row in &service_rows {
             let service_id: i32 = row.try_get("id").unwrap_or_default();
-            let category: String = row.try_get("category").unwrap_or_else(|_| "service".to_string());
+            let category: String =
+                row.try_get("category").unwrap_or_else(|_| "service".to_string());
             let specialized_type: Option<String> = row.try_get("specialized_type").ok().flatten();
             let gps_str: Option<String> = row.try_get("gps").ok().flatten();
 
             let distance_km = params.lat.zip(params.lng).and_then(|(ulat, ulng)| {
-                gps_str.as_deref().and_then(parse_gps).map(|(slat, slng)| haversine_km(ulat, ulng, slat, slng))
+                gps_str
+                    .as_deref()
+                    .and_then(parse_gps)
+                    .map(|(slat, slng)| haversine_km(ulat, ulng, slat, slng))
             });
 
-            if let Some(d) = distance_km { if d > radius { continue; } }
+            if let Some(d) = distance_km {
+                if d > radius {
+                    continue;
+                }
+            }
 
             let prix_raw: Option<String> = row.try_get("prix_raw").ok().flatten();
             let price: Option<f64> = prix_raw.as_deref().and_then(|p| p.parse().ok());
@@ -574,13 +690,16 @@ pub async fn universal_search(
     // Limiter le total final
     results.truncate(limit as usize);
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "query": q,
-        "results": results,
-        "total": results.len(),
-        "has_products": results.iter().any(|r| r["result_type"] == "product"),
-        "has_menu_items": results.iter().any(|r| r["result_type"] == "menu_item"),
-        "has_services": results.iter().any(|r| r["result_type"] == "service"),
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "query": q,
+            "results": results,
+            "total": results.len(),
+            "has_products": results.iter().any(|r| r["result_type"] == "product"),
+            "has_menu_items": results.iter().any(|r| r["result_type"] == "menu_item"),
+            "has_services": results.iter().any(|r| r["result_type"] == "service"),
+        })),
+    ))
 }

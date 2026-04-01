@@ -234,16 +234,14 @@ pub mod covoiturage_insurance_service; // ✅ NOUVEAU 2025-01-29: Service assura
 pub mod covoiturage_matching_service; // ✅ NOUVEAU 2025-01-29: Service matching intelligent
 pub mod covoiturage_proactive_notifications; // ✅ NOUVEAU 2025-01-29: Service notifications proactives
 pub mod distributed_queue_service; // ✅ NOUVEAU 2025-01-27: Queue distribuée Redis Streams
+pub mod driver_verification_service; // ✅ NOUVEAU 2026-04-01: KYC conducteur (CNI + selfie)
+pub mod loyalty_service; // ✅ NOUVEAU 2026-04-01: Programme fidélité (points + récompenses)
+pub mod mobile_money_service; // ✅ NOUVEAU 2026-04-01: Paiement Mobile Money MTN/Orange Cameroun
 pub mod multi_level_cache_service; // ✅ NOUVEAU 2025-01-27: Cache multi-niveaux (L1, L2, L4)
 pub mod prometheus_metrics;
 pub mod qr_code_service; // ✅ NOUVEAU 2025-01-29: Service QR code réservations
 pub mod recurring_trips_service; // ✅ NOUVEAU 2025-01-29: Service trajets récurrents
 pub mod redis_service;
-pub mod driver_verification_service; // ✅ NOUVEAU 2026-04-01: KYC conducteur (CNI + selfie)
-pub mod loyalty_service; // ✅ NOUVEAU 2026-04-01: Programme fidélité (points + récompenses)
-pub mod mobile_money_service; // ✅ NOUVEAU 2026-04-01: Paiement Mobile Money MTN/Orange Cameroun
-pub mod trip_rating_service; // ✅ NOUVEAU 2026-04-01: Notations post-trajet taxi/covoiturage
-pub mod trip_share_service; // ✅ NOUVEAU 2026-04-01: Partage trajet temps réel (lien public)
 pub mod taxi_analytics_service; // ✅ NOUVEAU 2025-01-29: Service analytics dashboard (Leadership Global 100%)
 pub mod taxi_demand_prediction_service; // ✅ NOUVEAU 2025-01-29: Service prédiction demande taxi/covoiturage (Leadership Global)
 pub mod taxi_dynamic_pricing_service; // ✅ NOUVEAU 2025-01-29: Service prix dynamique IA (Leadership 100%)
@@ -251,6 +249,8 @@ pub mod taxi_matching_service; // ✅ NOUVEAU 2025-01-29: Service matching intel
 pub mod taxi_personalized_recommendations_service; // ✅ NOUVEAU 2025-01-29: Service recommandations personnalisées (Leadership Global 100%)
 pub mod taxi_realtime_metrics_service; // ✅ NOUVEAU 2025-01-29: Service métriques temps réel WebSocket (Leadership 100%)
 pub mod taxi_route_optimization_service; // ✅ NOUVEAU 2025-01-29: Service optimisation itinéraires IA (Leadership Global 100%)
+pub mod trip_rating_service; // ✅ NOUVEAU 2026-04-01: Notations post-trajet taxi/covoiturage
+pub mod trip_share_service; // ✅ NOUVEAU 2026-04-01: Partage trajet temps réel (lien public)
 pub mod video_batch_processor; // ✅ Traitement par batch pour millions de jobs
 pub mod video_cache_service; // ✅ Cache distribué pour optimiser les performances
 pub mod video_queue_service; // ✅ Queue distribué avec priorités et retry

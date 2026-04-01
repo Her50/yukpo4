@@ -131,8 +131,7 @@ impl TaxiPersonalizedRecommendationsService {
         // ── Voie 2: services bien notés à proximité (si coordonnées fournies et pas assez de résultats)
         if recommendations.len() < limit as usize {
             let remaining = limit - recommendations.len() as i64;
-            let already_ids: Vec<i32> =
-                recommendations.iter().map(|r| r.service_id).collect();
+            let already_ids: Vec<i32> = recommendations.iter().map(|r| r.service_id).collect();
 
             if let (Some(lat), Some(lng)) = (location_lat, location_lng) {
                 let nearby_rows = sqlx::query(&format!(

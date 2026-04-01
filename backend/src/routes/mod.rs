@@ -25,6 +25,7 @@ pub mod delivery_optimization_routes;
 pub mod delivery_routes;
 pub mod diagnostic_routes;
 pub mod echange_routes;
+pub mod ecommerce_platform_routes; // ✅ 2026-04-01: Routes e-commerce universel (toutes plateformes, intégrations partenaires)
 pub mod embedding_routes; // ✅ Routes pour embeddings
 pub mod exchange_rate_routes; // ✅ 2026-03-18: Routes taux de change live (ExchangeRate-API gratuit)
 pub mod export_routes;
@@ -61,7 +62,6 @@ pub mod negotiated_price_routes;
 pub mod notification_routes; // ✅ Routes de notifications
 pub mod offres_emploi_routes;
 pub mod order_routes;
-pub mod restaurant_routes;
 pub mod orientation_scolaire_routes;
 pub mod paiement_agrege_routes;
 pub mod partner_validation_routes; // ✅ NOUVEAU: Routes pour validation des partenaires
@@ -89,6 +89,7 @@ pub mod publicite_pixel_routes;
 pub mod publicite_routes; // ✅ NOUVEAU: Routes pour système de publicité payante
 pub mod push_routes; // ✅ Routes de push notifications
 pub mod recommendation_routes; // ✅ NOUVEAU: Routes pour recommandations et tracking visibilité
+pub mod restaurant_routes;
 pub mod scheduling_search_routes; // ✅ NOUVEAU: Routes pour recherche avec planifications
 pub mod search_history_routes; // ✅ NOUVEAU: Routes pour historique de recherche
 pub mod service_routes;
@@ -100,13 +101,12 @@ pub mod specialized_services_routes;
 pub mod stock_media_routes;
 pub mod studio_routes; // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
 pub mod supermarket_routes; // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
-pub mod ecommerce_platform_routes;  // ✅ 2026-04-01: Routes e-commerce universel (toutes plateformes, intégrations partenaires)
-pub mod universal_search_routes;    // ✅ 2026-04-01: Routes recherche universelle cross-services
 pub mod system_health_routes;
 pub mod taxi_realtime_metrics_routes;
 pub mod test_routes; // ✅ Routes pour page de téléchargement APK test
 pub mod token_pack_routes;
 pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consommation de tokens
+pub mod universal_search_routes; // ✅ 2026-04-01: Routes recherche universelle cross-services
 pub mod upload_routes;
 pub mod user_routes;
 pub mod vehicle_model_routes;

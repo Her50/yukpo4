@@ -57,8 +57,14 @@ pub fn restaurant_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Routes partenaire (propriétaire du restaurant)
     let protected = Router::new()
         // Dashboard & settings
-        .route("/api/restaurant/overview", get(restaurant_controller::get_overview))
-        .route("/api/restaurant/settings", patch(restaurant_controller::patch_settings))
+        .route(
+            "/api/restaurant/overview",
+            get(restaurant_controller::get_overview),
+        )
+        .route(
+            "/api/restaurant/settings",
+            patch(restaurant_controller::patch_settings),
+        )
         // Tables & plan de salle
         .route(
             "/api/restaurant/tables",
@@ -80,16 +86,19 @@ pub fn restaurant_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // Menu items
         .route(
             "/api/restaurant/menu",
-            get(restaurant_controller::list_menu_items).post(restaurant_controller::create_menu_item),
+            get(restaurant_controller::list_menu_items)
+                .post(restaurant_controller::create_menu_item),
         )
         .route(
             "/api/restaurant/menu/{id}",
-            patch(restaurant_controller::update_menu_item).delete(restaurant_controller::delete_menu_item),
+            patch(restaurant_controller::update_menu_item)
+                .delete(restaurant_controller::delete_menu_item),
         )
         // Horaires d'ouverture
         .route(
             "/api/restaurant/opening-hours",
-            get(restaurant_controller::get_opening_hours).put(restaurant_controller::put_opening_hours),
+            get(restaurant_controller::get_opening_hours)
+                .put(restaurant_controller::put_opening_hours),
         )
         // Commandes (partenaire voit et gère ses commandes)
         .route(

@@ -296,22 +296,19 @@ impl MediaStorageService {
             request = request.content_type(ct.to_string());
         }
 
-        request
-            .send()
-            .await
-            .map_err(|err| {
-                let msg = err.to_string();
-                let hint = if msg.contains("403") {
-                    " (clé HMAC expirée ou permissions manquantes)"
-                } else if msg.contains("404") {
-                    " (bucket introuvable)"
-                } else if msg.contains("service error") {
-                    " (GCS a rejeté la requête — vérifier content-length et credentials)"
-                } else {
-                    ""
-                };
-                AppError::Internal(format!("Upload S3 bytes échoué{hint}: {err}"))
-            })?;
+        request.send().await.map_err(|err| {
+            let msg = err.to_string();
+            let hint = if msg.contains("403") {
+                " (clé HMAC expirée ou permissions manquantes)"
+            } else if msg.contains("404") {
+                " (bucket introuvable)"
+            } else if msg.contains("service error") {
+                " (GCS a rejeté la requête — vérifier content-length et credentials)"
+            } else {
+                ""
+            };
+            AppError::Internal(format!("Upload S3 bytes échoué{hint}: {err}"))
+        })?;
 
         debug!(
             "[MediaStorage] Bytes uploadés vers S3 (bucket={}, key={}, size={} bytes)",
@@ -342,9 +339,14 @@ impl MediaStorageService {
         // ✅ FIX: GCS S3-compatible API rejette les uploads en chunked encoding.
         // Il faut impérativement fournir content_length pour que le SDK envoie
         // un PUT avec Content-Length fixe au lieu de Transfer-Encoding: chunked.
-        let file_size = fs::metadata(path).await.map_err(|err| {
-            AppError::Internal(format!("Lecture métadonnées pour S3 impossible ({path:?}): {err}"))
-        })?.len();
+        let file_size = fs::metadata(path)
+            .await
+            .map_err(|err| {
+                AppError::Internal(format!(
+                    "Lecture métadonnées pour S3 impossible ({path:?}): {err}"
+                ))
+            })?
+            .len();
 
         let body = ByteStream::from_path(path).await.map_err(|err| {
             AppError::Internal(format!("Lecture fichier pour S3 impossible: {err}"))
@@ -361,23 +363,20 @@ impl MediaStorageService {
             request = request.content_type(ct.to_string());
         }
 
-        request
-            .send()
-            .await
-            .map_err(|err| {
-                // Distinguer les erreurs GCS connues pour un meilleur diagnostic
-                let err_str = err.to_string();
-                let detail = if err_str.contains("service error") {
-                    "Erreur GCS S3-compat (vérifiez clés HMAC, permissions bucket et région)"
-                } else if err_str.contains("403") || err_str.contains("Forbidden") {
-                    "Accès refusé GCS (clés HMAC invalides ou expirées)"
-                } else if err_str.contains("404") || err_str.contains("NoSuchBucket") {
-                    "Bucket GCS introuvable"
-                } else {
-                    "Upload S3 échoué"
-                };
-                AppError::Internal(format!("{detail}: {err_str}"))
-            })?;
+        request.send().await.map_err(|err| {
+            // Distinguer les erreurs GCS connues pour un meilleur diagnostic
+            let err_str = err.to_string();
+            let detail = if err_str.contains("service error") {
+                "Erreur GCS S3-compat (vérifiez clés HMAC, permissions bucket et région)"
+            } else if err_str.contains("403") || err_str.contains("Forbidden") {
+                "Accès refusé GCS (clés HMAC invalides ou expirées)"
+            } else if err_str.contains("404") || err_str.contains("NoSuchBucket") {
+                "Bucket GCS introuvable"
+            } else {
+                "Upload S3 échoué"
+            };
+            AppError::Internal(format!("{detail}: {err_str}"))
+        })?;
 
         debug!(
             "[MediaStorage] Fichier uploadé vers S3 (bucket={}, key={}, size={} bytes)",

@@ -677,7 +677,10 @@ fn build_sentiment_instruction(ctx: &serde_json::Value) -> String {
     };
 
     let prefix_note = if !emotional_prefix.is_empty() {
-        format!("\nSUGGESTED OPENING TONE: Start with or adapt from: \"{}\"", emotional_prefix)
+        format!(
+            "\nSUGGESTED OPENING TONE: Start with or adapt from: \"{}\"",
+            emotional_prefix
+        )
     } else {
         String::new()
     };

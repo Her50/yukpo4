@@ -37,9 +37,8 @@ pub fn start_bus_schedule_product_generator(state: Arc<AppState>) {
         // Exécuter immédiatement au démarrage
         run_generation(&state).await;
 
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(
-            GENERATION_INTERVAL_SECS,
-        ));
+        let mut interval =
+            tokio::time::interval(tokio::time::Duration::from_secs(GENERATION_INTERVAL_SECS));
         interval.tick().await; // consommer le premier tick immédiat
 
         loop {
@@ -51,7 +50,10 @@ pub fn start_bus_schedule_product_generator(state: Arc<AppState>) {
 
 /// Exécute une passe de génération pour toutes les agences actives.
 async fn run_generation(state: &Arc<AppState>) {
-    info!("[BusScheduleGen] Lancement génération produits ({} jours)", DAYS_AHEAD);
+    info!(
+        "[BusScheduleGen] Lancement génération produits ({} jours)",
+        DAYS_AHEAD
+    );
 
     // Récupérer toutes les agences actives ayant des horaires
     let agencies = match sqlx::query(
@@ -297,7 +299,12 @@ async fn generate_for_agency(
                     "#,
                 )
                 .bind(service_id)
-                .bind(format!("{} → {} {}", dep_city, arr_city, date.format("%d/%m/%Y")))
+                .bind(format!(
+                    "{} → {} {}",
+                    dep_city,
+                    arr_city,
+                    date.format("%d/%m/%Y")
+                ))
                 .bind(&tpl_seat_map)
                 .bind(&tpl_bus_config)
                 .bind(tpl_total_seats)
@@ -316,7 +323,7 @@ async fn generate_for_agency(
 
                 match result {
                     Some(_) => generated += 1,
-                    None    => skipped += 1,
+                    None => skipped += 1,
                 }
             }
         }

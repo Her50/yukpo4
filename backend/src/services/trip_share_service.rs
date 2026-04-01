@@ -1,6 +1,6 @@
 // ✅ Service partage trajet temps réel — token public, lien partageable
-use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TripShareInfo {
@@ -25,19 +25,31 @@ pub struct PublicTripData {
     pub expires_at: String,
 }
 
-pub struct TripShareService { pool: PgPool }
+pub struct TripShareService {
+    pool: PgPool,
+}
 
 impl TripShareService {
-    pub fn new(pool: PgPool) -> Self { Self { pool } }
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
 
     /// Crée ou renouvelle un lien de partage pour une réservation
-    pub async fn create_share(&self, user_id: i32, reservation_id: i32) -> Result<TripShareInfo, String> {
+    pub async fn create_share(
+        &self,
+        user_id: i32,
+        reservation_id: i32,
+    ) -> Result<TripShareInfo, String> {
         // Vérifier que la réservation appartient à l'utilisateur
         let exists = sqlx::query_scalar!(
             "SELECT EXISTS(SELECT 1 FROM specialized_reservations WHERE id=$1 AND user_id=$2)",
-            reservation_id, user_id,
-        ).fetch_one(&self.pool).await.map_err(|e| e.to_string())?
-         .unwrap_or(false);
+            reservation_id,
+            user_id,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .unwrap_or(false);
 
         if !exists {
             return Err("Réservation introuvable ou non autorisée.".to_string());
@@ -50,8 +62,12 @@ impl TripShareService {
                ON CONFLICT (reservation_id) DO UPDATE
                  SET expires_at = NOW() + INTERVAL '24 hours'
                RETURNING token, expires_at"#,
-            reservation_id, user_id,
-        ).fetch_one(&self.pool).await.map_err(|e| format!("DB: {}", e))?;
+            reservation_id,
+            user_id,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| format!("DB: {}", e))?;
 
         let share_url = format!("https://yukpo.app/track/{}", row.token);
 
@@ -83,8 +99,11 @@ impl TripShareService {
                JOIN specialized_services ss ON ss.id = sr.service_id
                WHERE sr.id = $1"#,
             share.reservation_id,
-        ).fetch_optional(&self.pool).await.map_err(|e| e.to_string())?
-         .ok_or("Réservation introuvable.")?;
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Réservation introuvable.")?;
 
         // GPS actuel du chauffeur (table taxis)
         let gps = sqlx::query_scalar!(
@@ -93,9 +112,14 @@ impl TripShareService {
                JOIN specialized_reservations sr ON sr.service_id = ss.id
                WHERE sr.id = $1"#,
             share.reservation_id,
-        ).fetch_optional(&self.pool).await.unwrap_or(None).flatten();
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .unwrap_or(None)
+        .flatten();
 
-        let details: serde_json::Value = res.details
+        let details: serde_json::Value = res
+            .details
             .and_then(|d| serde_json::from_value(d).ok())
             .unwrap_or(serde_json::Value::Null);
 
@@ -118,8 +142,12 @@ impl TripShareService {
     pub async fn revoke(&self, user_id: i32, reservation_id: i32) -> Result<(), String> {
         sqlx::query!(
             "DELETE FROM trip_shares WHERE reservation_id=$1 AND user_id=$2",
-            reservation_id, user_id,
-        ).execute(&self.pool).await.map_err(|e| e.to_string())?;
+            reservation_id,
+            user_id,
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
         Ok(())
     }
 }

@@ -54,6 +54,7 @@ use crate::routes::{
     // ✅ Routes critiques ajoutées
     delivery_routes::{delivery_public_routes, delivery_routes},
     diagnostic_routes::diagnostic_routes,
+    ecommerce_platform_routes::ecommerce_platform_routes, // ✅ 2026-04-01: Routes e-commerce universel
     embedding_routes::embedding_routes,
     export_routes::export_routes, // ✅ NOUVEAU Phase 2.3: Routes pour jobs d'export vidéo
     extended_audio_routes::extended_audio_routes, // ✅ NOUVEAU Phase 2.2: Routes bibliothèque audio étendue
@@ -83,7 +84,6 @@ use crate::routes::{
     notification_routes::notification_routes,
     offres_emploi_routes::offres_emploi_routes, // ✅ NOUVEAU 2025-01-28: Routes offres d'emploi
     order_routes::order_routes,
-    restaurant_routes::restaurant_routes,
     orientation_scolaire_routes::orientation_scolaire_routes,
     payment_routes::payment_routes,
     phone_verification_routes::phone_verification_routes, // ✅ NOUVEAU 2026-02-25: Routes vérification OTP téléphone
@@ -105,6 +105,7 @@ use crate::routes::{
     publicite_pixel_routes::publicite_pixel_routes, // ✅ NOUVEAU: Routes tracking pixel avancé
     push_routes::push_routes,
     recommendation_routes::recommendation_routes,
+    restaurant_routes::restaurant_routes,
     // scheduling_search_routes::scheduling_search_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (scheduling_search_routes_merged)
     search_history_routes::search_history_routes,
     service_routes::service_routes,
@@ -116,12 +117,11 @@ use crate::routes::{
     stock_media_routes::stock_media_routes, // ✅ NOUVEAU Phase 2: Routes Stock Media Integration
     studio_routes::studio_routes, // ✅ NOUVEAU: Routes Studio pour création vidéo immersive
     supermarket_routes::supermarket_routes, // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
-    ecommerce_platform_routes::ecommerce_platform_routes, // ✅ 2026-04-01: Routes e-commerce universel
-    universal_search_routes::universal_search_routes,     // ✅ 2026-04-01: Recherche universelle cross-services
     system_health_routes::system_health_routes,
     token_pack_routes::token_pack_routes,
     token_stats_routes::token_stats_routes,
-    upload_routes::upload_routes, // ✅ NOUVEAU: Routes upload préalable
+    universal_search_routes::universal_search_routes, // ✅ 2026-04-01: Recherche universelle cross-services
+    upload_routes::upload_routes,                     // ✅ NOUVEAU: Routes upload préalable
     user_routes::user_routes,
     // vehicle_model_routes::vehicle_model_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (mobile_routes)
     video_hls_routes::video_hls_routes,
@@ -368,7 +368,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
     let auto_search = auto_search_routes(state.clone()); // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente
     let supermarket = supermarket_routes(state.clone()); // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
     let ecommerce_platform = ecommerce_platform_routes(state.clone()); // ✅ 2026-04-01: Routes e-commerce universel
-    let universal_search = universal_search_routes(state.clone());     // ✅ 2026-04-01: Recherche universelle cross-services
+    let universal_search = universal_search_routes(state.clone()); // ✅ 2026-04-01: Recherche universelle cross-services
     let followers = followers_routes(state.clone()); // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
 
     // ✅ NOUVEAU 2026-03-16: Routes pour le réseau de librairies
@@ -489,7 +489,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .merge(auto_search) // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente
         .merge(supermarket) // ✅ NOUVEAU: Routes supermarché dédiées (produits, comparaison, promotions)
         .merge(ecommerce_platform) // ✅ 2026-04-01: Routes e-commerce universel
-        .merge(universal_search)   // ✅ 2026-04-01: Recherche universelle cross-services
+        .merge(universal_search) // ✅ 2026-04-01: Recherche universelle cross-services
         .merge(followers) // ✅ NOUVEAU 2026-03-05: Routes pour système de suivi vendeurs
         .merge(librairie_network) // ✅ NOUVEAU 2026-03-16: Routes réseau de librairies
         .merge(paiement_agrege) // ✅ NOUVEAU 2026-03-16: Routes paiements agrégés

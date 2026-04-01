@@ -324,11 +324,8 @@ impl PharmacyProductService {
         );
         sql.push_str(&format!(" LIMIT {}", lim));
 
-        let mut query_builder = sqlx::query(&sql)
-            .bind(&search_pattern)
-            .bind(user_lat)
-            .bind(user_lng)
-            .bind(qty);
+        let mut query_builder =
+            sqlx::query(&sql).bind(&search_pattern).bind(user_lat).bind(user_lng).bind(qty);
         if let Some(p) = max_price {
             query_builder = query_builder.bind(p);
         }

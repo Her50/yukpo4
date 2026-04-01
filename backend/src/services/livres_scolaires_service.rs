@@ -591,7 +591,8 @@ impl LivresScolairesService {
             query = query.bind(devise_detectee);
         }
         if let Some(valeur_calculee) = request.valeur_calculee {
-            query = query.bind(rust_decimal::Decimal::try_from(valeur_calculee).unwrap_or_default());
+            query =
+                query.bind(rust_decimal::Decimal::try_from(valeur_calculee).unwrap_or_default());
         }
         if let Some(ratio_etat) = request.ratio_etat {
             query = query.bind(rust_decimal::Decimal::try_from(ratio_etat).unwrap_or_default());

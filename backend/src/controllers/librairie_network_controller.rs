@@ -708,10 +708,15 @@ pub async fn broadcast_commande_librairies(
     // ====================================================================
     if cmd_statut == "envoyee_super_librairie" {
         return broadcast_vers_librairies_proches(
-            &state, payload.commande_id, gps_livraison,
-            &cmd_reference_commande, cmd_nb_neufs, cmd_nb_occasion,
+            &state,
+            payload.commande_id,
+            gps_livraison,
+            &cmd_reference_commande,
+            cmd_nb_neufs,
+            cmd_nb_occasion,
             payload.rayon_recherche_km,
-        ).await;
+        )
+        .await;
     }
 
     // ====================================================================
@@ -741,7 +746,10 @@ pub async fn broadcast_commande_librairies(
         let delai_s = sl.delai_validation_super_librairie_s as i64;
         let timeout_at = Utc::now() + chrono::Duration::seconds(delai_s);
 
-        let mut tx = state.pg.begin().await
+        let mut tx = state
+            .pg
+            .begin()
+            .await
             .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
         // Passer la commande en statut super librairie
@@ -813,7 +821,8 @@ pub async fn broadcast_commande_librairies(
         .await
         .map_err(|e| AppError::Internal(format!("Erreur audit log: {}", e)))?;
 
-        tx.commit().await
+        tx.commit()
+            .await
             .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
         // Notification push à YukpoLibrairie
@@ -828,7 +837,8 @@ pub async fn broadcast_commande_librairies(
                 "gps_livraison": gps_livraison,
                 "timeout_at": timeout_at.to_rfc3339(),
             })),
-        ).await;
+        )
+        .await;
 
         info!(
             "[broadcast_commande_librairies] Commande {} routée vers YukpoLibrairie — timeout dans {}s",
@@ -849,10 +859,15 @@ pub async fn broadcast_commande_librairies(
     // CAS 3 : Pas de super libraire actif → broadcast direct (comportement original)
     // ====================================================================
     broadcast_vers_librairies_proches(
-        &state, payload.commande_id, gps_livraison,
-        &cmd_reference_commande, cmd_nb_neufs, cmd_nb_occasion,
+        &state,
+        payload.commande_id,
+        gps_livraison,
+        &cmd_reference_commande,
+        cmd_nb_neufs,
+        cmd_nb_occasion,
         payload.rayon_recherche_km,
-    ).await
+    )
+    .await
 }
 
 /// Broadcast interne vers les librairies géolocalisées proches.
@@ -897,7 +912,10 @@ async fn broadcast_vers_librairies_proches(
         ));
     }
 
-    let mut tx = state.pg.begin().await
+    let mut tx = state
+        .pg
+        .begin()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     sqlx::query(
@@ -953,7 +971,8 @@ async fn broadcast_vers_librairies_proches(
         notifications_created.push((librairie.user_id, notification));
     }
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
 
     for (lib_user_id, notification) in &notifications_created {
@@ -967,12 +986,14 @@ async fn broadcast_vers_librairies_proches(
                 "commande_id": commande_id.to_string(),
                 "notification_id": notification.id.to_string(),
             })),
-        ).await;
+        )
+        .await;
     }
 
     info!(
         "[broadcast_vers_librairies_proches] Commande {} diffusée à {} librairies",
-        commande_id, librairies.len()
+        commande_id,
+        librairies.len()
     );
 
     Ok(Json(serde_json::json!({
@@ -994,7 +1015,9 @@ async fn broadcast_vers_librairies_proches(
 /// Dashboard YukpoLibrairie : toutes les commandes, toutes zones, triées par timeout
 pub async fn super_librairie_dashboard(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, role, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
     Query(params): Query<GetCommandesQuery>,
 ) -> AppResult<impl IntoResponse> {
     // Admins/superadmins accèdent directement ; le super libraire accède via son user_id
@@ -1019,7 +1042,11 @@ pub async fn super_librairie_dashboard(
         .fetch_optional(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::Forbidden("Accès réservé au super libraire ou aux administrateurs".to_string()))?
+        .ok_or_else(|| {
+            AppError::Forbidden(
+                "Accès réservé au super libraire ou aux administrateurs".to_string(),
+            )
+        })?
     };
 
     let limit = params.limit.unwrap_or(50);
@@ -1198,7 +1225,9 @@ pub struct SuperLibraireInviteTeamPayload {
 /// Liste les membres de l'équipe YukpoLibrairie (admin + super libraire)
 pub async fn super_librairie_list_team(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, role, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     let is_admin = role == "admin" || role == "super_admin";
     let sl_id: uuid::Uuid = if is_admin {
@@ -1264,7 +1293,9 @@ pub async fn super_librairie_list_team(
 /// Inviter un membre dans l'équipe YukpoLibrairie (admin + super libraire)
 pub async fn super_librairie_invite_team(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, role, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
     Json(payload): Json<SuperLibraireInviteTeamPayload>,
 ) -> AppResult<impl IntoResponse> {
     let is_admin = role == "admin" || role == "super_admin";
@@ -1300,7 +1331,12 @@ pub async fn super_librairie_invite_team(
         .fetch_optional(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::NotFound(format!("Aucun utilisateur avec le téléphone {}", payload.telephone)))?;
+        .ok_or_else(|| {
+            AppError::NotFound(format!(
+                "Aucun utilisateur avec le téléphone {}",
+                payload.telephone
+            ))
+        })?;
 
     // Upsert membre
     let member_id: i32 = sqlx::query_scalar(
@@ -1328,13 +1364,17 @@ pub async fn super_librairie_invite_team(
         &state,
         target_user_id,
         "YukpoLibrairie — Invitation équipe",
-        &format!("Vous avez été ajouté à l'équipe YukpoLibrairie en tant que {}.", payload.role),
+        &format!(
+            "Vous avez été ajouté à l'équipe YukpoLibrairie en tant que {}.",
+            payload.role
+        ),
         Some(serde_json::json!({
             "type": "super_librairie_team_invite",
             "librairie_id": sl_id.to_string(),
             "role": payload.role,
         })),
-    ).await;
+    )
+    .await;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -1348,7 +1388,9 @@ pub async fn super_librairie_invite_team(
 /// Retirer un membre de l'équipe YukpoLibrairie (admin + super libraire)
 pub async fn super_librairie_remove_team(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, role, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
     Path(member_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     let is_admin = role == "admin" || role == "super_admin";

@@ -2,9 +2,10 @@
 
 //! Regroupe tous les jobs planifi?s ou r?currents de votre application.
 
-pub mod bus_schedule_product_generator; // Génération auto produits ticket_voyage depuis horaires agences (cron 6h)
 pub mod archived_service_cleaner;
 pub mod audio_cache_cleanup; // ✅ NOUVEAU 2025-12-30: Nettoyage automatique du cache audio
+pub mod book_reversement_worker; // ✅ Reversements automatiques vendeurs bourse du livre
+pub mod bus_schedule_product_generator; // Génération auto produits ticket_voyage depuis horaires agences (cron 6h)
 pub mod delivery_archive_worker; // ✅ Phase 2 : Archivage automatique des livraisons
 pub mod delivery_matching_worker;
 pub mod delivery_notification_repeat; // ✅ NOUVEAU : Répétition des notifications de livraison
@@ -29,8 +30,7 @@ pub mod search_cache_refresh; // ✅ NOUVEAU 2025-12-02: Rafraîchissement autom
 pub mod service_deactivation;
 pub mod service_status_checker; // ✅ Tâche de désactivation des publicités expirées
 pub mod stats_recalculation; // ✅ NOUVEAU : Recalcul périodique des statistiques
+pub mod super_librairie_timeout_worker;
 pub mod troc_expiration_monitor; // Expiration automatique des trocs en attente (72h TTL)
 pub mod video_weekly_report; // ✅ NOUVEAU 2025-01-29: Tâche cron pour trajets récurrents
-pub mod yukpo_ia_queue_worker; // ✅ YukpoIA — worker file Redis chat async
-pub mod book_reversement_worker; // ✅ Reversements automatiques vendeurs bourse du livre
-pub mod super_librairie_timeout_worker; // ✅ Timeout YukpoLibrairie → fallback broadcast proches
+pub mod yukpo_ia_queue_worker; // ✅ YukpoIA — worker file Redis chat async // ✅ Timeout YukpoLibrairie → fallback broadcast proches

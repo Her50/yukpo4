@@ -1190,7 +1190,10 @@ pub async fn generate_products_from_schedules(
                 .fetch_optional(&state.pg)
                 .await
                 .map_err(|e| {
-                    error!("[generate_products_from_schedules] load schedule template: {}", e);
+                    error!(
+                        "[generate_products_from_schedules] load schedule template: {}",
+                        e
+                    );
                     AppError::Internal(format!("Erreur chargement modèle horaire: {}", e))
                 })?
                 .ok_or_else(|| {
@@ -1222,11 +1225,8 @@ pub async fn generate_products_from_schedules(
             .ok()
             .flatten()
             .unwrap_or_else(|| json!({}));
-        let row_total_seats: i32 = tpl_row
-            .try_get::<Option<i32>, _>("total_seats")
-            .ok()
-            .flatten()
-            .unwrap_or(50);
+        let row_total_seats: i32 =
+            tpl_row.try_get::<Option<i32>, _>("total_seats").ok().flatten().unwrap_or(50);
         let row_price_cents: Option<i64> = tpl_row.try_get("price_cents").ok();
         let row_currency: String = tpl_row
             .try_get::<Option<String>, _>("currency")
@@ -1304,7 +1304,10 @@ pub async fn generate_products_from_schedules(
                     obj.insert("departure_time".to_string(), json!(time_fr.clone()));
                     obj.insert("source_schedule_id".to_string(), json!(schedule_id.clone()));
                     obj.insert("generated_from_schedule".to_string(), json!(true));
-                    obj.insert("bus_model_id".to_string(), json!(effective_template_id.clone()));
+                    obj.insert(
+                        "bus_model_id".to_string(),
+                        json!(effective_template_id.clone()),
+                    );
                 }
 
                 let desc = format!("Départ généré depuis horaire {}", schedule_id);

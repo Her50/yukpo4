@@ -4,8 +4,10 @@
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::models::delivery_model::DeliveryApplicationStatus;
-use crate::services::delivery_service::{CreateDeliveryParams, LocationInput, NewDeliveryParcelInput};
 use crate::services::delivery_ai_eta_service::DeliveryAIETAService;
+use crate::services::delivery_service::{
+    CreateDeliveryParams, LocationInput, NewDeliveryParcelInput,
+};
 use crate::services::interior_design_ai_service::InteriorDesignAIService;
 use crate::services::land_analysis_ai_service::LandAnalysisAIService;
 use crate::services::moving_ai_service::MovingAIService;
@@ -5821,7 +5823,10 @@ pub async fn create_pharmacy_order(
         .execute(&mut *tx)
         .await
         .map_err(|e| {
-            error!("[create_pharmacy_order] Erreur consommation réservation: {}", e);
+            error!(
+                "[create_pharmacy_order] Erreur consommation réservation: {}",
+                e
+            );
             AppError::Internal("Erreur mise à jour réservation".to_string())
         })?;
 
@@ -5886,14 +5891,13 @@ pub async fn get_pharmacy_financial_movements(
 ) -> AppResult<impl IntoResponse> {
     let limit = query.limit.unwrap_or(50).clamp(1, 200);
 
-    let pharmacy = sqlx::query(
-        "SELECT id FROM pharmacies WHERE user_id = $1 ORDER BY id ASC LIMIT 1",
-    )
-    .bind(user_id)
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur chargement pharmacie: {e}")))?
-    .ok_or_else(|| AppError::BadRequest("Aucune pharmacie liée à ce compte".to_string()))?;
+    let pharmacy =
+        sqlx::query("SELECT id FROM pharmacies WHERE user_id = $1 ORDER BY id ASC LIMIT 1")
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur chargement pharmacie: {e}")))?
+            .ok_or_else(|| AppError::BadRequest("Aucune pharmacie liée à ce compte".to_string()))?;
     let pharmacy_id: i32 = pharmacy.get("id");
 
     let orders = sqlx::query(
@@ -5994,7 +5998,9 @@ pub async fn request_pharmacy_withdrawal(
     Json(payload): Json<PharmacyWithdrawRequest>,
 ) -> AppResult<impl IntoResponse> {
     if payload.amount_cents <= 0 {
-        return Err(AppError::BadRequest("Montant de retrait invalide".to_string()));
+        return Err(AppError::BadRequest(
+            "Montant de retrait invalide".to_string(),
+        ));
     }
 
     let mut tx = state.pg.begin().await.map_err(|e| AppError::Internal(e.to_string()))?;
@@ -6009,7 +6015,9 @@ pub async fn request_pharmacy_withdrawal(
     .unwrap_or(0);
 
     if current_balance < payload.amount_cents {
-        return Err(AppError::BadRequest("Solde insuffisant pour retrait".to_string()));
+        return Err(AppError::BadRequest(
+            "Solde insuffisant pour retrait".to_string(),
+        ));
     }
 
     let new_balance = current_balance - payload.amount_cents;
@@ -7950,7 +7958,10 @@ pub struct ValidateQrRequest {
 /// POST /api/reservations/validate-qr
 pub async fn validate_qr_code(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: validator_user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: validator_user_id,
+        ..
+    }): Extension<AuthenticatedUser>,
     Json(payload): Json<ValidateQrRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
@@ -7959,9 +7970,8 @@ pub async fn validate_qr_code(
     );
 
     // Décoder le payload JSON du QR
-    let qr: serde_json::Value = serde_json::from_str(&payload.qr_payload).map_err(|_| {
-        AppError::BadRequest("QR code invalide (JSON malformé)".to_string())
-    })?;
+    let qr: serde_json::Value = serde_json::from_str(&payload.qr_payload)
+        .map_err(|_| AppError::BadRequest("QR code invalide (JSON malformé)".to_string()))?;
 
     // Vérifier le type
     if qr.get("type").and_then(|v| v.as_str()) != Some("RESERVATION_YUKPOMNANG") {
@@ -7971,7 +7981,8 @@ pub async fn validate_qr_code(
     let reservation_id = qr
         .get("id")
         .and_then(|v| v.as_i64())
-        .ok_or_else(|| AppError::BadRequest("ID réservation manquant".to_string()))? as i32;
+        .ok_or_else(|| AppError::BadRequest("ID réservation manquant".to_string()))?
+        as i32;
 
     // Récupérer la réservation en base
     let row = sqlx::query(
@@ -8025,7 +8036,7 @@ pub struct CreateLandRequest {
     pub quartier: Option<String>,
     pub ville: Option<String>,
     pub gps: Option<String>,
-    pub prix_total: f64,              // Obligatoire côté DB (NOT NULL)
+    pub prix_total: f64, // Obligatoire côté DB (NOT NULL)
     pub viabilise: Option<bool>,
     pub acces_route: Option<bool>,
     pub bornage: Option<bool>,
@@ -8195,7 +8206,9 @@ pub async fn update_land(
     .rows_affected();
 
     if rows_affected == 0 {
-        return Err(AppError::NotFound("Terrain non trouvé ou non autorisé".to_string()));
+        return Err(AppError::NotFound(
+            "Terrain non trouvé ou non autorisé".to_string(),
+        ));
     }
 
     Ok((
@@ -8209,7 +8222,7 @@ pub async fn update_land(
 
 #[derive(Debug, Deserialize)]
 pub struct BookLandVisitRequest {
-    pub date_visite: String,  // ISO datetime ou date "YYYY-MM-DD"
+    pub date_visite: String, // ISO datetime ou date "YYYY-MM-DD"
     pub notes: Option<String>,
 }
 
@@ -8349,7 +8362,9 @@ pub async fn create_decorator(
     info!("[create_decorator] user_id={}", user_id);
 
     if request.nom_entreprise.trim().is_empty() {
-        return Err(AppError::BadRequest("Le nom de l'entreprise est requis".to_string()));
+        return Err(AppError::BadRequest(
+            "Le nom de l'entreprise est requis".to_string(),
+        ));
     }
 
     let service_ok: bool = sqlx::query_scalar(
@@ -8447,7 +8462,10 @@ pub async fn create_design_consultation(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(request): Json<CreateConsultationRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[create_design_consultation] user_id={}, decorator_id={}", user_id, request.decorator_id);
+    info!(
+        "[create_design_consultation] user_id={}, decorator_id={}",
+        user_id, request.decorator_id
+    );
 
     if request.sujet.trim().is_empty() {
         return Err(AppError::BadRequest("Le sujet est requis".to_string()));
@@ -8508,9 +8526,14 @@ pub async fn create_design_consultation(
 /// Lister les consultations (partenaire = les siennes reçues / utilisateur = les siennes envoyées)
 pub async fn get_my_design_consultations(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, role, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[get_my_design_consultations] user_id={}, role={}", user_id, role);
+    info!(
+        "[get_my_design_consultations] user_id={}, role={}",
+        user_id, role
+    );
 
     let is_partner = role == "partenaire";
 
@@ -8616,7 +8639,11 @@ pub async fn respond_design_consultation(
         "confirm" => "confirmed",
         "reject" => "rejected",
         "complete" => "completed",
-        _ => return Err(AppError::BadRequest("Action invalide (confirm|reject|complete)".to_string())),
+        _ => {
+            return Err(AppError::BadRequest(
+                "Action invalide (confirm|reject|complete)".to_string(),
+            ))
+        }
     };
 
     let rows_affected = sqlx::query(
@@ -8646,7 +8673,9 @@ pub async fn respond_design_consultation(
     .rows_affected();
 
     if rows_affected == 0 {
-        return Err(AppError::NotFound("Consultation non trouvée ou non autorisée".to_string()));
+        return Err(AppError::NotFound(
+            "Consultation non trouvée ou non autorisée".to_string(),
+        ));
     }
 
     Ok((
@@ -8749,7 +8778,11 @@ pub async fn respond_moving_booking(
         "confirm" => ("confirmed", "confirmed_at"),
         "complete" => ("completed", "completed_at"),
         "cancel" => ("cancelled", "cancelled_at"),
-        _ => return Err(AppError::BadRequest("Action invalide (confirm|complete|cancel)".to_string())),
+        _ => {
+            return Err(AppError::BadRequest(
+                "Action invalide (confirm|complete|cancel)".to_string(),
+            ))
+        }
     };
 
     let sql = format!(
@@ -8784,7 +8817,9 @@ pub async fn respond_moving_booking(
         .rows_affected();
 
     if rows_affected == 0 {
-        return Err(AppError::NotFound("Réservation non trouvée ou non autorisée".to_string()));
+        return Err(AppError::NotFound(
+            "Réservation non trouvée ou non autorisée".to_string(),
+        ));
     }
 
     Ok((
@@ -8820,7 +8855,10 @@ pub async fn update_moving_location(
     // Parser le GPS "lat,lng"
     let parts: Vec<&str> = request.gps_current.split(',').collect();
     let (gps_lat, gps_lng) = if parts.len() == 2 {
-        (parts[0].trim().parse::<f64>().ok(), parts[1].trim().parse::<f64>().ok())
+        (
+            parts[0].trim().parse::<f64>().ok(),
+            parts[1].trim().parse::<f64>().ok(),
+        )
     } else {
         (None, None)
     };
@@ -8852,7 +8890,9 @@ pub async fn update_moving_location(
     .rows_affected();
 
     if rows_affected == 0 {
-        return Err(AppError::NotFound("Réservation non trouvée, non autorisée ou non confirmée".to_string()));
+        return Err(AppError::NotFound(
+            "Réservation non trouvée, non autorisée ou non confirmée".to_string(),
+        ));
     }
 
     // Insérer une entrée dans moving_tracking
@@ -8897,7 +8937,7 @@ pub async fn create_reservation_insurance(
     Json(payload): Json<CreateInsuranceRequest>,
 ) -> AppResult<impl IntoResponse> {
     use crate::services::covoiturage_insurance_service::{
-        CovoiturageInsuranceService, CoverageType,
+        CoverageType, CovoiturageInsuranceService,
     };
 
     info!(
@@ -9045,9 +9085,7 @@ pub async fn schedule_proactive_notifications(
     }
 
     let service_name: String = row.try_get("service_name").unwrap_or_default();
-    let reminders = payload
-        .reminder_minutes_before
-        .unwrap_or_else(|| vec![60, 15]);
+    let reminders = payload.reminder_minutes_before.unwrap_or_else(|| vec![60, 15]);
 
     // Enregistrer les rappels en base (table notifications_scheduled si existante, sinon log)
     let scheduled_count = sqlx::query(
@@ -9321,10 +9359,7 @@ pub async fn get_taxi_details_enhanced(
     Extension(AuthenticatedUser { id: _user_id, .. }): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    info!(
-        "[get_taxi_details_enhanced] service_id={}",
-        service_id
-    );
+    info!("[get_taxi_details_enhanced] service_id={}", service_id);
 
     // Infos de base du service
     let service_row = sqlx::query(
@@ -9433,7 +9468,6 @@ pub async fn get_taxi_details_enhanced(
         }
     })))
 }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PAIEMENT MOBILE MONEY
@@ -9453,7 +9487,7 @@ pub async fn initiate_mobile_money_payment(
     Extension(current_user): Extension<crate::models::user::User>,
     Json(body): Json<InitiatePaymentBody>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
-    use crate::services::mobile_money_service::{MobileMoneyService, InitiatePaymentRequest};
+    use crate::services::mobile_money_service::{InitiatePaymentRequest, MobileMoneyService};
     let svc = MobileMoneyService::new(pool);
     let req = InitiatePaymentRequest {
         reservation_id: body.reservation_id,
@@ -9464,7 +9498,10 @@ pub async fn initiate_mobile_money_payment(
     };
     match svc.initiate_payment(current_user.id, req).await {
         Ok(result) => Ok(Json(json!({ "success": true, "payment": result }))),
-        Err(e) => Err((axum::http::StatusCode::BAD_REQUEST, Json(json!({ "success": false, "error": e })))),
+        Err(e) => Err((
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(json!({ "success": false, "error": e })),
+        )),
     }
 }
 
@@ -9477,7 +9514,10 @@ pub async fn get_payment_status(
     let svc = MobileMoneyService::new(pool);
     match svc.get_payment_status(payment_id, current_user.id).await {
         Ok(result) => Ok(Json(json!({ "success": true, "payment": result }))),
-        Err(e) => Err((axum::http::StatusCode::NOT_FOUND, Json(json!({ "success": false, "error": e })))),
+        Err(e) => Err((
+            axum::http::StatusCode::NOT_FOUND,
+            Json(json!({ "success": false, "error": e })),
+        )),
     }
 }
 
@@ -9489,7 +9529,10 @@ pub async fn get_user_payments(
     let svc = MobileMoneyService::new(pool);
     match svc.get_user_payments(current_user.id).await {
         Ok(payments) => Ok(Json(json!({ "success": true, "payments": payments }))),
-        Err(e) => Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "success": false, "error": e })))),
+        Err(e) => Err((
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "success": false, "error": e })),
+        )),
     }
 }
 
@@ -9511,7 +9554,7 @@ pub async fn submit_trip_rating(
     Extension(current_user): Extension<crate::models::user::User>,
     Json(body): Json<SubmitRatingBody>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
-    use crate::services::trip_rating_service::{TripRatingService, SubmitRatingRequest};
+    use crate::services::trip_rating_service::{SubmitRatingRequest, TripRatingService};
     let svc = TripRatingService::new(pool);
     let req = SubmitRatingRequest {
         reservation_id: body.reservation_id,
@@ -9521,8 +9564,13 @@ pub async fn submit_trip_rating(
         service_type: body.service_type,
     };
     match svc.submit_rating(current_user.id, req).await {
-        Ok(entry) => Ok(Json(json!({ "success": true, "rating": entry, "message": "Merci pour votre avis !" }))),
-        Err(e) => Err((axum::http::StatusCode::BAD_REQUEST, Json(json!({ "success": false, "error": e })))),
+        Ok(entry) => Ok(Json(
+            json!({ "success": true, "rating": entry, "message": "Merci pour votre avis !" }),
+        )),
+        Err(e) => Err((
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(json!({ "success": false, "error": e })),
+        )),
     }
 }
 
@@ -9533,8 +9581,13 @@ pub async fn get_driver_ratings(
     use crate::services::trip_rating_service::TripRatingService;
     let svc = TripRatingService::new(pool);
     match svc.get_driver_ratings(driver_user_id, &service_type).await {
-        Ok((summary, ratings)) => Ok(Json(json!({ "success": true, "summary": summary, "ratings": ratings }))),
-        Err(e) => Err((axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "success": false, "error": e })))),
+        Ok((summary, ratings)) => Ok(Json(
+            json!({ "success": true, "summary": summary, "ratings": ratings }),
+        )),
+        Err(e) => Err((
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "success": false, "error": e })),
+        )),
     }
 }
 
@@ -9566,17 +9619,28 @@ pub async fn submit_driver_verification(
     Extension(current_user): Extension<crate::models::user::User>,
     Json(body): Json<SubmitKycBody>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
-    use crate::services::driver_verification_service::{DriverVerificationService, SubmitVerificationRequest};
+    use crate::services::driver_verification_service::{
+        DriverVerificationService, SubmitVerificationRequest,
+    };
     let svc = DriverVerificationService::new(pool);
-    match svc.submit(current_user.id, SubmitVerificationRequest {
-        service_type: body.service_type,
-        cni_front_url: body.cni_front_url,
-        cni_back_url: body.cni_back_url,
-        selfie_url: body.selfie_url,
-    }).await {
+    match svc
+        .submit(
+            current_user.id,
+            SubmitVerificationRequest {
+                service_type: body.service_type,
+                cni_front_url: body.cni_front_url,
+                cni_back_url: body.cni_back_url,
+                selfie_url: body.selfie_url,
+            },
+        )
+        .await
+    {
         Ok(v) => Ok(Json(json!({ "success": true, "verification": v,
             "message": "Documents soumis. Votre compte sera vérifié sous 24h." }))),
-        Err(e) => Err((axum::http::StatusCode::BAD_REQUEST, Json(json!({ "success": false, "error": e })))),
+        Err(e) => Err((
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(json!({ "success": false, "error": e })),
+        )),
     }
 }
 
@@ -9589,7 +9653,9 @@ pub async fn get_driver_verification_status(
     let svc = DriverVerificationService::new(pool);
     match svc.get_status(current_user.id, &service_type).await {
         Ok(Some(v)) => Json(json!({ "success": true, "verification": v })),
-        Ok(None) => Json(json!({ "success": true, "verification": null, "message": "Aucune vérification soumise." })),
+        Ok(None) => Json(
+            json!({ "success": true, "verification": null, "message": "Aucune vérification soumise." }),
+        ),
         Err(e) => Json(json!({ "success": false, "error": e })),
     }
 }
@@ -9604,15 +9670,23 @@ pub async fn get_loyalty_balance(
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     use crate::services::loyalty_service::LoyaltyService;
     let svc = LoyaltyService::new(pool.clone());
-    let balance = svc.get_balance(current_user.id).await
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "success": false, "error": e }))))?;
+    let balance = svc.get_balance(current_user.id).await.map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "success": false, "error": e })),
+        )
+    })?;
     let history = svc.get_history(current_user.id).await.unwrap_or_default();
     let rewards = svc.get_rewards().await.unwrap_or_default();
-    Ok(Json(json!({ "success": true, "balance": balance, "history": history, "rewards": rewards })))
+    Ok(Json(
+        json!({ "success": true, "balance": balance, "history": history, "rewards": rewards }),
+    ))
 }
 
 #[derive(serde::Deserialize)]
-pub struct RedeemRewardBody { pub reward_id: i32 }
+pub struct RedeemRewardBody {
+    pub reward_id: i32,
+}
 
 pub async fn redeem_loyalty_reward(
     State(pool): State<PgPool>,
@@ -9624,7 +9698,10 @@ pub async fn redeem_loyalty_reward(
     match svc.redeem(current_user.id, body.reward_id).await {
         Ok(r) => Ok(Json(json!({ "success": true, "redemption": r,
             "message": format!("Coupon {} activé ! Valable 30 jours.", r.coupon_code) }))),
-        Err(e) => Err((axum::http::StatusCode::BAD_REQUEST, Json(json!({ "success": false, "error": e })))),
+        Err(e) => Err((
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(json!({ "success": false, "error": e })),
+        )),
     }
 }
 
@@ -9641,7 +9718,10 @@ pub async fn create_trip_share(
     let svc = TripShareService::new(pool);
     match svc.create_share(current_user.id, reservation_id).await {
         Ok(share) => Ok(Json(json!({ "success": true, "share": share }))),
-        Err(e) => Err((axum::http::StatusCode::BAD_REQUEST, Json(json!({ "success": false, "error": e })))),
+        Err(e) => Err((
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(json!({ "success": false, "error": e })),
+        )),
     }
 }
 
@@ -9653,7 +9733,10 @@ pub async fn get_public_trip_data(
     let svc = TripShareService::new(pool);
     match svc.get_public_data(&token).await {
         Ok(data) => Ok(Json(json!({ "success": true, "trip": data }))),
-        Err(e) => Err((axum::http::StatusCode::NOT_FOUND, Json(json!({ "success": false, "error": e })))),
+        Err(e) => Err((
+            axum::http::StatusCode::NOT_FOUND,
+            Json(json!({ "success": false, "error": e })),
+        )),
     }
 }
 

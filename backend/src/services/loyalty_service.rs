@@ -1,6 +1,6 @@
 // ✅ Service Programme Fidélité — points sur trajets, récompenses, coupons
-use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -40,18 +40,29 @@ pub struct Redemption {
 }
 
 /// Points gagnés par action
-pub const POINTS_TRIP_COMPLETED: i32  = 10;
-pub const POINTS_RATING_GIVEN: i32    = 5;
-pub const POINTS_REFERRAL: i32        = 50;
-pub const POINTS_FIRST_TRIP: i32      = 20;
+pub const POINTS_TRIP_COMPLETED: i32 = 10;
+pub const POINTS_RATING_GIVEN: i32 = 5;
+pub const POINTS_REFERRAL: i32 = 50;
+pub const POINTS_FIRST_TRIP: i32 = 20;
 
-pub struct LoyaltyService { pool: PgPool }
+pub struct LoyaltyService {
+    pool: PgPool,
+}
 
 impl LoyaltyService {
-    pub fn new(pool: PgPool) -> Self { Self { pool } }
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
 
     /// Créditer des points
-    pub async fn credit(&self, user_id: i32, points: i32, action: &str, reference_id: Option<i32>, desc: Option<&str>) -> Result<i64, String> {
+    pub async fn credit(
+        &self,
+        user_id: i32,
+        points: i32,
+        action: &str,
+        reference_id: Option<i32>,
+        desc: Option<&str>,
+    ) -> Result<i64, String> {
         let row = sqlx::query!(
             "INSERT INTO loyalty_points (user_id, points, action, reference_id, description) VALUES ($1,$2,$3,$4,$5) RETURNING id",
             user_id, points, action, reference_id, desc.map(|s| s.to_string()),
@@ -64,7 +75,11 @@ impl LoyaltyService {
         let earned: i64 = sqlx::query_scalar!(
             "SELECT COALESCE(SUM(points),0) FROM loyalty_points WHERE user_id=$1 AND points > 0",
             user_id,
-        ).fetch_one(&self.pool).await.map_err(|e| e.to_string())?.unwrap_or(0);
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .unwrap_or(0);
 
         let spent: i64 = sqlx::query_scalar!(
             "SELECT COALESCE(SUM(ABS(points)),0) FROM loyalty_points WHERE user_id=$1 AND points < 0",
@@ -86,10 +101,16 @@ impl LoyaltyService {
             user_id,
         ).fetch_all(&self.pool).await.map_err(|e| e.to_string())?;
 
-        Ok(rows.into_iter().map(|r| PointsEntry {
-            id: r.id, points: r.points, action: r.action,
-            description: r.description, created_at: r.created_at.to_rfc3339(),
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| PointsEntry {
+                id: r.id,
+                points: r.points,
+                action: r.action,
+                description: r.description,
+                created_at: r.created_at.to_rfc3339(),
+            })
+            .collect())
     }
 
     /// Catalogue des récompenses disponibles
@@ -98,11 +119,17 @@ impl LoyaltyService {
             "SELECT id, title, description, points_cost, reward_type, reward_value::float8 FROM loyalty_rewards WHERE is_active=true ORDER BY points_cost ASC",
         ).fetch_all(&self.pool).await.map_err(|e| e.to_string())?;
 
-        Ok(rows.into_iter().map(|r| LoyaltyReward {
-            id: r.id, title: r.title, description: r.description,
-            points_cost: r.points_cost, reward_type: r.reward_type,
-            reward_value: r.reward_value.unwrap_or(0.0),
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| LoyaltyReward {
+                id: r.id,
+                title: r.title,
+                description: r.description,
+                points_cost: r.points_cost,
+                reward_type: r.reward_type,
+                reward_value: r.reward_value.unwrap_or(0.0),
+            })
+            .collect())
     }
 
     /// Racheter une récompense contre des points
@@ -115,7 +142,10 @@ impl LoyaltyService {
 
         let balance = self.get_balance(user_id).await?;
         if balance.balance < reward.points_cost as i64 {
-            return Err(format!("Solde insuffisant ({} pts). Requis : {} pts.", balance.balance, reward.points_cost));
+            return Err(format!(
+                "Solde insuffisant ({} pts). Requis : {} pts.",
+                balance.balance, reward.points_cost
+            ));
         }
 
         let coupon = format!("YUKPO-{}", &Uuid::new_v4().to_string()[..8].to_uppercase());
@@ -124,18 +154,33 @@ impl LoyaltyService {
         let red = sqlx::query!(
             r#"INSERT INTO loyalty_redemptions (user_id, reward_id, points_spent, coupon_code)
                VALUES ($1,$2,$3,$4) RETURNING id, coupon_code, expires_at"#,
-            user_id, reward_id, reward.points_cost, coupon,
-        ).fetch_one(&self.pool).await.map_err(|e| format!("DB redemption: {}", e))?;
+            user_id,
+            reward_id,
+            reward.points_cost,
+            coupon,
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| format!("DB redemption: {}", e))?;
 
         // Débiter les points
-        self.credit(user_id, -(reward.points_cost), "redemption", None,
-            Some(&format!("Échange contre : {}", reward.title))).await?;
+        self.credit(
+            user_id,
+            -(reward.points_cost),
+            "redemption",
+            None,
+            Some(&format!("Échange contre : {}", reward.title)),
+        )
+        .await?;
 
         Ok(Redemption {
             id: red.id,
             reward: LoyaltyReward {
-                id: reward.id, title: reward.title, description: reward.description,
-                points_cost: reward.points_cost, reward_type: reward.reward_type,
+                id: reward.id,
+                title: reward.title,
+                description: reward.description,
+                points_cost: reward.points_cost,
+                reward_type: reward.reward_type,
                 reward_value: reward.reward_value.unwrap_or(0.0),
             },
             coupon_code: red.coupon_code,
@@ -150,12 +195,25 @@ impl LoyaltyService {
         let trip_count: i64 = sqlx::query_scalar!(
             "SELECT COUNT(*) FROM loyalty_points WHERE user_id=$1 AND action='trip_completed'",
             user_id,
-        ).fetch_one(&self.pool).await.map_err(|e| e.to_string())?.unwrap_or(0);
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?
+        .unwrap_or(0);
 
-        let pts = if trip_count == 0 { POINTS_TRIP_COMPLETED + POINTS_FIRST_TRIP }
-                  else { POINTS_TRIP_COMPLETED };
-        self.credit(user_id, pts, "trip_completed", Some(reservation_id),
-            Some("Points gagnés pour trajet terminé")).await?;
+        let pts = if trip_count == 0 {
+            POINTS_TRIP_COMPLETED + POINTS_FIRST_TRIP
+        } else {
+            POINTS_TRIP_COMPLETED
+        };
+        self.credit(
+            user_id,
+            pts,
+            "trip_completed",
+            Some(reservation_id),
+            Some("Points gagnés pour trajet terminé"),
+        )
+        .await?;
         Ok(())
     }
 }

@@ -415,6 +415,9 @@ pub fn delivery_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/courier/{id}/assets", post(upsert_courier_asset))
         .route("/api/delivery/{id}/assign-courier", post(assign_courier)) // ✅ Phase 9 - Amélioration 28
         .route("/api/couriers/available", get(list_available_couriers)) // ✅ Phase 9 - Amélioration 28
+        // ✅ NOUVEAU : Stats et historique coursier
+        .route("/api/delivery/courier/stats", get(get_courier_stats))
+        .route("/api/delivery/courier/history", get(get_courier_history))
         // ✅ NOUVEAU : Routes pour gestion de stock
         .route(
             "/api/delivery/stock/{config_id}",
@@ -2326,6 +2329,141 @@ async fn get_frontend_recipient_updates(
     let limit = query.limit.unwrap_or(20).clamp(1, 100);
     let updates = service.list_frontend_recipient_updates(delivery_id, user.id, limit).await?;
     Ok(Json(json!({ "updates": updates })))
+}
+
+/// GET /api/delivery/courier/stats - Statistiques complètes du coursier connecté
+async fn get_courier_stats(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    let courier_opt = service.repository().find_courier_by_user(user.id).await?;
+    let courier = match courier_opt {
+        Some(c) => c,
+        None => {
+            return Ok(Json(json!({
+                "success": true,
+                "data": {
+                    "totalDeliveries": 0,
+                    "completedDeliveries": 0,
+                    "cancelledDeliveries": 0,
+                    "successRate": 0.0,
+                    "totalEarningsCents": 0,
+                    "thisMonthEarningsCents": 0,
+                    "averageRating": 0.0,
+                    "ratingCount": 0,
+                    "is_courier": false
+                }
+            })));
+        }
+    };
+
+    #[derive(sqlx::FromRow)]
+    struct DeliveryStats {
+        total: i64,
+        completed: i64,
+        cancelled: i64,
+    }
+    let stats = sqlx::query_as::<_, DeliveryStats>(
+        r#"
+        SELECT
+            COUNT(*) FILTER (WHERE status IN ('completed', 'delivered', 'cancelled')) AS total,
+            COUNT(*) FILTER (WHERE status IN ('completed', 'delivered')) AS completed,
+            COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled
+        FROM deliveries
+        WHERE courier_id = $1
+        "#,
+    )
+    .bind(courier.id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur stats livraisons: {}", e)))?;
+
+    // Gains totaux nets (crédits coursier depuis wallet_transactions)
+    let total_earnings: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COALESCE(SUM(amount_cents), 0)
+        FROM wallet_transactions
+        WHERE user_id = $1
+          AND transaction_type IN ('credit_delivery_payout', 'credit_livre_payout', 'payout_delivery')
+          AND direction = 'credit'
+        "#,
+    )
+    .bind(user.id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0i64);
+
+    // Gains ce mois-ci
+    let this_month_earnings: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COALESCE(SUM(amount_cents), 0)
+        FROM wallet_transactions
+        WHERE user_id = $1
+          AND transaction_type IN ('credit_delivery_payout', 'credit_livre_payout', 'payout_delivery')
+          AND direction = 'credit'
+          AND created_at >= date_trunc('month', NOW())
+        "#,
+    )
+    .bind(user.id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0i64);
+
+    let success_rate = if stats.total > 0 {
+        (stats.completed as f64 / stats.total as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    let rating_avg = num_traits::ToPrimitive::to_f64(&courier.rating_average).unwrap_or(0.0);
+
+    Ok(Json(json!({
+        "success": true,
+        "data": {
+            "totalDeliveries": stats.total,
+            "completedDeliveries": stats.completed,
+            "cancelledDeliveries": stats.cancelled,
+            "successRate": (success_rate * 10.0).round() / 10.0,
+            "totalEarningsCents": total_earnings,
+            "thisMonthEarningsCents": this_month_earnings,
+            "averageRating": (rating_avg * 10.0).round() / 10.0,
+            "ratingCount": courier.rating_count,
+            "is_courier": true,
+            "courier_status": format!("{:?}", courier.status)
+        }
+    })))
+}
+
+/// GET /api/delivery/courier/history - Historique des livraisons terminées du coursier
+async fn get_courier_history(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> AppResult<Json<Value>> {
+    let service = delivery_service(&state)?;
+    let courier_opt = service.repository().find_courier_by_user(user.id).await?;
+    let courier = match courier_opt {
+        Some(c) => c,
+        None => {
+            return Ok(Json(
+                json!({ "success": true, "data": { "deliveries": [] } }),
+            ));
+        }
+    };
+
+    let limit: i64 = params.get("limit").and_then(|v| v.parse().ok()).unwrap_or(50).min(200);
+    let offset: i64 = params.get("offset").and_then(|v| v.parse().ok()).unwrap_or(0);
+
+    let deliveries = service
+        .repository()
+        .get_courier_completed_deliveries(courier.id, limit, offset)
+        .await?;
+
+    Ok(Json(json!({
+        "success": true,
+        "data": { "deliveries": deliveries }
+    })))
 }
 
 async fn debit_wallet_for_delivery(

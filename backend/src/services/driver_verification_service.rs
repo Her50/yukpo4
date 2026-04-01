@@ -1,6 +1,6 @@
 // ✅ Service KYC vérification conducteur — CNI + selfie
-use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SubmitVerificationRequest {
@@ -25,12 +25,20 @@ pub struct VerificationStatus {
     pub is_complete: bool,
 }
 
-pub struct DriverVerificationService { pool: PgPool }
+pub struct DriverVerificationService {
+    pool: PgPool,
+}
 
 impl DriverVerificationService {
-    pub fn new(pool: PgPool) -> Self { Self { pool } }
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
 
-    pub async fn submit(&self, user_id: i32, req: SubmitVerificationRequest) -> Result<VerificationStatus, String> {
+    pub async fn submit(
+        &self,
+        user_id: i32,
+        req: SubmitVerificationRequest,
+    ) -> Result<VerificationStatus, String> {
         let stype = req.service_type.to_lowercase();
         if stype != "taxi" && stype != "covoiturage" {
             return Err("service_type doit être 'taxi' ou 'covoiturage'.".to_string());
@@ -53,9 +61,8 @@ impl DriverVerificationService {
         ).fetch_one(&self.pool).await.map_err(|e| format!("DB: {}", e))?;
 
         // Auto-approve si les 3 documents sont fournis (prod: reviewer humain)
-        let is_complete = row.cni_front_url.is_some()
-            && row.cni_back_url.is_some()
-            && row.selfie_url.is_some();
+        let is_complete =
+            row.cni_front_url.is_some() && row.cni_back_url.is_some() && row.selfie_url.is_some();
         if is_complete {
             let _ = sqlx::query!(
                 "UPDATE driver_verifications SET status='under_review' WHERE id=$1 AND status='pending'",
@@ -64,10 +71,17 @@ impl DriverVerificationService {
         }
 
         Ok(VerificationStatus {
-            id: row.id, user_id, service_type: stype,
-            cni_front_url: row.cni_front_url, cni_back_url: row.cni_back_url,
+            id: row.id,
+            user_id,
+            service_type: stype,
+            cni_front_url: row.cni_front_url,
+            cni_back_url: row.cni_back_url,
             selfie_url: row.selfie_url,
-            status: if is_complete { "under_review".to_string() } else { row.status },
+            status: if is_complete {
+                "under_review".to_string()
+            } else {
+                row.status
+            },
             rejection_reason: row.rejection_reason,
             submitted_at: row.submitted_at.to_rfc3339(),
             reviewed_at: row.reviewed_at.map(|t| t.to_rfc3339()),
@@ -75,20 +89,34 @@ impl DriverVerificationService {
         })
     }
 
-    pub async fn get_status(&self, user_id: i32, service_type: &str) -> Result<Option<VerificationStatus>, String> {
+    pub async fn get_status(
+        &self,
+        user_id: i32,
+        service_type: &str,
+    ) -> Result<Option<VerificationStatus>, String> {
         let row = sqlx::query!(
             r#"SELECT id, service_type, cni_front_url, cni_back_url, selfie_url,
                status, rejection_reason, submitted_at, reviewed_at
                FROM driver_verifications WHERE user_id=$1 AND service_type=$2"#,
-            user_id, service_type,
-        ).fetch_optional(&self.pool).await.map_err(|e| e.to_string())?;
+            user_id,
+            service_type,
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| e.to_string())?;
 
         Ok(row.map(|r| {
-            let is_complete = r.cni_front_url.is_some() && r.cni_back_url.is_some() && r.selfie_url.is_some();
+            let is_complete =
+                r.cni_front_url.is_some() && r.cni_back_url.is_some() && r.selfie_url.is_some();
             VerificationStatus {
-                id: r.id, user_id, service_type: r.service_type,
-                cni_front_url: r.cni_front_url, cni_back_url: r.cni_back_url, selfie_url: r.selfie_url,
-                status: r.status, rejection_reason: r.rejection_reason,
+                id: r.id,
+                user_id,
+                service_type: r.service_type,
+                cni_front_url: r.cni_front_url,
+                cni_back_url: r.cni_back_url,
+                selfie_url: r.selfie_url,
+                status: r.status,
+                rejection_reason: r.rejection_reason,
                 submitted_at: r.submitted_at.to_rfc3339(),
                 reviewed_at: r.reviewed_at.map(|t| t.to_rfc3339()),
                 is_complete,
@@ -105,7 +133,12 @@ impl DriverVerificationService {
         Ok(())
     }
 
-    pub async fn reject(&self, verif_id: i64, reviewer_id: i32, reason: &str) -> Result<(), String> {
+    pub async fn reject(
+        &self,
+        verif_id: i64,
+        reviewer_id: i32,
+        reason: &str,
+    ) -> Result<(), String> {
         sqlx::query!(
             "UPDATE driver_verifications SET status='rejected', reviewed_by=$1, reviewed_at=NOW(), rejection_reason=$2 WHERE id=$3",
             reviewer_id, reason, verif_id,

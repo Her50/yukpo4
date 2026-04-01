@@ -229,14 +229,16 @@ async fn create_negotiated_price(
 
     // ✅ Notifier le prestataire de la nouvelle offre de négociation
     let sender_name_row = sqlx::query(
-        "SELECT COALESCE(nom_complet, email, 'Client') as display_name FROM users WHERE id = $1"
+        "SELECT COALESCE(nom_complet, email, 'Client') as display_name FROM users WHERE id = $1",
     )
     .bind(user.id)
     .fetch_optional(&state.pg)
     .await;
 
     let sender_name = match sender_name_row {
-        Ok(Some(r)) => r.try_get::<String, _>("display_name").unwrap_or_else(|_| "Client".to_string()),
+        Ok(Some(r)) => {
+            r.try_get::<String, _>("display_name").unwrap_or_else(|_| "Client".to_string())
+        }
         _ => "Client".to_string(),
     };
 
@@ -247,7 +249,10 @@ async fn create_negotiated_price(
         &state.pg,
         merchant_user_id,
         format!("💰 Offre de prix de {}", sender_name),
-        format!("{} XAF au lieu de {} XAF — Acceptez ou refusez dans le chat", negotiated_xaf, original_xaf),
+        format!(
+            "{} XAF au lieu de {} XAF — Acceptez ou refusez dans le chat",
+            negotiated_xaf, original_xaf
+        ),
         Some(serde_json::json!({
             "type": "price_negotiation",
             "offer_id": id,

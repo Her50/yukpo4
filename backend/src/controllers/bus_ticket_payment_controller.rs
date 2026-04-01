@@ -298,17 +298,18 @@ pub async fn process_ticket_payment(
     });
     let qr_signature = compute_qr_hmac(&payment_id, &payload.product_id, user_id, &qr_secret);
 
-    sqlx::query(
-        "UPDATE bus_ticket_payments SET qr_hmac_signature = $1 WHERE id = $2",
-    )
-    .bind(&qr_signature)
-    .bind(&payment_id)
-    .execute(&state.pg)
-    .await
-    .map_err(|e| {
-        error!("[process_ticket_payment] Erreur stockage signature QR: {}", e);
-        AppError::Internal(format!("Erreur stockage signature QR: {}", e))
-    })?;
+    sqlx::query("UPDATE bus_ticket_payments SET qr_hmac_signature = $1 WHERE id = $2")
+        .bind(&qr_signature)
+        .bind(&payment_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| {
+            error!(
+                "[process_ticket_payment] Erreur stockage signature QR: {}",
+                e
+            );
+            AppError::Internal(format!("Erreur stockage signature QR: {}", e))
+        })?;
 
     // Pour l'instant, ticket_pdf_url est généré côté mobile avec la signature incluse
     let ticket_pdf_url: Option<String> = None;
@@ -354,20 +355,23 @@ pub async fn process_ticket_payment(
     };
 
     // Inclure la signature QR dans la réponse pour que le mobile l'intègre au QR code
-    Ok((StatusCode::OK, Json(json!({
-        "success":          response.success,
-        "payment_id":       response.payment_id,
-        "subtotal":         response.subtotal,
-        "yukpo_commission": response.yukpo_commission,
-        "agency_payout":    response.agency_payout,
-        "total_amount":     response.total_amount,
-        "booking_fee":      response.booking_fee,
-        "payout_status":    response.payout_status,
-        "ticket_pdf_url":   response.ticket_pdf_url,
-        "qr_signature":     qr_signature,  // Signature à intégrer dans le QR JSON
-        "product_id":       payload.product_id,
-        "user_id":          user_id
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success":          response.success,
+            "payment_id":       response.payment_id,
+            "subtotal":         response.subtotal,
+            "yukpo_commission": response.yukpo_commission,
+            "agency_payout":    response.agency_payout,
+            "total_amount":     response.total_amount,
+            "booking_fee":      response.booking_fee,
+            "payout_status":    response.payout_status,
+            "ticket_pdf_url":   response.ticket_pdf_url,
+            "qr_signature":     qr_signature,  // Signature à intégrer dans le QR JSON
+            "product_id":       payload.product_id,
+            "user_id":          user_id
+        })),
+    ))
 }
 
 // ============================================================================

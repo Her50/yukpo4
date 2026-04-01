@@ -8886,7 +8886,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ 2026-03-31 : Liaison forte horaires -> modèle bus (bus_model_id)
     match ensure_agency_schedule_bus_model_link(pool).await {
         Ok(_) => info!("✅ Migration auto: agency schedule bus_model link OK"),
-        Err(e) => error!("❌ Erreur migration auto agency schedule bus_model link: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto agency schedule bus_model link: {}",
+            e
+        ),
     }
 
     // ✅ 2025-11-27 : Colonnes return_date et return_time dans bus_ticket_payments
@@ -9267,7 +9270,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     // ✅ 2026-04-01 : Fix types UUID→INTEGER librairie network (idempotent)
     match ensure_librairie_network_types_fix(pool).await {
         Ok(_) => info!("✅ Migration auto: fix_librairie_network_types OK"),
-        Err(e) => error!("❌ Erreur migration auto fix_librairie_network_types: {}", e),
+        Err(e) => error!(
+            "❌ Erreur migration auto fix_librairie_network_types: {}",
+            e
+        ),
     }
 
     // ✅ 2026-04-01 : Super librairie YukpoLibrairie — colonnes, enum, audit, bootstrap
@@ -21506,14 +21512,20 @@ pub async fn ensure_ecommerce_platform_tables(pool: &PgPool) -> Result<(), sqlx:
     if already_applied {
         // Appliquer seulement les colonnes manquantes sur service_products
         let _ = sqlx::query(
-            "ALTER TABLE service_products ADD COLUMN IF NOT EXISTS platform_integration_id INTEGER"
-        ).execute(pool).await;
+            "ALTER TABLE service_products ADD COLUMN IF NOT EXISTS platform_integration_id INTEGER",
+        )
+        .execute(pool)
+        .await;
         let _ = sqlx::query(
-            "ALTER TABLE service_products ADD COLUMN IF NOT EXISTS external_product_id TEXT"
-        ).execute(pool).await;
+            "ALTER TABLE service_products ADD COLUMN IF NOT EXISTS external_product_id TEXT",
+        )
+        .execute(pool)
+        .await;
         let _ = sqlx::query(
-            "ALTER TABLE service_products ADD COLUMN IF NOT EXISTS store_category VARCHAR(50)"
-        ).execute(pool).await;
+            "ALTER TABLE service_products ADD COLUMN IF NOT EXISTS store_category VARCHAR(50)",
+        )
+        .execute(pool)
+        .await;
         info!("✅ Tables e-commerce déjà présentes (skip migration, colonnes ALTER IF NOT EXISTS appliquées)");
         return Ok(());
     }
@@ -21527,8 +21539,7 @@ pub async fn ensure_ecommerce_platform_tables(pool: &PgPool) -> Result<(), sqlx:
 
 /// ✅ 2026-04-01 : Fix types UUID→INTEGER dans commande_livres_occasion / librairie_partners / commandes_mixtes
 pub async fn ensure_librairie_network_types_fix(pool: &PgPool) -> Result<(), sqlx::Error> {
-    let migration_sql =
-        include_str!("../../migrations/20260401_fix_librairie_network_types.sql");
+    let migration_sql = include_str!("../../migrations/20260401_fix_librairie_network_types.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
     Ok(())
 }
@@ -21594,8 +21605,7 @@ pub async fn ensure_super_librairie_tables(pool: &PgPool) -> Result<(), sqlx::Er
         return Ok(());
     }
 
-    let migration_sql =
-        include_str!("../../migrations/20260401_yukpolibrairie_super_libraire.sql");
+    let migration_sql = include_str!("../../migrations/20260401_yukpolibrairie_super_libraire.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Tables super librairie créées et YukpoLibrairie bootstrappé");
     Ok(())
@@ -21615,8 +21625,7 @@ pub async fn ensure_commission_rate_fix(pool: &PgPool) -> Result<(), sqlx::Error
         return Ok(());
     }
 
-    let migration_sql =
-        include_str!("../../migrations/20260401_fix_commission_rate.sql");
+    let migration_sql = include_str!("../../migrations/20260401_fix_commission_rate.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Taux commission bourse livre harmonisé à 5%");
     Ok(())
@@ -21662,8 +21671,7 @@ pub async fn ensure_restaurant_tables(pool: &PgPool) -> Result<(), sqlx::Error> 
 ///   - restaurant_menu_items.nom / description
 ///   - services.data->>'nom' / data->>'description' / category / specialized_type / gps
 pub async fn ensure_universal_search_indexes(pool: &PgPool) -> Result<(), sqlx::Error> {
-    let migration_sql =
-        include_str!("../../migrations/20260401_universal_search_indexes.sql");
+    let migration_sql = include_str!("../../migrations/20260401_universal_search_indexes.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Index trigram recherche universelle appliqués");
     Ok(())

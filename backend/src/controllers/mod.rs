@@ -6,6 +6,7 @@ pub mod async_upload_controller; // ✅ NOUVEAU 2025-01-27: Contrôleur pour upl
 pub mod audio_library_controller;
 pub mod auth_controller;
 pub mod echange_controller;
+pub mod ecommerce_platform_controller; // ✅ 2026-04-01: Contrôleur e-commerce universel (toutes plateformes, intégrations partenaires)
 pub mod ia_controller;
 pub mod ia_status_controller;
 pub mod interaction_controller;
@@ -15,9 +16,8 @@ pub mod prestataire_controller;
 pub mod service_controller;
 pub mod stock_media_controller; // ✅ NOUVEAU Phase 2: Controller pour Stock Media Integration
 pub mod supermarket_controller; // ✅ NOUVEAU: Contrôleur supermarché dédié (produits, comparaison, promotions)
-pub mod ecommerce_platform_controller; // ✅ 2026-04-01: Contrôleur e-commerce universel (toutes plateformes, intégrations partenaires)
-pub mod universal_search_controller;   // ✅ 2026-04-01: Recherche universelle cross-services (produits, menus, services spécialisés)
 pub mod token_pack_controller;
+pub mod universal_search_controller; // ✅ 2026-04-01: Recherche universelle cross-services (produits, menus, services spécialisés)
 pub mod upload_controller; // ✅ NOUVEAU: Contrôleur pour upload préalable de fichiers
 pub mod user_controller;
 // pub mod fournitures_controller;

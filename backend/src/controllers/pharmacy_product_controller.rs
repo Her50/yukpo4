@@ -458,7 +458,9 @@ pub async fn sync_products_from_external_api(
     }
 
     let mut req = reqwest::Client::new().get(payload.api_url.trim());
-    if let Some(token) = payload.auth_bearer_token.as_ref().map(|v| v.trim()).filter(|v| !v.is_empty()) {
+    if let Some(token) =
+        payload.auth_bearer_token.as_ref().map(|v| v.trim()).filter(|v| !v.is_empty())
+    {
         req = req.bearer_auth(token);
     }
     if let Some(headers) = &payload.headers {
@@ -484,9 +486,11 @@ pub async fn sync_products_from_external_api(
         .filter(|v| !v.is_empty())
         .unwrap_or("items");
     let items_value = extract_by_path(&upstream_json, items_path).unwrap_or(&upstream_json);
-    let items = items_value
-        .as_array()
-        .ok_or_else(|| AppError::BadRequest("Impossible de trouver la liste de produits dans la réponse API".to_string()))?;
+    let items = items_value.as_array().ok_or_else(|| {
+        AppError::BadRequest(
+            "Impossible de trouver la liste de produits dans la réponse API".to_string(),
+        )
+    })?;
 
     let mapping = payload.field_mapping.unwrap_or_default();
     let name_key = mapping.get("nom_produit").cloned().unwrap_or_else(|| "nom_produit".to_string());
@@ -495,7 +499,8 @@ pub async fn sync_products_from_external_api(
     let unit_key = mapping.get("unite").cloned().unwrap_or_else(|| "unite".to_string());
     let code_key = mapping.get("code_barre").cloned().unwrap_or_else(|| "code_barre".to_string());
     let category_key = mapping.get("categorie").cloned().unwrap_or_else(|| "categorie".to_string());
-    let description_key = mapping.get("description").cloned().unwrap_or_else(|| "description".to_string());
+    let description_key =
+        mapping.get("description").cloned().unwrap_or_else(|| "description".to_string());
 
     let service = Service::new(Arc::new(state.pg.clone()));
     let overwrite = payload.overwrite_existing.unwrap_or(false);
@@ -524,7 +529,10 @@ pub async fn sync_products_from_external_api(
 
         let price_dec = obj
             .get(&price_key)
-            .and_then(|v| v.as_f64().or_else(|| v.as_str().and_then(|s| s.replace(',', ".").parse::<f64>().ok())))
+            .and_then(|v| {
+                v.as_f64()
+                    .or_else(|| v.as_str().and_then(|s| s.replace(',', ".").parse::<f64>().ok()))
+            })
             .and_then(Decimal::from_f64_retain)
             .unwrap_or(Decimal::ZERO);
         let stock = obj
@@ -539,8 +547,10 @@ pub async fn sync_products_from_external_api(
             .filter(|v| !v.is_empty())
             .unwrap_or_else(|| "unité".to_string());
         let code_barre = obj.get(&code_key).and_then(|v| v.as_str()).map(|v| v.trim().to_string());
-        let categorie = obj.get(&category_key).and_then(|v| v.as_str()).map(|v| v.trim().to_string());
-        let description = obj.get(&description_key).and_then(|v| v.as_str()).map(|v| v.trim().to_string());
+        let categorie =
+            obj.get(&category_key).and_then(|v| v.as_str()).map(|v| v.trim().to_string());
+        let description =
+            obj.get(&description_key).and_then(|v| v.as_str()).map(|v| v.trim().to_string());
 
         match service
             .bulk_import_product(
@@ -733,7 +743,9 @@ pub async fn get_partner_orders(
         })
     }).collect();
 
-    Ok(Json(json!({ "success": true, "orders": orders, "page": page, "limit": limit })))
+    Ok(Json(
+        json!({ "success": true, "orders": orders, "page": page, "limit": limit }),
+    ))
 }
 
 #[derive(Debug, Deserialize)]

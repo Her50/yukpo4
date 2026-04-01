@@ -46,8 +46,8 @@ async fn get_qr_secret(pg: &sqlx::PgPool) -> String {
 /// Payload signé : "payment_id:product_id:user_id"
 pub fn compute_qr_hmac(payment_id: &str, product_id: &str, user_id: i32, secret: &str) -> String {
     let payload = format!("{}:{}:{}", payment_id, product_id, user_id);
-    let mut mac =
-        HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC accepte n'importe quelle taille");
+    let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
+        .expect("HMAC accepte n'importe quelle taille");
     mac.update(payload.as_bytes());
     let result = mac.finalize();
     hex::encode(result.into_bytes())
@@ -57,11 +57,7 @@ pub fn compute_qr_hmac(payment_id: &str, product_id: &str, user_id: i32, secret:
 /// Retourne (is_valid, is_legacy) :
 ///   - is_valid=true  : signature correcte OU ticket legacy sans signature en BDD
 ///   - is_legacy=true : ticket créé avant l'introduction des signatures (compat)
-async fn verify_qr_signature(
-    pg: &sqlx::PgPool,
-    qr_data: &Value,
-    secret: &str,
-) -> (bool, bool) {
+async fn verify_qr_signature(pg: &sqlx::PgPool, qr_data: &Value, secret: &str) -> (bool, bool) {
     let sig = qr_data.get("sig").and_then(|v| v.as_str());
     let payment_id = qr_data.get("payment_id").and_then(|v| v.as_str());
     let product_id = qr_data.get("product_id").and_then(|v| v.as_str());
@@ -184,7 +180,8 @@ pub async fn validate_ticket_qr(
 
     // ── Vérification HMAC-SHA256 avant tout accès BDD ────────────────────────
     let secret = get_qr_secret(&state.pg).await;
-    let (sig_valid, is_legacy) = verify_qr_signature(&state.pg, &payload.qr_code_data, &secret).await;
+    let (sig_valid, is_legacy) =
+        verify_qr_signature(&state.pg, &payload.qr_code_data, &secret).await;
 
     if !sig_valid {
         return Ok((

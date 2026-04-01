@@ -488,7 +488,7 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/reservations/{id}/share",
             post(specialized_services_controller::create_trip_share)
-            .delete(specialized_services_controller::revoke_trip_share),
+                .delete(specialized_services_controller::revoke_trip_share),
         )
         .route(
             "/api/covoiturages/recurring/activate",

@@ -101,9 +101,9 @@ pub struct TestConnectionRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct SyncOptions {
-    pub force_full: Option<bool>,    // Forcer un re-sync complet
-    pub dry_run: Option<bool>,       // Tester sans insérer
-    pub max_products: Option<i32>,   // Limiter le nombre de produits
+    pub force_full: Option<bool>,  // Forcer un re-sync complet
+    pub dry_run: Option<bool>,     // Tester sans insérer
+    pub max_products: Option<i32>, // Limiter le nombre de produits
 }
 
 #[derive(Debug, Deserialize)]
@@ -145,9 +145,7 @@ pub struct LogsQuery {
 
 /// GET /api/ecommerce/platforms
 /// Liste publique de tous les types de plateformes supportées par Yukpo
-pub async fn list_platforms(
-    State(state): State<Arc<AppState>>,
-) -> AppResult<impl IntoResponse> {
+pub async fn list_platforms(State(state): State<Arc<AppState>>) -> AppResult<impl IntoResponse> {
     let rows = sqlx::query(
         r#"
         SELECT slug, name, store_category, logo_url, auth_type,
@@ -180,11 +178,14 @@ pub async fn list_platforms(
         })
         .collect();
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "platforms": platforms,
-        "total": platforms.len()
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "platforms": platforms,
+            "total": platforms.len()
+        })),
+    ))
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -197,7 +198,10 @@ pub async fn test_connection(
     Extension(_user): Extension<AuthenticatedUser>,
     Json(payload): Json<TestConnectionRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[ecommerce/test-connection] platform={}, url={}", payload.platform_slug, payload.api_url);
+    info!(
+        "[ecommerce/test-connection] platform={}, url={}",
+        payload.platform_slug, payload.api_url
+    );
 
     // Récupérer les defaults de la plateforme
     let platform_defaults = sqlx::query(
@@ -208,9 +212,13 @@ pub async fn test_connection(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
-    let items_path = payload.items_path.clone()
+    let items_path = payload
+        .items_path
+        .clone()
         .or_else(|| {
-            platform_defaults.as_ref().and_then(|r| r.try_get::<Option<String>, _>("default_items_path").ok().flatten())
+            platform_defaults
+                .as_ref()
+                .and_then(|r| r.try_get::<Option<String>, _>("default_items_path").ok().flatten())
         })
         .unwrap_or_else(|| "items".to_string());
 
@@ -227,8 +235,15 @@ pub async fn test_connection(
         .map_err(|e| AppError::Internal(format!("Erreur client HTTP: {}", e)))?
         .get(&full_url);
 
-    req = apply_auth(req, &payload.auth_type, &payload.api_key, &payload.api_secret,
-                     &payload.bearer_token, &payload.basic_auth_user, &payload.basic_auth_pass);
+    req = apply_auth(
+        req,
+        &payload.auth_type,
+        &payload.api_key,
+        &payload.api_secret,
+        &payload.bearer_token,
+        &payload.basic_auth_user,
+        &payload.basic_auth_pass,
+    );
 
     if let Some(headers) = &payload.extra_headers {
         for (k, v) in headers {
@@ -242,12 +257,15 @@ pub async fn test_connection(
         Ok(resp) => {
             let status_code = resp.status().as_u16();
             if !resp.status().is_success() {
-                return Ok((StatusCode::OK, Json(json!({
-                    "success": false,
-                    "reachable": true,
-                    "http_status": status_code,
-                    "error": format!("L'API a répondu avec le code {}", status_code)
-                }))));
+                return Ok((
+                    StatusCode::OK,
+                    Json(json!({
+                        "success": false,
+                        "reachable": true,
+                        "http_status": status_code,
+                        "error": format!("L'API a répondu avec le code {}", status_code)
+                    })),
+                ));
             }
 
             let body: Value = resp.json().await.unwrap_or(json!({}));
@@ -264,22 +282,26 @@ pub async fn test_connection(
                 .map(|obj| obj.keys().cloned().collect())
                 .unwrap_or_default();
 
-            Ok((StatusCode::OK, Json(json!({
-                "success": true,
-                "reachable": true,
-                "http_status": status_code,
-                "products_found": product_count,
-                "sample_fields": sample_fields,
-                "message": format!("Connexion réussie. {} produit(s) détecté(s) au premier appel.", product_count)
-            }))))
+            Ok((
+                StatusCode::OK,
+                Json(json!({
+                    "success": true,
+                    "reachable": true,
+                    "http_status": status_code,
+                    "products_found": product_count,
+                    "sample_fields": sample_fields,
+                    "message": format!("Connexion réussie. {} produit(s) détecté(s) au premier appel.", product_count)
+                })),
+            ))
         }
-        Err(e) => {
-            Ok((StatusCode::OK, Json(json!({
+        Err(e) => Ok((
+            StatusCode::OK,
+            Json(json!({
                 "success": false,
                 "reachable": false,
                 "error": format!("Impossible de joindre l'API: {}", e)
-            }))))
-        }
+            })),
+        )),
     }
 }
 
@@ -293,25 +315,29 @@ pub async fn create_integration(
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateIntegrationRequest>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[ecommerce/create-integration] user_id={}, service_id={}, platform={}", user.id, payload.service_id, payload.platform_slug);
+    info!(
+        "[ecommerce/create-integration] user_id={}, service_id={}, platform={}",
+        user.id, payload.service_id, payload.platform_slug
+    );
 
     // Vérifier propriété du service
-    let is_owner: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM services WHERE id = $1 AND user_id = $2)"
-    )
-    .bind(payload.service_id)
-    .bind(user.id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
+    let is_owner: bool =
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM services WHERE id = $1 AND user_id = $2)")
+            .bind(payload.service_id)
+            .bind(user.id)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
 
     if !is_owner {
-        return Err(AppError::Forbidden("Vous n'êtes pas propriétaire de ce service".to_string()));
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de ce service".to_string(),
+        ));
     }
 
     // Vérifier que la plateforme existe
     let platform_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM ecommerce_platforms WHERE slug = $1 AND is_active = true)"
+        "SELECT EXISTS (SELECT 1 FROM ecommerce_platforms WHERE slug = $1 AND is_active = true)",
     )
     .bind(&payload.platform_slug)
     .fetch_one(&state.pg)
@@ -319,16 +345,21 @@ pub async fn create_integration(
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
     if !platform_exists {
-        return Err(AppError::BadRequest(format!("Plateforme '{}' non supportée", payload.platform_slug)));
+        return Err(AppError::BadRequest(format!(
+            "Plateforme '{}' non supportée",
+            payload.platform_slug
+        )));
     }
 
     let auth_type = payload.auth_type.as_deref().unwrap_or("api_key");
     let sync_schedule = payload.sync_schedule.as_deref().unwrap_or("manual");
-    let field_mapping = payload.field_mapping
+    let field_mapping = payload
+        .field_mapping
         .as_ref()
         .map(|m| serde_json::to_value(m).unwrap_or(json!({})))
         .unwrap_or(json!({}));
-    let extra_headers = payload.extra_headers
+    let extra_headers = payload
+        .extra_headers
         .as_ref()
         .map(|h| serde_json::to_value(h).unwrap_or(json!({})))
         .unwrap_or(json!({}));
@@ -374,7 +405,9 @@ pub async fn create_integration(
     .await
     .map_err(|e| {
         if e.to_string().contains("unique") || e.to_string().contains("duplicate") {
-            AppError::BadRequest("Une intégration avec cette URL existe déjà pour ce service".to_string())
+            AppError::BadRequest(
+                "Une intégration avec cette URL existe déjà pour ce service".to_string(),
+            )
         } else {
             AppError::Internal(format!("Erreur création intégration: {}", e))
         }
@@ -382,13 +415,16 @@ pub async fn create_integration(
 
     let integration_id: i32 = row.get("id");
 
-    Ok((StatusCode::CREATED, Json(json!({
-        "success": true,
-        "integration_id": integration_id,
-        "webhook_url": webhook_url,
-        "webhook_secret": webhook_secret,
-        "message": "Intégration créée. Lancez une synchronisation pour importer vos produits."
-    }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "integration_id": integration_id,
+            "webhook_url": webhook_url,
+            "webhook_secret": webhook_secret,
+            "message": "Intégration créée. Lancez une synchronisation pour importer vos produits."
+        })),
+    ))
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -448,11 +484,14 @@ pub async fn list_my_integrations(
         })
     }).collect();
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "integrations": integrations,
-        "total": integrations.len()
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "integrations": integrations,
+            "total": integrations.len()
+        })),
+    ))
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -481,10 +520,15 @@ pub async fn delete_integration(
     .unwrap_or(false);
 
     if !deleted {
-        return Err(AppError::NotFound("Intégration introuvable ou accès non autorisé".to_string()));
+        return Err(AppError::NotFound(
+            "Intégration introuvable ou accès non autorisé".to_string(),
+        ));
     }
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "message": "Intégration supprimée" }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "message": "Intégration supprimée" })),
+    ))
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -498,7 +542,10 @@ pub async fn sync_integration(
     Path(integration_id): Path<i32>,
     Json(opts): Json<SyncOptions>,
 ) -> AppResult<impl IntoResponse> {
-    info!("[ecommerce/sync] integration_id={}, user_id={}", integration_id, user.id);
+    info!(
+        "[ecommerce/sync] integration_id={}, user_id={}",
+        integration_id, user.id
+    );
 
     // Charger l'intégration en vérifiant la propriété
     let integration = sqlx::query(
@@ -522,12 +569,15 @@ pub async fn sync_integration(
     .ok_or_else(|| AppError::NotFound("Intégration introuvable".to_string()))?;
 
     if integration.try_get::<String, _>("status").unwrap_or_default() == "paused" {
-        return Err(AppError::BadRequest("Cette intégration est en pause".to_string()));
+        return Err(AppError::BadRequest(
+            "Cette intégration est en pause".to_string(),
+        ));
     }
 
     let service_id: i32 = integration.get("service_id");
     let api_url: String = integration.get("api_url");
-    let auth_type: String = integration.try_get("auth_type").unwrap_or_else(|_| "api_key".to_string());
+    let auth_type: String =
+        integration.try_get("auth_type").unwrap_or_else(|_| "api_key".to_string());
     let api_key: Option<String> = integration.try_get("api_key").ok().flatten();
     let api_secret: Option<String> = integration.try_get("api_secret").ok().flatten();
     let bearer_token: Option<String> = integration.try_get("bearer_token").ok().flatten();
@@ -537,7 +587,10 @@ pub async fn sync_integration(
     let overwrite: bool = integration.try_get("overwrite_on_sync").unwrap_or(true);
 
     // items_path : priorité intégration > default plateforme > "items"
-    let items_path: String = integration.try_get::<Option<String>, _>("items_path").ok().flatten()
+    let items_path: String = integration
+        .try_get::<Option<String>, _>("items_path")
+        .ok()
+        .flatten()
         .or_else(|| integration.try_get::<Option<String>, _>("default_items_path").ok().flatten())
         .unwrap_or_else(|| "items".to_string());
 
@@ -577,7 +630,8 @@ pub async fn sync_integration(
         overwrite,
         max_products,
         dry_run,
-    ).await;
+    )
+    .await;
 
     // Mettre à jour le log et l'intégration
     match &sync_result {
@@ -594,7 +648,8 @@ pub async fn sync_integration(
             .bind(stats.errors)
             .bind(stats.duration_ms)
             .bind(log_id)
-            .execute(&state.pg).await;
+            .execute(&state.pg)
+            .await;
 
             let _ = sqlx::query(
                 r#"UPDATE partner_platform_integrations
@@ -604,19 +659,23 @@ pub async fn sync_integration(
             )
             .bind(stats.created + stats.updated)
             .bind(integration_id)
-            .execute(&state.pg).await;
+            .execute(&state.pg)
+            .await;
 
-            Ok((StatusCode::OK, Json(json!({
-                "success": true,
-                "log_id": log_id,
-                "products_fetched": stats.fetched,
-                "products_created": stats.created,
-                "products_updated": stats.updated,
-                "products_errors": stats.errors,
-                "duration_ms": stats.duration_ms,
-                "dry_run": dry_run,
-                "message": format!("{} produits importés ({} créés, {} mis à jour)", stats.created + stats.updated, stats.created, stats.updated)
-            }))))
+            Ok((
+                StatusCode::OK,
+                Json(json!({
+                    "success": true,
+                    "log_id": log_id,
+                    "products_fetched": stats.fetched,
+                    "products_created": stats.created,
+                    "products_updated": stats.updated,
+                    "products_errors": stats.errors,
+                    "duration_ms": stats.duration_ms,
+                    "dry_run": dry_run,
+                    "message": format!("{} produits importés ({} créés, {} mis à jour)", stats.created + stats.updated, stats.created, stats.updated)
+                })),
+            ))
         }
         Err(e) => {
             let err_msg = e.to_string();
@@ -703,7 +762,10 @@ pub async fn get_sync_logs(
         "error_details": r.try_get::<Value, _>("error_details").unwrap_or(json!([])),
     })).collect();
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "logs": logs, "total": logs.len() }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "logs": logs, "total": logs.len() })),
+    ))
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -806,12 +868,15 @@ pub async fn universal_product_search(
         })
     }).collect();
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "query": q,
-        "products": products,
-        "total": products.len()
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "query": q,
+            "products": products,
+            "total": products.len()
+        })),
+    ))
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -825,7 +890,8 @@ pub async fn list_stores(
 ) -> AppResult<impl IntoResponse> {
     let limit = query.limit.unwrap_or(50).min(200) as i64;
 
-    let store_category_filter = query.store_category
+    let store_category_filter = query
+        .store_category
         .as_deref()
         .filter(|s| !s.is_empty())
         .map(|s| format!("AND ep.store_category = '{}'", s.replace('\'', "''")))
@@ -874,7 +940,10 @@ pub async fn list_stores(
         "products_count": r.try_get::<i32, _>("last_sync_products_count").unwrap_or(0),
     })).collect();
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "stores": stores, "total": stores.len() }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "stores": stores, "total": stores.len() })),
+    ))
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -910,12 +979,18 @@ async fn execute_sync(
 ) -> Result<SyncStats, Box<dyn std::error::Error + Send + Sync>> {
     let start = std::time::Instant::now();
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()?;
+    let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(30)).build()?;
 
     let mut req = client.get(api_url);
-    req = apply_auth(req, &Some(auth_type.to_string()), api_key, api_secret, bearer_token, basic_user, basic_pass);
+    req = apply_auth(
+        req,
+        &Some(auth_type.to_string()),
+        api_key,
+        api_secret,
+        bearer_token,
+        basic_user,
+        basic_pass,
+    );
 
     if let Some(headers) = extra_headers.as_object() {
         for (k, v) in headers {
@@ -937,7 +1012,7 @@ async fn execute_sync(
 
     // Prochain product_index disponible
     let max_index: i32 = sqlx::query_scalar(
-        "SELECT COALESCE(MAX(product_index), 0) FROM service_products WHERE service_id = $1"
+        "SELECT COALESCE(MAX(product_index), 0) FROM service_products WHERE service_id = $1",
     )
     .bind(service_id)
     .fetch_one(&state.pg)
@@ -952,21 +1027,72 @@ async fn execute_sync(
             continue;
         }
 
-        let nom = map_field_str(item, field_mapping, "nom", &["name", "title", "nom", "nom_produit"]);
+        let nom = map_field_str(
+            item,
+            field_mapping,
+            "nom",
+            &["name", "title", "nom", "nom_produit"],
+        );
         if nom.trim().is_empty() {
             errors += 1;
             continue;
         }
 
-        let prix = map_field_f64(item, field_mapping, "prix", &["price", "prix", "price_regular"]);
-        let stock = map_field_i64(item, field_mapping, "stock", &["stock", "quantity", "stock_quantity", "quantite"]).unwrap_or(1);
-        let categorie = map_field_str(item, field_mapping, "categorie", &["category", "categorie", "product_type"]);
-        let marque = map_field_str(item, field_mapping, "marque", &["brand", "marque", "vendor"]);
-        let description = map_field_str(item, field_mapping, "description", &["description", "body_html", "short_description"]);
-        let image_url = map_field_str(item, field_mapping, "image_url", &["image_url", "image", "thumbnail_url"]);
-        let code_barre = map_field_str(item, field_mapping, "code_barre", &["sku", "barcode", "ean", "code_barre", "reference"]);
-        let en_promotion = map_field_bool(item, field_mapping, "en_promotion", &["on_sale", "en_promotion", "is_promotion"]);
-        let prix_promo = map_field_f64(item, field_mapping, "prix_promo", &["sale_price", "prix_promo", "discounted_price"]);
+        let prix = map_field_f64(
+            item,
+            field_mapping,
+            "prix",
+            &["price", "prix", "price_regular"],
+        );
+        let stock = map_field_i64(
+            item,
+            field_mapping,
+            "stock",
+            &["stock", "quantity", "stock_quantity", "quantite"],
+        )
+        .unwrap_or(1);
+        let categorie = map_field_str(
+            item,
+            field_mapping,
+            "categorie",
+            &["category", "categorie", "product_type"],
+        );
+        let marque = map_field_str(
+            item,
+            field_mapping,
+            "marque",
+            &["brand", "marque", "vendor"],
+        );
+        let description = map_field_str(
+            item,
+            field_mapping,
+            "description",
+            &["description", "body_html", "short_description"],
+        );
+        let image_url = map_field_str(
+            item,
+            field_mapping,
+            "image_url",
+            &["image_url", "image", "thumbnail_url"],
+        );
+        let code_barre = map_field_str(
+            item,
+            field_mapping,
+            "code_barre",
+            &["sku", "barcode", "ean", "code_barre", "reference"],
+        );
+        let en_promotion = map_field_bool(
+            item,
+            field_mapping,
+            "en_promotion",
+            &["on_sale", "en_promotion", "is_promotion"],
+        );
+        let prix_promo = map_field_f64(
+            item,
+            field_mapping,
+            "prix_promo",
+            &["sale_price", "prix_promo", "discounted_price"],
+        );
 
         // external_product_id : chercher les champs id
         let ext_id = item.get("id").or_else(|| item.get("product_id")).and_then(|v| {
@@ -1054,7 +1180,13 @@ async fn execute_sync(
     }
 
     let duration_ms = start.elapsed().as_millis() as i32;
-    Ok(SyncStats { fetched, created, updated, errors, duration_ms })
+    Ok(SyncStats {
+        fetched,
+        created,
+        updated,
+        errors,
+        duration_ms,
+    })
 }
 
 fn apply_auth(
@@ -1083,8 +1215,9 @@ fn apply_auth(
                     // WooCommerce style: basic auth avec consumer_key:consumer_secret
                     req = req.basic_auth(key, Some(secret));
                 } else {
-                    req = req.header("X-API-Key", key.as_str())
-                              .header("Authorization", format!("Bearer {}", key));
+                    req = req
+                        .header("X-API-Key", key.as_str())
+                        .header("Authorization", format!("Bearer {}", key));
                 }
             }
         }
@@ -1129,10 +1262,16 @@ fn map_field_str(item: &Value, mapping: &Value, yukpo_key: &str, fallbacks: &[&s
     String::new()
 }
 
-fn map_field_f64(item: &Value, mapping: &Value, yukpo_key: &str, fallbacks: &[&str]) -> Option<f64> {
+fn map_field_f64(
+    item: &Value,
+    mapping: &Value,
+    yukpo_key: &str,
+    fallbacks: &[&str],
+) -> Option<f64> {
     let try_key = |key: &str| -> Option<f64> {
         item.get(key).and_then(|v| {
-            v.as_f64().or_else(|| v.as_str().and_then(|s| s.replace(',', ".").parse::<f64>().ok()))
+            v.as_f64()
+                .or_else(|| v.as_str().and_then(|s| s.replace(',', ".").parse::<f64>().ok()))
         })
     };
     if let Some(mapped_key) = mapping.get(yukpo_key).and_then(|v| v.as_str()) {
@@ -1148,11 +1287,15 @@ fn map_field_f64(item: &Value, mapping: &Value, yukpo_key: &str, fallbacks: &[&s
     None
 }
 
-fn map_field_i64(item: &Value, mapping: &Value, yukpo_key: &str, fallbacks: &[&str]) -> Option<i64> {
+fn map_field_i64(
+    item: &Value,
+    mapping: &Value,
+    yukpo_key: &str,
+    fallbacks: &[&str],
+) -> Option<i64> {
     let try_key = |key: &str| -> Option<i64> {
-        item.get(key).and_then(|v| {
-            v.as_i64().or_else(|| v.as_str().and_then(|s| s.parse::<i64>().ok()))
-        })
+        item.get(key)
+            .and_then(|v| v.as_i64().or_else(|| v.as_str().and_then(|s| s.parse::<i64>().ok())))
     };
     if let Some(mapped_key) = mapping.get(yukpo_key).and_then(|v| v.as_str()) {
         if let Some(val) = try_key(mapped_key) {
@@ -1170,7 +1313,10 @@ fn map_field_i64(item: &Value, mapping: &Value, yukpo_key: &str, fallbacks: &[&s
 fn map_field_bool(item: &Value, mapping: &Value, yukpo_key: &str, fallbacks: &[&str]) -> bool {
     let try_key = |key: &str| -> Option<bool> {
         item.get(key).and_then(|v| {
-            v.as_bool().or_else(|| v.as_str().map(|s| matches!(s.to_lowercase().as_str(), "true" | "1" | "yes" | "oui")))
+            v.as_bool().or_else(|| {
+                v.as_str()
+                    .map(|s| matches!(s.to_lowercase().as_str(), "true" | "1" | "yes" | "oui"))
+            })
         })
     };
     if let Some(mapped_key) = mapping.get(yukpo_key).and_then(|v| v.as_str()) {

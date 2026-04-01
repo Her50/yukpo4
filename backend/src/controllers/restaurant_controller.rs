@@ -4,6 +4,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::middlewares::jwt::AuthenticatedUser;
+use crate::services::push_notification_service;
 use crate::state::AppState;
 use axum::{
     extract::{Extension, Path, Query, State},
@@ -11,14 +12,13 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use crate::services::push_notification_service;
 use chrono::{DateTime, Utc};
 use rand::{distributions::Alphanumeric, Rng};
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
 use std::sync::Arc;
+use uuid::Uuid;
 
 async fn restaurant_service_id_for_user(pool: &sqlx::PgPool, user_id: i32) -> AppResult<i32> {
     let id: Option<i32> = sqlx::query_scalar(
@@ -83,12 +83,13 @@ pub async fn get_overview(
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     let service_id = restaurant_service_id_for_user(&state.pg, user.id).await?;
-    let tables_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM restaurant_tables WHERE service_id = $1 AND is_active = TRUE")
-            .bind(service_id)
-            .fetch_one(&state.pg)
-            .await
-            .unwrap_or(0);
+    let tables_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM restaurant_tables WHERE service_id = $1 AND is_active = TRUE",
+    )
+    .bind(service_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
 
     let pending_res: i64 = sqlx::query_scalar(
         r#"SELECT COUNT(*) FROM specialized_reservations
@@ -114,7 +115,11 @@ pub async fn get_overview(
     .await?;
 
     let (accepts_delivery, accepts_dine_in, default_prep) = if let Some(s) = settings {
-        (s.accepts_delivery, s.accepts_dine_in, s.default_prep_minutes)
+        (
+            s.accepts_delivery,
+            s.accepts_dine_in,
+            s.default_prep_minutes,
+        )
     } else {
         (true, true, None)
     };
@@ -147,7 +152,10 @@ pub async fn list_tables(
     .fetch_all(&state.pg)
     .await?;
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "tables": rows }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "tables": rows })),
+    ))
 }
 
 /// POST /api/restaurant/tables
@@ -187,7 +195,10 @@ pub async fn create_table(
         AppError::Database(e.to_string())
     })?;
 
-    Ok((StatusCode::CREATED, Json(json!({ "success": true, "table": row }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "success": true, "table": row })),
+    ))
 }
 
 /// PATCH /api/restaurant/tables/:id
@@ -285,7 +296,10 @@ pub async fn update_table(
     .await?;
 
     let row = row.ok_or_else(|| AppError::NotFound("Table introuvable".to_string()))?;
-    Ok((StatusCode::OK, Json(json!({ "success": true, "table": row }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "table": row })),
+    ))
 }
 
 /// DELETE /api/restaurant/tables/:id (soft)
@@ -436,9 +450,7 @@ pub async fn create_partner_code(
     .bind(body.label.as_deref())
     .execute(&state.pg)
     .await
-    .map_err(|e| {
-        AppError::Internal(format!("Impossible de créer le code partenaire: {}", e))
-    })?;
+    .map_err(|e| AppError::Internal(format!("Impossible de créer le code partenaire: {}", e)))?;
 
     Ok((
         StatusCode::CREATED,
@@ -548,7 +560,10 @@ pub async fn list_menu_items(
     .fetch_all(&state.pg)
     .await?;
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "items": rows }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "items": rows })),
+    ))
 }
 
 /// POST /api/restaurant/menu
@@ -563,7 +578,7 @@ pub async fn create_menu_item(
         return Err(AppError::BadRequest("nom requis".to_string()));
     }
     let categorie = body.categorie.as_deref().unwrap_or("plat");
-    let days = body.availability_days.unwrap_or_else(|| json!([0,1,2,3,4,5,6]));
+    let days = body.availability_days.unwrap_or_else(|| json!([0, 1, 2, 3, 4, 5, 6]));
     let row: MenuItemRow = sqlx::query_as(
         r#"INSERT INTO restaurant_menu_items
                (service_id, nom, description, prix, categorie, is_disponible, image_url, video_url, availability_days, sort_order)
@@ -584,7 +599,10 @@ pub async fn create_menu_item(
     .fetch_one(&state.pg)
     .await?;
 
-    Ok((StatusCode::CREATED, Json(json!({ "success": true, "item": row }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "success": true, "item": row })),
+    ))
 }
 
 /// PATCH /api/restaurant/menu/:id
@@ -606,15 +624,36 @@ pub async fn update_menu_item(
     .await?;
     let mut cur = row.ok_or_else(|| AppError::NotFound("Plat introuvable".to_string()))?;
 
-    if let Some(v) = body.nom { let t = v.trim().to_string(); if !t.is_empty() { cur.nom = t; } }
-    if let Some(v) = body.description { cur.description = Some(v); }
-    if let Some(v) = body.prix { cur.prix = v; }
-    if let Some(v) = body.categorie { cur.categorie = v; }
-    if let Some(v) = body.is_disponible { cur.is_disponible = v; }
-    if let Some(v) = body.image_url { cur.image_url = Some(v); }
-    if let Some(v) = body.video_url { cur.video_url = Some(v); }
-    if let Some(v) = body.availability_days { cur.availability_days = v; }
-    if let Some(v) = body.sort_order { cur.sort_order = v; }
+    if let Some(v) = body.nom {
+        let t = v.trim().to_string();
+        if !t.is_empty() {
+            cur.nom = t;
+        }
+    }
+    if let Some(v) = body.description {
+        cur.description = Some(v);
+    }
+    if let Some(v) = body.prix {
+        cur.prix = v;
+    }
+    if let Some(v) = body.categorie {
+        cur.categorie = v;
+    }
+    if let Some(v) = body.is_disponible {
+        cur.is_disponible = v;
+    }
+    if let Some(v) = body.image_url {
+        cur.image_url = Some(v);
+    }
+    if let Some(v) = body.video_url {
+        cur.video_url = Some(v);
+    }
+    if let Some(v) = body.availability_days {
+        cur.availability_days = v;
+    }
+    if let Some(v) = body.sort_order {
+        cur.sort_order = v;
+    }
 
     let updated: MenuItemRow = sqlx::query_as(
         r#"UPDATE restaurant_menu_items SET
@@ -638,7 +677,10 @@ pub async fn update_menu_item(
     .fetch_one(&state.pg)
     .await?;
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "item": updated }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "item": updated })),
+    ))
 }
 
 /// DELETE /api/restaurant/menu/:id (soft — désactive le plat)
@@ -712,7 +754,10 @@ pub async fn get_opening_hours(
     .fetch_all(&state.pg)
     .await?;
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "hours": rows }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "hours": rows })),
+    ))
 }
 
 /// PUT /api/restaurant/opening-hours  (upsert complet)
@@ -724,7 +769,10 @@ pub async fn put_opening_hours(
     let service_id = restaurant_service_id_for_user(&state.pg, user.id).await?;
     for h in &body.hours {
         if h.day_of_week < 0 || h.day_of_week > 6 {
-            return Err(AppError::BadRequest(format!("day_of_week invalide: {}", h.day_of_week)));
+            return Err(AppError::BadRequest(format!(
+                "day_of_week invalide: {}",
+                h.day_of_week
+            )));
         }
         sqlx::query(
             r#"INSERT INTO restaurant_opening_hours (service_id, day_of_week, open_time, close_time, is_closed)
@@ -826,7 +874,10 @@ pub async fn list_orders(
         .await?
     };
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "orders": rows }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "orders": rows })),
+    ))
 }
 
 fn map_order_row(r: &sqlx::postgres::PgRow) -> serde_json::Value {
@@ -873,7 +924,9 @@ pub async fn create_order(
             .await?
             .ok_or_else(|| AppError::BadRequest("table_id invalide".to_string()))?
     } else {
-        return Err(AppError::BadRequest("service_id ou table_id requis pour client".to_string()));
+        return Err(AppError::BadRequest(
+            "service_id ou table_id requis pour client".to_string(),
+        ));
     };
 
     let order_type = body.order_type.as_deref().unwrap_or("dine_in");
@@ -911,7 +964,10 @@ pub async fn create_order(
         .await?;
     }
 
-    Ok((StatusCode::CREATED, Json(json!({ "success": true, "order_id": order_id, "total": total }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "success": true, "order_id": order_id, "total": total })),
+    ))
 }
 
 // (voir update_order_status_with_payout ci-dessous — exposé comme update_order_status dans les routes)
@@ -939,7 +995,10 @@ pub async fn public_search(
     let search_type = params.search_type.as_deref().unwrap_or("restaurant");
 
     if q.is_empty() {
-        return Ok((StatusCode::OK, Json(json!({ "success": true, "results": [], "type": search_type }))));
+        return Ok((
+            StatusCode::OK,
+            Json(json!({ "success": true, "results": [], "type": search_type })),
+        ));
     }
 
     let pattern = format!("%{}%", q.to_lowercase());
@@ -983,7 +1042,10 @@ pub async fn public_search(
         .fetch_all(&state.pg)
         .await?;
 
-        Ok((StatusCode::OK, Json(json!({ "success": true, "type": "menu", "results": rows }))))
+        Ok((
+            StatusCode::OK,
+            Json(json!({ "success": true, "type": "menu", "results": rows })),
+        ))
     } else {
         // Recherche par nom/ville/description de restaurant
         let rows = sqlx::query(
@@ -1020,7 +1082,10 @@ pub async fn public_search(
         .fetch_all(&state.pg)
         .await?;
 
-        Ok((StatusCode::OK, Json(json!({ "success": true, "type": "restaurant", "results": rows }))))
+        Ok((
+            StatusCode::OK,
+            Json(json!({ "success": true, "type": "restaurant", "results": rows })),
+        ))
     }
 }
 
@@ -1067,7 +1132,10 @@ pub async fn public_list_restaurants(
     .fetch_all(&state.pg)
     .await?;
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "restaurants": rows }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "restaurants": rows })),
+    ))
 }
 
 #[derive(Debug, Deserialize)]
@@ -1120,12 +1188,15 @@ pub async fn public_get_menu(
     .fetch_all(&state.pg)
     .await?;
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "service_id": service_id,
-        "menu": items,
-        "opening_hours": hours,
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "service_id": service_id,
+            "menu": items,
+            "opening_hours": hours,
+        })),
+    ))
 }
 
 /// POST /api/restaurant/public/:service_id/order  — commande client (auth requise)
@@ -1151,9 +1222,8 @@ pub async fn public_create_order(
 
     // ── 2. Calcul du total repas et commission Yukpo ──────────
     let order_type = body.order_type.as_deref().unwrap_or("takeaway");
-    let total_meal: f64 = body.items.iter()
-        .map(|i| i.item_price * i.quantity.unwrap_or(1) as f64)
-        .sum();
+    let total_meal: f64 =
+        body.items.iter().map(|i| i.item_price * i.quantity.unwrap_or(1) as f64).sum();
     let total_meal_cents = (total_meal * 100.0) as i64;
 
     let commission_rate: f64 = sqlx::query_scalar(
@@ -1190,7 +1260,10 @@ pub async fn public_create_order(
         let insurance_raw = ins_base + total_meal * (ins_rate / 100.0);
         let insurance_fee: f64 = insurance_raw.min(ins_max);
 
-        ((delivery_fee * 100.0).round() as i64, (insurance_fee * 100.0).round() as i64)
+        (
+            (delivery_fee * 100.0).round() as i64,
+            (insurance_fee * 100.0).round() as i64,
+        )
     } else {
         (0i64, 0i64)
     };
@@ -1198,12 +1271,11 @@ pub async fn public_create_order(
     let total_with_fees_cents = total_meal_cents + delivery_fee_cents + insurance_fee_cents;
 
     // ── 4. Vérifier et débiter le wallet client ───────────────
-    let client_balance: Option<i64> = sqlx::query_scalar(
-        "SELECT balance_cents FROM user_wallets WHERE user_id=$1 FOR UPDATE",
-    )
-    .bind(user.id)
-    .fetch_optional(&state.pg)
-    .await?;
+    let client_balance: Option<i64> =
+        sqlx::query_scalar("SELECT balance_cents FROM user_wallets WHERE user_id=$1 FOR UPDATE")
+            .bind(user.id)
+            .fetch_optional(&state.pg)
+            .await?;
 
     let payment_status;
     let payment_method;
@@ -1254,8 +1326,7 @@ pub async fn public_create_order(
     }
 
     // ── 5. Créer la commande restaurant ─────────────────────
-    let delivery_addr = body.delivery_address.as_deref()
-        .or(body.notes.as_deref()); // compat: notes utilisées comme adresse si delivery_address absent
+    let delivery_addr = body.delivery_address.as_deref().or(body.notes.as_deref()); // compat: notes utilisées comme adresse si delivery_address absent
     let order_id: i32 = sqlx::query_scalar(
         r#"INSERT INTO restaurant_orders
                (service_id, client_user_id, order_type, table_id, status,
@@ -1309,12 +1380,11 @@ pub async fn public_create_order(
         let addr = delivery_addr.unwrap_or("Adresse non précisée");
         let client_name = body.client_name.as_deref().unwrap_or("Client");
         // Récupérer l'owner du service restaurant (expéditeur)
-        let partner_user_id: Option<i32> = sqlx::query_scalar(
-            "SELECT user_id FROM services WHERE id=$1",
-        )
-        .bind(service_id)
-        .fetch_optional(&state.pg)
-        .await?;
+        let partner_user_id: Option<i32> =
+            sqlx::query_scalar("SELECT user_id FROM services WHERE id=$1")
+                .bind(service_id)
+                .fetch_optional(&state.pg)
+                .await?;
 
         if let Some(partner_id) = partner_user_id {
             let did: Option<i32> = sqlx::query_scalar(
@@ -1399,15 +1469,18 @@ pub async fn public_create_order(
         }
     } else {
         // Pour dine_in / takeaway : push au partenaire également
-        let partner_user_id: Option<i32> = sqlx::query_scalar(
-            "SELECT user_id FROM services WHERE id=$1",
-        )
-        .bind(service_id)
-        .fetch_optional(&state.pg)
-        .await?;
+        let partner_user_id: Option<i32> =
+            sqlx::query_scalar("SELECT user_id FROM services WHERE id=$1")
+                .bind(service_id)
+                .fetch_optional(&state.pg)
+                .await?;
 
         if let Some(partner_id) = partner_user_id {
-            let label = if order_type == "dine_in" { "sur place" } else { "à emporter" };
+            let label = if order_type == "dine_in" {
+                "sur place"
+            } else {
+                "à emporter"
+            };
             let push_data = json!({
                 "type": "new_restaurant_order",
                 "order_id": order_id,
@@ -1427,12 +1500,18 @@ pub async fn public_create_order(
     }
 
     // ── 8. Réponse : facture détaillée ────────────────────────
-    let invoice_lines: Vec<serde_json::Value> = body.items.iter().map(|i| json!({
-        "label": i.item_name,
-        "qty": i.quantity.unwrap_or(1),
-        "unit_price": i.item_price,
-        "subtotal": i.item_price * i.quantity.unwrap_or(1) as f64,
-    })).collect();
+    let invoice_lines: Vec<serde_json::Value> = body
+        .items
+        .iter()
+        .map(|i| {
+            json!({
+                "label": i.item_name,
+                "qty": i.quantity.unwrap_or(1),
+                "unit_price": i.item_price,
+                "subtotal": i.item_price * i.quantity.unwrap_or(1) as f64,
+            })
+        })
+        .collect();
 
     let mut invoice = json!({
         "lines": invoice_lines,
@@ -1449,27 +1528,30 @@ pub async fn public_create_order(
         invoice["total_ttc"] = json!(total_meal);
     }
 
-    Ok((StatusCode::CREATED, Json(json!({
-        "success": true,
-        "order_id": order_id,
-        "total": total_meal,
-        "total_with_fees": total_with_fees_cents as f64 / 100.0,
-        "delivery_fee": delivery_fee_cents as f64 / 100.0,
-        "insurance_fee": insurance_fee_cents as f64 / 100.0,
-        "yukpo_commission": yukpo_commission,
-        "net_partner_amount": net_partner,
-        "payment_status": payment_status,
-        "payment_method": payment_method,
-        "delivery_order_id": delivery_order_id,
-        "qr_code": qr_code_value,
-        "qr_code_url": qr_code_url,
-        "invoice": invoice,
-        "message": if payment_status == "paid" {
-            "Commande payée et envoyée au restaurant !"
-        } else {
-            "Commande envoyée. Paiement à la réception."
-        },
-    }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "order_id": order_id,
+            "total": total_meal,
+            "total_with_fees": total_with_fees_cents as f64 / 100.0,
+            "delivery_fee": delivery_fee_cents as f64 / 100.0,
+            "insurance_fee": insurance_fee_cents as f64 / 100.0,
+            "yukpo_commission": yukpo_commission,
+            "net_partner_amount": net_partner,
+            "payment_status": payment_status,
+            "payment_method": payment_method,
+            "delivery_order_id": delivery_order_id,
+            "qr_code": qr_code_value,
+            "qr_code_url": qr_code_url,
+            "invoice": invoice,
+            "message": if payment_status == "paid" {
+                "Commande payée et envoyée au restaurant !"
+            } else {
+                "Commande envoyée. Paiement à la réception."
+            },
+        })),
+    ))
 }
 
 // ============================================================
@@ -1583,23 +1665,25 @@ pub async fn get_financial_summary(
     .await?;
 
     // Wallet partenaire
-    let wallet_balance: Option<i64> = sqlx::query_scalar(
-        "SELECT balance_cents FROM user_wallets WHERE user_id=$1",
-    )
-    .bind(user.id)
-    .fetch_optional(&state.pg)
-    .await?;
+    let wallet_balance: Option<i64> =
+        sqlx::query_scalar("SELECT balance_cents FROM user_wallets WHERE user_id=$1")
+            .bind(user.id)
+            .fetch_optional(&state.pg)
+            .await?;
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "global": global,
-        "today": today,
-        "history": history,
-        "top_items": top_items,
-        "wallet_balance_cents": wallet_balance,
-        "wallet_balance": wallet_balance.map(|b| b as f64 / 100.0),
-        "yukpo_commission_rate": 0.02,
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "global": global,
+            "today": today,
+            "history": history,
+            "top_items": top_items,
+            "wallet_balance_cents": wallet_balance,
+            "wallet_balance": wallet_balance.map(|b| b as f64 / 100.0),
+            "yukpo_commission_rate": 0.02,
+        })),
+    ))
 }
 
 /// PATCH /api/restaurant/orders/:id/status — avec crédit partenaire si completed
@@ -1610,9 +1694,19 @@ pub async fn update_order_status_with_payout(
     Json(body): Json<UpdateOrderStatusBody>,
 ) -> AppResult<impl IntoResponse> {
     let service_id = restaurant_service_id_for_user(&state.pg, user.id).await?;
-    let valid = ["pending","accepted","preparing","ready","completed","cancelled"];
+    let valid = [
+        "pending",
+        "accepted",
+        "preparing",
+        "ready",
+        "completed",
+        "cancelled",
+    ];
     if !valid.contains(&body.status.as_str()) {
-        return Err(AppError::BadRequest(format!("Status invalide: {}", body.status)));
+        return Err(AppError::BadRequest(format!(
+            "Status invalide: {}",
+            body.status
+        )));
     }
 
     let r = sqlx::query(
@@ -1638,8 +1732,8 @@ pub async fn update_order_status_with_payout(
         .bind(order_id)
         .map(|r: sqlx::postgres::PgRow| {
             (
-                r.get::<f64,_>("net_partner_amount"),
-                r.get::<String,_>("payment_status"),
+                r.get::<f64, _>("net_partner_amount"),
+                r.get::<String, _>("payment_status"),
             )
         })
         .fetch_optional(&state.pg)
@@ -1703,16 +1797,39 @@ pub async fn update_order_status_with_payout(
 
     if let Some((Some(client_id), amount, otype)) = client_info {
         let (title, msg) = match body.status.as_str() {
-            "accepted"  => ("✅ Commande acceptée", format!("Votre commande de {:.0} FCFA a été acceptée !", amount)),
-            "preparing" => ("👨‍🍳 En préparation", "Votre repas est en cours de préparation.".to_string()),
-            "ready"     => if otype == "delivery" {
-                ("📦 Commande prête", "Votre commande est prête et en attente du coursier.".to_string())
-            } else {
-                ("✅ Prêt à récupérer", "Votre commande est prête ! Vous pouvez venir la récupérer.".to_string())
-            },
-            "completed" => ("🎉 Livraison effectuée", "Votre commande a bien été reçue. Bon appétit !".to_string()),
-            "cancelled" => ("❌ Commande annulée", "Votre commande a été annulée par le restaurant.".to_string()),
-            _ => ("📋 Statut mis à jour", format!("Nouveau statut : {}", body.status)),
+            "accepted" => (
+                "✅ Commande acceptée",
+                format!("Votre commande de {:.0} FCFA a été acceptée !", amount),
+            ),
+            "preparing" => (
+                "👨‍🍳 En préparation",
+                "Votre repas est en cours de préparation.".to_string(),
+            ),
+            "ready" => {
+                if otype == "delivery" {
+                    (
+                        "📦 Commande prête",
+                        "Votre commande est prête et en attente du coursier.".to_string(),
+                    )
+                } else {
+                    (
+                        "✅ Prêt à récupérer",
+                        "Votre commande est prête ! Vous pouvez venir la récupérer.".to_string(),
+                    )
+                }
+            }
+            "completed" => (
+                "🎉 Livraison effectuée",
+                "Votre commande a bien été reçue. Bon appétit !".to_string(),
+            ),
+            "cancelled" => (
+                "❌ Commande annulée",
+                "Votre commande a été annulée par le restaurant.".to_string(),
+            ),
+            _ => (
+                "📋 Statut mis à jour",
+                format!("Nouveau statut : {}", body.status),
+            ),
         };
         let push_data = json!({
             "type": "restaurant_order_status",
@@ -1730,7 +1847,10 @@ pub async fn update_order_status_with_payout(
         .await;
     }
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "status": body.status }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "status": body.status })),
+    ))
 }
 
 // ============================================================
@@ -1775,18 +1895,20 @@ pub async fn validate_delivery_qr(
         return Err(AppError::BadRequest("QR code expiré".to_string()));
     }
     if qr_status != "pending" {
-        return Err(AppError::BadRequest(format!("QR code déjà utilisé (statut: {})", qr_status)));
+        return Err(AppError::BadRequest(format!(
+            "QR code déjà utilisé (statut: {})",
+            qr_status
+        )));
     }
 
     // Autorisation : le partenaire (owner du service) ou un coursier lié à la commande
-    let is_partner: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM services WHERE id=$1 AND user_id=$2)",
-    )
-    .bind(service_id)
-    .bind(user.id)
-    .fetch_one(&state.pg)
-    .await
-    .unwrap_or(false);
+    let is_partner: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM services WHERE id=$1 AND user_id=$2)")
+            .bind(service_id)
+            .bind(user.id)
+            .fetch_one(&state.pg)
+            .await
+            .unwrap_or(false);
 
     let is_courier: bool = sqlx::query_scalar(
         r#"SELECT EXISTS(
@@ -1842,11 +1964,14 @@ pub async fn validate_delivery_qr(
         .await;
     }
 
-    Ok((StatusCode::OK, Json(json!({
-        "success": true,
-        "order_id": order_id,
-        "message": "Livraison validée avec succès",
-    }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "order_id": order_id,
+            "message": "Livraison validée avec succès",
+        })),
+    ))
 }
 
 // ============================================================
@@ -1909,7 +2034,10 @@ pub async fn client_order_history(
     .fetch_all(&state.pg)
     .await?;
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "orders": orders }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "orders": orders })),
+    ))
 }
 
 // ============================================================
@@ -1931,7 +2059,9 @@ pub async fn rate_order(
     Json(body): Json<RateOrderBody>,
 ) -> AppResult<impl IntoResponse> {
     if body.rating < 1 || body.rating > 5 {
-        return Err(AppError::BadRequest("La note doit être entre 1 et 5".to_string()));
+        return Err(AppError::BadRequest(
+            "La note doit être entre 1 et 5".to_string(),
+        ));
     }
 
     // Vérifier que la commande appartient bien au client et est terminée
@@ -1985,7 +2115,10 @@ pub async fn rate_order(
         .ok();
     }
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "message": "Merci pour votre avis !" }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "message": "Merci pour votre avis !" })),
+    ))
 }
 
 /// GET /api/restaurant/public/orders/:order_id/status — suivi temps réel pour le client
@@ -2025,5 +2158,8 @@ pub async fn get_order_status(
     .await?
     .ok_or_else(|| AppError::NotFound("Commande introuvable".to_string()))?;
 
-    Ok((StatusCode::OK, Json(json!({ "success": true, "order": row }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "order": row })),
+    ))
 }
