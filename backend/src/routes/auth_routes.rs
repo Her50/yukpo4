@@ -45,7 +45,10 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
                 )),
         )
         .route("/auth/login", options(cors_preflight_handler))
-        .route("/auth/register", post(register_user))
+        .route(
+            "/auth/register",
+            post(register_user).layer(axum::extract::DefaultBodyLimit::max(20_000_000)), // 20MB — supporte 2 images docs + logo
+        )
         .route("/auth/register", options(cors_preflight_handler))
         // ✅ NOUVEAUX: Endpoints vérification téléphone
         .route(

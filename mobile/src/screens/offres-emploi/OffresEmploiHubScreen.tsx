@@ -64,6 +64,7 @@ const OffresEmploiHubScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [tendances, setTendances] = useState<any | null>(null);
     // ✅ FIX 2026-03-14: Détection dynamique employeur (partenaire OU utilisateur ayant publié des offres)
     const [hasPublishedOffers, setHasPublishedOffers] = useState(false);
 
@@ -123,6 +124,19 @@ const OffresEmploiHubScreen: React.FC = () => {
                         setHasPublishedOffers(true);
                     }
                 }
+            }
+
+            // Charger les tendances du marché
+            try {
+                const tendancesResp = await offreEmploiService.getTendancesMarche();
+                const tData = (tendancesResp?.data || tendancesResp) as any;
+                if (tData?.success && tData?.data) {
+                    setTendances(tData.data);
+                } else if (tData && tData.success !== false) {
+                    setTendances(tData);
+                }
+            } catch {
+                // tendances non critiques, ne pas bloquer le reste
             }
         } catch (error) {
             console.error('[OffresEmploiHub] Erreur:', error);
@@ -251,6 +265,31 @@ const OffresEmploiHubScreen: React.FC = () => {
                     </ScrollView>
                 </View>
 
+                {/* ── Tendances du marché ── */}
+                {tendances && (
+                    <View style={s.section}>
+                        <Text style={s.sectionTitle}>Tendances du marché</Text>
+                        <View style={s.tendancesGrid}>
+                            {tendances.secteurs_top && tendances.secteurs_top.slice(0, 3).map((secteur: any, i: number) => (
+                                <View key={i} style={s.tendanceCard}>
+                                    <SafeIcon name="trending-up" size={16} color="#6366F1" type="lucide" />
+                                    <Text style={s.tendanceLabel} numberOfLines={1}>{secteur.secteur || secteur.name || secteur}</Text>
+                                    {(secteur.nombre_offres || secteur.count) ? (
+                                        <Text style={s.tendanceCount}>{secteur.nombre_offres || secteur.count} offres</Text>
+                                    ) : null}
+                                </View>
+                            ))}
+                            {tendances.total_offres_actives !== undefined && (
+                                <View style={s.tendanceCard}>
+                                    <SafeIcon name="briefcase" size={16} color="#10B981" type="lucide" />
+                                    <Text style={s.tendanceLabel}>Total actives</Text>
+                                    <Text style={s.tendanceCount}>{tendances.total_offres_actives}</Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                )}
+
                 {/* ── Espace Employeur (visible pour tous, mis en avant pour partenaires) ── */}
                 {!isEmployer && (
                     <View style={s.section}>
@@ -362,6 +401,16 @@ const s = StyleSheet.create({
         width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center',
     },
     aiMiniLabel: { fontSize: 14, fontWeight: '600', flex: 1 },
+
+    // Tendances
+    tendancesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    tendanceCard: {
+        flex: 1, minWidth: '45%', backgroundColor: '#FFFFFF', borderRadius: 12,
+        padding: 12, alignItems: 'center', gap: 4,
+        shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2,
+    },
+    tendanceLabel: { fontSize: 12, fontWeight: '600', color: '#374151', textAlign: 'center' },
+    tendanceCount: { fontSize: 11, color: '#6B7280' },
 
     // Employer section
     employerCard: { borderRadius: 16, overflow: 'hidden', marginBottom: 12 },

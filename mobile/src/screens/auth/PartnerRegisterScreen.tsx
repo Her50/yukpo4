@@ -55,9 +55,12 @@ const PartnerRegisterScreen: React.FC = () => {
     driver_vehicle_type: '' as string, // taxi, covoiturage, les_deux
     driver_experience_years: '' as string,
     driver_niu: '' as string,  // NIU fiscal obligatoire pour chauffeurs/coursiers
+    driver_niu_doc: null as string | null, // Photo attestation NIU (base64)
     // ✅ NOUVEAU: Documents administratifs entreprise (Cameroun)
     rccm: '' as string,              // Registre du Commerce et du Crédit Mobilier
+    rccm_doc: null as string | null, // Photo certificat RCCM (base64)
     numero_contribuable: '' as string, // Numéro contribuable/fiscal (entreprises)
+    niu_doc: null as string | null,  // Photo attestation NIU entreprise (base64)
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,6 +147,26 @@ const PartnerRegisterScreen: React.FC = () => {
     } else {
       setConfirmPasswordMatch(null);
     }
+  };
+
+  // ✅ Helper générique pour sélectionner une image document (base64)
+  const pickDocumentImage = async (): Promise<string | null> => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission refusée', 'Accès à la galerie requis pour prendre une photo du document.');
+      return null;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images' as any,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+      base64: true,
+    });
+    if (!result.canceled && result.assets?.[0]?.base64) {
+      return `data:image/jpeg;base64,${result.assets[0].base64}`;
+    }
+    return null;
   };
 
   // ✅ NOUVEAU: Fonction pour sélectionner et uploader le logo
@@ -307,18 +330,22 @@ const PartnerRegisterScreen: React.FC = () => {
         registerData.driver_id_photo = form.driver_id_photo;
         registerData.driver_vehicle_type = form.driver_vehicle_type;
         registerData.driver_experience_years = form.driver_experience_years;
-        registerData.numero_contribuable = form.driver_niu.trim(); // NIU pour chauffeur
+        registerData.numero_contribuable = form.driver_niu.trim();
+        if (form.driver_niu_doc) registerData.niu_doc_base64 = form.driver_niu_doc;
       }
 
       // NIU pour coursiers
       if (form.partner_type === 'livraison' || form.partner_type === 'livraison_courses_marche') {
         registerData.numero_contribuable = form.driver_niu.trim();
+        if (form.driver_niu_doc) registerData.niu_doc_base64 = form.driver_niu_doc;
       }
 
-      // ✅ NOUVEAU: Documents administratifs entreprise (RCCM + NIU)
+      // ✅ Documents administratifs entreprise (RCCM + NIU + images Vision AI)
       if (form.partner_type !== 'chauffeur' && form.partner_type !== 'livraison' && form.partner_type !== 'livraison_courses_marche') {
         registerData.rccm = form.rccm.trim();
         registerData.numero_contribuable = form.numero_contribuable.trim();
+        if (form.rccm_doc) registerData.rccm_doc_base64 = form.rccm_doc;
+        if (form.niu_doc) registerData.niu_doc_base64 = form.niu_doc;
       }
 
       // ✅ Ajouter les moyens de paiement si configurés
@@ -336,9 +363,19 @@ const PartnerRegisterScreen: React.FC = () => {
       const response = await authApi.register(registerData);
 
       if (response.success || response.token) {
+        // Construire le message incluant le résultat Vision AI si disponible
+        const docVerif = response.document_verification;
+        let verificationMsg = t('partnerRegister.pendingValidation');
+        if (docVerif?.ai_decision === 'approved') {
+          verificationMsg = `✅ Documents vérifiés automatiquement (score ${docVerif.ai_score}/100). Votre compte sera activé rapidement.`;
+        } else if (docVerif?.ai_decision === 'under_review') {
+          verificationMsg = `⏳ Documents en cours d'analyse (score ${docVerif.ai_score}/100). Un administrateur validera votre compte.`;
+        } else if (docVerif?.ai_decision === 'rejected') {
+          verificationMsg = `⚠️ Documents non reconnus (score ${docVerif.ai_score}/100). Un administrateur examinera votre dossier.`;
+        }
         Alert.alert(
           t('partnerRegister.registrationSuccess'),
-          t('partnerRegister.pendingValidation'),
+          verificationMsg,
           [{ text: 'OK', onPress: () => navigation.navigate('Login' as never) }]
         );
       } else {
@@ -784,10 +821,35 @@ const PartnerRegisterScreen: React.FC = () => {
                 <Text style={styles.helperText}>
                   NIU délivré par la Direction Générale des Impôts du Cameroun — obligatoire pour exercer
                 </Text>
+
+                <Text style={styles.label}>Photo de l'attestation NIU <Text style={styles.requiredAsterisk}>*</Text></Text>
+                <TouchableOpacity
+                  onPress={async () => {
+                    const b64 = await pickDocumentImage();
+                    if (b64) setForm({ ...form, driver_niu_doc: b64 });
+                  }}
+                  disabled={loading}
+                  style={styles.logoUploadButton}
+                >
+                  {form.driver_niu_doc ? (
+                    <View style={styles.logoPreview}>
+                      <Image source={{ uri: form.driver_niu_doc }} style={styles.logoImage} />
+                      <TouchableOpacity onPress={() => setForm({ ...form, driver_niu_doc: null })} style={styles.removeLogoButton}>
+                        <Text style={styles.removeLogoText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.logoPlaceholder}>
+                      <ImageIcon size={36} color={theme.colors.textSecondary} />
+                      <Text style={styles.logoPlaceholderText}>Photo attestation NIU</Text>
+                      <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Sera vérifié par IA Vision</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
               </>
             )}
 
-            {/* ✅ NIU obligatoire pour les coursiers */}
+            {/* ✅ NIU + photo attestation pour les coursiers */}
             {(form.partner_type === 'livraison' || form.partner_type === 'livraison_courses_marche') && (
               <>
                 <View style={styles.divider} />
@@ -807,6 +869,31 @@ const PartnerRegisterScreen: React.FC = () => {
                 <Text style={styles.helperText}>
                   NIU délivré par la Direction Générale des Impôts — obligatoire pour les coursiers professionnels
                 </Text>
+
+                <Text style={styles.label}>Photo de l'attestation NIU <Text style={styles.requiredAsterisk}>*</Text></Text>
+                <TouchableOpacity
+                  onPress={async () => {
+                    const b64 = await pickDocumentImage();
+                    if (b64) setForm({ ...form, driver_niu_doc: b64 });
+                  }}
+                  disabled={loading}
+                  style={styles.logoUploadButton}
+                >
+                  {form.driver_niu_doc ? (
+                    <View style={styles.logoPreview}>
+                      <Image source={{ uri: form.driver_niu_doc }} style={styles.logoImage} />
+                      <TouchableOpacity onPress={() => setForm({ ...form, driver_niu_doc: null })} style={styles.removeLogoButton}>
+                        <Text style={styles.removeLogoText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.logoPlaceholder}>
+                      <ImageIcon size={36} color={theme.colors.textSecondary} />
+                      <Text style={styles.logoPlaceholderText}>Photo attestation NIU</Text>
+                      <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Sera vérifié par IA Vision</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
               </>
             )}
 
@@ -834,17 +921,68 @@ const PartnerRegisterScreen: React.FC = () => {
                   Registre du Commerce et du Crédit Mobilier — délivré au greffe du tribunal de commerce
                 </Text>
 
+                <Text style={styles.label}>Photo du certificat RCCM <Text style={styles.requiredAsterisk}>*</Text></Text>
+                <TouchableOpacity
+                  onPress={async () => {
+                    const b64 = await pickDocumentImage();
+                    if (b64) setForm({ ...form, rccm_doc: b64 });
+                  }}
+                  disabled={loading}
+                  style={styles.logoUploadButton}
+                >
+                  {form.rccm_doc ? (
+                    <View style={styles.logoPreview}>
+                      <Image source={{ uri: form.rccm_doc }} style={styles.logoImage} />
+                      <TouchableOpacity onPress={() => setForm({ ...form, rccm_doc: null })} style={styles.removeLogoButton}>
+                        <Text style={styles.removeLogoText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.logoPlaceholder}>
+                      <ImageIcon size={36} color={theme.colors.textSecondary} />
+                      <Text style={styles.logoPlaceholderText}>Photo extrait RCCM</Text>
+                      <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Vérifié automatiquement par IA Vision</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
                 <TextInput
-                  label="Numéro contribuable *"
+                  label="Numéro contribuable (NIU) *"
                   value={form.numero_contribuable}
-                  onChangeText={(text) => setForm({ ...form, numero_contribuable: text })}
+                  onChangeText={(text) => setForm({ ...form, numero_contribuable: text.toUpperCase() })}
                   placeholder="Ex: M012345678901A"
+                  autoCapitalize="characters"
                   disabled={loading}
                   style={styles.input}
                 />
                 <Text style={styles.helperText}>
                   Numéro d'Identifiant Unique (NIU) délivré par la Direction Générale des Impôts
                 </Text>
+
+                <Text style={styles.label}>Photo de l'attestation NIU <Text style={styles.requiredAsterisk}>*</Text></Text>
+                <TouchableOpacity
+                  onPress={async () => {
+                    const b64 = await pickDocumentImage();
+                    if (b64) setForm({ ...form, niu_doc: b64 });
+                  }}
+                  disabled={loading}
+                  style={styles.logoUploadButton}
+                >
+                  {form.niu_doc ? (
+                    <View style={styles.logoPreview}>
+                      <Image source={{ uri: form.niu_doc }} style={styles.logoImage} />
+                      <TouchableOpacity onPress={() => setForm({ ...form, niu_doc: null })} style={styles.removeLogoButton}>
+                        <Text style={styles.removeLogoText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.logoPlaceholder}>
+                      <ImageIcon size={36} color={theme.colors.textSecondary} />
+                      <Text style={styles.logoPlaceholderText}>Photo attestation NIU</Text>
+                      <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>Vérifié automatiquement par IA Vision</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
               </>
             )}
           </Card.Content>

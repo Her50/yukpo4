@@ -462,3 +462,249 @@ fn haversine_distance_km(pos1: (f64, f64), pos2: (f64, f64)) -> f64 {
 
     EARTH_RADIUS_KM * c
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::offres_emploi_model::{OffreEmploi, ProfilCandidat};
+    use chrono::Utc;
+    use std::str::FromStr;
+
+    fn make_service() -> MatchingEmploiService {
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy("postgres://test@localhost/test")
+            .expect("pool lazy");
+        MatchingEmploiService::new(pool, None)
+    }
+
+    fn base_offre() -> OffreEmploi {
+        OffreEmploi {
+            id: 1,
+            entreprise_id: 10,
+            titre_poste: "Développeur Rust".to_string(),
+            description: "Poste de développeur".to_string(),
+            type_contrat: "CDI".to_string(),
+            duree_contrat: None,
+            lieu_travail: "Douala".to_string(),
+            adresse: None,
+            gps: None,
+            remote: false,
+            remote_partiel: false,
+            salaire_min: Some(BigDecimal::from_str("300000").unwrap()),
+            salaire_max: Some(BigDecimal::from_str("600000").unwrap()),
+            devise: "XAF".to_string(),
+            salaire_negociable: false,
+            niveau_etude: Some("licence".to_string()),
+            experience_min: Some(2),
+            competences_requises: Some(vec![
+                "Rust".to_string(),
+                "PostgreSQL".to_string(),
+                "Docker".to_string(),
+            ]),
+            langues_requises: None,
+            permis_requis: None,
+            secteur: "Informatique".to_string(),
+            domaine: None,
+            tags: None,
+            date_publication: Utc::now(),
+            date_limite_candidature: None,
+            date_debut_poste: None,
+            statut: "active".to_string(),
+            nombre_candidatures: 0,
+            nombre_vues: 0,
+            is_active: true,
+            is_verified: true,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    fn base_profil() -> ProfilCandidat {
+        ProfilCandidat {
+            id: 1,
+            user_id: 100,
+            nom_complet: "Alice Dupont".to_string(),
+            date_naissance: None,
+            telephone: None,
+            email: "alice@example.com".to_string(),
+            adresse: None,
+            ville: Some("Douala".to_string()),
+            gps: None,
+            titre_professionnel: Some("Développeuse".to_string()),
+            niveau_etude: Some("licence".to_string()),
+            experience_annees: 3,
+            secteur_principal: Some("Informatique".to_string()),
+            competences: Some(vec!["Rust".to_string(), "PostgreSQL".to_string()]),
+            langues: None,
+            permis: None,
+            certifications: None,
+            cv_url: None,
+            cv_nom: None,
+            photo_url: None,
+            portfolio_url: None,
+            type_contrat_souhaite: None,
+            salaire_souhaite_min: Some(BigDecimal::from_str("350000").unwrap()),
+            salaire_souhaite_max: Some(BigDecimal::from_str("550000").unwrap()),
+            remote_souhaite: false,
+            secteurs_interesses: None,
+            disponible_immediatement: true,
+            date_disponibilite: None,
+            is_active: true,
+            is_complete: true,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    // ── Tests compétences ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_competences_score_match_partiel() {
+        let svc = make_service();
+        let offre = base_offre(); // requiert Rust, PostgreSQL, Docker
+        let profil = base_profil(); // a Rust, PostgreSQL (pas Docker)
+        let (score, matched, manquantes) = svc.calculate_competences_score(&offre, &profil);
+        // 2/3 compétences matchent → ~66.7%
+        assert!((score - 66.666).abs() < 0.1, "score={}", score);
+        assert_eq!(matched.unwrap().len(), 2);
+        assert_eq!(manquantes.unwrap().len(), 1);
+    }
+
+    #[test]
+    fn test_competences_score_match_total() {
+        let svc = make_service();
+        let offre = base_offre();
+        let mut profil = base_profil();
+        profil.competences = Some(vec![
+            "Rust".to_string(),
+            "PostgreSQL".to_string(),
+            "Docker".to_string(),
+        ]);
+        let (score, matched, manquantes) = svc.calculate_competences_score(&offre, &profil);
+        assert_eq!(score, 100.0);
+        assert_eq!(matched.unwrap().len(), 3);
+        assert!(manquantes.is_none());
+    }
+
+    #[test]
+    fn test_competences_score_aucun_match() {
+        let svc = make_service();
+        let offre = base_offre();
+        let mut profil = base_profil();
+        profil.competences = Some(vec!["Java".to_string(), "Spring".to_string()]);
+        let (score, _, manquantes) = svc.calculate_competences_score(&offre, &profil);
+        assert_eq!(score, 0.0);
+        assert_eq!(manquantes.unwrap().len(), 3);
+    }
+
+    #[test]
+    fn test_competences_score_offre_sans_exigences() {
+        let svc = make_service();
+        let mut offre = base_offre();
+        offre.competences_requises = None;
+        let profil = base_profil();
+        let (score, _, _) = svc.calculate_competences_score(&offre, &profil);
+        // Pas d'exigences → score 100%
+        assert_eq!(score, 100.0);
+    }
+
+    // ── Tests expérience ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_experience_score_suffisant() {
+        let svc = make_service();
+        let offre = base_offre(); // requiert 2 ans
+        let profil = base_profil(); // a 3 ans
+        let score = svc.calculate_experience_score(&offre, &profil);
+        assert_eq!(score, 100.0);
+    }
+
+    #[test]
+    fn test_experience_score_insuffisant() {
+        let svc = make_service();
+        let offre = base_offre(); // requiert 2 ans
+        let mut profil = base_profil();
+        profil.experience_annees = 1; // seulement 1 an
+        let score = svc.calculate_experience_score(&offre, &profil);
+        // 1/2 = 50%
+        assert_eq!(score, 50.0);
+    }
+
+    #[test]
+    fn test_experience_score_zero_requis() {
+        let svc = make_service();
+        let mut offre = base_offre();
+        offre.experience_min = Some(0);
+        let mut profil = base_profil();
+        profil.experience_annees = 0;
+        let score = svc.calculate_experience_score(&offre, &profil);
+        assert_eq!(score, 100.0);
+    }
+
+    #[test]
+    fn test_experience_score_aucune_exigence() {
+        let svc = make_service();
+        let mut offre = base_offre();
+        offre.experience_min = None;
+        let profil = base_profil();
+        let score = svc.calculate_experience_score(&offre, &profil);
+        assert_eq!(score, 100.0);
+    }
+
+    // ── Tests salaire ────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_salaire_score_dans_fourchette() {
+        let svc = make_service();
+        let offre = base_offre(); // 300k–600k XAF
+        let profil = base_profil(); // souhaite 350k–550k
+        let score = svc.calculate_salaire_score(&offre, &profil);
+        // Le salaire candidat est dans la fourchette → score élevé
+        assert!(score >= 70.0, "score={}", score);
+    }
+
+    #[test]
+    fn test_salaire_score_offre_sans_salaire() {
+        let svc = make_service();
+        let mut offre = base_offre();
+        offre.salaire_min = None;
+        offre.salaire_max = None;
+        let profil = base_profil();
+        let score = svc.calculate_salaire_score(&offre, &profil);
+        // Pas de salaire indiqué → score neutre (50%)
+        assert_eq!(score, 50.0);
+    }
+
+    // ── Tests haversine ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_haversine_meme_point() {
+        let d = haversine_distance_km((4.0512, 9.7679), (4.0512, 9.7679));
+        assert!(d < 0.001, "distance={}", d);
+    }
+
+    #[test]
+    fn test_haversine_douala_yaounde() {
+        // Douala ~(4.05, 9.77) — Yaoundé ~(3.87, 11.52) → ~240 km
+        let d = haversine_distance_km((4.05, 9.77), (3.87, 11.52));
+        assert!(d > 200.0 && d < 280.0, "distance={}", d);
+    }
+
+    // ── Tests parsing GPS ────────────────────────────────────────────────────
+
+    #[test]
+    fn test_parse_gps_valide() {
+        let result = parse_gps("4.0512,9.7679");
+        assert!(result.is_some());
+        let (lat, lng) = result.unwrap();
+        assert!((lat - 4.0512).abs() < 0.0001);
+        assert!((lng - 9.7679).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_parse_gps_invalide() {
+        assert!(parse_gps("invalid").is_none());
+        assert!(parse_gps("").is_none());
+        assert!(parse_gps("4.05").is_none());
+    }
+}

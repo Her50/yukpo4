@@ -1075,6 +1075,55 @@ pub async fn register_user(
             .await
             .map_err(|e| log::error!("[register_user] Erreur sauvegarde RCCM/contribuable: {e:?}"));
         }
+
+        // ✅ NOUVEAU: Vérification Vision API des documents administratifs (asynchrone, non bloquante)
+        {
+            use crate::services::document_ai_service::DocumentAiService;
+            let ai_svc = DocumentAiService::new();
+            if ai_svc.is_enabled() {
+                // Vérification RCCM
+                if let Some(ref rccm_b64) = payload.rccm_doc_base64 {
+                    if !rccm_b64.trim().is_empty() {
+                        log::info!("[register_user] Analyse RCCM Vision API user_id={}", new.id);
+                        let result = ai_svc.analyze_rccm(rccm_b64.as_str()).await;
+                        let details_json = serde_json::to_string(&result.details)
+                            .unwrap_or_else(|_| "[]".to_string());
+                        let _ = sqlx::query(
+                            "UPDATE delivery_partners SET ai_score=$1, ai_decision=$2, ai_extracted_id=$3, ai_details=$4, updated_at=NOW() WHERE created_by=$5"
+                        )
+                        .bind(result.score as i32)
+                        .bind(&result.decision)
+                        .bind(result.extracted_id_number.as_deref())
+                        .bind(&details_json)
+                        .bind(new.id)
+                        .execute(db)
+                        .await
+                        .map_err(|e| log::error!("[register_user] RCCM AI save error: {e:?}"));
+                    }
+                }
+                // Vérification NIU
+                if let Some(ref niu_b64) = payload.niu_doc_base64 {
+                    if !niu_b64.trim().is_empty() {
+                        log::info!("[register_user] Analyse NIU Vision API user_id={}", new.id);
+                        let result = ai_svc.analyze_niu(niu_b64.as_str()).await;
+                        let niu_summary = format!(
+                            "NIU:{} score:{} décision:{}",
+                            result.extracted_id_number.as_deref().unwrap_or(""),
+                            result.score,
+                            result.decision
+                        );
+                        let _ = sqlx::query(
+                            "UPDATE delivery_partners SET ai_extracted_name=$1, updated_at=NOW() WHERE created_by=$2"
+                        )
+                        .bind(&niu_summary)
+                        .bind(new.id)
+                        .execute(db)
+                        .await
+                        .map_err(|e| log::error!("[register_user] NIU AI save error: {e:?}"));
+                    }
+                }
+            }
+        }
     }
 
     if let Err(e) = send_verification_email(&payload.email).await {
@@ -1169,23 +1218,43 @@ pub async fn register_user(
         }
     }
 
+    // ✅ Lire le résultat Vision AI si disponible (pour retourner dans la réponse)
+    let doc_ai_result: Option<serde_json::Value> = if payload.is_partner.unwrap_or(false) {
+        sqlx::query_as::<_, (Option<i32>, Option<String>, Option<String>)>(
+            "SELECT ai_score, ai_decision, ai_details FROM delivery_partners WHERE created_by = $1 LIMIT 1"
+        )
+        .bind(new.id)
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
+        .map(|(score, decision, details)| serde_json::json!({
+            "ai_score": score,
+            "ai_decision": decision,
+            "ai_details": details.and_then(|d| serde_json::from_str::<serde_json::Value>(&d).ok())
+        }))
+    } else {
+        None
+    };
+
     // Retourne explicitement 201 Created avec le token
-    Ok((
-        axum::http::StatusCode::CREATED,
-        Json(serde_json::json!({
-            "id": new.id,
-            "user_id": new.id,
-            "tokens_balance": new.tokens_balance,
-            "token": jwt,
-            "phone_verified": false,
-            "message": if payload.phone.is_some() && !payload.phone.as_ref().unwrap().trim().is_empty() {
-                "Compte créé avec succès. Veuillez vérifier votre numéro de téléphone avec le code reçu par SMS."
-            } else {
-                "Compte créé avec succès."
-            }
-        })),
-    )
-        .into_response())
+    let mut response_body = serde_json::json!({
+        "id": new.id,
+        "user_id": new.id,
+        "tokens_balance": new.tokens_balance,
+        "token": jwt,
+        "phone_verified": false,
+        "message": if payload.phone.is_some() && !payload.phone.as_ref().unwrap().trim().is_empty() {
+            "Compte créé avec succès. Veuillez vérifier votre numéro de téléphone avec le code reçu par SMS."
+        } else {
+            "Compte créé avec succès."
+        }
+    });
+    if let Some(ai) = doc_ai_result {
+        response_body["document_verification"] = ai;
+    }
+
+    Ok((axum::http::StatusCode::CREATED, Json(response_body)).into_response())
 }
 
 async fn send_verification_email(email: &str) -> AppResult<()> {
