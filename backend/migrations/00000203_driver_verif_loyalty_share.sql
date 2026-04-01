@@ -73,7 +73,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS loyalty_redemptions (
     id              BIGSERIAL PRIMARY KEY,
     user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    reward_id       INTEGER NOT NULL REFERENCES loyalty_rewards(id),
+    reward_id       VARCHAR(100) NOT NULL REFERENCES loyalty_rewards(id),
     points_spent    INTEGER NOT NULL,
     coupon_code     TEXT NOT NULL UNIQUE,
     status          TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','used','expired')),

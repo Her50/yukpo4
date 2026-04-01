@@ -77,7 +77,9 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
             const etaMinutes = delivery?.courier?.etaMinutes ?? undefined;
             const destination = delivery?.dropoff?.address;
             const itemCount = delivery?.shopping?.items?.length;
-            const details = { courierName, etaMinutes, destination, itemCount };
+            const pickupAddress = delivery?.pickup?.address ?? delivery?.pickup?.formatted_address ?? undefined;
+            const deliveryAddress = delivery?.dropoff?.address ?? delivery?.dropoff?.formatted_address ?? undefined;
+            const details = { courierName, etaMinutes, destination, itemCount, pickupAddress, deliveryAddress };
 
             // Mapper les statuts de livraison vers les types d'événements contextuels
             const statusToEvent: Record<string, string> = {

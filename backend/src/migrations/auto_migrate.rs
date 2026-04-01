@@ -17514,7 +17514,7 @@ pub async fn ensure_pharmacy_products_table(pool: &PgPool) -> Result<(), sqlx::E
     info!("🔍 Vérification/création de la table pharmacy_products...");
 
     // Lire le contenu de la migration SQL
-    let migration_sql = include_str!("../../migrations/00000005_002_add_pharmacy_products.sql");
+    let migration_sql = include_str!("./pharmacy_products_legacy.sql");
 
     // Exécuter la migration SQL en divisant en commandes individuelles
     execute_migration_sql_safe(pool, migration_sql).await?;

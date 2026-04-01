@@ -339,6 +339,37 @@ class NotificationSoundService {
     }
 
     /**
+     * Génère un message vocal complet pour le coursier en mouvement.
+     * Ajoute les adresses de récupération et de livraison à la fin du message i18n
+     * pour que le coursier sache où aller sans regarder l'écran.
+     */
+    private buildCourierVoiceMessage(
+        eventType: string,
+        details?: { courierName?: string; etaMinutes?: number; distance?: string; itemCount?: number; destination?: string; pickupAddress?: string; deliveryAddress?: string }
+    ): string {
+        const base = this.getDeliveryContextualMessage(eventType, details);
+        const parts: string[] = [base];
+
+        switch (eventType) {
+            case 'new_delivery_available':
+                if (details?.pickupAddress) parts.push(details.pickupAddress + '.');
+                if (details?.deliveryAddress) parts.push(details.deliveryAddress + '.');
+                break;
+            case 'courier_en_route_pickup':
+            case 'courier_arrived_pickup':
+                if (details?.pickupAddress) parts.push(details.pickupAddress + '.');
+                break;
+            case 'courier_picked_up':
+            case 'courier_en_route_delivery':
+            case 'courier_arrived_destination':
+                if (details?.deliveryAddress) parts.push(details.deliveryAddress + '.');
+                break;
+        }
+
+        return parts.join(' ');
+    }
+
+    /**
      * Génère un message vocal contextuel pour un événement de livraison
      * Utilise les traductions i18n dans la langue choisie par l'utilisateur
      */
@@ -393,16 +424,18 @@ class NotificationSoundService {
 
     /**
      * Notification vocale contextuelle pour les événements de livraison.
-     * Joue un son + parole TTS + notification push locale.
-     * Fonctionne même en arrière-plan grâce à la notification push locale.
+     * Joue un son + parole TTS avec adresses + notification push locale.
+     * Le message TTS inclut pickupAddress et deliveryAddress pour guider
+     * le coursier sans qu'il ait besoin de regarder l'écran.
      */
     async notifyDeliveryEvent(
         eventType: string,
-        details?: { courierName?: string; etaMinutes?: number; distance?: string; itemCount?: number; destination?: string },
+        details?: { courierName?: string; etaMinutes?: number; distance?: string; itemCount?: number; destination?: string; pickupAddress?: string; deliveryAddress?: string },
         options?: { playSound?: boolean; speak?: boolean; pushNotification?: boolean }
     ): Promise<void> {
         const opts = { playSound: true, speak: true, pushNotification: true, ...options };
-        const message = this.getDeliveryContextualMessage(eventType, details);
+        // Message enrichi avec les adresses pour le TTS coursier
+        const message = this.buildCourierVoiceMessage(eventType, details);
 
         console.log(`[NotificationSoundService] \uD83D\uDD14 Événement livraison: ${eventType} → "${message}"`);
 
@@ -454,11 +487,19 @@ class NotificationSoundService {
                 new_delivery_available: t('delivery_notifications.push_new_delivery_available'),
             };
 
+            // Corps de la notification push : message + adresses sur l'écran de verrouillage
+            const addressLines: string[] = [];
+            if (details?.pickupAddress) addressLines.push(`📍 ${details.pickupAddress}`);
+            if (details?.deliveryAddress) addressLines.push(`🏁 ${details.deliveryAddress}`);
+            const pushBody = addressLines.length > 0
+                ? `${message}\n${addressLines.join('\n')}`
+                : message;
+
             try {
                 await Notifications.scheduleNotificationAsync({
                     content: {
                         title: titleMap[eventType] || t('delivery_notifications.push_default'),
-                        body: message,
+                        body: pushBody,
                         sound: true,
                         // Android: canal delivery_notifications (importance MAX, lockscreen PUBLIC)
                         // iOS: son système joué grâce à playsInSilentModeIOS + UIBackgroundModes audio

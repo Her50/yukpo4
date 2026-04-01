@@ -109,6 +109,20 @@ module.exports = {
             ],
             intentFilters: [
                 {
+                    // Intent filter pour le retour OAuth Google (Android)
+                    // Le schéma est le reverse-DNS du androidClientId Google
+                    action: "VIEW",
+                    data: [
+                        {
+                            scheme: "com.googleusercontent.apps.376093909298-fghg1v2quhl3eb0pj1lq21s6sdfshska"
+                        }
+                    ],
+                    category: [
+                        "BROWSABLE",
+                        "DEFAULT"
+                    ]
+                },
+                {
                     action: "VIEW",
                     autoVerify: true,
                     data: [

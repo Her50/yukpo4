@@ -103,10 +103,27 @@ const CourierDashboardScreen: React.FC = () => {
             const deliveriesList = Array.isArray(deliveries) ? deliveries : [];
             setActiveDeliveries(deliveriesList);
 
-            // ✅ FIX 2026-03-03: Notification sonore si nouvelle livraison détectée
+            // Notification vocale complète si nouvelle livraison détectée
+            // Le TTS annonce : adresse de récupération + adresse de livraison + distance
             const prev = lastDeliveryCountRef.current;
             if (deliveriesList.length > prev && prev > 0) {
-                notificationSoundService.playSoundWithVibration('delivery_request').catch(console.error);
+                const newDelivery = deliveriesList[0]; // La plus récente en tête de liste
+                const pickupAddress = newDelivery?.pickup?.address
+                    ?? newDelivery?.pickup?.formatted_address
+                    ?? newDelivery?.pickup?.label
+                    ?? undefined;
+                const deliveryAddress = newDelivery?.dropoff?.address
+                    ?? newDelivery?.dropoff?.formatted_address
+                    ?? newDelivery?.dropoff?.label
+                    ?? undefined;
+                const distance = newDelivery?.distance
+                    ?? (newDelivery?.distanceKm ? `${newDelivery.distanceKm} km` : undefined);
+                const etaMinutes = newDelivery?.etaMinutes ?? undefined;
+
+                notificationSoundService.notifyDeliveryEvent(
+                    'new_delivery_available',
+                    { pickupAddress, deliveryAddress, distance, etaMinutes }
+                ).catch(console.error);
             }
             lastDeliveryCountRef.current = deliveriesList.length;
 
