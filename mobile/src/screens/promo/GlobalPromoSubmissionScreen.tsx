@@ -30,7 +30,7 @@ const [form, setForm] = useState({
             return;
         }
         if (!form.serviceId) {
-            Alert.alert(‘Service requis’, "Indiquez l’identifiant de votre service.");
+            Alert.alert('Service requis', "Indiquez l'identifiant de votre service.");
             return;
         }
 
@@ -59,7 +59,7 @@ const [form, setForm] = useState({
                     <Text style={styles.kicker}>Campagne officielle Yukpo</Text>
                     <Text style={styles.title}>🔥 Black Friday collectif</Text>
                     <Text style={styles.subtitle}>
-                        Sélectionnez la campagne ouverte puis renseignez l’identifiant de votre service pour qu’il
+                        Sélectionnez la campagne ouverte puis renseignez l'identifiant de votre service pour qu'il
                         soit ajouté à la promo globale.
                     </Text>
                 </View>
@@ -96,7 +96,7 @@ const [form, setForm] = useState({
                                 onChangeText={(value) => setForm((prev) => ({ ...prev, serviceId: value }))}
                             />
                             <Text style={styles.helper}>
-                                Retrouvez l’ID dans vos fiches services Yukpo (liste Mes Services).
+                                Retrouvez l'ID dans vos fiches services Yukpo (liste Mes Services).
                             </Text>
                         </View>
 

@@ -116,7 +116,7 @@ const PharmacieHomeScreen: React.FC = () => {
         () => [
             { id: 'proche', label: t('pharmacieHome.chipNearMe'), icon: 'map-pin', distance: 10 },
             { id: 'disponible', label: t('pharmacieHome.chipAvailable'), icon: 'check-circle', available: true },
-            { id: 'garde', label: t('pharmacieHome.onDutyOnly') || 'De garde', icon: 'shield-check' },
+            { id: 'garde', label: t('pharmacieHome.onDutyOnly', 'De garde'), icon: 'shield-check' },
             { id: 'prix_bas', label: t('pharmacieHomeScreen.prixBas'), icon: 'tag' },
         ],
         [t]
@@ -660,7 +660,7 @@ const PharmacieHomeScreen: React.FC = () => {
                         <View style={styles.onDutyBadge}>
                             <SafeIcon name="shield-check" size={14} color="#FFFFFF" type="lucide" />
                             <Text style={styles.onDutyBadgeText}>
-                                {t('pharmacieHome.onDutyOnly') || 'De garde seulement'}
+                                {t('pharmacieHome.onDutyOnly', 'De garde seulement')}
                             </Text>
                         </View>
                     )}
@@ -1310,7 +1310,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
                                 <View style={styles.switchLabel}>
                                     <SafeIcon name="shield-check" size={20} color="#2563EB" type="lucide" />
                                     <Text style={styles.switchLabelText}>
-                                        {t('pharmacieHome.onDutyOnly') || 'Pharmacies de garde uniquement'}
+                                        {t('pharmacieHome.onDutyOnly', 'Pharmacies de garde uniquement')}
                                     </Text>
                                 </View>
                                 <TouchableOpacity

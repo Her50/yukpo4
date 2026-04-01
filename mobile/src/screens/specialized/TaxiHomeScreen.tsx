@@ -782,9 +782,10 @@ const TaxiHomeScreen: React.FC = () => {
                                         hapticPress();
                                         const phone = item.whatsapp || item.telephone;
                                         if (phone) {
-                                            const cleanPhone = phone.replace(/[^0-9+]/g, '');
+                                            const cleanPhone = phone.replace(/[^0-9]/g, '');
+                                            const cleanPhoneWa = phone.replace(/[^0-9+]/g, '');
                                             Linking.openURL(`whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(t('taxiHome.whatsappReservation'))}`).catch(() => {
-                                                Linking.openURL(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(t('taxiHome.whatsappReservation'))}`);
+                                                Linking.openURL(`https://wa.me/${cleanPhoneWa}?text=${encodeURIComponent(t('taxiHome.whatsappReservation'))}`);
                                             });
                                         }
                                     }}

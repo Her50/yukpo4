@@ -298,7 +298,7 @@ const TaxiBookingScreen: React.FC = () => {
                     {
                         text: t('common.call'),
                         onPress: () => {
-                            Linking.openURL(`tel:${taxi.telephone}`);
+                            Linking.openURL(`tel:${taxi.telephone.replace(/[^\d+]/g, '')}`);
                         },
                     },
                 ]

@@ -127,11 +127,27 @@ const EnhancedTrackingMap: React.FC<EnhancedTrackingMapProps> = ({
         });
     }, [markers.all]);
 
+    const initialRegion = markers.all.length > 0
+        ? {
+            latitude: markers.all[0].latitude,
+            longitude: markers.all[0].longitude,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+        }
+        : {
+            // Cameroun centre par défaut
+            latitude: 3.848,
+            longitude: 11.502,
+            latitudeDelta: 2.0,
+            longitudeDelta: 2.0,
+        };
+
     return (
         <View style={styles.container}>
             <MapView
                 ref={mapRef}
                 style={styles.map}
+                initialRegion={initialRegion}
                 showsCompass
                 showsTraffic={false}
                 showsIndoors={false}

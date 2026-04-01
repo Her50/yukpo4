@@ -238,8 +238,8 @@ const ImmobilierDetailsScreen: React.FC = () => {
                 {/* Quick Actions */}
                 <View style={st.quickRow}>
                     {[
-                        (property as any).telephone && { icon: 'phone', label: 'Appeler', color: '#6366F1', onPress: () => Linking.openURL(`tel:${(property as any).telephone}`) },
-                        (property as any).whatsapp && { icon: 'message-circle', label: 'WhatsApp', color: '#25D366', onPress: () => Linking.openURL(`https://wa.me/${((property as any).whatsapp || '').replace(/[^0-9]/g, '')}`) },
+                        (property as any).telephone && { icon: 'phone', label: 'Appeler', color: '#6366F1', onPress: () => Linking.openURL(`tel:${((property as any).telephone || '').replace(/[^\d+]/g, '')}`) },
+                        (property as any).whatsapp && { icon: 'message-circle', label: 'WhatsApp', color: '#25D366', onPress: () => Linking.openURL(`https://wa.me/${((property as any).whatsapp || '').replace(/[^0-9+]/g, '')}`) },
                         { icon: isFavorite ? 'heart' : 'heart', label: isFavorite ? 'Favori ♥' : 'Favoris', color: '#EF4444', onPress: handleToggleFavorite },
                         { icon: 'share-2', label: t('immobilierDetailsScreen.partager'), color: '#8B5CF6', onPress: handleShare },
                     ].filter(Boolean).map((a: any, i) => (

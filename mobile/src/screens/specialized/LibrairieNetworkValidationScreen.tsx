@@ -151,7 +151,7 @@ const LibrairieNetworkValidationScreen: React.FC = () => {
                 t('librairieNetworkValidation.rien', 'Aucune ligne'),
                 t(
                     'librairieNetworkValidation.rienDetail',
-                    'Indiquez au moins une ligne que vous fournissez ou que vous ne pouvez pas fournir, ou laissez tout en « Ne pas décider » pour d’autres librairies.'
+                    'Indiquez au moins une ligne que vous fournissez ou que vous ne pouvez pas fournir, ou laissez tout en « Ne pas décider » pour d'autres librairies.'
                 )
             );
             return;
@@ -204,7 +204,7 @@ const LibrairieNetworkValidationScreen: React.FC = () => {
                 </Text>
                 <YukpoContextHelpChip
                     messageKey="bourseUx.librairieYukpoSeedValidation"
-                    defaultMessage="Je suis sur l’écran « Disponibilité — lignes neufs » (validation librairie). Explique-moi la différence entre valider une ligne, la marquer indisponible, ou « ne pas décider » ; et l’impact pour les autres librairies et les familles."
+                    defaultMessage="Je suis sur l'écran « Disponibilité — lignes neufs » (validation librairie). Explique-moi la différence entre valider une ligne, la marquer indisponible, ou « ne pas décider » ; et l'impact pour les autres librairies et les familles."
                     a11yKey="bourseUx.librairieYukpoHelpValidationA11y"
                     defaultA11y="Yukpo IA — aide validation lignes neufs"
                 />
@@ -212,7 +212,7 @@ const LibrairieNetworkValidationScreen: React.FC = () => {
             <Text style={styles.hint}>
                 {t(
                     'librairieNetworkValidation.hint',
-                    'Pour chaque ligne encore en attente : indiquez si vous la fournissez, si vous ne pouvez pas, ou laissez « Ne pas décider » pour que d’autres librairies puissent répondre.'
+                    'Pour chaque ligne encore en attente : indiquez si vous la fournissez, si vous ne pouvez pas, ou laissez « Ne pas décider » pour que d'autres librairies puissent répondre.'
                 )}
             </Text>
 

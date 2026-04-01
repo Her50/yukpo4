@@ -39,7 +39,7 @@ interface GenerativeVideoWizardProps {
     onVideoGenerated?: (payload: GenerativeVideoGeneratedPayload) => void;
 }
 
-/** Valeurs envoyées à l’API — libellés via i18n `style*` */
+/** Valeurs envoyées à l'API — libellés via i18n `style*` */
 const STYLE_OPTIONS = [
     { value: 'cinématique', i18nKey: 'styleCinematic' },
     { value: 'dramatique', i18nKey: 'styleDramatic' },

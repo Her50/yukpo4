@@ -1,5 +1,5 @@
 /**
- * Prix / bornes pour les lignes « neufs » d’une commande parent.
+ * Prix / bornes pour les lignes « neufs » d'une commande parent.
  * Une même commande peut être couverte par plusieurs librairies (panier partiel chacune) ;
  * cet écran ne représente que la part gérée par le partenaire connecté.
  */
@@ -153,7 +153,7 @@ const LibrairieNetworkLignePrixScreen: React.FC = () => {
                 </Text>
                 <YukpoContextHelpChip
                     messageKey="bourseUx.librairieYukpoSeedLignePrix"
-                    defaultMessage="Je suis sur l’écran « Commande mixte — prix neufs » (partenaire librairie). Aide-moi : comment fixer un prix dans les bornes, ce qu’est une commande multi-librairies, et quand passer à la validation des lignes."
+                    defaultMessage="Je suis sur l'écran « Commande mixte — prix neufs » (partenaire librairie). Aide-moi : comment fixer un prix dans les bornes, ce qu'est une commande multi-librairies, et quand passer à la validation des lignes."
                     a11yKey="bourseUx.librairieYukpoHelpLignePrixA11y"
                     defaultA11y="Yukpo IA — aide prix neufs commande mixte"
                 />
@@ -191,7 +191,7 @@ const LibrairieNetworkLignePrixScreen: React.FC = () => {
                 <Text style={styles.emptyList}>
                     {t(
                         'librairieNetworkPrix.noCommandes',
-                        'Aucune commande liée à votre librairie pour l’instant.'
+                        'Aucune commande liée à votre librairie pour l'instant.'
                     )}
                 </Text>
             ) : (

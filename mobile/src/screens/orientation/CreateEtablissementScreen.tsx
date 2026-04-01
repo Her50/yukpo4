@@ -188,7 +188,7 @@ const CreateEtablissementScreen: React.FC = () => {
         if (isK12 && (!formData.gps_lat?.trim() || !formData.gps_lon?.trim())) {
             Alert.alert(
                 t('message.error'),
-                'Indiquez la position GPS de l’établissement (carte ou coordonnées) pour le primaire et le secondaire.',
+                'Indiquez la position GPS de l'établissement (carte ou coordonnées) pour le primaire et le secondaire.',
             );
             return;
         }

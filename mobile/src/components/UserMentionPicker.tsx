@@ -264,7 +264,7 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                                 <View style={styles.hintContainer}>
                                     <SafeIcon name="search" size={32} color={modernColors.primary} />
                                     <Text style={styles.hintText}>
-                                        {t('userMentionPicker.tapezPourRechercher', 'Tapez au moins 2 caractères (nom ou e-mail) — même recherche que le champ d’invitation.')}
+                                        {t('userMentionPicker.tapezPourRechercher', 'Tapez au moins 2 caractères (nom ou e-mail) — même recherche que le champ d'invitation.')}
                                     </Text>
                                 </View>
                             ) : searchResults.length > 0 ? (

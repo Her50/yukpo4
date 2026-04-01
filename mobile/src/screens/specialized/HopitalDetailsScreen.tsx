@@ -98,8 +98,8 @@ const HopitalDetailsScreen: React.FC = () => {
 
     const handleRefresh = useCallback(async () => { setRefreshing(true); await loadHopitalDetails(); setRefreshing(false); }, []);
 
-    const handleCall = () => { if (hopital?.telephone) Linking.openURL(`tel:${hopital.telephone}`); };
-    const handleCallUrgence = () => { if (hopital?.telephone_urgence) Linking.openURL(`tel:${hopital.telephone_urgence}`); };
+    const handleCall = () => { if (hopital?.telephone) Linking.openURL(`tel:${hopital.telephone.replace(/[^\d+]/g, '')}`); };
+    const handleCallUrgence = () => { if (hopital?.telephone_urgence) Linking.openURL(`tel:${hopital.telephone_urgence.replace(/[^\d+]/g, '')}`); };
     const handleWhatsApp = () => {
         const num = hopital?.whatsapp || hopital?.telephone;
         if (num) Linking.openURL(`https://wa.me/${num.replace(/[^0-9+]/g, '')}`);

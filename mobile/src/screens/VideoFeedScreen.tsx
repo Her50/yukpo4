@@ -934,7 +934,7 @@ const VideoFeedScreen: React.FC = ({ route }: any) => {
 
     const handlePlaybackStatus = useCallback((contentId: string, index: number, status: AVPlaybackStatus) => {
         if (!status.isLoaded) {
-            // Échec définitif (réseau, 403, format) : expo renvoie error — sinon c’est encore le chargement
+            // Échec définitif (réseau, 403, format) : expo renvoie error — sinon c'est encore le chargement
             if ('error' in status && (status as { error?: string }).error) {
                 const err = (status as { error?: string }).error;
                 console.warn(`[VideoFeedScreen] Lecture impossible (${contentId}):`, err);

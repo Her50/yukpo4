@@ -11,8 +11,8 @@ import i18n from 'i18next';
 import { Platform, Vibration } from 'react-native';
 
 /**
- * Canal Android v2 (importance MAX) : meilleure restitution sonore / heads-up quand l’app n’est pas au premier plan
- * ou que l’écran est verrouillé (l’OS peut toujours limiter selon DND / mode silencieux matériel).
+ * Canal Android v2 (importance MAX) : meilleure restitution sonore / heads-up quand l'app n'est pas au premier plan
+ * ou que l'écran est verrouillé (l'OS peut toujours limiter selon DND / mode silencieux matériel).
  */
 export const ANDROID_COMMUNITY_ALERTS_CHANNEL_ID = 'community_alerts_v2';
 import { useNavigationPayment } from '../hooks/useNavigationPayment';
@@ -92,7 +92,7 @@ class CommunityAlertSoundService {
                 await Notifications.setNotificationChannelAsync(ANDROID_COMMUNITY_ALERTS_CHANNEL_ID, {
                     name: 'Alertes Communautaires',
                     description:
-                        'Son et vibration à l’approche d’une alerte (y compris autre application ou écran éteint)',
+                        'Son et vibration à l'approche d'une alerte (y compris autre application ou écran éteint)',
                     importance: Notifications.AndroidImportance.MAX,
                     vibrationPattern: [0, 250, 120, 250],
                     lightColor: '#EF4444',

@@ -77,6 +77,6 @@ mod tests {
     #[test]
     fn keeps_single() {
         let v = classe_match_variants("CP");
-        assert!(v.contains("CP"));
+        assert!(v.iter().any(|s| s == "CP"));
     }
 }

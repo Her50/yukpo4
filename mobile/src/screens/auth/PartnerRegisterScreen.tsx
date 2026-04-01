@@ -44,7 +44,7 @@ const PartnerRegisterScreen: React.FC = () => {
     partner_phone: '',
     partner_address: '',
     partner_gps: null as { lat: number; lng: number } | null,
-    /** Code ISO pays (ex. CM) — aligné sur l’indicatif téléphonique */
+    /** Code ISO pays (ex. CM) — aligné sur l'indicatif téléphonique */
     partner_country: 'CM',
     partner_logo: null as string | null, // ✅ NOUVEAU: Logo du partenaire (base64)
     // ✅ NOUVEAU: Champs spécifiques pour chauffeur

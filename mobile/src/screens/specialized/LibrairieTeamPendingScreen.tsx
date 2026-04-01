@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
+import ServiceTeamManager from '../../components/ServiceTeamManager';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { bourseLivreV2Api } from '../../services/bourseLivreV2Api';
@@ -52,6 +53,8 @@ const LibrairieTeamPendingScreen: React.FC = () => {
   const [selectedLieuId, setSelectedLieuId] = useState<number | null>(null);
   const [stockDisponible, setStockDisponible] = useState(false);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
+  const [librairieId, setLibrairieId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'validations' | 'equipe'>('validations');
 
   const selectedLieu = useMemo(
     () => lieux.find((l) => l.id === selectedLieuId) || null,
@@ -70,6 +73,7 @@ const LibrairieTeamPendingScreen: React.FC = () => {
       setPackages([...aConstituer, ...constitues]);
       setPurchases(pendingPurchases);
       setLieux(lieuxData);
+      if (r?.librairie_id) setLibrairieId(r.librairie_id);
       if (!selectedLieuId && lieuxData.length > 0) setSelectedLieuId(lieuxData[0].id);
     } catch (e: any) {
       Alert.alert(t('message.error', 'Erreur'), e?.message || 'Chargement impossible');
@@ -212,8 +216,48 @@ const LibrairieTeamPendingScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('librairieTeamPending.title', 'Equipe librairie - validations')}</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>{t('librairieTeamPending.title', 'Equipe librairie - validations')}</Text>
+        <TouchableOpacity
+          style={styles.dashboardBtn}
+          onPress={() => navigation.navigate('LivreScolaireHome' as never)}
+          accessibilityRole="button"
+        >
+          <SafeIcon name="layout-dashboard" size={14} color="#B45309" />
+          <Text style={styles.dashboardBtnText}>
+            {t('librairieTeamPending.dashboardLink', 'Tableau de bord')}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'validations' && styles.tabActive]}
+          onPress={() => setActiveTab('validations')}
+        >
+          <SafeIcon name="package-check" size={14} color={activeTab === 'validations' ? modernColors.primary : '#6b7280'} />
+          <Text style={[styles.tabText, activeTab === 'validations' && styles.tabTextActive]}>
+            {t('librairieTeamPending.tabValidations', 'Validations')}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'equipe' && styles.tabActive]}
+          onPress={() => setActiveTab('equipe')}
+        >
+          <SafeIcon name="users" size={14} color={activeTab === 'equipe' ? modernColors.primary : '#6b7280'} />
+          <Text style={[styles.tabText, activeTab === 'equipe' && styles.tabTextActive]}>
+            {t('librairieTeamPending.tabEquipe', 'Équipe')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === 'equipe' ? (
+        <ServiceTeamManager
+          serviceId={librairieId?.toString()}
+          onClose={() => setActiveTab('validations')}
+        />
+      ) : (
+        <>
       <TouchableOpacity
         style={styles.linkMixedPrix}
         onPress={() => navigation.navigate('LibrairieNetworkLignePrix' as never)}
@@ -274,7 +318,7 @@ const LibrairieTeamPendingScreen: React.FC = () => {
             {!selectedLieuId
               ? t(
                   'librairieTeamPending.guardChooseBranch',
-                  'Validation verrouillée: choisissez d’abord une succursale.'
+                  'Validation verrouillée: choisissez d'abord une succursale.'
                 )
               : t(
                   'librairieTeamPending.guardStockRequired',
@@ -378,6 +422,8 @@ const LibrairieTeamPendingScreen: React.FC = () => {
           </View>
         )}
       />
+        </>
+      )}
     </View>
   );
 };
@@ -385,7 +431,42 @@ const LibrairieTeamPendingScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc', padding: 14 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 10 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  title: { fontSize: 18, fontWeight: '800', color: '#111827', flex: 1 },
+  dashboardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  dashboardBtnText: { fontSize: 12, fontWeight: '700', color: '#B45309' },
+  tabRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#e0e7ff',
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  tabActive: { backgroundColor: '#eef2ff' },
+  tabText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
+  tabTextActive: { color: modernColors.primary },
   linkMixedPrix: {
     flexDirection: 'row',
     alignItems: 'center',

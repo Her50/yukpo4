@@ -25,7 +25,7 @@ import { modernColors } from '../../theme/modernTheme';
 import { DeliveryStatus, DeliverySummary } from '../../types/delivery';
 import { useScreenEnter } from '../../utils/animations';
 
-/** Ordre d’affichage « tournée » (plus tôt = plus haut dans la liste). */
+/** Ordre d'affichage « tournée » (plus tôt = plus haut dans la liste). */
 const COURIER_STATUS_ORDER: Partial<Record<DeliveryStatus, number>> = {
     pending: 5,
     requested: 10,

@@ -296,7 +296,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
       onChange?.();
     } catch (e) {
       console.error(e);
-      Alert.alert('Erreur', 'Impossible d’enregistrer la préférence');
+      Alert.alert('Erreur', 'Impossible d'enregistrer la préférence');
     }
   };
 

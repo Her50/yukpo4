@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import ProductCommentsSection from '../../components/ProductCommentsSection';
 import ProductVideoCreationModal from '../../components/ProductVideoCreationModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
@@ -54,6 +55,7 @@ const AutomobileDashboardScreen: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('overview');
     const [showStudioModal, setShowStudioModal] = useState(false);
     const [studioProduct, setStudioProduct] = useState<ManagedProduct | null>(null);
+    const [expandedVehicleComments, setExpandedVehicleComments] = useState<Set<number>>(new Set());
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -182,35 +184,59 @@ const AutomobileDashboardScreen: React.FC = () => {
                 </View>
             ) : (
                 vehicles.map((v, i) => (
-                    <View key={i} style={s.vehicleCard}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.vehicleName}>{v.marque} {v.modele}</Text>
-                            <Text style={s.vehicleDetail}>
-                                {v.type_vehicule || ''} {v.annee ? `· ${v.annee}` : ''} {v.is_occasion ? '· Occasion' : '· Neuf'}
-                                {v.prix ? ` · ${v.prix.toLocaleString()} ${devise}` : ''}
-                            </Text>
+                    <React.Fragment key={i}>
+                        <View style={s.vehicleCard}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.vehicleName}>{v.marque} {v.modele}</Text>
+                                <Text style={s.vehicleDetail}>
+                                    {v.type_vehicule || ''} {v.annee ? `· ${v.annee}` : ''} {v.is_occasion ? '· Occasion' : '· Neuf'}
+                                    {v.prix ? ` · ${v.prix.toLocaleString()} ${devise}` : ''}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={{ backgroundColor: '#8B5CF620', borderRadius: 6, padding: 6, marginRight: 6 }}
+                                onPress={() => {
+                                    const mp: ManagedProduct = {
+                                        id: String(v.id),
+                                        nom: `${v.marque} ${v.modele}`,
+                                        serviceId: String(v.id),
+                                        serviceTitre: 'Automobile',
+                                        prix: v.prix,
+                                        type: v.type_vehicule,
+                                        product_index: i,
+                                        images: v.images || [],
+                                    };
+                                    setStudioProduct(mp);
+                                    setShowStudioModal(true);
+                                }}
+                            >
+                                <SafeIcon name="film" size={14} color="#8B5CF6" />
+                            </TouchableOpacity>
+                            <View style={[s.statusDot, { backgroundColor: v.is_active !== false ? '#10B981' : '#EF4444' }]} />
                         </View>
                         <TouchableOpacity
-                            style={{ backgroundColor: '#8B5CF620', borderRadius: 6, padding: 6, marginRight: 6 }}
-                            onPress={() => {
-                                const mp: ManagedProduct = {
-                                    id: String(v.id),
-                                    nom: `${v.marque} ${v.modele}`,
-                                    serviceId: String(v.id),
-                                    serviceTitre: 'Automobile',
-                                    prix: v.prix,
-                                    type: v.type_vehicule,
-                                    product_index: i,
-                                    images: v.images || [],
-                                };
-                                setStudioProduct(mp);
-                                setShowStudioModal(true);
-                            }}
+                            style={s.commentsToggle}
+                            onPress={() => setExpandedVehicleComments(prev => {
+                                const next = new Set(prev);
+                                next.has(v.id) ? next.delete(v.id) : next.add(v.id);
+                                return next;
+                            })}
                         >
-                            <SafeIcon name="film" size={14} color="#8B5CF6" />
+                            <SafeIcon name="message-circle" size={14} color="#6366F1" />
+                            <Text style={s.commentsToggleText}>
+                                {expandedVehicleComments.has(v.id) ? 'Masquer les avis' : 'Avis clients'}
+                            </Text>
+                            <SafeIcon name={expandedVehicleComments.has(v.id) ? 'chevron-up' : 'chevron-down'} size={14} color="#6366F1" />
                         </TouchableOpacity>
-                        <View style={[s.statusDot, { backgroundColor: v.is_active !== false ? '#10B981' : '#EF4444' }]} />
-                    </View>
+                        {expandedVehicleComments.has(v.id) && (
+                            <ProductCommentsSection
+                                serviceId={v.id}
+                                serviceTitle={`${v.marque} ${v.modele}`}
+                                mode="inline"
+                                compact
+                            />
+                        )}
+                    </React.Fragment>
                 ))
             )}
         </ScrollView>
@@ -310,6 +336,8 @@ const s = StyleSheet.create({
     vehicleName: { fontSize: 14, fontWeight: '600', color: '#1F2937' },
     vehicleDetail: { fontSize: 12, color: '#6B7280', marginTop: 2 },
     statusDot: { width: 10, height: 10, borderRadius: 5 },
+    commentsToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#EEF2FF', borderRadius: 8, marginBottom: 8 },
+    commentsToggleText: { flex: 1, fontSize: 12, color: '#6366F1', fontWeight: '600' },
     emptyState: { alignItems: 'center', paddingVertical: 40 },
     emptyTitle: { fontSize: 16, fontWeight: '600', color: '#374151', marginTop: 12 },
     emptyText: { fontSize: 13, color: '#6B7280', marginTop: 4, textAlign: 'center' },

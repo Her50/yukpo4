@@ -3,7 +3,7 @@
  * — même logique de seuils que NavigationScreen, mais exécutée depuis
  * PassiveActivityTracker (expo-task-manager + startLocationUpdatesAsync).
  *
- * Les checkpoints sont mis en cache AsyncStorage quand NavigationScreen charge l’API,
+ * Les checkpoints sont mis en cache AsyncStorage quand NavigationScreen charge l'API,
  * et rafraîchis périodiquement depuis cette tâche si besoin.
  */
 
@@ -202,14 +202,14 @@ async function shouldFetchRemote(lat: number, lng: number, cached: CheckpointRow
 export async function persistCheckpointsForBackground(checkpoints: CheckpointRow[]): Promise<void> {
   const rows = (checkpoints || []).filter((c) => c?.id && validateCoords(c.latitude, c.longitude));
   await saveCachedCheckpoints(rows);
-  /* meta optionnelle : évite un fetch immédiat en BG si l’utilisateur vient de charger la zone */
+  /* meta optionnelle : évite un fetch immédiat en BG si l'utilisateur vient de charger la zone */
   if (rows.length > 0 && rows[0]) {
     await saveFetchMeta(rows[0].latitude, rows[0].longitude);
   }
 }
 
 /**
- * Fusionne l’état « déjà alerté » persistant (BG) dans la Map utilisée par NavigationScreen.
+ * Fusionne l'état « déjà alerté » persistant (BG) dans la Map utilisée par NavigationScreen.
  */
 export async function mergeStoredEncounteredIntoMap(target: Map<string, number>): Promise<void> {
   const enc = await loadEncountered();
@@ -233,7 +233,7 @@ export async function recordEncounteredThreshold(checkpointId: string, threshold
   }
 }
 
-/** Nouvelle session de navigation / marche libre : repartir des seuils d’alerte à zéro. */
+/** Nouvelle session de navigation / marche libre : repartir des seuils d'alerte à zéro. */
 export async function clearStoredEncounteredRecord(): Promise<void> {
   try {
     await AsyncStorage.removeItem(STORAGE_ENCOUNTERED);
@@ -243,7 +243,7 @@ export async function clearStoredEncounteredRecord(): Promise<void> {
 }
 
 /**
- * Point d’entrée depuis PassiveActivityTracker (arrière-plan).
+ * Point d'entrée depuis PassiveActivityTracker (arrière-plan).
  */
 export async function processBackgroundCommunityAlerts(lat: number, lng: number): Promise<void> {
   if (!validateCoords(lat, lng)) return;

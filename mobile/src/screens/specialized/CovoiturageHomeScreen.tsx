@@ -40,7 +40,7 @@ const CovoiturageHomeScreen: React.FC = () => {
     const toaster = useToaster();
 
     // Publication réservée aux chauffeurs enregistrés (candidature taxi ou covoiturage approuvée),
-    // ou rôles driver / partenaire chauffeur — même logique que l’écran Taxi (useTransportDriverAccess).
+    // ou rôles driver / partenaire chauffeur — même logique que l'écran Taxi (useTransportDriverAccess).
     const { validated: isDriverValidated, checking: checkingDriverStatus } = useTransportDriverAccess(
         user as Record<string, unknown> | null | undefined
     );

@@ -1697,7 +1697,7 @@ export const mediaApi = {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(errorText || 'Échec de l’import audio');
+      throw new Error(errorText || 'Échec de l'import audio');
     }
 
     const data = await response.json();

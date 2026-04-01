@@ -2490,6 +2490,7 @@
     "sortDistance": "Plus proche",
     "chipNearMe": "Proche de moi",
     "chipAvailable": "Disponibles",
+    "onDutyOnly": "De garde",
     "errorLoadingList": "Erreur lors du chargement",
     "pleaseEnterQuestion": "Veuillez saisir une question",
     "selonPrescription": "Selon prescription",

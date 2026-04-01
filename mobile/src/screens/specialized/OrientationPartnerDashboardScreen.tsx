@@ -309,7 +309,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                     <View style={{ flex: 1 }}>
                         <Text style={s.warningTitle}>Vitrine « supérieur »</Text>
                         <Text style={s.warningText}>
-                            Les filières et concours détaillés concernent surtout le supérieur. Pour le primaire/secondaire, utilisez l’onglet Programmes et Performances.
+                            Les filières et concours détaillés concernent surtout le supérieur. Pour le primaire/secondaire, utilisez l'onglet Programmes et Performances.
                         </Text>
                     </View>
                 </View>
@@ -475,7 +475,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
             {isK12 ? (
                 <>
                     <Text style={{ fontSize: 14, color: '#4B5563', marginBottom: 12, lineHeight: 21 }}>
-                        Le programme national (niveaux, matières) est défini par votre pays. Vous chargez ici les documents officiels de l’établissement : listes de manuels, emplois du temps, grilles, etc. (PDF ou Excel).
+                        Le programme national (niveaux, matières) est défini par votre pays. Vous chargez ici les documents officiels de l'établissement : listes de manuels, emplois du temps, grilles, etc. (PDF ou Excel).
                     </Text>
                     <NativeButton title="Envoyer programmes / listes (caméra, PDF, Excel…)" onPress={() => (navigation as any).navigate('EtablissementScolaire')} variant="primary" style={{ marginBottom: 12 }} />
                     <NativeButton title="Voir espace programmes orientation" onPress={() => (navigation as any).navigate('ProgrammesList', { etablissement_id: selectedEtab?.id })} variant="outline" style={{ marginBottom: 16 }} />
@@ -492,7 +492,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                     <Text style={s.emptyTitle}>{isK12 ? 'Aucun document indexé' : t('orientationPartnerDashboard.aucunProgramme')}</Text>
                     <Text style={s.emptyText}>
                         {isK12
-                            ? 'Utilisez le bouton ci-dessus pour transmettre vos fichiers. Les indicateurs de réussite se gèrent dans l’onglet Performances.'
+                            ? 'Utilisez le bouton ci-dessus pour transmettre vos fichiers. Les indicateurs de réussite se gèrent dans l'onglet Performances.'
                             : 'Ajoutez vos filières/specialités et publiez vos brochures pour la visibilité.'}
                     </Text>
                 </View>
@@ -536,7 +536,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
             {isK12 ? (
                 <>
                     <Text style={{ fontSize: 14, color: '#4B5563', marginBottom: 14, lineHeight: 21 }}>
-                        Saisissez les taux de réussite et résultats d’examens nationaux par année (aperçu public). Pas de filières à renseigner : le référentiel est national.
+                        Saisissez les taux de réussite et résultats d'examens nationaux par année (aperçu public). Pas de filières à renseigner : le référentiel est national.
                     </Text>
                     <View style={s.analyticsCard}>
                         <Text style={s.analyticsTitle}>Indicateurs académiques</Text>
@@ -550,7 +550,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                                 </View>
                             ))
                         ) : (
-                            <Text style={{ color: '#6B7280', fontSize: 14 }}>Aucune statistique publiée pour l’instant.</Text>
+                            <Text style={{ color: '#6B7280', fontSize: 14 }}>Aucune statistique publiée pour l'instant.</Text>
                         )}
                     </View>
                     <NativeButton title="Mettre à jour les statistiques" onPress={() => (navigation as any).navigate('CreateEtablissement', { etablissementId: selectedEtab?.id })} variant="primary" style={{ marginTop: 12 }} />

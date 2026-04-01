@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 await Location.requestBackgroundPermissionsAsync();
                 PassiveActivityTracker.start().catch(() => { });
               } catch {
-                // No-op: l’app continuera en mode dégradé selon permissions OS
+                // No-op: l'app continuera en mode dégradé selon permissions OS
               }
             }
           }

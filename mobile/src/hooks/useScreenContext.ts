@@ -139,7 +139,7 @@ const getGlobalActions = (t: (key: string) => string): ActionDescriptor[] => [
     icon: LUCIDE_ICONS.briefcase,
     route: 'MesProduits',
     category: 'navigation',
-    description: t('useScreenContext.servicesDesc') || 'Gestion produits (`MesProduitsScreen`) via l’onglet **Services**.',
+    description: t('useScreenContext.servicesDesc') || 'Gestion produits (`MesProduitsScreen`) via l'onglet **Services**.',
   },
 ];
 
@@ -158,7 +158,7 @@ const MES_SERVICES_TAB_CONFIG: {
     { id: 'ms-delivery-header', label: 'Régler la livraison (tous produits)', icon: LUCIDE_ICONS.truck, category: 'action', description: 'Sélection produits → GlobalDeliveryConfigModal' },
     { id: 'ms-bulk', label: 'Gérer plusieurs produits', icon: LUCIDE_ICONS.check, category: 'action', description: 'Mode bulk + BulkActionsBar (activer/désactiver/supprimer en masse)' },
     { id: 'ms-add-product', label: 'Ajouter un nouveau produit', icon: LUCIDE_ICONS.add, category: 'creation', description: 'handleAddProduct : si service existe → AjouterProduitSimple ; sinon → FormulaireYukpoIntelligent (focus produit)' },
-    { id: 'ms-create-from-home', label: 'Créer depuis l’accueil (plus simple)', icon: LUCIDE_ICONS.home, route: 'Home', category: 'creation', description: 'Parcours recommandé: HomeScreen mode Créer + ChatInputMobile pour un guidage plus simple et intelligent du formulaire' },
+    { id: 'ms-create-from-home', label: 'Créer depuis l'accueil (plus simple)', icon: LUCIDE_ICONS.home, route: 'Home', category: 'creation', description: 'Parcours recommandé: HomeScreen mode Créer + ChatInputMobile pour un guidage plus simple et intelligent du formulaire' },
     { id: 'ms-price-variants', label: 'Prix par variante (poids/taille...)', icon: LUCIDE_ICONS.list, category: 'action', description: 'Outil variation_prix: gérer poids/volume/pointure/taille/couleur sans créer plusieurs fiches produit dupliquées' },
     { id: 'ms-mesproduits', label: 'Gérer produits (écran détaillé)', icon: LUCIDE_ICONS.package, route: 'MesProduits', category: 'navigation', description: 'Bouton pied de liste / carte — MesProduitsScreen (catalogue avancé, médias, livraison unitaire)' },
     { id: 'ms-analytics', label: 'Voir mes stats ventes', icon: LUCIDE_ICONS.activity, route: 'AnalyticsDashboard', category: 'navigation', description: 'Dashboard analytique' },
@@ -170,7 +170,7 @@ const MES_SERVICES_TAB_CONFIG: {
     { id: 'ms-black-friday', label: 'Promo Black Friday', icon: LUCIDE_ICONS.star, route: 'GlobalPromoSubmission', category: 'navigation', description: 'Soumission promo globale' },
     { id: 'ms-flash-active', label: 'Voir mes promos en cours', icon: 'zap', route: 'FlashPromosActive', category: 'navigation', description: 'Voir flashs en cours' },
     { id: 'ms-settings', label: 'Paramètres', icon: LUCIDE_ICONS.settings, route: 'Settings', category: 'navigation', description: 'Réglages app' },
-    { id: 'ms-home', label: 'Accueil', icon: LUCIDE_ICONS.home, route: 'Home', category: 'navigation', description: 'Fil d’Ariane / bouton retour accueil' },
+    { id: 'ms-home', label: 'Accueil', icon: LUCIDE_ICONS.home, route: 'Home', category: 'navigation', description: 'Fil d'Ariane / bouton retour accueil' },
     { id: 'ms-team', label: 'Gérer mon équipe', icon: LUCIDE_ICONS.users, category: 'action', description: 'ServiceTeamModal après sélection produits (serviceId parent)' },
     { id: 'ms-gallery', label: 'Photos/vidéos de mes produits', icon: LUCIDE_ICONS.camera, category: 'action', description: 'ProductGalleryModal' },
     { id: 'ms-card-edit', label: 'Carte produit — modifier service', icon: LUCIDE_ICONS.edit, route: 'FormulaireYukpoIntelligent', category: 'action', description: 'ServiceCardModern → FormulaireYukpoIntelligent mode edit (fromMesServices)' },
@@ -181,14 +181,14 @@ const MES_SERVICES_TAB_CONFIG: {
   ],
   elements: [
     { id: 'ms-header-gradient', type: 'card', label: 'En-tête gradient « Produits »', actionable: false },
-    { id: 'ms-breadcrumbs', type: 'card', label: 'Fil d’Ariane Accueil → Produits', actionable: true },
+    { id: 'ms-breadcrumbs', type: 'card', label: 'Fil d'Ariane Accueil → Produits', actionable: true },
     { id: 'ms-stats-cards', type: 'card', label: 'StatsCard (total, actifs, inactifs, vues)', actionable: true },
     { id: 'ms-filter-chips', type: 'tab', label: 'Filtres Tous / Actif / Inactif', actionable: true },
     { id: 'ms-flashlist', type: 'card', label: 'FlashList ServiceCardModern (cartes produit)', actionable: true },
     { id: 'ms-pull-refresh', type: 'button', label: 'Tirer pour rafraîchir', icon: LUCIDE_ICONS.refresh, actionable: true },
     { id: 'ms-modals', type: 'modal', label: 'Modales : équipe, sélecteur produits, livraison globale, vidéo, galerie', actionable: true },
   ],
-  guide: '**Mes services (Produits)** = `MesServicesScreen`. L’onglet barre du bas s’appelle **`Services`** (c’est l’écran enrichi moderne). La route pile **`MesServices`** ouvre la même UI. **Ne pas** utiliser la route **`ServicesActivity`** (ancien `ServicesScreen`). Données : `GET /api/prestataire/services` puis produits par `productsService.getProductsByService` (fallback parsing JSON legacy). Rafraîchissement sur `service:refresh`, `product:created`, `product:updated`. L’écran **`MesProduits`** est un complément (vue catalogue détaillée) accessible depuis le pied de liste ou la carte, pas l’onglet principal. **Création d’une nouvelle offre :** toujours citer **en premier** le parcours **Accueil → mode Créer → ChatInputMobile** (recommandé) ; **en second** le hub **MesServicesScreen** (gestion catalogue / alternative). Mentionner l’outil **variation_prix** (poids, volume, pointure, etc.) pour éviter les doublons de produits.',
+  guide: '**Mes services (Produits)** = `MesServicesScreen`. L'onglet barre du bas s'appelle **`Services`** (c'est l'écran enrichi moderne). La route pile **`MesServices`** ouvre la même UI. **Ne pas** utiliser la route **`ServicesActivity`** (ancien `ServicesScreen`). Données : `GET /api/prestataire/services` puis produits par `productsService.getProductsByService` (fallback parsing JSON legacy). Rafraîchissement sur `service:refresh`, `product:created`, `product:updated`. L'écran **`MesProduits`** est un complément (vue catalogue détaillée) accessible depuis le pied de liste ou la carte, pas l'onglet principal. **Création d'une nouvelle offre :** toujours citer **en premier** le parcours **Accueil → mode Créer → ChatInputMobile** (recommandé) ; **en second** le hub **MesServicesScreen** (gestion catalogue / alternative). Mentionner l'outil **variation_prix** (poids, volume, pointure, etc.) pour éviter les doublons de produits.',
 };
 
 /** Liste utilisateur hôtels / meublés — `HotelMeubleHomeScreen` (routes `HotelMeubleHome`, `HotelSearch`, `MeubleSearch`). */
@@ -208,7 +208,7 @@ const HOTEL_MEUBLE_USER_HUB_CONFIG: {
     { id: 'hm-refresh', label: 'Tirer pour rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Pull-to-refresh sur la FlatList' },
     { id: 'hm-open-details', label: 'Fiche du bien', icon: LUCIDE_ICONS.info, route: 'ImmobilierDetails', category: 'navigation', description: 'Appui sur une carte → ImmobilierDetails avec propertyId' },
     { id: 'hm-book', label: 'Réserver', icon: LUCIDE_ICONS.calendar, route: 'HotelBooking', category: 'action', description: 'Bouton Réserver sur la carte → HotelBooking (propertyId, propertyName, typeBien, prixNuitee, ville) — dates saisies sur cet écran, pas sur la liste' },
-    { id: 'hm-gps-radius', label: 'Tri / périmètre GPS', icon: LUCIDE_ICONS.location, category: 'help', description: 'Si LocationContext a des coordonnées : lat, lng et max_distance_km=50 envoyés à l’API ; distance affichée sur les cartes si renvoyée' },
+    { id: 'hm-gps-radius', label: 'Tri / périmètre GPS', icon: LUCIDE_ICONS.location, category: 'help', description: 'Si LocationContext a des coordonnées : lat, lng et max_distance_km=50 envoyés à l'API ; distance affichée sur les cartes si renvoyée' },
   ],
   elements: [
     { id: 'hm-header-back', type: 'button', label: 'Retour (header)', icon: LUCIDE_ICONS.back, actionable: true },
@@ -231,7 +231,7 @@ const SCREEN_CONFIGS: Record<string, {
   Home: {
     type: 'home',
     actions: [
-      { id: 'home-ai-search', label: 'Trouver un client / service', icon: LUCIDE_ICONS.search, category: 'search', description: 'Mode 🔍 Rechercher : saisie texte + médias optionnels ; envoi → API rechercherServices puis écran ResultatBesoin (pas l’écran RechercheBesoin). Connexion requise.' },
+      { id: 'home-ai-search', label: 'Trouver un client / service', icon: LUCIDE_ICONS.search, category: 'search', description: 'Mode 🔍 Rechercher : saisie texte + médias optionnels ; envoi → API rechercherServices puis écran ResultatBesoin (pas l'écran RechercheBesoin). Connexion requise.' },
       { id: 'home-create-mode', label: 'Créer mon produit / ma prestation', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Basculer sur le mode Création puis envoyer photo/texte dans ChatInputMobile. Si le prestataire a déjà un service → AjouterProduitSimple + suggestion IA ; sinon → FormulaireYukpoIntelligent (création complète).' },
       { id: 'home-gps-modal', label: 'GPS / zone (modal)', icon: LUCIDE_ICONS.location, category: 'action', description: 'Bouton localisation sur ChatInputMobile ou en-tête : ModernGPSModal (point ou zone), alimente la recherche / création et la météo du menu avatar.' },
       { id: 'header-navigation', label: 'Navigation GPS', icon: LUCIDE_ICONS.map, route: 'Navigation', category: 'navigation', description: 'Icône navigation à gauche : écran Navigation Yukpo.' },
@@ -255,11 +255,11 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'svc-livres', label: 'Bourse du livre', icon: LUCIDE_ICONS.book, route: 'LivreScolaireHome', category: 'navigation', description: 'LivreScolaireHome.' },
       { id: 'svc-menu', label: 'Menu / repas (IA)', icon: LUCIDE_ICONS.utensils, route: 'MenuPlanningHub', category: 'navigation', description: 'MenuPlanningHub.' },
       { id: 'svc-bayamselam', label: 'Super marché', icon: LUCIDE_ICONS.activity, route: 'SupermarketHome', category: 'navigation', description: 'SupermarketHome — catalogue, comparateur, promos.' },
-      { id: 'svc-emploi', label: 'Offres d’emploi', icon: LUCIDE_ICONS.briefcase, route: 'OffresEmploiHub', category: 'navigation', description: 'OffresEmploiHub.' },
+      { id: 'svc-emploi', label: 'Offres d'emploi', icon: LUCIDE_ICONS.briefcase, route: 'OffresEmploiHub', category: 'navigation', description: 'OffresEmploiHub.' },
       { id: 'svc-immo', label: 'Immobilier', icon: LUCIDE_ICONS.building2, route: 'ImmobilierSearch', category: 'navigation', description: 'ImmobilierSearch.' },
       { id: 'svc-hotel', label: 'Hôtels', icon: LUCIDE_ICONS.hotel, route: 'HotelSearch', params: { mode: 'hotel' }, category: 'navigation', description: 'HotelSearch mode=hôtel.' },
       { id: 'svc-meuble', label: 'Meublés', icon: LUCIDE_ICONS.building2, route: 'MeubleSearch', params: { mode: 'meuble' }, category: 'navigation', description: 'MeubleSearch mode=meublé.' },
-      { id: 'tab-services', label: 'Ouvrir mon hub Mes services', icon: LUCIDE_ICONS.briefcase, route: 'MesServices', category: 'navigation', description: 'Barre d’onglets : nom interne **Services** → composant MesServicesScreen ; navigation explicite **MesServices** (éviter **ServicesActivity** = ancien écran).' },
+      { id: 'tab-services', label: 'Ouvrir mon hub Mes services', icon: LUCIDE_ICONS.briefcase, route: 'MesServices', category: 'navigation', description: 'Barre d'onglets : nom interne **Services** → composant MesServicesScreen ; navigation explicite **MesServices** (éviter **ServicesActivity** = ancien écran).' },
     ],
     elements: [
       { id: 'header-brand', type: 'card', label: 'Logo Yukpo (Yuk / po)', actionable: false },
@@ -275,14 +275,14 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'services-categories', type: 'card', label: 'YukpoServicesQuickAccess — 6 catégories / 17 services (Santé, Transport, Vie pratique, Bourse du livre, Assurance, Immobilier)', actionable: true },
       { id: 'fab-assistant-ia', type: 'fab', label: 'Assistant IA (bulle, hors HomeScreen — AppNavigator)', actionable: true },
     ],
-    guide: 'Accueil Yukpo (HomeScreen) : en-tête fixe (avatar/solde/météo, Navigation, marque, Livraison, conversations avec badge, notifications avec badge). Double mode Rechercher vs Créer : ChatInputMobile envoie soit vers ResultatBesoin (recherche IA connectée), soit vers création (FormulaireYukpoIntelligent si premier service, sinon AjouterProduitSimple + suggestions). GPS via modal. Offres spéciales → FlashPromos, catalogue promos, Lives. Grille services ouvre toujours des écrans **utilisateur** (Search/Hub/Home dédiés), jamais les formulaires partenaires. Au focus, le mode repasse sur Rechercher. Assistant IA flottant est global (AppNavigator). L’onglet **Mes services** en bas = onglet interne **Services** (composant MesServicesScreen) ; la même UI est accessible par la route pile **MesServices**. La route pile **ServicesActivity** est un ancien écran « Mon activité » — ne pas la confondre.',
+    guide: 'Accueil Yukpo (HomeScreen) : en-tête fixe (avatar/solde/météo, Navigation, marque, Livraison, conversations avec badge, notifications avec badge). Double mode Rechercher vs Créer : ChatInputMobile envoie soit vers ResultatBesoin (recherche IA connectée), soit vers création (FormulaireYukpoIntelligent si premier service, sinon AjouterProduitSimple + suggestions). GPS via modal. Offres spéciales → FlashPromos, catalogue promos, Lives. Grille services ouvre toujours des écrans **utilisateur** (Search/Hub/Home dédiés), jamais les formulaires partenaires. Au focus, le mode repasse sur Rechercher. Assistant IA flottant est global (AppNavigator). L'onglet **Mes services** en bas = onglet interne **Services** (composant MesServicesScreen) ; la même UI est accessible par la route pile **MesServices**. La route pile **ServicesActivity** est un ancien écran « Mon activité » — ne pas la confondre.',
   },
 
   /** Onglet barre du bas + route pile MesServices : **MesServicesScreen** (hub moderne). */
   Services: MES_SERVICES_TAB_CONFIG,
   MesServices: MES_SERVICES_TAB_CONFIG,
 
-  /** Ancien **ServicesScreen** (« Mon activité ») — route pile dédiée pour éviter collision avec l’onglet Services. */
+  /** Ancien **ServicesScreen** (« Mon activité ») — route pile dédiée pour éviter collision avec l'onglet Services. */
   ServicesActivity: {
     type: 'dashboard',
     actions: [
@@ -315,7 +315,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'results-flatlist', type: 'card', label: 'Liste ProductCard (produits + services sans produits extraits)', actionable: true },
       { id: 'gps-live-warning', type: 'card', label: 'Bandeau GPS temps réel créateur', actionable: false },
     ],
-    guide: '**ResultatBesoinScreen** : résultats après **rechercherServices**. Route **RechercheBesoin** = alias de **ResultatBesoin** (même composant). Chargement : tri score + proximité (**LocationContext**), **GET /api/services/:id** + **/products**, scoring produit (stop words FR). Pas de carte des résultats. Pas de panneau prix min/max exposé (état priceFilter non relié à l’UI). Carte → **PrestataireBoutique** ; chat → **ChatModalMobile**. Vidéos : max 1 lecture, visibilité FlatList. **useServicesBatchData** appelé mais batchData non passé aux cartes dans ce fichier.',
+    guide: '**ResultatBesoinScreen** : résultats après **rechercherServices**. Route **RechercheBesoin** = alias de **ResultatBesoin** (même composant). Chargement : tri score + proximité (**LocationContext**), **GET /api/services/:id** + **/products**, scoring produit (stop words FR). Pas de carte des résultats. Pas de panneau prix min/max exposé (état priceFilter non relié à l'UI). Carte → **PrestataireBoutique** ; chat → **ChatModalMobile**. Vidéos : max 1 lecture, visibilité FlatList. **useServicesBatchData** appelé mais batchData non passé aux cartes dans ce fichier.',
   },
   ResultatBesoin: {
     type: 'search',
@@ -336,7 +336,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'results-flatlist', type: 'card', label: 'Liste ProductCard (produits + services sans produits extraits)', actionable: true },
       { id: 'gps-live-warning', type: 'card', label: 'Bandeau GPS temps réel créateur', actionable: false },
     ],
-    guide: '**ResultatBesoinScreen** : résultats après **rechercherServices**. Route **RechercheBesoin** = alias de **ResultatBesoin** (même composant). Chargement : tri score + proximité (**LocationContext**), **GET /api/services/:id** + **/products**, scoring produit (stop words FR). Pas de carte des résultats. Pas de panneau prix min/max exposé (état priceFilter non relié à l’UI). Carte → **PrestataireBoutique** ; chat → **ChatModalMobile**. Vidéos : max 1 lecture, visibilité FlatList. **useServicesBatchData** appelé mais batchData non passé aux cartes dans ce fichier.',
+    guide: '**ResultatBesoinScreen** : résultats après **rechercherServices**. Route **RechercheBesoin** = alias de **ResultatBesoin** (même composant). Chargement : tri score + proximité (**LocationContext**), **GET /api/services/:id** + **/products**, scoring produit (stop words FR). Pas de carte des résultats. Pas de panneau prix min/max exposé (état priceFilter non relié à l'UI). Carte → **PrestataireBoutique** ; chat → **ChatModalMobile**. Vidéos : max 1 lecture, visibilité FlatList. **useServicesBatchData** appelé mais batchData non passé aux cartes dans ce fichier.',
   },
 
   ServiceDetail: {
@@ -507,7 +507,7 @@ const SCREEN_CONFIGS: Record<string, {
     type: 'form',
     actions: [
       { id: 'submit-booking', label: 'Envoyer la réservation', icon: LUCIDE_ICONS.check, category: 'action', description: 'POST /api/hotel/reservations/request (bookHotelStay) — demande au gérant' },
-      { id: 'pay-now', label: 'Payer maintenant', icon: LUCIDE_ICONS['credit-card'], route: 'HotelBookingPayment', category: 'action', description: 'Proposé dans l’alerte après succès si id réservation + montant > 0 ; sinon paiement plus tard selon confirmation' },
+      { id: 'pay-now', label: 'Payer maintenant', icon: LUCIDE_ICONS['credit-card'], route: 'HotelBookingPayment', category: 'action', description: 'Proposé dans l'alerte après succès si id réservation + montant > 0 ; sinon paiement plus tard selon confirmation' },
     ],
     elements: [
       { id: 'dates-input', type: 'input', label: 'Dates arrivée/départ (AAAA-MM-JJ, validées Date)', actionable: true },
@@ -516,7 +516,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'notes-special', type: 'input', label: 'Notes / demandes spéciales (optionnel)', actionable: true },
       { id: 'price-estimate', type: 'card', label: 'Estimation si prix/nuit connu : nuit × chambres × prix/nuit', actionable: false },
     ],
-    guide: 'Réservation **HotelBookingScreen** pour un **seul** bien (\`propertyId\` en params). Dates, occupants, coordonnées ; envoi via **bookHotelStay**. Paiement immédiat seulement si l’alerte de succès propose **Payer maintenant** (réservation id + total > 0). Pas de choix de chambre type catalogue — le bien est déjà fixé.',
+    guide: 'Réservation **HotelBookingScreen** pour un **seul** bien (\`propertyId\` en params). Dates, occupants, coordonnées ; envoi via **bookHotelStay**. Paiement immédiat seulement si l'alerte de succès propose **Payer maintenant** (réservation id + total > 0). Pas de choix de chambre type catalogue — le bien est déjà fixé.',
   },
   ImmobilierForm: {
     type: 'form',
@@ -620,13 +620,13 @@ const SCREEN_CONFIGS: Record<string, {
   ImmobilierPriceAlerts: {
     type: 'list',
     actions: [
-      { id: 'toggle-alert', label: 'Activer/Désactiver', icon: LUCIDE_ICONS.bell, category: 'action', description: 'UI : Alert « bientôt disponible » (pas d’API toggle branchée)' },
+      { id: 'toggle-alert', label: 'Activer/Désactiver', icon: LUCIDE_ICONS.bell, category: 'action', description: 'UI : Alert « bientôt disponible » (pas d'API toggle branchée)' },
       { id: 'delete-alert', label: 'Supprimer', icon: LUCIDE_ICONS.trash, category: 'action', description: 'UI : confirmation puis message suppression à implémenter' },
     ],
     elements: [
       { id: 'alerts-list', type: 'card', label: 'Liste immobilierService.getMyPriceAlerts (GET /api/immobilier/my-alerts)', actionable: true },
     ],
-    guide: '**ImmobilierPriceAlertsScreen** : chargement **getMyPriceAlerts** au focus. L’activation/désactivation et la suppression sont pour l’instant des **Alert** placeholder (backend non branché dans ces handlers). Ne pas promettre une gestion complète tant que le code TODO n’est pas fait.',
+    guide: '**ImmobilierPriceAlertsScreen** : chargement **getMyPriceAlerts** au focus. L'activation/désactivation et la suppression sont pour l'instant des **Alert** placeholder (backend non branché dans ces handlers). Ne pas promettre une gestion complète tant que le code TODO n'est pas fait.',
   },
 
   // === TAXI ===
@@ -701,7 +701,7 @@ const SCREEN_CONFIGS: Record<string, {
     actions: [
       { id: 'open-delivery-tracking', label: 'Ouvrir une livraison', icon: LUCIDE_ICONS.truck, category: 'navigation', description: 'Carte livraison → **DeliveryShoppingTracking** (`deliveryId`)' },
       { id: 'verification-code', label: 'Code de vérification', icon: LUCIDE_ICONS.shield, category: 'navigation', description: 'Bouton sur carte → **CourierVerificationCode** (`deliveryId`)' },
-      { id: 'stats-alert', label: 'Statistiques (Alert)', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Bouton actions rapides → **Alert** texte (pas d’écran dédié)' },
+      { id: 'stats-alert', label: 'Statistiques (Alert)', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Bouton actions rapides → **Alert** texte (pas d'écran dédié)' },
       { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS['credit-card'], route: 'WalletFinancial', category: 'navigation', description: '**WalletFinancial**' },
       { id: 'book-courier-packages', label: 'Bourse du livre (paquets)', icon: LUCIDE_ICONS.book, category: 'action', description: '**BookCourierSubDashboard** : **bourseLivreV2Api** (accepter / statuts paquets)' },
     ],
@@ -710,14 +710,14 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'book-subdashboard', type: 'card', label: 'Sous-dashboard livres scolaires (coursier)', actionable: true },
       { id: 'delivery-list', type: 'card', label: 'Livraisons actives (GET /api/deliveries/active)', actionable: true },
     ],
-    guide: '**CourierDashboardScreen** : au focus **notificationSoundService** + **loadData** ; polling **15 s** ; **deliveryApi.listActiveDeliveries** + **getCourierStats** (GET `/api/delivery/courier/stats`) ; graphiques **CourierStatsChart** ; **BookCourierSubDashboard** (Bourse livre V2) ; carte livraison → **DeliveryShoppingTracking** ; code vérif → **CourierVerificationCode** ; actions rapides = **Alert** stats + **WalletFinancial**. Pas d’entrée Historique / Revenus dédiée dans ce fichier.',
+    guide: '**CourierDashboardScreen** : au focus **notificationSoundService** + **loadData** ; polling **15 s** ; **deliveryApi.listActiveDeliveries** + **getCourierStats** (GET `/api/delivery/courier/stats`) ; graphiques **CourierStatsChart** ; **BookCourierSubDashboard** (Bourse livre V2) ; carte livraison → **DeliveryShoppingTracking** ; code vérif → **CourierVerificationCode** ; actions rapides = **Alert** stats + **WalletFinancial**. Pas d'entrée Historique / Revenus dédiée dans ce fichier.',
   },
 
   // === LABORATOIRE ===
   LaboratoireHome: {
     type: 'specialized',
     actions: [
-      { id: 'search-lab', label: 'Filtres par zone', icon: LUCIDE_ICONS.search, route: 'LaboratoireSearch', category: 'search', description: 'Recherche lieux labo (GPS, types d’examens, ville)' },
+      { id: 'search-lab', label: 'Filtres par zone', icon: LUCIDE_ICONS.search, route: 'LaboratoireSearch', category: 'search', description: 'Recherche lieux labo (GPS, types d'examens, ville)' },
       { id: 'my-exams', label: 'Mes Examens', icon: LUCIDE_ICONS.clipboard, route: 'MyLabExaminations', category: 'navigation', description: 'Historique d\'examens' },
       { id: 'ai-analysis', label: 'Analyse IA (modal)', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Modale IA : pathologie texte + image (**laboratoryService**), pas **LabAIAnalysis**' },
     ],
@@ -755,7 +755,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'bd-tab-compat', label: 'Onglet Compatibilité', icon: LUCIDE_ICONS.list, category: 'action', description: '`getBloodGroupCompatibility` pour le groupe sélectionné' },
       { id: 'bd-respond', label: 'Répondre à une demande', icon: LUCIDE_ICONS.check, category: 'action', description: 'Modal puis `notifyDonorsForRequest(request.id)`' },
       { id: 'find-banks', label: 'Rechercher des banques', icon: LUCIDE_ICONS.search, route: 'BanqueSangSearch', category: 'search', description: 'Retour au flux carte / liste banques' },
-      { id: 'new-blood-request', label: 'Créer une demande de sang (formulaire)', icon: LUCIDE_ICONS.add, route: 'BloodDonationRequest', category: 'creation', description: 'Écran dédié **BloodDonationRequest** (pas l’onglet Profil)' },
+      { id: 'new-blood-request', label: 'Créer une demande de sang (formulaire)', icon: LUCIDE_ICONS.add, route: 'BloodDonationRequest', category: 'creation', description: 'Écran dédié **BloodDonationRequest** (pas l'onglet Profil)' },
       { id: 'my-donations', label: 'Historique dons / demandes', icon: LUCIDE_ICONS.clipboard, route: 'MyBloodDonations', category: 'navigation', description: 'MyBloodDonationsScreen' },
     ],
     elements: [
@@ -812,9 +812,9 @@ const SCREEN_CONFIGS: Record<string, {
   AssuranceDashboard: {
     type: 'dashboard',
     actions: [
-      { id: 'tab-overview', label: 'Onglet Accueil', icon: LUCIDE_ICONS.list, category: 'action', description: 'Vue d’ensemble : stats (produits actifs, polices actives, sinistres ouverts, souscriptions), bannières renouvellement / sinistres, actions rapides, derniers sinistres et polices' },
+      { id: 'tab-overview', label: 'Onglet Accueil', icon: LUCIDE_ICONS.list, category: 'action', description: 'Vue d'ensemble : stats (produits actifs, polices actives, sinistres ouverts, souscriptions), bannières renouvellement / sinistres, actions rapides, derniers sinistres et polices' },
       { id: 'tab-products', label: 'Onglet Produits', icon: LUCIDE_ICONS.package, category: 'action', description: 'Liste des produits assurance du partenaire ; bascule actif/inactif (toggle) ; bouton ajouter → modal création' },
-      { id: 'tab-policies', label: 'Onglet Polices', icon: LUCIDE_ICONS.file, category: 'action', description: 'Polices émises ; si statut **active** : Suspendre ou Résilier (confirmation) — pas de formulaire d’émission sur cet écran (quick action bascule seulement vers cet onglet)' },
+      { id: 'tab-policies', label: 'Onglet Polices', icon: LUCIDE_ICONS.file, category: 'action', description: 'Polices émises ; si statut **active** : Suspendre ou Résilier (confirmation) — pas de formulaire d'émission sur cet écran (quick action bascule seulement vers cet onglet)' },
       { id: 'tab-claims', label: 'Onglet Sinistres', icon: LUCIDE_ICONS.alert, category: 'action', description: 'Traitement sinistres : Analyse IA ; Instruire ; Approuver / Refuser ; Indemniser (montant = montant réclamé si présent)' },
       { id: 'tab-analytics', label: 'Onglet Stats', icon: LUCIDE_ICONS.activity, category: 'action', description: 'Synthèse produits, polices (CA total si renvoyé), sinistres (totaux réclamé/indemnisé si renvoyés)' },
       { id: 'new-product-modal', label: 'Nouveau produit (modal)', icon: LUCIDE_ICONS.add, category: 'creation', description: 'Modal : nom obligatoire ; type / sous-catégorie ; compagnie, description, primes, couverture max, franchise, âges, durée mois — POST création avec service_id des params route' },
@@ -834,14 +834,14 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'product-modal', type: 'modal', label: 'Modal création produit', actionable: true },
       { id: 'pull-refresh', type: 'button', label: 'Tirer pour rafraîchir (tous onglets scroll)', actionable: true },
     ],
-    guide: '**AssuranceDashboardScreen** : tableau de bord **partenaire / assureur** Yukpo. Chargement au focus : **listProducts**, **listPolicies**, **listClaims**, **getDashboardStats** (échecs partiels tolérés). Cinq onglets : Accueil (stats + bannières + actions rapides + aperçus), Produits (liste + toggle actif + modal création), Polices (liste + suspendre/résilier si active), Sinistres (workflow + **aiAnalyzeClaim**), Stats (agrégats dashboard). L’icône recherche en-tête ouvre **InsuranceServicesSearch** (marché), pas le CRUD partenaire. Les écrans **MesPolicesAssurance** / **DeclarationSinistre** sont des parcours **client**, pas ce dashboard.',
+    guide: '**AssuranceDashboardScreen** : tableau de bord **partenaire / assureur** Yukpo. Chargement au focus : **listProducts**, **listPolicies**, **listClaims**, **getDashboardStats** (échecs partiels tolérés). Cinq onglets : Accueil (stats + bannières + actions rapides + aperçus), Produits (liste + toggle actif + modal création), Polices (liste + suspendre/résilier si active), Sinistres (workflow + **aiAnalyzeClaim**), Stats (agrégats dashboard). L'icône recherche en-tête ouvre **InsuranceServicesSearch** (marché), pas le CRUD partenaire. Les écrans **MesPolicesAssurance** / **DeclarationSinistre** sont des parcours **client**, pas ce dashboard.',
   },
 
   InsuranceServicesSearch: {
     type: 'search',
     actions: [
       { id: 'quick-type', label: 'Recherches rapides', icon: 'zap', category: 'action', description: 'Cartes Auto / Santé / Habitation — pré-remplissent le type (chips)' },
-      { id: 'chips-type', label: 'Type d’assurance (chips)', icon: LUCIDE_ICONS.shield, category: 'action', description: 'Liste fixe : Auto, Santé, Habitation, Vie, Voyage, Professionnelle, Responsabilité civile' },
+      { id: 'chips-type', label: 'Type d'assurance (chips)', icon: LUCIDE_ICONS.shield, category: 'action', description: 'Liste fixe : Auto, Santé, Habitation, Vie, Voyage, Professionnelle, Responsabilité civile' },
       { id: 'chips-compagnie', label: 'Compagnie', icon: LUCIDE_ICONS.building2, category: 'action', description: 'Saisie libre + chips (AXA, Allianz, Sanlam, …)' },
       { id: 'loc-ville', label: 'Ville', icon: LUCIDE_ICONS.location, category: 'action', description: '**LocationSelector** (scope all, enrichWithBackend)' },
       { id: 'loc-quartier', label: 'Quartier', icon: LUCIDE_ICONS.location, category: 'action', description: '**LocationSelector** optionnel avec **cityContext** depuis la ville' },
@@ -855,7 +855,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'header', type: 'card', label: 'En-tête gradient + retour', actionable: true },
       { id: 'form-card', type: 'input', label: 'Formulaire filtres + deux boutons (Rechercher / Demander un devis)', actionable: true },
     ],
-    guide: '**InsuranceServicesSearchScreen** : entrée **utilisateur** assurance (grille accueil → cette route). Construit un objet filtres puis soit **navigate InsuranceServicesResults** (recherche), soit **navigate InsuranceQuoteRequest** (devis IA). Pas d’appel **searchInsurance** ici.',
+    guide: '**InsuranceServicesSearchScreen** : entrée **utilisateur** assurance (grille accueil → cette route). Construit un objet filtres puis soit **navigate InsuranceServicesResults** (recherche), soit **navigate InsuranceQuoteRequest** (devis IA). Pas d'appel **searchInsurance** ici.',
   },
 
   InsuranceServicesResults: {
@@ -874,7 +874,7 @@ const SCREEN_CONFIGS: Record<string, {
   InsuranceQuoteRequest: {
     type: 'form',
     actions: [
-      { id: 'pick-type', label: 'Type d’assurance *', icon: LUCIDE_ICONS.shield, category: 'action', description: 'Obligatoire pour générer ; même liste de types que la recherche' },
+      { id: 'pick-type', label: 'Type d'assurance *', icon: LUCIDE_ICONS.shield, category: 'action', description: 'Obligatoire pour générer ; même liste de types que la recherche' },
       { id: 'fill-profile', label: 'Profil', icon: LUCIDE_ICONS.profile, category: 'action', description: 'Âge, nb personnes, profession, ville (texte), situation familiale (chips), budget mensuel — tous optionnels sauf type' },
       { id: 'auto-fields', label: 'Champs Auto', icon: LUCIDE_ICONS.car, category: 'action', description: 'Si type = Auto : type véhicule, valeur' },
       { id: 'home-fields', label: 'Champs Habitation', icon: LUCIDE_ICONS.home, category: 'action', description: 'Si type = Habitation : type bien, valeur' },
@@ -884,7 +884,7 @@ const SCREEN_CONFIGS: Record<string, {
     elements: [
       { id: 'results-view', type: 'card', label: 'Vue résultat : primes, score adéquation (%), couvertures, franchises, avantages, justification', actionable: false },
     ],
-    guide: '**InsuranceQuoteRequestScreen** : devis **IA** uniquement (**generateQuote**). Paramètres route optionnels `typeAssurance`, `compagnie`, `ville`, `quartier` depuis **InsuranceServicesSearch** — le formulaire n’exploite pas `compagnie`/`quartier` dans le state initial (seulement type et ville si passés). Pas de **compareProducts** / **getRecommendations** dans l’UI.',
+    guide: '**InsuranceQuoteRequestScreen** : devis **IA** uniquement (**generateQuote**). Paramètres route optionnels `typeAssurance`, `compagnie`, `ville`, `quartier` depuis **InsuranceServicesSearch** — le formulaire n'exploite pas `compagnie`/`quartier` dans le state initial (seulement type et ville si passés). Pas de **compareProducts** / **getRecommendations** dans l'UI.',
   },
 
   MesPolicesAssurance: {
@@ -900,7 +900,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'expiry-banner', type: 'card', label: 'Bannière si expiration dans 30 jours', actionable: false },
       { id: 'policy-cards', type: 'card', label: 'Cartes police : numéro, produit, dates, prime, couverture max, renouvellement auto', actionable: true },
     ],
-    guide: '**MesPolicesAssuranceScreen** : **GET /api/assurance/policies/client** (**getClientPolicies**). Compteur polices actives ; alerte **30 jours** avant expiration. Actions réservées aux polices **active**. Ce n’est **pas** le dashboard partenaire (**AssuranceDashboard**).',
+    guide: '**MesPolicesAssuranceScreen** : **GET /api/assurance/policies/client** (**getClientPolicies**). Compteur polices actives ; alerte **30 jours** avant expiration. Actions réservées aux polices **active**. Ce n'est **pas** le dashboard partenaire (**AssuranceDashboard**).',
   },
 
   DeclarationSinistre: {
@@ -926,7 +926,7 @@ const SCREEN_CONFIGS: Record<string, {
     elements: [
       { id: 'timeline', type: 'card', label: 'Progression statuts (lecture seule)', actionable: false },
     ],
-    guide: '**SuiviSinistreScreen** : **GET /api/assurance/claims/client** ; si `policy_id` en params, filtre **côté app**. Affichage des dossiers et statuts — **aucune** action métier (pas d’approbation / indemnisation : côté partenaire).',
+    guide: '**SuiviSinistreScreen** : **GET /api/assurance/claims/client** ; si `policy_id` en params, filtre **côté app**. Affichage des dossiers et statuts — **aucune** action métier (pas d'approbation / indemnisation : côté partenaire).',
   },
 
   // === AUTOMOBILE ===
@@ -944,7 +944,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'tabs', type: 'tab', label: 'Onglets: overview | vehicles | analytics (Stats)', actionable: true },
       { id: 'types-grid', type: 'card', label: 'Par type (berline, suv, pickup, utilitaire, moto, camion) — comptage local', actionable: false },
     ],
-    guide: '**AutomobileDashboardScreen** — **getPartnerDashboardScreen(automobile)**. **loadData** : **GET** `/api/specialized-services/user?type=automobile` → `data.services` ; stats **client** (actifs, occasion, neuf). **Pas** d’édition liste ni d’ajout direct : **Alert** vers formulaire intelligent. **Pièces auto** : catégorie **pieces_auto** dans **MesProduits** / formulaire produit — pas cet écran.',
+    guide: '**AutomobileDashboardScreen** — **getPartnerDashboardScreen(automobile)**. **loadData** : **GET** `/api/specialized-services/user?type=automobile` → `data.services` ; stats **client** (actifs, occasion, neuf). **Pas** d'édition liste ni d'ajout direct : **Alert** vers formulaire intelligent. **Pièces auto** : catégorie **pieces_auto** dans **MesProduits** / formulaire produit — pas cet écran.',
   },
 
   AutoServicesSearch: {
@@ -985,7 +985,7 @@ const SCREEN_CONFIGS: Record<string, {
     type: 'specialized',
     actions: [
       { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.back, category: 'navigation', description: 'Flèche en-tête' },
-      { id: 'create-offre-header', label: 'Publier (+)', icon: LUCIDE_ICONS.add, route: 'CreateOffre', category: 'creation', description: 'Création d’offre (écran CreateOffreScreen) — distinct du formulaire partenaire OffresEmploiForm' },
+      { id: 'create-offre-header', label: 'Publier (+)', icon: LUCIDE_ICONS.add, route: 'CreateOffre', category: 'creation', description: 'Création d'offre (écran CreateOffreScreen) — distinct du formulaire partenaire OffresEmploiForm' },
       { id: 'run-search', label: 'Lancer recherche', icon: LUCIDE_ICONS.search, category: 'search', description: 'Barre titre/secteur → onSubmit / recherche : offreEmploiService.searchOffres (GET /api/offres-emploi/search), pas navigation vers OffreSearch' },
       { id: 'profil-cv', label: 'Mon CV / Profil', icon: LUCIDE_ICONS.profile, route: 'ProfilCandidat', category: 'navigation', description: 'Raccourci en-tête' },
       { id: 'cv-analysis', label: 'Analyse CV', icon: LUCIDE_ICONS.file, route: 'AICVAnalysis', category: 'help', description: 'Navigation vers écran dédié (pas de modal IA ouverte depuis ce fichier)' },
@@ -1029,7 +1029,7 @@ const SCREEN_CONFIGS: Record<string, {
     elements: [
       { id: 'contract-skills', type: 'input', label: 'Contrat, secteur, compétences, tags, salaire, télétravail…', actionable: true },
     ],
-    guide: 'CreateOffreScreen : formulaire texte classique + compétences/tags. IA = orchestration Yukpo (creation_offre_emploi). Connexion requise. Différent d’OffresEmploiForm.',
+    guide: 'CreateOffreScreen : formulaire texte classique + compétences/tags. IA = orchestration Yukpo (creation_offre_emploi). Connexion requise. Différent d'OffresEmploiForm.',
   },
 
   OffreSearch: {
@@ -1061,7 +1061,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'ai-compare', label: 'Comparer programmes IA', icon: LUCIDE_ICONS.activity, route: 'OrientationAIComparePrograms', category: 'help', description: 'Si profil' },
     ],
     elements: [
-      { id: 'grid-types', type: 'card', label: 'Grille types d’établissements (3 tuiles)', actionable: true },
+      { id: 'grid-types', type: 'card', label: 'Grille types d'établissements (3 tuiles)', actionable: true },
       { id: 'grid-quick', type: 'card', label: 'Grille actions rapides (4 tuiles)', actionable: true },
     ],
     guide: 'OrientationScolaireHubScreen : entrée par niveau (→ EtablissementSearch + type) ; raccourcis ConcoursList / ConferencesList / ProgrammesList / FournituresList ; carte profil + IA (GET my-profile ; analyse = POST analyze-profile ; recommandations = navigation EtablissementSearch ; comparaison → OrientationAIComparePrograms).',
@@ -1075,7 +1075,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'tab-concours', label: 'Onglet Concours', icon: LUCIDE_ICONS.award, category: 'navigation', description: 'listConcoursActifs' },
       { id: 'tab-conf', label: 'Onglet Conférences', icon: LUCIDE_ICONS.video, category: 'navigation', description: 'listConferencesProgrammees' },
       { id: 'tab-four', label: 'Onglet Fournitures', icon: LUCIDE_ICONS.package, category: 'navigation', description: 'searchFournitures' },
-      { id: 'run-search', label: 'Lancer recherche (onglet courant)', icon: LUCIDE_ICONS.search, category: 'search', description: 'Bouton loupe — recharge l’onglet actif' },
+      { id: 'run-search', label: 'Lancer recherche (onglet courant)', icon: LUCIDE_ICONS.search, category: 'search', description: 'Bouton loupe — recharge l'onglet actif' },
       { id: 'ai-modal', label: 'IA (en-tête / modal)', icon: LUCIDE_ICONS.activity, category: 'help', description: 'Analyse profil, recommandations POST /api/orientation/ai/recommendations, Q&R académique academic-search + useAIWithFallback' },
       { id: 'profil-shortcut', label: 'Profil étudiant', icon: LUCIDE_ICONS.user, route: 'ProfilEtudiant', category: 'creation', description: 'Alertes « profil requis »' },
     ],
@@ -1091,9 +1091,9 @@ const SCREEN_CONFIGS: Record<string, {
   LivreScolaireHome: {
     type: 'specialized',
     actions: [
-      { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.arrowLeft, category: 'navigation', description: 'Flèche en-tête — revenir à l’écran précédent' },
+      { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.arrowLeft, category: 'navigation', description: 'Flèche en-tête — revenir à l'écran précédent' },
       { id: 'libraire-header', label: 'Ma librairie / Devenir libraire', icon: LUCIDE_ICONS.store, category: 'navigation', description: 'Bouton en-tête à droite : partenaire librairie → LivreScolaireForm ; sinon → LibrairieRegistration' },
-      { id: 'sell-troquer', label: 'Mettez vos livres en circulation', icon: LUCIDE_ICONS.camera, route: 'BookUploadV2', category: 'creation', description: 'Carte verte : photo recto/verso, session V2, vente / troc / don à l’étape suivante' },
+      { id: 'sell-troquer', label: 'Mettez vos livres en circulation', icon: LUCIDE_ICONS.camera, route: 'BookUploadV2', category: 'creation', description: 'Carte verte : photo recto/verso, session V2, vente / troc / don à l'étape suivante' },
       { id: 'buy-programme', label: 'Trouvez votre liste scolaire en un parcours', icon: LUCIDE_ICONS['list-checks'], route: 'ProgrammeBesoinsSelector', category: 'navigation', description: 'Carte bleue : classe + manuels au programme officiel, neuf vs occasion' },
       { id: 'new-books-comparator', label: 'Comparer neuf / occasion', icon: LUCIDE_ICONS.book, route: 'NewBooks', category: 'navigation', description: 'Bandeau violet : comparateur neuf vs occasion (NewBooks), classe ou recherche' },
       { id: 'track-packages', label: 'Suivre mes paquets', icon: LUCIDE_ICONS.package, route: 'BookPackages', category: 'navigation', description: 'Livraisons / paquets livres (coursier, QR)' },
@@ -1126,7 +1126,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'location-departure', type: 'input', label: 'LocationSelector départ', actionable: true },
       { id: 'location-arrival', type: 'input', label: 'LocationSelector arrivée', actionable: true },
       { id: 'sort-modal', type: 'modal', label: 'Tri (prix, heure, pertinence…)', actionable: true },
-      { id: 'quick-filters', type: 'button', label: 'Puces Aujourd’hui / Demain / Week-end / Proche', actionable: true },
+      { id: 'quick-filters', type: 'button', label: 'Puces Aujourd'hui / Demain / Week-end / Proche', actionable: true },
     ],
     guide: 'TicketVoyageHomeScreen — hub moderne bus. LocationSelector départ/arrivée, date, aller-retour, filtres, tri client. Pas de chargement sans critères. Données via busTicketService.searchBusTickets. Autre parcours recherche : écran BusTicketSearch (CityAutocomplete + GET /api/bus-tickets/search).',
   },
@@ -1143,14 +1143,14 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'view-promotions', label: 'Promotions', icon: LUCIDE_ICONS.tag, category: 'navigation', description: 'Magasin choisi : promos du magasin ; sinon à proximité (nearby) si GPS' },
     ],
     elements: [
-      { id: 'tab-magasins', type: 'tab', label: 'Magasins (seul onglet visible tant qu’aucun magasin n’est sélectionné)', actionable: true },
+      { id: 'tab-magasins', type: 'tab', label: 'Magasins (seul onglet visible tant qu'aucun magasin n'est sélectionné)', actionable: true },
       { id: 'tab-produits', type: 'tab', label: 'Produits (après sélection magasin)', actionable: true },
       { id: 'tab-comparer', type: 'tab', label: 'Comparer (après sélection — compare tout de même par nom via API)', actionable: true },
       { id: 'tab-promos', type: 'tab', label: 'Promos (après sélection magasin)', actionable: true },
-      { id: 'search-bar', type: 'input', label: 'Recherche contextuelle (magasin / produit / nom à comparer selon l’onglet)', actionable: true },
+      { id: 'search-bar', type: 'input', label: 'Recherche contextuelle (magasin / produit / nom à comparer selon l'onglet)', actionable: true },
       { id: 'category-filter', type: 'button', label: 'Chips catégorie + bascule « promotions uniquement » (mode Produits)', actionable: true },
     ],
-    guide: 'SupermarketHomeScreen : flux Magasins → (optionnel) Produits / Comparer / Promos. Onglets Produits-Comparer-Promos n’apparaissent qu’après choix d’un supermarché. Chargement magasins = GPS obligatoire, listSupermarkets → /api/services/nearby. Produits = /api/supermarkets/:id/products + categories. Comparaison = nom produit, compareProductPrices (POST compare-prices), pas de trigram/code-barre côté UI. Promos = magasin sélectionné ou nearby. Pas de navigation in-screen vers MenuPlanningHub / liste courses / livraison — autres modules Yukpo.',
+    guide: 'SupermarketHomeScreen : flux Magasins → (optionnel) Produits / Comparer / Promos. Onglets Produits-Comparer-Promos n'apparaissent qu'après choix d'un supermarché. Chargement magasins = GPS obligatoire, listSupermarkets → /api/services/nearby. Produits = /api/supermarkets/:id/products + categories. Comparaison = nom produit, compareProductPrices (POST compare-prices), pas de trigram/code-barre côté UI. Promos = magasin sélectionné ou nearby. Pas de navigation in-screen vers MenuPlanningHub / liste courses / livraison — autres modules Yukpo.',
   },
 
   // === AGENCE DE VOYAGE ===
@@ -1161,8 +1161,8 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'manage-schedules', label: 'Horaires', icon: LUCIDE_ICONS.clock, category: 'action', description: 'Onglet Horaires : GET `/api/bus-tickets/agencies/schedules`, édition/suppression' },
       { id: 'bus-models', label: 'Modèles Bus', icon: LUCIDE_ICONS.truck, category: 'action', description: 'Nouveau → POST `/api/bus-tickets/create-product` + `/api/bus-tickets/link` ; édition locale seulement après création' },
       { id: 'sold-tickets', label: 'Tickets Vendus', icon: LUCIDE_ICONS['credit-card'], category: 'action', description: 'GET `/api/bus-tickets/agency/tickets` ; tap → boarding summary + passengers' },
-      { id: 'scan-qr', label: 'Scanner QR', icon: LUCIDE_ICONS.camera, route: 'BusTicketQRScanner', category: 'action', description: '**BusTicketQRScanner** : POST `/api/bus-tickets/validate` avec `qr_code_data` (params `product_id` du formulaire non lus par l’écran scanner actuel)' },
-      { id: 'edit-service', label: 'Mon Service', icon: LUCIDE_ICONS.settings, category: 'action', description: 'POST `/api/agences-voyage` ; **partenaire** : nom/adresse/tél/email masqués dans l’UI' },
+      { id: 'scan-qr', label: 'Scanner QR', icon: LUCIDE_ICONS.camera, route: 'BusTicketQRScanner', category: 'action', description: '**BusTicketQRScanner** : POST `/api/bus-tickets/validate` avec `qr_code_data` (params `product_id` du formulaire non lus par l'écran scanner actuel)' },
+      { id: 'edit-service', label: 'Mon Service', icon: LUCIDE_ICONS.settings, category: 'action', description: 'POST `/api/agences-voyage` ; **partenaire** : nom/adresse/tél/email masqués dans l'UI' },
       { id: 'team', label: 'Équipe', icon: LUCIDE_ICONS.users, category: 'action', description: '**ServiceTeamManager** (`serviceId`)' },
       { id: 'ai-suggest', label: 'Conseils IA', icon: LUCIDE_ICONS.activity, category: 'help', description: 'POST `/ai/chat` + `context: travel_agency_partner_dashboard`' },
     ],
@@ -1184,7 +1184,7 @@ const SCREEN_CONFIGS: Record<string, {
     elements: [
       { id: 'bts-header', type: 'card', label: 'Titre scanner + compteur tickets validés', actionable: false },
     ],
-    guide: '**BusTicketQRScannerScreen** : validation **POST** `/api/bus-tickets/validate` avec **`qr_code_data`** seul (pas de `product_id` dans ce fichier). Ouvert depuis l’onglet Tickets du dashboard agence ; params passés par **AgenceVoyageForm** non consommés ici.',
+    guide: '**BusTicketQRScannerScreen** : validation **POST** `/api/bus-tickets/validate` avec **`qr_code_data`** seul (pas de `product_id` dans ce fichier). Ouvert depuis l'onglet Tickets du dashboard agence ; params passés par **AgenceVoyageForm** non consommés ici.',
   },
   AgenceVoyageSearch: {
     type: 'search',
@@ -1222,7 +1222,7 @@ const SCREEN_CONFIGS: Record<string, {
   BusTicketSearch: {
     type: 'search',
     actions: [
-      { id: 'quick-dates', label: 'Recherches rapides', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Aujourd’hui, demain, week-end — ajuste date départ' },
+      { id: 'quick-dates', label: 'Recherches rapides', icon: LUCIDE_ICONS.calendar, category: 'action', description: 'Aujourd'hui, demain, week-end — ajuste date départ' },
       { id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, category: 'search', description: 'GET /api/bus-tickets/search + params (GPS optionnel, radius 100 km, filtres SearchFilters)' },
       { id: 'filters', label: 'Filtres', icon: LUCIDE_ICONS.filter, category: 'action', description: 'SearchFiltersComponent (prix, créneau horaire, compagnie, tri)' },
       { id: 'round-trip', label: 'Aller-retour', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Switch + date retour + heure retour optionnelle' },
@@ -1300,7 +1300,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'script-editor', type: 'input', label: 'Script / texte de la vidéo', actionable: true },
       { id: 'timeline-preview', type: 'card', label: 'Aperçu du storyboard', actionable: true },
     ],
-    guide: 'Assistant de création vidéo produit. Choisissez le produit, laissez l’IA proposer un script et un montage, ajustez les médias et le texte, puis générez une vidéo prête à être partagée sur les réseaux sociaux.',
+    guide: 'Assistant de création vidéo produit. Choisissez le produit, laissez l'IA proposer un script et un montage, ajustez les médias et le texte, puis générez une vidéo prête à être partagée sur les réseaux sociaux.',
   },
   VideoFeed: {
     type: 'list',
@@ -1373,7 +1373,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'view-table-list', type: 'tab', label: 'Vue tableau / liste', actionable: true },
       { id: 'meal-cells', type: 'card', label: 'Repas petit_dejeuner + repas_du_jour (midi+soir)', actionable: true },
     ],
-    guide: 'MenuWeekCalendarScreen : nécessite route.params.menu (WeeklyMenu) pour l’UI principale. Tableau/liste, export PDF, recette par plat via generateRecipe (sans useAIWithFallback du hub). Liste IA + commande livraison (tokens, frais 15% max 2000 + 500 est., marché, createDeliveryRequest). ShoppingList avec week_start.',
+    guide: 'MenuWeekCalendarScreen : nécessite route.params.menu (WeeklyMenu) pour l'UI principale. Tableau/liste, export PDF, recette par plat via generateRecipe (sans useAIWithFallback du hub). Liste IA + commande livraison (tokens, frais 15% max 2000 + 500 est., marché, createDeliveryRequest). ShoppingList avec week_start.',
   },
 
   ShoppingList: {
@@ -1441,7 +1441,7 @@ const SCREEN_CONFIGS: Record<string, {
   MesProduits: {
     type: 'dashboard',
     actions: [
-      { id: 'back-services-tab', label: 'Retour hub Mes services', icon: LUCIDE_ICONS.briefcase, route: 'MesServices', category: 'navigation', description: 'MesServicesScreen (même UI que l’onglet Services)' },
+      { id: 'back-services-tab', label: 'Retour hub Mes services', icon: LUCIDE_ICONS.briefcase, route: 'MesServices', category: 'navigation', description: 'MesServicesScreen (même UI que l'onglet Services)' },
       { id: 'header-add', label: 'Ajouter (en-tête +)', icon: LUCIDE_ICONS.add, category: 'creation', description: 'handleCreateNewProduct → AjouterProduitSimple ou FormulaireYukpoIntelligent selon contexte' },
       { id: 'header-stats', label: 'Statistiques globales', icon: LUCIDE_ICONS.activity, route: 'ProductStats', category: 'navigation', description: 'handleViewGlobalStats — stats catalogue' },
       { id: 'header-menu', label: 'Menu ⋮', icon: LUCIDE_ICONS.menu, category: 'action', description: 'Modale : Créer une vidéo, Galerie médias, Mes Publicités, Flash Promo, Promo Black Friday, Configuration livraison, Gérer les membres, Mes vidéos, Éditer service' },
@@ -1450,7 +1450,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'card-share', label: 'Carte — Partager', icon: LUCIDE_ICONS.share, category: 'action', description: 'Partage externe (lien / message)' },
       { id: 'card-internal-share', label: 'Carte — Envoyer (interne)', icon: LUCIDE_ICONS.message, category: 'action', description: 'InternalShareButton (partage interne Yukpo)' },
       { id: 'card-more', label: 'Carte — Plus', icon: 'more-vertical', category: 'action', description: 'Feuille : Promouvoir, Statistiques produit, Dupliquer, Livraison (ProductDeliveryConfigModal), Supprimer' },
-      { id: 'filter-chips', label: 'Filtres Tous / Actifs / En pause', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Chips sous l’en-tête' },
+      { id: 'filter-chips', label: 'Filtres Tous / Actifs / En pause', icon: LUCIDE_ICONS.filter, category: 'action', description: 'Chips sous l'en-tête' },
       { id: 'delivery-modal', label: 'Livraison par produit', icon: LUCIDE_ICONS.truck, category: 'action', description: 'ProductDeliveryConfigModal (serviceId + product_index)' },
       { id: 'video-modal', label: 'Vidéo produit', icon: LUCIDE_ICONS.video, category: 'action', description: 'ProductVideoCreationModal + navigateToVideoWizard' },
       { id: 'team-modal', label: 'Équipe / membres', icon: LUCIDE_ICONS.users, category: 'action', description: 'ServiceTeamManager en modal' },
@@ -1464,7 +1464,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'mp-product-cards', type: 'card', label: 'Cartes produit NativeCard (actions primaires + secondaires)', actionable: true },
       { id: 'mp-pull-refresh', type: 'button', label: 'Tirer pour rafraîchir', icon: LUCIDE_ICONS.refresh, actionable: true },
     ],
-    guide: '**MesProduitsScreen** : catalogue produits « dense » (filtres, stats mini, cartes avec Modifier / Pause / Partager / Envoyer / Plus). Menu ⋮ : vidéo, galerie médias, publicités, flash promo, Black Friday, livraison (1er produit filtré), membres, VideoFeed, édition service (FormulaireYukpoIntelligent). Feuille **Plus** sur une carte : promouvoir, stats produit (ProductStats), dupliquer (mode duplicate), livraison unitaire, supprimer. **Rapport avec MesServicesScreen** : l’onglet barre du bas **Services** et la route **MesServices** = hub moderne principal ; **MesProduits** est l’écran complémentaire (bouton « Gérer les produits » / pied de liste). Ne pas confondre avec **ServicesActivity** (legacy).',
+    guide: '**MesProduitsScreen** : catalogue produits « dense » (filtres, stats mini, cartes avec Modifier / Pause / Partager / Envoyer / Plus). Menu ⋮ : vidéo, galerie médias, publicités, flash promo, Black Friday, livraison (1er produit filtré), membres, VideoFeed, édition service (FormulaireYukpoIntelligent). Feuille **Plus** sur une carte : promouvoir, stats produit (ProductStats), dupliquer (mode duplicate), livraison unitaire, supprimer. **Rapport avec MesServicesScreen** : l'onglet barre du bas **Services** et la route **MesServices** = hub moderne principal ; **MesProduits** est l'écran complémentaire (bouton « Gérer les produits » / pied de liste). Ne pas confondre avec **ServicesActivity** (legacy).',
   },
 
   // === FORMULAIRE CRÉATION SERVICE (First-time) ===
@@ -1559,9 +1559,9 @@ const SCREEN_CONFIGS: Record<string, {
   BourseLivre: {
     type: 'specialized',
     actions: [
-      { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.arrowLeft, category: 'navigation', description: 'Flèche en-tête — revenir à l’écran précédent' },
+      { id: 'back', label: 'Retour', icon: LUCIDE_ICONS.arrowLeft, category: 'navigation', description: 'Flèche en-tête — revenir à l'écran précédent' },
       { id: 'libraire-header', label: 'Ma librairie / Devenir libraire', icon: LUCIDE_ICONS.store, category: 'navigation', description: 'Bouton en-tête à droite : partenaire librairie → LivreScolaireForm ; sinon → LibrairieRegistration' },
-      { id: 'sell-troquer', label: 'Mettez vos livres en circulation', icon: LUCIDE_ICONS.camera, route: 'BookUploadV2', category: 'creation', description: 'Carte verte : photo recto/verso, session V2, vente / troc / don à l’étape suivante' },
+      { id: 'sell-troquer', label: 'Mettez vos livres en circulation', icon: LUCIDE_ICONS.camera, route: 'BookUploadV2', category: 'creation', description: 'Carte verte : photo recto/verso, session V2, vente / troc / don à l'étape suivante' },
       { id: 'buy-programme', label: 'Trouvez votre liste scolaire en un parcours', icon: LUCIDE_ICONS['list-checks'], route: 'ProgrammeBesoinsSelector', category: 'navigation', description: 'Carte bleue : classe + manuels au programme officiel, neuf vs occasion' },
       { id: 'new-books-comparator', label: 'Comparer neuf / occasion', icon: LUCIDE_ICONS.book, route: 'NewBooks', category: 'navigation', description: 'Bandeau violet : comparateur neuf vs occasion (NewBooks), classe ou recherche' },
       { id: 'track-packages', label: 'Suivre mes paquets', icon: LUCIDE_ICONS.package, route: 'BookPackages', category: 'navigation', description: 'Livraisons / paquets livres (coursier, QR)' },
@@ -1576,7 +1576,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'ops-dashboard', type: 'card', label: 'Dashboard des opérations (compteurs + QR + refresh)', actionable: true },
       { id: 'nearby-list', type: 'card', label: 'Liste livres à proximité (GPS ~20 km, pull to refresh)', actionable: true },
     ],
-    guide: 'Même accueil que LivreScolaireHome (LivreScolaireHomeScreen) : cartes vente / liste scolaire, bandeau **NewBooks**, dashboard, liste proche. Ne pas décrire l’ancien écran avec barre de recherche + filtres + boutons « Recommandations IA » en tête — ce n’est plus cette UI.',
+    guide: 'Même accueil que LivreScolaireHome (LivreScolaireHomeScreen) : cartes vente / liste scolaire, bandeau **NewBooks**, dashboard, liste proche. Ne pas décrire l'ancien écran avec barre de recherche + filtres + boutons « Recommandations IA » en tête — ce n'est plus cette UI.',
   },
 
   // === CHAT MODAL MOBILE (chatbot prestataire) ===
@@ -1663,7 +1663,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'tab-overview', label: 'Onglet Apercu', icon: LUCIDE_ICONS.list, category: 'action', description: '**overview** : 4 stats + 2 cartes (note, revenus XAF cents/100), bandeau candidatures, actions rapides, top 3 coursiers' },
       { id: 'tab-couriers', label: 'Onglet Coursiers', icon: LUCIDE_ICONS.users, category: 'action', description: '**couriers** : libellé onglet = fleetLabel ; **GET** `/api/partners/me/fleet/couriers` — **Suspendre** / **Reactiver** → **POST** `.../couriers/{id}/toggle` { action: suspend|activate }' },
       { id: 'tab-applications', label: 'Onglet Candidatures', icon: LUCIDE_ICONS['user-plus'], category: 'action', description: '**applications** : badge pending sur tab ; filtres **submitted|approved|rejected|all** ; approve **POST** `{}` ; reject + reason modal' },
-      { id: 'tab-analytics', label: 'Onglet Analytics', icon: LUCIDE_ICONS.activity, category: 'action', description: '**analytics** : réutilise stats + top 5 coursiers (barres), pas d’API supplémentaire' },
+      { id: 'tab-analytics', label: 'Onglet Analytics', icon: LUCIDE_ICONS.activity, category: 'action', description: '**analytics** : réutilise stats + top 5 coursiers (barres), pas d'API supplémentaire' },
       { id: 'wallet', label: 'Portefeuille', icon: LUCIDE_ICONS['credit-card'], route: 'WalletFinancial', category: 'navigation', description: 'Action rapide overview' },
       { id: 'logout', label: 'Déconnexion', icon: 'log-out', category: 'action', description: '**Alert** + **logout**' },
     ],
@@ -1706,9 +1706,9 @@ const SCREEN_CONFIGS: Record<string, {
     elements: [
       { id: 'tabs', type: 'tab', label: 'Onglets: overview | service | exams | analytics | team', actionable: true },
       { id: 'exam-catalog', type: 'card', label: 'Catalogue examens (analyses, imagerie, prix, délais)', actionable: true },
-      { id: 'overview-quick', type: 'card', label: 'Vue d’ensemble : stats + actions rapides (examens, IA info, stats, service, wallet)', actionable: true },
+      { id: 'overview-quick', type: 'card', label: 'Vue d'ensemble : stats + actions rapides (examens, IA info, stats, service, wallet)', actionable: true },
     ],
-    guide: '**LaboratoireFormScreen** partenaire : dashboard **overview | service | exams | analytics | team** ; création **POST** `/api/laboratoires` avec `service_id`. **Statistiques** → **LabAnalytics** (`laboratoryId`). Raccourci **IA Analyse** = message d’information (pas d’`examinationId` côté dashboard).',
+    guide: '**LaboratoireFormScreen** partenaire : dashboard **overview | service | exams | analytics | team** ; création **POST** `/api/laboratoires` avec `service_id`. **Statistiques** → **LabAnalytics** (`laboratoryId`). Raccourci **IA Analyse** = message d'information (pas d'`examinationId` côté dashboard).',
   },
 
   BanqueSangForm: {
@@ -1725,7 +1725,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'tabs', type: 'tab', label: 'Onglets: overview | service | stocks', actionable: true },
       { id: 'partner-prefill', type: 'card', label: 'Préremplissage partenaire GET `/api/partners/me` + banque GET `/api/banques-sang`', actionable: false },
     ],
-    guide: '**BanqueSangFormScreen** (partenaire **banquesang**) : mode **dashboard** si banque existante (`GET /api/banques-sang`), sinon formulaire création. Données persistantes auto-save `@banque_sang_form`. Mise à jour stocks via endpoint dédié (voir onglet Stocks). Distinct de l’écran **utilisateur** **BanqueSangSearch**.',
+    guide: '**BanqueSangFormScreen** (partenaire **banquesang**) : mode **dashboard** si banque existante (`GET /api/banques-sang`), sinon formulaire création. Données persistantes auto-save `@banque_sang_form`. Mise à jour stocks via endpoint dédié (voir onglet Stocks). Distinct de l'écran **utilisateur** **BanqueSangSearch**.',
   },
 
   CovoiturageForm: {
@@ -1771,12 +1771,12 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'toggle-active', label: 'Activer / désactiver', icon: LUCIDE_ICONS.check, category: 'action', description: 'PATCH statut service' },
       { id: 'empty-cta-partner', label: 'Créer selon partner_type', icon: LUCIDE_ICONS.add, category: 'creation', description: 'État vide : CTA vers formulaire métier (ex. PharmacieForm) ou SpecializedServicesHub' },
       { id: 'services-dashboard', label: 'ServicesDashboard', icon: LUCIDE_ICONS.clipboard, route: 'ServicesDashboard', category: 'navigation', description: 'Raccourci header selon contexte' },
-      { id: 'sync-offline', label: 'Sync / hors ligne', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Cache offlineStorage, file d’attente sync, modal conflits' },
+      { id: 'sync-offline', label: 'Sync / hors ligne', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Cache offlineStorage, file d'attente sync, modal conflits' },
     ],
     elements: [
       { id: 'gss-list', type: 'card', label: 'FlatList services spécialisés (carte ou liste)', actionable: true },
     ],
-    guide: '**GestionServicesSpecialisesScreen** : tableau de bord **services spécialisés** partenaire (≠ **MesServices** e-commerce). Données **GET /api/specialized-services/user** (filtres query). Filtres santé/transport, recherche, tri, cartes/liste, refresh, mode hors ligne. Édition = formulaire **métier** selon le type. Réponses assistant : décrire **cet** écran précisément si l’utilisateur pose des questions dessus.',
+    guide: '**GestionServicesSpecialisesScreen** : tableau de bord **services spécialisés** partenaire (≠ **MesServices** e-commerce). Données **GET /api/specialized-services/user** (filtres query). Filtres santé/transport, recherche, tri, cartes/liste, refresh, mode hors ligne. Édition = formulaire **métier** selon le type. Réponses assistant : décrire **cet** écran précisément si l'utilisateur pose des questions dessus.',
   },
 
   // =========================================================================
@@ -1858,7 +1858,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'bsd-urgence-tel', label: 'Urgence (téléphone)', icon: LUCIDE_ICONS.alert, category: 'action', description: 'Si `telephone_urgence`' },
       { id: 'bsd-request-donation', label: 'Faire une demande de don', icon: LUCIDE_ICONS.heart, route: 'BloodDonation', category: 'navigation', description: 'Bouton pleine largeur — **BloodDonation**, login si besoin' },
       { id: 'bsd-become-donor', label: 'Devenir donneur', icon: LUCIDE_ICONS.droplet, route: 'BloodDonation', category: 'navigation', description: 'Si `accepte_dons` — **BloodDonation**' },
-      { id: 'itinerary', label: 'Itinéraire GPS Yukpo', icon: LUCIDE_ICONS.location, route: 'Navigation', category: 'navigation', description: 'À proposer si l’utilisateur demande le trajet — pas un bouton dédié sur cet écran' },
+      { id: 'itinerary', label: 'Itinéraire GPS Yukpo', icon: LUCIDE_ICONS.location, route: 'Navigation', category: 'navigation', description: 'À proposer si l'utilisateur demande le trajet — pas un bouton dédié sur cet écran' },
     ],
     elements: [
       { id: 'bsd-hero', type: 'card', label: 'Hero gradient : nom, badges Ouvert/Fermé, Urgence 24h, Dons acceptés, Vérifié, note', actionable: false },
@@ -2014,7 +2014,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'gallery', type: 'card', label: 'Carrousel photos', actionable: true },
       { id: 'info-cards', type: 'card', label: 'Cartes Informations, État, Localisation, Vidéo si présente', actionable: false },
     ],
-    guide: 'Fiche livre refonte 2026. Visiteur : **Partager**, **Troquer** (matching chaînes / TrocMatching). Propriétaire : **Modifier** (LivreScolaireForm), basculer **disponible / indisponible**. Pas de boutons « Acheter » ni « Contacter » ni « Prix IA » sur cet écran dans le code actuel — achat direct / chat passent par d’autres parcours (ex. TrocMatching, BookBuyDirect selon contexte).',
+    guide: 'Fiche livre refonte 2026. Visiteur : **Partager**, **Troquer** (matching chaînes / TrocMatching). Propriétaire : **Modifier** (LivreScolaireForm), basculer **disponible / indisponible**. Pas de boutons « Acheter » ni « Contacter » ni « Prix IA » sur cet écran dans le code actuel — achat direct / chat passent par d'autres parcours (ex. TrocMatching, BookBuyDirect selon contexte).',
   },
 
   TrocDetails: {
@@ -2074,7 +2074,7 @@ const SCREEN_CONFIGS: Record<string, {
       { id: 'blood', label: 'Banque de sang', icon: LUCIDE_ICONS.droplet, route: 'BanqueSangSearch', category: 'navigation', description: 'Tuile hub' },
     ],
     elements: [],
-    guide: 'Alias stack → **HealthServicesHubScreen** (identique à **HealthServicesHub** : tuiles **PharmacieHome**, **HopitalHome**, **LaboratoireHome**, **BanqueSangSearch**). **HopitalSearch** avec {filters} ne s’applique pas à l’UI du hub — pour liste hôpitaux filtrée utiliser **HopitalList**.',
+    guide: 'Alias stack → **HealthServicesHubScreen** (identique à **HealthServicesHub** : tuiles **PharmacieHome**, **HopitalHome**, **LaboratoireHome**, **BanqueSangSearch**). **HopitalSearch** avec {filters} ne s'applique pas à l'UI du hub — pour liste hôpitaux filtrée utiliser **HopitalList**.',
   },
 
   // =========================================================================
@@ -2308,7 +2308,7 @@ const SCREEN_CONFIGS: Record<string, {
     ],
     elements: [
       { id: 'ls-header', type: 'card', label: 'En-tête gradient indigo « Rechercher un laboratoire »', actionable: false },
-      { id: 'ls-filters', type: 'input', label: 'Types d’examens, prestation, distance, chips rapides', actionable: true },
+      { id: 'ls-filters', type: 'input', label: 'Types d'examens, prestation, distance, chips rapides', actionable: true },
     ],
     guide: '**LaboratoireSearchScreen** : formulaire filtres → **LaboratoireList** ; bandeau **MyLabExaminations**.',
   },
@@ -2339,7 +2339,7 @@ const SCREEN_CONFIGS: Record<string, {
   },
   LabAnalytics: {
     type: 'dashboard',
-    actions: [{ id: 'la-refresh', label: 'Rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Pull refresh ; boutons 7j/30j/90j relancent loadAnalytics mais getAnalytics() n’envoie pas de param période' }],
+    actions: [{ id: 'la-refresh', label: 'Rafraîchir', icon: LUCIDE_ICONS.refresh, category: 'action', description: 'Pull refresh ; boutons 7j/30j/90j relancent loadAnalytics mais getAnalytics() n'envoie pas de param période' }],
     elements: [{ id: 'la-kpi', type: 'card', label: 'KPI : total_examinations, examinations_7d/30d, completed_count, examination_types_count', actionable: false }],
     guide: '**LabAnalyticsScreen** : param **`laboratoryId`** ; **getLaboratoryDetails** puis comparaison **user.id** / **laboratory.user_id** ; **labService.getAnalytics** GET `/api/laboratoires/{id}/analytics` sans query period côté client.',
   },
@@ -2354,7 +2354,7 @@ const SCREEN_CONFIGS: Record<string, {
     elements: [
       { id: 'bsl-cards', type: 'card', label: 'Cartes : nom, badge Disponible/Indisponible, ville, distance_km, tel, stocks (4+…)', actionable: true },
     ],
-    guide: '**BanqueSangListScreen** : `GET /api/banques-sang/search` avec query params depuis `route.params.filters` (lat, lng, max_distance_km, groupe_sanguin, available_only, ville, quartier). Pagination page/limit 20, `onEndReached`. États vides → bouton retour. **Pas** d’itinéraire intégré ici — ouvrir la fiche puis GPS si besoin.',
+    guide: '**BanqueSangListScreen** : `GET /api/banques-sang/search` avec query params depuis `route.params.filters` (lat, lng, max_distance_km, groupe_sanguin, available_only, ville, quartier). Pagination page/limit 20, `onEndReached`. États vides → bouton retour. **Pas** d'itinéraire intégré ici — ouvrir la fiche puis GPS si besoin.',
   },
   TaxiList: { type: 'list', actions: [{ id: 'book', label: 'Réserver', icon: LUCIDE_ICONS.car, route: 'TaxiBooking', category: 'action', description: 'Réserver un taxi' }], elements: [{ id: 'list', type: 'card', label: 'Taxis disponibles', actionable: true }], guide: 'Liste des taxis disponibles. Sélectionnez un taxi pour réserver une course.' },
   CovoiturageList: { type: 'list', actions: [{ id: 'book', label: 'Réserver', icon: LUCIDE_ICONS.users, category: 'action', description: 'Réserver une place' }], elements: [{ id: 'list', type: 'card', label: 'Trajets disponibles', actionable: true }], guide: 'Liste des trajets de covoiturage. Réservez une place auprès d\'un conducteur.' },
@@ -2370,7 +2370,7 @@ const SCREEN_CONFIGS: Record<string, {
     elements: [
       { id: 'list', type: 'card', label: 'FlatList résultats (route.params.filters)', actionable: true },
     ],
-    guide: '**ImmobilierListScreen** : **searchProperties** avec **route.params.filters** (souvent depuis **ImmobilierSearch**). Sélection **jusqu’à 5** biens → **ImmobilierCompare** (\`propertyIds\`). Sinon tap → **ImmobilierDetails**. Pas de CTA « retour recherche » codé en dur — retour navigation.',
+    guide: '**ImmobilierListScreen** : **searchProperties** avec **route.params.filters** (souvent depuis **ImmobilierSearch**). Sélection **jusqu'à 5** biens → **ImmobilierCompare** (\`propertyIds\`). Sinon tap → **ImmobilierDetails**. Pas de CTA « retour recherche » codé en dur — retour navigation.',
   },
   LivreScolaireList: { type: 'list', actions: [{ id: 'search', label: 'Rechercher', icon: LUCIDE_ICONS.search, route: 'LivreScolaireSearch', category: 'search', description: 'Rechercher un livre' }], elements: [{ id: 'list', type: 'card', label: 'Livres scolaires', actionable: true }], guide: 'Liste des livres scolaires disponibles. Achetez ou contactez le vendeur.' },
   OffreList: {

@@ -216,7 +216,7 @@ reg('ResultatBesoin', () => import('../screens/ResultatBesoinScreen'));
 reg('ServiceDetailShared', () => import('../screens/ServiceDetailSharedScreen'));
 reg('ServicesInteragis', () => import('../screens/ServicesInteragisScreen'));
 reg('ServicesList', () => import('../screens/ServicesListScreen'));
-/** Ancien tableau « Mon activité » — ne pas confondre avec l’onglet **Services** (MesServicesScreen). */
+/** Ancien tableau « Mon activité » — ne pas confondre avec l'onglet **Services** (MesServicesScreen). */
 reg('ServicesActivity', () => import('../screens/ServicesScreen'));
 reg('Settings', () => import('../screens/SettingsScreen'));
 reg('SimpleError', () => import('../screens/SimpleErrorScreen'));

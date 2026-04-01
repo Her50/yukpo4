@@ -30,7 +30,7 @@ function sanitizeLucideIconName(icon: unknown): string | undefined {
 }
 
 /**
- * Fichier renvoyé par le backend / LLM (URL signée, CDN, etc.) — l’app ouvre ou télécharge puis partage.
+ * Fichier renvoyé par le backend / LLM (URL signée, CDN, etc.) — l'app ouvre ou télécharge puis partage.
  *
  * **Contrat API suggéré** (réponse `POST /ai/chat`, en complément de `message`) :
  * ```json
@@ -38,8 +38,8 @@ function sanitizeLucideIconName(icon: unknown): string | undefined {
  *   { "url": "https://...", "filename": "note.pdf", "mime_type": "application/pdf", "format": "pdf" }
  * ]
  * ```
- * Alias acceptés au parse : `generated_files`, `generatedFiles`. L’IA externe génère le fichier côté serveur
- * (upload stockage) et ne renvoie que l’URL — le client ne reconstruit pas le PDF en local sauf export TXT/MD/CSV.
+ * Alias acceptés au parse : `generated_files`, `generatedFiles`. L'IA externe génère le fichier côté serveur
+ * (upload stockage) et ne renvoie que l'URL — le client ne reconstruit pas le PDF en local sauf export TXT/MD/CSV.
  */
 export interface ChatAttachment {
   id: string;
@@ -61,7 +61,7 @@ export interface ChatMessage {
   nextSteps?: string[];
   /** Fichiers générés côté serveur / IA (optionnel) */
   attachments?: ChatAttachment[];
-  /** Médias / fichiers envoyés par l’utilisateur (aperçu local ; l’historique serveur ne les restitue pas toujours) */
+  /** Médias / fichiers envoyés par l'utilisateur (aperçu local ; l'historique serveur ne les restitue pas toujours) */
   userAttachments?: YukpoIaAttachmentPayload[];
   metadata?: any;
 }
@@ -662,7 +662,7 @@ class IntelligentChatService {
     }
   }
 
-  /** Met à jour titre / archivage d’une session Yukpo IA (ex. titre auto après la 1ʳᵉ question). */
+  /** Met à jour titre / archivage d'une session Yukpo IA (ex. titre auto après la 1ʳᵉ question). */
   async patchYukpoIaSession(
     sessionId: string,
     body: { title?: string; is_archived?: boolean },
@@ -1027,7 +1027,7 @@ User: "Wow c'est génial cette fonctionnalité!"
       screenName === 'LabAnalytics' ||
       screenName === 'LabAIAnalysis';
 
-    /** Partenaire agence de voyage : dashboard **AgenceVoyageForm** + scan QR ouvert depuis l’onglet Tickets */
+    /** Partenaire agence de voyage : dashboard **AgenceVoyageForm** + scan QR ouvert depuis l'onglet Tickets */
     const onTravelAgencyPartnerModule =
       screenName === 'AgenceVoyageForm' || screenName === 'BusTicketQRScanner';
 
@@ -1153,13 +1153,13 @@ Yukpo connects sellers and buyers. The user is on **Mes produits** (catalog mana
 Yukpo is the all-in-one super-app (health, education, wallet, delivery, e‑commerce…). The user is on the **Bourse du Livre home** (**LivreScolaireHomeScreen**, routes **LivreScolaireHome** or **BourseLivre**). Prioritize **BOURSE_DU_LIVRE_HOME_DETAIL**; **do not** describe the deprecated **BourseLivreScreen** (search bar + filter panel + purple "Recommandations IA" header buttons) as the current UI.`
             : onLibrairieNetworkScreens
               ? `YUKPO (brief reminder only — detailed UI is in LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL below):
-Commerce livres — **réseau librairies partenaires** : commandes **mixtes** (neufs + occasion), **notifications push** vers les librairies, **validation de disponibilité** ligne par ligne, **saisie de prix** dans les bornes marché. Une commande **parent** peut être **répartie entre plusieurs librairies** (multi-paniers) — ce n’est pas toujours une seule librairie qui tout couvre. The user is on **LibrairieNetworkValidation**, **LibrairieNetworkLignePrix**, or **LibrairieTeamPending**. Prioritize **LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL**; do not confuse with **ProgrammeBesoinsSelector** (famille) nor **EtablissementScolaire** (dépôt liste officielle).`
+Commerce livres — **réseau librairies partenaires** : commandes **mixtes** (neufs + occasion), **notifications push** vers les librairies, **validation de disponibilité** ligne par ligne, **saisie de prix** dans les bornes marché. Une commande **parent** peut être **répartie entre plusieurs librairies** (multi-paniers) — ce n'est pas toujours une seule librairie qui tout couvre. The user is on **LibrairieNetworkValidation**, **LibrairieNetworkLignePrix**, or **LibrairieTeamPending**. Prioritize **LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL**; do not confuse with **ProgrammeBesoinsSelector** (famille) nor **EtablissementScolaire** (dépôt liste officielle).`
               : onEtablissementScolaireScreen
               ? `YUKPO (brief reminder only — detailed UI is in ETABLISSEMENT_SCOLAIRE_DETAIL below):
 Éducation — **manuels scolaires (établissement)** : dépôt de fichiers pour extraction IA Yukpo et rattachement au référentiel. The user is on **EtablissementScolaire** (**EtablissementScolaireScreen**). Prioritize **ETABLISSEMENT_SCOLAIRE_DETAIL**; **do not** confuse with **ProgrammeBesoinsSelector** (liste besoins **famille** au programme officiel) nor the generic book marketplace alone.`
               : onTicketVoyageHome
               ? `YUKPO (brief reminder only — detailed UI is in TICKET_VOYAGE_HOME_DETAIL below):
-Transport & voyage. The user is on **TicketVoyageHome** (**TicketVoyageHomeScreen**): bus ticket search with **LocationSelector**, **busTicketService.searchBusTickets**, tri & filtres. Prioritize **TICKET_VOYAGE_HOME_DETAIL** — not a generic “all transport” pitch.`
+Transport & voyage. The user is on **TicketVoyageHome** (**TicketVoyageHomeScreen**): bus ticket search with **LocationSelector**, **busTicketService.searchBusTickets**, tri & filtres. Prioritize **TICKET_VOYAGE_HOME_DETAIL** — not a generic "all transport" pitch.`
               : onBusTicketSearch
                 ? `YUKPO (brief reminder only — detailed UI is in BUS_TICKET_SEARCH_DETAIL below):
 The user is on **BusTicketSearch** (**BusTicketSearchScreen**): **CityAutocomplete** + **GET /api/bus-tickets/search** + filtres **SearchFilters**. This is a **different** layout from **TicketVoyageHome**; do not merge the two.`
@@ -1174,19 +1174,19 @@ Mobility — **taxi**. The user is on **TaxiHome** (**TaxiHomeScreen**). Priorit
 Supermarchés & catalogue. The user is on **SupermarketHome** (**SupermarketHomeScreen**): 4 modes (magasins, produits, comparer, promos) via **supermarketService** / **GET /api/services/nearby**. Prioritize **SUPERMARKET_HOME_DETAIL**. **No** in-screen navigation to **MenuPlanningHub** or **DeliveryShoppingFlowNew** — mention them only as **other Yukpo modules** if the user asks.`
                       : onOffresEmploiHome
                         ? `YUKPO (brief reminder only — detailed UI is in OFFRES_EMPLOI_HOME_DETAIL below):
-Emploi — **recherche d’emploi** (vue candidat). The user is on **OffresEmploiHome** (**OffresEmploiHomeScreen**). Prioritize **OFFRES_EMPLOI_HOME_DETAIL** (\`offreEmploiService.searchOffres\`, matching, raccourcis vers **AICVAnalysis** / **AISalaryPrediction** / **AISuggestFormations**).`
+Emploi — **recherche d'emploi** (vue candidat). The user is on **OffresEmploiHome** (**OffresEmploiHomeScreen**). Prioritize **OFFRES_EMPLOI_HOME_DETAIL** (\`offreEmploiService.searchOffres\`, matching, raccourcis vers **AICVAnalysis** / **AISalaryPrediction** / **AISuggestFormations**).`
                         : onOffresEmploiHub
                           ? `YUKPO (brief reminder only — detailed UI is in OFFRES_EMPLOI_HUB_DETAIL below):
 Emploi — **hub** (**OffresEmploiHub** / **OffresEmploiHubScreen**): dashboard stats + actions (employeur vs candidat). Prioritize **OFFRES_EMPLOI_HUB_DETAIL**.`
                           : onBloodTransfusionScreen
                             ? `YUKPO (brief reminder only — detailed UI is in BLOOD_TRANSFUSION_MODULE_DETAIL below):
-Santé — **banque de sang / transfusion / don**. The user is in the **blood transfusion module**. Prioritize **BLOOD_TRANSFUSION_MODULE_DETAIL**; do not substitute a generic “health app” pitch.`
+Santé — **banque de sang / transfusion / don**. The user is in the **blood transfusion module**. Prioritize **BLOOD_TRANSFUSION_MODULE_DETAIL**; do not substitute a generic "health app" pitch.`
                             : onLaboratoryModule
                               ? `YUKPO (brief reminder only — detailed UI is in LABORATORY_MODULE_DETAIL below):
-Santé — **laboratoires d’analyses & imagerie**. The user is in the **laboratory vertical**. Prioritize **LABORATORY_MODULE_DETAIL**; do not describe **Pharmacie** or **Hôpital** flows unless the user explicitly asks to switch.`
+Santé — **laboratoires d'analyses & imagerie**. The user is in the **laboratory vertical**. Prioritize **LABORATORY_MODULE_DETAIL**; do not describe **Pharmacie** or **Hôpital** flows unless the user explicitly asks to switch.`
                               : onTravelAgencyPartnerModule
                                 ? `YUKPO (brief reminder only — detailed UI is in TRAVEL_AGENCY_PARTNER_DETAIL below):
-Transport — **dashboard partenaire agence de voyage** (**AgenceVoyageForm**) ou **scanner QR bus** (**BusTicketQRScanner**). Prioritize **TRAVEL_AGENCY_PARTNER_DETAIL**; do not describe **TicketVoyageHome** / **BusTicketSearch** (flux **client** billet) sauf si l’utilisateur demande explicitement l’entrée voyageur.`
+Transport — **dashboard partenaire agence de voyage** (**AgenceVoyageForm**) ou **scanner QR bus** (**BusTicketQRScanner**). Prioritize **TRAVEL_AGENCY_PARTNER_DETAIL**; do not describe **TicketVoyageHome** / **BusTicketSearch** (flux **client** billet) sauf si l'utilisateur demande explicitement l'entrée voyageur.`
                                 : onCourierDashboard
                                   ? `YUKPO (brief reminder only — detailed UI is in COURIER_DASHBOARD_DETAIL below):
 Livraison — **coursier individuel** (**CourierDashboard** / **CourierDashboardScreen**) : livraisons actives, stats API, sous-dashboard **Bourse du livre** coursier. Prioritize **COURIER_DASHBOARD_DETAIL**; **ne pas** décrire **FleetDashboard** (gérant de flotte) sauf demande explicite.`
@@ -1201,7 +1201,7 @@ Livraison & mobilité — **dashboard partenaire gérant une flotte** (**FleetDa
 Automobile — **dashboard partenaire véhicules** (**AutomobileDashboard**) : **GET /api/specialized-services/user?type=automobile** ; ajout = **Alert** → formulaire intelligent. Prioritize **AUTOMOBILE_PARTNER_DASHBOARD_DETAIL**; **ne pas** confondre avec **AutoServicesSearch** (client) ni **FleetDashboard** (coursiers).`
                                         : onAutoMarketplaceModule
                                           ? `YUKPO (brief reminder only — detailed UI is in AUTO_MARKETPLACE_MODULE_DETAIL below):
-Automobile — **catalogue client** (**AutoServicesSearch** / **AutoServicesResults**) : **GET /api/auto/filters** + **GET /api/auto/search**. Prioritize **AUTO_MARKETPLACE_MODULE_DETAIL**; UI **véhicule** ; **pièces** via **q** ou règles SQL backend — pas d’onglet pièces dédié.`
+Automobile — **catalogue client** (**AutoServicesSearch** / **AutoServicesResults**) : **GET /api/auto/filters** + **GET /api/auto/search**. Prioritize **AUTO_MARKETPLACE_MODULE_DETAIL**; UI **véhicule** ; **pièces** via **q** ou règles SQL backend — pas d'onglet pièces dédié.`
                                           : onHealthServicesHubScreen
                                             ? `YUKPO (brief reminder only — detailed UI is in HEALTH_SERVICES_HUB_DETAIL below):
 Cross-health **launcher** (pharmacy, hospital, lab, blood bank) + unified search. Prioritize **HEALTH_SERVICES_HUB_DETAIL**; do not collapse to one vertical.`
@@ -1264,7 +1264,7 @@ NAVIGATION_SCREEN_MODE:
 ${onProductHubScreen ? `
 MES_SERVICES_HUB_MODE:
 - **Prioritize** MES_SERVICES_PRODUCT_HUB_DETAIL below over generic Yukpo lists.
-- **Critical naming:** the **modern** product hub is **MesServicesScreen**, reached via pile route **MesServices** or bottom tab **Services** (same component). Route pile **ServicesActivity** = legacy **ServicesScreen** (“Mon activité”) — **do not** present it as the main “Mes services” experience.
+- **Critical naming:** the **modern** product hub is **MesServicesScreen**, reached via pile route **MesServices** or bottom tab **Services** (same component). Route pile **ServicesActivity** = legacy **ServicesScreen** ("Mon activité") — **do not** present it as the main "Mes services" experience.
 ` : ''}
 ${onMesProduitsScreen ? `
 MES_PRODUITS_MODE:
@@ -1274,18 +1274,18 @@ ${onBookExchangeHome ? `
 BOURSE_DU_LIVRE_HOME_MODE:
 - **Prioritize** **BOURSE_DU_LIVRE_HOME_DETAIL** below over generic Yukpo education bullets or the legacy **BourseLivreScreen** story.
 - The live home UI is **LivreScolaireHomeScreen** (stack names **LivreScolaireHome** or **BourseLivre** — same component).
-- **Partenaires librairie (réseau):** orienter vers **LibrairieTeamPending** (équipe / succursale), puis **LibrairieNetworkValidation** (disponibilité « je fournis / indisponible / laisser aux autres ») et **LibrairieNetworkLignePrix** (bornes & prix neufs) — voir **LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL** si l’utilisateur pose des questions détaillées depuis l’accueil bourse.
+- **Partenaires librairie (réseau):** orienter vers **LibrairieTeamPending** (équipe / succursale), puis **LibrairieNetworkValidation** (disponibilité « je fournis / indisponible / laisser aux autres ») et **LibrairieNetworkLignePrix** (bornes & prix neufs) — voir **LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL** si l'utilisateur pose des questions détaillées depuis l'accueil bourse.
 ` : ''}
 ${onLibrairieNetworkScreens ? `
 LIBRAIRIE_RESEAU_COMMANDE_MIXTE_MODE:
 - **Prioritize** **LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL** below.
-- Rappeler l’ordre conseillé pour une librairie notifiée : **validation disponibilité** (écran **LibrairieNetworkValidation**) puis **prix** dans les bornes (**LibrairieNetworkLignePrix**) ; lien croisé entre les deux écrans dans l’app.
-- **Ne pas** promettre qu’une seule librairie boucle toute la commande parent : le produit supporte le **multi-paniers**.
+- Rappeler l'ordre conseillé pour une librairie notifiée : **validation disponibilité** (écran **LibrairieNetworkValidation**) puis **prix** dans les bornes (**LibrairieNetworkLignePrix**) ; lien croisé entre les deux écrans dans l'app.
+- **Ne pas** promettre qu'une seule librairie boucle toute la commande parent : le produit supporte le **multi-paniers**.
 ` : ''}
 ${onEtablissementScolaireScreen ? `
 ETABLISSEMENT_SCOLAIRE_MODE:
 - **Prioritize** **ETABLISSEMENT_SCOLAIRE_DETAIL** below (dépôt manuels établissement, **POST /api/bourse-livre/v2/programmes-scolaires/submit**, rayon notifications librairies).
-- **Ne pas** présenter cet écran comme la simple « liste famille » : celle-ci = **ProgrammeBesoinsSelector** depuis l’accueil bourse.
+- **Ne pas** présenter cet écran comme la simple « liste famille » : celle-ci = **ProgrammeBesoinsSelector** depuis l'accueil bourse.
 ` : ''}
 ${onTicketVoyageHome ? `
 TICKET_VOYAGE_HOME_MODE:
@@ -1299,7 +1299,7 @@ BUS_TICKET_SEARCH_MODE:
 ` : ''}
 ${onCovoiturageHome ? `
 COVOITURAGE_HOME_MODE:
-- **Prioritize** **COVOITURAGE_HOME_DETAIL** below over generic “carpool app” talk.
+- **Prioritize** **COVOITURAGE_HOME_DETAIL** below over generic "carpool app" talk.
 - Publishing a trip uses **CovoiturageForm** from the header when chauffeur validé — not a separate stack route **CovoiturageSearch** on this home.
 ` : ''}
 ${onTaxiHome ? `
@@ -1316,13 +1316,13 @@ SUPERMARKET_HOME_MODE:
 ${onOffresEmploiHome ? `
 OFFRES_EMPLOI_HOME_MODE:
 - **Prioritize** **OFFRES_EMPLOI_HOME_DETAIL** below.
-- Liste principale = **GET /api/offres-emploi/search** via \`offreEmploiService.searchOffres\` (pas l’écran **OffreSearch** — celui-ci est un formulaire de filtres → **OffreList**).
-- Filtres **CDI/CDD/Stage/Freelance** sur l’accueil = **filtrage client** sur la page déjà chargée ; signets = **état local** (\`Set\`), pas une API persistante dans ce fichier.
+- Liste principale = **GET /api/offres-emploi/search** via \`offreEmploiService.searchOffres\` (pas l'écran **OffreSearch** — celui-ci est un formulaire de filtres → **OffreList**).
+- Filtres **CDI/CDD/Stage/Freelance** sur l'accueil = **filtrage client** sur la page déjà chargée ; signets = **état local** (\`Set\`), pas une API persistante dans ce fichier.
 ` : ''}
 ${onOffresEmploiHub ? `
 OFFRES_EMPLOI_HUB_MODE:
 - **Prioritize** **OFFRES_EMPLOI_HUB_DETAIL** below.
-- L’UI **employeur** s’affiche si \`partner_type\` recruteur (normalisé : \`offre_emploi\`, \`offreemploi\`, \`recruteur\`, \`employeur\`) **ou** si l’app détecte des offres déjà publiées (\`getMesOffres\` / stats) — le chat ne voit pas toujours cette seconde condition.
+- L'UI **employeur** s'affiche si \`partner_type\` recruteur (normalisé : \`offre_emploi\`, \`offreemploi\`, \`recruteur\`, \`employeur\`) **ou** si l'app détecte des offres déjà publiées (\`getMesOffres\` / stats) — le chat ne voit pas toujours cette seconde condition.
 ` : ''}
 ${onBloodTransfusionScreen ? `
 BLOOD_TRANSFUSION_MODULE_MODE:
@@ -1354,7 +1354,7 @@ FLEET_PARTNER_DASHBOARD_MODE:
 - **Prioritize** **FLEET_PARTNER_DASHBOARD_DETAIL** below.
 - **Métier:** **gérant / entreprise** avec **plusieurs coursiers ou chauffeurs** — stats agrégées, **validation des candidatures**, **suspendre / réactiver** des comptes. **≠** coursier **individuel** (**CourierDashboard** : livraisons actives, suivi, sous-dashboard livres).
 - **Entrée:** **PartnerDashboardTab** → **getPartnerDashboardScreen** (**AppNavigator.optimized.tsx**) → **FleetDashboard** pour **chauffeur**, **fleet**, **livraison**, **livraison_courses_marche**, **demenagement**, **transport**.
-- **Libellé sous-titre:** **fleetLabel** = map **PARTNER_TYPE_LABELS** dans **FleetDashboardScreen** (**Chauffeurs**, **Coursiers Livraison**, **Coursiers Marche**, **Equipe Demenagement**, **Transporteurs**) ou **« Flotte »** si le type n’y figure pas (**cas \`partner_type === 'fleet'\`** : route **FleetDashboard** mais clé absente de **PARTNER_TYPE_LABELS**).
+- **Libellé sous-titre:** **fleetLabel** = map **PARTNER_TYPE_LABELS** dans **FleetDashboardScreen** (**Chauffeurs**, **Coursiers Livraison**, **Coursiers Marche**, **Equipe Demenagement**, **Transporteurs**) ou **« Flotte »** si le type n'y figure pas (**cas \`partner_type === 'fleet'\`** : route **FleetDashboard** mais clé absente de **PARTNER_TYPE_LABELS**).
 - **Onglets:** **Apercu** (orthographe fichier) | **{fleetLabel}** | **Candidatures** (badge **rouge** si candidatures en attente) | **Analytics** (données **locales**).
 - **APIs:** **GET** \`/api/partners/me/fleet/stats\`, **/couriers**, **/applications?status=\`submitted|approved|rejected|all\`** ; **POST** \`.../applications/{id}/approve\` (\`{}\`), **reject** (\`reason\` optionnel), **couriers/{id}/toggle** \`{ action: 'suspend' | 'activate' }\`.
 - **Hors scope écran:** pas de **GET /api/deliveries/active**, pas de **DeliveryShoppingTracking** depuis ce dashboard.
@@ -1367,16 +1367,16 @@ AUTOMOBILE_PARTNER_DASHBOARD_MODE:
 ` : ''}
 ${onAutoMarketplaceModule ? `
 AUTO_MARKETPLACE_MODULE_MODE:
-- **Prioritize** **AUTO_MARKETPLACE_MODULE_DETAIL** below (sections **Search** vs **Results** selon l’écran).
+- **Prioritize** **AUTO_MARKETPLACE_MODULE_DETAIL** below (sections **Search** vs **Results** selon l'écran).
 - **Filtres** : **GET** \`/api/auto/filters\` ; résultats : **GET** \`/api/auto/search\` (**pagination** \`page\`, \`limit\` 20).
-- **Pièces / accessoires** : pas d’onglet « pièces » dédié dans l’UI — recherche texte **\`q\`** + produits dont catégorie service / produit matche l’auto (backend inclut **pièces auto** dans certains **LIKE**).
-- **Limite connue** : **ville / quartier** saisis sur **AutoServicesSearch** ne sont **pas** envoyés dans la query **/api/auto/search** par **AutoServicesResultsScreen** (le **backend** **AutoSearchQuery** n’expose pas non plus \`ville\` / \`quartier\` en query) — le **géofiltre** utile = **GPS + rayon**.
+- **Pièces / accessoires** : pas d'onglet « pièces » dédié dans l'UI — recherche texte **\`q\`** + produits dont catégorie service / produit matche l'auto (backend inclut **pièces auto** dans certains **LIKE**).
+- **Limite connue** : **ville / quartier** saisis sur **AutoServicesSearch** ne sont **pas** envoyés dans la query **/api/auto/search** par **AutoServicesResultsScreen** (le **backend** **AutoSearchQuery** n'expose pas non plus \`ville\` / \`quartier\` en query) — le **géofiltre** utile = **GPS + rayon**.
 ` : ''}
 ${onHospitalPartnerDashboard ? `
 HOSPITAL_PARTNER_DASHBOARD_MODE:
 - **Prioritize** **HOSPITAL_PARTNER_DASHBOARD_DETAIL** below.
 - **Scope:** **prestataire** établissement de santé (fiche, créneaux/prestations, stats internes, équipe) — pas la recherche patient (**HopitalList** / **HopitalDetails**).
-- **Urgence réelle:** l’app **ne remplace pas** le **15 / SAMU** ; l’IA (**HospitalAIRecommendations**) = aide à l’orientation, **pas** diagnostic.
+- **Urgence réelle:** l'app **ne remplace pas** le **15 / SAMU** ; l'IA (**HospitalAIRecommendations**) = aide à l'orientation, **pas** diagnostic.
 ` : ''}
 ${onHealthServicesHubScreen ? `
 HEALTH_SERVICES_HUB_MODE:
@@ -1384,25 +1384,25 @@ HEALTH_SERVICES_HUB_MODE:
 ` : ''}
 ${onHospitalModule ? `
 HOSPITAL_MODULE_MODE:
-- **Prioritize** **HOSPITAL_MODULE_DETAIL** below over generic “all health” marketing.
+- **Prioritize** **HOSPITAL_MODULE_DETAIL** below over generic "all health" marketing.
 - **Emergency safety:** in-app IA / wait times are **not** a substitute for **real emergencies** — use official emergency numbers; hub exposes **119** quick call where implemented.
 ` : ''}
 ${onMenuPlanningModule ? `
 MENU_PLANNING_MODULE_MODE:
-- **Prioritize** **MENU_PLANNING_MODULE_DETAIL** below over generic “meal app” talk.
+- **Prioritize** **MENU_PLANNING_MODULE_DETAIL** below over generic "meal app" talk.
 - **Health / nutrition:** IA + profils = **aide à la planification** — **not** a substitute for a **dietitian or doctor** for medical diets, severe allergies, or therapeutic nutrition; encourage professional advice when in doubt.
-- **MenuWeekCalendar** expects **\`route.params.menu\`** (\`WeeklyMenu\`). If the user sees endless “Chargement du menu…”, they likely opened the calendar **without** that object (e.g. history row from the Hub only passes \`weekStart\` today).
+- **MenuWeekCalendar** expects **\`route.params.menu\`** (\`WeeklyMenu\`). If the user sees endless "Chargement du menu…", they likely opened the calendar **without** that object (e.g. history row from the Hub only passes \`weekStart\` today).
 ` : ''}
 ${onOrientationPartnerDashboard ? `
 ORIENTATION_PARTNER_DASHBOARD_MODE:
 - **Prioritize** **ORIENTATION_PARTNER_DASHBOARD_DETAIL** below.
-- **Métier:** gestionnaire d’**établissement scolaire** partenaire — **pas** le parcours recherche élève (**EtablissementSearch**).
+- **Métier:** gestionnaire d'**établissement scolaire** partenaire — **pas** le parcours recherche élève (**EtablissementSearch**).
 ` : ''}
 ${onOrientationStudentModule ? `
 ORIENTATION_SCOLAIRE_MODULE_MODE:
-- **Prioritize** **ORIENTATION_SCOLAIRE_MODULE_DETAIL** below over generic “education app” bullets.
-- **IA orientation:** aide à la réflexion — **pas** décision d’inscription, pas substitut à un **conseiller d’orientation** ou à l’administration d’un établissement ; en cas de doute médical / handicap scolaire, orienter vers des professionnels.
-- **Deux familles d’API:** catalogue **\`/api/orientation-scolaire/*\`** vs profil / IA **\`/api/orientation/*\`** (voir détail).
+- **Prioritize** **ORIENTATION_SCOLAIRE_MODULE_DETAIL** below over generic "education app" bullets.
+- **IA orientation:** aide à la réflexion — **pas** décision d'inscription, pas substitut à un **conseiller d'orientation** ou à l'administration d'un établissement ; en cas de doute médical / handicap scolaire, orienter vers des professionnels.
+- **Deux familles d'API:** catalogue **\`/api/orientation-scolaire/*\`** vs profil / IA **\`/api/orientation/*\`** (voir détail).
 ` : ''}
 ${onPharmacyModule ? `
 PHARMACY_MODULE_MODE:
@@ -1413,20 +1413,20 @@ ${screenName === 'LaboratoireForm' ? `
 LABORATOIRE_PARTNER_DASHBOARD_MODE:
 - **Prioritize** **LABORATOIRE_PARTNER_DASHBOARD_DETAIL** below (after LABORATORY_MODULE_DETAIL) over generic **client** lab search/booking story.
 - **LaboratoireFormScreen** = **prestataire** (dashboard + fiche service) **ou** parcours **création** sans dashboard ; ne pas décrire **LaboratoireList** / **LaboratoireDetails** comme cet écran.
-- **Catalogue examens (modal)** : dans le code actuel, ajout/édition = **état local uniquement** — **pas** d’appel API de persistance dans le handler du modal ; dire clairement si l’utilisateur demande « sauvegarder les examens ».
+- **Catalogue examens (modal)** : dans le code actuel, ajout/édition = **état local uniquement** — **pas** d'appel API de persistance dans le handler du modal ; dire clairement si l'utilisateur demande « sauvegarder les examens ».
 - **Medical / IA:** analyse IA des résultats = **LabAIAnalysis** côté **patient** (\`examinationId\`) ; le bouton **IA Analyse** du dashboard = **Alert** pédagogique seulement.
 ` : ''}
 ${onImmobilierModule ? `
 IMMOBILIER_MODULE_MODE:
 - **Prioritize** IMMOBILIER_MODULE_DETAIL below over generic Yukpo service lists.
-- **Distinguish flows:** **ImmobilierHome** quick “Visite” uses an **in-place Alert + bookVisit** (fixed slot), while **ImmobilierDetails** opens **ImmobilierBooking** or **HotelBooking** for hôtel/meublé — do not merge them.
+- **Distinguish flows:** **ImmobilierHome** quick "Visite" uses an **in-place Alert + bookVisit** (fixed slot), while **ImmobilierDetails** opens **ImmobilierBooking** or **HotelBooking** for hôtel/meublé — do not merge them.
 - **IA disclaimer:** price estimates and investment text are **indicative**, not legal/financial advice.
 ` : ''}
 ${onProductVideoCreationModal ? `
 YUKPO_STUDIO_PRODUCT_VIDEO_MODE:
 - **Prioritize** **YUKPO_STUDIO_PRODUCT_VIDEO_DETAIL** below — it is the authoritative functional map of this modal.
 - Act as a **video editing coach**: tie every control to **what changes in the final render** (timeline, pacing, crops, typography, audio mix, variants, publish surfaces).
-- If **SCREEN GUIDE** contains **CURRENT_WIZARD_STATE**, use **activeStep** to anchor explanations (“you are on step N…”).
+- If **SCREEN GUIDE** contains **CURRENT_WIZARD_STATE**, use **activeStep** to anchor explanations ("you are on step N…").
 - **Language:** obey **langInstr** — the reference text may be English but **user-facing wording** must match UI locale.
 ` : ''}
 ${yukpoCatalogBlock}
@@ -1561,15 +1561,15 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 === MES_SERVICES_PRODUCT_HUB_DETAIL (authoritative — MesServicesScreen, routes **Services** tab or **MesServices** stack) ===
 
-**CRITICAL — Réponses « comment créer un produit / une offre » (même si l’utilisateur est sur cet écran):** présenter **deux parcours** dans cet ordre — **(1) RECOMMANDÉ : Accueil (HomeScreen) → mode « Créer » → ChatInputMobile** (même barre de saisie / famille que ChatInputModal sur l’accueil) pour le guidage IA ; **(2) ALTERNATIVE : cet écran MesServicesScreen** (hub catalogue, +, menu ☰, cartes). Ne jamais **omettre** le parcours (1) ; ne jamais présenter **uniquement** le parcours Mes services ni le mettre en « recommandé » pour une première création.
+**CRITICAL — Réponses « comment créer un produit / une offre » (même si l'utilisateur est sur cet écran):** présenter **deux parcours** dans cet ordre — **(1) RECOMMANDÉ : Accueil (HomeScreen) → mode « Créer » → ChatInputMobile** (même barre de saisie / famille que ChatInputModal sur l'accueil) pour le guidage IA ; **(2) ALTERNATIVE : cet écran MesServicesScreen** (hub catalogue, +, menu ☰, cartes). Ne jamais **omettre** le parcours (1) ; ne jamais présenter **uniquement** le parcours Mes services ni le mettre en « recommandé » pour une première création.
 
 **What this screen is:** Prestataire hub to manage **products/offers** tied to **GET /api/prestataire/services**, with **ServiceCardModern** list, **stats** (totals, actifs, inactifs, vues), **filters** (Tous / Actif / Inactif), **pull to refresh**, and **DeviceEventEmitter** refresh on \`service:refresh\`, \`product:created\`, \`product:updated\`.
 
 **Header / bandeau:**
 - **Menu ☰ (SidebarNavigation):** création produit, galerie médias, équipe (par service), stats, mes pubs, nouvelle pub, création vidéo, flash promo, promos actives, live, analytiques vidéo, réglages, rafraîchir — aligné sur les entrées du menu latéral dans le code.
-- **Boutons + rapides:** intro **vidéo**, **Flash promo** (sélection produits → CreateFlashPromo), **livraison globale** (sélection → GlobalDeliveryConfigModal), **sélection multiple** + barre d’actions bulk (activer/désactiver/supprimer).
+- **Boutons + rapides:** intro **vidéo**, **Flash promo** (sélection produits → CreateFlashPromo), **livraison globale** (sélection → GlobalDeliveryConfigModal), **sélection multiple** + barre d'actions bulk (activer/désactiver/supprimer).
 - **Ajouter un produit:** si un service existe → **formulaire d'ajout rapide avec suggestions IA** ; sinon → **formulaire intelligent complet** pour créer votre activité et vos produits.
-- **Fil d’Ariane / accueil:** retour **Home** selon UI.
+- **Fil d'Ariane / accueil:** retour **Home** selon UI.
 
 **Cartes produit (ServiceCardModern):** modifier fiche service (**formulaire intelligent complet**), promos (flash / promotion), **partage** (lien yukpomnang.com/service/{id}), **activer/désactiver** (coût éventuel réactivation **jetons** / solde — messaging UI), **suppression** (bloquée côté API si plusieurs produits selon règles métier).
 
@@ -1577,7 +1577,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Hard rules:**
 - To open this hub from code or deep links, use **MesServices** or the tab **Services**, **never** confuse with **ServicesActivity** (legacy ServicesScreen).
-- If the user asks “où sont mes produits / gérer catalogue”, describe **this** screen + mention **MesProduits** as the **advanced** list view.
+- If the user asks "où sont mes produits / gérer catalogue", describe **this** screen + mention **MesProduits** as the **advanced** list view.
 `;
     }
 
@@ -1592,9 +1592,9 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Sur chaque carte:** **Modifier**, **Activer / Mettre en pause**, **Partager** (externe), **Envoyer** (InternalShareButton / interne Yukpo), **Plus** → feuille : **Promouvoir**, **Statistiques** (produit), **Dupliquer**, **Livraison** (modal livraison unitaire), **Supprimer**.
 
-**Retour au hub synthèse:** route **MesServices** (même UI que l’onglet **Services**).
+**Retour au hub synthèse:** route **MesServices** (même UI que l'onglet **Services**).
 
-**Hard rules:** Ne pas inventer d’**import CSV** sur cet écran (non présent dans MesProduitsScreen). Ne pas confondre avec **ServicesActivity**.
+**Hard rules:** Ne pas inventer d'**import CSV** sur cet écran (non présent dans MesProduitsScreen). Ne pas confondre avec **ServicesActivity**.
 `;
     }
 
@@ -1609,18 +1609,18 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **Gauche — flèche retour:** \`navigation.goBack()\`.
 - **Titre:** libellé type « Bourse du Livre » (i18n).
 - **Droite — bouton librairie:** si \`partner_type\` ∈ {librairie, libraire, livrescolaire, livre_scolaire} → **LivreScolaireForm** (« Ma librairie », icône type tableau de bord) ; sinon → **LibrairieRegistration** (« Devenir libraire », icône store).
-- **Entête — accès établissement (si présent sur l’UI):** bouton type **« Établissement scolaire »** → **EtablissementScolaire** : dépôt **manuels scolaires (établissement)** (PDF / Excel / images), extraction **IA Yukpo** → référentiel \`programmes_scolaires\`, rattachement optionnel **fiche orientation** (\`etablissement_id\` via **GET /api/orientation/etablissements/mine**), **rayon km** pour notifier les **librairies** (ville + GPS). **À distinguer** de la carte bleue **ProgrammeBesoinsSelector** (famille / élève : coches besoins au programme officiel).
+- **Entête — accès établissement (si présent sur l'UI):** bouton type **« Établissement scolaire »** → **EtablissementScolaire** : dépôt **manuels scolaires (établissement)** (PDF / Excel / images), extraction **IA Yukpo** → référentiel \`programmes_scolaires\`, rattachement optionnel **fiche orientation** (\`etablissement_id\` via **GET /api/orientation/etablissements/mine**), **rayon km** pour notifier les **librairies** (ville + GPS). **À distinguer** de la carte bleue **ProgrammeBesoinsSelector** (famille / élève : coches besoins au programme officiel).
 
-**Deux cartes d’action principales (sous l’en-tête):**
-1. **Verte — « Mettez vos livres en circulation »** (icône **camera**): → **BookUploadV2**. Sous-texte: vente, troc ou don ; le don se précise à l’étape suivante du flux.
+**Deux cartes d'action principales (sous l'en-tête):**
+1. **Verte — « Mettez vos livres en circulation »** (icône **camera**): → **BookUploadV2**. Sous-texte: vente, troc ou don ; le don se précise à l'étape suivante du flux.
 2. **Bleue — « Trouvez votre liste scolaire en un parcours »** (icône **list-checks**): → **ProgrammeBesoinsSelector**. Cocher les manuels au **programme officiel**, arbitrer **neuf vs occasion**.
 
 **Bloc « Dashboard des opérations »:**
 - Compteurs (API agrégée): **achats en cours**, **paquets à recevoir**, **paquets à envoyer**, **trocs en cours**, **besoins actifs** (\`bourseLivreV2Api.getUserBookDashboard\`, demandes de dons, \`/api/troc-livres/my-trocs\`).
-- **Icône QR** → **QRCodeShare** avec \`{ mode: 'scan' }\` (scan pour valider l’arrivée du coursier).
+- **Icône QR** → **QRCodeShare** avec \`{ mode: 'scan' }\` (scan pour valider l'arrivée du coursier).
 - **Refresh** recharge ces compteurs.
 - **Trois boutons de suivi:** **Suivre mes paquets** → **BookPackages** ; **Suivre mes trocs** → **MesTrocs** ; **Mes besoins** → **MesBesoinsLivres**.
-- **Texte d’aide** sous le bloc: rappel de **scanner le QR du coursier** à l’arrivée.
+- **Texte d'aide** sous le bloc: rappel de **scanner le QR du coursier** à l'arrivée.
 
 **Liste principale:**
 - **FlatList** de livres: \`livreScolaireService.searchLivres\` avec **limit 20**, offset 0 ; si GPS dispo → \`gps_lat\`, \`gps_lon\`, **rayon_km = 20**.
@@ -1628,12 +1628,12 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **Tap carte** → **LivreScolaireDetails** (\`livreId\`). Chaque carte: image, titre, auteur, classe actuelle → souhaitée, matière, ville/quartier, distance formatée, état.
 
 **Hard rules:**
-- **Ne pas** décrire une **barre de recherche + panneau filtres + bouton violet « Recommandations IA »** en tête: c’est l’ancien **BourseLivreScreen** (fichier déprécié), pas l’écran monté par la navigation actuelle.
+- **Ne pas** décrire une **barre de recherche + panneau filtres + bouton violet « Recommandations IA »** en tête: c'est l'ancien **BourseLivreScreen** (fichier déprécié), pas l'écran monté par la navigation actuelle.
 - Pour « comment vendre / troquer / donner »: pointer **carte verte** → **BookUploadV2**.
 - Pour « liste de classe / manuels officiels » (parcours **famille**): pointer **carte bleue** → **ProgrammeBesoinsSelector**.
 - Pour **dépôt liste établissement** (partenaire école / admin): **Établissement scolaire** → **EtablissementScolaire** (voir **ETABLISSEMENT_SCOLAIRE_DETAIL**).
 - Pour livraison / QR / paquets: **dashboard** + **BookPackages** + rappel QR (les paquets peuvent inclure **livres / cahiers / fournitures** selon \`type_article\`).
-- **Partenaire librairie — réseau commandes mixtes:** depuis l’entête **librairie** ou **Équipe librairie** → **LibrairieTeamPending** (succursale + stock) ; **commande mixte** diffusée aux librairies → **LibrairieNetworkValidation** (**POST** \`/api/librairie-network/validation/valider\` : \`livres_valides\`, \`livres_indisponibles\`, notes) puis **LibrairieNetworkLignePrix** (**GET** lignes neufs/bornes, **PATCH** prix). **Notification push** (tap) → **LibrairieNetworkValidation** avec \`commandeId\`. **Multi-paniers** : d’autres librairies peuvent prendre les lignes restantes \`en_attente\`.
+- **Partenaire librairie — réseau commandes mixtes:** depuis l'entête **librairie** ou **Équipe librairie** → **LibrairieTeamPending** (succursale + stock) ; **commande mixte** diffusée aux librairies → **LibrairieNetworkValidation** (**POST** \`/api/librairie-network/validation/valider\` : \`livres_valides\`, \`livres_indisponibles\`, notes) puis **LibrairieNetworkLignePrix** (**GET** lignes neufs/bornes, **PATCH** prix). **Notification push** (tap) → **LibrairieNetworkValidation** avec \`commandeId\`. **Multi-paniers** : d'autres librairies peuvent prendre les lignes restantes \`en_attente\`.
 `;
     }
 
@@ -1642,17 +1642,17 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 === LIBRAIRIE_RESEAU_COMMANDE_MIXTE_DETAIL (authoritative — LibrairieNetworkValidationScreen, LibrairieNetworkLignePrixScreen, LibrairieTeamPendingScreen) ===
 
-**Rôle:** Parcours **partenaire librairie** pour les **commandes mixtes** (manuels neufs + occasion) du **réseau Yukpo** : une famille valide un budget, diffuse aux librairies proches ; **chaque** librairie peut ne couvrir qu’**un sous-ensemble** de lignes (**multi-paniers**). **Aucune obligation** qu’une seule librairie honore toute la commande.
+**Rôle:** Parcours **partenaire librairie** pour les **commandes mixtes** (manuels neufs + occasion) du **réseau Yukpo** : une famille valide un budget, diffuse aux librairies proches ; **chaque** librairie peut ne couvrir qu'**un sous-ensemble** de lignes (**multi-paniers**). **Aucune obligation** qu'une seule librairie honore toute la commande.
 
 **LibrairieTeamPending** (**LibrairieTeamPending**): équipe / **succursale** (GPS), cases **stock disponible**, validations métiers liées aux paquets — **ne pas** confondre avec la saisie **prix** ou **disponibilité ligne neuf** de la commande mixte réseau.
 
-**LibrairieNetworkValidation** (**LibrairieNetworkValidation**): pour une \`commandeId\`, liste des **lignes neufs** avec \`statut_validation\` ; pour chaque ligne **en_attente** : **Ne pas décider** (laisser d’autres librairies), **Je fournis** → \`livres_valides\`, **Indisponible ici** → \`livres_indisponibles\` ; notes optionnelles ; envoi **POST** \`/api/librairie-network/validation/valider\`. Lien vers **LibrairieNetworkLignePrix** (même commande).
+**LibrairieNetworkValidation** (**LibrairieNetworkValidation**): pour une \`commandeId\`, liste des **lignes neufs** avec \`statut_validation\` ; pour chaque ligne **en_attente** : **Ne pas décider** (laisser d'autres librairies), **Je fournis** → \`livres_valides\`, **Indisponible ici** → \`livres_indisponibles\` ; notes optionnelles ; envoi **POST** \`/api/librairie-network/validation/valider\`. Lien vers **LibrairieNetworkLignePrix** (même commande).
 
 **LibrairieNetworkLignePrix** (**LibrairieNetworkLignePrix**): **GET** \`/api/librairie-network/commandes/{id}/lignes-neufs/bornes\` ; **PATCH** prix si non verrouillé officiel ; liste **Mes commandes mixtes** (librairie associée). Lien vers **LibrairieNetworkValidation**.
 
-**Notifications:** type **librairie_commande_mixte** / données \`commande_id\` — à l’ouverture, **LibrairieNetworkValidation** avec param \`commandeId\`.
+**Notifications:** type **librairie_commande_mixte** / données \`commande_id\` — à l'ouverture, **LibrairieNetworkValidation** avec param \`commandeId\`.
 
-**Hard rules:** Ne pas dire que « la librairie doit tout valider d’un coup » ; ne pas inventer d’**achat direct** sur ces écrans ; orienter les **familles** vers **LivreScolaireHome** / **ProgrammeBesoinsSelector** (pas ces écrans partenaires).
+**Hard rules:** Ne pas dire que « la librairie doit tout valider d'un coup » ; ne pas inventer d'**achat direct** sur ces écrans ; orienter les **familles** vers **LivreScolaireHome** / **ProgrammeBesoinsSelector** (pas ces écrans partenaires).
 `;
     }
 
@@ -1663,7 +1663,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Rôle:** Parcours **partenaire établissement** (ou équipe habilitée) pour transmettre les **manuels scolaires (établissement)** — source fichiers — afin que Yukpo les **extraie (IA)** et les intègre au **référentiel** ; les **librairies** dans la **ville** et/ou le **rayon GPS** (notifications) sont informées.
 
-**Données chargées:** **GET /api/orientation/etablissements/mine** → liste des fiches orientation de l’utilisateur ; sélection **rattache** \`etablissement_id\` et peut pré-remplir nom / ville / GPS.
+**Données chargées:** **GET /api/orientation/etablissements/mine** → liste des fiches orientation de l'utilisateur ; sélection **rattache** \`etablissement_id\` et peut pré-remplir nom / ville / GPS.
 
 **Champs principaux:** nom établissement, pays/ville (ou **GPS** via **ModernGPSModal**), **niveaux** (puces Maternelle → Lycée), **année scolaire**, commentaire, **rayon de notification** (km, presets + saisie, borné côté app), pièces jointes.
 
@@ -1676,7 +1676,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **Famille / élève:** si la question porte sur *leur* liste de manuels au programme → renvoyer vers **LivreScolaireHome** → **ProgrammeBesoinsSelector** (pas cet écran).
 - **Librairie:** après dépôt, préparer stock (**livres**, **cahiers**, **fournitures**) ; les demandes et paquets peuvent distinguer les types (\`type_article\`).
 
-**Hard rules:** Ne pas inventer d’autre route d’envoi ; ne pas confondre avec **OrientationPartnerDashboard** (dashboard partenaire orientation) ni avec la simple recherche d’occasion sur **LivreScolaireHome**.
+**Hard rules:** Ne pas inventer d'autre route d'envoi ; ne pas confondre avec **OrientationPartnerDashboard** (dashboard partenaire orientation) ni avec la simple recherche d'occasion sur **LivreScolaireHome**.
 `;
     }
 
@@ -1697,7 +1697,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **UI:** bandeau hero orange, galerie photos, cartes Infos / État / Localisation / Vidéo si présente.
 
-**Hard rule:** Ne pas inventer de bouton d’achat direct sur cette fiche ; l’achat/troc suite se fait via **TrocMatching**, **BookBuyDirect**, ou autres écrans du module selon le parcours.
+**Hard rule:** Ne pas inventer de bouton d'achat direct sur cette fiche ; l'achat/troc suite se fait via **TrocMatching**, **BookBuyDirect**, ou autres écrans du module selon le parcours.
 `;
     }
 
@@ -1706,19 +1706,19 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 === TICKET_VOYAGE_HOME_DETAIL (authoritative — TicketVoyageHomeScreen, route TicketVoyageHome) ===
 
-**Role:** Recherche de **produits / lignes de bus** (billets) avec **LocationSelector** (départ + arrivée, \`scope="all"\`, \`enrichWithBackend\`), date & heure optionnelles, nom d’agence optionnel, **aller-retour** (switch + date retour).
+**Role:** Recherche de **produits / lignes de bus** (billets) avec **LocationSelector** (départ + arrivée, \`scope="all"\`, \`enrichWithBackend\`), date & heure optionnelles, nom d'agence optionnel, **aller-retour** (switch + date retour).
 
-**Données:** \`busTicketService.searchBusTickets\` → agrège filtres (\`BusTicketSearchFilters\`: \`radius_km\` défaut 50, \`min_seats\`, GPS utilisateur injecté depuis **LocationContext**). **Pas de chargement auto** au montage : l’utilisateur doit renseigner départ + arrivée puis lancer la recherche (\`loadTickets\` / bouton).
+**Données:** \`busTicketService.searchBusTickets\` → agrège filtres (\`BusTicketSearchFilters\`: \`radius_km\` défaut 50, \`min_seats\`, GPS utilisateur injecté depuis **LocationContext**). **Pas de chargement auto** au montage : l'utilisateur doit renseigner départ + arrivée puis lancer la recherche (\`loadTickets\` / bouton).
 
 **Header:** retour ; titre i18n type « Tickets de voyage » ; **icône ticket** → **MyBusTickets** ; **sliders** ouvre panneau filtres avec **badge** = \`activeFiltersCount\`.
 
 **Tri:** modal **sortBy** — pertinence, prix ↑/↓, heure départ, date (tri aussi côté client sur les résultats).
 
-**Filtres rapides:** aujourd’hui / demain / week-end (date) ; **Proche de moi** ajuste \`radius_km\` (ex. 20) puis relance.
+**Filtres rapides:** aujourd'hui / demain / week-end (date) ; **Proche de moi** ajuste \`radius_km\` (ex. 20) puis relance.
 
 **Carte résultat:** appui → **BusTicketDetails** (\`ticketId: product_id\`, \`agencyId\`). Réservation directe → **BusTicketBooking** (\`productId\`, \`ticketData\` enrichi, \`isRoundTrip\`, \`returnDate\`) si places > 0.
 
-**Hard rules:** Ne pas confondre avec **BusTicketSearch** (écran séparé, **CityAutocomplete** + \`/api/bus-tickets/search\`). Ne pas affirmer que les billets se chargent tout seuls à l’ouverture sans critères.
+**Hard rules:** Ne pas confondre avec **BusTicketSearch** (écran séparé, **CityAutocomplete** + \`/api/bus-tickets/search\`). Ne pas affirmer que les billets se chargent tout seuls à l'ouverture sans critères.
 `;
     }
 
@@ -1731,11 +1731,11 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Recherche:** \`GET /api/bus-tickets/search\` avec \`URLSearchParams\`: \`departure_city\`, \`arrival_city\`, \`departure_date\` (YYYY-MM-DD), GPS optionnel (\`user_lat\`, \`user_lng\`), \`radius_km: 100\`, \`min_seats: 1\`, filtres **SearchFilters** (\`min_price\`, \`max_price\`, \`time_range\`, \`company\`, \`sort_by\`, \`sort_order\`). Tri client supplémentaire sur prix / heure.
 
-**UI:** section **Recherches rapides** (aujourd’hui, demain, week-end) ; bouton **Filtres** ouvre \`SearchFiltersComponent\` ; bouton **Rechercher** désactivé si villes vides.
+**UI:** section **Recherches rapides** (aujourd'hui, demain, week-end) ; bouton **Filtres** ouvre \`SearchFiltersComponent\` ; bouton **Rechercher** désactivé si villes vides.
 
 **Résultat:** tap carte → **BusTicketBooking** (\`productId\`, \`ticketData\`, \`isRoundTrip\`, \`returnDate\`, \`returnTime\`).
 
-**Hard rules:** Cet écran **n’utilise pas** \`busTicketService.searchBusTickets\` ni les **LocationSelector** du hub **TicketVoyageHome**. Expliquer les deux entrées si l’utilisateur compare les parcours.
+**Hard rules:** Cet écran **n'utilise pas** \`busTicketService.searchBusTickets\` ni les **LocationSelector** du hub **TicketVoyageHome**. Expliquer les deux entrées si l'utilisateur compare les parcours.
 `;
     }
 
@@ -1754,7 +1754,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Création trajet (API):** \`covoiturageService.createCovoiturage\` exige \`service_id\` — sinon alerte « créer un service » → **GestionServicesSpecialises**.
 
-**Hard rules:** Ne pas promettre un onglet « créer » visible sur cet écran si l’utilisateur ne voit que la recherche : la création passe par le bouton **Publier** → **CovoiturageForm**. Ne pas inventer d’autre portail **CovoiturageSearch** obligatoire depuis cet accueil.
+**Hard rules:** Ne pas promettre un onglet « créer » visible sur cet écran si l'utilisateur ne voit que la recherche : la création passe par le bouton **Publier** → **CovoiturageForm**. Ne pas inventer d'autre portail **CovoiturageSearch** obligatoire depuis cet accueil.
 `;
     }
 
@@ -1775,7 +1775,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Carte taxi:** **TaxiDetails** ; appel **tel:** ; **Réserver** → **TaxiBooking** (\`taxiId\`, texte départ/destination selon contexte). Après recherche, liste = résultats filtrés.
 
-**Hard rules:** Ne pas dire que l’utilisateur doit obligatoirement passer par **TaxiSearch** ou **TaxiIntelligentSearch** pour commander : l’accueil **TaxiHome** est déjà le hub principal refondu. Mentionner **TaxiTracking** seulement pour le suivi post-réservation si pertinent.
+**Hard rules:** Ne pas dire que l'utilisateur doit obligatoirement passer par **TaxiSearch** ou **TaxiIntelligentSearch** pour commander : l'accueil **TaxiHome** est déjà le hub principal refondu. Mentionner **TaxiTracking** seulement pour le suivi post-réservation si pertinent.
 `;
     }
 
@@ -1822,7 +1822,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Sync API externe:** endpoint **POST** \`/api/supermarkets/products/sync-external\` avec \`service_id\`, \`api_url\`, \`items_path\`, \`auth_bearer_token\` optionnel, \`overwrite_existing\`.
 
-**Règles d’explication:** ne pas dire “full replace” de la base par défaut. Avec \`overwrite_existing=false\`, on ajoute/insère; avec \`true\`, on met à jour les existants correspondant.
+**Règles d'explication:** ne pas dire "full replace" de la base par défaut. Avec \`overwrite_existing=false\`, on ajoute/insère; avec \`true\`, on met à jour les existants correspondant.
 `;
     }
 
@@ -1843,7 +1843,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Quick action row:** **ProfilCandidat** ; **AICVAnalysis** ; **AISalaryPrediction** ; **AISuggestFormations** ; **AlertesEmploi** — each is **navigation** to its route (no \`setShowAIModal(true)\` in this file; the legacy **AIModal** is effectively unused).
 
-**“Offres recommandées”:** \`offreEmploiService.getMatchingOffres(60, 10)\` → **GET /api/offres-emploi/matching/offres** ; on success → **OffreList** with \`{ offres, title }\` ; if empty/error → alert suggesting **ProfilCandidat**.
+**"Offres recommandées":** \`offreEmploiService.getMatchingOffres(60, 10)\` → **GET /api/offres-emploi/matching/offres** ; on success → **OffreList** with \`{ offres, title }\` ; if empty/error → alert suggesting **ProfilCandidat**.
 
 **Cards:** tap or **Postuler** → **OffreDetails** with \`offreId\`. Per-card row: **Sauvegarder** toggles local \`savedOffers\` **Set** (session state). **Estimer salaire** uses **useAIWithFallback** \`predictSalary\` (3-level fallback) with poste/secteur/expérience fixe \`3\` ans + \`lieu_travail\` or default city — **not** necessarily the same as **AISalaryPrediction** screen or **GET /api/offres-emploi/ai/salary-prediction** directly.
 
@@ -1864,7 +1864,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Search bar (header):** navigates to **OffreSearch** (placeholder text differs employer vs candidat).
 
-**Quick actions (employer):** **OffresEmploiForm** (nouvelle offre), **MesOffres** (also used for “Candidatures” / “Matching IA” shortcuts — same destination in code), **AISalaryPrediction**, **OffresEmploiHome** (Explorer). **Quick actions (candidate):** **OffresEmploiHome**, **OffreCandidatures**, **ProfilCandidat**, **AlertesEmploi**, **MesOffres**.
+**Quick actions (employer):** **OffresEmploiForm** (nouvelle offre), **MesOffres** (also used for "Candidatures" / "Matching IA" shortcuts — same destination in code), **AISalaryPrediction**, **OffresEmploiHome** (Explorer). **Quick actions (candidate):** **OffresEmploiHome**, **OffreCandidatures**, **ProfilCandidat**, **AlertesEmploi**, **MesOffres**.
 
 **Outils IA:** horizontal cards → **AICVAnalysis**, **AISalaryPrediction**, **AISuggestFormations**.
 
@@ -1872,7 +1872,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **FAB (+):** always **OffresEmploiForm** (both branches identical in code).
 
-**Hard rules:** Tell users the hub uses **OffresEmploiForm** + **MesOffres** for publishing/management from here; **CreateOffre** is the alternate full form opened from **OffresEmploiHome** (+). Do not invent separate routes for “Matching IA” on the hub — it maps to **MesOffres** in \`buildEmployerQuickActions\`.
+**Hard rules:** Tell users the hub uses **OffresEmploiForm** + **MesOffres** for publishing/management from here; **CreateOffre** is the alternate full form opened from **OffresEmploiHome** (+). Do not invent separate routes for "Matching IA" on the hub — it maps to **MesOffres** in \`buildEmployerQuickActions\`.
 `;
     }
 
@@ -1915,13 +1915,13 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 === LABORATORY_MODULE_DETAIL (authoritative — align on **CURRENT SCREEN** name) ===
 
-**User entry points:** grille d’accueil (**LaboratoireHome**), hub santé (**HealthServicesHub** → tuile **LaboratoireHome**), **LaboratoireSearch** (formulaire filtres lieux / GPS — toujours disponible depuis raccourcis ou listes).
+**User entry points:** grille d'accueil (**LaboratoireHome**), hub santé (**HealthServicesHub** → tuile **LaboratoireHome**), **LaboratoireSearch** (formulaire filtres lieux / GPS — toujours disponible depuis raccourcis ou listes).
 
 ### LaboratoireSearch (**LaboratoireSearchScreen**)
 - **GPS:** **LocationContext** préremplit \`gpsData\` ; sinon **ModernGPSModal** (\`handleGPSSelect\`).
-- **Filtres:** ville/quartier (champs), type de prestation texte \`serviceType\`, **distance max** (\`maxDistance\`, défaut 50 km), switches **RDV en ligne** (\`rdv_en_ligne\`), **disponibles** (\`available_only\`, défaut true), **types d’examens** multi (\`selectedTypesExamens\`), texte **prestation / analyse** (\`prestationAnalyse\`), filtres avancés repliables.
+- **Filtres:** ville/quartier (champs), type de prestation texte \`serviceType\`, **distance max** (\`maxDistance\`, défaut 50 km), switches **RDV en ligne** (\`rdv_en_ligne\`), **disponibles** (\`available_only\`, défaut true), **types d'examens** multi (\`selectedTypesExamens\`), texte **prestation / analyse** (\`prestationAnalyse\`), filtres avancés repliables.
 - **Rechercher:** si \`selectedTypesExamens.length > 0\` **ou** \`prestationAnalyse\` non vide → **LaboratoireList** avec \`{ filters }\` (inclut \`types_examens\`, \`prestation_analyse\`, lat/lng, \`max_distance_km\`, flags) ; sinon → **LaboratoireList** avec filtres « labo » (\`service_type\`, GPS, distance, RDV, \`available_only\`).
-- **Bandeau « Mes examens »** → **MyLabExaminations** (connexion requise sur l’écran liste).
+- **Bandeau « Mes examens »** → **MyLabExaminations** (connexion requise sur l'écran liste).
 - **Quick searches:** « Plus proche » (rayon 15 km + dispo), « RDV en ligne », « Résultats en ligne » (intention UI ; filtre backend \`resultats_en_ligne\` commenté côté recherche).
 
 ### LaboratoireList (**LaboratoireListScreen**)
@@ -1929,9 +1929,9 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - Tap carte → **LaboratoireDetails** avec \`laboratoryId: laboratoire.id\`.
 
 ### LaboratoireDetails (**LaboratoireDetailsScreen**)
-- **GET** \`/api/laboratoires/{laboratoryId}\` ; types d’examens **GET** \`/api/laboratoires/{id}/examination-types\` via **\`labService.getExaminationTypes\`**.
-- **Actions rapides:** appel, WhatsApp, **Chat Yukpo** (**ChatModalMobile**), **RDV** → **POST** \`/api/laboratoires/{id}/book\` (notes fixes « Réservation depuis l’application mobile »), email, site, partage natif.
-- **Liste « Types d’examens »:** tap ligne → réservation examen **\`labService.bookExamination\`** → **POST** \`/api/laboratoires/{id}/book-examination\` (modal notes + \`examination_type_id\`).
+- **GET** \`/api/laboratoires/{laboratoryId}\` ; types d'examens **GET** \`/api/laboratoires/{id}/examination-types\` via **\`labService.getExaminationTypes\`**.
+- **Actions rapides:** appel, WhatsApp, **Chat Yukpo** (**ChatModalMobile**), **RDV** → **POST** \`/api/laboratoires/{id}/book\` (notes fixes « Réservation depuis l'application mobile »), email, site, partage natif.
+- **Liste « Types d'examens »:** tap ligne → réservation examen **\`labService.bookExamination\`** → **POST** \`/api/laboratoires/{id}/book-examination\` (modal notes + \`examination_type_id\`).
 - **Bloc IA symptômes:** chips symptômes → **\`labService.searchPathology(symptoms)\`** → **POST** \`/api/laboratoires/ai/search-pathology\` (urgence, examens suggérés, pathologies possibles — **indicatif**).
 - **Boutons pleine largeur:** « Réserver un rendez-vous » (même **POST** \`/book\` ; désactivé si fermé), **Mes examens** → **MyLabExaminations**, **Analytics** (propriétaire) → **LabAnalytics** avec \`laboratoryId\`.
 - **Avis:** **GET** \`/api/specialized-services/{service_id}/ratings/stats\` + **ProductCommentsSection**.
@@ -1939,7 +1939,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 ### LaboratoireHome (**LaboratoireHomeScreen**)
 - Autocomplete **\`laboratoryService.searchExaminationTypes\`** → **GET** \`/api/laboratoires/examinations/autocomplete\`.
 - Si **dispo + GPS** (\`useAvailability\` + **LocationContext**): **\`laboratoryService.searchWithAvailability\`** → **GET** \`/api/search/scheduling\` (query + lat/lng + \`max_distance\`).
-- Sinon navigation vers **LaboratoireList** avec param \`examinationType\` (texte) — la liste principale attend surtout \`filters\` ; en cas d’écart, orienter l’utilisateur vers **LaboratoireSearch** pour des critères complets.
+- Sinon navigation vers **LaboratoireList** avec param \`examinationType\` (texte) — la liste principale attend surtout \`filters\` ; en cas d'écart, orienter l'utilisateur vers **LaboratoireSearch** pour des critères complets.
 - Raccourcis **LaboratoireHome** (hub) / **LaboratoireSearch** (filtres lieux) / **MyLabExaminations** ; modales IA pathologie / image via **laboratoryService** (\`/api/laboratoires/ai/search-pathology\`, \`/api/laboratoires/examinations/analyze-image\`).
 
 ### MyLabExaminations (**MyLabExaminationsScreen**)
@@ -1952,12 +1952,12 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 ### LabAnalytics (**LabAnalyticsScreen**)
 - Param route **\`laboratoryId\`** : vérif propriétaire **\`labService.getLaboratoryDetails\`** (\`user.id === laboratory.user_id\`), sinon **Alert** + retour.
 - Puis **\`labService.getAnalytics(laboratoryId)\`** → **GET** \`/api/laboratoires/{id}/analytics\` (**sans** query \`period\` dans le client actuel).
-- UI : sélecteur **7j / 30j / 90j** relance \`loadAnalytics\` au changement, mais l’appel API reste le même ; affichage des champs \`total_examinations\`, \`examinations_7d\`, \`examinations_30d\`, \`completed_count\`, \`examination_types_count\`, etc.
+- UI : sélecteur **7j / 30j / 90j** relance \`loadAnalytics\` au changement, mais l'appel API reste le même ; affichage des champs \`total_examinations\`, \`examinations_7d\`, \`examinations_30d\`, \`completed_count\`, \`examination_types_count\`, etc.
 
 ### LaboratoireForm (**LaboratoireFormScreen** — prestataire / création)
 - Détail : **LABORATOIRE_PARTNER_DASHBOARD_DETAIL** lorsque \`CURRENT SCREEN\` = **LaboratoireForm**.
 
-**Hard rules:** Ne pas confondre **POST** \`/book\` (RDV générique labo) et **POST** \`/book-examination\` (créneau/type d’examen structuré). Pas de bouton **Navigation / itinéraire** sur **LaboratoireDetails** dans le code actuel → module **Navigation** global si l’utilisateur demande l’itinéraire.
+**Hard rules:** Ne pas confondre **POST** \`/book\` (RDV générique labo) et **POST** \`/book-examination\` (créneau/type d'examen structuré). Pas de bouton **Navigation / itinéraire** sur **LaboratoireDetails** dans le code actuel → module **Navigation** global si l'utilisateur demande l'itinéraire.
 `;
     }
 
@@ -1973,17 +1973,17 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 **Dashboard:** affiché si \`isDashboardMode || (partenaire && serviceId)\`. **Pas de FAB IntelligentChat** dans ce fichier.
 
 ### Onglets (header gradient)
-1. **Accueil (\`overview\`):** **4 stats** calculées depuis \`examinationTypes\` (total, analyses, imagerie, avec prix). **Actions rapides:** **Ajouter examen** → bascule **Examens** + ouverture **modal** (timeout) ; **IA Analyse** → **Alert** (orientation patient / \`examinationId\` / **MyLabExaminations**) ; **Statistiques** → **LabAnalytics** avec \`laboratoryId: labData.id\` — **Alert** si pas d’\`id\` ; **Mon service** → onglet Service ; **Portefeuille** → **WalletFinancial** ; **Sortir** → **Alert** + \`logout\`. Infos horaires / 24h, **RDV requis**, **résultats en ligne**. **4 derniers** examens + **Tout voir** → Examens. **Pull-to-refresh** → \`handleRefresh\` = **seulement** \`loadExamTypes\` (**ne** recharge pas \`labData\` via **GET** \`/api/laboratoires\`).
+1. **Accueil (\`overview\`):** **4 stats** calculées depuis \`examinationTypes\` (total, analyses, imagerie, avec prix). **Actions rapides:** **Ajouter examen** → bascule **Examens** + ouverture **modal** (timeout) ; **IA Analyse** → **Alert** (orientation patient / \`examinationId\` / **MyLabExaminations**) ; **Statistiques** → **LabAnalytics** avec \`laboratoryId: labData.id\` — **Alert** si pas d'\`id\` ; **Mon service** → onglet Service ; **Portefeuille** → **WalletFinancial** ; **Sortir** → **Alert** + \`logout\`. Infos horaires / 24h, **RDV requis**, **résultats en ligne**. **4 derniers** examens + **Tout voir** → Examens. **Pull-to-refresh** → \`handleRefresh\` = **seulement** \`loadExamTypes\` (**ne** recharge pas \`labData\` via **GET** \`/api/laboratoires\`).
 
 2. **Service:** \`renderServiceForm\` — si **partenaire**, champs **nom, adresse, téléphone, WhatsApp, email** **masqués**. Restent type (3 chips), **ModernGPSModal**, **LocationSelector** quartier, **SimplePrestationSelector** (analyses + imagerie), horaires, switches 24h / RDV / résultats en ligne. **Mettre à jour / Enregistrer** → \`handleSubmit\` : **\`servicesApi.createService\`** si besoin, puis **POST** \`/api/laboratoires\` avec \`service_id\` et payload (gps, listes, contacts null si vides).
 
-3. **Examens:** liste + recherche locale ; modal ajout/édition — au **Valider**, le code ne fait que **\`setExaminationTypes\`** (**état React**) : **aucune** requête **POST/PUT** vers \`/examination-types\` dans ce fichier → **pas de persistance serveur** de ce flux modal dans l’implémentation actuelle.
+3. **Examens:** liste + recherche locale ; modal ajout/édition — au **Valider**, le code ne fait que **\`setExaminationTypes\`** (**état React**) : **aucune** requête **POST/PUT** vers \`/examination-types\` dans ce fichier → **pas de persistance serveur** de ce flux modal dans l'implémentation actuelle.
 
 4. **Stats (onglet \`analytics\` in-app):** compteurs **catalogue** depuis \`examinationTypes\` + texte **IA résultats** statique — **≠** écran **LabAnalytics** (API + contrôle propriétaire).
 
 5. **Équipe:** **ServiceTeamManager** \`serviceId={serviceId?.toString()}\` (ID **service Yukpo**, pas \`laboratoryId\`).
 
-**Mode création** (sans barre d’onglets): \`renderServiceForm\` + GPS + même modal examens.
+**Mode création** (sans barre d'onglets): \`renderServiceForm\` + GPS + même modal examens.
 
 **Hard rules:** Ne pas confondre onglet **Stats** du formulaire et **LabAnalytics** ; ne pas affirmer que la modal examens **enregistre** côté API ; **Statistiques** (navigation) dépend de **\`labData.id\`**.
 `;
@@ -2001,13 +2001,13 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **GET** \`/api/agences-voyage\` → liste ; le code prend **\`agencies[0]\`** comme \`agencyData\`, fixe \`service_id\` si manquant, puis **\`loadSchedules\`** + **\`loadAgencyTickets\`**.
 - **Création service Yukpo:** si besoin, **\`servicesApi.createService\`** (\`category: 'transport'\`, titre = nom agence).
 
-### Modes d’affichage
+### Modes d'affichage
 - **Dashboard** si agence existante **ou** (\`partenaire\` **et** \`serviceId\`) : header gradient bleu, **6 onglets** — **overview** | **service** | **schedules** | **bus** | **tickets** | **team**.
-- **Formulaire création** (non partenaire ou sans dashboard) : header + **\`renderServiceForm\`** (pas d’onglets bus/tickets dans ce mode).
+- **Formulaire création** (non partenaire ou sans dashboard) : header + **\`renderServiceForm\`** (pas d'onglets bus/tickets dans ce mode).
 
 ### Onglet **Service** (fiche agence)
 - **POST** \`/api/agences-voyage\` (création / mise à jour même handler \`handleSubmit\`) : \`service_id\`, \`nom_agence\`, \`adresse\`, \`quartier\`, \`gps\` (**ModernGPSModal** ou coords **LocationContext**), \`services_voyage\` (chips : Billetterie bus/avion, Organisation voyages, Visa), \`compagnies_bus\`, \`destinations\` (**LocationSelector**), horaires ouverture/fermeture, \`jours_ouverture\` (**WeekDaysSelector**), contacts, \`peut_emettre_tickets_bus\`, \`compagnies_affiliees\` (si switch actif), \`devise\`.
-- **Partenaire:** champs **nom agence, adresse brute, téléphone, WhatsApp, email** sont **masqués** dans l’UI (\`user?.role !== 'partenaire'\`) — le partenaire édite surtout **GPS, quartier, services, compagnies, destinations, horaires, switch billetterie**.
+- **Partenaire:** champs **nom agence, adresse brute, téléphone, WhatsApp, email** sont **masqués** dans l'UI (\`user?.role !== 'partenaire'\`) — le partenaire édite surtout **GPS, quartier, services, compagnies, destinations, horaires, switch billetterie**.
 
 ### Onglet **Horaires** (lignes / créneaux agence)
 - Liste : **GET** \`/api/bus-tickets/agencies/schedules\`.
@@ -2017,11 +2017,11 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 ### Onglet **Bus** (modèles / produit billet Yukpo)
 - **BusModelForm** : nouveau modèle → **POST** \`/api/bus-tickets/create-product\` (\`service_id\`, \`name\`, \`type: 'ticket_voyage'\`, sièges, \`bus_configuration\`, \`seat_map\`, \`price_cents\`, \`currency\`) puis si \`agencyData.id\` → **POST** \`/api/bus-tickets/link\` (\`agency_id\`, \`product_id\`, \`nom_modele\`, \`classe\`, \`equipements\`).
-- **Modification / suppression** d’un modèle **déjà listé** : mise à jour **state local** \`busModels\` — **pas** d’appel API dédié dans ce fichier pour éditer un produit existant (hors création initiale).
+- **Modification / suppression** d'un modèle **déjà listé** : mise à jour **state local** \`busModels\` — **pas** d'appel API dédié dans ce fichier pour éditer un produit existant (hors création initiale).
 
 ### Onglet **Tickets** (ventes & embarquement)
 - Liste : **GET** \`/api/bus-tickets/agency/tickets\`.
-- Sélection d’une vente : **GET** \`/api/bus-tickets/boarding/{productId}/summary\` + **GET** \`/api/bus-tickets/boarding/{productId}/passengers\`.
+- Sélection d'une vente : **GET** \`/api/bus-tickets/boarding/{productId}/summary\` + **GET** \`/api/bus-tickets/boarding/{productId}/passengers\`.
 - **Valider** manuellement un passager : **POST** \`/api/bus-tickets/validate/manual\` \`{ reservation_id }\`.
 - Bouton **Scanner QR** → **BusTicketQRScanner** : voir section scanner ci-dessous.
 
@@ -2035,9 +2035,9 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 ### BusTicketQRScanner (**BusTicketQRScannerScreen**, route **BusTicketQRScanner**)
 - Scan : **POST** \`/api/bus-tickets/validate\` avec **\`{ qr_code_data }\`** uniquement dans **\`handleScan\`** (pas de \`product_id\` dans ce fichier).
-- **Note d’implémentation:** **AgenceVoyageForm** ouvre le scanner avec des **params** (\`onValidate\`, \`product_id\`) pour une validation enrichie, mais **l’écran scanner actuel ne lit pas \`route.params\`** — en cas d’échec ou de besoin de contexte trajet, orienter vers **sélection d’une ligne** dans l’onglet Tickets puis support / évolution produit.
+- **Note d'implémentation:** **AgenceVoyageForm** ouvre le scanner avec des **params** (\`onValidate\`, \`product_id\`) pour une validation enrichie, mais **l'écran scanner actuel ne lit pas \`route.params\`** — en cas d'échec ou de besoin de contexte trajet, orienter vers **sélection d'une ligne** dans l'onglet Tickets puis support / évolution produit.
 
-**Hard rules:** Ne pas confondre ce dashboard avec **AgenceVoyageSearch** / **AgenceVoyageList** / **AgenceVoyageDetails** (**client** qui cherche une agence). Ne pas promettre la synchro API des modèles bus **édités** après création si ce n’est pas reflété dans le code ci-dessus.
+**Hard rules:** Ne pas confondre ce dashboard avec **AgenceVoyageSearch** / **AgenceVoyageList** / **AgenceVoyageDetails** (**client** qui cherche une agence). Ne pas promettre la synchro API des modèles bus **édités** après création si ce n'est pas reflété dans le code ci-dessus.
 `;
     }
 
@@ -2046,7 +2046,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 === COURIER_DASHBOARD_DETAIL (authoritative — **CourierDashboardScreen**, route **CourierDashboard**) ===
 
-**Rôle:** tableau de bord **coursier / livreur**. **≠** **FleetDashboard** (gérant d’entreprise de livraison).
+**Rôle:** tableau de bord **coursier / livreur**. **≠** **FleetDashboard** (gérant d'entreprise de livraison).
 
 ### Accès navigation
 - Route pile **CourierDashboard** ; onglet barre affiché lorsque le profil indique coursier (**\`is_courier\`** chargé côté **AppNavigator**, ex. depuis données utilisateur).
@@ -2054,7 +2054,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 ### Chargement & cycle de vie
 - **\`useFocusEffect\`** : \`notificationSoundService.initialize()\` ; **\`loadData\`** immédiat ; **intervalle 15 s** qui rappelle \`loadData\` (nettoyage au blur).
 - **\`loadData\`** : **\`deliveryApi.listActiveDeliveries()\`** → **GET** \`/api/deliveries/active\` ; parse \`data.deliveries\` ou \`data\` (tableau) ; si \`length > lastDeliveryCount\` **et** \`lastDeliveryCount > 0\` → \`playSoundWithVibration('delivery_request')\`.
-- **Stats** : **\`deliveryApi.getCourierStats()\`** → **GET** \`/api/delivery/courier/stats\` ; erreur → \`console.warn\` uniquement (pas d’écran d’erreur dédié).
+- **Stats** : **\`deliveryApi.getCourierStats()\`** → **GET** \`/api/delivery/courier/stats\` ; erreur → \`console.warn\` uniquement (pas d'écran d'erreur dédié).
 - **Pull-to-refresh** sur le **ScrollView** → \`handleRefresh\`.
 
 ### UI
@@ -2072,11 +2072,11 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 === FLEET_PARTNER_DASHBOARD_DETAIL (authoritative — **FleetDashboardScreen**, route **FleetDashboard**) ===
 
-**Rôle:** tableau de bord **partenaire entreprise / flotte** (livraison, courses marché, déménagement, transport, chauffeurs — selon **\`partner_type\`** normalisé en minuscules). **Usage métier courant:** gérant d’**équipe de coursiers** ou de **chauffeurs / véhicules** (dont **flotte automobile** au sens transport). L’utilisateur **ne pilote pas** ici une livraison comme sur **CourierDashboard** (**DeliveryShoppingTracking**, livraisons actives).
+**Rôle:** tableau de bord **partenaire entreprise / flotte** (livraison, courses marché, déménagement, transport, chauffeurs — selon **\`partner_type\`** normalisé en minuscules). **Usage métier courant:** gérant d'**équipe de coursiers** ou de **chauffeurs / véhicules** (dont **flotte automobile** au sens transport). L'utilisateur **ne pilote pas** ici une livraison comme sur **CourierDashboard** (**DeliveryShoppingTracking**, livraisons actives).
 
 ### Navigation Yukpo → cet écran
 - **\`getPartnerDashboardScreen(partnerType)\`** (**AppNavigator.optimized.tsx**) retourne **\`FleetDashboard\`** pour : **chauffeur**, **fleet**, **livraison**, **livraison_courses_marche**, **demenagement**, **transport**.
-- **\`PartnerDashboardTab\`** monte l’écran retourné (onglet partenaire).
+- **\`PartnerDashboardTab\`** monte l'écran retourné (onglet partenaire).
 - **\`fleetLabel\`** (**sous-titre header**) : **\`PARTNER_TYPE_LABELS[partnerType]\`** dans **FleetDashboardScreen** — clés **chauffeur** → *Chauffeurs*, **livraison** → *Coursiers Livraison*, **livraison_courses_marche** → *Coursiers Marche*, **demenagement** → *Equipe Demenagement*, **transport** → *Transporteurs*. Si **absent** (ex. **\`partner_type === 'fleet'\`**) → **« Flotte »** (fallback chaîne dans le code).
 
 ### Modèle de données affiché (aligné interfaces fichier)
@@ -2097,7 +2097,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **SafeNativeView** ; titre i18n **fleetDashboard.gestionDeFlotte** + sous-titre **fleetLabel**.
 - Bouton **refresh-cw** : même **loadAll(true)** que le pull.
 
-### Barre d’onglets (4)
+### Barre d'onglets (4)
 - **overview** — libellé **Apercu** (sans accent, en dur), icône **layout-dashboard**.
 - **couriers** — libellé = **fleetLabel**, icône **users**.
 - **applications** — **Candidatures**, icône **user-plus** ; si \`stats.pending_applications > 0\` : badge **\`#ef4444\`** avec le nombre.
@@ -2108,7 +2108,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **Grille 4 cartes** — libellés **en dur** (FR) sauf **En cours** : **Coursiers actifs** (\`total_couriers\`), **Candidatures** (\`pending_applications\`), **Courses (30j)** (\`completed_deliveries_30d\`), **En cours** (\`active_deliveries\`, i18n **fleetDashboard.enCours**).
 - **Deux cartes larges** : note **\`avg_rating\` /5** (i18n **fleetDashboard.noteMoyenneFlotte**) ; **revenus** \`formatCurrency(monthly_revenue_cents)\` = **\`Math.round(cents/100)\` + « XAF »** (i18n libellé **fleetDashboard.revenusCeMois**).
 - **Bandeau orange** si \`pending_applications > 0\` : texte **en dur** (*« N candidature(s) en attente de validation »*) → **setActiveTab('applications')**.
-- **Actions rapides** (libellés **en dur**) : **Candidatures**, **Coursiers**, **Analytics** → changement d’onglet ; **Portefeuille** → **navigate('WalletFinancial')** ; **Sortir** → **Alert** + **logout** (i18n **common**).
+- **Actions rapides** (libellés **en dur**) : **Candidatures**, **Coursiers**, **Analytics** → changement d'onglet ; **Portefeuille** → **navigate('WalletFinancial')** ; **Sortir** → **Alert** + **logout** (i18n **common**).
 - **Meilleurs coursiers** : tri **deliveries_30d** desc, **top 3** ; **voir tous** (i18n **fleetDashboard.voirTous**) → onglet **couriers**.
 
 ### Onglet **couriers**
@@ -2121,12 +2121,12 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - Date **Soumis le** : **toLocaleDateString('fr-FR')** **en dur**.
 
 ### Modal **rejeter**
-- Titres / placeholder **en dur** : **Rejeter la candidature**, **Motif du refus...** ; **Annuler** : ferme modal + **rejectTarget** null (**rejectReason** non effacé sur Annuler — réinitialisé à l’ouverture suivante via **setRejectReason('')**).
+- Titres / placeholder **en dur** : **Rejeter la candidature**, **Motif du refus...** ; **Annuler** : ferme modal + **rejectTarget** null (**rejectReason** non effacé sur Annuler — réinitialisé à l'ouverture suivante via **setRejectReason('')**).
 
 ### Onglet **analytics**
 - **Aucune route analytics dédiée** : **même** \`stats\` + **top 5** coursiers (\`deliveries_30d\`), barres proportionnelles, carte revenus, **Metriques cles** (libellés **en dur** : *Livraisons (30j)*, etc.).
 
-**Hard rules:** Ne pas décrire **CourierDashboard** (livraisons actives, **deliveryApi** liste coursier) comme cet écran. Ne pas inventer d’API ou filtres hors **submitted / approved / rejected / all**. **PARTNER_TYPE_LABELS** ne contient **pas** la clé **fleet** : dire **« Flotte »** pour ce cas. Pas de **FAB** chat dans **FleetDashboardScreen.tsx** (chat accessible ailleurs dans l’app).
+**Hard rules:** Ne pas décrire **CourierDashboard** (livraisons actives, **deliveryApi** liste coursier) comme cet écran. Ne pas inventer d'API ou filtres hors **submitted / approved / rejected / all**. **PARTNER_TYPE_LABELS** ne contient **pas** la clé **fleet** : dire **« Flotte »** pour ce cas. Pas de **FAB** chat dans **FleetDashboardScreen.tsx** (chat accessible ailleurs dans l'app).
 `;
     }
 
@@ -2147,7 +2147,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **3 onglets** (\`TabType\`) : **overview** (libellé i18n accueil), **vehicles** (i18n véhicules), **analytics** (libellé **en dur** **« Stats »** dans **TABS**).
 
 ### Onglet **overview**
-- **4 cartes stats** : total véhicules, en ligne, **Occasion** / **Neufs** (libellés **Occasion** / **Neufs** **en dur** pour deux d’entre elles).
+- **4 cartes stats** : total véhicules, en ligne, **Occasion** / **Neufs** (libellés **Occasion** / **Neufs** **en dur** pour deux d'entre elles).
 - **Actions rapides** : **Ajouter véhicule** → **setActiveTab('vehicles')** ; **Recherche** → **navigate('AutoServicesSearch')** ; **Statistiques** → onglet analytics ; **Portefeuille** → **WalletFinancial** ; **Sortir** → **Alert** + **logout**.
 - **« Par type »** : grille **\`TYPES_VEHICULE\`** (berline, suv, pickup, utilitaire, moto, camion) — comptage **\`vehicles.filter(v => v.type_vehicule === key).length\`** (**affichage seulement**, pas de navigation par type).
 - **Véhicules récents** : **slice(0, 4)** ; **Tout voir** → onglet **vehicles**. Carte : marque, modèle, année, occasion/neuf, prix ; point vert/rouge **\`is_active\`**.
@@ -2157,11 +2157,11 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - Liste : même carte info + statut ; **pas** de bouton éditer / désactiver / supprimer dans ce fichier.
 
 ### Onglet **analytics**
-- Carte **résumé du stock** (i18n titre) : mêmes 4 agrégats que l’accueil.
+- Carte **résumé du stock** (i18n titre) : mêmes 4 agrégats que l'accueil.
 
 **Pièces détachées:** la catégorie produit **\`pieces_auto\`** (champs référence, compatibilité, etc.) vit dans le **flux e-commerce général** (**ProductManagerMobile**, **MesProduits**, **FormulaireYukpoIntelligent**) — **pas** dans **AutomobileDashboardScreen**. Le **marché auto** public (**/api/auto/search**) peut toutefois **inclure** des annonces pièces si **service** ou métadonnées matchent les motifs SQL backend (**pièces auto**, **accessoires auto**, etc.).
 
-**Hard rules:** Ne pas promettre d’**ajout véhicule** complet depuis ce dashboard (seulement **Alert** + renvoi conceptuel vers formulaire intelligent). Ne pas décrire **GET /api/auto/search** comme source du stock partenaire ici (**source = specialized-services user**).
+**Hard rules:** Ne pas promettre d'**ajout véhicule** complet depuis ce dashboard (seulement **Alert** + renvoi conceptuel vers formulaire intelligent). Ne pas décrire **GET /api/auto/search** comme source du stock partenaire ici (**source = specialized-services user**).
 `;
     }
 
@@ -2170,7 +2170,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 === AUTO_MARKETPLACE_MODULE_DETAIL (authoritative — **AutoServicesSearchScreen** / **AutoServicesResultsScreen**) ===
 
-**Contexte:** parcours **acheteur / chercheur** de **véhicules** et d’**annonces cataloguées** par le moteur **auto** backend. L’UI est **orientée véhicule** (marque, type, année, carburant…). Les **pièces détachées** et accessoires peuvent **remonter** dans les résultats si le **backend** les classe comme produits auto (ex. catégories service **pièces auto** — voir **\`auto_search_routes.rs\`**).
+**Contexte:** parcours **acheteur / chercheur** de **véhicules** et d'**annonces cataloguées** par le moteur **auto** backend. L'UI est **orientée véhicule** (marque, type, année, carburant…). Les **pièces détachées** et accessoires peuvent **remonter** dans les résultats si le **backend** les classe comme produits auto (ex. catégories service **pièces auto** — voir **\`auto_search_routes.rs\`**).
 
 ### A) **AutoServicesSearch** (route **AutoServicesSearch**)
 - **GET** \`/api/auto/filters\` → facettes **marques**, **types_vehicule**, **carburants**, **transmissions**, **couleurs**, **etats**, plages **prix** / **année**, **total_products**.
@@ -2179,12 +2179,12 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **Filtres principaux** : chips dynamiques + **prix min/max**, **année min/max** ; section **avancée** (dépliable) : carburant, transmission, couleur, **LocationSelector** « ville », **ModernGPSModal**, **rayon** 5 / 10 / 20 / 50 km si **gpsData**.
 - **Bouton recherche** : **\`handleSearch\`** construit **\`SearchFilters\`** (inclut **ville** / **quartier** / **gps** / **rayon** quand renseignés) → **navigation** vers **AutoServicesResults**.
 
-**Écart d’implémentation (à respecter pour l’IA):** **AutoServicesResultsScreen** **n’ajoute pas** \`ville\`, \`quartier\` (ni **km_max** du search si jamais ajouté) aux **query params** de **GET /api/auto/search** dans **\`loadResults\`** — seuls **q, marque, type_vehicule, carburant, transmission, couleur, etat, prix_*, annee_*, gps_*, rayon_km, sort, page, limit** sont passés tels que dans le code client. Le struct **\`AutoSearchQuery\`** côté **Rust** **ne définit pas** \`ville\` / \`quartier\`. Pour filtrer **géographiquement**, utiliser **GPS + rayon** (et **tri distance** côté quick search).
+**Écart d'implémentation (à respecter pour l'IA):** **AutoServicesResultsScreen** **n'ajoute pas** \`ville\`, \`quartier\` (ni **km_max** du search si jamais ajouté) aux **query params** de **GET /api/auto/search** dans **\`loadResults\`** — seuls **q, marque, type_vehicule, carburant, transmission, couleur, etat, prix_*, annee_*, gps_*, rayon_km, sort, page, limit** sont passés tels que dans le code client. Le struct **\`AutoSearchQuery\`** côté **Rust** **ne définit pas** \`ville\` / \`quartier\`. Pour filtrer **géographiquement**, utiliser **GPS + rayon** (et **tri distance** côté quick search).
 
 ### B) **AutoServicesResults** (route **AutoServicesResults**)
 - **Params** : **\`route.params.filters\`** (objet initial figé dans **\`initialFilters\`** via **\`useRoute\`** — changement de filtres **sans** nouveau navigate **ne** met **pas** à jour **\`initialFilters\`**).
 - **GET** \`/api/auto/search?\` + **\`page\`** (0-based), **\`limit\` = 20**, **\`sort\`** = **\`currentSort\`** (défaut **\`initialFilters.sort\`** ou **\`recent\`**).
-- **Tris UI** (**\`SORT_OPTIONS\`**) : **recent**, **price_asc**, **price_desc**, **year_desc** — le **backend** accepte aussi **year_asc** et **distance** (si GPS) même s’ils ne sont pas tous dans le menu.
+- **Tris UI** (**\`SORT_OPTIONS\`**) : **recent**, **price_asc**, **price_desc**, **year_desc** — le **backend** accepte aussi **year_asc** et **distance** (si GPS) même s'ils ne sont pas tous dans le menu.
 - **Liste** : **FlatList** ; **infinite scroll** **\`page+1\`** si **\`hasMore\`** (\`newProducts.length >= 20\`).
 - **Carte produit** : tap → **ServiceDetail** \`{ serviceId }\` ; nom vendeur → **PrestataireBoutique** si **\`vendeur_user_id\`**.
 - **Communication** : **Chat** → **ServiceDetail** \`openChat: true\` (connexion requise) ; **WhatsApp** / **Appel** → **Linking** + **POST** \`/api/notifications\` best-effort ; **Partager** → **Share** + **generateSmartShareLink**.
@@ -2192,9 +2192,9 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 ### C) Lien avec **pièces détachées**
 - **Vendeur** : créer une fiche **pièce** = flux **produit** Yukpo (**\`pieces_auto\`**, etc.), pas **AutomobileDashboard**.
-- **Acheteur** : pas d’écran **« uniquement pièces »** dans l’app ; utiliser **recherche texte** sur **AutoServicesSearch** ou filtres **marque** si la donnée est exposée en facettes.
+- **Acheteur** : pas d'écran **« uniquement pièces »** dans l'app ; utiliser **recherche texte** sur **AutoServicesSearch** ou filtres **marque** si la donnée est exposée en facettes.
 
-**Hard rules:** Ne pas affirmer que **ville** / **quartier** du formulaire de recherche **filtrent** l’API **telle qu’implémentée** (mobile + query Rust). Ne pas présenter **AutomobileDashboard** comme le même écran que **AutoServicesSearch**.
+**Hard rules:** Ne pas affirmer que **ville** / **quartier** du formulaire de recherche **filtrent** l'API **telle qu'implémentée** (mobile + query Rust). Ne pas présenter **AutomobileDashboard** comme le même écran que **AutoServicesSearch**.
 `;
     }
 
@@ -2231,9 +2231,9 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - Mode **\`edit\` + \`specializedServiceId\`** : **GET** \`/api/hopitaux/{specializedServiceId}\` pour préremplir le formulaire + \`planning_prestations\`.
 - **Création service Yukpo:** effet si \`!serviceId\` et \`formData.nom\` → **\`servicesApi.createService\`** (\`category: 'sante'\`).
 
-### Modes d’affichage
+### Modes d'affichage
 - **Dashboard** si agence chargée **ou** (\`partenaire\` **et** \`serviceId\`) : header gradient rouge, **5 onglets** — **overview** | **service** | **slots** | **analytics** | **team**.
-- **Création** (sinon) : en-tête + **\`renderServiceForm\`** uniquement (pas d’onglets créneaux/stats/équipe).
+- **Création** (sinon) : en-tête + **\`renderServiceForm\`** uniquement (pas d'onglets créneaux/stats/équipe).
 
 ### Onglet **Service**
 - **POST** \`/api/hopitaux\` via \`handleSubmit\` : \`service_id\`, \`nom\`, \`type_etablissement\`, \`adresse\`, \`quartier\`, \`gps\` (**ModernGPSModal** ou **LocationContext**), \`prestations_medicales\`, \`planning_prestations\` (sélection **PrestationSelectorWithSchedule**), \`urgences_disponible\`, \`rdv_en_ligne\`, contacts.
@@ -2250,13 +2250,13 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **ServiceTeamManager** (\`serviceId\` string).
 
 ### Accueil (**overview**)
-- Stats calculées : prestations, créneaux, **GET** \`/api/hopitaux/my-consultations\` (compteur + aperçu), temps d’attente depuis \`analyticsData\`.
+- Stats calculées : prestations, créneaux, **GET** \`/api/hopitaux/my-consultations\` (compteur + aperçu), temps d'attente depuis \`analyticsData\`.
 - **GET** \`/api/hopitaux/{hid}/emergency-status\` → carte statut urgences (affichage basé sur \`formData.urgences_disponible\` + RDV ligne).
 - **Identifiant API hôpital** : \`resolveHospitalEntityId()\` = \`Number(hospitalData?.id ?? hospitalData?.service_id)\` si fini ; utilisé pour analytics / urgence / navigation **HospitalAnalytics** / **HospitalAIRecommendations**.
 - Actions rapides : onglet créneaux, **HospitalAIRecommendations** (\`hospitalId\` si dispo + \`serviceId\`), **HospitalAnalytics** (\`hospitalId\` obligatoire — **Alert** si fiche non résolue), **Service**, **WalletFinancial**, déconnexion.
 
 ### Écrans liés (navigation depuis le dashboard)
-- **HospitalAnalyticsScreen** : param **\`hospitalId\`** pour **GET** \`/api/hopitaux/{hospitalId}/analytics\` — le dashboard passe **\`hospitalId: resolveHospitalEntityId()\`** depuis l’overview (quick action **Statistiques**).
+- **HospitalAnalyticsScreen** : param **\`hospitalId\`** pour **GET** \`/api/hopitaux/{hospitalId}/analytics\` — le dashboard passe **\`hospitalId: resolveHospitalEntityId()\`** depuis l'overview (quick action **Statistiques**).
 - **HospitalAIRecommendationsScreen** : symptômes + \`hospitalService.getAIRecommendations\` ; \`hospitalId\` / \`serviceId\` en params quand connus ; bouton **géoloc** = **TODO** (Alerte placeholder).
 
 **Hard rules:** Ne pas confondre **\`service_id\`** (service Yukpo) et **\`id\`** hôpital API pour les routes **\`/api/hopitaux/{id}/…\`**. Pour « comment un patient prend RDV », renvoyer vers **HopitalDetails** / **BookAppointment**, pas ce dashboard.
@@ -2303,7 +2303,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 **Hard rules:**
 - **RDV** on **HopitalDetails** is primarily **in-place booking** (\`POST .../book\`) when \`rdv_en_ligne\` ; **BookAppointment** is the **slot-picker** flow when navigated with params — do not merge the two UIs.
 - **Recommandations IA** on the detail screen is a **separate** full screen (**HospitalAIRecommendations**), not the same modal as **HopitalHome** pathology search.
-- For “liste des hôpitaux avec filtres”, point to **HopitalSearch** → **HopitalList**, not **HopitalHome** alone.
+- For "liste des hôpitaux avec filtres", point to **HopitalSearch** → **HopitalList**, not **HopitalHome** alone.
 `;
     }
 
@@ -2348,7 +2348,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - Load: **getShoppingList(weekStart)**; if none, **generateShoppingList(weekStart)**.
 - **Check item:** toggles **local state** only (**TODO** persist API in code comments).
 - **Organize by store / aisle:** **local toggles** (**TODO** reorder API).
-- **“Passer une commande marché”:** requires **GPS** → **deliveryApi.listSupermarkets** (10 km) → on success navigate **DeliveryShoppingFlow** with \`basketItems\` from list rows; else alerts.
+- **"Passer une commande marché":** requires **GPS** → **deliveryApi.listSupermarkets** (10 km) → on success navigate **DeliveryShoppingFlow** with \`basketItems\` from list rows; else alerts.
 
 ### FamilyProfile (**FamilyProfileScreen**, route **FamilyProfile**)
 - Load/save via **getFamilyProfile** / **updateFamilyProfile**; validation: **≥1** member, **≥1** adult, **≥1** cuisine style before save; chips for preferences, allergies, restrictions, cuisines, cooking level, budget, time available.
@@ -2365,14 +2365,14 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 === ORIENTATION_SCOLAIRE_MODULE_DETAIL (authoritative — élève / famille ; **CURRENT SCREEN** name) ===
 
-**Service client catalogue:** \`orientationScolaireService\` (\`mobile/src/services/orientationScolaireService.ts\`) → préfixe **\`/api/orientation-scolaire/\`**. **Profil / IA / analytics** : **\`/api/orientation/my-profile\`**, **\`/api/orientation/ai/*\`**, **\`/api/orientation/analytics\`**. L’écran **OrientationAIRecommendations** utilise en parallèle **\`orientationScolaireApi\`** (\`orientationScolaireApi.ts\`) pour profil + recommandations — mêmes concepts, couche API différente.
+**Service client catalogue:** \`orientationScolaireService\` (\`mobile/src/services/orientationScolaireService.ts\`) → préfixe **\`/api/orientation-scolaire/\`**. **Profil / IA / analytics** : **\`/api/orientation/my-profile\`**, **\`/api/orientation/ai/*\`**, **\`/api/orientation/analytics\`**. L'écran **OrientationAIRecommendations** utilise en parallèle **\`orientationScolaireApi\`** (\`orientationScolaireApi.ts\`) pour profil + recommandations — mêmes concepts, couche API différente.
 
 ### Catalogue (endpoints alignés code)
 - **Établissements:** **GET** \`/api/orientation-scolaire/etablissements/search\` (params: \`type_etablissement\`, \`ville\`, \`region\`, \`filiere\`, \`search\`, \`gps_lat\` / \`gps_lon\`, \`rayon_km\`, pagination) ; **GET** \`.../suggest\` ; **GET** \`.../{id}\` ; **GET** \`.../{id}/programmes\` ; **GET** \`.../{id}/fournitures\`.
 - **Programmes:** **GET** \`/api/orientation-scolaire/programmes/search\` ; liste par établissement via route ci-dessus.
 - **Concours:** **GET** \`/api/orientation-scolaire/concours/actifs\` ; **GET** \`/api/orientation-scolaire/concours/search\` ; **GET** \`.../concours/{id}\`.
 - **Conférences:** **GET** \`/api/orientation-scolaire/conferences/programmees\` ; **GET** \`.../conferences/search\` ; **GET** \`.../conferences/{id}\`.
-- **Rejoindre une conférence:** le **service** expose **POST** \`/api/orientation-scolaire/conferences/{id}/join\` (\`joinConference\`) ; l’écran **ConferencesLives** appelle en pratique **GET** \`.../conferences/{id}/join\` — ne pas affirmer une seule méthode sans vérifier l’écran.
+- **Rejoindre une conférence:** le **service** expose **POST** \`/api/orientation-scolaire/conferences/{id}/join\` (\`joinConference\`) ; l'écran **ConferencesLives** appelle en pratique **GET** \`.../conferences/{id}/join\` — ne pas affirmer une seule méthode sans vérifier l'écran.
 - **Fournitures:** **GET** \`/api/orientation-scolaire/fournitures/search\` ; **GET** \`.../etablissements/{id}/fournitures\`.
 
 ### Profil étudiant
@@ -2380,7 +2380,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **POST** \`/api/orientation/my-profile\` — persistance profil : méthode exportée **\`createOrUpdateMyProfile\`** dans le service ; **ProfilEtudiantScreen** invoque encore **\`createOrUpdateProfile\`** via cast (\`(orientationScolaireService as any)\`) — même endpoint métier, nom legacy côté écran.
 
 ### IA orientation (backend \`/api/orientation/ai/\`)
-- **POST** \`analyze-profile\` — body \`{ profile_id }\` (**Hub** et écrans qui passent l’id chargé).
+- **POST** \`analyze-profile\` — body \`{ profile_id }\` (**Hub** et écrans qui passent l'id chargé).
 - **POST** \`recommendations\` — **Home** : \`student_profile_id\`, \`type_etablissement\` (dérivé de \`selectedType\` ou défaut **superieur**), filtres optionnels budget / localisation.
 - **POST** \`compare-programs\` — **OrientationAIComparePrograms** (deux établissements + filières / spécialités).
 - **POST** \`academic-search\` — **Home** : question libre + contexte ; **useAIWithFallback** (\`orientation_academic\`) avec repli texte local si IA indisponible.
@@ -2388,7 +2388,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 ### OrientationScolaireHub (**OrientationScolaireHubScreen**)
 - **Profil:** **GET** \`/api/orientation/my-profile\` au focus ; cartes IA **analyse** → **POST** \`/api/orientation/ai/analyze-profile\` (succès → **Alert**).
-- **Recommandations** (bouton) : **pas** d’appel API direct — navigation vers **EtablissementSearch** si profil présent.
+- **Recommandations** (bouton) : **pas** d'appel API direct — navigation vers **EtablissementSearch** si profil présent.
 - **Comparer** → **OrientationAIComparePrograms** si profil.
 - Tuiles **primaire / secondaire / supérieur** → **EtablissementSearch** avec \`params.type\`.
 - Raccourcis **ConcoursList** / **ConferencesList** / **ProgrammesList** / **FournituresList** (= alias vers **ConcoursEntree**, **ConferencesLives**, **ProgrammesScolaires**, **FournituresScolaires**).
@@ -2405,7 +2405,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 ### CreateEtablissement (**CreateEtablissementScreen**)
 - **Écran partagé:** parcours **partenaire** (ex. depuis **OrientationPartnerDashboard**) **et** création fiche établissement côté orientation ; décrire les **actions visibles** plutôt que « uniquement élève » ou « uniquement partenaire ».
 
-**Hard rules:** **Ne pas** confondre **OrientationPartnerDashboard** avec ce module. **Ne pas** prétendre que le hub envoie **POST recommendations** sur le bouton « recommandations » — c’est une **navigation**. Pour **join** conférence, citer la **dualité GET écran / POST service** si l’utilisateur parle d’API.
+**Hard rules:** **Ne pas** confondre **OrientationPartnerDashboard** avec ce module. **Ne pas** prétendre que le hub envoie **POST recommendations** sur le bouton « recommandations » — c'est une **navigation**. Pour **join** conférence, citer la **dualité GET écran / POST service** si l'utilisateur parle d'API.
 `;
     }
 
@@ -2420,12 +2420,12 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **GET** \`/api/orientation/etablissements/mine\` — corps réponse attendu : programmes (\`programs\` ou \`formations\`), **\`inscriptions_count\`** pour la tuile inscriptions.
 
 ### UI (code)
-- **Onglets:** **overview** | **programs** | **students** | **analytics** (libellés FR dans l’UI : accueil, Programmes, Étudiants, Stats).
+- **Onglets:** **overview** | **programs** | **students** | **analytics** (libellés FR dans l'UI : accueil, Programmes, Étudiants, Stats).
 - **Overview:** grille stats (nombre de programmes, actifs, places disponibles agrégées, inscriptions) ; **actions rapides** — **CreateEtablissement** (\`mode: 'edit'\` ou création), **OrientationScolaireHub** (hub **public / élève**), **OrientationAIRecommendations**, **ProgrammesList**, **WalletFinancial**, déconnexion.
 - **Programs:** liste des programmes retournés par **mine** ; bouton ajout → **CreateEtablissement** avec \`tab: 'programs'\`.
-- **Students / Analytics:** onglets présents dans le fichier ; détail des API dédiées = vérifier l’implémentation écran si l’utilisateur pose une question précise (ne pas inventer d’endpoints non lus dans le code).
+- **Students / Analytics:** onglets présents dans le fichier ; détail des API dédiées = vérifier l'implémentation écran si l'utilisateur pose une question précise (ne pas inventer d'endpoints non lus dans le code).
 
-**Hard rule:** Le hub **OrientationScolaireHub** ouvert depuis ce dashboard reste le **même écran** que pour un élève — l’utilisateur **change de contexte de navigation**, pas de « mode partenaire » automatique sur le hub.
+**Hard rule:** Le hub **OrientationScolaireHub** ouvert depuis ce dashboard reste le **même écran** que pour un élève — l'utilisateur **change de contexte de navigation**, pas de « mode partenaire » automatique sur le hub.
 `;
     }
 
@@ -2439,11 +2439,11 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **PharmacieSearch → PharmacieList** = **pharmacy establishment search** (API \`/api/pharmacies/search\` from the app list screen): filters like **on duty**, **available**, optional **product_search** in navigation params, GPS + **max distance** in the UI, advanced chips (type, services, delivery). Tap row → **PharmacieDetails**.
 
 ### PharmacieHome (catalog)
-- **Header:** back ; title **Pharmacie** ; subtitle = **count of available medications** when loaded ; **filter** icon (**sliders**) with **badge** = number of active advanced filters (price min/max, radius < default, “only available”).
+- **Header:** back ; title **Pharmacie** ; subtitle = **count of available medications** when loaded ; **filter** icon (**sliders**) with **badge** = number of active advanced filters (price min/max, radius < default, "only available").
 - **Main search row:** text field **search medications** + **submit search** (magnifier) + clear **X** when non-empty.
 - **Quick chips:** **Near me** (radius 10 km), **Available** (stock filter), **Lowest price** (sets sort to ascending price).
 - **Sort row:** opens **modal** — relevance, price ↑/↓, nearest (**distance_km** on cards), name A–Z (client-side sort).
-- **“Assistant IA Pharmacie”** (expandable): **Analyze medication photo** (camera/gallery → \`imageAnalysisService.analyzePharmacyImage\`, result shown as IA reply) ; **suggestion chips** (tap fills question + send) ; **free-text question** + send → \`askPharmacyQuestion\` with context from **first visible product names** ; **IA response** area + **new question** reset.
+- **"Assistant IA Pharmacie"** (expandable): **Analyze medication photo** (camera/gallery → \`imageAnalysisService.analyzePharmacyImage\`, result shown as IA reply) ; **suggestion chips** (tap fills question + send) ; **free-text question** + send → \`askPharmacyQuestion\` with context from **first visible product names** ; **IA response** area + **new question** reset.
 - **Product cards:** open **detail modal** ; on card: **Posologie IA** (\`getDosageRecommendation\`), **Interactions** (\`checkDrugInteractions\` for that product), **check availability / reserve** for the **linked pharmacy** (\`checkAvailability\`, \`reserveMedication\`).
 - **Modals:** advanced **filters**, **sort**, medication **details**, **dosage**, **interactions**.
 
@@ -2482,8 +2482,8 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - Full-screen **interactions / dosage** tooling (not the same as the **modals** on **PharmacieDetails**). Typically opened from **PharmacieForm** (quick action **IA Interactions** or test buttons with optional \`serviceId\`).
 
 **Hard rules for answers:**
-- “Where is on-duty pharmacy / pharmacy near me (shop, not product)?” → **PharmacieSearch** (on-duty toggle + GPS/distance) then **PharmacieList**, not only **PharmacieHome**.
-- “Where to find medicine X near me / who has stock?” → **PharmacieHome** product search + **near me** / sort by distance **and/or** product-led flow from **PharmacieSearch**.
+- "Where is on-duty pharmacy / pharmacy near me (shop, not product)?" → **PharmacieSearch** (on-duty toggle + GPS/distance) then **PharmacieList**, not only **PharmacieHome**.
+- "Where to find medicine X near me / who has stock?" → **PharmacieHome** product search + **near me** / sort by distance **and/or** product-led flow from **PharmacieSearch**.
 - Never invent buttons (e.g. a separate **PharmacyAIInteractions** route on details) — interactions are **modals on PharmacieHome cards** and **PharmacieDetails** section.
 `;
     }
@@ -2496,7 +2496,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 **API client (shared):** \`immobilierService\` → **GET** \`/api/immobilier/biens\` (\`searchProperties\`), **GET** \`/api/immobilier/biens/:id\`, **POST** \`/api/immobilier/biens/:id/book-visit\`, **POST** \`/api/immobilier/biens/:id/simulate-loan\`, **POST** \`/api/immobilier/ai/price-estimate\`, **POST** \`/api/immobilier/ai/recommendations\`, **POST** \`/api/immobilier/compare\`, favorites, **GET** \`/api/immobilier/my-alerts\`, etc. Hôtellerie client: **HotelBookingScreen** uses hotel booking APIs (e.g. \`bookHotelStay\` — see code).
 
 ### ImmobilierHome (**ImmobilierHomeScreen**)
-- **Not** the same as **ImmobilierSearch** (no point/zone/quartier modes here). This is the **main catalog**: **search bar** + **submit**, **quick filter chips** (statut, distance, “récent” → sort), **advanced FiltersModal**, **SortModal**, **list/grid** toggle.
+- **Not** the same as **ImmobilierSearch** (no point/zone/quartier modes here). This is the **main catalog**: **search bar** + **submit**, **quick filter chips** (statut, distance, "récent" → sort), **advanced FiltersModal**, **SortModal**, **list/grid** toggle.
 - **Data:** \`immobilierService.searchProperties\` with pagination (\`page\`, \`limit\` 20), filters from state (types alignés formulaire: maison, appartement, terrain, bureau, local_commercial, **hotel**, **meuble**), \`initialFilter\` from \`route.params\` can pre-set e.g. hôtel/meublé.
 - **Header:** back ; title reflects \`filters.type_bien\` (Hôtels / Meublés / Immobilier) ; **+** → **ImmobilierForm** (\`mode: 'create'\`) ; **sliders** → filters modal (badge = active filter count).
 - **Per-card actions:** **Favori** (\`addToFavorites\` / \`removeFromFavorites\` + AsyncStorage mirror) ; **Estimer** → **useAIWithFallback** \`estimatePropertyPrice\` → **Alert** (not the same code path as **ImmobilierDetails** \`estimatePrice\`) ; **Visite** → **Alert** then **bookVisit** with **next day** date, **10:00**, type **\`en_personne\`** (no navigation to **ImmobilierBooking**) ; **Partager** → \`shareProperty\` + system Share ; **Simuler prêt** (if \`prix_vente\`) → **local modal** \`calculateLoan\` (duration/rate chips) — **not** \`simulateLoan\` API used on this screen.
@@ -2511,7 +2511,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **Hotel / meublé** (\`type_bien\` **hotel** ou **meuble**): primary CTA **Réserver un séjour** → **HotelBooking** ; sinon **Réserver une visite** → **ImmobilierBooking**.
 - Quick actions: **call / WhatsApp** if numbers ; favoris ; **ShareServiceModal**.
 - **Simuler un prêt** (if \`prix_vente\`): modal → **\`simulateLoan\`** API (apport %, durée, revenu optionnel).
-- **Estimation IA:** **\`estimatePrice\`** API (card “Obtenir estimation IA”).
+- **Estimation IA:** **\`estimatePrice\`** API (card "Obtenir estimation IA").
 - **Recommandations IA:** **\`getAIRecommendations\`** (budget derived from price).
 - **ProductCommentsSection** ; **IntelligentChat** FAB. **trackPropertyView** on open.
 
@@ -2522,7 +2522,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - Params: \`propertyIds\` (required), \`comparisonName\`. **\`compareProperties\`** POST → horizontal comparison table ; column tap → **ImmobilierDetails**.
 
 ### ImmobilierPriceAlerts
-- **\`getMyPriceAlerts\`** on focus. Toggle/delete actions currently **Alert placeholders** (backend toggle/delete not wired in UI — say “à venir” if asked).
+- **\`getMyPriceAlerts\`** on focus. Toggle/delete actions currently **Alert placeholders** (backend toggle/delete not wired in UI — say "à venir" if asked).
 
 ### ImmobilierForm
 - Partenaire / annonce : types & statuts alignés backend, médias, GPS / Places, création service (**\`servicesApi.createService\`** path in screen).
@@ -2554,11 +2554,11 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Data load (focus / refresh):** en parallèle \`immobilierService.getMyHotelProperties()\` → **GET** \`/api/hotel/my-properties\` et \`getMyHotelReservations()\` → **GET** \`/api/hotel/reservations/my\`. Pull-to-refresh sur onglets **Réservations** et **Mes biens**.
 
-**Header:** retour ; titre dashboard (libellé **hôtel** vs **meublé** selon \`user.partner_type\`) ; sous-titre = nombre de biens · clients **en séjour** ; bouton **scan** (droite) → **HotelQRScanner** (raccourci identique à l’action rapide Scanner).
+**Header:** retour ; titre dashboard (libellé **hôtel** vs **meublé** selon \`user.partner_type\`) ; sous-titre = nombre de biens · clients **en séjour** ; bouton **scan** (droite) → **HotelQRScanner** (raccourci identique à l'action rapide Scanner).
 
 **5 onglets (barre sous le header):** \`overview\` | \`reservations\` | \`properties\` | \`ai\` | \`team\`.
 
-### Vue d’ensemble (\`overview\`)
+### Vue d'ensemble (\`overview\`)
 - **Stats (4 cartes):** nombre de propriétés ; nombre total de réservations chargées ; **en séjour** = réservations avec \`checked_in_at\` renseigné et sans \`checked_out_at\` ; **revenus** = **somme des \`prix_total\`** sur **toutes** les réservations de la liste (pas de filtre période dans le code).
 - **Actions rapides (grille):** **Ajouter un bien** → **ImmobilierForm** \`mode: 'create'\`, \`initialTypeBien\` = **meuble** si \`partner_type === 'meuble'\` sinon **hotel** ; **Nouvelle réservation** → ouvre **modal** (pas une route) ; **Scanner QR** → **HotelQRScanner** ; **IA Insights** → bascule onglet **IA** ; **Portefeuille** → **WalletFinancial** ; **Sortir** → **Alert** confirmation puis \`logout\` (**AuthContext**).
 - **Arrivées en attente:** réservations avec \`reservation_status === 'confirmed'\` **et** pas de \`checked_in_at\` ; max 3 cartes puis lien **voir toutes** → onglet **Réservations**.
@@ -2578,11 +2578,11 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **IA tarifs** (libellé UI) → **\`getPropertyAIInsights(propertyId)\`** — **GET** \`/api/hotel/properties/{propertyId}/ai-insights\` — **not** \`getAIPropertyPricing\` / \`getAIUnitPricing\` on this screen.
 
 ### IA (\`ai\`)
-- Texte d’intro puis liste des biens ; appui → même **\`getPropertyAIInsights\`** ; affichage si succès : blocs **pricing_suggestion**, **occupancy_forecast**, **recommendations** (sinon JSON brut / stringify).
-- Si **aucun bien**, message invitant à ajouter un bien d’abord.
+- Texte d'intro puis liste des biens ; appui → même **\`getPropertyAIInsights\`** ; affichage si succès : blocs **pricing_suggestion**, **occupancy_forecast**, **recommendations** (sinon JSON brut / stringify).
+- Si **aucun bien**, message invitant à ajouter un bien d'abord.
 
 ### Équipe (\`team\`)
-- **ServiceTeamManager** avec \`serviceId={properties[0]?.service_id?.toString()}\` — **un seul** service (celui du **premier** bien listé). Si **0 bien**, \`serviceId\` est **indéfini** : l’onglet équipe n’est pas utilisable pour rattacher une équipe tant qu’aucun bien n’existe.
+- **ServiceTeamManager** avec \`serviceId={properties[0]?.service_id?.toString()}\` — **un seul** service (celui du **premier** bien listé). Si **0 bien**, \`serviceId\` est **indéfini** : l'onglet équipe n'est pas utilisable pour rattacher une équipe tant qu'aucun bien n'existe.
 
 ### Modal « Nouvelle réservation »
 - Ouverture depuis action rapide ou état vide réservations. **Obligatoire:** choisir une **propriété** (chips), nom + téléphone client, dates **arrivée / départ** (format saisi type AAAA-MM-JJ dans les placeholders), adultes / enfants / chambres, **prix par nuit**, notes optionnelles, email optionnel.
@@ -2595,7 +2595,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Hard rules for answers:**
 - Ne pas confondre **demande client** (\`/api/hotel/reservations/request\`, **HotelBooking**) avec **réservation manuelle gérant** (\`/api/hotel/reservations/manual\`).
-- **Check-in** n’apparaît pas pour les réservations simplement « en attente » non confirmées — le code exige **\`confirmed\`** sans check-in.
+- **Check-in** n'apparaît pas pour les réservations simplement « en attente » non confirmées — le code exige **\`confirmed\`** sans check-in.
 `;
     }
 
@@ -2604,7 +2604,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 === HOME_SCREEN_DETAIL (authoritative for Yukpo Home / Accueil) ===
 
-**Nommage:** la barre de création/recherche est **ChatInputMobile** sur cet écran ; les utilisateurs disent parfois **ChatInputModal** — c’est le **même** flux (mode **Créer** vs **Rechercher**).
+**Nommage:** la barre de création/recherche est **ChatInputMobile** sur cet écran ; les utilisateurs disent parfois **ChatInputModal** — c'est le **même** flux (mode **Créer** vs **Rechercher**).
 
 **Role of this screen:** Central hub for **AI search** (needs login), **creating products/services** as a provider (photo/text via AI), **quick entry to every specialized service** (always **user** flows: Search / Hub / Home — never partner Form/Dashboard from here), **promotions**, and shortcuts in the header.
 
@@ -2631,7 +2631,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 **Assistant IA FAB:** rendered in **AppNavigator** (global). Quick actions like **Retour** / **Recherche** refer to stack/tab navigation, not internal Home controls.
 
-**Answering guidelines:** Match explanations to the **actual** buttons/modals above. If user asks “how to search”, describe **mode Rechercher + send in ChatInputMobile + ResultatBesoin**. If “how to publish a product”, describe **mode Créer + existing vs new service split**. For “where are taxis/pharmacy”, point to **quick access grid** and the **hub** route names (**PharmacieHome**, **HopitalHome**, **TaxiHome**, …); **\*Search** screens remain for **filtered establishment search** (GPS, garde, spécialités) when the user needs that path.
+**Answering guidelines:** Match explanations to the **actual** buttons/modals above. If user asks "how to search", describe **mode Rechercher + send in ChatInputMobile + ResultatBesoin**. If "how to publish a product", describe **mode Créer + existing vs new service split**. For "where are taxis/pharmacy", point to **quick access grid** and the **hub** route names (**PharmacieHome**, **HopitalHome**, **TaxiHome**, …); **\*Search** screens remain for **filtered establishment search** (GPS, garde, spécialités) when the user needs that path.
 
 **Home + creation priorities:**
 - When user asks how to create a **product or service/prestation**, always start with: go to **HomeScreen** and switch to **Create mode**.
@@ -2645,15 +2645,15 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 
 === MES_SERVICES_PRODUCTS_DETAIL (MesServicesScreen — authoritative) ===
 
-**Route names (clarification):** The **bottom tab** label is “Mes services” but the React Navigation route is **\`Services\`**. The same component (**MesServicesScreen**) can also open via stack route **\`MesServices\`**. Tell users: *onglet Mes services en bas* = **Services**. Do **not** confuse with **ServicesDashboard** (autre écran tableau de bord création).
+**Route names (clarification):** The **bottom tab** label is "Mes services" but the React Navigation route is **\`Services\`**. The same component (**MesServicesScreen**) can also open via stack route **\`MesServices\`**. Tell users: *onglet Mes services en bas* = **Services**. Do **not** confuse with **ServicesDashboard** (autre écran tableau de bord création).
 
-**What the screen shows:** A **product-first** dashboard: each row is a **product** from \`productsService.getProductsByService(serviceId)\` (Phase 4), with fallback parsing of legacy \`service.data.produits\`. Header title **“Produits”**. API: \`GET /api/prestataire/services\` then parallel product fetches. Cache 5 min + invalidation on \`service:refresh\`, \`product:created\`, \`product:updated\`.
+**What the screen shows:** A **product-first** dashboard: each row is a **product** from \`productsService.getProductsByService(serviceId)\` (Phase 4), with fallback parsing of legacy \`service.data.produits\`. Header title **"Produits"**. API: \`GET /api/prestataire/services\` then parallel product fetches. Cache 5 min + invalidation on \`service:refresh\`, \`product:created\`, \`product:updated\`.
 
 **Header actions:** (1) **+** → ouvre directement le sélecteur vidéo local (**MesServices** avec \`openVideoSelector\`, modal-first). (2) **⚡** → pick product(s) → **CreateFlashPromo** (single or multi). (3) **Bike** → pick products → **GlobalDeliveryConfigModal**. (4) **Checkbox icon** → **bulk selection** + **BulkActionsBar** (mass activate/deactivate/delete). (5) **☰** → **SidebarNavigation** (same entries as legacy global menu: create product, media gallery, team via **ServiceProductSelector**, analytics **AnalyticsDashboard**, ads **PubliciteDashboard** / **CreatePublicite**, **VideoFeed**, **StartLive**, **VideoAnalytics**, **GlobalPromoSubmission**, flash promo selector, **Settings**, etc.).
 
-**Body:** **Breadcrumbs** Home → Produits. **StatsCard** strip (totals / active / inactive / views) filters list. **Chips** Tous | Actif | Inactif. **FlashList** of **ServiceCardModern** cards: view/edit service (**FormulaireYukpoIntelligent** with \`fromMesServices\`), share (link \`yukpomnang.com/service/{id}\`), toggle status (**PATCH** toggle; reactivation may charge **1000 FCFA** tokens), delete (**DELETE**; blocked if backend reports multiple products rule), promotions (alert → **CreateFlashPromo** or form with \`focusPromotion\`), “voir produits” navigates to **MesProduits**. Footer buttons: **AnalyticsDashboard**, **MesProduits**, **Home**.
+**Body:** **Breadcrumbs** Home → Produits. **StatsCard** strip (totals / active / inactive / views) filters list. **Chips** Tous | Actif | Inactif. **FlashList** of **ServiceCardModern** cards: view/edit service (**FormulaireYukpoIntelligent** with \`fromMesServices\`), share (link \`yukpomnang.com/service/{id}\`), toggle status (**PATCH** toggle; reactivation may charge **1000 FCFA** tokens), delete (**DELETE**; blocked if backend reports multiple products rule), promotions (alert → **CreateFlashPromo** or form with \`focusPromotion\`), "voir produits" navigates to **MesProduits**. Footer buttons: **AnalyticsDashboard**, **MesProduits**, **Home**.
 
-**Related screen:** **MesProduits** = **MesProduitsScreen** — deeper per-product tools (gallery, delivery modal, etc.). It **complements** this tab; the **primary** “Mes services” hub is here.
+**Related screen:** **MesProduits** = **MesProduitsScreen** — deeper per-product tools (gallery, delivery modal, etc.). It **complements** this tab; the **primary** "Mes services" hub is here.
 
 **Creation priority rule (very important):**
 - For « how do I create / publish a product? », state **two paths** in order: **(1) RECOMMENDED — HomeScreen → Create mode → ChatInputMobile** (same bar as on Home; users may say ChatInputModal); **(2) ALTERNATIVE — this MesServicesScreen** (+, ☰, cards). Never only describe path (2).
@@ -2732,7 +2732,7 @@ ${YUKPO_STUDIO_PRODUCT_VIDEO_REFERENCE}
 - **DeliveryShoppingTracking:** real-time progress timeline, courier contact/call, basket review.
 - **DeliveryProof:** delivery proof capture/confirmation (photo/signature as configured).
 
-**How to explain “smart delivery config” benefits:**
+**How to explain "smart delivery config" benefits:**
 - faster order preparation with guided steps;
 - better budget control before confirmation;
 - transparent tracking with courier contact;
@@ -2780,7 +2780,7 @@ SUBSEQUENT PRODUCTS (formulaire d'ajout rapide):
 
 CATALOG MANAGEMENT:
 - **Onglet Services (hub produits moderne):** liste produits moderne, cartes, bulk, sidebar, flash/livraison/vidéo — hub principal "Mes services".
-- **Catalogue détaillé par produit:** catalogue détaillé par produit (filtres, stats mini, cartes, menu ⋮) — **pas d’import CSV sur cet écran**.
+- **Catalogue détaillé par produit:** catalogue détaillé par produit (filtres, stats mini, cartes, menu ⋮) — **pas d'import CSV sur cet écran**.
 - Edit, variants, activate/deactivate, duplicate, bulk import, stats, orders, promos.
 
 IMPORTANT: On **Home**, do not tell users to open **ServicesDashboard** or **RechercheBesoin** as the primary flows — search uses **ChatInputMobile → ResultatBesoin**; creation uses the **Create** toggle + forms above. The **Mes services** tab route is **\`Services\`**, not \`MesProduits\` alone.`;
@@ -2794,13 +2794,13 @@ IMPORTANT: On **Home**, do not tell users to open **ServicesDashboard** or **Rec
 
 **Même composant** pour les routes **HotelMeubleHome**, **HotelSearch**, **MeubleSearch** (alias dans le navigateur). Mode **hotel** vs **meuble** : \`route.params.mode\` ou \`initialFilter.type_bien\`, défaut \`hotel\`.
 
-**Ce que l’écran ne fait pas :** aucun calendrier ni dates de séjour sur cette liste. Les **dates** (format attendu sur **HotelBooking**) et le détail des **occupants** se saisissent sur **HotelBooking** après le bouton **Réserver** sur une carte.
+**Ce que l'écran ne fait pas :** aucun calendrier ni dates de séjour sur cette liste. Les **dates** (format attendu sur **HotelBooking**) et le détail des **occupants** se saisissent sur **HotelBooking** après le bouton **Réserver** sur une carte.
 
 **API :** \`immobilierService.searchProperties\` → **GET /api/immobilier/biens** avec \`type_bien\` \`hotel\` ou \`meuble\`, \`limit\` 20, \`page\` 1, filtres optionnels \`query\`, \`ville\`, \`standing\`, \`prix_max\`, \`nb_chambres_min\`. Si la position Yukpo (**LocationContext**) est disponible : \`lat\`, \`lng\`, \`max_distance_km: 50\`.
 
 **UI :** barre recherche (validation clavier recherche) ; filtres en-tête : ville, chambres minimum, budget max ; chips standing : Tous, Économique, Standard, Bon standing, Haut standing, Luxe / Prestige. **FlatList** avec pull-to-refresh : appui sur la carte → **ImmobilierDetails** (\`propertyId\`) ; CTA **Réserver** → **HotelBooking** (\`propertyId\`, \`propertyName\`, \`typeBien\`, \`prixNuitee\`, \`ville\`).
 
-**Règles pour l’IA :** ne pas inventer de filtres par dates sur cet écran ; ne pas affirmer que l’utilisateur choisit les voyageurs ici — tout ça est sur **HotelBooking**. Distinguer ce hub (client) du **HotelDashboard** (partenaire / gérant).
+**Règles pour l'IA :** ne pas inventer de filtres par dates sur cet écran ; ne pas affirmer que l'utilisateur choisit les voyageurs ici — tout ça est sur **HotelBooking**. Distinguer ce hub (client) du **HotelDashboard** (partenaire / gérant).
 `;
     }
 
@@ -2811,13 +2811,13 @@ IMPORTANT: On **Home**, do not tell users to open **ServicesDashboard** or **Rec
 
 **Rôle :** demande de réservation pour **un bien déjà choisi** (arrivée depuis la liste hôtel/meublé ou équivalent). Paramètres route : \`propertyId\` (obligatoire), \`propertyName\`, \`typeBien\` (\`hotel\` / \`meuble\`), \`prixNuitee\`, \`ville\`.
 
-**Champs UI :** deux champs texte **arrivée / départ** (placeholder AAAA-MM-JJ) — parsés avec \`new Date()\` : doivent être valides et départ **strictement après** arrivée. **Adultes** (minimum 1), **enfants** (minimum 0), **chambres** (minimum 1) via **steppers +/-**. **Nom** et **téléphone** obligatoires à l’envoi ; **email** et **notes** optionnels. Bloc **estimation** affiché seulement si \`prixNuitee > 0\` et nuits calculées : \`prixNuitee × nombre de nuits × nombre de chambres\` (nuits = différence en jours, minimum 1).
+**Champs UI :** deux champs texte **arrivée / départ** (placeholder AAAA-MM-JJ) — parsés avec \`new Date()\` : doivent être valides et départ **strictement après** arrivée. **Adultes** (minimum 1), **enfants** (minimum 0), **chambres** (minimum 1) via **steppers +/-**. **Nom** et **téléphone** obligatoires à l'envoi ; **email** et **notes** optionnels. Bloc **estimation** affiché seulement si \`prixNuitee > 0\` et nuits calculées : \`prixNuitee × nombre de nuits × nombre de chambres\` (nuits = différence en jours, minimum 1).
 
 **Soumission :** bouton **Envoyer la demande** → \`immobilierService.bookHotelStay\` → **POST /api/hotel/reservations/request** (property_id, date_arrivee, date_depart, nombre_adultes, nombre_enfants, nombre_chambres, nom_client, telephone_client, email optionnel, prix_nuitee/prix_total optionnels, notes optionnelles).
 
-**Après succès :** alerte de confirmation ; bouton **Payer maintenant** vers **HotelBookingPayment** **uniquement si** la réponse fournit un \`reservationId\` (ou id réservation) **et** \`prixTotal > 0\`. Sinon l’utilisateur ferme avec OK. **Ne pas** promettre un paiement systématique avant envoi réussi.
+**Après succès :** alerte de confirmation ; bouton **Payer maintenant** vers **HotelBookingPayment** **uniquement si** la réponse fournit un \`reservationId\` (ou id réservation) **et** \`prixTotal > 0\`. Sinon l'utilisateur ferme avec OK. **Ne pas** promettre un paiement systématique avant envoi réussi.
 
-**Règles IA :** il n’y a **pas** de sélecteur de chambre catalogue sur cet écran — un seul bien (\`propertyId\`). Ne pas confondre avec **ImmobilierBooking** (visite bien classique). Tarification IA / QR gérant = **HotelDashboard** (partenaire), pas cet écran.
+**Règles IA :** il n'y a **pas** de sélecteur de chambre catalogue sur cet écran — un seul bien (\`propertyId\`). Ne pas confondre avec **ImmobilierBooking** (visite bien classique). Tarification IA / QR gérant = **HotelDashboard** (partenaire), pas cet écran.
 `;
     }
 
@@ -2835,7 +2835,7 @@ IMPORTANT: On **Home**, do not tell users to open **ServicesDashboard** or **Rec
 
 === ASSURANCE_PARTNER_DASHBOARD_DETAIL (AssuranceDashboardScreen — partenaire, autoritaire) ===
 
-**Rôle :** tableau de bord **prestataire assurance** (gestion produits, polices émises, traitement sinistres, stats). **Ce n’est pas** l’écran **client** (**MesPolicesAssurance**, **DeclarationSinistre**, recherche catalogue **InsuranceServicesSearch**).
+**Rôle :** tableau de bord **prestataire assurance** (gestion produits, polices émises, traitement sinistres, stats). **Ce n'est pas** l'écran **client** (**MesPolicesAssurance**, **DeclarationSinistre**, recherche catalogue **InsuranceServicesSearch**).
 
 **Chargement (useFocusEffect) :** \`Promise.allSettled\` sur **GET** \`/api/assurance/products\`, **GET** \`/api/assurance/policies\`, **GET** \`/api/assurance/claims\`, **GET** \`/api/assurance/dashboard/stats\` (\`assuranceService.listProducts\`, \`listPolicies\`, \`listClaims\`, \`getDashboardStats\`). Un échec partiel vide la liste concernée sans bloquer les autres.
 
@@ -2843,9 +2843,9 @@ IMPORTANT: On **Home**, do not tell users to open **ServicesDashboard** or **Rec
 
 **Accueil :** cartes stats (produits actifs, polices actives, sinistres ouverts = déclarés + en instruction + en expertise, souscriptions). Bannières cliquables : polices **à renouveler** → onglet Polices ; sinistres **déclarés** en attente → onglet Sinistres. **Actions rapides :** ouvrir modal nouveau produit ; aller onglet Polices / Sinistres ; **InsuranceQuoteRequest** (« Devis IA ») ; **WalletFinancial** ; déconnexion (logout). Aperçus des 3 derniers sinistres / polices.
 
-**Produits :** **POST** \`/api/assurance/products\` (\`createProduct\`) avec \`service_id\` + \`nom_produit\` obligatoire (alerte sinon) ; champs optionnels (type, sous-catégorie, compagnie, description, primes, couverture max, franchise, âges, durée mois). **POST** \`/api/assurance/products/{id}/toggle\` pour actif/inactif. Pas d’édition inline liste dans ce fichier (seulement toggle + création).
+**Produits :** **POST** \`/api/assurance/products\` (\`createProduct\`) avec \`service_id\` + \`nom_produit\` obligatoire (alerte sinon) ; champs optionnels (type, sous-catégorie, compagnie, description, primes, couverture max, franchise, âges, durée mois). **POST** \`/api/assurance/products/{id}/toggle\` pour actif/inactif. Pas d'édition inline liste dans ce fichier (seulement toggle + création).
 
-**Polices :** liste **GET** \`/api/assurance/policies\`. Si statut **active** uniquement : boutons **Suspendre** / **Résilier** → **PUT** \`/api/assurance/policies/{id}/status\` avec \`statut\` \`suspendue\` ou \`resiliee\` (motif texte pour résiliation). **Pas** de formulaire « émettre police » sur cet écran — le raccourci « Émettre police » ne fait que changer d’onglet.
+**Polices :** liste **GET** \`/api/assurance/policies\`. Si statut **active** uniquement : boutons **Suspendre** / **Résilier** → **PUT** \`/api/assurance/policies/{id}/status\` avec \`statut\` \`suspendue\` ou \`resiliee\` (motif texte pour résiliation). **Pas** de formulaire « émettre police » sur cet écran — le raccourci « Émettre police » ne fait que changer d'onglet.
 
 **Sinistres :** **Analyse IA** → **POST** \`/api/assurance/claims/{id}/ai-analyze\` (\`aiAnalyzeClaim\`) ; alerte avec score fraude, action recommandée, justification. **Instruire** (si statut \`declare\`) → **PUT** \`/api/assurance/claims/{id}/status\` → \`en_cours_instruction\`. Si \`en_cours_instruction\` ou \`expertise_en_cours\` : **Approuver** → \`approuve\` ; **Refuser** → \`refuse\` avec \`motif_refus\` (Alert.prompt si dispo, sinon alerte avec motif par défaut traduit). Si \`approuve\` : **Indemniser** → \`indemnise\` avec \`montant_indemnise\` = parseFloat(\`montant_reclame\`) ou 0.
 
@@ -2907,7 +2907,7 @@ Do **not** claim every screen has 3-tab TaxiForm unless user is on **TaxiForm** 
 - **BusTicketPayment**: tokens / mobile money / autres moyens selon UI.
 - **BusTicketDetails**: fiche ligne/agence depuis **TicketVoyageHome** (ids produit/agence).
 - **MyBusTickets**: billets achetés ; **BusTicketQR**: QR embarquement ; **BusTicketCredits** / retours (**BusReturnRequests**) : parcours annexes.
-Prioriser l’écran courant ; la recherche se fait sur **TicketVoyageHome** ou **BusTicketSearch**.`;
+Prioriser l'écran courant ; la recherche se fait sur **TicketVoyageHome** ou **BusTicketSearch**.`;
     }
 
     // Emploi/Job-specific context for employer AND candidate (align with offreEmploiService + screens)
@@ -2966,9 +2966,9 @@ ${isPartner ? `PARTNER — HotelDashboardScreen (if user is on this route, full 
 - Parallel load: GET /api/hotel/my-properties + GET /api/hotel/reservations/my
 - Tabs: overview | reservations | properties | ai | team
 - Overview: 4 stat cards; quick actions (+ bien → ImmobilierForm create with initialTypeBien; nouvelle réservation → modal → POST /api/hotel/reservations/manual; scan → HotelQRScanner; IA tab; WalletFinancial; Sortir → logout)
-- “Arrivées en attente” = confirmed && !checked_in_at; check-in only in that case; check-out after check-in; QR → HotelReservationQR; pay → HotelBookingPayment if not paid/fully_paid
-- Property card “IA tarifs” + IA tab: getPropertyAIInsights (GET .../ai-insights), not getAIPropertyPricing in this screen
-- Team: ServiceTeamManager serviceId = first property’s service_id only; no calendar blockage UI in HotelDashboardScreen (state showBlockageModal unused)
+- "Arrivées en attente" = confirmed && !checked_in_at; check-in only in that case; check-out after check-in; QR → HotelReservationQR; pay → HotelBookingPayment if not paid/fully_paid
+- Property card "IA tarifs" + IA tab: getPropertyAIInsights (GET .../ai-insights), not getAIPropertyPricing in this screen
+- Team: ServiceTeamManager serviceId = first property's service_id only; no calendar blockage UI in HotelDashboardScreen (state showBlockageModal unused)
 ` : `USER/GUEST FEATURES:
 - SEARCH HUB (HotelMeubleHome / HotelSearch / MeubleSearch — same HotelMeubleHomeScreen): text query + ville + min chambres + budget max + standing chips (Économique, Standard, Bon standing, Haut standing, Luxe / Prestige). Optional GPS: lat/lng + max_distance_km 50. **No date filters on this list** (full detail in HOTEL_MEUBLE_USER_HUB_DETAIL when that block is in the prompt).
 - PROPERTY CARDS: title, location, rooms, standing, distance if returned, price/night, rating, disponible badge when applicable
@@ -3054,7 +3054,7 @@ ${isCourier ? `COURSIER — GUIDE COMPLET DE LIVRAISON LIVRES:
 
 \uD83D\uDCE2 LISTES ÉTABLISSEMENT & NOTIFICATIONS:
 - Quand un **établissement** envoie des **manuels scolaires (établissement)** (référentiel Yukpo), les **librairies** du **même périmètre** (ville normalisée + **rayon GPS** km) reçoivent une **alerte** pour ajuster stock (**livres**, **cahiers**, **fournitures**).
-- **Succursales:** l’inscription librairie (**LibrairieRegistration**) permet plusieurs **points GPS** (siège + succursales, carte Yukpo) ; le backend teste **chaque** point (\`librairie_partners\` + table **librairie_lieux**) pour inclure le compte libraire si **au moins une** succursale est dans la ville ou le rayon.
+- **Succursales:** l'inscription librairie (**LibrairieRegistration**) permet plusieurs **points GPS** (siège + succursales, carte Yukpo) ; le backend teste **chaque** point (\`librairie_partners\` + table **librairie_lieux**) pour inclure le compte libraire si **au moins une** succursale est dans la ville ou le rayon.
 
 \uD83D\uDCDA LIVRES NEUFS:
 - Publier des livres neufs en lot via "Publier livres neufs"
@@ -3063,7 +3063,7 @@ ${isCourier ? `COURSIER — GUIDE COMPLET DE LIVRAISON LIVRES:
 
 \uD83D\uDCB0 COMMISSIONS: 5% sur chaque vente/troc` :
 
-            `${onBookExchangeHome ? `NOTE — Sur l’accueil **LivreScolaireHome** / **BourseLivre**, la structure réelle est dans **BOURSE_DU_LIVRE_HOME_DETAIL** ; ce qui suit décrit les **autres** parcours (upload, troc, achat, dons, programme).\n\n` : onEtablissementScolaireScreen ? `NOTE — Écran **EtablissementScolaire** : suivre **ETABLISSEMENT_SCOLAIRE_DETAIL** ; le bloc ci-dessous décrit surtout **famille / troc / librairie** sur le reste du module.\n\n` : ''}UTILISATEUR — TROC ET ACHAT DE LIVRES (flux du module):
+            `${onBookExchangeHome ? `NOTE — Sur l'accueil **LivreScolaireHome** / **BourseLivre**, la structure réelle est dans **BOURSE_DU_LIVRE_HOME_DETAIL** ; ce qui suit décrit les **autres** parcours (upload, troc, achat, dons, programme).\n\n` : onEtablissementScolaireScreen ? `NOTE — Écran **EtablissementScolaire** : suivre **ETABLISSEMENT_SCOLAIRE_DETAIL** ; le bloc ci-dessous décrit surtout **famille / troc / librairie** sur le reste du module.\n\n` : ''}UTILISATEUR — TROC ET ACHAT DE LIVRES (flux du module):
 
 \uD83D\uDCF8 ENVOYER DES LIVRES (BookUploadV2):
 1. Activer le GPS (obligatoire — c'est le lieu de récupération par défaut)
@@ -3090,7 +3090,7 @@ ${isCourier ? `COURSIER — GUIDE COMPLET DE LIVRAISON LIVRES:
 - Validation par l'admin avant attribution
 
 \uD83D\uDCCA MANUELS & PROGRAMMES (deux parcours):
-- **Famille / élève — liste au programme officiel:** **ProgrammeBesoinsSelector** depuis **LivreScolaireHome** (carte bleue) : coches besoins, arbitrage neuf / occasion ; s’appuie sur le **référentiel Yukpo** (programmes scolaires).
+- **Famille / élève — liste au programme officiel:** **ProgrammeBesoinsSelector** depuis **LivreScolaireHome** (carte bleue) : coches besoins, arbitrage neuf / occasion ; s'appuie sur le **référentiel Yukpo** (programmes scolaires).
 - **Établissement — manuels scolaires (établissement):** **EtablissementScolaire** → **POST /api/bourse-livre/v2/programmes-scolaires/submit** ; extraction IA ; **notif librairies** (ville + rayon). **Ne pas** confondre les deux parcours.
 - **Librairie partenaire — commande mixte (réseau):** **LibrairieTeamPending** (succursale/stock équipe) ; **LibrairieNetworkValidation** (disponibilité par ligne neuf, multi-paniers) ; **LibrairieNetworkLignePrix** (bornes & prix). Notification push → **LibrairieNetworkValidation** avec param **commandeId**.
 
@@ -3361,7 +3361,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         prompt += `
 === HOSPITAL_DETAIL (cross-screen — user asked about hospitals from ${screenName}) ===
 **What this screen is:** Hospital/clinic module: search, AI triage, book appointments, consultations history, AI recommendations.
-**How to access:** Navigate to **HopitalHome** (hub depuis l’accueil) ; **HopitalSearch** pour la liste filtrée d’établissements.
+**How to access:** Navigate to **HopitalHome** (hub depuis l'accueil) ; **HopitalSearch** pour la liste filtrée d'établissements.
 `;
       }
 
@@ -3369,7 +3369,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         prompt += `
 === PHARMACY_DETAIL (cross-screen — user asked about pharmacies from ${screenName}) ===
 **What this screen is:** Pharmacy module: search pharmacies, check stock, order medications, find pharmacies de garde.
-**How to access:** Navigate to **PharmacieHome** (hub depuis l’accueil) ; **PharmacieSearch** pour rechercher des officines (garde, GPS, filtres).
+**How to access:** Navigate to **PharmacieHome** (hub depuis l'accueil) ; **PharmacieSearch** pour rechercher des officines (garde, GPS, filtres).
 `;
       }
 
@@ -3377,7 +3377,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         prompt += `
 === TAXI_DETAIL (cross-screen — user asked about taxi from ${screenName}) ===
 **What this screen is:** Taxi booking with AI dynamic pricing, GPS pre-filled origin, demand prediction.
-**How to access:** Navigate to **TaxiHome** (hub depuis l’accueil) ; **TaxiSearch** si besoin d’une entrée recherche alternative.
+**How to access:** Navigate to **TaxiHome** (hub depuis l'accueil) ; **TaxiSearch** si besoin d'une entrée recherche alternative.
 `;
       }
 
@@ -3409,7 +3409,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         prompt += `
 === LABORATORY_DETAIL (cross-screen — user asked about labs from ${screenName}) ===
 **What this screen is:** Medical labs: search labs, book analyses, track results, AI analysis interpretation.
-**How to access:** Navigate to **LaboratoireHome** (hub depuis l’accueil) ; **LaboratoireSearch** pour filtres lieux / liste labos.
+**How to access:** Navigate to **LaboratoireHome** (hub depuis l'accueil) ; **LaboratoireSearch** pour filtres lieux / liste labos.
 `;
       }
 
@@ -3865,7 +3865,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         return {
           message:
             t('intelligentChat.navigation.statsPerformanceBody') ||
-            'Tes **stats de marche et de performance** sont dans Yukpo : appuie sur l’icône **graphique** (Statistiques & Coach IA) en haut à droite, ou sur la carte **Score Santé & Coach IA** sur l’écran principal. Tu peux choisir la **période** et la vue **Tout / Détection auto / Marche libre**. Pour une session en cours, l’icône **piéton** 🚶 rouvre l’écran stats filtré. **Ne quitte pas Yukpo** pour ça.',
+            'Tes **stats de marche et de performance** sont dans Yukpo : appuie sur l'icône **graphique** (Statistiques & Coach IA) en haut à droite, ou sur la carte **Score Santé & Coach IA** sur l'écran principal. Tu peux choisir la **période** et la vue **Tout / Détection auto / Marche libre**. Pour une session en cours, l'icône **piéton** 🚶 rouvre l'écran stats filtré. **Ne quitte pas Yukpo** pour ça.',
           type: 'navigation_help',
           suggestedActions: [],
         };
@@ -3878,7 +3878,7 @@ NOTE: The user is currently on **${screenName}** but their question relates to: 
         return {
           message:
             t('intelligentChat.navigation.coachNotifBody') ||
-            'Le **Coach IA** de la Navigation envoie des rappels motivation (matin, midi, soir). Tu peux couper le **son** dans *Réglages → Notifications* (section Coach IA), ou **sans son pour un type** depuis l’historique de la **cloche** sur l’accueil. En mode silencieux, tu gardes l’**affichage** et la **vibration**.',
+            'Le **Coach IA** de la Navigation envoie des rappels motivation (matin, midi, soir). Tu peux couper le **son** dans *Réglages → Notifications* (section Coach IA), ou **sans son pour un type** depuis l'historique de la **cloche** sur l'accueil. En mode silencieux, tu gardes l'**affichage** et la **vibration**.',
           type: 'action_suggestion',
           suggestedActions: [
             {
@@ -4209,16 +4209,16 @@ Explorez l'avenir dès maintenant ! 👇`,
       if (isOnHome || match(['produit', 'product', 'service', 'boutique', 'shop', 'prestation', 'catalog', 'vendre', 'sell'])) {
         return {
           message: t('intelligentChat.fallback.createGuide') ||
-            '🚀 Créer sur Yukpo, c’est simple et rapide.\n\n'
-            + '🏠 Commence sur **HomeScreen** en mode **Créer**: c’est le parcours le plus facile.\n\n'
-            + '📸 Envoie une photo ou un texte — l’IA propose nom, catégorie, prix et pré-remplit le formulaire.\n\n'
+            '🚀 Créer sur Yukpo, c'est simple et rapide.\n\n'
+            + '🏠 Commence sur **HomeScreen** en mode **Créer**: c'est le parcours le plus facile.\n\n'
+            + '📸 Envoie une photo ou un texte — l'IA propose nom, catégorie, prix et pré-remplit le formulaire.\n\n'
             + '🧩 Utilise **variation_prix** pour éviter les doublons.\n'
             + 'Exemples terrain:\n'
             + '• riz: 1kg / 5kg / 25kg\n'
             + '• chaussure: 41 / 42 / 43\n'
             + '• huile: 0.5L / 1L / 5L\n'
             + '👉 Un seul produit, plusieurs prix selon format/poids/pointure.\n\n'
-            + '🏪 Première mise en place: l’app enregistre aussi les infos de ta boutique (nom, contacts, logo, moyens de paiement).',
+            + '🏪 Première mise en place: l'app enregistre aussi les infos de ta boutique (nom, contacts, logo, moyens de paiement).',
           type: 'action_suggestion',
           suggestedActions: [
             { id: 'go-home-create', label: t('intelligentChat.fallback.goCreate') || '✨ Créer maintenant', icon: 'plus', route: 'Home', params: { focusCreate: true }, category: 'creation', description: '' },
@@ -4240,7 +4240,7 @@ Explorez l'avenir dès maintenant ! 👇`,
           type: 'action_suggestion',
           suggestedActions: creationActions.slice(0, 3),
           nextSteps: [
-            'Comment créer à partir d’une simple photo ?',
+            'Comment créer à partir d'une simple photo ?',
             'Que se passe-t-il lors de la première création ?',
             'Comment lancer une pub ensuite ?',
           ],
@@ -4449,7 +4449,7 @@ Explorez l'avenir dès maintenant ! 👇`,
     { keywords: ['agence', 'voyage', 'travel', 'safari'], action: { id: 'agence', label: 'Agence de Voyage', icon: 'plane', route: 'AgenceVoyageSearch', category: 'navigation', description: '' } },
     { keywords: ['ticket', 'billet', 'tikiti'], action: { id: 'bus-ticket', label: 'Tickets Bus', icon: 'bus', route: 'BusTicketSearch', category: 'navigation', description: '' } },
     { keywords: ['automobile', 'voiture', 'car', 'gari', 'véhicule', 'vehicule', 'occasion auto'], action: { id: 'auto', label: 'Recherche auto', icon: 'car', route: 'AutoServicesSearch', category: 'navigation', description: 'Catalogue client : /api/auto/filters + /api/auto/search — pas le dashboard partenaire' } },
-    { keywords: ['pièce auto', 'pieces auto', 'pièces détachées', 'spare parts', 'accessoires auto'], action: { id: 'auto-parts', label: 'Recherche auto (pièces)', icon: 'wrench', route: 'AutoServicesSearch', category: 'navigation', description: 'Pas d’écran pièces seul : recherche texte + moteur /api/auto/search (backend inclut pièces auto)' } },
+    { keywords: ['pièce auto', 'pieces auto', 'pièces détachées', 'spare parts', 'accessoires auto'], action: { id: 'auto-parts', label: 'Recherche auto (pièces)', icon: 'wrench', route: 'AutoServicesSearch', category: 'navigation', description: 'Pas d'écran pièces seul : recherche texte + moteur /api/auto/search (backend inclut pièces auto)' } },
     { keywords: ['recette', 'recipe', 'mapishi'], action: { id: 'recipe', label: 'Recettes', icon: 'book-open', route: 'RecipeSearch', category: 'navigation', description: '' } },
     { keywords: ['bayam', 'marche', 'market', 'soko', 'kasuwa'], action: { id: 'bayam', label: 'BayamSelam', icon: 'tag', route: 'BayamSelamSearch', category: 'navigation', description: '' } },
     { keywords: ['favoris', 'favorites', 'vipendwa'], action: { id: 'favs', label: 'Favoris', icon: 'heart', route: 'MyFavorites', category: 'navigation', description: '' } },
@@ -4605,12 +4605,12 @@ Explorez l'avenir dès maintenant ! 👇`,
           'product erstellen', 'neues produkt', 'produit vendeur'
         ],
         contextualPrompt:
-          '**Création d’un produit ou service (recommandé)** : depuis l’**Accueil**, basculez en mode **« Créer »** puis décrivez votre offre dans **ChatInputMobile** — l’IA vous guide (formulaire intelligent ou ajout rapide selon votre profil).\n\n' +
-          '**Alternative** : onglet **Mes services** (**MesServicesScreen**) pour gérer le catalogue, les médias et les stats — utile surtout une fois l’offre créée.',
+          '**Création d'un produit ou service (recommandé)** : depuis l'**Accueil**, basculez en mode **« Créer »** puis décrivez votre offre dans **ChatInputMobile** — l'IA vous guide (formulaire intelligent ou ajout rapide selon votre profil).\n\n' +
+          '**Alternative** : onglet **Mes services** (**MesServicesScreen**) pour gérer le catalogue, les médias et les stats — utile surtout une fois l'offre créée.',
         suggestedActions: [
           {
             id: 'home-create-chatinput',
-            label: 'Créer avec l’IA (Accueil — mode Créer)',
+            label: 'Créer avec l'IA (Accueil — mode Créer)',
             icon: 'sparkles',
             route: 'Home',
             params: { focusCreate: true },
@@ -4638,7 +4638,7 @@ Explorez l'avenir dès maintenant ! 👇`,
         ],
         contextualPrompt:
           '**Gestion du catalogue (Mes services / MesServicesScreen)** : onglet **Mes services** pour voir la liste, modifier, stats, vidéos, promos.\n\n' +
-          '**Pour créer une nouvelle offre**, l’approche recommandée reste l’**Accueil** en mode **Créer** + **ChatInputMobile** (IA guidée) ; Mes services sert surtout à **piloter** ce qui existe déjà.',
+          '**Pour créer une nouvelle offre**, l'approche recommandée reste l'**Accueil** en mode **Créer** + **ChatInputMobile** (IA guidée) ; Mes services sert surtout à **piloter** ce qui existe déjà.',
         suggestedActions: [
           {
             id: 'home-create-from-manage',
@@ -4705,7 +4705,7 @@ Explorez l'avenir dès maintenant ! 👇`,
           'acheter medicament', 'trouver pharmacie', 'scanner ordonnance'
         ],
         contextualPrompt:
-          '**PharmacieHome** : catalogue produits multi-pharmacies, IA posologie / interactions, recherche médicaments, chips « proche », tri. Pour **liste d’officines** (garde, GPS, filtres établissement) → **PharmacieSearch**.',
+          '**PharmacieHome** : catalogue produits multi-pharmacies, IA posologie / interactions, recherche médicaments, chips « proche », tri. Pour **liste d'officines** (garde, GPS, filtres établissement) → **PharmacieSearch**.',
         suggestedActions: [
           { id: 'pharma-search', label: 'Rechercher médicament', icon: 'pill', route: 'PharmacieHome', category: 'navigation' as const, description: 'Catalogue produits' },
           { id: 'pharma-officines', label: 'Trouver une officine', icon: 'map-pin', route: 'PharmacieSearch', category: 'navigation' as const, description: 'Garde, GPS, liste pharmacies' },
@@ -4719,7 +4719,7 @@ Explorez l'avenir dès maintenant ! 👇`,
           'rdv', 'rendez-vous', 'sante', 'maladie', 'symptome', 'triage', 'analyse'
         ],
         contextualPrompt:
-          '**HopitalHome** : prestations / disponibilité, IA pathologie & image, RDV, temps d’attente. Pour **recherche établissements** avec filtres (ville, GPS, spécialités, urgences 24h) → **HopitalSearch**.',
+          '**HopitalHome** : prestations / disponibilité, IA pathologie & image, RDV, temps d'attente. Pour **recherche établissements** avec filtres (ville, GPS, spécialités, urgences 24h) → **HopitalSearch**.',
         suggestedActions: [
           { id: 'hosp-urgent', label: 'Urgences', icon: 'alert-triangle', route: 'HopitalHome', category: 'navigation' as const, description: 'Bloc & dispo sur cet écran' },
           { id: 'hosp-rdv', label: 'Prendre RDV', icon: 'calendar', route: 'HopitalHome', category: 'action' as const, description: 'RDV depuis les cartes' },
@@ -4893,7 +4893,7 @@ Explorez l'avenir dès maintenant ! 👇`,
           'test medical', 'analyse medicale', 'depistage'
         ],
         contextualPrompt:
-          '**LaboratoireHome** : autocomplete examens, IA pathologie / image, dispo. Pour **recherche lieux** (GPS, types d’examens, ville) → **LaboratoireSearch**.',
+          '**LaboratoireHome** : autocomplete examens, IA pathologie / image, dispo. Pour **recherche lieux** (GPS, types d'examens, ville) → **LaboratoireSearch**.',
         suggestedActions: [
           { id: 'lab-hub', label: 'Hub laboratoire', icon: 'microscope', route: 'LaboratoireHome', category: 'navigation' as const, description: 'Examens & IA sur cet écran' },
           { id: 'lab-filters', label: 'Filtres par zone', icon: 'search', route: 'LaboratoireSearch', category: 'navigation' as const, description: 'Liste labos avec critères' },
@@ -5282,7 +5282,7 @@ Explorez l'avenir dès maintenant ! 👇`,
       { route: 'FournituresScolaires', label: 'Fournitures Scolaires', icon: 'shopping-bag', keywords: ['fourniture', 'scolaire', 'materiel scolaire', 'liste fourniture', 'cahier', 'stylo'], description: 'Trouver des fournitures scolaires' },
       { route: 'ProgrammesScolaires', label: 'Programmes Scolaires', icon: 'book-open', keywords: ['programme scolaire', 'programme officiel', 'curriculum', 'matiere'], description: 'Consulter les programmes scolaires' },
       { route: 'LivreScolaireHome', label: 'Bourse du Livre', icon: 'book', keywords: ['livre', 'scolaire', 'bourse du livre', 'troc livre', 'manuels', 'bouquin', 'librairie', 'echange livre', 'acheter livre'], description: 'Acheter, vendre ou troquer des livres scolaires' },
-      { route: 'EtablissementScolaire', label: 'Manuels établissement', icon: 'building-2', keywords: ['manuels etablissement', 'depot programme', 'liste ecole', 'referentiel yukpo', 'programme scolaire ecole'], description: 'Déposer les manuels (établissement) pour l’IA Yukpo et les librairies' },
+      { route: 'EtablissementScolaire', label: 'Manuels établissement', icon: 'building-2', keywords: ['manuels etablissement', 'depot programme', 'liste ecole', 'referentiel yukpo', 'programme scolaire ecole'], description: 'Déposer les manuels (établissement) pour l'IA Yukpo et les librairies' },
       { route: 'LivreScolaireSearch', label: 'Rechercher un Livre', icon: 'search', keywords: ['recherche livre', 'trouver livre', 'chercher manuel', 'livre scolaire'], description: 'Rechercher un livre scolaire' },
       { route: 'MesLivres', label: 'Mes Livres', icon: 'book', keywords: ['mes livres', 'mes manuels', 'livres achetes', 'ma bibliotheque'], description: 'Vos livres scolaires' },
       { route: 'BookBuyDirect', label: 'Acheter un Livre', icon: 'shopping-cart', keywords: ['acheter livre', 'commander livre', 'achat direct livre'], description: 'Acheter un livre directement' },
@@ -5310,7 +5310,7 @@ Explorez l'avenir dès maintenant ! 👇`,
 
       // ─── IA & Chat ───
       // NOTE: pas de route « AIHub » ici — le chat doit proposer des liens directs vers les écrans métiers
-      // (Search, AIChat, FormulaireYukpoIntelligent, etc.). L’écran IA Hub reste accessible depuis l’accueil si besoin.
+      // (Search, AIChat, FormulaireYukpoIntelligent, etc.). L'écran IA Hub reste accessible depuis l'accueil si besoin.
       { route: 'AIChat', label: 'Chat IA', icon: 'message-circle', keywords: ['chat ia', 'chatbot', 'discuter ia', 'poser question ia', 'assistant', 'intelligence artificielle', 'assistant ia'], description: 'Discuter avec l\'assistant IA' },
       { route: 'FormulaireYukpoIntelligent', label: 'Formulaire IA', icon: 'edit', keywords: ['formulaire intelligent', 'formulaire ia', 'creation assistee', 'aide formulaire'], description: 'Formulaire intelligent assisté par IA' },
       { route: 'Match', label: 'Match', icon: 'zap', keywords: ['match', 'matching', 'correspondance', 'trouver match'], description: 'Trouver des correspondances' },
@@ -5322,7 +5322,7 @@ Explorez l'avenir dès maintenant ! 👇`,
       { route: 'AnalyticsDashboard', label: 'Analytics', icon: 'bar-chart-2', keywords: ['analytics', 'analyse', 'statistique', 'performance', 'graphique', 'data'], description: 'Tableau de bord analytique' },
     ];
 
-  /** Routes catalogue / formulaires directs : ne pas les proposer en premier si l’intention est « créer » depuis l’accueil. */
+  /** Routes catalogue / formulaires directs : ne pas les proposer en premier si l'intention est « créer » depuis l'accueil. */
   private static readonly NAV_ROUTES_DEFER_WHEN_PRODUCT_CREATION: ReadonlySet<string> = new Set([
     'MesServices',
     'AjouterProduitSimple',
@@ -5331,7 +5331,7 @@ Explorez l'avenir dès maintenant ! 👇`,
   ]);
 
   /**
-   * Détecte une intention de création / publication d’offre vendeur (priorité Accueil + mode Créer).
+   * Détecte une intention de création / publication d'offre vendeur (priorité Accueil + mode Créer).
    */
   private matchesProductCreationIntent(normalizedMsg: string): boolean {
     const phrases = [
@@ -5432,7 +5432,7 @@ Explorez l'avenir dès maintenant ! 👇`,
     const hasHomeCreate = actions.some((a) => a.route === 'Home' && (a.params as { focusCreate?: boolean } | undefined)?.focusCreate);
     if (creationFirst && !hasHomeCreate && !existingRoutes.has('Home')) {
       const goToPrefix = i18n.t('intelligentChat.goTo', { defaultValue: 'Accéder →' }) as string;
-      const label = i18n.t('intelligentChat.screen.homeCreate', { defaultValue: 'Créer avec l’IA (Accueil)' }) as string;
+      const label = i18n.t('intelligentChat.screen.homeCreate', { defaultValue: 'Créer avec l'IA (Accueil)' }) as string;
       const desc = i18n.t('intelligentChat.screenDesc.homeCreate', {
         defaultValue: 'Mode Créer + ChatInputMobile — parcours recommandé',
       }) as string;
@@ -5490,7 +5490,7 @@ Explorez l'avenir dès maintenant ! 👇`,
     return this.capSuggestedActions(this.dedupeNavigationActionsByRoute(actions), 3);
   }
 
-  /** Limite le nombre de boutons d’action (priorité : recharge → liens nav → autres). */
+  /** Limite le nombre de boutons d'action (priorité : recharge → liens nav → autres). */
   private capSuggestedActions(actions: ActionDescriptor[], max: number): ActionDescriptor[] {
     if (actions.length <= max) return actions;
     const recharge = actions.find((a) => a.id === 'yukpo-ia-recharge');
@@ -6159,7 +6159,7 @@ Soyez précis, utilisez les fonctionnalités disponibles, et donnez des réponse
     const q = prompt.toLowerCase();
 
     if (q.includes('produit') || q.includes('ajout') || q.includes('cré') || q.includes('creer')) {
-      return "📦 **Produits & catalogue Yukpo**\n\n**Pour créer une nouvelle offre (recommandé)** : allez à l’**Accueil**, passez en mode **« Créer »**, puis décrivez votre produit ou service dans **ChatInputMobile** — l’IA vous guide (formulaire complet ou ajout rapide selon votre profil).\n\n**Pour gérer ce qui existe déjà** : onglet **Mes services** — liste, modification, stats, vidéos, promos et commandes.";
+      return "📦 **Produits & catalogue Yukpo**\n\n**Pour créer une nouvelle offre (recommandé)** : allez à l'**Accueil**, passez en mode **« Créer »**, puis décrivez votre produit ou service dans **ChatInputMobile** — l'IA vous guide (formulaire complet ou ajout rapide selon votre profil).\n\n**Pour gérer ce qui existe déjà** : onglet **Mes services** — liste, modification, stats, vidéos, promos et commandes.";
     }
 
     if (q.includes('statistique') || q.includes('vente') || q.includes('performance')) {
@@ -6180,7 +6180,7 @@ Soyez précis, utilisez les fonctionnalités disponibles, et donnez des réponse
     return [
       {
         id: 'home-create-ia',
-        label: 'Créer avec l’IA (Accueil — mode Créer)',
+        label: 'Créer avec l'IA (Accueil — mode Créer)',
         icon: 'sparkles',
         route: 'Home',
         params: { focusCreate: true },

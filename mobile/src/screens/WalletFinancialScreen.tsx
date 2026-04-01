@@ -34,7 +34,7 @@ const currencySymbolForCountry = (code: string): string => {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-/** Profil d’usage pour filtres (clé backend : reference_type / service_type, ou préfixe [feature] dans description). */
+/** Profil d'usage pour filtres (clé backend : reference_type / service_type, ou préfixe [feature] dans description). */
 export type UsageProfileId =
     | 'navigation'
     | 'yukpo_ia'
@@ -59,7 +59,7 @@ interface UnifiedTransaction {
     location?: string | null;
     created_at: string;
     trace_id?: string; // For full traceability
-    /** Profil d’usage (navigation, IA, etc.) — dérivé de reference_type / description. */
+    /** Profil d'usage (navigation, IA, etc.) — dérivé de reference_type / description. */
     usage_profile: UsageProfileId;
 }
 
@@ -249,7 +249,7 @@ const WalletFinancialScreen: React.FC = () => {
         }
     };
 
-    /** Agrège KPI + séries quotidiennes à partir d’une liste déjà filtrée. */
+    /** Agrège KPI + séries quotidiennes à partir d'une liste déjà filtrée. */
     const applyFinancialSummaryFromTransactions = (filteredTxns: UnifiedTransaction[]) => {
         try {
             const credits = filteredTxns.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount_cents, 0);
@@ -578,7 +578,7 @@ const WalletFinancialScreen: React.FC = () => {
     /** Aucune donnée sur la période (avant filtres profil / type). */
     const hasNoRawActivity = rawTransactions.length === 0;
 
-    /** État vide explicite : explique ce que l’aperçu montrera une fois des mouvements présents. */
+    /** État vide explicite : explique ce que l'aperçu montrera une fois des mouvements présents. */
     const renderEmptyPeriodExplainer = () => {
         if (!hasNoRawActivity) return null;
         return (

@@ -2,7 +2,7 @@
  * Pièces jointes YukpoIA → champ `context.yukpo_ia_attachments` pour POST /ai/chat`
  *
  * Référence : **`ChatInputMobile.tsx`** envoie déjà audio (base64 via expo-av) et PDF (base64)
- * dans d’autres payloads (`audio_base64`, `pdf_base64`) — sans STT ni extraction texte PDF en local.
+ * dans d'autres payloads (`audio_base64`, `pdf_base64`) — sans STT ni extraction texte PDF en local.
  * Ici on couvre le contrat YukpoIA : image + fichier texte (extrait lu côté app)
  * ; audio/PDF binaire peuvent être branchés de la même manière que ChatInputMobile si besoin.
  */
@@ -22,7 +22,7 @@ export type YukpoIaAttachmentPayload = {
 
 /**
  * expo-image-picker ne renvoie pas toujours `base64` (galerie Android, grosses images, certains HEIC).
- * On lit alors le fichier local en base64 — même stratégie que l’audio dans stopAudioRecordingForYukpoIa.
+ * On lit alors le fichier local en base64 — même stratégie que l'audio dans stopAudioRecordingForYukpoIa.
  */
 async function readImageBase64FromPickerAsset(a: ImagePicker.ImagePickerAsset): Promise<string | null> {
   if (a.base64) {
@@ -67,7 +67,7 @@ export async function pickImageForYukpoIa(): Promise<YukpoIaAttachmentPayload | 
   return { kind: 'image', mime, data_base64: dataBase64 };
 }
 
-/** Photo directe depuis l’appareil photo (chat Yukpo IA). */
+/** Photo directe depuis l'appareil photo (chat Yukpo IA). */
 export async function takePhotoForYukpoIa(): Promise<YukpoIaAttachmentPayload | null> {
   const perm = await ImagePicker.requestCameraPermissionsAsync();
   if (!perm.granted) return null;
@@ -145,7 +145,7 @@ export async function pickDocumentForYukpoIa(): Promise<YukpoIaAttachmentPayload
     kind: 'file',
     mime,
     name,
-    extracted_text: `[Fichier ${name} — type non pris en charge pour l’extraction automatique]`,
+    extracted_text: `[Fichier ${name} — type non pris en charge pour l'extraction automatique]`,
   };
 }
 
