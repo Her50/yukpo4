@@ -9336,6 +9336,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto taxi_rides: {}", e),
     }
 
+    // ✅ 2026-04-01 : Documents administratifs partenaire — RCCM + numéro contribuable
+    match ensure_partner_admin_docs(pool).await {
+        Ok(_) => info!("✅ Migration auto: delivery_partners.rccm + numero_contribuable OK"),
+        Err(e) => error!("❌ Erreur migration auto partner_admin_docs: {}", e),
+    }
+
     info!("🎉 Toutes les migrations automatiques ont été appliquées avec succès !");
 }
 

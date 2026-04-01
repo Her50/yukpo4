@@ -237,7 +237,7 @@ pub mod distributed_queue_service; // ✅ NOUVEAU 2025-01-27: Queue distribuée 
 pub mod document_ai_service; // ✅ NOUVEAU 2026-04-01: Google Cloud Vision API — OCR CNI + détection visage
 pub mod driver_verification_service; // ✅ NOUVEAU 2026-04-01: KYC conducteur (CNI + selfie + IA)
 pub mod loyalty_service; // ✅ NOUVEAU 2026-04-01: Programme fidélité (points + récompenses)
-pub mod mobile_money_service; // ✅ NOUVEAU 2026-04-01: Paiement Mobile Money MTN/Orange Cameroun
+                         // mobile_money_service déjà déclaré plus haut (ligne 127)
 pub mod multi_level_cache_service; // ✅ NOUVEAU 2025-01-27: Cache multi-niveaux (L1, L2, L4)
 pub mod prometheus_metrics;
 pub mod qr_code_service; // ✅ NOUVEAU 2025-01-29: Service QR code réservations

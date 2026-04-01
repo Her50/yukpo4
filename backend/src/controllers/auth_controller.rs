@@ -860,6 +860,13 @@ pub async fn register_user(
                 IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'banquesang' AND enumtypid = 'delivery_partner_type'::regtype) THEN
                     ALTER TYPE delivery_partner_type ADD VALUE 'banquesang';
                 END IF;
+                -- ✅ NOUVEAU: Colonnes documents administratifs partenaire
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='delivery_partners' AND column_name='rccm') THEN
+                    ALTER TABLE delivery_partners ADD COLUMN rccm TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='delivery_partners' AND column_name='numero_contribuable') THEN
+                    ALTER TABLE delivery_partners ADD COLUMN numero_contribuable TEXT;
+                END IF;
             END
             $$;
             "#
@@ -999,6 +1006,25 @@ pub async fn register_user(
                         .execute(db)
                         .await;
             }
+        }
+
+        // ✅ NOUVEAU: Sauvegarder RCCM et numéro contribuable dans delivery_partners
+        if payload.rccm.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false)
+            || payload
+                .numero_contribuable
+                .as_ref()
+                .map(|s| !s.trim().is_empty())
+                .unwrap_or(false)
+        {
+            let _ = sqlx::query(
+                "UPDATE delivery_partners SET rccm = $1, numero_contribuable = $2, updated_at = NOW() WHERE created_by = $3"
+            )
+            .bind(payload.rccm.as_deref().map(|s| s.trim()))
+            .bind(payload.numero_contribuable.as_deref().map(|s| s.trim()))
+            .bind(new.id)
+            .execute(db)
+            .await
+            .map_err(|e| log::error!("[register_user] Erreur sauvegarde RCCM/contribuable: {e:?}"));
         }
     }
 
