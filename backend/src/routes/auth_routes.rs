@@ -60,12 +60,9 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             options(cors_preflight_handler),
         )
         // ✅ ALIAS mobile (OtpVerificationScreen utilise ces endpoints)
-        .route("/auth/send-otp", post(send_phone_verification_code))
-        .route("/auth/send-otp", options(cors_preflight_handler))
+        // ⚠️ SUPPRIMÉ: /auth/send-otp et /auth/verify-otp → dupliqués avec phone_verification_routes.rs
         .route("/auth/verify-phone", post(verify_phone_code))
         .route("/auth/verify-phone", options(cors_preflight_handler))
-        .route("/auth/verify-otp", post(verify_phone_code))
-        .route("/auth/verify-otp", options(cors_preflight_handler))
         // ✅ CORRIGÉ 2026-02-25: Route OAuth manquante (causait 404 pour connexion Google/Facebook)
         .route("/auth/oauth", post(oauth_login_handler))
         .route("/auth/oauth", options(cors_preflight_handler))

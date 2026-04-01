@@ -1,0 +1,38 @@
+steps:
+  # Build the Docker image from backend/ directory
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'Dockerfile'
+      - '-t'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/yukpo-backend/yukpo-backend:latest'
+      - '.'
+    timeout: '2700s'
+
+  # Push to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/yukpo-backend/yukpo-backend:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'yukpo-backend'
+      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/yukpo-backend/yukpo-backend:latest'
+      - '--region=europe-west1'
+      - '--platform=managed'
+      - '--quiet'
+
+images:
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/yukpo-backend/yukpo-backend:latest'
+
+timeout: '3600s'
+
+options:
+  machineType: 'E2_HIGHCPU_32'
+  logging: CLOUD_LOGGING_ONLY

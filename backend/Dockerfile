@@ -118,27 +118,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Accepte .tar ou .tar.xz (compressé ou non)
 COPY blender/ /tmp/blender/
 
-# Installer Blender depuis le contexte local
-# Blender est OBLIGATOIRE pour le rendu 3D AR
+# Installer Blender depuis le contexte local (OPTIONNEL pour GCP Cloud Run)
 RUN if [ -f "/tmp/blender/blender-4.0.0-linux-x64.tar.xz" ]; then \
     BLENDER_ARCHIVE="/tmp/blender/blender-4.0.0-linux-x64.tar.xz"; \
     echo "✅ Installation de Blender depuis .tar.xz..."; \
-    tar -xf "$BLENDER_ARCHIVE" -C /tmp; \
-    elif [ -f "/tmp/blender/blender-4.0.0-linux-x64.tar" ]; then \
-    BLENDER_ARCHIVE="/tmp/blender/blender-4.0.0-linux-x64.tar"; \
-    echo "✅ Installation de Blender depuis .tar..."; \
-    tar -xf "$BLENDER_ARCHIVE" -C /tmp; \
-    else \
-    echo "❌ ERREUR: Blender non trouve dans le contexte Docker!" && \
-    echo "   Placez blender-4.0.0-linux-x64.tar ou .tar.xz dans backend/blender/" && \
-    exit 1; \
-    fi && \
+    tar -xf "$BLENDER_ARCHIVE" -C /tmp && \
     mv /tmp/blender-4.0.0-linux-x64 /opt/blender && \
     ln -s /opt/blender/blender /usr/local/bin/blender && \
     chmod +x /opt/blender/blender && \
     blender --background --version && \
     rm -rf /tmp/blender && \
-    echo "✅ Blender installe avec succes"
+    echo "✅ Blender installe avec succes"; \
+    elif [ -f "/tmp/blender/blender-4.0.0-linux-x64.tar" ]; then \
+    BLENDER_ARCHIVE="/tmp/blender/blender-4.0.0-linux-x64.tar"; \
+    echo "✅ Installation de Blender depuis .tar..."; \
+    tar -xf "$BLENDER_ARCHIVE" -C /tmp && \
+    mv /tmp/blender-4.0.0-linux-x64 /opt/blender && \
+    ln -s /opt/blender/blender /usr/local/bin/blender && \
+    chmod +x /opt/blender/blender && \
+    rm -rf /tmp/blender && \
+    echo "✅ Blender installe avec succes"; \
+    else \
+    echo "⚠️ Blender non disponible dans ce build (fonctionnalites 3D desactivees)" && \
+    mkdir -p /opt/blender; \
+    fi
 
 # Créer un utilisateur non-root pour la sécurité
 RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
