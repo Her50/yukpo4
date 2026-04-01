@@ -54,6 +54,9 @@ const PartnerRegisterScreen: React.FC = () => {
     driver_id_photo: null as string | null, // Photo de la carte d'identité (base64)
     driver_vehicle_type: '' as string, // taxi, covoiturage, les_deux
     driver_experience_years: '' as string,
+    // ✅ NOUVEAU: Documents administratifs entreprise (Cameroun)
+    rccm: '' as string,              // Registre du Commerce et du Crédit Mobilier
+    numero_contribuable: '' as string, // Numéro contribuable/fiscal
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -243,6 +246,18 @@ const PartnerRegisterScreen: React.FC = () => {
       }
     }
 
+    // ✅ NOUVEAU: Validation documents administratifs pour structures commerciales
+    if (form.partner_type && form.partner_type !== 'chauffeur') {
+      if (!form.rccm?.trim()) {
+        setError('Le numéro RCCM est obligatoire pour les partenaires professionnels');
+        return;
+      }
+      if (!form.numero_contribuable?.trim()) {
+        setError('Le numéro contribuable est obligatoire pour les partenaires professionnels');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const registerData: any = {
@@ -279,6 +294,12 @@ const PartnerRegisterScreen: React.FC = () => {
         registerData.driver_id_photo = form.driver_id_photo;
         registerData.driver_vehicle_type = form.driver_vehicle_type;
         registerData.driver_experience_years = form.driver_experience_years;
+      }
+
+      // ✅ NOUVEAU: Documents administratifs entreprise
+      if (form.partner_type !== 'chauffeur') {
+        registerData.rccm = form.rccm.trim();
+        registerData.numero_contribuable = form.numero_contribuable.trim();
       }
 
       // ✅ Ajouter les moyens de paiement si configurés
@@ -731,6 +752,44 @@ const PartnerRegisterScreen: React.FC = () => {
                   disabled={loading}
                   style={styles.input}
                 />
+              </>
+            )}
+
+            {/* ✅ NOUVEAU: Section documents administratifs — pour toutes structures non-chauffeur */}
+            {form.partner_type !== '' && form.partner_type !== 'chauffeur' && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.sectionHeader}>
+                  <Building size={20} color={theme.colors.primary} />
+                  <Title style={styles.sectionTitle}>Documents administratifs</Title>
+                </View>
+                <Paragraph style={styles.sectionSubtitle}>
+                  Documents obligatoires pour les partenaires professionnels au Cameroun
+                </Paragraph>
+
+                <TextInput
+                  label="Numéro RCCM *"
+                  value={form.rccm}
+                  onChangeText={(text) => setForm({ ...form, rccm: text })}
+                  placeholder="Ex: RC/DLA/2024/B/12345"
+                  disabled={loading}
+                  style={styles.input}
+                />
+                <Text style={styles.helperText}>
+                  Registre du Commerce et du Crédit Mobilier — délivré au greffe du tribunal de commerce
+                </Text>
+
+                <TextInput
+                  label="Numéro contribuable *"
+                  value={form.numero_contribuable}
+                  onChangeText={(text) => setForm({ ...form, numero_contribuable: text })}
+                  placeholder="Ex: M012345678901A"
+                  disabled={loading}
+                  style={styles.input}
+                />
+                <Text style={styles.helperText}>
+                  Numéro d'Identifiant Unique (NIU) délivré par la Direction Générale des Impôts
+                </Text>
               </>
             )}
           </Card.Content>

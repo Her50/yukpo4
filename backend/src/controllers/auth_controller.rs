@@ -190,6 +190,9 @@ pub struct RegisterInput {
     pub payment_methods: Option<serde_json::Value>, // ✅ NOUVEAU: Moyens de paiement (MTN/Orange Money)
     /// Code d'invitation émis par un restaurant (table `restaurant_partner_codes`), optionnel
     pub restaurant_partner_code: Option<String>,
+    // ✅ NOUVEAU: Documents administratifs entreprise (Cameroun)
+    pub rccm: Option<String>, // Registre du Commerce et du Crédit Mobilier
+    pub numero_contribuable: Option<String>, // Numéro contribuable / NIU fiscal
 }
 
 /// ? Inscription manuelle
@@ -1316,6 +1319,7 @@ pub async fn verify_phone_code(
                     success: false,
                     message: "Code expiré. Veuillez demander un nouveau code.".to_string(),
                     phone_verified: false,
+                    dev_code: None,
                 }));
             }
 
@@ -1347,6 +1351,7 @@ pub async fn verify_phone_code(
                     success: true,
                     message: "Numéro de téléphone vérifié avec succès!".to_string(),
                     phone_verified: true,
+                    dev_code: None,
                 }))
             } else {
                 warn!(
@@ -1357,6 +1362,7 @@ pub async fn verify_phone_code(
                     success: false,
                     message: "Aucun compte associé à ce numéro de téléphone".to_string(),
                     phone_verified: false,
+                    dev_code: None,
                 }))
             }
         }
@@ -1369,6 +1375,7 @@ pub async fn verify_phone_code(
                 success: false,
                 message: "Code de vérification invalide".to_string(),
                 phone_verified: false,
+                dev_code: None,
             }))
         }
     }

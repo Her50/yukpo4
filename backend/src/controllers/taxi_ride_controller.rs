@@ -547,3 +547,79 @@ pub async fn pay_ride(
         }
     })))
 }
+
+// ─── Driver: courses en attente ───────────────────────────────────────────────
+
+/// GET /api/taxis/driver/pending-rides
+/// Retourne les courses en statut 'pending' assignées aux taxis de ce chauffeur.
+/// Polling côté mobile chauffeur toutes les 5 secondes.
+pub async fn driver_pending_rides(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: driver_user_id, ..
+    }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    use sqlx::Row;
+
+    let rows = sqlx::query(
+        r#"
+        SELECT r.id          AS ride_id,
+               r.statut,
+               r.tarif_estime,
+               r.distance_km,
+               r.duree_estimee_min,
+               r.pickup_address,
+               r.dest_address,
+               r.pickup_lat,
+               r.pickup_lon,
+               r.dest_lat,
+               r.dest_lon,
+               r.vehicle_type,
+               r.notes,
+               r.created_at,
+               r.taxi_id,
+               u.phone       AS passenger_phone
+        FROM taxi_rides r
+        JOIN taxis_ville t ON t.id = r.taxi_id
+        LEFT JOIN users u  ON u.id = r.user_id
+        WHERE t.user_id = $1
+          AND r.statut  = 'pending'
+        ORDER BY r.created_at ASC
+        LIMIT 10
+    "#,
+    )
+    .bind(driver_user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let rides: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "ride_id":          r.get::<i32, _>("ride_id"),
+                "statut":           r.get::<String, _>("statut"),
+                "tarif_estime":     r.get::<Option<f64>, _>("tarif_estime"),
+                "distance_km":      r.get::<Option<f64>, _>("distance_km"),
+                "duree_estimee_min":r.get::<Option<f64>, _>("duree_estimee_min"),
+                "pickup_address":   r.get::<Option<String>, _>("pickup_address"),
+                "dest_address":     r.get::<Option<String>, _>("dest_address"),
+                "pickup_lat":       r.get::<Option<f64>, _>("pickup_lat"),
+                "pickup_lon":       r.get::<Option<f64>, _>("pickup_lon"),
+                "dest_lat":         r.get::<Option<f64>, _>("dest_lat"),
+                "dest_lon":         r.get::<Option<f64>, _>("dest_lon"),
+                "vehicle_type":     r.get::<Option<String>, _>("vehicle_type"),
+                "notes":            r.get::<Option<String>, _>("notes"),
+                "taxi_id":          r.get::<i32, _>("taxi_id"),
+                "passenger_phone":  r.get::<Option<String>, _>("passenger_phone"),
+                "created_at":       r.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+            })
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "success": true,
+        "data": rides,
+        "count": rides.len()
+    })))
+}

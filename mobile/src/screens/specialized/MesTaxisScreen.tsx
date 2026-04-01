@@ -266,6 +266,16 @@ const MesTaxisScreen: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
+            {/* Accès rapide demandes de course */}
+            <TouchableOpacity
+                style={styles.incomingRidesBanner}
+                onPress={() => (navigation as any).navigate('TaxiDriverRideRequest')}
+            >
+                <SafeIcon name="bell" size={18} color="#fff" />
+                <Text style={styles.incomingRidesText}>Voir les demandes de course en attente</Text>
+                <SafeIcon name="chevron-right" size={16} color="#fff" />
+            </TouchableOpacity>
+
             {/* Filtres de statut */}
             <View style={styles.filtersContainer}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersContent}>
@@ -355,6 +365,15 @@ const styles = StyleSheet.create({
     },
     addButton: {
         padding: 8,
+    },
+    incomingRidesBanner: {
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+        backgroundColor: '#059669',
+        paddingHorizontal: 16, paddingVertical: 13,
+        marginHorizontal: 16, marginTop: 12, borderRadius: 12,
+    },
+    incomingRidesText: {
+        flex: 1, color: '#fff', fontSize: 14, fontWeight: '700',
     },
     filtersContainer: {
         paddingVertical: 12,

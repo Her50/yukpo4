@@ -550,6 +550,7 @@ reg('TaxiRating', () => import('../screens/specialized/TaxiRatingScreen'));
 reg('HistoriqueCourses', () => import('../screens/specialized/HistoriqueCoursesScreen'));
 reg('PaiementCourse', () => import('../screens/specialized/PaiementCourseScreen'));
 reg('TaxiRequestWaiting', () => import('../screens/specialized/TaxiRequestWaitingScreen'));
+reg('TaxiDriverRideRequest', () => import('../screens/specialized/TaxiDriverRideRequestScreen'));
 reg('VerificationConduite', () => import('../screens/specialized/VerificationConduiteScreen'));
 
 // ---------------------------------------------------------------------------

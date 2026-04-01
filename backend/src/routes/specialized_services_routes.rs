@@ -543,6 +543,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/taxis/rides/{id}/pay",
             post(taxi_ride_controller::pay_ride),
         )
+        // ✅ 2026-04-01: Dashboard chauffeur — courses en attente (polling 5s)
+        .route(
+            "/api/taxis/driver/pending-rides",
+            get(taxi_ride_controller::driver_pending_rides),
+        )
         // ✅ LEADERSHIP GLOBAL 100% - IA Prédictive
         .route(
             "/api/taxi/demand-prediction",
