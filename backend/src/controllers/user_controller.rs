@@ -1076,3 +1076,267 @@ pub async fn save_user_payment_methods(
         "message": "Moyens de paiement sauvegardés",
     })))
 }
+
+// ============================================================
+// WALLET COURSIER : financial, withdraw, withdrawals
+// ============================================================
+
+/// GET /api/wallet/financial - Résumé financier pour coursier
+/// Retourne : solde disponible + gains delivery nets du mois/total
+pub async fn get_wallet_financial(
+    Extension(user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+) -> AppResult<Json<serde_json::Value>> {
+    // Solde disponible (tokens_balance sur users)
+    let balance: i64 = sqlx::query_scalar("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user.id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur solde: {}", e)))?;
+
+    // Total gains nets crédités (bourse du livre via wallet_transactions + livraisons via disbursements)
+    let total_earned: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COALESCE(SUM(amount_cents), 0) FROM (
+            SELECT amount_cents FROM wallet_transactions
+            WHERE user_id = $1 AND direction = 'credit'
+              AND transaction_type IN ('credit_livre_payout', 'payout_delivery', 'credit_delivery_payout')
+            UNION ALL
+            SELECT amount_cents FROM disbursement_requests
+            WHERE recipient_user_id = $1 AND status IN ('completed', 'processing')
+              AND reason = 'Reversement livraison automatique'
+        ) t
+        "#,
+    )
+    .bind(user.id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0i64);
+
+    // Gains ce mois-ci
+    let this_month_earned: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COALESCE(SUM(amount_cents), 0) FROM (
+            SELECT amount_cents FROM wallet_transactions
+            WHERE user_id = $1 AND direction = 'credit'
+              AND transaction_type IN ('credit_livre_payout', 'payout_delivery', 'credit_delivery_payout')
+              AND created_at >= date_trunc('month', NOW())
+            UNION ALL
+            SELECT amount_cents FROM disbursement_requests
+            WHERE recipient_user_id = $1 AND status IN ('completed', 'processing')
+              AND reason = 'Reversement livraison automatique'
+              AND created_at >= date_trunc('month', NOW())
+        ) t
+        "#,
+    )
+    .bind(user.id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0i64);
+
+    // Total retraits en attente
+    let pending_withdrawals: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COALESCE(SUM(amount_cents), 0)
+        FROM disbursement_requests
+        WHERE recipient_user_id = $1 AND status = 'pending'
+        "#,
+    )
+    .bind(user.id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0i64);
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "balance": balance,
+        "available": balance,
+        "total_earned_cents": total_earned,
+        "this_month_earned_cents": this_month_earned,
+        "pending_withdrawals_cents": pending_withdrawals,
+        "currency": "XAF"
+    })))
+}
+
+#[derive(serde::Deserialize)]
+pub struct WithdrawRequest {
+    pub amount: i64,
+    pub payment_method: String,
+    pub phone_number: String,
+}
+
+/// POST /api/wallet/withdraw - Demander un retrait (MTN Money / Orange Money)
+pub async fn request_wallet_withdrawal(
+    Extension(user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<WithdrawRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    const MIN_WITHDRAWAL: i64 = 1000;
+
+    if payload.amount < MIN_WITHDRAWAL {
+        return Err(AppError::BadRequest(format!(
+            "Montant minimum de retrait : {} XAF",
+            MIN_WITHDRAWAL
+        )));
+    }
+    if payload.phone_number.trim().len() < 9 {
+        return Err(AppError::BadRequest("Numéro de téléphone invalide".into()));
+    }
+    let allowed_methods = ["mtn_money", "orange_money"];
+    if !allowed_methods.contains(&payload.payment_method.as_str()) {
+        return Err(AppError::BadRequest(
+            "Méthode de paiement non supportée. Utilisez mtn_money ou orange_money".into(),
+        ));
+    }
+
+    // Transaction atomique : débit + audit + disbursement
+    let mut tx = state
+        .pg
+        .begin()
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur début transaction: {}", e)))?;
+
+    // Lire et verrouiller le solde
+    let balance: i64 =
+        sqlx::query_scalar("SELECT tokens_balance FROM users WHERE id = $1 FOR UPDATE")
+            .bind(user.id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur lecture solde: {}", e)))?;
+
+    if balance < payload.amount {
+        let _ = tx.rollback().await;
+        return Err(AppError::BadRequest(format!(
+            "Solde insuffisant. Solde disponible : {} XAF",
+            balance
+        )));
+    }
+
+    let new_balance = balance - payload.amount;
+
+    // 1. Débiter le wallet
+    sqlx::query("UPDATE users SET tokens_balance = $1, updated_at = NOW() WHERE id = $2")
+        .bind(new_balance)
+        .bind(user.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur débit wallet: {}", e)))?;
+
+    // 2. Audit wallet_transactions
+    sqlx::query(
+        r#"
+        INSERT INTO wallet_transactions (
+            user_id, transaction_type, direction, amount_cents,
+            balance_before_cents, balance_after_cents, currency,
+            reference_type, description
+        )
+        VALUES ($1, 'withdrawal_request', 'debit', $2, $3, $4, 'XAF', 'courier_withdrawal', $5)
+        "#,
+    )
+    .bind(user.id)
+    .bind(payload.amount)
+    .bind(balance)
+    .bind(new_balance)
+    .bind(format!(
+        "Retrait {} XAF via {}",
+        payload.amount, payload.payment_method
+    ))
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur audit transaction: {}", e)))?;
+
+    // 3. Créer la demande de disbursement (versement opérateur mobile money)
+    let disb_id: i64 = sqlx::query_scalar(
+        r#"
+        INSERT INTO disbursement_requests (
+            recipient_user_id, amount_cents, currency,
+            recipient_phone, recipient_method, status, reason, created_at
+        )
+        VALUES ($1, $2, 'XAF', $3, $4, 'pending', 'courier_withdrawal', NOW())
+        RETURNING id
+        "#,
+    )
+    .bind(user.id)
+    .bind(payload.amount)
+    .bind(payload.phone_number.trim())
+    .bind(&payload.payment_method)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur création disbursement: {}", e)))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
+
+    info!(
+        "[request_wallet_withdrawal] Retrait #{} créé: user={}, amount={} XAF, method={}, new_balance={}",
+        disb_id, user.id, payload.amount, payload.payment_method, new_balance
+    );
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "withdrawal_id": disb_id,
+        "amount": payload.amount,
+        "payment_method": payload.payment_method,
+        "phone_number": payload.phone_number.trim(),
+        "status": "pending",
+        "new_balance": new_balance,
+        "message": "Retrait initié avec succès. Le virement sera effectué sous 24-48h."
+    })))
+}
+
+/// GET /api/wallet/withdrawals - Historique des retraits du coursier
+pub async fn get_wallet_withdrawals(
+    Extension(user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> AppResult<Json<serde_json::Value>> {
+    let limit: i64 = params.get("limit").and_then(|v| v.parse().ok()).unwrap_or(50).min(200);
+
+    #[derive(sqlx::FromRow, serde::Serialize)]
+    struct WithdrawalRow {
+        id: i64,
+        amount_cents: i64,
+        recipient_phone: String,
+        recipient_method: String,
+        status: String,
+        created_at: chrono::DateTime<chrono::Utc>,
+    }
+
+    let withdrawals = sqlx::query_as::<_, WithdrawalRow>(
+        r#"
+        SELECT id, amount_cents, recipient_phone, recipient_method, status, created_at
+        FROM disbursement_requests
+        WHERE recipient_user_id = $1
+          AND reason = 'courier_withdrawal'
+        ORDER BY created_at DESC
+        LIMIT $2
+        "#,
+    )
+    .bind(user.id)
+    .bind(limit)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur historique retraits: {}", e)))?;
+
+    // Mapper au format attendu par le frontend
+    let result: Vec<serde_json::Value> = withdrawals
+        .iter()
+        .map(|w| {
+            serde_json::json!({
+                "id": w.id.to_string(),
+                "amount": w.amount_cents,
+                "payment_method": w.recipient_method,
+                "phone_number": w.recipient_phone,
+                "status": w.status,
+                "created_at": w.created_at.to_rfc3339()
+            })
+        })
+        .collect();
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "withdrawals": result,
+        "count": result.len()
+    })))
+}

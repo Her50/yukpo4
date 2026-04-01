@@ -284,13 +284,20 @@ const TaxiBookingScreen: React.FC = () => {
                     t('taxiBooking.bookingConfirmedMsg', { price: estimatedPrice ? `\n${t('taxiBooking.estimatedPrice')}: ${estimatedPrice.toLocaleString('fr-FR')} FCFA` : '' }),
                     [
                         {
+                            text: 'Payer maintenant',
+                            onPress: () => (navigation as any).navigate('PaiementCourse', {
+                                rideId: (response as any)?.data?.ride_id || (response as any)?.reservation_id,
+                                taxiId: taxi?.id,
+                                departure: departureAddress,
+                                destination: arrivalAddress,
+                                estimatedFare: estimatedPrice,
+                                driverName: taxi?.nom || taxi?.nom_etablissement,
+                            }),
+                        },
+                        {
                             text: t('taxiBooking.voirMesReservations'),
                             onPress: () => navigation.navigate('MesReservations' as never)
                         },
-                        {
-                            text: 'OK',
-                            onPress: () => navigation.goBack()
-                        }
                     ]
                 );
             } else {

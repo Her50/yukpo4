@@ -368,6 +368,25 @@ const TaxiTrackingScreen: React.FC = () => {
                         <Text style={styles.callButtonText}>Partager</Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* Bouton paiement fin de course */}
+                <TouchableOpacity
+                    style={styles.payButton}
+                    onPress={() => {
+                        hapticPress();
+                        (navigation as any).navigate('PaiementCourse', {
+                            rideId: params?.rideId,
+                            taxiId: params?.taxiId,
+                            departure: params?.departure,
+                            destination: params?.destination,
+                            estimatedFare: params?.estimatedFare,
+                            driverName: params?.driverName,
+                        });
+                    }}
+                >
+                    <SafeIcon name="credit-card" size={20} color="#FFFFFF" type="lucide" />
+                    <Text style={styles.payButtonText}>Payer la course</Text>
+                </TouchableOpacity>
             </View>
         </SafeNativeView>
     );
@@ -545,6 +564,21 @@ const styles = StyleSheet.create({
     callButtonText: {
         fontSize: 15,
         fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    payButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        backgroundColor: '#F59E0B',
+        borderRadius: 12,
+        paddingVertical: 15,
+        marginTop: 10,
+    },
+    payButtonText: {
+        fontSize: 16,
+        fontWeight: '800',
         color: '#FFFFFF',
     },
 });

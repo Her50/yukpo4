@@ -9612,6 +9612,10 @@ pub struct SubmitKycBody {
     pub cni_front_url: Option<String>,
     pub cni_back_url: Option<String>,
     pub selfie_url: Option<String>,
+    /// Images base64 pour analyse automatique Google Vision API
+    pub cni_front_base64: Option<String>,
+    pub cni_back_base64: Option<String>,
+    pub selfie_base64: Option<String>,
 }
 
 pub async fn submit_driver_verification(
@@ -9631,12 +9635,33 @@ pub async fn submit_driver_verification(
                 cni_front_url: body.cni_front_url,
                 cni_back_url: body.cni_back_url,
                 selfie_url: body.selfie_url,
+                cni_front_base64: body.cni_front_base64,
+                cni_back_base64: body.cni_back_base64,
+                selfie_base64: body.selfie_base64,
             },
         )
         .await
     {
-        Ok(v) => Ok(Json(json!({ "success": true, "verification": v,
-            "message": "Documents soumis. Votre compte sera vérifié sous 24h." }))),
+        Ok(v) => {
+            let msg = match v.ai_decision.as_deref() {
+                Some("approved") => format!(
+                    "✅ Vérification automatique réussie ! Score IA : {}/100. Vous êtes certifié conducteur Yukpo.",
+                    v.ai_score.unwrap_or(0)
+                ),
+                Some("rejected") => format!(
+                    "⚠️ Documents non reconnus (Score IA : {}/100). Veuillez resoumettre des photos plus nettes.",
+                    v.ai_score.unwrap_or(0)
+                ),
+                Some("under_review") => format!(
+                    "Documents soumis (Score IA : {}/100). Un agent confirme votre vérification sous 24h.",
+                    v.ai_score.unwrap_or(0)
+                ),
+                _ => "Documents soumis. Votre compte sera vérifié sous 24h.".to_string(),
+            };
+            Ok(Json(
+                json!({ "success": true, "verification": v, "message": msg }),
+            ))
+        }
         Err(e) => Err((
             axum::http::StatusCode::BAD_REQUEST,
             Json(json!({ "success": false, "error": e })),

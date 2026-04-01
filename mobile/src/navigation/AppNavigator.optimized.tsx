@@ -548,6 +548,8 @@ reg('Loyalty', () => import('../screens/specialized/LoyaltyScreen'));
 reg('TaxiScheduledRide', () => import('../screens/specialized/TaxiScheduledRideScreen'));
 reg('TaxiRating', () => import('../screens/specialized/TaxiRatingScreen'));
 reg('HistoriqueCourses', () => import('../screens/specialized/HistoriqueCoursesScreen'));
+reg('PaiementCourse', () => import('../screens/specialized/PaiementCourseScreen'));
+reg('VerificationConduite', () => import('../screens/specialized/VerificationConduiteScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Troc (4)

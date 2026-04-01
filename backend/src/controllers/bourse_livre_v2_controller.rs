@@ -3295,6 +3295,26 @@ async fn credit_book_wallet(
         .await
         .map_err(|e| AppError::Internal(format!("Wallet credit: {}", e)))?;
 
+    // ✅ Traçabilité: enregistrer dans wallet_transactions pour les stats et les retraits
+    sqlx::query(
+        r#"
+        INSERT INTO wallet_transactions (
+            user_id, transaction_type, direction, amount_cents,
+            balance_before_cents, balance_after_cents, currency,
+            reference_type, description
+        )
+        VALUES ($1, 'credit_livre_payout', 'credit', $2, $3, $4, 'XAF', 'bourse_livre', $5)
+        "#,
+    )
+    .bind(user_id)
+    .bind(amount_cents)
+    .bind(current)
+    .bind(new_balance)
+    .bind(reason)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AppError::Internal(format!("Wallet transaction trace: {}", e)))?;
+
     tx.commit().await.map_err(|e| AppError::Internal(format!("TX commit: {}", e)))?;
 
     info!(

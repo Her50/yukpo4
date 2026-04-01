@@ -20946,10 +20946,11 @@ pub async fn ensure_wallet_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
             r#"CREATE TABLE wallet_transactions (
                 id BIGSERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                transaction_type VARCHAR(30) NOT NULL,
+                transaction_type VARCHAR(30) NOT NULL DEFAULT 'unknown',
+                direction VARCHAR(10) NOT NULL DEFAULT 'debit',
                 amount_cents BIGINT NOT NULL,
-                balance_before_cents BIGINT NOT NULL,
-                balance_after_cents BIGINT NOT NULL,
+                balance_before_cents BIGINT NOT NULL DEFAULT 0,
+                balance_after_cents BIGINT NOT NULL DEFAULT 0,
                 currency VARCHAR(10) NOT NULL DEFAULT 'XAF',
                 reference_type VARCHAR(50),
                 reference_id VARCHAR(255),
@@ -20969,11 +20970,47 @@ pub async fn ensure_wallet_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
         .ok();
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_wallet_txn_user_created ON wallet_transactions(user_id, created_at DESC)").execute(pool).await.ok();
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_wallet_txn_type ON wallet_transactions(transaction_type)").execute(pool).await.ok();
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_wallet_txn_direction ON wallet_transactions(direction)",
+        )
+        .execute(pool)
+        .await
+        .ok();
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_wallet_txn_delivery ON wallet_transactions(delivery_id)").execute(pool).await.ok();
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_wallet_txn_reference ON wallet_transactions(reference_type, reference_id)").execute(pool).await.ok();
         info!("✅ Table wallet_transactions créée");
     } else {
-        info!("✅ Table wallet_transactions déjà présente");
+        // ✅ Assurer que les colonnes ajoutées ultérieurement existent sur tables existantes
+        for (col, col_def) in &[
+            ("direction", "VARCHAR(10) NOT NULL DEFAULT 'debit'"),
+            ("balance_before_cents", "BIGINT NOT NULL DEFAULT 0"),
+            ("balance_after_cents", "BIGINT NOT NULL DEFAULT 0"),
+        ] {
+            let col_exists = sqlx::query_scalar::<_, bool>(&format!(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'wallet_transactions' AND column_name = '{}')",
+                col
+            ))
+            .fetch_one(pool)
+            .await
+            .unwrap_or(false);
+
+            if !col_exists {
+                let _ = sqlx::query(&format!(
+                    "ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS {} {}",
+                    col, col_def
+                ))
+                .execute(pool)
+                .await;
+                info!("  ✅ Colonne '{}' ajoutée à wallet_transactions", col);
+            }
+        }
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_wallet_txn_direction ON wallet_transactions(direction)",
+        )
+        .execute(pool)
+        .await
+        .ok();
+        info!("✅ Table wallet_transactions déjà présente (colonnes vérifiées)");
     }
 
     Ok(())

@@ -16,6 +16,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import SafeIcon from '../../components/SafeIcon';
 import { apiGet, apiPost } from '../../services/api';
 import { modernColors } from '../../theme/modernTheme';
@@ -29,6 +30,12 @@ interface VerificationStatus {
     rejection_reason?: string;
     submitted_at: string;
     is_complete: boolean;
+    // Résultats analyse IA (Google Vision API)
+    ai_score?: number;
+    ai_decision?: 'approved' | 'under_review' | 'rejected';
+    ai_extracted_name?: string;
+    ai_extracted_id?: string;
+    ai_details?: string; // JSON array sérialisé
 }
 
 const STATUS_CONFIG = {
@@ -99,6 +106,19 @@ const DriverVerificationScreen: React.FC = () => {
         }
     };
 
+    /** Lit un fichier image local et retourne son contenu en base64 pur */
+    const readBase64 = async (uri: string): Promise<string | null> => {
+        try {
+            // Sur iOS/Android, l'URI est un chemin local (file://...)
+            const b64 = await FileSystem.readAsStringAsync(uri, {
+                encoding: FileSystem.EncodingType.Base64,
+            });
+            return b64;
+        } catch {
+            return null;
+        }
+    };
+
     const handleSubmit = async () => {
         if (!cniFront || !cniBack || !selfie) {
             Alert.alert('Documents manquants', 'Veuillez fournir CNI recto, verso et selfie.');
@@ -106,15 +126,27 @@ const DriverVerificationScreen: React.FC = () => {
         }
         try {
             setSubmitting(true);
+
+            // Lecture des images en base64 pour l'analyse IA
+            const [frontB64, backB64, selfieB64] = await Promise.all([
+                readBase64(cniFront),
+                readBase64(cniBack),
+                readBase64(selfie),
+            ]);
+
             const res = await apiPost('/api/driver/verification', {
                 service_type: serviceType,
                 cni_front_url: cniFront,
                 cni_back_url: cniBack,
                 selfie_url: selfie,
+                // Base64 pour analyse Google Vision API (analyse automatique)
+                cni_front_base64: frontB64,
+                cni_back_base64: backB64,
+                selfie_base64: selfieB64,
             });
             const data = (res?.data || res) as any;
             if (data?.success) {
-                Alert.alert('Documents soumis !', data.message || 'Vérification en cours. Résultat sous 24h.', [
+                Alert.alert('Documents soumis !', data.message || 'Vérification en cours.', [
                     { text: 'OK', onPress: () => { loadStatus(); } },
                 ]);
             } else {
@@ -297,6 +329,45 @@ const DriverVerificationScreen: React.FC = () => {
                             </Text>
                         </View>
                     )}
+
+                    {/* Résultat analyse IA */}
+                    {status?.ai_score != null && (
+                        <View style={[
+                            st.aiResultBox,
+                            status.ai_decision === 'approved' && { borderColor: '#10B981', backgroundColor: '#ECFDF5' },
+                            status.ai_decision === 'rejected' && { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
+                            status.ai_decision === 'under_review' && { borderColor: '#3B82F6', backgroundColor: '#EFF6FF' },
+                        ]}>
+                            <View style={st.aiScoreRow}>
+                                <SafeIcon
+                                    name={status.ai_decision === 'approved' ? 'check-circle' : status.ai_decision === 'rejected' ? 'x-circle' : 'cpu'}
+                                    size={20}
+                                    color={status.ai_decision === 'approved' ? '#10B981' : status.ai_decision === 'rejected' ? '#EF4444' : '#3B82F6'}
+                                />
+                                <Text style={st.aiScoreTitle}>Analyse IA Google Vision</Text>
+                                <View style={[
+                                    st.aiScoreBadge,
+                                    { backgroundColor: status.ai_decision === 'approved' ? '#10B981' : status.ai_decision === 'rejected' ? '#EF4444' : '#3B82F6' }
+                                ]}>
+                                    <Text style={st.aiScoreBadgeText}>{status.ai_score}/100</Text>
+                                </View>
+                            </View>
+                            {status.ai_extracted_name && (
+                                <Text style={st.aiDetail}>👤 Nom détecté : {status.ai_extracted_name}</Text>
+                            )}
+                            {status.ai_extracted_id && (
+                                <Text style={st.aiDetail}>🪪 N° CNI détecté : {status.ai_extracted_id}</Text>
+                            )}
+                            {status.ai_details && (() => {
+                                try {
+                                    const details: string[] = JSON.parse(status.ai_details!);
+                                    return details.slice(0, -1).map((d, i) => (
+                                        <Text key={i} style={st.aiDetail}>{d}</Text>
+                                    ));
+                                } catch { return null; }
+                            })()}
+                        </View>
+                    )}
                 </>
             )}
         </ScrollView>
@@ -340,6 +411,12 @@ const st = StyleSheet.create({
     submitBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
     reviewingBox: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, backgroundColor: '#EFF6FF', borderRadius: 12, padding: 16 },
     reviewingText: { fontSize: 13, color: '#1D4ED8', flex: 1, lineHeight: 20 },
+    aiResultBox: { marginHorizontal: 16, marginTop: 12, borderWidth: 1.5, borderColor: '#3B82F6', borderRadius: 12, padding: 14, gap: 6 },
+    aiScoreRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+    aiScoreTitle: { flex: 1, fontSize: 13, fontWeight: '700', color: '#111827' },
+    aiScoreBadge: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3 },
+    aiScoreBadgeText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+    aiDetail: { fontSize: 12, color: '#374151', lineHeight: 18 },
 });
 
 export default DriverVerificationScreen;

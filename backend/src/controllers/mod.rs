@@ -118,6 +118,7 @@ pub mod taxi_analytics_controller; // ✅ NOUVEAU 2025-01-29: Contrôleur analyt
 pub mod taxi_dynamic_pricing_controller;
 pub mod taxi_leadership_controller; // ✅ NOUVEAU 2025-01-29: Contrôleur leadership (prédiction demande)
 pub mod taxi_recommendations_controller; // ✅ NOUVEAU 2025-01-29: Contrôleur recommandations personnalisées
+pub mod taxi_ride_controller; // ✅ 2026-04-01: Estimation tarif GPS + flow accept/refuse + commission 15%
 pub mod taxi_route_optimization_controller; // ✅ NOUVEAU 2025-01-29: Contrôleur optimisation itinéraires IA
 pub mod troc_livres_controller; // ✅ NOUVEAU 2025-01-28: Contrôleur troc livres scolaires
 pub mod vehicle_model_controller; // ✅ NOUVEAU: Contrôleur pour modèles de véhicules (autocomplete)

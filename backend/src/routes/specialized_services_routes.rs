@@ -29,6 +29,7 @@ use crate::controllers::taxi_analytics_controller; // ✅ NOUVEAU 2025-01-29: An
 use crate::controllers::taxi_dynamic_pricing_controller; // ✅ NOUVEAU 2025-01-29: Prix dynamique IA (Leadership 100%)
 use crate::controllers::taxi_leadership_controller; // ✅ NOUVEAU 2025-01-29: Leadership
 use crate::controllers::taxi_recommendations_controller; // ✅ NOUVEAU 2025-01-29: Recommandations
+use crate::controllers::taxi_ride_controller; // ✅ 2026-04-01: Tarif GPS + accept/refuse + commission
 use crate::controllers::taxi_route_optimization_controller; // ✅ NOUVEAU 2025-01-29: Optimisation routes
 use crate::controllers::troc_livres_controller;
 use crate::middlewares::jwt::jwt_auth;
@@ -45,6 +46,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/taxis/search",
             get(specialized_services_controller::search_taxis),
+        )
+        // ✅ 2026-04-01: Estimation tarifaire publique (sans auth — passager peut voir le prix avant de se connecter)
+        .route(
+            "/api/taxis/estimate-fare",
+            get(taxi_ride_controller::estimate_fare),
         )
         .route(
             "/api/taxis/{id}",
@@ -462,10 +468,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/reservations/{id}/rating-status",
             get(specialized_services_controller::check_rating_status),
         )
-        // ✅ NOUVEAU 2026-04-01: KYC vérification conducteur
+        // ✅ NOUVEAU 2026-04-01: KYC vérification conducteur (15 MB pour 3 images base64)
         .route(
             "/api/driver/verification",
-            post(specialized_services_controller::submit_driver_verification),
+            post(specialized_services_controller::submit_driver_verification)
+                .layer(axum::extract::DefaultBodyLimit::max(15_000_000)),
         )
         .route(
             "/api/driver/verification/{service_type}",
@@ -514,6 +521,27 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/taxis/{id}/update-availability",
             post(specialized_services_controller::update_taxi_availability),
+        )
+        // ✅ 2026-04-01: Flow course taxi — demande passager + accept/refuse chauffeur + paiement
+        .route(
+            "/api/taxis/rides/request",
+            post(taxi_ride_controller::request_ride),
+        )
+        .route(
+            "/api/taxis/rides/{id}/status",
+            get(taxi_ride_controller::get_ride_status),
+        )
+        .route(
+            "/api/taxis/rides/{id}/accept",
+            post(taxi_ride_controller::accept_ride),
+        )
+        .route(
+            "/api/taxis/rides/{id}/refuse",
+            post(taxi_ride_controller::refuse_ride),
+        )
+        .route(
+            "/api/taxis/rides/{id}/pay",
+            post(taxi_ride_controller::pay_ride),
         )
         // ✅ LEADERSHIP GLOBAL 100% - IA Prédictive
         .route(

@@ -294,7 +294,7 @@ const MesReservationsTaxiScreen: React.FC = () => {
             <View style={styles.shortcutsRow}>
                 <TouchableOpacity
                     style={styles.shortcutBtn}
-                    onPress={() => navigation.navigate('DriverVerification' as never, { serviceType: 'taxi' } as never)}
+                    onPress={() => navigation.navigate('VerificationConduite' as never, { service: 'taxi' } as never)}
                 >
                     <SafeIcon name="shield-check" size={16} color="#6366F1" />
                     <Text style={styles.shortcutText}>Vérification conducteur</Text>

@@ -337,6 +337,10 @@ const CovoiturageFormScreen: React.FC = () => {
                     <View style={[s.quickIcon, { backgroundColor: '#8B5CF615' }]}><SafeIcon name="wallet" size={22} color="#8B5CF6" /></View>
                     <Text style={s.quickLabel}>{t('financialTracking.wallet') || 'Portefeuille'}</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={s.quickAction} onPress={() => (navigation as any).navigate('VerificationConduite', { service: 'covoiturage' })}>
+                    <View style={[s.quickIcon, { backgroundColor: '#05966915' }]}><SafeIcon name="shield" size={22} color="#059669" /></View>
+                    <Text style={s.quickLabel}>Vérification</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Trips List */}

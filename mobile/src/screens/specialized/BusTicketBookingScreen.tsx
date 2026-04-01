@@ -13,6 +13,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeButton } from '../../components/SafeNativeDesign';
 import SkeletonCard from '../../components/SkeletonCard';
 import TripMap from '../../components/TripMap';
+import AssuranceVoyageModal from '../../components/specialized/AssuranceVoyageModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { trackBooking } from '../../services/analytics';
@@ -47,6 +48,8 @@ const BusTicketBookingScreen: React.FC = () => {
     const [showSeatSelector, setShowSeatSelector] = useState(false);
     const [loading, setLoading] = useState(false);
     const [reservations, setReservations] = useState<any[]>([]);
+    const [showAssurance, setShowAssurance] = useState(false);
+    const [pendingPaymentParams, setPendingPaymentParams] = useState<any>(null);
 
     const handleSelectSeats = () => {
         if (!productId) {
@@ -89,26 +92,16 @@ const BusTicketBookingScreen: React.FC = () => {
                 // Planifier les notifications si le paiement est complété
                 // (Les notifications seront planifiées après le paiement)
 
-                Alert.alert(
-                    t('busTicketBookingScreen.reservationCreee'),
-                    t('busTicketBookingScreen.placesReserveesAvecSuccesVousAvez', { selectedSeats_length: selectedSeats.length }),
-                    [
-                        {
-                            text: t('busTicketBooking.payerMaintenant'),
-                            onPress: () => {
-                                (navigation as any).navigate('BusTicketPayment', {
-                                    productId,
-                                    reservationIds: reservationsData.map((r: any) => r.reservation_id),
-                                    ticketPrice: ticketData?.ticket_price || 0,
-                                    isRoundTrip,
-                                    returnDate,
-                                    returnTime,
-                                });
-                            },
-                        },
-                        { text: t('common.later'), style: 'cancel' },
-                    ]
-                );
+                // Proposer l'assurance avant le paiement
+                setPendingPaymentParams({
+                    productId,
+                    reservationIds: reservationsData.map((r: any) => r.reservation_id),
+                    ticketPrice: ticketData?.ticket_price || 0,
+                    isRoundTrip,
+                    returnDate,
+                    returnTime,
+                });
+                setShowAssurance(true);
             } else {
                 Alert.alert(t('message.error'), (response as any).error || t('busTicketBooking.impossibleDeCreerLaReservation'));
             }
@@ -241,6 +234,27 @@ const BusTicketBookingScreen: React.FC = () => {
                 ticketPrice={ticketData?.ticket_price || 0}
                 currency="XAF"
                 onReserve={handleReserve}
+            />
+
+            {/* Modal assurance voyage */}
+            <AssuranceVoyageModal
+                visible={showAssurance}
+                onClose={() => { setShowAssurance(false); if (pendingPaymentParams) (navigation as any).navigate('BusTicketPayment', pendingPaymentParams); }}
+                onConfirm={(formuleId, prixAssurance) => {
+                    setShowAssurance(false);
+                    if (pendingPaymentParams) {
+                        (navigation as any).navigate('BusTicketPayment', {
+                            ...pendingPaymentParams,
+                            assuranceFormuleId: formuleId,
+                            assurancePrix: prixAssurance,
+                        });
+                    }
+                }}
+                serviceType="bus"
+                trajet={ticketData ? `${ticketData.departure_city} → ${ticketData.arrival_city}` : undefined}
+                dateDepart={ticketData?.departure_date}
+                montantBillet={ticketData?.ticket_price}
+                bookingRef={pendingPaymentParams?.reservationIds?.[0]}
             />
         </View>
     );

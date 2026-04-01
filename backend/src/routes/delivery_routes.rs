@@ -2380,13 +2380,18 @@ async fn get_courier_stats(
     .map_err(|e| AppError::Internal(format!("Erreur stats livraisons: {}", e)))?;
 
     // Gains totaux nets (crédits coursier depuis wallet_transactions)
+    // Gains bourse du livre (wallet_transactions) + livraisons régulières (disbursement_requests)
     let total_earnings: i64 = sqlx::query_scalar(
         r#"
-        SELECT COALESCE(SUM(amount_cents), 0)
-        FROM wallet_transactions
-        WHERE user_id = $1
-          AND transaction_type IN ('credit_delivery_payout', 'credit_livre_payout', 'payout_delivery')
-          AND direction = 'credit'
+        SELECT COALESCE(SUM(amount_cents), 0) FROM (
+            SELECT amount_cents FROM wallet_transactions
+            WHERE user_id = $1 AND direction = 'credit'
+              AND transaction_type IN ('credit_livre_payout', 'payout_delivery', 'credit_delivery_payout')
+            UNION ALL
+            SELECT amount_cents FROM disbursement_requests
+            WHERE recipient_user_id = $1 AND status IN ('completed', 'processing')
+              AND reason IN ('courier_withdrawal', 'Reversement livraison automatique')
+        ) t
         "#,
     )
     .bind(user.id)
@@ -2397,12 +2402,17 @@ async fn get_courier_stats(
     // Gains ce mois-ci
     let this_month_earnings: i64 = sqlx::query_scalar(
         r#"
-        SELECT COALESCE(SUM(amount_cents), 0)
-        FROM wallet_transactions
-        WHERE user_id = $1
-          AND transaction_type IN ('credit_delivery_payout', 'credit_livre_payout', 'payout_delivery')
-          AND direction = 'credit'
-          AND created_at >= date_trunc('month', NOW())
+        SELECT COALESCE(SUM(amount_cents), 0) FROM (
+            SELECT amount_cents FROM wallet_transactions
+            WHERE user_id = $1 AND direction = 'credit'
+              AND transaction_type IN ('credit_livre_payout', 'payout_delivery', 'credit_delivery_payout')
+              AND created_at >= date_trunc('month', NOW())
+            UNION ALL
+            SELECT amount_cents FROM disbursement_requests
+            WHERE recipient_user_id = $1 AND status IN ('completed', 'processing')
+              AND reason IN ('courier_withdrawal', 'Reversement livraison automatique')
+              AND created_at >= date_trunc('month', NOW())
+        ) t
         "#,
     )
     .bind(user.id)
@@ -2418,6 +2428,22 @@ async fn get_courier_stats(
 
     let rating_avg = num_traits::ToPrimitive::to_f64(&courier.rating_average).unwrap_or(0.0);
 
+    // Temps moyen de livraison (minutes) sur les 30 derniers jours
+    let avg_delivery_time_min: f64 = sqlx::query_scalar::<_, Option<f64>>(
+        r#"
+        SELECT AVG(EXTRACT(EPOCH FROM (updated_at - requested_at)) / 60.0)
+        FROM deliveries
+        WHERE courier_id = $1
+          AND status IN ('completed', 'delivered')
+          AND requested_at >= NOW() - INTERVAL '30 days'
+        "#,
+    )
+    .bind(courier.id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(None)
+    .unwrap_or(0.0);
+
     Ok(Json(json!({
         "success": true,
         "data": {
@@ -2425,8 +2451,12 @@ async fn get_courier_stats(
             "completedDeliveries": stats.completed,
             "cancelledDeliveries": stats.cancelled,
             "successRate": (success_rate * 10.0).round() / 10.0,
+            // Noms alignés avec CourierDashboardScreen.tsx
+            "totalEarnings": total_earnings,
+            "currentMonthEarnings": this_month_earnings,
             "totalEarningsCents": total_earnings,
             "thisMonthEarningsCents": this_month_earnings,
+            "avgDeliveryTime": (avg_delivery_time_min * 10.0).round() / 10.0,
             "averageRating": (rating_avg * 10.0).round() / 10.0,
             "ratingCount": courier.rating_count,
             "is_courier": true,

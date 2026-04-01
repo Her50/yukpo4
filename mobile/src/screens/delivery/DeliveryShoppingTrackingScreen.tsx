@@ -236,7 +236,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
             const status = delivery?.status;
 
             // Si le coursier n'a pas encore récupéré, aller au pickup
-            if (status === 'assigned' || status === 'awaiting_courier' || status === 'en_route_pickup') {
+            if (status === 'assigned' || status === 'awaiting_courier' || status === 'awaiting_courier_confirmation' || status === 'en_route_pickup') {
                 // Essayer d'utiliser la position GPS actuelle du coursier comme origine
                 try {
                     const { status: permissionStatus } = await Location.requestForegroundPermissionsAsync();
@@ -407,6 +407,7 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
         switch (status) {
             case 'assigned':
             case 'awaiting_courier':
+            case 'awaiting_courier_confirmation':
                 return [{ label: 'En route vers départ', status: 'en_route_pickup', icon: '🚚' }];
             case 'en_route_pickup':
                 return [{ label: 'Arrivé au départ', status: 'shopping_pending', icon: '📍' }];
