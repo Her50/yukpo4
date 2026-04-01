@@ -1,10 +1,10 @@
 steps:
-  # Build the Docker image (tag latest uniquement, compatible manuel et trigger)
+  # Build the Docker image depuis backend/ avec Dockerfile standard
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
       - '-f'
-      - 'backend/Dockerfile.build'
+      - 'backend/Dockerfile'
       - '-t'
       - 'gcr.io/$PROJECT_ID/yukpo-backend:latest'
       - 'backend'

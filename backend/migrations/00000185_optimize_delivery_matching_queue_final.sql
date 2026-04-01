@@ -37,7 +37,7 @@ WHERE status IN ('queued', 'searching');
 -- ✅ NOUVEAU: Index pour accélérer les mises à jour de status
 CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_status_updated
 ON delivery_matching_queue(status, updated_at DESC)
-WHERE status IN ('queued', 'searching', 'processing');
+WHERE status IN ('queued', 'searching');
 
 -- Commentaire
 COMMENT ON INDEX idx_delivery_matching_queue_ready_optimized IS 

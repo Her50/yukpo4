@@ -32,7 +32,7 @@ WHERE status IN ('queued', 'searching');
 -- ✅ NOUVEAU: Index pour accélérer les mises à jour de status
 CREATE INDEX IF NOT EXISTS idx_delivery_matching_queue_status_updated
 ON delivery_matching_queue(status, updated_at DESC)
-WHERE status IN ('queued', 'searching', 'processing');
+WHERE status IN ('queued', 'searching');
 
 COMMENT ON INDEX idx_delivery_matching_queue_ready_optimized IS 
 'Index partiel optimisé pour la requête de sélection des jobs prêts (status IN queued/searching) - optimise ORDER BY priority, next_attempt_at';
@@ -53,7 +53,7 @@ WHERE status = 'pending' AND auto_confirm_after_seconds IS NOT NULL;
 
 -- ✅ NOUVEAU: Index pour accélérer les mises à jour de status
 CREATE INDEX IF NOT EXISTS idx_delivery_proximity_suggestions_status_updated
-ON delivery_proximity_suggestions(status, updated_at DESC)
+ON delivery_proximity_suggestions(status, created_at DESC)
 WHERE status IN ('pending', 'confirmed', 'auto_confirmed');
 
 COMMENT ON INDEX idx_delivery_proximity_suggestions_auto_confirm_optimized IS 
