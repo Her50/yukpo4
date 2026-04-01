@@ -25,7 +25,7 @@ WHERE status = 'pending' AND auto_confirm_after_seconds IS NOT NULL;
 
 -- ✅ NOUVEAU: Index pour accélérer les mises à jour de status
 CREATE INDEX IF NOT EXISTS idx_delivery_proximity_suggestions_status_updated
-ON delivery_proximity_suggestions(status, updated_at DESC)
+ON delivery_proximity_suggestions(status, created_at DESC)
 WHERE status IN ('pending', 'confirmed', 'auto_confirmed');
 
 -- ✅ Analyser la table pour mettre à jour les statistiques du planificateur
