@@ -21754,3 +21754,11 @@ pub async fn ensure_taxi_rides_tables(pool: &PgPool) -> Result<(), sqlx::Error> 
     info!("✅ Tables taxi_rides + commissions_yukpo + vue v_revenus_yukpo OK");
     Ok(())
 }
+
+/// Documents administratifs partenaires — colonnes rccm + numero_contribuable sur delivery_partners.
+pub async fn ensure_partner_admin_docs(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let migration_sql = include_str!("../../migrations/20260401_partner_admin_docs.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    info!("✅ Colonnes delivery_partners.rccm + numero_contribuable OK");
+    Ok(())
+}

@@ -653,7 +653,7 @@ pub async fn broadcast_commande_librairies(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<BroadcastCommandeRequest>,
-) -> AppResult<impl IntoResponse> {
+) -> AppResult<axum::response::Response> {
     info!(
         "[broadcast_commande_librairies] User: {}, Commande: {}",
         user_id, payload.commande_id
@@ -857,7 +857,7 @@ pub async fn broadcast_commande_librairies(
             "timeout_at": timeout_at.to_rfc3339(),
             "delai_validation_s": delai_s,
             "note": "Si YukpoLibrairie ne valide pas dans le délai, la commande sera automatiquement diffusée aux librairies proches."
-        })));
+        })).into_response());
     }
 
     // ====================================================================
@@ -873,6 +873,7 @@ pub async fn broadcast_commande_librairies(
         payload.rayon_recherche_km,
     )
     .await
+    .map(|r| r.into_response())
 }
 
 /// Broadcast interne vers les librairies géolocalisées proches.

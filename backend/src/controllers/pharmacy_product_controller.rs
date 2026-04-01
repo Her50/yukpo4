@@ -14,6 +14,7 @@ use log::info;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sqlx::Row;
 use std::collections::HashMap;
 use std::sync::Arc;
 

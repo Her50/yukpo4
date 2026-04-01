@@ -916,6 +916,22 @@ pub async fn register_user(
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='delivery_partners' AND column_name='numero_contribuable') THEN
                     ALTER TABLE delivery_partners ADD COLUMN numero_contribuable TEXT;
                 END IF;
+                -- ✅ NOUVEAU: Colonnes résultats Vision AI RCCM/NIU
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='delivery_partners' AND column_name='ai_score') THEN
+                    ALTER TABLE delivery_partners ADD COLUMN ai_score INTEGER;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='delivery_partners' AND column_name='ai_decision') THEN
+                    ALTER TABLE delivery_partners ADD COLUMN ai_decision TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='delivery_partners' AND column_name='ai_extracted_id') THEN
+                    ALTER TABLE delivery_partners ADD COLUMN ai_extracted_id TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='delivery_partners' AND column_name='ai_extracted_name') THEN
+                    ALTER TABLE delivery_partners ADD COLUMN ai_extracted_name TEXT;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='delivery_partners' AND column_name='ai_details') THEN
+                    ALTER TABLE delivery_partners ADD COLUMN ai_details TEXT;
+                END IF;
             END
             $$;
             "#

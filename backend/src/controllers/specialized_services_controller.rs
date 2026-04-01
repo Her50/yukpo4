@@ -9134,7 +9134,7 @@ pub async fn generate_recurring_instances(
     );
 
     // Générer des instances pour les 30 prochains jours pour tous les trajets récurrents actifs
-    let rows_created: i64 = sqlx::query_scalar(
+    let rows_created: i64 = sqlx::query(
         r#"
         WITH recurring AS (
             SELECT
