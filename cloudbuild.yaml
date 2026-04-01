@@ -1,0 +1,42 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'backend/Dockerfile.build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/yukpo-backend:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/yukpo-backend:latest'
+      - 'backend'
+    timeout: '1800s'
+
+  # Push to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/yukpo-backend:$COMMIT_SHA']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/yukpo-backend:latest']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'yukpo-backend'
+      - '--image=gcr.io/$PROJECT_ID/yukpo-backend:$COMMIT_SHA'
+      - '--region=europe-west1'
+      - '--platform=managed'
+      - '--quiet'
+
+images:
+  - 'gcr.io/$PROJECT_ID/yukpo-backend:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/yukpo-backend:latest'
+
+timeout: '2400s'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
