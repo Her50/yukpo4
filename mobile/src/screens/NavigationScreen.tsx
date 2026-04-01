@@ -1021,7 +1021,7 @@ const NavigationScreen: React.FC = () => {
                 if (isTransitOrBike && isModeUnavailable) {
                     Alert.alert(
                         t('navigation.modeUnavailable', { mode: modeLabel }),
-                        `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || `Le mode ${modeLabel} n'est pas disponible dans cette région.`}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}\n\nErreur: ${errMsg}`,'
+                        `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || "Le mode " + modeLabel + " n'est pas disponible dans cette région."}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}\n\nErreur: ${errMsg}`,
                         [
                             { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
                             { text: `🚶 ${t('navigation.walking')}`, onPress: () => { setTravelMode('walking'); setTimeout(() => searchRoutesRef.current(), 200); } },
@@ -1083,7 +1083,7 @@ const NavigationScreen: React.FC = () => {
                 Alert.alert(
                     t('navigation.modeUnavailable', { mode: modeLabel }),
                     isTransitOrBike
-                        ? `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || `Le mode ${modeLabel} n'est pas disponible dans cette région.`}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}`'
+                        ? `${t('navigation.modeUnavailableMsg', { mode: modeLabel }) || "Le mode " + modeLabel + " n'est pas disponible dans cette région."}\n\n${t('navigation.transitBikeUnavailable') || 'Les transports en commun et les itinéraires à vélo ne sont disponibles que dans certaines zones. Essayez la voiture ou la marche.'}`
                         : t('navigation.modeUnavailableMsg', { mode: modeLabel }),
                     [
                         { text: `🚗 ${t('navigation.car')}`, onPress: () => { setTravelMode('driving'); setTimeout(() => searchRoutesRef.current(), 200); } },
