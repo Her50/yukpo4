@@ -1,13 +1,13 @@
 steps:
-  # Build the Docker image depuis backend/ avec Dockerfile standard
+  # Build depuis la racine du repo (Dockerfile.build utilise COPY backend/... comme contexte)
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
       - '-f'
-      - 'backend/Dockerfile'
+      - 'Dockerfile.build'
       - '-t'
       - 'gcr.io/$PROJECT_ID/yukpo-backend:latest'
-      - 'backend'
+      - '.'
     timeout: '1800s'
 
   # Push to Container Registry
