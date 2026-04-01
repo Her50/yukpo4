@@ -1077,6 +1077,60 @@ pub async fn ensure_live_streaming_tables(pool: &PgPool) -> Result<(), sqlx::Err
         }
     }
 
+    // ✅ FIX 2026-04-01: L'ancien schéma (00001014) n'a pas de contrainte UNIQUE sur
+    // live_session_id, donc "ON CONFLICT (live_session_id) DO NOTHING" échoue.
+    // Ajouter la contrainte uniquement si elle n'existe pas déjà (ni PK ni UNIQUE).
+    let unique_exists: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.constraint_column_usage ccu
+              ON tc.constraint_name = ccu.constraint_name
+             AND tc.table_schema = ccu.table_schema
+            WHERE tc.table_schema = 'public'
+              AND tc.table_name = 'live_session_analytics'
+              AND ccu.column_name = 'live_session_id'
+              AND tc.constraint_type IN ('PRIMARY KEY', 'UNIQUE')
+        )
+        "#,
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(true); // En cas d'erreur, ne pas tenter l'ALTER
+
+    if !unique_exists {
+        // Supprimer les doublons éventuels (vieux schéma sans contrainte UNIQUE)
+        // avant d'ajouter la contrainte
+        if let Err(e) = sqlx::query(
+            r#"
+            DELETE FROM live_session_analytics a
+            USING live_session_analytics b
+            WHERE a.ctid > b.ctid
+              AND a.live_session_id = b.live_session_id
+            "#,
+        )
+        .execute(pool)
+        .await
+        {
+            log::warn!("[auto_migrate] live_session_analytics dedup skipped: {}", e);
+        }
+
+        if let Err(e) = sqlx::query(
+            "ALTER TABLE live_session_analytics ADD CONSTRAINT unq_live_session_analytics_session_id UNIQUE (live_session_id)"
+        )
+        .execute(pool)
+        .await
+        {
+            log::warn!(
+                "[auto_migrate] live_session_analytics UNIQUE(live_session_id) skipped: {}",
+                e
+            );
+        } else {
+            log::info!("[auto_migrate] live_session_analytics: contrainte UNIQUE(live_session_id) ajoutée");
+        }
+    }
+
     sqlx::query(
         "CREATE INDEX IF NOT EXISTS idx_live_session_analytics_last_synced ON live_session_analytics(last_synced_at)",
     )
