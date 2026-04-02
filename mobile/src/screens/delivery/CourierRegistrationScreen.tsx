@@ -952,9 +952,9 @@ const CourierRegistrationScreen: React.FC = () => {
             <SafeNativeView style={styles.container}>
                 <View style={styles.statusContainer}>
                     <SafeIcon name="clock" size={64} color={modernColors.warning} />
-                    <Text style={styles.statusTitle}>Candidature en cours d'examen</Text>'
+                    <Text style={styles.statusTitle}>Candidature en cours d'examen</Text>
                     <Text style={styles.statusText}>
-                        Votre candidature a été soumise avec succès. Notre équipe l'examinera sous peu. Vous recevrez une notification une fois la décision prise.'
+                        Votre candidature a été soumise avec succès. Notre équipe l'examinera sous peu. Vous recevrez une notification une fois la décision prise.
                     </Text>
                     <NativeButton
                         title="Retour"
@@ -973,7 +973,7 @@ const CourierRegistrationScreen: React.FC = () => {
                     <SafeIcon name="x-circle" size={64} color={modernColors.error} />
                     <Text style={styles.statusTitle}>Candidature refusée</Text>
                     <Text style={styles.statusText}>
-                        Votre candidature n"a pas été approuvée. Veuillez contacter le support pour plus d'informations."
+                        Votre candidature n'a pas été approuvée. Veuillez contacter le support pour plus d'informations.
                     </Text>
                     <NativeButton
                         title="Retour"
@@ -1014,9 +1014,9 @@ const CourierRegistrationScreen: React.FC = () => {
                     </Text>
                 </View>
 
-                {/* ✅ REFONDU: Nature de l'activité (obligatoire) - Disposition améliorée pour éviter les retours à la ligne */}'
+                {/* ✅ REFONDU: Nature de l'activité (obligatoire) - Disposition améliorée pour éviter les retours à la ligne */}
                 <NativeCard style={styles.card}>
-                    <Text style={styles.sectionTitle}>Nature de l'activité *</Text>'
+                    <Text style={styles.sectionTitle}>Nature de l'activité *</Text>
                     <Text style={styles.helperText}>
                         Sélectionnez le type de service que vous souhaitez offrir.
                     </Text>
@@ -1106,7 +1106,7 @@ const CourierRegistrationScreen: React.FC = () => {
                         />
                     </View>
                     <View style={styles.inputContainer}>
-                        <Text style={styles.inputLabel}>Numéro de pièce d'identité *</Text>'
+                        <Text style={styles.inputLabel}>Numéro de pièce d'identité *</Text>
                         <TextInput
                             style={styles.input}
                             placeholder="Entrez votre numéro de pièce d'identité"
@@ -1239,7 +1239,7 @@ const CourierRegistrationScreen: React.FC = () => {
                                 value={licensePlate}
                                 onChangeText={setLicensePlate}
                             />
-                            {/* ✅ NOUVEAU 2026-01-04: Champ pour télécharger l'image du moyen de transport */}'
+                            {/* ✅ NOUVEAU 2026-01-04: Champ pour télécharger l'image du moyen de transport */}
                             <View style={styles.inputContainer}>
                                 <Text style={styles.inputLabel}>Photo du moyen de transport</Text>
                                 <View style={styles.documentRow}>
@@ -1282,7 +1282,7 @@ const CourierRegistrationScreen: React.FC = () => {
                                     Aucun partenaire disponible.
                                 </Text>
                                 <Text style={styles.helperText}>
-                                    Veuillez contacter l'administrateur ou réessayez plus tard.'
+                                    Veuillez contacter l'administrateur ou réessayez plus tard.
                                 </Text>
                                 <TouchableOpacity
                                     style={styles.refreshButton}
@@ -1344,7 +1344,7 @@ const CourierRegistrationScreen: React.FC = () => {
                     <Text style={styles.sectionTitle}>Documents</Text>
                     <View style={styles.documentRow}>
                         <View style={styles.documentInfo}>
-                            <Text style={styles.documentLabel}>Pièce d'identité *</Text>'
+                            <Text style={styles.documentLabel}>Pièce d'identité *</Text>
                             {idDocument && <Text style={styles.documentName}>{idDocument.name}</Text>}
                         </View>
                         <View style={styles.documentButtons}>
@@ -1439,7 +1439,7 @@ const CourierRegistrationScreen: React.FC = () => {
                         <View style={styles.documentInfo}>
                             <Text style={styles.documentLabel}>Plan de localisation *</Text>
                             <Text style={styles.helperText}>
-                                Indiquez votre zone d'intervention principale sur une carte'
+                                Indiquez votre zone d'intervention principale sur une carte
                             </Text>
                             {locationPlan && <Text style={styles.documentName}>{locationPlan.name}</Text>}
                         </View>
@@ -1497,7 +1497,7 @@ const CourierRegistrationScreen: React.FC = () => {
                 <NativeCard style={styles.card}>
                     <Text style={styles.sectionTitle}>Comptes de paiement</Text>
                     <Text style={styles.helperText}>
-                        Renseignez votre compte pour recevoir vos paiements de livraison. L"argent transite toujours dans le compte de l'application avant reversement."
+                        Renseignez votre compte pour recevoir vos paiements de livraison. L'argent transite toujours dans le compte de l'application avant reversement.
                     </Text>
                     <PaymentMethodSelector
                         onPaymentChange={setPaymentMethod}

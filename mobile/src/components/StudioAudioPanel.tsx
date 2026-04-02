@@ -270,7 +270,7 @@ export const StudioAudioPanel: React.FC<StudioAudioPanelProps> = ({
             });
             Alert.alert('Profil vocal', t('studioAudioPanel.sampleImporteAssociezleAVotreProfil'));
         } catch (error: any) {
-            Alert.alert('Profil vocal', error?.message || "Impossible d'importer ce sample audio.");
+            Alert.alert('Profil vocal', error?.message || 'Impossible d’importer ce sample audio.');
         } finally {
             setUploadingSample(false);
         }

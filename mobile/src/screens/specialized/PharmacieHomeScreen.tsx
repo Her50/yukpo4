@@ -11,7 +11,9 @@ import {
     Animated,
     FlatList,
     Image,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -116,7 +118,7 @@ const PharmacieHomeScreen: React.FC = () => {
         () => [
             { id: 'proche', label: t('pharmacieHome.chipNearMe'), icon: 'map-pin', distance: 10 },
             { id: 'disponible', label: t('pharmacieHome.chipAvailable'), icon: 'check-circle', available: true },
-            { id: 'garde', label: t('pharmacieHome.onDutyOnly', 'De garde'), icon: 'shield-check' },
+            { id: 'garde', label: t('pharmacieHome.onDutyOnly') || 'De garde', icon: 'shield-check' },
             { id: 'prix_bas', label: t('pharmacieHomeScreen.prixBas'), icon: 'tag' },
         ],
         [t]
@@ -660,7 +662,7 @@ const PharmacieHomeScreen: React.FC = () => {
                         <View style={styles.onDutyBadge}>
                             <SafeIcon name="shield-check" size={14} color="#FFFFFF" type="lucide" />
                             <Text style={styles.onDutyBadgeText}>
-                                {t('pharmacieHome.onDutyOnly', 'De garde seulement')}
+                                {t('pharmacieHome.onDutyOnly') || 'De garde seulement'}
                             </Text>
                         </View>
                     )}
@@ -804,23 +806,24 @@ const PharmacieHomeScreen: React.FC = () => {
                                 {
                                     height: aiChatHeight.interpolate({
                                         inputRange: [0, 1],
-                                        outputRange: [0, 500], // ✅ Animation de 0 à 500px
+                                        outputRange: [0, 420],
                                     }),
                                     opacity: aiChatHeight, // ✅ Fade in/out
                                     overflow: 'hidden', // ✅ Masquer le contenu pendant l'animation
                                 }
                             ]}
                         >
-                            <KeyboardAwareScreen
-                                style={styles.aiChatScrollView}
-                                contentContainerStyle={styles.aiChatScrollContent}
-                                extraScrollHeight={220}
-                                keyboardShouldPersistTaps="handled"
-                                keyboardDismissMode="interactive"
-                                enableOnAndroid={true}
-                                enableAutomaticScroll={true}
-                                showsVerticalScrollIndicator={true}
+                            <KeyboardAvoidingView
+                                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                                style={{ flex: 1 }}
                             >
+                                <ScrollView
+                                    style={styles.aiChatScrollView}
+                                    contentContainerStyle={styles.aiChatScrollContent}
+                                    keyboardShouldPersistTaps="handled"
+                                    showsVerticalScrollIndicator={true}
+                                    keyboardDismissMode="interactive"
+                                >
                                 {/* Bouton analyse d'image */}
                                 <TouchableOpacity
                                     style={[styles.aiImageButton, styles.aiImageButtonPriority]}
@@ -914,6 +917,7 @@ const PharmacieHomeScreen: React.FC = () => {
                                     </View>
                                 )}
 
+                                </ScrollView>
                                 <View style={styles.aiInputWrapper}>
                                     <View style={styles.aiInputContainer}>
                                         <TextInput
@@ -943,7 +947,7 @@ const PharmacieHomeScreen: React.FC = () => {
                                         </TouchableOpacity>
                                     </View>
                                 </View>
-                            </KeyboardAwareScreen>
+                            </KeyboardAvoidingView>
                         </Animated.View>
                     )}
                 </View>
@@ -1310,7 +1314,7 @@ const FiltersModal: React.FC<FiltersModalProps> = ({
                                 <View style={styles.switchLabel}>
                                     <SafeIcon name="shield-check" size={20} color="#2563EB" type="lucide" />
                                     <Text style={styles.switchLabelText}>
-                                        {t('pharmacieHome.onDutyOnly', 'Pharmacies de garde uniquement')}
+                                        {t('pharmacieHome.onDutyOnly') || 'Pharmacies de garde uniquement'}
                                     </Text>
                                 </View>
                                 <TouchableOpacity
@@ -2580,7 +2584,7 @@ const styles = StyleSheet.create({
     },
     aiChatScrollContent: {
         padding: 16,
-        paddingBottom: 110, // zone de securite pour les boutons flottants globaux
+        paddingBottom: 16,
         gap: 12,
     },
     aiSuggestionsContainer: {

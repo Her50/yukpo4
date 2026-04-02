@@ -154,7 +154,7 @@ export const useFeatureFlags = () => {
     const ctx = useContext(FeatureFlagContext);
     if (!ctx) {
         throw new Error(
-            "useFeatureFlags doit être utilisé à l'intérieur de FeatureFlagProvider",
+            'useFeatureFlags doit être utilisé à l’intérieur de FeatureFlagProvider',
         );
     }
     return ctx;

@@ -537,7 +537,7 @@ Chemise business,45,EUR,Chemise homme coupe slim 100% coton,M,Blanc,Coton,Hugo B
 
     chaussure: `Nom,Prix,Devise,Description,Pointure,Couleur,Marque
 Baskets sport,35000,XAF,Chaussures de running haute performance,42,Noire,Adidas
-Sandales,15000,XAF,Sandales d'été confortables et légères,38,Marron,Clarks'
+Sandales,15000,XAF,Sandales d'été confortables et légères,38,Marron,Clarks
 Chaussures ville cuir,85,USD,Souliers cuir véritable homme élégant,43,Marron,Clarks`,
 
     electromenager: `Nom,Prix,Devise,Description,Type,Marque,Modèle,État,Garantie
@@ -586,7 +586,7 @@ Barre de son LG,95,EUR,Barre son Dolby Atmos wireless,LG,SP9YA,Barre de son,N/A,
 Mathématiques Terminale C,8500,XAF,Manuel complet avec exercices corrigés et cours détaillés,Livre scolaire,Secondaire,Mathématiques,Collection CIAM,Edicef,978-2-7531-0584-3,2023,Neuf
 Cahier grand format,500,XAF,Cahier 200 pages grands carreaux de qualité supérieure,Cahier,Primaire,Tous,N/A,Oxford,N/A,2024,Neuf
 Pack stylos BIC,2000,XAF,Lot de 10 stylos à bille bleus et noirs longue durée,Stylos,Tous,Tous,N/A,BIC,N/A,2024,Neuf
-Histoire du Cameroun,12000,XAF,Ouvrage de référence sur l'histoire précoloniale à nos jours,Livre,Université,Histoire,Prof. Mveng,Clé,978-2-35191-045-7,2022,Bon état'
+Histoire du Cameroun,12000,XAF,Ouvrage de référence sur l'histoire précoloniale à nos jours,Livre,Université,Histoire,Prof. Mveng,Clé,978-2-35191-045-7,2022,Bon état
 Roman Le Vieux Nègre,6,EUR,Roman classique littérature africaine,Roman,Tous,Français,Ferdinand Oyono,Pocket,978-2-266-14563-2,2006,Bon état`,
 
     pieces_auto: `Nom,Prix,Devise,Description,Type,Marque,Référence,Compatibilité,État
@@ -603,16 +603,16 @@ Moteur électrique 5.5kW,285000,XAF,Moteur asynchrone triphasé rendement,Moteur
 Pompe centrifuge,95,USD,Pompe eau centrifuge débit 50m³/h,Pompe,Grundfos,CR 5-11,Irrigation|Industrie,Fonte/Inox`,
 
     agroalimentaire: `Nom,Prix,Devise,Description,Type,Marque,Format,Origine,Certification,Conservation
-Riz parfumé Royal 5kg,6500,XAF,Riz parfumé thaï long grain qualité premium,Riz et céréales,Uncle Ben's,5kg,Thaïlande,Sans OGM,Température ambiante'
-Huile d'arachide pure 5L,8500,XAF,Huile arachide raffinée 100% naturelle cuisine,Huile alimentaire,Dinor,5L,Cameroun,Locale,Au sec'
+Riz parfumé Royal 5kg,6500,XAF,Riz parfumé thaï long grain qualité premium,Riz et céréales,Uncle Ben's,5kg,Thaïlande,Sans OGM,Température ambiante
+Huile d'arachide pure 5L,8500,XAF,Huile arachide raffinée 100% naturelle cuisine,Huile alimentaire,Dinor,5L,Cameroun,Locale,Au sec
 Spaghetti pâtes italiennes 500g,1200,XAF,Pâtes de semoule blé dur cuisson parfaite,Pâtes alimentaires,Barilla,500g,Italie,Bio,Température ambiante
 Farine de blé T55 1kg,850,XAF,Farine blé qualité supérieure pâtisserie pain,Farine,Dovv,1kg,France,Agriculture biologique,Au sec
 Sauce tomate concentrée 210g,450,XAF,Concentré tomate double qualité cuisines sauces,Sauces et condiments,Heinz,210g,Europe,Halal,Réfrigéré après ouverture
-Café soluble premium 200g,3500,XAF,Café soluble arôme intense sans sucre,Café et thé,Nescafé,200g,Brésil,Commerce équitable,À l'abri de la lumière'
+Café soluble premium 200g,3500,XAF,Café soluble arôme intense sans sucre,Café et thé,Nescafé,200g,Brésil,Commerce équitable,À l'abri de la lumière
 Lait en poudre instantané 400g,4200,XAF,Lait poudre entier enrichi vitamines minéraux,Produits laitiers transformés,Nido,400g,Europe,Sans lactose,Au frais
-Sardines à l"huile 125g,650,XAF,Sardines entières huile végétale qualité,Conserves,Pêcheur d'Armor,125g,Maroc,Halal,Température ambiante"
+Sardines à l'huile 125g,650,XAF,Sardines entières huile végétale qualité,Conserves,Pêcheur d'Armor,125g,Maroc,Halal,Température ambiante
 Sucre cristallisé blanc 1kg,1200,XAF,Sucre cristal blanc pur canne raffiné,Sucre et édulcorants,Sosucam,1kg,Cameroun,Locale,Au sec
-Bouillon cube poulet 100g,500,XAF,Cubes bouillon saveur poulet cuisine africaine,Condiments,Maggi,100g,Afrique de l'Ouest,Halal,Température ambiante`,'
+Bouillon cube poulet 100g,500,XAF,Cubes bouillon saveur poulet cuisine africaine,Condiments,Maggi,100g,Afrique de l'Ouest,Halal,Température ambiante`,
 
     jouets_enfants: `Nom,Prix,Devise,Description,Type,Âge recommandé,Marque,Matériel,Norme
 Puzzle éducatif 100 pièces,3500,XAF,Puzzle animaux Afrique éducatif,Éducatif,6-10 ans,Ravensburger,Carton,CE
@@ -643,7 +643,7 @@ Pharmacie Centrale,0,XAF,Pharmacie de garde disponible 24h/24 pour urgences méd
 Pharmacie du Marché,0,XAF,Pharmacie de proximité avec conseil pharmaceutique gratuit,Normale,08:00,20:00,Lundi-Samedi,+237 6XX XX XX XX,Délivrance|Conseil`,
 
     hopital_clinique: `Nom,Prix,Devise,Description,Type,Banque de sang,Prestations médicales,Planning,Urgences 24h/24,RDV en ligne
-Hôpital Général,0,XAF,Établissement public avec service d'urgences et banque de sang,Hôpital,Oui,Chirurgie|Consultation générale|Radiologie|Laboratoire,Lun-Ven 08:00-18:00,Oui,Non'
+Hôpital Général,0,XAF,Établissement public avec service d'urgences et banque de sang,Hôpital,Oui,Chirurgie|Consultation générale|Radiologie|Laboratoire,Lun-Ven 08:00-18:00,Oui,Non
 Clinique Saint-Joseph,0,XAF,Clinique privée spécialisée avec RDV en ligne,Clinique,Non,Gynécologie|Ophtalmologie|Pédiatrie,Lun-Sam 09:00-19:00,Non,Oui`,
 
     demenagement: `Nom,Prix,Devise,Description,Type,Volume m³,Type véhicule,Distance km,Nb déménageurs,Assurance,Manutention,Montage/Démontage,Emballage,Garde-meuble,Débarras
@@ -653,8 +653,8 @@ Trans-Afrique Déménagement,150000,XAF,Déménagement international avec assura
     cosmetique_parfum: `Nom,Prix,Devise,Description,Type,Marque,Volume,Concentration,Peau,Âge,Ingrédients,Origine
 Crème Hydratante Nivea,15000,XAF,Crème hydratante pour peau normale,Soin visage,Nivea,50ml,24h,Toutes,18+,Vitamine E,France
 Parfum Chanel N°5,85000,XAF,Parfum féminin iconique aux notes florales,Parfum,Chanel,50ml,EDP,Femme,18+,Rose jasmin,France
-Huile d"Argan Bio,25000,XAF,Huile d'argan pure 100% bio pour cheveux et corps,Soin corps,Argania,100ml,100%,Toutes,16+,Argan pur,Maroc"
-Rouge à Lèvres MAC,18000,XAF,Rouge à lèvres mat longue tenue,Maquillage,MAC,3g,Mat,Femme,16+,Cire d'abeille,Canada`,'
+Huile d'Argan Bio,25000,XAF,Huile d'argan pure 100% bio pour cheveux et corps,Soin corps,Argania,100ml,100%,Toutes,16+,Argan pur,Maroc
+Rouge à Lèvres MAC,18000,XAF,Rouge à lèvres mat longue tenue,Maquillage,MAC,3g,Mat,Femme,16+,Cire d'abeille,Canada`,
 
     bijoux: `Nom,Prix,Devise,Description,Type,Matière,Poids,Carat,Taille,Style,Origine,Certificat
 Collier Or 18 carats,450000,XAF,Collier en or jaune 18 carats avec pendentif,Collier,Or,15g,18,16 pouces,Classique,Italie,Oui
@@ -666,7 +666,7 @@ Montre Rolex Submariner,25000,USD,Montre de plongée automatique étanche,Montre
 Mèches Brésiliennes 50cm,85000,XAF,Mèches naturelles brésiliennes de qualité premium,Mèches,50cm,Châtain,Brésilienne,Clip,Remy Hair,Brésil,Shampooing doux,6 mois,Naturel
 Extensions Indiennes 60cm,120000,XAF,Extensions de cheveux indiens remy 100% naturels,Extensions,60cm,Noir,Indienne,Tissé,Indian Hair,Inde,Produits sans sulfate,8 mois,Naturel
 Perruque Synthétique,45000,XAF,Perruque synthétique résistante à la chaleur,Perruque,40cm,Blond,Synthétique,Clip,Beauty World,Chine,Shampooing froid,3 mois,Synthétique
-Accessoires Coiffure,15000,XAF,Lot d'accessoires pour coiffure professionnelle,Accessoires,Variable,Variable,Variable,Variable,Pro Style,Chine,Nettoyage régulier,1 an,Variable`,'
+Accessoires Coiffure,15000,XAF,Lot d'accessoires pour coiffure professionnelle,Accessoires,Variable,Variable,Variable,Variable,Pro Style,Chine,Nettoyage régulier,1 an,Variable`,
 
     autre: `Nom,Prix,Devise,Description
 Produit 1,10000,XAF,Description détaillée du produit 1 avec ses caractéristiques
@@ -690,7 +690,7 @@ Balafon professionnel,250000,XAF,Balafon 21 lames bois de rose avec résonateurs
 
     formation_education: `Nom,Prix,Devise,Description,Type,Niveau,Mode,Matières,Durée,Certification,Horaires
 Formation Développement Web,150000,XAF,Formation complète HTML CSS JavaScript React avec projets,Formation professionnelle,Débutant,Présentiel,HTML|CSS|JavaScript|React,3 mois,Attestation,Lun-Ven 18:00-21:00
-Cours d'Anglais intensif,75000,XAF,Cours anglais conversation et grammaire tous niveaux,Cours de langue,Intermédiaire,Présentiel,Anglais,2 mois,Certificat Cambridge,Mar-Jeu 17:00-19:00'
+Cours d'Anglais intensif,75000,XAF,Cours anglais conversation et grammaire tous niveaux,Cours de langue,Intermédiaire,Présentiel,Anglais,2 mois,Certificat Cambridge,Mar-Jeu 17:00-19:00
 Soutien scolaire Mathématiques,25000,XAF,Aide aux devoirs et révisions programme officiel,Soutien scolaire,Secondaire,À domicile,Mathématiques,1 mois,Non,Flexible selon élève
 Coaching Business,200000,XAF,Accompagnement création entreprise de A à Z,Coaching professionnel,Professionnel,En ligne,Management|Finance|Marketing,6 mois,Certification coaching,Flexible en ligne`,
 
@@ -2587,7 +2587,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             multiSelect
                         />
 
-                        {/* Équipements de l'hôtel */}'
+                        {/* Équipements de l'hôtel */}
                         <ProductFieldSelector
                             label="Équipements et services"
                             fieldName="equipements"
@@ -2619,7 +2619,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        {/* GPS de l'hôtel */}'
+                        {/* GPS de l'hôtel */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
                             <TouchableOpacity
@@ -2641,7 +2641,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             )}
                             <View style={styles.hintBox}>
                                 <Text style={styles.hintText}>
-                                    💡 La localisation GPS facilite la recherche de l'établissement par les clients'
+                                    💡 La localisation GPS facilite la recherche de l'établissement par les clients
                                 </Text>
                             </View>
                         </View>
@@ -2662,7 +2662,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Point d'arrivée</Text>'
+                                <Text style={styles.fieldLabel}>Point d'arrivée</Text>
                                 <NativeInput
                                     placeholder="Ex: Yaoundé"
                                     value={newProduct.pointArrivee || ''}
@@ -2924,7 +2924,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Précisez les dimensions et l"état pour faciliter l'évaluation par les acheteurs"
+                                💡 Précisez les dimensions et l'état pour faciliter l'évaluation par les acheteurs
                             </Text>
                         </View>
                     </>
@@ -2987,7 +2987,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez de belles photos pour montrer comment votre article s'intègre dans un intérieur'
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez de belles photos pour montrer comment votre article s'intègre dans un intérieur
                             </Text>
                         </View>
                     </>
@@ -3035,7 +3035,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Date d'expiration</Text>'
+                                <Text style={styles.fieldLabel}>Date d'expiration</Text>
                                 <NativeInput
                                     placeholder="JJ/MM/AAAA"
                                     value={newProduct.dateExpiration || ''}
@@ -3053,7 +3053,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Les informations sur l'origine et la certification rassurent les acheteurs sur la qualité'
+                                💡 Les informations sur l'origine et la certification rassurent les acheteurs sur la qualité
                             </Text>
                         </View>
                     </>
@@ -3196,7 +3196,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     </View>
 
                                     <View style={styles.prestationFieldContainerCompact}>
-                                        <Text style={styles.prestationFieldLabelCompact}>Nom de l'offre *</Text>'
+                                        <Text style={styles.prestationFieldLabelCompact}>Nom de l'offre *</Text>
                                         <NativeInput
                                             placeholder="Ex: Installation électrique"
                                             value={prestation.nom}
@@ -3325,7 +3325,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         />
                                     </View>
                                     <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Année d'édition</Text>'
+                                        <Text style={styles.fieldLabel}>Année d'édition</Text>
                                         <NativeInput
                                             placeholder="Ex: 2023"
                                             value={newProduct.anneeEdition || ''}
@@ -3402,10 +3402,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         )}
 
-                        {/* Heures d'ouverture et fermeture sur la même ligne */}'
+                        {/* Heures d'ouverture et fermeture sur la même ligne */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Heure d'ouverture</Text>'
+                                <Text style={styles.fieldLabel}>Heure d'ouverture</Text>
                                 <NativeInput
                                     placeholder="Ex: 08:00"
                                     value={newProduct.heuresOuverture || ''}
@@ -3424,9 +3424,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        {/* Téléphone d'urgence */}'
+                        {/* Téléphone d'urgence */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Téléphone d'urgence</Text>'
+                            <Text style={styles.fieldLabel}>Téléphone d'urgence</Text>
                             <NativeInput
                                 placeholder="Ex: +XXX XXXXXXXXX"
                                 value={newProduct.telephoneUrgence || ''}
@@ -3469,7 +3469,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                 return (
                     <>
-                        {/* Type d'établissement */}'
+                        {/* Type d'établissement */}
                         <ProductFieldSelector
                             label="Type d'établissement médical"
                             fieldName="types"
@@ -3752,7 +3752,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Précisez le format, l'origine et les certifications pour rassurer les acheteurs'
+                                💡 Précisez le format, l'origine et les certifications pour rassurer les acheteurs
                             </Text>
                         </View>
                     </>
@@ -3859,7 +3859,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.checkbox, newProduct.emballageCartons && styles.checkboxChecked]}>
                                     {newProduct.emballageCartons && <SafeIcon name="check" size={16} color="#FFFFFF" />}
                                 </View>
-                                <Text style={styles.checkboxLabel}>📦 Fourniture cartons d'emballage</Text>'
+                                <Text style={styles.checkboxLabel}>📦 Fourniture cartons d'emballage</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -4071,7 +4071,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* Certificat */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Certificat d'authenticité</Text>'
+                            <Text style={styles.fieldLabel}>Certificat d'authenticité</Text>
                             <View style={styles.pickerButtons}>
                                 {['Oui', 'Non'].map((cert) => (
                                     <TouchableOpacity
@@ -4095,7 +4095,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💎 Précisez tous les détails pour rassurer les clients sur l'authenticité et la qualité'
+                                💎 Précisez tous les détails pour rassurer les clients sur l'authenticité et la qualité
                             </Text>
                         </View>
                     </>
@@ -4197,7 +4197,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Entretien et Durée de vie */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Conseils d'entretien</Text>'
+                                <Text style={styles.fieldLabel}>Conseils d'entretien</Text>
                                 <NativeInput
                                     placeholder="Ex: Shampoing doux"
                                     value={newProduct.entretienMech || ''}
@@ -4219,7 +4219,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💇‍♀️ Précisez la qualité, l"origine et l'entretien pour aider vos clientes à faire le bon choix"
+                                💇‍♀️ Précisez la qualité, l'origine et l'entretien pour aider vos clientes à faire le bon choix
                             </Text>
                         </View>
                     </>
@@ -4251,7 +4251,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Compagnie d'assurance</Text>'
+                                <Text style={styles.fieldLabel}>Compagnie d'assurance</Text>
                                 <NativeInput
                                     placeholder="Ex: AXA Assurances"
                                     value={newProduct.compagnieAssurance || ''}
@@ -4744,7 +4744,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Indiquez si vos produits sont bio, sans pesticides, ou issus de l'agriculture locale.'
+                                💡 Indiquez si vos produits sont bio, sans pesticides, ou issus de l'agriculture locale.
                             </Text>
                         </View>
                     </>
@@ -4947,7 +4947,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Précisez si vous fournissez les produits d'entretien et le matériel.'
+                                💡 Précisez si vous fournissez les produits d'entretien et le matériel.
                             </Text>
                         </View>
                     </>
@@ -5373,7 +5373,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Système d'exploitation</Text>'
+                                <Text style={styles.fieldLabel}>Système d'exploitation</Text>
                                 <NativeInput
                                     placeholder="Ex: Windows 11, macOS"
                                     value={newProduct.systemeExploitation || ''}
@@ -5759,7 +5759,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 </View>
             )}
 
-            {/* Boutons d"ajout et d'import */}"
+            {/* Boutons d'ajout et d'import */}
             {!readonly && (
                 <View style={styles.buttonsContainer}>
                     <TouchableOpacity
@@ -5780,7 +5780,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 </View>
             )}
 
-            {/* Modal d'ajout/modification */}'
+            {/* Modal d'ajout/modification */}
             <Modal
                 visible={showAddModal}
                 animationType="slide"

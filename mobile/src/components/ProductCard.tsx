@@ -1672,7 +1672,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   onVideoRelease={onVideoRelease}
                 />
 
-                {/* ✅ SUPPRIMÉ 2026-01-14: Drapeau déplacé après l'adresse textuelle */}'
+                {/* ✅ SUPPRIMÉ 2026-01-14: Drapeau déplacé après l'adresse textuelle */}
                 {/* ✅ SUPPRIMÉ 2026-01-14: Distance déplacée dans topHeaderRow (cliquable) */}
 
                 {isTrending && (
@@ -1893,7 +1893,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
                 {/* ✅ OPTIMISÉ 2026-01-14: Description juste sous le titre pour meilleure hiérarchie */}
                 {/* ✅ CORRIGÉ 2026-01-23: Utiliser UNIQUEMENT productData.description pour éviter confusion avec description du service */}
-                {/* ✅ CORRIGÉ 2026-02-06: Permettre l'affichage de la description sur plus de lignes (4 au lieu de 2) */}'
+                {/* ✅ CORRIGÉ 2026-02-06: Permettre l'affichage de la description sur plus de lignes (4 au lieu de 2) */}
                 {(productData.description || productData.description_produit || product.description || product.description_produit) && (
                   <TouchableOpacity
                     activeOpacity={0.7}
@@ -2245,7 +2245,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* ✅ CORRIGÉ 2026-01-12: Supprimé logique obsolète showChatModal
           Le chat est maintenant géré par le parent via onChatPress
-          Cette logique causait l'erreur "Property 'showChatModal" doesn't exist\""
+          Cette logique causait l'erreur "Property 'showChatModal' doesn't exist"
       */}
 
       {showOrderModal && serviceId && (

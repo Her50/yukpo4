@@ -17,7 +17,6 @@ class NotificationSoundService {
 
     /**
      * Initialise le service audio
-     * iOS: nécessite UIBackgroundModes "audio" dans app.config.js pour staysActiveInBackground
      */
     async initialize(): Promise<void> {
         if (this.isInitialized) {
@@ -25,13 +24,11 @@ class NotificationSoundService {
         }
 
         try {
+            // Configurer le mode audio pour les notifications
             await Audio.setAudioModeAsync({
-                playsInSilentModeIOS: true,       // Son même en mode silencieux iOS
-                staysActiveInBackground: true,     // Actif en arrière-plan (requiert UIBackgroundModes: audio)
-                shouldDuckAndroid: true,           // Baisser autres sons Android
-                allowsRecordingIOS: false,
-                interruptionModeIOS: 1,            // DO_NOT_MIX
-                interruptionModeAndroid: 1,        // DO_NOT_MIX
+                playsInSilentModeIOS: true,
+                staysActiveInBackground: true, // ✅ Activer pour les coursiers
+                shouldDuckAndroid: true,
             });
 
             this.isInitialized = true;
@@ -42,27 +39,10 @@ class NotificationSoundService {
     }
 
     /**
-     * Résout la source sonore pour un type donné.
-     * Tous les types utilisent le même fichier local delivery_alert.mp3.
-     * Pas de fallback réseau — si le fichier est absent, la notification
-     * push système (shouldPlaySound: true) prend le relais.
-     */
-    private getSoundSource(_type: NotificationSoundType): any {
-        try {
-            return require('../../assets/sounds/delivery_alert.mp3');
-        } catch {
-            // Le fichier n'est pas bundlé : retourner null,
-            // la notification push système jouera le son par défaut.
-            console.warn('[NotificationSoundService] ⚠️ delivery_alert.mp3 absent du bundle');
-            return null;
-        }
-    }
-
-    /**
-     * Charge un son de notification depuis le bundle local.
-     * Aucune requête réseau : fonctionne hors-ligne, en poche, à moto.
+     * Charge un son de notification avec fallback en ligne si le fichier local manque
      */
     private async loadSound(type: NotificationSoundType): Promise<Audio.Sound | null> {
+        // Vérifier si le son est déjà chargé
         if (this.sounds.has(type) && this.sounds.get(type)) {
             return this.sounds.get(type)!;
         }
@@ -70,27 +50,37 @@ class NotificationSoundService {
         try {
             await this.initialize();
 
-            const soundSource = this.getSoundSource(type);
-            if (!soundSource) {
-                return null;
+            let soundSource: any;
+
+            try {
+                // Essayer de charger le fichier local d'abord
+                soundSource = require('../../assets/sounds/delivery_alert.mp3');
+            } catch (localError) {
+                // Fallback: utiliser une URL en ligne (son plus court et instantané)
+                console.warn('[NotificationSoundService] ⚠️ Fichier local absent, fallback en ligne');
+                soundSource = {
+                    uri: 'https://actions.google.com/sounds/v1/notifications/notification_simple.ogg'
+                };
             }
 
+            // Créer le son avec volume plus élevé pour la bienvenue
             const { sound } = await Audio.Sound.createAsync(
                 soundSource,
                 {
                     shouldPlay: false,
-                    volume: type === 'ready' ? 0.8 : 0.7,
+                    volume: type === 'ready' ? 0.8 : 0.7, // Volume plus élevé pour bienvenue
                     isLooping: false,
                 },
                 (status) => {
                     if (status.isLoaded && status.didJustFinish) {
+                        // Son terminé, replacer au début pour prochaine utilisation
                         sound.setPositionAsync(0).catch(() => { });
                     }
                 }
             );
 
             this.sounds.set(type, sound);
-            console.log(`[NotificationSoundService] ✅ Son ${type} chargé`);
+            console.log(`[NotificationSoundService] ✅ Son ${type} chargé avec succès`);
             return sound;
         } catch (error) {
             console.error(`[NotificationSoundService] ❌ Erreur chargement son ${type}:`, error);
@@ -339,37 +329,6 @@ class NotificationSoundService {
     }
 
     /**
-     * Génère un message vocal complet pour le coursier en mouvement.
-     * Ajoute les adresses de récupération et de livraison à la fin du message i18n
-     * pour que le coursier sache où aller sans regarder l'écran.
-     */
-    private buildCourierVoiceMessage(
-        eventType: string,
-        details?: { courierName?: string; etaMinutes?: number; distance?: string; itemCount?: number; destination?: string; pickupAddress?: string; deliveryAddress?: string }
-    ): string {
-        const base = this.getDeliveryContextualMessage(eventType, details);
-        const parts: string[] = [base];
-
-        switch (eventType) {
-            case 'new_delivery_available':
-                if (details?.pickupAddress) parts.push(details.pickupAddress + '.');
-                if (details?.deliveryAddress) parts.push(details.deliveryAddress + '.');
-                break;
-            case 'courier_en_route_pickup':
-            case 'courier_arrived_pickup':
-                if (details?.pickupAddress) parts.push(details.pickupAddress + '.');
-                break;
-            case 'courier_picked_up':
-            case 'courier_en_route_delivery':
-            case 'courier_arrived_destination':
-                if (details?.deliveryAddress) parts.push(details.deliveryAddress + '.');
-                break;
-        }
-
-        return parts.join(' ');
-    }
-
-    /**
      * Génère un message vocal contextuel pour un événement de livraison
      * Utilise les traductions i18n dans la langue choisie par l'utilisateur
      */
@@ -424,18 +383,16 @@ class NotificationSoundService {
 
     /**
      * Notification vocale contextuelle pour les événements de livraison.
-     * Joue un son + parole TTS avec adresses + notification push locale.
-     * Le message TTS inclut pickupAddress et deliveryAddress pour guider
-     * le coursier sans qu'il ait besoin de regarder l'écran.
+     * Joue un son + parole TTS + notification push locale.
+     * Fonctionne même en arrière-plan grâce à la notification push locale.
      */
     async notifyDeliveryEvent(
         eventType: string,
-        details?: { courierName?: string; etaMinutes?: number; distance?: string; itemCount?: number; destination?: string; pickupAddress?: string; deliveryAddress?: string },
+        details?: { courierName?: string; etaMinutes?: number; distance?: string; itemCount?: number; destination?: string },
         options?: { playSound?: boolean; speak?: boolean; pushNotification?: boolean }
     ): Promise<void> {
         const opts = { playSound: true, speak: true, pushNotification: true, ...options };
-        // Message enrichi avec les adresses pour le TTS coursier
-        const message = this.buildCourierVoiceMessage(eventType, details);
+        const message = this.getDeliveryContextualMessage(eventType, details);
 
         console.log(`[NotificationSoundService] \uD83D\uDD14 Événement livraison: ${eventType} → "${message}"`);
 
@@ -467,9 +424,7 @@ class NotificationSoundService {
             }, 1500);
         }
 
-        // 4. Notification push locale (visible même app en arrière-plan / écran verrouillé)
-        // Utilise le canal Android 'delivery_notifications' (importance MAX, lockscreen PUBLIC)
-        // pour garantir la sonnerie même téléphone en poche sur moto.
+        // 4. Notification push locale (visible même app fermée / en arrière-plan)
         if (opts.pushNotification) {
             const t = i18n.t.bind(i18n);
             const titleMap: Record<string, string> = {
@@ -487,25 +442,12 @@ class NotificationSoundService {
                 new_delivery_available: t('delivery_notifications.push_new_delivery_available'),
             };
 
-            // Corps de la notification push : message + adresses sur l'écran de verrouillage
-            const addressLines: string[] = [];
-            if (details?.pickupAddress) addressLines.push(`📍 ${details.pickupAddress}`);
-            if (details?.deliveryAddress) addressLines.push(`🏁 ${details.deliveryAddress}`);
-            const pushBody = addressLines.length > 0
-                ? `${message}\n${addressLines.join('\n')}`
-                : message;
-
             try {
                 await Notifications.scheduleNotificationAsync({
                     content: {
                         title: titleMap[eventType] || t('delivery_notifications.push_default'),
-                        body: pushBody,
+                        body: message,
                         sound: true,
-                        // Android: canal delivery_notifications (importance MAX, lockscreen PUBLIC)
-                        // iOS: son système joué grâce à playsInSilentModeIOS + UIBackgroundModes audio
-                        ...(require('react-native').Platform.OS === 'android' && {
-                            channelId: 'delivery_notifications',
-                        }),
                         data: { type: 'delivery_event', eventType, ...details },
                     },
                     trigger: null, // Immédiat

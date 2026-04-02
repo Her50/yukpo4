@@ -783,7 +783,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                     {t('agenceVoyageForm.busScheduleLinkTitle', 'Lien bus ↔ horaire (comment ça marche)')}
                 </Text>
                 <Text style={{ fontSize: 12, color: '#374151', lineHeight: 18 }}>
-                    {t('agenceVoyageForm.busScheduleLinkBody', "1) Créez un modèle de bus. 2) Dans \"Horaires\", sélectionnez ce bus pour chaque horaire. 3) Générez les départs pour la recherche. 4) Le remplissage et les places occupées se suivent dans l'onglet Tickets/embarquement.")}
+                    {t('agenceVoyageForm.busScheduleLinkBody', '1) Créez un modèle de bus. 2) Dans “Horaires”, sélectionnez ce bus pour chaque horaire. 3) Générez les départs pour la recherche. 4) Le remplissage et les places occupées se suivent dans l’onglet Tickets/embarquement.')}
                 </Text>
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
@@ -990,7 +990,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                             )}
 
                             <Text style={[s.scheduleSectionTitle, { marginTop: 16 }]}>{t('agenceVoyageForm.planifSectionExploitation', 'Exploitation (info voyageurs)')}</Text>
-                            <Text style={s.recurrenceHint}>{t('agenceVoyageForm.exploitationHint', 'Associé aux notes jusqu'à extension API — utile pour votre équipe et pour préparer les fiches horaires.')}</Text>'
+                            <Text style={s.recurrenceHint}>{t('agenceVoyageForm.exploitationHint', 'Associé aux notes jusqu’à extension API — utile pour votre équipe et pour préparer les fiches horaires.')}</Text>
                             {busModels.length > 0 && (
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 8 }}>
                                     <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -1028,7 +1028,7 @@ const AgenceVoyageFormScreen: React.FC = () => {
                                 <View style={s.coherenceBanner}>
                                     <SafeIcon name="info" size={16} color="#1D4ED8" />
                                     <Text style={s.coherenceBannerText}>
-                                        {t('agenceVoyageForm.coherenceHomeSearch', "Les voyageurs voient surtout les départs issus des billets créés (onglet Bus / produits). Les horaires ici servent de grille récurrente : complétez avec des lignes de bus datées pour apparaître dans la recherche d'accueil.")}
+                                        {t('agenceVoyageForm.coherenceHomeSearch', 'Les voyageurs voient surtout les départs issus des billets créés (onglet Bus / produits). Les horaires ici servent de grille récurrente : complétez avec des lignes de bus datées pour apparaître dans la recherche d’accueil.')}
                                     </Text>
                                 </View>
                             )}

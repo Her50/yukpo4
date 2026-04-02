@@ -211,7 +211,7 @@ const LivreScolaireSearchScreen: React.FC = () => {
                             <View style={styles.matchingBannerText}>
                                 <Text style={styles.matchingBannerTitle}>Matching intelligent</Text>
                                 <Text style={styles.matchingBannerSubtitle}>
-                                    Trouvez des échanges parfaits avec l'IA'
+                                    Trouvez des échanges parfaits avec l'IA
                                 </Text>
                             </View>
                             <SafeIcon name="chevron-right" size={20} color="#FFFFFF" type="lucide" />
@@ -458,9 +458,9 @@ const LivreScolaireSearchScreen: React.FC = () => {
                         <Text style={styles.infoTitle}>{t('livreScolaireSearch.bonASavoir')}</Text>
                     </View>
                     <Text style={styles.infoText}>
-                        • Vous pouvez échanger vos livres scolaires avec d'autres utilisateurs{'\n'}'
+                        • Vous pouvez échanger vos livres scolaires avec d'autres utilisateurs{'\n'}
                         • La recherche par GPS permet de trouver des livres près de chez vous{'\n'}
-                        • Vérifiez l"état du livre avant de finaliser l'échange{"\n'}'
+                        • Vérifiez l'état du livre avant de finaliser l'échange{'\n'}
                         • Les livres neufs sont généralement plus chers mais en meilleur état
                     </Text>
                 </View>

@@ -334,7 +334,7 @@ const BanqueSangSearchScreen: React.FC = () => {
                             Trouvez rapidement une banque de sang pour un don ou une demande urgente
                         </Text>
                     </View>
-                    {/* ✅ Bouton "Devenir donneur" animé - affiché uniquement si l"utilisateur n'est pas déjà volontaire */}"
+                    {/* ✅ Bouton "Devenir donneur" animé - affiché uniquement si l'utilisateur n'est pas déjà volontaire */}
                     {!userBloodGroup && (
                         <BloodDonationButton
                             onPress={() => {

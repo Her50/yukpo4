@@ -626,9 +626,9 @@ const LivreScolaireFormScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* Description de l'état */}'
+                    {/* Description de l'état */}
                     <View style={styles.inputGroup}>
-                        <Text style={styles.label}>Description de l'état</Text>'
+                        <Text style={styles.label}>Description de l'état</Text>
                         <NativeInput
                             value={formData.description_etat}
                             onChangeText={(text) => setFormData({ ...formData, description_etat: text })}
@@ -638,14 +638,14 @@ const LivreScolaireFormScreen: React.FC = () => {
                         />
                     </View>
 
-                    {/* ✅ NOUVEAU: Section Upload d'images */}'
+                    {/* ✅ NOUVEAU: Section Upload d'images */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Photos du livre</Text>
                         <Text style={styles.labelSubtext}>
-                            Prenez une photo ou sélectionnez depuis la galerie. L'IA analysera automatiquement la première image.'
+                            Prenez une photo ou sélectionnez depuis la galerie. L'IA analysera automatiquement la première image.
                         </Text>
 
-                        {/* Boutons d'action */}'
+                        {/* Boutons d'action */}
                         <View style={styles.imageActions}>
                             <TouchableOpacity
                                 style={styles.imageActionButton}
@@ -665,12 +665,12 @@ const LivreScolaireFormScreen: React.FC = () => {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Indicateur d'analyse */}'
+                        {/* Indicateur d'analyse */}
                         {analyzingImage && (
                             <View style={styles.analyzingContainer}>
                                 <ActivityIndicator size="small" color={modernColors.primary} />
                                 <Text style={styles.analyzingText}>
-                                    Analyse de l"image en cours par l'IA..."
+                                    Analyse de l'image en cours par l'IA...
                                 </Text>
                             </View>
                         )}
@@ -784,7 +784,7 @@ const LivreScolaireFormScreen: React.FC = () => {
                 currentLocation={selectedGPS as any}
             />
 
-            {/* ✅ NOUVEAU: Modal d"affichage des résultats de l'analyse IA */}"
+            {/* ✅ NOUVEAU: Modal d'affichage des résultats de l'analyse IA */}
             <Modal
                 visible={showIAAnalysisModal}
                 transparent

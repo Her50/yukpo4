@@ -81,7 +81,7 @@ const LibrairieOnboardingModal: React.FC<Props> = ({ visible, onClose }) => {
             title: t('bourseUx.librairieOnboarding.s2Title', 'Réseau et validation'),
             body: t(
                 'bourseUx.librairieOnboarding.s2Body',
-                "Renseignez vos prix sur les lignes neufs et validez ou refusez les articles — les familles voient l'état en temps réel."
+                'Renseignez vos prix sur les lignes neufs et validez ou refusez les articles — les familles voient l’état en temps réel.'
             ),
         },
         {

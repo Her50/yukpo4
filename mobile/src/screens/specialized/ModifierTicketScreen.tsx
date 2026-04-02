@@ -88,7 +88,7 @@ const ModifierTicketScreen: React.FC = () => {
             {/* Policy note */}
             <View style={styles.policyCard}>
                 <SafeIcon name="info" size={14} color="#1D4ED8" />
-                <Text style={styles.policyText}>Modification possible jusqu"à 3h avant le départ. Un seul changement par billet. Des frais de service peuvent s'appliquer.</Text>"
+                <Text style={styles.policyText}>Modification possible jusqu'à 3h avant le départ. Un seul changement par billet. Des frais de service peuvent s'appliquer.</Text>
             </View>
 
             {/* New date */}

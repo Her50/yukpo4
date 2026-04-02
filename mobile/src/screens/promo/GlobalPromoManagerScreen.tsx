@@ -38,15 +38,14 @@ const slugify = (value: string) =>
         .replace(/^-+|-+$/g, '')
         .slice(0, 60);
 
+const availabilityOptions = [
+    { value: 'online', label: t('globalPromoManager.catalogueEnLigne') },
+    { value: 'live', label: t('globalPromoManager.ventesLiveUniquement') },
+    { value: 'both', label: t('globalPromoManager.catalogueLive') },
+];
+
 const GlobalPromoManagerScreen: React.FC = () => {
     const { t } = useLanguageSafe();
-
-    // availabilityOptions doit être déclaré DANS le composant pour accéder à t()
-    const availabilityOptions = [
-        { value: 'online', label: t('globalPromoManager.catalogueEnLigne') },
-        { value: 'live', label: t('globalPromoManager.ventesLiveUniquement') },
-        { value: 'both', label: t('globalPromoManager.catalogueLive') },
-    ];
     const {
         events,
         entries,
@@ -253,7 +252,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                     </View>
                 )}
 
-                {/* Formulaire de création d'événement */}'
+                {/* Formulaire de création d'événement */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>{t('globalPromoManager.creerPlanifierUnEvenement')}</Text>
                     <View style={styles.form}>
@@ -569,7 +568,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                             </View>
                         )}
 
-                        {/* Formulaire d"ajout d'entrée */}"
+                        {/* Formulaire d'ajout d'entrée */}
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>{t('globalPromoManager.ajouterLesProduitsDesPrestataires')}</Text>
                             <View style={styles.form}>
@@ -714,7 +713,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                     </View>
                 )}
 
-                {/* Modal de refus d'entrée */}'
+                {/* Modal de refus d'entrée */}
                 <Modal
                     visible={rejectModalVisible}
                     transparent={true}
@@ -758,7 +757,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                     </View>
                 </Modal>
 
-                {/* Modal de détails d'entrée */}'
+                {/* Modal de détails d'entrée */}
                 <Modal
                     visible={selectedEntryForDetails !== null}
                     transparent={true}
@@ -769,7 +768,7 @@ const GlobalPromoManagerScreen: React.FC = () => {
                         <View style={styles.modalContent}>
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>
-                                    Détails de l'entrée #{selectedEntryForDetails?.serviceId}'
+                                    Détails de l'entrée #{selectedEntryForDetails?.serviceId}
                                 </Text>
                                 <TouchableOpacity onPress={() => setSelectedEntryForDetails(null)}>
                                     <SafeIcon name="x" size={24} color="#666" />

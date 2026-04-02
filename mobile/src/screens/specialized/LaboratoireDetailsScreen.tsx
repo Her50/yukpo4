@@ -97,7 +97,7 @@ const LaboratoireDetailsScreen: React.FC = () => {
 
     const handleRefresh = useCallback(async () => { setRefreshing(true); await loadLaboratoireDetails(); setRefreshing(false); }, []);
 
-    const handleCall = () => { if (laboratoire?.telephone) Linking.openURL(`tel:${laboratoire.telephone.replace(/[^\d+]/g, '')}`); };
+    const handleCall = () => { if (laboratoire?.telephone) Linking.openURL(`tel:${laboratoire.telephone}`); };
     const handleWhatsApp = () => {
         const num = laboratoire?.whatsapp || laboratoire?.telephone;
         if (num) Linking.openURL(`https://wa.me/${num.replace(/[^0-9+]/g, '')}`);

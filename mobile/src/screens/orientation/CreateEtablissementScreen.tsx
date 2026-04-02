@@ -188,7 +188,7 @@ const CreateEtablissementScreen: React.FC = () => {
         if (isK12 && (!formData.gps_lat?.trim() || !formData.gps_lon?.trim())) {
             Alert.alert(
                 t('message.error'),
-                "Indiquez la position GPS de l'établissement (carte ou coordonnées) pour le primaire et le secondaire.",
+                'Indiquez la position GPS de l’établissement (carte ou coordonnées) pour le primaire et le secondaire.',
             );
             return;
         }
@@ -291,9 +291,9 @@ const CreateEtablissementScreen: React.FC = () => {
             </View>
 
             <NativeCard style={styles.card}>
-                {/* Type d'établissement */}'
+                {/* Type d'établissement */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Type d'établissement *</Text>'
+                    <Text style={styles.label}>Type d'établissement *</Text>
                     <View style={styles.chipContainer}>
                         {typesEtablissement.map((type) => (
                             <TouchableOpacity
@@ -328,7 +328,7 @@ const CreateEtablissementScreen: React.FC = () => {
 
                 {/* Nom */}
                 <View style={styles.field}>
-                    <Text style={styles.label}>Nom de l'établissement *</Text>'
+                    <Text style={styles.label}>Nom de l'établissement *</Text>
                     <NativeInput
                         value={formData.nom_etablissement}
                         onChangeText={(text) => setFormData({ ...formData, nom_etablissement: text })}
@@ -498,7 +498,7 @@ const CreateEtablissementScreen: React.FC = () => {
 
                 <View style={styles.row}>
                     <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
-                        <Text style={styles.label}>Nombre d'élèves</Text>'
+                        <Text style={styles.label}>Nombre d'élèves</Text>
                         <NativeInput
                             value={formData.nombre_eleves}
                             onChangeText={(text) => setFormData({ ...formData, nombre_eleves: text })}

@@ -39,16 +39,7 @@ const ServiceDetailScreen: React.FC = () => {
   const loadService = async () => {
     try {
       const response = await serviceService.getServiceById(serviceId);
-      // L'API peut retourner { success, data: {...} } ou directement l'objet Service
-      const raw = (response?.data ?? response) as any;
-      const serviceObj: Service | null = raw?.provider !== undefined
-        ? raw
-        : (raw?.data ?? null);
-      if (serviceObj && typeof serviceObj === 'object') {
-        setService(serviceObj);
-      } else {
-        navigation.goBack();
-      }
+      setService(response.data as Service);
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de charger les d�tails du service');
       navigation.goBack();
@@ -61,7 +52,7 @@ const ServiceDetailScreen: React.FC = () => {
     if (service?.contact) {
       Alert.alert(
         'Contacter le prestataire',
-        `Voulez-vous contacter ${service.provider?.name ?? ''} ?`,
+        `Voulez-vous contacter ${service.provider.name} ?`,
         [
           { text: t('common.cancel'), style: 'cancel' },
           { text: t('common.contact'), onPress: () => {
@@ -119,27 +110,25 @@ const ServiceDetailScreen: React.FC = () => {
         </Card>
 
         {/* Provider Info */}
-        {service.provider && (
-          <Card style={styles.providerCard}>
-            <Card.Content>
-              <View style={styles.providerInfo}>
-                <Avatar.Text
-                  size={50}
-                  label={service.provider.name?.charAt(0) ?? '?'}
-                  style={styles.providerAvatar}
-                />
-                <View style={styles.providerDetails}>
-                  <Text style={styles.providerName}>{service.provider.name}</Text>
-                  {service.provider.rating && (
-                    <Text style={styles.providerRating}>
-                      ? {service.provider.rating}/5
-                    </Text>
-                  )}
-                </View>
+        <Card style={styles.providerCard}>
+          <Card.Content>
+            <View style={styles.providerInfo}>
+              <Avatar.Text
+                size={50}
+                label={service.provider.name.charAt(0)}
+                style={styles.providerAvatar}
+              />
+              <View style={styles.providerDetails}>
+                <Text style={styles.providerName}>{service.provider.name}</Text>
+                {service.provider.rating && (
+                  <Text style={styles.providerRating}>
+                    ? {service.provider.rating}/5
+                  </Text>
+                )}
               </View>
-            </Card.Content>
-          </Card>
-        )}
+            </View>
+          </Card.Content>
+        </Card>
 
         {/* Description */}
         <Card style={styles.descriptionCard}>

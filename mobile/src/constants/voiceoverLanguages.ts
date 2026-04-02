@@ -83,7 +83,7 @@ function optionForCode(code: string): StudioVoiceLangOption | undefined {
 }
 
 /**
- * Jusqu'à 3 codes langue pertinents : langue UI d'abord, puis indices zone, puis repli global.
+ * Jusqu’à 3 codes langue pertinents : langue UI d’abord, puis indices zone, puis repli global.
  */
 export function getSuggestedVoiceoverLanguageCodes(
     i18nLanguage: string,

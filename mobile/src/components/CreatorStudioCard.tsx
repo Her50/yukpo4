@@ -29,7 +29,7 @@ const VEHICLE_OPTIONS = [
     {
         id: 2,
         label: 'Tricycle',
-        description: 'Jusqu'à 1 m³ · idéal colis "pas très importants"',
+        description: 'Jusqu’à 1 m³ · idéal colis “pas très importants”',
     },
     {
         id: 3,
@@ -643,7 +643,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
             )}
             {!state.previewReady && state.sessionId && (
                 <Text style={styles.previewHint}>
-                    Session #{state.sessionId.slice(0, 6)} · appuie sur "Preview 5s" pour générer un aperçu.
+                    Session #{state.sessionId.slice(0, 6)} · appuie sur “Preview 5s” pour générer un aperçu.
                 </Text>
             )}
             <Text style={styles.sectionLabel}>Pickup & dropoff (formulaire avancé)</Text>
@@ -852,7 +852,7 @@ export const CreatorStudioCard: React.FC<CreatorStudioCardProps> = ({
                         <View style={{ flex: 1 }}>
                             <Text style={styles.passengerTitle}>Pickup programmé</Text>
                             <Text style={styles.passengerSubtitle}>
-                                Planifie la prise en charge (ex. "demain 14h") pour laisser le matching doux.
+                                Planifie la prise en charge (ex. “demain 14h”) pour laisser le matching doux.
                             </Text>
                         </View>
                         <Switch

@@ -7,11 +7,11 @@
  *
  * Les 62 langues (SUPPORTED_LANGUAGES) : pour chaque clé, i18next affiche la valeur du
  * bundle actif (ex. de.json) ; si la clé est absente, fallbackLng « fr ». Ce mécanisme
- * est le même sur tout l'écran — la qualité dépend du remplissage de chaque JSON : beaucoup
- * de sections sont déjà traduites dans les grandes langues, d'autres contiennent encore du
+ * est le même sur tout l’écran — la qualité dépend du remplissage de chaque JSON : beaucoup
+ * de sections sont déjà traduites dans les grandes langues, d’autres contiennent encore du
  * français ou un mélange (héritage / traductions partielles). Les scripts sync/overwrite
  * recopient le FR dans les clés nouvellement ajoutées pour que la clé existe partout
- * (affichage identique au fallback, bundles cohérents). L'anglais (en.json) est mis à jour
+ * (affichage identique au fallback, bundles cohérents). L’anglais (en.json) est mis à jour
  * explicitement ; les autres locales peuvent être affinées progressivement dans les JSON.
  */
 import * as Localization from 'expo-localization';

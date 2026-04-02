@@ -149,20 +149,18 @@ export async function registerForPushNotificationsAsync(userToken: string): Prom
                 lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
             });
 
-            // Canal pour les notifications de livraison (coursiers en moto, téléphone en poche)
-            // importance MAX + bypassDnd assure le son même en mode Ne pas déranger
+            // ✅ NOUVEAU : Canal pour les notifications de livraison (coursiers)
             await Notifications.setNotificationChannelAsync('delivery_notifications', {
                 name: 'Livraisons disponibles',
                 importance: Notifications.AndroidImportance.MAX,
-                // Vibration longue et répétée : perceptible en poche à moto
-                vibrationPattern: [0, 400, 200, 400, 200, 400],
+                vibrationPattern: [0, 250, 250, 250, 250, 250],
                 lightColor: '#F59E0B',
+                // Use system default for reliability even when app is closed.
+                // Custom sound can fail on some devices/builds if asset is missing.
                 sound: 'default',
                 enableVibrate: true,
                 showBadge: true,
                 lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-                // Passe outre le mode silencieux/Ne pas déranger pour les coursiers
-                bypassDnd: true,
             });
         }
 

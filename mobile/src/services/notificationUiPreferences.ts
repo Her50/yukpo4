@@ -18,7 +18,7 @@ const parseKeys = (raw: string | null): string[] => {
 export const notificationUiPreferences = {
     /**
      * Son des notifs Coach IA (navigation) : **true** par défaut (pas de clé = son activé).
-     * Désinstallation de l'app → AsyncStorage vidé → retour à ce défaut.
+     * Désinstallation de l’app → AsyncStorage vidé → retour à ce défaut.
      */
     async getCoachIaSoundFull(): Promise<boolean> {
         const v = await SafeStorage.getItem(COACH_IA_SOUND_FULL_KEY).catch(() => null);

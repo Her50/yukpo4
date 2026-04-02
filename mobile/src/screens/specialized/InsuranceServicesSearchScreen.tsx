@@ -1,5 +1,5 @@
 /**
- * Écran public Assurance — entrée depuis l'accueil (service spécialisé).
+ * Écran public Assurance — entrée depuis l’accueil (service spécialisé).
  * Aligné backend : recherche catalogue GET /api/assurance/search, parcours IA / devis, accès client polices & sinistres.
  */
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -452,7 +452,7 @@ const InsuranceServicesSearchScreen: React.FC = () => {
                         <Text style={styles.tipText}>
                             {t(
                                 'insurancePublic.tip',
-                                "Les garanties et exclusions varient selon les produits. Un devis personnalisé permet d'ajuster la couverture à votre profil.",
+                                'Les garanties et exclusions varient selon les produits. Un devis personnalisé permet d’ajuster la couverture à votre profil.',
                             )}
                         </Text>
                     </View>

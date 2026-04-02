@@ -204,7 +204,7 @@ export default function AdminProgrammeUploadScreen({ navigation }: any) {
       <Text style={styles.hintSmall}>
         {t(
           'bourseLivreV2.programmeUpload.classeHint',
-          "Choisissez une étiquette proche du programme officiel (ex. 6ème, CM2) pour faciliter l'autocomplete côté familles."
+          'Choisissez une étiquette proche du programme officiel (ex. 6ème, CM2) pour faciliter l’autocomplete côté familles.'
         )}
       </Text>
       <View style={styles.suggestRow}>

@@ -3,7 +3,7 @@
  * avec un lien intelligent qui détecte automatiquement mobile/web
  */
 
-/** Liens HTTPS produits (universal links) : toujours le site public, pas l'URL API (EXPO_PUBLIC_SHARE_URL). */
+/** Liens HTTPS produits (universal links) : toujours le site public, pas l’URL API (EXPO_PUBLIC_SHARE_URL). */
 export const PUBLIC_PRODUCT_SHARE_WEB_BASE = 'https://yukpomnang.com';
 
 export interface ProductShareData {

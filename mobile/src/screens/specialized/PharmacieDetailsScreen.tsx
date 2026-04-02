@@ -119,7 +119,7 @@ const PharmacieDetailsScreen: React.FC = () => {
         setRefreshing(false);
     }, []);
 
-    const handleCall = () => { if (pharmacie?.telephone) Linking.openURL(`tel:${pharmacie.telephone.replace(/[^\d+]/g, '')}`); };
+    const handleCall = () => { if (pharmacie?.telephone) Linking.openURL(`tel:${pharmacie.telephone}`); };
     const handleWhatsApp = () => {
         const num = pharmacie?.whatsapp || pharmacie?.telephone;
         if (num) Linking.openURL(`https://wa.me/${num.replace(/[^0-9+]/g, '')}`);
@@ -367,7 +367,7 @@ const PharmacieDetailsScreen: React.FC = () => {
 
                 {/* Urgences */}
                 {pharmacie.telephone_urgence && (
-                    <TouchableOpacity style={[st.infoCard, { backgroundColor: '#FEF2F2', borderLeftColor: '#EF4444', marginHorizontal: 16, marginBottom: 8 }]} onPress={() => Linking.openURL(`tel:${pharmacie.telephone_urgence.replace(/[^\d+]/g, '')}`)}>
+                    <TouchableOpacity style={[st.infoCard, { backgroundColor: '#FEF2F2', borderLeftColor: '#EF4444', marginHorizontal: 16, marginBottom: 8 }]} onPress={() => Linking.openURL(`tel:${pharmacie.telephone_urgence}`)}>
                         <SafeIcon name="phone" size={16} color="#EF4444" />
                         <Text style={[st.infoCardText, { color: '#DC2626', fontWeight: '700' }]}>Urgences: {pharmacie.telephone_urgence}</Text>
                     </TouchableOpacity>

@@ -126,7 +126,7 @@ const AICVAnalysisScreen: React.FC = () => {
                         <SafeIcon name="file-text" size={64} color={modernColors.textSecondary} />
                         <Text style={styles.noCVTitle}>{t('aICVAnalysis.aucunCvTrouve')}</Text>
                         <Text style={styles.noCVText}>
-                            Vous devez d'abord télécharger votre CV dans votre profil candidat.'
+                            Vous devez d'abord télécharger votre CV dans votre profil candidat.
                         </Text>
                         <NativeButton
                             title={t('aICVAnalysis.allerAMonProfil')}
@@ -142,7 +142,7 @@ const AICVAnalysisScreen: React.FC = () => {
                         <SafeIcon name="file-check" size={48} color={modernColors.primary} />
                         <Text style={styles.infoTitle}>{t('aICVAnalysis.cvTrouve')}</Text>
                         <Text style={styles.infoText}>
-                            Votre CV a été trouvé dans votre profil. Cliquez sur le bouton ci-dessous pour l"analyser avec l'IA."
+                            Votre CV a été trouvé dans votre profil. Cliquez sur le bouton ci-dessous pour l'analyser avec l'IA.
                         </Text>
                         <NativeButton
                             title={loading ? 'Analyse en cours...' : 'Analyser mon CV'}

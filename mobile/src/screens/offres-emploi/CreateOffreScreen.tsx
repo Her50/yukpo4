@@ -487,7 +487,7 @@ const CreateOffreScreen: React.FC = () => {
                 />
             </NativeCard>
 
-            {/* ✅ NOUVEAU: Section d'accès rapide aux fonctionnalités de gestion */}'
+            {/* ✅ NOUVEAU: Section d'accès rapide aux fonctionnalités de gestion */}
             <View style={styles.quickAccessSection}>
                 <Text style={styles.quickAccessTitle}>{t('createOffre.accesRapide')}</Text>
                 <Text style={styles.quickAccessSubtitle}>
@@ -806,7 +806,7 @@ const AIModal: React.FC<AIModalProps> = ({
 
                     <ScrollView style={aiModalStyles.scroll} contentContainerStyle={aiModalStyles.scrollContent}>
                         <Text style={aiModalStyles.subtitle}>
-                            Décrivez votre offre d"emploi en quelques phrases. L'IA remplira automatiquement le formulaire pour vous."
+                            Décrivez votre offre d'emploi en quelques phrases. L'IA remplira automatiquement le formulaire pour vous.
                         </Text>
 
                         <Text style={aiModalStyles.exampleTitle}>Exemples :</Text>

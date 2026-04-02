@@ -69,7 +69,7 @@ interface KeyboardAwareScreenProps {
   keyboardDismissMode?: string;
   enableOnAndroid?: boolean;
   enableAutomaticScroll?: boolean;
-  /** À activer sur l'onglet Accueil / écrans avec barre d'onglets (offset clavier). */
+  /** À activer sur l’onglet Accueil / écrans avec barre d’onglets (offset clavier). */
   viewIsInsideTabBar?: boolean;
 }
 

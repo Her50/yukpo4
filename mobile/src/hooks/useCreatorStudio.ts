@@ -667,7 +667,7 @@ export const useCreatorStudio = (): [CreatorStudioState, CreatorStudioActions] =
                 console.error('[CreatorStudio] Unable to open delivery WS', connectionError);
                 setDeliveryRealtimeConnecting(false);
                 setDeliveryRealtimeConnected(false);
-                setDeliveryRealtimeError("Impossible d'ouvrir la connexion de tracking.");
+                setDeliveryRealtimeError('Impossible d’ouvrir la connexion de tracking.');
                 throw connectionError;
             }
         },

@@ -131,7 +131,7 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
                 <View style={styles.disabledInput}>
                     <SafeIcon name="lock" size={16} color={modernColors.textSecondary} />
                     <Text style={styles.disabledText}>
-                        Sélectionnez d"abord le type d'assurance (VIE ou NON VIE)"
+                        Sélectionnez d'abord le type d'assurance (VIE ou NON VIE)
                     </Text>
                 </View>
             </View>
@@ -220,13 +220,13 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
                 </View>
             </Modal>
 
-            {/* Modal d'ajout de nouveau produit (compatible Android) */}'
+            {/* Modal d'ajout de nouveau produit (compatible Android) */}
             <Modal visible={addModalVisible} animationType="fade" transparent>
                 <View style={styles.modalOverlay}>
                     <View style={styles.addModalContent}>
                         <View style={styles.addModalHeader}>
                             <Text style={styles.addModalTitle}>
-                                Nouveau produit d'assurance {typeAssurance}'
+                                Nouveau produit d'assurance {typeAssurance}
                             </Text>
                         </View>
 

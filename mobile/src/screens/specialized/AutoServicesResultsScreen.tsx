@@ -430,7 +430,7 @@ const AutoServicesResultsScreen: React.FC = () => {
     const handleWhatsApp = useCallback(async (item: AutoProduct) => {
         if (!item.vendeur_whatsapp) return;
         try {
-            const phoneNumber = item.vendeur_whatsapp.replace(/[^\d]/g, '');
+            const phoneNumber = item.vendeur_whatsapp.replace(/\s+/g, '');
             const message = `Bonjour, je suis intéressé par votre véhicule "${item.nom}"${item.prix ? ` à ${item.prix.toLocaleString('fr-FR')} ${item.devise}` : ''}. Est-il toujours disponible ?`;
             const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`;
             const canOpen = await Linking.canOpenURL(whatsappUrl);
@@ -458,7 +458,7 @@ const AutoServicesResultsScreen: React.FC = () => {
     const handleCall = useCallback(async (item: AutoProduct) => {
         if (!item.vendeur_telephone) return;
         try {
-            const phoneNumber = item.vendeur_telephone.replace(/[^\d+]/g, '');
+            const phoneNumber = item.vendeur_telephone.replace(/\s+/g, '');
             const telUrl = `tel:${phoneNumber}`;
             const canOpen = await Linking.canOpenURL(telUrl);
             if (canOpen) {

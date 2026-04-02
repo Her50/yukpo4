@@ -203,13 +203,13 @@ const DeliveryProofScreen: React.FC<{ route: any }> = ({ route }) => {
                         <View style={styles.instructionItem}>
                             <SafeIcon name="camera" size={20} color={modernColors.primary} />
                             <Text style={styles.instructionText}>
-                                Prenez des photos ou vidéos claires de l'état du colis'
+                                Prenez des photos ou vidéos claires de l'état du colis
                             </Text>
                         </View>
                         <View style={styles.instructionItem}>
                             <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
                             <Text style={styles.instructionText}>
-                                Montrez l"adresse de destination et l'emplacement final"
+                                Montrez l'adresse de destination et l'emplacement final
                             </Text>
                         </View>
                         <View style={styles.instructionItem}>

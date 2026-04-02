@@ -91,7 +91,7 @@ const PUSH_SCHEDULE = {
     weekly: { weekday: 1, hour: 10, minute: 0 }, // Dimanche 10h — Bilan hebdo
 };
 
-/** Canaux Android v2 (importance MAX) — nouveaux ids car l'OS ne met pas à jour l'importance d'un canal existant */
+/** Canaux Android v2 (importance MAX) — nouveaux ids car l’OS ne met pas à jour l’importance d’un canal existant */
 const ANDROID_CHANNEL_COACH_SOUND = 'coaching_ia_sound_max';
 const ANDROID_CHANNEL_COACH_QUIET = 'coaching_ia_quiet_vib';
 
@@ -110,7 +110,7 @@ class CoachingNotificationService {
     private isActive = false;
 
     /**
-     * Coaching autorisé : mémoire OU persistance (évite les ratés si activate() n'a pas fini ou après redémarrage).
+     * Coaching autorisé : mémoire OU persistance (évite les ratés si activate() n’a pas fini ou après redémarrage).
      */
     private async isPushEnabledForUser(): Promise<boolean> {
         if (this.isActive) return true;

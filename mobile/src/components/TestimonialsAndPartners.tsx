@@ -18,11 +18,11 @@ const TestimonialsAndPartners = () => (
         },
         {
           name: "Sofia, Abidjan",
-          message: "J'adore l'interface et les suggestions IA sont bluffantes.",
+          message: "J’adore l’interface et les suggestions IA sont bluffantes.",
         },
       ].map((item, idx) => (
         <View key={idx} style="bg-white p-6 rounded-xl shadow-md">
-          <Text style="italic text-gray-600">"{item.message}"</Text>
+          <Text style="italic text-gray-600">“{item.message}”</Text>
           <Text style="mt-4 font-semibold">{item.name}</Text>
         </View>
       ))}

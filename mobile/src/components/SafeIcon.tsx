@@ -504,7 +504,7 @@ export const SafeIcon: React.FC<SafeIconProps> = ({
                 const IconComponent = (LucideIcons as any)[n];
                 if (!IconComponent || !isValidElementType(IconComponent)) return null;
                 try {
-                    // ✅ Rendu Lucide plus "dense" pour éviter l'effet icônes pâles
+                    // ✅ Rendu Lucide plus “dense” pour éviter l’effet icônes pâles
                     return (
                         <IconComponent
                             size={size}
@@ -525,7 +525,7 @@ export const SafeIcon: React.FC<SafeIconProps> = ({
         return null;
     };
 
-    // ✅ Global: par défaut, préférer Ionicons (plus "pleins"), puis Lucide, puis emoji
+    // ✅ Global: par défaut, préférer Ionicons (plus “pleins”), puis Lucide, puis emoji
     if (type === 'ionicons') return tryIonicons() ?? tryLucide() ?? null;
     if (type === 'lucide') return tryLucide() ?? tryIonicons() ?? null;
     if (type === 'auto') return tryIonicons() ?? tryLucide() ?? null;

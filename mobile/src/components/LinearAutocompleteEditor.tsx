@@ -506,7 +506,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </>
             )}
 
-            {/* Barre de recherche (affichée seulement si le tableau n'est pas affiché) */}'
+            {/* Barre de recherche (affichée seulement si le tableau n'est pas affiché) */}
             {!showTable && (
                 <View style={styles.searchContainer}>
                     <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
@@ -533,7 +533,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             )}
 
-            {/* Suggestions linéaires (affichage horizontal) - seulement si le tableau n'est pas affiché */}'
+            {/* Suggestions linéaires (affichage horizontal) - seulement si le tableau n'est pas affiché */}
             {!showTable && uniqueSuggestions.length > 0 && (
                 <View style={styles.suggestionsSection}>
                     <Text style={styles.suggestionsTitle}>💡 Suggestions</Text>
@@ -558,7 +558,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             )}
 
-            {/* Modalités sélectionnées (chips éditables) - seulement si le tableau n'est pas affiché */}'
+            {/* Modalités sélectionnées (chips éditables) - seulement si le tableau n'est pas affiché */}
             {!showTable && selectedModalities.length > 0 && (
                 <View style={styles.selectedSection}>
                     <Text style={styles.selectedTitle}>
@@ -602,7 +602,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             )}
 
-            {/* Message vide - seulement si le tableau n'est pas affiché */}'
+            {/* Message vide - seulement si le tableau n'est pas affiché */}
             {!showTable && selectedModalities.length === 0 && uniqueSuggestions.length === 0 && !searchQuery && (
                 <View style={styles.emptyState}>
                     <SafeIcon name="info" size={32} color={modernColors.textSecondary} />
@@ -615,7 +615,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             )}
 
-            {/* Modal d"ajout personnalisé - seulement si le tableau n'est pas affiché */}"
+            {/* Modal d'ajout personnalisé - seulement si le tableau n'est pas affiché */}
             {!showTable && (
                 <Modal
                     visible={showAddModal}

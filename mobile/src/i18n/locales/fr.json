@@ -1533,7 +1533,6 @@
     "sortDistance": "Plus proche",
     "chipNearMe": "Proche de moi",
     "chipAvailable": "Disponibles",
-    "onDutyOnly": "De garde",
     "errorLoadingList": "Erreur lors du chargement",
     "pleaseEnterQuestion": "Veuillez saisir une question",
     "selonPrescription": "Selon prescription",
@@ -3967,8 +3966,7 @@
     "vosLivraisonsActives": "Vos livraisons actives",
     "nouvelleLivraison": "Nouvelle livraison",
     "aucuneLivraisonEnCours": "Aucune livraison en cours",
-    "livraisonDeColis": "Livraison de colis",
-    "editUnavailableAfterCompletion": "Cette livraison ne peut plus être modifiée."
+    "livraisonDeColis": "Livraison de colis"
   },
   "offreCandidatures": {
     "cannotLoad": "Impossible de charger les candidatures",

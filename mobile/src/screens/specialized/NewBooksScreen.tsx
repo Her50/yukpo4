@@ -31,7 +31,7 @@ const NIVEAUX = [
     { key: 'Lycée', labelKey: 'livresNeufs.lycee' },
 ];
 
-/** Prix renvoyés par l'API (Decimal sérialisé, nombre, chaîne). */
+/** Prix renvoyés par l’API (Decimal sérialisé, nombre, chaîne). */
 function prixToNumber(v: unknown): number {
     if (v == null) return 0;
     if (typeof v === 'number' && Number.isFinite(v)) return v;

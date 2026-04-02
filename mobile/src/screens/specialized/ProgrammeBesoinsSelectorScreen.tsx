@@ -18,7 +18,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import BourseJourneySteps, { JourneyStepDef } from '../../components/bourse/BourseJourneySteps';
+import BourseJourneySteps from '../../components/bourse/BourseJourneySteps';
 import SafeIcon from '../../components/SafeIcon';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { getSystemeEducatif } from '../../data/educationSystems';
@@ -550,22 +550,6 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
         }
     }, [enfants, t]);
 
-    const journeySteps = useMemo<JourneyStepDef[]>(() => [
-        { key: 'etab', label: t('programmeBesoins.stepEtab', 'Établissement'), icon: 'school' },
-        { key: 'classe', label: t('programmeBesoins.stepClasse', 'Classe'), icon: 'book-open' },
-        { key: 'prog', label: t('programmeBesoins.stepProg', 'Programme'), icon: 'list' },
-        { key: 'recap', label: t('programmeBesoins.stepRecap', 'Récap'), icon: 'clipboard-list' },
-        { key: 'resultats', label: t('programmeBesoins.stepResultats', 'Résultats'), icon: 'search' },
-    ], [t]);
-
-    const journeyIndex = useMemo(() => {
-        if (stepAnnonces) return 4;
-        if (stepRecap) return 3;
-        if (activeClasse) return 2;
-        if (selectedEtab || nationalFallback) return 1;
-        return 0;
-    }, [stepAnnonces, stepRecap, activeClasse, selectedEtab, nationalFallback]);
-
     /** Récap */
     if (stepRecap) {
         return (
@@ -621,7 +605,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                             <Text style={styles.recapSynthHint}>
                                 {t(
                                     'programmeBesoins.recapNeufSansPrix',
-                                    "Certains titres neufs n'ont pas de prix catalogue en base — complétez avec votre libraire ou le comparateur."
+                                    'Certains titres neufs n’ont pas de prix catalogue en base — complétez avec votre libraire ou le comparateur.'
                                 )}
                             </Text>
                         ) : null}
@@ -644,7 +628,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                             <Text style={styles.recapSynthHint}>
                                 {t(
                                     'programmeBesoins.recapOccasionSansRef',
-                                    "Aucun prix catalogue pour ces titres occasion — le montant d'achat ou d'échange reste à déterminer sur les annonces."
+                                    'Aucun prix catalogue pour ces titres occasion — le montant d’achat ou d’échange reste à déterminer sur les annonces.'
                                 )}
                             </Text>
                         ) : null}
@@ -925,7 +909,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                 <Text style={styles.heroSubtitle}>
                     {t(
                         'programmeBesoins.heroSubtitleV2',
-                        "Choisissez l'établissement, la classe, puis pour chaque livre : neuf, occasion, ou laissez vide si vous n'en avez pas besoin."
+                        'Choisissez l’établissement, la classe, puis pour chaque livre : neuf, occasion, ou laissez vide si vous n’en avez pas besoin.'
                     )}
                 </Text>
             </LinearGradient>
@@ -1056,7 +1040,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                                           )
                                         : t(
                                               'programmeBesoins.noClassesEtab',
-                                              "Aucune classe listée pour cet établissement dans Yukpo. Les dépôts de listes par l'établissement enrichissent cette section."
+                                              'Aucune classe listée pour cet établissement dans Yukpo. Les dépôts de listes par l’établissement enrichissent cette section.'
                                           )}
                                 </Text>
                                 {!nationalFallback && selectedEtab ? (
@@ -1164,7 +1148,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                         <Text style={styles.hintSouhait}>
                             {t(
                                 'programmeBesoins.hintSouhait',
-                                "Ne cochez rien si vous ne voulez pas ce livre. Neuf et occasion s'excluent."
+                                'Ne cochez rien si vous ne voulez pas ce livre. Neuf et occasion s’excluent.'
                             )}
                         </Text>
                     </View>

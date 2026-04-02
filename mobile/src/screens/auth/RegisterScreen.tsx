@@ -2,6 +2,7 @@
 // Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
 import * as Google from 'expo-auth-session/providers/google';
+import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { CheckCircle, Envelope, WarningCircle } from 'phosphor-react-native';
 import * as React from 'react';
@@ -68,25 +69,29 @@ const RegisterScreen: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Configuration Google OAuth
-  // Chaque plateforme utilise son propre client ID — expo-auth-session calcule
-  // automatiquement le bon redirectUri par plateforme :
-  // - Android : com.googleusercontent.apps.{androidClientId}:/oauth2redirect
-  // - iOS     : com.googleusercontent.apps.{iosClientId}:/oauth2redirect
-  // - Web/Expo Go : clientId web avec redirect configuré dans Google Cloud Console
+  // ✅ CORRECTION ALIGNEMENT: Utiliser Linking.createURL() pour garantir l'alignement avec app.config.js
+  const redirectUri = Linking.createURL('/');
+
   const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '376093909298-nd9ss04u338rpr0d3mdk1t8g5u9o35hq.apps.googleusercontent.com',
+    expoClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '376093909298-nd9ss04u338rpr0d3mdk1t8g5u9o35hq.apps.googleusercontent.com',
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '376093909298-j8mqqo5ddokjr4rj66955in8fr2nlc89.apps.googleusercontent.com',
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '376093909298-fghg1v2quhl3eb0pj1lq21s6sdfshska.apps.googleusercontent.com',
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '376093909298-nd9ss04u338rpr0d3mdk1t8g5u9o35hq.apps.googleusercontent.com',
+    redirectUri: redirectUri, // ✅ Forcer le redirect URI pour garantir l'alignement
   });
 
   // 🔍 Debug: Log de la configuration OAuth
   useEffect(() => {
     if (googleRequest) {
-      console.log('[OAuth Debug] Redirect URI (auto):', googleRequest.redirectUri);
+      console.log('[OAuth Debug] Request:', JSON.stringify(googleRequest, null, 2));
+      console.log('[OAuth Debug] Redirect URI (forcé):', redirectUri);
+      console.log('[OAuth Debug] Redirect URI (request):', googleRequest.redirectUri);
       console.log('[OAuth Debug] Platform:', Platform.OS);
       console.log('[OAuth Debug] Android Client ID:', process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID);
+      console.log('[OAuth Debug] Expo Client ID:', process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID);
+      console.log('[OAuth Debug] Linking.createURL("/"):', Linking.createURL('/'));
     }
-  }, [googleRequest]);
+  }, [googleRequest, redirectUri]);
 
   // Gérer la réponse Google OAuth
   useEffect(() => {
@@ -312,26 +317,17 @@ const RegisterScreen: React.FC = () => {
   // Composant OAuth Button avec Lucide
   const OAuthButton = ({ provider, onPress }: { provider: 'google' | 'facebook'; onPress: () => void }) => {
     const isGoogle = provider === 'google';
-    // Facebook désactivé jusqu'à configuration OAuth complète
-    const isFacebook = provider === 'facebook';
-    const bgColor = isFacebook ? '#9CA3AF' : '#DB4437';
+    const bgColor = isGoogle ? '#DB4437' : '#4267B2';
+    const label = isGoogle ? 'Google' : 'Facebook';
 
     return (
       <TouchableOpacity
-        style={[styles.oauthButton, { backgroundColor: bgColor }, isFacebook && { opacity: 0.5 }]}
-        onPress={isFacebook ? undefined : onPress}
-        disabled={formLoading || loading || isFacebook}
-        activeOpacity={isFacebook ? 1 : 0.8}
+        style={[styles.oauthButton, { backgroundColor: bgColor }]}
+        onPress={onPress}
+        disabled={formLoading || loading}
       >
         <Envelope size={20} color="white" />
-        <View>
-          <Text style={styles.oauthButtonText}>
-            {isFacebook ? 'Facebook' : t('auth.continueWith', { provider: 'Google' })}
-          </Text>
-          {isFacebook && (
-            <Text style={styles.oauthButtonSoon}>Bientôt disponible</Text>
-          )}
-        </View>
+        <Text style={styles.oauthButtonText}>{t('auth.continueWith', { provider: label })}</Text>
       </TouchableOpacity>
     );
   };
@@ -627,11 +623,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     fontSize: 14,
-  },
-  oauthButtonSoon: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 10,
-    marginTop: 1,
   },
   divider: {
     flexDirection: 'row',

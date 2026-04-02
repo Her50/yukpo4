@@ -255,7 +255,7 @@ const DeliveryHomeScreen: React.FC = () => {
         if (targetDelivery.status === 'delivered' || targetDelivery.status === 'completed' || targetDelivery.status === 'cancelled') {
             Alert.alert(
                 t('message.error'),
-                t('deliveryHome.editUnavailableAfterCompletion', 'Cette livraison ne peut plus être modifiée.')
+                t('deliveryHome.editUnavailableAfterCompletion') || 'Cette livraison ne peut plus être modifiée.'
             );
             return;
         }
@@ -281,7 +281,7 @@ const DeliveryHomeScreen: React.FC = () => {
             setNavigating(false);
             Alert.alert(
                 t('message.error'),
-                t('deliveryHome.cannotOpenEditFlow') || "Impossible d'ouvrir l'écran de modification.",
+                t('deliveryHome.cannotOpenEditFlow') || 'Impossible d’ouvrir l’écran de modification.',
                 [{ text: 'OK' }]
             );
         }
@@ -425,7 +425,7 @@ const DeliveryHomeScreen: React.FC = () => {
                     <NativeCard style={styles.card}>
                         <Text style={styles.cardTitle}>{t('deliveryHome.coursesSupermarche')}</Text>
                         <Text style={styles.cardSubtitle}>
-                            Compose ton panier, nous avançons l'achat et tu suis ton coursier en direct.'
+                            Compose ton panier, nous avançons l'achat et tu suis ton coursier en direct.
                         </Text>
                         <HapticTouchable
                             hapticType="medium"

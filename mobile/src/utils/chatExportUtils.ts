@@ -3,7 +3,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Alert, Linking, Platform, Share } from 'react-native';
 
-/** Signature obligatoire pour tout partage / export de contenu Yukpo IA vers l'extérieur */
+/** Signature obligatoire pour tout partage / export de contenu Yukpo IA vers l’extérieur */
 export const YUKPO_IA_SHARE_FOOTER =
   '\n\n—\nRéponse générée par Yukpo IA · https://yukpomnang.com';
 
@@ -27,7 +27,7 @@ export function stripSimpleMarkdownForExport(raw: string): string {
 
 export type ChatExportFormat = 'txt' | 'md' | 'csv';
 
-/** Nom de fichier lisible (sans extension), à partir du contenu ou d'un libellé court. */
+/** Nom de fichier lisible (sans extension), à partir du contenu ou d’un libellé court. */
 export function buildExportBaseNameFromChat(text: string, fallback = 'reponse-yukpo-ia'): string {
   const plain = stripSimpleMarkdownForExport(String(text || ''));
   const firstLine = plain.split(/\n/).map((l) => l.trim()).find(Boolean) || '';
@@ -221,7 +221,7 @@ export async function exportChatTextAsFile(
 }
 
 /**
- * Ouvre une URL de fichier généré côté backend / stockage (l'IA externe renvoie souvent une URL signée).
+ * Ouvre une URL de fichier généré côté backend / stockage (l’IA externe renvoie souvent une URL signée).
  */
 export async function openOrDownloadRemoteFile(url: string, filenameHint?: string): Promise<void> {
   const u = String(url || '').trim();
@@ -251,7 +251,7 @@ export async function openOrDownloadRemoteFile(url: string, filenameHint?: strin
     } else if (Platform.OS === 'android') {
       await Share.share({ message: u, title: name });
     } else {
-      Alert.alert('Téléchargement', "Impossible d'ouvrir le fichier sur cet appareil.");
+      Alert.alert('Téléchargement', 'Impossible d’ouvrir le fichier sur cet appareil.');
     }
   } catch (e) {
     console.warn('[chatExportUtils] download failed', e);

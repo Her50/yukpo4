@@ -1,5 +1,5 @@
 /**
- * Bouton Yukpo IA (style FAB) : ouvre IntelligentChat avec un message d'amorçage contextualisé.
+ * Bouton Yukpo IA (style FAB) : ouvre IntelligentChat avec un message d’amorçage contextualisé.
  */
 
 import React, { useCallback } from 'react';

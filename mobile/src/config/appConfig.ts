@@ -1,6 +1,6 @@
 import { config } from './environment';
 
-/** Même base URL que `services/api.ts` — utilisé par écrans legacy (Login/Register) pour l'affichage debug */
+/** Même base URL que `services/api.ts` — utilisé par écrans legacy (Login/Register) pour l’affichage debug */
 export const APP_CONFIG = {
   API_BASE_URL: config.API_BASE_URL,
 };

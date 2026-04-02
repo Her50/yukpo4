@@ -131,7 +131,7 @@ const AgenceVoyageDetailsScreen: React.FC = () => {
         setRefreshing(false);
     }, []);
 
-    const handleCall = () => { if (agence?.telephone) Linking.openURL(`tel:${agence.telephone.replace(/[^\d+]/g, '')}`); };
+    const handleCall = () => { if (agence?.telephone) Linking.openURL(`tel:${agence.telephone}`); };
     const handleWhatsApp = () => { if (agence?.whatsapp) Linking.openURL(`https://wa.me/${agence.whatsapp.replace(/[^0-9+]/g, '')}`); };
     const handleEmail = () => { if (agence?.email) Linking.openURL(`mailto:${agence.email}`); };
     const handleWebsite = () => { if (agence?.site_web) Linking.openURL(agence.site_web.startsWith('http') ? agence.site_web : `https://${agence.site_web}`); };

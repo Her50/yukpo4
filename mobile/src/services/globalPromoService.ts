@@ -155,44 +155,6 @@ export const fetchGlobalPromoEvents = async (includeArchived: boolean = false): 
 };
 
 /**
- * Mappe un événement brut (snake_case backend) vers camelCase frontend
- */
-const mapRawEvent = (raw: any) => ({
-    id: raw.id,
-    slug: raw.slug,
-    theme: raw.theme,
-    displayName: raw.display_name ?? raw.displayName ?? '',
-    description: raw.description,
-    startsAt: raw.starts_at ?? raw.startsAt ?? '',
-    endsAt: raw.ends_at ?? raw.endsAt ?? '',
-    recurrenceRule: raw.recurrence_rule ?? raw.recurrenceRule,
-    status: raw.status,
-    config: raw.config ?? {},
-    createdByUserId: raw.created_by_user_id ?? raw.createdByUserId,
-    createdAt: raw.created_at ?? raw.createdAt ?? '',
-    updatedAt: raw.updated_at ?? raw.updatedAt ?? '',
-});
-
-/**
- * Mappe une entrée brute (snake_case backend) vers camelCase frontend
- */
-const mapRawEntry = (raw: any) => ({
-    id: raw.id,
-    eventId: raw.event_id ?? raw.eventId,
-    serviceId: raw.service_id ?? raw.serviceId,
-    liveSessionId: raw.live_session_id ?? raw.liveSessionId,
-    discountPercentage: raw.discount_percentage ?? raw.discountPercentage,
-    promoPriceCfa: raw.promo_price_cfa ?? raw.promoPriceCfa,
-    stockCap: raw.stock_cap ?? raw.stockCap,
-    availability: raw.availability,
-    status: raw.status,
-    metadata: raw.metadata ?? {},
-    publishedAt: raw.published_at ?? raw.publishedAt,
-    createdAt: raw.created_at ?? raw.createdAt ?? '',
-    updatedAt: raw.updated_at ?? raw.updatedAt ?? '',
-});
-
-/**
  * Récupère les événements et entrées du prestataire connecté (authentifié)
  */
 export const fetchMyGlobalPromoEvents = async (): Promise<{ events: any[]; entries: any[] }> => {
@@ -207,8 +169,8 @@ export const fetchMyGlobalPromoEvents = async (): Promise<{ events: any[]; entri
         }
         const data = payload.data || payload;
         return {
-            events: Array.isArray(data.events) ? data.events.map(mapRawEvent) : [],
-            entries: Array.isArray(data.entries) ? data.entries.map(mapRawEntry) : [],
+            events: Array.isArray(data.events) ? data.events : [],
+            entries: Array.isArray(data.entries) ? data.entries : [],
         };
     } catch (error: any) {
         console.error('[globalPromoService] Erreur fetchMyGlobalPromoEvents:', error);

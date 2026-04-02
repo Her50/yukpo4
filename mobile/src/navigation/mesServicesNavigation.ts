@@ -2,7 +2,7 @@
  * Ouvre l'écran catalogue produits actif via l'onglet **Services**.
  *
  * Ne pas utiliser `navigate('Services')` depuis la pile racine : une route stack séparée `Services`
- * charge **ServicesScreen** (ancien tableau « Mon activité »), d'où la confusion avec l'onglet
+ * charge **ServicesScreen** (ancien tableau « Mon activité »), d’où la confusion avec l’onglet
  * barre du bas nommé aussi `Services`.
  */
 export function navigateToMesServicesHub(navigation: { navigate: (...args: any[]) => void }): void {

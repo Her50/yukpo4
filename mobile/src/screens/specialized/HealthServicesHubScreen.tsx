@@ -148,7 +148,7 @@ const HealthServicesHubScreen: React.FC = () => {
         } else if (q.includes('sang') || q.includes('don') || q.includes('transfusion')) {
             (navigation as any).navigate('BanqueSangSearch');
         } else {
-            // Par défaut, hub hôpitaux (cohérent avec l'entrée accueil)
+            // Par défaut, hub hôpitaux (cohérent avec l’entrée accueil)
             (navigation as any).navigate('HopitalHome');
         }
     };

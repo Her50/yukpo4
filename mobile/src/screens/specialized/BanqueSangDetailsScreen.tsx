@@ -80,8 +80,8 @@ const BanqueSangDetailsScreen: React.FC = () => {
 
     const handleRefresh = useCallback(async () => { setRefreshing(true); await loadBanqueDetails(); setRefreshing(false); }, []);
 
-    const handleCall = () => { if (banque?.telephone) Linking.openURL(`tel:${banque.telephone.replace(/[^\d+]/g, '')}`); };
-    const handleCallUrgence = () => { if (banque?.telephone_urgence) Linking.openURL(`tel:${banque.telephone_urgence.replace(/[^\d+]/g, '')}`); };
+    const handleCall = () => { if (banque?.telephone) Linking.openURL(`tel:${banque.telephone}`); };
+    const handleCallUrgence = () => { if (banque?.telephone_urgence) Linking.openURL(`tel:${banque.telephone_urgence}`); };
     const handleWhatsApp = () => {
         const num = banque?.whatsapp || banque?.telephone;
         if (num) Linking.openURL(`https://wa.me/${num.replace(/[^0-9+]/g, '')}`);

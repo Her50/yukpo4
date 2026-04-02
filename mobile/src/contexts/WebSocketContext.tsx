@@ -168,7 +168,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             switch (messageType) {
                 case 'notification':
                     // Afficher une notification locale
-                    // ✅ Normaliser un payload "notification" minimal (certains backends n'envoient pas title/priority)
+                    // ✅ Normaliser un payload “notification” minimal (certains backends n’envoient pas title/priority)
                     const notification = (() => {
                         const raw = message as any;
                         const data = raw?.data ?? {};

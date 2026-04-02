@@ -282,7 +282,7 @@ const registerBackgroundTask = () => {
             await AsyncStorage.removeItem(STORAGE_KEY_SESSION);
         }
 
-        // Alertes communautaires (notification sonore même si Navigation / l'app n'est pas au premier plan)
+        // Alertes communautaires (notification sonore même si Navigation / l’app n’est pas au premier plan)
         const lastLoc = data.locations[data.locations.length - 1];
         if (lastLoc?.coords) {
             try {

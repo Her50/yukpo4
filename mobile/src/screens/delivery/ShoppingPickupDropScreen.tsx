@@ -159,7 +159,7 @@ const ShoppingPickupDropScreen: React.FC = () => {
             <KeyboardAwareScreen contentContainerStyle={styles.scroll}>
                 <DeliveryAvatarBubble
                     mood='excited'
-                    message="Sélectionne le supermarché et l'adresse du destinataire."
+                    message='Sélectionne le supermarché et l’adresse du destinataire.'
                     subtitle='Tu peux choisir sur la carte ou utiliser une adresse enregistrée.'
                 />
 

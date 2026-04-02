@@ -109,7 +109,7 @@ const FRIENDLY_SCREEN_NAMES: Record<string, string> = {
   MesServices: 'Mes services (Produits)',
   ServicesDashboard: 'Tableau de bord services',
   GestionServicesSpecialises: 'Services spécialisés',
-  OffresEmploiHome: "Offres d'emploi",
+  OffresEmploiHome: 'Offres d’emploi',
   HotelMeubleHome: 'Hôtels & meublés',
   HotelSearch: 'Recherche hôtels',
   MeubleSearch: 'Recherche meublés',
@@ -119,7 +119,7 @@ const FRIENDLY_SCREEN_NAMES: Record<string, string> = {
   InsuranceServicesSearch: 'Recherche assurance',
   InsuranceServicesResults: 'Résultats assurance',
   InsuranceQuoteRequest: 'Devis assurance IA',
-  MesPolicesAssurance: "Mes polices d'assurance",
+  MesPolicesAssurance: 'Mes polices d’assurance',
   DeclarationSinistre: 'Déclarer un sinistre',
   SuiviSinistre: 'Suivi des sinistres',
   TaxiHome: 'Taxi',
@@ -152,7 +152,7 @@ const humanizeScreenName = (rawName?: string): string => {
   return cleaned || 'Yukpo';
 };
 
-/** Max 3 boutons : recharge d'abord, puis nav, puis le reste. */
+/** Max 3 boutons : recharge d’abord, puis nav, puis le reste. */
 const orderAndCapAssistantActions = (
   actions: any[] | undefined,
   max = 3,
@@ -440,7 +440,7 @@ const IntelligentChat: React.FC<IntelligentChatProps> = ({
             : `Bienvenue sur Yukpo ! 🚀 La super-app qui révolutionne votre quotidien. Découvrez nos services — demandez ou appuyez ci-dessous !`;
         }
         greeting = greeting
-          .replace(/aujourd['']hui/gi, '')
+          .replace(/aujourd[’']hui/gi, '')
           .replace(/\s{2,}/g, ' ')
           .trim();
       } else {
