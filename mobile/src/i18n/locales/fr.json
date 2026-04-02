@@ -3966,7 +3966,9 @@
     "vosLivraisonsActives": "Vos livraisons actives",
     "nouvelleLivraison": "Nouvelle livraison",
     "aucuneLivraisonEnCours": "Aucune livraison en cours",
-    "livraisonDeColis": "Livraison de colis"
+    "livraisonDeColis": "Livraison de colis",
+    "editUnavailableAfterCompletion": "Cette livraison ne peut plus être modifiée (statut terminé ou annulé).",
+    "cannotOpenEditFlow": "Impossible d'ouvrir l'écran de modification."
   },
   "offreCandidatures": {
     "cannotLoad": "Impossible de charger les candidatures",

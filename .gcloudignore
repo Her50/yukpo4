@@ -1,0 +1,52 @@
+# Exclure tout sauf le backend pour Cloud Build
+.gcloudignore
+.git/
+.gitignore
+
+# Mobile et frontend (inutiles pour le build backend)
+mobile/
+node_modules/
+.expo/
+
+# Fichiers volumineux inutiles
+*.pptx
+*.pdf
+*.backup
+*.bak
+*.zip
+*.tar
+*.tgz
+
+# Scripts Python
+*.py
+scripts/__pycache__/
+
+# Docs et présentations
+docs/
+deployment/
+*.md
+!README.md
+
+# Logs et temporaires
+*.log
+*.tmp
+logs/
+tmp/
+temp/
+
+# IDE
+.vscode/
+.idea/
+.claude/
+
+# CI/CD files non nécessaires
+.github/
+.travis.yml
+.circleci/
+docker-compose*.yml
+
+# Garder le backend complet
+!backend/
+!backend/**
+!Dockerfile
+!cloudbuild.yaml

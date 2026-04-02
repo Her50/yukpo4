@@ -150,7 +150,7 @@ class NotificationSoundService {
     }
 
     /**
-     * Précharge tous les sons pour une lecture plus rapide + préchauffage TTS
+     * Précharge tous les sons pour une lecture plus rapide
      */
     async preloadAllSounds(): Promise<void> {
         try {
@@ -162,10 +162,7 @@ class NotificationSoundService {
                 this.loadSound('delivery_request'),
             ]);
 
-            // Préchauffer TTS pour un démarrage instantané de la bienvenue
-            await this.warmupTTS();
-
-            console.log('[NotificationSoundService] ✅ Tous les sons préchargés + TTS prêt');
+            console.log('[NotificationSoundService] ✅ Tous les sons préchargés');
         } catch (error) {
             console.error('[NotificationSoundService] ❌ Erreur préchargement:', error);
         }
@@ -275,18 +272,11 @@ class NotificationSoundService {
 
             console.log('[NotificationSoundService] 🎉 Lecture message de bienvenue');
 
-            // 1. Préchauffer TTS PENDANT le son de bienvenue
-            this.warmupTTS(); // Non bloquant
-
-            // 2. Jouer un son de bienvenue (réutilise le son 'ready' comme chime)
-            await this.playSound('ready').catch(() => { });
-
-            // 3. Message TTS très court pour démarrage instantané
+            // Message TTS de bienvenue dans la langue de l'utilisateur
             const lang = i18n.language || 'fr';
             const message = this.getWelcomeMessage(lang);
             const ttsLang = this.getTTSLanguage();
 
-            // Démarrer TTS immédiatement après le son (pas d'attente)
             Speech.speak(message, {
                 language: ttsLang,
                 pitch: 1.05,

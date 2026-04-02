@@ -416,6 +416,22 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
         return { sumNeuf, countNeuf, countOcc, sumRefOcc };
     }, [enfants]);
 
+    const journeySteps = useMemo(() => [
+        { key: 'etab',      label: t('bourseJourney.etab',      'École'),    icon: 'school'          },
+        { key: 'classe',    label: t('bourseJourney.classe',    'Classe'),   icon: 'layers'          },
+        { key: 'programme', label: t('bourseJourney.programme', 'Livres'),   icon: 'book-open'       },
+        { key: 'recap',     label: t('bourseJourney.recap',     'Récap'),    icon: 'clipboard-list'  },
+        { key: 'annonces',  label: t('bourseJourney.annonces',  'Annonces'), icon: 'search'          },
+    ], [t]);
+
+    const journeyIndex = useMemo(() => {
+        if (stepAnnonces) return 4;
+        if (stepRecap) return 3;
+        if (active?.classe) return 2;
+        if (selectedEtab || nationalFallback) return 1;
+        return 0;
+    }, [stepAnnonces, stepRecap, active, selectedEtab, nationalFallback]);
+
     const ouvrirRecap = useCallback(() => {
         hapticPress();
         if (!nationalFallback && !selectedEtab) {

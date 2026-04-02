@@ -1,6 +1,6 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Location from 'expo-location';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Component, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
     BackHandler,
@@ -13,6 +13,29 @@ import {
     View
 } from 'react-native';
 import { notificationSoundService } from '../../services/notificationSoundService';
+
+class MapErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
+    constructor(props: { children: React.ReactNode }) {
+        super(props);
+        this.state = { hasError: false };
+    }
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+    componentDidCatch(error: Error) {
+        console.error('[DeliveryTracking] MapErrorBoundary caught:', error);
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <View style={{ height: 250, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: 12 }}>
+                    <Text style={{ color: '#64748b', fontSize: 14 }}>Carte indisponible</Text>
+                </View>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 import CourierDifficultyModal from '../../components/delivery/CourierDifficultyModal';
 import CourierSelectionModal from '../../components/delivery/CourierSelectionModal';
@@ -540,33 +563,35 @@ const DeliveryShoppingTrackingScreen: React.FC = () => {
                     </View>
                 )}
 
-                <View style={styles.mapWrapper}>
-                    <EnhancedTrackingMap
-                        pickup={
-                            delivery?.pickup?.location
-                                ? {
-                                    lat: delivery.pickup.location.lat,
-                                    lng: delivery.pickup.location.lng,
-                                    label: delivery.pickup.label,
-                                }
-                                : null
-                        }
-                        dropoff={
-                            delivery?.dropoff?.location
-                                ? {
-                                    lat: delivery.dropoff.location.lat,
-                                    lng: delivery.dropoff.location.lng,
-                                    label: delivery.dropoff.label,
-                                }
-                                : null
-                        }
-                        courierLocation={delivery?.metadata?.last_location || null}
-                        recipientLocation={delivery?.recipient?.currentLocation || null}
-                        waypoints={delivery?.metadata?.route_points || []}
-                        showNavigationButton={!!(delivery?.pickup?.location && delivery?.dropoff?.location)}
-                        onNavigationPress={handleNavigation}
-                    />
-                </View>
+                <MapErrorBoundary>
+                    <View style={styles.mapWrapper}>
+                        <EnhancedTrackingMap
+                            pickup={
+                                delivery?.pickup?.location
+                                    ? {
+                                        lat: delivery.pickup.location.lat,
+                                        lng: delivery.pickup.location.lng,
+                                        label: delivery.pickup.label,
+                                    }
+                                    : null
+                            }
+                            dropoff={
+                                delivery?.dropoff?.location
+                                    ? {
+                                        lat: delivery.dropoff.location.lat,
+                                        lng: delivery.dropoff.location.lng,
+                                        label: delivery.dropoff.label,
+                                    }
+                                    : null
+                            }
+                            courierLocation={delivery?.metadata?.last_location || null}
+                            recipientLocation={delivery?.recipient?.currentLocation || null}
+                            waypoints={delivery?.metadata?.route_points || []}
+                            showNavigationButton={!!(delivery?.pickup?.location && delivery?.dropoff?.location)}
+                            onNavigationPress={handleNavigation}
+                        />
+                    </View>
+                </MapErrorBoundary>
 
                 {distance !== null && (
                     <RouteOptimizationIndicator

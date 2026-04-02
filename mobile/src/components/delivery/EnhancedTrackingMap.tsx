@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { LatLng, Marker, Polyline } from 'react-native-maps';
 import { modernColors } from '../../theme/modernTheme';
@@ -46,6 +46,7 @@ const EnhancedTrackingMap: React.FC<EnhancedTrackingMapProps> = ({
     const mapRef = useRef<MapView>(null);
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const buttonScale = useRef(new Animated.Value(1)).current;
+    const [mapReady, setMapReady] = useState(false);
 
     const markers = React.useMemo(() => {
         const points: LatLng[] = [];
@@ -112,7 +113,7 @@ const EnhancedTrackingMap: React.FC<EnhancedTrackingMapProps> = ({
     };
 
     React.useEffect(() => {
-        if (!mapRef.current || markers.all.length === 0) {
+        if (!mapReady || !mapRef.current || markers.all.length === 0) {
             return;
         }
 
@@ -125,7 +126,7 @@ const EnhancedTrackingMap: React.FC<EnhancedTrackingMapProps> = ({
             },
             animated: true,
         });
-    }, [markers.all]);
+    }, [mapReady, markers.all]);
 
     return (
         <View style={styles.container}>
@@ -135,11 +136,12 @@ const EnhancedTrackingMap: React.FC<EnhancedTrackingMapProps> = ({
                 showsCompass
                 showsTraffic={false}
                 showsIndoors={false}
-                showsMyLocationButton
+                showsMyLocationButton={false}
                 mapType="standard"
+                onMapReady={() => setMapReady(true)}
             >
                 {markers.pickup ? (
-                    <Marker coordinate={markers.pickup} pinColor={modernColors.primary}>
+                    <Marker coordinate={markers.pickup} pinColor={modernColors.primary} tracksViewChanges={false}>
                         <View style={styles.markerBubble}>
                             <View style={[styles.markerIcon, { backgroundColor: modernColors.primary }]}>
                                 <SafeIcon name="shopping-cart" size={16} color="#fff" />
@@ -150,7 +152,7 @@ const EnhancedTrackingMap: React.FC<EnhancedTrackingMapProps> = ({
                 ) : null}
 
                 {markers.dropoff ? (
-                    <Marker coordinate={markers.dropoff} pinColor={modernColors.accent}>
+                    <Marker coordinate={markers.dropoff} pinColor={modernColors.accent} tracksViewChanges={false}>
                         <View style={styles.markerBubble}>
                             <View style={[styles.markerIcon, { backgroundColor: modernColors.accent }]}>
                                 <SafeIcon name="location" size={16} color="#fff" />
@@ -161,7 +163,7 @@ const EnhancedTrackingMap: React.FC<EnhancedTrackingMapProps> = ({
                 ) : null}
 
                 {markers.courier ? (
-                    <Marker coordinate={markers.courier}>
+                    <Marker coordinate={markers.courier} tracksViewChanges={false}>
                         <Animated.View
                             style={[
                                 styles.courierMarker,
@@ -179,7 +181,7 @@ const EnhancedTrackingMap: React.FC<EnhancedTrackingMapProps> = ({
                 ) : null}
 
                 {markers.recipient ? (
-                    <Marker coordinate={markers.recipient} pinColor={modernColors.success}>
+                    <Marker coordinate={markers.recipient} pinColor={modernColors.success} tracksViewChanges={false}>
                         <View style={styles.markerBubble}>
                             <View style={[styles.markerIcon, { backgroundColor: modernColors.success }]}>
                                 <SafeIcon name="profile" size={16} color="#fff" />
