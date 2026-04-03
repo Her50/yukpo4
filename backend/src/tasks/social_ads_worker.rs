@@ -244,6 +244,7 @@ async fn process_automation_rules(state: &Arc<AppState>) -> Result<(), String> {
                         rule_user_id,
                         access_token.as_deref(),
                         1.2, // +20%
+                        max_daily_budget,
                     )
                     .await;
                 }
@@ -396,15 +397,17 @@ async fn boost_high_roas_campaigns(
     user_id: i32,
     access_token: Option<&str>,
     multiplier: f64,
+    max_daily_budget_from_rule: i64,
 ) -> Result<(), String> {
     let token = access_token.ok_or("Token manquant")?;
 
     // Récupérer campagnes + adset_id (nécessaire pour l'API budget)
+    // L'adset ID est dans meta_ad_sets, pas dans meta_ad_campaigns
     let high_roas = sqlx::query(
-        r#"SELECT c.external_campaign_id, c.budget_daily_fcfa, c.adset_external_id,
-                  a.max_daily_budget_fcfa
+        r#"SELECT c.id, c.external_campaign_id, c.budget_daily_fcfa,
+                  s.external_adset_id
            FROM meta_ad_campaigns c
-           LEFT JOIN meta_ad_accounts a ON a.id = c.ad_account_id
+           LEFT JOIN meta_ad_sets s ON s.campaign_id = c.id
            WHERE c.user_id = $1 AND c.status = 'active'
              AND c.roas IS NOT NULL AND c.roas > 3.0
              AND c.budget_daily_fcfa IS NOT NULL"#,
@@ -416,20 +419,15 @@ async fn boost_high_roas_campaigns(
 
     for c in &high_roas {
         let ext_id_opt: Option<String> = c.try_get("external_campaign_id").ok().flatten();
-        let adset_id_opt: Option<String> = c.try_get("adset_external_id").ok().flatten();
+        let adset_id_opt: Option<String> = c.try_get("external_adset_id").ok().flatten();
         let budget_opt: Option<i64> = c.try_get("budget_daily_fcfa").ok().flatten();
-        let max_budget_opt: Option<i64> = c.try_get("max_daily_budget_fcfa").ok().flatten();
 
         if let (Some(ext_id), Some(budget)) = (ext_id_opt, budget_opt) {
             let new_budget = (budget as f64 * multiplier) as i64;
 
-            // Respecter le plafond max_daily_budget_fcfa si défini par le partenaire
-            let capped_budget = if let Some(max) = max_budget_opt {
-                if max > 0 {
-                    new_budget.min(max)
-                } else {
-                    new_budget
-                }
+            // Respecter le plafond max_daily_budget_fcfa de la règle d'automatisation
+            let capped_budget = if max_daily_budget_from_rule > 0 {
+                new_budget.min(max_daily_budget_from_rule)
             } else {
                 new_budget
             };

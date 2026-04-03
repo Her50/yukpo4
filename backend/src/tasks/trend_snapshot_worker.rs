@@ -189,7 +189,8 @@ async fn send_trend_alerts(
             "opportunity_score": trend.opportunity_score,
         }));
 
-        match push_notification_service::send_push_notification(
+        // Convertir l'erreur en String avant le match pour que le future soit Send
+        let push_count = push_notification_service::send_push_notification(
             &state.pg,
             user_id,
             title,
@@ -198,24 +199,24 @@ async fn send_trend_alerts(
             Some("default".to_string()),
         )
         .await
-        {
-            Ok(count) if count > 0 => {
-                // Tracer l'alerte envoyée
-                let _ = sqlx::query(
-                    r#"INSERT INTO trend_alerts_sent (user_id, topic, region, opportunity_score)
-                       VALUES ($1, $2, $3, $4)
-                       ON CONFLICT (user_id, topic, region) DO UPDATE
-                       SET sent_at = NOW(), opportunity_score = EXCLUDED.opportunity_score"#,
-                )
-                .bind(user_id)
-                .bind(&trend.topic)
-                .bind(region)
-                .bind(trend.opportunity_score as f64)
-                .execute(&state.pg)
-                .await;
-                sent += 1;
-            }
-            _ => {}
+        .map(|c| c > 0)
+        .unwrap_or(false);
+
+        if push_count {
+            // Tracer l'alerte envoyée
+            let _ = sqlx::query(
+                r#"INSERT INTO trend_alerts_sent (user_id, topic, region, opportunity_score)
+                   VALUES ($1, $2, $3, $4)
+                   ON CONFLICT (user_id, topic, region) DO UPDATE
+                   SET sent_at = NOW(), opportunity_score = EXCLUDED.opportunity_score"#,
+            )
+            .bind(user_id)
+            .bind(&trend.topic)
+            .bind(region)
+            .bind(trend.opportunity_score as f64)
+            .execute(&state.pg)
+            .await;
+            sent += 1;
         }
     }
 
