@@ -2434,6 +2434,27 @@ const MesProduitsScreen: React.FC = () => {
                         </ScrollView>
                     </View>
 
+                    {/* ✅ 2026-04-03 : Community Manager IA */}
+                    <TouchableOpacity
+                        style={styles.socialAiBanner}
+                        onPress={() => (navigation as any).navigate('SocialAI', {
+                            serviceId: products[0]?.service_id || null,
+                            serviceName: user?.nom_complet || 'Mon service',
+                        })}
+                        activeOpacity={0.85}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            <View style={styles.socialAiBannerIcon}>
+                                <SafeIcon name="cpu" size={16} color="#fff" />
+                            </View>
+                            <View>
+                                <Text style={styles.socialAiBannerTitle}>Community Manager IA</Text>
+                                <Text style={styles.socialAiBannerSub}>Contenu · Chatbot · Pubs Meta · Inbox</Text>
+                            </View>
+                        </View>
+                        <SafeIcon name="chevron-right" size={16} color="#6EE7B7" />
+                    </TouchableOpacity>
+
                     <View style={styles.filtersContainer}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
                             {['tous', 'actif', 'inactif'].map((filterOption) => (
@@ -3311,6 +3332,37 @@ const styles = StyleSheet.create({
     },
     manageActionsScroll: {
         backgroundColor: '#FFFFFF',
+    },
+    socialAiBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#064E3B',
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        marginHorizontal: 16,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#10B981',
+    },
+    socialAiBannerIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#10B981',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    socialAiBannerTitle: {
+        color: '#D1FAE5',
+        fontWeight: '700',
+        fontSize: 13,
+    },
+    socialAiBannerSub: {
+        color: '#6EE7B7',
+        fontSize: 10,
+        marginTop: 1,
     },
 });
 

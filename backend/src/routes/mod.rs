@@ -108,6 +108,7 @@ pub mod taxi_realtime_metrics_routes;
 pub mod test_routes; // ✅ Routes pour page de téléchargement APK test
 pub mod token_pack_routes;
 pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consommation de tokens
+pub mod trend_routes; // ✅ 2026-04-03: TrendPulse — tendances personnalisées + contexte utilisateur
 pub mod universal_search_routes; // ✅ 2026-04-01: Routes recherche universelle cross-services
 pub mod upload_routes;
 pub mod user_routes;

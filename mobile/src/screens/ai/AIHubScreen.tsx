@@ -21,6 +21,13 @@ const AIHubScreen: React.FC = () => {
       onPress: () => navigation.navigate('AIChat' as never),
     },
     {
+      title: t('ai.featureTrendTitle') || 'TrendPulse',
+      description: t('ai.featureTrendDesc') || 'Tendances du marché africain en temps réel — personnalisées pour ton activité',
+      emoji: '📈',
+      onPress: () => navigation.navigate('TrendPulseDashboard' as never),
+      highlight: true,
+    },
+    {
       title: t('ai.featureSearchTitle'),
       description: t('ai.featureSearchDesc'),
       emoji: '🔍',
@@ -71,7 +78,7 @@ const AIHubScreen: React.FC = () => {
           {aiFeatures.map((feature, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.featureCard}
+              style={[styles.featureCard, feature.highlight && styles.featureCardHighlight]}
               onPress={feature.onPress}
               activeOpacity={0.85}
             >
@@ -175,6 +182,11 @@ const styles = StyleSheet.create({
     elevation: 2,
     minHeight: 148,
     justifyContent: 'flex-start',
+  },
+  featureCardHighlight: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#6366f1',
+    borderWidth: 1.5,
   },
   featureEmoji: {
     fontSize: 36,

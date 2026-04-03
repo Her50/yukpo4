@@ -1136,6 +1136,27 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                 placeholder={t('gestionServices.rechercherDansListe')}
             />
 
+            {/* ✅ 2026-04-03 : Bannière Community Manager IA */}
+            <TouchableOpacity
+                style={styles.socialAiBanner}
+                onPress={() => (navigation as any).navigate('SocialAI', {
+                    serviceId: services[0]?.service_id || null,
+                    serviceName: services[0]?.nom || user?.nom_complet || 'Mon service',
+                })}
+                activeOpacity={0.85}
+            >
+                <View style={styles.socialAiBannerLeft}>
+                    <View style={styles.socialAiBannerIcon}>
+                        <SafeIcon name="cpu" size={18} color="#fff" />
+                    </View>
+                    <View>
+                        <Text style={styles.socialAiBannerTitle}>Community Manager IA</Text>
+                        <Text style={styles.socialAiBannerSub}>Contenu · Chatbot · Pubs Meta · Inbox</Text>
+                    </View>
+                </View>
+                <SafeIcon name="chevron-right" size={18} color="#6EE7B7" />
+            </TouchableOpacity>
+
             {/* Filtres et Toggle */}
             <View style={styles.filtersContainer}>
                 <View style={styles.filtersRow}>
@@ -1938,6 +1959,42 @@ const styles = StyleSheet.create({
     },
     brandPo: {
         color: '#7C3AED', // Violet (cohérent avec le logo officiel)
+    },
+    socialAiBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#064E3B',
+        borderRadius: 14,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginHorizontal: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#10B981',
+    },
+    socialAiBannerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    socialAiBannerIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#10B981',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    socialAiBannerTitle: {
+        color: '#D1FAE5',
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    socialAiBannerSub: {
+        color: '#6EE7B7',
+        fontSize: 11,
+        marginTop: 1,
     },
 });
 

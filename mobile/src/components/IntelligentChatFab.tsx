@@ -21,6 +21,8 @@ interface IntelligentChatFabProps {
   visible?: boolean;
   screenName?: string;
   hideOnScreens?: string[];
+  /** Nombre de trends haute opportunité — affiche un badge rouge si > 0 */
+  trendBadgeCount?: number;
 }
 
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 85 : 60;
@@ -40,6 +42,7 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
   visible = true,
   screenName,
   hideOnScreens = ['ChatModalMobile'],
+  trendBadgeCount = 0,
 }) => {
   const { t } = useLanguageSafe();
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -252,6 +255,15 @@ const IntelligentChatFab: React.FC<IntelligentChatFabProps> = ({
         </TouchableOpacity>
       </Animated.View>
 
+      {/* Badge TrendPulse — affiché uniquement si trends haute opportunité détectées */}
+      {trendBadgeCount > 0 && (
+        <View style={styles.trendBadge}>
+          <Text style={styles.trendBadgeText}>
+            {trendBadgeCount > 9 ? '9+' : String(trendBadgeCount)}
+          </Text>
+        </View>
+      )}
+
       <View style={styles.statusDot} />
     </Animated.View>
   );
@@ -342,6 +354,27 @@ const styles = StyleSheet.create({
     borderLeftColor: '#1e293b',
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',
+  },
+  trendBadge: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+    zIndex: 3,
+  },
+  trendBadgeText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontWeight: '800',
+    lineHeight: 12,
   },
 });
 

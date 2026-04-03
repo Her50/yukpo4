@@ -508,24 +508,27 @@ pub async fn update_adset_budget(
 
 /// Charge les comptes publicitaires actifs depuis la BDD
 pub async fn load_ad_account(pg: &PgPool, user_id: i32, service_id: i32) -> Option<AdAccountInfo> {
-    sqlx::query!(
+    sqlx::query(
         r#"SELECT ad_account_id, access_token, currency, timezone
            FROM meta_ad_accounts
            WHERE user_id = $1 AND service_id = $2
              AND account_status = 1
            LIMIT 1"#,
-        user_id,
-        service_id,
     )
+    .bind(user_id)
+    .bind(service_id)
     .fetch_optional(pg)
     .await
     .ok()
     .flatten()
-    .map(|r| AdAccountInfo {
-        ad_account_id: r.ad_account_id,
-        access_token: r.access_token,
-        currency: r.currency,
-        timezone: r.timezone,
+    .map(|r: sqlx::postgres::PgRow| {
+        use sqlx::Row;
+        AdAccountInfo {
+            ad_account_id: r.get("ad_account_id"),
+            access_token: r.get("access_token"),
+            currency: r.get("currency"),
+            timezone: r.get("timezone"),
+        }
     })
 }
 

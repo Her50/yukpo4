@@ -779,6 +779,44 @@ class IntelligentChatService {
         ctxPayload.yukpo_ia_attachments = options.yukpoIaAttachments;
       }
 
+      // ✅ 2026-04-03: Injection contexte commercial réel (TrendPulse)
+      // Chargé en arrière-plan, non bloquant — si absent, le chat fonctionne normalement
+      try {
+        const { trendService } = await import('./trendService');
+        const userCtx = await trendService.getUserContext();
+        if (userCtx && userCtx.is_provider) {
+          ctxPayload.user_commercial_context = trendService.buildContextSummary(userCtx);
+          ctxPayload.user_sectors = userCtx.sectors;
+          ctxPayload.user_cities = userCtx.cities;
+          ctxPayload.user_product_categories = userCtx.product_categories;
+          ctxPayload.user_total_products = userCtx.total_products;
+          ctxPayload.user_has_social_accounts = userCtx.has_social_accounts;
+          ctxPayload.user_has_meta_ads = userCtx.has_meta_ads;
+          // Top produits des 2 premiers services (léger pour le payload)
+          if (userCtx.services.length > 0) {
+            ctxPayload.user_products_preview = userCtx.services
+              .slice(0, 2)
+              .flatMap(s => s.products_preview.slice(0, 4))
+              .map(p => `${p.name} (${p.price} FCFA${p.is_promo ? ' en promo' : ''})`);
+          }
+          // Signaux chatbot (demandes clients réelles cette semaine)
+          const totalQuestions = userCtx.chatbot_signals.reduce(
+            (sum, s) => sum + s.questions_this_week, 0,
+          );
+          if (totalQuestions > 0) {
+            const keywords = userCtx.chatbot_signals
+              .flatMap(s => s.top_keywords)
+              .slice(0, 5);
+            ctxPayload.user_chatbot_demand_this_week = {
+              total_questions: totalQuestions,
+              top_keywords: keywords,
+            };
+          }
+        }
+      } catch {
+        // Silencieux : ne pas bloquer le chat si TrendPulse est indisponible
+      }
+
       const chatBody: Record<string, unknown> = {
         message: contextualUserMessage,
         context: ctxPayload,

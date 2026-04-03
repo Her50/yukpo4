@@ -351,28 +351,29 @@ pub async fn determine_ab_winner(
 
 /// Récupère les préférences de contenu d'un partenaire
 pub async fn load_preferences(pg: &PgPool, user_id: i32, service_id: i32) -> ContentPreferences {
-    let row = sqlx::query!(
+    let row = sqlx::query(
         r#"SELECT default_tone, default_language, brand_voice, forbidden_words,
                   always_include, default_hashtags, post_template
            FROM social_ai_preferences
            WHERE user_id = $1 AND service_id = $2"#,
-        user_id,
-        service_id,
     )
+    .bind(user_id)
+    .bind(service_id)
     .fetch_optional(pg)
     .await
     .ok()
     .flatten();
 
     if let Some(r) = row {
+        use sqlx::Row;
         ContentPreferences {
-            tone: r.default_tone,
-            language: r.default_language,
-            brand_voice: r.brand_voice,
-            forbidden_words: r.forbidden_words.unwrap_or_default(),
-            always_include: r.always_include.unwrap_or_default(),
-            default_hashtags: r.default_hashtags.unwrap_or_default(),
-            post_template: r.post_template,
+            tone: r.get("default_tone"),
+            language: r.get("default_language"),
+            brand_voice: r.try_get("brand_voice").ok(),
+            forbidden_words: r.try_get::<Vec<String>, _>("forbidden_words").unwrap_or_default(),
+            always_include: r.try_get::<Vec<String>, _>("always_include").unwrap_or_default(),
+            default_hashtags: r.try_get::<Vec<String>, _>("default_hashtags").unwrap_or_default(),
+            post_template: r.try_get("post_template").ok(),
         }
     } else {
         ContentPreferences::default()
@@ -404,29 +405,30 @@ pub async fn save_generated_post(
         "draft"
     };
 
-    let row = sqlx::query!(
+    let row = sqlx::query(
         r#"INSERT INTO social_ai_posts
            (user_id, service_id, product_id, platform, caption, caption_variant_b,
             hashtags, status, tone, scheduled_at, ai_model, generation_prompt)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'gpt-4o', $11)
            RETURNING id"#,
-        user_id,
-        service_id,
-        product_id,
-        platform,
-        caption.as_str(),
-        content.caption_b.as_deref(),
-        &hashtags_arr,
-        status,
-        content.tone_used.as_str(),
-        scheduled_at,
-        generation_prompt,
     )
+    .bind(user_id)
+    .bind(service_id)
+    .bind(product_id)
+    .bind(platform)
+    .bind(caption.as_str())
+    .bind(content.caption_b.as_deref())
+    .bind(&hashtags_arr)
+    .bind(status)
+    .bind(content.tone_used.as_str())
+    .bind(scheduled_at)
+    .bind(generation_prompt)
     .fetch_one(pg)
     .await
     .map_err(|e| e.to_string())?;
 
-    Ok(row.id)
+    use sqlx::Row;
+    Ok(row.try_get::<i32, _>("id").map_err(|e| e.to_string())?)
 }
 
 // ─── Helpers privés ───────────────────────────────────────────────────────────

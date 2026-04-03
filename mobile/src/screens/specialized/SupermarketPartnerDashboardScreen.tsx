@@ -679,6 +679,19 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
                         Ouvrir la distribution
                     </Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={{ backgroundColor: '#10B981', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 }}
+                    onPress={() => (navigation as any).navigate('SocialAI', {
+                        serviceId: serviceId,
+                        serviceName: user?.nom_complet || 'Ma boutique',
+                    })}
+                    activeOpacity={0.8}
+                >
+                    <SafeIcon name="cpu" size={16} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
+                        Community Manager IA
+                    </Text>
+                </TouchableOpacity>
             </View>
         </View>
     );

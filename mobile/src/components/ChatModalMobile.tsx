@@ -138,7 +138,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [showCallModal, setShowCallModal] = useState(false);
     const [callType, setCallType] = useState<'audio' | 'video'>('audio');
 
-    // États pour le panneau chatbot IA inline
+    // États pour le panneau chatbot IA inline (gardé pour rétro-compat)
     const [showChatbotPanel, setShowChatbotPanel] = useState(false);
     const [chatbotMessages, setChatbotMessages] = useState<Array<{ id: string; text: string; isUser: boolean; response?: ChatbotResponse & { suggestedActions?: any[]; nextSteps?: string[] } }>>([]);
     const [chatbotInput, setChatbotInput] = useState('');
@@ -146,6 +146,16 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [streamingText, setStreamingText] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
     const chatbotScrollRef = useRef<ScrollView>(null);
+
+    // ✅ Messages IA injectés directement dans le fil principal
+    const [aiInlineMessages, setAiInlineMessages] = useState<Array<{
+        id: string;
+        text: string;
+        from: 'ai';
+        timestamp: Date;
+        quickReplies?: string[];
+    }>>([]);
+    const [aiTypingInline, setAiTypingInline] = useState(false);
 
     // ✅ Animated typing dots (3 dots with staggered pulsing)
     const typingDot1 = useRef(new Animated.Value(0.3)).current;
@@ -528,6 +538,52 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         await editMessage(editingMessageId, editingContent.trim());
         setEditingMessageId(null);
         setEditingContent('');
+    };
+
+    // ✅ IA inline — réponse directe dans le fil de conversation principal
+    const triggerInlineAiResponse = async (userText: string) => {
+        if (!userText.trim()) return;
+        setAiTypingInline(true);
+        scrollViewRef.current?.scrollToEnd?.({ animated: true });
+
+        try {
+            const serviceCategory = chatbotIntelligentService.detectServiceCategory(service);
+            const recentHistory = aiInlineMessages.slice(-6).map(m => ({
+                id: m.id, text: m.text, isUser: false, timestamp: m.timestamp, type: 'text' as const,
+            }));
+            const enrichedContext = {
+                ...screenContext,
+                chatbotMode: 'chatbot_service',
+                chatbotSystemPrompt: chatbotIntelligentService.buildCategoryPrompt(serviceCategory, service, language || 'fr', recentHistory.length),
+                serviceData: {
+                    ...screenContext.serviceData,
+                    ...(service?.data || {}),
+                    nom: service?.data?.titre_service?.valeur || service?.data?.titre_service || service?.nom || service?.name,
+                    category: serviceCategory,
+                },
+            };
+
+            const result = await intelligentChatService.generateContextualResponse(
+                userText,
+                enrichedContext,
+                recentHistory,
+                language,
+            );
+
+            const newMsg = {
+                id: `ai_${Date.now()}`,
+                text: result.message,
+                from: 'ai' as const,
+                timestamp: new Date(),
+                quickReplies: result.nextSteps?.slice(0, 3) || [],
+            };
+            setAiInlineMessages(prev => [...prev, newMsg]);
+        } catch (e) {
+            console.warn('[ChatModal] Erreur réponse IA inline:', e);
+        } finally {
+            setAiTypingInline(false);
+            setTimeout(() => scrollViewRef.current?.scrollToEnd?.({ animated: true }), 150);
+        }
     };
 
     // ✅ NOUVEAU: Handler pour envoyer des médias sélectionnés de la galerie
@@ -922,7 +978,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             selectedAudio ? 'audio' :
                 selectedDocuments.length > 0 ? 'file' : 'text';
 
-        await sendMessage(newMessage.trim() || '', messageType, messageData);
+        const sentText = newMessage.trim();
+        await sendMessage(sentText || '', messageType, messageData);
 
         // Nettoyer l'audio si présent
         if (audioSound) {
@@ -939,6 +996,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         setIsPlayingAudio(false);
         setMentionedUsers([]); // ✅ Réinitialiser les mentions
         setReplyingTo(null); // ✅ Réinitialiser la réponse
+
+        // ✅ IA inline : réponse automatique dans le fil si message texte
+        if (sentText && messageType === 'text') {
+            triggerInlineAiResponse(sentText);
+        }
     };
 
     // Nettoyer l'audio quand le modal se ferme
@@ -1331,6 +1393,52 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             </View>
                         </View>
                     ))}
+
+                    {/* ✅ Messages IA injectés directement dans le fil */}
+                    {aiInlineMessages.map((aiMsg) => (
+                        <View key={aiMsg.id} style={styles.messageContainerLeft}>
+                            <View style={styles.aiInlineBubbleWrapper}>
+                                <View style={styles.aiInlineBadge}>
+                                    <SafeIcon name="cpu" size={10} color="#fff" />
+                                </View>
+                                <View style={styles.aiInlineBubble}>
+                                    <Text style={styles.aiInlineName}>Yukpo IA</Text>
+                                    <Text style={styles.aiInlineText}>{aiMsg.text}</Text>
+                                    {aiMsg.quickReplies && aiMsg.quickReplies.length > 0 && (
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
+                                            {aiMsg.quickReplies.map((qr, i) => (
+                                                <TouchableOpacity
+                                                    key={i}
+                                                    style={styles.aiQuickReplyBtn}
+                                                    onPress={() => triggerInlineAiResponse(qr)}
+                                                >
+                                                    <Text style={styles.aiQuickReplyText}>{qr}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                    )}
+                                </View>
+                            </View>
+                        </View>
+                    ))}
+
+                    {/* Indicateur frappe IA inline */}
+                    {aiTypingInline && (
+                        <View style={styles.messageContainerLeft}>
+                            <View style={styles.aiInlineBubbleWrapper}>
+                                <View style={styles.aiInlineBadge}>
+                                    <SafeIcon name="cpu" size={10} color="#fff" />
+                                </View>
+                                <View style={[styles.aiInlineBubble, { paddingVertical: 10 }]}>
+                                    <View style={styles.typingDots}>
+                                        <Animated.View style={[styles.typingDot, { opacity: typingDot1 }]} />
+                                        <Animated.View style={[styles.typingDot, { opacity: typingDot2 }]} />
+                                        <Animated.View style={[styles.typingDot, { opacity: typingDot3 }]} />
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+                    )}
 
                     {prestataireTyping && (
                         <View style={styles.typingContainer}>
@@ -3291,6 +3399,58 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.primary || '#6366F1',
+    },
+    // ✅ Styles IA inline dans le fil principal
+    aiInlineBubbleWrapper: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 6,
+        maxWidth: '85%',
+    },
+    aiInlineBadge: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#10B981',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 2,
+    },
+    aiInlineBubble: {
+        backgroundColor: '#0D2518',
+        borderRadius: 16,
+        borderTopLeftRadius: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderWidth: 1,
+        borderColor: '#10B981',
+        flex: 1,
+    },
+    aiInlineName: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#10B981',
+        marginBottom: 3,
+        letterSpacing: 0.3,
+    },
+    aiInlineText: {
+        fontSize: 14,
+        color: '#D1FAE5',
+        lineHeight: 20,
+    },
+    aiQuickReplyBtn: {
+        backgroundColor: '#064E3B',
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        marginRight: 6,
+        borderWidth: 1,
+        borderColor: '#10B981',
+    },
+    aiQuickReplyText: {
+        color: '#6EE7B7',
+        fontSize: 12,
+        fontWeight: '600',
     },
 });
 

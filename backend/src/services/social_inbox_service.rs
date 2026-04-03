@@ -2,7 +2,7 @@
 // Lecture threads, marquage lu, escalade, notes, réponse humaine
 
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InboxThread {
@@ -66,6 +66,25 @@ pub struct PlatformInboxStat {
     pub escalated: i64,
 }
 
+fn row_to_inbox_thread(r: &sqlx::postgres::PgRow, thread_id: i32) -> InboxThread {
+    InboxThread {
+        id: r.try_get("id").unwrap_or(0),
+        thread_id: r.try_get("thread_id").unwrap_or(thread_id),
+        platform: r.try_get("platform").unwrap_or_default(),
+        sender_name: r.try_get("sender_name").ok(),
+        last_message_preview: r.try_get("last_message_preview").ok(),
+        last_message_at: r.try_get("last_message_at").ok(),
+        unread_count: r.try_get("unread_count").unwrap_or(0),
+        is_escalated: r.try_get("is_escalated").unwrap_or(false),
+        is_starred: r.try_get("is_starred").unwrap_or(false),
+        label: r.try_get("label").ok(),
+        status: r.try_get("status").unwrap_or_else(|_| "bot".to_string()),
+        total_messages: r.try_get("total_messages").unwrap_or(0),
+        bot_messages: r.try_get("bot_messages").unwrap_or(0),
+        sentiment: r.try_get("sentiment").ok(),
+    }
+}
+
 /// Charge la liste des threads de l'inbox (avec pagination)
 pub async fn list_inbox_threads(
     pg: &PgPool,
@@ -78,7 +97,7 @@ pub async fn list_inbox_threads(
 ) -> Result<Vec<InboxThread>, String> {
     let offset = (page - 1) * limit;
 
-    let rows = sqlx::query!(
+    let rows = sqlx::query(
         r#"SELECT s.id, s.thread_id, s.platform, s.sender_name,
                   s.last_message_preview, s.last_message_at,
                   s.unread_count, s.is_escalated, s.is_starred, s.label,
@@ -95,36 +114,18 @@ pub async fn list_inbox_threads(
              CASE WHEN s.is_escalated THEN 0 ELSE 1 END,
              s.last_message_at DESC NULLS LAST
            LIMIT $5 OFFSET $6"#,
-        user_id,
-        service_id,
-        filter,
-        platform,
-        limit as i64,
-        offset as i64,
     )
+    .bind(user_id)
+    .bind(service_id)
+    .bind(filter)
+    .bind(platform)
+    .bind(limit as i64)
+    .bind(offset as i64)
     .fetch_all(pg)
     .await
     .map_err(|e| e.to_string())?;
 
-    Ok(rows
-        .into_iter()
-        .map(|r| InboxThread {
-            id: r.id,
-            thread_id: r.thread_id,
-            platform: r.platform,
-            sender_name: r.sender_name,
-            last_message_preview: r.last_message_preview,
-            last_message_at: r.last_message_at,
-            unread_count: r.unread_count,
-            is_escalated: r.is_escalated,
-            is_starred: r.is_starred,
-            label: r.label,
-            status: r.status,
-            total_messages: r.total_messages,
-            bot_messages: r.bot_messages,
-            sentiment: r.sentiment,
-        })
-        .collect())
+    Ok(rows.iter().map(|r| row_to_inbox_thread(r, 0)).collect())
 }
 
 /// Charge une conversation complète avec tous ses messages
@@ -133,78 +134,78 @@ pub async fn get_conversation_detail(
     user_id: i32,
     thread_id: i32,
 ) -> Result<ConversationDetail, String> {
-    // Vérifier appartenance
-    let summary = sqlx::query!(
+    let summary = sqlx::query(
         r#"SELECT s.id, s.platform, s.sender_name, s.last_message_preview,
                   s.last_message_at, s.unread_count, s.is_escalated, s.is_starred, s.label,
                   t.status, t.total_messages, t.bot_messages, t.sentiment, t.service_id
            FROM social_inbox_summary s
            JOIN social_chatbot_threads t ON t.id = s.thread_id
            WHERE s.user_id = $1 AND s.thread_id = $2"#,
-        user_id,
-        thread_id,
     )
+    .bind(user_id)
+    .bind(thread_id)
     .fetch_optional(pg)
     .await
     .map_err(|e| e.to_string())?
     .ok_or("Thread non trouvé")?;
 
     let thread = InboxThread {
-        id: summary.id,
+        id: summary.try_get("id").unwrap_or(0),
         thread_id,
-        platform: summary.platform,
-        sender_name: summary.sender_name,
-        last_message_preview: summary.last_message_preview,
-        last_message_at: summary.last_message_at,
-        unread_count: summary.unread_count,
-        is_escalated: summary.is_escalated,
-        is_starred: summary.is_starred,
-        label: summary.label,
-        status: summary.status,
-        total_messages: summary.total_messages,
-        bot_messages: summary.bot_messages,
-        sentiment: summary.sentiment,
+        platform: summary.try_get("platform").unwrap_or_default(),
+        sender_name: summary.try_get("sender_name").ok(),
+        last_message_preview: summary.try_get("last_message_preview").ok(),
+        last_message_at: summary.try_get("last_message_at").ok(),
+        unread_count: summary.try_get("unread_count").unwrap_or(0),
+        is_escalated: summary.try_get("is_escalated").unwrap_or(false),
+        is_starred: summary.try_get("is_starred").unwrap_or(false),
+        label: summary.try_get("label").ok(),
+        status: summary.try_get("status").unwrap_or_else(|_| "bot".to_string()),
+        total_messages: summary.try_get("total_messages").unwrap_or(0),
+        bot_messages: summary.try_get("bot_messages").unwrap_or(0),
+        sentiment: summary.try_get("sentiment").ok(),
     };
 
-    // Messages
-    let messages = sqlx::query!(
+    let messages = sqlx::query(
         r#"SELECT id, direction, sender_type, content, content_type,
                   created_at, is_read, ai_tokens_used
            FROM social_chatbot_messages
            WHERE thread_id = $1
            ORDER BY created_at ASC
            LIMIT 100"#,
-        thread_id,
     )
+    .bind(thread_id)
     .fetch_all(pg)
     .await
     .map_err(|e| e.to_string())?
     .into_iter()
     .map(|r| MessageItem {
-        id: r.id,
-        direction: r.direction,
-        sender_type: r.sender_type,
-        content: r.content,
-        content_type: r.content_type,
-        created_at: r.created_at,
-        is_read: r.is_read,
-        ai_tokens_used: r.ai_tokens_used,
+        id: r.try_get("id").unwrap_or(0),
+        direction: r.try_get("direction").unwrap_or_default(),
+        sender_type: r.try_get("sender_type").unwrap_or_default(),
+        content: r.try_get("content").unwrap_or_default(),
+        content_type: r.try_get("content_type").unwrap_or_else(|_| "text".to_string()),
+        created_at: r.try_get("created_at").unwrap_or_else(|_| chrono::Utc::now()),
+        is_read: r.try_get("is_read").unwrap_or(false),
+        ai_tokens_used: r.try_get("ai_tokens_used").ok(),
     })
     .collect();
 
-    // Notes internes
-    let notes = sqlx::query!(
+    let notes = sqlx::query(
         "SELECT id, note, created_at FROM social_inbox_notes WHERE thread_id = $1 ORDER BY created_at ASC",
-        thread_id,
     )
+    .bind(thread_id)
     .fetch_all(pg)
     .await
     .unwrap_or_default()
     .into_iter()
-    .map(|r| NoteItem { id: r.id, note: r.note, created_at: r.created_at })
+    .map(|r| NoteItem {
+        id: r.try_get("id").unwrap_or(0),
+        note: r.try_get("note").unwrap_or_default(),
+        created_at: r.try_get("created_at").unwrap_or_else(|_| chrono::Utc::now()),
+    })
     .collect();
 
-    // Marquer comme lu
     let _ = mark_thread_as_read(pg, user_id, thread_id).await;
 
     Ok(ConversationDetail {
@@ -216,18 +217,16 @@ pub async fn get_conversation_detail(
 
 /// Marque tous les messages d'un thread comme lus
 pub async fn mark_thread_as_read(pg: &PgPool, user_id: i32, thread_id: i32) -> Result<(), String> {
-    let _ = sqlx::query!(
-        "UPDATE social_chatbot_messages SET is_read = true WHERE thread_id = $1",
-        thread_id,
-    )
-    .execute(pg)
-    .await;
+    let _ = sqlx::query("UPDATE social_chatbot_messages SET is_read = true WHERE thread_id = $1")
+        .bind(thread_id)
+        .execute(pg)
+        .await;
 
-    let _ = sqlx::query!(
+    let _ = sqlx::query(
         "UPDATE social_inbox_summary SET unread_count = 0 WHERE user_id = $1 AND thread_id = $2",
-        user_id,
-        thread_id,
     )
+    .bind(user_id)
+    .bind(thread_id)
     .execute(pg)
     .await;
 
@@ -241,28 +240,30 @@ pub async fn escalate_thread(
     thread_id: i32,
     reason: &str,
 ) -> Result<(), String> {
-    let _ = sqlx::query!(
+    let _ = sqlx::query(
         "UPDATE social_chatbot_threads SET status = 'escalated', escalation_reason = $1 WHERE id = $2 AND user_id = $3",
-        reason, thread_id, user_id,
     )
+    .bind(reason)
+    .bind(thread_id)
+    .bind(user_id)
     .execute(pg)
     .await
     .map_err(|e| e.to_string())?;
 
-    let _ = sqlx::query!(
+    let _ = sqlx::query(
         "UPDATE social_inbox_summary SET is_escalated = true WHERE user_id = $1 AND thread_id = $2",
-        user_id,
-        thread_id,
     )
+    .bind(user_id)
+    .bind(thread_id)
     .execute(pg)
     .await;
 
-    let _ = sqlx::query!(
+    let _ = sqlx::query(
         "INSERT INTO social_escalation_events (thread_id, user_id, reason) VALUES ($1, $2, $3)",
-        thread_id,
-        user_id,
-        reason,
     )
+    .bind(thread_id)
+    .bind(user_id)
+    .bind(reason)
     .execute(pg)
     .await;
 
@@ -276,28 +277,29 @@ pub async fn resolve_escalation(
     thread_id: i32,
     resolved_by: i32,
 ) -> Result<(), String> {
-    let _ = sqlx::query!(
+    let _ = sqlx::query(
         "UPDATE social_chatbot_threads SET status = 'bot' WHERE id = $1 AND user_id = $2",
-        thread_id,
-        user_id,
     )
+    .bind(thread_id)
+    .bind(user_id)
     .execute(pg)
     .await;
 
-    let _ = sqlx::query!(
+    let _ = sqlx::query(
         "UPDATE social_inbox_summary SET is_escalated = false WHERE user_id = $1 AND thread_id = $2",
-        user_id, thread_id,
     )
+    .bind(user_id)
+    .bind(thread_id)
     .execute(pg)
     .await;
 
-    let _ = sqlx::query!(
+    let _ = sqlx::query(
         r#"UPDATE social_escalation_events
            SET resolved_at = NOW(), resolved_by = $1
            WHERE thread_id = $2 AND resolved_at IS NULL"#,
-        resolved_by,
-        thread_id,
     )
+    .bind(resolved_by)
+    .bind(thread_id)
     .execute(pg)
     .await;
 
@@ -311,32 +313,34 @@ pub async fn add_note(
     author_id: i32,
     note: &str,
 ) -> Result<i32, String> {
-    let row = sqlx::query!(
+    let row = sqlx::query(
         "INSERT INTO social_inbox_notes (thread_id, author_id, note) VALUES ($1, $2, $3) RETURNING id",
-        thread_id, author_id, note,
     )
+    .bind(thread_id)
+    .bind(author_id)
+    .bind(note)
     .fetch_one(pg)
     .await
     .map_err(|e| e.to_string())?;
 
-    Ok(row.id)
+    Ok(row.try_get("id").unwrap_or(0))
 }
 
 /// Toggle étoile d'un thread
 pub async fn toggle_star(pg: &PgPool, user_id: i32, thread_id: i32) -> Result<bool, String> {
-    let row = sqlx::query!(
+    let row = sqlx::query(
         r#"UPDATE social_inbox_summary
            SET is_starred = NOT is_starred
            WHERE user_id = $1 AND thread_id = $2
            RETURNING is_starred"#,
-        user_id,
-        thread_id,
     )
+    .bind(user_id)
+    .bind(thread_id)
     .fetch_optional(pg)
     .await
     .map_err(|e| e.to_string())?;
 
-    Ok(row.map(|r| r.is_starred).unwrap_or(false))
+    Ok(row.and_then(|r| r.try_get("is_starred").ok()).unwrap_or(false))
 }
 
 /// Charge les statistiques globales de l'inbox
@@ -345,51 +349,45 @@ pub async fn get_inbox_stats(
     user_id: i32,
     service_id: i32,
 ) -> Result<InboxStats, String> {
-    let total: i64 = sqlx::query_scalar!(
+    let total: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM social_inbox_summary WHERE user_id = $1 AND service_id = $2",
-        user_id,
-        service_id,
     )
+    .bind(user_id)
+    .bind(service_id)
     .fetch_one(pg)
     .await
-    .ok()
-    .flatten()
     .unwrap_or(0);
 
-    let unread: i64 = sqlx::query_scalar!(
+    let unread: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM social_inbox_summary WHERE user_id = $1 AND service_id = $2 AND unread_count > 0",
-        user_id, service_id,
     )
+    .bind(user_id)
+    .bind(service_id)
     .fetch_one(pg)
     .await
-    .ok()
-    .flatten()
     .unwrap_or(0);
 
-    let escalated: i64 = sqlx::query_scalar!(
+    let escalated: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM social_inbox_summary WHERE user_id = $1 AND service_id = $2 AND is_escalated = true",
-        user_id, service_id,
     )
+    .bind(user_id)
+    .bind(service_id)
     .fetch_one(pg)
     .await
-    .ok()
-    .flatten()
     .unwrap_or(0);
 
-    let bot_today: i64 = sqlx::query_scalar!(
+    let bot_today: i64 = sqlx::query_scalar(
         r#"SELECT COUNT(*) FROM social_chatbot_threads
            WHERE user_id = $1 AND service_id = $2
              AND last_bot_response_at >= CURRENT_DATE"#,
-        user_id,
-        service_id,
     )
+    .bind(user_id)
+    .bind(service_id)
     .fetch_one(pg)
     .await
-    .ok()
-    .flatten()
     .unwrap_or(0);
 
-    let by_platform = sqlx::query!(
+    let by_platform = sqlx::query(
         r#"SELECT platform,
                   COUNT(*) as total,
                   SUM(CASE WHEN unread_count > 0 THEN 1 ELSE 0 END) as unread,
@@ -397,18 +395,18 @@ pub async fn get_inbox_stats(
            FROM social_inbox_summary
            WHERE user_id = $1 AND service_id = $2
            GROUP BY platform"#,
-        user_id,
-        service_id,
     )
+    .bind(user_id)
+    .bind(service_id)
     .fetch_all(pg)
     .await
     .unwrap_or_default()
     .into_iter()
     .map(|r| PlatformInboxStat {
-        platform: r.platform,
-        total: r.total.unwrap_or(0),
-        unread: r.unread.unwrap_or(0),
-        escalated: r.escalated.unwrap_or(0),
+        platform: r.try_get("platform").unwrap_or_default(),
+        total: r.try_get("total").unwrap_or(0),
+        unread: r.try_get("unread").unwrap_or(0),
+        escalated: r.try_get("escalated").unwrap_or(0),
     })
     .collect();
 
@@ -429,7 +427,7 @@ pub async fn search_conversations(
     service_id: i32,
     query: &str,
 ) -> Result<Vec<InboxThread>, String> {
-    let rows = sqlx::query!(
+    let rows = sqlx::query(
         r#"SELECT s.id, s.thread_id, s.platform, s.sender_name,
                   s.last_message_preview, s.last_message_at,
                   s.unread_count, s.is_escalated, s.is_starred, s.label,
@@ -445,31 +443,13 @@ pub async fn search_conversations(
                   ))
            ORDER BY s.last_message_at DESC
            LIMIT 20"#,
-        user_id,
-        service_id,
-        format!("%{}%", query),
     )
+    .bind(user_id)
+    .bind(service_id)
+    .bind(format!("%{}%", query))
     .fetch_all(pg)
     .await
     .map_err(|e| e.to_string())?;
 
-    Ok(rows
-        .into_iter()
-        .map(|r| InboxThread {
-            id: r.id,
-            thread_id: r.thread_id,
-            platform: r.platform,
-            sender_name: r.sender_name,
-            last_message_preview: r.last_message_preview,
-            last_message_at: r.last_message_at,
-            unread_count: r.unread_count,
-            is_escalated: r.is_escalated,
-            is_starred: r.is_starred,
-            label: r.label,
-            status: r.status,
-            total_messages: r.total_messages,
-            bot_messages: r.bot_messages,
-            sentiment: r.sentiment,
-        })
-        .collect())
+    Ok(rows.iter().map(|r| row_to_inbox_thread(r, 0)).collect())
 }

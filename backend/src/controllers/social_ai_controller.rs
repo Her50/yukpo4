@@ -42,55 +42,81 @@ pub async fn generate_post(
     Json(payload): Json<GeneratePostRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     // Charger le produit
-    let product = sqlx::query!(
+    let product = sqlx::query(
         r#"SELECT id, name, price, sale_price, category, description, image_url, is_active, brand
            FROM service_products WHERE id = $1 AND service_id = $2"#,
-        payload.product_id,
-        payload.service_id,
     )
+    .bind(payload.product_id)
+    .bind(payload.service_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?
     .ok_or(crate::utils::app_error::AppError::NotFound(
         "Produit introuvable".to_string(),
     ))?;
+    use sqlx::Row;
+
+    let product_ctx = ProductContext {
+        id: product
+            .try_get("id")
+            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+        name: product
+            .try_get("name")
+            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+        price: product
+            .try_get::<Option<f64>, _>("price")
+            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?
+            .unwrap_or(0.0),
+        sale_price: product
+            .try_get::<Option<f64>, _>("sale_price")
+            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+        category: product
+            .try_get::<Option<String>, _>("category")
+            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?
+            .unwrap_or_else(|| "autres".to_string()),
+        description: product
+            .try_get::<Option<String>, _>("description")
+            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+        image_url: product
+            .try_get::<Option<String>, _>("image_url")
+            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+        in_stock: product
+            .try_get("is_active")
+            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+        brand: product
+            .try_get::<Option<String>, _>("brand")
+            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+    };
 
     // Charger les infos du service
-    let service = sqlx::query!(
+    let service = sqlx::query(
         r#"SELECT s.name, s.city, s.phone, COALESCE(st.name, 'commerce') as sector
            FROM services s
            LEFT JOIN service_types st ON st.id = s.service_type_id
            WHERE s.id = $1"#,
-        payload.service_id,
     )
+    .bind(payload.service_id)
     .fetch_optional(&state.pg)
     .await
     .ok()
     .flatten();
 
-    let product_ctx = ProductContext {
-        id: product.id,
-        name: product.name,
-        price: product.price.unwrap_or(0.0),
-        sale_price: product.sale_price,
-        category: product.category.unwrap_or_else(|| "autres".to_string()),
-        description: product.description,
-        image_url: product.image_url,
-        in_stock: product.is_active,
-        brand: product.brand,
-    };
-
     let store_ctx = StoreContext {
         name: service
             .as_ref()
-            .map(|s| s.name.clone())
+            .and_then(|s| s.try_get::<String, _>("name").ok())
             .unwrap_or_else(|| "Boutique".to_string()),
         sector: service
             .as_ref()
-            .and_then(|s| s.sector.clone())
+            .and_then(|s| s.try_get::<Option<String>, _>("sector").ok().flatten())
             .unwrap_or_else(|| "commerce".to_string()),
-        city: service.as_ref().and_then(|s| s.city.clone()).unwrap_or_default(),
-        phone: service.as_ref().and_then(|s| s.phone.clone()),
+        city: service
+            .as_ref()
+            .and_then(|s| s.try_get::<Option<String>, _>("city").ok().flatten())
+            .unwrap_or_default(),
+        phone: service
+            .as_ref()
+            .and_then(|s| s.try_get::<Option<String>, _>("phone").ok().flatten()),
         yukpo_url: format!(
             "https://yukpomnang.com/boutique/{}?utm_source=ai_post&utm_medium=social",
             payload.service_id
@@ -171,7 +197,7 @@ pub async fn list_posts(
     let status = params.get("status").map(|s| s.as_str()).unwrap_or("all");
     let limit: i64 = params.get("limit").and_then(|d| d.parse().ok()).unwrap_or(20);
 
-    let posts = sqlx::query!(
+    let posts = sqlx::query(
         r#"SELECT p.id, p.platform, p.caption, p.status, p.tone,
                   p.scheduled_at, p.published_at, p.engagement_a, p.ab_winner,
                   sp.name as product_name
@@ -181,27 +207,28 @@ pub async fn list_posts(
              AND ($3 = 'all' OR p.status = $3)
            ORDER BY COALESCE(p.scheduled_at, p.created_at) DESC
            LIMIT $4"#,
-        user.id,
-        service_id,
-        status,
-        limit,
     )
+    .bind(user.id)
+    .bind(service_id)
+    .bind(status)
+    .bind(limit)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
 
+    use sqlx::Row;
     Ok(Json(serde_json::json!({
         "success": true,
         "posts": posts.iter().map(|p| serde_json::json!({
-            "id": p.id,
-            "platform": p.platform,
-            "caption_preview": p.caption.chars().take(100).collect::<String>(),
-            "status": p.status,
-            "tone": p.tone,
-            "scheduled_at": p.scheduled_at,
-            "published_at": p.published_at,
-            "product_name": p.product_name,
-            "ab_winner": p.ab_winner,
+            "id": p.try_get::<i32, _>("id").unwrap_or(0),
+            "platform": p.try_get::<String, _>("platform").unwrap_or_default(),
+            "caption_preview": p.try_get::<String, _>("caption").unwrap_or_default().chars().take(100).collect::<String>(),
+            "status": p.try_get::<String, _>("status").unwrap_or_default(),
+            "tone": p.try_get::<String, _>("tone").unwrap_or_default(),
+            "scheduled_at": p.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("scheduled_at").unwrap_or(None),
+            "published_at": p.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("published_at").unwrap_or(None),
+            "product_name": p.try_get::<Option<String>, _>("product_name").unwrap_or(None),
+            "ab_winner": p.try_get::<Option<String>, _>("ab_winner").unwrap_or(None),
         })).collect::<Vec<_>>(),
     })))
 }
@@ -232,7 +259,7 @@ pub async fn update_content_preferences(
     let always_include = payload.always_include.unwrap_or_default();
     let hashtags = payload.default_hashtags.unwrap_or_default();
 
-    sqlx::query!(
+    sqlx::query(
         r#"INSERT INTO social_ai_preferences
            (user_id, service_id, default_tone, default_language, brand_voice,
             forbidden_words, always_include, default_hashtags, max_posts_per_day, sector)
@@ -247,17 +274,17 @@ pub async fn update_content_preferences(
              max_posts_per_day = EXCLUDED.max_posts_per_day,
              sector = EXCLUDED.sector,
              updated_at = NOW()"#,
-        user.id,
-        service_id,
-        tone,
-        lang,
-        payload.brand_voice,
-        &forbidden,
-        &always_include,
-        &hashtags,
-        max_posts,
-        payload.sector,
     )
+    .bind(user.id)
+    .bind(service_id)
+    .bind(tone)
+    .bind(lang)
+    .bind(payload.brand_voice)
+    .bind(&forbidden)
+    .bind(&always_include)
+    .bind(&hashtags)
+    .bind(max_posts)
+    .bind(payload.sector)
     .execute(&state.pg)
     .await
     .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
@@ -339,7 +366,7 @@ async fn process_meta_webhook(
             }
 
             // Trouver le partenaire Yukpo propriétaire de cette page
-            let partner = sqlx::query!(
+            let partner = sqlx::query(
                 r#"SELECT sa.user_id,
                           COALESCE(
                             (SELECT service_id FROM distribution_rules WHERE user_id = sa.user_id LIMIT 1),
@@ -352,19 +379,22 @@ async fn process_meta_webhook(
                             SELECT 1 FROM jsonb_array_elements(sa.metadata->'pages') p
                             WHERE p->>'id' = $1
                           ))"#,
-                page_id,
             )
+            .bind(page_id.clone())
             .fetch_optional(&state.pg)
             .await
             .ok()
             .flatten();
 
+            use sqlx::Row;
             if let Some(p) = partner {
-                if p.service_id.unwrap_or(0) > 0 {
+                let user_id_val: i32 = p.try_get("user_id").unwrap_or(0);
+                let service_id_val: i32 = p.try_get("service_id").unwrap_or(0);
+                if service_id_val > 0 {
                     let _ = crate::tasks::social_chatbot_worker::enqueue_incoming_message(
                         &state.pg,
-                        p.user_id,
-                        p.service_id.unwrap_or(0),
+                        user_id_val,
+                        service_id_val,
                         platform,
                         sender_id,
                         messaging["sender"]["name"].as_str(),
@@ -405,25 +435,28 @@ async fn process_whatsapp_webhook(state: Arc<AppState>, payload: serde_json::Val
                 }
 
                 // Trouver le partenaire par le phone_number_id
-                let partner = sqlx::query!(
+                let partner = sqlx::query(
                     r#"SELECT user_id,
                               COALESCE((SELECT service_id FROM distribution_rules WHERE user_id = sa2.user_id LIMIT 1), 0) as service_id
                        FROM social_accounts sa2
                        WHERE platform = 'whatsapp'
                          AND metadata->>'phone_number_id' = $1"#,
-                    phone_number_id,
                 )
+                .bind(phone_number_id)
                 .fetch_optional(&state.pg)
                 .await
                 .ok()
                 .flatten();
 
+                use sqlx::Row;
                 if let Some(p) = partner {
-                    if p.service_id.unwrap_or(0) > 0 {
+                    let user_id_val: i32 = p.try_get("user_id").unwrap_or(0);
+                    let service_id_val: i32 = p.try_get("service_id").unwrap_or(0);
+                    if service_id_val > 0 {
                         let _ = crate::tasks::social_chatbot_worker::enqueue_incoming_message(
                             &state.pg,
-                            p.user_id,
-                            p.service_id.unwrap_or(0),
+                            user_id_val,
+                            service_id_val,
                             "whatsapp",
                             from,
                             sender_name,
@@ -483,7 +516,7 @@ pub async fn update_chatbot_config(
         })
     });
 
-    sqlx::query!(
+    sqlx::query(
         r#"INSERT INTO social_chatbot_config
            (user_id, service_id, is_active, bot_name, welcome_message, away_message,
             escalation_trigger_words, business_hours, max_ai_tokens_per_response, language, reply_delay_ms)
@@ -499,10 +532,18 @@ pub async fn update_chatbot_config(
              language = EXCLUDED.language,
              reply_delay_ms = EXCLUDED.reply_delay_ms,
              updated_at = NOW()"#,
-        user.id, service_id, is_active, bot_name,
-        payload.welcome_message, payload.away_message,
-        &trigger_words, business_hours, max_tokens, lang, delay,
     )
+    .bind(user.id)
+    .bind(service_id)
+    .bind(is_active)
+    .bind(bot_name)
+    .bind(payload.welcome_message)
+    .bind(payload.away_message)
+    .bind(&trigger_words)
+    .bind(business_hours)
+    .bind(max_tokens)
+    .bind(lang)
+    .bind(delay)
     .execute(&state.pg)
     .await
     .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
@@ -656,7 +697,7 @@ pub async fn save_ad_account(
     let currency = payload.currency.unwrap_or_else(|| "XAF".to_string());
     let budget = payload.monthly_budget_fcfa.unwrap_or(0);
 
-    sqlx::query!(
+    sqlx::query(
         r#"INSERT INTO meta_ad_accounts
            (user_id, service_id, ad_account_id, access_token, currency, monthly_budget_fcfa, pixel_id, account_status)
            VALUES ($1, $2, $3, $4, $5, $6, $7, 1)
@@ -666,9 +707,14 @@ pub async fn save_ad_account(
              monthly_budget_fcfa = EXCLUDED.monthly_budget_fcfa,
              pixel_id = EXCLUDED.pixel_id,
              updated_at = NOW()"#,
-        user.id, payload.service_id, payload.ad_account_id,
-        payload.access_token, currency, budget, payload.pixel_id,
     )
+    .bind(user.id)
+    .bind(payload.service_id)
+    .bind(payload.ad_account_id)
+    .bind(payload.access_token)
+    .bind(currency)
+    .bind(budget)
+    .bind(payload.pixel_id)
     .execute(&state.pg)
     .await
     .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
@@ -700,24 +746,46 @@ pub async fn create_promo_campaign(
             "Compte publicitaire non configuré. Ajoutez votre Ad Account ID d'abord.".to_string(),
         ))?;
 
-    let product = sqlx::query!(
+    let product = sqlx::query(
         "SELECT id, name, price, sale_price, image_url FROM service_products WHERE id = $1 AND service_id = $2",
-        payload.product_id, payload.service_id,
     )
+    .bind(payload.product_id)
+    .bind(payload.service_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?
     .ok_or(crate::utils::app_error::AppError::NotFound("Produit introuvable".to_string()))?;
 
-    let service_info = sqlx::query!(
-        "SELECT name FROM services WHERE id = $1",
-        payload.service_id
-    )
-    .fetch_optional(&state.pg)
-    .await
-    .ok()
-    .flatten();
-    let store_name = service_info.as_ref().map(|s| s.name.as_str()).unwrap_or("Boutique");
+    use sqlx::Row;
+    let product_id_val: i32 = product
+        .try_get("id")
+        .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+    let product_name_val: String = product
+        .try_get("name")
+        .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+    let product_price_val: f64 = product
+        .try_get::<Option<f64>, _>("price")
+        .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?
+        .unwrap_or(0.0);
+    let product_sale_price_val: Option<f64> = product
+        .try_get::<Option<f64>, _>("sale_price")
+        .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+    let product_image_url_val: Option<String> =
+        product
+            .try_get::<Option<String>, _>("image_url")
+            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+
+    let service_info = sqlx::query("SELECT name FROM services WHERE id = $1")
+        .bind(payload.service_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+    let store_name_val = service_info
+        .as_ref()
+        .and_then(|s| s.try_get::<String, _>("name").ok())
+        .unwrap_or_else(|| "Boutique".to_string());
+    let store_name = store_name_val.as_str();
 
     let targeting = TargetingSpec {
         countries: payload.countries.unwrap_or_else(|| vec!["CM".to_string()]),
@@ -728,15 +796,15 @@ pub async fn create_promo_campaign(
 
     let yukpo_url = format!(
         "https://yukpomnang.com/produit/{}?utm_source=meta_ads&utm_medium=promo",
-        product.id
+        product_id_val
     );
 
     let result = meta_ads_service::create_promo_campaign(
         &account,
-        &product.name,
-        product.image_url.as_deref(),
-        product.price.unwrap_or(0.0),
-        product.sale_price.unwrap_or(product.price.unwrap_or(0.0)),
+        &product_name_val,
+        product_image_url_val.as_deref(),
+        product_price_val,
+        product_sale_price_val.unwrap_or(product_price_val),
         &yukpo_url,
         payload.budget_daily_fcfa,
         &targeting,
@@ -746,29 +814,29 @@ pub async fn create_promo_campaign(
     .map_err(|e| crate::utils::app_error::AppError::Internal(e))?;
 
     // Enregistrer en BDD
-    let ad_account_db = sqlx::query_scalar!(
+    let ad_account_db: Option<i32> = sqlx::query_scalar(
         "SELECT id FROM meta_ad_accounts WHERE user_id = $1 AND ad_account_id = $2",
-        user.id,
-        account.ad_account_id,
     )
+    .bind(user.id)
+    .bind(&account.ad_account_id)
     .fetch_optional(&state.pg)
     .await
     .ok()
     .flatten();
 
-    let _ = sqlx::query!(
+    let _ = sqlx::query(
         r#"INSERT INTO meta_ad_campaigns
            (user_id, service_id, ad_account_id, external_campaign_id, name,
             objective, campaign_type, status, budget_daily_fcfa, target_product_ids)
            VALUES ($1, $2, $3, $4, $5, 'OUTCOME_SALES', 'manual', 'active', $6, $7)"#,
-        user.id,
-        payload.service_id,
-        ad_account_db,
-        result.external_campaign_id,
-        format!("Promo: {}", product.name),
-        payload.budget_daily_fcfa,
-        &[product.id],
     )
+    .bind(user.id)
+    .bind(payload.service_id)
+    .bind(ad_account_db)
+    .bind(&result.external_campaign_id)
+    .bind(format!("Promo: {}", product_name_val))
+    .bind(payload.budget_daily_fcfa)
+    .bind(&[product_id_val])
     .execute(&state.pg)
     .await;
 
@@ -777,7 +845,7 @@ pub async fn create_promo_campaign(
         "campaign_id": result.external_campaign_id,
         "adset_id": result.adset_id,
         "ad_id": result.ad_id,
-        "message": format!("Campagne créée pour '{}'", product.name),
+        "message": format!("Campagne créée pour '{}'", product_name_val),
     })))
 }
 
@@ -787,37 +855,40 @@ pub async fn list_campaigns(
     Extension(user): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
 ) -> AppResult<Json<serde_json::Value>> {
-    let campaigns = sqlx::query!(
+    let campaigns = sqlx::query(
         r#"SELECT id, name, campaign_type, status, budget_daily_fcfa,
                   impressions, clicks, spent_fcfa, roas, conversions, created_at
            FROM meta_ad_campaigns
            WHERE user_id = $1 AND service_id = $2
            ORDER BY created_at DESC
            LIMIT 20"#,
-        user.id,
-        service_id,
     )
+    .bind(user.id)
+    .bind(service_id)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
 
-    let total_spent: i64 = campaigns.iter().map(|c| c.spent_fcfa).sum();
-    let total_conversions: i32 = campaigns.iter().map(|c| c.conversions).sum();
+    use sqlx::Row;
+    let total_spent: i64 =
+        campaigns.iter().map(|c| c.try_get::<i64, _>("spent_fcfa").unwrap_or(0)).sum();
+    let total_conversions: i32 =
+        campaigns.iter().map(|c| c.try_get::<i32, _>("conversions").unwrap_or(0)).sum();
 
     Ok(Json(serde_json::json!({
         "success": true,
         "campaigns": campaigns.iter().map(|c| serde_json::json!({
-            "id": c.id,
-            "name": c.name,
-            "type": c.campaign_type,
-            "status": c.status,
-            "budget_daily_fcfa": c.budget_daily_fcfa,
-            "impressions": c.impressions,
-            "clicks": c.clicks,
-            "spent_fcfa": c.spent_fcfa,
-            "roas": c.roas,
-            "conversions": c.conversions,
-            "created_at": c.created_at,
+            "id": c.try_get::<i32, _>("id").unwrap_or(0),
+            "name": c.try_get::<String, _>("name").unwrap_or_default(),
+            "type": c.try_get::<String, _>("campaign_type").unwrap_or_default(),
+            "status": c.try_get::<String, _>("status").unwrap_or_default(),
+            "budget_daily_fcfa": c.try_get::<i64, _>("budget_daily_fcfa").unwrap_or(0),
+            "impressions": c.try_get::<i64, _>("impressions").unwrap_or(0),
+            "clicks": c.try_get::<i64, _>("clicks").unwrap_or(0),
+            "spent_fcfa": c.try_get::<i64, _>("spent_fcfa").unwrap_or(0),
+            "roas": c.try_get::<Option<f64>, _>("roas").unwrap_or(None),
+            "conversions": c.try_get::<i32, _>("conversions").unwrap_or(0),
+            "created_at": c.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("created_at").unwrap_or(None),
         })).collect::<Vec<_>>(),
         "totals": {
             "spent_fcfa": total_spent,
@@ -846,15 +917,18 @@ pub async fn create_dpa_campaign(
             "Compte publicitaire non configuré".to_string(),
         ))?;
 
-    let service_info = sqlx::query!(
-        "SELECT name FROM services WHERE id = $1",
-        payload.service_id
-    )
-    .fetch_optional(&state.pg)
-    .await
-    .ok()
-    .flatten();
-    let store_name = service_info.as_ref().map(|s| s.name.as_str()).unwrap_or("Boutique");
+    let service_info = sqlx::query("SELECT name FROM services WHERE id = $1")
+        .bind(payload.service_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+    use sqlx::Row;
+    let store_name_dpa = service_info
+        .as_ref()
+        .and_then(|s| s.try_get::<String, _>("name").ok())
+        .unwrap_or_else(|| "Boutique".to_string());
+    let store_name = store_name_dpa.as_str();
 
     let targeting = TargetingSpec {
         countries: payload.countries.unwrap_or_else(|| vec!["CM".to_string()]),

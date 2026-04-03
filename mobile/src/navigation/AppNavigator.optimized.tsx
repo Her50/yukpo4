@@ -237,10 +237,11 @@ reg('YukpoServicePlaceholder', () => import('../screens/YukpoServicePlaceholderS
 reg('UserRoleManagement', () => import('../screens/admin/UserRoleManagementScreen'));
 
 // ---------------------------------------------------------------------------
-// AI (2)
+// AI (3)
 // ---------------------------------------------------------------------------
 reg('AIChat', () => import('../screens/ai/AIChatScreen'));
 reg('AIHub', () => import('../screens/ai/AIHubScreen'));
+reg('TrendPulseDashboard', () => import('../screens/TrendPulseDashboardScreen')); // ✅ 2026-04-03: TrendPulse
 
 // ---------------------------------------------------------------------------
 // Dashboard (2)
@@ -1135,6 +1136,23 @@ function MainStackWithDeepLinks() {
   const fabVisible = !chatVisible && !SCREENS_HIDE_FAB.includes(currentScreen);
   const IntelligentChatFab = loadScreen('../components/IntelligentChatFab');
   const IntelligentChat = loadScreen('../components/IntelligentChat');
+
+  // Badge TrendPulse — nombre de trends haute opportunité pour l'utilisateur connecté
+  const [trendBadgeCount, setTrendBadgeCount] = useState(0);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { trendService } = await import('../services/trendService');
+        const count = await trendService.getHighOpportunityCount();
+        if (!cancelled) setTrendBadgeCount(count);
+      } catch {
+        // silencieux — le badge est optionnel
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
   const contextualChatScreenContext = useMemo(() => ({
     screenName: currentScreen,
     routeParams: currentRouteParams,
@@ -1156,6 +1174,7 @@ function MainStackWithDeepLinks() {
           onPress={() => showIntelligentChat()}
           screenName={currentScreen}
           hideOnScreens={SCREENS_HIDE_FAB}
+          trendBadgeCount={trendBadgeCount}
         />
       )}
 

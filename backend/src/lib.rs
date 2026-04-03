@@ -122,6 +122,7 @@ use crate::routes::{
     system_health_routes::system_health_routes,
     token_pack_routes::token_pack_routes,
     token_stats_routes::token_stats_routes,
+    trend_routes::trend_routes, // ✅ 2026-04-03: TrendPulse (tendances personnalisées + contexte utilisateur)
     universal_search_routes::universal_search_routes, // ✅ 2026-04-01: Recherche universelle cross-services
     upload_routes::upload_routes,                     // ✅ NOUVEAU: Routes upload préalable
     user_routes::user_routes,
@@ -248,6 +249,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
     let social_distribution = social_distribution_routes(state.clone());
     // ✅ 2026-04-03: Social AI Engine (génération contenu, chatbot CM IA, Meta Ads, inbox unifiée)
     let social_ai = social_ai_routes(state.clone());
+    let trend_pulse = trend_routes(state.clone()); // ✅ 2026-04-03: TrendPulse
     let creator_analytics = creator_analytics_routes(state.clone());
     // ✅ NOUVEAU: Upload routes (upload préalable avant création service)
     let uploads = upload_routes(state.clone());
@@ -430,6 +432,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .merge(social_features) // ✅ NOUVEAU: Routes fonctionnalités sociales avancées
         .merge(social_distribution) // ✅ 2026-04-03: Distribution produits multi-canaux
         .merge(social_ai) // ✅ 2026-04-03: Social AI Engine (content gen, chatbot CM, ads, inbox)
+        .merge(trend_pulse) // ✅ 2026-04-03: TrendPulse (tendances + contexte utilisateur)
         .merge(creator_analytics) // ✅ NOUVEAU: Routes analytics créateurs
         .merge(uploads) // ✅ NOUVEAU: Upload préalable de fichiers
         .merge(ia)

@@ -602,26 +602,31 @@ async fn assemble_context(
     let pg = &state.pg;
 
     // Infos service
-    let service_info = sqlx::query!(
+    let service_info = sqlx::query(
         r#"SELECT s.name, s.city, s.phone,
                   COALESCE(st.name, 'commerce') as sector
            FROM services s
            LEFT JOIN service_types st ON st.id = s.service_type_id
            WHERE s.id = $1"#,
-        service_id,
     )
+    .bind(service_id)
     .fetch_optional(pg)
     .await
     .ok()
     .flatten();
 
+    use sqlx::Row;
     let (store_name, city, phone, sector) = service_info
         .map(|s| {
             (
-                s.name,
-                s.city.unwrap_or_else(|| "".to_string()),
-                s.phone,
-                s.sector.unwrap_or_else(|| "commerce".to_string()),
+                s.try_get::<String, _>("name").unwrap_or_else(|_| "Boutique".to_string()),
+                s.try_get::<Option<String>, _>("city")
+                    .unwrap_or(None)
+                    .unwrap_or_else(|| "".to_string()),
+                s.try_get::<Option<String>, _>("phone").unwrap_or(None),
+                s.try_get::<Option<String>, _>("sector")
+                    .unwrap_or(None)
+                    .unwrap_or_else(|| "commerce".to_string()),
             )
         })
         .unwrap_or_else(|| {
@@ -639,7 +644,7 @@ async fn assemble_context(
     );
 
     // Produits du catalogue (top 30)
-    let products = sqlx::query!(
+    let products = sqlx::query(
         r#"SELECT id, name, price, sale_price, category, is_active
            FROM service_products
            WHERE service_id = $1 AND is_active = true
@@ -647,19 +652,22 @@ async fn assemble_context(
              CASE WHEN sale_price IS NOT NULL THEN 0 ELSE 1 END,
              created_at DESC
            LIMIT 30"#,
-        service_id,
     )
+    .bind(service_id)
     .fetch_all(pg)
     .await
     .unwrap_or_default()
     .into_iter()
-    .map(|r| ProductSummary {
-        id: r.id,
-        name: r.name,
-        price: r.price.unwrap_or(0.0),
-        sale_price: r.sale_price,
-        category: r.category.unwrap_or_else(|| "autres".to_string()),
-        in_stock: r.is_active,
+    .map(|r: sqlx::postgres::PgRow| {
+        use sqlx::Row;
+        ProductSummary {
+            id: r.try_get("id").unwrap_or(0),
+            name: r.try_get("name").unwrap_or_default(),
+            price: r.try_get::<f64, _>("price").unwrap_or(0.0),
+            sale_price: r.try_get("sale_price").ok(),
+            category: r.try_get("category").unwrap_or_else(|_| "autres".to_string()),
+            in_stock: r.try_get("is_active").unwrap_or(false),
+        }
     })
     .collect::<Vec<_>>();
 
@@ -850,23 +858,32 @@ async fn load_conversation_history(
     sender_id: &str,
     limit: i64,
 ) -> Vec<(String, String)> {
-    let rows = sqlx::query!(
+    let rows = sqlx::query(
         r#"SELECT m.direction, m.content
            FROM social_chatbot_messages m
            JOIN social_chatbot_threads t ON t.id = m.thread_id
            WHERE t.user_id = $1 AND t.platform = $2 AND t.external_sender_id = $3
            ORDER BY m.created_at DESC
            LIMIT $4"#,
-        user_id,
-        platform,
-        sender_id,
-        limit,
     )
+    .bind(user_id)
+    .bind(platform)
+    .bind(sender_id)
+    .bind(limit)
     .fetch_all(pg)
     .await
     .unwrap_or_default();
 
-    rows.into_iter().rev().map(|r| (r.direction, r.content)).collect()
+    use sqlx::Row;
+    rows.into_iter()
+        .rev()
+        .map(|r| {
+            (
+                r.try_get("direction").unwrap_or_default(),
+                r.try_get("content").unwrap_or_default(),
+            )
+        })
+        .collect()
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -884,30 +901,33 @@ struct BotConfig {
 }
 
 async fn load_bot_config(pg: &PgPool, user_id: i32, service_id: i32) -> Result<BotConfig, String> {
-    let row = sqlx::query!(
+    let row = sqlx::query(
         r#"SELECT is_active, bot_name, welcome_message, away_message,
                   escalation_trigger_words, business_hours,
                   max_ai_tokens_per_response, language, reply_delay_ms
            FROM social_chatbot_config
            WHERE user_id = $1 AND service_id = $2"#,
-        user_id,
-        service_id,
     )
+    .bind(user_id)
+    .bind(service_id)
     .fetch_optional(pg)
     .await
     .map_err(|e| e.to_string())?;
 
     Ok(if let Some(r) = row {
+        use sqlx::Row;
         BotConfig {
-            is_active: r.is_active,
-            bot_name: r.bot_name,
-            welcome_message: r.welcome_message,
-            away_message: r.away_message,
-            escalation_trigger_words: r.escalation_trigger_words.unwrap_or_default(),
-            business_hours: r.business_hours,
-            max_ai_tokens_per_response: r.max_ai_tokens_per_response,
-            language: r.language,
-            reply_delay_ms: r.reply_delay_ms,
+            is_active: r.try_get("is_active").unwrap_or(true),
+            bot_name: r.try_get("bot_name").unwrap_or_else(|_| "Assistant".to_string()),
+            welcome_message: r.try_get("welcome_message").ok(),
+            away_message: r.try_get("away_message").ok(),
+            escalation_trigger_words: r
+                .try_get::<Vec<String>, _>("escalation_trigger_words")
+                .unwrap_or_default(),
+            business_hours: r.try_get("business_hours").unwrap_or(serde_json::Value::Null),
+            max_ai_tokens_per_response: r.try_get("max_ai_tokens_per_response").unwrap_or(400),
+            language: r.try_get("language").unwrap_or_else(|_| "fr".to_string()),
+            reply_delay_ms: r.try_get("reply_delay_ms").unwrap_or(1500),
         }
     } else {
         // Config par défaut si non configurée
@@ -950,20 +970,24 @@ async fn load_page_access_token(
         _ => platform,
     };
 
-    let row = sqlx::query!(
+    let row = sqlx::query(
         r#"SELECT access_token, metadata
            FROM social_accounts
            WHERE user_id = $1 AND platform = $2"#,
-        user_id,
-        account_platform,
     )
+    .bind(user_id)
+    .bind(account_platform)
     .fetch_optional(pg)
     .await
     .map_err(|e| e.to_string())?
     .ok_or_else(|| format!("Compte {} non connecté", platform))?;
 
+    use sqlx::Row;
+    let access_token: String = row.try_get("access_token").map_err(|e| e.to_string())?;
+    let metadata: Option<serde_json::Value> = row.try_get("metadata").ok();
+
     // Pour Facebook/Instagram: chercher le page_access_token dans metadata
-    if let Some(pages) = row.metadata.as_ref().and_then(|m| m["pages"].as_array()) {
+    if let Some(pages) = metadata.as_ref().and_then(|m| m["pages"].as_array()) {
         if let Some(page) = pages.iter().find(|p| p["id"].as_str() == Some(page_id)) {
             if let Some(token) = page["access_token"].as_str() {
                 return Ok(token.to_string());
@@ -978,7 +1002,7 @@ async fn load_page_access_token(
     }
 
     // Pour WhatsApp: token principal
-    Ok(row.access_token)
+    Ok(access_token)
 }
 
 /// Enregistre un message (entrant ou sortant) dans la BDD + met à jour l'inbox summary
@@ -996,7 +1020,8 @@ pub async fn persist_message(
     tokens_used: Option<i32>,
 ) -> Result<i64, String> {
     // Upsert thread
-    let thread_id = sqlx::query!(
+    use sqlx::Row;
+    let thread_row = sqlx::query(
         r#"INSERT INTO social_chatbot_threads
            (user_id, service_id, platform, external_sender_id, sender_name, last_message_at)
            VALUES ($1, $2, $3, $4, $5, NOW())
@@ -1008,30 +1033,35 @@ pub async fn persist_message(
              bot_messages = CASE WHEN $6 = 'bot' THEN social_chatbot_threads.bot_messages + 1 ELSE social_chatbot_threads.bot_messages END,
              updated_at = NOW()
            RETURNING id"#,
-        user_id, service_id, platform, sender_id, sender_name, sender_type,
     )
+    .bind(user_id)
+    .bind(service_id)
+    .bind(platform)
+    .bind(sender_id)
+    .bind(sender_name)
+    .bind(sender_type)
     .fetch_one(pg)
     .await
-    .map_err(|e| e.to_string())?
-    .id;
+    .map_err(|e| e.to_string())?;
+    let thread_id: i64 = thread_row.try_get("id").map_err(|e| e.to_string())?;
 
     // Insérer message
-    let msg = sqlx::query!(
+    let msg_row = sqlx::query(
         r#"INSERT INTO social_chatbot_messages
            (thread_id, direction, sender_type, content, external_message_id, ai_tokens_used)
            VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING id"#,
-        thread_id,
-        direction,
-        sender_type,
-        content,
-        external_message_id,
-        tokens_used,
     )
+    .bind(thread_id)
+    .bind(direction)
+    .bind(sender_type)
+    .bind(content)
+    .bind(external_message_id)
+    .bind(tokens_used)
     .fetch_one(pg)
     .await
-    .map_err(|e| e.to_string())?
-    .id;
+    .map_err(|e| e.to_string())?;
+    let msg: i64 = msg_row.try_get("id").map_err(|e| e.to_string())?;
 
     // Upsert inbox summary
     let preview = if content.len() > 80 {
@@ -1039,7 +1069,7 @@ pub async fn persist_message(
     } else {
         content.to_string()
     };
-    let _ = sqlx::query!(
+    let _ = sqlx::query(
         r#"INSERT INTO social_inbox_summary
            (user_id, service_id, thread_id, platform, sender_name, last_message_preview, last_message_at,
             unread_count, updated_at)
@@ -1054,8 +1084,14 @@ pub async fn persist_message(
                             ELSE social_inbox_summary.unread_count END,
              sender_name = COALESCE(EXCLUDED.sender_name, social_inbox_summary.sender_name),
              updated_at = NOW()"#,
-        user_id, service_id, thread_id, platform, sender_name, preview, direction,
     )
+    .bind(user_id)
+    .bind(service_id)
+    .bind(thread_id)
+    .bind(platform)
+    .bind(sender_name)
+    .bind(preview)
+    .bind(direction)
     .execute(pg)
     .await;
 

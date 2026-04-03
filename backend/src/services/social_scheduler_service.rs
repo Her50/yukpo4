@@ -71,7 +71,7 @@ pub fn start_social_scheduler(state: Arc<AppState>) {
 /// Génère le planning du jour pour tous les partenaires avec auto-diffusion activée
 async fn generate_daily_schedule(state: &Arc<AppState>) -> Result<(), String> {
     // Charger tous les partenaires avec distribution automatique activée
-    let partners = sqlx::query!(
+    let partners = sqlx::query(
         r#"SELECT DISTINCT dr.user_id, dr.service_id, dr.rules
            FROM distribution_rules dr
            WHERE (dr.rules->>'auto_distribute')::boolean = true"#,
@@ -86,28 +86,30 @@ async fn generate_daily_schedule(state: &Arc<AppState>) -> Result<(), String> {
     );
 
     for partner in partners {
-        let rules = &partner.rules;
+        use sqlx::Row;
+        let partner_user_id: i32 = partner.try_get("user_id").unwrap_or(0);
+        let partner_service_id: i32 = partner.try_get("service_id").unwrap_or(0);
+        let rules: serde_json::Value = partner.try_get("rules").unwrap_or(serde_json::Value::Null);
+
         let products_per_day = rules["products_per_day"].as_i64().unwrap_or(3) as i32;
         let schedule_hour = rules["schedule_hour"].as_i64().unwrap_or(18) as u32;
-        let filter = rules["filter"].as_str().unwrap_or("all");
+        let filter = rules["filter"].as_str().unwrap_or("all").to_string();
         let platforms: Vec<String> = rules["target_platforms"]
             .as_array()
             .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
             .unwrap_or_else(|| vec!["facebook".to_string()]);
 
         // Vérifier qu'il n'y a pas déjà des posts planifiés pour aujourd'hui
-        let already_planned: i64 = sqlx::query_scalar!(
+        let already_planned: i64 = sqlx::query_scalar(
             r#"SELECT COUNT(*) FROM social_ai_posts
                WHERE user_id = $1 AND service_id = $2
                  AND status = 'scheduled'
                  AND scheduled_at::date = CURRENT_DATE"#,
-            partner.user_id,
-            partner.service_id,
         )
+        .bind(partner_user_id)
+        .bind(partner_service_id)
         .fetch_one(&state.pg)
         .await
-        .ok()
-        .flatten()
         .unwrap_or(0);
 
         if already_planned > 0 {
@@ -116,42 +118,54 @@ async fn generate_daily_schedule(state: &Arc<AppState>) -> Result<(), String> {
 
         // Récupérer les produits à planifier
         let products =
-            pick_products_for_day(&state.pg, partner.service_id, products_per_day, filter).await;
+            pick_products_for_day(&state.pg, partner_service_id, products_per_day, &filter).await;
 
         // Charger les préférences de contenu
         let prefs =
-            ai_content_service::load_preferences(&state.pg, partner.user_id, partner.service_id)
+            ai_content_service::load_preferences(&state.pg, partner_user_id, partner_service_id)
                 .await;
 
         // Infos du service
-        let service_info = sqlx::query!(
+        let service_info = sqlx::query(
             r#"SELECT s.name, s.city, s.phone,
                       COALESCE(st.name, 'commerce') as sector
                FROM services s
                LEFT JOIN service_types st ON st.id = s.service_type_id
                WHERE s.id = $1"#,
-            partner.service_id,
         )
+        .bind(partner_service_id)
         .fetch_optional(&state.pg)
         .await
         .ok()
         .flatten();
 
-        let store = StoreContext {
-            name: service_info
-                .as_ref()
-                .map(|s| s.name.clone())
-                .unwrap_or_else(|| "Boutique".to_string()),
-            sector: service_info
-                .as_ref()
-                .and_then(|s| s.sector.clone())
-                .unwrap_or_else(|| "commerce".to_string()),
-            city: service_info.as_ref().and_then(|s| s.city.clone()).unwrap_or_default(),
-            phone: service_info.as_ref().and_then(|s| s.phone.clone()),
-            yukpo_url: format!(
-                "https://yukpomnang.com/boutique/{}?utm_source=auto_post&utm_medium=social",
-                partner.service_id
-            ),
+        let store = {
+            use sqlx::Row;
+            StoreContext {
+                name: service_info
+                    .as_ref()
+                    .and_then(|s: &sqlx::postgres::PgRow| s.try_get::<String, _>("name").ok())
+                    .unwrap_or_else(|| "Boutique".to_string()),
+                sector: service_info
+                    .as_ref()
+                    .and_then(|s: &sqlx::postgres::PgRow| {
+                        s.try_get::<Option<String>, _>("sector").ok().flatten()
+                    })
+                    .unwrap_or_else(|| "commerce".to_string()),
+                city: service_info
+                    .as_ref()
+                    .and_then(|s: &sqlx::postgres::PgRow| {
+                        s.try_get::<Option<String>, _>("city").ok().flatten()
+                    })
+                    .unwrap_or_default(),
+                phone: service_info.as_ref().and_then(|s: &sqlx::postgres::PgRow| {
+                    s.try_get::<Option<String>, _>("phone").ok().flatten()
+                }),
+                yukpo_url: format!(
+                    "https://yukpomnang.com/boutique/{}?utm_source=auto_post&utm_medium=social",
+                    partner_service_id
+                ),
+            }
         };
 
         // Calculer les créneaux optimaux
@@ -174,8 +188,8 @@ async fn generate_daily_schedule(state: &Arc<AppState>) -> Result<(), String> {
                 Ok(content) => {
                     let _ = ai_content_service::save_generated_post(
                         &state.pg,
-                        partner.user_id,
-                        partner.service_id,
+                        partner_user_id,
+                        partner_service_id,
                         Some(product.id),
                         &slot.platform,
                         &content,
@@ -207,7 +221,7 @@ async fn generate_daily_schedule(state: &Arc<AppState>) -> Result<(), String> {
 
 /// Publie les posts dont l'heure de publication est passée
 async fn publish_due_posts(state: &Arc<AppState>) -> Result<(), String> {
-    let due_posts = sqlx::query!(
+    let due_posts = sqlx::query(
         r#"SELECT p.id, p.user_id, p.service_id, p.platform, p.caption,
                   p.image_url, p.product_id, p.hashtags
            FROM social_ai_posts p
@@ -223,81 +237,88 @@ async fn publish_due_posts(state: &Arc<AppState>) -> Result<(), String> {
     .map_err(|e| e.to_string())?;
 
     for post in due_posts {
+        use sqlx::Row;
+        let post_id: i32 = post.try_get("id").unwrap_or(0);
+        let post_user_id: i32 = post.try_get("user_id").unwrap_or(0);
+        let post_platform: String = post.try_get("platform").unwrap_or_default();
+        let post_caption: String = post.try_get("caption").unwrap_or_default();
+        let post_image_url: Option<String> = post.try_get("image_url").ok();
+        let post_hashtags: Option<Vec<String>> = post.try_get("hashtags").ok();
+
         // Marquer en cours
-        let _ = sqlx::query!(
+        let _ = sqlx::query(
             "UPDATE social_ai_posts SET status = 'publishing', updated_at = NOW() WHERE id = $1",
-            post.id,
         )
+        .bind(post_id)
         .execute(&state.pg)
         .await;
 
         // Composer le caption final avec hashtags
-        let hashtags_str = post
-            .hashtags
+        let hashtags_str = post_hashtags
             .as_ref()
             .map(|h| h.iter().map(|t| format!("#{}", t)).collect::<Vec<_>>().join(" "))
             .unwrap_or_default();
         let full_caption = if hashtags_str.is_empty() {
-            post.caption.clone()
+            post_caption.clone()
         } else {
-            format!("{}\n\n{}", post.caption, hashtags_str)
+            format!("{}\n\n{}", post_caption, hashtags_str)
         };
 
         // Publier selon la plateforme
-        let publish_result = match post.platform.as_str() {
+        let publish_result = match post_platform.as_str() {
             "facebook" => {
                 publish_to_facebook(
                     state,
-                    post.user_id,
+                    post_user_id,
                     &full_caption,
-                    post.image_url.as_deref(),
+                    post_image_url.as_deref(),
                 )
                 .await
             }
             "instagram" => {
                 publish_to_instagram(
                     state,
-                    post.user_id,
+                    post_user_id,
                     &full_caption,
-                    post.image_url.as_deref(),
+                    post_image_url.as_deref(),
                 )
                 .await
             }
-            _ => Err(format!("Plateforme non supportée: {}", post.platform)),
+            _ => Err(format!("Plateforme non supportée: {}", post_platform)),
         };
 
         match publish_result {
             Ok(external_id) => {
-                let _ = sqlx::query!(
+                let _ = sqlx::query(
                     r#"UPDATE social_ai_posts
                        SET status = 'published', published_at = NOW(),
                            external_post_id = $1, updated_at = NOW()
                        WHERE id = $2"#,
-                    external_id,
-                    post.id,
                 )
+                .bind(&external_id)
+                .bind(post_id)
                 .execute(&state.pg)
                 .await;
 
                 log::info!(
                     "[Scheduler] ✅ Post {} publié sur {} (ext_id: {})",
-                    post.id,
-                    post.platform,
+                    post_id,
+                    post_platform,
                     external_id
                 );
             }
             Err(e) => {
-                log::error!("[Scheduler] ❌ Erreur publication post {}: {}", post.id, e);
-                let _ = sqlx::query!(
+                log::error!("[Scheduler] ❌ Erreur publication post {}: {}", post_id, e);
+                let _ = sqlx::query(
                     r#"UPDATE social_ai_posts
                        SET status = CASE WHEN retry_count >= 2 THEN 'failed' ELSE 'scheduled' END,
                            retry_count = retry_count + 1,
                            error_message = $1,
                            updated_at = NOW()
                        WHERE id = $2"#,
-                    e,
-                    post.id,
                 )
+                .bind(&e)
+                .bind(post_id)
                 .execute(&state.pg)
                 .await;
             }
@@ -309,7 +330,7 @@ async fn publish_due_posts(state: &Arc<AppState>) -> Result<(), String> {
 
 /// Vérifie les variantes A/B après 24h et détermine le gagnant
 async fn check_ab_test_winners(state: &Arc<AppState>) -> Result<(), String> {
-    let ab_posts = sqlx::query!(
+    let ab_posts = sqlx::query(
         r#"SELECT p.id, p.external_post_id, p.platform, p.user_id
            FROM social_ai_posts p
            WHERE p.status = 'published'
@@ -322,14 +343,20 @@ async fn check_ab_test_winners(state: &Arc<AppState>) -> Result<(), String> {
     .map_err(|e| e.to_string())?;
 
     for post in ab_posts {
-        if let Some(ext_id) = post.external_post_id {
+        use sqlx::Row;
+        let post_id: i32 = post.try_get("id").unwrap_or(0);
+        let post_user_id: i32 = post.try_get("user_id").unwrap_or(0);
+        let post_platform: String = post.try_get("platform").unwrap_or_default();
+        let ext_id_opt: Option<String> = post.try_get("external_post_id").ok();
+
+        if let Some(ext_id) = ext_id_opt {
             // Récupérer les métriques depuis Meta API
             if let Ok(analytics) =
-                fetch_post_insights(&ext_id, post.user_id, &state.pg, &post.platform).await
+                fetch_post_insights(&ext_id, post_user_id, &state.pg, &post_platform).await
             {
                 let _ = ai_content_service::determine_ab_winner(
                     &state.pg,
-                    post.id,
+                    post_id,
                     analytics.0,
                     analytics.1,
                 )
@@ -350,48 +377,52 @@ async fn pick_products_for_day(
     count: i32,
     filter: &str,
 ) -> Vec<ProductContext> {
-    let query = match filter {
-        "promotions" => sqlx::query!(
+    let sql = match filter {
+        "promotions" => {
             r#"SELECT id, name, price, sale_price, category, description, image_url, is_active, brand
                FROM service_products
                WHERE service_id = $1 AND is_active = true AND sale_price IS NOT NULL
                ORDER BY (price - COALESCE(sale_price, price)) / price DESC
-               LIMIT $2"#,
-            service_id, count as i64,
-        ).fetch_all(pg).await,
-        "new" => sqlx::query!(
+               LIMIT $2"#
+        }
+        "new" => {
             r#"SELECT id, name, price, sale_price, category, description, image_url, is_active, brand
                FROM service_products
                WHERE service_id = $1 AND is_active = true
                ORDER BY created_at DESC
-               LIMIT $2"#,
-            service_id, count as i64,
-        ).fetch_all(pg).await,
-        _ => sqlx::query!(
+               LIMIT $2"#
+        }
+        _ => {
             r#"SELECT id, name, price, sale_price, category, description, image_url, is_active, brand
                FROM service_products
                WHERE service_id = $1 AND is_active = true
                ORDER BY
                  CASE WHEN sale_price IS NOT NULL THEN 0 ELSE 1 END,
                  RANDOM()
-               LIMIT $2"#,
-            service_id, count as i64,
-        ).fetch_all(pg).await,
+               LIMIT $2"#
+        }
     };
 
-    query
+    sqlx::query(sql)
+        .bind(service_id)
+        .bind(count as i64)
+        .fetch_all(pg)
+        .await
         .unwrap_or_default()
         .into_iter()
-        .map(|r| ProductContext {
-            id: r.id,
-            name: r.name,
-            price: r.price.unwrap_or(0.0),
-            sale_price: r.sale_price,
-            category: r.category.unwrap_or_else(|| "autres".to_string()),
-            description: r.description,
-            image_url: r.image_url,
-            in_stock: r.is_active,
-            brand: r.brand,
+        .map(|r: sqlx::postgres::PgRow| {
+            use sqlx::Row;
+            ProductContext {
+                id: r.try_get("id").unwrap_or(0),
+                name: r.try_get("name").unwrap_or_default(),
+                price: r.try_get::<f64, _>("price").unwrap_or(0.0),
+                sale_price: r.try_get("sale_price").ok(),
+                category: r.try_get("category").unwrap_or_else(|_| "autres".to_string()),
+                description: r.try_get("description").ok(),
+                image_url: r.try_get("image_url").ok(),
+                in_stock: r.try_get("is_active").unwrap_or(true),
+                brand: r.try_get("brand").ok(),
+            }
         })
         .collect()
 }
@@ -505,20 +536,29 @@ async fn fetch_post_insights(
 ) -> Result<(i32, i32), String> {
     // Pour simplifier: on retourne l'engagement depuis la table analytics si disponible
     // En production: appeler GET /{post_id}/insights
-    let analytics = sqlx::query!(
+    let analytics = sqlx::query(
         r#"SELECT likes, comments, shares
            FROM social_ai_post_analytics a
            JOIN social_ai_posts p ON p.id = a.post_id
            WHERE p.external_post_id = $1 AND p.user_id = $2"#,
-        post_id,
-        user_id,
     )
+    .bind(post_id)
+    .bind(user_id)
     .fetch_optional(pg)
     .await
     .ok()
     .flatten();
 
-    let engagement_a = analytics.as_ref().map(|a| a.likes + a.comments + a.shares).unwrap_or(0);
+    let engagement_a = analytics
+        .as_ref()
+        .map(|a: &sqlx::postgres::PgRow| {
+            use sqlx::Row;
+            let likes: i32 = a.try_get("likes").unwrap_or(0);
+            let comments: i32 = a.try_get("comments").unwrap_or(0);
+            let shares: i32 = a.try_get("shares").unwrap_or(0);
+            likes + comments + shares
+        })
+        .unwrap_or(0);
 
     Ok((engagement_a, 0)) // B pas encore mésuré
 }
@@ -530,7 +570,7 @@ pub async fn get_content_calendar(
     service_id: i32,
     days_ahead: i32,
 ) -> Result<Vec<ContentCalendarEntry>, String> {
-    let rows = sqlx::query!(
+    let rows = sqlx::query(
         r#"SELECT p.id, p.scheduled_at, p.platform, p.product_id, p.caption, p.status, p.tone,
                   sp.name as product_name
            FROM social_ai_posts p
@@ -541,25 +581,29 @@ pub async fn get_content_calendar(
              AND p.status IN ('draft', 'scheduled')
            ORDER BY p.scheduled_at ASC
            LIMIT 50"#,
-        user_id,
-        service_id,
-        days_ahead.to_string(),
     )
+    .bind(user_id)
+    .bind(service_id)
+    .bind(days_ahead.to_string())
     .fetch_all(pg)
     .await
     .map_err(|e| e.to_string())?;
 
     Ok(rows
         .into_iter()
-        .map(|r| ContentCalendarEntry {
-            id: r.id,
-            scheduled_at: r.scheduled_at.unwrap_or_else(Utc::now),
-            platform: r.platform,
-            product_id: r.product_id,
-            product_name: r.product_name,
-            caption_preview: r.caption.chars().take(80).collect(),
-            status: r.status,
-            tone: r.tone,
+        .map(|r: sqlx::postgres::PgRow| {
+            use sqlx::Row;
+            let caption: String = r.try_get("caption").unwrap_or_default();
+            ContentCalendarEntry {
+                id: r.try_get("id").unwrap_or(0),
+                scheduled_at: r.try_get("scheduled_at").unwrap_or_else(|_| Utc::now()),
+                platform: r.try_get("platform").unwrap_or_default(),
+                product_id: r.try_get("product_id").ok(),
+                product_name: r.try_get("product_name").ok(),
+                caption_preview: caption.chars().take(80).collect(),
+                status: r.try_get("status").unwrap_or_default(),
+                tone: r.try_get("tone").unwrap_or_default(),
+            }
         })
         .collect())
 }
