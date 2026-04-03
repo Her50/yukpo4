@@ -8,6 +8,7 @@ use crate::services::meta_ads_service::{
     self, fetch_campaign_insights, update_adset_budget, update_campaign_status,
 };
 use crate::state::AppState;
+use sqlx::Row;
 
 pub fn start_social_ads_worker(state: Arc<AppState>) {
     tokio::spawn(async move {
@@ -32,7 +33,7 @@ pub fn start_social_ads_worker(state: Arc<AppState>) {
 
 /// Synchronise les métriques de toutes les campagnes actives
 async fn sync_all_campaigns_metrics(state: &Arc<AppState>) -> Result<(), String> {
-    let campaigns = sqlx::query!(
+    let campaigns = sqlx::query(
         r#"SELECT c.id, c.external_campaign_id, c.user_id,
                   a.access_token, a.currency
            FROM meta_ad_campaigns c
@@ -49,13 +50,17 @@ async fn sync_all_campaigns_metrics(state: &Arc<AppState>) -> Result<(), String>
         campaigns.len()
     );
 
-    for campaign in campaigns {
-        if let (Some(ext_id), Some(token)) = (campaign.external_campaign_id, campaign.access_token)
-        {
+    for campaign in &campaigns {
+        let campaign_id: i32 = campaign.try_get("id").unwrap_or(0);
+        let ext_id_opt: Option<String> = campaign.try_get("external_campaign_id").ok().flatten();
+        let campaign_user_id: i32 = campaign.try_get("user_id").unwrap_or(0);
+        let access_token_opt: Option<String> = campaign.try_get("access_token").ok().flatten();
+
+        if let (Some(ext_id), Some(token)) = (ext_id_opt, access_token_opt) {
             match fetch_campaign_insights(&ext_id, &token, "today").await {
                 Ok(perf) => {
                     // Mettre à jour les métriques en BDD
-                    let _ = sqlx::query!(
+                    let _ = sqlx::query(
                         r#"UPDATE meta_ad_campaigns
                            SET impressions = $1,
                                clicks = $2,
@@ -66,20 +71,20 @@ async fn sync_all_campaigns_metrics(state: &Arc<AppState>) -> Result<(), String>
                                conversions = $7,
                                updated_at = NOW()
                            WHERE id = $8"#,
-                        perf.impressions,
-                        perf.clicks,
-                        perf.spend_fcfa,
-                        perf.cpm as f64,
-                        perf.cpc as f64,
-                        perf.roas as f64,
-                        perf.conversions,
-                        campaign.id,
                     )
+                    .bind(perf.impressions)
+                    .bind(perf.clicks)
+                    .bind(perf.spend_fcfa)
+                    .bind(perf.cpm as f64)
+                    .bind(perf.cpc as f64)
+                    .bind(perf.roas as f64)
+                    .bind(perf.conversions)
+                    .bind(campaign_id)
                     .execute(&state.pg)
                     .await;
 
                     // Log journalier des dépenses
-                    let _ = sqlx::query!(
+                    let _ = sqlx::query(
                         r#"INSERT INTO meta_ads_spend_log
                            (user_id, campaign_id, date, spend_fcfa, impressions, clicks, conversions)
                            VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, $6)
@@ -89,13 +94,13 @@ async fn sync_all_campaigns_metrics(state: &Arc<AppState>) -> Result<(), String>
                              impressions = EXCLUDED.impressions,
                              clicks = EXCLUDED.clicks,
                              conversions = EXCLUDED.conversions"#,
-                        campaign.user_id,
-                        campaign.id,
-                        perf.spend_fcfa,
-                        perf.impressions,
-                        perf.clicks,
-                        perf.conversions,
                     )
+                    .bind(campaign_user_id)
+                    .bind(campaign_id)
+                    .bind(perf.spend_fcfa)
+                    .bind(perf.impressions)
+                    .bind(perf.clicks)
+                    .bind(perf.conversions)
                     .execute(&state.pg)
                     .await;
                 }
@@ -112,7 +117,7 @@ async fn sync_all_campaigns_metrics(state: &Arc<AppState>) -> Result<(), String>
 /// Vérifie les budgets et met en pause les campagnes qui dépassent le budget mensuel
 async fn check_budget_rules(state: &Arc<AppState>) -> Result<(), String> {
     // Comptes qui ont dépassé leur budget mensuel
-    let over_budget = sqlx::query!(
+    let over_budget = sqlx::query(
         r#"SELECT a.id, a.user_id, a.ad_account_id, a.access_token,
                   a.monthly_budget_fcfa, a.monthly_spent_fcfa
            FROM meta_ad_accounts a
@@ -123,31 +128,39 @@ async fn check_budget_rules(state: &Arc<AppState>) -> Result<(), String> {
     .await
     .map_err(|e| e.to_string())?;
 
-    for account in over_budget {
+    for account in &over_budget {
+        let account_id: i32 = account.try_get("id").unwrap_or(0);
+        let ext_account_id: String = account.try_get("ad_account_id").unwrap_or_default();
+        let monthly_spent: i64 = account.try_get("monthly_spent_fcfa").unwrap_or(0);
+        let monthly_budget: i64 = account.try_get("monthly_budget_fcfa").unwrap_or(0);
+        let access_token_opt: Option<String> = account.try_get("access_token").ok().flatten();
+
         log::warn!(
             "[AdsWorker] Budget mensuel dépassé pour account {} (dépensé: {} / max: {} FCFA)",
-            account.ad_account_id,
-            account.monthly_spent_fcfa,
-            account.monthly_budget_fcfa
+            ext_account_id,
+            monthly_spent,
+            monthly_budget
         );
 
         // Mettre en pause toutes les campagnes actives du compte
-        let active_campaigns = sqlx::query!(
+        let active_campaigns = sqlx::query(
             "SELECT external_campaign_id FROM meta_ad_campaigns WHERE ad_account_id = $1 AND status = 'active'",
-            account.id,
         )
+        .bind(account_id)
         .fetch_all(&state.pg)
         .await
         .unwrap_or_default();
 
-        for campaign in active_campaigns {
-            if let Some(ext_id) = campaign.external_campaign_id {
-                if let Some(token) = &account.access_token {
+        for campaign in &active_campaigns {
+            let ext_id_opt: Option<String> =
+                campaign.try_get("external_campaign_id").ok().flatten();
+            if let Some(ext_id) = ext_id_opt {
+                if let Some(ref token) = access_token_opt {
                     let _ = update_campaign_status(&ext_id, token, "PAUSED").await;
-                    let _ = sqlx::query!(
+                    let _ = sqlx::query(
                         "UPDATE meta_ad_campaigns SET status = 'paused', updated_at = NOW() WHERE external_campaign_id = $1",
-                        ext_id,
                     )
+                    .bind(&ext_id)
                     .execute(&state.pg)
                     .await;
                 }
@@ -160,7 +173,7 @@ async fn check_budget_rules(state: &Arc<AppState>) -> Result<(), String> {
 
 /// Traite les règles d'automatisation (ex: créer campagne quand nouvelle promo)
 async fn process_automation_rules(state: &Arc<AppState>) -> Result<(), String> {
-    let rules = sqlx::query!(
+    let rules = sqlx::query(
         r#"SELECT r.id, r.user_id, r.service_id, r.ad_account_id,
                   r.trigger_event, r.trigger_config, r.action_type, r.action_config,
                   r.max_daily_budget_fcfa, r.max_monthly_budget_fcfa,
@@ -175,32 +188,43 @@ async fn process_automation_rules(state: &Arc<AppState>) -> Result<(), String> {
     .await
     .map_err(|e| e.to_string())?;
 
-    for rule in rules {
-        let triggered = match rule.trigger_event.as_str() {
-            "new_promo" => check_new_promos_trigger(&state.pg, rule.service_id).await,
-            "daily_schedule" => is_scheduled_time(&rule.trigger_config),
-            "low_roas" => check_low_roas_trigger(&state.pg, rule.ad_account_id).await,
+    for rule in &rules {
+        let rule_id: i32 = rule.try_get("id").unwrap_or(0);
+        let rule_user_id: i32 = rule.try_get("user_id").unwrap_or(0);
+        let rule_service_id: i32 = rule.try_get("service_id").unwrap_or(0);
+        let rule_ad_account_id: Option<i32> = rule.try_get("ad_account_id").ok().flatten();
+        let trigger_event: String = rule.try_get("trigger_event").unwrap_or_default();
+        let trigger_config: Option<serde_json::Value> =
+            rule.try_get("trigger_config").ok().flatten();
+        let action_type: String = rule.try_get("action_type").unwrap_or_default();
+        let max_daily_budget: i64 = rule.try_get("max_daily_budget_fcfa").unwrap_or(0);
+        let access_token: Option<String> = rule.try_get("access_token").ok().flatten();
+
+        let triggered = match trigger_event.as_str() {
+            "new_promo" => check_new_promos_trigger(&state.pg, rule_service_id).await,
+            "daily_schedule" => is_scheduled_time(&trigger_config),
+            "low_roas" => check_low_roas_trigger(&state.pg, rule_ad_account_id).await,
             _ => false,
         };
 
         if triggered {
             log::info!(
                 "[AdsWorker] Règle {} déclenchée pour user={} service={}",
-                rule.trigger_event,
-                rule.user_id,
-                rule.service_id
+                trigger_event,
+                rule_user_id,
+                rule_service_id
             );
 
             // Exécuter l'action
-            match rule.action_type.as_str() {
+            match action_type.as_str() {
                 "create_promo_campaign" => {
                     // Récupérer les promos actives et créer une campagne
                     let _ = auto_create_promo_campaigns(
                         state,
-                        rule.user_id,
-                        rule.service_id,
-                        rule.ad_account_id,
-                        rule.max_daily_budget_fcfa,
+                        rule_user_id,
+                        rule_service_id,
+                        rule_ad_account_id,
+                        max_daily_budget,
                     )
                     .await;
                 }
@@ -208,8 +232,8 @@ async fn process_automation_rules(state: &Arc<AppState>) -> Result<(), String> {
                     // Mettre en pause les campagnes avec ROAS < 1.0
                     let _ = pause_low_performance_campaigns(
                         &state.pg,
-                        rule.user_id,
-                        rule.access_token.as_deref(),
+                        rule_user_id,
+                        access_token.as_deref(),
                     )
                     .await;
                 }
@@ -217,8 +241,8 @@ async fn process_automation_rules(state: &Arc<AppState>) -> Result<(), String> {
                     // Augmenter le budget des campagnes performantes
                     let _ = boost_high_roas_campaigns(
                         &state.pg,
-                        rule.user_id,
-                        rule.access_token.as_deref(),
+                        rule_user_id,
+                        access_token.as_deref(),
                         1.2, // +20%
                     )
                     .await;
@@ -227,10 +251,10 @@ async fn process_automation_rules(state: &Arc<AppState>) -> Result<(), String> {
             }
 
             // Mettre à jour last_triggered_at
-            let _ = sqlx::query!(
+            let _ = sqlx::query(
                 "UPDATE meta_ads_automation_rules SET last_triggered_at = NOW(), trigger_count = trigger_count + 1 WHERE id = $1",
-                rule.id,
             )
+            .bind(rule_id)
             .execute(&state.pg)
             .await;
         }
@@ -251,39 +275,50 @@ async fn auto_create_promo_campaigns(
         .ok_or("Compte publicitaire non configuré")?;
 
     // Produits en promotion actifs
-    let promos = sqlx::query!(
+    let promos = sqlx::query(
         r#"SELECT id, name, price, sale_price, image_url
            FROM service_products
            WHERE service_id = $1 AND is_active = true AND sale_price IS NOT NULL
              AND sale_price < price
            LIMIT 5"#,
-        service_id,
     )
+    .bind(service_id)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| e.to_string())?;
 
-    let service_info = sqlx::query!("SELECT name, phone FROM services WHERE id = $1", service_id,)
+    let service_row = sqlx::query("SELECT name, phone FROM services WHERE id = $1")
+        .bind(service_id)
         .fetch_optional(&state.pg)
         .await
         .ok()
         .flatten();
 
-    let store_name = service_info.as_ref().map(|s| s.name.as_str()).unwrap_or("Boutique");
+    let store_name_owned: String = service_row
+        .as_ref()
+        .and_then(|r| r.try_get::<String, _>("name").ok())
+        .unwrap_or_else(|| "Boutique".to_string());
+    let store_name = store_name_owned.as_str();
     let targeting = meta_ads_service::TargetingSpec::default();
 
-    for promo in promos {
-        if let Some(sale_price) = promo.sale_price {
+    for promo in &promos {
+        let promo_id: i32 = promo.try_get("id").unwrap_or(0);
+        let promo_name: String = promo.try_get("name").unwrap_or_default();
+        let promo_price: Option<f64> = promo.try_get("price").ok().flatten();
+        let sale_price_opt: Option<f64> = promo.try_get("sale_price").ok().flatten();
+        let image_url_opt: Option<String> = promo.try_get("image_url").ok().flatten();
+
+        if let Some(sale_price) = sale_price_opt {
             let yukpo_url = format!(
                 "https://yukpomnang.com/produit/{}?utm_source=meta_ads&utm_medium=promo",
-                promo.id
+                promo_id
             );
 
             match meta_ads_service::create_promo_campaign(
                 &account,
-                &promo.name,
-                promo.image_url.as_deref(),
-                promo.price.unwrap_or(0.0),
+                &promo_name,
+                image_url_opt.as_deref(),
+                promo_price.unwrap_or(0.0),
                 sale_price,
                 &yukpo_url,
                 budget_daily,
@@ -294,25 +329,25 @@ async fn auto_create_promo_campaigns(
             {
                 Ok(created) => {
                     // Enregistrer la campagne en BDD
-                    let _ = sqlx::query!(
+                    let _ = sqlx::query(
                         r#"INSERT INTO meta_ad_campaigns
                            (user_id, service_id, ad_account_id, external_campaign_id, name,
                             objective, campaign_type, status, budget_daily_fcfa, target_product_ids)
                            VALUES ($1, $2, $3, $4, $5, 'OUTCOME_SALES', 'auto_promo', 'active', $6, $7)"#,
-                        user_id,
-                        service_id,
-                        ad_account_db_id,
-                        created.external_campaign_id,
-                        format!("Auto-promo: {}", promo.name),
-                        budget_daily,
-                        &[promo.id],
                     )
+                    .bind(user_id)
+                    .bind(service_id)
+                    .bind(ad_account_db_id)
+                    .bind(&created.external_campaign_id)
+                    .bind(format!("Auto-promo: {}", promo_name))
+                    .bind(budget_daily)
+                    .bind(&[promo_id][..])
                     .execute(&state.pg)
                     .await;
 
                     log::info!(
                         "[AdsWorker] ✅ Campagne auto-promo créée pour produit {}",
-                        promo.name
+                        promo_name
                     );
                 }
                 Err(e) => log::error!("[AdsWorker] Erreur création campagne promo: {}", e),
@@ -329,24 +364,25 @@ async fn pause_low_performance_campaigns(
     access_token: Option<&str>,
 ) -> Result<(), String> {
     let token = access_token.ok_or("Token manquant")?;
-    let low_roas = sqlx::query!(
+    let low_roas = sqlx::query(
         r#"SELECT external_campaign_id FROM meta_ad_campaigns
            WHERE user_id = $1 AND status = 'active'
              AND roas IS NOT NULL AND roas < 0.5
              AND spent_fcfa > 2000"#,
-        user_id,
     )
+    .bind(user_id)
     .fetch_all(pg)
     .await
     .unwrap_or_default();
 
-    for c in low_roas {
-        if let Some(ext_id) = c.external_campaign_id {
+    for c in &low_roas {
+        let ext_id_opt: Option<String> = c.try_get("external_campaign_id").ok().flatten();
+        if let Some(ext_id) = ext_id_opt {
             let _ = update_campaign_status(&ext_id, token, "PAUSED").await;
-            let _ = sqlx::query!(
+            let _ = sqlx::query(
                 "UPDATE meta_ad_campaigns SET status = 'paused' WHERE external_campaign_id = $1",
-                ext_id,
             )
+            .bind(&ext_id)
             .execute(pg)
             .await;
             log::info!("[AdsWorker] Campagne {} mise en pause (ROAS < 0.5)", ext_id);
@@ -361,20 +397,22 @@ async fn boost_high_roas_campaigns(
     access_token: Option<&str>,
     multiplier: f64,
 ) -> Result<(), String> {
-    let token = access_token.ok_or("Token manquant")?;
-    let high_roas = sqlx::query!(
+    let _token = access_token.ok_or("Token manquant")?;
+    let high_roas = sqlx::query(
         r#"SELECT external_campaign_id, budget_daily_fcfa FROM meta_ad_campaigns
            WHERE user_id = $1 AND status = 'active'
              AND roas IS NOT NULL AND roas > 3.0
              AND budget_daily_fcfa IS NOT NULL"#,
-        user_id,
     )
+    .bind(user_id)
     .fetch_all(pg)
     .await
     .unwrap_or_default();
 
-    for c in high_roas {
-        if let (Some(ext_id), Some(budget)) = (c.external_campaign_id, c.budget_daily_fcfa) {
+    for c in &high_roas {
+        let ext_id_opt: Option<String> = c.try_get("external_campaign_id").ok().flatten();
+        let budget_opt: Option<i64> = c.try_get("budget_daily_fcfa").ok().flatten();
+        if let (Some(ext_id), Some(budget)) = (ext_id_opt, budget_opt) {
             let new_budget = (budget as f64 * multiplier) as i64;
             // Chercher l'adset associé pour update le budget
             log::info!(
@@ -383,10 +421,11 @@ async fn boost_high_roas_campaigns(
                 budget,
                 new_budget
             );
-            let _ = sqlx::query!(
+            let _ = sqlx::query(
                 "UPDATE meta_ad_campaigns SET budget_daily_fcfa = $1 WHERE external_campaign_id = $2",
-                new_budget, ext_id,
             )
+            .bind(new_budget)
+            .bind(&ext_id)
             .execute(pg)
             .await;
         }
@@ -396,7 +435,7 @@ async fn boost_high_roas_campaigns(
 
 async fn check_new_promos_trigger(pg: &sqlx::PgPool, service_id: i32) -> bool {
     // Chercher des promos créées dans les dernières 2 heures sans campagne associée
-    let count: i64 = sqlx::query_scalar!(
+    let count: i64 = sqlx::query_scalar(
         r#"SELECT COUNT(*) FROM service_products
            WHERE service_id = $1
              AND sale_price IS NOT NULL
@@ -408,12 +447,10 @@ async fn check_new_promos_trigger(pg: &sqlx::PgPool, service_id: i32) -> bool {
                  AND c.created_at > NOW() - INTERVAL '24 hours'
              )
              AND created_at > NOW() - INTERVAL '2 hours'"#,
-        service_id,
     )
+    .bind(service_id)
     .fetch_one(pg)
     .await
-    .ok()
-    .flatten()
     .unwrap_or(0);
 
     count > 0
@@ -431,14 +468,12 @@ fn is_scheduled_time(config: &Option<serde_json::Value>) -> bool {
 
 async fn check_low_roas_trigger(pg: &sqlx::PgPool, ad_account_id: Option<i32>) -> bool {
     if let Some(id) = ad_account_id {
-        let count: i64 = sqlx::query_scalar!(
+        let count: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM meta_ad_campaigns WHERE ad_account_id = $1 AND status = 'active' AND roas IS NOT NULL AND roas < 0.5 AND spent_fcfa > 2000",
-            id,
         )
+        .bind(id)
         .fetch_one(pg)
         .await
-        .ok()
-        .flatten()
         .unwrap_or(0);
         count > 0
     } else {
