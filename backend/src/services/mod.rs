@@ -253,6 +253,7 @@ pub mod taxi_realtime_metrics_service; // ✅ NOUVEAU 2025-01-29: Service métri
 pub mod taxi_route_optimization_service; // ✅ NOUVEAU 2025-01-29: Service optimisation itinéraires IA (Leadership Global 100%)
 pub mod trip_rating_service; // ✅ NOUVEAU 2026-04-01: Notations post-trajet taxi/covoiturage
 pub mod trip_share_service; // ✅ NOUVEAU 2026-04-01: Partage trajet temps réel (lien public)
+pub mod vehicle_category_service; // Catégorisation automatique véhicule taxi (Économique/Standard/Confort/Premium)
 pub mod video_batch_processor; // ✅ Traitement par batch pour millions de jobs
 pub mod video_cache_service; // ✅ Cache distribué pour optimiser les performances
 pub mod video_queue_service; // ✅ Queue distribué avec priorités et retry

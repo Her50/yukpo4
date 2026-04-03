@@ -22,6 +22,14 @@ import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 
+// Icône composite covoiturage : voiture (orange) + passagers (violet), identique à NavigationScreen
+const CarpoolIcon: React.FC<{ size: number; color?: string }> = ({ size }) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+        <SafeIcon name="Car" size={size * 0.6} color="#F97316" />
+        <SafeIcon name="Users" size={size * 0.5} color="#7C3AED" />
+    </View>
+);
+
 // ✅ NOUVEAU: Fonction pour rendre une couleur plus vive (augmenter la saturation)
 const brightenColor = (hex: string, percent: number = 20): string => {
     // Retirer le # si présent
@@ -252,7 +260,10 @@ const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null
                                 disabled={service.comingSoon}
                             >
                                 <View style={[styles.serviceMiniIconContainer, { backgroundColor: `${service.gradient[0]}15` }]}>
-                                    <SafeIcon name={service.icon} size={24} color={brightenColor(service.gradient[0], 25)} />
+                                    {service.id === 'covoiturage'
+                                        ? <CarpoolIcon size={24} />
+                                        : <SafeIcon name={service.icon} size={24} color={brightenColor(service.gradient[0], 25)} />
+                                    }
                                     {service.comingSoon && (
                                         <View style={styles.badgeMini}>
                                             <Text style={styles.badgeMiniText}>{t('yukpoServicesQuickAccess.bientot')}</Text>
@@ -359,7 +370,10 @@ const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null
                                                 style={styles.serviceGradient}
                                             >
                                                 <View style={styles.serviceIconContainer}>
-                                                    <SafeIcon name={service.icon} size={24} color="#FFFFFF" />
+                                                    {service.id === 'covoiturage'
+                                                        ? <CarpoolIcon size={24} />
+                                                        : <SafeIcon name={service.icon} size={24} color="#FFFFFF" />
+                                                    }
                                                     {service.comingSoon && (
                                                         <View style={styles.badge}>
                                                             <Text style={styles.badgeText}>{t('yukpoServicesQuickAccess.bientot')}</Text>

@@ -443,6 +443,7 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
                     { label: t('supermarketPartnerDashboard.mesProduits'), icon: 'package', color: '#F59E0B', onPress: () => (navigation as any).navigate('MesProduits') },
                     { label: t('supermarketPartnerDashboard.commandes'), icon: 'shopping-cart', color: '#EF4444', onPress: () => setActiveTab('orders') },
                     { label: t('supermarketPartnerDashboard.portefeuille'), icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
+                    { label: 'Import Drive', icon: 'link', color: '#7C3AED', onPress: () => (navigation as any).navigate('DriveImportLink', { serviceType: 'supermarche', serviceId, serviceName: 'Supermarché' }) },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
                         <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>

@@ -11,6 +11,7 @@ pub mod delivery_matching_worker;
 pub mod delivery_notification_repeat; // ✅ NOUVEAU : Répétition des notifications de livraison
 pub mod delivery_sla_monitor;
 pub mod delivery_timeout_monitor; // ✅ NOUVEAU : Monitor des timeouts de validation d'étapes
+pub mod drive_sync_scheduler; // ✅ Sync automatique liens Drive partenaires (hourly/daily/weekly)
 pub mod flash_sale_queue_worker; // ✅ NOUVEAU: Worker de traitement des réservations Flash Sales
 pub mod global_promo_scheduler;
 pub mod intelligent_service_task;

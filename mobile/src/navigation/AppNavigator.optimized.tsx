@@ -532,6 +532,7 @@ reg('PharmacyOrderQR', () => import('../screens/specialized/PharmacyOrderQRScree
 reg('PharmacyOrderValidation', () => import('../screens/specialized/PharmacyOrderValidationScreen'));
 reg('PharmacyPartnerOrders', () => import('../screens/specialized/PharmacyPartnerOrdersScreen'));
 reg('PharmacyMultiOrder', () => import('../screens/specialized/PharmacyMultiOrderScreen'));
+reg('DriveImportLink', () => import('../screens/specialized/DriveImportLinkScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Taxi (9)
@@ -820,7 +821,7 @@ function MainTabNavigator() {
               <SafeIcon
                 name={focused ? 'home' : 'home-outline'}
                 size={(size ?? 24) + 2}
-                color={focused ? modernColors.primaryDark : color}
+                color={focused ? '#3730A3' : color}
                 type="ionicons"
               />
             ),
@@ -854,7 +855,7 @@ function MainTabNavigator() {
               <SafeIcon
                 name={focused ? 'briefcase' : 'briefcase-outline'}
                 size={(size ?? 24) + 2}
-                color={focused ? modernColors.primaryDark : color}
+                color={focused ? '#047857' : color}
                 type="ionicons"
               />
             ),
@@ -877,7 +878,7 @@ function MainTabNavigator() {
               <SafeIcon
                 name={focused ? 'bag' : 'bag-outline'}
                 size={(size ?? 24) + 2}
-                color={focused ? modernColors.primaryDark : color}
+                color={focused ? '#047857' : color}
                 type="ionicons"
               />
             ),
@@ -903,7 +904,7 @@ function MainTabNavigator() {
               <SafeIcon
                 name={focused ? 'add-circle' : 'add-circle-outline'}
                 size={(size ?? 24) + 2}
-                color={focused ? modernColors.primaryDark : color}
+                color={focused ? '#DC2626' : color}
                 type="ionicons"
               />
             ),
@@ -928,7 +929,7 @@ function MainTabNavigator() {
             <SafeIcon
               name={focused ? 'play-circle' : 'play-circle-outline'}
               size={(size ?? 24) + 2}
-              color={focused ? modernColors.primaryDark : color}
+              color={focused ? '#7C3AED' : color}
               type="ionicons"
             />
           ),
@@ -953,7 +954,7 @@ function MainTabNavigator() {
               <SafeIcon
                 name={focused ? 'car' : 'car-outline'}
                 size={(size ?? 24) + 2}
-                color={focused ? modernColors.primaryDark : color}
+                color={focused ? '#F97316' : color}
                 type="ionicons"
               />
             ),
@@ -978,7 +979,7 @@ function MainTabNavigator() {
             <SafeIcon
               name={focused ? 'person' : 'person-outline'}
               size={(size ?? 24) + 2}
-              color={focused ? modernColors.primaryDark : color}
+              color={focused ? '#0EA5E9' : color}
               type="ionicons"
             />
           ),

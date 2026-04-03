@@ -848,16 +848,27 @@ interface TaxiCardProps {
     formatDistance: (distance?: number) => string;
 }
 
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+    economique: { bg: '#F3F4F6', text: '#6B7280', border: '#D1D5DB' },
+    standard:   { bg: '#EFF6FF', text: '#3B82F6', border: '#BFDBFE' },
+    confort:    { bg: '#F0FDF4', text: '#16A34A', border: '#BBF7D0' },
+    premium:    { bg: '#FFF7ED', text: '#EA580C', border: '#FED7AA' },
+};
+
 const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onWhatsApp, onBook, formatPrice, formatDistance }) => {
     const { t } = useLanguageSafe();
-    // Estimation tarifaire locale
+    const catKey = taxi.vehicle_category ?? 'standard';
+    const catColors = CATEGORY_COLORS[catKey] ?? CATEGORY_COLORS.standard;
+
+    // Estimation tarifaire locale — intègre le coefficient de catégorie
     const estimatePrice = (distanceKm?: number): string => {
         if (!distanceKm || !taxi.tarif_base) return '';
         const base = taxi.tarif_base || 500;
         const perKm = taxi.tarif_par_km || 250;
-        const estimated = base + (perKm * distanceKm);
-        const min = Math.round(estimated * 0.85);
-        const max = Math.round(estimated * 1.15);
+        const coefficient = taxi.vehicle_coefficient ?? 1.0;
+        const estimated = (base + (perKm * distanceKm)) * coefficient;
+        const min = Math.round(estimated * 0.90);
+        const max = Math.round(estimated * 1.10);
         return `${min.toLocaleString()} - ${max.toLocaleString()} FCFA`;
     };
     const priceEstimate = estimatePrice(taxi.distance_km);
@@ -877,6 +888,13 @@ const TaxiCard: React.FC<TaxiCardProps> = ({ taxi, onPress, onCall, onWhatsApp, 
                             <Text style={styles.taxiVehicle}>
                                 {taxi.type_vehicule} {taxi.marque_modele && `• ${taxi.marque_modele}`}
                             </Text>
+                        )}
+                        {taxi.vehicle_category_label && (
+                            <View style={[styles.categoryBadge, { backgroundColor: catColors.bg, borderColor: catColors.border }]}>
+                                <Text style={[styles.categoryBadgeText, { color: catColors.text }]}>
+                                    {taxi.vehicle_category_emoji} {taxi.vehicle_category_label}
+                                </Text>
+                            </View>
                         )}
                     </View>
                 </View>
@@ -1494,6 +1512,18 @@ const styles = StyleSheet.create({
     taxiVehicle: {
         fontSize: 12,
         color: '#9CA3AF',
+    },
+    categoryBadge: {
+        alignSelf: 'flex-start',
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingVertical: 2,
+        paddingHorizontal: 8,
+        marginTop: 4,
+    },
+    categoryBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
     },
     availableBadge: {
         flexDirection: 'row',

@@ -9,6 +9,7 @@ import {
     Alert,
     Animated,
     Image,
+    KeyboardAvoidingView,
     Linking,
     Modal,
     Platform,
@@ -91,13 +92,20 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [editingContent, setEditingContent] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-    // ✅ NOUVEAU: États pour @mention
+    // ✅ NOUVEAU: États pour @mention (inline dans le champ message)
     const [showMentionPicker, setShowMentionPicker] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
     const [cursorPosition, setCursorPosition] = useState(0);
     const [mentionedUsers, setMentionedUsers] = useState<number[]>([]);
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [showParticipantsList, setShowParticipantsList] = useState(false);
+
+    // États pour le modal "Ajouter un membre" (flow identique à ServiceTeamManager)
+    const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+    const [addMemberInput, setAddMemberInput] = useState('');
+    const [addMemberQuery, setAddMemberQuery] = useState('');
+    const [showAddMemberSuggestions, setShowAddMemberSuggestions] = useState(false);
+    const [showUserPickerForAdd, setShowUserPickerForAdd] = useState(false);
 
     // États pour les médias
     const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -284,12 +292,40 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     t('chatModalMobile.lutilisateurAEteAjouteALaConversationEt'),
                     [{ text: 'OK' }]
                 );
-                loadParticipants(); // Recharger la liste
+                loadParticipants();
             }
         } catch (error) {
             console.error('[ChatModalMobile] Erreur invitation:', error);
             Alert.alert(t('common.error') || 'Erreur', t('chatModalMobile.inviteError') || 'Impossible d\'inviter cet utilisateur');
         }
+    };
+
+    // Handler champ de saisie du modal "Ajouter un membre"
+    const handleAddMemberInputChange = (text: string) => {
+        setAddMemberInput(text);
+        const atMatch = text.match(/(?:^|[\s])@([^@\s]*)$/);
+        if (atMatch) {
+            setAddMemberQuery(atMatch[1]);
+            setShowAddMemberSuggestions(true);
+            return;
+        }
+        const plain = text.trim().replace(/^@/, '');
+        if (plain.length >= 2) {
+            setAddMemberQuery(plain);
+            setShowAddMemberSuggestions(true);
+        } else {
+            setAddMemberQuery('');
+            setShowAddMemberSuggestions(false);
+        }
+    };
+
+    // Sélection d'un utilisateur depuis InlineMentionSuggestions dans le modal add-member
+    const handleAddMemberSelect = (selectedUser: { id: number; nom_complet: string; email: string }) => {
+        setAddMemberInput('');
+        setAddMemberQuery('');
+        setShowAddMemberSuggestions(false);
+        setShowAddMemberModal(false);
+        inviteUser(selectedUser.id, 'add_member');
     };
 
     // ✅ NOUVEAU: Retirer un participant
@@ -1772,9 +1808,90 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 serviceId={service?.id}
             />
 
-            {/* ✅ NOUVEAU: Modal pour @mention */}
+            {/* Modal "Ajouter un membre" — même pattern que ServiceTeamManager */}
+            <Modal
+                visible={showAddMemberModal}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setShowAddMemberModal(false)}
+            >
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+                >
+                    <View style={styles.addMemberModalContainer}>
+                        {/* Header */}
+                        <View style={styles.addMemberModalHeader}>
+                            <Text style={styles.addMemberModalTitle}>
+                                {t('chatModalMobile.inviteSomeone') || 'Ajouter un membre'}
+                            </Text>
+                            <TouchableOpacity onPress={() => {
+                                setShowAddMemberModal(false);
+                                setAddMemberInput('');
+                                setAddMemberQuery('');
+                                setShowAddMemberSuggestions(false);
+                            }}>
+                                <SafeIcon name="x" size={24} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView
+                            style={{ flex: 1 }}
+                            contentContainerStyle={styles.addMemberModalContent}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            <Text style={styles.addMemberInputLabel}>
+                                {t('chatModalMobile.emailOrUsername') || 'Email ou @nom d\'utilisateur'}
+                            </Text>
+                            <TextInput
+                                style={styles.addMemberInput}
+                                value={addMemberInput}
+                                onChangeText={handleAddMemberInputChange}
+                                placeholder="exemple@email.com ou @username"
+                                placeholderTextColor={modernColors.textSecondary}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                autoFocus
+                            />
+                            {showAddMemberSuggestions && addMemberQuery.length >= 1 && (
+                                <InlineMentionSuggestions
+                                    query={addMemberQuery}
+                                    visible={showAddMemberSuggestions}
+                                    onSelect={handleAddMemberSelect}
+                                    maxHeight={220}
+                                />
+                            )}
+
+                            <TouchableOpacity
+                                style={styles.addMemberPickerButton}
+                                onPress={() => setShowUserPickerForAdd(true)}
+                            >
+                                <SafeIcon name="users" size={16} color={modernColors.primary} />
+                                <Text style={styles.addMemberPickerText}>
+                                    {t('chatModalMobile.chooseFromCommunity') || 'Choisir dans la communauté'}
+                                </Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
+
+            {/* UserMentionPicker ouvert depuis le modal add-member */}
             <UserMentionPicker
-                visible={showMentionPicker}
+                visible={showUserPickerForAdd}
+                onClose={() => setShowUserPickerForAdd(false)}
+                onSelectUser={(selectedUser) => {
+                    setShowUserPickerForAdd(false);
+                    setShowAddMemberModal(false);
+                    inviteUser(selectedUser.id, 'add_member');
+                }}
+                teamInviteMode
+            />
+
+            {/* ✅ NOUVEAU: Modal pour @mention inline dans le champ message */}
+            <UserMentionPicker
+                visible={showMentionPicker && !showAddMemberModal}
                 onClose={() => setShowMentionPicker(false)}
                 onSelectUser={insertMention}
                 currentQuery={mentionQuery}
@@ -1927,7 +2044,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                 style={[styles.addParticipantButton, styles.addMemberButton]}
                                 onPress={() => {
                                     setShowParticipantsList(false);
-                                    setShowMentionPicker(true);
+                                    setAddMemberInput('');
+                                    setAddMemberQuery('');
+                                    setShowAddMemberSuggestions(false);
+                                    setShowAddMemberModal(true);
                                 }}
                             >
                                 <View style={styles.addMemberIconContainer}>
@@ -3115,6 +3235,62 @@ const styles = StyleSheet.create({
     chatbotSendBtnDisabled: {
         backgroundColor: modernColors.textSecondary,
         opacity: 0.4,
+    },
+    // ── Modal "Ajouter un membre" ──────────────────────────────────────────
+    addMemberModalContainer: {
+        flex: 1,
+        backgroundColor: modernColors.background || '#FFFFFF',
+    },
+    addMemberModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 56 : 20,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border || '#E5E7EB',
+    },
+    addMemberModalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text || '#111827',
+    },
+    addMemberModalContent: {
+        padding: 20,
+        gap: 12,
+    },
+    addMemberInputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text || '#374151',
+        marginBottom: 6,
+    },
+    addMemberInput: {
+        borderWidth: 1,
+        borderColor: modernColors.border || '#D1D5DB',
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        fontSize: 15,
+        color: modernColors.text || '#111827',
+        backgroundColor: modernColors.surface || '#F9FAFB',
+    },
+    addMemberPickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: modernColors.primary || '#6366F1',
+        marginTop: 8,
+    },
+    addMemberPickerText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary || '#6366F1',
     },
 });
 

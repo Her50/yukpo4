@@ -3202,6 +3202,8 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     std::mem::drop(tokio::spawn(async move {
         start_optimization_task(pool_clone_optimization, app_state_clone_optimization).await;
     }));
+    // ✅ Sync automatique liens Drive partenaires (pharmacie, supermarché, ecommerce)
+    tasks::drive_sync_scheduler::start_drive_sync_scheduler(app_state.clone());
     // ✅ Scheduler pour les campagnes promos globales (Black Friday, etc.)
     tasks::global_promo_scheduler::start_global_promo_scheduler(app_state.clone());
     // ✅ Worker pipeline health (alerting interne)

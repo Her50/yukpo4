@@ -1947,6 +1947,115 @@ pub async fn validate_delivery_qr(
     .await
     .ok();
 
+    // ✅ REVERSAL FINANCIER : créditer automatiquement le wallet du partenaire restaurant
+    // Identique au flux pharmacie — évite que le partenaire ait à appeler update_order_status manuellement
+    {
+        let commission_rate: f64 = sqlx::query_scalar(
+            "SELECT rate::float8 FROM yukpo_commission_config WHERE service_type = 'restaurant'",
+        )
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or(0.02);
+
+        let order_data = sqlx::query(
+            r#"SELECT net_partner_amount::float8, yukpo_commission::float8,
+                      payment_status, wallet_reserved_cents, reversed_at,
+                      s.user_id AS partner_user_id
+               FROM restaurant_orders ro
+               JOIN services s ON s.id = ro.service_id
+               WHERE ro.id = $1"#,
+        )
+        .bind(order_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten();
+
+        if let Some(ord) = order_data {
+            let already_reversed: Option<chrono::DateTime<chrono::Utc>> =
+                ord.try_get("reversed_at").ok().flatten();
+            let payment_status: String = ord.try_get("payment_status").unwrap_or_default();
+            let partner_user_id: i32 = ord.try_get("partner_user_id").unwrap_or(0);
+            let wallet_reserved_cents: i64 = ord.try_get("wallet_reserved_cents").unwrap_or(0);
+
+            if already_reversed.is_none()
+                && payment_status == "paid"
+                && wallet_reserved_cents > 0
+                && partner_user_id > 0
+            {
+                let commission_cents =
+                    (wallet_reserved_cents as f64 * commission_rate).round() as i64;
+                let net_partner_cents = wallet_reserved_cents - commission_cents;
+
+                // Créer le wallet partenaire s'il n'existe pas
+                sqlx::query(
+                    "INSERT INTO user_wallets (user_id, balance_cents, currency) VALUES ($1, 0, 'XAF') ON CONFLICT (user_id) DO NOTHING",
+                )
+                .bind(partner_user_id)
+                .execute(&state.pg)
+                .await
+                .ok();
+
+                let balance_before: i64 = sqlx::query_scalar(
+                    "SELECT COALESCE(balance_cents, 0) FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
+                )
+                .bind(partner_user_id)
+                .fetch_optional(&state.pg)
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or(0);
+
+                // Créditer le wallet partenaire
+                sqlx::query(
+                    "UPDATE user_wallets SET balance_cents = balance_cents + $1, updated_at = NOW() WHERE user_id = $2 AND currency = 'XAF'",
+                )
+                .bind(net_partner_cents)
+                .bind(partner_user_id)
+                .execute(&state.pg)
+                .await
+                .ok();
+
+                // Logger la transaction
+                sqlx::query(
+                    r#"INSERT INTO wallet_transactions (
+                        user_id, transaction_type, direction, amount_cents,
+                        balance_before_cents, balance_after_cents,
+                        currency, reference_type, reference_id, description, created_at
+                    ) VALUES ($1, 'restaurant_order_payout', 'credit', $2, $3, $4,
+                              'XAF', 'restaurant_order', $5, $6, NOW())"#,
+                )
+                .bind(partner_user_id)
+                .bind(net_partner_cents)
+                .bind(balance_before)
+                .bind(balance_before + net_partner_cents)
+                .bind(order_id)
+                .bind(format!(
+                    "Vente restaurant commande #{} (commission Yukpo {:.0}% déduite)",
+                    order_id,
+                    commission_rate * 100.0
+                ))
+                .execute(&state.pg)
+                .await
+                .ok();
+
+                // Marquer comme reversé (idempotence)
+                sqlx::query("UPDATE restaurant_orders SET reversed_at = NOW() WHERE id = $1")
+                    .bind(order_id)
+                    .execute(&state.pg)
+                    .await
+                    .ok();
+
+                info!(
+                    "[validate_delivery_qr] ✅ Payout restaurant: {}F → partner {} (commission {}F)",
+                    net_partner_cents, partner_user_id, commission_cents
+                );
+            }
+        }
+    }
+
     // Push au client
     if let Some(cid) = client_user_id {
         let _ = push_notification_service::send_push_notification(

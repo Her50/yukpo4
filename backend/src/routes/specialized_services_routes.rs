@@ -1,6 +1,6 @@
 use axum::{
     middleware,
-    routing::{delete, get, post, put},
+    routing::{delete, get, patch, post, put},
     Router,
 };
 use std::sync::Arc;
@@ -15,6 +15,7 @@ use crate::controllers::bus_ticket_credit_controller;
 use crate::controllers::bus_ticket_payment_controller;
 use crate::controllers::bus_ticket_rating_controller;
 use crate::controllers::bus_ticket_validation_controller;
+use crate::controllers::drive_import_controller;
 use crate::controllers::livres_scolaires_controller;
 use crate::controllers::menu_planning_controller;
 use crate::controllers::pharmacy_controller;
@@ -1048,11 +1049,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(specialized_services_controller::validate_pharmacy_order_qr),
         )
         .route(
-            "/api/pharmacies/orders/:order_id/qr",
+            "/api/pharmacies/orders/{order_id}/qr",
             get(specialized_services_controller::get_pharmacy_order_qr),
         )
         .route(
-            "/api/pharmacies/orders/:order_id/detail",
+            "/api/pharmacies/orders/{order_id}/detail",
             get(specialized_services_controller::get_pharmacy_order_detail),
         )
         // ✅ Commandes multi-pharmacies : créer + consulter
@@ -1061,8 +1062,40 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(specialized_services_controller::create_multi_pharmacy_order),
         )
         .route(
-            "/api/pharmacies/multi-orders/:multi_order_id",
+            "/api/pharmacies/multi-orders/{multi_order_id}",
             get(specialized_services_controller::get_multi_pharmacy_order),
+        )
+        // ✅ 2026-04-03: Comptes bancaires partenaires + historique retraits
+        .route(
+            "/api/partner/bank-accounts",
+            get(specialized_services_controller::list_partner_bank_accounts)
+                .post(specialized_services_controller::save_partner_bank_account),
+        )
+        .route(
+            "/api/partner/bank-accounts/{id}",
+            delete(specialized_services_controller::delete_partner_bank_account),
+        )
+        .route(
+            "/api/partner/withdrawals",
+            get(specialized_services_controller::list_partner_withdrawals),
+        )
+        // ✅ Import permanent via lien Drive / cloud (pharmacie, supermarché, e-commerce)
+        .route(
+            "/api/partner/import-links",
+            get(drive_import_controller::list_import_links)
+                .post(drive_import_controller::save_import_link),
+        )
+        .route(
+            "/api/partner/import-links/{id}",
+            delete(drive_import_controller::delete_import_link),
+        )
+        .route(
+            "/api/partner/import-links/{id}/toggle",
+            patch(drive_import_controller::toggle_import_link),
+        )
+        .route(
+            "/api/partner/import-links/{id}/sync",
+            post(drive_import_controller::manual_sync_import_link),
         )
         // ✅ 2025-01-27: Nouvelles routes Laboratoires
         .route(

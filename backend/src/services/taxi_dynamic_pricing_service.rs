@@ -1,6 +1,6 @@
 //! ✅ Service Prix Dynamique IA - Taxi & Covoiturage
 //!
-//! Pricing intelligent basé sur demande/prédiction
+//! Pricing intelligent basé sur demande/prédiction + catégorie véhicule
 //! Objectif: Optimisation revenus + satisfaction client
 
 use crate::core::types::AppResult;
@@ -8,6 +8,7 @@ use crate::services::app_ia::AppIA;
 use crate::services::taxi_demand_prediction_service::{
     PredictionPeriod, PredictionZone, TaxiDemandPredictionService,
 };
+use crate::services::vehicle_category_service::{categorize_vehicle, VehicleCategory};
 use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -20,6 +21,11 @@ pub struct PricingRequest {
     pub distance_km: f64,
     pub zone: PredictionZone,
     pub vehicle_type: Option<String>, // "taxi", "covoiturage"
+    // Infos véhicule pour catégorisation automatique
+    pub marque_modele: Option<String>,
+    pub annee: Option<i32>,
+    pub climatisation: Option<bool>,
+    pub wifi: Option<bool>,
     pub time_of_day: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -27,13 +33,16 @@ pub struct PricingRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DynamicPrice {
     pub base_price: f64,
-    pub dynamic_multiplier: f64, // 0.8-2.0
+    pub dynamic_multiplier: f64,  // 0.8-2.0 (demande/offre + temps)
+    pub vehicle_coefficient: f64, // 0.85 / 1.0 / 1.30 / 1.60 selon catégorie
     pub final_price: f64,
-    pub surge_factor: f64,  // 1.0-2.0 (surge pricing)
-    pub demand_factor: f64, // 0.0-1.0
-    pub supply_factor: f64, // 0.0-1.0
-    pub time_factor: f64,   // 0.0-1.0 (heure de pointe)
-    pub confidence: f32,    // 0.0-1.0
+    pub surge_factor: f64,        // 1.0-2.0 (surge pricing)
+    pub demand_factor: f64,       // 0.0-1.0
+    pub supply_factor: f64,       // 0.0-1.0
+    pub time_factor: f64,         // 0.0-1.0 (heure de pointe)
+    pub vehicle_category: String, // "economique" | "standard" | "confort" | "premium"
+    pub vehicle_category_label: String,
+    pub confidence: f32, // 0.0-1.0
     pub reasoning: String,
 }
 
@@ -93,41 +102,58 @@ impl TaxiDynamicPricingService {
             None
         };
 
-        // 2. Calculer facteurs
+        // 2. Calculer facteurs demande/offre/temps
         let (demand_factor, supply_factor) =
             self.calculate_demand_supply_factors(&request.zone).await?;
         let time_factor = self.calculate_time_factor(request.time_of_day);
         let surge_factor = self.calculate_surge_factor(demand_factor, supply_factor).await?;
 
-        // 3. Multiplicateur dynamique
+        // 3. Multiplicateur dynamique (demande/offre + heure de pointe)
         let dynamic_multiplier =
             self.calculate_multiplier(demand_factor, supply_factor, time_factor, surge_factor);
-
-        // Limiter entre 0.8 et 2.0
         let dynamic_multiplier = dynamic_multiplier.clamp(0.8, 2.0);
 
-        let final_price = request.base_price * dynamic_multiplier;
+        // 4. Coefficient catégorie véhicule (automatique)
+        let category = categorize_vehicle(
+            request.vehicle_type.as_deref(),
+            request.marque_modele.as_deref(),
+            request.annee,
+            request.climatisation.unwrap_or(false),
+            request.wifi.unwrap_or(false),
+        );
+        let vehicle_coefficient = category.price_coefficient();
 
-        // 4. Reasoning avec IA si disponible
+        // Prix final = base × dynamique × catégorie véhicule
+        let final_price = request.base_price * dynamic_multiplier * vehicle_coefficient;
+
+        // 5. Reasoning avec IA si disponible
         let reasoning = if let Some(app_ia) = &self.app_ia {
             self.generate_reasoning(
                 app_ia,
                 &request,
                 dynamic_multiplier,
+                vehicle_coefficient,
                 demand_factor,
                 supply_factor,
+                category,
             )
             .await
             .unwrap_or_else(|_| {
                 format!(
-                    "Prix ajusté selon demande/offre: {:.1}%",
+                    "Véhicule {} (×{:.2}) — ajustement demande/offre: {:.1}%",
+                    category.label(),
+                    vehicle_coefficient,
                     (dynamic_multiplier - 1.0) * 100.0
                 )
             })
         } else {
             format!(
-                "Prix ajusté: demande={:.2}, offre={:.2}, facteur={:.2}",
-                demand_factor, supply_factor, dynamic_multiplier
+                "Catégorie {}: ×{:.2} — demande={:.2}, offre={:.2}, facteur={:.2}",
+                category.label(),
+                vehicle_coefficient,
+                demand_factor,
+                supply_factor,
+                dynamic_multiplier
             )
         };
 
@@ -138,18 +164,21 @@ impl TaxiDynamicPricingService {
         };
 
         info!(
-            "[TaxiDynamicPricing] ✅ Prix calculé: {} → {} (×{:.2})",
-            request.base_price, final_price, dynamic_multiplier
+            "[TaxiDynamicPricing] ✅ Prix calculé: {} → {} (×{:.2} dyn, ×{:.2} catégorie={:?})",
+            request.base_price, final_price, dynamic_multiplier, vehicle_coefficient, category
         );
 
         Ok(DynamicPrice {
             base_price: request.base_price,
             dynamic_multiplier,
+            vehicle_coefficient,
             final_price,
             surge_factor,
             demand_factor,
             supply_factor,
             time_factor,
+            vehicle_category: category.as_str().to_string(),
+            vehicle_category_label: category.label().to_string(),
             confidence,
             reasoning,
         })
@@ -292,34 +321,36 @@ impl TaxiDynamicPricingService {
         app_ia: &Arc<AppIA>,
         request: &PricingRequest,
         multiplier: f64,
+        vehicle_coefficient: f64,
         demand_factor: f64,
         supply_factor: f64,
+        category: VehicleCategory,
     ) -> AppResult<String> {
         let prompt = format!(
             r#"Tu es un expert en pricing dynamique pour transport partagé.
 
-Calculer un prix pour:
-- Prix de base: {} FCFA
+Calcul de prix pour un trajet taxi:
+- Prix de base chauffeur: {} FCFA
 - Distance: {} km
-- Zone: {}
-- Multiplicateur calculé: {:.2}
+- Catégorie véhicule: {} (coefficient ×{:.2})
+- Multiplicateur demande/offre: ×{:.2}
+- Demande dans la zone: {:.2}/1.0
+- Offre disponible: {:.2}/1.0
+- Prix final: {:.0} FCFA
 
-Facteurs:
-- Demande: {:.2}/1.0
-- Offre: {:.2}/1.0
-- Prix final: {:.2} FCFA
+Génère UNIQUEMENT une explication courte (2 phrases max) pour le passager, mentionnant la catégorie du véhicule.
 
-Génère UNIQUEMENT une explication courte (2-3 phrases) pour justifier le prix au client.
-
-Format: "Le prix a été ajusté à {} FCFA en raison de [raison principale]. [Explication courte].""#,
+Format: "Véhicule {} — prix estimé à {:.0} FCFA. [Raison de l'ajustement si applicable].""#,
             request.base_price,
             request.distance_km,
-            request.zone.zone_id,
+            category.label(),
+            vehicle_coefficient,
             multiplier,
             demand_factor,
             supply_factor,
-            request.base_price * multiplier,
-            request.base_price * multiplier,
+            request.base_price * multiplier * vehicle_coefficient,
+            category.label(),
+            request.base_price * multiplier * vehicle_coefficient,
         );
 
         let (_, response, _) = app_ia.predict(&prompt).await?;

@@ -13,6 +13,7 @@ use crate::services::land_analysis_ai_service::LandAnalysisAIService;
 use crate::services::moving_ai_service::MovingAIService;
 use crate::services::push_notification_service;
 use crate::services::real_estate_ai_service::RealEstateAIService;
+use crate::services::vehicle_category_service::categorize_vehicle;
 use crate::state::AppState;
 use axum::{
     extract::{Extension, Multipart, Path, Query, State},
@@ -235,6 +236,49 @@ pub async fn list_covoiturages_public(
     ))
 }
 
+/// Construit le JSON d'un taxi en ajoutant vehicle_category calculé automatiquement
+fn taxi_row_to_json(row: &sqlx::postgres::PgRow) -> serde_json::Value {
+    use sqlx::Row;
+    let type_v: Option<String> = row.try_get("type_vehicule").ok().flatten();
+    let marque: Option<String> = row.try_get("marque_modele").ok().flatten();
+    let annee: Option<i32> = row.try_get("annee").ok().flatten();
+    let clim: bool =
+        row.try_get::<Option<bool>, _>("climatisation").ok().flatten().unwrap_or(false);
+    let wifi: bool = row.try_get::<Option<bool>, _>("wifi").ok().flatten().unwrap_or(false);
+    let cat = categorize_vehicle(type_v.as_deref(), marque.as_deref(), annee, clim, wifi);
+    serde_json::json!({
+        "taxi_id": row.try_get::<i32, _>("taxi_id").ok(),
+        "service_id": row.try_get::<i32, _>("service_id").ok(),
+        "user_id": row.try_get::<i32, _>("user_id").ok(),
+        "nom_chauffeur": row.try_get::<Option<String>, _>("nom_chauffeur").ok().flatten(),
+        "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
+        "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
+        "type_vehicule": type_v,
+        "marque_modele": marque,
+        "immatriculation": row.try_get::<Option<String>, _>("immatriculation").ok().flatten(),
+        "couleur": row.try_get::<Option<String>, _>("couleur").ok().flatten(),
+        "annee": annee,
+        "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten(),
+        "zone_intervention": row.try_get::<Option<Vec<String>>, _>("zone_intervention").ok().flatten(),
+        "gps_actuel": row.try_get::<Option<String>, _>("gps_actuel").ok().flatten(),
+        "tarif_base": row.try_get::<Option<i32>, _>("tarif_base").ok().flatten(),
+        "tarif_par_km": row.try_get::<Option<i32>, _>("tarif_par_km").ok().flatten(),
+        "devise": row.try_get::<Option<String>, _>("devise").ok().flatten(),
+        "paiement_cash": row.try_get::<Option<bool>, _>("paiement_cash").ok().flatten(),
+        "paiement_mobile_money": row.try_get::<Option<bool>, _>("paiement_mobile_money").ok().flatten(),
+        "paiement_carte": row.try_get::<Option<bool>, _>("paiement_carte").ok().flatten(),
+        "climatisation": clim,
+        "wifi": wifi,
+        "is_on_duty": row.try_get::<Option<bool>, _>("is_on_duty").ok().flatten(),
+        "prestataire_nom": row.try_get::<Option<String>, _>("prestataire_nom").ok().flatten(),
+        "prestataire_photo": row.try_get::<Option<String>, _>("prestataire_photo").ok().flatten(),
+        "vehicle_category": cat.as_str(),
+        "vehicle_category_label": cat.label(),
+        "vehicle_category_emoji": cat.emoji(),
+        "vehicle_coefficient": cat.price_coefficient(),
+    })
+}
+
 /// ✅ Liste des taxis (stub pour éviter erreur 405) - Version protégée
 pub async fn list_taxis(
     State(_state): State<Arc<AppState>>,
@@ -296,38 +340,7 @@ pub async fn list_taxis_public(State(state): State<Arc<AppState>>) -> AppResult<
         AppError::Internal("Erreur liste taxis".to_string())
     })?;
 
-    let taxis_json: Vec<serde_json::Value> = rows
-        .iter()
-        .map(|row| {
-            json!({
-                "taxi_id": row.try_get::<i32, _>("taxi_id").ok(),
-                "service_id": row.try_get::<i32, _>("service_id").ok(),
-                "user_id": row.try_get::<i32, _>("user_id").ok(),
-                "nom_chauffeur": row.try_get::<Option<String>, _>("nom_chauffeur").ok().flatten(),
-                "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
-                "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
-                "type_vehicule": row.try_get::<Option<String>, _>("type_vehicule").ok().flatten(),
-                "marque_modele": row.try_get::<Option<String>, _>("marque_modele").ok().flatten(),
-                "immatriculation": row.try_get::<Option<String>, _>("immatriculation").ok().flatten(),
-                "couleur": row.try_get::<Option<String>, _>("couleur").ok().flatten(),
-                "annee": row.try_get::<Option<i32>, _>("annee").ok().flatten(),
-                "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten(),
-                "zone_intervention": row.try_get::<Option<Vec<String>>, _>("zone_intervention").ok().flatten(),
-                "gps_actuel": row.try_get::<Option<String>, _>("gps_actuel").ok().flatten(),
-                "tarif_base": row.try_get::<Option<i32>, _>("tarif_base").ok().flatten(),
-                "tarif_par_km": row.try_get::<Option<i32>, _>("tarif_par_km").ok().flatten(),
-                "devise": row.try_get::<Option<String>, _>("devise").ok().flatten(),
-                "paiement_cash": row.try_get::<Option<bool>, _>("paiement_cash").ok().flatten(),
-                "paiement_mobile_money": row.try_get::<Option<bool>, _>("paiement_mobile_money").ok().flatten(),
-                "paiement_carte": row.try_get::<Option<bool>, _>("paiement_carte").ok().flatten(),
-                "climatisation": row.try_get::<Option<bool>, _>("climatisation").ok().flatten(),
-                "wifi": row.try_get::<Option<bool>, _>("wifi").ok().flatten(),
-                "is_on_duty": row.try_get::<Option<bool>, _>("is_on_duty").ok().flatten(),
-                "prestataire_nom": row.try_get::<Option<String>, _>("prestataire_nom").ok().flatten(),
-                "prestataire_photo": row.try_get::<Option<String>, _>("prestataire_photo").ok().flatten(),
-            })
-        })
-        .collect();
+    let taxis_json: Vec<serde_json::Value> = rows.iter().map(taxi_row_to_json).collect();
 
     Ok((
         StatusCode::OK,
@@ -3894,6 +3907,13 @@ pub async fn search_taxis(
             }
         });
         let ville: Option<String> = row.try_get::<Option<String>, _>("ville").ok().flatten();
+        let type_v: Option<String> = row.try_get("type_vehicule").ok().flatten();
+        let marque: Option<String> = row.try_get("marque_modele").ok().flatten();
+        let annee: Option<i32> = row.try_get("annee").ok().flatten();
+        let clim: bool =
+            row.try_get::<Option<bool>, _>("climatisation").ok().flatten().unwrap_or(false);
+        let wifi: bool = row.try_get::<Option<bool>, _>("wifi").ok().flatten().unwrap_or(false);
+        let cat = categorize_vehicle(type_v.as_deref(), marque.as_deref(), annee, clim, wifi);
         taxis_json.push(json!({
             "id": row.try_get::<i32, _>("taxi_id").ok(),
             "service_id": row.try_get::<i32, _>("service_id").ok(),
@@ -3902,13 +3922,13 @@ pub async fn search_taxis(
             "nom_chauffeur": row.try_get::<Option<String>, _>("nom_chauffeur").ok().flatten(),
             "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
             "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
-            "type_vehicule": row.try_get::<Option<String>, _>("type_vehicule").ok().flatten(),
-            "marque_modele": row.try_get::<Option<String>, _>("marque_modele").ok().flatten(),
+            "type_vehicule": type_v,
+            "marque_modele": marque,
             "immatriculation": row.try_get::<Option<String>, _>("immatriculation").ok().flatten(),
             "couleur": row.try_get::<Option<String>, _>("couleur").ok().flatten(),
-            "annee": row.try_get::<Option<i32>, _>("annee").ok().flatten(),
+            "annee": annee,
             "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten(),
-            "zone_intervention": row.try_get::<Option<Vec<String>>, _>("zone_intervention").ok().flatten(),
+            "zone_intervention": zone_intervention,
             "gps_actuel": row.try_get::<Option<String>, _>("gps_actuel").ok().flatten(),
             "tarif_base": row.try_get::<Option<i32>, _>("tarif_base").ok().flatten(),
             "tarif_par_km": row.try_get::<Option<i32>, _>("tarif_par_km").ok().flatten(),
@@ -3916,12 +3936,16 @@ pub async fn search_taxis(
             "paiement_cash": row.try_get::<Option<bool>, _>("paiement_cash").ok().flatten(),
             "paiement_mobile_money": row.try_get::<Option<bool>, _>("paiement_mobile_money").ok().flatten(),
             "paiement_carte": row.try_get::<Option<bool>, _>("paiement_carte").ok().flatten(),
-            "climatisation": row.try_get::<Option<bool>, _>("climatisation").ok().flatten(),
-            "wifi": row.try_get::<Option<bool>, _>("wifi").ok().flatten(),
+            "climatisation": clim,
+            "wifi": wifi,
             "is_on_duty": row.try_get::<Option<bool>, _>("is_on_duty").ok().flatten(),
             "nom": row.try_get::<Option<String>, _>("service_nom").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
             "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
+            "vehicle_category": cat.as_str(),
+            "vehicle_category_label": cat.label(),
+            "vehicle_category_emoji": cat.emoji(),
+            "vehicle_coefficient": cat.price_coefficient(),
         }));
     }
 
@@ -3966,6 +3990,13 @@ pub async fn get_taxi_details(
 
     if let Some(row) = taxi {
         use sqlx::Row;
+        let type_v: Option<String> = row.try_get("type_vehicule").ok().flatten();
+        let marque: Option<String> = row.try_get("marque_modele").ok().flatten();
+        let annee: Option<i32> = row.try_get("annee").ok().flatten();
+        let clim: bool =
+            row.try_get::<Option<bool>, _>("climatisation").ok().flatten().unwrap_or(false);
+        let wifi: bool = row.try_get::<Option<bool>, _>("wifi").ok().flatten().unwrap_or(false);
+        let cat = categorize_vehicle(type_v.as_deref(), marque.as_deref(), annee, clim, wifi);
         let taxi_json = json!({
             "id": row.try_get::<i32, _>("taxi_id").ok(),
             "service_id": row.try_get::<i32, _>("service_id").ok(),
@@ -3973,11 +4004,11 @@ pub async fn get_taxi_details(
             "nom_chauffeur": row.try_get::<Option<String>, _>("nom_chauffeur").ok().flatten(),
             "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
             "whatsapp": row.try_get::<Option<String>, _>("whatsapp").ok().flatten(),
-            "type_vehicule": row.try_get::<Option<String>, _>("type_vehicule").ok().flatten(),
-            "marque_modele": row.try_get::<Option<String>, _>("marque_modele").ok().flatten(),
+            "type_vehicule": type_v,
+            "marque_modele": marque,
             "immatriculation": row.try_get::<Option<String>, _>("immatriculation").ok().flatten(),
             "couleur": row.try_get::<Option<String>, _>("couleur").ok().flatten(),
-            "annee": row.try_get::<Option<i32>, _>("annee").ok().flatten(),
+            "annee": annee,
             "is_available_now": row.try_get::<Option<bool>, _>("is_available_now").ok().flatten(),
             "zone_intervention": row.try_get::<Option<Vec<String>>, _>("zone_intervention").ok().flatten(),
             "gps_actuel": row.try_get::<Option<String>, _>("gps_actuel").ok().flatten(),
@@ -3987,8 +4018,8 @@ pub async fn get_taxi_details(
             "paiement_cash": row.try_get::<Option<bool>, _>("paiement_cash").ok().flatten(),
             "paiement_mobile_money": row.try_get::<Option<bool>, _>("paiement_mobile_money").ok().flatten(),
             "paiement_carte": row.try_get::<Option<bool>, _>("paiement_carte").ok().flatten(),
-            "climatisation": row.try_get::<Option<bool>, _>("climatisation").ok().flatten(),
-            "wifi": row.try_get::<Option<bool>, _>("wifi").ok().flatten(),
+            "climatisation": clim,
+            "wifi": wifi,
             "is_on_duty": row.try_get::<Option<bool>, _>("is_on_duty").ok().flatten(),
             "nom": row.try_get::<Option<String>, _>("service_nom").ok().flatten(),
             "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
@@ -3996,6 +4027,10 @@ pub async fn get_taxi_details(
             "owner_name": row.try_get::<Option<String>, _>("owner_name").ok().flatten(),
             "created_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("taxi_created_at").ok().flatten().map(|d| d.to_rfc3339()),
             "updated_at": row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("taxi_updated_at").ok().flatten().map(|d| d.to_rfc3339()),
+            "vehicle_category": cat.as_str(),
+            "vehicle_category_label": cat.label(),
+            "vehicle_category_emoji": cat.emoji(),
+            "vehicle_coefficient": cat.price_coefficient(),
         });
         Ok((
             StatusCode::OK,
@@ -6015,11 +6050,39 @@ pub struct PharmacyWithdrawRequest {
 }
 
 /// Espace pharmacien: demande de retrait wallet
+/// Réservé au compte partenaire propriétaire de la pharmacie.
 pub async fn request_pharmacy_withdrawal(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
     Json(payload): Json<PharmacyWithdrawRequest>,
 ) -> AppResult<impl IntoResponse> {
+    // ✅ Contrôle d'accès : seul un partenaire propriétaire d'une pharmacie peut retirer
+    if role != "partenaire" && role != "admin" {
+        return Err(AppError::Forbidden(
+            "Seuls les comptes partenaires peuvent effectuer des retraits".to_string(),
+        ));
+    }
+
+    let owns_pharmacy: bool = sqlx::query_scalar(
+        r#"SELECT EXISTS(
+            SELECT 1 FROM pharmacies ph
+            JOIN services s ON s.id = ph.service_id
+            WHERE s.user_id = $1
+        )"#,
+    )
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(false);
+
+    if !owns_pharmacy && role != "admin" {
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire d'une pharmacie enregistrée".to_string(),
+        ));
+    }
+
     if payload.amount_cents <= 0 {
         return Err(AppError::BadRequest(
             "Montant de retrait invalide".to_string(),
@@ -6101,6 +6164,203 @@ pub async fn request_pharmacy_withdrawal(
             "amount_cents": payload.amount_cents,
             "balance_after_cents": new_balance
         })),
+    ))
+}
+
+// ============================================================================
+// ✅ 2026-04-03: Comptes bancaires partenaires (Mobile Money / Virement)
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct SavePartnerBankAccountRequest {
+    pub service_type: String,
+    pub service_id: i32,
+    pub method: Option<String>, // 'mobile_money' | 'bank_transfer'
+    pub phone: Option<String>,
+    pub provider: Option<String>, // 'mtn' | 'orange' | 'moov'
+    pub bank_name: Option<String>,
+    pub account_number: Option<String>,
+    pub account_name: Option<String>,
+    pub iban: Option<String>,
+    pub label: Option<String>,
+    pub is_default: Option<bool>,
+}
+
+/// POST /api/partner/bank-accounts — Enregistrer un compte bancaire partenaire
+pub async fn save_partner_bank_account(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
+    Json(payload): Json<SavePartnerBankAccountRequest>,
+) -> AppResult<impl IntoResponse> {
+    if role != "partenaire" && role != "admin" {
+        return Err(AppError::Forbidden(
+            "Seuls les comptes partenaires peuvent enregistrer un compte bancaire".to_string(),
+        ));
+    }
+
+    let method = payload.method.as_deref().unwrap_or("mobile_money");
+    let is_default = payload.is_default.unwrap_or(false);
+
+    // Si on veut ce compte comme défaut, retirer le flag sur les autres
+    if is_default {
+        sqlx::query(
+            "UPDATE partner_bank_accounts SET is_default = false WHERE user_id = $1 AND service_type = $2 AND service_id = $3",
+        )
+        .bind(user_id)
+        .bind(&payload.service_type)
+        .bind(payload.service_id)
+        .execute(&state.pg)
+        .await
+        .ok();
+    }
+
+    let id: i32 = sqlx::query_scalar(
+        r#"
+        INSERT INTO partner_bank_accounts (
+            user_id, service_type, service_id, method, phone, provider,
+            bank_name, account_number, account_name, iban, label, is_default, created_at, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+        RETURNING id
+        "#,
+    )
+    .bind(user_id)
+    .bind(&payload.service_type)
+    .bind(payload.service_id)
+    .bind(method)
+    .bind(payload.phone.as_deref())
+    .bind(payload.provider.as_deref())
+    .bind(payload.bank_name.as_deref())
+    .bind(payload.account_number.as_deref())
+    .bind(payload.account_name.as_deref())
+    .bind(payload.iban.as_deref())
+    .bind(payload.label.as_deref())
+    .bind(is_default)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur enregistrement compte: {e}")))?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "success": true, "id": id })),
+    ))
+}
+
+/// GET /api/partner/bank-accounts?service_type=pharmacie&service_id=123
+pub async fn list_partner_bank_accounts(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> AppResult<impl IntoResponse> {
+    let service_type = params.get("service_type").cloned().unwrap_or_default();
+    let service_id: i32 = params.get("service_id").and_then(|v| v.parse().ok()).unwrap_or(0);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT id, method, phone, provider, bank_name, account_number, account_name, iban,
+               label, is_default, is_verified, created_at
+        FROM partner_bank_accounts
+        WHERE user_id = $1
+          AND ($2 = '' OR service_type = $2)
+          AND ($3 = 0 OR service_id = $3)
+        ORDER BY is_default DESC, created_at DESC
+        "#,
+    )
+    .bind(user_id)
+    .bind(&service_type)
+    .bind(service_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture comptes: {e}")))?;
+
+    let accounts: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id": r.try_get::<i32, _>("id").unwrap_or(0),
+                "method": r.try_get::<String, _>("method").unwrap_or_default(),
+                "phone": r.try_get::<Option<String>, _>("phone").ok().flatten(),
+                "provider": r.try_get::<Option<String>, _>("provider").ok().flatten(),
+                "bank_name": r.try_get::<Option<String>, _>("bank_name").ok().flatten(),
+                "account_number": r.try_get::<Option<String>, _>("account_number").ok().flatten(),
+                "account_name": r.try_get::<Option<String>, _>("account_name").ok().flatten(),
+                "label": r.try_get::<Option<String>, _>("label").ok().flatten(),
+                "is_default": r.try_get::<bool, _>("is_default").unwrap_or(false),
+                "is_verified": r.try_get::<bool, _>("is_verified").unwrap_or(false),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "accounts": accounts })),
+    ))
+}
+
+/// DELETE /api/partner/bank-accounts/:id
+pub async fn delete_partner_bank_account(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(account_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    let affected = sqlx::query("DELETE FROM partner_bank_accounts WHERE id = $1 AND user_id = $2")
+        .bind(account_id)
+        .bind(user_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur suppression compte: {e}")))?
+        .rows_affected();
+
+    if affected == 0 {
+        return Err(AppError::NotFound("Compte introuvable".to_string()));
+    }
+
+    Ok((StatusCode::OK, Json(json!({ "success": true }))))
+}
+
+/// GET /api/partner/withdrawals — Historique des retraits du partenaire
+pub async fn list_partner_withdrawals(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let rows = sqlx::query(
+        r#"
+        SELECT id, amount_cents, currency, recipient_phone, recipient_method,
+               status, reason, processed_at, failure_reason, created_at
+        FROM disbursement_requests
+        WHERE recipient_user_id = $1
+        ORDER BY created_at DESC
+        LIMIT 50
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture retraits: {e}")))?;
+
+    let withdrawals: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id": r.try_get::<i32, _>("id").unwrap_or(0),
+                "amount_cents": r.try_get::<i64, _>("amount_cents").unwrap_or(0),
+                "currency": r.try_get::<String, _>("currency").unwrap_or_default(),
+                "method": r.try_get::<String, _>("recipient_method").unwrap_or_default(),
+                "phone": r.try_get::<Option<String>, _>("recipient_phone").ok().flatten(),
+                "status": r.try_get::<String, _>("status").unwrap_or_default(),
+                "reason": r.try_get::<Option<String>, _>("reason").ok().flatten(),
+                "failure_reason": r.try_get::<Option<String>, _>("failure_reason").ok().flatten(),
+                "processed_at": r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("processed_at").ok().flatten().map(|t| t.to_rfc3339()),
+                "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok().map(|t| t.to_rfc3339()),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "withdrawals": withdrawals })),
     ))
 }
 

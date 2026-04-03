@@ -2224,8 +2224,8 @@ const NavigationScreen: React.FC = () => {
                                 accessibilityLabel={t('navigation.covoiturage') || 'Covoiturage'}
                             >
                                 <View style={st.carpoolHeaderIconWrap}>
-                                    <SafeIcon name="Car" size={12} color={modernColors.primaryDark} />
-                                    <SafeIcon name="Users" size={10} color={modernColors.primaryDark} />
+                                    <SafeIcon name="Car" size={12} color="#F97316" />
+                                    <SafeIcon name="Users" size={10} color="#7C3AED" />
                                 </View>
                             </TouchableOpacity>
                         </View>

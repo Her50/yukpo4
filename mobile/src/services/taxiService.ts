@@ -30,6 +30,11 @@ export interface Taxi {
     updated_at?: string;
     distance_km?: number;
     rating?: number;
+    // Catégorie véhicule calculée automatiquement par le backend
+    vehicle_category?: 'economique' | 'standard' | 'confort' | 'premium';
+    vehicle_category_label?: string;
+    vehicle_category_emoji?: string;
+    vehicle_coefficient?: number;
 }
 
 export interface SearchTaxisFilters {
@@ -179,7 +184,7 @@ export const taxiService = {
         return response;
     },
 
-    // ✅ Prix dynamique IA
+    // ✅ Prix dynamique IA (avec catégorisation automatique du véhicule)
     calculateDynamicPrice: async (params: {
         base_price: number;
         distance_km: number;
@@ -188,17 +193,25 @@ export const taxiService = {
         longitude: number;
         radius_km?: number;
         vehicle_type?: string;
+        // Infos véhicule pour catégorisation automatique
+        marque_modele?: string;
+        annee?: number;
+        climatisation?: boolean;
+        wifi?: boolean;
     }) => {
         const response = await apiPost<{
             success: boolean;
             data: {
                 base_price: number;
                 dynamic_multiplier: number;
+                vehicle_coefficient: number;
                 final_price: number;
                 surge_factor: number;
                 demand_factor: number;
                 supply_factor: number;
                 time_factor: number;
+                vehicle_category: string;
+                vehicle_category_label: string;
                 confidence: number;
                 reasoning: string;
             };
@@ -212,6 +225,10 @@ export const taxiService = {
                 longitude: params.longitude,
                 radius_km: params.radius_km || 10,
                 vehicle_type: params.vehicle_type || 'taxi',
+                marque_modele: params.marque_modele,
+                annee: params.annee,
+                climatisation: params.climatisation,
+                wifi: params.wifi,
             }
         );
         return response;
@@ -312,7 +329,7 @@ export const taxiService = {
     estimateFare: async (params: {
         origin: { lat: number; lng: number };
         destination: { lat: number; lng: number };
-        taxiId?: number;
+        taxi?: Taxi; // Taxi sélectionné — permet la catégorisation automatique
     }) => {
         // Calcul distance approximative (Haversine)
         const R = 6371;
@@ -324,14 +341,21 @@ export const taxiService = {
             Math.sin(dLon / 2) ** 2;
         const distance_km = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
+        // Utiliser le tarif_base du chauffeur si disponible, sinon fallback 500
+        const base_price = params.taxi?.tarif_base ?? 500;
+
         const response = await taxiService.calculateDynamicPrice({
-            base_price: 500,
+            base_price,
             distance_km,
             zone_id: `${params.origin.lat},${params.origin.lng}`,
             latitude: params.origin.lat,
             longitude: params.origin.lng,
             radius_km: 10,
-            vehicle_type: 'taxi',
+            vehicle_type: params.taxi?.type_vehicule || 'taxi',
+            marque_modele: params.taxi?.marque_modele,
+            annee: params.taxi?.annee,
+            climatisation: params.taxi?.climatisation,
+            wifi: params.taxi?.wifi,
         });
         return response;
     },

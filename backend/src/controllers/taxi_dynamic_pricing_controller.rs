@@ -29,6 +29,11 @@ pub struct DynamicPricingRequest {
     pub longitude: f64,
     pub radius_km: Option<f64>,
     pub vehicle_type: Option<String>,
+    // Infos véhicule pour catégorisation automatique
+    pub marque_modele: Option<String>,
+    pub annee: Option<i32>,
+    pub climatisation: Option<bool>,
+    pub wifi: Option<bool>,
     pub time_of_day: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -70,6 +75,10 @@ pub async fn calculate_dynamic_price(
         distance_km: payload.distance_km,
         zone,
         vehicle_type: payload.vehicle_type,
+        marque_modele: payload.marque_modele,
+        annee: payload.annee,
+        climatisation: payload.climatisation,
+        wifi: payload.wifi,
         time_of_day: payload.time_of_day,
     };
 

@@ -649,6 +649,7 @@ const PharmacieFormScreen: React.FC = () => {
                     { label: t('pharmacieForm.ajouterProduit'), icon: 'plus-circle', color: '#3B82F6', onPress: () => { setActiveTab('products'); setTimeout(() => openProductModal(), 200); } },
                     { label: 'IA Interactions', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('PharmacyAIInteractions', { serviceId }) },
                     { label: 'Commandes reçues', icon: 'clipboard-list', color: '#EC4899', onPress: () => (navigation as any).navigate('PharmacyPartnerOrders', { pharmacyId: pharmacyData?.service_id || serviceId }) },
+                    { label: 'Import Drive', icon: 'link', color: '#7C3AED', onPress: () => (navigation as any).navigate('DriveImportLink', { serviceType: 'pharmacie', serviceId: pharmacyData?.service_id || serviceId, serviceName: formData.nom || 'Pharmacie' }) },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('PharmacyAnalytics', { serviceId }) },
                     { label: 'Finances pharmacie', icon: 'wallet', color: '#0EA5E9', onPress: () => (navigation as any).navigate('PharmacyFinancial') },
                     { label: t('financialTracking.wallet') || 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
