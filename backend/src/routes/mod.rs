@@ -96,6 +96,7 @@ pub mod service_routes;
 pub mod service_team_routes; // ✅ NOUVEAU: Routes pour gestion d'équipe des services
 pub mod shopping_routes;
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
+pub mod social_distribution_routes; // ✅ 2026-04-03: Distribution produits multi-canaux (Facebook, Instagram, Google Shopping, CSV)
 pub mod social_features_routes;
 pub mod specialized_services_routes;
 pub mod stock_media_routes;

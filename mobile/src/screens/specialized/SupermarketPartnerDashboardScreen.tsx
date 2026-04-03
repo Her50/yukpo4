@@ -29,7 +29,7 @@ import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 import { ManagedProduct } from '../../types/ManagedProduct';
 import * as XLSX from 'xlsx';
 
-type TabType = 'overview' | 'catalog' | 'orders' | 'promos' | 'analytics';
+type TabType = 'overview' | 'catalog' | 'orders' | 'promos' | 'analytics' | 'diffusion';
 
 interface CatalogProduct {
     id: number;
@@ -401,6 +401,7 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
         { key: 'orders', label: t('supermarketPartnerDashboard.commandes'), icon: 'shopping-cart', badge: pendingOrdersCount },
         { key: 'promos', label: t('supermarketPartnerDashboard.tabPromos'), icon: 'tag' },
         { key: 'analytics', label: t('supermarketPartnerDashboard.tabStats'), icon: 'bar-chart-2' },
+        { key: 'diffusion', label: 'Diffusion', icon: 'send' },
     ];
 
     if (loading) {
@@ -640,6 +641,48 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
         </ScrollView>
     );
 
+    const renderDiffusion = () => (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <View style={{ alignItems: 'center', gap: 14 }}>
+                <View style={{ backgroundColor: '#8B5CF622', borderRadius: 24, padding: 18 }}>
+                    <SafeIcon name="send" size={40} color="#8B5CF6" />
+                </View>
+                <Text style={{ color: '#F9FAFB', fontSize: 18, fontWeight: '700', textAlign: 'center' }}>
+                    Diffusion Multi-Canaux
+                </Text>
+                <Text style={{ color: '#9CA3AF', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+                    Publiez automatiquement vos produits sur Facebook, Instagram, WhatsApp Business et Google Shopping.{'\n\n'}
+                    Chaque publication inclut un lien retour vers votre boutique Yukpo.
+                </Text>
+                <View style={{ width: '100%', gap: 8, marginTop: 8 }}>
+                    {[
+                        { icon: 'facebook', label: 'Facebook Page + Shop', color: '#1877F2' },
+                        { icon: 'instagram', label: 'Instagram Business', color: '#E1306C' },
+                        { icon: 'message-circle', label: 'WhatsApp Business Catalog', color: '#25D366' },
+                        { icon: 'shopping-bag', label: 'Google Shopping Feed', color: '#4285F4' },
+                    ].map((p) => (
+                        <View key={p.icon} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#1F2937', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#374151' }}>
+                            <SafeIcon name={p.icon as any} size={18} color={p.color} />
+                            <Text style={{ color: '#D1D5DB', fontSize: 13 }}>{p.label}</Text>
+                        </View>
+                    ))}
+                </View>
+                <TouchableOpacity
+                    style={{ backgroundColor: '#8B5CF6', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 8 }}
+                    onPress={() => (navigation as any).navigate('SocialDistribution', {
+                        serviceId: serviceId,
+                        serviceName: user?.nom_complet || 'Ma boutique',
+                    })}
+                    activeOpacity={0.8}
+                >
+                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
+                        Ouvrir la distribution
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+
     const renderAnalytics = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100, padding: 16 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
@@ -691,6 +734,7 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
                 {activeTab === 'orders' && renderOrders()}
                 {activeTab === 'promos' && renderPromos()}
                 {activeTab === 'analytics' && renderAnalytics()}
+                {activeTab === 'diffusion' && renderDiffusion()}
             </View>
 
             {/* Modal Import en masse */}

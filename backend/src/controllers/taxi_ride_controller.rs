@@ -524,6 +524,57 @@ pub async fn pay_ride(
     .execute(&state.pg)
     .await;
 
+    // ✅ Créditer le wallet du chauffeur (user_wallets — même système que pharmacie/restaurant)
+    let driver_user_id: Option<i32> =
+        sqlx::query_scalar("SELECT user_id FROM taxis_ville WHERE id = $1")
+            .bind(taxi_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+
+    if let Some(driver_id) = driver_user_id {
+        let reversement_cents = (reversement_chauffeur * 100.0).round() as i64;
+        // Créer le wallet s'il n'existe pas
+        let _ = sqlx::query(
+            "INSERT INTO user_wallets (user_id, balance_cents, currency) VALUES ($1, 0, 'XAF') ON CONFLICT (user_id, currency) DO NOTHING",
+        )
+        .bind(driver_id)
+        .execute(&state.pg)
+        .await;
+
+        let _ = sqlx::query(
+            "UPDATE user_wallets SET balance_cents = balance_cents + $1, updated_at = NOW() WHERE user_id = $2 AND currency = 'XAF'",
+        )
+        .bind(reversement_cents)
+        .bind(driver_id)
+        .execute(&state.pg)
+        .await;
+
+        let _ = sqlx::query(
+            r#"INSERT INTO wallet_transactions (
+                user_id, transaction_type, direction, amount_cents, currency,
+                reference_type, reference_id, description, created_at
+            ) VALUES ($1, 'taxi_ride_payout', 'credit', $2, 'XAF', 'taxi_ride', $3, $4, NOW())"#,
+        )
+        .bind(driver_id)
+        .bind(reversement_cents)
+        .bind(ride_id)
+        .bind(format!(
+            "Course taxi #{} (commission {:.0}% déduite) — {}FCFA net",
+            ride_id,
+            taux * 100.0,
+            reversement_chauffeur.round() as i64
+        ))
+        .execute(&state.pg)
+        .await;
+
+        info!(
+            "[pay_ride] ✅ Wallet chauffeur {} crédité de {}F",
+            driver_id, reversement_cents
+        );
+    }
+
     // Marquer le taxi comme disponible à nouveau
     let _ = sqlx::query("UPDATE taxis_ville SET is_available_now = true WHERE id = $1")
         .bind(taxi_id)

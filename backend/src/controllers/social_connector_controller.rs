@@ -20,6 +20,22 @@ use crate::{
     state::AppState,
 };
 
+// ─── WhatsApp Business catalog authorize ────────────────────────────────────
+
+/// Retourne l'URL d'accès au WhatsApp Business Manager pour configurer le catalog.
+/// WhatsApp Business n'a pas d'OAuth individuel : on guide le partenaire vers
+/// son Business Manager Meta, puis il colle son numéro/phone-number-id.
+pub async fn whatsapp_business_info(
+    Extension(_user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<serde_json::Value>> {
+    Ok(Json(serde_json::json!({
+        "setup_url": "https://business.facebook.com/wa/manage/phone-numbers/",
+        "catalog_url": "https://business.facebook.com/commerce/catalogs/",
+        "guide": "Connectez votre compte Facebook Business, puis revenez dans Yukpo pour entrer votre Phone Number ID.",
+        "requires_meta_business": true,
+    })))
+}
+
 pub async fn connect_account(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,

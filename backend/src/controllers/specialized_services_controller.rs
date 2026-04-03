@@ -6049,8 +6049,8 @@ pub struct PharmacyWithdrawRequest {
     pub phone: Option<String>,
 }
 
-/// Espace pharmacien: demande de retrait wallet
-/// Réservé au compte partenaire propriétaire de la pharmacie.
+/// Espace partenaire: demande de retrait wallet — universel pour tous les types de services.
+/// Rétrocompatible avec l'ancienne route /api/pharmacies/me/withdrawals.
 pub async fn request_pharmacy_withdrawal(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser {
@@ -6058,18 +6058,19 @@ pub async fn request_pharmacy_withdrawal(
     }): Extension<AuthenticatedUser>,
     Json(payload): Json<PharmacyWithdrawRequest>,
 ) -> AppResult<impl IntoResponse> {
-    // ✅ Contrôle d'accès : seul un partenaire propriétaire d'une pharmacie peut retirer
+    // ✅ Contrôle d'accès : seul un partenaire peut retirer
     if role != "partenaire" && role != "admin" {
         return Err(AppError::Forbidden(
             "Seuls les comptes partenaires peuvent effectuer des retraits".to_string(),
         ));
     }
 
-    let owns_pharmacy: bool = sqlx::query_scalar(
+    // Vérifier que l'utilisateur possède au moins un service (tous types confondus)
+    let owns_service: bool = sqlx::query_scalar(
         r#"SELECT EXISTS(
-            SELECT 1 FROM pharmacies ph
-            JOIN services s ON s.id = ph.service_id
-            WHERE s.user_id = $1
+            SELECT 1 FROM services WHERE user_id = $1
+            UNION ALL
+            SELECT 1 FROM taxis_ville WHERE user_id = $1
         )"#,
     )
     .bind(user_id)
@@ -6077,9 +6078,9 @@ pub async fn request_pharmacy_withdrawal(
     .await
     .unwrap_or(false);
 
-    if !owns_pharmacy && role != "admin" {
+    if !owns_service && role != "admin" {
         return Err(AppError::Forbidden(
-            "Vous n'êtes pas propriétaire d'une pharmacie enregistrée".to_string(),
+            "Aucun service partenaire enregistré pour ce compte".to_string(),
         ));
     }
 

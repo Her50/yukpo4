@@ -573,6 +573,7 @@ reg('SupermarketHome', () => import('../screens/specialized/SupermarketHomeScree
 reg('EcommerceHub', () => import('../screens/specialized/EcommerceHubScreen')); // ✅ 2026-04-01: Hub e-commerce universel (toutes catégories de boutiques)
 reg('EcommercePartnerConnect', () => import('../screens/specialized/EcommercePartnerConnectScreen')); // ✅ 2026-04-01: Wizard partenaire connexion boutique
 reg('SupermarketPartnerDashboard', () => import('../screens/specialized/SupermarketPartnerDashboardScreen'));
+reg('SocialDistribution', () => import('../screens/specialized/SocialDistributionScreen')); // ✅ 2026-04-03: Distribution multi-canaux (Facebook, Instagram, WhatsApp, Google Shopping)
 reg('RestaurantDashboard', () => import('../screens/specialized/RestaurantDashboardScreen'));
 reg('RestaurantClient', () => import('../screens/specialized/RestaurantClientScreen'));
 

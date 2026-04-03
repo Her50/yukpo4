@@ -111,6 +111,7 @@ use crate::routes::{
     service_routes::service_routes,
     // service_team_routes::service_team_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (service_team_routes_merged)
     shopping_routes::shopping_routes,
+    social_distribution_routes::social_distribution_routes, // ✅ 2026-04-03: Distribution produits multi-canaux
     // signalement_routes::signalement_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (signalement_routes_merged)
     social_features_routes::social_features_routes, // ✅ NOUVEAU: Routes fonctionnalités sociales avancées
     specialized_services_routes::specialized_services_routes,
@@ -242,6 +243,8 @@ pub fn build_app(state: Arc<AppState>) -> Router {
     let advanced_analytics = advanced_analytics_routes(state.clone());
     // ✅ NOUVEAU: Social features routes (Duet, Remix, Stitch, Réactions)
     let social_features = social_features_routes(state.clone());
+    // ✅ 2026-04-03: Distribution produits multi-canaux (Facebook OAuth, catalogue, Google Shopping, CSV)
+    let social_distribution = social_distribution_routes(state.clone());
     let creator_analytics = creator_analytics_routes(state.clone());
     // ✅ NOUVEAU: Upload routes (upload préalable avant création service)
     let uploads = upload_routes(state.clone());
@@ -422,6 +425,7 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .merge(video_hls) // ✅ NOUVEAU: Routes HLS/DASH qualité adaptative
         .merge(advanced_analytics) // ✅ NOUVEAU: Routes analytics avancés
         .merge(social_features) // ✅ NOUVEAU: Routes fonctionnalités sociales avancées
+        .merge(social_distribution) // ✅ 2026-04-03: Distribution produits multi-canaux
         .merge(creator_analytics) // ✅ NOUVEAU: Routes analytics créateurs
         .merge(uploads) // ✅ NOUVEAU: Upload préalable de fichiers
         .merge(ia)

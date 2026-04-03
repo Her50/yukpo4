@@ -13,6 +13,7 @@ use axum::{
     Json,
 };
 use chrono::{DateTime, Utc};
+use log::info;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -1744,9 +1745,9 @@ pub async fn update_order_status_with_payout(
                 let net_cents = (net * 100.0) as i64;
                 // Créer le wallet partenaire s'il n'existe pas
                 sqlx::query(
-                    r#"INSERT INTO user_wallets (user_id, balance_cents)
-                       VALUES ($1, 0)
-                       ON CONFLICT (user_id) DO NOTHING"#,
+                    r#"INSERT INTO user_wallets (user_id, balance_cents, currency)
+                       VALUES ($1, 0, 'XAF')
+                       ON CONFLICT (user_id, currency) DO NOTHING"#,
                 )
                 .bind(user.id)
                 .execute(&state.pg)
@@ -1991,7 +1992,7 @@ pub async fn validate_delivery_qr(
 
                 // Créer le wallet partenaire s'il n'existe pas
                 sqlx::query(
-                    "INSERT INTO user_wallets (user_id, balance_cents, currency) VALUES ($1, 0, 'XAF') ON CONFLICT (user_id) DO NOTHING",
+                    "INSERT INTO user_wallets (user_id, balance_cents, currency) VALUES ($1, 0, 'XAF') ON CONFLICT (user_id, currency) DO NOTHING",
                 )
                 .bind(partner_user_id)
                 .execute(&state.pg)

@@ -1077,7 +1077,8 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         )
         .route(
             "/api/partner/withdrawals",
-            get(specialized_services_controller::list_partner_withdrawals),
+            get(specialized_services_controller::list_partner_withdrawals)
+                .post(specialized_services_controller::request_pharmacy_withdrawal),
         )
         // ✅ Import permanent via lien Drive / cloud (pharmacie, supermarché, e-commerce)
         .route(

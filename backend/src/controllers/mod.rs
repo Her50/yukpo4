@@ -90,6 +90,7 @@ pub mod places_controller; // ✅ NOUVEAU 2025-11-02: Contrôleur pour enrichiss
 pub mod popular_products_controller; // ✅ NOUVEAU 2025-11-04: Contrôleur pour produits populaires (analyse concurrence)
 pub mod product_addition_controller; // ✅ NOUVEAU 2025-11-01: Contrôleur pour ajout incrémental de produits
 pub mod product_comments_controller; // ✅ NOUVEAU 2025-11-08: Contrôleur pour fil de commentaires produits
+pub mod product_distribution_controller; // ✅ 2026-04-03: Distribution produits multi-canaux (Facebook OAuth, catalogue, feeds)
 pub mod product_lifecycle_controller;
 pub mod product_reactions_controller; // ✅ NOUVEAU 2025-11-04: Contrôleur pour réactions/émotions sur les produits
 pub mod product_stats_controller; // ✅ NOUVEAU 2026-03-03: Contrôleur statistiques produit (dashboard prestataire)
