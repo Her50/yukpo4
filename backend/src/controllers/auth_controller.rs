@@ -319,28 +319,6 @@ pub async fn register_user(
             }
         }
 
-        // ✅ NOUVEAU: Validation RCCM pour entreprises (non chauffeur/coursier)
-        let requires_rccm = payload
-            .partner_type
-            .as_ref()
-            .map(|t| {
-                let pt = t.trim();
-                pt != "chauffeur" && pt != "livraison" && pt != "livraison_courses_marche"
-            })
-            .unwrap_or(false);
-        if requires_rccm {
-            if payload.rccm.as_deref().unwrap_or("").trim().is_empty() {
-                return Err(AppError::BadRequest(
-                    "Le numéro RCCM est obligatoire pour les partenaires professionnels.".into(),
-                ));
-            }
-            if payload.numero_contribuable.as_deref().unwrap_or("").trim().is_empty() {
-                return Err(AppError::BadRequest(
-                    "Le numéro contribuable (NIU) est obligatoire pour les partenaires professionnels.".into(),
-                ));
-            }
-        }
-
         // Code partenaire restaurant (optionnel) : si fourni, doit exister et être actif
         if let Some(ref pt) = payload.partner_type {
             let pt_trimmed = pt.trim();

@@ -511,6 +511,7 @@ const PartnerRegisterScreen: React.FC = () => {
               onChangeText={(text) => setForm({ ...form, partner_name: text })}
               disabled={loading}
               style={styles.input}
+              mode="outlined"
               left={<TextInput.Icon icon={() => <Building size={20} color={theme.colors.textSecondary} />} />}
             />
 
@@ -543,6 +544,7 @@ const PartnerRegisterScreen: React.FC = () => {
                 placeholder="6XXXXXXXX"
                 disabled={loading}
                 style={[styles.input, styles.phoneNumberInput]}
+                mode="outlined"
                 left={<TextInput.Icon icon={() => <Phone size={20} color={theme.colors.textSecondary} />} />}
               />
             </View>
@@ -599,6 +601,7 @@ const PartnerRegisterScreen: React.FC = () => {
               autoCapitalize="none"
               disabled={loading}
               style={styles.input}
+              mode="outlined"
               left={<TextInput.Icon icon={() => <Envelope size={20} color={theme.colors.textSecondary} />} />}
             />
 
@@ -611,6 +614,7 @@ const PartnerRegisterScreen: React.FC = () => {
                 secureTextEntry={!showPassword}
                 disabled={loading}
                 style={styles.input}
+                mode="outlined"
                 left={<TextInput.Icon icon={() => <Lock size={20} color={theme.colors.textSecondary} />} />}
                 right={
                   <TextInput.Icon
@@ -668,6 +672,7 @@ const PartnerRegisterScreen: React.FC = () => {
                   confirmPasswordMatch === false && styles.inputError,
                   confirmPasswordMatch === true && styles.inputValid,
                 ]}
+                mode="outlined"
                 left={<TextInput.Icon icon={() => <LockKey size={20} color={theme.colors.textSecondary} />} />}
                 right={
                   <TextInput.Icon
@@ -1272,8 +1277,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   phoneCountryPickerWrap: {
-    flex: 0.42,
-    minWidth: 118,
+    width: 130,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
