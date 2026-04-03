@@ -17,6 +17,7 @@ import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { apiGet } from '../../services/api';
 import { pharmacyService } from '../../services/pharmacyService';
 import { modernColors } from '../../theme/modernTheme';
+import { computeGreedySplit } from './PharmacyMultiOrderScreen';
 
 interface Pharmacie {
     id: number;
@@ -38,6 +39,8 @@ interface Pharmacie {
     matching_label?: string;
     available_count?: number;
     total_requested?: number;
+    // Disponibilité par médicament (pour calcul split multi-pharmacies)
+    medications_availability?: Array<{ name: string; available: boolean }>;
 }
 
 const PharmacieListScreen: React.FC = () => {
@@ -51,6 +54,8 @@ const PharmacieListScreen: React.FC = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    // Mode ordonnance : indique si aucune pharmacie n'a 100% des médicaments
+    const [hasMissingMeds, setHasMissingMeds] = useState(false);
 
     useEffect(() => {
         loadPharmacies();
@@ -93,8 +98,11 @@ const PharmacieListScreen: React.FC = () => {
                         matching_label: p.matching_label,
                         available_count: p.available_count,
                         total_requested: p.total_requested,
+                        medications_availability: p.medications_availability || [],
                     }));
                     setPharmacies(isRefresh || currentPage === 1 ? mapped : [...pharmacies, ...mapped]);
+                    // Si aucune pharmacie n'a 100% → proposer la multi-commande
+                    setHasMissingMeds(mapped.every(p => (p.matching_score ?? 0) < 100));
                     setHasMore(false); // résultat complet en une fois
                 } else {
                     Alert.alert('Erreur', result.error || 'Impossible de charger les pharmacies');
@@ -280,6 +288,36 @@ const PharmacieListScreen: React.FC = () => {
         );
     }
 
+    const handleMultiOrder = () => {
+        const filters = params?.filters || {};
+        const requestedMeds: string[] = (filters.ordonnance_medications || []).map((m: any) =>
+            typeof m === 'string' ? m : m.name
+        );
+        const split = computeGreedySplit(pharmacies, requestedMeds);
+        if (split.length === 0) {
+            Alert.alert('Couverture impossible', 'Aucune combinaison de pharmacies ne couvre tous vos médicaments.');
+            return;
+        }
+        const uncovered = requestedMeds.filter(
+            name => !split.some(s => s.medications.some(m => m.medication_name.toLowerCase() === name.toLowerCase()))
+        );
+        const confirmMsg = uncovered.length > 0
+            ? `${split.length} pharmacie(s) couvrent ${requestedMeds.length - uncovered.length}/${requestedMeds.length} médicaments.\n\nNon disponibles : ${uncovered.join(', ')}.\n\nContinuer quand même ?`
+            : `Répartition sur ${split.length} pharmacie(s) pour couvrir tous vos médicaments.`;
+
+        Alert.alert('Commander en multi-pharmacies', confirmMsg, [
+            { text: 'Annuler', style: 'cancel' },
+            {
+                text: 'Voir la répartition',
+                onPress: () => (navigation as any).navigate('PharmacyMultiOrder', {
+                    split,
+                    deliveryMethod: filters.delivery_method || 'pickup',
+                    deliveryAddress: filters.delivery_address,
+                }),
+            },
+        ]);
+    };
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -290,6 +328,20 @@ const PharmacieListScreen: React.FC = () => {
                     {pharmacies.length} pharmacie{pharmacies.length > 1 ? 's' : ''}
                 </Text>
             </View>
+
+            {/* Bannière multi-pharmacies : apparaît quand aucune pharmacie n'a 100% */}
+            {hasMissingMeds && pharmacies.length > 0 && (
+                <TouchableOpacity style={styles.multiBanner} onPress={handleMultiOrder} activeOpacity={0.85}>
+                    <View style={styles.multiBannerLeft}>
+                        <SafeIcon name="git-merge" size={18} color="#7C3AED" type="lucide" />
+                        <View>
+                            <Text style={styles.multiBannerTitle}>Aucune pharmacie n'a tout</Text>
+                            <Text style={styles.multiBannerSub}>Commander dans plusieurs pharmacies</Text>
+                        </View>
+                    </View>
+                    <SafeIcon name="chevron-right" size={18} color="#7C3AED" type="lucide" />
+                </TouchableOpacity>
+            )}
 
             <FlatList
                 data={pharmacies}
@@ -482,6 +534,33 @@ const styles = StyleSheet.create({
     matchingDetailText: {
         fontSize: 13,
         fontWeight: '500',
+    },
+    // Bannière multi-pharmacies
+    multiBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F5F3FF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#DDD6FE',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    multiBannerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        flex: 1,
+    },
+    multiBannerTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#5B21B6',
+    },
+    multiBannerSub: {
+        fontSize: 12,
+        color: '#7C3AED',
+        marginTop: 1,
     },
 });
 

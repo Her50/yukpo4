@@ -531,6 +531,7 @@ reg('MyPharmacyOrders', () => import('../screens/specialized/MyPharmacyOrdersScr
 reg('PharmacyOrderQR', () => import('../screens/specialized/PharmacyOrderQRScreen'));
 reg('PharmacyOrderValidation', () => import('../screens/specialized/PharmacyOrderValidationScreen'));
 reg('PharmacyPartnerOrders', () => import('../screens/specialized/PharmacyPartnerOrdersScreen'));
+reg('PharmacyMultiOrder', () => import('../screens/specialized/PharmacyMultiOrderScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Taxi (9)

@@ -38,6 +38,8 @@ export interface PharmacyOrder {
     delivery_method: string | null;
     delivery_address: string | null;
     created_at: string;
+    multi_order_id?: string | null;
+    sub_order_index?: number | null;
 }
 
 export interface PharmacyAnalytics {

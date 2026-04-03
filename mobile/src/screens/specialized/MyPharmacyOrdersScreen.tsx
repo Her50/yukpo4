@@ -191,7 +191,12 @@ const MyPharmacyOrdersScreen: React.FC = () => {
     };
 
     const handleViewQR = (order: PharmacyOrder) => {
-        (navigation as any).navigate('PharmacyOrderQR', { orderId: order.id });
+        if (order.multi_order_id) {
+            // Sous-commande d'une commande multi-pharmacies → afficher tous les QR du groupe
+            (navigation as any).navigate('PharmacyMultiOrder', { multiOrderId: order.multi_order_id });
+        } else {
+            (navigation as any).navigate('PharmacyOrderQR', { orderId: order.id });
+        }
     };
 
     const renderOrder = ({ item }: { item: PharmacyOrder }) => {
@@ -213,7 +218,7 @@ const MyPharmacyOrdersScreen: React.FC = () => {
                                     {item.pharmacy_name || t('myPharmacyOrders.pharmacieNonSpecifiee')}
                                 </Text>
                                 <Text style={styles.deliveryMethod}>
-                                    {deliveryMethod}
+                                    {deliveryMethod}{item.multi_order_id ? ' • Multi-pharmacies' : ''}
                                 </Text>
                             </View>
                         </View>

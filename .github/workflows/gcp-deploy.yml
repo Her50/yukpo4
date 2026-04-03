@@ -469,6 +469,24 @@ jobs:
               --project ${{ secrets.GCP_PROJECT_ID }}
           fi
 
+      - name: Cleanup old revisions (keep last 5)
+        run: |
+          echo "🧹 Suppression des anciennes révisions Cloud Run (garde les 5 dernières)..."
+          OLD_REVISIONS=$(gcloud run revisions list \
+            --service=${{ env.SERVICE_NAME }} \
+            --region=${{ env.REGION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --format="value(metadata.name)" | tail -n +6)
+          if [ -n "$OLD_REVISIONS" ]; then
+            echo "$OLD_REVISIONS" | xargs -P 5 -I {} gcloud run revisions delete {} \
+              --region=${{ env.REGION }} \
+              --project=${{ secrets.GCP_PROJECT_ID }} \
+              --quiet 2>/dev/null || true
+            echo "✅ Anciennes révisions supprimées"
+          else
+            echo "ℹ️ Aucune révision à supprimer"
+          fi
+
       - name: Get Service URL
         id: service-url
         run: |
