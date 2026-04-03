@@ -706,6 +706,18 @@ impl PaymentAggregator {
                         .await;
                 }
             }
+            AggregatorProvider::AfricaPay => {
+                // AfricaPay non encore implémenté — fallback vers CinetPay/Flutterwave
+                log::warn!("[PaymentAggregator] AfricaPay non implémenté, fallback vers CinetPay");
+                if self.config.is_cinetpay_configured() {
+                    return self.initiate_cinetpay(&transaction_id, &request).await;
+                }
+                if self.flutterwave.is_configured() {
+                    return self
+                        .initiate_flutterwave(&transaction_id, &request, country, operator)
+                        .await;
+                }
+            }
         }
 
         Err("Aucun agrégateur de paiement configuré. Configurez CINETPAY_API_KEY + CINETPAY_API_PASSWORD, NOTCHPAY_PUBLIC_KEY ou FLUTTERWAVE_SECRET_KEY.".to_string())
@@ -743,6 +755,7 @@ impl PaymentAggregator {
                     provider_data: None,
                 })
             }
+            AggregatorProvider::AfricaPay => Err("AfricaPay non implémenté".to_string()),
         }
     }
 
@@ -805,6 +818,15 @@ impl PaymentAggregator {
                     raw_data: Some(body_json),
                 }
             }
+            AggregatorProvider::AfricaPay => WebhookVerification {
+                is_valid: false,
+                transaction_id: None,
+                status: None,
+                amount: None,
+                currency: None,
+                provider_reference: None,
+                raw_data: None,
+            },
         }
     }
 

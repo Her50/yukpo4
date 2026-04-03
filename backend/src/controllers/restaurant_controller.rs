@@ -1328,13 +1328,21 @@ pub async fn public_create_order(
 
     // ── 5. Créer la commande restaurant ─────────────────────
     let delivery_addr = body.delivery_address.as_deref().or(body.notes.as_deref()); // compat: notes utilisées comme adresse si delivery_address absent
+                                                                                    // wallet_reserved_cents = total débité au client (repas + livraison + assurance)
+    let wallet_reserved_cents_val = if payment_status == "paid" {
+        total_with_fees_cents
+    } else {
+        0
+    };
+
     let order_id: i32 = sqlx::query_scalar(
         r#"INSERT INTO restaurant_orders
                (service_id, client_user_id, order_type, table_id, status,
                 total_amount, yukpo_commission, net_partner_amount,
                 payment_status, payment_method, notes, client_name, client_phone,
-                delivery_fee_cents, insurance_fee_cents, total_with_fees_cents, delivery_address)
-           VALUES ($1,$2,$3,$4,'pending',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+                delivery_fee_cents, insurance_fee_cents, total_with_fees_cents,
+                wallet_reserved_cents, delivery_address)
+           VALUES ($1,$2,$3,$4,'pending',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
            RETURNING id"#,
     )
     .bind(service_id)
@@ -1352,6 +1360,7 @@ pub async fn public_create_order(
     .bind(delivery_fee_cents as i32)
     .bind(insurance_fee_cents as i32)
     .bind(total_with_fees_cents as i32)
+    .bind(wallet_reserved_cents_val)
     .bind(delivery_addr)
     .fetch_one(&state.pg)
     .await?;
@@ -1961,8 +1970,8 @@ pub async fn validate_delivery_qr(
         .unwrap_or(0.02);
 
         let order_data = sqlx::query(
-            r#"SELECT net_partner_amount::float8, yukpo_commission::float8,
-                      payment_status, wallet_reserved_cents, reversed_at,
+            r#"SELECT payment_status, wallet_reserved_cents, reversed_at,
+                      delivery_fee_cents, insurance_fee_cents,
                       s.user_id AS partner_user_id
                FROM restaurant_orders ro
                JOIN services s ON s.id = ro.service_id
@@ -1980,15 +1989,23 @@ pub async fn validate_delivery_qr(
             let payment_status: String = ord.try_get("payment_status").unwrap_or_default();
             let partner_user_id: i32 = ord.try_get("partner_user_id").unwrap_or(0);
             let wallet_reserved_cents: i64 = ord.try_get("wallet_reserved_cents").unwrap_or(0);
+            let delivery_fee_cents: i64 =
+                ord.try_get::<i32, _>("delivery_fee_cents").unwrap_or(0) as i64;
+            let insurance_fee_cents: i64 =
+                ord.try_get::<i32, _>("insurance_fee_cents").unwrap_or(0) as i64;
 
             if already_reversed.is_none()
                 && payment_status == "paid"
                 && wallet_reserved_cents > 0
                 && partner_user_id > 0
             {
-                let commission_cents =
-                    (wallet_reserved_cents as f64 * commission_rate).round() as i64;
-                let net_partner_cents = wallet_reserved_cents - commission_cents;
+                // ✅ Split correct des fonds :
+                //   - Partie repas uniquement → partenaire (moins commission Yukpo)
+                //   - Frais livraison → coursier (géré séparément via delivery_payment_service)
+                //   - Assurance → compte Yukpo (conservé — reversé si sinistre)
+                let meal_cents = wallet_reserved_cents - delivery_fee_cents - insurance_fee_cents;
+                let commission_cents = (meal_cents as f64 * commission_rate).round() as i64;
+                let net_partner_cents = (meal_cents - commission_cents).max(0);
 
                 // Créer le wallet partenaire s'il n'existe pas
                 sqlx::query(
@@ -2009,15 +2026,17 @@ pub async fn validate_delivery_qr(
                 .flatten()
                 .unwrap_or(0);
 
-                // Créditer le wallet partenaire
-                sqlx::query(
-                    "UPDATE user_wallets SET balance_cents = balance_cents + $1, updated_at = NOW() WHERE user_id = $2 AND currency = 'XAF'",
-                )
-                .bind(net_partner_cents)
-                .bind(partner_user_id)
-                .execute(&state.pg)
-                .await
-                .ok();
+                // Créditer le wallet partenaire (repas uniquement)
+                if net_partner_cents > 0 {
+                    sqlx::query(
+                        "UPDATE user_wallets SET balance_cents = balance_cents + $1, updated_at = NOW() WHERE user_id = $2 AND currency = 'XAF'",
+                    )
+                    .bind(net_partner_cents)
+                    .bind(partner_user_id)
+                    .execute(&state.pg)
+                    .await
+                    .ok();
+                }
 
                 // Logger la transaction
                 sqlx::query(
@@ -2034,9 +2053,11 @@ pub async fn validate_delivery_qr(
                 .bind(balance_before + net_partner_cents)
                 .bind(order_id)
                 .bind(format!(
-                    "Vente restaurant commande #{} (commission Yukpo {:.0}% déduite)",
+                    "Repas commande #{} net partenaire (commission {:.0}% | livraison {}F et assurance {}F retenus séparément)",
                     order_id,
-                    commission_rate * 100.0
+                    commission_rate * 100.0,
+                    delivery_fee_cents / 100,
+                    insurance_fee_cents / 100,
                 ))
                 .execute(&state.pg)
                 .await

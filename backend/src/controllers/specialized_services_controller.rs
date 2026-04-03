@@ -5643,7 +5643,24 @@ pub async fn create_pharmacy_order(
         .unwrap_or(0);
     let delivery_fee_cents = request.delivery_fee_cents.unwrap_or(0).max(0);
     let delivery_fee_decimal = rust_decimal::Decimal::new(delivery_fee_cents, 2);
-    let total_reserved_cents = medication_total_cents + delivery_fee_cents;
+
+    // ✅ Assurance livraison (uniquement si livraison à domicile)
+    let insurance_fee_cents: i64 = if delivery_method == "delivery" && delivery_fee_cents > 0 {
+        sqlx::query_scalar::<_, f64>(
+            "SELECT LEAST(base_fee_fcfa + percentage_rate / 100.0 * $1, max_fee_fcfa) FROM delivery_insurance_fees WHERE engine_type = 'scooter' LIMIT 1",
+        )
+        .bind(medication_total_cents as f64 / 100.0)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten()
+        .map(|f| (f * 100.0).round() as i64)
+        .unwrap_or(0)
+    } else {
+        0
+    };
+
+    let total_reserved_cents = medication_total_cents + delivery_fee_cents + insurance_fee_cents;
 
     let _ = sqlx::query(
         r#"
@@ -5909,6 +5926,13 @@ pub async fn create_pharmacy_order(
                 "order_id": order_id.to_string(),
                 "total_amount": total_amount.to_string(),
                 "wallet_reserved_cents": total_reserved_cents,
+                // ✅ Détail des frais visible par l'utilisateur
+                "breakdown": {
+                    "medicaments_cents": medication_total_cents,
+                    "frais_livraison_cents": delivery_fee_cents,
+                    "assurance_cents": insurance_fee_cents,
+                    "total_cents": total_reserved_cents
+                },
                 "linked_delivery_id": linked_delivery_id.map(|id| id.to_string()),
                 "status": "pending",
                 "message": "Commande créée",

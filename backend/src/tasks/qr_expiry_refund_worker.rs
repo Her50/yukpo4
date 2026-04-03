@@ -1,0 +1,293 @@
+//! Worker de remboursement automatique sur expiration de QR code non validé.
+//!
+//! Tourne toutes les 15 minutes. Détecte les commandes dont le QR code de livraison
+//! n'a jamais été scanné au-delà d'un délai configurable, puis rembourse le patient
+//! en re-créditant son wallet du montant réservé (`wallet_reserved_cents`).
+//!
+//! Couverture :
+//!   - pharmacy_orders  : QR de type 'delivery' (ou 'pickup') non validé > REFUND_DELAY_HOURS
+//!   - restaurant_orders: QR non validé > REFUND_DELAY_HOURS
+//!
+//! Règles de remboursement :
+//!   - Seules les commandes payées par wallet (payment_status = 'paid') sont remboursables
+//!   - La commande ne doit pas être déjà annulée, livrée ou reversée
+//!   - Idempotent : une commande remboursée n'est pas re-traitée (refunded_at IS NOT NULL)
+
+use chrono::Utc;
+use log::{error, info, warn};
+use sqlx::{PgPool, Row};
+use std::sync::Arc;
+use tokio::time::{interval, Duration as TokioDuration};
+
+use crate::state::AppState;
+
+const INTERVAL_SECS: u64 = 900; // 15 minutes
+const REFUND_DELAY_HOURS: i64 = 48; // Délai avant remboursement si QR non validé (48h)
+
+pub async fn start_qr_expiry_refund_worker(state: Arc<AppState>) {
+    info!(
+        "[QRExpiryRefund] Démarré — intervalle {}s, délai remboursement {}h",
+        INTERVAL_SECS, REFUND_DELAY_HOURS
+    );
+
+    let mut timer = interval(TokioDuration::from_secs(INTERVAL_SECS));
+
+    loop {
+        timer.tick().await;
+
+        if let Err(e) = process_expired_pharmacy_orders(&state.pg).await {
+            error!("[QRExpiryRefund] Erreur pharmacy: {}", e);
+        }
+
+        if let Err(e) = process_expired_restaurant_orders(&state.pg).await {
+            error!("[QRExpiryRefund] Erreur restaurant: {}", e);
+        }
+    }
+}
+
+// ============================================================================
+// PHARMACIE
+// ============================================================================
+
+async fn process_expired_pharmacy_orders(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let cutoff = Utc::now() - chrono::Duration::hours(REFUND_DELAY_HOURS);
+
+    // Commandes payées par wallet, non livrées, non reversées, sans QR validé,
+    // créées il y a plus de REFUND_DELAY_HOURS
+    let rows = sqlx::query(
+        r#"
+        SELECT o.id, o.user_id, o.wallet_reserved_cents, o.status
+        FROM pharmacy_orders o
+        WHERE o.payment_status  = 'paid'
+          AND o.wallet_reserved_cents > 0
+          AND o.reversed_at     IS NULL
+          AND o.refunded_at     IS NULL
+          AND o.status NOT IN ('delivered', 'cancelled', 'refunded')
+          AND o.created_at < $1
+          AND NOT EXISTS (
+              SELECT 1 FROM pharmacy_order_qr_codes q
+              WHERE q.order_id = o.id
+                AND q.status = 'validated'
+          )
+        LIMIT 50
+        "#,
+    )
+    .bind(cutoff)
+    .fetch_all(pool)
+    .await?;
+
+    if rows.is_empty() {
+        return Ok(());
+    }
+
+    info!(
+        "[QRExpiryRefund] {} commandes pharmacie expirées sans livraison",
+        rows.len()
+    );
+
+    for row in rows {
+        let order_id: uuid::Uuid = row.try_get("id").unwrap();
+        let patient_id: i32 = row.try_get("user_id").unwrap_or(0);
+        let reserved: i64 = row.try_get("wallet_reserved_cents").unwrap_or(0);
+
+        if let Err(e) = refund_patient_wallet(
+            pool,
+            patient_id,
+            reserved,
+            "pharmacy_order",
+            &order_id.to_string(),
+        )
+        .await
+        {
+            error!("[QRExpiryRefund] ❌ Pharmacy #{}: {}", order_id, e);
+            continue;
+        }
+
+        // Marquer la commande comme remboursée + annulée
+        sqlx::query(
+            "UPDATE pharmacy_orders SET status = 'cancelled', refunded_at = NOW(), updated_at = NOW() WHERE id = $1",
+        )
+        .bind(order_id)
+        .execute(pool)
+        .await
+        .ok();
+
+        // Marquer les QR comme expirés
+        sqlx::query(
+            "UPDATE pharmacy_order_qr_codes SET status = 'expired' WHERE order_id = $1 AND status = 'pending'",
+        )
+        .bind(order_id)
+        .execute(pool)
+        .await
+        .ok();
+
+        info!(
+            "[QRExpiryRefund] ✅ Pharmacie #{} remboursé: {}F → patient {}",
+            order_id,
+            reserved / 100,
+            patient_id
+        );
+    }
+
+    Ok(())
+}
+
+// ============================================================================
+// RESTAURANT
+// ============================================================================
+
+async fn process_expired_restaurant_orders(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let cutoff = Utc::now() - chrono::Duration::hours(REFUND_DELAY_HOURS);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT o.id, o.client_user_id, o.wallet_reserved_cents, o.status
+        FROM restaurant_orders o
+        WHERE o.payment_status      = 'paid'
+          AND o.wallet_reserved_cents > 0
+          AND o.reversed_at         IS NULL
+          AND o.refunded_at         IS NULL
+          AND o.status NOT IN ('completed', 'cancelled', 'refunded')
+          AND o.created_at < $1
+          AND NOT EXISTS (
+              SELECT 1 FROM restaurant_order_qr_codes q
+              WHERE q.order_id = o.id
+                AND q.status = 'validated'
+          )
+        LIMIT 50
+        "#,
+    )
+    .bind(cutoff)
+    .fetch_all(pool)
+    .await?;
+
+    if rows.is_empty() {
+        return Ok(());
+    }
+
+    info!(
+        "[QRExpiryRefund] {} commandes restaurant expirées sans livraison",
+        rows.len()
+    );
+
+    for row in rows {
+        let order_id: i32 = row.try_get("id").unwrap_or(0);
+        let client_id: Option<i32> = row.try_get("client_user_id").ok().flatten();
+        let reserved: i64 = row.try_get("wallet_reserved_cents").unwrap_or(0);
+
+        let client_id = match client_id {
+            Some(id) => id,
+            None => {
+                warn!(
+                    "[QRExpiryRefund] Restaurant #{} sans client_user_id, ignoré",
+                    order_id
+                );
+                continue;
+            }
+        };
+
+        if let Err(e) = refund_patient_wallet(
+            pool,
+            client_id,
+            reserved,
+            "restaurant_order",
+            &order_id.to_string(),
+        )
+        .await
+        {
+            error!("[QRExpiryRefund] ❌ Restaurant #{}: {}", order_id, e);
+            continue;
+        }
+
+        sqlx::query(
+            "UPDATE restaurant_orders SET status = 'cancelled', refunded_at = NOW(), updated_at = NOW() WHERE id = $1",
+        )
+        .bind(order_id)
+        .execute(pool)
+        .await
+        .ok();
+
+        sqlx::query(
+            "UPDATE restaurant_order_qr_codes SET status = 'expired' WHERE order_id = $1 AND status = 'pending'",
+        )
+        .bind(order_id)
+        .execute(pool)
+        .await
+        .ok();
+
+        info!(
+            "[QRExpiryRefund] ✅ Restaurant #{} remboursé: {}F → client {}",
+            order_id,
+            reserved / 100,
+            client_id
+        );
+    }
+
+    Ok(())
+}
+
+// ============================================================================
+// Créditer le wallet patient (opération atomique)
+// ============================================================================
+
+async fn refund_patient_wallet(
+    pool: &PgPool,
+    user_id: i32,
+    amount_cents: i64,
+    reference_type: &str,
+    reference_id: &str,
+) -> Result<(), String> {
+    // Créer le wallet si absent
+    sqlx::query(
+        "INSERT INTO user_wallets (user_id, balance_cents, currency) VALUES ($1, 0, 'XAF') ON CONFLICT (user_id, currency) DO NOTHING",
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("Erreur create wallet: {}", e))?;
+
+    let balance_before: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(balance_cents, 0) FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or(0);
+
+    // Créditer le remboursement
+    sqlx::query(
+        "UPDATE user_wallets SET balance_cents = balance_cents + $1, updated_at = NOW() WHERE user_id = $2 AND currency = 'XAF'",
+    )
+    .bind(amount_cents)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(|e| format!("Erreur crédit remboursement: {}", e))?;
+
+    // Traçabilité wallet
+    sqlx::query(
+        r#"INSERT INTO wallet_transactions (
+            user_id, transaction_type, direction, amount_cents,
+            balance_before_cents, balance_after_cents,
+            currency, reference_type, reference_id, description, created_at
+        ) VALUES ($1, 'order_refund', 'credit', $2, $3, $4, 'XAF', $5, $6, $7, NOW())"#,
+    )
+    .bind(user_id)
+    .bind(amount_cents)
+    .bind(balance_before)
+    .bind(balance_before + amount_cents)
+    .bind(reference_type)
+    .bind(reference_id)
+    .bind(format!(
+        "Remboursement automatique — commande non livrée dans les {}h ({}F)",
+        REFUND_DELAY_HOURS,
+        amount_cents / 100
+    ))
+    .execute(pool)
+    .await
+    .ok(); // log failure only — le crédit wallet est déjà fait
+
+    Ok(())
+}

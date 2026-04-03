@@ -1166,12 +1166,31 @@ pub struct WithdrawRequest {
 }
 
 /// POST /api/wallet/withdraw - Demander un retrait (MTN Money / Orange Money)
+/// Accessible à tout utilisateur authentifié (client ou partenaire).
+/// Les partenaires doivent préférer /api/partner/withdrawals qui offre plus de contrôle.
 pub async fn request_wallet_withdrawal(
     Extension(user): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
     Json(payload): Json<WithdrawRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     const MIN_WITHDRAWAL: i64 = 1000;
+
+    // Délai de sécurité : les nouveaux comptes (< 24h) ne peuvent pas retirer
+    let account_age_hours: i64 = sqlx::query_scalar(
+        "SELECT EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600 FROM users WHERE id = $1",
+    )
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or(0.0) as i64;
+
+    if account_age_hours < 24 {
+        return Err(AppError::Forbidden(
+            "Les retraits sont disponibles 24h après la création du compte".to_string(),
+        ));
+    }
 
     if payload.amount < MIN_WITHDRAWAL {
         return Err(AppError::BadRequest(format!(

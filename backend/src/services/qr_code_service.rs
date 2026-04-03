@@ -847,13 +847,16 @@ impl QRCodeService {
             order_id
         );
 
-        // Récupérer les données de la commande
+        // Récupérer les données de la commande avec séparation des frais
         let row = sqlx::query(
             r#"
             SELECT
                 o.wallet_reserved_cents,
+                o.delivery_fee,
                 o.payment_status,
                 o.reversed_at,
+                o.linked_delivery_id,
+                o.courier_id,
                 p.user_id AS pharmacy_owner_id
             FROM pharmacy_orders o
             JOIN pharmacies p ON p.id = o.pharmacy_id
@@ -878,6 +881,19 @@ impl QRCodeService {
             row.try_get("reversed_at").ok().flatten();
         let pharmacy_owner_id: i32 = row.try_get("pharmacy_owner_id").unwrap_or(0);
 
+        // Frais de livraison séparés (stockés en Decimal dans la DB)
+        let delivery_fee_cents: i64 = row
+            .try_get::<Option<rust_decimal::Decimal>, _>("delivery_fee")
+            .ok()
+            .flatten()
+            .map(|d| {
+                use rust_decimal::prelude::ToPrimitive;
+                (d * rust_decimal::Decimal::new(100, 0)).to_i64().unwrap_or(0)
+            })
+            .unwrap_or(0);
+
+        let courier_id: Option<i32> = row.try_get("courier_id").ok().flatten();
+
         // Idempotence : ne pas reverser deux fois
         if already_reversed.is_some() {
             info!(
@@ -898,6 +914,12 @@ impl QRCodeService {
             return Ok(());
         }
 
+        // ✅ Split correct :
+        //   - Partie médicaments uniquement → pharmacien (moins commission Yukpo 2%)
+        //   - Frais livraison → coursier (moins commission livraison 20%)
+        //   - La différence (commissions) reste dans le compte Yukpo
+        let medication_cents = (wallet_reserved_cents - delivery_fee_cents).max(0);
+
         // Taux de commission Yukpo
         let commission_rate: f64 = sqlx::query_scalar(
             "SELECT COALESCE(rate, 0.02) FROM yukpo_commission_config WHERE service_type = 'pharmacie' LIMIT 1",
@@ -908,11 +930,59 @@ impl QRCodeService {
         .flatten()
         .unwrap_or(0.02_f64);
 
-        let commission_cents = (wallet_reserved_cents as f64 * commission_rate).round() as i64;
-        let net_partner_cents = wallet_reserved_cents - commission_cents;
+        let commission_cents = (medication_cents as f64 * commission_rate).round() as i64;
+        let net_partner_cents = medication_cents - commission_cents;
 
         if net_partner_cents <= 0 {
             return Ok(());
+        }
+
+        // ✅ Créditer le coursier avec la part livraison (moins 20% commission Yukpo)
+        if delivery_fee_cents > 0 {
+            let delivery_commission_rate: f64 = std::env::var("YUKPO_DELIVERY_COMMISSION_RATE")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(0.20);
+            let delivery_commission =
+                (delivery_fee_cents as f64 * delivery_commission_rate).round() as i64;
+            let net_courier_cents = delivery_fee_cents - delivery_commission;
+
+            if let Some(c_id) = courier_id {
+                if net_courier_cents > 0 {
+                    let _ = sqlx::query(
+                        "INSERT INTO user_wallets (user_id, balance_cents, currency, created_at, updated_at) VALUES ($1, 0, 'XAF', NOW(), NOW()) ON CONFLICT (user_id, currency) DO NOTHING",
+                    )
+                    .bind(c_id)
+                    .execute(&self.pool)
+                    .await;
+
+                    let _ = sqlx::query(
+                        "UPDATE user_wallets SET balance_cents = balance_cents + $1, updated_at = NOW() WHERE user_id = $2 AND currency = 'XAF'",
+                    )
+                    .bind(net_courier_cents)
+                    .bind(c_id)
+                    .execute(&self.pool)
+                    .await;
+
+                    let _ = sqlx::query(
+                        r#"INSERT INTO wallet_transactions (user_id, transaction_type, direction, amount_cents, currency, reference_type, reference_id, description, created_at)
+                           VALUES ($1, 'delivery_payout', 'credit', $2, 'XAF', 'pharmacy_order', $3, $4, NOW())"#,
+                    )
+                    .bind(c_id)
+                    .bind(net_courier_cents)
+                    .bind(order_id.to_string())
+                    .bind(format!("Livraison pharmacie #{} ({}F net, commission {}F)", order_id.to_string().chars().take(8).collect::<String>(), net_courier_cents / 100, delivery_commission / 100))
+                    .execute(&self.pool)
+                    .await;
+
+                    info!(
+                        "[QRCodeService] ✅ Coursier {} crédité {}F (livraison pharmacie)",
+                        c_id, net_courier_cents
+                    );
+                }
+            } else {
+                info!("[QRCodeService] Pas de coursier assigné — frais livraison {}F conservés (Yukpo)", net_courier_cents);
+            }
         }
 
         // S'assurer que le wallet du pharmacien existe
