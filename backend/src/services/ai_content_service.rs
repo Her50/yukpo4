@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
 
-use crate::services::yukpo_openai_outbound::{chat_completion, resolve_openai_api_key};
+use crate::services::yukpo_openai_outbound::resolve_openai_api_key;
 
 // ─── Structures ───────────────────────────────────────────────────────────────
 

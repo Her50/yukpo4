@@ -2,15 +2,16 @@
 // Endpoints: génération contenu, chatbot config, ads, inbox, scheduler, webhooks Meta
 
 use axum::{
-    extract::{Path, Query},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Extension, Json, State,
+    Extension, Json,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::{
+    core::types::AppResult,
     middlewares::jwt::AuthenticatedUser,
     services::{
         ai_content_service::{self, ContentPreferences, ProductContext, StoreContext},
@@ -18,7 +19,6 @@ use crate::{
         social_chatbot_service, social_inbox_service, social_scheduler_service,
     },
     state::AppState,
-    utils::app_error::AppResult,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -50,8 +50,8 @@ pub async fn generate_post(
     .bind(payload.service_id)
     .fetch_optional(&state.pg)
     .await
-    .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?
-    .ok_or(crate::utils::app_error::AppError::NotFound(
+    .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?
+    .ok_or(crate::core::types::AppError::NotFound(
         "Produit introuvable".to_string(),
     ))?;
     use sqlx::Row;
@@ -59,33 +59,33 @@ pub async fn generate_post(
     let product_ctx = ProductContext {
         id: product
             .try_get("id")
-            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+            .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?,
         name: product
             .try_get("name")
-            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+            .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?,
         price: product
             .try_get::<Option<f64>, _>("price")
-            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?
+            .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?
             .unwrap_or(0.0),
         sale_price: product
             .try_get::<Option<f64>, _>("sale_price")
-            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+            .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?,
         category: product
             .try_get::<Option<String>, _>("category")
-            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?
+            .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?
             .unwrap_or_else(|| "autres".to_string()),
         description: product
             .try_get::<Option<String>, _>("description")
-            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+            .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?,
         image_url: product
             .try_get::<Option<String>, _>("image_url")
-            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+            .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?,
         in_stock: product
             .try_get("is_active")
-            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+            .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?,
         brand: product
             .try_get::<Option<String>, _>("brand")
-            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?,
+            .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?,
     };
 
     // Charger les infos du service
@@ -131,7 +131,7 @@ pub async fn generate_post(
 
     let content = ai_content_service::generate_product_post(&product_ctx, &store_ctx, &prefs)
         .await
-        .map_err(|e| crate::utils::app_error::AppError::Internal(e))?;
+        .map_err(|e| crate::core::types::AppError::Internal(e))?;
 
     // Sauvegarder si demandé
     let scheduled_at = payload
@@ -178,7 +178,7 @@ pub async fn get_content_calendar(
     let calendar =
         social_scheduler_service::get_content_calendar(&state.pg, user.id, service_id, days)
             .await
-            .map_err(|e| crate::utils::app_error::AppError::Internal(e))?;
+            .map_err(|e| crate::core::types::AppError::Internal(e))?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -214,7 +214,7 @@ pub async fn list_posts(
     .bind(limit)
     .fetch_all(&state.pg)
     .await
-    .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+    .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
 
     use sqlx::Row;
     Ok(Json(serde_json::json!({
@@ -287,7 +287,7 @@ pub async fn update_content_preferences(
     .bind(payload.sector)
     .execute(&state.pg)
     .await
-    .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+    .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
 
     Ok(Json(
         serde_json::json!({"success": true, "message": "Préférences sauvegardées"}),
@@ -546,7 +546,7 @@ pub async fn update_chatbot_config(
     .bind(delay)
     .execute(&state.pg)
     .await
-    .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+    .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
 
     Ok(Json(
         serde_json::json!({"success": true, "message": "Configuration chatbot sauvegardée"}),
@@ -572,7 +572,7 @@ pub async fn list_inbox(
         &state.pg, user.id, service_id, filter, platform, page, 20,
     )
     .await
-    .map_err(|e| crate::utils::app_error::AppError::Internal(e))?;
+    .map_err(|e| crate::core::types::AppError::Internal(e))?;
 
     let stats = social_inbox_service::get_inbox_stats(&state.pg, user.id, service_id)
         .await
@@ -601,7 +601,7 @@ pub async fn get_thread(
 ) -> AppResult<Json<serde_json::Value>> {
     let detail = social_inbox_service::get_conversation_detail(&state.pg, user.id, thread_id)
         .await
-        .map_err(|e| crate::utils::app_error::AppError::Internal(e))?;
+        .map_err(|e| crate::core::types::AppError::Internal(e))?;
 
     Ok(Json(
         serde_json::json!({"success": true, "conversation": detail}),
@@ -622,7 +622,7 @@ pub async fn escalate_thread(
 ) -> AppResult<Json<serde_json::Value>> {
     social_inbox_service::escalate_thread(&state.pg, user.id, thread_id, &payload.reason)
         .await
-        .map_err(|e| crate::utils::app_error::AppError::Internal(e))?;
+        .map_err(|e| crate::core::types::AppError::Internal(e))?;
     Ok(Json(serde_json::json!({"success": true})))
 }
 
@@ -634,7 +634,7 @@ pub async fn resolve_thread(
 ) -> AppResult<Json<serde_json::Value>> {
     social_inbox_service::resolve_escalation(&state.pg, user.id, thread_id, user.id)
         .await
-        .map_err(|e| crate::utils::app_error::AppError::Internal(e))?;
+        .map_err(|e| crate::core::types::AppError::Internal(e))?;
     Ok(Json(serde_json::json!({"success": true})))
 }
 
@@ -652,7 +652,7 @@ pub async fn add_thread_note(
 ) -> AppResult<Json<serde_json::Value>> {
     let note_id = social_inbox_service::add_note(&state.pg, thread_id, user.id, &payload.note)
         .await
-        .map_err(|e| crate::utils::app_error::AppError::Internal(e))?;
+        .map_err(|e| crate::core::types::AppError::Internal(e))?;
     Ok(Json(
         serde_json::json!({"success": true, "note_id": note_id}),
     ))
@@ -668,7 +668,7 @@ pub async fn search_inbox(
     let q = params.get("q").map(|s| s.as_str()).unwrap_or("");
     let results = social_inbox_service::search_conversations(&state.pg, user.id, service_id, q)
         .await
-        .map_err(|e| crate::utils::app_error::AppError::Internal(e))?;
+        .map_err(|e| crate::core::types::AppError::Internal(e))?;
     Ok(Json(
         serde_json::json!({"success": true, "results": results}),
     ))
@@ -717,7 +717,7 @@ pub async fn save_ad_account(
     .bind(payload.pixel_id)
     .execute(&state.pg)
     .await
-    .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+    .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
 
     Ok(Json(
         serde_json::json!({"success": true, "message": "Compte publicitaire enregistré"}),
@@ -742,7 +742,7 @@ pub async fn create_promo_campaign(
 ) -> AppResult<Json<serde_json::Value>> {
     let account = meta_ads_service::load_ad_account(&state.pg, user.id, payload.service_id)
         .await
-        .ok_or(crate::utils::app_error::AppError::NotFound(
+        .ok_or(crate::core::types::AppError::NotFound(
             "Compte publicitaire non configuré. Ajoutez votre Ad Account ID d'abord.".to_string(),
         ))?;
 
@@ -753,27 +753,27 @@ pub async fn create_promo_campaign(
     .bind(payload.service_id)
     .fetch_optional(&state.pg)
     .await
-    .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?
-    .ok_or(crate::utils::app_error::AppError::NotFound("Produit introuvable".to_string()))?;
+    .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?
+    .ok_or(crate::core::types::AppError::NotFound("Produit introuvable".to_string()))?;
 
     use sqlx::Row;
     let product_id_val: i32 = product
         .try_get("id")
-        .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+        .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
     let product_name_val: String = product
         .try_get("name")
-        .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+        .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
     let product_price_val: f64 = product
         .try_get::<Option<f64>, _>("price")
-        .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?
+        .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?
         .unwrap_or(0.0);
     let product_sale_price_val: Option<f64> = product
         .try_get::<Option<f64>, _>("sale_price")
-        .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+        .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
     let product_image_url_val: Option<String> =
         product
             .try_get::<Option<String>, _>("image_url")
-            .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+            .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
 
     let service_info = sqlx::query("SELECT name FROM services WHERE id = $1")
         .bind(payload.service_id)
@@ -811,7 +811,7 @@ pub async fn create_promo_campaign(
         store_name,
     )
     .await
-    .map_err(|e| crate::utils::app_error::AppError::Internal(e))?;
+    .map_err(|e| crate::core::types::AppError::Internal(e))?;
 
     // Enregistrer en BDD
     let ad_account_db: Option<i32> = sqlx::query_scalar(
@@ -867,7 +867,7 @@ pub async fn list_campaigns(
     .bind(service_id)
     .fetch_all(&state.pg)
     .await
-    .map_err(|e| crate::utils::app_error::AppError::Internal(e.to_string()))?;
+    .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
 
     use sqlx::Row;
     let total_spent: i64 =
@@ -913,7 +913,7 @@ pub async fn create_dpa_campaign(
 ) -> AppResult<Json<serde_json::Value>> {
     let account = meta_ads_service::load_ad_account(&state.pg, user.id, payload.service_id)
         .await
-        .ok_or(crate::utils::app_error::AppError::NotFound(
+        .ok_or(crate::core::types::AppError::NotFound(
             "Compte publicitaire non configuré".to_string(),
         ))?;
 
@@ -943,7 +943,7 @@ pub async fn create_dpa_campaign(
         &targeting,
     )
     .await
-    .map_err(|e| crate::utils::app_error::AppError::Internal(e))?;
+    .map_err(|e| crate::core::types::AppError::Internal(e))?;
 
     Ok(Json(serde_json::json!({
         "success": true,

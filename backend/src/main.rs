@@ -3278,6 +3278,15 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     // ✅ YukpoIA : worker file Redis (chat async)
     tasks::yukpo_ia_queue_worker::start_yukpo_ia_queue_worker(app_state.clone());
 
+    // ✅ 2026-04-03: TrendPulse — snapshots horaires + alertes push haute opportunité
+    {
+        let state_trend = app_state.clone();
+        std::mem::drop(tokio::spawn(async move {
+            tasks::trend_snapshot_worker::start_trend_snapshot_worker(state_trend).await;
+        }));
+        log::info!("✅ TrendPulse snapshot worker démarré");
+    }
+
     // ✅ 2026-04-01: Génération automatique produits ticket_voyage depuis les horaires agences (cron 6h)
     tasks::bus_schedule_product_generator::start_bus_schedule_product_generator(app_state.clone());
 

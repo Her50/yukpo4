@@ -89,12 +89,19 @@ pub fn social_ai_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Routes publiques (webhooks Meta — pas de JWT, vérifié par token webhook)
     let public = Router::new()
         .route("/api/social-ai/webhook/verify", get(verify_webhook))
-        .route("/api/social-ai/webhook/messenger", post(messenger_webhook))
+        // Meta envoie GET (vérification) et POST (messages) sur la même URL
+        .route(
+            "/api/social-ai/webhook/messenger",
+            get(verify_webhook).post(messenger_webhook),
+        )
         .route(
             "/api/social-ai/webhook/instagram",
-            post(instagram_dm_webhook),
+            get(verify_webhook).post(instagram_dm_webhook),
         )
-        .route("/api/social-ai/webhook/whatsapp", post(whatsapp_webhook));
+        .route(
+            "/api/social-ai/webhook/whatsapp",
+            get(verify_webhook).post(whatsapp_webhook),
+        );
 
     Router::new().merge(protected).merge(public)
 }
