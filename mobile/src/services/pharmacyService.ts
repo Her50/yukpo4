@@ -281,6 +281,8 @@ export const pharmacyService = {
             total_requested: number;
             matching_score: number;
             matching_label: string;
+            // Détail par médicament : disponible ou non dans cette pharmacie
+            medications_availability?: Array<{ name: string; available: boolean }>;
         }>;
         total_medications_requested?: number;
         error?: string;
@@ -352,6 +354,80 @@ export const pharmacyService = {
             const response = await apiGet<any>(`/api/pharmacies/orders/${orderId}/detail`);
             if (response.success) return response;
             return { success: false, error: response.error || 'Erreur récupération détail' };
+        } catch (error: any) {
+            return { success: false, error: error.message || 'Erreur réseau' };
+        }
+    },
+
+    // ✅ Créer une commande multi-pharmacies (ordonnance non complète en une seule pharmacie)
+    // Le split est calculé côté mobile (greedy par matching_score + proximité)
+    // puis envoyé en une seule requête → un seul débit wallet, QR par sous-commande.
+    createMultiPharmacyOrder: async (payload: {
+        split: Array<{
+            pharmacy_id: number;
+            medications: Array<{ medication_name: string; quantity: number }>;
+        }>;
+        delivery_method: 'pickup' | 'delivery';
+        delivery_address?: string;
+        delivery_fee_cents?: number;
+    }): Promise<{
+        success: boolean;
+        multi_order_id?: string;
+        delivery_method?: string;
+        linked_delivery_id?: string;
+        total_amount?: string;
+        sub_orders_count?: number;
+        sub_orders?: Array<{
+            order_id: string;
+            pharmacy_id: number;
+            pharmacy_name: string;
+            sub_order_index: number;
+            sub_total: string;
+            medications: Array<{ medication_name: string; quantity: number; unit_price: string }>;
+            qr_pickup?: { qr_code: string; status: string; expires_at: string } | null;
+            qr_delivery?: { qr_code: string; status: string; expires_at: string } | null;
+        }>;
+        message?: string;
+        error?: string;
+    }> => {
+        try {
+            const response = await apiPost<any>('/api/pharmacies/orders/multi', payload);
+            if (response.success) return response;
+            return { success: false, error: response.error || 'Création multi-commande échouée' };
+        } catch (error: any) {
+            return { success: false, error: error.message || 'Erreur réseau' };
+        }
+    },
+
+    // ✅ Récupérer une commande multi-pharmacies + ses sous-commandes + QR codes
+    getMultiPharmacyOrder: async (multiOrderId: string): Promise<{
+        success: boolean;
+        multi_order_id?: string;
+        delivery_method?: string;
+        delivery_address?: string;
+        sub_orders_count?: number;
+        total_amount?: string;
+        status?: string;
+        created_at?: string;
+        sub_orders?: Array<{
+            order_id: string;
+            pharmacy_id: number;
+            pharmacy_nom: string;
+            pharmacy_tel?: string;
+            status: string;
+            sub_order_index: number;
+            sub_total: string;
+            reversed: boolean;
+            items: Array<{ medication_name: string; quantity: number; unit_price: string }>;
+            qr_pickup?: { qr_code: string; status: string; expires_at: string } | null;
+            qr_delivery?: { qr_code: string; status: string; expires_at: string } | null;
+        }>;
+        error?: string;
+    }> => {
+        try {
+            const response = await apiGet<any>(`/api/pharmacies/multi-orders/${multiOrderId}`);
+            if (response.success) return response;
+            return { success: false, error: response.error || 'Erreur récupération multi-commande' };
         } catch (error: any) {
             return { success: false, error: error.message || 'Erreur réseau' };
         }

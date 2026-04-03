@@ -459,6 +459,8 @@ impl AppState {
 
         // ✅ Clone pour paiement_service (pg sera déplacé dans AppState)
         let pg_for_paiement = pg.clone();
+        // ✅ Clone pour LivekitVmService
+        let pg_for_livekit_vm = pg.clone();
 
         AppState {
             pg,
@@ -591,7 +593,7 @@ impl AppState {
             // ✅ NOUVEAU 2026-04-03: Initialiser le service LiveKit VM auto-scaling
             livekit_vm_service: {
                 if let Some(config) = LivekitVmConfig::from_env() {
-                    let service = LivekitVmService::new(config, Arc::new(pg.clone()));
+                    let service = LivekitVmService::new(config, Arc::new(pg_for_livekit_vm));
                     log::info!("✅ Service LivekitVm initialisé (auto-scaling VM activé)");
                     Some(Arc::new(service))
                 } else {

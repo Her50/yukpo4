@@ -105,16 +105,17 @@ impl LivekitVmService {
     /// Démarre la VM immédiatement si elle est arrêtée — donne 60-90s de boot
     /// pendant que le partenaire configure son live.
     pub async fn ensure_running(&self) {
-        let mut known = self.known_running.lock().await;
+        let known = self.known_running.lock().await;
         if *known {
             info!("[LivekitVmService] VM déjà running, rien à faire");
             return;
         }
+        drop(known);
 
         info!("[LivekitVmService] ⬆️ Session live détectée — démarrage VM LiveKit");
         match self.start_vm().await {
             Ok(()) => {
-                *known = true;
+                *self.known_running.lock().await = true;
                 // Réinitialiser le compteur d'inactivité
                 *self.last_idle_at.lock().await = None;
             }
