@@ -909,6 +909,8 @@ pub async fn search_by_medications(
     let n = med_names.len();
 
     // Expressions EXISTS pour chaque médicament (params $4…$N)
+    // Retourne 1/0 pour le comptage ET une colonne booléenne distincte par médicament
+    // pour exposer medications_availability[] à la réponse JSON.
     let exists_cases: String = (0..n)
         .map(|i| {
             format!(
@@ -924,6 +926,24 @@ pub async fn search_by_medications(
         })
         .collect::<Vec<_>>()
         .join(" + ");
+
+    // Colonnes booléennes individuelles — med_avail_0, med_avail_1, …
+    let med_avail_cols: String = (0..n)
+        .map(|i| {
+            format!(
+                "(CASE WHEN EXISTS (
+                    SELECT 1 FROM pharmacy_products pp2
+                    WHERE pp2.pharmacy_service_id = p.service_id
+                      AND pp2.nom_produit ILIKE ${}
+                      AND pp2.disponible = true
+                      AND pp2.stock > 0
+                ) THEN true ELSE false END) AS med_avail_{}",
+                i + 4,
+                i
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",\n                ");
 
     // Filtre rayon optionnel — paramètre $(n+4)
     let radius_param = n + 4;
@@ -962,7 +982,8 @@ pub async fn search_by_medications(
                     )
                     ELSE NULL
                 END AS distance_km,
-                ({exists_cases}) AS available_count
+                ({exists_cases}) AS available_count,
+                {med_avail_cols}
             FROM pharmacies p
             JOIN services s ON s.id = p.service_id
             WHERE p.is_active = true
@@ -970,6 +991,7 @@ pub async fn search_by_medications(
         SELECT
             id, service_id, user_id, nom, ville, quartier, telephone,
             is_on_duty_now, distance_km, available_count,
+            {med_avail_select}
             CASE
                 WHEN available_count >= $1 THEN 100
                 WHEN available_count = 0   THEN 0
@@ -982,6 +1004,9 @@ pub async fn search_by_medications(
         LIMIT 30
         "#,
         exists_cases = exists_cases,
+        med_avail_cols = med_avail_cols,
+        med_avail_select =
+            (0..n).map(|i| format!("med_avail_{},", i)).collect::<Vec<_>>().join(" "),
         radius_filter = radius_filter,
     );
 
@@ -1020,6 +1045,17 @@ pub async fn search_by_medications(
                 )
             };
 
+            // Disponibilité par médicament — colonne med_avail_i générée dynamiquement
+            let medications_availability: Vec<serde_json::Value> = med_names
+                .iter()
+                .enumerate()
+                .map(|(i, name)| {
+                    let col = format!("med_avail_{}", i);
+                    let avail: bool = row.try_get(col.as_str()).unwrap_or(false);
+                    json!({ "name": name, "available": avail })
+                })
+                .collect();
+
             json!({
                 "id": row.try_get::<i32, _>("id").unwrap_or(0),
                 "service_id": row.try_get::<i32, _>("service_id").unwrap_or(0),
@@ -1035,6 +1071,8 @@ pub async fn search_by_medications(
                 "total_requested": total_requested,
                 "matching_score": matching_score,
                 "matching_label": matching_label,
+                // Liste précise des médicaments disponibles / manquants par pharmacie
+                "medications_availability": medications_availability,
             })
         })
         .collect();

@@ -10033,3 +10033,468 @@ pub async fn credit_trip_loyalty_points(
         Err(e) => Json(json!({ "success": false, "error": e })),
     }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMMANDES MULTI-PHARMACIES
+// Permet de commander des médicaments dans plusieurs pharmacies simultanément
+// quand aucune n'a 100% de l'ordonnance. Un seul débit wallet, QR par sous-commande.
+// ═══════════════════════════════════════════════════════════════════════════
+
+#[derive(Debug, Deserialize)]
+pub struct MultiPharmacyMedication {
+    pub medication_name: String,
+    pub quantity: Option<i32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MultiPharmacySplit {
+    pub pharmacy_id: i32,
+    pub medications: Vec<MultiPharmacyMedication>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateMultiPharmacyOrderRequest {
+    pub split: Vec<MultiPharmacySplit>,
+    pub delivery_method: String,
+    pub delivery_address: Option<String>,
+    pub delivery_fee_cents: Option<i64>,
+}
+
+/// POST /api/pharmacies/orders/multi
+/// Crée plusieurs sous-commandes pharmacie liées à un parent multi_order.
+/// Débit wallet unique pour le total combiné.
+/// QR pickup + delivery générés par sous-commande.
+pub async fn create_multi_pharmacy_order(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(request): Json<CreateMultiPharmacyOrderRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!("[create_multi_pharmacy_order] user_id={}", user_id);
+
+    if request.split.is_empty() {
+        return Err(AppError::BadRequest(
+            "split ne peut pas être vide".to_string(),
+        ));
+    }
+    let delivery_method = request.delivery_method.to_lowercase();
+    if delivery_method != "pickup" && delivery_method != "delivery" {
+        return Err(AppError::BadRequest(
+            "delivery_method invalide (pickup|delivery)".to_string(),
+        ));
+    }
+    if delivery_method == "delivery"
+        && request.delivery_address.as_deref().unwrap_or("").trim().is_empty()
+    {
+        return Err(AppError::BadRequest(
+            "Adresse de livraison requise".to_string(),
+        ));
+    }
+
+    let mut tx = state.pg.begin().await.map_err(|e| {
+        error!("[create_multi_pharmacy_order] begin tx: {}", e);
+        AppError::Internal("Erreur transaction".to_string())
+    })?;
+
+    // ─── 1. Vérifier pharmacies + calculer totaux par sous-commande ──────────
+    struct SubOrderData {
+        pharmacy_id: i32,
+        pharmacy_owner_user_id: i32,
+        pharmacy_name: String,
+        pharmacy_gps: Option<String>,
+        line_items: Vec<(i32, String, i32, rust_decimal::Decimal)>,
+        sub_total: rust_decimal::Decimal,
+    }
+
+    let mut sub_orders_data: Vec<SubOrderData> = Vec::new();
+    let mut grand_total = rust_decimal::Decimal::ZERO;
+
+    for split in &request.split {
+        let pharmacy_row =
+            sqlx::query("SELECT id, service_id, user_id, nom, gps FROM pharmacies WHERE id = $1")
+                .bind(split.pharmacy_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|e| {
+                    AppError::Internal(format!("Erreur pharmacie {}: {}", split.pharmacy_id, e))
+                })?
+                .ok_or_else(|| {
+                    AppError::NotFound(format!("Pharmacie {} introuvable", split.pharmacy_id))
+                })?;
+
+        let service_id: i32 = pharmacy_row.get("service_id");
+        let mut line_items: Vec<(i32, String, i32, rust_decimal::Decimal)> = Vec::new();
+        let mut sub_total = rust_decimal::Decimal::ZERO;
+
+        for med in &split.medications {
+            let qty = med.quantity.unwrap_or(1).max(1);
+            let product_row = sqlx::query(
+                r#"
+                SELECT id, nom_produit, prix, stock
+                FROM pharmacy_products
+                WHERE pharmacy_service_id = $1
+                  AND lower(nom_produit) LIKE lower($2)
+                ORDER BY stock DESC, updated_at DESC
+                LIMIT 1
+                FOR UPDATE
+                "#,
+            )
+            .bind(service_id)
+            .bind(format!("%{}%", med.medication_name.trim()))
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur produit: {}", e)))?
+            .ok_or_else(|| {
+                AppError::BadRequest(format!(
+                    "Médicament '{}' introuvable à la pharmacie {}",
+                    med.medication_name, split.pharmacy_id
+                ))
+            })?;
+
+            let product_id: i32 = product_row.get("id");
+            let product_name: String = product_row.get("nom_produit");
+            let unit_price: rust_decimal::Decimal = product_row.get("prix");
+            let current_stock: i32 = product_row.get("stock");
+
+            if current_stock < qty {
+                return Err(AppError::BadRequest(format!(
+                    "Stock insuffisant pour {} à la pharmacie {} (stock: {}, demandé: {})",
+                    product_name, split.pharmacy_id, current_stock, qty
+                )));
+            }
+
+            sqlx::query("UPDATE pharmacy_products SET stock = $1, disponible = ($1 > 0), updated_at = NOW() WHERE id = $2")
+                .bind(current_stock - qty).bind(product_id)
+                .execute(&mut *tx).await
+                .map_err(|e| AppError::Internal(format!("Erreur décrément stock: {}", e)))?;
+
+            sub_total += unit_price * rust_decimal::Decimal::from(qty);
+            line_items.push((product_id, product_name, qty, unit_price));
+        }
+
+        grand_total += sub_total;
+        sub_orders_data.push(SubOrderData {
+            pharmacy_id: split.pharmacy_id,
+            pharmacy_owner_user_id: pharmacy_row.get("user_id"),
+            pharmacy_name: pharmacy_row.get("nom"),
+            pharmacy_gps: pharmacy_row.get("gps"),
+            line_items,
+            sub_total,
+        });
+    }
+
+    let delivery_fee_cents = request.delivery_fee_cents.unwrap_or(0).max(0);
+    let total_cents: i64 = (grand_total * rust_decimal::Decimal::new(100, 0))
+        .round_dp(0)
+        .to_string()
+        .parse::<i64>()
+        .unwrap_or(0)
+        + delivery_fee_cents;
+
+    // ─── 2. Débit wallet unique ──────────────────────────────────────────────
+    let _ = sqlx::query(
+        "INSERT INTO user_wallets (user_id, balance_cents, currency, created_at, updated_at) VALUES ($1, 0, 'XAF', NOW(), NOW()) ON CONFLICT (user_id, currency) DO NOTHING",
+    ).bind(user_id).execute(&mut *tx).await;
+
+    let balance_before: i64 = sqlx::query_scalar(
+        "SELECT COALESCE(balance_cents, 0) FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
+    )
+    .bind(user_id).fetch_one(&mut *tx).await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture wallet: {}", e)))?;
+
+    if balance_before < total_cents {
+        return Err(AppError::BadRequest(format!(
+            "Solde wallet insuffisant. Requis: {} XAF, disponible: {} XAF",
+            total_cents / 100,
+            balance_before / 100
+        )));
+    }
+
+    let balance_after = balance_before - total_cents;
+    sqlx::query("UPDATE user_wallets SET balance_cents = $1, updated_at = NOW() WHERE user_id = $2 AND currency = 'XAF'")
+        .bind(balance_after).bind(user_id).execute(&mut *tx).await
+        .map_err(|e| AppError::Internal(format!("Erreur débit wallet: {}", e)))?;
+
+    let wallet_ref = format!("multi_pharmacy_order:{}", uuid::Uuid::new_v4());
+    sqlx::query(
+        "INSERT INTO wallet_transactions (user_id, transaction_type, amount_cents, balance_before_cents, balance_after_cents, currency, reference_type, reference_id, description, created_at) VALUES ($1, 'debit', $2, $3, $4, 'XAF', 'multi_pharmacy_order', $5, $6, NOW())",
+    )
+    .bind(user_id).bind(total_cents).bind(balance_before).bind(balance_after)
+    .bind(&wallet_ref)
+    .bind(format!("Commande multi-pharmacies ({} pharmacie(s))", sub_orders_data.len()))
+    .execute(&mut *tx).await
+    .map_err(|e| AppError::Internal(format!("Erreur log wallet: {}", e)))?;
+
+    // ─── 3. Créer le parent pharmacy_multi_orders ────────────────────────────
+    let multi_order_id: uuid::Uuid = sqlx::query_scalar(
+        r#"
+        INSERT INTO pharmacy_multi_orders (patient_id, delivery_method, delivery_address, sub_orders_count, total_amount, status)
+        VALUES ($1, $2, $3, $4, $5, 'pending')
+        RETURNING id
+        "#,
+    )
+    .bind(user_id).bind(&delivery_method).bind(request.delivery_address.as_ref())
+    .bind(sub_orders_data.len() as i32).bind(grand_total)
+    .fetch_one(&mut *tx).await
+    .map_err(|e| AppError::Internal(format!("Erreur création multi_order: {}", e)))?;
+
+    // ─── 4. Livraison unique (multi-stop) pour le mode delivery ─────────────
+    let mut shared_delivery_id: Option<uuid::Uuid> = None;
+    if delivery_method == "delivery" {
+        let user_gps: Option<String> = sqlx::query_scalar("SELECT gps FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .ok()
+            .flatten()
+            .flatten();
+        if let Some(first_pharm) = sub_orders_data.first() {
+            let pickup_parsed = first_pharm.pharmacy_gps.as_deref().and_then(parse_gps);
+            let dropoff_parsed = user_gps.as_deref().and_then(parse_gps);
+            if let (Some(pickup), Some(dropoff)) = (pickup_parsed, dropoff_parsed) {
+                let pharmacy_names: Vec<String> =
+                    sub_orders_data.iter().map(|s| s.pharmacy_name.clone()).collect();
+                let delivery_result = state
+                    .delivery_service
+                    .create_delivery_request(CreateDeliveryParams {
+                        creator_id: user_id,
+                        parcel: NewDeliveryParcelInput {
+                            type_id: None,
+                            weight_kg: None,
+                            volume_cm3: None,
+                            declared_value: None,
+                            notes: Some(format!(
+                                "Multi-pharmacies Yukpo: {}",
+                                pharmacy_names.join(", ")
+                            )),
+                            photos: serde_json::Value::Array(vec![]),
+                            constraints: serde_json::Value::Object(Default::default()),
+                        },
+                        pickup: LocationInput {
+                            latitude: pickup.0,
+                            longitude: pickup.1,
+                            address: Some(format!(
+                                "{} (1ère pharmacie)",
+                                first_pharm.pharmacy_name
+                            )),
+                        },
+                        dropoff: LocationInput {
+                            latitude: dropoff.0,
+                            longitude: dropoff.1,
+                            address: request.delivery_address.clone(),
+                        },
+                        recipient: None,
+                        distance_meters: None,
+                        estimated_duration_seconds: None,
+                        metadata: json!({
+                            "source": "multi_pharmacy_order",
+                            "multi_order_id": multi_order_id.to_string(),
+                            "pharmacies": pharmacy_names
+                        }),
+                        initial_event_payload: json!({ "source": "multi_pharmacy_order" }),
+                    })
+                    .await
+                    .ok();
+                shared_delivery_id = delivery_result.map(|d| d.id);
+            }
+        }
+    }
+
+    // ─── 5. Créer les sous-commandes + items ────────────────────────────────
+    let mut created_sub_orders: Vec<serde_json::Value> = Vec::new();
+
+    for (idx, sub) in sub_orders_data.iter().enumerate() {
+        let sub_order_id: uuid::Uuid = sqlx::query_scalar(
+            r#"
+            INSERT INTO pharmacy_orders (
+                pharmacy_id, user_id, status, total_amount, delivery_method, delivery_address,
+                payment_status, wallet_reserved_cents, wallet_reference, linked_delivery_id,
+                multi_order_id, sub_order_index
+            )
+            VALUES ($1, $2, 'pending', $3, $4, $5, 'paid', $6, $7, $8, $9, $10)
+            RETURNING id
+            "#,
+        )
+        .bind(sub.pharmacy_id)
+        .bind(user_id)
+        .bind(sub.sub_total)
+        .bind(&delivery_method)
+        .bind(request.delivery_address.as_ref())
+        .bind(total_cents)
+        .bind(&wallet_ref)
+        .bind(shared_delivery_id)
+        .bind(multi_order_id)
+        .bind((idx + 1) as i32)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur sous-commande {}: {}", idx + 1, e)))?;
+
+        for (product_id, medication_name, qty, unit_price) in &sub.line_items {
+            sqlx::query("INSERT INTO pharmacy_order_items (order_id, product_id, medication_name, quantity, unit_price) VALUES ($1, $2, $3, $4, $5)")
+                .bind(sub_order_id).bind(*product_id).bind(medication_name).bind(*qty).bind(*unit_price)
+                .execute(&mut *tx).await
+                .map_err(|e| AppError::Internal(format!("Erreur item: {}", e)))?;
+        }
+
+        created_sub_orders.push(json!({
+            "order_id": sub_order_id.to_string(),
+            "pharmacy_id": sub.pharmacy_id,
+            "pharmacy_name": sub.pharmacy_name,
+            "sub_order_index": idx + 1,
+            "sub_total": sub.sub_total.to_string(),
+            "medications": sub.line_items.iter().map(|(_, name, qty, price)| json!({
+                "medication_name": name, "quantity": qty, "unit_price": price.to_string()
+            })).collect::<Vec<_>>(),
+        }));
+
+        let _ = push_notification_service::send_push_notification(
+            &state.pg,
+            sub.pharmacy_owner_user_id,
+            "Nouvelle commande pharmacie".to_string(),
+            format!("Commande multi-pharmacies #{} à traiter", sub_order_id),
+            Some(json!({"type": "pharmacy_new_order", "order_id": sub_order_id.to_string()})),
+            Some("default".to_string()),
+        )
+        .await;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur commit: {}", e)))?;
+
+    // ─── 6. Générer QR codes par sous-commande (post-commit) ────────────────
+    let qr_svc = crate::services::qr_code_service::QRCodeService::new(state.pg.clone());
+    let mut sub_orders_with_qr: Vec<serde_json::Value> = Vec::new();
+
+    for mut sub_json in created_sub_orders {
+        let sub_order_id: uuid::Uuid =
+            sub_json["order_id"].as_str().and_then(|s| s.parse().ok()).unwrap_or_default();
+        let qr_pickup = qr_svc.generate_pharmacy_order_qr(sub_order_id, "pickup").await.ok();
+        let qr_delivery = if delivery_method == "delivery" {
+            qr_svc.generate_pharmacy_order_qr(sub_order_id, "delivery").await.ok()
+        } else {
+            None
+        };
+
+        sub_json["qr_pickup"] = qr_pickup
+            .map(|q| {
+                json!({
+                    "qr_code": q.qr_code, "status": q.status, "expires_at": q.expires_at
+                })
+            })
+            .unwrap_or(serde_json::Value::Null);
+        sub_json["qr_delivery"] = qr_delivery
+            .map(|q| {
+                json!({
+                    "qr_code": q.qr_code, "status": q.status, "expires_at": q.expires_at
+                })
+            })
+            .unwrap_or(serde_json::Value::Null);
+        sub_orders_with_qr.push(sub_json);
+    }
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "multi_order_id": multi_order_id.to_string(),
+            "delivery_method": delivery_method,
+            "linked_delivery_id": shared_delivery_id.map(|id| id.to_string()),
+            "total_amount": grand_total.to_string(),
+            "total_reserved_cents": total_cents,
+            "sub_orders_count": sub_orders_with_qr.len(),
+            "sub_orders": sub_orders_with_qr,
+            "message": format!("Commande passée dans {} pharmacie(s)", sub_orders_with_qr.len())
+        })),
+    ))
+}
+
+/// GET /api/pharmacies/multi-orders/:id
+/// Retourne la commande multi-pharmacies + toutes ses sous-commandes avec leurs QR codes
+pub async fn get_multi_pharmacy_order(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(multi_order_id): Path<uuid::Uuid>,
+) -> AppResult<impl IntoResponse> {
+    let parent = sqlx::query(
+        "SELECT id, patient_id, delivery_method, delivery_address, sub_orders_count, total_amount, status, created_at FROM pharmacy_multi_orders WHERE id = $1",
+    )
+    .bind(multi_order_id).fetch_optional(&state.pg).await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture multi_order: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Commande multi-pharmacies introuvable".to_string()))?;
+
+    let patient_id: i32 = parent.get("patient_id");
+    if user_id != patient_id {
+        return Err(AppError::Forbidden("Accès refusé".to_string()));
+    }
+
+    let sub_rows = sqlx::query(
+        r#"
+        SELECT o.id, o.pharmacy_id, o.status, o.total_amount, o.delivery_method,
+               o.sub_order_index, o.reversed_at,
+               p.nom AS pharmacy_nom, p.telephone AS pharmacy_tel
+        FROM pharmacy_orders o
+        JOIN pharmacies p ON p.id = o.pharmacy_id
+        WHERE o.multi_order_id = $1
+        ORDER BY o.sub_order_index ASC
+        "#,
+    )
+    .bind(multi_order_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let qr_svc = crate::services::qr_code_service::QRCodeService::new(state.pg.clone());
+    let delivery_method: String = parent.get("delivery_method");
+
+    let mut sub_orders_json: Vec<serde_json::Value> = Vec::new();
+    for row in &sub_rows {
+        let sub_id: uuid::Uuid = row.get("id");
+        let qr_pickup = qr_svc.generate_pharmacy_order_qr(sub_id, "pickup").await.ok();
+        let qr_delivery = if delivery_method == "delivery" {
+            qr_svc.generate_pharmacy_order_qr(sub_id, "delivery").await.ok()
+        } else {
+            None
+        };
+
+        let items = sqlx::query(
+            "SELECT medication_name, quantity, unit_price FROM pharmacy_order_items WHERE order_id = $1 ORDER BY id",
+        ).bind(sub_id).fetch_all(&state.pg).await.unwrap_or_default();
+
+        sub_orders_json.push(json!({
+            "order_id": sub_id.to_string(),
+            "pharmacy_id": row.get::<i32, _>("pharmacy_id"),
+            "pharmacy_nom": row.get::<String, _>("pharmacy_nom"),
+            "pharmacy_tel": row.get::<Option<String>, _>("pharmacy_tel"),
+            "status": row.get::<String, _>("status"),
+            "sub_order_index": row.get::<Option<i32>, _>("sub_order_index"),
+            "sub_total": row.get::<rust_decimal::Decimal, _>("total_amount").to_string(),
+            "reversed": row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("reversed_at").is_some(),
+            "items": items.iter().map(|r| json!({
+                "medication_name": r.get::<String, _>("medication_name"),
+                "quantity": r.get::<i32, _>("quantity"),
+                "unit_price": r.get::<rust_decimal::Decimal, _>("unit_price").to_string(),
+            })).collect::<Vec<_>>(),
+            "qr_pickup": qr_pickup.map(|q| json!({
+                "qr_code": q.qr_code, "status": q.status, "expires_at": q.expires_at
+            })),
+            "qr_delivery": qr_delivery.map(|q| json!({
+                "qr_code": q.qr_code, "status": q.status, "expires_at": q.expires_at
+            })),
+        }));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "multi_order_id": multi_order_id.to_string(),
+            "delivery_method": delivery_method,
+            "delivery_address": parent.get::<Option<String>, _>("delivery_address"),
+            "sub_orders_count": parent.get::<i32, _>("sub_orders_count"),
+            "total_amount": parent.get::<Option<rust_decimal::Decimal>, _>("total_amount").map(|d| d.to_string()).unwrap_or_default(),
+            "status": parent.get::<String, _>("status"),
+            "created_at": parent.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+            "sub_orders": sub_orders_json,
+        })),
+    ))
+}

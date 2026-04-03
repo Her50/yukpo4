@@ -528,6 +528,9 @@ reg('PharmacyAIInteractions', () => import('../screens/specialized/PharmacyAIInt
 reg('PharmacyAnalytics', () => import('../screens/specialized/PharmacyAnalyticsScreen'));
 reg('PharmacyFinancial', () => import('../screens/specialized/PharmacyFinancialScreen'));
 reg('MyPharmacyOrders', () => import('../screens/specialized/MyPharmacyOrdersScreen'));
+reg('PharmacyOrderQR', () => import('../screens/specialized/PharmacyOrderQRScreen'));
+reg('PharmacyOrderValidation', () => import('../screens/specialized/PharmacyOrderValidationScreen'));
+reg('PharmacyPartnerOrders', () => import('../screens/specialized/PharmacyPartnerOrdersScreen'));
 
 // ---------------------------------------------------------------------------
 // Specialized - Taxi (9)

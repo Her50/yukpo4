@@ -1055,6 +1055,15 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/pharmacies/orders/:order_id/detail",
             get(specialized_services_controller::get_pharmacy_order_detail),
         )
+        // ✅ Commandes multi-pharmacies : créer + consulter
+        .route(
+            "/api/pharmacies/orders/multi",
+            post(specialized_services_controller::create_multi_pharmacy_order),
+        )
+        .route(
+            "/api/pharmacies/multi-orders/:multi_order_id",
+            get(specialized_services_controller::get_multi_pharmacy_order),
+        )
         // ✅ 2025-01-27: Nouvelles routes Laboratoires
         .route(
             "/api/laboratoires/{id}/examination-types",

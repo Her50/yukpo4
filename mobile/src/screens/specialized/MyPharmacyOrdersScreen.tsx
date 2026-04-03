@@ -190,6 +190,10 @@ const MyPharmacyOrdersScreen: React.FC = () => {
         } as never);
     };
 
+    const handleViewQR = (order: PharmacyOrder) => {
+        (navigation as any).navigate('PharmacyOrderQR', { orderId: order.id });
+    };
+
     const renderOrder = ({ item }: { item: PharmacyOrder }) => {
         const statusColor = getStatusColor(item.status);
         const statusLabel = getStatusLabel(item.status);
@@ -242,12 +246,23 @@ const MyPharmacyOrdersScreen: React.FC = () => {
                         <Text style={styles.createdDate}>
                             Commande du {formatDate(item.created_at)}
                         </Text>
-                        <NativeButton
-                            title={t('myPharmacyOrders.voirDetails')}
-                            onPress={() => handleViewDetails(item)}
-                            variant="outline"
-                            size="small"
-                        />
+                        <View style={styles.cardActions}>
+                            {item.status !== 'cancelled' && (
+                                <TouchableOpacity
+                                    style={styles.qrButton}
+                                    onPress={() => handleViewQR(item)}
+                                >
+                                    <SafeIcon name="qr-code" size={15} color="#EC4899" />
+                                    <Text style={styles.qrButtonText}>QR codes</Text>
+                                </TouchableOpacity>
+                            )}
+                            <NativeButton
+                                title={t('myPharmacyOrders.voirDetails')}
+                                onPress={() => handleViewDetails(item)}
+                                variant="outline"
+                                size="small"
+                            />
+                        </View>
                     </View>
                 </NativeCard>
             </TouchableOpacity>
@@ -568,6 +583,26 @@ const styles = StyleSheet.create({
     },
     loader: {
         marginVertical: 16,
+    },
+    cardActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    qrButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1.5,
+        borderColor: '#EC4899',
+    },
+    qrButtonText: {
+        fontSize: 13,
+        color: '#EC4899',
+        fontWeight: '600',
     },
 });
 
