@@ -147,6 +147,7 @@ pub async fn generate_post(
         &content,
         scheduled_at,
         None,
+        product_ctx.image_url.as_deref(),
     )
     .await
     .ok();
@@ -355,8 +356,9 @@ async fn process_meta_webhook(
 
     for entry in entries {
         let page_id = entry["id"].as_str().unwrap_or("").to_string();
-        let messagings = entry["messaging"].as_array().cloned().unwrap_or_default();
 
+        // ── Cas 1 : messages privés (Messenger DM / Instagram DM) ─────────────
+        let messagings = entry["messaging"].as_array().cloned().unwrap_or_default();
         for messaging in messagings {
             let sender_id = messaging["sender"]["id"].as_str().unwrap_or("");
             let text = messaging["message"]["text"].as_str().unwrap_or("");
@@ -365,27 +367,7 @@ async fn process_meta_webhook(
                 continue;
             }
 
-            // Trouver le partenaire Yukpo propriétaire de cette page
-            let partner = sqlx::query(
-                r#"SELECT sa.user_id,
-                          COALESCE(
-                            (SELECT service_id FROM distribution_rules WHERE user_id = sa.user_id LIMIT 1),
-                            0
-                          ) as service_id
-                   FROM social_accounts sa
-                   WHERE sa.platform = 'facebook'
-                     AND (sa.metadata->>'page_id' = $1
-                          OR EXISTS (
-                            SELECT 1 FROM jsonb_array_elements(sa.metadata->'pages') p
-                            WHERE p->>'id' = $1
-                          ))"#,
-            )
-            .bind(page_id.clone())
-            .fetch_optional(&state.pg)
-            .await
-            .ok()
-            .flatten();
-
+            let partner = find_partner_by_page_id(&state, &page_id).await;
             use sqlx::Row;
             if let Some(p) = partner {
                 let user_id_val: i32 = p.try_get("user_id").unwrap_or(0);
@@ -406,7 +388,137 @@ async fn process_meta_webhook(
                 }
             }
         }
+
+        // ── Cas 2 : commentaires sur posts (Facebook feed / Instagram comments) ─
+        let changes = entry["changes"].as_array().cloned().unwrap_or_default();
+        for change in &changes {
+            let field = change["field"].as_str().unwrap_or("");
+
+            // Facebook : commentaires sur posts de la Page (field = "feed")
+            if field == "feed" {
+                let value = &change["value"];
+                if value["item"].as_str() == Some("comment")
+                    && value["verb"].as_str() == Some("add")
+                {
+                    let comment_id = value["comment_id"].as_str().unwrap_or("");
+                    let commenter_id = value["sender_id"]
+                        .as_str()
+                        .or_else(|| value["from"]["id"].as_str())
+                        .unwrap_or("");
+                    let comment_text = value["message"].as_str().unwrap_or("");
+                    let commenter_name = value["from"]["name"].as_str();
+
+                    if comment_id.is_empty() || comment_text.is_empty() {
+                        continue;
+                    }
+
+                    let partner = find_partner_by_page_id(&state, &page_id).await;
+                    use sqlx::Row;
+                    if let Some(p) = partner {
+                        let user_id_val: i32 = p.try_get("user_id").unwrap_or(0);
+                        let service_id_val: i32 = p.try_get("service_id").unwrap_or(0);
+                        if service_id_val > 0 {
+                            // Enqueue comme message entrant avec contexte "comment"
+                            let _ = crate::tasks::social_chatbot_worker::enqueue_incoming_message(
+                                &state.pg,
+                                user_id_val,
+                                service_id_val,
+                                "facebook_comment",
+                                commenter_id,
+                                commenter_name,
+                                comment_text,
+                                Some(comment_id), // page_id = comment_id pour la réponse
+                                &change["value"],
+                            )
+                            .await;
+
+                            log::info!(
+                                "[Webhook] 💬 Commentaire Facebook enqueué — page={} comment_id={} from={}",
+                                page_id,
+                                comment_id,
+                                commenter_id
+                            );
+                        }
+                    }
+                }
+                continue;
+            }
+
+            // Instagram : commentaires (field = "comments")
+            if field == "comments" {
+                let value = &change["value"];
+                let commenter_id = value["from"]["id"].as_str().unwrap_or("");
+                let comment_text = value["text"].as_str().unwrap_or("");
+                let comment_id = value["id"].as_str().unwrap_or("");
+                let media_id = value["media"]["id"].as_str().unwrap_or("");
+                let commenter_name = value["from"]["username"].as_str();
+
+                if comment_id.is_empty() || comment_text.is_empty() {
+                    continue;
+                }
+
+                let partner = find_partner_by_page_id(&state, &page_id).await;
+                use sqlx::Row;
+                if let Some(p) = partner {
+                    let user_id_val: i32 = p.try_get("user_id").unwrap_or(0);
+                    let service_id_val: i32 = p.try_get("service_id").unwrap_or(0);
+                    if service_id_val > 0 {
+                        let _ = crate::tasks::social_chatbot_worker::enqueue_incoming_message(
+                            &state.pg,
+                            user_id_val,
+                            service_id_val,
+                            "instagram_comment",
+                            commenter_id,
+                            commenter_name,
+                            comment_text,
+                            Some(comment_id),
+                            &change["value"],
+                        )
+                        .await;
+
+                        log::info!(
+                            "[Webhook] 💬 Commentaire Instagram enqueué — media={} comment={} from={}",
+                            media_id,
+                            comment_id,
+                            commenter_id
+                        );
+                    }
+                }
+                continue;
+            }
+
+            // Ignorer les autres champs (reactions, stories, etc.)
+            if field != "messages" {
+                continue;
+            }
+        }
     }
+}
+
+/// Trouve le partenaire Yukpo propriétaire d'une Page Facebook / Instagram.
+async fn find_partner_by_page_id(
+    state: &Arc<AppState>,
+    page_id: &str,
+) -> Option<sqlx::postgres::PgRow> {
+    sqlx::query(
+        r#"SELECT sa.user_id,
+                  COALESCE(
+                    (SELECT service_id FROM distribution_rules WHERE user_id = sa.user_id LIMIT 1),
+                    0
+                  ) as service_id
+           FROM social_accounts sa
+           WHERE sa.platform IN ('facebook', 'instagram')
+             AND (sa.metadata->>'page_id' = $1
+                  OR EXISTS (
+                    SELECT 1 FROM jsonb_array_elements(sa.metadata->'pages') p
+                    WHERE p->>'id' = $1
+                  ))"#,
+    )
+    .bind(page_id)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten()
 }
 
 async fn process_whatsapp_webhook(state: Arc<AppState>, payload: serde_json::Value) {

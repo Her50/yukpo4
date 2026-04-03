@@ -183,6 +183,46 @@ async fn generate_daily_schedule(state: &Arc<AppState>) -> Result<(), String> {
                 }
             });
 
+            // Résoudre l'image : utiliser l'image du produit ou générer via DALL-E 3
+            let resolved_image_url: Option<String> = if product.image_url.is_some() {
+                product.image_url.clone()
+            } else {
+                // Pas d'image — générer un visuel IA (DALL-E 3)
+                match ai_content_service::generate_product_image(
+                    &product.name,
+                    &product.category,
+                    &store.name,
+                )
+                .await
+                {
+                    Ok(url) => {
+                        log::info!(
+                            "[Scheduler] 🎨 Visuel IA généré pour \"{}\" ({})",
+                            product.name,
+                            slot.platform
+                        );
+                        Some(url)
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "[Scheduler] ⚠️ Génération visuel DALL-E échouée pour \"{}\": {}",
+                            product.name,
+                            e
+                        );
+                        None
+                    }
+                }
+            };
+
+            // Instagram nécessite obligatoirement une image — ignorer si aucun visuel
+            if slot.platform == "instagram" && resolved_image_url.is_none() {
+                log::warn!(
+                    "[Scheduler] ⏭️ Post Instagram ignoré pour \"{}\" — aucun visuel disponible",
+                    product.name
+                );
+                continue;
+            }
+
             // Générer le contenu IA
             match ai_content_service::generate_product_post(product, &store, &prefs).await {
                 Ok(content) => {
@@ -195,6 +235,7 @@ async fn generate_daily_schedule(state: &Arc<AppState>) -> Result<(), String> {
                         &content,
                         Some(slot.datetime),
                         None,
+                        resolved_image_url.as_deref(),
                     )
                     .await;
 
@@ -482,24 +523,26 @@ async fn publish_to_facebook(
         extract_first_page_id, extract_page_access_token, load_valid_token,
     };
 
-    let token_info = load_valid_token(&state.pg, user_id, "facebook").await?;
+    let http = reqwest::Client::new();
+    let token_info = load_valid_token(&state.pg, &http, user_id, "facebook")
+        .await
+        .map_err(|e| e.to_string())?;
     let page_id =
         extract_first_page_id(&token_info.metadata).ok_or("Aucune Page Facebook connectée")?;
     let page_token = extract_page_access_token(&token_info.metadata, &page_id)
         .ok_or("Page access token manquant")?;
 
-    let product = facebook_publisher_service::CatalogProduct {
-        id: format!("post_{}", chrono::Utc::now().timestamp()),
-        name: "Post automatique".to_string(),
-        price: 0,
-        sale_price: None,
-        image_url: image_url.unwrap_or("").to_string(),
-        product_url: format!("https://yukpomnang.com?utm_source=auto_post&utm_medium=social&utm_campaign=yukpo_scheduler"),
-        store_name: "".to_string(),
-        in_stock: true,
-    };
-
-    facebook_publisher_service::post_product_to_page(&page_id, &page_token, &product, caption).await
+    let link = "https://yukpomnang.com?utm_source=auto_post&utm_medium=social";
+    facebook_publisher_service::post_product_to_page(
+        &http,
+        &page_token,
+        &page_id,
+        caption,
+        link,
+        image_url,
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// Publie sur Instagram via instagram_publisher_service
@@ -513,18 +556,33 @@ async fn publish_to_instagram(
         extract_first_page_id, extract_page_access_token, load_valid_token,
     };
 
-    let token_info = load_valid_token(&state.pg, user_id, "facebook").await?;
+    let http = reqwest::Client::new();
+    let token_info = load_valid_token(&state.pg, &http, user_id, "facebook")
+        .await
+        .map_err(|e| e.to_string())?;
     let page_id =
         extract_first_page_id(&token_info.metadata).ok_or("Aucune Page Facebook connectée")?;
     let page_token = extract_page_access_token(&token_info.metadata, &page_id)
         .ok_or("Page access token manquant")?;
 
     let ig_user_id =
-        instagram_publisher_service::get_ig_business_account_id(&page_id, &page_token).await?;
+        instagram_publisher_service::get_ig_business_account_id(&http, &page_id, &page_token)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or("Compte Instagram Business non lié à cette Page")?;
 
-    let img = image_url.unwrap_or("").to_string();
-    instagram_publisher_service::publish_product_image(&ig_user_id, &page_token, &img, caption)
-        .await
+    let img = image_url
+        .filter(|u| !u.is_empty())
+        .ok_or("Instagram nécessite une image — aucun visuel disponible pour ce post")?;
+    instagram_publisher_service::publish_product_image(
+        &http,
+        &ig_user_id,
+        &page_token,
+        img,
+        caption,
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// Récupère les insights d'un post publié (pour A/B test)

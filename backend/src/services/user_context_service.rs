@@ -163,10 +163,12 @@ pub async fn load_user_commercial_context(
     pg: &PgPool,
     user_id: i32,
 ) -> Result<UserCommercialContext, String> {
+    use sqlx::Row;
+
     // 1. Charger les services actifs de l'utilisateur
     // Note: is_active est une vraie colonne BOOLEAN sur services
     // name/city sont dans data JSONB (pas de colonnes dédiées dans la structure de base)
-    let services_raw = sqlx::query!(
+    let services_raw = sqlx::query(
         r#"SELECT
                s.id,
                COALESCE(
@@ -174,13 +176,13 @@ pub async fn load_user_commercial_context(
                    s.data->>'nom',
                    s.data->>'name',
                    'Service'
-               ) as "name!",
+               ) as name,
                COALESCE(
                    s.data->>'ville',
                    s.data->'ville'->>'valeur',
                    ''
-               ) as "city!",
-               COALESCE(s.category, s.specialized_type, 'commerce') as "sector!",
+               ) as city,
+               COALESCE(s.category, s.specialized_type, 'commerce') as sector,
                s.specialized_type,
                s.category
            FROM services s
@@ -188,8 +190,8 @@ pub async fn load_user_commercial_context(
              AND s.is_active = true
            ORDER BY s.created_at DESC
            LIMIT 10"#,
-        user_id
     )
+    .bind(user_id)
     .fetch_all(pg)
     .await
     .map_err(|e| e.to_string())?;
@@ -202,23 +204,23 @@ pub async fn load_user_commercial_context(
     let mut all_sectors: Vec<String> = Vec::new();
 
     for svc in &services_raw {
-        let service_id = svc.id;
+        let service_id: i32 = svc.try_get("id").unwrap_or(0);
 
         // 2. Charger les produits de ce service
         // Utilise les colonnes GENERATED: product_name, product_price, product_type
         // Le prix promo est dans product_data->>'prix_promo'
-        let products_raw = sqlx::query!(
+        let products_raw = sqlx::query(
             r#"SELECT
                    id,
-                   COALESCE(product_name, 'Produit') as "name!",
-                   COALESCE(product_price::float8, 0.0) as "price!: f64",
+                   COALESCE(product_name, 'Produit') as name,
+                   COALESCE(product_price::float8, 0.0) as price,
                    NULLIF(product_data->>'prix_promo', '')::float8 as sale_price,
-                   COALESCE(product_type, 'general') as "category!",
-                   COALESCE(is_active, true) as "in_stock!",
+                   COALESCE(product_type, 'general') as category,
+                   COALESCE(is_active, true) as in_stock,
                    (
                        product_data->>'prix_promo' IS NOT NULL
                        OR product_data->>'en_promotion' = 'true'
-                   ) as "is_promo!"
+                   ) as is_promo
                FROM service_products
                WHERE service_id = $1
                  AND is_active = true
@@ -226,8 +228,8 @@ pub async fn load_user_commercial_context(
                    CASE WHEN product_data->>'prix_promo' IS NOT NULL THEN 0 ELSE 1 END,
                    created_at DESC
                LIMIT 30"#,
-            service_id
         )
+        .bind(service_id)
         .fetch_all(pg)
         .await
         .unwrap_or_default();
@@ -235,18 +237,18 @@ pub async fn load_user_commercial_context(
         let products: Vec<UserProduct> = products_raw
             .iter()
             .map(|p| {
-                let cat = p.category.clone();
+                let cat: String = p.try_get("category").unwrap_or_default();
                 if !all_categories.contains(&cat) {
                     all_categories.push(cat.clone());
                 }
                 UserProduct {
-                    id: p.id,
-                    name: p.name.clone(),
-                    price: p.price,
-                    sale_price: p.sale_price,
+                    id: p.try_get("id").unwrap_or(0),
+                    name: p.try_get("name").unwrap_or_default(),
+                    price: p.try_get("price").unwrap_or(0.0),
+                    sale_price: p.try_get("sale_price").ok().flatten(),
                     category: cat,
-                    in_stock: p.in_stock,
-                    is_promo: p.is_promo,
+                    in_stock: p.try_get("in_stock").unwrap_or(true),
+                    is_promo: p.try_get("is_promo").unwrap_or(false),
                 }
             })
             .collect();
@@ -254,11 +256,13 @@ pub async fn load_user_commercial_context(
         let promo_count = products.iter().filter(|p| p.is_promo).count() as i32;
         let product_count = products.len() as i32;
 
-        let city = svc.city.clone();
-        let sector = svc.sector.clone();
-        let name = svc.name.clone();
+        let city: String = svc.try_get("city").unwrap_or_default();
+        let sector: String = svc.try_get("sector").unwrap_or_default();
+        let name: String = svc.try_get("name").unwrap_or_else(|_| "Service".to_string());
+        let specialized_type: Option<String> = svc.try_get("specialized_type").ok().flatten();
+        let category: Option<String> = svc.try_get("category").ok().flatten();
         let actor_type =
-            ActorType::from_specialized(svc.specialized_type.as_deref(), svc.category.as_deref());
+            ActorType::from_specialized(specialized_type.as_deref(), category.as_deref());
 
         if !city.is_empty() && !all_cities.contains(&city) {
             all_cities.push(city.clone());
@@ -272,7 +276,7 @@ pub async fn load_user_commercial_context(
             name,
             sector,
             city,
-            specialized_type: svc.specialized_type.clone(),
+            specialized_type,
             actor_type,
             products,
             product_count,
@@ -283,13 +287,13 @@ pub async fn load_user_commercial_context(
     // 3. Signaux publicitaires Meta Ads actifs
     // meta_ad_campaigns: id, name, objective, status, roas, impressions, clicks, spent_fcfa, conversions
     let ad_signals: Vec<AdSignal> = if is_provider {
-        sqlx::query!(
+        sqlx::query(
             r#"SELECT
                    id,
                    name,
                    objective,
                    status,
-                   roas,
+                   roas::float8 as roas_f,
                    impressions,
                    clicks,
                    spent_fcfa,
@@ -299,25 +303,26 @@ pub async fn load_user_commercial_context(
                  AND status = 'active'
                ORDER BY updated_at DESC
                LIMIT 5"#,
-            user_id
         )
+        .bind(user_id)
         .fetch_all(pg)
         .await
         .unwrap_or_default()
         .into_iter()
         .map(|r| AdSignal {
-            campaign_id: r.id,
-            name: r.name,
-            objective: r.objective,
-            status: r.status,
-            roas: r.roas.map(|v| {
-                // roas est NUMERIC(6,2) — convertir via string pour éviter BigDecimal
-                v.to_string().parse::<f64>().unwrap_or(0.0)
-            }),
-            impressions: r.impressions,
-            clicks: r.clicks,
-            spend_fcfa: r.spent_fcfa,
-            conversions: r.conversions,
+            campaign_id: r.try_get("id").unwrap_or(0),
+            name: r.try_get("name").unwrap_or_default(),
+            objective: r
+                .try_get::<Option<String>, _>("objective")
+                .ok()
+                .flatten()
+                .unwrap_or_default(),
+            status: r.try_get("status").unwrap_or_default(),
+            roas: r.try_get::<Option<f64>, _>("roas_f").ok().flatten(),
+            impressions: r.try_get::<Option<i64>, _>("impressions").ok().flatten().unwrap_or(0),
+            clicks: r.try_get::<Option<i64>, _>("clicks").ok().flatten().unwrap_or(0),
+            spend_fcfa: r.try_get::<Option<i64>, _>("spent_fcfa").ok().flatten().unwrap_or(0),
+            conversions: r.try_get::<Option<i32>, _>("conversions").ok().flatten().unwrap_or(0),
         })
         .collect()
     } else {
@@ -331,36 +336,34 @@ pub async fn load_user_commercial_context(
         let mut signals = Vec::new();
 
         for sid in &service_ids {
-            let count = sqlx::query_scalar!(
+            let count: i64 = sqlx::query_scalar(
                 r#"SELECT COUNT(*) FROM social_chatbot_messages m
                    JOIN social_chatbot_threads t ON t.id = m.thread_id
                    WHERE t.service_id = $1
                      AND t.user_id = $2
                      AND m.direction = 'inbound'
                      AND m.created_at >= $3"#,
-                sid,
-                user_id,
-                week_ago
             )
+            .bind(sid)
+            .bind(user_id)
+            .bind(week_ago)
             .fetch_one(pg)
             .await
-            .unwrap_or(Some(0))
             .unwrap_or(0);
 
-            let escalations = sqlx::query_scalar!(
+            let escalations: i64 = sqlx::query_scalar(
                 r#"SELECT COUNT(*) FROM social_escalation_events
                    WHERE user_id = $1
                      AND created_at >= $2"#,
-                user_id,
-                week_ago
             )
+            .bind(user_id)
+            .bind(week_ago)
             .fetch_one(pg)
             .await
-            .unwrap_or(Some(0))
             .unwrap_or(0);
 
             // Top mots-clés extraits des 50 derniers messages entrants
-            let recent_msgs = sqlx::query_scalar!(
+            let recent_msgs: Vec<Option<String>> = sqlx::query_scalar(
                 r#"SELECT m.content FROM social_chatbot_messages m
                    JOIN social_chatbot_threads t ON t.id = m.thread_id
                    WHERE t.service_id = $1
@@ -368,9 +371,9 @@ pub async fn load_user_commercial_context(
                      AND m.created_at >= $2
                    ORDER BY m.created_at DESC
                    LIMIT 50"#,
-                sid,
-                week_ago
             )
+            .bind(sid)
+            .bind(week_ago)
             .fetch_all(pg)
             .await
             .unwrap_or_default();
@@ -390,15 +393,13 @@ pub async fn load_user_commercial_context(
     };
 
     // 5. Comptes sociaux connectés
-    let has_social_accounts = sqlx::query_scalar!(
-        "SELECT COUNT(*) FROM social_accounts WHERE user_id = $1",
-        user_id
-    )
-    .fetch_one(pg)
-    .await
-    .unwrap_or(Some(0))
-    .unwrap_or(0)
-        > 0;
+    let has_social_accounts: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM social_accounts WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_one(pg)
+            .await
+            .unwrap_or(0);
+    let has_social_accounts = has_social_accounts > 0;
 
     let has_meta_ads = !ad_signals.is_empty();
     let total_products = services.iter().map(|s| s.product_count).sum();

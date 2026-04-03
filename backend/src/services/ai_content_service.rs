@@ -6,6 +6,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
 
+use crate::services::stock_media_service::{
+    StockMediaConfig, StockMediaOrientation, StockMediaSearchRequest, StockMediaService,
+    StockMediaType,
+};
 use crate::services::yukpo_openai_outbound::resolve_openai_api_key;
 
 // ─── Structures ───────────────────────────────────────────────────────────────
@@ -380,6 +384,113 @@ pub async fn load_preferences(pg: &PgPool, user_id: i32, service_id: i32) -> Con
     }
 }
 
+/// Résout le meilleur visuel disponible pour un produit sans image :
+///   1. Recherche stock photo (Unsplash → Pexels) avec nom + catégorie
+///   2. Fallback : génération DALL-E 3 si aucun stock photo pertinent trouvé
+pub async fn generate_product_image(
+    product_name: &str,
+    category: &str,
+    store_name: &str,
+) -> Result<String, String> {
+    // ── Étape 1 : chercher un stock photo réel (Unsplash / Pexels) ──────────
+    let stock_config = StockMediaConfig::default();
+    let has_stock_provider = stock_config.unsplash_access_key.is_some()
+        || stock_config.pexels_api_key.is_some()
+        || stock_config.pixabay_api_key.is_some();
+
+    if has_stock_provider {
+        let service = StockMediaService::new(stock_config);
+        // Requête : nom produit + catégorie, portrait (carré prioritaire), 1 résultat
+        let req = StockMediaSearchRequest {
+            query: format!("{} {}", product_name, category),
+            provider: None,
+            media_type: StockMediaType::Photo,
+            orientation: Some(StockMediaOrientation::Square),
+            color: None,
+            min_width: Some(600),
+            min_height: Some(600),
+            page: Some(1),
+            per_page: Some(3),
+        };
+
+        match service.search(req).await {
+            Ok(responses) => {
+                // Prendre le premier résultat du premier provider qui répond
+                let best_url =
+                    responses.iter().find_map(|resp| resp.results.first().map(|r| r.url.clone()));
+
+                if let Some(url) = best_url {
+                    log::info!(
+                        "[AIContent] 🖼️ Stock photo trouvé pour \"{}\" ({}): {}",
+                        product_name,
+                        category,
+                        &url[..url.len().min(60)]
+                    );
+                    return Ok(url);
+                }
+            }
+            Err(e) => {
+                log::warn!(
+                    "[AIContent] ⚠️ Stock photo search échoué pour \"{}\": {}",
+                    product_name,
+                    e
+                );
+            }
+        }
+    }
+
+    // ── Étape 2 : fallback DALL-E 3 ─────────────────────────────────────────
+    let api_key = resolve_openai_api_key().ok_or("OPENAI_API_KEY non configurée")?;
+
+    let prompt = format!(
+        "Professional commercial product photo of \"{product_name}\", {category} product, \
+         sold in an African e-commerce app. Clean studio background, natural lighting, \
+         sharp focus on the product, high quality, no text or watermarks.",
+        product_name = product_name,
+        category = category,
+    );
+
+    let body = serde_json::json!({
+        "model": "dall-e-3",
+        "prompt": prompt,
+        "n": 1,
+        "size": "1024x1024",
+        "quality": "standard",
+        "response_format": "url"
+    });
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .post("https://api.openai.com/v1/images/generations")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("DALL-E request error: {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(format!("DALL-E API error {}: {}", status, text));
+    }
+
+    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let url = json["data"][0]["url"]
+        .as_str()
+        .ok_or("URL image DALL-E absente dans la réponse")?
+        .to_string();
+
+    log::info!(
+        "[AIContent] 🎨 Image DALL-E 3 générée pour \"{}\" ({}) — store: {}",
+        product_name,
+        category,
+        store_name
+    );
+
+    Ok(url)
+}
+
 /// Sauvegarde un post généré en base (statut draft ou scheduled)
 pub async fn save_generated_post(
     pg: &PgPool,
@@ -390,6 +501,7 @@ pub async fn save_generated_post(
     content: &GeneratedContent,
     scheduled_at: Option<chrono::DateTime<chrono::Utc>>,
     generation_prompt: Option<&str>,
+    image_url: Option<&str>,
 ) -> Result<i32, String> {
     let caption = match platform {
         "facebook" => &content.platform_variants.facebook,
@@ -408,8 +520,8 @@ pub async fn save_generated_post(
     let row = sqlx::query(
         r#"INSERT INTO social_ai_posts
            (user_id, service_id, product_id, platform, caption, caption_variant_b,
-            hashtags, status, tone, scheduled_at, ai_model, generation_prompt)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'gpt-4o', $11)
+            hashtags, status, tone, scheduled_at, ai_model, generation_prompt, image_url)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'gpt-4o', $11, $12)
            RETURNING id"#,
     )
     .bind(user_id)
@@ -423,6 +535,7 @@ pub async fn save_generated_post(
     .bind(content.tone_used.as_str())
     .bind(scheduled_at)
     .bind(generation_prompt)
+    .bind(image_url)
     .fetch_one(pg)
     .await
     .map_err(|e| e.to_string())?;

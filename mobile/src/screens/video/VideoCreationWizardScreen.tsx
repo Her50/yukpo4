@@ -71,7 +71,8 @@ interface ServiceMediaItem {
 type WizardStep = 1 | 2 | 3;
 
 type ModePreset = 'standard' | 'expert';
-type CreationSource = 'media' | 'ai_virtual';
+// media = médias du partenaire | ai_visual = génération image IA (DALL-E 3) | ai_virtual = vidéo IA (Runway, non dispo)
+type CreationSource = 'media' | 'ai_visual' | 'ai_virtual';
 
 const buildFallbackStoryTemplates = (t: (key: string) => string): StoryTemplateSpec[] => [
     {
@@ -1362,15 +1363,14 @@ const VideoCreationWizardScreen: React.FC = () => {
             return;
         }
 
-        // ✅ CORRIGÉ 2026-03-11: Vérifier que le mode ai_virtual est disponible
-        // Le service de génération vidéo IA (Runway/Sora/Pika) n'est pas encore activé côté serveur
+        // Mode vidéo IA (Runway/Sora) non disponible — rediriger vers Visuel IA
         if (creationSource === 'ai_virtual') {
             Alert.alert(
-                t('videoWizardExtra.aiNotAvailable'),
-                t('videoWizardExtra.aiNotAvailableMsg'),
+                t('videoWizardExtra.aiNotAvailable') || 'Vidéo IA indisponible',
+                t('videoWizardExtra.aiNotAvailableMsg') || 'La génération vidéo IA n\'est pas encore disponible. Utilisez "Visuel IA" pour générer une photo produit immédiatement.',
                 [
-                    { text: t('videoWizard.ok'), style: 'cancel' },
-                    { text: t('videoWizardExtra.useMyMedia'), onPress: () => setCreationSource('media') },
+                    { text: t('message.cancel') || 'Annuler', style: 'cancel' },
+                    { text: 'Utiliser Visuel IA', onPress: () => setCreationSource('ai_visual') },
                 ]
             );
             return;
@@ -1710,24 +1710,83 @@ const VideoCreationWizardScreen: React.FC = () => {
 
                             <NativeCard style={styles.sectionCard}>
                                 <Text style={styles.sectionTitle}>{t('videoCreationWizard.modeDeCreation')}</Text>
-                                <View style={styles.creationSourceRow}>
+                                <View style={styles.creationSourceColumn}>
+                                    {/* Option 1 — Médias existants du partenaire */}
                                     <TouchableOpacity
                                         style={[styles.creationSourceOption, creationSource === 'media' && styles.creationSourceOptionActive]}
                                         onPress={() => setCreationSource('media')}
                                     >
-                                        <SafeIcon name="image" size={22} color={creationSource === 'media' ? '#FFFFFF' : modernColors.textSecondary} />
-                                        <Text style={[styles.creationSourceLabel, creationSource === 'media' && styles.creationSourceLabelActive]}>{t('videoCreationWizard.mesPhotosVideos')}</Text>
-                                        <Text style={[styles.creationSourceHint, creationSource === 'media' && styles.creationSourceHintActive]}>{t('videoCreationWizard.utiliseTesPropresMedias')}</Text>
+                                        <View style={styles.creationSourceLeft}>
+                                            <SafeIcon name="image" size={22} color={creationSource === 'media' ? '#FFFFFF' : modernColors.textSecondary} />
+                                        </View>
+                                        <View style={styles.creationSourceBody}>
+                                            <Text style={[styles.creationSourceLabel, creationSource === 'media' && styles.creationSourceLabelActive]}>{t('videoCreationWizard.mesPhotosVideos')}</Text>
+                                            <Text style={[styles.creationSourceHint, creationSource === 'media' && styles.creationSourceHintActive]}>{t('videoCreationWizard.utiliseTesPropresMedias')}</Text>
+                                        </View>
+                                        {creationSource === 'media' && <SafeIcon name="check-circle" size={18} color="#FFFFFF" />}
                                     </TouchableOpacity>
+
+                                    {/* Option 2 — Visuel IA (DALL-E 3 + stock photo) — OPÉRATIONNEL */}
                                     <TouchableOpacity
-                                        style={[styles.creationSourceOption, creationSource === 'ai_virtual' && styles.creationSourceOptionActive]}
-                                        onPress={() => setCreationSource('ai_virtual')}
+                                        style={[styles.creationSourceOption, creationSource === 'ai_visual' && styles.creationSourceOptionActive]}
+                                        onPress={() => setCreationSource('ai_visual')}
                                     >
-                                        <SafeIcon name="sparkles" size={22} color={creationSource === 'ai_virtual' ? '#FFFFFF' : modernColors.textSecondary} />
-                                        <Text style={[styles.creationSourceLabel, creationSource === 'ai_virtual' && styles.creationSourceLabelActive]}>{t('videoCreationWizard.video100Ia')}</Text>
-                                        <Text style={[styles.creationSourceHint, creationSource === 'ai_virtual' && styles.creationSourceHintActive]}>{t('videoCreationWizard.liaGenereToutPourToi')}</Text>
+                                        <View style={styles.creationSourceLeft}>
+                                            <SafeIcon name="sparkles" size={22} color={creationSource === 'ai_visual' ? '#FFFFFF' : '#6366f1'} />
+                                        </View>
+                                        <View style={styles.creationSourceBody}>
+                                            <View style={styles.creationSourceLabelRow}>
+                                                <Text style={[styles.creationSourceLabel, creationSource === 'ai_visual' && styles.creationSourceLabelActive]}>{t('videoCreationWizard.visualIa') || 'Visuel IA'}</Text>
+                                                <View style={styles.creationSourceBadgeNew}>
+                                                    <Text style={styles.creationSourceBadgeText}>{'NOUVEAU'}</Text>
+                                                </View>
+                                            </View>
+                                            <Text style={[styles.creationSourceHint, creationSource === 'ai_visual' && styles.creationSourceHintActive]}>{t('videoCreationWizard.visualIaHint') || 'Photo produit IA · stock photo ou DALL-E 3'}</Text>
+                                        </View>
+                                        {creationSource === 'ai_visual' && <SafeIcon name="check-circle" size={18} color="#FFFFFF" />}
+                                    </TouchableOpacity>
+
+                                    {/* Option 3 — Vidéo 100% IA — NON DISPONIBLE (Runway/Sora) */}
+                                    <TouchableOpacity
+                                        style={[styles.creationSourceOption, styles.creationSourceOptionDisabled]}
+                                        onPress={() => Alert.alert(
+                                            t('videoWizardExtra.aiNotAvailable') || 'Bientôt disponible',
+                                            t('videoWizardExtra.aiNotAvailableMsg') || 'La génération vidéo IA (Runway/Sora) sera disponible prochainement. Utilisez "Visuel IA" pour générer une photo produit maintenant.',
+                                            [{ text: 'OK' }, { text: t('videoCreationWizard.visualIa') || 'Utiliser Visuel IA', onPress: () => setCreationSource('ai_visual') }]
+                                        )}
+                                    >
+                                        <View style={styles.creationSourceLeft}>
+                                            <SafeIcon name="video" size={22} color={modernColors.textSecondary} />
+                                        </View>
+                                        <View style={styles.creationSourceBody}>
+                                            <View style={styles.creationSourceLabelRow}>
+                                                <Text style={[styles.creationSourceLabel, styles.creationSourceLabelDisabled]}>{t('videoCreationWizard.video100Ia')}</Text>
+                                                <View style={styles.creationSourceBadgeSoon}>
+                                                    <Text style={styles.creationSourceBadgeText}>{'BIENTÔT'}</Text>
+                                                </View>
+                                            </View>
+                                            <Text style={[styles.creationSourceHint, styles.creationSourceHintDisabled]}>{t('videoCreationWizard.liaGenereToutPourToi')}</Text>
+                                        </View>
                                     </TouchableOpacity>
                                 </View>
+
+                                {/* Panneau de configuration Visuel IA */}
+                                {creationSource === 'ai_visual' && (
+                                    <View style={styles.visualIaPanel}>
+                                        <Text style={styles.visualIaPanelTitle}>{t('videoCreationWizard.visualIaOptions') || 'Options du visuel IA'}</Text>
+                                        <Text style={styles.visualIaPanelHint}>
+                                            {t('videoCreationWizard.visualIaPipelineHint') ||
+                                                '1. Recherche de stock photo (Unsplash/Pexels) correspondant au produit\n2. Si introuvable → génération DALL-E 3 (photo studio IA)'}
+                                        </Text>
+                                        <View style={styles.visualIaTagsRow}>
+                                            {['Fond blanc', 'Studio', 'Ambiance boutique', 'Lifestyle'].map((style) => (
+                                                <TouchableOpacity key={style} style={styles.visualIaTag}>
+                                                    <Text style={styles.visualIaTagText}>{style}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    </View>
+                                )}
                             </NativeCard>
 
                             <NativeCard style={styles.sectionCard}>
@@ -2586,12 +2645,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
     },
+    creationSourceColumn: {
+        flexDirection: 'column',
+        gap: 10,
+    },
     creationSourceOption: {
-        flex: 1,
-        borderRadius: 16,
-        padding: 16,
+        flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 12,
+        borderRadius: 14,
+        padding: 14,
         backgroundColor: modernColors.background,
         borderWidth: 2,
         borderColor: modernColors.border,
@@ -2600,22 +2663,98 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.primary,
         borderColor: modernColors.primary,
     },
+    creationSourceOptionDisabled: {
+        opacity: 0.5,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.background,
+    },
+    creationSourceLeft: {
+        width: 36,
+        alignItems: 'center',
+    },
+    creationSourceBody: {
+        flex: 1,
+        gap: 3,
+    },
+    creationSourceLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     creationSourceLabel: {
         fontSize: 14,
         fontWeight: '700',
         color: modernColors.text,
-        textAlign: 'center',
     },
     creationSourceLabelActive: {
         color: '#FFFFFF',
     },
+    creationSourceLabelDisabled: {
+        color: modernColors.textSecondary,
+    },
     creationSourceHint: {
         fontSize: 11,
         color: modernColors.textSecondary,
-        textAlign: 'center',
     },
     creationSourceHintActive: {
         color: 'rgba(255,255,255,0.8)',
+    },
+    creationSourceHintDisabled: {
+        color: modernColors.textSecondary,
+    },
+    creationSourceBadgeNew: {
+        backgroundColor: '#10b981',
+        borderRadius: 4,
+        paddingHorizontal: 5,
+        paddingVertical: 2,
+    },
+    creationSourceBadgeSoon: {
+        backgroundColor: '#f59e0b',
+        borderRadius: 4,
+        paddingHorizontal: 5,
+        paddingVertical: 2,
+    },
+    creationSourceBadgeText: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    visualIaPanel: {
+        marginTop: 14,
+        padding: 14,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 12,
+        gap: 10,
+        borderWidth: 1,
+        borderColor: '#c7d2fe',
+    },
+    visualIaPanelTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#4338ca',
+    },
+    visualIaPanelHint: {
+        fontSize: 12,
+        color: '#4f46e5',
+        lineHeight: 18,
+    },
+    visualIaTagsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    visualIaTag: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 20,
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#a5b4fc',
+    },
+    visualIaTagText: {
+        fontSize: 11,
+        color: '#4f46e5',
+        fontWeight: '600',
     },
     sectionSubTitle: {
         fontSize: 15, // ✅ AUGMENTÉ: De 13 à 15 pour meilleure lisibilité

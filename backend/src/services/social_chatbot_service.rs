@@ -193,7 +193,19 @@ pub async fn send_meta_response(
     match platform {
         "messenger" => send_messenger_response(&token, sender_id, response).await,
         "instagram_dm" => send_instagram_dm_response(&token, sender_id, response).await,
-        "whatsapp" => send_whatsapp_response(&token, sender_id, response).await,
+        // Pour WhatsApp, page_id = phone_number_id du partenaire (stocké dans social_accounts.metadata)
+        "whatsapp" => {
+            send_whatsapp_response_with_phone_id(&token, sender_id, page_id, response).await
+        }
+        // Commentaires publics — page_id = comment_id dans ce contexte
+        "facebook_comment" => {
+            // sender_id = user PSID, page_id = comment_id à répondre
+            send_facebook_comment_reply(&token, page_id, &response.text).await
+        }
+        "instagram_comment" => {
+            // page_id = comment_id Instagram à répondre
+            send_instagram_comment_reply(&token, page_id, &response.text).await
+        }
         _ => Err(format!("Plateforme non supportée: {}", platform)),
     }
 }
@@ -299,6 +311,84 @@ async fn send_messenger_product_template(
     Ok(())
 }
 
+// ─── Réponse aux commentaires Facebook ───────────────────────────────────────
+
+/// Répond à un commentaire Facebook en publiant une réponse imbriquée.
+/// Endpoint : POST /{comment_id}/comments
+async fn send_facebook_comment_reply(
+    access_token: &str,
+    comment_id: &str,
+    text: &str,
+) -> Result<String, String> {
+    let url = format!("https://graph.facebook.com/v19.0/{}/comments", comment_id);
+    let body = serde_json::json!({ "message": text });
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(&url)
+        .bearer_auth(access_token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Erreur réseau Facebook comment reply: {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text_err = resp.text().await.unwrap_or_default();
+        return Err(format!(
+            "Facebook comment reply error {}: {}",
+            status, text_err
+        ));
+    }
+
+    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let reply_id = json["id"].as_str().unwrap_or("").to_string();
+    log::info!(
+        "[Chatbot] 💬 Réponse commentaire Facebook publiée: {}",
+        reply_id
+    );
+    Ok(reply_id)
+}
+
+// ─── Réponse aux commentaires Instagram ──────────────────────────────────────
+
+/// Répond à un commentaire Instagram via l'API Graph.
+/// Endpoint : POST /{ig_comment_id}/replies
+async fn send_instagram_comment_reply(
+    access_token: &str,
+    comment_id: &str,
+    text: &str,
+) -> Result<String, String> {
+    let url = format!("https://graph.facebook.com/v19.0/{}/replies", comment_id);
+    let body = serde_json::json!({ "message": text });
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(&url)
+        .bearer_auth(access_token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Erreur réseau Instagram comment reply: {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text_err = resp.text().await.unwrap_or_default();
+        return Err(format!(
+            "Instagram comment reply error {}: {}",
+            status, text_err
+        ));
+    }
+
+    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let reply_id = json["id"].as_str().unwrap_or("").to_string();
+    log::info!(
+        "[Chatbot] 💬 Réponse commentaire Instagram publiée: {}",
+        reply_id
+    );
+    Ok(reply_id)
+}
+
 // ─── Envoi Instagram DM ───────────────────────────────────────────────────────
 
 async fn send_instagram_dm_response(
@@ -333,14 +423,18 @@ async fn send_instagram_dm_response(
 
 // ─── Envoi WhatsApp ───────────────────────────────────────────────────────────
 
-async fn send_whatsapp_response(
+async fn send_whatsapp_response_with_phone_id(
     access_token: &str,
     recipient_phone: &str,
+    phone_number_id: &str, // ID du numéro WhatsApp du partenaire (from social_accounts.metadata)
     response: &BotResponse,
 ) -> Result<String, String> {
-    // Récupérer le WABA phone_number_id depuis la config
-    let phone_number_id =
-        std::env::var("WHATSAPP_PHONE_NUMBER_ID").unwrap_or_else(|_| "0".to_string());
+    // Utiliser le phone_number_id du partenaire ; fallback sur la var d'env si vide
+    let phone_number_id = if phone_number_id.is_empty() || phone_number_id == "0" {
+        std::env::var("WHATSAPP_PHONE_NUMBER_ID").unwrap_or_else(|_| "0".to_string())
+    } else {
+        phone_number_id.to_string()
+    };
 
     let client = reqwest::Client::new();
 

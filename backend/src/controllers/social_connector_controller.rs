@@ -199,14 +199,68 @@ async fn persist_token_set(
 }
 
 fn oauth_success_page(platform: &str) -> String {
+    // Redirige vers le deep link Yukpo pour retour automatique dans l'app mobile
+    // yukpo://oauth/success?platform=facebook — l'app écoute via Linking.addEventListener
     format!(
-        "<html><head><meta charset='utf-8'><title>Succès</title></head><body style=\"font-family:Arial;padding:32px;text-align:center;\"><h2>Connexion {platform} réussie ✅</h2><p>Vous pouvez revenir dans Yukpo.</p><script>setTimeout(function(){{window.close();}},2000);</script></body></html>"
+        r#"<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Connexion réussie</title>
+  <style>
+    body{{font-family:-apple-system,Arial,sans-serif;padding:32px;text-align:center;background:#f0fdf4}}
+    h2{{color:#16a34a;font-size:22px}}
+    p{{color:#374151;margin:12px 0}}
+    .btn{{display:inline-block;margin-top:20px;padding:12px 28px;background:#16a34a;color:#fff;border-radius:10px;text-decoration:none;font-weight:700}}
+  </style>
+</head>
+<body>
+  <h2>✅ {platform} connecté avec succès</h2>
+  <p>Votre compte {platform} est maintenant lié à Yukpo.</p>
+  <p>Vous pouvez retourner dans l'application.</p>
+  <a href='yukpo://oauth/success?platform={platform_lower}' class='btn'>Retour dans Yukpo</a>
+  <script>
+    // Tenter deep link immédiatement
+    window.location.href = 'yukpo://oauth/success?platform={platform_lower}';
+    // Fermer si ouvert depuis JavaScript (navigation web)
+    setTimeout(function(){{try{{window.close();}}catch(e){{}}}}, 1500);
+  </script>
+</body>
+</html>"#,
+        platform = platform,
+        platform_lower = platform.to_lowercase()
     )
 }
 
 fn oauth_error_page(platform: &str, error: &str) -> String {
     format!(
-        "<html><head><meta charset='utf-8'><title>Erreur</title></head><body style=\"font-family:Arial;padding:32px;text-align:center;\"><h2>Connexion {platform} échouée ❌</h2><p>{}</p></body></html>",
-        error
+        r#"<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Erreur connexion</title>
+  <style>
+    body{{font-family:-apple-system,Arial,sans-serif;padding:32px;text-align:center;background:#fef2f2}}
+    h2{{color:#dc2626;font-size:22px}}
+    p{{color:#374151;margin:12px 0}}
+    .btn{{display:inline-block;margin-top:20px;padding:12px 28px;background:#dc2626;color:#fff;border-radius:10px;text-decoration:none;font-weight:700}}
+    .error{{background:#fee2e2;padding:12px;border-radius:8px;font-size:13px;color:#7f1d1d;margin:16px 0}}
+  </style>
+</head>
+<body>
+  <h2>❌ Connexion {platform} échouée</h2>
+  <div class='error'>{error}</div>
+  <p>Retournez dans Yukpo et réessayez.</p>
+  <a href='yukpo://oauth/error?platform={platform_lower}&error={error_enc}' class='btn'>Retour dans Yukpo</a>
+  <script>
+    window.location.href = 'yukpo://oauth/error?platform={platform_lower}';
+    setTimeout(function(){{try{{window.close();}}catch(e){{}}}}, 2000);
+  </script>
+</body>
+</html>"#,
+        platform = platform,
+        error = error,
+        platform_lower = platform.to_lowercase(),
+        error_enc = urlencoding::encode(error)
     )
 }

@@ -19,7 +19,7 @@ use crate::controllers::{
     media_product_controller::get_product_media,
     product_video_controller::{
         attach_generative_video_to_product, estimate_video_cost_for_product,
-        generate_video_for_product, get_video_generation_job_status,
+        generate_video_for_product, generate_visual_for_product, get_video_generation_job_status,
     },
 };
 use crate::middlewares::jwt::jwt_auth;
@@ -88,6 +88,11 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/media/product/{service_id}/{product_index}/generate-video",
             post(generate_video_for_product),
+        )
+        // ✅ Génération de visuel statique (stock photo → DALL-E 3 fallback)
+        .route(
+            "/api/media/product/{service_id}/{product_index}/generate-visual",
+            post(generate_visual_for_product),
         )
         // ✅ Job generative (`/api/generative/generate`) terminé → enregistrer la vidéo sur le produit
         .route(

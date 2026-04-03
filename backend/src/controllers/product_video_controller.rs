@@ -10,9 +10,12 @@ use serde_json::json;
 use sqlx::FromRow;
 use uuid::Uuid;
 
+use serde::Deserialize;
+
 use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
+    services::ai_content_service::generate_product_image,
     services::video_generation_service::{
         attach_generative_job_to_product, estimate_video_cost, generate_product_video,
         validate_video_generation_prerequisites, AttachGenerativeVideoBody, VideoGenerationPayload,
@@ -403,5 +406,107 @@ pub async fn get_my_videos(
         "success": true,
         "data": formatted_videos,
         "count": formatted_videos.len()
+    })))
+}
+
+// ─── Génération de visuel statique (stock photo → DALL-E 3 fallback) ──────────
+
+#[derive(Debug, Deserialize)]
+pub struct GenerateVisualBody {
+    pub style: Option<String>, // affiche / banniere / carre
+    pub headline: Option<String>,
+    pub call_to_action: Option<String>,
+}
+
+/// Génère un visuel statique pour un produit :
+///   1. Recherche un stock photo pertinent (Unsplash/Pexels)
+///   2. Fallback DALL-E 3 si aucun résultat
+/// Sauvegarde le résultat dans la table `media` et retourne l'URL.
+pub async fn generate_visual_for_product(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path((service_id, product_index)): Path<(i32, i32)>,
+    Json(body): Json<GenerateVisualBody>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!(
+        "[ProductVideoController] 🎨 Génération visuel produit — user={} service={} product_index={}",
+        user.id, service_id, product_index
+    );
+
+    // Récupérer les infos du produit
+    let product_row = sqlx::query(
+        r#"SELECT sp.product_name, sp.product_type, s.name as store_name
+           FROM service_products sp
+           JOIN services s ON s.id = sp.service_id
+           WHERE sp.service_id = $1
+             AND sp.product_index = $2
+             AND sp.is_active = true
+           LIMIT 1"#,
+    )
+    .bind(service_id)
+    .bind(product_index)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let (product_name, category, store_name) = match product_row {
+        Some(row) => {
+            use sqlx::Row;
+            let name: String =
+                row.try_get("product_name").unwrap_or_else(|_| "Produit".to_string());
+            let cat: String = row.try_get("product_type").unwrap_or_else(|_| "général".to_string());
+            let store: String =
+                row.try_get("store_name").unwrap_or_else(|_| "Boutique".to_string());
+            (name, cat, store)
+        }
+        None => {
+            return Err(AppError::NotFound(format!(
+                "Produit introuvable: service={} index={}",
+                service_id, product_index
+            )));
+        }
+    };
+
+    // Pipeline : stock photo d'abord, DALL-E en fallback
+    let image_url = generate_product_image(&product_name, &category, &store_name)
+        .await
+        .map_err(|e| AppError::Internal(e))?;
+
+    // Persister dans la table media
+    let media_row = sqlx::query(
+        r#"INSERT INTO media (service_id, product_index, path, type, media_type, ai_description, created_at)
+           VALUES ($1, $2, $3, 'image', 'product_visual', $4, NOW())
+           RETURNING id"#,
+    )
+    .bind(service_id)
+    .bind(product_index)
+    .bind(&image_url)
+    .bind(format!(
+        "Visuel IA généré — {} ({}) — format: {}",
+        product_name,
+        category,
+        body.style.as_deref().unwrap_or("carre")
+    ))
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    use sqlx::Row;
+    let media_id: i32 = media_row.try_get("id").unwrap_or(0);
+
+    info!(
+        "[ProductVideoController] ✅ Visuel généré — media_id={} url={}",
+        media_id,
+        &image_url[..image_url.len().min(60)]
+    );
+
+    Ok(Json(json!({
+        "success": true,
+        "media_id": media_id,
+        "image_url": image_url,
+        "product_name": product_name,
+        "service_id": service_id,
+        "product_index": product_index,
+        "source": "ai_visual"
     })))
 }

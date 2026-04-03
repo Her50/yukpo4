@@ -89,6 +89,8 @@ pub async fn get_trends_for_me(
     let result = get_trend_pulse(&state, &region, period, Some(&user_ctx)).await;
 
     let mut personalized = result.personalized_trends;
+    let high_opportunity_count =
+        personalized.iter().filter(|t| t.opportunity_score >= 70.0).count();
     personalized.truncate(limit);
 
     Ok(Json(json!({
@@ -106,11 +108,7 @@ pub async fn get_trends_for_me(
         },
         "personalized_trends": personalized,
         "top_sectors": result.top_sectors,
-        // Badge count pour le FAB — nombre de trends avec opportunity_score >= 70
-        "high_opportunity_count": result.personalized_trends
-            .iter()
-            .filter(|t| t.opportunity_score >= 70.0)
-            .count(),
+        "high_opportunity_count": high_opportunity_count,
     })))
 }
 

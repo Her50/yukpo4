@@ -13,6 +13,7 @@ use crate::{
     services::{push_notification_service, trend_aggregator_service::get_trend_pulse},
     state::AppState,
 };
+use sqlx::Row;
 
 const REGIONS: &[&str] = &["CM", "SN", "CI", "NG"];
 const ALERT_THRESHOLD: f32 = 85.0;
@@ -52,37 +53,36 @@ async fn run_snapshot_for_region(state: &Arc<AppState>, region: &str) -> Result<
 
     for trend in &result.trends {
         // 1. Récupérer le score précédent pour calculer le delta
-        let prev_score: Option<f32> = sqlx::query_scalar!(
+        let prev_score: Option<f32> = sqlx::query_scalar(
             r#"SELECT opportunity_score::float4
                FROM trend_snapshots
                WHERE region = $1 AND topic = $2
                ORDER BY snapshot_at DESC
                LIMIT 1"#,
-            region,
-            trend.topic
         )
+        .bind(region)
+        .bind(&trend.topic)
         .fetch_optional(&state.pg)
         .await
-        .unwrap_or(None)
-        .flatten();
+        .unwrap_or(None);
 
         // 2. Insérer le snapshot
-        let _ = sqlx::query!(
+        sqlx::query(
             r#"INSERT INTO trend_snapshots
                (region, period, topic, social_score, commerce_score, opportunity_score,
                 momentum_pct, categories, sources, snapshot_at, prev_opportunity_score)
                VALUES ($1, '24h', $2, $3, $4, $5, $6, $7, $8, $9, $10)"#,
-            region,
-            trend.topic,
-            trend.social_score as f64,
-            trend.commerce_score as f64,
-            trend.opportunity_score as f64,
-            trend.momentum_pct as f64,
-            &trend.categories,
-            &trend.sources,
-            now,
-            prev_score.map(|v| v as f64)
         )
+        .bind(region)
+        .bind(&trend.topic)
+        .bind(trend.social_score as f64)
+        .bind(trend.commerce_score as f64)
+        .bind(trend.opportunity_score as f64)
+        .bind(trend.momentum_pct as f64)
+        .bind(&trend.categories)
+        .bind(&trend.sources)
+        .bind(now)
+        .bind(prev_score.map(|v| v as f64))
         .execute(&state.pg)
         .await
         .map_err(|e| e.to_string())?;
@@ -96,16 +96,16 @@ async fn run_snapshot_for_region(state: &Arc<AppState>, region: &str) -> Result<
     }
 
     // 4. Nettoyage : supprimer les snapshots de plus de 30 jours
-    let _ = sqlx::query!(
+    let _ = sqlx::query(
         "DELETE FROM trend_snapshots WHERE region = $1 AND snapshot_at < NOW() - INTERVAL '30 days'",
-        region
     )
+    .bind(region)
     .execute(&state.pg)
     .await;
 
     // 5. Nettoyage : supprimer les alertes de plus de 24h (reset quota)
     let _ =
-        sqlx::query!("DELETE FROM trend_alerts_sent WHERE sent_at < NOW() - INTERVAL '24 hours'")
+        sqlx::query("DELETE FROM trend_alerts_sent WHERE sent_at < NOW() - INTERVAL '24 hours'")
             .execute(&state.pg)
             .await;
 
@@ -132,7 +132,7 @@ async fn send_trend_alerts(
         &trend.topic.to_lowercase()[..trend.topic.len().min(20)]
     );
 
-    let candidates = sqlx::query!(
+    let candidates = sqlx::query(
         r#"SELECT DISTINCT s.user_id
            FROM services s
            JOIN service_products sp ON sp.service_id = s.id
@@ -148,32 +148,31 @@ async fn send_trend_alerts(
              )
              AND sp.is_active = true
            LIMIT 50"#,
-        format!("%{}%", region),
-        region,
-        topic_pattern
     )
+    .bind(format!("%{}%", region))
+    .bind(region)
+    .bind(&topic_pattern)
     .fetch_all(&state.pg)
     .await
     .unwrap_or_default();
 
     let mut sent = 0usize;
 
-    for row in candidates {
-        let user_id = row.user_id;
+    for row in &candidates {
+        let user_id: i32 = row.try_get("user_id").unwrap_or(0);
 
         // Vérifier que l'alerte n'a pas déjà été envoyée dans les 24h
-        let already_sent = sqlx::query_scalar!(
+        let already_sent: i64 = sqlx::query_scalar(
             "SELECT COUNT(*) FROM trend_alerts_sent WHERE user_id = $1 AND topic = $2 AND region = $3",
-            user_id,
-            trend.topic,
-            region
         )
+        .bind(user_id)
+        .bind(&trend.topic)
+        .bind(region)
         .fetch_one(&state.pg)
         .await
-        .unwrap_or(Some(0))
-        .unwrap_or(0) > 0;
+        .unwrap_or(0);
 
-        if already_sent {
+        if already_sent > 0 {
             continue;
         }
 
@@ -202,16 +201,16 @@ async fn send_trend_alerts(
         {
             Ok(count) if count > 0 => {
                 // Tracer l'alerte envoyée
-                let _ = sqlx::query!(
+                let _ = sqlx::query(
                     r#"INSERT INTO trend_alerts_sent (user_id, topic, region, opportunity_score)
                        VALUES ($1, $2, $3, $4)
                        ON CONFLICT (user_id, topic, region) DO UPDATE
                        SET sent_at = NOW(), opportunity_score = EXCLUDED.opportunity_score"#,
-                    user_id,
-                    trend.topic,
-                    region,
-                    trend.opportunity_score as f64
                 )
+                .bind(user_id)
+                .bind(&trend.topic)
+                .bind(region)
+                .bind(trend.opportunity_score as f64)
                 .execute(&state.pg)
                 .await;
                 sent += 1;

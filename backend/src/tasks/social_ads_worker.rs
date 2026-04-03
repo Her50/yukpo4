@@ -397,12 +397,17 @@ async fn boost_high_roas_campaigns(
     access_token: Option<&str>,
     multiplier: f64,
 ) -> Result<(), String> {
-    let _token = access_token.ok_or("Token manquant")?;
+    let token = access_token.ok_or("Token manquant")?;
+
+    // Récupérer campagnes + adset_id (nécessaire pour l'API budget)
     let high_roas = sqlx::query(
-        r#"SELECT external_campaign_id, budget_daily_fcfa FROM meta_ad_campaigns
-           WHERE user_id = $1 AND status = 'active'
-             AND roas IS NOT NULL AND roas > 3.0
-             AND budget_daily_fcfa IS NOT NULL"#,
+        r#"SELECT c.external_campaign_id, c.budget_daily_fcfa, c.adset_external_id,
+                  a.max_daily_budget_fcfa
+           FROM meta_ad_campaigns c
+           LEFT JOIN meta_ad_accounts a ON a.id = c.ad_account_id
+           WHERE c.user_id = $1 AND c.status = 'active'
+             AND c.roas IS NOT NULL AND c.roas > 3.0
+             AND c.budget_daily_fcfa IS NOT NULL"#,
     )
     .bind(user_id)
     .fetch_all(pg)
@@ -411,20 +416,58 @@ async fn boost_high_roas_campaigns(
 
     for c in &high_roas {
         let ext_id_opt: Option<String> = c.try_get("external_campaign_id").ok().flatten();
+        let adset_id_opt: Option<String> = c.try_get("adset_external_id").ok().flatten();
         let budget_opt: Option<i64> = c.try_get("budget_daily_fcfa").ok().flatten();
+        let max_budget_opt: Option<i64> = c.try_get("max_daily_budget_fcfa").ok().flatten();
+
         if let (Some(ext_id), Some(budget)) = (ext_id_opt, budget_opt) {
             let new_budget = (budget as f64 * multiplier) as i64;
-            // Chercher l'adset associé pour update le budget
-            log::info!(
-                "[AdsWorker] Campagne {} boostée (ROAS > 3) budget {} → {} FCFA",
-                ext_id,
-                budget,
+
+            // Respecter le plafond max_daily_budget_fcfa si défini par le partenaire
+            let capped_budget = if let Some(max) = max_budget_opt {
+                if max > 0 {
+                    new_budget.min(max)
+                } else {
+                    new_budget
+                }
+            } else {
                 new_budget
-            );
+            };
+
+            if capped_budget == budget {
+                // Déjà au plafond — pas de boost
+                continue;
+            }
+
+            // Mise à jour réelle sur l'API Meta via l'adset
+            if let Some(ref adset_id) = adset_id_opt {
+                match meta_ads_service::update_adset_budget(adset_id, token, capped_budget).await {
+                    Ok(_) => {
+                        log::info!(
+                            "[AdsWorker] 📈 Budget boosté campagne {} (ROAS > 3): {} → {} FCFA",
+                            ext_id,
+                            budget,
+                            capped_budget
+                        );
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "[AdsWorker] Erreur boost budget {} → {} FCFA pour {}: {}",
+                            budget,
+                            capped_budget,
+                            ext_id,
+                            e
+                        );
+                        continue;
+                    }
+                }
+            }
+
+            // Mettre à jour en base
             let _ = sqlx::query(
-                "UPDATE meta_ad_campaigns SET budget_daily_fcfa = $1 WHERE external_campaign_id = $2",
+                "UPDATE meta_ad_campaigns SET budget_daily_fcfa = $1, updated_at = NOW() WHERE external_campaign_id = $2",
             )
-            .bind(new_budget)
+            .bind(capped_budget)
             .bind(&ext_id)
             .execute(pg)
             .await;

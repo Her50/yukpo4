@@ -332,7 +332,12 @@ async fn load_yukpo_internal_signals(pg: &PgPool, region: &str) -> Vec<InternalS
     let week_ago = Utc::now() - Duration::days(7);
 
     // Mots-clés les plus fréquents dans les chatbots des boutiques de la région
-    let keywords = sqlx::query!(
+    let region_filter = if region == "ALL" {
+        "ALL".to_string()
+    } else {
+        format!("%{}%", region)
+    };
+    let keywords = sqlx::query(
         r#"SELECT
                LOWER(TRIM(REGEXP_REPLACE(m.content, '[^a-zA-ZÀ-ÿ\s]', '', 'g'))) as clean_content,
                COUNT(*) as freq
@@ -345,23 +350,19 @@ async fn load_yukpo_internal_signals(pg: &PgPool, region: &str) -> Vec<InternalS
            GROUP BY clean_content
            ORDER BY freq DESC
            LIMIT 30"#,
-        week_ago,
-        if region == "ALL" {
-            "ALL"
-        } else {
-            &format!("%{}%", region)
-        }
     )
+    .bind(week_ago)
+    .bind(&region_filter)
     .fetch_all(pg)
     .await
     .unwrap_or_default();
 
     // Catégories avec meilleur ROAS cette semaine
     // product_type est une colonne GENERATED sur service_products
-    let top_roas_categories = sqlx::query!(
+    let top_roas_categories = sqlx::query(
         r#"SELECT
                COALESCE(sp.product_type, 'général') as category,
-               AVG(c.roas) as avg_roas,
+               AVG(c.roas::float8) as avg_roas,
                COUNT(*) as campaign_count
            FROM meta_ad_campaigns c
            JOIN service_products sp ON sp.service_id = c.service_id
@@ -376,15 +377,18 @@ async fn load_yukpo_internal_signals(pg: &PgPool, region: &str) -> Vec<InternalS
     .await
     .unwrap_or_default();
 
+    use sqlx::Row;
     let mut signals = Vec::new();
 
     for kw in &keywords {
-        if let Some(content) = &kw.clean_content {
+        let clean_content: Option<String> = kw.try_get("clean_content").ok().flatten();
+        let freq: Option<i64> = kw.try_get("freq").ok().flatten();
+        if let Some(content) = clean_content {
             if content.len() >= 4 {
                 signals.push(InternalSignal {
-                    keyword: content.clone(),
+                    keyword: content,
                     signal_type: "chatbot_demand".to_string(),
-                    score: (kw.freq.unwrap_or(0) as f32 * 2.0).min(40.0),
+                    score: (freq.unwrap_or(0) as f32 * 2.0).min(40.0),
                     category: None,
                 });
             }
@@ -392,12 +396,14 @@ async fn load_yukpo_internal_signals(pg: &PgPool, region: &str) -> Vec<InternalS
     }
 
     for cat in &top_roas_categories {
-        if let Some(category) = &cat.category {
+        let category: Option<String> = cat.try_get("category").ok().flatten();
+        let avg_roas: Option<f64> = cat.try_get("avg_roas").ok().flatten();
+        if let Some(category) = category {
             signals.push(InternalSignal {
                 keyword: category.clone(),
                 signal_type: "high_roas_category".to_string(),
-                score: cat.avg_roas.map(|r| (r as f32 * 10.0).min(40.0)).unwrap_or(0.0),
-                category: Some(category.clone()),
+                score: avg_roas.map(|r| (r as f32 * 10.0).min(40.0)).unwrap_or(0.0),
+                category: Some(category),
             });
         }
     }
@@ -776,7 +782,7 @@ async fn load_historical_momentum(
     pg: &sqlx::PgPool,
     region: &str,
 ) -> std::collections::HashMap<String, f32> {
-    let rows = sqlx::query!(
+    let rows = sqlx::query(
         r#"SELECT
                LOWER(topic) as topic,
                AVG(COALESCE(score_delta, 0))::float4 as avg_delta
@@ -786,16 +792,19 @@ async fn load_historical_momentum(
              AND score_delta IS NOT NULL
            GROUP BY LOWER(topic)
            HAVING AVG(COALESCE(score_delta, 0)) > 2.0"#,
-        region
     )
+    .bind(region)
     .fetch_all(pg)
     .await
     .unwrap_or_default();
 
+    use sqlx::Row;
     rows.into_iter()
         .filter_map(|r| {
-            let topic = r.topic?;
-            let delta = r.avg_delta.unwrap_or(0.0);
+            let topic: Option<String> = r.try_get("topic").ok().flatten();
+            let delta: Option<f32> = r.try_get("avg_delta").ok().flatten();
+            let topic = topic?;
+            let delta = delta.unwrap_or(0.0);
             // Bonus momentum : delta de 5 pts/jour → +15 de momentum bonus
             Some((topic, (delta * 3.0).min(20.0)))
         })
