@@ -148,7 +148,7 @@ impl LivekitVmService {
     /// Logique principale de scaling basée sur les sessions en DB.
     async fn check_and_scale(&self) -> AppResult<()> {
         let active_count = self.count_active_sessions().await?;
-        let mut known = self.known_running.lock().await;
+        let known = self.known_running.lock().await;
 
         if active_count > 0 {
             // Des sessions actives ou programmées — VM doit être up

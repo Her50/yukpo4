@@ -70,6 +70,7 @@ pub mod emploi_ai_service; // ✅ NOUVEAU: Service IA emploi
 pub mod enrich_google_places; // ✅ NOUVEAU: Enrichissement services avec données Google Places complètes
 pub mod exchange_rate_service; // ✅ 2026-03-18: Taux de change live via ExchangeRate-API (gratuit, cache 24h)
 pub mod exhaustive_combination_generator;
+pub mod facebook_publisher_service; // ✅ 2026-04-03: Publication réelle sur Facebook Page + sync catalogue Commerce Manager
 pub mod file_extractor;
 pub mod flash_sale_cache; // ✅ NOUVEAU: Cache Redis pour Flash Sales
 pub mod flash_sale_queue; // ✅ NOUVEAU: Queue de réservations avec Redis Streams
@@ -100,6 +101,7 @@ pub mod image_compression_service; // ✅ NOUVEAU 2025-01-27 : Service de compre
 pub mod image_search_service;
 pub mod immersive_orchestrator;
 pub mod immersive_timeline;
+pub mod instagram_publisher_service; // ✅ 2026-04-03: Publication réelle sur Instagram Business (3-step API)
 pub mod instructions;
 pub mod intelligent_image_analysis_service;
 pub mod intelligent_service_manager;
@@ -125,6 +127,7 @@ pub mod matching_pipeline;
 pub mod media_storage_service;
 pub mod menu_planning_ai_prompts; // ✅ NOUVEAU: Prompts spécialisés pour IA planification menus
 pub mod menu_planning_ai_service; // ✅ 2025-01-27: Service IA planification menus
+pub mod meta_token_service; // ✅ 2026-04-03: Validation + refresh automatique tokens Meta (FB/IG)
 pub mod mobile_money_service; // ✅ Phase 10 - Service Mobile Money (MTN/Orange Money)
 pub mod mongo_history_service;
 pub mod moving_ai_service; // ✅ Service IA déménagement (calcul volume, estimation coût, optimisation)
@@ -157,6 +160,7 @@ pub mod preview_generation_service;
 pub mod preview_monitoring;
 pub mod product_availability_service; // ✅ NOUVEAU : Vérification disponibilité produits
 pub mod product_creation_queue; // ✅ NOUVEAU 2026-01-02: Queue asynchrone pour création de produits
+pub mod product_distribution_worker; // ✅ 2026-04-03: Worker traitement jobs distribution (FB, IG, WA)
 pub mod product_enrichment_service; // ✅ NOUVEAU : Enrichissement produits avec disponibilité
 pub mod product_feed_service; // ✅ 2026-04-03: Flux Google Shopping XML + CSV export pour partenaires
 pub mod product_price_service; // ✅ NOUVEAU : Service pour calculer les prix réels avec promotions

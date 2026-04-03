@@ -18,7 +18,7 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     services::{
-        product_feed_service,
+        product_distribution_worker, product_feed_service,
         social_connector_service::{
             consume_oauth_state, create_oauth_state, upsert_social_account, SocialTokenPayload,
         },
@@ -621,6 +621,90 @@ fn oauth_success_page(platform: &str) -> String {
          <script>setTimeout(function(){{window.close();}},2500);</script>\
          </body></html>"
     )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Sync catalogue complet → Facebook Commerce Manager (+ WhatsApp auto)
+// ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct CatalogSyncRequest {
+    pub service_id: i32,
+}
+
+/// POST /api/social/catalog/sync
+/// Synchronise tous les produits actifs du service vers le catalogue Facebook.
+/// Le catalogue Facebook est automatiquement synchronisé avec WhatsApp Business.
+pub async fn sync_catalog(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<CatalogSyncRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    let summary =
+        product_distribution_worker::sync_full_catalog(state, user.id, payload.service_id).await?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "total_products": summary.total_products,
+        "synced": summary.synced,
+        "errors": summary.errors,
+        "catalog_id": summary.catalog_id,
+        "message": format!(
+            "{} produit(s) synchronisés vers le catalogue Facebook (et WhatsApp Business automatiquement).",
+            summary.synced
+        ),
+    })))
+}
+
+/// PUT /api/social/accounts/catalog-id
+/// Permet au partenaire de renseigner son catalog_id Facebook depuis le mobile.
+#[derive(Debug, Deserialize)]
+pub struct UpdateCatalogIdRequest {
+    pub catalog_id: String,
+}
+
+pub async fn update_catalog_id(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<UpdateCatalogIdRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    if payload.catalog_id.trim().is_empty() {
+        return Err(AppError::BadRequest("catalog_id invalide".into()));
+    }
+
+    // Mettre à jour le metadata JSON pour ajouter le catalog_id
+    let rows_updated = sqlx::query(
+        r#"UPDATE social_accounts
+           SET metadata = jsonb_set(
+               COALESCE(metadata, '{}'),
+               '{catalog_id}',
+               $1::jsonb
+           ),
+           updated_at = NOW()
+           WHERE user_id = $2 AND platform = 'facebook'"#,
+    )
+    .bind(serde_json::json!(payload.catalog_id))
+    .bind(user.id)
+    .execute(&state.pg)
+    .await
+    .map_err(AppError::from)?
+    .rows_affected();
+
+    if rows_affected_is_zero(rows_updated) {
+        return Err(AppError::BadRequest(
+            "Connectez d'abord votre compte Facebook avant de renseigner le catalog_id.".into(),
+        ));
+    }
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "catalog_id": payload.catalog_id,
+        "message": "Catalog ID enregistré. Vous pouvez maintenant synchroniser votre catalogue.",
+    })))
+}
+
+fn rows_affected_is_zero(n: u64) -> bool {
+    n == 0
 }
 
 fn oauth_error_page(platform: &str, error: &str) -> String {

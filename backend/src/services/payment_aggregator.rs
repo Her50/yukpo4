@@ -29,6 +29,7 @@ pub enum AggregatorProvider {
     CinetPay,
     NotchPay,
     Flutterwave,
+    AfricaPay,
 }
 
 impl std::fmt::Display for AggregatorProvider {
@@ -37,6 +38,7 @@ impl std::fmt::Display for AggregatorProvider {
             AggregatorProvider::CinetPay => write!(f, "cinetpay"),
             AggregatorProvider::NotchPay => write!(f, "notchpay"),
             AggregatorProvider::Flutterwave => write!(f, "flutterwave"),
+            AggregatorProvider::AfricaPay => write!(f, "africapay"),
         }
     }
 }
@@ -465,6 +467,10 @@ pub struct AggregatorConfig {
     pub notchpay_secret_key: String,
     pub notchpay_base_url: String,
 
+    // AfricaPay (Cameroun / Afrique centrale)
+    pub africapay_api_key: String,
+    pub africapay_base_url: String,
+
     // Général
     pub webhook_base_url: String,
     pub primary_provider: AggregatorProvider,
@@ -487,6 +493,10 @@ impl AggregatorConfig {
             notchpay_base_url: std::env::var("NOTCHPAY_BASE_URL")
                 .unwrap_or_else(|_| "https://api.notchpay.co".to_string()),
 
+            africapay_api_key: std::env::var("AFRICAPAY_API_KEY").unwrap_or_default(),
+            africapay_base_url: std::env::var("AFRICAPAY_BASE_URL")
+                .unwrap_or_else(|_| "https://api.africapay.org".to_string()),
+
             webhook_base_url: std::env::var("WEBHOOK_BASE_URL")
                 .or_else(|_| std::env::var("BACKEND_URL"))
                 .unwrap_or_else(|_| {
@@ -496,6 +506,7 @@ impl AggregatorConfig {
             primary_provider: match primary.as_str() {
                 "notchpay" => AggregatorProvider::NotchPay,
                 "flutterwave" => AggregatorProvider::Flutterwave,
+                "africapay" => AggregatorProvider::AfricaPay,
                 _ => AggregatorProvider::CinetPay,
             },
         }
@@ -507,6 +518,10 @@ impl AggregatorConfig {
 
     pub fn is_notchpay_configured(&self) -> bool {
         !self.notchpay_public_key.is_empty() && !self.notchpay_secret_key.is_empty()
+    }
+
+    pub fn is_africapay_configured(&self) -> bool {
+        !self.africapay_api_key.is_empty()
     }
 }
 
@@ -1277,7 +1292,7 @@ impl PaymentAggregator {
         &self,
         phone: &str,
         amount_cents: i64,
-        method: &str,    // "mtn_money" ou "orange_money"
+        method: &str,    // "mtn_money" | "orange_money" | "mtn" | "orange" | "moov"
         reference: &str, // Référence unique Yukpo
     ) -> Result<String, String> {
         let amount = amount_cents / 100; // Convertir centimes → unité monétaire
@@ -1285,7 +1300,20 @@ impl PaymentAggregator {
             return Err("Montant de transfert invalide".to_string());
         }
 
-        // Essayer CinetPay Transfer API en premier
+        // AfricaPay en premier si configuré (priorité Cameroun)
+        if self.config.is_africapay_configured() {
+            match self.africapay_transfer(phone, amount_cents, method, reference).await {
+                Ok(ref_id) => return Ok(ref_id),
+                Err(e) => {
+                    log::warn!(
+                        "[Disbursement] AfricaPay transfer échoué, trying CinetPay: {}",
+                        e
+                    );
+                }
+            }
+        }
+
+        // CinetPay (zone CEMAC/UEMOA)
         if self.config.is_cinetpay_configured() {
             match self.cinetpay_transfer(phone, amount, method, reference).await {
                 Ok(ref_id) => return Ok(ref_id),
@@ -1298,12 +1326,92 @@ impl PaymentAggregator {
             }
         }
 
-        // Fallback NotchPay Transfer API
+        // Fallback NotchPay
         if self.config.is_notchpay_configured() {
             return self.notchpay_transfer(phone, amount, method, reference).await;
         }
 
-        Err("Aucun agrégateur configuré pour le disbursement. Configurez CINETPAY_API_KEY + CINETPAY_API_PASSWORD ou NOTCHPAY_PUBLIC_KEY.".to_string())
+        Err("Aucun agrégateur configuré pour le disbursement (AFRICAPAY_API_KEY, CINETPAY_API_KEY ou NOTCHPAY_PUBLIC_KEY requis).".to_string())
+    }
+
+    /// AfricaPay Transfer API — Mobile Money Cameroun (MTN, Orange)
+    async fn africapay_transfer(
+        &self,
+        phone: &str,
+        amount_cents: i64,
+        method: &str,
+        reference: &str,
+    ) -> Result<String, String> {
+        log::info!(
+            "[AfricaPay Transfer] {} XAF (centimes) vers {} via {}",
+            amount_cents,
+            phone,
+            method
+        );
+
+        let operator = match method {
+            "mtn_money" | "mtn" => "MTN",
+            "orange_money" | "orange" => "ORANGE",
+            "moov" => "MOOV",
+            _ => "MTN",
+        };
+
+        let payload = serde_json::json!({
+            "apiKey": self.config.africapay_api_key,
+            "reference": reference,
+            "amount": amount_cents / 100,
+            "currency": "XAF",
+            "phone": phone,
+            "operator": operator,
+            "description": "Reversement Yukpo partenaire",
+            "callbackUrl": format!("{}/api/webhooks/africapay/disbursement", self.config.webhook_base_url),
+        });
+
+        let response = self
+            .client
+            .post(&format!("{}/v1/transfers", self.config.africapay_base_url))
+            .header("Content-Type", "application/json")
+            .header("X-Api-Key", &self.config.africapay_api_key)
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| format!("Erreur réseau AfricaPay transfer: {}", e))?;
+
+        let status_code = response.status();
+        let response_text = response
+            .text()
+            .await
+            .map_err(|e| format!("Erreur lecture AfricaPay transfer: {}", e))?;
+
+        log::info!(
+            "[AfricaPay Transfer] Response {}: {}",
+            status_code,
+            &response_text[..response_text.len().min(500)]
+        );
+
+        let response_json: serde_json::Value = serde_json::from_str(&response_text)
+            .map_err(|e| format!("Erreur parsing AfricaPay transfer: {}", e))?;
+
+        if status_code.is_success() {
+            let ref_id = response_json
+                .get("reference")
+                .or_else(|| response_json.get("transactionId"))
+                .or_else(|| response_json.get("id"))
+                .and_then(|r| r.as_str())
+                .unwrap_or(reference)
+                .to_string();
+            Ok(ref_id)
+        } else {
+            let message = response_json
+                .get("message")
+                .or_else(|| response_json.get("error"))
+                .and_then(|m| m.as_str())
+                .unwrap_or("Erreur inconnue");
+            Err(format!(
+                "AfricaPay transfer erreur {}: {}",
+                status_code, message
+            ))
+        }
     }
 
     /// CinetPay Transfer API (POST /v2/transfer/money/send/contact)

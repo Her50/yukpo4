@@ -59,7 +59,12 @@ ON CONFLICT (service_type) DO NOTHING;
 -- 5. Colonnes de traçabilité financière pour restaurant_orders (manquantes)
 ALTER TABLE restaurant_orders
     ADD COLUMN IF NOT EXISTS wallet_reserved_cents  BIGINT DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS reversed_at            TIMESTAMPTZ;
+    ADD COLUMN IF NOT EXISTS reversed_at            TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS refunded_at            TIMESTAMPTZ;
+
+-- Colonne remboursement pour pharmacy_orders
+ALTER TABLE pharmacy_orders
+    ADD COLUMN IF NOT EXISTS refunded_at            TIMESTAMPTZ;
 
 -- 6. Index pour audits
 CREATE INDEX IF NOT EXISTS idx_wallet_transactions_direction ON wallet_transactions(direction);

@@ -11,6 +11,7 @@ pub mod delivery_matching_worker;
 pub mod delivery_notification_repeat; // ✅ NOUVEAU : Répétition des notifications de livraison
 pub mod delivery_sla_monitor;
 pub mod delivery_timeout_monitor; // ✅ NOUVEAU : Monitor des timeouts de validation d'étapes
+pub mod disbursement_processor; // ✅ 2026-04-03: Virements automatiques partenaires (AfricaPay/CinetPay/NotchPay)
 pub mod drive_sync_scheduler; // ✅ Sync automatique liens Drive partenaires (hourly/daily/weekly)
 pub mod flash_sale_queue_worker; // ✅ NOUVEAU: Worker de traitement des réservations Flash Sales
 pub mod global_promo_scheduler;
@@ -25,6 +26,7 @@ pub mod order_timeout_monitor; // ✅ NOUVEAU : Monitor des timeouts de validati
 pub mod pipeline_health_worker;
 pub mod product_deactivation; // ✅ Tâche de désactivation automatique des produits
 pub mod publicite_expiration;
+pub mod qr_expiry_refund_worker; // ✅ 2026-04-03: Remboursement wallet si QR non validé dans les 48h
 pub mod reactivate_service;
 pub mod recurring_trips_cron;
 pub mod search_cache_refresh; // ✅ NOUVEAU 2025-12-02: Rafraîchissement automatique vue matérialisée

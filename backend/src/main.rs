@@ -3053,6 +3053,10 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     // ✅ 2026-03-16: Index MongoDB supprimés - index PostgreSQL créés via ensure_history_events_table
 
     social_distribution_service::start_distribution_worker(app_state.clone());
+    // ✅ 2026-04-03: Worker distribution produits (FB Graph API réel + IG + WA)
+    yukpomnang_backend::services::product_distribution_worker::start_product_distribution_worker(
+        app_state.clone(),
+    );
 
     // ?? Initialiser l'architecture cloud massive
     let massive_load_handler = MassiveLoadHandler::new();
@@ -3204,6 +3208,14 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     }));
     // ✅ Sync automatique liens Drive partenaires (pharmacie, supermarché, ecommerce)
     tasks::drive_sync_scheduler::start_drive_sync_scheduler(app_state.clone());
+    // ✅ 2026-04-03: Virements automatiques partenaires (AfricaPay → CinetPay → NotchPay)
+    std::mem::drop(tokio::spawn(
+        tasks::disbursement_processor::start_disbursement_processor(app_state.clone()),
+    ));
+    // ✅ 2026-04-03: Remboursement wallet client si QR non validé après 48h
+    std::mem::drop(tokio::spawn(
+        tasks::qr_expiry_refund_worker::start_qr_expiry_refund_worker(app_state.clone()),
+    ));
     // ✅ Scheduler pour les campagnes promos globales (Black Friday, etc.)
     tasks::global_promo_scheduler::start_global_promo_scheduler(app_state.clone());
     // ✅ Worker pipeline health (alerting interne)

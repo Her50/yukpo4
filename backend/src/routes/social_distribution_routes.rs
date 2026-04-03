@@ -12,8 +12,8 @@ use crate::{
     controllers::{
         product_distribution_controller::{
             csv_export_feed, distribute_products, facebook_authorize, facebook_callback,
-            get_distribution_history, get_distribution_rules, google_shopping_feed,
-            track_distribution_click, update_distribution_rules,
+            get_distribution_history, get_distribution_rules, google_shopping_feed, sync_catalog,
+            track_distribution_click, update_catalog_id, update_distribution_rules,
         },
         social_connector_controller::{
             connect_account, get_accounts, instagram_authorize, instagram_callback,
@@ -53,6 +53,10 @@ pub fn social_distribution_routes(state: Arc<AppState>) -> Router<Arc<AppState>>
             "/api/social/products/history/:service_id",
             get(get_distribution_history),
         )
+        // ── Sync catalogue complet → Facebook Commerce Manager (+ WhatsApp auto) ──
+        .route("/api/social/catalog/sync", post(sync_catalog))
+        // Mettre à jour le catalog_id Facebook du partenaire
+        .route("/api/social/accounts/catalog-id", put(update_catalog_id))
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     // Routes publiques (OAuth callbacks + feeds + click tracking)
