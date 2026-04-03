@@ -96,6 +96,7 @@ pub mod service_routes;
 pub mod service_team_routes; // ✅ NOUVEAU: Routes pour gestion d'équipe des services
 pub mod shopping_routes;
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
+pub mod social_ai_routes;
 pub mod social_distribution_routes; // ✅ 2026-04-03: Distribution produits multi-canaux (Facebook, Instagram, Google Shopping, CSV)
 pub mod social_features_routes;
 pub mod specialized_services_routes;
@@ -119,7 +120,7 @@ pub mod weather_routes;
 pub mod webhook_routes;
 pub mod webrtc_routes; // ✅ Routes WebRTC pour appels // ✅ NOUVEAU: Routes pour feature flags
 pub mod whatsapp_routes;
-pub mod yukpo_ia_session_routes; // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API // ✅ NOUVEAU 2026-03-16: Routes paiements agrégés
+pub mod yukpo_ia_session_routes; // ✅ NOUVEAU 2026-03-06: Routes WhatsApp Business API // ✅ NOUVEAU 2026-03-16: Routes paiements agrégés // ✅ 2026-04-03: Routes Social AI Engine (content, chatbot, ads, inbox, webhooks)
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

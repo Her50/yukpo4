@@ -200,7 +200,25 @@ async fn create_shopping_order(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateShoppingPayload>,
-) -> AppResult<Json<ShoppingOrderResponse>> {
+) -> AppResult<Json<Value>> {
+    // ✅ Calculer l'assurance livraison avant création de la commande
+    let product_cents = payload.estimated_total_cents;
+    let delivery_cents = payload.delivery_base_price_cents.unwrap_or(0)
+        + payload.delivery_distance_price_cents.unwrap_or(0)
+        + payload.delivery_surcharge_cents.unwrap_or(0)
+        - payload.delivery_discount_cents.unwrap_or(0).max(0);
+
+    let insurance_fee_cents: i64 = sqlx::query_scalar::<_, f64>(
+        "SELECT LEAST(base_fee_fcfa + percentage_rate / 100.0 * $1, max_fee_fcfa) FROM delivery_insurance_fees WHERE engine_type = 'scooter' LIMIT 1",
+    )
+    .bind(product_cents as f64 / 100.0)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten()
+    .map(|f| (f * 100.0).round() as i64)
+    .unwrap_or(0);
+
     let service = state.delivery_service.clone();
     let result = service
         .create_shopping_order(CreateShoppingOrderParams {
@@ -232,14 +250,72 @@ async fn create_shopping_order(
         })
         .await?;
 
-    Ok(Json(ShoppingOrderResponse {
-        delivery: result.delivery,
-        shopping_order: result.shopping_order,
-        items: result.items,
-        estimated_total_cents: result.estimated_total_cents,
-        margin_cents: result.margin_cents,
-        balance_remaining: result.balance_remaining,
-    }))
+    // ✅ Débiter l'assurance séparément (va dans le compte Yukpo — reversé si sinistre)
+    if insurance_fee_cents > 0 {
+        let balance_before: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(balance_cents, 0) FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
+        )
+        .bind(user.id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or(0);
+
+        if balance_before >= insurance_fee_cents {
+            let _ = sqlx::query(
+                "UPDATE user_wallets SET balance_cents = balance_cents - $1, updated_at = NOW() WHERE user_id = $2 AND currency = 'XAF'",
+            )
+            .bind(insurance_fee_cents)
+            .bind(user.id)
+            .execute(&state.pg)
+            .await;
+
+            let order_id = result
+                .shopping_order
+                .as_ref()
+                .and_then(|o| o.get("id"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+
+            let _ = sqlx::query(
+                r#"INSERT INTO wallet_transactions (
+                    user_id, transaction_type, direction, amount_cents,
+                    balance_before_cents, balance_after_cents,
+                    currency, reference_type, reference_id, description, created_at
+                ) VALUES ($1, 'insurance_debit', 'debit', $2, $3, $4,
+                          'XAF', 'shopping_order', $5, $6, NOW())"#,
+            )
+            .bind(user.id)
+            .bind(insurance_fee_cents)
+            .bind(balance_before)
+            .bind(balance_before - insurance_fee_cents)
+            .bind(&order_id)
+            .bind(format!(
+                "Assurance livraison commande shopping ({}F)",
+                insurance_fee_cents / 100
+            ))
+            .execute(&state.pg)
+            .await;
+        }
+    }
+
+    Ok(Json(json!({
+        "delivery": result.delivery,
+        "shopping_order": result.shopping_order,
+        "items": result.items,
+        // ✅ Détail des frais visible par l'utilisateur avant/après validation
+        "breakdown": {
+            "produits_cents": product_cents,
+            "frais_livraison_cents": delivery_cents.max(0),
+            "assurance_cents": insurance_fee_cents,
+            "total_cents": product_cents + delivery_cents.max(0) + insurance_fee_cents
+        },
+        "estimated_total_cents": result.estimated_total_cents,
+        "margin_cents": result.margin_cents,
+        "balance_remaining": result.balance_remaining,
+    })))
 }
 
 async fn get_wallet_balance(

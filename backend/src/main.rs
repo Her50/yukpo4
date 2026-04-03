@@ -3057,6 +3057,14 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     yukpomnang_backend::services::product_distribution_worker::start_product_distribution_worker(
         app_state.clone(),
     );
+    // ✅ 2026-04-03: Social AI Engine workers
+    yukpomnang_backend::tasks::social_chatbot_worker::start_social_chatbot_worker(
+        app_state.clone(),
+    );
+    yukpomnang_backend::tasks::social_ads_worker::start_social_ads_worker(app_state.clone());
+    yukpomnang_backend::services::social_scheduler_service::start_social_scheduler(
+        app_state.clone(),
+    );
 
     // ?? Initialiser l'architecture cloud massive
     let massive_load_handler = MassiveLoadHandler::new();

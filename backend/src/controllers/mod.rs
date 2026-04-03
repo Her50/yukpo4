@@ -106,6 +106,7 @@ pub mod scoring_controller; // ✅ Contrôleur pour scoring de services
 pub mod search_history_controller; // ✅ NOUVEAU: Contrôleur pour historique de recherche
 pub mod service_team_controller; // ✅ NOUVEAU: Contrôleur pour gestion d'équipe des services
 pub mod signalement_controller; // ✅ NOUVEAU: Contrôleur pour signalements de produits/services
+pub mod social_ai_controller;
 pub mod social_connector_controller;
 pub mod social_features_controller; // ✅ NOUVEAU: Contrôleur fonctionnalités sociales avancées
 pub mod specialized_chat_controller; // ✅ NOUVEAU: Contrôleur chat intégré
@@ -127,6 +128,6 @@ pub mod vehicle_model_controller; // ✅ NOUVEAU: Contrôleur pour modèles de v
 pub mod video_ml_controller;
 pub mod video_upload_controller; // ✅ NOUVEAU: Contrôleur ML pour recommandations vidéo personnalisées
 pub mod webhook_controller;
-pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels // ✅ NOUVEAU 2025-11-06: Contrôleur pour debug et vérification des tables // ✅ NOUVEAU 2025-01-29: Contrôleur prix dynamique IA (Leadership 100%) // ✅ NOUVEAU 2026-03-17: Contrôleur validation téléphone et partage WhatsApp/SMS
+pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels // ✅ NOUVEAU 2025-11-06: Contrôleur pour debug et vérification des tables // ✅ NOUVEAU 2025-01-29: Contrôleur prix dynamique IA (Leadership 100%) // ✅ NOUVEAU 2026-03-17: Contrôleur validation téléphone et partage WhatsApp/SMS // ✅ 2026-04-03: Social AI Engine (content gen, chatbot, ads, inbox, webhooks)
 
 // pub use service_controller::update_token_debit;

@@ -7,6 +7,7 @@
 //! Couverture :
 //!   - pharmacy_orders  : QR de type 'delivery' (ou 'pickup') non validé > REFUND_DELAY_HOURS
 //!   - restaurant_orders: QR non validé > REFUND_DELAY_HOURS
+//!   - shopping_orders  : Livraison jamais complétée (delivery_payment_reservations 'reserved') > REFUND_DELAY_HOURS
 //!
 //! Règles de remboursement :
 //!   - Seules les commandes payées par wallet (payment_status = 'paid') sont remboursables
@@ -41,6 +42,10 @@ pub async fn start_qr_expiry_refund_worker(state: Arc<AppState>) {
 
         if let Err(e) = process_expired_restaurant_orders(&state.pg).await {
             error!("[QRExpiryRefund] Erreur restaurant: {}", e);
+        }
+
+        if let Err(e) = process_expired_shopping_orders(&state.pg).await {
+            error!("[QRExpiryRefund] Erreur shopping: {}", e);
         }
     }
 }
@@ -288,6 +293,153 @@ async fn refund_patient_wallet(
     .execute(pool)
     .await
     .ok(); // log failure only — le crédit wallet est déjà fait
+
+    Ok(())
+}
+
+// ============================================================================
+// SHOPPING (supermarché, e-commerce, boutique, magasin, etc.)
+// ============================================================================
+// Le paiement shopping passe par delivery_payment_reservations.
+// On détecte les réservations 'reserved' dont la livraison n'est pas terminée
+// au-delà de REFUND_DELAY_HOURS et on rembourse le wallet client + l'assurance.
+
+async fn process_expired_shopping_orders(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let cutoff = Utc::now() - chrono::Duration::hours(REFUND_DELAY_HOURS);
+
+    // Réservations encore actives dont la livraison est expirée
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            dpr.id            AS reservation_id,
+            dpr.delivery_id,
+            dpr.user_id,
+            dpr.total_amount_cents,
+            so.id::TEXT       AS shopping_order_id
+        FROM delivery_payment_reservations dpr
+        JOIN shopping_orders so ON so.delivery_id = dpr.delivery_id
+        JOIN deliveries      d  ON d.id = dpr.delivery_id
+        WHERE dpr.reservation_status = 'reserved'
+          AND dpr.refunded_at IS NULL
+          AND so.status NOT IN ('delivered', 'cancelled', 'refunded')
+          AND d.status  NOT IN ('delivered', 'completed', 'cancelled')
+          AND d.requested_at < $1
+        LIMIT 50
+        "#,
+    )
+    .bind(cutoff)
+    .fetch_all(pool)
+    .await?;
+
+    if rows.is_empty() {
+        return Ok(());
+    }
+
+    info!(
+        "[QRExpiryRefund] {} commandes shopping expirées sans livraison confirmée",
+        rows.len()
+    );
+
+    for row in rows {
+        let reservation_id: uuid::Uuid = row.try_get("reservation_id").unwrap();
+        let delivery_id: uuid::Uuid = row.try_get("delivery_id").unwrap();
+        let user_id: i32 = row.try_get("user_id").unwrap_or(0);
+        let total_cents: i64 = row.try_get("total_amount_cents").unwrap_or(0);
+        let shopping_order_id: String = row.try_get("shopping_order_id").unwrap_or_default();
+
+        // 1. Rembourser le montant principal (produit + livraison)
+        if let Err(e) = refund_patient_wallet(
+            pool,
+            user_id,
+            total_cents,
+            "shopping_order",
+            &shopping_order_id,
+        )
+        .await
+        {
+            error!(
+                "[QRExpiryRefund] ❌ Shopping reservation {} (user {}): {}",
+                reservation_id, user_id, e
+            );
+            continue;
+        }
+
+        // 2. Rembourser l'assurance si un débit a été enregistré pour cette commande
+        let insurance_cents: i64 = sqlx::query_scalar::<_, i64>(
+            r#"
+            SELECT COALESCE(amount_cents, 0)
+            FROM wallet_transactions
+            WHERE user_id          = $1
+              AND transaction_type = 'insurance_debit'
+              AND reference_type   = 'shopping_order'
+              AND reference_id     = $2
+            LIMIT 1
+            "#,
+        )
+        .bind(user_id)
+        .bind(&shopping_order_id)
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or(0);
+
+        if insurance_cents > 0 {
+            if let Err(e) = refund_patient_wallet(
+                pool,
+                user_id,
+                insurance_cents,
+                "shopping_order_insurance",
+                &shopping_order_id,
+            )
+            .await
+            {
+                warn!(
+                    "[QRExpiryRefund] ⚠️ Remboursement assurance shopping {} échoué: {}",
+                    shopping_order_id, e
+                );
+            } else {
+                info!(
+                    "[QRExpiryRefund] ✅ Assurance {}F remboursée → user {}",
+                    insurance_cents / 100,
+                    user_id
+                );
+            }
+        }
+
+        // 3. Marquer la réservation comme remboursée
+        sqlx::query(
+            "UPDATE delivery_payment_reservations SET reservation_status = 'refunded', refunded_at = NOW(), updated_at = NOW() WHERE id = $1",
+        )
+        .bind(reservation_id)
+        .execute(pool)
+        .await
+        .ok();
+
+        // 4. Annuler la commande shopping et la livraison associée
+        sqlx::query(
+            "UPDATE shopping_orders SET status = 'cancelled', updated_at = NOW() WHERE delivery_id = $1",
+        )
+        .bind(delivery_id)
+        .execute(pool)
+        .await
+        .ok();
+
+        sqlx::query(
+            "UPDATE deliveries SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW() WHERE id = $1 AND status NOT IN ('delivered','completed','cancelled')",
+        )
+        .bind(delivery_id)
+        .execute(pool)
+        .await
+        .ok();
+
+        info!(
+            "[QRExpiryRefund] ✅ Shopping {} remboursé: {}F + assurance → user {}",
+            shopping_order_id,
+            total_cents / 100,
+            user_id
+        );
+    }
 
     Ok(())
 }

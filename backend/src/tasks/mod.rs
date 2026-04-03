@@ -32,8 +32,10 @@ pub mod recurring_trips_cron;
 pub mod search_cache_refresh; // ✅ NOUVEAU 2025-12-02: Rafraîchissement automatique vue matérialisée
 pub mod service_deactivation;
 pub mod service_status_checker; // ✅ Tâche de désactivation des publicités expirées
+pub mod social_ads_worker;
+pub mod social_chatbot_worker; // ✅ 2026-04-03: Worker Community Manager IA (traitement messages entrants)
 pub mod stats_recalculation; // ✅ NOUVEAU : Recalcul périodique des statistiques
 pub mod super_librairie_timeout_worker;
 pub mod troc_expiration_monitor; // Expiration automatique des trocs en attente (72h TTL)
 pub mod video_weekly_report; // ✅ NOUVEAU 2025-01-29: Tâche cron pour trajets récurrents
-pub mod yukpo_ia_queue_worker; // ✅ YukpoIA — worker file Redis chat async // ✅ Timeout YukpoLibrairie → fallback broadcast proches
+pub mod yukpo_ia_queue_worker; // ✅ YukpoIA — worker file Redis chat async // ✅ Timeout YukpoLibrairie → fallback broadcast proches // ✅ 2026-04-03: Worker Meta Ads (sync métriques, optimisation budget auto)

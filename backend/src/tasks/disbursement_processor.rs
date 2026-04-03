@@ -16,7 +16,7 @@ use sqlx::{PgPool, Row};
 use std::sync::Arc;
 use tokio::time::{interval, Duration as TokioDuration};
 
-use crate::services::payment_aggregator::{AggregatorConfig, PaymentAggregatorService};
+use crate::services::payment_aggregator::PaymentAggregator;
 use crate::state::AppState;
 
 const INTERVAL_SECS: u64 = 3600; // 1 heure
@@ -65,7 +65,7 @@ async fn process_pending_disbursements(pool: &PgPool) -> Result<(), sqlx::Error>
 
     info!("[DisbursementProcessor] {} demandes à traiter", rows.len());
 
-    let aggregator = PaymentAggregatorService::new(AggregatorConfig::from_env());
+    let aggregator = PaymentAggregator::new();
     let mut ok = 0usize;
     let mut err = 0usize;
 
