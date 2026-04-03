@@ -203,10 +203,10 @@ async fn create_shopping_order(
 ) -> AppResult<Json<Value>> {
     // ✅ Calculer l'assurance livraison avant création de la commande
     let product_cents = payload.estimated_total_cents;
-    let delivery_cents = payload.delivery_base_price_cents.unwrap_or(0)
-        + payload.delivery_distance_price_cents.unwrap_or(0)
-        + payload.delivery_surcharge_cents.unwrap_or(0)
-        - payload.delivery_discount_cents.unwrap_or(0).max(0);
+    let delivery_cents = payload.delivery_base_price_cents
+        + payload.delivery_distance_price_cents
+        + payload.delivery_surcharge_cents
+        - payload.delivery_discount_cents.max(0);
 
     let insurance_fee_cents: i64 = sqlx::query_scalar::<_, f64>(
         "SELECT LEAST(base_fee_fcfa + percentage_rate / 100.0 * $1, max_fee_fcfa) FROM delivery_insurance_fees WHERE engine_type = 'scooter' LIMIT 1",
@@ -271,13 +271,7 @@ async fn create_shopping_order(
             .execute(&state.pg)
             .await;
 
-            let order_id = result
-                .shopping_order
-                .as_ref()
-                .and_then(|o| o.get("id"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("unknown")
-                .to_string();
+            let order_id = result.shopping_order.id.to_string();
 
             let _ = sqlx::query(
                 r#"INSERT INTO wallet_transactions (
@@ -310,7 +304,7 @@ async fn create_shopping_order(
             "produits_cents": product_cents,
             "frais_livraison_cents": delivery_cents.max(0),
             "assurance_cents": insurance_fee_cents,
-            "total_cents": product_cents + delivery_cents.max(0) + insurance_fee_cents
+            "total_cents": product_cents as i64 + delivery_cents.max(0) as i64 + insurance_fee_cents
         },
         "estimated_total_cents": result.estimated_total_cents,
         "margin_cents": result.margin_cents,

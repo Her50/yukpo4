@@ -574,6 +574,7 @@ reg('EcommerceHub', () => import('../screens/specialized/EcommerceHubScreen')); 
 reg('EcommercePartnerConnect', () => import('../screens/specialized/EcommercePartnerConnectScreen')); // ✅ 2026-04-01: Wizard partenaire connexion boutique
 reg('SupermarketPartnerDashboard', () => import('../screens/specialized/SupermarketPartnerDashboardScreen'));
 reg('SocialDistribution', () => import('../screens/specialized/SocialDistributionScreen')); // ✅ 2026-04-03: Distribution multi-canaux (Facebook, Instagram, WhatsApp, Google Shopping)
+reg('SocialAI', () => import('../screens/specialized/SocialAIScreen')); // ✅ 2026-04-03: Community Manager IA — Content GPT-4o, Chatbot, Meta Ads, Inbox unifiée
 reg('RestaurantDashboard', () => import('../screens/specialized/RestaurantDashboardScreen'));
 reg('RestaurantClient', () => import('../screens/specialized/RestaurantClientScreen'));
 

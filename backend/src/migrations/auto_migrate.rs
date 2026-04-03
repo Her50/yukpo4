@@ -9398,6 +9398,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto partner_admin_docs: {}", e),
     }
 
+    // ✅ 2026-04-03 : Social AI Engine — Content IA, Chatbot CM, Meta Ads, Inbox unifiée
+    match ensure_social_ai_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: Social AI (content, chatbot, ads, inbox) OK"),
+        Err(e) => error!("❌ Erreur migration auto social_ai: {}", e),
+    }
+
     info!("🎉 Toutes les migrations automatiques ont été appliquées avec succès !");
 }
 
@@ -21816,5 +21822,30 @@ pub async fn ensure_partner_admin_docs(pool: &PgPool) -> Result<(), sqlx::Error>
     let migration_sql = include_str!("../../migrations/00000211_partner_admin_docs.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Colonnes delivery_partners.rccm + numero_contribuable OK");
+    Ok(())
+}
+
+/// Social AI Engine — Content IA (GPT-4o), Chatbot Community Manager, Meta Ads automation, Inbox unifiée.
+/// Crée : social_ai_posts, social_ai_preferences, social_ai_post_analytics,
+///        social_chatbot_threads, social_chatbot_messages, social_chatbot_queue, social_chatbot_config,
+///        meta_ad_accounts, meta_ad_campaigns, meta_ad_sets, meta_ad_creatives, meta_ads_automation_rules, meta_ads_spend_log,
+///        social_inbox_summary, social_inbox_notes, social_escalation_events, social_inbox_daily_metrics, social_quick_replies
+pub async fn ensure_social_ai_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let sql_content = include_str!("../../migrations/20260403_008_social_ai_content.sql");
+    execute_migration_sql_safe(pool, sql_content).await?;
+    info!("✅ Social AI: tables content (posts, preferences, analytics) OK");
+
+    let sql_chatbot = include_str!("../../migrations/20260403_009_social_chatbot.sql");
+    execute_migration_sql_safe(pool, sql_chatbot).await?;
+    info!("✅ Social AI: tables chatbot (threads, messages, queue, config) OK");
+
+    let sql_ads = include_str!("../../migrations/20260403_010_social_meta_ads.sql");
+    execute_migration_sql_safe(pool, sql_ads).await?;
+    info!("✅ Social AI: tables meta ads (accounts, campaigns, automation) OK");
+
+    let sql_inbox = include_str!("../../migrations/20260403_011_social_inbox.sql");
+    execute_migration_sql_safe(pool, sql_inbox).await?;
+    info!("✅ Social AI: tables inbox (summary, notes, escalation, metrics) OK");
+
     Ok(())
 }
