@@ -1077,8 +1077,10 @@ pub async fn ensure_live_streaming_tables(pool: &PgPool) -> Result<(), sqlx::Err
         }
     }
 
-    // ✅ FIX 2026-04-01: L'ancien schéma (00001014) n'a pas de contrainte UNIQUE sur
-    // live_session_id, donc "ON CONFLICT (live_session_id) DO NOTHING" échoue.
+    // ✅ FIX 2026-04-02: L'ancien schéma (00001014) n'a pas de contrainte UNIQUE sur
+    // live_session_id, donc "ON CONFLICT (live_session_id) DO NOTHING" échoue avec 500.
+    // Confirmé dans les logs Cloud Run: "there is no unique or exclusion constraint
+    // matching the ON CONFLICT specification" → la session s'insère mais analytics plante.
     // Ajouter la contrainte uniquement si elle n'existe pas déjà (ni PK ni UNIQUE).
     let unique_exists: bool = sqlx::query_scalar(
         r#"
