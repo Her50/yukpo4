@@ -267,6 +267,94 @@ RÉPONSE ATTENDUE (JSON strict) :
     }
 }
 
+/// Médicament extrait d'une ordonnance par IA vision
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtractedMedication {
+    pub name: String,
+    pub dosage: Option<String>,
+    pub quantity: Option<i32>,
+    pub posologie: Option<String>,
+}
+
+impl PharmacyAIService {
+    /// Extrait les médicaments d'une image d'ordonnance via IA multimodale
+    pub async fn extract_ordonnance_medications(
+        &self,
+        image_base64: &str,
+    ) -> AppResult<Vec<ExtractedMedication>> {
+        let prompt = r#"
+Tu es un pharmacien expert qui analyse des ordonnances médicales pour Yukpo.
+
+TÂCHE : Analyse l'image de l'ordonnance et extrait tous les médicaments prescrits.
+
+RÈGLES :
+- Extrait UNIQUEMENT les médicaments clairement visibles
+- Pour chaque médicament, identifie le nom, dosage, quantité et posologie
+- Utilise le nom commercial ou DCI tel qu'écrit sur l'ordonnance
+- Si une information est illisible, omets-la (null)
+- Ne t'invente JAMAIS de médicaments
+
+RÉPONSE ATTENDUE (JSON strict, tableau) :
+[
+  {
+    "name": "Amoxicilline",
+    "dosage": "500mg",
+    "quantity": 21,
+    "posologie": "1 comprimé 3 fois par jour pendant 7 jours"
+  },
+  {
+    "name": "Paracétamol",
+    "dosage": "1000mg",
+    "quantity": 16,
+    "posologie": "1 comprimé toutes les 6 heures si douleur"
+  }
+]
+
+Si aucun médicament n'est lisible, retourne: []
+"#;
+
+        let (model_name, response, tokens) = self
+            .app_ia
+            .predict_multimodal(prompt, Some(vec![image_base64.to_string()]))
+            .await?;
+
+        log::info!(
+            "[PharmacyAIService] Ordonnance analysée avec {} (tokens: {})",
+            model_name,
+            tokens
+        );
+
+        // Nettoyer la réponse pour extraire le JSON
+        let json_str = extract_json_array(&response);
+
+        let medications: Vec<ExtractedMedication> = match serde_json::from_str(&json_str) {
+            Ok(meds) => meds,
+            Err(e) => {
+                log::warn!(
+                    "[PharmacyAIService] Erreur parsing ordonnance JSON: {}. Réponse: {}",
+                    e,
+                    &response[..response.len().min(200)]
+                );
+                vec![]
+            }
+        };
+
+        Ok(medications)
+    }
+}
+
+/// Extrait le premier tableau JSON d'une réponse IA
+fn extract_json_array(text: &str) -> String {
+    if let Some(start) = text.find('[') {
+        if let Some(end) = text.rfind(']') {
+            if end > start {
+                return text[start..=end].to_string();
+            }
+        }
+    }
+    "[]".to_string()
+}
+
 /// Fonctions helper pour intégration facile dans les contrôleurs
 pub async fn check_medication_interactions(
     app_ia: Arc<AppIA>,

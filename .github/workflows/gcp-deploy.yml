@@ -405,7 +405,7 @@ jobs:
                 --min-instances 1 \
                 --max-instances 10 \
                 --cpu-boost \
-                --no-cpu-throttling \
+                --cpu-throttling \
                 --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
                 --project ${{ secrets.GCP_PROJECT_ID }}
             else
@@ -427,7 +427,7 @@ jobs:
                 --min-instances 1 \
                 --max-instances 10 \
                 --cpu-boost \
-                --no-cpu-throttling \
+                --cpu-throttling \
                 --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
                 --project ${{ secrets.GCP_PROJECT_ID }}
             fi
@@ -454,7 +454,7 @@ jobs:
               --timeout 900 \
               --max-instances 10 \
               --cpu-boost \
-              --no-cpu-throttling \
+              --cpu-throttling \
               --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
               --project ${{ secrets.GCP_PROJECT_ID }}
           fi
