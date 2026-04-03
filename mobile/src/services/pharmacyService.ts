@@ -240,6 +240,123 @@ export const pharmacyService = {
         );
     },
 
+    // ✅ Ordonnance IA: extraire médicaments d'une image
+    extractOrdonnance: async (imageBase64: string): Promise<{
+        success: boolean;
+        medications?: Array<{ name: string; dosage?: string; quantity?: number; posologie?: string }>;
+        error?: string;
+    }> => {
+        try {
+            const response = await apiPost<any>('/api/pharmacies/ai/extract-ordonnance', {
+                image_base64: imageBase64,
+            });
+            if (response.success) {
+                return { success: true, medications: response.medications || [] };
+            }
+            return { success: false, error: response.error || 'Extraction échouée' };
+        } catch (error: any) {
+            return { success: false, error: error.message || 'Erreur lors de l\'extraction' };
+        }
+    },
+
+    // ✅ Rechercher les pharmacies qui ont les médicaments de l'ordonnance
+    searchByMedications: async (
+        medications: Array<{ name: string; quantity?: number }>,
+        lat?: number,
+        lng?: number,
+        radiusKm?: number
+    ): Promise<{
+        success: boolean;
+        pharmacies?: Array<{
+            id: number;
+            service_id: number;
+            nom: string;
+            ville?: string;
+            quartier?: string;
+            telephone?: string;
+            is_on_duty_now: boolean;
+            is_available_now: boolean;
+            distance_km?: number;
+            available_count: number;
+            total_requested: number;
+            matching_score: number;
+            matching_label: string;
+        }>;
+        total_medications_requested?: number;
+        error?: string;
+    }> => {
+        try {
+            const response = await apiPost<any>('/api/pharmacies/search-by-medications', {
+                medications,
+                lat,
+                lng,
+                radius_km: radiusKm,
+            });
+            if (response.success) {
+                return {
+                    success: true,
+                    pharmacies: response.pharmacies || [],
+                    total_medications_requested: response.total_medications_requested,
+                };
+            }
+            return { success: false, error: response.error || 'Recherche échouée' };
+        } catch (error: any) {
+            return { success: false, error: error.message || 'Erreur lors de la recherche' };
+        }
+    },
+
+    // ✅ Récupérer les QR codes d'une commande (patient voit ses QR, pharmacie voit les QR à scanner)
+    getOrderQRCodes: async (orderId: string): Promise<{
+        success: boolean;
+        order_id?: string;
+        delivery_method?: string;
+        order_status?: string;
+        pharmacy_nom?: string;
+        pharmacy_tel?: string;
+        total_amount?: string;
+        reversed?: boolean;
+        qr_pickup?: { qr_code: string; qr_code_url?: string; status: string; expires_at: string } | null;
+        qr_delivery?: { qr_code: string; qr_code_url?: string; status: string; expires_at: string } | null;
+        error?: string;
+    }> => {
+        try {
+            const response = await apiGet<any>(`/api/pharmacies/orders/${orderId}/qr`);
+            if (response.success) return response;
+            return { success: false, error: response.error || 'Erreur récupération QR' };
+        } catch (error: any) {
+            return { success: false, error: error.message || 'Erreur réseau' };
+        }
+    },
+
+    // ✅ Valider un QR code pharmacie (pharmacie valide pickup, coursier valide delivery)
+    validateOrderQR: async (qrCode: string): Promise<{
+        success: boolean;
+        validated?: boolean;
+        qr_type?: string;
+        new_order_status?: string;
+        message?: string;
+        error?: string;
+    }> => {
+        try {
+            const response = await apiPost<any>('/api/pharmacies/orders/qr/validate', { qr_code: qrCode });
+            if (response.success) return response;
+            return { success: false, error: response.error || 'Validation échouée' };
+        } catch (error: any) {
+            return { success: false, error: error.message || 'Erreur réseau' };
+        }
+    },
+
+    // ✅ Détail complet commande (côté pharmacie partenaire)
+    getOrderDetail: async (orderId: string): Promise<{ success: boolean; order?: any; error?: string }> => {
+        try {
+            const response = await apiGet<any>(`/api/pharmacies/orders/${orderId}/detail`);
+            if (response.success) return response;
+            return { success: false, error: response.error || 'Erreur récupération détail' };
+        } catch (error: any) {
+            return { success: false, error: error.message || 'Erreur réseau' };
+        }
+    },
+
     getFinancialMovements: async (limit: number = 50) => {
         return apiGet<any>('/api/pharmacies/me/financial-movements', {
             params: { limit },

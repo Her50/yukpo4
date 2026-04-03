@@ -138,6 +138,15 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/medicines/nearby",
             get(pharmacy_product_controller::search_nearby_medicines),
         )
+        // ✅ Ordonnance IA: extraction médicaments par vision + recherche pharmacies par matching
+        .route(
+            "/api/pharmacies/ai/extract-ordonnance",
+            post(pharmacy_product_controller::extract_ordonnance),
+        )
+        .route(
+            "/api/pharmacies/search-by-medications",
+            post(pharmacy_product_controller::search_by_medications),
+        )
         // Routes Banques de sang (publiques pour recherche)
         .route(
             "/api/banques-sang/search",
@@ -1032,6 +1041,19 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/pharmacies/{id}/analytics",
             get(specialized_services_controller::get_pharmacy_analytics),
+        )
+        // ✅ QR codes pharmacie : génération, affichage, validation + reversal financier
+        .route(
+            "/api/pharmacies/orders/qr/validate",
+            post(specialized_services_controller::validate_pharmacy_order_qr),
+        )
+        .route(
+            "/api/pharmacies/orders/:order_id/qr",
+            get(specialized_services_controller::get_pharmacy_order_qr),
+        )
+        .route(
+            "/api/pharmacies/orders/:order_id/detail",
+            get(specialized_services_controller::get_pharmacy_order_detail),
         )
         // ✅ 2025-01-27: Nouvelles routes Laboratoires
         .route(

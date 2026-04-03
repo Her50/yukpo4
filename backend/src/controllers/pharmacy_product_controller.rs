@@ -828,3 +828,230 @@ pub async fn update_pharmacy_order_status(
         "message": "Statut de commande mis à jour"
     })))
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ordonnance IA : extraction + recherche pharmacies par matching
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ExtractOrdonnanceRequest {
+    pub image_base64: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct MedicationSearchItem {
+    pub name: String,
+    pub quantity: Option<i32>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct SearchByMedicationsRequest {
+    pub medications: Vec<MedicationSearchItem>,
+    pub lat: Option<f64>,
+    pub lng: Option<f64>,
+    pub radius_km: Option<f64>,
+}
+
+/// POST /api/pharmacies/ai/extract-ordonnance (PUBLIC)
+/// Envoie une image d'ordonnance à l'IA et retourne les médicaments extraits
+pub async fn extract_ordonnance(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<ExtractOrdonnanceRequest>,
+) -> AppResult<impl IntoResponse> {
+    use crate::services::pharmacy_ai_service::PharmacyAIService;
+
+    if payload.image_base64.is_empty() {
+        return Err(AppError::BadRequest("image_base64 est requis".to_string()));
+    }
+
+    let ai_service = PharmacyAIService::new(state.ia.clone());
+    let medications = ai_service.extract_ordonnance_medications(&payload.image_base64).await?;
+
+    log::info!(
+        "[extract_ordonnance] {} médicament(s) extraits",
+        medications.len()
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "medications": medications,
+            "count": medications.len()
+        })),
+    ))
+}
+
+/// POST /api/pharmacies/search-by-medications (PUBLIC)
+/// Recherche les pharmacies qui ont les médicaments de l'ordonnance
+/// Retourne un score de complétude et trie par (matching_score DESC, distance ASC)
+///
+/// Stratégie SQL :
+/// - $1 = total_requested (i64)
+/// - $2 = user_lat (f64 nullable) — toujours bindé, même si NULL
+/// - $3 = user_lng (f64 nullable) — toujours bindé, même si NULL
+/// - $4 … $N = patterns ILIKE pour chaque médicament
+/// - $N+1 = radius_km (f64 nullable, optionnel)
+///
+/// Le haversine retourne NULL quand lat/lng sont NULL, donc le filtre radius ne s'applique pas.
+pub async fn search_by_medications(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<SearchByMedicationsRequest>,
+) -> AppResult<impl IntoResponse> {
+    if payload.medications.is_empty() {
+        return Err(AppError::BadRequest(
+            "medications ne peut pas être vide".to_string(),
+        ));
+    }
+
+    let total_requested = payload.medications.len() as i64;
+    let med_names: Vec<String> = payload.medications.iter().map(|m| m.name.clone()).collect();
+    let n = med_names.len();
+
+    // Expressions EXISTS pour chaque médicament (params $4…$N)
+    let exists_cases: String = (0..n)
+        .map(|i| {
+            format!(
+                "(CASE WHEN EXISTS (
+                    SELECT 1 FROM pharmacy_products pp2
+                    WHERE pp2.pharmacy_service_id = p.service_id
+                      AND pp2.nom_produit ILIKE ${}
+                      AND pp2.disponible = true
+                      AND pp2.stock > 0
+                ) THEN 1 ELSE 0 END)",
+                i + 4
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" + ");
+
+    // Filtre rayon optionnel — paramètre $(n+4)
+    let radius_param = n + 4;
+    let radius_filter = if payload.radius_km.is_some() {
+        format!(
+            "AND (distance_km IS NULL OR distance_km <= ${})",
+            radius_param
+        )
+    } else {
+        String::new()
+    };
+
+    let sql = format!(
+        r#"
+        WITH pharmacy_scores AS (
+            SELECT
+                p.id,
+                p.service_id,
+                p.user_id,
+                p.nom,
+                p.ville,
+                p.quartier,
+                p.telephone,
+                p.is_on_duty_now,
+                CASE
+                    WHEN $2::float8 IS NOT NULL AND $3::float8 IS NOT NULL
+                         AND s.gps IS NOT NULL
+                         AND s.gps->>'lat' IS NOT NULL
+                         AND s.gps->>'lng' IS NOT NULL
+                    THEN 6371.0 * acos(
+                        LEAST(1.0,
+                            cos(radians($2)) * cos(radians((s.gps->>'lat')::float8))
+                            * cos(radians((s.gps->>'lng')::float8) - radians($3))
+                            + sin(radians($2)) * sin(radians((s.gps->>'lat')::float8))
+                        )
+                    )
+                    ELSE NULL
+                END AS distance_km,
+                ({exists_cases}) AS available_count
+            FROM pharmacies p
+            JOIN services s ON s.id = p.service_id
+            WHERE p.is_active = true
+        )
+        SELECT
+            id, service_id, user_id, nom, ville, quartier, telephone,
+            is_on_duty_now, distance_km, available_count,
+            CASE
+                WHEN available_count >= $1 THEN 100
+                WHEN available_count = 0   THEN 0
+                ELSE (available_count * 100 / $1)
+            END AS matching_score
+        FROM pharmacy_scores
+        WHERE available_count > 0
+        {radius_filter}
+        ORDER BY matching_score DESC, distance_km ASC NULLS LAST
+        LIMIT 30
+        "#,
+        exists_cases = exists_cases,
+        radius_filter = radius_filter,
+    );
+
+    // Binding dans l'ordre strict : $1, $2, $3, $4…$N, [$N+1]
+    let mut query = sqlx::query(&sql)
+        .bind(total_requested) // $1
+        .bind(payload.lat) // $2 (Option<f64>)
+        .bind(payload.lng); // $3 (Option<f64>)
+
+    for name in &med_names {
+        query = query.bind(format!("%{}%", name)); // $4 … $N
+    }
+
+    if let Some(r) = payload.radius_km {
+        query = query.bind(r); // $N+1
+    }
+
+    let rows = query.fetch_all(&state.pg).await.map_err(|e| {
+        log::error!("[search_by_medications] Erreur SQL: {}", e);
+        AppError::Internal(format!("Erreur recherche pharmacies: {}", e))
+    })?;
+
+    let pharmacies: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            let available_count: i64 = row.try_get("available_count").unwrap_or(0);
+            let matching_score: i64 = row.try_get("matching_score").unwrap_or(0);
+            let distance_km: Option<f64> = row.try_get("distance_km").ok().flatten();
+
+            let matching_label = if matching_score >= 100 {
+                "Matching 100%".to_string()
+            } else {
+                format!(
+                    "{}/{} méd. ({}%)",
+                    available_count, total_requested, matching_score
+                )
+            };
+
+            json!({
+                "id": row.try_get::<i32, _>("id").unwrap_or(0),
+                "service_id": row.try_get::<i32, _>("service_id").unwrap_or(0),
+                "user_id": row.try_get::<i32, _>("user_id").unwrap_or(0),
+                "nom": row.try_get::<String, _>("nom").unwrap_or_default(),
+                "ville": row.try_get::<Option<String>, _>("ville").ok().flatten(),
+                "quartier": row.try_get::<Option<String>, _>("quartier").ok().flatten(),
+                "telephone": row.try_get::<Option<String>, _>("telephone").ok().flatten(),
+                "is_on_duty_now": row.try_get::<bool, _>("is_on_duty_now").unwrap_or(false),
+                "is_available_now": true,
+                "distance_km": distance_km,
+                "available_count": available_count,
+                "total_requested": total_requested,
+                "matching_score": matching_score,
+                "matching_label": matching_label,
+            })
+        })
+        .collect();
+
+    log::info!(
+        "[search_by_medications] {} pharmacie(s) pour {} médicament(s) demandé(s)",
+        pharmacies.len(),
+        total_requested
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "pharmacies": pharmacies,
+            "total_medications_requested": total_requested,
+            "count": pharmacies.len()
+        })),
+    ))
+}

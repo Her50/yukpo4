@@ -13,9 +13,10 @@ import {
 } from 'react-native';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeCard } from '../../components/SafeNativeDesign';
-import { apiGet } from '../../services/api';
-import { modernColors } from '../../theme/modernTheme';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { apiGet } from '../../services/api';
+import { pharmacyService } from '../../services/pharmacyService';
+import { modernColors } from '../../theme/modernTheme';
 
 interface Pharmacie {
     id: number;
@@ -32,6 +33,11 @@ interface Pharmacie {
     nom_produit?: string;
     prix?: number;
     can_fulfill_quantity?: boolean;
+    // Champs ordonnance matching
+    matching_score?: number;
+    matching_label?: string;
+    available_count?: number;
+    total_requested?: number;
 }
 
 const PharmacieListScreen: React.FC = () => {
@@ -61,6 +67,41 @@ const PharmacieListScreen: React.FC = () => {
 
             const currentPage = isRefresh ? 1 : page;
             const filters = params?.filters || {};
+
+            // ✅ Mode ordonnance : recherche par liste de médicaments avec matching score
+            const hasOrdonnanceMedications = Boolean(filters.ordonnance_medications?.length);
+            if (hasOrdonnanceMedications) {
+                const result = await pharmacyService.searchByMedications(
+                    filters.ordonnance_medications,
+                    filters.lat,
+                    filters.lng,
+                    filters.max_distance_km,
+                );
+                if (result.success && result.pharmacies) {
+                    const mapped = result.pharmacies.map((p: any) => ({
+                        id: p.id,
+                        service_id: p.service_id,
+                        user_id: p.user_id || 0,
+                        nom: p.nom,
+                        ville: p.ville,
+                        quartier: p.quartier,
+                        is_available_now: p.is_available_now ?? true,
+                        is_on_duty: !!p.is_on_duty_now,
+                        telephone: p.telephone,
+                        distance_km: p.distance_km,
+                        matching_score: p.matching_score,
+                        matching_label: p.matching_label,
+                        available_count: p.available_count,
+                        total_requested: p.total_requested,
+                    }));
+                    setPharmacies(isRefresh || currentPage === 1 ? mapped : [...pharmacies, ...mapped]);
+                    setHasMore(false); // résultat complet en une fois
+                } else {
+                    Alert.alert('Erreur', result.error || 'Impossible de charger les pharmacies');
+                }
+                return;
+            }
+
             const queryParams = new URLSearchParams();
             if (filters.ville) queryParams.append('ville', filters.ville);
             if (filters.quartier) queryParams.append('quartier', filters.quartier);
@@ -143,11 +184,25 @@ const PharmacieListScreen: React.FC = () => {
                         <Text style={styles.pharmacieNom}>{item.nom}</Text>
                     </View>
                     <View style={styles.badgesContainer}>
-                        <View style={[styles.statusBadge, item.is_available_now && styles.statusBadgeAvailable]}>
-                            <Text style={[styles.statusText, item.is_available_now && styles.statusTextAvailable]}>
-                                {item.is_available_now ? 'Disponible' : 'Indisponible'}
-                            </Text>
-                        </View>
+                        {item.matching_score !== undefined ? (
+                            <View style={[
+                                styles.matchingBadge,
+                                item.matching_score === 100 ? styles.matchingBadge100 : styles.matchingBadgePartial
+                            ]}>
+                                <Text style={[
+                                    styles.matchingText,
+                                    item.matching_score === 100 ? styles.matchingText100 : styles.matchingTextPartial
+                                ]}>
+                                    {item.matching_label || `${item.matching_score}%`}
+                                </Text>
+                            </View>
+                        ) : (
+                            <View style={[styles.statusBadge, item.is_available_now && styles.statusBadgeAvailable]}>
+                                <Text style={[styles.statusText, item.is_available_now && styles.statusTextAvailable]}>
+                                    {item.is_available_now ? 'Disponible' : 'Indisponible'}
+                                </Text>
+                            </View>
+                        )}
                         {item.is_on_duty && (
                             <View style={styles.dutyBadge}>
                                 <Text style={styles.dutyText}>De garde</Text>
@@ -177,6 +232,15 @@ const PharmacieListScreen: React.FC = () => {
                         <Text style={styles.distanceText}>
                             {item.nom_produit}
                             {item.prix ? ` • ${Number(item.prix).toLocaleString()} FCFA` : ''}
+                        </Text>
+                    </View>
+                )}
+
+                {item.available_count !== undefined && item.total_requested !== undefined && (
+                    <View style={styles.matchingDetailRow}>
+                        <SafeIcon name="pill" size={14} color={item.matching_score === 100 ? '#059669' : '#D97706'} type="lucide" />
+                        <Text style={[styles.matchingDetailText, { color: item.matching_score === 100 ? '#059669' : '#D97706' }]}>
+                            {item.available_count}/{item.total_requested} médicament{item.total_requested > 1 ? 's' : ''} disponible{item.available_count > 1 ? 's' : ''}
                         </Text>
                     </View>
                 )}
@@ -386,6 +450,38 @@ const styles = StyleSheet.create({
     },
     footerLoader: {
         marginVertical: 16,
+    },
+    // Matching badges pour mode ordonnance
+    matchingBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+    },
+    matchingBadge100: {
+        backgroundColor: '#D1FAE5',
+    },
+    matchingBadgePartial: {
+        backgroundColor: '#FEF3C7',
+    },
+    matchingText: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    matchingText100: {
+        color: '#065F46',
+    },
+    matchingTextPartial: {
+        color: '#92400E',
+    },
+    matchingDetailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 6,
+        gap: 6,
+    },
+    matchingDetailText: {
+        fontSize: 13,
+        fontWeight: '500',
     },
 });
 

@@ -563,3 +563,440 @@ struct QRCodeRow {
 }
 
 use log::{error, info};
+
+// ============================================================================
+// QR CODES POUR COMMANDES PHARMACIE
+// ============================================================================
+
+/// Info sur un QR code de commande pharmacie
+#[derive(Debug, serde::Serialize)]
+pub struct PharmacyOrderQRInfo {
+    pub id: i32,
+    pub order_id: String,
+    pub qr_code: String,
+    pub qr_code_url: String,
+    pub qr_type: String,
+    pub status: String,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Résultat de validation d'un QR pharmacie
+#[derive(Debug, serde::Serialize)]
+pub struct PharmacyOrderQRValidation {
+    pub order_id: String,
+    pub qr_type: String,
+    pub validated: bool,
+    pub new_order_status: String,
+    pub message: String,
+}
+
+impl QRCodeService {
+    /// Génère (ou récupère l'existant) un QR code pour une commande pharmacie
+    ///
+    /// - `qr_type = "pickup"`   → montré par le coursier à la pharmacie lors du retrait des médicaments
+    /// - `qr_type = "delivery"` → montré par le patient au coursier lors de la livraison
+    pub async fn generate_pharmacy_order_qr(
+        &self,
+        order_id: uuid::Uuid,
+        qr_type: &str,
+    ) -> AppResult<PharmacyOrderQRInfo> {
+        info!(
+            "[QRCodeService] Génération QR {} pour commande pharmacie: {}",
+            qr_type, order_id
+        );
+
+        // Si un QR valide existe déjà pour ce (order_id, qr_type), le retourner
+        let existing: Option<(i32, String, String, chrono::DateTime<chrono::Utc>)> =
+            sqlx::query_as(
+                r#"
+                SELECT id, qr_code, COALESCE(qr_code_url,''), expires_at
+                FROM pharmacy_order_qr_codes
+                WHERE order_id = $1 AND qr_type = $2
+                  AND status = 'pending'
+                  AND expires_at > NOW()
+                ORDER BY created_at DESC
+                LIMIT 1
+                "#,
+            )
+            .bind(order_id)
+            .bind(qr_type)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| {
+                error!("[QRCodeService] Erreur lookup QR pharmacie: {}", e);
+                AppError::Internal("Erreur lookup QR".to_string())
+            })?;
+
+        if let Some((id, qr_code, qr_code_url, expires_at)) = existing {
+            return Ok(PharmacyOrderQRInfo {
+                id,
+                order_id: order_id.to_string(),
+                qr_code,
+                qr_code_url,
+                qr_type: qr_type.to_string(),
+                status: "pending".to_string(),
+                expires_at,
+            });
+        }
+
+        // Générer un nouveau code unique
+        let qr_code = format!(
+            "PHARM-{}-{}-{}",
+            qr_type.to_uppercase(),
+            order_id.to_string().chars().take(8).collect::<String>(),
+            uuid::Uuid::new_v4().to_string().chars().take(8).collect::<String>()
+        );
+
+        // Expiration selon le type
+        let expires_at = chrono::Utc::now()
+            + match qr_type {
+                "pickup" => chrono::Duration::hours(48), // 48h pour récupérer les méds
+                "delivery" => chrono::Duration::hours(72), // 72h pour livrer
+                _ => chrono::Duration::hours(24),
+            };
+
+        let qr_code_url = format!("/api/qr/render?data={}", urlencoding::encode(&qr_code));
+
+        let qr_id: i32 = sqlx::query_scalar(
+            r#"
+            INSERT INTO pharmacy_order_qr_codes (order_id, qr_code, qr_code_url, qr_type, status, expires_at)
+            VALUES ($1, $2, $3, $4, 'pending', $5)
+            RETURNING id
+            "#,
+        )
+        .bind(order_id)
+        .bind(&qr_code)
+        .bind(&qr_code_url)
+        .bind(qr_type)
+        .bind(expires_at)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| {
+            error!("[QRCodeService] Erreur insertion QR pharmacie: {}", e);
+            AppError::Internal(format!("Erreur création QR pharmacie: {}", e))
+        })?;
+
+        info!(
+            "[QRCodeService] ✅ QR {} pharmacie généré: {} (expire: {})",
+            qr_type, qr_code, expires_at
+        );
+
+        Ok(PharmacyOrderQRInfo {
+            id: qr_id,
+            order_id: order_id.to_string(),
+            qr_code,
+            qr_code_url,
+            qr_type: qr_type.to_string(),
+            status: "pending".to_string(),
+            expires_at,
+        })
+    }
+
+    /// Valide un QR code de commande pharmacie (scané par la pharmacie ou le coursier)
+    ///
+    /// - QR type `pickup`   → la pharmacie scanne le QR du coursier → remise médicaments OK
+    /// - QR type `delivery` → le coursier scanne le QR du patient   → livraison confirmée
+    pub async fn validate_pharmacy_order_qr(
+        &self,
+        qr_code: &str,
+        validator_user_id: i32,
+    ) -> AppResult<PharmacyOrderQRValidation> {
+        info!(
+            "[QRCodeService] Validation QR pharmacie: {} par user {}",
+            qr_code, validator_user_id
+        );
+
+        // Retrouver le QR et la commande
+        let row = sqlx::query(
+            r#"
+            SELECT
+                q.id, q.order_id, q.qr_type, q.status, q.expires_at,
+                o.delivery_method, o.status AS order_status
+            FROM pharmacy_order_qr_codes q
+            JOIN pharmacy_orders o ON o.id = q.order_id
+            WHERE q.qr_code = $1
+            "#,
+        )
+        .bind(qr_code)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| {
+            error!("[QRCodeService] Erreur lookup QR pharmacie: {}", e);
+            AppError::Internal("Erreur lookup QR".to_string())
+        })?
+        .ok_or_else(|| AppError::NotFound("QR code introuvable".to_string()))?;
+
+        let qr_id: i32 = row.get("id");
+        let order_id: uuid::Uuid = row.get("order_id");
+        let qr_type: String = row.get("qr_type");
+        let qr_status: String = row.get("status");
+        let expires_at: chrono::DateTime<chrono::Utc> = row.get("expires_at");
+        let order_status: String = row.get("order_status");
+
+        if qr_status == "validated" {
+            return Ok(PharmacyOrderQRValidation {
+                order_id: order_id.to_string(),
+                qr_type,
+                validated: false,
+                new_order_status: order_status,
+                message: "Ce QR code a déjà été validé".to_string(),
+            });
+        }
+
+        if qr_status == "expired" || chrono::Utc::now() > expires_at {
+            // Marquer comme expiré si pas encore fait
+            sqlx::query("UPDATE pharmacy_order_qr_codes SET status = 'expired' WHERE id = $1")
+                .bind(qr_id)
+                .execute(&self.pool)
+                .await
+                .ok();
+            return Ok(PharmacyOrderQRValidation {
+                order_id: order_id.to_string(),
+                qr_type,
+                validated: false,
+                new_order_status: order_status,
+                message: "Ce QR code est expiré".to_string(),
+            });
+        }
+
+        // Déterminer le nouveau statut de la commande selon le type de QR
+        let new_order_status = match qr_type.as_str() {
+            "pickup" => "in_delivery", // La pharmacie a remis les méds au coursier
+            "delivery" => "delivered", // Le patient a reçu les méds
+            _ => &order_status,
+        };
+
+        // Marquer le QR comme validé
+        sqlx::query(
+            r#"
+            UPDATE pharmacy_order_qr_codes
+            SET status = 'validated', validated_at = NOW(), validated_by = $1
+            WHERE id = $2
+            "#,
+        )
+        .bind(validator_user_id)
+        .bind(qr_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            error!("[QRCodeService] Erreur validation QR pharmacie: {}", e);
+            AppError::Internal("Erreur validation QR".to_string())
+        })?;
+
+        // Mettre à jour le statut de la commande
+        sqlx::query("UPDATE pharmacy_orders SET status = $1, updated_at = NOW() WHERE id = $2")
+            .bind(new_order_status)
+            .bind(order_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| {
+                error!("[QRCodeService] Erreur maj statut commande: {}", e);
+                AppError::Internal("Erreur mise à jour commande".to_string())
+            })?;
+
+        // ✅ REVERSAL FINANCIER : créditer le wallet du pharmacien
+        // Trigger : QR "delivery" validé (livraison reçue) OU QR "pickup" validé en mode pickup direct
+        let should_reverse = match qr_type.as_str() {
+            "delivery" => true, // Coursier livré → patient a reçu
+            "pickup" => {
+                // Vérifier si c'est un pickup direct (pas de coursier)
+                let delivery_method: Option<String> =
+                    sqlx::query_scalar("SELECT delivery_method FROM pharmacy_orders WHERE id = $1")
+                        .bind(order_id)
+                        .fetch_optional(&self.pool)
+                        .await
+                        .ok()
+                        .flatten();
+                delivery_method.as_deref() == Some("pickup")
+            }
+            _ => false,
+        };
+
+        if should_reverse {
+            self.reverse_pharmacy_payment_to_partner(order_id).await.ok();
+        }
+
+        let message = match qr_type.as_str() {
+            "pickup" => "✅ Remise des médicaments au coursier validée. La livraison est en cours.",
+            "delivery" => "✅ Livraison confirmée. Le patient a bien reçu ses médicaments.",
+            _ => "✅ QR code validé.",
+        };
+
+        info!(
+            "[QRCodeService] ✅ QR {} pharmacie validé pour commande {}",
+            qr_type, order_id
+        );
+
+        Ok(PharmacyOrderQRValidation {
+            order_id: order_id.to_string(),
+            qr_type,
+            validated: true,
+            new_order_status: new_order_status.to_string(),
+            message: message.to_string(),
+        })
+    }
+
+    /// Reverse le paiement du patient vers le wallet du pharmacien partenaire
+    /// Appelé automatiquement après validation du QR "delivery" ou "pickup" direct
+    ///
+    /// Commission Yukpo lue depuis `yukpo_commission_config` (service_type = 'pharmacie')
+    /// Par défaut : 2% si non configuré
+    async fn reverse_pharmacy_payment_to_partner(&self, order_id: uuid::Uuid) -> AppResult<()> {
+        info!(
+            "[QRCodeService] Reversal financier pour commande pharmacie: {}",
+            order_id
+        );
+
+        // Récupérer les données de la commande
+        let row = sqlx::query(
+            r#"
+            SELECT
+                o.wallet_reserved_cents,
+                o.payment_status,
+                o.reversed_at,
+                p.user_id AS pharmacy_owner_id
+            FROM pharmacy_orders o
+            JOIN pharmacies p ON p.id = o.pharmacy_id
+            WHERE o.id = $1
+            "#,
+        )
+        .bind(order_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| {
+            error!(
+                "[QRCodeService] Erreur lecture commande pour reversal: {}",
+                e
+            );
+            AppError::Internal("Erreur lecture commande".to_string())
+        })?
+        .ok_or_else(|| AppError::NotFound("Commande introuvable".to_string()))?;
+
+        let wallet_reserved_cents: i64 = row.try_get("wallet_reserved_cents").unwrap_or(0);
+        let payment_status: String = row.try_get("payment_status").unwrap_or_default();
+        let already_reversed: Option<chrono::DateTime<chrono::Utc>> =
+            row.try_get("reversed_at").ok().flatten();
+        let pharmacy_owner_id: i32 = row.try_get("pharmacy_owner_id").unwrap_or(0);
+
+        // Idempotence : ne pas reverser deux fois
+        if already_reversed.is_some() {
+            info!(
+                "[QRCodeService] Reversal déjà effectué pour commande {}",
+                order_id
+            );
+            return Ok(());
+        }
+        if payment_status != "paid" {
+            info!(
+                "[QRCodeService] Paiement non réglé (status={}), pas de reversal",
+                payment_status
+            );
+            return Ok(());
+        }
+        if wallet_reserved_cents <= 0 {
+            info!("[QRCodeService] Montant réservé nul, pas de reversal");
+            return Ok(());
+        }
+
+        // Taux de commission Yukpo
+        let commission_rate: f64 = sqlx::query_scalar(
+            "SELECT COALESCE(rate, 0.02) FROM yukpo_commission_config WHERE service_type = 'pharmacie' LIMIT 1",
+        )
+        .fetch_optional(&self.pool)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or(0.02_f64);
+
+        let commission_cents = (wallet_reserved_cents as f64 * commission_rate).round() as i64;
+        let net_partner_cents = wallet_reserved_cents - commission_cents;
+
+        if net_partner_cents <= 0 {
+            return Ok(());
+        }
+
+        // S'assurer que le wallet du pharmacien existe
+        sqlx::query(
+            r#"
+            INSERT INTO user_wallets (user_id, balance_cents, currency, created_at, updated_at)
+            VALUES ($1, 0, 'XAF', NOW(), NOW())
+            ON CONFLICT (user_id, currency) DO NOTHING
+            "#,
+        )
+        .bind(pharmacy_owner_id)
+        .execute(&self.pool)
+        .await
+        .ok();
+
+        // Lire solde avant crédit
+        let balance_before: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(balance_cents, 0) FROM user_wallets WHERE user_id = $1 AND currency = 'XAF'",
+        )
+        .bind(pharmacy_owner_id)
+        .fetch_optional(&self.pool)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or(0);
+
+        // Créditer le wallet du pharmacien
+        sqlx::query(
+            "UPDATE user_wallets SET balance_cents = balance_cents + $1, updated_at = NOW() WHERE user_id = $2 AND currency = 'XAF'",
+        )
+        .bind(net_partner_cents)
+        .bind(pharmacy_owner_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            error!("[QRCodeService] Erreur crédit wallet pharmacien: {}", e);
+            AppError::Internal("Erreur crédit wallet pharmacien".to_string())
+        })?;
+
+        // Enregistrer la transaction wallet
+        sqlx::query(
+            r#"
+            INSERT INTO wallet_transactions (
+                user_id, transaction_type, direction, amount_cents,
+                balance_before_cents, balance_after_cents,
+                currency, reference_type, reference_id, description, created_at
+            )
+            VALUES ($1, 'credit', 'credit', $2, $3, $4, 'XAF', 'pharmacy_order_payout', $5,
+                    $6, NOW())
+            "#,
+        )
+        .bind(pharmacy_owner_id)
+        .bind(net_partner_cents)
+        .bind(balance_before)
+        .bind(balance_before + net_partner_cents)
+        .bind(order_id.to_string())
+        .bind(format!(
+            "Vente pharmacie commande #{} (commission Yukpo {:.0}% déduite)",
+            order_id.to_string().chars().take(8).collect::<String>(),
+            commission_rate * 100.0
+        ))
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            error!("[QRCodeService] Erreur log wallet pharmacien: {}", e);
+            AppError::Internal("Erreur traçabilité wallet".to_string())
+        })?;
+
+        // Marquer la commande comme reversée (idempotence)
+        sqlx::query(
+            "UPDATE pharmacy_orders SET reversed_at = NOW(), net_partner_amount = $1, yukpo_commission = $2 WHERE id = $3",
+        )
+        .bind(net_partner_cents)
+        .bind(commission_cents)
+        .bind(order_id)
+        .execute(&self.pool)
+        .await
+        .ok();
+
+        info!(
+            "[QRCodeService] ✅ Reversal effectué: {}F → pharmacien {} (commission: {}F)",
+            net_partner_cents, pharmacy_owner_id, commission_cents
+        );
+
+        Ok(())
+    }
+}

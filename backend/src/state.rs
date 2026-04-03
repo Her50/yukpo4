@@ -14,6 +14,7 @@ use crate::config::video_renderer::VideoRendererConfig;
 use crate::controllers::ia_status_controller::IAStats;
 use crate::services::app_ia::AppIA;
 use crate::services::gpu_service::{GpuConfig, GpuService};
+use crate::services::livekit_vm_service::{LivekitVmConfig, LivekitVmService};
 use crate::services::mongo_history_service::MongoHistoryService;
 use crate::services::redis_scaling_service::{RedisScalingConfig, RedisScalingService};
 use crate::websocket::delivery_tracking::DeliveryTrackingManager;
@@ -124,6 +125,8 @@ pub struct AppState {
     pub gpu_service: Option<Arc<GpuService>>,
     /// ✅ NOUVEAU 2026-02-15: Service de gestion Redis Memorystore automatisé GCP
     pub redis_scaling_service: Option<Arc<RedisScalingService>>,
+    /// ✅ NOUVEAU 2026-04-03: Service de gestion automatique VM LiveKit selon trafic live
+    pub livekit_vm_service: Option<Arc<LivekitVmService>>,
     /// ✅ NOUVEAU 2026-03-05: Service de transcodage vidéo HLS/DASH (TikTok/Shorts)
     pub video_transcoding:
         Option<Arc<crate::services::video_transcoding_service::VideoTranscodingService>>,
@@ -585,6 +588,17 @@ impl AppState {
                     None
                 }
             },
+            // ✅ NOUVEAU 2026-04-03: Initialiser le service LiveKit VM auto-scaling
+            livekit_vm_service: {
+                if let Some(config) = LivekitVmConfig::from_env() {
+                    let service = LivekitVmService::new(config, Arc::new(pg.clone()));
+                    log::info!("✅ Service LivekitVm initialisé (auto-scaling VM activé)");
+                    Some(Arc::new(service))
+                } else {
+                    log::info!("ℹ️ Service LivekitVm non configuré (LIVEKIT_VM_AUTOSCALE=false)");
+                    None
+                }
+            },
             // ✅ NOUVEAU 2026-03-05: Service de transcodage vidéo HLS/DASH (TikTok/Shorts)
             video_transcoding: None,
             // ✅ NOUVEAU 2026-03-05: Service de musique trending TikTok/Shorts
@@ -855,6 +869,7 @@ impl AppState {
             // ✅ NOUVEAU 2026-02-14: Service GPU désactivé pour les tests
             gpu_service: None,
             redis_scaling_service: None,
+            livekit_vm_service: None,
             // ✅ NOUVEAU 2026-03-05: Services vidéo désactivés pour les tests
             video_transcoding: None,
             trending_music: None,

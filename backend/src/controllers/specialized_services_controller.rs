@@ -5856,6 +5856,16 @@ pub async fn create_pharmacy_order(
     )
     .await;
 
+    // ✅ Génération automatique des QR codes pour les commandes en livraison
+    let (qr_pickup, qr_delivery) = if delivery_method == "delivery" {
+        let qr_svc = crate::services::qr_code_service::QRCodeService::new(state.pg.clone());
+        let pickup_qr = qr_svc.generate_pharmacy_order_qr(order_id, "pickup").await.ok();
+        let delivery_qr = qr_svc.generate_pharmacy_order_qr(order_id, "delivery").await.ok();
+        (pickup_qr, delivery_qr)
+    } else {
+        (None, None)
+    };
+
     Ok((
         StatusCode::CREATED,
         Json(json!({
@@ -5866,7 +5876,20 @@ pub async fn create_pharmacy_order(
                 "wallet_reserved_cents": total_reserved_cents,
                 "linked_delivery_id": linked_delivery_id.map(|id| id.to_string()),
                 "status": "pending",
-                "message": "Commande créée"
+                "message": "Commande créée",
+                // QR codes inclus dans la réponse si livraison
+                "qr_pickup": qr_pickup.as_ref().map(|q| json!({
+                    "qr_code": q.qr_code,
+                    "qr_code_url": q.qr_code_url,
+                    "qr_type": "pickup",
+                    "expires_at": q.expires_at
+                })),
+                "qr_delivery": qr_delivery.as_ref().map(|q| json!({
+                    "qr_code": q.qr_code,
+                    "qr_code_url": q.qr_code_url,
+                    "qr_type": "delivery",
+                    "expires_at": q.expires_at
+                }))
             },
             "order_id": order_id.to_string(),
             "total_amount": total_amount.to_string(),
@@ -9776,6 +9799,216 @@ pub async fn revoke_trip_share(
         Ok(_) => Json(json!({ "success": true, "message": "Lien de partage révoqué." })),
         Err(e) => Json(json!({ "success": false, "error": e })),
     }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PHARMACIE : QR codes + validation + détail commande
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// GET /api/pharmacies/orders/{order_id}/qr
+/// Retourne les QR codes d'une commande (pickup + delivery si livraison)
+pub async fn get_pharmacy_order_qr(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(order_id): Path<uuid::Uuid>,
+) -> AppResult<impl IntoResponse> {
+    let order_row = sqlx::query(
+        r#"
+        SELECT o.id, o.user_id, o.status, o.delivery_method, o.total_amount,
+               p.user_id AS pharmacy_owner_id, p.nom AS pharmacy_nom,
+               p.telephone AS pharmacy_tel
+        FROM pharmacy_orders o
+        JOIN pharmacies p ON p.id = o.pharmacy_id
+        WHERE o.id = $1
+        "#,
+    )
+    .bind(order_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture commande: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Commande introuvable".to_string()))?;
+
+    let order_user_id: i32 = order_row.get("user_id");
+    let pharmacy_owner_id: i32 = order_row.get("pharmacy_owner_id");
+
+    if user_id != order_user_id && user_id != pharmacy_owner_id {
+        return Err(AppError::Forbidden(
+            "Accès refusé à cette commande".to_string(),
+        ));
+    }
+
+    let delivery_method: String = order_row.get("delivery_method");
+    let qr_svc = crate::services::qr_code_service::QRCodeService::new(state.pg.clone());
+
+    // Générer à la volée si absent (idempotent — renvoie l'existant si déjà créé)
+    let qr_pickup = qr_svc.generate_pharmacy_order_qr(order_id, "pickup").await.ok();
+    let qr_delivery = if delivery_method == "delivery" {
+        qr_svc.generate_pharmacy_order_qr(order_id, "delivery").await.ok()
+    } else {
+        None
+    };
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "order_id": order_id.to_string(),
+            "delivery_method": delivery_method,
+            "order_status": order_row.get::<String, _>("status"),
+            "pharmacy_nom": order_row.get::<String, _>("pharmacy_nom"),
+            "pharmacy_tel": order_row.get::<Option<String>, _>("pharmacy_tel"),
+            "total_amount": order_row.get::<rust_decimal::Decimal, _>("total_amount").to_string(),
+            // QR "pickup" : montré par patient (pickup direct) OU coursier (livraison) à la pharmacie
+            "qr_pickup": qr_pickup.map(|q| json!({
+                "qr_code": q.qr_code,
+                "qr_code_url": q.qr_code_url,
+                "status": q.status,
+                "expires_at": q.expires_at
+            })),
+            // QR "delivery" : montré par le patient au coursier à la réception (mode livraison seulement)
+            "qr_delivery": qr_delivery.map(|q| json!({
+                "qr_code": q.qr_code,
+                "qr_code_url": q.qr_code_url,
+                "status": q.status,
+                "expires_at": q.expires_at
+            })),
+        })),
+    ))
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct ValidatePharmacyQRRequest {
+    pub qr_code: String,
+}
+
+/// POST /api/pharmacies/orders/qr/validate
+/// Valide un QR code pharmacie (pharmacie scanne QR pickup, coursier scanne QR delivery)
+/// Déclenche automatiquement le reversal financier au bon moment
+pub async fn validate_pharmacy_order_qr(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<ValidatePharmacyQRRequest>,
+) -> AppResult<impl IntoResponse> {
+    if payload.qr_code.trim().is_empty() {
+        return Err(AppError::BadRequest("qr_code requis".to_string()));
+    }
+    let qr_svc = crate::services::qr_code_service::QRCodeService::new(state.pg.clone());
+    let result = qr_svc.validate_pharmacy_order_qr(&payload.qr_code, user_id).await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "order_id": result.order_id,
+            "qr_type": result.qr_type,
+            "validated": result.validated,
+            "new_order_status": result.new_order_status,
+            "message": result.message,
+        })),
+    ))
+}
+
+/// GET /api/pharmacies/orders/{order_id}/detail
+/// Détail complet d'une commande pour la pharmacie partenaire
+/// Inclut items, QR codes, montant reversal, infos patient
+pub async fn get_pharmacy_order_detail(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(order_id): Path<uuid::Uuid>,
+) -> AppResult<impl IntoResponse> {
+    let order_row = sqlx::query(
+        r#"
+        SELECT
+            o.id, o.user_id AS patient_user_id, o.status, o.delivery_method,
+            o.total_amount, o.delivery_fee, o.delivery_address, o.created_at,
+            o.wallet_reserved_cents, o.reversed_at, o.net_partner_amount, o.yukpo_commission,
+            o.linked_delivery_id, o.courier_id,
+            p.user_id AS pharmacy_owner_id, p.nom AS pharmacy_nom,
+            u.nom AS patient_nom, u.telephone AS patient_tel
+        FROM pharmacy_orders o
+        JOIN pharmacies p ON p.id = o.pharmacy_id
+        JOIN users u ON u.id = o.user_id
+        WHERE o.id = $1
+        "#,
+    )
+    .bind(order_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture commande: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Commande introuvable".to_string()))?;
+
+    let pharmacy_owner_id: i32 = order_row.get("pharmacy_owner_id");
+    if user_id != pharmacy_owner_id {
+        return Err(AppError::Forbidden(
+            "Seul le propriétaire de la pharmacie peut voir ce détail".to_string(),
+        ));
+    }
+
+    let items = sqlx::query(
+        "SELECT medication_name, quantity, unit_price, (quantity * unit_price) AS line_total FROM pharmacy_order_items WHERE order_id = $1 ORDER BY id",
+    )
+    .bind(order_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let items_json: Vec<serde_json::Value> = items
+        .iter()
+        .map(|r| {
+            json!({
+                "medication_name": r.get::<String, _>("medication_name"),
+                "quantity": r.get::<i32, _>("quantity"),
+                "unit_price": r.get::<rust_decimal::Decimal, _>("unit_price").to_string(),
+                "line_total": r.get::<rust_decimal::Decimal, _>("line_total").to_string(),
+            })
+        })
+        .collect();
+
+    let qr_rows = sqlx::query(
+        "SELECT qr_code, qr_code_url, qr_type, status, expires_at, validated_at FROM pharmacy_order_qr_codes WHERE order_id = $1 ORDER BY qr_type",
+    )
+    .bind(order_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let qr_json: Vec<serde_json::Value> = qr_rows
+        .iter()
+        .map(|r| {
+            json!({
+                "qr_code": r.get::<String, _>("qr_code"),
+                "qr_code_url": r.get::<Option<String>, _>("qr_code_url"),
+                "qr_type": r.get::<String, _>("qr_type"),
+                "status": r.get::<String, _>("status"),
+                "expires_at": r.get::<chrono::DateTime<chrono::Utc>, _>("expires_at"),
+                "validated_at": r.get::<Option<chrono::DateTime<chrono::Utc>>, _>("validated_at"),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "order": {
+                "id": order_id.to_string(),
+                "status": order_row.get::<String, _>("status"),
+                "delivery_method": order_row.get::<String, _>("delivery_method"),
+                "total_amount": order_row.get::<rust_decimal::Decimal, _>("total_amount").to_string(),
+                "delivery_fee": order_row.get::<Option<rust_decimal::Decimal>, _>("delivery_fee").map(|d| d.to_string()),
+                "delivery_address": order_row.get::<Option<String>, _>("delivery_address"),
+                "created_at": order_row.get::<chrono::DateTime<chrono::Utc>, _>("created_at"),
+                "linked_delivery_id": order_row.get::<Option<uuid::Uuid>, _>("linked_delivery_id").map(|id| id.to_string()),
+                "patient_nom": order_row.get::<Option<String>, _>("patient_nom"),
+                "patient_tel": order_row.get::<Option<String>, _>("patient_tel"),
+                "reversed": order_row.get::<Option<chrono::DateTime<chrono::Utc>>, _>("reversed_at").is_some(),
+                "net_partner_amount_fcfa": order_row.get::<Option<i64>, _>("net_partner_amount").unwrap_or(0) / 100,
+                "yukpo_commission_fcfa": order_row.get::<Option<i64>, _>("yukpo_commission").unwrap_or(0) / 100,
+                "items": items_json,
+                "qr_codes": qr_json,
+            }
+        })),
+    ))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

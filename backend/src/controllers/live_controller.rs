@@ -126,6 +126,15 @@ pub async fn start_live_session(
         payload.host_user_id = user.id;
     }
 
+    // ✅ NOUVEAU 2026-04-03: Démarrer la VM LiveKit dès la création de session
+    // Le boot prend ~60-90s — on le lance pendant que l'utilisateur configure son live
+    if let Some(livekit_vm) = &state.livekit_vm_service {
+        let vm = livekit_vm.clone();
+        tokio::spawn(async move {
+            vm.ensure_running().await;
+        });
+    }
+
     let response = match LiveStreamingService::create_session(state.clone(), payload).await {
         Ok(r) => {
             log::info!("[live] create_session OK, session_id={}", r.session.id);

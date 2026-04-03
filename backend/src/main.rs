@@ -3240,6 +3240,16 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     } else {
         log::info!("ℹ️ Service Redis scaling non configuré - Monitoring désactivé");
     }
+
+    // ✅ NOUVEAU 2026-04-03: Démarrer le monitoring LiveKit VM si configuré
+    if let Some(livekit_vm_service) = &app_state.livekit_vm_service {
+        log::info!("🚀 Démarrage du monitoring LiveKit VM automatisé...");
+        livekit_vm_service.clone().start_monitoring().await;
+        log::info!("✅ Monitoring LiveKit VM démarré (démarrage/arrêt automatique selon sessions)");
+    } else {
+        log::info!("ℹ️ Service LiveKit VM non configuré (LIVEKIT_VM_AUTOSCALE=false)");
+    }
+
     // ✅ Phase 2 : Archivage automatique des livraisons complétées
     tasks::delivery_archive_worker::start_delivery_archive_worker(app_state.clone());
 

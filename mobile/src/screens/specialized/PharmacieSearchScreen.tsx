@@ -1,8 +1,12 @@
 // ✅ Écran de recherche de pharmacies (Mobile) - VERSION REFONDUE
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
+    Modal,
     ScrollView,
     StyleSheet,
     Switch,
@@ -18,9 +22,10 @@ import SafeIcon from '../../components/SafeIcon';
 import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useLocation } from '../../contexts/LocationContext';
+import { useLanguageSafe } from '../../contexts/LanguageContext';
+import { pharmacyService } from '../../services/pharmacyService';
 import { modernColors } from '../../theme/modernTheme';
 import { hapticPress } from '../../utils/hapticFeedback';
-import { useLanguageSafe } from '../../contexts/LanguageContext';
 
 interface PharmacieSearchFilters {
     ville?: string;
@@ -58,6 +63,15 @@ const PharmacieSearchScreen: React.FC = () => {
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     // ✅ NOUVEAU: Modal fonctionnalités IA
     const [showAIFeatures, setShowAIFeatures] = useState(false);
+    // ✅ Ordonnance scanner
+    const [showOrdonnanceModal, setShowOrdonnanceModal] = useState(false);
+    const [extractingOrdonnance, setExtractingOrdonnance] = useState(false);
+    const [extractedMedications, setExtractedMedications] = useState<Array<{
+        name: string; dosage?: string; quantity?: number; posologie?: string;
+    }> | null>(null);
+    // ✅ Saisie texte multi-médicaments
+    const [textMedications, setTextMedications] = useState<string[]>([]);
+    const [medInputValue, setMedInputValue] = useState('');
 
     React.useEffect(() => {
         if (location?.coords) {
@@ -77,9 +91,112 @@ const PharmacieSearchScreen: React.FC = () => {
         setShowGPSModal(false);
     };
 
+    const handleCaptureOrdonnance = async (source: 'camera' | 'gallery') => {
+        hapticPress();
+        setShowOrdonnanceModal(false);
+
+        let result: ImagePicker.ImagePickerResult;
+        if (source === 'camera') {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission requise', 'Autorisez l\'accès à la caméra pour scanner une ordonnance.');
+                return;
+            }
+            result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ['images'],
+                base64: true,
+                quality: 0.7,
+            });
+        } else {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission requise', 'Autorisez l\'accès à la galerie.');
+                return;
+            }
+            result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                base64: true,
+                quality: 0.7,
+            });
+        }
+
+        if (result.canceled || !result.assets?.[0]?.base64) return;
+
+        const base64 = result.assets[0].base64!;
+        setExtractingOrdonnance(true);
+
+        try {
+            const extraction = await pharmacyService.extractOrdonnance(base64);
+            if (extraction.success && extraction.medications && extraction.medications.length > 0) {
+                setExtractedMedications(extraction.medications);
+            } else {
+                Alert.alert(
+                    'Aucun médicament détecté',
+                    extraction.error || 'L\'IA n\'a pas pu identifier de médicaments dans cette image. Essayez avec une image plus nette.'
+                );
+            }
+        } catch (err: any) {
+            Alert.alert('Erreur', err.message || 'Impossible d\'analyser l\'ordonnance.');
+        } finally {
+            setExtractingOrdonnance(false);
+        }
+    };
+
+    const handleSearchByOrdonnance = () => {
+        if (!extractedMedications || extractedMedications.length === 0) return;
+        hapticPress();
+
+        const medications = extractedMedications.map(m => ({ name: m.name, quantity: m.quantity }));
+        navigation.navigate('PharmacieList' as never, {
+            filters: {
+                ordonnance_medications: medications,
+                lat: gpsData?.lat,
+                lng: gpsData?.lng,
+                max_distance_km: maxDistance,
+            }
+        } as never);
+    };
+
+    const addTextMedication = () => {
+        const raw = medInputValue.trim();
+        if (!raw) return;
+        // Support saisie multiple séparée par virgules ou points-virgules
+        const parts = raw.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+        const toAdd = parts.filter(p => !textMedications.includes(p));
+        if (toAdd.length > 0) {
+            setTextMedications([...textMedications, ...toAdd]);
+        }
+        setMedInputValue('');
+        hapticPress();
+    };
+
+    const removeTextMedication = (name: string) => {
+        hapticPress();
+        setTextMedications(textMedications.filter(m => m !== name));
+    };
+
     const handleSearch = () => {
-        // ✅ RÉORIENTÉ: Priorité sur recherche de produits/services plutôt que d'établissements
-        // Si recherche de produits, utiliser l'endpoint de recherche de produits
+        // ✅ Priorité 1: Médicaments saisis en liste → matching score identique à l'ordonnance
+        const activeMedications = textMedications.length > 0
+            ? textMedications
+            : medInputValue.trim()
+                ? medInputValue.trim().split(/[,;]+/).map(s => s.trim()).filter(Boolean)
+                : [];
+
+        if (activeMedications.length > 0) {
+            const filters: any = {
+                ordonnance_medications: activeMedications.map(name => ({ name })),
+            };
+            if (gpsData) {
+                filters.lat = gpsData.lat;
+                filters.lng = gpsData.lng;
+            }
+            if (maxDistance > 0) filters.max_distance_km = maxDistance;
+            navigation.navigate('PharmacieList' as never, { filters } as never);
+            return;
+        }
+
+        // ✅ Priorité 2: Recherche produit classique (texte libre, un seul médicament)
         if (productSearch.trim()) {
             const filters: PharmacieSearchFilters = {
                 product_search: productSearch.trim(),
@@ -90,7 +207,6 @@ const PharmacieSearchScreen: React.FC = () => {
             }
             if (maxDistance > 0) filters.max_distance_km = maxDistance;
             if (availableOnly) filters.available_only = true;
-            // Navigation vers recherche de produits
             navigation.navigate('PharmacieList' as never, { filters } as never);
             return;
         }
@@ -129,6 +245,16 @@ const PharmacieSearchScreen: React.FC = () => {
 
     // ✅ RÉORIENTÉ: Recherches rapides - Priorité sur services/produits
     const quickSearches = [
+        {
+            id: 'ordonnance',
+            title: 'Scanner ordonnance',
+            icon: 'camera',
+            description: 'Filmez votre ordonnance',
+            action: () => {
+                hapticPress();
+                setShowOrdonnanceModal(true);
+            }
+        },
         {
             id: 'produits',
             title: t('pharmacieSearch.rechercheProduits'),
@@ -243,6 +369,53 @@ const PharmacieSearchScreen: React.FC = () => {
                     </LinearGradient>
                 </View>
 
+                {/* ✅ Résultat extraction ordonnance */}
+                {extractingOrdonnance && (
+                    <View style={styles.ordonnanceLoadingCard}>
+                        <ActivityIndicator size="large" color="#EC4899" />
+                        <Text style={styles.ordonnanceLoadingText}>
+                            L'IA analyse votre ordonnance...
+                        </Text>
+                    </View>
+                )}
+
+                {extractedMedications && extractedMedications.length > 0 && (
+                    <View style={styles.extractedMedsCard}>
+                        <View style={styles.extractedMedsHeader}>
+                            <SafeIcon name="check-circle" size={20} color="#10B981" type="lucide" />
+                            <Text style={styles.extractedMedsTitle}>
+                                {extractedMedications.length} médicament{extractedMedications.length > 1 ? 's' : ''} détecté{extractedMedications.length > 1 ? 's' : ''}
+                            </Text>
+                            <TouchableOpacity onPress={() => setExtractedMedications(null)}>
+                                <SafeIcon name="x" size={18} color="#6B7280" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+                        {extractedMedications.map((med, idx) => (
+                            <View key={idx} style={styles.extractedMedItem}>
+                                <SafeIcon name="pill" size={14} color="#EC4899" type="lucide" />
+                                <View style={styles.extractedMedInfo}>
+                                    <Text style={styles.extractedMedName}>{med.name}</Text>
+                                    {(med.dosage || med.posologie) && (
+                                        <Text style={styles.extractedMedDetail}>
+                                            {[med.dosage, med.posologie].filter(Boolean).join(' · ')}
+                                        </Text>
+                                    )}
+                                </View>
+                            </View>
+                        ))}
+                        <TouchableOpacity
+                            style={styles.searchByOrdonnanceButton}
+                            onPress={handleSearchByOrdonnance}
+                            activeOpacity={0.8}
+                        >
+                            <SafeIcon name="map-pin" size={18} color="#FFFFFF" type="lucide" />
+                            <Text style={styles.searchByOrdonnanceButtonText}>
+                                Trouver les pharmacies avec ces médicaments
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 {/* Recherches rapides */}
                 <View style={styles.quickSearchesSection}>
                     <Text style={styles.sectionTitle}>🔍 Recherches rapides</Text>
@@ -269,24 +442,67 @@ const PharmacieSearchScreen: React.FC = () => {
                     </View>
                 </View>
 
-                {/* ✅ RÉORIENTÉ: Formulaire de recherche - Priorité sur produits/services */}
+                {/* ✅ Formulaire de recherche */}
                 <View style={styles.searchFormCard}>
                     <Text style={styles.sectionTitle}>{t('pharmacieSearch.rechercheDeProduits')}</Text>
                     <Text style={styles.sectionDescription}>
-                        Recherchez des médicaments ou produits pharmaceutiques disponibles
+                        Ajoutez un ou plusieurs médicaments — les pharmacies seront classées par taux de disponibilité
                     </Text>
 
-                    {/* Recherche de produits (PRIORITAIRE) */}
+                    {/* ✅ Saisie multi-médicaments */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>
-                            <SafeIcon name="search" size={14} color={modernColors.primary} type="lucide" />{t('pharmacieSearchScreen.nomDuProduitOuMedicament')}
+                            <SafeIcon name="pill" size={14} color={modernColors.primary} type="lucide" /> Médicaments recherchés
                         </Text>
-                        <NativeInput
-                            value={productSearch}
-                            onChangeText={setProductSearch}
-                            placeholder={t('pharmacieSearch.exParacetamolDolipraneAmoxicilline')}
-                            autoCapitalize="none"
-                        />
+                        <View style={styles.medInputRow}>
+                            <View style={styles.medInputWrapper}>
+                                <NativeInput
+                                    value={medInputValue}
+                                    onChangeText={setMedInputValue}
+                                    placeholder="Ex: Paracetamol, Amoxicilline..."
+                                    autoCapitalize="none"
+                                    onSubmitEditing={addTextMedication}
+                                    returnKeyType="done"
+                                />
+                            </View>
+                            <TouchableOpacity
+                                style={styles.medAddButton}
+                                onPress={addTextMedication}
+                                activeOpacity={0.8}
+                            >
+                                <SafeIcon name="plus" size={20} color="#FFFFFF" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.medInputHint}>
+                            Séparez par virgule ou appuyez sur + pour en ajouter plusieurs
+                        </Text>
+
+                        {/* Tags des médicaments ajoutés */}
+                        {textMedications.length > 0 && (
+                            <View style={styles.medTagsContainer}>
+                                {textMedications.map((name, idx) => (
+                                    <View key={idx} style={styles.medTag}>
+                                        <SafeIcon name="pill" size={12} color="#EC4899" type="lucide" />
+                                        <Text style={styles.medTagText}>{name}</Text>
+                                        <TouchableOpacity
+                                            onPress={() => removeTextMedication(name)}
+                                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                                        >
+                                            <SafeIcon name="x" size={14} color="#9CA3AF" type="lucide" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
+                        {textMedications.length > 0 && (
+                            <View style={styles.medMatchingInfo}>
+                                <SafeIcon name="info" size={14} color="#3B82F6" type="lucide" />
+                                <Text style={styles.medMatchingInfoText}>
+                                    Les pharmacies seront classées : 100% si tous disponibles, sinon % de complétude
+                                </Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* Localisation (optionnelle pour recherche de produits) */}
@@ -344,18 +560,6 @@ const PharmacieSearchScreen: React.FC = () => {
                                 <SafeIcon name="plus" size={18} color="#FFFFFF" type="lucide" />
                             </TouchableOpacity>
                         </View>
-                    </View>
-
-                    {/* ✅ NOUVEAU: Recherche de produits */}
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.label}>
-                            <SafeIcon name="pill" size={14} color={modernColors.primary} type="lucide" />{t('pharmacieSearchScreen.rechercherUnMedicamentproduitOptionnel')}
-                        </Text>
-                        <NativeInput
-                            value={productSearch}
-                            onChangeText={setProductSearch}
-                            placeholder={t('pharmacieSearch.exParacetamolAmoxicilline')}
-                        />
                     </View>
 
                     {/* ✅ NOUVEAU: Bouton filtres avancés */}
@@ -558,6 +762,60 @@ const PharmacieSearchScreen: React.FC = () => {
                 visible={showAIFeatures}
                 onClose={() => setShowAIFeatures(false)}
             />
+
+            {/* ✅ Modal scanner ordonnance */}
+            <Modal
+                visible={showOrdonnanceModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowOrdonnanceModal(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowOrdonnanceModal(false)}
+                >
+                    <View style={styles.ordonnanceModalContainer}>
+                        <View style={styles.ordonnanceModalHandle} />
+                        <Text style={styles.ordonnanceModalTitle}>Scanner une ordonnance</Text>
+                        <Text style={styles.ordonnanceModalSubtitle}>
+                            L'IA va extraire les médicaments et la posologie de votre ordonnance
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.ordonnanceModalButton}
+                            onPress={() => handleCaptureOrdonnance('camera')}
+                        >
+                            <View style={styles.ordonnanceModalButtonIcon}>
+                                <SafeIcon name="camera" size={24} color="#EC4899" type="lucide" />
+                            </View>
+                            <View style={styles.ordonnanceModalButtonText}>
+                                <Text style={styles.ordonnanceModalButtonTitle}>Prendre une photo</Text>
+                                <Text style={styles.ordonnanceModalButtonDesc}>Photographiez votre ordonnance maintenant</Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.ordonnanceModalButton}
+                            onPress={() => handleCaptureOrdonnance('gallery')}
+                        >
+                            <View style={styles.ordonnanceModalButtonIcon}>
+                                <SafeIcon name="image" size={24} color="#3B82F6" type="lucide" />
+                            </View>
+                            <View style={styles.ordonnanceModalButtonText}>
+                                <Text style={styles.ordonnanceModalButtonTitle}>Choisir depuis la galerie</Text>
+                                <Text style={styles.ordonnanceModalButtonDesc}>Sélectionnez une photo existante</Text>
+                            </View>
+                            <SafeIcon name="chevron-right" size={20} color="#9CA3AF" type="lucide" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.ordonnanceModalCancelButton}
+                            onPress={() => setShowOrdonnanceModal(false)}
+                        >
+                            <Text style={styles.ordonnanceModalCancelText}>Annuler</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
         </SafeNativeView>
     );
 };
@@ -920,6 +1178,217 @@ const styles = StyleSheet.create({
     },
     serviceChipTextActive: {
         color: '#FFFFFF',
+    },
+    // ✅ Styles saisie multi-médicaments
+    medInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    medInputWrapper: {
+        flex: 1,
+    },
+    medAddButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#EC4899',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    medInputHint: {
+        fontSize: 11,
+        color: '#9CA3AF',
+        marginTop: 6,
+        fontStyle: 'italic',
+    },
+    medTagsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 12,
+    },
+    medTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FEE2E2',
+        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        gap: 6,
+        borderWidth: 1,
+        borderColor: '#FBCFE8',
+    },
+    medTagText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#9D174D',
+    },
+    medMatchingInfo: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 6,
+        marginTop: 12,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 8,
+        padding: 10,
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+    },
+    medMatchingInfoText: {
+        flex: 1,
+        fontSize: 12,
+        color: '#1E40AF',
+        lineHeight: 16,
+    },
+    // ✅ Styles ordonnance scanner
+    ordonnanceLoadingCard: {
+        backgroundColor: '#FDF2F8',
+        borderRadius: 16,
+        padding: 24,
+        marginBottom: 16,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#FBCFE8',
+        gap: 12,
+    },
+    ordonnanceLoadingText: {
+        fontSize: 14,
+        color: '#EC4899',
+        fontWeight: '500',
+    },
+    extractedMedsCard: {
+        backgroundColor: '#F0FDF4',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+    },
+    extractedMedsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        gap: 8,
+    },
+    extractedMedsTitle: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#065F46',
+    },
+    extractedMedItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        paddingVertical: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#D1FAE5',
+        gap: 10,
+    },
+    extractedMedInfo: {
+        flex: 1,
+    },
+    extractedMedName: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111827',
+    },
+    extractedMedDetail: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 2,
+    },
+    searchByOrdonnanceButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#EC4899',
+        borderRadius: 12,
+        paddingVertical: 14,
+        marginTop: 16,
+        gap: 8,
+    },
+    searchByOrdonnanceButtonText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    // Modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    ordonnanceModalContainer: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+        paddingBottom: 40,
+    },
+    ordonnanceModalHandle: {
+        width: 40,
+        height: 4,
+        backgroundColor: '#D1D5DB',
+        borderRadius: 2,
+        alignSelf: 'center',
+        marginBottom: 20,
+    },
+    ordonnanceModalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#111827',
+        marginBottom: 6,
+    },
+    ordonnanceModalSubtitle: {
+        fontSize: 13,
+        color: '#6B7280',
+        lineHeight: 18,
+        marginBottom: 24,
+    },
+    ordonnanceModalButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 12,
+    },
+    ordonnanceModalButtonIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    ordonnanceModalButtonText: {
+        flex: 1,
+    },
+    ordonnanceModalButtonTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 2,
+    },
+    ordonnanceModalButtonDesc: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    ordonnanceModalCancelButton: {
+        alignItems: 'center',
+        paddingVertical: 14,
+        marginTop: 4,
+    },
+    ordonnanceModalCancelText: {
+        fontSize: 15,
+        color: '#6B7280',
+        fontWeight: '500',
     },
     // ✅ NOUVEAU: Styles pour bannière fonctionnalités IA
     aiFeaturesBanner: {
