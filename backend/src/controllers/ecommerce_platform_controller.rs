@@ -29,7 +29,7 @@ use axum::{
     Extension, Json,
 };
 use log::{error, info, warn};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use sqlx::Row;
 use std::collections::HashMap;

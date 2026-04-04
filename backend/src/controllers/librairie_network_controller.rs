@@ -12,7 +12,7 @@ use axum::{
     Extension,
 };
 use chrono::Utc;
-use log::{info, warn};
+use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use std::collections::HashMap;

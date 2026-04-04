@@ -826,25 +826,27 @@ pub async fn get_trend_pulse(
     // Lire les clés API depuis la config (variables d'environnement)
     let youtube_key = std::env::var("YOUTUBE_API_KEY").unwrap_or_default();
     let newsapi_key = std::env::var("NEWSAPI_KEY").unwrap_or_default();
-
-    // Pays pour NewsAPI (CM, SN, etc. → codes ISO 2)
-    let newsapi_country = match region {
-        "CM" => "cm",
-        "SN" => "sn",
-        "CI" => "ci",
-        "NG" => "ng",
-        _ => "fr",
-    };
-
-    // Clés API Twitter/X
     let twitter_bearer = std::env::var("TWITTER_BEARER_TOKEN").unwrap_or_default();
+    let tiktok_token = std::env::var("TIKTOK_ACCESS_TOKEN").unwrap_or_default();
 
-    // Collecte parallèle des sources externes (Google + YouTube + NewsAPI + Twitter)
-    let (google_trends, youtube_trends, news_trends, twitter_trends) = tokio::join!(
+    // Codes pays normalisés pour chaque source
+    let newsapi_country = region_to_newsapi_country(region);
+
+    // Collecte parallèle de TOUTES les sources (6 sources)
+    let (google_trends, youtube_trends, news_trends, twitter_trends, tiktok_trends, reddit_trends) = tokio::join!(
         fetch_google_trends(&client, region),
         fetch_youtube_trends(&client, region, &youtube_key),
-        fetch_newsapi_trends(&client, newsapi_country, &newsapi_key),
+        fetch_newsapi_trends(&client, &newsapi_country, &newsapi_key),
         fetch_twitter_trends(&client, region, &twitter_bearer),
+        fetch_tiktok_trends(&client, region, &tiktok_token),
+        fetch_reddit_trends(&client, region),
+    );
+
+    log::info!(
+        "[TrendAggregator] Sources collectées pour {} : Google={} YT={} News={} Twitter={} TikTok={} Reddit={}",
+        region,
+        google_trends.len(), youtube_trends.len(), news_trends.len(),
+        twitter_trends.len(), tiktok_trends.len(), reddit_trends.len()
     );
 
     // Signaux internes Yukpo
@@ -853,7 +855,7 @@ pub async fn get_trend_pulse(
     // Historique snapshots pour enrichir le momentum multi-jours
     let historical_momentum = load_historical_momentum(&state.pg, region).await;
 
-    // Fusionner et dédupliquer les tendances
+    // Fusionner et dédupliquer les tendances (6 sources)
     let mut all_trends: Vec<TrendItem> = Vec::new();
     let mut seen_topics: std::collections::HashSet<String> = std::collections::HashSet::new();
 
@@ -862,6 +864,8 @@ pub async fn get_trend_pulse(
         .chain(youtube_trends.into_iter())
         .chain(news_trends.into_iter())
         .chain(twitter_trends.into_iter())
+        .chain(tiktok_trends.into_iter())
+        .chain(reddit_trends.into_iter())
     {
         let key = trend.topic.to_lowercase();
         // Déduplique les topics très similaires (5 premiers chars)
@@ -1084,6 +1088,658 @@ fn extract_personalities(trends: &[TrendItem]) -> Vec<PersonalityTrend> {
     // Trier par fréquence décroissante, garder top 10
     personalities.sort_by(|a, b| b.mentions.cmp(&a.mentions));
     personalities.into_iter().take(10).collect()
+}
+
+// ─── TikTok Trending ─────────────────────────────────────────────────────────
+
+/// Récupère les hashtags et sons trending TikTok via TikTok Research API.
+/// Nécessite TIKTOK_CLIENT_KEY + TIKTOK_CLIENT_SECRET (accès Research API).
+/// Fallback gracieux vers scraping public si pas de credentials.
+async fn fetch_tiktok_trends(client: &Client, region: &str, access_token: &str) -> Vec<TrendItem> {
+    if access_token.is_empty() {
+        // Fallback : trending hashtags publics via endpoint non-authentifié
+        return fetch_tiktok_public_trending(client, region).await;
+    }
+
+    // TikTok Research API v2 — hashtags trending
+    let url = "https://open.tiktokapis.com/v2/research/hashtag/query/";
+    let country = tiktok_region_to_country(region);
+
+    let body = serde_json::json!({
+        "filters": {
+            "region_codes": [country],
+            "create_date": chrono::Utc::now().format("%Y%m%d").to_string(),
+        },
+        "fields": "hashtag_name,video_count,view_count,region_codes",
+        "max_count": 20,
+        "search_id": ""
+    });
+
+    match client
+        .post(url)
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("Content-Type", "application/json")
+        .timeout(std::time::Duration::from_secs(8))
+        .json(&body)
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            if let Ok(data) = resp.json::<serde_json::Value>().await {
+                parse_tiktok_response(&data, region)
+            } else {
+                vec![]
+            }
+        }
+        Ok(resp) if resp.status().as_u16() == 429 => {
+            log::warn!("[TrendAggregator] TikTok rate limit pour {}", region);
+            vec![]
+        }
+        _ => fetch_tiktok_public_trending(client, region).await,
+    }
+}
+
+/// Fallback TikTok : scrape la page des hashtags tendances publics
+async fn fetch_tiktok_public_trending(client: &Client, region: &str) -> Vec<TrendItem> {
+    let country = tiktok_region_to_country(region);
+    // Endpoint TikTok Creative Center (public) — hashtags populaires
+    let url = format!(
+        "https://ads.tiktok.com/creative_radar_api/v1/popular_trend/hashtag/list?period=7&page_size=20&country_code={}",
+        country
+    );
+
+    match client
+        .get(&url)
+        .header("User-Agent", "Mozilla/5.0 (compatible; YukpoBot/1.0)")
+        .timeout(std::time::Duration::from_secs(6))
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            if let Ok(data) = resp.json::<serde_json::Value>().await {
+                parse_tiktok_creative_center(&data, region)
+            } else {
+                vec![]
+            }
+        }
+        _ => vec![],
+    }
+}
+
+fn parse_tiktok_response(data: &serde_json::Value, region: &str) -> Vec<TrendItem> {
+    let mut trends = Vec::new();
+    let items = match data["data"]["hashtags"].as_array().or_else(|| data["data"].as_array()) {
+        Some(v) => v,
+        None => return trends,
+    };
+
+    for (i, item) in items.iter().take(20).enumerate() {
+        let name = item["hashtag_name"]
+            .as_str()
+            .or_else(|| item["name"].as_str())
+            .unwrap_or("")
+            .trim_start_matches('#')
+            .to_string();
+        if name.is_empty() {
+            continue;
+        }
+
+        let view_count: f32 = item["view_count"].as_i64().unwrap_or(0) as f32;
+        let video_count: f32 = item["video_count"].as_i64().unwrap_or(0) as f32;
+
+        // Score combiné vues + vidéos
+        let social_score = ((view_count / 5_000_000.0 * 60.0) + (video_count / 50_000.0 * 40.0))
+            .min(100.0)
+            .max(5.0);
+        let momentum = 85.0 - (i as f32 * 3.5);
+
+        trends.push(TrendItem {
+            id: format!("tiktok-{}-{}", region, i),
+            topic: name,
+            social_score,
+            commerce_score: 0.0,
+            opportunity_score: 0.0,
+            momentum_pct: momentum,
+            categories: vec!["video".to_string()],
+            regions: vec![region.to_string()],
+            sources: vec!["TikTok".to_string()],
+            period: "7d".to_string(),
+            matching_products: vec![],
+            recommended_action: None,
+        });
+    }
+    trends
+}
+
+fn parse_tiktok_creative_center(data: &serde_json::Value, region: &str) -> Vec<TrendItem> {
+    let mut trends = Vec::new();
+    let items = match data["data"]["list"].as_array() {
+        Some(v) => v,
+        None => return trends,
+    };
+    for (i, item) in items.iter().take(20).enumerate() {
+        let name = item["hashtag_name"].as_str().unwrap_or("").trim_start_matches('#').to_string();
+        if name.is_empty() {
+            continue;
+        }
+        let publish_cnt: f32 = item["publish_cnt"].as_i64().unwrap_or(0) as f32;
+        let social_score = (publish_cnt / 10_000.0 * 100.0).min(100.0).max(5.0);
+        trends.push(TrendItem {
+            id: format!("tiktok-cc-{}-{}", region, i),
+            topic: name,
+            social_score,
+            commerce_score: 0.0,
+            opportunity_score: 0.0,
+            momentum_pct: 80.0 - (i as f32 * 3.0),
+            categories: vec!["video".to_string()],
+            regions: vec![region.to_string()],
+            sources: vec!["TikTok".to_string()],
+            period: "7d".to_string(),
+            matching_products: vec![],
+            recommended_action: None,
+        });
+    }
+    trends
+}
+
+fn tiktok_region_to_country(region: &str) -> &'static str {
+    match region {
+        "CM" => "CM",
+        "SN" => "SN",
+        "CI" => "CI",
+        "NG" => "NG",
+        "GH" => "GH",
+        "KE" => "KE",
+        "TZ" => "TZ",
+        "ET" => "ET",
+        "MA" => "MA",
+        "TN" => "TN",
+        "EG" => "EG",
+        "ZA" => "ZA",
+        "CD" => "CD",
+        "AO" => "AO",
+        "MG" => "MG",
+        "MZ" => "MZ",
+        _ => "NG", // Nigeria = plus grand marché TikTok Afrique
+    }
+}
+
+// ─── Reddit Trends ───────────────────────────────────────────────────────────
+
+/// Récupère les posts trending Reddit dans les sous-reddits africains.
+/// Utilise l'API publique Reddit (pas d'auth nécessaire pour le read-only).
+async fn fetch_reddit_trends(client: &Client, region: &str) -> Vec<TrendItem> {
+    // Sous-reddits africains par région
+    let subreddits = reddit_subreddits_for_region(region);
+    let mut all_trends = Vec::new();
+
+    for subreddit in subreddits.iter().take(3) {
+        let url = format!(
+            "https://www.reddit.com/r/{}/hot.json?limit=25&t=day",
+            subreddit
+        );
+
+        match client
+            .get(&url)
+            .header("User-Agent", "YukpoTrendBot/1.0 (+https://yukpomnang.com)")
+            .timeout(std::time::Duration::from_secs(6))
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => {
+                if let Ok(data) = resp.json::<serde_json::Value>().await {
+                    let mut trends = parse_reddit_response(&data, region, subreddit);
+                    all_trends.append(&mut trends);
+                }
+            }
+            Ok(resp) if resp.status().as_u16() == 429 => {
+                log::debug!("[TrendAggregator] Reddit rate limit pour r/{}", subreddit);
+                break;
+            }
+            _ => {}
+        }
+
+        // Pause courte entre requêtes Reddit (respecter rate limit)
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+
+    // Dédupliquer et prendre les 15 meilleurs
+    all_trends.sort_by(|a, b| b.social_score.partial_cmp(&a.social_score).unwrap());
+    all_trends.into_iter().take(15).collect()
+}
+
+fn parse_reddit_response(
+    data: &serde_json::Value,
+    region: &str,
+    subreddit: &str,
+) -> Vec<TrendItem> {
+    let mut trends = Vec::new();
+    let children = match data["data"]["children"].as_array() {
+        Some(v) => v,
+        None => return trends,
+    };
+
+    for (i, child) in children.iter().take(10).enumerate() {
+        let post = &child["data"];
+        let title = post["title"].as_str().unwrap_or("").to_string();
+        if title.len() < 5 {
+            continue;
+        }
+
+        let score: f32 = post["score"].as_i64().unwrap_or(0) as f32;
+        let upvote_ratio: f32 = post["upvote_ratio"].as_f64().unwrap_or(0.5) as f32;
+        let num_comments: f32 = post["num_comments"].as_i64().unwrap_or(0) as f32;
+
+        // Score combiné : votes + engagement commentaires
+        let social_score =
+            ((score / 5000.0 * 50.0) + (num_comments / 200.0 * 30.0) + (upvote_ratio * 20.0))
+                .min(100.0)
+                .max(3.0);
+
+        // Extraire les mots-clés principaux du titre (3 premiers mots >3 chars)
+        let keywords: Vec<String> = title
+            .split_whitespace()
+            .filter(|w| w.len() > 3 && !w.starts_with(|c: char| c.is_ascii_punctuation()))
+            .take(4)
+            .map(|w| w.to_lowercase())
+            .collect();
+        let topic = keywords.join(" ");
+        if topic.is_empty() {
+            continue;
+        }
+
+        trends.push(TrendItem {
+            id: format!("reddit-{}-{}-{}", subreddit, region, i),
+            topic,
+            social_score,
+            commerce_score: 0.0,
+            opportunity_score: 0.0,
+            momentum_pct: upvote_ratio * 80.0,
+            categories: vec![subreddit_to_category(subreddit).to_string()],
+            regions: vec![region.to_string()],
+            sources: vec![format!("Reddit r/{}", subreddit)],
+            period: "24h".to_string(),
+            matching_products: vec![],
+            recommended_action: None,
+        });
+    }
+    trends
+}
+
+fn reddit_subreddits_for_region(region: &str) -> Vec<&'static str> {
+    match region {
+        "NG" => vec!["Nigeria", "naija", "lagos", "afrobeats", "nigerianfood"],
+        "GH" => vec!["ghana", "accra", "GhanaianFashion"],
+        "KE" => vec!["Kenya", "nairobi", "kenyanfood"],
+        "ZA" => vec!["southafrica", "joburg", "capetown"],
+        "MA" | "TN" | "DZ" | "EG" => vec!["Morocco", "Tunisia", "algeria", "egypt"],
+        "ET" => vec!["Ethiopia", "addisababa"],
+        // Afrique francophone : fallback vers sub-reddits généraux + diaspora
+        _ => vec!["francophonie", "africa", "afrique", "ecommerce"],
+    }
+}
+
+fn subreddit_to_category(subreddit: &str) -> &'static str {
+    match subreddit {
+        s if s.contains("food") || s.contains("cuisine") => "alimentation",
+        s if s.contains("fashion") || s.contains("mode") => "mode",
+        s if s.contains("tech") || s.contains("digital") => "technologie",
+        s if s.contains("music") || s.contains("afrobeat") => "musique",
+        s if s.contains("sport") || s.contains("foot") => "sport",
+        _ => "général",
+    }
+}
+
+// ─── Expansion géographique 20 pays africains ────────────────────────────────
+
+/// Retourne le code pays NewsAPI pour une région africaine.
+/// Couvre maintenant 20 marchés clés.
+/// Retourne le code NewsAPI country pour une région ISO 3166-1 alpha-2.
+/// NewsAPI accepte directement les codes ISO en minuscules — universel.
+pub fn region_to_newsapi_country(region: &str) -> String {
+    region.to_lowercase()
+}
+
+/// Retourne le code Google Trends geo pour une région ISO 3166-1 alpha-2.
+/// Google Trends accepte directement les codes ISO en majuscules — universel.
+pub fn region_to_google_geo(region: &str) -> String {
+    region.to_uppercase()
+}
+
+/// Retourne le WOEID Twitter pour une région.
+/// Couvre l'Afrique, l'Europe, les Amériques, l'Asie, le Moyen-Orient.
+pub fn region_to_twitter_woeid(region: &str) -> &'static str {
+    match region {
+        // ── Afrique ──────────────────────────────────────────────────────────
+        "CM" => "2233",
+        "SN" => "2245021",
+        "CI" => "2247252",
+        "NG" => "2347592",
+        "GH" => "2300660",
+        "KE" => "2306716",
+        "TZ" => "2347005",
+        "MA" => "2542353",
+        "TN" => "2469060",
+        "EG" => "2294718",
+        "ZA" => "2294900",
+        "ET" => "2287960",
+        "DZ" => "2365303",
+        "AO" => "2239901",
+        "MG" => "2348636",
+        "RW" => "2344553",
+        // ── Europe ───────────────────────────────────────────────────────────
+        "FR" => "23424819",
+        "DE" => "23424829",
+        "GB" => "23424975",
+        "ES" => "23424950",
+        "IT" => "23424853",
+        "PT" => "23424925",
+        "NL" => "23424909",
+        "BE" => "23424757",
+        "CH" => "23424957",
+        "SE" => "23424954",
+        "NO" => "23424910",
+        "DK" => "23424796",
+        "PL" => "23424923",
+        "RU" => "23424936",
+        "TR" => "23424969",
+        "UA" => "23424973",
+        "GR" => "23424833",
+        "RO" => "23424933",
+        "AT" => "23424750",
+        "CZ" => "23424815",
+        // ── Amériques ────────────────────────────────────────────────────────
+        "US" => "23424977",
+        "CA" => "23424775",
+        "MX" => "23424900",
+        "BR" => "23424768",
+        "AR" => "23424747",
+        "CO" => "23424787",
+        "CL" => "23424782",
+        "PE" => "23424919",
+        "VE" => "23424982",
+        "EC" => "23424801",
+        "BO" => "23424762",
+        "UY" => "23424979",
+        // ── Asie-Pacifique ───────────────────────────────────────────────────
+        "JP" => "23424856",
+        "IN" => "23424848",
+        "CN" => "23424781",
+        "KR" => "23424868",
+        "AU" => "23424748",
+        "ID" => "23424846",
+        "TH" => "23424960",
+        "VN" => "23424984",
+        "PH" => "23424922",
+        "MY" => "23424901",
+        "SG" => "23424948",
+        "PK" => "23424916",
+        "BD" => "23424755",
+        "NZ" => "23424916",
+        "TW" => "23424971",
+        "HK" => "23424843",
+        // ── Moyen-Orient ─────────────────────────────────────────────────────
+        "SA" => "23424938",
+        "AE" => "23424738",
+        "QA" => "23424930",
+        "KW" => "23424870",
+        "IL" => "23424852",
+        "IQ" => "23424855",
+        "IR" => "23424851",
+        "JO" => "23424860",
+        _ => "1", // Worldwide (fallback global)
+    }
+}
+
+/// Liste de toutes les régions supportées : Afrique + monde entier.
+/// Yukpo est une plateforme à vocation internationale.
+pub fn supported_regions() -> Vec<(&'static str, &'static str)> {
+    vec![
+        // ── Afrique ──────────────────────────────────────────────────────────
+        ("CM", "Cameroun"),
+        ("SN", "Sénégal"),
+        ("CI", "Côte d'Ivoire"),
+        ("NG", "Nigeria"),
+        ("GH", "Ghana"),
+        ("KE", "Kenya"),
+        ("TZ", "Tanzanie"),
+        ("ET", "Éthiopie"),
+        ("MA", "Maroc"),
+        ("TN", "Tunisie"),
+        ("DZ", "Algérie"),
+        ("EG", "Égypte"),
+        ("ZA", "Afrique du Sud"),
+        ("AO", "Angola"),
+        ("MG", "Madagascar"),
+        ("MZ", "Mozambique"),
+        ("CD", "RD Congo"),
+        ("RW", "Rwanda"),
+        ("BJ", "Bénin"),
+        ("TG", "Togo"),
+        // ── Europe ───────────────────────────────────────────────────────────
+        ("FR", "France"),
+        ("DE", "Allemagne"),
+        ("GB", "Royaume-Uni"),
+        ("ES", "Espagne"),
+        ("IT", "Italie"),
+        ("PT", "Portugal"),
+        ("NL", "Pays-Bas"),
+        ("BE", "Belgique"),
+        ("CH", "Suisse"),
+        ("SE", "Suède"),
+        ("PL", "Pologne"),
+        ("RU", "Russie"),
+        ("TR", "Turquie"),
+        ("UA", "Ukraine"),
+        ("AT", "Autriche"),
+        // ── Amériques ────────────────────────────────────────────────────────
+        ("US", "États-Unis"),
+        ("CA", "Canada"),
+        ("MX", "Mexique"),
+        ("BR", "Brésil"),
+        ("AR", "Argentine"),
+        ("CO", "Colombie"),
+        ("CL", "Chili"),
+        ("PE", "Pérou"),
+        ("VE", "Venezuela"),
+        ("EC", "Équateur"),
+        // ── Asie-Pacifique ───────────────────────────────────────────────────
+        ("JP", "Japon"),
+        ("IN", "Inde"),
+        ("CN", "Chine"),
+        ("KR", "Corée du Sud"),
+        ("AU", "Australie"),
+        ("ID", "Indonésie"),
+        ("TH", "Thaïlande"),
+        ("VN", "Vietnam"),
+        ("PH", "Philippines"),
+        ("MY", "Malaisie"),
+        ("SG", "Singapour"),
+        ("PK", "Pakistan"),
+        ("BD", "Bangladesh"),
+        ("TW", "Taïwan"),
+        ("HK", "Hong Kong"),
+        // ── Moyen-Orient ─────────────────────────────────────────────────────
+        ("SA", "Arabie Saoudite"),
+        ("AE", "Émirats Arabes Unis"),
+        ("QA", "Qatar"),
+        ("KW", "Koweït"),
+        ("IL", "Israël"),
+        ("JO", "Jordanie"),
+    ]
+}
+
+/// Alias rétrocompatible — préférer supported_regions() pour couverture globale.
+#[inline]
+pub fn supported_african_regions() -> Vec<(&'static str, &'static str)> {
+    supported_regions()
+}
+
+// ─── Forecasting tendances (Prophet-like linéaire) ───────────────────────────
+
+/// Prédit le score d'une tendance sur les 7 prochains jours
+/// en utilisant une régression linéaire pondérée sur les snapshots historiques.
+/// Stocke le résultat dans trend_forecasts.
+pub async fn compute_trend_forecast(
+    pg: &sqlx::PgPool,
+    region: &str,
+    topic: &str,
+) -> Option<TrendForecast> {
+    use sqlx::Row;
+
+    // Récupérer les 30 derniers snapshots pour ce topic/région
+    let rows = sqlx::query(
+        r#"SELECT
+               EXTRACT(EPOCH FROM snapshot_at)::float8 as ts,
+               combined_score::float8 as score,
+               score_delta::float8 as delta
+           FROM trend_snapshots
+           WHERE region = $1
+             AND LOWER(topic) = LOWER($2)
+             AND snapshot_at >= NOW() - INTERVAL '30 days'
+           ORDER BY snapshot_at ASC"#,
+    )
+    .bind(region)
+    .bind(topic)
+    .fetch_all(pg)
+    .await
+    .unwrap_or_default();
+
+    if rows.len() < 3 {
+        return None; // Pas assez de données
+    }
+
+    let scores: Vec<f64> = rows.iter().filter_map(|r| r.try_get::<f64, _>("score").ok()).collect();
+    let timestamps: Vec<f64> = rows.iter().filter_map(|r| r.try_get::<f64, _>("ts").ok()).collect();
+
+    if scores.is_empty() || timestamps.is_empty() {
+        return None;
+    }
+
+    // Régression linéaire pondérée (poids plus élevés pour les points récents)
+    let n = scores.len() as f64;
+    let weights: Vec<f64> = (0..scores.len())
+        .map(|i| 1.0 + (i as f64 / scores.len() as f64) * 2.0) // poids 1x→3x
+        .collect();
+
+    let sum_w: f64 = weights.iter().sum();
+    let mean_x = timestamps.iter().zip(&weights).map(|(x, w)| x * w).sum::<f64>() / sum_w;
+    let mean_y = scores.iter().zip(&weights).map(|(y, w)| y * w).sum::<f64>() / sum_w;
+
+    let numerator: f64 = timestamps
+        .iter()
+        .zip(scores.iter())
+        .zip(weights.iter())
+        .map(|((x, y), w)| w * (x - mean_x) * (y - mean_y))
+        .sum();
+    let denominator: f64 = timestamps
+        .iter()
+        .zip(weights.iter())
+        .map(|(x, w)| w * (x - mean_x).powi(2))
+        .sum();
+
+    if denominator.abs() < 1e-10 {
+        return None;
+    }
+
+    let slope = numerator / denominator;
+    let intercept = mean_y - slope * mean_x;
+
+    // Prédire les scores futurs
+    let now_ts = chrono::Utc::now().timestamp() as f64;
+    let day_secs = 86400.0_f64;
+
+    let predict = |days: f64| -> f64 {
+        let predicted = intercept + slope * (now_ts + days * day_secs);
+        predicted.max(0.0).min(100.0)
+    };
+
+    let last_score = *scores.last().unwrap_or(&0.0);
+    let avg_7d = if scores.len() >= 7 {
+        scores[scores.len() - 7..].iter().sum::<f64>() / 7.0
+    } else {
+        scores.iter().sum::<f64>() / n
+    };
+    let avg_30d = scores.iter().sum::<f64>() / n;
+
+    let forecast_d1 = predict(1.0);
+    let forecast_d3 = predict(3.0);
+    let forecast_d7 = predict(7.0);
+    let forecast_d14 = predict(14.0);
+
+    // Variance → confiance (moins de variance = plus de confiance)
+    let variance = scores.iter().map(|s| (s - avg_30d).powi(2)).sum::<f64>() / n;
+    let confidence = (1.0 - (variance.sqrt() / 50.0).min(1.0)).max(0.0);
+
+    let trend_direction = if slope > 0.5 {
+        "rising"
+    } else if slope < -0.5 {
+        "declining"
+    } else if forecast_d3 >= last_score * 0.95 {
+        "peak"
+    } else {
+        "stable"
+    };
+
+    // Persister en base
+    let _ = sqlx::query(
+        r#"INSERT INTO trend_forecasts
+           (region, topic, forecast_day1, forecast_day3, forecast_day7, forecast_day14,
+            confidence, trend_direction, data_points, last_score, avg_score_7d, avg_score_30d)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           ON CONFLICT (region, topic, computed_at::date)
+           DO UPDATE SET
+             forecast_day1 = EXCLUDED.forecast_day1,
+             forecast_day3 = EXCLUDED.forecast_day3,
+             forecast_day7 = EXCLUDED.forecast_day7,
+             forecast_day14 = EXCLUDED.forecast_day14,
+             confidence = EXCLUDED.confidence,
+             trend_direction = EXCLUDED.trend_direction,
+             data_points = EXCLUDED.data_points,
+             last_score = EXCLUDED.last_score,
+             avg_score_7d = EXCLUDED.avg_score_7d,
+             avg_score_30d = EXCLUDED.avg_score_30d,
+             computed_at = NOW()"#,
+    )
+    .bind(region)
+    .bind(topic)
+    .bind(forecast_d1)
+    .bind(forecast_d3)
+    .bind(forecast_d7)
+    .bind(forecast_d14)
+    .bind(confidence)
+    .bind(trend_direction)
+    .bind(rows.len() as i32)
+    .bind(last_score)
+    .bind(avg_7d)
+    .bind(avg_30d)
+    .execute(pg)
+    .await;
+
+    Some(TrendForecast {
+        topic: topic.to_string(),
+        region: region.to_string(),
+        forecast_day1: forecast_d1,
+        forecast_day3: forecast_d3,
+        forecast_day7: forecast_d7,
+        forecast_day14: forecast_d14,
+        confidence,
+        trend_direction: trend_direction.to_string(),
+        data_points: rows.len(),
+    })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrendForecast {
+    pub topic: String,
+    pub region: String,
+    pub forecast_day1: f64,
+    pub forecast_day3: f64,
+    pub forecast_day7: f64,
+    pub forecast_day14: f64,
+    pub confidence: f64,
+    pub trend_direction: String, // rising | peak | declining | stable
+    pub data_points: usize,
 }
 
 fn build_sector_trends(signals: &[InternalSignal], region: &str) -> Vec<SectorTrend> {

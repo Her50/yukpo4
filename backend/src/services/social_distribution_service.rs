@@ -2,11 +2,13 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use log::{error, info, warn};
+use reqwest::Client;
 use serde_json::Value;
-use sqlx::FromRow;
+use sqlx::{FromRow, Row};
 
 use crate::{
     core::types::{AppError, AppResult},
+    services::{facebook_publisher_service, instagram_publisher_service},
     state::AppState,
     utils::db_retry::retry_query,
 };
@@ -186,17 +188,204 @@ pub fn start_distribution_worker(state: Arc<AppState>) {
 async fn execute_job(state: Arc<AppState>, job: SocialPublicationJob) -> AppResult<()> {
     mark_job_processing(state.clone(), job.id).await?;
 
-    // Placeholder implementation – replace with actual API calls
-    let external_id = format!(
-        "{}_{}_{}",
-        job.platform,
-        job.media_id,
-        Utc::now().timestamp()
-    );
-    let metadata = serde_json::json!({
-        "note": "Publication simulée (connecteur réel à implémenter)",
-        "payload": job.payload,
-    });
+    // Récupérer caption, image_url, hashtags depuis le payload
+    let caption_raw = job.payload["caption"].as_str().unwrap_or("").to_string();
+    let hashtags: Vec<String> = job.payload["hashtags"]
+        .as_array()
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| format!("#{}", s))).collect())
+        .unwrap_or_default();
+    let hashtag_str = if hashtags.is_empty() {
+        String::new()
+    } else {
+        format!("\n\n{}", hashtags.join(" "))
+    };
+    let full_caption = format!("{}{}", caption_raw, hashtag_str);
 
-    mark_job_done(state, &job, &external_id, metadata).await
+    // Récupérer les informations du média (image_url)
+    let media_row = sqlx::query("SELECT file_url, media_type FROM media WHERE id = $1")
+        .bind(job.media_id)
+        .fetch_optional(&state.pg)
+        .await
+        .unwrap_or(None);
+
+    let image_url: Option<String> = media_row
+        .as_ref()
+        .and_then(|r| r.try_get::<Option<String>, _>("file_url").ok().flatten());
+
+    // Récupérer le token d'accès du partenaire pour cette plateforme
+    let (platform_base, page_id_opt) = parse_platform(&job.platform);
+    let account_row = sqlx::query(
+        r#"SELECT access_token, metadata
+           FROM social_accounts
+           WHERE user_id = (
+               SELECT m.user_id FROM media m WHERE m.id = $1 LIMIT 1
+           )
+           AND platform = $2
+           AND (expires_at IS NULL OR expires_at > NOW())
+           ORDER BY updated_at DESC LIMIT 1"#,
+    )
+    .bind(job.media_id)
+    .bind(platform_base)
+    .fetch_optional(&state.pg)
+    .await
+    .unwrap_or(None);
+
+    let access_token = account_row
+        .as_ref()
+        .and_then(|r| r.try_get::<Option<String>, _>("access_token").ok().flatten())
+        .unwrap_or_default();
+
+    let metadata_json: serde_json::Value = account_row
+        .as_ref()
+        .and_then(|r| r.try_get::<Option<serde_json::Value>, _>("metadata").ok().flatten())
+        .unwrap_or(serde_json::json!({}));
+
+    if access_token.is_empty() {
+        let err = format!("Pas de token d'accès pour la plateforme {}", job.platform);
+        warn!("[SocialDistribution] Job {} : {}", job.id, err);
+        return mark_job_failed(state, job.id, &err).await;
+    }
+
+    let http = Client::new();
+    let yukpo_link = format!(
+        "https://yukpomnang.com?utm_source=auto_post&utm_medium={}",
+        platform_base
+    );
+
+    let result = match platform_base {
+        "facebook" => {
+            let page_id = page_id_opt
+                .or_else(|| metadata_json["page_id"].as_str().map(|s| s.to_string()))
+                .unwrap_or_default();
+            if page_id.is_empty() {
+                Err(AppError::Internal("page_id Facebook manquant".into()))
+            } else {
+                facebook_publisher_service::post_product_to_page(
+                    &http,
+                    &access_token,
+                    &page_id,
+                    &full_caption,
+                    &yukpo_link,
+                    image_url.as_deref(),
+                )
+                .await
+            }
+        }
+        "instagram" => {
+            let ig_user_id = page_id_opt
+                .or_else(|| metadata_json["ig_user_id"].as_str().map(|s| s.to_string()))
+                .unwrap_or_default();
+            if ig_user_id.is_empty() {
+                Err(AppError::Internal("ig_user_id Instagram manquant".into()))
+            } else if let Some(ref img) = image_url {
+                instagram_publisher_service::publish_product_image(
+                    &http,
+                    &ig_user_id,
+                    &access_token,
+                    img,
+                    &full_caption,
+                )
+                .await
+            } else {
+                Err(AppError::Internal(
+                    "Instagram nécessite une image — post ignoré".into(),
+                ))
+            }
+        }
+        // TikTok, Twitter, YouTube : délégué aux publishers dédiés (voir services respectifs)
+        "tiktok" => {
+            use crate::services::tiktok_publisher_service;
+            let video_url = image_url.as_deref().unwrap_or("");
+            if video_url.is_empty() {
+                Err(AppError::Internal("TikTok nécessite une vidéo".into()))
+            } else {
+                tiktok_publisher_service::publish_video(
+                    &http,
+                    &access_token,
+                    video_url,
+                    &full_caption,
+                )
+                .await
+            }
+        }
+        "twitter" | "x" => {
+            use crate::services::twitter_publisher_service;
+            twitter_publisher_service::post_tweet(
+                &access_token,
+                &full_caption,
+                image_url.as_deref(),
+            )
+            .await
+        }
+        "youtube" => {
+            use crate::services::youtube_publisher_service;
+            let video_url = image_url.as_deref().unwrap_or("");
+            if video_url.is_empty() {
+                Err(AppError::Internal("YouTube nécessite une vidéo".into()))
+            } else {
+                let title = job.payload["title"]
+                    .as_str()
+                    .unwrap_or(&caption_raw[..caption_raw.len().min(100)]);
+                youtube_publisher_service::upload_video(
+                    &access_token,
+                    video_url,
+                    title,
+                    &full_caption,
+                )
+                .await
+            }
+        }
+        other => Err(AppError::Internal(format!(
+            "Plateforme non supportée: {}",
+            other
+        ))),
+    };
+
+    match result {
+        Ok(external_id) => {
+            let metadata = serde_json::json!({
+                "platform": job.platform,
+                "caption_length": full_caption.len(),
+                "has_image": image_url.is_some(),
+                "hashtags": hashtags,
+            });
+            info!(
+                "[SocialDistribution] ✅ Job {} publié sur {} — external_id={}",
+                job.id, job.platform, external_id
+            );
+            mark_job_done(state, &job, &external_id, metadata).await
+        }
+        Err(e) => {
+            let err_str = e.to_string();
+            warn!(
+                "[SocialDistribution] ❌ Job {} échec sur {}: {}",
+                job.id, job.platform, err_str
+            );
+            // Retry si < 3 tentatives, sinon marquer failed
+            if job.attempt < 3 {
+                sqlx::query(
+                    "UPDATE social_publication_jobs SET status = 'queued', last_error = $1,
+                     scheduled_for = NOW() + INTERVAL '10 minutes', updated_at = NOW()
+                     WHERE id = $2",
+                )
+                .bind(&err_str)
+                .bind(job.id)
+                .execute(&state.pg)
+                .await
+                .ok();
+                Ok(())
+            } else {
+                mark_job_failed(state, job.id, &err_str).await
+            }
+        }
+    }
+}
+
+/// Décompose "facebook:page_123" → ("facebook", Some("page_123"))
+fn parse_platform(platform: &str) -> (&str, Option<String>) {
+    if let Some((base, id)) = platform.split_once(':') {
+        (base, Some(id.to_string()))
+    } else {
+        (platform, None)
+    }
 }

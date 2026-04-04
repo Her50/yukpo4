@@ -15,7 +15,6 @@
 //   - URL directe        : toute URL se terminant par .csv (fallback)
 
 use crate::core::types::{AppError, AppResult};
-use crate::middlewares::jwt::AuthenticatedUser;
 use crate::state::AppState;
 use axum::{
     extract::{Extension, Path, State},

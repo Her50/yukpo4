@@ -63,6 +63,12 @@ pub struct ContentPreferences {
     pub always_include: Vec<String>,
     pub default_hashtags: Vec<String>,
     pub post_template: Option<String>,
+    /// Active la signature Yukpo en fin de post (opt-in partenaire)
+    pub yukpo_signature_enabled: bool,
+    /// Style : "hashtag" | "text" | "subtle" (défaut : "hashtag")
+    pub yukpo_signature_style: String,
+    /// Texte de signature personnalisé (override le texte par défaut)
+    pub custom_signature_text: Option<String>,
 }
 
 impl Default for ContentPreferences {
@@ -75,7 +81,27 @@ impl Default for ContentPreferences {
             always_include: vec![],
             default_hashtags: vec![],
             post_template: None,
+            yukpo_signature_enabled: false,
+            yukpo_signature_style: "hashtag".to_string(),
+            custom_signature_text: None,
         }
+    }
+}
+
+/// Construit le suffixe de signature Yukpo selon les préférences du partenaire.
+/// Retourne une chaîne vide si la signature est désactivée.
+pub fn build_yukpo_signature(prefs: &ContentPreferences, yukpo_url: &str) -> String {
+    if !prefs.yukpo_signature_enabled {
+        return String::new();
+    }
+    if let Some(ref custom) = prefs.custom_signature_text {
+        return format!("\n\n{}", custom);
+    }
+    match prefs.yukpo_signature_style.as_str() {
+        "text" => format!("\n\n📲 Commandez facilement sur Yukpo : {}", yukpo_url),
+        "subtle" => "\n\nvia @yukpoapp".to_string(),
+        // "hashtag" (défaut)
+        _ => "\n\n#YukpoApp".to_string(),
     }
 }
 
@@ -189,17 +215,32 @@ Fournis en JSON valide avec ces champs exacts:
 
     let response = call_openai_json(&api_key, messages, 600).await?;
 
-    let caption_a = response["caption_a"].as_str().unwrap_or("").to_string();
-    let caption_b = response["caption_b"].as_str().map(|s| s.to_string());
+    let signature = build_yukpo_signature(prefs, &store.yukpo_url);
+
+    let caption_a_raw = response["caption_a"].as_str().unwrap_or("").to_string();
+    let caption_a = format!("{}{}", caption_a_raw, signature);
+    let caption_b = response["caption_b"].as_str().map(|s| format!("{}{}", s, signature));
     let hashtags: Vec<String> = response["hashtags"]
         .as_array()
         .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
         .unwrap_or_default();
     let story_text = response["story_text"].as_str().map(|s| s.to_string());
 
-    let facebook = response["facebook_variant"].as_str().unwrap_or(&caption_a).to_string();
-    let instagram = response["instagram_variant"].as_str().unwrap_or(&caption_a).to_string();
-    let whatsapp = response["whatsapp_variant"].as_str().unwrap_or(&caption_a).to_string();
+    let facebook = format!(
+        "{}{}",
+        response["facebook_variant"].as_str().unwrap_or(&caption_a_raw),
+        signature
+    );
+    let instagram = format!(
+        "{}{}",
+        response["instagram_variant"].as_str().unwrap_or(&caption_a_raw),
+        signature
+    );
+    let whatsapp = format!(
+        "{}{}",
+        response["whatsapp_variant"].as_str().unwrap_or(&caption_a_raw),
+        signature
+    );
 
     // Ajouter les hashtags par défaut du partenaire
     let mut all_hashtags = hashtags;

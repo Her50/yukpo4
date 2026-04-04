@@ -11,10 +11,12 @@ pub mod auth_routes;
 pub mod auto_search_routes; // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente (filtres dynamiques)
 pub mod autocomplete_routes; // ✅ NOUVEAU: Routes pour autocomplete characteristics
 pub mod bourse_livre_routes;
+pub mod brand_voice_routes; // ✅ 2026-04-03: Entraînement brand voice IA par partenaire
 pub mod chat_media_routes;
 pub mod chat_reactions_routes;
 pub mod chat_routes; // ✅ NOUVEAU: Routes de chat avec push notifications
 pub mod combination_routes;
+pub mod content_approval_routes; // ✅ 2026-04-03: Workflow approbation contenu (personnalités publiques)
 pub mod content_routes;
 pub mod conversation_routes; // ✅ NOUVEAU: Routes pour @mentions et multi-participants
 pub mod creator_analytics_routes;
@@ -50,6 +52,7 @@ pub mod kyc_webhook_routes;
 pub mod librairie_network_routes; // ✅ NOUVEAU 2026-03-16: Routes réseau de librairies
 pub mod live_ai_routes;
 pub mod live_routes;
+pub mod longform_routes; // ✅ 2026-04-03: Génération contenu long format (scripts YT, articles, newsletters)
 pub mod media_analytics_routes; // ✅ NOUVEAU: Routes pour analytics média (vidéo, etc.)
 pub mod media_routes;
 pub mod metrics_routes;
@@ -89,6 +92,7 @@ pub mod publicite_pixel_routes;
 pub mod publicite_routes; // ✅ NOUVEAU: Routes pour système de publicité payante
 pub mod push_routes; // ✅ Routes de push notifications
 pub mod recommendation_routes; // ✅ NOUVEAU: Routes pour recommandations et tracking visibilité
+pub mod reputation_routes; // ✅ 2026-04-03: Monitoring mentions + sentiment + alertes crise
 pub mod restaurant_routes;
 pub mod scheduling_search_routes; // ✅ NOUVEAU: Routes pour recherche avec planifications
 pub mod search_history_routes; // ✅ NOUVEAU: Routes pour historique de recherche
@@ -97,6 +101,7 @@ pub mod service_team_routes; // ✅ NOUVEAU: Routes pour gestion d'équipe des s
 pub mod shopping_routes;
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
 pub mod social_ai_routes;
+pub mod social_analytics_routes; // ✅ 2026-04-03: Dashboard analytics cross-plateformes + A/B test
 pub mod social_distribution_routes; // ✅ 2026-04-03: Distribution produits multi-canaux (Facebook, Instagram, Google Shopping, CSV)
 pub mod social_features_routes;
 pub mod specialized_services_routes;
@@ -109,6 +114,7 @@ pub mod test_routes; // ✅ Routes pour page de téléchargement APK test
 pub mod token_pack_routes;
 pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consommation de tokens
 pub mod trend_routes; // ✅ 2026-04-03: TrendPulse — tendances personnalisées + contexte utilisateur
+pub mod trendpulse_b2b_routes; // ✅ 2026-04-03: API TrendPulse B2B monétisée (clé API, quota)
 pub mod universal_search_routes; // ✅ 2026-04-01: Routes recherche universelle cross-services
 pub mod upload_routes;
 pub mod user_routes;

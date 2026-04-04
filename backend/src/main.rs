@@ -3287,6 +3287,22 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
         log::info!("✅ TrendPulse snapshot worker démarré");
     }
 
+    // ✅ 2026-04-03: TrendPulse — forecasting ML tendances (toutes les 6h)
+    tasks::trend_forecast_worker::start_trend_forecast_worker(app_state.clone());
+    log::info!("✅ TrendPulse forecast worker démarré (cycle 6h)");
+
+    // ✅ 2026-04-03: Reputation Monitor — monitoring mentions + sentiment + alertes crise (toutes les 30min)
+    tasks::reputation_monitor_worker::start_reputation_monitor_worker(app_state.clone());
+    log::info!("✅ Reputation Monitor worker démarré (cycle 30min)");
+
+    // ✅ 2026-04-03: TrendToPost — génération brouillons IA depuis tendances hot (toutes les 2h)
+    tasks::trend_to_post_worker::start_trend_to_post_worker(app_state.clone());
+    log::info!("✅ TrendToPost worker démarré (cycle 2h)");
+
+    // ✅ 2026-04-03: ReelsAutoGenerator — Reels depuis produits trending (toutes les 4h)
+    tasks::reels_auto_generator::start_reels_auto_generator(app_state.clone());
+    log::info!("✅ Reels Auto Generator worker démarré (cycle 4h)");
+
     // ✅ 2026-04-01: Génération automatique produits ticket_voyage depuis les horaires agences (cron 6h)
     tasks::bus_schedule_product_generator::start_bus_schedule_product_generator(app_state.clone());
 

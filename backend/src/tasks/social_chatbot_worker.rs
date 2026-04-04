@@ -5,7 +5,7 @@ use std::sync::Arc;
 use tokio::time::{interval, Duration};
 
 use crate::services::social_chatbot_service::{
-    self, persist_message, send_meta_response, IncomingMessage,
+    self, notify_agent_escalation, persist_message, send_meta_response, IncomingMessage,
 };
 use crate::state::AppState;
 use sqlx::Row;
@@ -189,20 +189,8 @@ async fn handle_escalation(
     trigger_message: &str,
     reason: Option<&str>,
 ) -> Result<(), String> {
-    // Mettre à jour le statut du thread
-    let _ = sqlx::query(
-        r#"UPDATE social_chatbot_threads
-           SET status = 'escalated', escalation_reason = $1
-           WHERE user_id = $2 AND platform = $3 AND external_sender_id = $4"#,
-    )
-    .bind(reason)
-    .bind(user_id)
-    .bind(platform)
-    .bind(sender_id)
-    .execute(&state.pg)
-    .await;
-
-    // Enregistrer l'événement d'escalade
+    // Récupérer le thread_id pour la notification
+    use sqlx::Row as _;
     let thread_row = sqlx::query(
         "SELECT id FROM social_chatbot_threads WHERE user_id = $1 AND platform = $2 AND external_sender_id = $3",
     )
@@ -214,34 +202,24 @@ async fn handle_escalation(
     .ok()
     .flatten();
 
-    let thread_id: Option<i32> = thread_row.as_ref().and_then(|r| r.try_get("id").ok());
+    let thread_id: i64 =
+        thread_row.as_ref().and_then(|r| r.try_get::<i32, _>("id").ok()).unwrap_or(0) as i64;
 
-    if let Some(tid) = thread_id {
-        let _ = sqlx::query(
-            r#"INSERT INTO social_escalation_events
-               (thread_id, user_id, reason, trigger_message)
-               VALUES ($1, $2, $3, $4)"#,
-        )
-        .bind(tid)
-        .bind(user_id)
-        .bind(reason.unwrap_or("Escalade automatique"))
-        .bind(trigger_message)
-        .execute(&state.pg)
-        .await;
+    // Notifier le partenaire via WhatsApp Business + enregistrer l'escalade
+    notify_agent_escalation(
+        state,
+        user_id,
+        service_id,
+        thread_id,
+        sender_id, // sender name fallback
+        platform,
+        trigger_message,
+        reason.unwrap_or("Escalade automatique IA"),
+    )
+    .await;
 
-        // Marquer comme escaladé dans l'inbox summary
-        let _ = sqlx::query(
-            "UPDATE social_inbox_summary SET is_escalated = true WHERE user_id = $1 AND thread_id = $2",
-        )
-        .bind(user_id)
-        .bind(tid)
-        .execute(&state.pg)
-        .await;
-    }
-
-    // TODO: Notifier le partenaire (push notification / WhatsApp)
     log::warn!(
-        "[ChatbotWorker] 🚨 Escalade pour user_id={} plateforme={}: {}",
+        "[ChatbotWorker] 🚨 Escalade notifiée user_id={} plateforme={}: {}",
         user_id,
         platform,
         reason.unwrap_or("raison inconnue")

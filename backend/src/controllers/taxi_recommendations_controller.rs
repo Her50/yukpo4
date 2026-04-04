@@ -4,9 +4,7 @@
 
 use crate::core::types::AppResult;
 use crate::middlewares::jwt::AuthenticatedUser;
-use crate::services::taxi_personalized_recommendations_service::{
-    MatchFactor, PersonalizedRecommendation, TaxiPersonalizedRecommendationsService,
-};
+use crate::services::taxi_personalized_recommendations_service::TaxiPersonalizedRecommendationsService;
 use crate::state::AppState;
 use axum::{
     extract::{Extension, Query, State},

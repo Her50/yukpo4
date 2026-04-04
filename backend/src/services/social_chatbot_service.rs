@@ -599,10 +599,20 @@ async fn call_ai_for_response(
             .join("\n")
     };
 
+    // Détecter la langue du message entrant pour adapter la réponse
+    let detected_lang = detect_language(user_message);
+    let response_lang_instruction = language_instruction(&detected_lang, &config.language);
+
     let system_prompt = format!(
         r#"Tu es {bot_name}, l'assistant virtuel de {store_name}, une boutique {sector} à {city} disponible sur l'application Yukpo.
 Tu réponds aux clients sur {platform}.
-Langue principale: {language}. Tu peux comprendre et répondre en wolof, lingala, malagasy si nécessaire.
+{response_lang_instruction}
+
+COMPRÉHENSION LINGUISTIQUE :
+Tu comprends et réponds dans ces langues africaines et internationales :
+- Français, English, Português, Español, العربية
+- Langues africaines : Wolof (Sénégal), Lingala (Congo/RDC), Yoruba (Nigeria), Hausa (Nigeria/Niger), Malagasy, Swahili (Kenya/Tanzanie), Amharique (Éthiopie), Twi (Ghana), Bambara (Mali/BF), Pulaar/Fulfulde, Bamiléké/Cameroonian Pidgin
+- Si le client écrit dans une langue locale, réponds dans cette même langue ou en français selon le contexte.
 
 INFORMATIONS BOUTIQUE:
 - Nom: {store_name}
@@ -616,22 +626,30 @@ CATALOGUE (extrait):
 PROMOTIONS ACTIVES:
 {promos_text}
 
+ANALYSE D'INTENTION (NLU) :
+Avant de répondre, identifie mentalement :
+- INTENTION : achat | info_produit | réclamation | livraison | paiement | disponibilité | promotion | autre
+- SENTIMENT : positif | neutre | frustré | urgent | enthousiaste
+- URGENCE : normale | haute (mot-clés : "urgent", "vite", "maintenant", "dès que possible", "emergency")
+
 RÈGLES IMPORTANTES:
 1. Réponds toujours de manière naturelle et humaine (pas de style robot)
 2. Maximum {max_tokens} tokens par réponse
-3. Si le client veut acheter → donne le lien Yukpo: {yukpo_url}
-4. Si tu ne connais pas la réponse, dis honnêtement que tu vas vérifier
-5. Ne donne JAMAIS de fausses informations sur les prix ou stocks
-6. Pour les réclamations complexes, annonce que tu escalades vers l'équipe
-7. Utilise des emojis avec modération (max 2 par message)
-8. Sois concis: 1-3 phrases maximum sauf si question complexe"#,
+3. ACHAT → donne le lien Yukpo: {yukpo_url}
+4. LIVRAISON → indique que Yukpo gère la livraison, contact: {phone}
+5. RÉCLAMATION → empathie d'abord, puis solution concrète
+6. Si tu ne connais pas → dis-le honnêtement, ne jamais inventer
+7. Ne donne JAMAIS de fausses informations sur les prix ou stocks
+8. Emojis avec modération (max 2 par message, 0 si client frustré)
+9. Concis: 1-3 phrases sauf question complexe
+10. Personnalités publiques : ton représentatif de la marque personnelle"#,
         bot_name = context.bot_name,
         store_name = context.store_name,
         sector = context.sector,
         city = context.city,
         phone = context.phone.as_deref().unwrap_or("disponible sur Yukpo"),
         platform = "la messagerie",
-        language = config.language,
+        response_lang_instruction = response_lang_instruction,
         yukpo_url = context.yukpo_url,
         products_text = products_text,
         promos_text = promos_text,
@@ -1190,4 +1208,202 @@ pub async fn persist_message(
     .await;
 
     Ok(msg)
+}
+
+// ─── NLU : Détection langue ───────────────────────────────────────────────────
+
+/// Détecte la langue dominante d'un message en utilisant whatlang ou heuristiques.
+fn detect_language(text: &str) -> String {
+    // Utiliser whatlang si disponible (déjà importé dans app_ia.rs)
+    if let Some(info) = whatlang::detect(text) {
+        let lang = format!("{:?}", info.lang()).to_lowercase();
+        // Mapper vers codes ISO simples
+        return match lang.as_str() {
+            "french" => "fr",
+            "english" => "en",
+            "arabic" => "ar",
+            "spanish" => "es",
+            "portuguese" => "pt",
+            "swahili" => "sw",
+            "amharic" => "am",
+            "yoruba" => "yo",
+            "hausa" => "ha",
+            _ => "fr", // défaut
+        }
+        .to_string();
+    }
+
+    // Heuristiques simples si whatlang échoue
+    let text_lower = text.to_lowercase();
+    // Wolof (Sénégal)
+    if text_lower.contains("nanga") || text_lower.contains("waaw") || text_lower.contains("dafa") {
+        return "wo".to_string();
+    }
+    // Lingala (Congo/RDC)
+    if text_lower.contains("lokola")
+        || text_lower.contains("malamu")
+        || text_lower.contains("nazali")
+    {
+        return "ln".to_string();
+    }
+    // Malagasy
+    if text_lower.contains("misaotra")
+        || text_lower.contains("azafady")
+        || text_lower.contains("tsara")
+    {
+        return "mg".to_string();
+    }
+    // Bambara
+    if text_lower.contains("aw ni ce") || text_lower.contains("aw bara") {
+        return "bm".to_string();
+    }
+    // Cameroonian Pidgin
+    if text_lower.contains("how na") || text_lower.contains("na so") || text_lower.contains("wey") {
+        return "pcm".to_string();
+    }
+    // Défaut
+    "fr".to_string()
+}
+
+/// Construit l'instruction de langue pour le system prompt
+fn language_instruction(detected: &str, configured: &str) -> String {
+    let lang_name = match detected {
+        "fr" => "français",
+        "en" => "anglais",
+        "ar" => "arabe",
+        "es" => "espagnol",
+        "pt" => "portugais",
+        "sw" => "swahili",
+        "am" => "amharique",
+        "yo" => "yoruba",
+        "ha" => "haoussa",
+        "wo" => "wolof",
+        "ln" => "lingala",
+        "mg" => "malagasy",
+        "bm" => "bambara",
+        "pcm" => "pidgin camerounais",
+        _ => "français",
+    };
+
+    if detected != configured && detected != "fr" {
+        // Le client écrit dans une langue différente de celle configurée → s'adapter
+        format!(
+            "Langue détectée du client : {}. Réponds dans cette langue. \
+             Langue secondaire de la boutique : {}.",
+            lang_name, configured
+        )
+    } else {
+        format!("Langue de communication : {}.", lang_name)
+    }
+}
+
+// ─── Escalade agent réelle ────────────────────────────────────────────────────
+
+/// Notifie l'agent humain via WhatsApp Business quand une conversation est escaladée.
+/// Utilise le token global WhatsApp (configuration boutique).
+pub async fn notify_agent_escalation(
+    state: &Arc<AppState>,
+    user_id: i32,
+    service_id: i32,
+    thread_id: i64,
+    sender_name: &str,
+    platform: &str,
+    message_preview: &str,
+    escalation_reason: &str,
+) {
+    // Récupérer le numéro de téléphone du partenaire pour notification
+    use sqlx::Row;
+    let phone_row =
+        sqlx::query("SELECT phone FROM services WHERE id = $1 AND user_id = $2 LIMIT 1")
+            .bind(service_id)
+            .bind(user_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+
+    let manager_phone =
+        phone_row.and_then(|r| r.try_get::<Option<String>, _>("phone").ok().flatten());
+
+    // Enregistrer l'escalade en DB
+    let _ = sqlx::query(
+        r#"INSERT INTO social_escalation_events
+           (user_id, service_id, thread_id, reason, escalated_at)
+           VALUES ($1, $2, $3, $4, NOW())
+           ON CONFLICT DO NOTHING"#,
+    )
+    .bind(user_id)
+    .bind(service_id)
+    .bind(thread_id)
+    .bind(escalation_reason)
+    .execute(&state.pg)
+    .await;
+
+    // Marquer la conversation comme escaladée dans l'inbox
+    let _ = sqlx::query(
+        "UPDATE social_inbox_summary SET is_escalated = true, updated_at = NOW() WHERE thread_id = $1",
+    )
+    .bind(thread_id)
+    .execute(&state.pg)
+    .await;
+
+    // Notification WhatsApp à l'agent si numéro disponible
+    if let Some(phone) = manager_phone {
+        let wa_token = std::env::var("WHATSAPP_ACCESS_TOKEN").unwrap_or_default();
+        let phone_id = std::env::var("WHATSAPP_PHONE_NUMBER_ID").unwrap_or_default();
+
+        if !wa_token.is_empty() && !phone_id.is_empty() {
+            let notification = format!(
+                "🔔 *Escalade Yukpo — Action requise*\n\n\
+                 📱 Plateforme : {}\n\
+                 👤 Client : {}\n\
+                 💬 Message : {}\n\
+                 ⚠️ Raison : {}\n\n\
+                 Connectez-vous à Yukpo pour répondre directement.",
+                platform,
+                sender_name,
+                &message_preview[..message_preview.len().min(150)],
+                escalation_reason
+            );
+
+            let body = serde_json::json!({
+                "messaging_product": "whatsapp",
+                "to": phone.replace("+", "").replace(" ", "").replace("-", ""),
+                "type": "text",
+                "text": { "body": notification, "preview_url": false }
+            });
+
+            let client = reqwest::Client::new();
+            let result = client
+                .post(format!(
+                    "https://graph.facebook.com/v19.0/{}/messages",
+                    phone_id
+                ))
+                .bearer_auth(&wa_token)
+                .json(&body)
+                .timeout(std::time::Duration::from_secs(10))
+                .send()
+                .await;
+
+            match result {
+                Ok(resp) if resp.status().is_success() => {
+                    log::info!(
+                        "[Chatbot] ✅ Escalade notifiée via WhatsApp — thread={} manager={}",
+                        thread_id,
+                        phone
+                    );
+                }
+                Ok(resp) => {
+                    log::warn!(
+                        "[Chatbot] Escalade WhatsApp status {} pour thread={}",
+                        resp.status(),
+                        thread_id
+                    );
+                }
+                Err(e) => {
+                    log::warn!("[Chatbot] Escalade WhatsApp erreur: {}", e);
+                }
+            }
+        }
+    }
 }

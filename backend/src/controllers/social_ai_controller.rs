@@ -7,16 +7,16 @@ use axum::{
     response::IntoResponse,
     Extension, Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 
 use crate::{
     core::types::AppResult,
     middlewares::jwt::AuthenticatedUser,
     services::{
-        ai_content_service::{self, ContentPreferences, ProductContext, StoreContext},
-        meta_ads_service::{self, CampaignObjective, CampaignRequest, TargetingSpec},
-        social_chatbot_service, social_inbox_service, social_scheduler_service,
+        ai_content_service::{self, ProductContext, StoreContext},
+        meta_ads_service::{self, TargetingSpec},
+        social_inbox_service, social_scheduler_service,
     },
     state::AppState,
 };

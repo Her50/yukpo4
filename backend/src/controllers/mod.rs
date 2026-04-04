@@ -131,4 +131,11 @@ pub mod video_upload_controller; // ✅ NOUVEAU: Contrôleur ML pour recommandat
 pub mod webhook_controller;
 pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels // ✅ NOUVEAU 2025-11-06: Contrôleur pour debug et vérification des tables // ✅ NOUVEAU 2025-01-29: Contrôleur prix dynamique IA (Leadership 100%) // ✅ NOUVEAU 2026-03-17: Contrôleur validation téléphone et partage WhatsApp/SMS // ✅ 2026-04-03: Social AI Engine (content gen, chatbot, ads, inbox, webhooks)
 
+pub mod brand_voice_controller; // ✅ 2026-04-03: Entraînement brand voice IA par partenaire
+pub mod content_approval_controller; // ✅ 2026-04-03: Workflow approbation contenu
+pub mod longform_controller; // ✅ 2026-04-03: Génération contenu long format
+pub mod reputation_controller;
+pub mod social_analytics_controller; // ✅ 2026-04-03: Dashboard analytics cross-plateformes + A/B test
+pub mod trendpulse_b2b_controller; // ✅ 2026-04-03: API TrendPulse B2B monétisée (clé API, quota) // ✅ 2026-04-03: Monitoring mentions + crise
+
 // pub use service_controller::update_token_debit;

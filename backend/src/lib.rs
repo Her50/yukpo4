@@ -40,9 +40,11 @@ use crate::routes::{
     auto_search_routes::auto_search_routes, // ✅ NOUVEAU 2026-03-07: Routes recherche automobile intelligente
     autocomplete_routes::autocomplete_routes,
     bourse_livre_routes::bourse_livre_routes, // ✅ NOUVEAU 2025-01-27: Routes pour upload médias chat vers S3/Wasabi
+    brand_voice_routes::brand_voice_routes,   // ✅ 2026-04-03: Brand Voice Training par partenaire
     chat_reactions_routes::create_chat_reactions_router,
     chat_routes::chat_routes,
     combination_routes::combination_routes,
+    content_approval_routes::content_approval_routes, // ✅ 2026-04-03: Approbation contenu personnalités publiques
     content_routes::content_routes,
     // conversation_routes::conversation_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (conversation_routes_merged)
     creator_analytics_routes::creator_analytics_routes, // ✅ NOUVEAU: Routes analytics créateurs
@@ -74,6 +76,7 @@ use crate::routes::{
     kyc_webhook_routes::kyc_webhook_routes, // ✅ NOUVEAU 2025-01-29: Routes webhook KYC
     live_ai_routes::live_ai_routes,
     live_routes::live_routes,
+    longform_routes::longform_routes, // ✅ 2026-04-03: Contenu long format (scripts, articles, newsletters)
     media_routes::media_routes,
     metrics_routes::metrics_routes,
     metrics_tracking_routes::metrics_tracking_routes,
@@ -105,6 +108,7 @@ use crate::routes::{
     publicite_pixel_routes::publicite_pixel_routes, // ✅ NOUVEAU: Routes tracking pixel avancé
     push_routes::push_routes,
     recommendation_routes::recommendation_routes,
+    reputation_routes::reputation_routes, // ✅ 2026-04-03: Monitoring mentions + crise
     restaurant_routes::restaurant_routes,
     // scheduling_search_routes::scheduling_search_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (scheduling_search_routes_merged)
     search_history_routes::search_history_routes,
@@ -112,6 +116,7 @@ use crate::routes::{
     // service_team_routes::service_team_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (service_team_routes_merged)
     shopping_routes::shopping_routes,
     social_ai_routes::social_ai_routes, // ✅ 2026-04-03: Social AI Engine (content gen, chatbot, ads, inbox)
+    social_analytics_routes::social_analytics_routes, // ✅ 2026-04-03: Analytics cross-plateformes + A/B test
     social_distribution_routes::social_distribution_routes, // ✅ 2026-04-03: Distribution produits multi-canaux
     // signalement_routes::signalement_routes, // ⚠️ SUPPRIMÉ: Déjà inclus dans router_yukpo (signalement_routes_merged)
     social_features_routes::social_features_routes, // ✅ NOUVEAU: Routes fonctionnalités sociales avancées
@@ -123,6 +128,7 @@ use crate::routes::{
     token_pack_routes::token_pack_routes,
     token_stats_routes::token_stats_routes,
     trend_routes::trend_routes, // ✅ 2026-04-03: TrendPulse (tendances personnalisées + contexte utilisateur)
+    trendpulse_b2b_routes::trendpulse_b2b_routes, // ✅ 2026-04-03: API TrendPulse B2B monétisée
     universal_search_routes::universal_search_routes, // ✅ 2026-04-01: Recherche universelle cross-services
     upload_routes::upload_routes,                     // ✅ NOUVEAU: Routes upload préalable
     user_routes::user_routes,
@@ -250,6 +256,13 @@ pub fn build_app(state: Arc<AppState>) -> Router {
     // ✅ 2026-04-03: Social AI Engine (génération contenu, chatbot CM IA, Meta Ads, inbox unifiée)
     let social_ai = social_ai_routes(state.clone());
     let trend_pulse = trend_routes(state.clone()); // ✅ 2026-04-03: TrendPulse
+                                                   // ✅ 2026-04-03: Community Manager avancé — brand voice, approbation, réputation, longform
+    let brand_voice = brand_voice_routes(state.clone());
+    let content_approval = content_approval_routes(state.clone());
+    let longform = longform_routes(state.clone());
+    let reputation = reputation_routes(state.clone());
+    let social_analytics = social_analytics_routes(state.clone()); // ✅ 2026-04-03: Analytics cross-plateformes
+    let trendpulse_b2b = trendpulse_b2b_routes(state.clone()); // ✅ 2026-04-03: API TrendPulse B2B
     let creator_analytics = creator_analytics_routes(state.clone());
     // ✅ NOUVEAU: Upload routes (upload préalable avant création service)
     let uploads = upload_routes(state.clone());
@@ -433,6 +446,12 @@ pub fn build_app(state: Arc<AppState>) -> Router {
         .merge(social_distribution) // ✅ 2026-04-03: Distribution produits multi-canaux
         .merge(social_ai) // ✅ 2026-04-03: Social AI Engine (content gen, chatbot CM, ads, inbox)
         .merge(trend_pulse) // ✅ 2026-04-03: TrendPulse (tendances + contexte utilisateur)
+        .merge(brand_voice) // ✅ 2026-04-03: Brand Voice Training IA
+        .merge(content_approval) // ✅ 2026-04-03: Workflow approbation contenu
+        .merge(longform) // ✅ 2026-04-03: Contenu long format
+        .merge(reputation) // ✅ 2026-04-03: Monitoring réputation
+        .merge(social_analytics) // ✅ 2026-04-03: Analytics cross-plateformes + A/B test
+        .merge(trendpulse_b2b) // ✅ 2026-04-03: API TrendPulse B2B monétisée (clé API)
         .merge(creator_analytics) // ✅ NOUVEAU: Routes analytics créateurs
         .merge(uploads) // ✅ NOUVEAU: Upload préalable de fichiers
         .merge(ia)

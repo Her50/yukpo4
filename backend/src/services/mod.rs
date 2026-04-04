@@ -274,14 +274,20 @@ pub mod ai_content_service; // ✅ 2026-04-03: Génération contenu IA (GPT-4o) 
 pub mod alertes_emploi_service; // ✅ NOUVEAU 2025-01-28: Service alertes emploi
 pub mod ar_3d_render_service;
 pub mod ar_preview_service; // ✅ NOUVEAU Phase 3.2: Service de rendu 3D pour preview AR
+pub mod brand_voice_service; // ✅ 2026-04-03: Brand Voice Training — style IA par partenaire
 pub mod candidatures_service; // ✅ NOUVEAU 2025-01-28: Service candidatures
 pub mod concours_entree_service; // ✅ NOUVEAU 2025-01-28: Service concours d'entrée
 pub mod conferences_lives_service; // ✅ NOUVEAU 2025-01-28: Service conférences et lives scolaires
+pub mod customer_memory_service; // ✅ 2026-04-03: Mémoire persistante clients chatbot (CRM IA)
+pub mod ecommerce_connector_service; // ✅ 2026-04-03: Connecteurs Shopify, WooCommerce, Jumia
 pub mod effect_library_service; // ✅ NOUVEAU 2025-01-27: Service de gestion bibliothèque d'effets (50+)
 pub mod experiences_etudiants_service; // ✅ NOUVEAU 2025-01-28: Service expériences d'anciens étudiants
 pub mod export_service; // ✅ NOUVEAU Phase 2.3: Service de gestion des jobs d'export vidéo
 pub mod fournitures_scolaires_service; // ✅ NOUVEAU 2025-01-28: Service fournitures scolaires
 pub mod generative_video_service; // ✅ NOUVEAU Phase 3.1: Service de génération vidéo IA complète
+pub mod linkedin_publisher_service; // ✅ 2026-04-03: Publication LinkedIn (posts, images, réponses)
+pub mod longform_content_service; // ✅ 2026-04-03: Contenu long format (scripts YT, articles, newsletters)
+pub mod longform_publisher_service; // ✅ 2026-04-03: Publication WordPress, Mailchimp, Ghost
 pub mod matching_emploi_service; // ✅ NOUVEAU 2025-01-28: Service matching intelligent
 pub mod meta_ads_service; // ✅ 2026-04-03: Meta Marketing API — campagnes, DPA, budget auto
 pub mod multilingue_service; // ✅ NOUVEAU 2026-03-16: Service multilingue pour notifications
@@ -290,24 +296,31 @@ pub mod offres_emploi_service; // ✅ NOUVEAU 2025-01-28: Service offres d'emplo
 pub mod orientation_scolaire_ai_service; // ✅ NOUVEAU: Service IA orientation scolaire
 pub mod orientation_scolaire_service; // ✅ NOUVEAU 2025-01-28: Service orientation scolaire
 pub mod paiement_agrege_service;
+pub mod pinterest_publisher_service; // ✅ 2026-04-03: Publication Pinterest (pins, boards, analytics)
 pub mod profils_candidats_service; // ✅ NOUVEAU 2025-01-28: Service profils candidats
 pub mod programmes_scolaires_service; // ✅ NOUVEAU 2025-01-28: Service programmes scolaires
 pub mod realtime_preview_service; // ✅ NOUVEAU 2025-01-27: Service de preview temps réel pour calcul local
 pub mod render_fallback_service; // ✅ NOUVEAU 2025-01-27: Service de fallback pour rendu si device faible
+pub mod reputation_monitoring_service; // ✅ 2026-04-03: Monitoring mentions + sentiment + alertes crise
+pub mod snapchat_publisher_service; // ✅ 2026-04-03: Publication Snapchat Spotlight + Snap Ads
+pub mod social_analytics_service; // ✅ 2026-04-03: Analytics cross-plateformes (dashboard, A/B test, weekly)
 pub mod social_chatbot_service; // ✅ 2026-04-03: Community Manager IA (Messenger/Instagram/WhatsApp)
 pub mod social_inbox_service; // ✅ 2026-04-03: Inbox unifiée multi-plateformes
 pub mod social_scheduler_service;
 pub mod spotify_integration_service; // ✅ NOUVEAU Phase 2.2: Service d'intégration Spotify API
 pub mod statistiques_emploi_service; // ✅ NOUVEAU 2025-01-28: Service statistiques emploi
 pub mod template_service; // ✅ NOUVEAU 2025-01-27: Service de gestion templates vidéo par industrie (50+)
+pub mod tiktok_publisher_service; // ✅ 2026-04-03: Publication vidéos TikTok (Creator API)
 pub mod transcoding_service; // ✅ NOUVEAU Phase 2.3: Service de transcodage vidéo multi-formats
-pub mod trend_aggregator_service; // ✅ 2026-04-03: TrendPulse — agrégateur multi-sources + scoring
+pub mod trend_aggregator_service; // ✅ 2026-04-03: TrendPulse — 6 sources + forecasting + 20 pays
 pub mod trending_music_service; // ✅ NOUVEAU 2026-03-05: Service de musique trending TikTok/Shorts
+pub mod twitter_publisher_service; // ✅ 2026-04-03: Publication tweets/threads (Twitter API v2)
 pub mod user_context_service; // ✅ 2026-04-03: Profil commercial complet utilisateur (services, produits, ads, chatbot)
 pub mod video_transcoding_service; // ✅ NOUVEAU 2026-03-05: Service de transcodage vidéo HLS/DASH (TikTok/Shorts)
 pub mod watermark_service; // ✅ NOUVEAU 2025-01-27: Service de watermark Yukpo pour branding vidéo
 pub mod whatsapp_service; // ✅ NOUVEAU 2026-03-06: Service WhatsApp Business avec routing automatique
 pub mod youtube_audio_service;
+pub mod youtube_publisher_service; // ✅ 2026-04-03: Upload vidéos YouTube + Shorts + playlists
 pub mod yukpo_ia_billing; // YukpoIA — quota journalier + prélèvement jetons
 pub mod yukpo_ia_chat_enrich; // YukpoIA — attachments / fichiers générés dans la réponse /ai/chat
 pub mod yukpo_ia_job_queue; // YukpoIA — file Redis + jobs async chat

@@ -224,7 +224,7 @@ pub async fn sync_catalog_batch(
                     "availability": if p.in_stock { "in stock" } else { "out of stock" },
                     "condition":    "new",
                     "url":          p.product_url,
-                    "brand":        p.store_name.as_deref().unwrap_or("Yukpo"),
+                    "brand":        p.store_name.as_deref().unwrap_or(""),
                 });
 
                 if let Some(img) = &p.image_url {
