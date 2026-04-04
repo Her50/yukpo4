@@ -2,7 +2,7 @@
 // Entraînement du style IA par partenaire + génération contextuelle
 
 use axum::{
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -29,7 +29,7 @@ pub struct TrainBrandVoiceBody {
 /// POST /api/social-ai/brand-voice/:service_id/train
 pub async fn train(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
     Json(body): Json<TrainBrandVoiceBody>,
 ) -> Result<Json<Value>, AppError> {
@@ -60,7 +60,7 @@ pub async fn train(
 /// GET /api/social-ai/brand-voice/:service_id
 pub async fn get_brand_voice(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
 ) -> Result<Json<Value>, AppError> {
     use sqlx::Row;
@@ -99,7 +99,7 @@ pub struct GenerateWithVoiceBody {
 /// POST /api/social-ai/brand-voice/:service_id/generate
 pub async fn generate_post_with_voice(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
     Json(body): Json<GenerateWithVoiceBody>,
 ) -> Result<Json<Value>, AppError> {

@@ -2,7 +2,7 @@
 // Monitoring mentions, crise, config par partenaire
 
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,7 @@ pub struct MentionQuery {
 /// GET /api/social-ai/reputation/:service_id/mentions
 pub async fn list_mentions(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
     Query(q): Query<MentionQuery>,
 ) -> Result<Json<Value>, AppError> {
@@ -93,7 +93,7 @@ pub async fn list_mentions(
 /// POST /api/social-ai/reputation/mention/:id/read
 pub async fn mark_mention_read(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(mention_id): Path<i64>,
 ) -> Result<Json<Value>, AppError> {
     sqlx::query("UPDATE reputation_mentions SET is_read = true WHERE id = $1 AND user_id = $2")
@@ -109,7 +109,7 @@ pub async fn mark_mention_read(
 /// POST /api/social-ai/reputation/mention/:id/handle
 pub async fn mark_mention_handled(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(mention_id): Path<i64>,
 ) -> Result<Json<Value>, AppError> {
     sqlx::query(
@@ -131,7 +131,7 @@ pub async fn mark_mention_handled(
 /// GET /api/social-ai/reputation/:service_id/crises
 pub async fn list_crisis_events(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
 ) -> Result<Json<Value>, AppError> {
     let rows = sqlx::query(
@@ -179,7 +179,7 @@ pub async fn list_crisis_events(
 /// POST /api/social-ai/reputation/crisis/:id/resolve
 pub async fn resolve_crisis(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(crisis_id): Path<i32>,
 ) -> Result<Json<Value>, AppError> {
     sqlx::query(
@@ -215,7 +215,7 @@ pub struct MonitorConfigBody {
 /// GET /api/social-ai/reputation/:service_id/config
 pub async fn get_monitor_config(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
 ) -> Result<Json<Value>, AppError> {
     let row = sqlx::query(
@@ -255,7 +255,7 @@ pub async fn get_monitor_config(
 /// PUT /api/social-ai/reputation/:service_id/config
 pub async fn upsert_monitor_config(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
     Json(body): Json<MonitorConfigBody>,
 ) -> Result<Json<Value>, AppError> {

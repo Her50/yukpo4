@@ -2,7 +2,7 @@
 // Workflow d'approbation pour personnalités publiques et marques sensibles
 
 use axum::{
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     Json,
 };
 use serde::Deserialize;
@@ -17,7 +17,7 @@ use crate::{core::types::AppError, middlewares::jwt::AuthenticatedUser, state::A
 /// GET /api/social-ai/approval/:service_id/pending
 pub async fn list_pending_approvals(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
 ) -> Result<Json<Value>, AppError> {
     let rows = sqlx::query(
@@ -69,7 +69,7 @@ pub struct ApproveBody {
 /// POST /api/social-ai/approval/:id/approve
 pub async fn approve_content(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(approval_id): Path<i32>,
     Json(body): Json<ApproveBody>,
 ) -> Result<Json<Value>, AppError> {
@@ -105,7 +105,7 @@ pub struct RejectBody {
 /// POST /api/social-ai/approval/:id/reject
 pub async fn reject_content(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(approval_id): Path<i32>,
     Json(body): Json<RejectBody>,
 ) -> Result<Json<Value>, AppError> {
@@ -143,7 +143,7 @@ pub struct ModifyBody {
 /// Le reviewer modifie le caption puis approuve directement
 pub async fn modify_and_approve(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(approval_id): Path<i32>,
     Json(body): Json<ModifyBody>,
 ) -> Result<Json<Value>, AppError> {
@@ -175,7 +175,7 @@ pub async fn modify_and_approve(
 /// GET /api/social-ai/approval/:service_id/history
 pub async fn list_approval_history(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
 ) -> Result<Json<Value>, AppError> {
     let rows = sqlx::query(

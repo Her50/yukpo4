@@ -145,17 +145,18 @@ async fn run_cycle(state: &Arc<AppState>) -> Result<(), String> {
             forecast
         );
 
-        let _ = crate::services::push_notification_service::send_push_to_user(
+        let _ = crate::services::push_notification_service::send_push_notification(
             &state.pg,
             user_id,
-            &notif_title,
-            &notif_body,
+            notif_title.clone(),
+            notif_body.clone(),
             Some(serde_json::json!({
                 "screen": "TrendPulseDashboard",
                 "topic": topic,
                 "region": region,
                 "has_draft": true
             })),
+            None,
         )
         .await;
 

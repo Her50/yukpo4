@@ -8,7 +8,7 @@ use sqlx::PgPool;
 
 // ─── Struct principale ────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct CustomerMemory {
     pub id: i64,
     pub user_id: i32,
@@ -74,8 +74,7 @@ pub async fn load_or_create(
     platform: &str,
     customer_external_id: &str,
 ) -> Result<CustomerMemory, sqlx::Error> {
-    let row = sqlx::query_as!(
-        CustomerMemory,
+    let row = sqlx::query_as::<_, CustomerMemory>(
         r#"
         INSERT INTO customer_memory
             (user_id, service_id, platform, customer_external_id, conversation_count, last_seen_at)
@@ -94,11 +93,11 @@ pub async fn load_or_create(
             conversation_count, escalation_count,
             last_seen_at, first_seen_at
         "#,
-        user_id,
-        service_id,
-        platform,
-        customer_external_id,
     )
+    .bind(user_id)
+    .bind(service_id)
+    .bind(platform)
+    .bind(customer_external_id)
     .fetch_one(pg)
     .await?;
 
@@ -203,8 +202,7 @@ pub async fn get_vip_customers(
     user_id: i32,
     service_id: i32,
 ) -> Result<Vec<CustomerMemory>, sqlx::Error> {
-    sqlx::query_as!(
-        CustomerMemory,
+    sqlx::query_as::<_, CustomerMemory>(
         r#"
         SELECT id, user_id, service_id, customer_external_id, platform,
                customer_name, language_detected, sentiment_overall,
@@ -219,9 +217,9 @@ pub async fn get_vip_customers(
         ORDER BY total_spent_fcfa DESC
         LIMIT 50
         "#,
-        user_id,
-        service_id,
     )
+    .bind(user_id)
+    .bind(service_id)
     .fetch_all(pg)
     .await
 }
@@ -234,8 +232,7 @@ pub async fn get_follow_ups_due(
     user_id: i32,
     service_id: i32,
 ) -> Result<Vec<CustomerMemory>, sqlx::Error> {
-    sqlx::query_as!(
-        CustomerMemory,
+    sqlx::query_as::<_, CustomerMemory>(
         r#"
         SELECT id, user_id, service_id, customer_external_id, platform,
                customer_name, language_detected, sentiment_overall,
@@ -252,9 +249,9 @@ pub async fn get_follow_ups_due(
         ORDER BY follow_up_at ASC NULLS FIRST
         LIMIT 100
         "#,
-        user_id,
-        service_id,
     )
+    .bind(user_id)
+    .bind(service_id)
     .fetch_all(pg)
     .await
 }

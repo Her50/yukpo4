@@ -2,6 +2,7 @@
 // Dashboard cross-plateformes, sync insights Meta, A/B test, heures optimales
 
 use axum::{
+    middleware,
     routing::{get, post},
     Router,
 };
@@ -10,9 +11,10 @@ use std::sync::Arc;
 use crate::controllers::social_analytics_controller::{
     evaluate_ab_test, get_best_posting_hours, get_dashboard, recompute_weekly, sync_insights,
 };
+use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
 
-pub fn social_analytics_routes(state: Arc<AppState>) -> Router {
+pub fn social_analytics_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // Dashboard global (30j par défaut, ?days=N)
         .route("/api/social-ai/analytics/{service_id}", get(get_dashboard))
@@ -36,5 +38,5 @@ pub fn social_analytics_routes(state: Arc<AppState>) -> Router {
             "/api/social-ai/analytics/recompute-weekly",
             post(recompute_weekly),
         )
-        .with_state(state)
+        .layer(middleware::from_fn_with_state(state.clone(), jwt_auth))
 }

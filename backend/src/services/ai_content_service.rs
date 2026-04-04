@@ -398,7 +398,8 @@ pub async fn determine_ab_winner(
 pub async fn load_preferences(pg: &PgPool, user_id: i32, service_id: i32) -> ContentPreferences {
     let row = sqlx::query(
         r#"SELECT default_tone, default_language, brand_voice, forbidden_words,
-                  always_include, default_hashtags, post_template
+                  always_include, default_hashtags, post_template,
+                  yukpo_signature_enabled, yukpo_signature_style, custom_signature_text
            FROM social_ai_preferences
            WHERE user_id = $1 AND service_id = $2"#,
     )
@@ -419,6 +420,13 @@ pub async fn load_preferences(pg: &PgPool, user_id: i32, service_id: i32) -> Con
             always_include: r.try_get::<Vec<String>, _>("always_include").unwrap_or_default(),
             default_hashtags: r.try_get::<Vec<String>, _>("default_hashtags").unwrap_or_default(),
             post_template: r.try_get("post_template").ok(),
+            yukpo_signature_enabled: r
+                .try_get::<bool, _>("yukpo_signature_enabled")
+                .unwrap_or(false),
+            yukpo_signature_style: r
+                .try_get::<String, _>("yukpo_signature_style")
+                .unwrap_or_else(|_| "hashtag".to_string()),
+            custom_signature_text: r.try_get("custom_signature_text").ok(),
         }
     } else {
         ContentPreferences::default()

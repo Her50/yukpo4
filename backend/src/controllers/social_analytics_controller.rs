@@ -2,7 +2,7 @@
 // Dashboard analytics cross-plateformes, synchro insights Meta, A/B test auto
 
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     response::IntoResponse,
     Json,
 };
@@ -21,14 +21,13 @@ pub struct DashboardQuery {
 }
 
 pub async fn get_dashboard(
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
     Path(service_id): Path<i32>,
     Query(q): Query<DashboardQuery>,
 ) -> impl IntoResponse {
     let period_days = q.days.unwrap_or(30);
 
-    // get_social_dashboard returns SocialDashboardSummary (not Result)
     let dashboard =
         social_analytics_service::get_social_dashboard(&state.pg, auth.id, service_id, period_days)
             .await;
@@ -50,7 +49,7 @@ pub struct SyncInsightsRequest {
 }
 
 pub async fn sync_insights(
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
     Path(service_id): Path<i32>,
     Json(body): Json<SyncInsightsRequest>,
@@ -86,7 +85,7 @@ pub struct AbTestQuery {
 }
 
 pub async fn evaluate_ab_test(
-    _auth: AuthenticatedUser,
+    _auth: Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
     Path(_service_id): Path<i32>,
     Query(q): Query<AbTestQuery>,
@@ -116,25 +115,21 @@ pub async fn evaluate_ab_test(
 // ─── POST /api/social-ai/analytics/recompute-weekly ──────────────────────────
 
 pub async fn recompute_weekly(
-    _auth: AuthenticatedUser,
+    _auth: Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
-    match social_analytics_service::recompute_weekly_aggregates(&state.pg).await {
-        Ok(_) => (
-            axum::http::StatusCode::OK,
-            Json(serde_json::json!({ "recomputed": true })),
-        ),
-        Err(e) => (
-            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({ "error": e })),
-        ),
-    }
+    // recompute_weekly_aggregates returns () — fire and forget
+    social_analytics_service::recompute_weekly_aggregates(&state.pg).await;
+    (
+        axum::http::StatusCode::OK,
+        Json(serde_json::json!({ "recomputed": true })),
+    )
 }
 
 // ─── GET /api/social-ai/analytics/:service_id/best-hours ─────────────────────
 
 pub async fn get_best_posting_hours(
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
     Path(service_id): Path<i32>,
 ) -> impl IntoResponse {

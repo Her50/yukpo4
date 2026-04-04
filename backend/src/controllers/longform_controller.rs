@@ -2,7 +2,7 @@
 // Génération et gestion de contenus longs : scripts YT, articles, newsletters, podcasts
 
 use axum::{
-    extract::{Path, State},
+    extract::{Extension, Path, State},
     Json,
 };
 use serde::Deserialize;
@@ -22,7 +22,7 @@ use crate::{
 /// POST /api/social-ai/longform/generate
 pub async fn generate_longform(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Json(req): Json<LongformRequest>,
 ) -> Result<Json<Value>, AppError> {
     let valid_types = [
@@ -72,7 +72,7 @@ pub struct SaveLongformBody {
 /// POST /api/social-ai/longform/:service_id/save
 pub async fn save_longform(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
     Json(body): Json<SaveLongformBody>,
 ) -> Result<Json<Value>, AppError> {
@@ -109,7 +109,7 @@ pub async fn save_longform(
 /// GET /api/social-ai/longform/:service_id
 pub async fn list_longform(
     State(state): State<Arc<AppState>>,
-    auth: AuthenticatedUser,
+    Extension(auth): Extension<AuthenticatedUser>,
     Path(service_id): Path<i32>,
 ) -> Result<Json<Value>, AppError> {
     let rows = sqlx::query(

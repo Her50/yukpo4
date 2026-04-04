@@ -132,16 +132,17 @@ async fn run_cycle(state: &Arc<AppState>) -> Result<(), String> {
 
         // 5. Notifier le partenaire
         let notif_body = format!("Votre produit \"{}\" → Reel prêt à publier !", product_name);
-        let _ = crate::services::push_notification_service::send_push_to_user(
+        let _ = crate::services::push_notification_service::send_push_notification(
             &state.pg,
             user_id,
-            "🎬 Nouveau Reel généré !",
-            &notif_body,
+            "🎬 Nouveau Reel généré !".to_string(),
+            notif_body.clone(),
             Some(serde_json::json!({
                 "screen": "SocialAIDashboard",
                 "service_id": service_id,
                 "product_id": product_id,
             })),
+            None,
         )
         .await;
 
