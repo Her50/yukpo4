@@ -967,20 +967,16 @@ async fn assemble_context(
         })
         .collect();
 
-    // TrendPulse : top 5 tendances actives pour le secteur / la ville
+    // TrendPulse : top 5 tendances actives pour le secteur / la région
     let trending_topics: Vec<String> = {
         use sqlx::Row;
         sqlx::query(
             r#"SELECT topic
-               FROM social_trend_snapshots
-               WHERE (city = $1 OR city IS NULL)
-                 AND (sector = $2 OR sector IS NULL)
-                 AND captured_at >= NOW() - INTERVAL '48 hours'
-               ORDER BY score DESC
+               FROM trend_snapshots
+               WHERE snapshot_at >= NOW() - INTERVAL '48 hours'
+               ORDER BY opportunity_score DESC
                LIMIT 5"#,
         )
-        .bind(&city)
-        .bind(&sector)
         .fetch_all(pg)
         .await
         .unwrap_or_default()

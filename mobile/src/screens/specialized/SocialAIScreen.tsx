@@ -194,7 +194,7 @@ const SocialAIScreen: React.FC = () => {
 
     const loadTrends = async () => {
         try {
-            const data: any = await apiGet(`/api/trendpulse/trends?limit=8`);
+            const data: any = await apiGet(`/api/trends/pulse?limit=8`);
             const topics = (data?.trends ?? data ?? []).map((t: any) => t.topic || t.hashtag || t).filter(Boolean);
             setTrendingTopics(topics.slice(0, 8));
         } catch {

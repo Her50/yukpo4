@@ -24,22 +24,11 @@ END $$;
 ALTER TABLE social_ai_preferences
   ADD COLUMN IF NOT EXISTS white_label_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 
--- 3. social_trend_snapshots : s'assurer que les colonnes city/sector existent
---    (table créée lors du module TrendPulse — on vérifie sans erreur)
+-- 3. Index sur trend_snapshots (vraie table TrendPulse) pour les requetes chatbot
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'social_trend_snapshots') THEN
-    BEGIN
-      ALTER TABLE social_trend_snapshots ADD COLUMN IF NOT EXISTS city   TEXT;
-      ALTER TABLE social_trend_snapshots ADD COLUMN IF NOT EXISTS sector TEXT;
-      ALTER TABLE social_trend_snapshots ADD COLUMN IF NOT EXISTS score  DOUBLE PRECISION NOT NULL DEFAULT 1.0;
-    EXCEPTION WHEN OTHERS THEN
-      NULL; -- colonnes déjà présentes
-    END;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'trend_snapshots') THEN
+    CREATE INDEX IF NOT EXISTS idx_trend_snapshots_opp_score
+      ON trend_snapshots (opportunity_score DESC, snapshot_at DESC);
   END IF;
 END $$;
-
--- Index pour la recherche rapide de tendances
-CREATE INDEX IF NOT EXISTS idx_trend_snapshots_city_sector
-  ON social_trend_snapshots (city, sector, captured_at DESC)
-  WHERE captured_at >= NOW() - INTERVAL '48 hours';

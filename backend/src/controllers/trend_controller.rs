@@ -413,13 +413,12 @@ pub async fn publish_auto_draft(
 ) -> Result<Json<Value>, AppError> {
     let result = sqlx::query(
         r#"UPDATE trend_auto_drafts
-           SET status = 'published', published_platform = $3, published_at = NOW()
+           SET status = 'published'
            WHERE id = $1 AND user_id = $2
            RETURNING id"#,
     )
     .bind(draft_id)
     .bind(user.id)
-    .bind(&body.platform)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(e.to_string()))?;

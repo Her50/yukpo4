@@ -658,13 +658,8 @@ const HomeScreen: React.FC = () => {
                             navigate('Delivery');
                         }}
                     >
-                        {/* Icône livraison : vélo (vert) + bonhomme (bleu) pour les distinguer */}
-                        <View style={{ width: 28, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-                            <SafeIcon name="Bike" size={23} color="#16A34A" />
-                            <View style={{ position: 'absolute', top: -5, right: -1 }}>
-                                <SafeIcon name="User" size={12} color="#1D4ED8" />
-                            </View>
-                        </View>
+                        {/* Icône livraison : cycliste Lucide, bonhomme orange distinctif */}
+                        <SafeIcon name="Bike" size={26} color="#F97316" type="lucide" />
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.headerButton, styles.notificationButton]}

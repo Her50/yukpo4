@@ -16,7 +16,11 @@ use crate::{
         escalate_thread,
         // Content AI
         generate_post,
+        generate_reel_script,
+        get_benchmark,
         get_content_calendar,
+        get_onboarding_status,
+        get_optimal_schedule,
         get_thread,
         instagram_dm_webhook,
         list_campaigns,
@@ -87,6 +91,26 @@ pub fn social_ai_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(create_promo_campaign),
         )
         .route("/api/social-ai/ads/dpa", post(create_dpa_campaign))
+        // ── Smart scheduling ──────────────────────────────────────────────────
+        .route(
+            "/api/social-ai/schedule/optimal/{service_id}",
+            get(get_optimal_schedule),
+        )
+        // ── Benchmark analytics ───────────────────────────────────────────────
+        .route(
+            "/api/social-ai/analytics/benchmark/{service_id}",
+            get(get_benchmark),
+        )
+        // ── Reels script ──────────────────────────────────────────────────────
+        .route(
+            "/api/social-ai/content/reel-script",
+            post(generate_reel_script),
+        )
+        // ── Onboarding ────────────────────────────────────────────────────────
+        .route(
+            "/api/social-ai/onboarding/status/{service_id}",
+            get(get_onboarding_status),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     // Routes publiques (webhooks Meta — pas de JWT, vérifié par token webhook)
