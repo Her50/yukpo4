@@ -5,10 +5,7 @@
 use std::sync::Arc;
 use tokio::time::{interval, Duration};
 
-use crate::{
-    services::trend_aggregator_service::{compute_trend_forecast, supported_african_regions},
-    state::AppState,
-};
+use crate::{services::trend_aggregator_service::compute_trend_forecast, state::AppState};
 
 pub fn start_trend_forecast_worker(state: Arc<AppState>) {
     tokio::spawn(async move {

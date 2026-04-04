@@ -5,7 +5,7 @@ use axum::{
     extract::{Extension, Path, State},
     Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::Arc;
 

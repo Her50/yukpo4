@@ -4,7 +4,6 @@
 
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::sync::Arc;
 
 use crate::services::stock_media_service::{
     StockMediaConfig, StockMediaOrientation, StockMediaSearchRequest, StockMediaService,

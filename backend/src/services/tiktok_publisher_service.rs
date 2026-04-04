@@ -13,7 +13,7 @@
 // Yukpo doit soumettre une demande d'accès Content Posting API.
 
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::core::types::{AppError, AppResult};
 
@@ -36,6 +36,7 @@ struct TikTokError {
 #[derive(Debug, Deserialize)]
 struct InitUploadData {
     publish_id: String,
+    #[allow(dead_code)]
     upload_url: Option<String>,
 }
 

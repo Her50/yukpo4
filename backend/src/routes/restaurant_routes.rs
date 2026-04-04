@@ -3,7 +3,7 @@ use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
 use axum::{
     middleware,
-    routing::{delete, get, patch, post, put},
+    routing::{get, patch, post},
     Router,
 };
 use std::sync::Arc;

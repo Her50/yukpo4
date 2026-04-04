@@ -286,7 +286,7 @@ async fn send_messenger_product_template(
 ) -> Result<(), String> {
     let client = reqwest::Client::new();
 
-    let mut buttons = vec![serde_json::json!({
+    let buttons = vec![serde_json::json!({
         "type": "web_url",
         "url": card.yukpo_url,
         "title": "Voir sur Yukpo"
@@ -448,7 +448,7 @@ async fn send_whatsapp_response_with_phone_id(
     let client = reqwest::Client::new();
 
     // Message texte
-    let mut body = serde_json::json!({
+    let body = serde_json::json!({
         "messaging_product": "whatsapp",
         "recipient_type": "individual",
         "to": recipient_phone,
@@ -843,9 +843,9 @@ async fn call_ai_for_response(
 
 async fn assemble_context(
     state: &Arc<AppState>,
-    user_id: i32,
+    _user_id: i32,
     service_id: i32,
-    sender_id: &str,
+    _sender_id: &str,
     user_message: &str,
     config: &BotConfig,
 ) -> BotContext {
@@ -1215,12 +1215,14 @@ async fn load_conversation_history(
 struct BotConfig {
     is_active: bool,
     bot_name: String,
+    #[allow(dead_code)]
     welcome_message: Option<String>,
     away_message: Option<String>,
     escalation_trigger_words: Vec<String>,
     business_hours: serde_json::Value,
     max_ai_tokens_per_response: i32,
     language: String,
+    #[allow(dead_code)]
     reply_delay_ms: i32,
     /// Persona: "shop" | "creator" | "personality" | "enterprise"
     account_persona: String,

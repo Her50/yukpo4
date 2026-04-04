@@ -21,8 +21,8 @@ use crate::{
 
 /// POST /api/social-ai/longform/generate
 pub async fn generate_longform(
-    State(state): State<Arc<AppState>>,
-    Extension(auth): Extension<AuthenticatedUser>,
+    State(_state): State<Arc<AppState>>,
+    Extension(_auth): Extension<AuthenticatedUser>,
     Json(req): Json<LongformRequest>,
 ) -> Result<Json<Value>, AppError> {
     let valid_types = [

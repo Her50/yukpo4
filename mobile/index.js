@@ -10,6 +10,18 @@ import 'react-native-gesture-handler';
 // ✅ Background tasks (doit être importé tôt pour enregistrer TaskManager.defineTask)
 import './src/background/communityAlertsTask';
 
+// ✅ CRITIQUE: Handler de notifications global unique — doit être défini UNE SEULE FOIS
+// Les autres fichiers (pushNotificationService, useNotifications, etc.) ne doivent PAS appeler
+// setNotificationHandler. Celui-ci est autoritaire et garantit que les alertes s'affichent toujours.
+import * as Notifications from 'expo-notifications';
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 // Traduction globale (alignée sur translateShared / LanguageProvider)
 try {
     const { translateWithFallback } = require('./src/i18n/translateShared');

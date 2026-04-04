@@ -170,6 +170,7 @@ struct ShoppingEstimateResponse {
     estimate: crate::services::delivery_repository::ShoppingEstimateResult,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize)]
 struct ShoppingOrderResponse {
     delivery: crate::models::delivery_model::DeliverySummary,

@@ -1308,7 +1308,7 @@ pub async fn get_optimal_schedule(
     ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
     let top5 = &ranked[..5];
 
-    let reason = |h: usize, score: f32| -> String {
+    let reason = |h: usize, _score: f32| -> String {
         let data_label = if max_eng > 0.0 && real_boost[h] > 0.05 {
             " ★ basé sur vos analytics".to_string()
         } else {
@@ -1513,7 +1513,7 @@ pub struct ReelScriptRequest {
 /// Génère un script Reels/Shorts/TikTok depuis une tendance TrendPulse
 pub async fn generate_reel_script(
     State(state): State<Arc<AppState>>,
-    Extension(user): Extension<AuthenticatedUser>,
+    Extension(_user): Extension<AuthenticatedUser>,
     Json(payload): Json<ReelScriptRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     use sqlx::Row;

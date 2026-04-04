@@ -131,6 +131,9 @@ class CoachingNotificationService {
      * Appelé quand l'abonnement mensuel est activé/renouvelé
      */
     async activate(): Promise<void> {
+        // Déjà actif en mémoire → skip (évite re-planification au chaque rendu)
+        if (this.isActive) return;
+
         // Demander les permissions
         const { status } = await Notifications.getPermissionsAsync();
         if (status !== 'granted') {
@@ -140,6 +143,10 @@ class CoachingNotificationService {
                 return;
             }
         }
+
+        // Détecter première activation (clé absente ou 'false') pour notif de bienvenue
+        const prevValue = await SafeStorage.getItem(COACHING_ENABLED_KEY).catch(() => null);
+        const isFirstActivation = prevValue !== 'true';
 
         // Persister tout de suite pour que sendInstant / stats ne soient pas bloqués pendant la planification
         await SafeStorage.setItem(COACHING_ENABLED_KEY, 'true').catch(() => { });
@@ -171,6 +178,27 @@ class CoachingNotificationService {
 
         // Planifier les 3 push quotidiens + 1 hebdo
         await this.scheduleAllNotifications();
+
+        // Notif de bienvenue immédiate à la première activation (confirme que ça fonctionne)
+        if (isFirstActivation) {
+            try {
+                await Notifications.scheduleNotificationAsync({
+                    content: {
+                        title: '🏃 Coach Yukpo activé',
+                        body: 'Tu recevras des rappels d\'activité chaque matin, midi et soir.',
+                        data: { type: 'coaching', subtype: 'morning_motivation' },
+                        sound: 'default',
+                        ...(Platform.OS === 'android'
+                            ? { channelId: ANDROID_CHANNEL_COACH_SOUND, priority: AndroidNotificationPriority.MAX }
+                            : { interruptionLevel: 'timeSensitive' as const }),
+                    },
+                    trigger: null, // immédiat
+                });
+            } catch {
+                // noop — ne pas bloquer l'activation si la notif de bienvenue échoue
+            }
+        }
+
         console.log('[CoachingNotif] ✅ Coaching push activé — 3 notifs/jour + 1 hebdo');
     }
 

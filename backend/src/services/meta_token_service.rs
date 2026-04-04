@@ -51,6 +51,7 @@ pub async fn refresh_meta_long_token(
     struct Resp {
         access_token: String,
         expires_in: Option<i64>,
+        #[allow(dead_code)]
         token_type: Option<String>,
     }
     #[derive(Deserialize)]

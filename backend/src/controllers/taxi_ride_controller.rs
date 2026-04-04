@@ -48,6 +48,7 @@ fn tarif_km() -> f64 {
 }
 
 /// Prix par minute d'attente (FCFA)
+#[allow(dead_code)]
 fn tarif_attente_min() -> f64 {
     std::env::var("TARIF_ATTENTE_MIN_FCFA")
         .ok()

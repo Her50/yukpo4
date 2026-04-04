@@ -11,7 +11,7 @@
 //                 TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
 
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::core::types::{AppError, AppResult};
 
@@ -28,6 +28,7 @@ struct TweetResponse {
 #[derive(Debug, Deserialize)]
 struct TweetData {
     id: String,
+    #[allow(dead_code)]
     text: String,
 }
 

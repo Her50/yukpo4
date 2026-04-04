@@ -206,8 +206,7 @@ TaskManager.defineTask(COMMUNITY_ALERTS_TASK, async ({ data, error }: any) => {
 
   if (!validateCoords(lat, lng)) return;
 
-  const authToken = await SafeStorage.getItem('auth_token');
-  if (!authToken) return;
+  const authToken = await SafeStorage.getItem('auth_token').catch(() => null);
 
   let checkpoints: any[] = [];
   try {

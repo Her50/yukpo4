@@ -164,6 +164,7 @@ impl IntelligentTranslationService {
     }
 
     /// 🔍 Détecter la langue d'un texte
+    #[allow(dead_code)]
     async fn detect_language(&self, text: &str) -> Result<String, AppError> {
         // Utiliser l'API Google Translate pour la détection
         let url = format!(

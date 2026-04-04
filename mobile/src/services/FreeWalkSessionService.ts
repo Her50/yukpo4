@@ -42,20 +42,34 @@ const estimateCalories = (distKm: number, durationMin: number, avgSpeedKmh: numb
   return (met * 70 * durationMin) / 60;
 };
 
+/** Calcule la vitesse en km/h depuis les deltas GPS si coords.speed est absent/invalide */
+const computeSpeedKmh = (
+  speed: number | null,
+  distanceMeters: number,
+  prevTimestamp: string,
+  nowTimestamp: string,
+): number => {
+  // Utiliser coords.speed uniquement s'il est valide (> 0)
+  if (speed !== null && speed > 0) return speed * 3.6;
+  // Sinon : vitesse = distance / temps écoulé
+  const elapsedSec = Math.max(1, (new Date(nowTimestamp).getTime() - new Date(prevTimestamp).getTime()) / 1000);
+  return (distanceMeters / elapsedSec) * 3.6;
+};
+
 /** Mise à jour session (partagée tâche arrière-plan + repli watchPosition premier plan) */
 const persistWalkLocation = async (latitude: number, longitude: number, speed: number | null) => {
   const now = new Date().toISOString();
-  const speedKmh = Math.max(0, (speed || 0) * 3.6);
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY_SESSION);
     let session: FreeWalkSession | null = raw ? JSON.parse(raw) : null;
     if (!session) {
+      const speedKmh = Math.max(0, (speed !== null && speed > 0) ? speed * 3.6 : 0);
       session = {
         startedAt: now,
         lastUpdateAt: now,
         totalDistance: 0,
         maxSpeedKmh: speedKmh,
-        speedSampleCount: 1,
+        speedSampleCount: speedKmh > 0 ? 1 : 0,
         speedSampleSum: speedKmh,
         lastLat: latitude,
         lastLng: longitude,
@@ -67,18 +81,21 @@ const persistWalkLocation = async (latitude: number, longitude: number, speed: n
 
     const d = haversine(session.lastLat, session.lastLng, latitude, longitude);
     if (d >= 500) {
+      // Saut GPS anormal — ignorer mais mettre à jour le timestamp
       session.lastUpdateAt = now;
-      session.currentSpeedKmh = speedKmh;
       await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
       return;
     }
+    const speedKmh = Math.max(0, computeSpeedKmh(speed, d, session.lastUpdateAt, now));
     if (d > 2) session.totalDistance += d;
     session.lastLat = latitude;
     session.lastLng = longitude;
     session.lastUpdateAt = now;
     session.currentSpeedKmh = speedKmh;
-    session.speedSampleCount += 1;
-    session.speedSampleSum += speedKmh;
+    if (speedKmh > 0) {
+      session.speedSampleCount += 1;
+      session.speedSampleSum += speedKmh;
+    }
     if (speedKmh > session.maxSpeedKmh) session.maxSpeedKmh = speedKmh;
     await AsyncStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
   } catch {
@@ -100,15 +117,14 @@ const persistWalkLocationsBatch = async (
     let session: FreeWalkSession | null = raw ? JSON.parse(raw) : null;
 
     for (const loc of locations) {
-      const speedKmh = Math.max(0, (loc.speed || 0) * 3.6);
-
       if (!session) {
+        const speedKmh = Math.max(0, (loc.speed !== null && loc.speed > 0) ? loc.speed * 3.6 : 0);
         session = {
           startedAt: now,
           lastUpdateAt: now,
           totalDistance: 0,
           maxSpeedKmh: speedKmh,
-          speedSampleCount: 1,
+          speedSampleCount: speedKmh > 0 ? 1 : 0,
           speedSampleSum: speedKmh,
           lastLat: loc.latitude,
           lastLng: loc.longitude,
@@ -119,13 +135,16 @@ const persistWalkLocationsBatch = async (
 
       const d = haversine(session.lastLat, session.lastLng, loc.latitude, loc.longitude);
       if (d >= 500) continue;
+      const speedKmh = Math.max(0, computeSpeedKmh(loc.speed, d, session.lastUpdateAt, now));
       if (d > 2) session.totalDistance += d;
       session.lastLat = loc.latitude;
       session.lastLng = loc.longitude;
       session.lastUpdateAt = now;
       session.currentSpeedKmh = speedKmh;
-      session.speedSampleCount += 1;
-      session.speedSampleSum += speedKmh;
+      if (speedKmh > 0) {
+        session.speedSampleCount += 1;
+        session.speedSampleSum += speedKmh;
+      }
       if (speedKmh > session.maxSpeedKmh) session.maxSpeedKmh = speedKmh;
     }
 

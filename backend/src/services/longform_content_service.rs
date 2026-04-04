@@ -393,7 +393,7 @@ async fn call_gpt4o(api_key: &str, prompt: &str, max_tokens: u32) -> Result<Stri
         .to_string())
 }
 
-async fn extract_or_generate_title(content: &str, topic: &str, content_type: &str) -> String {
+async fn extract_or_generate_title(content: &str, topic: &str, _content_type: &str) -> String {
     // Chercher le premier titre en markdown
     if let Some(title) = extract_title_from_markdown(content) {
         return title;

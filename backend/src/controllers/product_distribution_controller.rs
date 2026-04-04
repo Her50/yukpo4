@@ -596,16 +596,19 @@ pub struct CsvExportParams {
 #[derive(Debug, Deserialize)]
 struct FacebookTokenResponse {
     access_token: String,
+    #[allow(dead_code)]
     token_type: Option<String>,
     expires_in: Option<i64>,
     scope: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Serialize)]
 struct FacebookPagesResponse {
     data: Vec<FacebookPage>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct FacebookPage {
     id: String,

@@ -8,7 +8,7 @@
 // Access Token utilisateur stocké dans social_accounts (platform = 'youtube')
 
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::core::types::{AppError, AppResult};
 
@@ -20,20 +20,25 @@ const YT_UPLOAD_BASE: &str = "https://www.googleapis.com/upload/youtube/v3";
 #[derive(Debug, Deserialize)]
 struct VideoInsertResponse {
     id: String,
+    #[allow(dead_code)]
     snippet: Option<VideoSnippet>,
+    #[allow(dead_code)]
     status: Option<VideoStatus>,
 }
 
 #[derive(Debug, Deserialize)]
 struct VideoSnippet {
+    #[allow(dead_code)]
     title: Option<String>,
     #[serde(rename = "channelId")]
+    #[allow(dead_code)]
     channel_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct VideoStatus {
     #[serde(rename = "uploadStatus")]
+    #[allow(dead_code)]
     upload_status: Option<String>,
 }
 

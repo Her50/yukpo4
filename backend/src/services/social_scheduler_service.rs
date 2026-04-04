@@ -2,12 +2,12 @@
 // Détermine les meilleures heures de publication, gère le calendrier éditorial,
 // lance la génération IA et l'envoi automatique
 
-use chrono::{DateTime, Datelike, Duration, Timelike, Utc, Weekday};
+use chrono::{DateTime, Duration, Timelike, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
 
-use crate::services::ai_content_service::{self, ContentPreferences, ProductContext, StoreContext};
+use crate::services::ai_content_service::{self, ProductContext, StoreContext};
 use crate::services::facebook_publisher_service;
 use crate::services::instagram_publisher_service;
 use crate::state::AppState;
@@ -590,7 +590,7 @@ async fn fetch_post_insights(
     post_id: &str,
     user_id: i32,
     pg: &PgPool,
-    platform: &str,
+    _platform: &str,
 ) -> Result<(i32, i32), String> {
     // Pour simplifier: on retourne l'engagement depuis la table analytics si disponible
     // En production: appeler GET /{post_id}/insights

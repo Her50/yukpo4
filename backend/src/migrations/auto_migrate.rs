@@ -9413,6 +9413,21 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         ),
     }
 
+    // ✅ 2026-04-04 : Email campaigns + Marketplace + Vision product AI + WhatsApp payments
+    match ensure_email_campaigns_marketplace(pool).await {
+        Ok(_) => info!("✅ Migration auto: Email campaigns + Marketplace + Vision AI OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto email_campaigns_marketplace: {}",
+            e
+        ),
+    }
+
+    // ✅ 2026-04-04 : Growth features (email sending, WA broadcast, abandoned cart, CSV export)
+    match ensure_growth_features(pool).await {
+        Ok(_) => info!("✅ Migration auto: Growth features (broadcast, abandoned cart) OK"),
+        Err(e) => error!("❌ Erreur migration auto growth_features: {}", e),
+    }
+
     info!("🎉 Toutes les migrations automatiques ont été appliquées avec succès !");
 }
 
@@ -21865,5 +21880,22 @@ pub async fn ensure_social_ai_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
     execute_migration_sql_safe(pool, sql_inbox).await?;
     info!("✅ Social AI: tables inbox (summary, notes, escalation, metrics) OK");
 
+    Ok(())
+}
+
+/// Email campaigns + Marketplace + Vision AI + WhatsApp payment links
+pub async fn ensure_email_campaigns_marketplace(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let migration_sql =
+        include_str!("../../migrations/20260404_002_email_campaigns_marketplace.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    info!("✅ Social AI: email_campaigns + marketplace_listings + whatsapp_payment_links OK");
+    Ok(())
+}
+
+/// Growth features: email sending, WA broadcast, abandoned cart recovery, analytics export
+pub async fn ensure_growth_features(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let migration_sql = include_str!("../../migrations/20260404_003_growth_features.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    info!("✅ Growth features: email_consent + whatsapp_broadcasts + abandoned_cart_jobs OK");
     Ok(())
 }

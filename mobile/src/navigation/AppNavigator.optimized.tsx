@@ -581,6 +581,14 @@ reg('EcommercePartnerConnect', () => import('../screens/specialized/EcommercePar
 reg('SupermarketPartnerDashboard', () => import('../screens/specialized/SupermarketPartnerDashboardScreen'));
 reg('SocialDistribution', () => import('../screens/specialized/SocialDistributionScreen')); // ✅ 2026-04-03: Distribution multi-canaux (Facebook, Instagram, WhatsApp, Google Shopping)
 reg('SocialAI', () => import('../screens/specialized/SocialAIScreen')); // ✅ 2026-04-03: Community Manager IA — Content GPT-4o, Chatbot, Meta Ads, Inbox unifiée
+reg('OnboardingWizard', () => import('../screens/specialized/OnboardingWizardScreen')); // ✅ 2026-04-04: Wizard onboarding 3 étapes (comptes → persona → premier post)
+reg('ReelScript', () => import('../screens/specialized/ReelScriptScreen')); // ✅ 2026-04-04: Générateur script Reels IA GPT-4o
+reg('BenchmarkAnalytics', () => import('../screens/specialized/BenchmarkAnalyticsScreen')); // ✅ 2026-04-04: Benchmark sectoriel comparatif
+reg('SmartScheduling', () => import('../screens/specialized/SmartSchedulingScreen')); // ✅ 2026-04-04: Créneaux optimaux de publication par plateforme
+reg('CRMLight', () => import('../screens/specialized/CRMLightScreen')); // ✅ 2026-04-04: CRM léger — profils clients, VIP, follow-up, historique
+reg('EmailCampaign', () => import('../screens/specialized/EmailCampaignScreen')); // ✅ 2026-04-04: Campagnes email marketing générées par IA
+reg('Marketplace', () => import('../screens/specialized/MarketplaceScreen')); // ✅ 2026-04-04: Marketplace cross-partenaires régionale
+reg('WhatsAppBroadcast', () => import('../screens/specialized/WhatsAppBroadcastScreen')); // ✅ 2026-04-04: Broadcast WA mass, historique, recovery panier abandonné
 reg('RestaurantDashboard', () => import('../screens/specialized/RestaurantDashboardScreen'));
 reg('RestaurantClient', () => import('../screens/specialized/RestaurantClientScreen'));
 

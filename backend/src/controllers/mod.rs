@@ -106,7 +106,9 @@ pub mod scoring_controller; // ✅ Contrôleur pour scoring de services
 pub mod search_history_controller; // ✅ NOUVEAU: Contrôleur pour historique de recherche
 pub mod service_team_controller; // ✅ NOUVEAU: Contrôleur pour gestion d'équipe des services
 pub mod signalement_controller; // ✅ NOUVEAU: Contrôleur pour signalements de produits/services
+pub mod social_ai_addons; // ✅ 2026-04-04: CRM, Email IA, Vision, WhatsApp payments, Marketplace
 pub mod social_ai_controller;
+pub mod social_ai_growth; // ✅ 2026-04-04: Email sending, WA Broadcast, Abandoned cart, CSV export
 pub mod social_connector_controller;
 pub mod social_features_controller; // ✅ NOUVEAU: Contrôleur fonctionnalités sociales avancées
 pub mod specialized_chat_controller; // ✅ NOUVEAU: Contrôleur chat intégré

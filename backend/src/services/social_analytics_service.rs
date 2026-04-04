@@ -3,7 +3,6 @@
 // best time to post, meilleurs posts, croissance followers, A/B testing.
 
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use sqlx::PgPool;
 
 // ─── Types ─────────────────────────────────────────────────────────────────────

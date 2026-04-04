@@ -687,7 +687,7 @@ pub async fn broadcast_commande_librairies(
         .try_get::<Option<String>, _>("reference_commande")
         .unwrap_or(None)
         .unwrap_or_default();
-    let cmd_classes_neuf: String = commande_row
+    let _cmd_classes_neuf: String = commande_row
         .try_get::<Option<String>, _>("classes_neuf")
         .unwrap_or(None)
         .unwrap_or_else(|| "—".to_string());
@@ -1055,7 +1055,6 @@ pub async fn super_librairie_dashboard(
             )
         })?
     };
-    use sqlx::Row as _;
     let sl_id: uuid::Uuid = sl_row.get("id");
 
     let limit = params.limit.unwrap_or(50);

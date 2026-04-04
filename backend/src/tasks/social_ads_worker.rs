@@ -4,9 +4,7 @@
 use std::sync::Arc;
 use tokio::time::{interval, Duration};
 
-use crate::services::meta_ads_service::{
-    self, fetch_campaign_insights, update_adset_budget, update_campaign_status,
-};
+use crate::services::meta_ads_service::{self, fetch_campaign_insights, update_campaign_status};
 use crate::state::AppState;
 use sqlx::Row;
 

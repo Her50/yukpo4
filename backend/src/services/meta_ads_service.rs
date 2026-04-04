@@ -619,7 +619,7 @@ async fn create_ad_creative_api(
     image_url: Option<&str>,
     link: &str,
     cta_type: &str,
-    page_name: &str,
+    _page_name: &str,
 ) -> Result<String, String> {
     let mut link_data = serde_json::json!({
         "message": body,
@@ -664,7 +664,7 @@ async fn create_ad_creative_api(
 }
 
 async fn create_ad_api(
-    client: &reqwest::Client,
+    _client: &reqwest::Client,
     ad_account_id: &str,
     access_token: &str,
     adset_id: &str,

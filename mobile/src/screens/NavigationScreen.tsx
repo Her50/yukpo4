@@ -601,6 +601,10 @@ const NavigationScreen: React.FC = () => {
     const [walkingHistory, setWalkingHistory] = useState<any[]>([]);
     const [freeWalkFilterRange, setFreeWalkFilterRange] = useState<{ start: string; end: string } | null>(null);
     const [freeWalkCompareMode, setFreeWalkCompareMode] = useState<'last' | 'last2' | 'month'>('last');
+    // Données locales de la dernière session — évite la race condition avec l'API
+    const [lastFreeWalkLocal, setLastFreeWalkLocal] = useState<{
+        distanceKm: number; durationMin: number; calories: number; avgSpeedKmh: number; maxSpeedKmh: number; qualityScore: number;
+    } | null>(null);
     const [statsModality, setStatsModality] = useState<StatsModality>('all');
     const [statsPeriodMenuOpen, setStatsPeriodMenuOpen] = useState(false);
     const [statsModalityMenuOpen, setStatsModalityMenuOpen] = useState(false);
@@ -676,6 +680,20 @@ const NavigationScreen: React.FC = () => {
         const totalCalories = list.reduce((s: number, a: any) => s + (Number(a?.calories) || 0), 0);
         const qualitySamples = list.map((a: any) => Number(a?.quality_score) || 0).filter((n: number) => n > 0);
         const avgQuality = qualitySamples.length > 0 ? (qualitySamples.reduce((a: number, b: number) => a + b, 0) / qualitySamples.length) : 0;
+
+        // Race condition : si l'API n'a pas encore indexé la session fraîche,
+        // on utilise les données calculées localement à l'arrêt comme source de vérité.
+        const apiIsEmpty = totalDistanceKm === 0 && totalMinutes === 0 && lastFreeWalkLocal;
+        if (apiIsEmpty && lastFreeWalkLocal) {
+            return {
+                total_distance_km: lastFreeWalkLocal.distanceKm,
+                total_duration_minutes: lastFreeWalkLocal.durationMin,
+                total_calories: lastFreeWalkLocal.calories,
+                total_sessions: 1,
+                avg_quality_score: lastFreeWalkLocal.qualityScore,
+            };
+        }
+
         return {
             total_distance_km: totalDistanceKm,
             total_duration_minutes: totalMinutes,
@@ -683,7 +701,7 @@ const NavigationScreen: React.FC = () => {
             total_sessions: list.length,
             avg_quality_score: avgQuality,
         };
-    }, [freeWalkFilterRange, freeWalkHistoryScoped]);
+    }, [freeWalkFilterRange, freeWalkHistoryScoped, lastFreeWalkLocal]);
     const freeWalkComparisons = useMemo(() => {
         if (!freeWalkFilterRange) return null;
         const startMs = new Date(freeWalkFilterRange.start).getTime();
@@ -1812,6 +1830,7 @@ const NavigationScreen: React.FC = () => {
             lastPositionRef.current = null; checkpointsReportedRef.current = 0;
             checkpointsEncounteredRef.current = 0; wasOffRouteRef.current = false;
             encounteredCheckpointIdsRef.current = new Map();
+            setLastFreeWalkLocal(null);
             void clearStoredEncounteredRecord();
             setIsFreeWalking(true); setIsTracking(true); setTravelMode('walking');
             setFreeWalkTick((x) => x + 1);
@@ -1837,6 +1856,18 @@ const NavigationScreen: React.FC = () => {
         const qual = computeQualityScore(speedSamplesRef.current, dKm, dMin, 'walking', false);
         const consistency = 100;
         const pacePerKm = dKm > 0.01 ? dSec / dKm : 0;
+
+        // ✅ Sauvegarder immédiatement les stats locales — source de vérité pour l'affichage
+        // Évite la race condition où loadActivityStats() est appelé avant que l'API indexe la session
+        setLastFreeWalkLocal({
+            distanceKm: dKm,
+            durationMin: dMin,
+            calories: Math.round(cal),
+            avgSpeedKmh: Math.round(avg * 10) / 10,
+            maxSpeedKmh: Math.round(maxSpeedRef.current * 10) / 10,
+            qualityScore: qual,
+        });
+
         if (dSec > 30 && dM > 10) {
             try {
                 await apiPost('/api/navigation/activity/log', {

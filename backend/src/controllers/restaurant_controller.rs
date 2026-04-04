@@ -12,7 +12,6 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use chrono::Utc;
 use log::info;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};

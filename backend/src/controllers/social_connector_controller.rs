@@ -13,9 +13,9 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     services::social_connector_service::{
-        consume_oauth_state, create_oauth_state, discover_and_save_facebook_ecosystem,
-        exchange_instagram_code, exchange_youtube_code, list_social_accounts,
-        upsert_social_account, OAuthTokenSet, SocialAccountRecord, SocialTokenPayload,
+        consume_oauth_state, create_oauth_state, exchange_instagram_code, exchange_youtube_code,
+        list_social_accounts, upsert_social_account, OAuthTokenSet, SocialAccountRecord,
+        SocialTokenPayload,
     },
     state::AppState,
 };

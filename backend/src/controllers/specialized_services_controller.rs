@@ -293,7 +293,6 @@ pub async fn list_taxis(
 pub async fn list_taxis_public(State(state): State<Arc<AppState>>) -> AppResult<impl IntoResponse> {
     info!("[list_taxis_public] Called");
 
-    use sqlx::Row;
     let rows = sqlx::query(
         r#"
         SELECT
