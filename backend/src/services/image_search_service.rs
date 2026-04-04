@@ -397,12 +397,11 @@ impl ImageSearchService {
             DynamicImage::ImageLumaA8(_) => "luma_a8",
             DynamicImage::ImageRgb8(_) => "rgb8",
             DynamicImage::ImageRgba8(_) => "rgba8",
-            DynamicImage::ImageBgr8(_) => "bgr8",
-            DynamicImage::ImageBgra8(_) => "bgra8",
             DynamicImage::ImageLuma16(_) => "luma16",
             DynamicImage::ImageLumaA16(_) => "luma_a16",
             DynamicImage::ImageRgb16(_) => "rgb16",
             DynamicImage::ImageRgba16(_) => "rgba16",
+            _ => "unknown",
         };
 
         Ok(serde_json::json!({

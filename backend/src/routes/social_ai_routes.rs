@@ -44,39 +44,42 @@ pub fn social_ai_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // ── Content AI ────────────────────────────────────────────────────────
         .route("/api/social-ai/content/generate", post(generate_post))
         .route(
-            "/api/social-ai/content/calendar/:service_id",
+            "/api/social-ai/content/calendar/{service_id}",
             get(get_content_calendar),
         )
-        .route("/api/social-ai/content/posts/:service_id", get(list_posts))
+        .route("/api/social-ai/content/posts/{service_id}", get(list_posts))
         .route(
-            "/api/social-ai/content/preferences/:service_id",
+            "/api/social-ai/content/preferences/{service_id}",
             put(update_content_preferences),
         )
         // ── Chatbot config ─────────────────────────────────────────────────────
         .route(
-            "/api/social-ai/chatbot/config/:service_id",
+            "/api/social-ai/chatbot/config/{service_id}",
             put(update_chatbot_config),
         )
         // ── Inbox ──────────────────────────────────────────────────────────────
-        .route("/api/social-ai/inbox/:service_id", get(list_inbox))
-        .route("/api/social-ai/inbox/:service_id/search", get(search_inbox))
-        .route("/api/social-ai/inbox/thread/:thread_id", get(get_thread))
+        .route("/api/social-ai/inbox/{service_id}", get(list_inbox))
         .route(
-            "/api/social-ai/inbox/thread/:thread_id/escalate",
+            "/api/social-ai/inbox/{service_id}/search",
+            get(search_inbox),
+        )
+        .route("/api/social-ai/inbox/thread/{thread_id}", get(get_thread))
+        .route(
+            "/api/social-ai/inbox/thread/{thread_id}/escalate",
             post(escalate_thread),
         )
         .route(
-            "/api/social-ai/inbox/thread/:thread_id/resolve",
+            "/api/social-ai/inbox/thread/{thread_id}/resolve",
             post(resolve_thread),
         )
         .route(
-            "/api/social-ai/inbox/thread/:thread_id/note",
+            "/api/social-ai/inbox/thread/{thread_id}/note",
             post(add_thread_note),
         )
         // ── Meta Ads ───────────────────────────────────────────────────────────
         .route("/api/social-ai/ads/account", post(save_ad_account))
         .route(
-            "/api/social-ai/ads/campaigns/:service_id",
+            "/api/social-ai/ads/campaigns/{service_id}",
             get(list_campaigns),
         )
         .route(

@@ -45,12 +45,12 @@ pub fn social_distribution_routes(state: Arc<AppState>) -> Router<Arc<AppState>>
         .route("/api/social/products/distribute", post(distribute_products))
         // Règles de distribution automatique par service
         .route(
-            "/api/social/products/rules/:service_id",
+            "/api/social/products/rules/{service_id}",
             get(get_distribution_rules).put(update_distribution_rules),
         )
         // Historique et analytics de distribution
         .route(
-            "/api/social/products/history/:service_id",
+            "/api/social/products/history/{service_id}",
             get(get_distribution_history),
         )
         // ── Sync catalogue complet → Facebook Commerce Manager (+ WhatsApp auto) ──
@@ -69,10 +69,10 @@ pub fn social_distribution_routes(state: Arc<AppState>) -> Router<Arc<AppState>>
         .route("/api/social/track", get(track_distribution_click))
         // Feeds produits publics (Google Merchant Center, Jumia, etc.)
         .route(
-            "/api/feeds/:partner_id/google.xml",
+            "/api/feeds/{partner_id}/google.xml",
             get(google_shopping_feed),
         )
-        .route("/api/feeds/:partner_id/export.csv", get(csv_export_feed));
+        .route("/api/feeds/{partner_id}/export.csv", get(csv_export_feed));
 
     Router::new().merge(protected).merge(public)
 }
