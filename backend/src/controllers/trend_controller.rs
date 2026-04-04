@@ -4,7 +4,7 @@
 // GET /api/user/context       → profil commercial complet de l'utilisateur connecté
 
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     response::Json,
     Extension,
 };
@@ -352,4 +352,100 @@ pub async fn get_user_context(
             "top_keywords": c.top_keywords,
         })).collect::<Vec<_>>(),
     })))
+}
+
+// ─── Auto-Drafts API ──────────────────────────────────────────────────────────
+
+/// GET /api/trends/auto-drafts/:service_id
+/// Retourne les brouillons tendance générés automatiquement pour un service
+pub async fn list_auto_drafts(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(service_id): Path<i32>,
+) -> Result<Json<Value>, AppError> {
+    use sqlx::Row;
+    let rows = sqlx::query(
+        r#"SELECT id, region, topic, opportunity_score, draft_caption,
+                  draft_instagram, draft_facebook, draft_tiktok, status, generated_at
+           FROM trend_auto_drafts
+           WHERE user_id = $1 AND service_id = $2
+           ORDER BY opportunity_score DESC, generated_at DESC
+           LIMIT 30"#,
+    )
+    .bind(user.id)
+    .bind(service_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let drafts: Vec<Value> = rows
+        .iter()
+        .map(|r| json!({
+            "id": r.try_get::<i32, _>("id").unwrap_or(0),
+            "region": r.try_get::<String, _>("region").unwrap_or_default(),
+            "topic": r.try_get::<String, _>("topic").unwrap_or_default(),
+            "opportunity_score": r.try_get::<f64, _>("opportunity_score").unwrap_or(0.0),
+            "draft_caption": r.try_get::<String, _>("draft_caption").unwrap_or_default(),
+            "draft_instagram": r.try_get::<Option<String>, _>("draft_instagram").unwrap_or(None),
+            "draft_facebook": r.try_get::<Option<String>, _>("draft_facebook").unwrap_or(None),
+            "draft_tiktok": r.try_get::<Option<String>, _>("draft_tiktok").unwrap_or(None),
+            "status": r.try_get::<String, _>("status").unwrap_or_else(|_| "draft".to_string()),
+            "generated_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("generated_at")
+                .map(|d| d.to_rfc3339()).unwrap_or_default(),
+        }))
+        .collect();
+
+    Ok(Json(json!({ "drafts": drafts })))
+}
+
+#[derive(Deserialize)]
+pub struct PublishDraftBody {
+    pub platform: String,
+}
+
+/// POST /api/trends/auto-drafts/:id/publish
+/// Marque un brouillon comme publié (la publication réelle se fait via le scheduler)
+pub async fn publish_auto_draft(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(draft_id): Path<i32>,
+    Json(body): Json<PublishDraftBody>,
+) -> Result<Json<Value>, AppError> {
+    let result = sqlx::query(
+        r#"UPDATE trend_auto_drafts
+           SET status = 'published', published_platform = $3, published_at = NOW()
+           WHERE id = $1 AND user_id = $2
+           RETURNING id"#,
+    )
+    .bind(draft_id)
+    .bind(user.id)
+    .bind(&body.platform)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    if result.is_none() {
+        return Err(AppError::NotFound("Brouillon introuvable".to_string()));
+    }
+
+    Ok(Json(
+        json!({ "success": true, "draft_id": draft_id, "platform": body.platform }),
+    ))
+}
+
+/// POST /api/trends/auto-drafts/:id/dismiss
+/// Rejette un brouillon (ne sera plus affiché)
+pub async fn dismiss_auto_draft(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(draft_id): Path<i32>,
+) -> Result<Json<Value>, AppError> {
+    sqlx::query("UPDATE trend_auto_drafts SET status = 'dismissed' WHERE id = $1 AND user_id = $2")
+        .bind(draft_id)
+        .bind(user.id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    Ok(Json(json!({ "success": true })))
 }
