@@ -567,6 +567,40 @@ pub fn build_app(state: Arc<AppState>) -> Router {
             "/fournitures/gestion",
             axum::routing::post(fournitures_axum_handler),
         )
+        // ✅ 2026-04-04: Pages légales requises par Meta (privacy, terms, data-deletion)
+        .route("/privacy", axum::routing::get(|| async {
+            axum::response::Html(r#"<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Politique de confidentialité — Yukpo</title>
+            <style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6;color:#333}h1{color:#6366F1}h2{color:#4F46E5;margin-top:2em}</style></head>
+            <body><h1>Politique de confidentialité</h1><p><strong>Dernière mise à jour :</strong> 4 avril 2026</p>
+            <h2>1. Collecte des données</h2><p>Yukpo collecte les données nécessaires au fonctionnement de ses services : nom, email, numéro de téléphone, localisation, et données d'utilisation.</p>
+            <h2>2. Utilisation des données</h2><p>Vos données sont utilisées pour personnaliser votre expérience, traiter vos commandes, et améliorer nos services. Elles ne sont jamais vendues à des tiers.</p>
+            <h2>3. Partage des données</h2><p>Yukpo peut partager certaines données avec des prestataires de services (paiement, livraison) dans le cadre strict de la fourniture du service.</p>
+            <h2>4. Sécurité</h2><p>Vos données sont protégées par chiffrement SSL/TLS et stockées sur des serveurs sécurisés en Europe (Google Cloud Platform, région europe-west1).</p>
+            <h2>5. Vos droits</h2><p>Vous pouvez demander l'accès, la rectification ou la suppression de vos données en contactant : <a href="mailto:privacy@yukpo.com">privacy@yukpo.com</a></p>
+            <h2>6. Contact</h2><p>Yukpo — Cameroun — <a href="mailto:contact@yukpo.com">contact@yukpo.com</a></p>
+            </body></html>"#.to_string())
+        }))
+        .route("/terms", axum::routing::get(|| async {
+            axum::response::Html(r#"<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Conditions d'utilisation — Yukpo</title>
+            <style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6;color:#333}h1{color:#6366F1}h2{color:#4F46E5;margin-top:2em}</style></head>
+            <body><h1>Conditions d'utilisation</h1><p><strong>Dernière mise à jour :</strong> 4 avril 2026</p>
+            <h2>1. Acceptation des conditions</h2><p>En utilisant Yukpo, vous acceptez les présentes conditions d'utilisation.</p>
+            <h2>2. Services</h2><p>Yukpo est une plateforme de commerce et de services au Cameroun permettant aux utilisateurs d'acheter, vendre et accéder à divers services locaux.</p>
+            <h2>3. Responsabilités</h2><p>Les utilisateurs sont responsables de l'exactitude des informations fournies. Yukpo n'est pas responsable des transactions entre utilisateurs.</p>
+            <h2>4. Paiements</h2><p>Les paiements sont traités de manière sécurisée. Les remboursements sont soumis à la politique de retour de chaque vendeur.</p>
+            <h2>5. Propriété intellectuelle</h2><p>Le contenu de Yukpo est protégé par les droits d'auteur. Toute reproduction non autorisée est interdite.</p>
+            <h2>6. Contact</h2><p>Pour toute question : <a href="mailto:contact@yukpo.com">contact@yukpo.com</a></p>
+            </body></html>"#.to_string())
+        }))
+        .route("/data-deletion", axum::routing::get(|| async {
+            axum::response::Html(r#"<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Suppression des données — Yukpo</title>
+            <style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6;color:#333}h1{color:#6366F1}</style></head>
+            <body><h1>Suppression des données utilisateur</h1>
+            <p>Pour demander la suppression de vos données personnelles sur Yukpo, envoyez un email à <a href="mailto:privacy@yukpo.com">privacy@yukpo.com</a> en indiquant :</p>
+            <ul><li>Votre nom complet</li><li>Votre adresse email ou numéro de téléphone associé à votre compte</li><li>La mention "Demande de suppression de données"</li></ul>
+            <p>Nous traiterons votre demande dans un délai de <strong>30 jours</strong>.</p>
+            </body></html>"#.to_string())
+        }))
         // ✅ Phase 7: Compression gzip/brotli pour réponses volumineuses
         .layer(CompressionLayer::new().gzip(true).br(true))
         .with_state(state);

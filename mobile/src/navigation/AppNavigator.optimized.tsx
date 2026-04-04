@@ -241,7 +241,12 @@ reg('UserRoleManagement', () => import('../screens/admin/UserRoleManagementScree
 // ---------------------------------------------------------------------------
 reg('AIChat', () => import('../screens/ai/AIChatScreen'));
 reg('AIHub', () => import('../screens/ai/AIHubScreen'));
-reg('TrendPulseDashboard', () => import('../screens/TrendPulseDashboardScreen')); // ✅ 2026-04-03: TrendPulse
+reg('TrendPulseDashboard', () => import('../screens/specialized/TrendPulseDashboardScreen')); // ✅ 2026-04-04: TrendPulse (chemin corrigé)
+reg('ReputationDashboard', () => import('../screens/specialized/ReputationDashboardScreen')); // ✅ 2026-04-04
+reg('BrandVoice', () => import('../screens/specialized/BrandVoiceScreen')); // ✅ 2026-04-04
+reg('ContentApproval', () => import('../screens/specialized/ContentApprovalScreen')); // ✅ 2026-04-04
+reg('SocialAnalyticsDashboard', () => import('../screens/specialized/SocialAnalyticsDashboardScreen')); // ✅ 2026-04-04
+reg('SocialAccountSetup', () => import('../screens/specialized/SocialAccountSetupScreen')); // ✅ 2026-04-04: Connexion OAuth Facebook/Instagram/WhatsApp
 
 // ---------------------------------------------------------------------------
 // Dashboard (2)

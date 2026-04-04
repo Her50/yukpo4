@@ -270,6 +270,71 @@ Live streaming:\n\
 4. Start streaming → viewers join in real-time\n\
 5. View analytics: viewers, engagement, duration\n\
 Routes: VideoCreationIntro, VideoCreationWizard, VideoGenerationResult, LivesList\n\n\
+=== YUKPO SOCIAL — COMMUNITY MANAGER & SOCIAL AI (for partners/sellers) ===\n\n\
+**What is Yukpo Social?**\n\
+Yukpo Social (screen: SocialAI) is the all-in-one social media management hub for Yukpo sellers. It contains 5 tabs:\n\
+1. Contenu — generate AI posts for Facebook/Instagram/WhatsApp with YukpoIA (step 1: product, step 2: platform+tone, step 3: visuel, then generate)\n\
+2. Chatbot (Community Manager Yukpo) — YukpoIA automatically responds 24/7 to: Messenger DMs, Instagram DMs, WhatsApp Business messages, Facebook post comments, Instagram post comments\n\
+3. Pubs — create Meta ad campaigns (promo campaigns + retargeting/DPA), requires Ad Account ID\n\
+4. Inbox — unified inbox: all conversations/comments from all platforms in one list; filters: Tous / Non lus / Escaladés / Étoilés / Commentaires\n\
+5. Calendrier — editorial calendar of all scheduled and published posts\n\n\
+**How to CONNECT social accounts — step by step:**\n\
+IMPORTANT: Connecting 1 Facebook account handles BOTH Facebook AND Instagram.\n\
+This is because Instagram Business is linked to a Facebook Page in Meta's ecosystem.\n\
+The same OAuth token (Page Access Token from Facebook) gives access to both.\n\n\
+Step 1 — Connect Facebook + Instagram (1 action handles both):\n\
+- Tap 'Connecter Facebook & Instagram' in the setup wizard (SocialAccountSetup screen)\n\
+- Yukpo opens Facebook Login in your browser (OAuth 2.0)\n\
+- You authorize Yukpo: permissions requested are 'instagram_content_publish, pages_manage_posts, pages_read_engagement, instagram_basic, pages_show_list'\n\
+- After approval, you are redirected back to Yukpo automatically via deep link (yukpo://oauth/success)\n\
+- Yukpo saves your Page Access Token — NO manual copy-paste of tokens needed\n\
+- Your Facebook Pages and linked Instagram accounts are now connected\n\n\
+Step 2 — Connect WhatsApp Business:\n\
+- WhatsApp Business API has NO individual OAuth — it requires Meta Business Manager setup\n\
+- Tap 'Configurer WhatsApp' → Yukpo opens Meta Business Manager (business.facebook.com)\n\
+- In Meta: Settings → WhatsApp accounts → add your business phone number\n\
+- Come back to Yukpo and enter your WhatsApp Phone Number ID (found in Meta Business → WhatsApp setup)\n\
+- This is unavoidable — Meta requires WhatsApp numbers to be verified in Business Manager\n\n\
+Step 3 — Webhooks (for receiving messages/comments):\n\
+- Yukpo automatically handles webhooks — the partner does NOT need to configure them\n\
+- In Meta Business Manager → Webhooks, point to: POST /api/social-ai/webhook/messenger (or instagram, whatsapp)\n\
+- Webhook verification token: yukpo_webhook_2026 (Yukpo uses this, fixed)\n\
+- Once webhooks are set, ALL messages + comments arrive in the Yukpo Inbox automatically\n\n\
+Step 4 — Ads (optional, for Pubs tab):\n\
+- Requires Meta Ad Account ID (format: act_XXXXXXXXXX) AND a Marketing API long-lived token\n\
+- Find your Ad Account ID: Meta Business Manager → Advertising → Ad Accounts\n\
+- The Marketing API token is separate from the Page token — get it from Meta for Developers → your app → access tokens\n\n\
+**FAQ — Social accounts:**\n\
+Q: Do I need to provide a token manually? A: NO for Facebook/Instagram — Yukpo uses 1-click OAuth. YES for WhatsApp (Phone Number ID) and for Ads (Ad Account ID + Marketing token).\n\
+Q: Is connecting Facebook enough? A: YES for posting + chatbot on Facebook AND Instagram. WhatsApp needs separate setup.\n\
+Q: What permissions does Yukpo request? A: instagram_content_publish, pages_manage_posts, pages_read_engagement, pages_manage_metadata, instagram_manage_comments, pages_manage_comments.\n\
+Q: My token expired? A: Tap 'Reconnecter' on the platform in SocialAccountSetup — Yukpo will refresh automatically.\n\n\
+**How TrendPulse works:**\n\
+TrendPulse (screen: TrendPulseDashboard) analyzes trending topics relevant to the seller's sector and region.\n\
+- Shows trending topics with score (0-100), direction (rising/stable/declining), forecasts for D+3/D+7/D+14\n\
+- Auto-drafts: YukpoIA automatically generates post drafts for the top opportunities\n\
+- Access: from SocialAI (Contenu tab has TrendPulse link), or directly from YukpoIA chat (say 'tendances')\n\
+- B2B API: businesses can access trend data via API key at /api/b2b/trends/{region}\n\n\
+**How the Community Manager chatbot works:**\n\
+- Configure in SocialAI → Chatbot tab: bot name, language (fr/en), welcome message, away message, escalation keywords\n\
+- When a client sends a message or comment, YukpoIA responds within the configured delay (0.5s to 5s)\n\
+- Escalation: if client uses a trigger word (plainte, arnaque, etc.) → conversation flagged and moved to Escaladés inbox\n\
+- Customer memory: YukpoIA remembers each client (VIP status, order history, open issues) for personalized responses\n\
+- Brand voice: configure YukpoIA's tone and style in BrandVoice screen\n\
+- Content approval: posts generated by YukpoIA can require human validation (ContentApproval screen)\n\n\
+**How Content Generation works (step by step for the user):**\n\
+1. Open SocialAI → tab 'Contenu'\n\
+2. STEP 1: Select a product from your catalog (scroll horizontal chips)\n\
+   - If catalog is empty: tap '+ Ajouter des produits' to add products first\n\
+3. STEP 2: Choose platform (Facebook/Instagram/WhatsApp) and tone (Professionnel/Décontracté/Promotionnel/Urgence)\n\
+4. STEP 3: Choose a visual:\n\
+   - 'Utiliser l'image du produit' — if the product has an image in catalog\n\
+   - 'Choisir depuis ma galerie' — pick a photo or video from phone\n\
+   - 'Générer un visuel avec YukpoIA' — AI generates a product image (DALL-E 3) in seconds\n\
+   - Or skip visual — you can add it later\n\
+5. Tap 'Générer le post' → YukpoIA creates: main caption + A/B variant + story text + hashtags\n\
+6. Review in modal → tap 'Planifier' to add to calendar, or 'Fermer' to go back\n\n\
+Routes: SocialAI, TrendPulseDashboard, ReputationDashboard, BrandVoice, ContentApproval, SocialAnalyticsDashboard, SocialAccountSetup\n\n\
 === SPECIALIZED SERVICES — DETAILED PARTNER GUIDES ===\n\n\
 --- PHARMACY (PharmacieHome / PharmaciePartnerDashboard) ---\n\
 User features: search medications by name, find nearest pharmacies, view pharmacies de garde, \

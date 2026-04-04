@@ -69,6 +69,8 @@ pub struct ContentPreferences {
     pub yukpo_signature_style: String,
     /// Texte de signature personnalisé (override le texte par défaut)
     pub custom_signature_text: Option<String>,
+    /// Si true → retire toute mention "Yukpo" du contenu généré (abonnement premium)
+    pub white_label_enabled: bool,
 }
 
 impl Default for ContentPreferences {
@@ -84,13 +86,18 @@ impl Default for ContentPreferences {
             yukpo_signature_enabled: false,
             yukpo_signature_style: "hashtag".to_string(),
             custom_signature_text: None,
+            white_label_enabled: false,
         }
     }
 }
 
-/// Construit le suffixe de signature Yukpo selon les préférences du partenaire.
-/// Retourne une chaîne vide si la signature est désactivée.
+/// Construit le suffixe de signature selon les préférences du partenaire.
+/// Retourne une chaîne vide si la signature est désactivée ou si white-label est actif.
 pub fn build_yukpo_signature(prefs: &ContentPreferences, yukpo_url: &str) -> String {
+    // Mode white-label → aucune mention Yukpo dans le contenu publié
+    if prefs.white_label_enabled {
+        return String::new();
+    }
     if !prefs.yukpo_signature_enabled {
         return String::new();
     }
@@ -151,9 +158,20 @@ pub async fn generate_product_post(
 
     let brand_voice_hint = prefs.brand_voice.as_deref().unwrap_or("");
 
+    let app_ref = if prefs.white_label_enabled {
+        format!("qui vend en ligne")
+    } else {
+        format!("qui vend en ligne via l'application Yukpo")
+    };
+    let link_rule = if prefs.white_label_enabled {
+        "- Le lien boutique doit être intégré naturellement".to_string()
+    } else {
+        "- Le lien Yukpo doit être intégré naturellement".to_string()
+    };
+
     let system_prompt = format!(
         r#"Tu es un expert en marketing digital et community management pour des commerces en Afrique francophone.
-Tu travailles pour {store_name}, une boutique {sector_hint} qui vend en ligne via l'application Yukpo.
+Tu travailles pour {store_name}, une boutique {sector_hint} {app_ref}.
 Langue: {language}. {tone_instruction}
 {brand_voice_hint}
 {forbidden}
@@ -161,15 +179,17 @@ Langue: {language}. {tone_instruction}
 Règles importantes:
 - Les publications doivent créer de l'engagement et inciter à l'achat
 - Toujours inclure un appel à l'action clair
-- Le lien Yukpo doit être intégré naturellement
+- {link_rule}
 - Adapter le vocabulaire au public africain francophone
 - Pas plus de 3 emojis par publication Facebook/WhatsApp, jusqu'à 5 pour Instagram
 - Les hashtags doivent être pertinents et locaux (ex: #Douala #Cameroun)"#,
         store_name = store.name,
         sector_hint = category_hint,
+        app_ref = app_ref,
         language = language,
         tone_instruction = tone_instruction,
         brand_voice_hint = brand_voice_hint,
+        link_rule = link_rule,
         forbidden = forbidden,
         always_include = always_include,
     );
@@ -399,7 +419,8 @@ pub async fn load_preferences(pg: &PgPool, user_id: i32, service_id: i32) -> Con
     let row = sqlx::query(
         r#"SELECT default_tone, default_language, brand_voice, forbidden_words,
                   always_include, default_hashtags, post_template,
-                  yukpo_signature_enabled, yukpo_signature_style, custom_signature_text
+                  yukpo_signature_enabled, yukpo_signature_style, custom_signature_text,
+                  COALESCE(white_label_enabled, false) AS white_label_enabled
            FROM social_ai_preferences
            WHERE user_id = $1 AND service_id = $2"#,
     )
@@ -427,6 +448,7 @@ pub async fn load_preferences(pg: &PgPool, user_id: i32, service_id: i32) -> Con
                 .try_get::<String, _>("yukpo_signature_style")
                 .unwrap_or_else(|_| "hashtag".to_string()),
             custom_signature_text: r.try_get("custom_signature_text").ok(),
+            white_label_enabled: r.try_get::<bool, _>("white_label_enabled").unwrap_or(false),
         }
     } else {
         ContentPreferences::default()

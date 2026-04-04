@@ -9404,6 +9404,15 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto social_ai: {}", e),
     }
 
+    // ✅ 2026-04-04 : Persona + White-Label chatbot + social_ai_preferences
+    match ensure_social_ai_persona_whitelabel(pool).await {
+        Ok(_) => info!("✅ Migration auto: Social AI persona + white-label OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto social_ai_persona_whitelabel: {}",
+            e
+        ),
+    }
+
     info!("🎉 Toutes les migrations automatiques ont été appliquées avec succès !");
 }
 
@@ -21822,6 +21831,15 @@ pub async fn ensure_partner_admin_docs(pool: &PgPool) -> Result<(), sqlx::Error>
     let migration_sql = include_str!("../../migrations/00000211_partner_admin_docs.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Colonnes delivery_partners.rccm + numero_contribuable OK");
+    Ok(())
+}
+
+/// Social AI — Persona (shop/creator/personality/enterprise) + White-Label + trend snapshots index
+pub async fn ensure_social_ai_persona_whitelabel(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let migration_sql =
+        include_str!("../../migrations/20260404_001_add_persona_whitelabel_to_chatbot.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    info!("✅ Social AI: persona + white-label + trend index OK");
     Ok(())
 }
 

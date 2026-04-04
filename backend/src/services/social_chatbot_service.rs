@@ -42,6 +42,8 @@ pub struct BotContext {
     pub products_summary: Vec<ProductSummary>,
     pub recent_orders: Vec<OrderSummary>,
     pub active_promos: Vec<PromoSummary>,
+    /// Sujets tendance locaux injectés dans le prompt (max 5)
+    pub trending_topics: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -149,8 +151,15 @@ pub async fn process_message(
     }
 
     // 5. Assembler le contexte Yukpo
-    let context =
-        assemble_context(state, user_id, service_id, &msg.external_sender_id, &config).await;
+    let context = assemble_context(
+        state,
+        user_id,
+        service_id,
+        &msg.external_sender_id,
+        &msg.text,
+        &config,
+    )
+    .await;
 
     // 6. Construire l'historique de la conversation (5 derniers échanges)
     let history = load_conversation_history(
@@ -603,57 +612,185 @@ async fn call_ai_for_response(
     let detected_lang = detect_language(user_message);
     let response_lang_instruction = language_instruction(&detected_lang, &config.language);
 
+    // White-label : masquer "Yukpo" si l'abonnement premium l'exige
+    let platform_label = if config.white_label_enabled {
+        config
+            .white_label_brand_name
+            .as_deref()
+            .unwrap_or(&context.store_name)
+            .to_string()
+    } else {
+        "Yukpo".to_string()
+    };
+
+    // Bloc persona : adapte l'identité et le rôle de l'assistant
+    let persona_block = match config.account_persona.as_str() {
+        "creator" => format!(
+            "Tu es {bot_name}, l'assistant de {name}, un créateur de contenu basé à {city}.\n\
+             Tu réponds aux fans et à la communauté avec authenticité et enthousiasme.\n\
+             Tu n'as pas de catalogue de produits. Oriente vers les liens de collaboration ou de contact.",
+            bot_name = context.bot_name,
+            name = context.store_name,
+            city = context.city,
+        ),
+        "personality" => format!(
+            "Tu es {bot_name}, l'assistant officiel de {name} ({sector}) basé à {city}.\n\
+             Tu représentes la marque personnelle avec professionnalisme.\n\
+             Mode RP : ne confirme JAMAIS d'informations privées. Redirige vers l'attaché de presse pour les demandes médias.\n\
+             Pas de catalogue produit direct : oriente vers les partenaires officiels.",
+            bot_name = context.bot_name,
+            name = context.store_name,
+            sector = context.sector,
+            city = context.city,
+        ),
+        "enterprise" => format!(
+            "Tu es {bot_name}, l'assistant virtuel de {name}, une entreprise {sector} à {city}.\n\
+             Tu réponds aux demandes B2B et grand public avec rigueur et efficacité.\n\
+             Pour toute demande de devis ou de partenariat, collecte le nom, l'email et le besoin, puis transmets à l'équipe commerciale.",
+            bot_name = context.bot_name,
+            name = context.store_name,
+            sector = context.sector,
+            city = context.city,
+        ),
+        // "shop" (défaut)
+        _ => {
+            let app_ref = if config.white_label_enabled {
+                String::new()
+            } else {
+                format!(" disponible sur {}", platform_label)
+            };
+            format!(
+                "Tu es {bot_name}, l'assistant virtuel de {name}, une boutique {sector} à {city}{app_ref}.\n\
+                 Tu réponds aux clients sur la messagerie.",
+                bot_name = context.bot_name,
+                name = context.store_name,
+                sector = context.sector,
+                city = context.city,
+                app_ref = app_ref,
+            )
+        }
+    };
+
+    // Bloc catalogue (non affiché pour créateurs et personnalités sans produits)
+    let catalogue_block = if context.products_summary.is_empty()
+        || matches!(config.account_persona.as_str(), "creator" | "personality")
+    {
+        String::new()
+    } else {
+        format!(
+            "\nCATALOGUE (sélection la plus pertinente) :\n{}\n\nPROMOTIONS ACTIVES :\n{}",
+            products_text, promos_text
+        )
+    };
+
+    // Bloc informations de contact
+    let contact_block = {
+        let phone_str = context.phone.as_deref().unwrap_or("non précisé");
+        let order_line = if config.account_persona == "shop" && !config.white_label_enabled {
+            format!("\n- Lien pour commander : {}", context.yukpo_url)
+        } else if config.account_persona == "shop" {
+            format!("\n- Lien boutique : {}", context.yukpo_url)
+        } else {
+            String::new()
+        };
+        format!(
+            "\nINFORMATIONS :\n- Nom : {}\n- Ville : {}\n- Contact : {}{}",
+            context.store_name, context.city, phone_str, order_line
+        )
+    };
+
+    // Bloc TrendPulse : inject les tendances si disponibles
+    let trend_block = if context.trending_topics.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "\nTENDANCES ACTUELLES (utilise-les si pertinent dans ta réponse) :\n{}",
+            context
+                .trending_topics
+                .iter()
+                .map(|t| format!("- #{}", t))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    };
+
+    // Règles selon persona
+    let rules_block = match config.account_persona.as_str() {
+        "creator" | "personality" => format!(
+            "\nRÈGLES IMPORTANTES :\n\
+             1. Réponds de manière authentique, jamais en mode robot\n\
+             2. Maximum {max_tokens} tokens par réponse\n\
+             3. Ne révèle JAMAIS d'informations privées (adresse, numéro perso, planning)\n\
+             4. Emojis bienvenus mais avec mesure (max 3)\n\
+             5. Ton admiratif → valorise sans en faire trop\n\
+             6. Ton agressif / haineux → réponse calme et désamorçage\n\
+             7. Demande presse / interview → renvoie vers contact officiel",
+            max_tokens = config.max_ai_tokens_per_response,
+        ),
+        "enterprise" => format!(
+            "\nRÈGLES IMPORTANTES :\n\
+             1. Réponses professionnelles et concises\n\
+             2. Maximum {max_tokens} tokens\n\
+             3. Réclamation → empathie + solution concrète + escalade si nécessaire\n\
+             4. Devis → collecte nom/email/besoin sans engagement de prix\n\
+             5. Emojis : 0 sauf contexte bienveillant évident\n\
+             6. Ne donne JAMAIS de fausses informations",
+            max_tokens = config.max_ai_tokens_per_response,
+        ),
+        // shop (défaut)
+        _ => {
+            let delivery_line = if config.white_label_enabled {
+                "4. LIVRAISON → indique que l'équipe gère la livraison".to_string()
+            } else {
+                format!(
+                    "4. LIVRAISON → indique que {} gère la livraison, contact : {}",
+                    platform_label,
+                    context.phone.as_deref().unwrap_or("")
+                )
+            };
+            let order_line = if config.white_label_enabled {
+                "3. ACHAT → donne le lien boutique".to_string()
+            } else {
+                format!(
+                    "3. ACHAT → donne le lien {} : {}",
+                    platform_label, context.yukpo_url
+                )
+            };
+            format!(
+                "\nRÈGLES IMPORTANTES :\n\
+                 1. Réponds toujours de manière naturelle et humaine (pas de style robot)\n\
+                 2. Maximum {max_tokens} tokens par réponse\n\
+                 {order_line}\n\
+                 {delivery_line}\n\
+                 5. RÉCLAMATION → empathie d'abord, puis solution concrète\n\
+                 6. Si tu ne connais pas → dis-le honnêtement, ne jamais inventer\n\
+                 7. Ne donne JAMAIS de fausses informations sur les prix ou stocks\n\
+                 8. Emojis avec modération (max 2 par message, 0 si client frustré)\n\
+                 9. Concis : 1-3 phrases sauf question complexe",
+                max_tokens = config.max_ai_tokens_per_response,
+                order_line = order_line,
+                delivery_line = delivery_line,
+            )
+        }
+    };
+
     let system_prompt = format!(
-        r#"Tu es {bot_name}, l'assistant virtuel de {store_name}, une boutique {sector} à {city} disponible sur l'application Yukpo.
-Tu réponds aux clients sur {platform}.
-{response_lang_instruction}
-
-COMPRÉHENSION LINGUISTIQUE :
-Tu comprends et réponds dans ces langues africaines et internationales :
-- Français, English, Português, Español, العربية
-- Langues africaines : Wolof (Sénégal), Lingala (Congo/RDC), Yoruba (Nigeria), Hausa (Nigeria/Niger), Malagasy, Swahili (Kenya/Tanzanie), Amharique (Éthiopie), Twi (Ghana), Bambara (Mali/BF), Pulaar/Fulfulde, Bamiléké/Cameroonian Pidgin
-- Si le client écrit dans une langue locale, réponds dans cette même langue ou en français selon le contexte.
-
-INFORMATIONS BOUTIQUE:
-- Nom: {store_name}
-- Ville: {city}
-- Contact: {phone}
-- Lien pour commander: {yukpo_url}
-
-CATALOGUE (extrait):
-{products_text}
-
-PROMOTIONS ACTIVES:
-{promos_text}
-
-ANALYSE D'INTENTION (NLU) :
-Avant de répondre, identifie mentalement :
-- INTENTION : achat | info_produit | réclamation | livraison | paiement | disponibilité | promotion | autre
-- SENTIMENT : positif | neutre | frustré | urgent | enthousiaste
-- URGENCE : normale | haute (mot-clés : "urgent", "vite", "maintenant", "dès que possible", "emergency")
-
-RÈGLES IMPORTANTES:
-1. Réponds toujours de manière naturelle et humaine (pas de style robot)
-2. Maximum {max_tokens} tokens par réponse
-3. ACHAT → donne le lien Yukpo: {yukpo_url}
-4. LIVRAISON → indique que Yukpo gère la livraison, contact: {phone}
-5. RÉCLAMATION → empathie d'abord, puis solution concrète
-6. Si tu ne connais pas → dis-le honnêtement, ne jamais inventer
-7. Ne donne JAMAIS de fausses informations sur les prix ou stocks
-8. Emojis avec modération (max 2 par message, 0 si client frustré)
-9. Concis: 1-3 phrases sauf question complexe
-10. Personnalités publiques : ton représentatif de la marque personnelle"#,
-        bot_name = context.bot_name,
-        store_name = context.store_name,
-        sector = context.sector,
-        city = context.city,
-        phone = context.phone.as_deref().unwrap_or("disponible sur Yukpo"),
-        platform = "la messagerie",
+        "{persona_block}\n{response_lang_instruction}\n\nCOMPRÉHENSION LINGUISTIQUE :\n\
+         Tu comprends et réponds dans ces langues africaines et internationales :\n\
+         - Français, English, Português, Español, العربية\n\
+         - Langues africaines : Wolof, Lingala, Yoruba, Hausa, Malagasy, Swahili, Amharique, Twi, Bambara, Pulaar/Fulfulde, Cameroonian Pidgin\n\
+         - Si le client écrit dans une langue locale, réponds dans cette même langue ou en français.\n\
+         \nANALYSE D'INTENTION (NLU) :\nAvant de répondre, identifie mentalement :\n\
+         - INTENTION : achat | info_produit | réclamation | livraison | paiement | disponibilité | promotion | autre\n\
+         - SENTIMENT : positif | neutre | frustré | urgent | enthousiaste\n\
+         - URGENCE : normale | haute (mots-clés : \"urgent\", \"vite\", \"maintenant\", \"emergency\")\
+         {contact_block}{catalogue_block}{trend_block}{rules_block}",
+        persona_block = persona_block,
         response_lang_instruction = response_lang_instruction,
-        yukpo_url = context.yukpo_url,
-        products_text = products_text,
-        promos_text = promos_text,
-        max_tokens = config.max_ai_tokens_per_response,
+        contact_block = contact_block,
+        catalogue_block = catalogue_block,
+        trend_block = trend_block,
+        rules_block = rules_block,
     );
 
     let mut messages = vec![serde_json::json!({"role": "system", "content": system_prompt})];
@@ -709,6 +846,7 @@ async fn assemble_context(
     user_id: i32,
     service_id: i32,
     sender_id: &str,
+    user_message: &str,
     config: &BotConfig,
 ) -> BotContext {
     let pg = &state.pg;
@@ -755,33 +893,63 @@ async fn assemble_context(
         service_id
     );
 
-    // Produits du catalogue (top 30)
-    let products = sqlx::query(
-        r#"SELECT id, name, price, sale_price, category, is_active
-           FROM service_products
-           WHERE service_id = $1 AND is_active = true
-           ORDER BY
-             CASE WHEN sale_price IS NOT NULL THEN 0 ELSE 1 END,
-             created_at DESC
-           LIMIT 30"#,
-    )
-    .bind(service_id)
-    .fetch_all(pg)
-    .await
-    .unwrap_or_default()
-    .into_iter()
-    .map(|r: sqlx::postgres::PgRow| {
+    // Produits du catalogue — recherche intelligente par FTS si message non vide
+    // Pour les grands catalogues (supermarchés, etc.) on retourne les 15 plus pertinents,
+    // sinon les 15 produits les plus récents + promos.
+    let products = {
         use sqlx::Row;
-        ProductSummary {
-            id: r.try_get("id").unwrap_or(0),
-            name: r.try_get("name").unwrap_or_default(),
-            price: r.try_get::<f64, _>("price").unwrap_or(0.0),
-            sale_price: r.try_get("sale_price").ok(),
-            category: r.try_get("category").unwrap_or_else(|_| "autres".to_string()),
-            in_stock: r.try_get("is_active").unwrap_or(false),
-        }
-    })
-    .collect::<Vec<_>>();
+        let query_term = user_message.trim();
+        let rows = if query_term.len() >= 3
+            && config.account_persona != "creator"
+            && config.account_persona != "personality"
+        {
+            // FTS : produits les plus pertinents par rapport au message
+            sqlx::query(
+                r#"SELECT id, name, price, sale_price, category, is_active,
+                          ts_rank(
+                            to_tsvector('simple', coalesce(name,'') || ' ' || coalesce(category,'')),
+                            plainto_tsquery('simple', $2)
+                          ) AS rank
+                   FROM service_products
+                   WHERE service_id = $1 AND is_active = true
+                   ORDER BY
+                     rank DESC,
+                     CASE WHEN sale_price IS NOT NULL THEN 0 ELSE 1 END,
+                     created_at DESC
+                   LIMIT 15"#,
+            )
+            .bind(service_id)
+            .bind(query_term)
+            .fetch_all(pg)
+            .await
+            .unwrap_or_default()
+        } else {
+            // Pas de FTS (créateur/personnalité ou message trop court) — top promos + récents
+            sqlx::query(
+                r#"SELECT id, name, price, sale_price, category, is_active
+                   FROM service_products
+                   WHERE service_id = $1 AND is_active = true
+                   ORDER BY
+                     CASE WHEN sale_price IS NOT NULL THEN 0 ELSE 1 END,
+                     created_at DESC
+                   LIMIT 15"#,
+            )
+            .bind(service_id)
+            .fetch_all(pg)
+            .await
+            .unwrap_or_default()
+        };
+        rows.into_iter()
+            .map(|r: sqlx::postgres::PgRow| ProductSummary {
+                id: r.try_get("id").unwrap_or(0),
+                name: r.try_get("name").unwrap_or_default(),
+                price: r.try_get::<f64, _>("price").unwrap_or(0.0),
+                sale_price: r.try_get("sale_price").ok(),
+                category: r.try_get("category").unwrap_or_else(|_| "autres".to_string()),
+                in_stock: r.try_get("is_active").unwrap_or(false),
+            })
+            .collect::<Vec<_>>()
+    };
 
     // Promotions actives
     let active_promos = products
@@ -799,6 +967,28 @@ async fn assemble_context(
         })
         .collect();
 
+    // TrendPulse : top 5 tendances actives pour le secteur / la ville
+    let trending_topics: Vec<String> = {
+        use sqlx::Row;
+        sqlx::query(
+            r#"SELECT topic
+               FROM social_trend_snapshots
+               WHERE (city = $1 OR city IS NULL)
+                 AND (sector = $2 OR sector IS NULL)
+                 AND captured_at >= NOW() - INTERVAL '48 hours'
+               ORDER BY score DESC
+               LIMIT 5"#,
+        )
+        .bind(&city)
+        .bind(&sector)
+        .fetch_all(pg)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|r| r.try_get::<String, _>("topic").ok())
+        .collect()
+    };
+
     BotContext {
         store_name,
         sector,
@@ -809,7 +999,33 @@ async fn assemble_context(
         bot_name: config.bot_name.clone(),
         language: config.language.clone(),
         products_summary: products,
-        recent_orders: vec![], // TODO: charger les commandes du client si connu
+        trending_topics,
+        recent_orders: {
+            use sqlx::Row;
+            sqlx::query(
+                r#"SELECT so.id, so.status::text AS status,
+                          COALESCE(so.estimated_total_cents, 0)::bigint AS total_fcfa,
+                          COUNT(soi.id)::int AS items_count
+                   FROM shopping_orders so
+                   LEFT JOIN shopping_order_items soi ON soi.shopping_order_id = so.id
+                   WHERE so.service_id = $1
+                   GROUP BY so.id, so.status, so.estimated_total_cents
+                   ORDER BY so.created_at DESC
+                   LIMIT 5"#,
+            )
+            .bind(service_id)
+            .fetch_all(pg)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .map(|r| OrderSummary {
+                id: r.try_get("id").unwrap_or(0),
+                status: r.try_get("status").unwrap_or_default(),
+                items_count: r.try_get("items_count").unwrap_or(0),
+                total_fcfa: r.try_get("total_fcfa").unwrap_or(0),
+            })
+            .collect()
+        },
         active_promos,
     }
 }
@@ -1010,13 +1226,22 @@ struct BotConfig {
     max_ai_tokens_per_response: i32,
     language: String,
     reply_delay_ms: i32,
+    /// Persona: "shop" | "creator" | "personality" | "enterprise"
+    account_persona: String,
+    /// Si true → retire toutes les mentions "Yukpo" des réponses
+    white_label_enabled: bool,
+    /// Nom de marque alternatif quand white_label_enabled = true
+    white_label_brand_name: Option<String>,
 }
 
 async fn load_bot_config(pg: &PgPool, user_id: i32, service_id: i32) -> Result<BotConfig, String> {
     let row = sqlx::query(
         r#"SELECT is_active, bot_name, welcome_message, away_message,
                   escalation_trigger_words, business_hours,
-                  max_ai_tokens_per_response, language, reply_delay_ms
+                  max_ai_tokens_per_response, language, reply_delay_ms,
+                  COALESCE(account_persona, 'shop') AS account_persona,
+                  COALESCE(white_label_enabled, false) AS white_label_enabled,
+                  white_label_brand_name
            FROM social_chatbot_config
            WHERE user_id = $1 AND service_id = $2"#,
     )
@@ -1040,6 +1265,9 @@ async fn load_bot_config(pg: &PgPool, user_id: i32, service_id: i32) -> Result<B
             max_ai_tokens_per_response: r.try_get("max_ai_tokens_per_response").unwrap_or(400),
             language: r.try_get("language").unwrap_or_else(|_| "fr".to_string()),
             reply_delay_ms: r.try_get("reply_delay_ms").unwrap_or(1500),
+            account_persona: r.try_get("account_persona").unwrap_or_else(|_| "shop".to_string()),
+            white_label_enabled: r.try_get("white_label_enabled").unwrap_or(false),
+            white_label_brand_name: r.try_get("white_label_brand_name").ok().flatten(),
         }
     } else {
         // Config par défaut si non configurée
@@ -1066,6 +1294,9 @@ async fn load_bot_config(pg: &PgPool, user_id: i32, service_id: i32) -> Result<B
             max_ai_tokens_per_response: 400,
             language: "fr".to_string(),
             reply_delay_ms: 1500,
+            account_persona: "shop".to_string(),
+            white_label_enabled: false,
+            white_label_brand_name: None,
         }
     })
 }

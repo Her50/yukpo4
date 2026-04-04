@@ -6,6 +6,7 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
+    Image,
     Linking,
     Modal,
     RefreshControl,
@@ -22,6 +23,7 @@ import SafeIcon from '../../components/SafeIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiGet, apiPost, apiPut } from '../../services/api';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
+import * as ImagePicker from 'expo-image-picker';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,7 +102,7 @@ const TONES = [
 
 const SocialAIScreen: React.FC = () => {
     const navigation = useNavigation();
-    const route = useRoute<any>();
+    const route = useRoute();
     const { user } = useAuth();
     const devise = getCurrencyIntelligently() || 'FCFA';
 
@@ -121,6 +123,14 @@ const SocialAIScreen: React.FC = () => {
     const [showPostModal, setShowPostModal] = useState(false);
     const [scheduleDate, setScheduleDate] = useState('');
 
+    // Visuel du post
+    const [selectedMedia, setSelectedMedia] = useState<{
+        uri: string;
+        type: 'image' | 'video';
+        source: 'product' | 'gallery' | 'generated';
+    } | null>(null);
+    const [generatingVisual, setGeneratingVisual] = useState(false);
+
     // Chatbot
     const [botActive, setBotActive] = useState(true);
     const [botName, setBotName] = useState('Assistant');
@@ -130,6 +140,10 @@ const SocialAIScreen: React.FC = () => {
     const [replyDelay, setReplyDelay] = useState(1500);
     const [savingBot, setSavingBot] = useState(false);
     const [botLanguage, setBotLanguage] = useState('fr');
+    // Persona & white-label
+    const [accountPersona, setAccountPersona] = useState<'shop' | 'creator' | 'personality' | 'enterprise'>('shop');
+    const [whiteLabelEnabled, setWhiteLabelEnabled] = useState(false);
+    const [whiteLabelBrandName, setWhiteLabelBrandName] = useState('');
 
     // Ads
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -152,18 +166,52 @@ const SocialAIScreen: React.FC = () => {
     // Calendar
     const [calendarEntries, setCalendarEntries] = useState<CalendarEntry[]>([]);
 
+    // TrendPulse
+    const [trendingTopics, setTrendingTopics] = useState<string[]>([]);
+    const [injectTrend, setInjectTrend] = useState<string | null>(null);
+
+    // Comptes sociaux connectés
+    const [hasConnectedAccounts, setHasConnectedAccounts] = useState<boolean | null>(null);
+
     // ─── Chargement ─────────────────────────────────────────────────────────
+
+    const checkConnectedAccounts = async () => {
+        try {
+            const data: any = await apiGet('/api/social/accounts');
+            const connected = Array.isArray(data) && data.length > 0;
+            setHasConnectedAccounts(connected);
+            if (!connected) {
+                // Premier accès : proposer la connexion
+                (navigation as any).navigate('SocialAccountSetup', {
+                    service_id: serviceId,
+                    onComplete: () => setHasConnectedAccounts(true),
+                });
+            }
+        } catch {
+            setHasConnectedAccounts(false);
+        }
+    };
+
+    const loadTrends = async () => {
+        try {
+            const data: any = await apiGet(`/api/trendpulse/trends?limit=8`);
+            const topics = (data?.trends ?? data ?? []).map((t: any) => t.topic || t.hashtag || t).filter(Boolean);
+            setTrendingTopics(topics.slice(0, 8));
+        } catch {
+            // silencieux — TrendPulse est optionnel
+        }
+    };
 
     const loadAll = useCallback(async () => {
         setLoading(true);
         try {
-            await Promise.all([loadProducts(), loadCampaigns(), loadInbox(), loadCalendar()]);
+            await Promise.all([loadProducts(), loadCampaigns(), loadInbox(), loadCalendar(), loadTrends()]);
         } finally {
             setLoading(false);
         }
     }, [serviceId]);
 
-    useEffect(() => { loadAll(); }, [loadAll]);
+    useEffect(() => { loadAll(); checkConnectedAccounts(); }, [loadAll]);
 
     const loadProducts = async () => {
         try {
@@ -205,6 +253,56 @@ const SocialAIScreen: React.FC = () => {
         setRefreshing(false);
     };
 
+    // ─── Sélection visuel ────────────────────────────────────────────────────
+
+    const useProductImage = () => {
+        if (!selectedProduct?.image_url) return;
+        setSelectedMedia({ uri: selectedProduct.image_url, type: 'image', source: 'product' });
+    };
+
+    const pickFromGallery = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission requise', 'Yukpo a besoin d\'accéder à votre galerie.');
+            return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.All,
+            quality: 0.85,
+            allowsEditing: true,
+            aspect: [1, 1],
+        });
+        if (!result.canceled && result.assets.length > 0) {
+            const asset = result.assets[0];
+            setSelectedMedia({
+                uri: asset.uri,
+                type: asset.type === 'video' ? 'video' : 'image',
+                source: 'gallery',
+            });
+        }
+    };
+
+    const generateVisualWithYukpoIA = async () => {
+        if (!selectedProduct) return;
+        setGeneratingVisual(true);
+        try {
+            // Trouver l'index du produit dans la liste pour l'API
+            const productIndex = products.findIndex(p => p.id === selectedProduct.id);
+            const idx = productIndex >= 0 ? productIndex : 0;
+            const resp: any = await apiPost(
+                `/api/media/product/${serviceId}/${idx}/generate-visual`,
+                { product_name: selectedProduct.nom, category: 'product' },
+            );
+            const url = resp?.image_url ?? resp?.url ?? resp?.data?.url;
+            if (!url) throw new Error('URL visuelle non reçue');
+            setSelectedMedia({ uri: url, type: 'image', source: 'generated' });
+        } catch (e: any) {
+            Alert.alert('Génération impossible', e?.message ?? 'Réessayez dans quelques instants.');
+        } finally {
+            setGeneratingVisual(false);
+        }
+    };
+
     // ─── Génération contenu ──────────────────────────────────────────────────
 
     const handleGeneratePost = async () => {
@@ -219,6 +317,7 @@ const SocialAIScreen: React.FC = () => {
                 product_id: selectedProduct.id,
                 platform: selectedPlatform,
                 tone: selectedTone,
+                inject_trend: injectTrend ?? undefined,
             });
             setGeneratedPost(resp);
             setShowPostModal(true);
@@ -238,9 +337,10 @@ const SocialAIScreen: React.FC = () => {
                 platform: selectedPlatform,
                 tone: selectedTone,
                 schedule_at: scheduleDate || new Date(Date.now() + 3600000).toISOString(),
+                media_url: selectedMedia?.source !== 'gallery' ? selectedMedia?.uri : undefined,
             });
             setShowPostModal(false);
-            Alert.alert('✅ Planifié', 'Le post a été ajouté au calendrier');
+            Alert.alert('✅ Planifié', 'Le post a été ajouté au calendrier éditorial.');
             await loadCalendar();
         } catch (e: any) {
             Alert.alert('Erreur', e?.message ?? 'Planification impossible');
@@ -260,6 +360,9 @@ const SocialAIScreen: React.FC = () => {
                 escalation_trigger_words: escalationWords.split(',').map(w => w.trim()).filter(Boolean),
                 reply_delay_ms: replyDelay,
                 language: botLanguage,
+                account_persona: accountPersona,
+                white_label_enabled: whiteLabelEnabled,
+                white_label_brand_name: whiteLabelEnabled && whiteLabelBrandName ? whiteLabelBrandName : null,
             });
             Alert.alert('✅ Sauvegardé', 'Configuration chatbot enregistrée');
         } catch (e: any) {
@@ -391,31 +494,85 @@ const SocialAIScreen: React.FC = () => {
             contentContainerStyle={styles.tabContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8B5CF6" />}
         >
-            <Text style={styles.sectionTitle}>Générer du contenu IA</Text>
+            <Text style={styles.sectionTitle}>Générer du contenu avec YukpoIA</Text>
             <Text style={styles.sectionSubtitle}>
-                GPT-4o crée automatiquement des posts adaptés à chaque plateforme avec votre ton de marque.
+                YukpoIA crée automatiquement texte + visuel adaptés à chaque plateforme avec votre ton de marque.
             </Text>
 
-            {/* Sélection produit */}
-            <Text style={styles.fieldLabel}>Produit</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.productScroll}>
-                {products.slice(0, 15).map((p) => (
-                    <TouchableOpacity
-                        key={p.id}
-                        style={[styles.productChip, selectedProduct?.id === p.id && styles.productChipSelected]}
-                        onPress={() => setSelectedProduct(p)}
-                        activeOpacity={0.75}
-                    >
-                        <Text style={[styles.productChipText, selectedProduct?.id === p.id && styles.productChipTextSel]} numberOfLines={1}>
-                            {p.nom}
+            {/* ── TrendPulse : tendances du moment ── */}
+            {trendingTopics.length > 0 && (
+                <View style={styles.trendSection}>
+                    <View style={styles.trendHeader}>
+                        <SafeIcon name="trending-up" size={14} color="#F59E0B" />
+                        <Text style={styles.trendLabel}>Tendances du moment</Text>
+                        {injectTrend && (
+                            <TouchableOpacity onPress={() => setInjectTrend(null)}>
+                                <Text style={styles.trendClear}>✕ retirer</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <View style={styles.trendChips}>
+                            {trendingTopics.map((t) => (
+                                <TouchableOpacity
+                                    key={t}
+                                    style={[styles.trendChip, injectTrend === t && styles.trendChipActive]}
+                                    onPress={() => setInjectTrend(injectTrend === t ? null : t)}
+                                >
+                                    <Text style={[styles.trendChipText, injectTrend === t && styles.trendChipTextActive]}>
+                                        #{t}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </ScrollView>
+                    {injectTrend && (
+                        <Text style={styles.trendHint}>
+                            La tendance #{injectTrend} sera intégrée dans le contenu généré.
                         </Text>
-                        {p.sale_price && <View style={styles.promoDotp} />}
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
+                    )}
+                </View>
+            )}
 
-            {/* Plateforme cible */}
-            <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Plateforme</Text>
+            {/* ── Étape 1 : Produit ── */}
+            <View style={styles.stepHeader}>
+                <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>1</Text></View>
+                <Text style={styles.fieldLabel}>Choisissez un produit</Text>
+            </View>
+            {products.length === 0 ? (
+                <View style={styles.emptyProducts}>
+                    <SafeIcon name="box" size={32} color="#4B5563" />
+                    <Text style={styles.emptyProductsText}>Aucun produit dans votre catalogue</Text>
+                    <TouchableOpacity
+                        style={styles.addProductBtn}
+                        onPress={() => (navigation as any).navigate('MesProduitsScreen', { serviceId })}
+                    >
+                        <Text style={styles.addProductBtnText}>+ Ajouter des produits</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.productScroll}>
+                    {products.slice(0, 20).map((p) => (
+                        <TouchableOpacity
+                            key={p.id}
+                            style={[styles.productChip, selectedProduct?.id === p.id && styles.productChipSelected]}
+                            onPress={() => { setSelectedProduct(p); setSelectedMedia(null); }}
+                            activeOpacity={0.75}
+                        >
+                            <Text style={[styles.productChipText, selectedProduct?.id === p.id && styles.productChipTextSel]} numberOfLines={1}>
+                                {p.nom}
+                            </Text>
+                            {p.sale_price && <View style={styles.promoDotp} />}
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            )}
+
+            {/* ── Étape 2 : Plateforme + Ton ── */}
+            <View style={styles.stepHeader}>
+                <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>2</Text></View>
+                <Text style={styles.fieldLabel}>Plateforme & ton</Text>
+            </View>
             <View style={styles.platformRow}>
                 {['facebook', 'instagram', 'whatsapp'].map((plt) => {
                     const cfg = PLATFORM_CONFIG[plt];
@@ -433,10 +590,7 @@ const SocialAIScreen: React.FC = () => {
                     );
                 })}
             </View>
-
-            {/* Ton */}
-            <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Ton</Text>
-            <View style={styles.toneRow}>
+            <View style={[styles.toneRow, { marginTop: 10 }]}>
                 {TONES.map((t) => (
                     <TouchableOpacity
                         key={t.key}
@@ -450,7 +604,94 @@ const SocialAIScreen: React.FC = () => {
                 ))}
             </View>
 
-            {/* Bouton générer */}
+            {/* ── Étape 3 : Visuel ── */}
+            <View style={styles.stepHeader}>
+                <View style={styles.stepBadge}><Text style={styles.stepBadgeText}>3</Text></View>
+                <Text style={styles.fieldLabel}>Visuel (image ou vidéo)</Text>
+            </View>
+
+            {/* Aperçu du média sélectionné */}
+            {selectedMedia ? (
+                <View style={styles.mediaPreviewBox}>
+                    {/* eslint-disable-next-line @typescript-eslint/no-require-imports */}
+                    {selectedMedia.type === 'image' && (
+                        <Image
+                            source={{ uri: selectedMedia.uri }}
+                            style={styles.mediaPreviewImg}
+                            resizeMode="cover"
+                        />
+                    )}
+                    <View style={styles.mediaPreviewInfo}>
+                        <SafeIcon
+                            name={selectedMedia.source === 'generated' ? 'sparkles' : selectedMedia.source === 'gallery' ? 'images' : 'image'}
+                            size={14}
+                            color="#8B5CF6"
+                        />
+                        <Text style={styles.mediaPreviewLabel}>
+                            {selectedMedia.source === 'product' ? 'Image produit' :
+                             selectedMedia.source === 'gallery' ? 'Depuis la galerie' : 'Généré par YukpoIA'}
+                        </Text>
+                        <TouchableOpacity onPress={() => setSelectedMedia(null)} style={{ marginLeft: 'auto' }}>
+                            <SafeIcon name="close-circle" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            ) : (
+                <View style={styles.mediaOptions}>
+                    {/* Option 1 : image du produit */}
+                    {selectedProduct?.image_url ? (
+                        <TouchableOpacity style={styles.mediaOptionBtn} onPress={useProductImage} activeOpacity={0.8}>
+                            <SafeIcon name="image-outline" size={20} color="#10B981" />
+                            <View style={styles.mediaOptionText}>
+                                <Text style={styles.mediaOptionTitle}>Utiliser l'image du produit</Text>
+                                <Text style={styles.mediaOptionSub}>Image existante dans votre catalogue</Text>
+                            </View>
+                            <SafeIcon name="chevron-forward" size={16} color="#6B7280" />
+                        </TouchableOpacity>
+                    ) : null}
+
+                    {/* Option 2 : galerie */}
+                    <TouchableOpacity style={styles.mediaOptionBtn} onPress={pickFromGallery} activeOpacity={0.8}>
+                        <SafeIcon name="folder-open-outline" size={20} color="#3B82F6" />
+                        <View style={styles.mediaOptionText}>
+                            <Text style={styles.mediaOptionTitle}>Choisir depuis ma galerie</Text>
+                            <Text style={styles.mediaOptionSub}>Photo ou vidéo depuis votre téléphone</Text>
+                        </View>
+                        <SafeIcon name="chevron-forward" size={16} color="#6B7280" />
+                    </TouchableOpacity>
+
+                    {/* Option 3 : générer avec YukpoIA */}
+                    <TouchableOpacity
+                        style={[styles.mediaOptionBtn, styles.mediaOptionGenerate]}
+                        onPress={generateVisualWithYukpoIA}
+                        disabled={!selectedProduct || generatingVisual}
+                        activeOpacity={0.8}
+                    >
+                        {generatingVisual ? (
+                            <ActivityIndicator size="small" color="#8B5CF6" />
+                        ) : (
+                            <SafeIcon name="sparkles" size={20} color="#8B5CF6" />
+                        )}
+                        <View style={styles.mediaOptionText}>
+                            <Text style={[styles.mediaOptionTitle, { color: '#8B5CF6' }]}>
+                                {generatingVisual ? 'Génération en cours…' : 'Générer un visuel avec YukpoIA'}
+                            </Text>
+                            <Text style={styles.mediaOptionSub}>
+                                {selectedProduct
+                                    ? `Visuel IA pour "${selectedProduct.nom}"`
+                                    : 'Sélectionnez d\'abord un produit'}
+                            </Text>
+                        </View>
+                        <SafeIcon name="chevron-forward" size={16} color="#8B5CF6" />
+                    </TouchableOpacity>
+
+                    <Text style={styles.mediaSkipNote}>
+                        Vous pouvez aussi générer le post sans visuel — vous pourrez en ajouter un plus tard.
+                    </Text>
+                </View>
+            )}
+
+            {/* ── Bouton générer ── */}
             <TouchableOpacity
                 style={[styles.generateBtn, (!selectedProduct || generating) && styles.generateBtnDisabled]}
                 onPress={handleGeneratePost}
@@ -463,7 +704,7 @@ const SocialAIScreen: React.FC = () => {
                     <>
                         <SafeIcon name="zap" size={18} color="#fff" />
                         <Text style={styles.generateBtnText}>
-                            {selectedProduct ? `Générer pour "${selectedProduct.nom}"` : 'Sélectionnez un produit'}
+                            {selectedProduct ? `Générer le post pour "${selectedProduct.nom}"` : 'Sélectionnez un produit'}
                         </Text>
                     </>
                 )}
@@ -473,7 +714,7 @@ const SocialAIScreen: React.FC = () => {
             <View style={styles.infoBox}>
                 <SafeIcon name="info" size={14} color="#8B5CF6" />
                 <Text style={styles.infoText}>
-                    Yukpo génère 3 variantes (Facebook, Instagram, WhatsApp) + une variante A/B pour tester le meilleur message.
+                    YukpoIA génère 3 variantes (Facebook, Instagram, WhatsApp) + une variante A/B.
                     Tous les liens incluent un tunnel UTM vers votre boutique.
                 </Text>
             </View>
@@ -482,9 +723,9 @@ const SocialAIScreen: React.FC = () => {
 
     const renderChatbotTab = () => (
         <ScrollView contentContainerStyle={styles.tabContent}>
-            <Text style={styles.sectionTitle}>Community Manager IA</Text>
+            <Text style={styles.sectionTitle}>Community Manager Yukpo</Text>
             <Text style={styles.sectionSubtitle}>
-                Yukpo répond automatiquement à vos clients sur Messenger, Instagram DM et WhatsApp Business — 24h/24, 7j/7.
+                YukpoIA répond automatiquement à vos clients sur Messenger, Instagram DM, WhatsApp Business et aux commentaires de vos posts — 24h/24, 7j/7.
             </Text>
 
             {/* Activer/désactiver */}
@@ -576,6 +817,59 @@ const SocialAIScreen: React.FC = () => {
                 </Text>
             </View>
 
+            {/* Persona du compte */}
+            <View style={styles.inputGroup}>
+                <Text style={styles.fieldLabel}>Type de compte</Text>
+                <Text style={styles.fieldHint}>
+                    Adapte le comportement de l'assistant à votre activité.
+                </Text>
+                <View style={styles.personaRow}>
+                    {([
+                        { key: 'shop', label: 'Boutique', icon: 'shopping-bag' },
+                        { key: 'creator', label: 'Créateur', icon: 'video' },
+                        { key: 'personality', label: 'Personnalité', icon: 'star' },
+                        { key: 'enterprise', label: 'Entreprise', icon: 'briefcase' },
+                    ] as const).map(p => (
+                        <TouchableOpacity
+                            key={p.key}
+                            style={[styles.personaBtn, accountPersona === p.key && styles.personaBtnActive]}
+                            onPress={() => setAccountPersona(p.key)}
+                        >
+                            <SafeIcon name={p.icon} size={18} color={accountPersona === p.key ? '#fff' : '#6B7280'} />
+                            <Text style={[styles.personaText, accountPersona === p.key && styles.personaTextActive]}>
+                                {p.label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </View>
+
+            {/* White-label */}
+            <View style={styles.inputGroup}>
+                <View style={styles.switchRow}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.fieldLabel}>Mode White-Label</Text>
+                        <Text style={styles.fieldHint}>
+                            Retire toutes les mentions "Yukpo" du contenu publié (abonnement Premium).
+                        </Text>
+                    </View>
+                    <Switch
+                        value={whiteLabelEnabled}
+                        onValueChange={setWhiteLabelEnabled}
+                        trackColor={{ true: '#7C3AED', false: '#E5E7EB' }}
+                    />
+                </View>
+                {whiteLabelEnabled && (
+                    <TextInput
+                        style={[styles.textInput, { marginTop: 8 }]}
+                        value={whiteLabelBrandName}
+                        onChangeText={setWhiteLabelBrandName}
+                        placeholder="Nom de votre marque (ex: MonAssistant)"
+                        placeholderTextColor="#9CA3AF"
+                    />
+                )}
+            </View>
+
             {/* Délai de réponse */}
             <View style={styles.inputGroup}>
                 <Text style={styles.fieldLabel}>Délai avant réponse (ms)</Text>
@@ -591,6 +885,23 @@ const SocialAIScreen: React.FC = () => {
                             </Text>
                         </TouchableOpacity>
                     ))}
+                </View>
+            </View>
+
+            {/* Réponses aux commentaires */}
+            <View style={styles.inputGroup}>
+                <Text style={styles.fieldLabel}>Réponses aux commentaires</Text>
+                <View style={styles.webhookCard}>
+                    <SafeIcon name="chatbubbles-outline" size={16} color="#10B981" />
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.webhookTitle}>Commentaires Facebook & Instagram activés</Text>
+                        <Text style={styles.webhookDesc}>
+                            YukpoIA répond automatiquement aux commentaires sur vos posts:{'\n'}
+                            • Facebook: commentaires de votre Page (webhook champ "feed"){'\n'}
+                            • Instagram: commentaires sur vos publications (webhook champ "comments"){'\n'}
+                            Les réponses s'appuient sur votre catalogue et votre voix de marque.
+                        </Text>
+                    </View>
                 </View>
             </View>
 
@@ -795,14 +1106,14 @@ const SocialAIScreen: React.FC = () => {
 
             {/* Filtres */}
             <View style={styles.inboxFilterRow}>
-                {['all', 'unread', 'escalated', 'starred'].map((f) => (
+                {(['all', 'unread', 'escalated', 'starred', 'comments'] as const).map((f) => (
                     <TouchableOpacity
                         key={f}
                         style={[styles.filterChip, inboxFilter === f && styles.filterChipActive]}
                         onPress={() => { setInboxFilter(f); loadInbox(); }}
                     >
                         <Text style={[styles.filterChipText, inboxFilter === f && styles.filterChipTextActive]}>
-                            {f === 'all' ? 'Tous' : f === 'unread' ? 'Non lus' : f === 'escalated' ? 'Escaladés' : 'Étoilés'}
+                            {f === 'all' ? 'Tous' : f === 'unread' ? 'Non lus' : f === 'escalated' ? 'Escaladés' : f === 'starred' ? 'Étoilés' : '💬 Commentaires'}
                         </Text>
                     </TouchableOpacity>
                 ))}
@@ -928,6 +1239,44 @@ const SocialAIScreen: React.FC = () => {
                         <Text style={styles.modalTitle}>Post généré ✨</Text>
                         {generatedPost && (
                             <>
+                                {/* Visuel attaché */}
+                                {selectedMedia ? (
+                                    <View style={{ marginBottom: 12 }}>
+                                        <Text style={styles.modalSectionLabel}>Visuel</Text>
+                                        <View style={styles.modalMediaBox}>
+                                            <Image
+                                                source={{ uri: selectedMedia.uri }}
+                                                style={styles.modalMediaImg}
+                                                resizeMode="cover"
+                                            />
+                                            <View style={styles.modalMediaBadge}>
+                                                <SafeIcon
+                                                    name={selectedMedia.source === 'generated' ? 'sparkles' : selectedMedia.source === 'gallery' ? 'images' : 'image'}
+                                                    size={12} color="#fff"
+                                                />
+                                                <Text style={styles.modalMediaBadgeText}>
+                                                    {selectedMedia.source === 'product' ? 'Produit' :
+                                                     selectedMedia.source === 'gallery' ? 'Galerie' : 'YukpoIA'}
+                                                </Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                style={styles.changeMediaBtn}
+                                                onPress={() => setShowPostModal(false)}
+                                            >
+                                                <Text style={styles.changeMediaText}>Changer</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity
+                                        style={styles.addMediaPrompt}
+                                        onPress={() => setShowPostModal(false)}
+                                    >
+                                        <SafeIcon name="image-outline" size={20} color="#8B5CF6" />
+                                        <Text style={styles.addMediaPromptText}>+ Ajouter un visuel (recommandé)</Text>
+                                    </TouchableOpacity>
+                                )}
+
                                 <Text style={styles.modalSectionLabel}>Version principale</Text>
                                 <View style={styles.captionBox}>
                                     <Text style={styles.captionText}>{generatedPost.caption_a}</Text>
@@ -1094,9 +1443,18 @@ const SocialAIScreen: React.FC = () => {
                     <SafeIcon name="arrow-left" size={22} color="#F9FAFB" />
                 </TouchableOpacity>
                 <View style={styles.headerCenter}>
-                    <Text style={styles.headerTitle}>Social AI Engine</Text>
+                    <Text style={styles.headerTitle}>Yukpo Social</Text>
                     <Text style={styles.headerSub} numberOfLines={1}>{serviceName}</Text>
                 </View>
+                <TouchableOpacity
+                    style={styles.accountsHeaderBtn}
+                    onPress={() => (navigation as any).navigate('SocialAccountSetup', { service_id: serviceId })}
+                >
+                    <SafeIcon name="link" size={16} color={hasConnectedAccounts === false ? '#EF4444' : '#9CA3AF'} />
+                    <Text style={[styles.accountsHeaderBtnText, hasConnectedAccounts === false && { color: '#EF4444' }]}>
+                        {hasConnectedAccounts === false ? 'Non connecté' : 'Comptes'}
+                    </Text>
+                </TouchableOpacity>
                 {unreadCount > 0 && (
                     <View style={styles.unreadHeaderBadge}>
                         <Text style={styles.unreadHeaderBadgeText}>{unreadCount}</Text>
@@ -1157,6 +1515,8 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', paddingTop: 52, paddingBottom: 14, paddingHorizontal: 16, backgroundColor: '#1F2937', borderBottomWidth: 1, borderBottomColor: '#374151' },
     backBtn: { padding: 4, marginRight: 8 },
     headerCenter: { flex: 1 },
+    accountsHeaderBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#374151' },
+    accountsHeaderBtnText: { color: '#9CA3AF', fontSize: 11, fontWeight: '600' },
     headerTitle: { color: '#F9FAFB', fontSize: 16, fontWeight: '700' },
     headerSub: { color: '#9CA3AF', fontSize: 12, marginTop: 2 },
     unreadHeaderBadge: { backgroundColor: '#EF4444', borderRadius: 10, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
@@ -1215,6 +1575,22 @@ const styles = StyleSheet.create({
     stepperBtnActive: { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' },
     stepperText: { color: '#9CA3AF', fontSize: 12, fontWeight: '500' },
     stepperTextActive: { color: '#fff' },
+    personaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+    personaBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: '#374151', backgroundColor: '#1F2937' },
+    personaBtnActive: { backgroundColor: '#7C3AED', borderColor: '#7C3AED' },
+    personaText: { color: '#9CA3AF', fontSize: 12, fontWeight: '500' },
+    personaTextActive: { color: '#fff', fontWeight: '700' },
+    switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    trendSection: { backgroundColor: '#F59E0B11', borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: '#F59E0B33' },
+    trendHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+    trendLabel: { color: '#F59E0B', fontSize: 12, fontWeight: '700', flex: 1 },
+    trendClear: { color: '#9CA3AF', fontSize: 11 },
+    trendChips: { flexDirection: 'row', gap: 6 },
+    trendChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, backgroundColor: '#1F2937', borderWidth: 1, borderColor: '#374151' },
+    trendChipActive: { backgroundColor: '#F59E0B', borderColor: '#F59E0B' },
+    trendChipText: { color: '#9CA3AF', fontSize: 12, fontWeight: '500' },
+    trendChipTextActive: { color: '#1F2937', fontWeight: '700' },
+    trendHint: { color: '#FDE68A', fontSize: 11, marginTop: 6, opacity: 0.8 },
     webhookCard: { flexDirection: 'row', gap: 10, backgroundColor: '#F59E0B11', borderRadius: 10, padding: 12, marginBottom: 16, alignItems: 'flex-start', borderWidth: 1, borderColor: '#F59E0B33' },
     webhookTitle: { color: '#FDE68A', fontSize: 13, fontWeight: '600', marginBottom: 4 },
     webhookDesc: { color: '#FDE68A', fontSize: 11, lineHeight: 17, opacity: 0.8 },
@@ -1310,6 +1686,59 @@ const styles = StyleSheet.create({
     modalCancelText: { color: '#9CA3AF', fontWeight: '600' },
     modalSaveBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#8B5CF6', alignItems: 'center' },
     modalSaveText: { color: '#fff', fontWeight: '700' },
+
+    // ── Steps ──
+    stepHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 8 },
+    stepBadge: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#8B5CF6', alignItems: 'center', justifyContent: 'center' },
+    stepBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+
+    // ── Produits vides ──
+    emptyProducts: { alignItems: 'center', paddingVertical: 24, gap: 8 },
+    emptyProductsText: { color: '#6B7280', fontSize: 14 },
+    addProductBtn: { borderWidth: 1, borderColor: '#8B5CF6', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 },
+    addProductBtnText: { color: '#8B5CF6', fontWeight: '600' },
+
+    // ── Médias ──
+    mediaOptions: { gap: 10, marginBottom: 4 },
+    mediaOptionBtn: {
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        backgroundColor: '#1F2937', borderRadius: 12,
+        padding: 14, borderWidth: 1, borderColor: '#374151',
+    },
+    mediaOptionGenerate: { borderColor: '#8B5CF644' },
+    mediaOptionText: { flex: 1 },
+    mediaOptionTitle: { color: '#F9FAFB', fontSize: 14, fontWeight: '600' },
+    mediaOptionSub: { color: '#6B7280', fontSize: 12, marginTop: 2 },
+    mediaSkipNote: { color: '#4B5563', fontSize: 11, textAlign: 'center', marginTop: 4 },
+    mediaPreviewBox: { borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#374151', marginBottom: 8 },
+    mediaPreviewImg: { width: '100%', height: 160 },
+    mediaPreviewInfo: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        padding: 10, backgroundColor: '#1F2937',
+    },
+    mediaPreviewLabel: { color: '#9CA3AF', fontSize: 12, flex: 1 },
+
+    // ── Modal média ──
+    modalMediaBox: { borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#374151', marginBottom: 4 },
+    modalMediaImg: { width: '100%', height: 180 },
+    modalMediaBadge: {
+        position: 'absolute', top: 8, left: 8,
+        flexDirection: 'row', alignItems: 'center', gap: 4,
+        backgroundColor: '#000000BB', borderRadius: 20,
+        paddingHorizontal: 8, paddingVertical: 4,
+    },
+    modalMediaBadgeText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+    changeMediaBtn: {
+        position: 'absolute', top: 8, right: 8,
+        backgroundColor: '#000000BB', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
+    },
+    changeMediaText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+    addMediaPrompt: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+        borderWidth: 1, borderColor: '#8B5CF644', borderStyle: 'dashed',
+        borderRadius: 12, paddingVertical: 14, marginBottom: 12,
+    },
+    addMediaPromptText: { color: '#8B5CF6', fontSize: 14, fontWeight: '600' },
 });
 
 export default SocialAIScreen;

@@ -32,6 +32,8 @@ pub struct GeneratePostRequest {
     pub platform: String,
     pub tone: Option<String>,
     pub schedule_at: Option<String>, // ISO8601
+    /// Hashtag tendance à injecter dans le prompt (ex: "FIFA2026")
+    pub inject_trend: Option<String>,
 }
 
 /// POST /api/social-ai/content/generate
@@ -127,6 +129,14 @@ pub async fn generate_post(
         ai_content_service::load_preferences(&state.pg, user.id, payload.service_id).await;
     if let Some(tone) = payload.tone {
         prefs.tone = tone;
+    }
+    // Injecter la tendance TrendPulse dans le contexte de génération
+    if let Some(trend) = &payload.inject_trend {
+        prefs.always_include.push(format!(
+            "Intègre naturellement la tendance #{} dans le contenu",
+            trend
+        ));
+        prefs.default_hashtags.push(trend.clone());
     }
 
     let content = ai_content_service::generate_product_post(&product_ctx, &store_ctx, &prefs)

@@ -108,7 +108,8 @@ pub async fn list_inbox_threads(
              AND ($3 = 'all'
                   OR ($3 = 'unread' AND s.unread_count > 0)
                   OR ($3 = 'escalated' AND s.is_escalated = true)
-                  OR ($3 = 'starred' AND s.is_starred = true))
+                  OR ($3 = 'starred' AND s.is_starred = true)
+                  OR ($3 = 'comments' AND s.platform IN ('facebook_comment', 'instagram_comment')))
              AND ($4::TEXT IS NULL OR s.platform = $4)
            ORDER BY
              CASE WHEN s.is_escalated THEN 0 ELSE 1 END,

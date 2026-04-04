@@ -41,21 +41,28 @@ pub async fn facebook_authorize(
 
     let state_key = create_oauth_state(&state.redis_client, user.id).await?;
 
-    // Scopes: gestion page + catalog commerce + instagram
+    // Scopes complets : Pages + Instagram + commentaires + messagerie + catalogue
     let scope = encode(
         "pages_manage_posts,pages_read_engagement,pages_show_list,\
-         instagram_content_publish,instagram_basic,catalog_management",
+         pages_manage_metadata,pages_manage_comments,pages_messaging,\
+         instagram_content_publish,instagram_basic,instagram_manage_comments,\
+         catalog_management,public_profile",
     );
+    let extras = encode(r#"{"setup":{"channel":"IG_API_ONBOARDING"}}"#);
     let auth_url = format!(
         "https://www.facebook.com/v19.0/dialog/oauth\
-         ?client_id={}&redirect_uri={}&scope={}&response_type=code&state={}",
+         ?client_id={}&redirect_uri={}&scope={}&response_type=code&state={}&extras={}",
         encode(&app_id),
         encode(&redirect_uri),
         scope,
-        encode(&state_key)
+        encode(&state_key),
+        extras,
     );
 
-    Ok(Json(serde_json::json!({ "authorization_url": auth_url })))
+    Ok(Json(serde_json::json!({
+        "authorization_url": auth_url,
+        "info": "Cette connexion couvre Facebook ET Instagram automatiquement.",
+    })))
 }
 
 pub async fn facebook_callback(
@@ -114,41 +121,47 @@ pub async fn facebook_callback(
         .json()
         .await?;
 
-    // Récupérer les pages gérées par l'utilisateur
-    let pages_resp: FacebookPagesResponse = http
-        .get("https://graph.facebook.com/v19.0/me/accounts")
-        .query(&[("access_token", long_resp.access_token.as_str())])
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
+    // Découverte complète : Pages Facebook + Instagram liés, tokens individuels par Page
+    let ecosystem =
+        crate::services::social_connector_service::discover_and_save_facebook_ecosystem(
+            state.clone(),
+            user_id,
+            &long_resp.access_token,
+            None,
+        )
+        .await;
 
-    let pages_json =
-        serde_json::to_value(&pages_resp.data).unwrap_or_else(|_| serde_json::json!([]));
-    let first_page_name = pages_resp.data.first().map(|p| p.name.clone());
+    match &ecosystem {
+        Ok(r) => log::info!(
+            "[FB] Ecosystem OK user={}: {} pages ({}), {} Instagram, page_créée={}",
+            user_id,
+            r.pages_connected,
+            r.page_names.join(", "),
+            r.instagram_connected,
+            r.page_auto_created,
+        ),
+        Err(e) => {
+            // Fallback : save token brut si discover échoue
+            log::warn!("[FB] Discover échoué ({}), fallback token brut", e);
+            let expires_at = long_resp.expires_in.map(|s| Utc::now() + Duration::seconds(s as i64));
+            upsert_social_account(
+                state.clone(),
+                user_id,
+                SocialTokenPayload {
+                    platform: "facebook".to_string(),
+                    account_handle: None,
+                    access_token: long_resp.access_token.clone(),
+                    refresh_token: None,
+                    expires_at,
+                    scope: long_resp.scope.clone(),
+                    metadata: None,
+                },
+            )
+            .await?;
+        }
+    }
 
-    let expires_at = long_resp.expires_in.map(|s| Utc::now() + Duration::seconds(s as i64));
-
-    upsert_social_account(
-        state,
-        user_id,
-        SocialTokenPayload {
-            platform: "facebook".to_string(),
-            account_handle: first_page_name,
-            access_token: long_resp.access_token,
-            refresh_token: None,
-            expires_at,
-            scope: long_resp.scope,
-            metadata: Some(serde_json::json!({
-                "pages": pages_json,
-                "token_type": long_resp.token_type,
-            })),
-        },
-    )
-    .await?;
-
-    Ok(Html(oauth_success_page("Facebook")))
+    Ok(Html(oauth_success_page("Facebook & Instagram")))
 }
 
 // ─────────────────────────────────────────────────────────────

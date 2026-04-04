@@ -13,9 +13,9 @@ use crate::{
     core::types::{AppError, AppResult},
     middlewares::jwt::AuthenticatedUser,
     services::social_connector_service::{
-        consume_oauth_state, create_oauth_state, exchange_instagram_code, exchange_youtube_code,
-        list_social_accounts, upsert_social_account, OAuthTokenSet, SocialAccountRecord,
-        SocialTokenPayload,
+        consume_oauth_state, create_oauth_state, discover_and_save_facebook_ecosystem,
+        exchange_instagram_code, exchange_youtube_code, list_social_accounts,
+        upsert_social_account, OAuthTokenSet, SocialAccountRecord, SocialTokenPayload,
     },
     state::AppState,
 };
@@ -122,16 +122,31 @@ pub async fn instagram_authorize(
         .map_err(|_| AppError::Internal("INSTAGRAM_REDIRECT_URI manquant".into()))?;
 
     let state_key = create_oauth_state(&state.redis_client, user.id).await?;
-    let scope = encode("instagram_content_publish,instagram_basic,pages_show_list");
+
+    // Scopes complets : Pages + Instagram + commentaires + messagerie
+    let scope = encode(
+        "instagram_content_publish,instagram_basic,instagram_manage_comments,\
+         pages_show_list,pages_manage_posts,pages_read_engagement,\
+         pages_manage_metadata,pages_manage_comments,\
+         pages_messaging,public_profile",
+    );
+
+    // extras=setup guide l'utilisateur vers la configuration Page/Instagram en 1 flux
+    let extras = encode(r#"{"setup":{"channel":"IG_API_ONBOARDING"}}"#);
+
     let auth_url = format!(
-        "https://www.facebook.com/v18.0/dialog/oauth?client_id={}&redirect_uri={}&scope={}&response_type=code&state={}",
+        "https://www.facebook.com/v19.0/dialog/oauth?client_id={}&redirect_uri={}&scope={}&response_type=code&state={}&extras={}",
         encode(&app_id),
         encode(&redirect_uri),
         scope,
-        encode(&state_key)
+        encode(&state_key),
+        extras,
     );
 
-    Ok(Json(serde_json::json!({ "authorization_url": auth_url })))
+    Ok(Json(serde_json::json!({
+        "authorization_url": auth_url,
+        "info": "Cette connexion couvre Facebook ET Instagram. Aucun token à entrer manuellement.",
+    })))
 }
 
 pub async fn instagram_callback(
@@ -164,9 +179,32 @@ pub async fn instagram_callback(
     let token_set =
         exchange_instagram_code(&http, &app_id, &app_secret, &redirect_uri, &code).await?;
 
-    persist_token_set(state, user_id, "instagram", token_set).await?;
+    // Découverte automatique : Pages Facebook + Instagram liés + création de Page si besoin
+    let ecosystem =
+        crate::services::social_connector_service::discover_and_save_facebook_ecosystem(
+            state.clone(),
+            user_id,
+            &token_set.access_token,
+            None, // service_name : facultatif — on peut le passer si stocké en session
+        )
+        .await;
 
-    Ok(Html(oauth_success_page("Instagram")))
+    match &ecosystem {
+        Ok(r) => log::info!(
+            "[FBE] Callback OK user={}: {} pages, {} Instagram, page_créée={}",
+            user_id,
+            r.pages_connected,
+            r.instagram_connected,
+            r.page_auto_created
+        ),
+        Err(e) => {
+            // Fallback : sauvegarder au moins le token brut
+            log::warn!("[FBE] Discover partiel ({}), fallback save user token", e);
+            persist_token_set(state.clone(), user_id, "facebook", token_set).await?;
+        }
+    }
+
+    Ok(Html(oauth_success_page("Facebook & Instagram")))
 }
 
 #[derive(Debug, Deserialize)]
