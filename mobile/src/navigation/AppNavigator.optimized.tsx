@@ -750,6 +750,20 @@ function MainTabNavigator() {
   const { user } = useAuth();
   const { t } = useLanguageSafe();
   const [isCourier, setIsCourier] = useState(false);
+  const [trendBadge, setTrendBadge] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { trendService } = await import('../services/trendService');
+        const count = await trendService.getHighOpportunityCount();
+        if (!cancelled) setTrendBadge(count);
+      } catch { /* silencieux */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // ✅ FIX CRITIQUE: Calcul SYNCHRONE de hasSpecializedServices (pas useEffect)
   // L'ancien useEffect ne s'exécutait qu'APRÈS le premier rendu, donc initialRouteName
@@ -819,8 +833,8 @@ function MainTabNavigator() {
         },
       }}
     >
-      {/* Onglet 1: Accueil - MASQUÉ pour les partenaires de services spécialisés */}
-      {!hasSpecializedServices && (
+      {/* Onglet 1: Accueil - MASQUÉ pour tous les partenaires (ils ont Mon Espace) */}
+      {!isPartner && (
         <Tab.Screen
           name="Home"
           getComponent={() => loadScreen('../screens/HomeScreen', 'Home')}
@@ -902,8 +916,8 @@ function MainTabNavigator() {
         />
       )}
 
-      {/* Onglet 3: Créer (+) - masqué pour les coursiers */}
-      {!isCourier && (
+      {/* Onglet 3: Créer (+) - uniquement pour les partenaires (pas les utilisateurs normaux ni coursiers) */}
+      {isPartner && !isCourier && (
         <Tab.Screen
           name="VideoCreationIntro"
           component={S['VideoCreationIntro'] || loadScreen('../screens/video/VideoCreationIntroScreen', 'VideoCreationIntro')}
@@ -921,6 +935,27 @@ function MainTabNavigator() {
                 name={focused ? 'add-circle' : 'add-circle-outline'}
                 size={(size ?? 24) + 2}
                 color={focused ? '#DC2626' : color}
+                type="ionicons"
+              />
+            ),
+          }}
+        />
+      )}
+
+      {/* Onglet Trends — tous les utilisateurs sauf coursiers */}
+      {!isCourier && (
+        <Tab.Screen
+          name="TrendPulseDashboard"
+          getComponent={() => loadScreen('../screens/specialized/TrendPulseDashboardScreen', 'TrendPulseDashboard')}
+          options={{
+            tabBarLabel: 'Trends',
+            tabBarBadge: trendBadge > 0 ? trendBadge : undefined,
+            tabBarBadgeStyle: { backgroundColor: '#F59E0B', fontSize: 10 },
+            tabBarIcon: ({ focused, color, size }) => (
+              <SafeIcon
+                name={focused ? 'trending-up' : 'trending-up'}
+                size={(size ?? 24) + 2}
+                color={focused ? '#8B5CF6' : color}
                 type="ionicons"
               />
             ),

@@ -283,18 +283,29 @@ impl PharmacyAIService {
         image_base64: &str,
     ) -> AppResult<Vec<ExtractedMedication>> {
         let prompt = r#"
-Tu es un pharmacien expert qui analyse des ordonnances médicales pour Yukpo.
+Tu es un pharmacien expert spécialisé dans les ordonnances d'Afrique subsaharienne (Cameroun, Sénégal, Côte d'Ivoire, Congo, etc.) pour la plateforme Yukpo.
 
-TÂCHE : Analyse l'image de l'ordonnance et extrait tous les médicaments prescrits.
+CONTEXTE IMPORTANT :
+- L'image peut être une ordonnance médicale manuscrite ou imprimée
+- L'image peut aussi être la photo d'un emballage / boîte de médicament
+- Les ordonnances africaines sont souvent manuscrites, avec une écriture difficile à lire
+- Les noms peuvent être en français, en DCI (dénomination commune internationale), ou en noms commerciaux locaux
+- L'orthographe peut être phonétique ou approximative (ex: "paracétamol" → "paracetamol", "amoxiciline" → "amoxicilline")
+- Les médicaments courants dans la région : Paracétamol, Amoxicilline, Cotrimoxazole, Artémether-Luméfantrine (Coartem), Doxycycline, Métronidazole, Ibuprofène, Fer folate, Vitamine C, Oméprazole, Cétirizine, Loratadine, Salbutamol, Prednisolone, Dexaméthasone, Ampicilline, Gentamicine, Acide folique, Zinc, Mébendazole, Albendazole, Chloroquine, Quinine, Clotrimazole, Fluconazole, Amlodipine, Hydrochlorothiazide, Metformine, Insuline, Tramadol, Diclofénac, Kétoprofène, Ciprofloxacine, Érythromycine, Azithromycine, etc.
 
-RÈGLES :
-- Extrait UNIQUEMENT les médicaments clairement visibles
-- Pour chaque médicament, identifie le nom, dosage, quantité et posologie
-- Utilise le nom commercial ou DCI tel qu'écrit sur l'ordonnance
-- Si une information est illisible, omets-la (null)
-- Ne t'invente JAMAIS de médicaments
+TÂCHE : Analyse l'image et identifie TOUS les médicaments visibles, même partiellement lisibles.
 
-RÉPONSE ATTENDUE (JSON strict, tableau) :
+RÈGLES D'EXTRACTION :
+1. Identifie chaque médicament même si l'écriture est difficile — fais de ton mieux pour déchiffrer
+2. Pour les noms partiellement lisibles : propose le nom le plus probable (ex : "Amoxici..." → "Amoxicilline")
+3. Corrige les orthographes phonétiques ou approximatives vers le nom médical standard
+4. Extrait le dosage si visible (ex: "500mg", "250mg/5ml")
+5. Extrait la quantité si précisée (boîte, comprimés, flacons)
+6. Extrait la posologie si présente (fréquence, durée, mode d'administration)
+7. Si c'est un emballage : extrait le nom du médicament principal et son dosage
+8. N'omets aucun médicament visible, même si tu n'as qu'une partie du nom
+
+RÉPONSE ATTENDUE (JSON strict, tableau, SANS texte autour) :
 [
   {
     "name": "Amoxicilline",
@@ -310,7 +321,11 @@ RÉPONSE ATTENDUE (JSON strict, tableau) :
   }
 ]
 
-Si aucun médicament n'est lisible, retourne: []
+IMPORTANT :
+- Réponds UNIQUEMENT avec le tableau JSON, rien d'autre
+- Si vraiment aucun médicament n'est identifiable (image totalement illisible, hors sujet), retourne : []
+- Ne mets JAMAIS de texte avant ou après le JSON
+- Ne mets JAMAIS de balises markdown ```json``` autour du JSON
 "#;
 
         let (model_name, response, tokens) = self
@@ -319,32 +334,110 @@ Si aucun médicament n'est lisible, retourne: []
             .await?;
 
         log::info!(
-            "[PharmacyAIService] Ordonnance analysée avec {} (tokens: {})",
+            "[PharmacyAIService] Ordonnance analysée avec {} (tokens: {}), réponse brute: {}",
             model_name,
-            tokens
+            tokens,
+            &response[..response.len().min(500)]
         );
 
-        // Nettoyer la réponse pour extraire le JSON
-        let json_str = extract_json_array(&response);
+        // Nettoyer la réponse : retirer les balises markdown si présentes
+        let cleaned = clean_json_response(&response);
+        let json_str = extract_json_array(&cleaned);
 
         let medications: Vec<ExtractedMedication> = match serde_json::from_str(&json_str) {
             Ok(meds) => meds,
             Err(e) => {
                 log::warn!(
-                    "[PharmacyAIService] Erreur parsing ordonnance JSON: {}. Réponse: {}",
+                    "[PharmacyAIService] Erreur parsing ordonnance JSON: {}. json_str: '{}', réponse brute: '{}'",
                     e,
-                    &response[..response.len().min(200)]
+                    &json_str[..json_str.len().min(300)],
+                    &response[..response.len().min(300)]
                 );
-                vec![]
+                // Tentative de récupération : chercher des noms de médicaments dans le texte brut
+                Self::extract_medications_from_text(&response)
             }
         };
 
         Ok(medications)
     }
+
+    /// Fallback: tente d'extraire des noms de médicaments depuis une réponse texte libre de l'IA
+    fn extract_medications_from_text(text: &str) -> Vec<ExtractedMedication> {
+        // Mots-clés courants à ignorer
+        let stop_words = [
+            "médicament",
+            "ordonnance",
+            "patient",
+            "médecin",
+            "pharmacie",
+            "liste",
+            "voici",
+            "identifié",
+            "trouvé",
+            "prescription",
+            "traitement",
+        ];
+
+        let mut meds: Vec<ExtractedMedication> = Vec::new();
+        for line in text.lines() {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            // Ignorer les lignes qui ressemblent à du JSON cassé ou du texte générique
+            if line.starts_with('{')
+                || line.starts_with('[')
+                || line.starts_with(']')
+                || line.starts_with('}')
+            {
+                continue;
+            }
+            if stop_words.iter().any(|w| line.to_lowercase().contains(w)) {
+                continue;
+            }
+            // Heuristique : ligne courte (< 60 chars) sans ponctuation de phrase = probable nom de médicament
+            if line.len() > 3 && line.len() < 60 && !line.ends_with('.') {
+                // Nettoyer la ligne : retirer -, *, numéros de liste
+                let name = line
+                    .trim_start_matches(|c: char| {
+                        c == '-' || c == '*' || c.is_ascii_digit() || c == '.' || c == ')'
+                    })
+                    .trim();
+                if name.len() > 2 {
+                    meds.push(ExtractedMedication {
+                        name: name.to_string(),
+                        dosage: None,
+                        quantity: None,
+                        posologie: None,
+                    });
+                }
+            }
+        }
+        if !meds.is_empty() {
+            log::info!(
+                "[PharmacyAIService] Récupération texte brut: {} médicaments potentiels",
+                meds.len()
+            );
+        }
+        meds
+    }
+}
+
+/// Retire les balises markdown ```json ... ``` et autres artefacts courants des réponses IA
+fn clean_json_response(text: &str) -> String {
+    let s = text.trim();
+    // Retirer ```json ... ``` ou ``` ... ```
+    if let Some(inner) = s.strip_prefix("```json").or_else(|| s.strip_prefix("```")) {
+        if let Some(core) = inner.strip_suffix("```") {
+            return core.trim().to_string();
+        }
+    }
+    s.to_string()
 }
 
 /// Extrait le premier tableau JSON d'une réponse IA
 fn extract_json_array(text: &str) -> String {
+    // Chercher le premier '[' et le dernier ']' correspondant
     if let Some(start) = text.find('[') {
         if let Some(end) = text.rfind(']') {
             if end > start {

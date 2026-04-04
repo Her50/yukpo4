@@ -500,39 +500,62 @@ const SocialAIScreen: React.FC = () => {
             </Text>
 
             {/* ── TrendPulse : tendances du moment ── */}
-            {trendingTopics.length > 0 && (
-                <View style={styles.trendSection}>
-                    <View style={styles.trendHeader}>
-                        <SafeIcon name="trending-up" size={14} color="#F59E0B" />
-                        <Text style={styles.trendLabel}>Tendances du moment</Text>
-                        {injectTrend && (
-                            <TouchableOpacity onPress={() => setInjectTrend(null)}>
-                                <Text style={styles.trendClear}>✕ retirer</Text>
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        <View style={styles.trendChips}>
-                            {trendingTopics.map((t) => (
-                                <TouchableOpacity
-                                    key={t}
-                                    style={[styles.trendChip, injectTrend === t && styles.trendChipActive]}
-                                    onPress={() => setInjectTrend(injectTrend === t ? null : t)}
-                                >
-                                    <Text style={[styles.trendChipText, injectTrend === t && styles.trendChipTextActive]}>
-                                        #{t}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </ScrollView>
+            <View style={styles.trendSection}>
+                <View style={styles.trendHeader}>
+                    <SafeIcon name="trending-up" size={14} color="#F59E0B" />
+                    <Text style={styles.trendLabel}>
+                        {trendingTopics.length > 0 ? 'Tendances du moment' : 'TrendPulse'}
+                    </Text>
                     {injectTrend && (
-                        <Text style={styles.trendHint}>
-                            La tendance #{injectTrend} sera intégrée dans le contenu généré.
-                        </Text>
+                        <TouchableOpacity onPress={() => setInjectTrend(null)}>
+                            <Text style={styles.trendClear}>✕ retirer</Text>
+                        </TouchableOpacity>
                     )}
+                    <TouchableOpacity
+                        onPress={() => (navigation as any).navigate('TrendPulseDashboard')}
+                        style={styles.trendSeeAllBtn}
+                    >
+                        <Text style={styles.trendSeeAll}>Voir tout →</Text>
+                    </TouchableOpacity>
                 </View>
-            )}
+                {trendingTopics.length > 0 ? (
+                    <>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            <View style={styles.trendChips}>
+                                {trendingTopics.map((t) => (
+                                    <TouchableOpacity
+                                        key={t}
+                                        style={[styles.trendChip, injectTrend === t && styles.trendChipActive]}
+                                        onPress={() => setInjectTrend(injectTrend === t ? null : t)}
+                                    >
+                                        <Text style={[styles.trendChipText, injectTrend === t && styles.trendChipTextActive]}>
+                                            #{t}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
+                        {injectTrend && (
+                            <Text style={styles.trendHint}>
+                                La tendance #{injectTrend} sera intégrée dans le contenu généré.
+                            </Text>
+                        )}
+                    </>
+                ) : (
+                    <TouchableOpacity
+                        style={styles.trendEmptyCard}
+                        onPress={() => (navigation as any).navigate('TrendPulseDashboard')}
+                        activeOpacity={0.85}
+                    >
+                        <SafeIcon name="trending-up" size={24} color="#8B5CF6" />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.trendEmptyTitle}>Découvrir les tendances de votre secteur</Text>
+                            <Text style={styles.trendEmptyDesc}>Scores, prévisions D+7, scripts Reels générés automatiquement</Text>
+                        </View>
+                        <SafeIcon name="chevron-forward" size={18} color="#8B5CF6" />
+                    </TouchableOpacity>
+                )}
+            </View>
 
             {/* ── Étape 1 : Produit ── */}
             <View style={styles.stepHeader}>
@@ -727,6 +750,64 @@ const SocialAIScreen: React.FC = () => {
             <Text style={styles.sectionSubtitle}>
                 YukpoIA répond automatiquement à vos clients sur Messenger, Instagram DM, WhatsApp Business et aux commentaires de vos posts — 24h/24, 7j/7.
             </Text>
+
+            {/* ── Accès rapides modules avancés ── */}
+            <View style={styles.cmQuickRow}>
+                <TouchableOpacity
+                    style={[styles.cmQuickCard, { borderColor: '#8B5CF644' }]}
+                    onPress={() => (navigation as any).navigate('TrendPulseDashboard')}
+                >
+                    <SafeIcon name="trending-up" size={20} color="#8B5CF6" />
+                    <Text style={[styles.cmQuickTitle, { color: '#8B5CF6' }]}>TrendPulse</Text>
+                    <Text style={styles.cmQuickDesc}>Tendances{'\n'}de votre secteur</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.cmQuickCard, { borderColor: '#25D36644' }]}
+                    onPress={() => (navigation as any).navigate('WhatsAppBroadcast', { service_id: serviceId })}
+                >
+                    <SafeIcon name="logo-whatsapp" size={20} color="#25D366" />
+                    <Text style={[styles.cmQuickTitle, { color: '#25D366' }]}>Broadcast</Text>
+                    <Text style={styles.cmQuickDesc}>Envoyer à{'\n'}tous vos clients</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.cmQuickCard, { borderColor: '#0EA5E944' }]}
+                    onPress={() => (navigation as any).navigate('CRMLight', { service_id: serviceId })}
+                >
+                    <SafeIcon name="person-circle" size={20} color="#0EA5E9" />
+                    <Text style={[styles.cmQuickTitle, { color: '#0EA5E9' }]}>CRM</Text>
+                    <Text style={styles.cmQuickDesc}>Profils{'\n'}clients & VIP</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.cmQuickCard, { borderColor: '#6366F144' }]}
+                    onPress={() => (navigation as any).navigate('EmailCampaign', { service_id: serviceId })}
+                >
+                    <SafeIcon name="mail" size={20} color="#6366F1" />
+                    <Text style={[styles.cmQuickTitle, { color: '#6366F1' }]}>Email IA</Text>
+                    <Text style={styles.cmQuickDesc}>Campagnes{'\n'}email auto</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* ── Tendances injectables dans les réponses ── */}
+            {trendingTopics.length > 0 && (
+                <TouchableOpacity
+                    style={styles.trendBannerCM}
+                    onPress={() => (navigation as any).navigate('TrendPulseDashboard')}
+                    activeOpacity={0.85}
+                >
+                    <View style={styles.trendBannerLeft}>
+                        <SafeIcon name="trending-up" size={16} color="#F59E0B" />
+                        <View>
+                            <Text style={styles.trendBannerTitle}>
+                                {trendingTopics.length} tendances actives dans votre secteur
+                            </Text>
+                            <Text style={styles.trendBannerSub}>
+                                #{trendingTopics.slice(0, 3).join('  #')}
+                            </Text>
+                        </View>
+                    </View>
+                    <SafeIcon name="chevron-forward" size={16} color="#F59E0B" />
+                </TouchableOpacity>
+            )}
 
             {/* Activer/désactiver */}
             <View style={styles.settingRow}>
@@ -1591,6 +1672,34 @@ const styles = StyleSheet.create({
     trendChipText: { color: '#9CA3AF', fontSize: 12, fontWeight: '500' },
     trendChipTextActive: { color: '#1F2937', fontWeight: '700' },
     trendHint: { color: '#FDE68A', fontSize: 11, marginTop: 6, opacity: 0.8 },
+    trendSeeAllBtn: { paddingHorizontal: 8, paddingVertical: 2 },
+    trendSeeAll: { color: '#8B5CF6', fontSize: 12, fontWeight: '700' },
+    trendEmptyCard: {
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        backgroundColor: '#1F2937', borderRadius: 10, padding: 14,
+        borderWidth: 1, borderColor: '#8B5CF644',
+    },
+    trendEmptyTitle: { color: '#E2E8F0', fontSize: 13, fontWeight: '600' },
+    trendEmptyDesc: { color: '#94A3B8', fontSize: 11, marginTop: 2 },
+    // Community Manager quick actions
+    cmQuickRow: {
+        flexDirection: 'row', gap: 8, marginBottom: 16,
+    },
+    cmQuickCard: {
+        flex: 1, alignItems: 'center', gap: 4,
+        backgroundColor: '#1F2937', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 4,
+        borderWidth: 1,
+    },
+    cmQuickTitle: { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+    cmQuickDesc: { fontSize: 10, color: '#64748B', textAlign: 'center', lineHeight: 13 },
+    trendBannerCM: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        backgroundColor: '#F59E0B14', borderRadius: 10, padding: 12,
+        borderWidth: 1, borderColor: '#F59E0B44', marginBottom: 16, gap: 10,
+    },
+    trendBannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+    trendBannerTitle: { color: '#FDE68A', fontSize: 13, fontWeight: '600' },
+    trendBannerSub: { color: '#F59E0B', fontSize: 11, marginTop: 2 },
     webhookCard: { flexDirection: 'row', gap: 10, backgroundColor: '#F59E0B11', borderRadius: 10, padding: 12, marginBottom: 16, alignItems: 'flex-start', borderWidth: 1, borderColor: '#F59E0B33' },
     webhookTitle: { color: '#FDE68A', fontSize: 13, fontWeight: '600', marginBottom: 4 },
     webhookDesc: { color: '#FDE68A', fontSize: 11, lineHeight: 17, opacity: 0.8 },

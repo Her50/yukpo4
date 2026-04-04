@@ -2385,6 +2385,22 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         }
     }
 
+    /// Détecte le media_type depuis un raw base64 (data-URI ou brut).
+    /// Retourne "image/jpeg" par défaut (format le plus courant depuis caméra mobile).
+    fn multimodal_image_media_type(raw: &str) -> &'static str {
+        let s = raw.trim();
+        if s.starts_with("data:image/png") {
+            "image/png"
+        } else if s.starts_with("data:image/webp") {
+            "image/webp"
+        } else if s.starts_with("data:image/gif") {
+            "image/gif"
+        } else {
+            // JPEG par défaut (Expo launchCameraAsync et launchImageLibraryAsync retournent du JPEG)
+            "image/jpeg"
+        }
+    }
+
     /// ?? Appel Google Gemini Pro multimodal
     #[allow(dead_code)]
     async fn call_gemini_multimodal(
@@ -2524,6 +2540,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         let mut content_blocks: Vec<Value> = Vec::new();
         if let Some(imgs) = images {
             for (i, raw_b64) in imgs.iter().enumerate() {
+                let media_type = Self::multimodal_image_media_type(raw_b64);
                 let b64 = Self::multimodal_image_base64_clean(raw_b64);
                 if b64.is_empty() {
                     log::warn!(
@@ -2533,15 +2550,16 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     continue;
                 }
                 log::info!(
-                    "[Anthropic Multimodal] Image {}: {} caractères base64",
+                    "[Anthropic Multimodal] Image {}: {} caractères base64, type={}",
                     i + 1,
-                    b64.len()
+                    b64.len(),
+                    media_type
                 );
                 content_blocks.push(json!({
                     "type": "image",
                     "source": {
                         "type": "base64",
-                        "media_type": "image/jpeg",
+                        "media_type": media_type,
                         "data": b64
                     }
                 }));

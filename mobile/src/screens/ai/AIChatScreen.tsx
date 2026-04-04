@@ -7,6 +7,7 @@ import {
     FlatList,
     KeyboardAvoidingView,
     Platform,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -41,6 +42,8 @@ interface ActionCard {
 const QUICK_ACTIONS = [
     { label: 'Tendances', screen: 'TrendPulseDashboard', icon: 'trending-up', color: '#8B5CF6' },
     { label: 'Community Manager', screen: 'SocialAI', icon: 'people', color: '#1877F2' },
+    { label: 'Broadcast WA', screen: 'WhatsAppBroadcast', icon: 'logo-whatsapp', color: '#25D366' },
+    { label: 'CRM Clients', screen: 'CRMLight', icon: 'person-circle', color: '#0EA5E9' },
     { label: 'Analytics', screen: 'SocialAnalyticsDashboard', icon: 'bar-chart', color: '#10B981' },
     { label: 'Réputation', screen: 'ReputationDashboard', icon: 'shield-checkmark', color: '#F59E0B' },
 ];
@@ -48,7 +51,7 @@ const QUICK_ACTIONS = [
 // Mots-clés → navigation directe
 const NAV_TRIGGERS: { keywords: string[]; action: ActionCard }[] = [
     {
-        keywords: ['trend', 'tendance', 'viral', 'populaire', 'trending', 'trendpulse'],
+        keywords: ['trend', 'tendance', 'viral', 'populaire', 'trending', 'trendpulse', 'opportunité'],
         action: {
             label: 'Voir les tendances TrendPulse',
             screen: 'TrendPulseDashboard',
@@ -57,7 +60,34 @@ const NAV_TRIGGERS: { keywords: string[]; action: ActionCard }[] = [
         },
     },
     {
-        keywords: ['community', 'manager', 'chatbot', 'bot', 'répondre', 'messenger', 'instagram dm', 'commentaire'],
+        keywords: ['reel', 'script', 'tiktok', 'shorts', 'scénario vidéo', 'script reel'],
+        action: {
+            label: 'Générer un script Reel/TikTok',
+            screen: 'ReelScript',
+            icon: 'film',
+            color: '#8B5CF6',
+        },
+    },
+    {
+        keywords: ['planification', 'meilleure heure', 'optimal', 'smart schedule', 'quand publier', 'heure publier'],
+        action: {
+            label: 'Planification intelligente',
+            screen: 'SmartScheduling',
+            icon: 'calendar',
+            color: '#7C3AED',
+        },
+    },
+    {
+        keywords: ['benchmark', 'comparaison', 'concurrent', 'secteur', 'performance secteur'],
+        action: {
+            label: 'Benchmark vs secteur',
+            screen: 'BenchmarkAnalytics',
+            icon: 'podium',
+            color: '#6366F1',
+        },
+    },
+    {
+        keywords: ['community', 'manager', 'chatbot', 'bot', 'répondre', 'messenger', 'instagram dm', 'commentaire', 'inbox', 'automatique'],
         action: {
             label: 'Ouvrir Community Manager Yukpo',
             screen: 'SocialAI',
@@ -66,7 +96,7 @@ const NAV_TRIGGERS: { keywords: string[]; action: ActionCard }[] = [
         },
     },
     {
-        keywords: ['analytique', 'analytics', 'statistique', 'performance', 'engagement'],
+        keywords: ['analytique', 'analytics', 'statistique', 'performance', 'engagement', 'rapport'],
         action: {
             label: 'Voir les analytics sociaux',
             screen: 'SocialAnalyticsDashboard',
@@ -75,7 +105,7 @@ const NAV_TRIGGERS: { keywords: string[]; action: ActionCard }[] = [
         },
     },
     {
-        keywords: ['réputation', 'avis', 'mention', 'crise', 'commentaire négatif'],
+        keywords: ['réputation', 'mention', 'crise', 'commentaire négatif', 'avis négatif', 'surveiller'],
         action: {
             label: 'Dashboard Réputation',
             screen: 'ReputationDashboard',
@@ -84,7 +114,7 @@ const NAV_TRIGGERS: { keywords: string[]; action: ActionCard }[] = [
         },
     },
     {
-        keywords: ['voix', 'brand voice', 'ton de marque', 'style rédaction', 'signature'],
+        keywords: ['voix', 'brand voice', 'ton de marque', 'style', 'signature', 'personnalité marque'],
         action: {
             label: 'Configurer la voix de marque',
             screen: 'BrandVoice',
@@ -93,12 +123,85 @@ const NAV_TRIGGERS: { keywords: string[]; action: ActionCard }[] = [
         },
     },
     {
-        keywords: ['valider', 'validation', 'approuver', 'post en attente', 'contenu à valider'],
+        keywords: ['valider', 'validation', 'approuver', 'post en attente', 'contenu à valider', 'approuver post'],
         action: {
             label: 'Validation de contenu',
             screen: 'ContentApproval',
             icon: 'checkmark-circle',
             color: '#10B981',
+        },
+    },
+    {
+        keywords: ['email', 'emailing', 'newsletter', 'campagne email', 'email marketing'],
+        action: {
+            label: 'Email Marketing IA',
+            screen: 'EmailCampaign',
+            icon: 'mail',
+            color: '#6366F1',
+        },
+    },
+    {
+        keywords: ['broadcast', 'envoyer à tous', 'message de masse', 'whatsapp broadcast', 'diffusion'],
+        action: {
+            label: 'WhatsApp Broadcast',
+            screen: 'WhatsAppBroadcast',
+            icon: 'logo-whatsapp',
+            color: '#25D366',
+        },
+    },
+    {
+        keywords: ['panier abandonné', 'relance client', 'abandoned cart', 'récupérer client', 'relancer'],
+        action: {
+            label: 'Recovery paniers abandonnés',
+            screen: 'WhatsAppBroadcast',
+            params: { tab: 'recovery' },
+            icon: 'cart',
+            color: '#F59E0B',
+        },
+    },
+    {
+        keywords: ['crm', 'client', 'profil client', 'vip', 'fidélité', 'historique client'],
+        action: {
+            label: 'CRM Clients',
+            screen: 'CRMLight',
+            icon: 'person-circle',
+            color: '#0EA5E9',
+        },
+    },
+    {
+        keywords: ['marketplace', 'vendre à partenaires', 'cross-vente', 'vitrine partenaires'],
+        action: {
+            label: 'Marketplace cross-partenaires',
+            screen: 'Marketplace',
+            icon: 'storefront',
+            color: '#059669',
+        },
+    },
+    {
+        keywords: ['long format', 'article', 'blog', 'youtube script', 'linkedin article', 'podcast'],
+        action: {
+            label: 'Contenu long format',
+            screen: 'LongformContent',
+            icon: 'document-text',
+            color: '#0EA5E9',
+        },
+    },
+    {
+        keywords: ['lien de paiement', 'payment link', 'payer whatsapp', 'paiement whatsapp'],
+        action: {
+            label: 'Créer un lien de paiement',
+            screen: 'CRMLight',
+            icon: 'card',
+            color: '#7C3AED',
+        },
+    },
+    {
+        keywords: ['configurer', 'connecter', 'compte social', 'facebook connecter', 'whatsapp configurer', 'setup'],
+        action: {
+            label: 'Connecter mes comptes sociaux',
+            screen: 'SocialAccountSetup',
+            icon: 'link',
+            color: '#1877F2',
         },
     },
 ];
@@ -123,7 +226,7 @@ const AIChatScreen: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '0',
-            text: 'Bonjour ! Je suis YukpoIA, votre assistant intelligent.\n\nJe peux vous aider à :\n• Analyser les tendances de votre secteur\n• Gérer votre communauté et vos commentaires\n• Optimiser vos publications sociales\n• Suivre votre réputation en ligne\n\nQue souhaitez-vous faire ?',
+            text: 'Bonjour ! Je suis YukpoIA, votre assistant intelligent.\n\nVoici ce que je peux faire pour vous :\n\n📈 TENDANCES\n• Voir les tendances de votre secteur → dites "tendances"\n• Générer un script Reel/TikTok → dites "script reel"\n• Trouver la meilleure heure de publication → dites "quand publier"\n• Comparer vos performances vs la concurrence → dites "benchmark"\n\n🤖 COMMUNITY MANAGER\n• Configurer le chatbot 24/7 → dites "chatbot"\n• Envoyer un broadcast WhatsApp → dites "broadcast"\n• Gérer vos clients VIP → dites "CRM clients"\n• Campagnes email IA → dites "email marketing"\n• Récupérer paniers abandonnés → dites "panier abandonné"\n• Marketplace cross-partenaires → dites "marketplace"\n• Surveiller votre réputation → dites "réputation"\n• Configurer votre voix de marque → dites "brand voice"\n\nUtilisez aussi les raccourcis rapides ci-dessus ↑',
             isUser: false,
             timestamp: new Date(),
         },
@@ -223,8 +326,13 @@ const AIChatScreen: React.FC = () => {
                 <View style={s.onlineDot} />
             </View>
 
-            {/* Raccourcis rapides */}
-            <View style={s.quickBar}>
+            {/* Raccourcis rapides — scroll horizontal */}
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={s.quickBar}
+                contentContainerStyle={s.quickBarContent}
+            >
                 {QUICK_ACTIONS.map(qa => (
                     <TouchableOpacity
                         key={qa.screen}
@@ -235,7 +343,36 @@ const AIChatScreen: React.FC = () => {
                         <Text style={[s.quickLabel, { color: qa.color }]}>{qa.label}</Text>
                     </TouchableOpacity>
                 ))}
-            </View>
+            </ScrollView>
+
+            {/* Suggestions questions — scroll horizontal */}
+            {messages.length === 1 && (
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={s.suggestBar}
+                    contentContainerStyle={s.suggestBarContent}
+                >
+                    {[
+                        'Quelles sont les tendances de mon secteur ?',
+                        'Comment configurer le chatbot ?',
+                        'Envoyer un broadcast WhatsApp',
+                        'Générer un script Reel',
+                        'Voir mes clients VIP',
+                        'Créer une campagne email',
+                        'Récupérer paniers abandonnés',
+                        'Comparer mes stats vs concurrents',
+                    ].map(q => (
+                        <TouchableOpacity
+                            key={q}
+                            style={s.suggestChip}
+                            onPress={() => setInputText(q)}
+                        >
+                            <Text style={s.suggestText}>{q}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            )}
 
             {/* Messages */}
             <FlatList
@@ -303,11 +440,29 @@ const s = StyleSheet.create({
         backgroundColor: '#10B981',
     },
     quickBar: {
-        flexDirection: 'row', flexWrap: 'wrap', gap: 8,
-        paddingHorizontal: 12, paddingVertical: 10,
         backgroundColor: '#1E293B',
         borderBottomWidth: 1, borderBottomColor: '#334155',
+        maxHeight: 52,
     },
+    quickBarContent: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        paddingHorizontal: 12, paddingVertical: 10,
+    },
+    suggestBar: {
+        backgroundColor: '#0F172A',
+        maxHeight: 48,
+        borderBottomWidth: 1, borderBottomColor: '#1E293B',
+    },
+    suggestBarContent: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        paddingHorizontal: 12, paddingVertical: 8,
+    },
+    suggestChip: {
+        borderWidth: 1, borderColor: '#334155', borderRadius: 20,
+        paddingHorizontal: 12, paddingVertical: 6,
+        backgroundColor: '#1E293B',
+    },
+    suggestText: { color: '#94A3B8', fontSize: 12 },
     quickBtn: {
         flexDirection: 'row', alignItems: 'center', gap: 5,
         borderWidth: 1, borderRadius: 20,

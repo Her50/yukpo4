@@ -438,8 +438,8 @@ const PharmacieHomeScreen: React.FC = () => {
 
                 result = await ImagePicker.launchCameraAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                    allowsEditing: true,
-                    quality: 0.8,
+                    allowsEditing: false,
+                    quality: 1.0,
                     base64: true,
                 });
             } else {
@@ -451,8 +451,8 @@ const PharmacieHomeScreen: React.FC = () => {
 
                 result = await ImagePicker.launchImageLibraryAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                    allowsEditing: true,
-                    quality: 0.8,
+                    allowsEditing: false,
+                    quality: 1.0,
                     base64: true,
                 });
             }
@@ -540,14 +540,15 @@ const PharmacieHomeScreen: React.FC = () => {
                 Alert.alert('Permission requise', 'Autorisez l\'accès à la caméra pour scanner une ordonnance.');
                 return;
             }
-            result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], base64: true, quality: 0.7 });
+            // quality: 1.0 pour OCR optimal sur ordonnances manuscrites ; pas de recadrage (allowsEditing: false)
+            result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], base64: true, quality: 1.0, allowsEditing: false });
         } else {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
                 Alert.alert('Permission requise', 'Autorisez l\'accès à la galerie.');
                 return;
             }
-            result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.7 });
+            result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 1.0, allowsEditing: false });
         }
         if (result.canceled || !result.assets?.[0]?.base64) return;
         const base64 = result.assets[0].base64!;
@@ -557,7 +558,11 @@ const PharmacieHomeScreen: React.FC = () => {
             if (extraction.success && extraction.medications && extraction.medications.length > 0) {
                 setExtractedMedications(extraction.medications);
             } else {
-                Alert.alert('Aucun médicament détecté', extraction.error || 'L\'IA n\'a pas pu identifier de médicaments dans cette image. Essayez avec une image plus nette.');
+                Alert.alert(
+                    'Aucun médicament détecté',
+                    extraction.error || 'Yukpo n\'a pas pu identifier de médicaments sur cette image. Assurez-vous que l\'ordonnance est bien éclairée, nette et entièrement visible.',
+                    [{ text: 'Réessayer', onPress: () => setShowOrdonnanceModal(true) }, { text: 'OK' }]
+                );
             }
         } catch (err: any) {
             Alert.alert('Erreur', err.message || 'Impossible d\'analyser l\'ordonnance.');
