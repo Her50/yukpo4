@@ -946,7 +946,7 @@ function MainTabNavigator() {
       {!isCourier && (
         <Tab.Screen
           name="TrendPulseDashboard"
-          getComponent={() => loadScreen('../screens/specialized/TrendPulseDashboardScreen', 'TrendPulseDashboard')}
+          component={S['TrendPulseDashboard'] || loadScreen('../screens/specialized/TrendPulseDashboardScreen', 'TrendPulseDashboard')}
           options={{
             tabBarLabel: 'Trends',
             tabBarBadge: trendBadge > 0 ? trendBadge : undefined,

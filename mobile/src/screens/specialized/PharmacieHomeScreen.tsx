@@ -25,7 +25,6 @@ import {
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
-import { NativeInput } from '../../components/SafeNativeDesign';
 import { SafeNativeView } from '../../components/SafeNativeView';
 import { useToaster } from '../../components/ToasterProvider';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
@@ -556,7 +555,11 @@ const PharmacieHomeScreen: React.FC = () => {
         try {
             const extraction = await pharmacyService.extractOrdonnance(base64);
             if (extraction.success && extraction.medications && extraction.medications.length > 0) {
-                setExtractedMedications(extraction.medications);
+                const names = extraction.medications.map(m => m.name);
+                setTextMedications(prev => {
+                    const toAdd = names.filter(n => !prev.includes(n));
+                    return [...prev, ...toAdd];
+                });
             } else {
                 Alert.alert(
                     'Aucun médicament détecté',
@@ -890,43 +893,69 @@ const PharmacieHomeScreen: React.FC = () => {
                         </View>
                     )}
 
-                    {/* Barre de recherche */}
+                    {/* Recherche multi-médicaments + Scan fusionnés */}
                     <View style={styles.searchContainer}>
                         <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
-                            <SafeIcon name="search" size={20} color="#9CA3AF" type="lucide" />
+                            <SafeIcon name="pill" size={18} color="#9CA3AF" type="lucide" />
                             <TextInput
                                 style={styles.searchInput}
-                                placeholder={t('pharmacieHome.rechercherUnMedicament')}
+                                placeholder="Médicament, pharmacie..."
                                 placeholderTextColor="#9CA3AF"
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                onSubmitEditing={handleSearch}
+                                value={medInputValue}
+                                onChangeText={setMedInputValue}
+                                onSubmitEditing={addTextMedication}
                                 onFocus={() => setSearchFocused(true)}
                                 onBlur={() => setSearchFocused(false)}
-                                returnKeyType="search"
+                                returnKeyType="done"
                             />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        setSearchQuery('');
-                                        handleSearch();
-                                    }}
-                                    style={styles.clearButton}
-                                >
-                                    <SafeIcon name="x" size={18} color="#9CA3AF" type="lucide" />
+                            {medInputValue.length > 0 && (
+                                <TouchableOpacity onPress={addTextMedication} style={styles.clearButton}>
+                                    <SafeIcon name="plus-circle" size={20} color="#EC4899" type="lucide" />
                                 </TouchableOpacity>
                             )}
-                            {/* ✅ NOUVEAU: Bouton de recherche */}
+                        </View>
+                        {/* Bouton scan intégré */}
+                        <TouchableOpacity
+                            style={styles.scanInlineBtn}
+                            onPress={() => { hapticPress(); setShowOrdonnanceModal(true); }}
+                            activeOpacity={0.8}
+                            disabled={extractingOrdonnance}
+                        >
+                            {extractingOrdonnance
+                                ? <ActivityIndicator size="small" color="#FFFFFF" />
+                                : <SafeIcon name="file-scan" size={20} color="#FFFFFF" type="lucide" />
+                            }
+                            <Text style={styles.scanInlineBtnText}>Scan</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Tags médicaments ajoutés + bouton lancer la recherche */}
+                    {textMedications.length > 0 && (
+                        <View style={styles.medTagsInHeader}>
+                            <View style={styles.medTagsRowInHeader}>
+                                {textMedications.map((name, idx) => (
+                                    <TouchableOpacity
+                                        key={idx}
+                                        style={styles.medTagChip}
+                                        onPress={() => removeTextMedication(name)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <SafeIcon name="pill" size={11} color="#9D174D" type="lucide" />
+                                        <Text style={styles.medTagChipText}>{name}</Text>
+                                        <SafeIcon name="x" size={11} color="#9CA3AF" type="lucide" />
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
                             <TouchableOpacity
-                                style={[styles.searchButton, !searchQuery.trim() && styles.searchButtonDisabled]}
-                                onPress={handleSearch}
-                                disabled={!searchQuery.trim()}
-                                activeOpacity={0.7}
+                                style={styles.searchMedBtn}
+                                onPress={handleSearchByMedications}
+                                activeOpacity={0.8}
                             >
-                                <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
+                                <SafeIcon name="search" size={15} color="#FFFFFF" type="lucide" />
+                                <Text style={styles.searchMedBtnText}>Trouver ces médicaments</Text>
                             </TouchableOpacity>
                         </View>
-                    </View>
+                    )}
                 </LinearGradient>
 
                 {/* Quick filters */}
@@ -971,206 +1000,89 @@ const PharmacieHomeScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Bouton Scanner ordonnance */}
-                <TouchableOpacity
-                    style={styles.ordonnanceScanButton}
-                    onPress={() => { hapticPress(); setShowOrdonnanceModal(true); }}
-                    activeOpacity={0.8}
-                    disabled={extractingOrdonnance}
-                >
-                    <SafeIcon name="file-scan" size={20} color="#FFFFFF" type="lucide" />
-                    <Text style={styles.ordonnanceScanButtonText}>
-                        {extractingOrdonnance ? 'Analyse en cours...' : 'Scanner une ordonnance'}
-                    </Text>
-                    {extractingOrdonnance
-                        ? <ActivityIndicator size="small" color="#FFFFFF" />
-                        : <SafeIcon name="chevron-right" size={18} color="rgba(255,255,255,0.7)" type="lucide" />
-                    }
-                </TouchableOpacity>
-
-                {/* Résultat extraction ordonnance */}
+                {/* Indicateur de chargement scan ordonnance */}
                 {extractingOrdonnance && (
                     <View style={styles.ordonnanceLoadingCard}>
                         <ActivityIndicator size="large" color="#EC4899" />
                         <Text style={styles.ordonnanceLoadingText}>L'IA analyse votre ordonnance...</Text>
                     </View>
                 )}
-                {extractedMedications && extractedMedications.length > 0 && (
-                    <View style={styles.extractedMedsCard}>
-                        <View style={styles.extractedMedsHeader}>
-                            <SafeIcon name="check-circle" size={20} color="#10B981" type="lucide" />
-                            <Text style={styles.extractedMedsTitle}>
-                                {extractedMedications.length} médicament{extractedMedications.length > 1 ? 's' : ''} détecté{extractedMedications.length > 1 ? 's' : ''}
+
+                {/* Options de recherche (GPS, distance, filtres) */}
+                {textMedications.length > 0 && (
+                    <View style={styles.searchOptionsCard}>
+                        {/* GPS position */}
+                        <TouchableOpacity
+                            style={styles.gpsButton}
+                            onPress={() => { hapticPress(); setShowSearchGPSModal(true); }}
+                        >
+                            <SafeIcon name="map-pin" size={18} color="#EC4899" type="lucide" />
+                            <Text style={styles.gpsButtonText} numberOfLines={1}>
+                                {searchGpsString || 'Utiliser ma position GPS (optionnel)'}
                             </Text>
-                            <TouchableOpacity onPress={() => setExtractedMedications(null)}>
-                                <SafeIcon name="x" size={18} color="#6B7280" type="lucide" />
+                            <SafeIcon name="chevron-right" size={18} color="#9CA3AF" type="lucide" />
+                        </TouchableOpacity>
+
+                        {/* Distance maximale */}
+                        <View style={styles.distanceRow}>
+                            <SafeIcon name="maximize-2" size={15} color="#6B7280" type="lucide" />
+                            <Text style={styles.distanceLabel}>Distance max :</Text>
+                            <TouchableOpacity
+                                style={styles.distanceBtn}
+                                onPress={() => { hapticPress(); setMaxDistance(d => Math.max(5, d - 5)); }}
+                            >
+                                <SafeIcon name="minus" size={16} color="#FFFFFF" type="lucide" />
+                            </TouchableOpacity>
+                            <Text style={styles.distanceValue}>{maxDistance} km</Text>
+                            <TouchableOpacity
+                                style={styles.distanceBtn}
+                                onPress={() => { hapticPress(); setMaxDistance(d => Math.min(200, d + 5)); }}
+                            >
+                                <SafeIcon name="plus" size={16} color="#FFFFFF" type="lucide" />
                             </TouchableOpacity>
                         </View>
-                        {extractedMedications.map((med, idx) => (
-                            <View key={idx} style={styles.extractedMedItem}>
-                                <SafeIcon name="pill" size={14} color="#EC4899" type="lucide" />
-                                <View style={styles.extractedMedInfo}>
-                                    <Text style={styles.extractedMedName}>{med.name}</Text>
-                                    {(med.dosage || med.posologie) && (
-                                        <Text style={styles.extractedMedDetail}>
-                                            {[med.dosage, med.posologie].filter(Boolean).join(' · ')}
-                                        </Text>
-                                    )}
-                                </View>
-                            </View>
-                        ))}
+
+                        {/* Options rapides */}
                         <TouchableOpacity
-                            style={styles.searchByOrdonnanceButton}
-                            onPress={handleSearchByOrdonnance}
-                            activeOpacity={0.8}
+                            style={styles.advancedFiltersToggle}
+                            onPress={() => { hapticPress(); setShowAdvancedSearchFilters(v => !v); }}
                         >
-                            <SafeIcon name="map-pin" size={18} color="#FFFFFF" type="lucide" />
-                            <Text style={styles.searchByOrdonnanceButtonText}>
-                                Trouver les pharmacies avec ces médicaments
+                            <SafeIcon name={showAdvancedSearchFilters ? 'chevron-up' : 'chevron-down'} size={18} color="#EC4899" type="lucide" />
+                            <Text style={styles.advancedFiltersToggleText}>
+                                {showAdvancedSearchFilters ? 'Masquer' : 'Afficher'} les options
                             </Text>
                         </TouchableOpacity>
-                    </View>
-                )}
 
-                {/* Section Recherche multi-médicaments par texte */}
-                <View style={styles.medSearchCard}>
-                    <Text style={styles.medSearchTitle}>Recherche par médicaments</Text>
-                    <Text style={styles.medSearchSubtitle}>
-                        Saisissez plusieurs médicaments — les pharmacies seront classées par taux de disponibilité
-                    </Text>
-
-                    {/* Saisie + bouton ajout */}
-                    <View style={styles.medInputRow}>
-                        <View style={styles.medInputWrapper}>
-                            <NativeInput
-                                value={medInputValue}
-                                onChangeText={setMedInputValue}
-                                placeholder="Ex: Paracetamol, Amoxicilline..."
-                                autoCapitalize="none"
-                                onSubmitEditing={addTextMedication}
-                                returnKeyType="done"
-                            />
-                        </View>
-                        <TouchableOpacity
-                            style={styles.medAddButton}
-                            onPress={addTextMedication}
-                            activeOpacity={0.8}
-                        >
-                            <SafeIcon name="plus" size={20} color="#FFFFFF" type="lucide" />
-                        </TouchableOpacity>
-                    </View>
-                    <Text style={styles.medInputHint}>Séparez par virgule ou appuyez + pour en ajouter plusieurs</Text>
-
-                    {/* Tags médicaments ajoutés */}
-                    {textMedications.length > 0 && (
-                        <View style={styles.medTagsContainer}>
-                            {textMedications.map((name, idx) => (
-                                <View key={idx} style={styles.medTag}>
-                                    <SafeIcon name="pill" size={12} color="#EC4899" type="lucide" />
-                                    <Text style={styles.medTagText}>{name}</Text>
+                        {showAdvancedSearchFilters && (
+                            <View style={styles.advancedOptionsBlock}>
+                                <View style={styles.optionRow}>
+                                    <SafeIcon name="clock" size={18} color="#EC4899" type="lucide" />
+                                    <Text style={styles.optionRowLabel}>De garde uniquement (24/7)</Text>
                                     <TouchableOpacity
-                                        onPress={() => removeTextMedication(name)}
-                                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                                        style={[styles.toggle, searchOnDutyOnly && styles.toggleActive]}
+                                        onPress={() => { hapticPress(); setSearchOnDutyOnly(v => !v); }}
                                     >
-                                        <SafeIcon name="x" size={14} color="#9CA3AF" type="lucide" />
+                                        <Text style={[styles.toggleText, searchOnDutyOnly && styles.toggleTextActive]}>
+                                            {searchOnDutyOnly ? 'OUI' : 'NON'}
+                                        </Text>
                                     </TouchableOpacity>
                                 </View>
-                            ))}
-                        </View>
-                    )}
-
-                    {textMedications.length > 0 && (
-                        <View style={styles.medMatchingInfo}>
-                            <SafeIcon name="info" size={14} color="#3B82F6" type="lucide" />
-                            <Text style={styles.medMatchingInfoText}>
-                                Les pharmacies seront classées : 100% si tous disponibles, sinon % de complétude
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* GPS position */}
-                    <TouchableOpacity
-                        style={styles.gpsButton}
-                        onPress={() => { hapticPress(); setShowSearchGPSModal(true); }}
-                    >
-                        <SafeIcon name="map-pin" size={18} color="#EC4899" type="lucide" />
-                        <Text style={styles.gpsButtonText} numberOfLines={1}>
-                            {searchGpsString || 'Utiliser ma position GPS (optionnel)'}
-                        </Text>
-                        <SafeIcon name="chevron-right" size={18} color="#9CA3AF" type="lucide" />
-                    </TouchableOpacity>
-
-                    {/* Distance maximale */}
-                    <View style={styles.distanceRow}>
-                        <SafeIcon name="maximize-2" size={15} color="#6B7280" type="lucide" />
-                        <Text style={styles.distanceLabel}>Distance max :</Text>
-                        <TouchableOpacity
-                            style={styles.distanceBtn}
-                            onPress={() => { hapticPress(); setMaxDistance(d => Math.max(5, d - 5)); }}
-                        >
-                            <SafeIcon name="minus" size={16} color="#FFFFFF" type="lucide" />
-                        </TouchableOpacity>
-                        <Text style={styles.distanceValue}>{maxDistance} km</Text>
-                        <TouchableOpacity
-                            style={styles.distanceBtn}
-                            onPress={() => { hapticPress(); setMaxDistance(d => Math.min(200, d + 5)); }}
-                        >
-                            <SafeIcon name="plus" size={16} color="#FFFFFF" type="lucide" />
-                        </TouchableOpacity>
+                                <View style={styles.optionRow}>
+                                    <SafeIcon name="check-circle" size={18} color="#10B981" type="lucide" />
+                                    <Text style={styles.optionRowLabel}>Disponibles maintenant</Text>
+                                    <TouchableOpacity
+                                        style={[styles.toggle, searchAvailableOnly && styles.toggleActive]}
+                                        onPress={() => { hapticPress(); setSearchAvailableOnly(v => !v); }}
+                                    >
+                                        <Text style={[styles.toggleText, searchAvailableOnly && styles.toggleTextActive]}>
+                                            {searchAvailableOnly ? 'OUI' : 'NON'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
                     </View>
-
-                    {/* Options rapides */}
-                    <TouchableOpacity
-                        style={styles.advancedFiltersToggle}
-                        onPress={() => { hapticPress(); setShowAdvancedSearchFilters(v => !v); }}
-                    >
-                        <SafeIcon name={showAdvancedSearchFilters ? 'chevron-up' : 'chevron-down'} size={18} color="#EC4899" type="lucide" />
-                        <Text style={styles.advancedFiltersToggleText}>
-                            {showAdvancedSearchFilters ? 'Masquer' : 'Afficher'} les options
-                        </Text>
-                    </TouchableOpacity>
-
-                    {showAdvancedSearchFilters && (
-                        <View style={styles.advancedOptionsBlock}>
-                            {/* De garde uniquement */}
-                            <View style={styles.optionRow}>
-                                <SafeIcon name="clock" size={18} color="#EC4899" type="lucide" />
-                                <Text style={styles.optionRowLabel}>De garde uniquement (24/7)</Text>
-                                <TouchableOpacity
-                                    style={[styles.toggle, searchOnDutyOnly && styles.toggleActive]}
-                                    onPress={() => { hapticPress(); setSearchOnDutyOnly(v => !v); }}
-                                >
-                                    <Text style={[styles.toggleText, searchOnDutyOnly && styles.toggleTextActive]}>
-                                        {searchOnDutyOnly ? 'OUI' : 'NON'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                            {/* Disponibles maintenant */}
-                            <View style={styles.optionRow}>
-                                <SafeIcon name="check-circle" size={18} color="#10B981" type="lucide" />
-                                <Text style={styles.optionRowLabel}>Disponibles maintenant</Text>
-                                <TouchableOpacity
-                                    style={[styles.toggle, searchAvailableOnly && styles.toggleActive]}
-                                    onPress={() => { hapticPress(); setSearchAvailableOnly(v => !v); }}
-                                >
-                                    <Text style={[styles.toggleText, searchAvailableOnly && styles.toggleTextActive]}>
-                                        {searchAvailableOnly ? 'OUI' : 'NON'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    )}
-
-                    {/* Bouton lancer la recherche */}
-                    <TouchableOpacity
-                        style={styles.medSearchButton}
-                        onPress={handleSearchByMedications}
-                        activeOpacity={0.8}
-                    >
-                        <SafeIcon name="search" size={18} color="#FFFFFF" type="lucide" />
-                        <Text style={styles.medSearchButtonText}>Lancer la recherche</Text>
-                    </TouchableOpacity>
-                </View>
+                )}
 
                 {/* Section Assistant IA */}
                 <View style={styles.aiSection}>
@@ -2346,9 +2258,82 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
         marginTop: 8,
+        marginBottom: 8,
+        gap: 8,
+    },
+    scanInlineBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#EC4899',
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        gap: 6,
+    },
+    scanInlineBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    medTagsInHeader: {
+        marginBottom: 10,
+        gap: 8,
+    },
+    medTagsRowInHeader: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    medTagChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FEE2E2',
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        gap: 5,
+        borderWidth: 1,
+        borderColor: '#FBCFE8',
+    },
+    medTagChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#9D174D',
+    },
+    searchMedBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#059669',
+        borderRadius: 10,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        gap: 7,
+        alignSelf: 'flex-start',
+    },
+    searchMedBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    searchOptionsCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 14,
+        marginHorizontal: 16,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
     searchBar: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',

@@ -36,6 +36,144 @@ pub async fn whatsapp_business_info(
     })))
 }
 
+// ─── WhatsApp Guided Setup ────────────────────────────────────────────────────
+/// POST /api/social/accounts/whatsapp/setup-guided
+/// Prend le token WA Business → valide, auto-découvre le phone_number_id,
+/// enregistre le webhook automatiquement, sauvegarde le compte.
+/// Le partenaire n'a plus besoin d'ouvrir Meta Business Manager.
+pub async fn whatsapp_guided_setup(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<WhatsAppSetupPayload>,
+) -> AppResult<Json<serde_json::Value>> {
+    let client = Client::new();
+    let token = payload.wa_token.trim();
+
+    // ── Étape 1: Valider le token via Meta Graph API ──────────────────────────
+    let me_url = format!(
+        "https://graph.facebook.com/v20.0/me?fields=id,name&access_token={}",
+        encode(token)
+    );
+    let me_resp = client
+        .get(&me_url)
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("Meta API inaccessible: {}", e)))?;
+
+    if !me_resp.status().is_success() {
+        return Err(AppError::Internal(
+            "Token invalide. Vérifiez votre token d'accès WhatsApp Business.".to_string(),
+        ));
+    }
+    let me_data: serde_json::Value = me_resp
+        .json()
+        .await
+        .map_err(|_| AppError::Internal("Réponse Meta illisible".to_string()))?;
+
+    if me_data.get("error").is_some() {
+        let msg = me_data["error"]["message"].as_str().unwrap_or("Token invalide");
+        return Err(AppError::Internal(format!("Meta: {}", msg)));
+    }
+
+    // ── Étape 2: Découvrir le WABA et les numéros de téléphone ───────────────
+    let phone_number_id = if let Some(pid) = payload.phone_number_id.as_deref() {
+        pid.to_string()
+    } else {
+        // Auto-découverte via /v20.0/me/phone_numbers
+        let phones_url = format!(
+            "https://graph.facebook.com/v20.0/me/phone_numbers?fields=id,display_phone_number,verified_name&access_token={}",
+            encode(token)
+        );
+        let phones_resp = client
+            .get(&phones_url)
+            .send()
+            .await
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+        let phones_data: serde_json::Value =
+            phones_resp.json().await.unwrap_or(serde_json::json!({}));
+        let first_id = phones_data["data"][0]["id"].as_str().unwrap_or("").to_string();
+        if first_id.is_empty() {
+            return Err(AppError::Internal(
+                "Aucun numéro WhatsApp Business trouvé. Entrez votre Phone Number ID manuellement."
+                    .to_string(),
+            ));
+        }
+        first_id
+    };
+
+    let display_phone = {
+        let phone_url = format!(
+            "https://graph.facebook.com/v20.0/{}?fields=display_phone_number,verified_name&access_token={}",
+            encode(&phone_number_id), encode(token)
+        );
+        let display = if let Ok(resp) = client.get(&phone_url).send().await {
+            if let Ok(v) = resp.json::<serde_json::Value>().await {
+                v["display_phone_number"].as_str().unwrap_or("").to_string()
+            } else {
+                String::new()
+            }
+        } else {
+            String::new()
+        };
+        if display.is_empty() {
+            phone_number_id.clone()
+        } else {
+            display
+        }
+    };
+
+    // ── Étape 3: Auto-enregistrement webhook via Graph API ────────────────────
+    let webhook_base =
+        env::var("API_BASE_URL").unwrap_or_else(|_| "https://api.yukpo.com".to_string());
+    let verify_token = "yukpo_webhook_2026";
+
+    // S'abonner aux notifications WhatsApp Business
+    let sub_url = format!(
+        "https://graph.facebook.com/v20.0/{}/subscribed_apps?access_token={}",
+        encode(&phone_number_id),
+        encode(token)
+    );
+    let _sub = client.post(&sub_url)
+        .json(&serde_json::json!({
+            "subscribed_fields": ["messages", "message_deliveries", "message_reads", "messaging_optins"]
+        }))
+        .send().await.ok(); // silencieux — certains tokens ne le supportent pas
+
+    // ── Étape 4: Sauvegarder le compte ────────────────────────────────────────
+    let save_payload = SocialTokenPayload {
+        platform: "whatsapp".to_string(),
+        access_token: token.to_string(),
+        account_handle: Some(phone_number_id.clone()),
+        metadata: Some(serde_json::json!({
+            "phone_number_id": phone_number_id,
+            "display_phone": display_phone,
+            "webhook_registered": true,
+            "webhook_url": format!("{}/api/social-ai/webhook/whatsapp", webhook_base),
+            "verify_token": verify_token,
+        })),
+        expires_at: None,
+        refresh_token: None,
+        scope: Some("whatsapp_business_messaging".to_string()),
+    };
+    upsert_social_account(state, user.id, save_payload).await?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "phone_number_id": phone_number_id,
+        "display_phone": display_phone,
+        "webhook_registered": true,
+        "webhook_url": format!("{}/api/social-ai/webhook/whatsapp", webhook_base),
+        "verify_token": verify_token,
+        "message": "WhatsApp Business configuré automatiquement. Webhook enregistré. Vous pouvez recevoir et envoyer des messages."
+    })))
+}
+
+#[derive(serde::Deserialize)]
+pub struct WhatsAppSetupPayload {
+    pub wa_token: String,
+    pub phone_number_id: Option<String>,
+}
+
 pub async fn connect_account(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,

@@ -17,7 +17,7 @@ use crate::{
         },
         social_connector_controller::{
             connect_account, get_accounts, instagram_authorize, instagram_callback,
-            whatsapp_business_info, youtube_authorize, youtube_callback,
+            whatsapp_business_info, whatsapp_guided_setup, youtube_authorize, youtube_callback,
         },
     },
     middlewares::jwt::jwt_auth,
@@ -40,6 +40,11 @@ pub fn social_distribution_routes(state: Arc<AppState>) -> Router<Arc<AppState>>
         .route("/api/social/youtube/authorize", get(youtube_authorize))
         // WhatsApp Business info (pas d'OAuth individuel)
         .route("/api/social/whatsapp/info", get(whatsapp_business_info))
+        // WhatsApp guided setup : token → auto-discover + auto-webhook
+        .route(
+            "/api/social/accounts/whatsapp/setup-guided",
+            post(whatsapp_guided_setup),
+        )
         // ── Distribution produits ──────────────────────────────────────────
         // Distribuer une sélection de produits vers des plateformes
         .route("/api/social/products/distribute", post(distribute_products))

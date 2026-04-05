@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Animated,
     Linking,
     RefreshControl,
     ScrollView,
@@ -92,6 +93,13 @@ export default function SocialAccountSetupScreen() {
     const [manualValues, setManualValues] = useState<Record<string, string>>({});
     const [savingManual, setSavingManual] = useState<string | null>(null);
 
+    // WhatsApp guided setup state
+    const [waStep, setWaStep] = useState<0 | 1 | 2 | 3>(0); // 0=idle 1=token 2=verifying 3=done
+    const [waToken, setWaToken] = useState('');
+    const [waPhoneHint, setWaPhoneHint] = useState(''); // optionnel — si auto-discover échoue
+    const [waResult, setWaResult] = useState<{ phone_number_id: string; display_phone: string } | null>(null);
+    const [waError, setWaError] = useState<string | null>(null);
+
     const load = useCallback(async () => {
         try {
             const data = await apiGet('/api/social/accounts', token);
@@ -165,6 +173,28 @@ export default function SocialAccountSetupScreen() {
             Alert.alert('Erreur', e?.message ?? 'Enregistrement impossible.');
         } finally {
             setSavingManual(null);
+        }
+    };
+
+    const runGuidedSetup = async () => {
+        if (!waToken.trim()) {
+            setWaError('Collez votre token d\'accès WhatsApp Business.');
+            return;
+        }
+        setWaStep(2);
+        setWaError(null);
+        try {
+            const data: any = await apiPost(
+                '/api/social/accounts/whatsapp/setup-guided',
+                { wa_token: waToken.trim(), phone_number_id: waPhoneHint.trim() || undefined },
+                token,
+            );
+            setWaResult({ phone_number_id: data.phone_number_id, display_phone: data.display_phone });
+            setWaStep(3);
+            await load();
+        } catch (e: any) {
+            setWaError(e?.message ?? 'Impossible de configurer WhatsApp. Vérifiez votre token.');
+            setWaStep(1);
         }
     };
 
@@ -337,38 +367,124 @@ export default function SocialAccountSetupScreen() {
                                         )}
                                     </View>
                                 ) : (
-                                    /* Manuel — WhatsApp */
+                                    /* WhatsApp — wizard guidé */
                                     !connected ? (
-                                        <View style={s.manualSection}>
-                                            <Text style={s.manualLabel}>{platform.manualLabel}</Text>
-                                            <Text style={s.manualHint}>{platform.manualHint}</Text>
-                                            <View style={s.manualRow}>
-                                                <TextInput
-                                                    style={s.manualInput}
-                                                    value={manualValues[platform.key] ?? ''}
-                                                    onChangeText={v => setManualValues(prev => ({ ...prev, [platform.key]: v }))}
-                                                    placeholder={platform.manualPlaceholder}
-                                                    placeholderTextColor="#475569"
-                                                    keyboardType="number-pad"
-                                                />
-                                                <TouchableOpacity
-                                                    style={[s.actionBtn, { backgroundColor: platform.color }, isSaving && { opacity: 0.7 }]}
-                                                    onPress={() => saveManual(platform.key)}
-                                                    disabled={isSaving}
-                                                >
-                                                    {isSaving
-                                                        ? <ActivityIndicator size="small" color="#fff" />
-                                                        : <Text style={s.actionBtnText}>Enregistrer</Text>
-                                                    }
-                                                </TouchableOpacity>
+                                        <View style={s.waWizard}>
+                                            {/* Étapes visuelles */}
+                                            <View style={s.waSteps}>
+                                                {['Token', 'Vérification', 'Webhook ✓'].map((label, i) => (
+                                                    <View key={i} style={s.waStepItem}>
+                                                        <View style={[
+                                                            s.waStepDot,
+                                                            waStep > i && s.waStepDone,
+                                                            waStep === i + 1 && s.waStepActive,
+                                                        ]}>
+                                                            {waStep > i
+                                                                ? <SafeIcon name="checkmark" size={10} color="#fff" />
+                                                                : <Text style={s.waStepNum}>{i + 1}</Text>
+                                                            }
+                                                        </View>
+                                                        <Text style={[s.waStepLabel, waStep === i + 1 && { color: '#25D366' }]}>{label}</Text>
+                                                        {i < 2 && <View style={s.waStepLine} />}
+                                                    </View>
+                                                ))}
                                             </View>
-                                            <TouchableOpacity
-                                                style={s.guideBtn}
-                                                onPress={() => Linking.openURL('https://business.facebook.com/wa/manage/phone-numbers/')}
-                                            >
-                                                <SafeIcon name="open-outline" size={14} color="#25D366" />
-                                                <Text style={s.guideBtnText}>Ouvrir Meta Business Manager</Text>
-                                            </TouchableOpacity>
+
+                                            {waStep === 0 && (
+                                                <TouchableOpacity
+                                                    style={s.waStartBtn}
+                                                    onPress={() => setWaStep(1)}
+                                                >
+                                                    <SafeIcon name="logo-whatsapp" size={18} color="#fff" />
+                                                    <Text style={s.waStartBtnText}>Configurer WhatsApp en 1 minute</Text>
+                                                </TouchableOpacity>
+                                            )}
+
+                                            {(waStep === 1 || waError) && (
+                                                <View style={s.waForm}>
+                                                    {/* Comment obtenir le token */}
+                                                    <TouchableOpacity
+                                                        style={s.waHowTo}
+                                                        onPress={() => Linking.openURL('https://developers.facebook.com/docs/whatsapp/cloud-api/get-started')}
+                                                    >
+                                                        <SafeIcon name="help-circle-outline" size={14} color="#25D366" />
+                                                        <Text style={s.waHowToText}>Comment obtenir mon token WhatsApp Business ?</Text>
+                                                        <SafeIcon name="open-outline" size={12} color="#25D366" />
+                                                    </TouchableOpacity>
+
+                                                    <Text style={s.waFieldLabel}>Token d'accès WhatsApp Business</Text>
+                                                    <TextInput
+                                                        style={s.waInput}
+                                                        value={waToken}
+                                                        onChangeText={setWaToken}
+                                                        placeholder="EAAxxxx…"
+                                                        placeholderTextColor="#475569"
+                                                        autoCapitalize="none"
+                                                        autoCorrect={false}
+                                                        multiline
+                                                        numberOfLines={3}
+                                                    />
+
+                                                    <Text style={s.waFieldLabel}>
+                                                        Phone Number ID{' '}
+                                                        <Text style={{ color: '#64748B', fontWeight: '400' }}>(optionnel — auto-détecté)</Text>
+                                                    </Text>
+                                                    <TextInput
+                                                        style={[s.waInput, { height: 44 }]}
+                                                        value={waPhoneHint}
+                                                        onChangeText={setWaPhoneHint}
+                                                        placeholder="1234567890 (laissez vide pour auto-détection)"
+                                                        placeholderTextColor="#475569"
+                                                        keyboardType="number-pad"
+                                                    />
+
+                                                    {waError && (
+                                                        <View style={s.waErrorBox}>
+                                                            <SafeIcon name="alert-circle" size={14} color="#EF4444" />
+                                                            <Text style={s.waErrorText}>{waError}</Text>
+                                                        </View>
+                                                    )}
+
+                                                    <TouchableOpacity
+                                                        style={s.waSubmitBtn}
+                                                        onPress={runGuidedSetup}
+                                                    >
+                                                        <SafeIcon name="flash" size={16} color="#fff" />
+                                                        <Text style={s.waSubmitBtnText}>Configurer automatiquement</Text>
+                                                    </TouchableOpacity>
+                                                    <Text style={s.waPrivacyNote}>
+                                                        Yukpo enregistre votre webhook automatiquement — vous n'avez pas à ouvrir Meta Business Manager.
+                                                    </Text>
+                                                </View>
+                                            )}
+
+                                            {waStep === 2 && (
+                                                <View style={s.waVerifying}>
+                                                    <ActivityIndicator size="large" color="#25D366" />
+                                                    <Text style={s.waVerifyText}>Vérification du token…</Text>
+                                                    <Text style={s.waVerifySubText}>Détection du numéro · Enregistrement webhook</Text>
+                                                </View>
+                                            )}
+
+                                            {waStep === 3 && waResult && (
+                                                <View style={s.waSuccess}>
+                                                    <SafeIcon name="checkmark-circle" size={32} color="#25D366" />
+                                                    <Text style={s.waSuccessTitle}>WhatsApp Business configuré !</Text>
+                                                    <Text style={s.waSuccessPhone}>{waResult.display_phone}</Text>
+                                                    <View style={s.waSuccessRow}>
+                                                        <SafeIcon name="checkmark" size={14} color="#10B981" />
+                                                        <Text style={s.waSuccessItem}>Webhook enregistré automatiquement</Text>
+                                                    </View>
+                                                    <View style={s.waSuccessRow}>
+                                                        <SafeIcon name="checkmark" size={14} color="#10B981" />
+                                                        <Text style={s.waSuccessItem}>Prêt à recevoir des messages</Text>
+                                                    </View>
+                                                    <View style={s.waSuccessRow}>
+                                                        <SafeIcon name="checkmark" size={14} color="#10B981" />
+                                                        <Text style={s.waSuccessItem}>Bot Community Manager activable</Text>
+                                                    </View>
+                                                </View>
+                                            )}
                                         </View>
                                     ) : (
                                         <View style={s.actionRow}>
@@ -386,16 +502,15 @@ export default function SocialAccountSetupScreen() {
                     })
                 )}
 
-                {/* Webhooks */}
+                {/* Webhooks — info simplifiée */}
                 <View style={s.webhookCard}>
-                    <SafeIcon name="git-network-outline" size={16} color="#F59E0B" />
+                    <SafeIcon name="git-network-outline" size={16} color="#10B981" />
                     <View style={{ flex: 1 }}>
-                        <Text style={s.webhookTitle}>Configuration webhooks Meta (une seule fois)</Text>
+                        <Text style={s.webhookTitle}>Webhooks Meta — configuration automatique</Text>
                         <Text style={s.webhookDesc}>
-                            Dans Meta Business Manager → Webhooks, configurez :{'\n'}
-                            {'• '}Messenger: POST /api/social-ai/webhook/messenger{'\n'}
-                            {'• '}Instagram: POST /api/social-ai/webhook/instagram{'\n'}
-                            {'• '}WhatsApp: POST /api/social-ai/webhook/whatsapp{'\n'}
+                            WhatsApp : enregistré automatiquement lors du setup guidé ci-dessus.{'\n'}
+                            Facebook & Instagram : configurés automatiquement lors de la connexion OAuth.{'\n\n'}
+                            Si vous avez besoin de le configurer manuellement :{'\n'}
                             Token de vérification: <Text style={{ color: '#F59E0B', fontFamily: 'monospace' }}>yukpo_webhook_2026</Text>
                         </Text>
                         <TouchableOpacity
@@ -511,4 +626,58 @@ const s = StyleSheet.create({
         marginTop: 4,
     },
     continueBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+    // ── WhatsApp Wizard ──────────────────────────────────────────────────────
+    waWizard: { gap: 16 },
+    waSteps: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 0 },
+    waStepItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    waStepDot: {
+        width: 24, height: 24, borderRadius: 12,
+        backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center',
+    },
+    waStepDone: { backgroundColor: '#10B981' },
+    waStepActive: { backgroundColor: '#25D366' },
+    waStepNum: { color: '#64748B', fontSize: 11, fontWeight: '700' },
+    waStepLabel: { color: '#64748B', fontSize: 11, fontWeight: '600', marginRight: 2 },
+    waStepLine: { width: 16, height: 1, backgroundColor: '#334155', marginHorizontal: 2 },
+    waStartBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+        backgroundColor: '#25D366', borderRadius: 12, paddingVertical: 14,
+    },
+    waStartBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+    waForm: { gap: 10 },
+    waHowTo: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        backgroundColor: '#0F2D1A', borderRadius: 10, padding: 10,
+        borderWidth: 1, borderColor: '#25D36633',
+    },
+    waHowToText: { flex: 1, color: '#25D366', fontSize: 12, fontWeight: '600' },
+    waFieldLabel: { color: '#CBD5E1', fontSize: 13, fontWeight: '600' },
+    waInput: {
+        backgroundColor: '#0F172A', borderRadius: 10,
+        paddingHorizontal: 14, paddingVertical: 12,
+        color: '#E2E8F0', fontSize: 13,
+        borderWidth: 1, borderColor: '#334155',
+        minHeight: 80,
+    },
+    waErrorBox: {
+        flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+        backgroundColor: '#2D0F0F', borderRadius: 10, padding: 10,
+        borderWidth: 1, borderColor: '#EF444433',
+    },
+    waErrorText: { flex: 1, color: '#FCA5A5', fontSize: 12, lineHeight: 17 },
+    waSubmitBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+        backgroundColor: '#25D366', borderRadius: 12, paddingVertical: 14,
+    },
+    waSubmitBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+    waPrivacyNote: { color: '#475569', fontSize: 11, textAlign: 'center', lineHeight: 16 },
+    waVerifying: { alignItems: 'center', gap: 12, paddingVertical: 20 },
+    waVerifyText: { color: '#E2E8F0', fontSize: 15, fontWeight: '600' },
+    waVerifySubText: { color: '#64748B', fontSize: 12 },
+    waSuccess: { alignItems: 'center', gap: 8, paddingVertical: 12 },
+    waSuccessTitle: { color: '#E2E8F0', fontSize: 16, fontWeight: '700', marginTop: 4 },
+    waSuccessPhone: { color: '#25D366', fontSize: 18, fontWeight: '700', letterSpacing: 1 },
+    waSuccessRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    waSuccessItem: { color: '#94A3B8', fontSize: 13 },
 });

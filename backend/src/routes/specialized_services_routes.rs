@@ -140,9 +140,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             get(pharmacy_product_controller::search_nearby_medicines),
         )
         // ✅ Ordonnance IA: extraction médicaments par vision + recherche pharmacies par matching
+        // ✅ FIX 2026-04-04: DefaultBodyLimit augmenté à 20 MB — image base64 d'ordonnance peut dépasser 6 MB
         .route(
             "/api/pharmacies/ai/extract-ordonnance",
-            post(pharmacy_product_controller::extract_ordonnance),
+            post(pharmacy_product_controller::extract_ordonnance)
+                .layer(axum::extract::DefaultBodyLimit::max(20_000_000)), // 20 MB
         )
         .route(
             "/api/pharmacies/search-by-medications",
