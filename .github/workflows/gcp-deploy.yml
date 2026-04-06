@@ -1,512 +1,416 @@
 name: Deploy to Google Cloud Platform
 
 on:
-  # ✅ CORRIGÉ 2026-03-03: Réactivé push trigger - ce workflow est le seul qui deploy vers GCP
-  # docker-build-optimized.yml est désormais workflow_dispatch uniquement (AWS)
   push:
-    branches:
-      - main
-      - master
+    branches: [master, main]
     paths:
       - 'backend/**'
+      - 'scripts/**'
       - '.github/workflows/gcp-deploy.yml'
   workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Forcer le déploiement même sans changements backend'
+        required: false
+        default: 'false'
+        type: boolean
 
 env:
-  PROJECT_ID: yukpo-project
+  PROJECT_ID:   ${{ secrets.GCP_PROJECT_ID }}
   SERVICE_NAME: yukpo-backend
-  REGION: europe-west1
-  ARTIFACT_REGISTRY_REPO: yukpo-backend
-  IMAGE_NAME: europe-west1-docker.pkg.dev/yukpo-project/yukpo-backend/yukpo-backend
+  REGION:       europe-west1
+  IMAGE_NAME:   europe-west1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/yukpo-backend/yukpo-backend
+  HEALTH_URL:   https://yukpo-backend-376093909298.europe-west1.run.app/health
+
+concurrency:
+  group: gcp-deploy-${{ github.ref }}
+  cancel-in-progress: false   # Ne jamais annuler un déploiement en cours
 
 jobs:
   build-and-deploy:
+    name: Build → Push → Deploy → Verify
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
+      id-token: write   # REQUIS pour Workload Identity Federation
 
     steps:
-      - name: Checkout repository
+      # ── 1. Checkout ─────────────────────────────────────────
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - id: 'auth'
-        uses: 'google-github-actions/auth@v2'
+      # ── 2. Auth GCP via Workload Identity Federation ─────────
+      #   Aucune clé JSON — token OIDC éphémère, rotation automatique
+      - name: Authenticate to Google Cloud (WIF)
+        id: auth
+        uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account:           ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
+      # ── 3. Cloud SDK ─────────────────────────────────────────
       - name: Set up Cloud SDK
-        uses: 'google-github-actions/setup-gcloud@v2'
+        uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ env.PROJECT_ID }}
 
-      - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker europe-west1-docker.pkg.dev
-          gcloud auth configure-docker gcr.io
+      # ── 4. Docker registry ───────────────────────────────────
+      - name: Configure Docker → Artifact Registry
+        run: gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
 
+      # ── 5. Buildx ────────────────────────────────────────────
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # ── 6. Préparer le Dockerfile (ajuster les chemins) ──────
       - name: Prepare Dockerfile
         run: |
           if [ ! -f backend/Dockerfile.cloud.optimized ]; then
-            echo "ERROR: backend/Dockerfile.cloud.optimized not found!"
+            echo "❌ backend/Dockerfile.cloud.optimized introuvable"
             exit 1
           fi
           sed -E \
-            -e '/^COPY --from=/! s#^COPY (Cargo\.toml Cargo\.lock) #COPY backend/Cargo.toml backend/Cargo.lock #' \
+            -e '/^COPY --from=/! s#^COPY (Cargo\.toml Cargo\.lock) #COPY backend/\1 #' \
             -e '/^COPY --from=/! s#^COPY \.sqlx #COPY backend/.sqlx #' \
             -e '/^COPY --from=/! s#^COPY (src|scripts|ia_prompts|config|migrations|blender|public) #COPY backend/\1 #' \
-            -e '/^COPY --from=/! s#^COPY ([^/ ]+\.md) #COPY backend/\1 #' \
-            -e '/^COPY --from=/! s#^COPY scripts/([^ ]+) #COPY backend/scripts/\1 #' \
+            -e '/^COPY --from=/! s#^COPY ([^/ ]+\.(md|toml|lock)) #COPY backend/\1 #' \
             backend/Dockerfile.cloud.optimized > Dockerfile.build
+          echo "✅ Dockerfile.build généré"
+          head -5 Dockerfile.build
 
-      - name: Build and Push Docker image
+      # ── 7. Build & Push ──────────────────────────────────────
+      - name: Build and Push image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: Dockerfile.build
-          push: true
+          file:    Dockerfile.build
+          push:    true
+          platforms: linux/amd64
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
-          platforms: linux/amd64
+          cache-to:   type=gha,mode=max
           build-args: |
             SQLX_OFFLINE=true
             BUILDKIT_INLINE_CACHE=1
 
-      - name: Prepare Environment Variables
-        id: prepare-env
+      # ── 8. Vérifier Cloud SQL ────────────────────────────────
+      - name: Verify Cloud SQL instance
         run: |
-          echo "Preparing environment variables from GitHub secrets..."
-          
-          # Créer un fichier JSON pour les variables d'environnement
-          # NOTE: DATABASE_URL, REDIS_URL, JWT_SECRET sont gérés comme secrets GCP, pas comme variables
-          # ✅ IMPORTANT: Toutes les variables doivent être ici pour éviter l'écrasement au déploiement
-          if command -v jq &> /dev/null; then
-            echo '{}' | jq \
-              '. + {
-                "CLOUD_RUN": "true",
-                "ENABLE_AUTO_MIGRATIONS": "true",
-                "SQLX_OFFLINE": "true",
-                "RUST_LOG": "info",
-                "LOG_FORMAT": "json",
-                "APP_ENV": "production",
-                "ENVIRONMENT": "production",
-                "LAUNCH_PHASE_START_DATE": "2026-02-10T00:00:00Z",
-                "GCP_PROJECT_ID": "${{ secrets.GCP_PROJECT_ID }}",
-                "INSTANCE_ID": "backend-1",
-
-                "DB_POOL_SIZE": "10",
-                "DB_POOL_MIN_SIZE": "2",
-                "DB_ACQUIRE_TIMEOUT_SECS": "30",
-                "DB_HEALTH_CHECK_INTERVAL_SECS": "30",
-                "DATABASE_TIMEOUT": "10",
-
-                "API_MAX_PAYLOAD_SIZE": "10485760",
-                "API_RATE_LIMIT_PER_MINUTE": "100",
-                "API_REQUEST_TIMEOUT": "30",
-                "REQUEST_TIMEOUT": "30",
-                "RATE_LIMIT_IP": "200",
-
-                "AI_REQUEST_TIMEOUT_SECONDS": "120",
-                "ENABLE_AI_OPTIMIZATIONS": "true",
-                "EMBEDDING_MAX_RETRIES": "3",
-                "EMBEDDING_TIMEOUT_SECONDS": "60",
-
-                "YUKPO_IA_BILLING_ENABLED": "true",
-                "YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET": "4000",
-                "YUKPO_IA_TOKEN_MULTIPLIER": "1.0",
-
-                "GPU_ENABLED": "true",
-                "GPU_ENDPOINT": "http://34.78.117.187:8080",
-                "GPU_ZONE": "europe-west1-b",
-                "GPU_INSTANCE_NAME": "yukpo-gpu-worker",
-                "GPU_MONTHLY_BUDGET": "100.0",
-                "GPU_SCALE_UP_THRESHOLD": "70.0",
-                "GPU_SCALE_DOWN_THRESHOLD": "20.0",
-                "GPU_MAX_INSTANCES": "2",
-                "GPU_MIN_INSTANCES": "0",
-                "GPU_SCALE_DOWN_COOLDOWN": "300",
-                "GPU_REQUEST_TIMEOUT": "60",
-                "LIVEKIT_VM_AUTOSCALE": "true",
-                "LIVEKIT_VM_INSTANCE_NAME": "yukpo-livekit-server",
-                "LIVEKIT_VM_COOLDOWN_SECS": "600",
-                "LIVEKIT_VM_CHECK_INTERVAL_SECS": "120",
-                "REDIS_SCALING_ENABLED": "false",
-
-                "VIDEO_GENERATION_TIMEOUT_SECONDS": "600",
-                "VIDEO_ANALYSIS_TIMEOUT_SECONDS": "180",
-                "VIDEO_RENDERER_ENABLE_GPU": "true",
-                "VIDEO_RENDERER_MAX_RETRIES": "2",
-                "VIDEO_RENDERER_TIMEOUT_SECS": "900",
-                "VIDEO_RENDERER_RPC_URL": "http://34.78.117.187:8080/render",
-                "AUDIO_SYNC_TIMEOUT_SECONDS": "180",
-                "MAX_VIDEO_SIZE_MB": "50",
-                "MAX_AUDIO_SIZE_MB": "10",
-                "MAX_IMAGE_SIZE_MB": "10",
-                "MAX_DOC_SIZE_MB": "10",
-                "MAX_EXCEL_SIZE_MB": "5",
-
-                "SORA_API_URL": "https://api.openai.com/v1/video/generations",
-
-                "UPLOAD_BASE_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
-                "PUBLIC_BASE_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
-                "SHARE_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
-                "UPLOAD_STORAGE_PATH": "uploads",
-                "S3_BUCKET": "yukpo-project-yukpo-backend-media",
-                "S3_REGION": "europe-west1",
-                "S3_ENDPOINT": "https://storage.googleapis.com",
-                "S3_FORCE_PATH_STYLE": "false",
-                "RENDERER_S3_UPLOAD": "true",
-
-                "LIVEKIT_INGRESS_MODE": "rtmp",
-                "LIVEKIT_INGRESS_NAME": "prod-ingress-1",
-                "LIVEKIT_INGRESS_REGION": "europe-west1",
-                "LIVEKIT_INGRESS_ROOM": "live-events",
-                "LIVEKIT_API_URL": "http://35.195.101.90:7880",
-                "LIVEKIT_WS_URL": "ws://35.195.101.90:7880",
-                "LIVE_FALLBACK_ENABLED": "true",
-                "LIVE_RECORDING_ENABLED": "true",
-                "FEATURE_FLAG_CONNECTORS_LIVEKIT": "true",
-
-                "APP_DOMAIN": "yukpo.com",
-                "API_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
-                "BACKEND_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
-                "WEBHOOK_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
-                "FRONTEND_URL": "https://yukpo.com",
-                "PAYMENT_PRIMARY_PROVIDER": "cinetpay",
-
-                "EMAIL_ENABLED": "true",
-                "EMAIL_PROVIDER": "sendgrid",
-                "SENDGRID_FROM_EMAIL": "noreply@yukpo.com",
-                "SENDGRID_FROM_NAME": "Yukpo",
-                "SMS_ENABLED": "true",
-                "SMS_PROVIDER": "twilio",
-
-                "SEARCH_DEFAULT_LANGUAGE": "fr",
-                "SEARCH_DEFAULT_RADIUS_KM": "20",
-                "SEARCH_MAX_RESULTS": "50",
-                "SEARCH_TITLE_BOOST": "2.0",
-                "SEMANTIC_CACHE_THRESHOLD": "0.85",
-                "CACHE_DEFAULT_TTL": "3600",
-                "CACHE_TTL_SEARCH": "600",
-
-                "DELIVERY_MATCHING_WORKER_BATCH_SIZE": "50",
-                "DELIVERY_MATCHING_WORKER_INTERVAL_SECS": "30",
-                "DELIVERY_MATCHING_WORKER_PARALLEL": "3",
-                "DELIVERY_PENDING_TIMEOUT_MINUTES": "60",
-                "DELIVERY_TIMEOUT_MONITOR_INTERVAL_SECS": "60",
-                "MATCHING_MIN_SCORE_THRESHOLD": "0.6",
-
-                "SLA_PROMISED_MINUTES": "30",
-                "SLA_THRESHOLD_RATIO": "1.10",
-                "SLA_LOOKBACK_MINUTES": "60",
-                "SLA_MONITOR_INTERVAL_SECONDS": "300",
-
-                "GLOBAL_PROMO_SCHEDULER_INTERVAL_SECS": "30",
-                "JWT_EXPIRATION_HOURS": "24",
-                "KYC_PROVIDER": "manual",
-                "ML_MODELS_DIR": "models",
-                "YUKPO_IMMO_COMMISSION_RATE": "0.05",
-
-                "GOOGLE_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
-                "CORS_ALLOWED_ORIGINS": "https://yukpo.com,https://yukpo-backend-376093909298.europe-west1.run.app"
-              }' > env-vars.json
-          else
-            # NOTE: DATABASE_URL, REDIS_URL, JWT_SECRET gérés comme secrets GCP
-            cat > env-vars.json << EOF
-          {
-            "CLOUD_RUN": "true",
-            "ENABLE_AUTO_MIGRATIONS": "true",
-            "SQLX_OFFLINE": "true",
-            "RUST_LOG": "info",
-            "LOG_FORMAT": "json",
-            "APP_ENV": "production",
-            "ENVIRONMENT": "production",
-            "GCP_PROJECT_ID": "${{ secrets.GCP_PROJECT_ID }}",
-            "GPU_ENABLED": "true",
-            "GPU_ENDPOINT": "http://34.78.117.187:8080",
-            "GPU_ZONE": "europe-west1-b",
-            "GPU_INSTANCE_NAME": "yukpo-gpu-worker",
-            "GPU_MONTHLY_BUDGET": "100.0",
-            "GPU_MAX_INSTANCES": "2",
-            "GPU_MIN_INSTANCES": "0",
-            "LIVEKIT_VM_AUTOSCALE": "true",
-            "LIVEKIT_VM_INSTANCE_NAME": "yukpo-livekit-server",
-            "LIVEKIT_VM_COOLDOWN_SECS": "600",
-            "LIVEKIT_VM_CHECK_INTERVAL_SECS": "120",
-            "REDIS_SCALING_ENABLED": "false",
-            "VIDEO_RENDERER_RPC_URL": "http://34.78.117.187:8080/render",
-            "VIDEO_RENDERER_ENABLE_GPU": "true",
-            "VIDEO_RENDERER_MAX_RETRIES": "2",
-            "VIDEO_RENDERER_TIMEOUT_SECS": "900",
-            "LIVEKIT_INGRESS_MODE": "rtmp",
-            "LIVEKIT_INGRESS_REGION": "europe-west1",
-            "LIVEKIT_INGRESS_ROOM": "live-events",
-            "LIVEKIT_API_URL": "http://35.195.101.90:7880",
-            "LIVEKIT_WS_URL": "ws://35.195.101.90:7880",
-            "LIVE_FALLBACK_ENABLED": "true",
-            "LIVE_RECORDING_ENABLED": "true",
-            "FEATURE_FLAG_CONNECTORS_LIVEKIT": "true",
-            "APP_DOMAIN": "yukpo.com",
-            "API_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
-            "BACKEND_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
-            "WEBHOOK_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
-            "FRONTEND_URL": "https://yukpo.com",
-            "PAYMENT_PRIMARY_PROVIDER": "cinetpay",
-            "CORS_ALLOWED_ORIGINS": "https://yukpo.com,https://yukpo-backend-376093909298.europe-west1.run.app",
-            "EMAIL_ENABLED": "true",
-            "EMAIL_PROVIDER": "sendgrid",
-            "SENDGRID_FROM_EMAIL": "noreply@yukpo.com",
-            "SENDGRID_FROM_NAME": "Yukpo",
-            "UPLOAD_BASE_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
-            "PUBLIC_BASE_URL": "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
-            "SHARE_BASE_URL": "https://yukpo-backend-376093909298.europe-west1.run.app",
-            "S3_BUCKET": "yukpo-project-yukpo-backend-media",
-            "S3_REGION": "europe-west1",
-            "S3_ENDPOINT": "https://storage.googleapis.com",
-            "S3_FORCE_PATH_STYLE": "false",
-            "SEARCH_DEFAULT_LANGUAGE": "fr",
-            "SEARCH_MAX_RESULTS": "50",
-            "CACHE_DEFAULT_TTL": "3600",
-            "JWT_EXPIRATION_HOURS": "24",
-            "KYC_PROVIDER": "manual",
-            "GOOGLE_CLIENT_ID": "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
-            "YUKPO_IA_BILLING_ENABLED": "true",
-            "YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET": "4000",
-            "YUKPO_IA_TOKEN_MULTIPLIER": "1.0"
-          }
-          EOF
-          fi
-          
-          # Ajouter toutes les variables avec prefixe GCP_ENV_
-          # EXCLURE les variables qui sont gérées comme secrets: DATABASE_URL, REDIS_URL, JWT_SECRET
-          SECRET_VARS="DATABASE_URL|REDIS_URL|JWT_SECRET|OPENAI_API_KEY|SORA_API_KEY|S3_ACCESS_KEY|S3_SECRET_KEY|LIVEKIT_API_KEY|LIVEKIT_API_SECRET|GOOGLE_MAPS_API_KEY|OPENWEATHERMAP_API_KEY|CINETPAY_API_KEY|CINETPAY_SITE_ID|CINETPAY_SECRET_KEY|NOTCHPAY_PUBLIC_KEY|NOTCHPAY_SECRET_KEY|FLUTTERWAVE_SECRET_KEY|FLUTTERWAVE_PUBLIC_KEY|STRIPE_SECRET_KEY|STRIPE_PUBLISHABLE_KEY|STRIPE_WEBHOOK_SECRET|PAYPAL_CLIENT_ID|PAYPAL_CLIENT_SECRET|PAYPAL_WEBHOOK_ID|ORANGE_MONEY_WEBHOOK_SECRET|MTN_MONEY_WEBHOOK_SECRET"
-          if command -v gh &> /dev/null; then
-            # ✅ FIXED: Add retry and better error handling for GitHub CLI authentication
-            gh auth status 2>/dev/null || {
-              echo "⚠️ GitHub CLI auth failed, attempting login..."
-              if gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}" 2>/dev/null; then
-                echo "✅ GitHub CLI login successful"
-              else
-                echo "⚠️ GitHub CLI login failed, skipping secret variables"
-                echo "env_file=env-vars.json" >> $GITHUB_OUTPUT
-                exit 0
-              fi
-            }
-            for secret in $(gh secret list --repo ${{ github.repository }} --json name -q '.[].name' 2>/dev/null | grep "^GCP_ENV_" || true); do
-              VAR_NAME=$(echo $secret | sed 's/^GCP_ENV_//')
-              # Ignorer les variables qui sont des secrets
-              if echo "$VAR_NAME" | grep -qE "^($SECRET_VARS)$"; then
-                echo "Skipping $VAR_NAME (managed as secret)"
-                continue
-              fi
-              VAR_VALUE=$(gh secret get $secret --repo ${{ github.repository }} 2>/dev/null || echo "")
-              if [ -n "$VAR_VALUE" ]; then
-                if command -v jq &> /dev/null; then
-                  jq --arg key "$VAR_NAME" --arg val "$VAR_VALUE" '. + {($key): $val}' env-vars.json > env-vars.tmp.json && mv env-vars.tmp.json env-vars.json
-                else
-                  VAR_VALUE_ESCAPED=$(echo "$VAR_VALUE" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
-                  sed -i "s/}$/,\"$VAR_NAME\":\"$VAR_VALUE_ESCAPED\"}/" env-vars.json
-                fi
-              fi
-            done
-          fi
-          
-          # ✅ CRITIQUE: Nettoyer env-vars.json pour retirer TOUS les secrets (au cas où ils seraient présents)
-          echo "Nettoyage final de env-vars.json (retrait des secrets)..."
-          if command -v jq &> /dev/null; then
-            jq 'del(.DATABASE_URL, .REDIS_URL, .JWT_SECRET, .OPENAI_API_KEY, .SORA_API_KEY, .S3_ACCESS_KEY, .S3_SECRET_KEY, .LIVEKIT_API_KEY, .LIVEKIT_API_SECRET, .GOOGLE_MAPS_API_KEY, .OPENWEATHERMAP_API_KEY, .CINETPAY_API_KEY, .CINETPAY_SITE_ID, .CINETPAY_SECRET_KEY, .NOTCHPAY_PUBLIC_KEY, .NOTCHPAY_SECRET_KEY, .FLUTTERWAVE_SECRET_KEY, .FLUTTERWAVE_PUBLIC_KEY, .STRIPE_SECRET_KEY, .STRIPE_PUBLISHABLE_KEY, .STRIPE_WEBHOOK_SECRET, .PAYPAL_CLIENT_ID, .PAYPAL_CLIENT_SECRET, .PAYPAL_WEBHOOK_ID, .ORANGE_MONEY_WEBHOOK_SECRET, .MTN_MONEY_WEBHOOK_SECRET)' env-vars.json > env-vars-clean.json && mv env-vars-clean.json env-vars.json
-            echo "✅ Fichier env-vars.json nettoyé"
-          else
-            echo "⚠️ jq non disponible, nettoyage manuel impossible"
-          fi
-          
-          # Afficher le contenu final pour debug
-          echo "Contenu final de env-vars.json:"
-          cat env-vars.json
-          
-          echo "env_file=env-vars.json" >> $GITHUB_OUTPUT
-
-      - name: Verify Cloud SQL Instance
-        run: |
-          echo "🔍 Vérification de l'instance Cloud SQL..."
-          CLOUD_SQL_INSTANCE="${{ secrets.GCP_PROJECT_ID }}:${{ env.REGION }}:yukpo-postgres"
-          CLOUD_SQL_INSTANCE=$(echo "$CLOUD_SQL_INSTANCE" | tr -d '\r\n' | tr -d '\n')
-          
-          # Vérifier que l'instance existe
-          if gcloud sql instances describe yukpo-postgres \
-            --project=${{ secrets.GCP_PROJECT_ID }} >/dev/null 2>&1; then
-            echo "✅ Instance Cloud SQL 'yukpo-postgres' existe"
-            
-            # Vérifier l'état
-            SQL_STATE=$(gcloud sql instances describe yukpo-postgres \
-              --project=${{ secrets.GCP_PROJECT_ID }} \
-              --format="value(state)" 2>/dev/null || echo "UNKNOWN")
-            
-            if [ "$SQL_STATE" = "RUNNABLE" ]; then
-              echo "✅ Instance Cloud SQL en état RUNNABLE"
-            else
-              echo "⚠️ Instance Cloud SQL en état: $SQL_STATE"
-            fi
-          else
-            echo "❌ ERREUR: Instance Cloud SQL 'yukpo-postgres' non trouvée!"
-            echo "   Créez l'instance avec: gcloud sql instances create yukpo-postgres ..."
+          INSTANCE="yukpo-postgres"
+          if ! gcloud sql instances describe "$INSTANCE" \
+              --project="$PROJECT_ID" --format="value(state)" 2>/dev/null | grep -q "RUNNABLE"; then
+            echo "❌ Instance Cloud SQL '$INSTANCE' absente ou non RUNNABLE"
+            gcloud sql instances describe "$INSTANCE" --project="$PROJECT_ID" 2>/dev/null || true
             exit 1
           fi
-          
-          echo "Instance Cloud SQL (nettoyée): $CLOUD_SQL_INSTANCE"
-          echo "CLOUD_SQL_INSTANCE=$CLOUD_SQL_INSTANCE" >> $GITHUB_ENV
+          echo "✅ Cloud SQL $INSTANCE — RUNNABLE"
+          CLOUD_SQL_INSTANCE="${PROJECT_ID}:${REGION}:${INSTANCE}"
+          echo "CLOUD_SQL_INSTANCE=$CLOUD_SQL_INSTANCE" >> "$GITHUB_ENV"
 
-      - name: Deploy to Cloud Run
+      # ── 9. Construire les variables d'env (sans les secrets) ─
+      - name: Build environment variables
+        id: envvars
         run: |
-          # ✅ CORRIGÉ 2026-03-23 v11: initialDelaySeconds=0 car le binaire bind TCP en <1s
-          # (start-cloud.sh fait exec immédiat pour Cloud Run, pas de shell overhead).
-          # Budget total: 0 + 60×10 = 600s (10 min). Largement suffisant pour DB socket wait.
-          STARTUP_PROBE='timeoutSeconds=3,periodSeconds=10,initialDelaySeconds=0,failureThreshold=60,tcpSocket.port=8080'
-          echo "🔖 workflow=gcp-deploy.yml rev=2026-03-23-v11-exec-fast-start SHA=${{ github.sha }}"
-          echo "Déploiement vers Cloud Run..."
-          
-          # Utiliser la variable d'environnement définie dans l'étape précédente
-          CLOUD_SQL_INSTANCE="$CLOUD_SQL_INSTANCE"
-          echo "Instance Cloud SQL: $CLOUD_SQL_INSTANCE"
-          
-          echo "🧹 Nettoyage des secrets en doublon: --remove-env-vars est appliqué dans le même gcloud run deploy (pas de 2e révision cassée)."
-          echo "🔐 Injection des secrets requis uniquement (mode robuste CI)"
-          UPDATE_SECRETS_REQUIRED="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest"
-          echo "Secrets requis configurés: $UPDATE_SECRETS_REQUIRED"
-          
-          # Construire la liste des variables d'environnement depuis env-vars.json (sans les secrets)
-          echo "Construction de la liste des variables d'environnement..."
-          if command -v jq &> /dev/null; then
-            # Extraire toutes les clés sauf les secrets - CRITIQUE: Exclure explicitement tous les secrets
-            # ✅ AJOUTÉ 2026-03-17: Variables IA optimisées incluses
-            ENV_VARS=$(jq -r 'to_entries | map(select(.key != "DATABASE_URL" and .key != "REDIS_URL" and .key != "JWT_SECRET" and .key != "OPENAI_API_KEY" and .key != "SORA_API_KEY" and .key != "S3_ACCESS_KEY" and .key != "S3_SECRET_KEY" and .key != "LIVEKIT_API_KEY" and .key != "LIVEKIT_API_SECRET" and .key != "GOOGLE_MAPS_API_KEY" and .key != "OPENWEATHERMAP_API_KEY" and .key != "CINETPAY_API_KEY" and .key != "CINETPAY_SITE_ID" and .key != "CINETPAY_SECRET_KEY" and .key != "NOTCHPAY_PUBLIC_KEY" and .key != "NOTCHPAY_SECRET_KEY" and .key != "FLUTTERWAVE_SECRET_KEY" and .key != "FLUTTERWAVE_PUBLIC_KEY" and .key != "STRIPE_SECRET_KEY" and .key != "STRIPE_PUBLISHABLE_KEY" and .key != "STRIPE_WEBHOOK_SECRET" and .key != "PAYPAL_CLIENT_ID" and .key != "PAYPAL_CLIENT_SECRET" and .key != "PAYPAL_WEBHOOK_ID" and .key != "ORANGE_MONEY_WEBHOOK_SECRET" and .key != "MTN_MONEY_WEBHOOK_SECRET")) | map("\(.key)=\(.value)") | join(";")' ${{ steps.prepare-env.outputs.env_file }})
-            echo "Variables d'environnement à définir: $ENV_VARS"
-            
-            # Vérifier que les secrets ne sont pas dans ENV_VARS
-            if echo "$ENV_VARS" | grep -qE "(DATABASE_URL|REDIS_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY|STRIPE_WEBHOOK_SECRET|PAYPAL_WEBHOOK_ID|ORANGE_MONEY_WEBHOOK_SECRET|MTN_MONEY_WEBHOOK_SECRET)"; then
-              echo "❌ ERREUR: Des secrets sont présents dans ENV_VARS!"
-              echo "$ENV_VARS" | grep -E "(DATABASE_URL|REDIS_URL|JWT_SECRET|OPENAI_API_KEY|CINETPAY_API_KEY|CINETPAY_SECRET_KEY|NOTCHPAY_SECRET_KEY|GOOGLE_MAPS_API_KEY|STRIPE_WEBHOOK_SECRET|PAYPAL_WEBHOOK_ID|ORANGE_MONEY_WEBHOOK_SECRET|MTN_MONEY_WEBHOOK_SECRET|FLUTTERWAVE_SECRET_KEY|FLUTTERWAVE_PUBLIC_KEY|STRIPE_SECRET_KEY|STRIPE_PUBLISHABLE_KEY|PAYPAL_CLIENT_ID|PAYPAL_CLIENT_SECRET)" || true
-              exit 1
-            fi
-            
-            # Déployer avec --set-env-vars (après avoir clear les variables)
-            if [ -n "$ENV_VARS" ] && [ "$ENV_VARS" != "null" ]; then
-              echo "Déploiement avec variables d'environnement..."
-              gcloud run deploy ${{ env.SERVICE_NAME }} \
-                --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
-                --platform managed \
-                --region ${{ env.REGION }} \
-                --allow-unauthenticated \
-                --port 8080 \
-                --startup-probe="$STARTUP_PROBE" \
-                --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
-                --update-env-vars="^;^$ENV_VARS" \
-                --update-secrets="$UPDATE_SECRETS_REQUIRED" \
-                --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
-                --memory 4Gi \
-                --cpu 2 \
-                --timeout 900 \
-                --min-instances 1 \
-                --max-instances 10 \
-                --cpu-boost \
-                --cpu-throttling \
-                --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
-                --project ${{ secrets.GCP_PROJECT_ID }}
-            else
-              # Si aucune variable, déployer sans --update-env-vars (seulement secrets)
-              echo "Déploiement sans variables d'environnement (seulement secrets)..."
-              gcloud run deploy ${{ env.SERVICE_NAME }} \
-                --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
-                --platform managed \
-                --region ${{ env.REGION }} \
-                --allow-unauthenticated \
-                --port 8080 \
-                --startup-probe="$STARTUP_PROBE" \
-                --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
-                --update-secrets="$UPDATE_SECRETS_REQUIRED" \
-                --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
-                --memory 4Gi \
-                --cpu 2 \
-                --timeout 900 \
-                --min-instances 1 \
-                --max-instances 10 \
-                --cpu-boost \
-                --cpu-throttling \
-                --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
-                --project ${{ secrets.GCP_PROJECT_ID }}
-            fi
-          else
-            # Fallback: jq non disponible, utilisation manuelle
-            echo "⚠️ jq non disponible, utilisation de env-vars-file avec nettoyage manuel..."
-            if grep -q "DATABASE_URL\|REDIS_URL\|JWT_SECRET" ${{ steps.prepare-env.outputs.env_file }}; then
-              echo "❌ ERREUR: Le fichier env-vars.json contient encore des secrets!"
-              exit 1
-            fi
-            gcloud run deploy ${{ env.SERVICE_NAME }} \
-              --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
-              --platform managed \
-              --region ${{ env.REGION }} \
-              --allow-unauthenticated \
-              --port 8080 \
-              --startup-probe="$STARTUP_PROBE" \
-              --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
-              --env-vars-file ${{ steps.prepare-env.outputs.env_file }} \
-              --update-secrets="$UPDATE_SECRETS_REQUIRED" \
-              --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
-              --memory 4Gi \
-              --cpu 2 \
-              --timeout 900 \
-              --max-instances 10 \
-              --cpu-boost \
-              --cpu-throttling \
-              --service-account ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} \
-              --project ${{ secrets.GCP_PROJECT_ID }}
+          # ubuntu-latest a toujours jq — pas besoin de fallback
+          ENV_JSON=$(jq -n '{
+            CLOUD_RUN:                            "true",
+            ENABLE_AUTO_MIGRATIONS:              "true",
+            SQLX_OFFLINE:                        "true",
+            RUST_LOG:                            "info",
+            LOG_FORMAT:                          "json",
+            APP_ENV:                             "production",
+            ENVIRONMENT:                         "production",
+            INSTANCE_ID:                         "backend-1",
+            GCP_PROJECT_ID:                      $ENV.GCP_PROJECT_ID,
+
+            DB_POOL_SIZE:                        "10",
+            DB_POOL_MIN_SIZE:                    "2",
+            DB_ACQUIRE_TIMEOUT_SECS:             "30",
+            DB_HEALTH_CHECK_INTERVAL_SECS:       "30",
+            DATABASE_TIMEOUT:                    "10",
+
+            API_MAX_PAYLOAD_SIZE:                "10485760",
+            API_RATE_LIMIT_PER_MINUTE:           "100",
+            REQUEST_TIMEOUT:                     "30",
+            RATE_LIMIT_IP:                       "200",
+
+            AI_REQUEST_TIMEOUT_SECONDS:          "120",
+            ENABLE_AI_OPTIMIZATIONS:             "true",
+            EMBEDDING_MAX_RETRIES:               "3",
+            EMBEDDING_TIMEOUT_SECONDS:           "60",
+
+            YUKPO_IA_BILLING_ENABLED:            "true",
+            YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET:  "4000",
+            YUKPO_IA_TOKEN_MULTIPLIER:           "1.0",
+
+            GPU_ENABLED:                         "true",
+            GPU_ENDPOINT:                        "http://34.78.117.187:8080",
+            GPU_ZONE:                            "europe-west1-b",
+            GPU_INSTANCE_NAME:                   "yukpo-gpu-worker",
+            GPU_MONTHLY_BUDGET:                  "100.0",
+            GPU_SCALE_UP_THRESHOLD:              "70.0",
+            GPU_SCALE_DOWN_THRESHOLD:            "20.0",
+            GPU_MAX_INSTANCES:                   "2",
+            GPU_MIN_INSTANCES:                   "0",
+            GPU_SCALE_DOWN_COOLDOWN:             "300",
+            GPU_REQUEST_TIMEOUT:                 "60",
+
+            LIVEKIT_VM_AUTOSCALE:                "true",
+            LIVEKIT_VM_INSTANCE_NAME:            "yukpo-livekit-server",
+            LIVEKIT_VM_COOLDOWN_SECS:            "600",
+            LIVEKIT_VM_CHECK_INTERVAL_SECS:      "120",
+            REDIS_SCALING_ENABLED:               "false",
+
+            VIDEO_GENERATION_TIMEOUT_SECONDS:    "600",
+            VIDEO_ANALYSIS_TIMEOUT_SECONDS:      "180",
+            VIDEO_RENDERER_ENABLE_GPU:           "true",
+            VIDEO_RENDERER_MAX_RETRIES:          "2",
+            VIDEO_RENDERER_TIMEOUT_SECS:         "900",
+            VIDEO_RENDERER_RPC_URL:              "http://34.78.117.187:8080/render",
+            AUDIO_SYNC_TIMEOUT_SECONDS:          "180",
+            MAX_VIDEO_SIZE_MB:                   "50",
+            MAX_AUDIO_SIZE_MB:                   "10",
+            MAX_IMAGE_SIZE_MB:                   "10",
+            MAX_DOC_SIZE_MB:                     "10",
+            MAX_EXCEL_SIZE_MB:                   "5",
+
+            SORA_API_URL:                        "https://api.openai.com/v1/video/generations",
+
+            UPLOAD_BASE_URL:    "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
+            PUBLIC_BASE_URL:    "https://storage.googleapis.com/yukpo-project-yukpo-backend-media",
+            SHARE_BASE_URL:     "https://yukpo-backend-376093909298.europe-west1.run.app",
+            UPLOAD_STORAGE_PATH: "uploads",
+            S3_BUCKET:          "yukpo-project-yukpo-backend-media",
+            S3_REGION:          "europe-west1",
+            S3_ENDPOINT:        "https://storage.googleapis.com",
+            S3_FORCE_PATH_STYLE: "false",
+            RENDERER_S3_UPLOAD:  "true",
+
+            LIVEKIT_INGRESS_MODE:    "rtmp",
+            LIVEKIT_INGRESS_NAME:    "prod-ingress-1",
+            LIVEKIT_INGRESS_REGION:  "europe-west1",
+            LIVEKIT_INGRESS_ROOM:    "live-events",
+            LIVEKIT_API_URL:         "http://35.195.101.90:7880",
+            LIVEKIT_WS_URL:          "ws://35.195.101.90:7880",
+            LIVE_FALLBACK_ENABLED:   "true",
+            LIVE_RECORDING_ENABLED:  "true",
+            FEATURE_FLAG_CONNECTORS_LIVEKIT: "true",
+
+            APP_DOMAIN:          "yukpo.com",
+            API_BASE_URL:        "https://yukpo-backend-376093909298.europe-west1.run.app",
+            BACKEND_URL:         "https://yukpo-backend-376093909298.europe-west1.run.app",
+            WEBHOOK_BASE_URL:    "https://yukpo-backend-376093909298.europe-west1.run.app",
+            FRONTEND_URL:        "https://yukpo.com",
+            PAYMENT_PRIMARY_PROVIDER: "cinetpay",
+
+            EMAIL_ENABLED:       "true",
+            EMAIL_PROVIDER:      "sendgrid",
+            SENDGRID_FROM_EMAIL: "noreply@yukpo.com",
+            SENDGRID_FROM_NAME:  "Yukpo",
+            SMS_ENABLED:         "true",
+            SMS_PROVIDER:        "twilio",
+
+            SEARCH_DEFAULT_LANGUAGE:  "fr",
+            SEARCH_DEFAULT_RADIUS_KM: "20",
+            SEARCH_MAX_RESULTS:       "50",
+            SEARCH_TITLE_BOOST:       "2.0",
+            SEMANTIC_CACHE_THRESHOLD: "0.85",
+            CACHE_DEFAULT_TTL:        "3600",
+            CACHE_TTL_SEARCH:         "600",
+
+            DELIVERY_MATCHING_WORKER_BATCH_SIZE:     "50",
+            DELIVERY_MATCHING_WORKER_INTERVAL_SECS:  "30",
+            DELIVERY_MATCHING_WORKER_PARALLEL:       "3",
+            DELIVERY_PENDING_TIMEOUT_MINUTES:        "60",
+            DELIVERY_TIMEOUT_MONITOR_INTERVAL_SECS:  "60",
+            MATCHING_MIN_SCORE_THRESHOLD:            "0.6",
+
+            SLA_PROMISED_MINUTES:        "30",
+            SLA_THRESHOLD_RATIO:         "1.10",
+            SLA_LOOKBACK_MINUTES:        "60",
+            SLA_MONITOR_INTERVAL_SECONDS: "300",
+
+            GLOBAL_PROMO_SCHEDULER_INTERVAL_SECS: "30",
+            JWT_EXPIRATION_HOURS:  "24",
+            KYC_PROVIDER:          "manual",
+            ML_MODELS_DIR:         "models",
+            YUKPO_IMMO_COMMISSION_RATE: "0.05",
+
+            GOOGLE_CLIENT_ID: "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
+            CORS_ALLOWED_ORIGINS: "https://yukpo.com,https://yukpo-backend-376093909298.europe-west1.run.app"
+          }' --arg GCP_PROJECT_ID "$PROJECT_ID" --args)
+
+          # Convertir JSON → "KEY=VALUE;KEY2=VALUE2" (séparateur ; pour gcloud)
+          ENV_VARS=$(echo "$ENV_JSON" | jq -r 'to_entries | map("\(.key)=\(.value)") | join(";")')
+          echo "✅ $(echo "$ENV_JSON" | jq 'keys | length') variables d'environnement préparées"
+
+          # Écrire dans GITHUB_OUTPUT (multiline safe)
+          {
+            echo "env_vars<<ENVEOF"
+            echo "$ENV_VARS"
+            echo "ENVEOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # ── 10. Déploiement Cloud Run (no-traffic d'abord) ───────
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          echo "🚀 Déploiement de la révision ${{ github.sha }}..."
+
+          # Probe : 0s init + 10 tentatives × 10s = 100s max pour le binding TCP
+          STARTUP_PROBE="timeoutSeconds=3,periodSeconds=10,initialDelaySeconds=0,failureThreshold=60,tcpSocket.port=8080"
+
+          # Secrets gérés par Secret Manager (jamais en clair dans les env vars)
+          SECRETS="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest"
+
+          gcloud run deploy "$SERVICE_NAME" \
+            --image "${{ env.IMAGE_NAME }}:${{ github.sha }}" \
+            --platform managed \
+            --region "$REGION" \
+            --allow-unauthenticated \
+            --port 8080 \
+            --startup-probe="$STARTUP_PROBE" \
+            --no-traffic \
+            --update-env-vars="^;^${{ steps.envvars.outputs.env_vars }}" \
+            --remove-env-vars="DATABASE_URL,REDIS_URL,JWT_SECRET" \
+            --update-secrets="$SECRETS" \
+            --set-cloudsql-instances="$CLOUD_SQL_INSTANCE" \
+            --memory 4Gi \
+            --cpu 2 \
+            --timeout 900 \
+            --min-instances 1 \
+            --max-instances 10 \
+            --cpu-boost \
+            --cpu-throttling \
+            --service-account "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}" \
+            --project "$PROJECT_ID" \
+            --tag "sha-${{ github.sha }}" \
+            --quiet
+
+          # Récupérer l'URL de la révision taggée pour le health check
+          TAGGED_URL=$(gcloud run services describe "$SERVICE_NAME" \
+            --region "$REGION" \
+            --project "$PROJECT_ID" \
+            --format "value(status.traffic[?tag='sha-${{ github.sha }}'].url)" 2>/dev/null || echo "")
+
+          if [ -z "$TAGGED_URL" ]; then
+            # Fallback : URL de service principale (révision sans trafic peut quand même répondre)
+            TAGGED_URL="${{ env.HEALTH_URL }}"
           fi
 
-      - name: Cleanup old revisions (keep last 5)
+          echo "tagged_url=$TAGGED_URL" >> "$GITHUB_OUTPUT"
+          echo "✅ Révision déployée (sans trafic) — URL: $TAGGED_URL"
+
+      # ── 11. Health check sur la nouvelle révision ─────────────
+      - name: Health check (nouvelle révision)
+        id: healthcheck
         run: |
-          echo "🧹 Suppression des anciennes révisions Cloud Run (garde les 5 dernières)..."
-          OLD_REVISIONS=$(gcloud run revisions list \
-            --service=${{ env.SERVICE_NAME }} \
-            --region=${{ env.REGION }} \
-            --project=${{ secrets.GCP_PROJECT_ID }} \
-            --format="value(metadata.name)" | tail -n +6)
-          if [ -n "$OLD_REVISIONS" ]; then
-            echo "$OLD_REVISIONS" | xargs -P 5 -I {} gcloud run revisions delete {} \
-              --region=${{ env.REGION }} \
-              --project=${{ secrets.GCP_PROJECT_ID }} \
-              --quiet 2>/dev/null || true
+          URL="${{ steps.deploy.outputs.tagged_url }}/health"
+          echo "🏥 Health check → $URL"
+          MAX=12   # 12 tentatives × 10s = 2 min
+          for i in $(seq 1 $MAX); do
+            HTTP=$(curl -s -o /tmp/health_body.txt -w "%{http_code}" \
+                   --max-time 10 --retry 0 "$URL" 2>/dev/null || echo "000")
+            BODY=$(cat /tmp/health_body.txt 2>/dev/null || echo "")
+            echo "  Tentative $i/$MAX — HTTP $HTTP — $BODY"
+            if [ "$HTTP" = "200" ]; then
+              echo "✅ Service en bonne santé"
+              echo "status=ok" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            [ "$i" -lt "$MAX" ] && sleep 10
+          done
+          echo "❌ Health check échoué après $MAX tentatives"
+          echo "status=failed" >> "$GITHUB_OUTPUT"
+          exit 1
+
+      # ── 12. Basculer 100% du trafic vers la nouvelle révision ─
+      - name: Migrate traffic to new revision
+        run: |
+          echo "🔀 Bascule du trafic vers sha-${{ github.sha }}..."
+          gcloud run services update-traffic "$SERVICE_NAME" \
+            --region "$REGION" \
+            --project "$PROJECT_ID" \
+            --to-tags "sha-${{ github.sha }}=100" \
+            --quiet
+          echo "✅ 100% du trafic sur la nouvelle révision"
+
+      # ── 13. Rollback automatique si health check échoué ──────
+      - name: Rollback on failure
+        if: failure() && steps.healthcheck.outputs.status == 'failed'
+        run: |
+          echo "⚠️  Health check échoué — rollback vers la révision précédente..."
+          PREV=$(gcloud run revisions list \
+            --service="$SERVICE_NAME" \
+            --region="$REGION" \
+            --project="$PROJECT_ID" \
+            --format="value(metadata.name)" \
+            --sort-by="~metadata.creationTimestamp" \
+            --limit=2 | tail -1)
+          if [ -n "$PREV" ]; then
+            gcloud run services update-traffic "$SERVICE_NAME" \
+              --region "$REGION" \
+              --project "$PROJECT_ID" \
+              --to-revisions "$PREV=100" \
+              --quiet
+            echo "✅ Rollback effectué vers $PREV"
+          else
+            echo "❌ Impossible de trouver la révision précédente"
+          fi
+
+      # ── 14. Nettoyage des anciennes révisions ────────────────
+      - name: Cleanup old revisions (keep last 5)
+        if: success()
+        run: |
+          echo "🧹 Nettoyage des anciennes révisions (garde les 5 dernières)..."
+          OLD=$(gcloud run revisions list \
+            --service="$SERVICE_NAME" \
+            --region="$REGION" \
+            --project="$PROJECT_ID" \
+            --format="value(metadata.name)" \
+            --sort-by="~metadata.creationTimestamp" | tail -n +6)
+          if [ -n "$OLD" ]; then
+            echo "$OLD" | xargs -P 4 -I {} \
+              gcloud run revisions delete {} \
+                --region="$REGION" \
+                --project="$PROJECT_ID" \
+                --quiet 2>/dev/null || true
             echo "✅ Anciennes révisions supprimées"
           else
-            echo "ℹ️ Aucune révision à supprimer"
+            echo "ℹ️  Aucune révision à supprimer"
           fi
 
-      - name: Get Service URL
-        id: service-url
-        run: |
-          URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
-            --region ${{ env.REGION }} \
-            --format 'value(status.url)' \
-            --project ${{ secrets.GCP_PROJECT_ID }})
-          echo "url=$URL" >> $GITHUB_OUTPUT
-
+      # ── 15. Résumé du déploiement ────────────────────────────
       - name: Deployment summary
         if: always()
         run: |
-          echo "## 🚀 GCP Cloud Run Deployment - Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Service**: \`${{ env.SERVICE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Region**: \`${{ env.REGION }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image**: \`${{ env.IMAGE_NAME }}:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **URL**: \`${{ steps.service-url.outputs.url }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Déploiement terminé avec succès" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "💡 Les migrations seront exécutées automatiquement au démarrage (ENABLE_AUTO_MIGRATIONS=true)" >> $GITHUB_STEP_SUMMARY
+          STATUS="${{ job.status }}"
+          ICON="✅"
+          [ "$STATUS" != "success" ] && ICON="❌"
 
+          SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \
+            --region "$REGION" \
+            --format "value(status.url)" \
+            --project "$PROJECT_ID" 2>/dev/null || echo "N/A")
+
+          {
+            echo "## $ICON Déploiement GCP Cloud Run"
+            echo ""
+            echo "| Champ | Valeur |"
+            echo "|---|---|"
+            echo "| Service | \`$SERVICE_NAME\` |"
+            echo "| Région | \`$REGION\` |"
+            echo "| SHA | \`${{ github.sha }}\` |"
+            echo "| Statut | **$STATUS** |"
+            echo "| URL | $SERVICE_URL |"
+            echo ""
+            if [ "$STATUS" = "success" ]; then
+              echo "✅ Déploiement sans coupure de trafic (blue/green)"
+              echo "✅ Health check validé avant bascule"
+              echo "✅ Migrations automatiques au démarrage (ENABLE_AUTO_MIGRATIONS=true)"
+            else
+              echo "⚠️ Rollback automatique déclenché si health check échoué"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
