@@ -589,6 +589,11 @@ def _pdf_safe(text: str) -> str:
     return "".join(result)
 
 
+def _blend(c1: tuple, c2: tuple, alpha: float) -> tuple:
+    """Blend two RGB tuples. alpha=1.0 → c1, alpha=0.0 → c2."""
+    return tuple(int(c1[i] * alpha + c2[i] * (1 - alpha)) for i in range(3))
+
+
 def generate_pdf(data: dict[str, Any]) -> bytes:
     try:
         from fpdf import FPDF, XPos, YPos
@@ -633,63 +638,96 @@ def generate_pdf(data: dict[str, Any]) -> bytes:
         pdf.rect(x, y, w, h, style="F")
 
     def header_band(page_title: str):
-        draw_rect(0, 0, W, 22, P)
-        pdf.set_xy(10, 5)
-        pdf.set_font("Helvetica", "B", 16)
+        draw_rect(0, 0, W, 24, P)
+        # Left accent strip in header
+        draw_rect(0, 0, 5, 24, A)
+        pdf.set_xy(12, 6)
+        pdf.set_font("Helvetica", "B", 17)
         set_text(255, 255, 255)
-        pdf.cell(W - 20, 12, page_title, border=False, align="L")
-        # Accent stripe
-        draw_rect(0, 22, W, 1.2, A)
-        pdf.set_y(28)
+        pdf.cell(W - 24, 12, page_title, border=False, align="L")
+        # Accent stripe bottom of header
+        draw_rect(0, 24, W, 1.5, A)
+        # Right decorative sidebar (full page height minus header)
+        draw_rect(W - 4, 25.5, 4, 270, _blend(P, BG, 0.15))
+        pdf.set_y(30)
 
     def footer_line():
-        pdf.set_y(-15)
-        draw_rect(0, pdf.get_y(), W, 0.6, A)
-        pdf.set_y(pdf.get_y() + 1)
+        # Désactive le saut de page auto le temps du footer pour éviter les pages blanches
+        pdf.set_auto_page_break(False)
+        foot_y = 287  # 297 - 10mm du bas
+        draw_rect(0, foot_y, W, 0.6, A)
+        pdf.set_xy(10, foot_y + 1.5)
         pdf.set_font("Helvetica", "", 7.5)
         set_text(*SB)
-        pdf.cell(0, 5, f"{title}  ·  YukpoIA  ·  Page {pdf.page_no()}", align="C")
+        txt = f"{title}  |  YukpoIA  |  Page {pdf.page_no()}"
+        pdf.cell(W - 20, 5, _pdf_safe(txt), align="C")
+        pdf.set_auto_page_break(True, margin=20)
 
     # ── COVER page ─────────────────────────────────────────────────────────────
     pdf.add_page()
-    # BG
+    # Full BG
     draw_rect(0, 0, W, 297, BG)
-    # Left accent bar
-    draw_rect(0, 0, 4, 297, P)
-    # Top stripe
-    draw_rect(0, 0, W, 1.5, A)
+    # Large primary color block — top 55% of page
+    draw_rect(0, 0, W, 160, P)
+    # Accent diagonal strip overlay (simulated with thin bands)
+    for i in range(8):
+        alpha_val = 0.04 + i * 0.008
+        draw_rect(W - 60 + i * 7, 0, 6, 160, _blend(A, P, alpha_val))
+    # Bottom accent stripe at junction
+    draw_rect(0, 158, W, 3, A)
+    # Left sidebar strip (full height)
+    draw_rect(0, 0, 5, 297, A)
 
-    # Logo top-right
+    # YukpoIA watermark top-left corner
+    pdf.set_xy(10, 8)
+    pdf.set_font("Helvetica", "B", 10)
+    set_text(255, 255, 255)
+    pdf.cell(60, 7, "YukpoIA", border=False)
+
+    # Logo top-right inside the primary block
     if logo_b64:
         lpath = save_tmp_image(logo_b64, img_suffix_from_mime(logo_mime))
         if lpath:
             try:
-                pdf.image(lpath, x=W - 45, y=8, w=35)
+                pdf.image(lpath, x=W - 48, y=6, w=38)
                 os.unlink(lpath)
             except Exception:
                 pass
 
-    # Title
-    pdf.set_xy(14, 80)
-    pdf.set_font("Helvetica", "B", 32)
-    set_text(*P)
-    pdf.multi_cell(W - 28, 12, title, align="L")
+    # Title (inside primary block, centered vertically at ~60mm)
+    pdf.set_xy(12, 60)
+    pdf.set_font("Helvetica", "B", 34)
+    set_text(255, 255, 255)
+    pdf.multi_cell(W - 24, 13, title, align="L")
 
-    # Subtitle
+    # Subtitle (inside primary block)
     if subtitle:
-        pdf.set_x(14)
-        pdf.set_font("Helvetica", "I", 16)
-        set_text(*SB)
-        pdf.multi_cell(W - 28, 8, subtitle, align="L")
+        pdf.set_x(12)
+        pdf.set_font("Helvetica", "I", 15)
+        set_text(220, 235, 255)
+        pdf.multi_cell(W - 24, 8, subtitle, align="L")
 
-    # Divider
-    pdf.ln(6)
-    draw_rect(14, pdf.get_y(), W - 28, 0.8, A)
-    pdf.ln(4)
-    pdf.set_x(14)
-    pdf.set_font("Helvetica", "I", 11)
+    # White content zone below the color block
+    # Author + metadata card
+    card_y = 172
+    draw_rect(12, card_y, W - 24, 28, (255, 255, 255))
+    draw_rect(12, card_y, 3, 28, A)
+    pdf.set_xy(20, card_y + 5)
+    pdf.set_font("Helvetica", "B", 11)
+    set_text(*P)
+    pdf.cell(W - 32, 7, _pdf_safe(f"Prepare par : {author}"), border=False, align="L")
+    pdf.set_xy(20, card_y + 14)
+    pdf.set_font("Helvetica", "", 10)
     set_text(*SB)
-    pdf.cell(0, 7, f"Préparé par : {author}", align="L")
+    pdf.cell(W - 32, 7, _pdf_safe("Genere avec YukpoIA — Intelligence Artificielle"), border=False, align="L")
+
+    # Bottom large accent block
+    draw_rect(0, 260, W, 37, _blend(P, BG, 0.08))
+    draw_rect(0, 260, W, 1, A)
+    pdf.set_xy(12, 270)
+    pdf.set_font("Helvetica", "I", 9)
+    set_text(*SB)
+    pdf.cell(W - 24, 6, _pdf_safe("Document confidentiel — Usage interne"), border=False, align="C")
 
     # ── Content pages ──────────────────────────────────────────────────────────
     # Accept "pages" (PDF-native) or fall back to slides/sections
@@ -720,32 +758,44 @@ def generate_pdf(data: dict[str, Any]) -> bytes:
         if layout == "kpi" and kpis:
             n = len(kpis)
             cw = CONTENT_W / n
-            card_y = pdf.get_y() + 5
-            card_h = 40
+            card_y = pdf.get_y() + 8
+            card_h = 52
             for ki, kpi in enumerate(kpis):
                 kx = 20 + ki * cw
-                # Card
                 card_bg = (255, 255, 255) if not is_dark else (40, 40, 65)
-                draw_rect(kx + 2, card_y, cw - 4, card_h, card_bg, A)
-                draw_rect(kx + 2, card_y, cw - 4, 1.5, A)
+                # Shadow / depth effect
+                draw_rect(kx + 3.5, card_y + 2, cw - 6, card_h, _blend(P, BG, 0.12))
+                # Card background
+                draw_rect(kx + 2, card_y, cw - 6, card_h, card_bg)
+                # Top accent bar
+                draw_rect(kx + 2, card_y, cw - 6, 3, A)
+                # Bottom accent bar
+                draw_rect(kx + 2, card_y + card_h - 2, cw - 6, 2, _blend(P, BG, 0.3))
                 # Value
-                pdf.set_xy(kx + 2, card_y + 6)
-                pdf.set_font("Helvetica", "B", 26)
+                pdf.set_xy(kx + 2, card_y + 8)
+                pdf.set_font("Helvetica", "B", 28)
                 set_text(*P)
-                pdf.cell(cw - 4, 14, _pdf_safe(str(kpi.get("value", ""))), align="C")
+                pdf.cell(cw - 6, 16, _pdf_safe(str(kpi.get("value", ""))), align="C")
                 # Label
-                pdf.set_xy(kx + 2, card_y + 22)
-                pdf.set_font("Helvetica", "", 9)
-                set_text(*SB)
-                pdf.cell(cw - 4, 8, _pdf_safe(str(kpi.get("label", ""))), align="C")
+                pdf.set_xy(kx + 2, card_y + 26)
+                pdf.set_font("Helvetica", "B", 9)
+                set_text(*TX)
+                pdf.cell(cw - 6, 8, _pdf_safe(str(kpi.get("label", ""))).upper(), align="C")
                 # Trend
                 if tr := kpi.get("trend"):
-                    pdf.set_xy(kx + 2, card_y + 31)
-                    tc = (30, 160, 80) if "+" in str(tr) else (200, 50, 50)
+                    pdf.set_xy(kx + 2, card_y + 36)
+                    is_pos = "+" in str(tr) or "hausse" in str(tr).lower()
+                    tc = (30, 160, 80) if is_pos else (200, 50, 50)
                     set_text(*tc)
-                    pdf.set_font("Helvetica", "B", 9)
-                    pdf.cell(cw - 4, 7, _pdf_safe(str(tr)), align="C")
-            pdf.set_y(card_y + card_h + 6)
+                    pdf.set_font("Helvetica", "B", 10)
+                    pdf.cell(cw - 6, 8, _pdf_safe(str(tr)), align="C")
+                # Description
+                if desc := kpi.get("description", kpi.get("desc", "")):
+                    pdf.set_xy(kx + 4, card_y + 44)
+                    pdf.set_font("Helvetica", "I", 7.5)
+                    set_text(*SB)
+                    pdf.multi_cell(cw - 10, 4, _pdf_safe(str(desc))[:50], align="C")
+            pdf.set_y(card_y + card_h + 10)
 
         elif layout == "table" and td:
             _render_pdf_table(pdf, td, cx, CONTENT_W, P, TA, TX, SB, A)
@@ -769,29 +819,39 @@ def generate_pdf(data: dict[str, Any]) -> bytes:
                     text_w = CONTENT_W
 
             if content:
-                pdf.set_xy(cx, pdf.get_y())
+                # Content card background
+                content_y = pdf.get_y()
+                card_bg = _blend(P, (255, 255, 255), 0.06) if not is_dark else (38, 38, 60)
+                draw_rect(cx - 2, content_y - 2, text_w + 4, 4, card_bg)  # placeholder sized below
+                pdf.set_xy(cx, content_y)
                 pdf.set_font("Helvetica", "", 11.5)
                 set_text(*TX)
-                pdf.multi_cell(text_w, 6, content, align="J")
-                pdf.ln(3)
+                pdf.multi_cell(text_w, 6.5, content, align="J")
+                pdf.ln(4)
 
             for para in paragraphs:
                 if para and para != content:
                     pdf.set_x(cx)
                     pdf.set_font("Helvetica", "", 11)
                     set_text(*TX)
-                    pdf.multi_cell(text_w, 6, para, align="J")
-                    pdf.ln(2)
+                    pdf.multi_cell(text_w, 6.5, para, align="J")
+                    pdf.ln(3)
 
-            for bullet in bullets:
-                pdf.set_x(cx + 3)
-                pdf.set_font("Helvetica", "", 11)
-                set_text(*TX)
-                # ASCII-only bullet (▸ not supported by Helvetica in fpdf2)
-                bullet_safe = _pdf_safe(bullet)
-                bullet_line = f"  >  {bullet_safe}"
-                pdf.multi_cell(text_w - 3, 6.5, bullet_line, align="L")
-                pdf.ln(0.5)
+            if bullets:
+                # Bullets section with left accent bar
+                bull_start_y = pdf.get_y()
+                draw_rect(cx - 2, bull_start_y, 2.5, len(bullets) * 8.5, A)
+                for bullet in bullets:
+                    by = pdf.get_y()
+                    # Colored square bullet indicator
+                    draw_rect(cx + 4, by + 2.5, 2.5, 2.5, P)
+                    pdf.set_xy(cx + 10, by)
+                    pdf.set_font("Helvetica", "", 11)
+                    set_text(*TX)
+                    bullet_safe = _pdf_safe(bullet)
+                    pdf.multi_cell(text_w - 12, 7, bullet_safe, align="L")
+                    pdf.ln(0.5)
+                pdf.ln(2)
 
             # Table after text
             if td and layout != "table":
@@ -803,6 +863,21 @@ def generate_pdf(data: dict[str, Any]) -> bytes:
                 os.unlink(img_path_tmp)
             except Exception:
                 pass
+
+        # ── Decorative bottom zone if page is sparse (current y < 220mm) ──
+        cur_y = pdf.get_y()
+        if cur_y < 215:
+            # Bottom accent band
+            band_y = 268
+            draw_rect(0, band_y, W, 8, _blend(P, BG, 0.08))
+            draw_rect(0, band_y, W, 0.8, A)
+            # Document branding in band
+            pdf.set_xy(10, band_y + 1.5)
+            pdf.set_font("Helvetica", "I", 8)
+            set_text(*SB)
+            pdf.cell(W - 20, 5, _pdf_safe(f"Document genere par YukpoIA  |  {title}"), align="C")
+            # Corner accent triangle (bottom-left)
+            draw_rect(0, 260, 20, 8, _blend(A, BG, 0.12))
 
         footer_line()
 
@@ -822,13 +897,10 @@ def _render_pdf_table(pdf, td, cx, width, P, TA, TX, SB, A):
         pdf.set_fill_color(*P)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font("Helvetica", "B", 10)
+        pdf.set_x(cx)  # position initiale une seule fois avant la boucle
         for h in headers[:cols]:
-            pdf.set_x(cx)
-            cx_before = cx
             text = _pdf_safe(str(h))[:25]
-            pdf.set_x(cx_before)
-            pdf.cell(cw, row_h, text, border=1, fill=True, align="C")
-            cx_before += cw
+            pdf.cell(cw, row_h, text, border=1, fill=True, align="C")  # auto-avance x
         cx = 20
         pdf.ln()
 

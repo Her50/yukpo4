@@ -157,6 +157,11 @@ pub fn is_visual_generation_request(message: &str) -> bool {
         "generer une image",
         "créer un visuel",
         "creer un visuel",
+        "ticket d'invitation",
+        "carton d'invitation",
+        "faire une affiche",
+        "faire un flyer",
+        "faire une banniere",
     ];
     keywords.iter().any(|kw| m.contains(kw))
 }
@@ -183,30 +188,33 @@ pub fn inject_user_assets_into_spec(spec: &mut Value, context: &Option<serde_jso
 
 /// Instructions système pour la génération de visuels.
 pub fn visual_generation_system_instructions() -> &'static str {
-    r#"
+    r##"
 
 === GÉNÉRATION DE VISUELS MARKETING / INVITATIONS / BANNERS ===
-Si l'utilisateur demande de **créer un visuel, une affiche, un flyer, une invitation, une bannière, un post réseaux sociaux, un certificat ou une carte de visite**, tu DOIS inclure dans ta réponse JSON un champ `visual_generation` avec le spec complet.
+Si l'utilisateur demande de créer un visuel, une affiche, un flyer, une invitation, une banniere, un post reseaux sociaux, un certificat, un billet ou une carte de visite, tu DOIS inclure dans ta reponse JSON un champ `visual_generation` avec le spec complet.
 
 **Types disponibles :**
-- `poster` / `flyer` — Affiche/flyer événement ou marketing
-- `invitation` — Carton d'invitation élégant
-- `banner` / `banner_wide` — Bannière Web ou présentielle
-- `social_post` — Post Instagram/Facebook/LinkedIn
-- `certificate` — Certificat ou attestation
-- `business_card` — Carte de visite
+- `poster` / `flyer` — Affiche/flyer evenement ou marketing (fond degrade, info card, bullets)
+- `invitation` — Carton d'invitation elegant avec cadre orne et details evenement
+- `banner` / `banner_wide` — Banniere Web ou presentielle (format horizontal)
+- `social_post` — Post Instagram/Facebook/LinkedIn (carre ou portrait)
+- `certificate` / `attestation` — Certificat professionnel avec cadre double et ornements
+- `business_card` / `carte_visite` — Carte de visite professionnelle
+- `ticket` / `billet` — Billet d'entree avec souche decorative
 
 **Formats :**
-- `square` (1080×1080), `portrait` (1080×1350), `story` (1080×1920)
-- `landscape` (1200×630), `banner_wide` (1500×500), `a4` (2480×3508)
-- `business_card` (1050×600)
+- `square` (1080x1080), `portrait` (1080x1350), `story` (1080x1920)
+- `landscape` (1200x630), `banner_wide` (1500x500)
+- `business_card` (1050x600), `ticket` (1400x650)
 
-**Thèmes :** `blue`, `green`, `purple`, `orange`, `dark`, `light`, `gold`, `elegant`
+**Themes :** `blue` (corporate), `green` (nature), `purple` (premium), `orange` (energetique),
+`dark` (tech/modern), `light` (minimaliste), `gold` (luxe/gala), `elegant` (sobre/luxe),
+`red` (urgent/passion), `corporate` (B2B sobre)
 
 **Format JSON :**
 ```json
 {
-  "message": "J'ai créé votre visuel. Téléchargez-le ci-dessous.",
+  "message": "J'ai cree votre visuel professionnel. Telechargez-le ci-dessous.",
   "type": "text",
   "visual_generation": {
     "visual_type": "invitation",
@@ -214,26 +222,29 @@ Si l'utilisateur demande de **créer un visuel, une affiche, un flyer, une invit
     "theme": "gold",
     "output_format": "png",
     "title": "Gala de Bienfaisance 2026",
-    "subtitle": "Une soirée d'exception",
-    "description": "Rejoignez-nous pour une soirée de gala au profit des enfants défavorisés.",
+    "subtitle": "Une soiree d exception pour changer des vies",
+    "description": "Rejoignez-nous pour une soiree inoubliable au profit des enfants. Dress code : tenue de soiree exigee.",
     "date": "Samedi 15 Juin 2026",
-    "time": "19h00 – 23h30",
-    "location": "Sofitel Abidjan Hôtel Ivoire",
-    "organizer": "Association Avenir Côte d'Ivoire",
+    "time": "19h00 - 23h30",
+    "location": "Sofitel Abidjan Hotel Ivoire, Cocody",
+    "organizer": "Association Avenir Cote d Ivoire",
     "contact": "+225 07 00 11 22 33",
     "price": "50 000 FCFA / personne",
-    "hashtags": ["Gala2026", "Solidarite"],
+    "hashtags": ["Gala2026", "Solidarite", "CI"],
     "badge": "VIP",
-    "brand_name": "AAC"
+    "brand_name": "AAC",
+    "bullets": ["Diner gastronomique inclus", "Spectacle de danse", "Tombola caritatif"]
   }
 }
 ```
 
-**Règles :**
-- Génère un contenu COMPLET et professionnel avec toutes les informations pertinentes.
-- Choisis automatiquement le thème le plus adapté au contexte (événement festif → gold, corporate → blue, etc.).
-- Adapte le format au type de visuel (invitation → portrait, bannière → banner_wide, post social → square).
-- Le champ `description` doit contenir un texte accrocheur et bien rédigé.
-- Inclure `badge` pour mettre en valeur une information clé (GRATUIT, VIP, NOUVEAU, PROMO).
+**Regles CRITIQUES :**
+- Choisis le theme adapte au contexte : festif/gala → gold, corporate → blue ou corporate, sport → orange, tech → dark.
+- Adapte le format : invitation → portrait, banniere pub → banner_wide, post social → square, billet → ticket.
+- Le champ `description` doit contenir un texte accrocheur, bien redige, specifique au contexte (pas de placeholder).
+- Inclure `badge` pour mettre en valeur l'info cle : GRATUIT, VIP, NOUVEAU, PROMO, EXCLUSIF, SOLD OUT.
+- Remplis TOUS les champs pertinents : date, heure, lieu, prix, organisateur, contact, hashtags.
+- Pour les billets (`ticket`), le champ `contact` sert de numero de billet (ex: "#A-0247").
+- Pour les certificats, le champ `badge` contient le type (ex: "MENTION TRES BIEN", "DISTINCTION").
 "#
 }

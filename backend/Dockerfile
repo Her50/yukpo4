@@ -115,6 +115,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
+    fonts-dejavu-core \
+    fonts-liberation \
+    fonts-noto \
+    fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/* \
     && pip3 install --no-cache-dir --break-system-packages python-pptx python-docx fpdf2 Pillow lxml
 
