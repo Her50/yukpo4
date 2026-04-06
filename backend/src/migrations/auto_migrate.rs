@@ -9428,6 +9428,27 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto growth_features: {}", e),
     }
 
+    // ✅ 2026-04-03 : Réversions financières pharmacie (reversed_at, refunded_at, montants)
+    match ensure_pharmacy_financial_reversal(pool).await {
+        Ok(_) => info!("✅ Migration auto: Pharmacy financial reversal columns OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto pharmacy_financial_reversal: {}",
+            e
+        ),
+    }
+
+    // ✅ 2026-04-03 : Extension transactions wallet (restaurant reversed_at, wallet_reserved_cents)
+    match ensure_wallet_transactions_extend(pool).await {
+        Ok(_) => info!("✅ Migration auto: Wallet transactions extend OK"),
+        Err(e) => error!("❌ Erreur migration auto wallet_transactions_extend: {}", e),
+    }
+
+    // ✅ 2026-04-03 : Product distribution jobs (social media scheduler)
+    match ensure_product_distribution_jobs(pool).await {
+        Ok(_) => info!("✅ Migration auto: Product distribution jobs OK"),
+        Err(e) => error!("❌ Erreur migration auto product_distribution_jobs: {}", e),
+    }
+
     info!("🎉 Toutes les migrations automatiques ont été appliquées avec succès !");
 }
 
@@ -21897,5 +21918,32 @@ pub async fn ensure_growth_features(pool: &PgPool) -> Result<(), sqlx::Error> {
     let migration_sql = include_str!("../../migrations/20260404_003_growth_features.sql");
     execute_migration_sql_safe(pool, migration_sql).await?;
     info!("✅ Growth features: email_consent + whatsapp_broadcasts + abandoned_cart_jobs OK");
+    Ok(())
+}
+
+/// Colonnes de réversion financière pharmacie : reversed_at, refunded_at, reversal_reason
+pub async fn ensure_pharmacy_financial_reversal(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let migration_sql =
+        include_str!("../../migrations/20260403_002_pharmacy_order_financial_reversal.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    info!("✅ Pharmacy financial reversal: reversed_at + refunded_at + reversal_reason OK");
+    Ok(())
+}
+
+/// Extension des transactions wallet : restaurant reversed_at, wallet_reserved_cents, shopping_status enum fix
+pub async fn ensure_wallet_transactions_extend(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let migration_sql =
+        include_str!("../../migrations/20260403_005_wallet_transactions_extend.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    info!("✅ Wallet transactions extend: restaurant/shopping colonnes financières OK");
+    Ok(())
+}
+
+/// Tables product_distribution_jobs + distribution_results (social media scheduler)
+pub async fn ensure_product_distribution_jobs(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let migration_sql =
+        include_str!("../../migrations/20260403_007_social_product_distribution.sql");
+    execute_migration_sql_safe(pool, migration_sql).await?;
+    info!("✅ Product distribution jobs: tables scheduler social media OK");
     Ok(())
 }

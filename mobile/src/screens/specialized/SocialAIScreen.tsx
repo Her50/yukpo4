@@ -147,8 +147,8 @@ const SocialAIScreen: React.FC = () => {
 
     // Ads
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-    const [adAccountId, setAdAccountId] = useState('');
-    const [adAccessToken, setAdAccessToken] = useState('');
+    const [discoveredAdAccounts, setDiscoveredAdAccounts] = useState<Array<{id:number;ad_account_id:string;currency:string;monthly_budget_fcfa:number}>>([]);
+    const [selectedAdAccountId, setSelectedAdAccountId] = useState('');
     const [adBudget, setAdBudget] = useState('5000');
     const [showAdAccountModal, setShowAdAccountModal] = useState(false);
     const [savingAdAccount, setSavingAdAccount] = useState(false);
@@ -228,8 +228,20 @@ const SocialAIScreen: React.FC = () => {
     const loadCampaigns = async () => {
         try {
             const resp: any = await apiGet(`/api/social-ai/ads/campaigns/${serviceId}`);
-            setCampaigns(resp?.campaigns ?? []);
+            const body = resp?.data ?? resp;
+            setCampaigns(body?.campaigns ?? []);
         } catch { setCampaigns([]); }
+        // Charger aussi les comptes pub auto-découverts via OAuth Facebook
+        try {
+            const adsResp: any = await apiGet('/api/social/ads/accounts');
+            const adsBody = adsResp?.data ?? adsResp;
+            const accounts = adsBody?.accounts ?? [];
+            setDiscoveredAdAccounts(accounts);
+            // Pré-sélectionner le premier compte si aucun sélectionné
+            if (accounts.length > 0 && !selectedAdAccountId) {
+                setSelectedAdAccountId(accounts[0].ad_account_id);
+            }
+        } catch { /* silencieux */ }
     };
 
     const loadInbox = async () => {
@@ -375,20 +387,20 @@ const SocialAIScreen: React.FC = () => {
     // ─── Ads ──────────────────────────────────────────────────────────────────
 
     const handleSaveAdAccount = async () => {
-        if (!adAccountId.trim() || !adAccessToken.trim()) {
-            Alert.alert('', 'Renseignez l\'Ad Account ID et le token d\'accès');
+        if (!selectedAdAccountId.trim()) {
+            Alert.alert('', 'Sélectionnez un compte publicitaire');
             return;
         }
         setSavingAdAccount(true);
         try {
-            await apiPost('/api/social-ai/ads/account', {
+            // Le token est déjà en DB (stocké lors de l'OAuth Facebook) — on passe juste l'ID
+            await apiPost('/api/social-ai/ads/account/link', {
                 service_id: serviceId,
-                ad_account_id: adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`,
-                access_token: adAccessToken,
+                ad_account_id: selectedAdAccountId.startsWith('act_') ? selectedAdAccountId : `act_${selectedAdAccountId}`,
                 monthly_budget_fcfa: 50000,
             });
             setShowAdAccountModal(false);
-            Alert.alert('✅ Enregistré', 'Compte publicitaire connecté');
+            Alert.alert('✅ Compte lié', 'Compte publicitaire connecté à ce service');
         } catch (e: any) {
             Alert.alert('Erreur', e?.message ?? 'Connexion impossible');
         } finally {
@@ -1407,39 +1419,68 @@ const SocialAIScreen: React.FC = () => {
             <View style={styles.modalOverlay}>
                 <View style={styles.modalSheet}>
                     <Text style={styles.modalTitle}>Compte publicitaire Meta</Text>
-                    <Text style={styles.modalSubtitle}>
-                        Trouvez votre Ad Account ID dans Meta Business Manager → Comptes publicitaires
-                    </Text>
-                    <TextInput
-                        style={styles.textInput}
-                        value={adAccountId}
-                        onChangeText={setAdAccountId}
-                        placeholder="Ex: act_1234567890"
-                        placeholderTextColor="#6B7280"
-                        autoFocus
-                    />
-                    <Text style={[styles.modalSubtitle, { marginTop: 10 }]}>Token d'accès (Marketing API)</Text>
-                    <TextInput
-                        style={styles.textInput}
-                        value={adAccessToken}
-                        onChangeText={setAdAccessToken}
-                        placeholder="Token d'accès long-lived"
-                        placeholderTextColor="#6B7280"
-                        secureTextEntry
-                    />
-                    <View style={styles.modalActions}>
+
+                    {discoveredAdAccounts.length > 0 ? (
+                        <>
+                            <Text style={styles.modalSubtitle}>
+                                ✅ Comptes trouvés via votre connexion Facebook — sélectionnez-en un :
+                            </Text>
+                            {discoveredAdAccounts.map((acc) => (
+                                <TouchableOpacity
+                                    key={acc.ad_account_id}
+                                    style={[
+                                        styles.adAccountOption,
+                                        selectedAdAccountId === acc.ad_account_id && styles.adAccountOptionSelected,
+                                    ]}
+                                    onPress={() => setSelectedAdAccountId(acc.ad_account_id)}
+                                >
+                                    <SafeIcon
+                                        name={selectedAdAccountId === acc.ad_account_id ? 'check-circle' : 'circle'}
+                                        size={18}
+                                        color={selectedAdAccountId === acc.ad_account_id ? '#1877F2' : '#6B7280'}
+                                    />
+                                    <View style={{ marginLeft: 10, flex: 1 }}>
+                                        <Text style={styles.adAccountOptionText}>{acc.ad_account_id}</Text>
+                                        <Text style={[styles.modalSubtitle, { marginTop: 0 }]}>{acc.currency}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </>
+                    ) : (
+                        <>
+                            <Text style={styles.modalSubtitle}>
+                                Connectez d'abord votre compte Facebook dans{'\n'}
+                                <Text style={{ color: '#1877F2', fontWeight: '600' }}>Paramètres → Comptes sociaux</Text>
+                                {'\n\n'}Yukpo découvrira automatiquement vos comptes publicitaires Meta sans aucune saisie manuelle.
+                            </Text>
+                            <TouchableOpacity
+                                style={[styles.modalSaveBtn, { marginTop: 8 }]}
+                                onPress={() => {
+                                    setShowAdAccountModal(false);
+                                    (navigation as any).navigate('SocialAccountSetup', { serviceId });
+                                }}
+                            >
+                                <SafeIcon name="link" size={16} color="#fff" />
+                                <Text style={[styles.modalSaveText, { marginLeft: 6 }]}>Connecter Facebook</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
+
+                    <View style={[styles.modalActions, { marginTop: 16 }]}>
                         <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowAdAccountModal(false)}>
-                            <Text style={styles.modalCancelText}>Annuler</Text>
+                            <Text style={styles.modalCancelText}>Fermer</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.modalSaveBtn, savingAdAccount && { opacity: 0.6 }]}
-                            onPress={handleSaveAdAccount}
-                            disabled={savingAdAccount}
-                        >
-                            {savingAdAccount ? <ActivityIndicator size="small" color="#fff" /> : (
-                                <Text style={styles.modalSaveText}>Connecter</Text>
-                            )}
-                        </TouchableOpacity>
+                        {discoveredAdAccounts.length > 0 && (
+                            <TouchableOpacity
+                                style={[styles.modalSaveBtn, savingAdAccount && { opacity: 0.6 }]}
+                                onPress={handleSaveAdAccount}
+                                disabled={savingAdAccount}
+                            >
+                                {savingAdAccount ? <ActivityIndicator size="small" color="#fff" /> : (
+                                    <Text style={styles.modalSaveText}>Lier ce compte</Text>
+                                )}
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
             </View>
@@ -1793,8 +1834,11 @@ const styles = StyleSheet.create({
     modalActions: { flexDirection: 'row', gap: 10, marginTop: 14 },
     modalCancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#374151', alignItems: 'center' },
     modalCancelText: { color: '#9CA3AF', fontWeight: '600' },
-    modalSaveBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#8B5CF6', alignItems: 'center' },
+    modalSaveBtn: { flex: 1, flexDirection: 'row', paddingVertical: 12, borderRadius: 10, backgroundColor: '#8B5CF6', alignItems: 'center', justifyContent: 'center' },
     modalSaveText: { color: '#fff', fontWeight: '700' },
+    adAccountOption: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#374151', marginBottom: 8 },
+    adAccountOptionSelected: { borderColor: '#1877F2', backgroundColor: '#1877F211' },
+    adAccountOptionText: { color: '#F9FAFB', fontWeight: '600', fontSize: 14 },
 
     // ── Steps ──
     stepHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 8 },

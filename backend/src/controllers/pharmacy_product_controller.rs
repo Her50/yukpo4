@@ -836,6 +836,8 @@ pub async fn update_pharmacy_order_status(
 #[derive(Debug, serde::Deserialize)]
 pub struct ExtractOrdonnanceRequest {
     pub image_base64: String,
+    pub lat: Option<f64>,
+    pub lng: Option<f64>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -865,7 +867,9 @@ pub async fn extract_ordonnance(
     }
 
     let ai_service = PharmacyAIService::new(state.ia.clone());
-    let medications = ai_service.extract_ordonnance_medications(&payload.image_base64).await?;
+    let medications = ai_service
+        .extract_ordonnance_medications(&payload.image_base64, payload.lat, payload.lng)
+        .await?;
 
     log::info!(
         "[extract_ordonnance] {} médicament(s) extraits",
@@ -971,13 +975,13 @@ pub async fn search_by_medications(
                 CASE
                     WHEN $2::float8 IS NOT NULL AND $3::float8 IS NOT NULL
                          AND s.gps IS NOT NULL
-                         AND s.gps->>'lat' IS NOT NULL
-                         AND s.gps->>'lng' IS NOT NULL
+                         AND s.gps::jsonb->>'lat' IS NOT NULL
+                         AND s.gps::jsonb->>'lng' IS NOT NULL
                     THEN 6371.0 * acos(
                         LEAST(1.0,
-                            cos(radians($2)) * cos(radians((s.gps->>'lat')::float8))
-                            * cos(radians((s.gps->>'lng')::float8) - radians($3))
-                            + sin(radians($2)) * sin(radians((s.gps->>'lat')::float8))
+                            cos(radians($2)) * cos(radians((s.gps::jsonb->>'lat')::float8))
+                            * cos(radians((s.gps::jsonb->>'lng')::float8) - radians($3))
+                            + sin(radians($2)) * sin(radians((s.gps::jsonb->>'lat')::float8))
                         )
                     )
                     ELSE NULL

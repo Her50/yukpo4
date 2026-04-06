@@ -12,8 +12,9 @@ use crate::{
     controllers::{
         product_distribution_controller::{
             csv_export_feed, distribute_products, facebook_authorize, facebook_callback,
-            get_distribution_history, get_distribution_rules, google_shopping_feed, sync_catalog,
-            track_distribution_click, update_catalog_id, update_distribution_rules,
+            get_distribution_history, get_distribution_rules, google_shopping_feed,
+            list_meta_ad_accounts, sync_catalog, track_distribution_click, update_catalog_id,
+            update_distribution_rules,
         },
         social_connector_controller::{
             connect_account, get_accounts, instagram_authorize, instagram_callback,
@@ -45,6 +46,8 @@ pub fn social_distribution_routes(state: Arc<AppState>) -> Router<Arc<AppState>>
             "/api/social/accounts/whatsapp/setup-guided",
             post(whatsapp_guided_setup),
         )
+        // Comptes publicitaires Meta auto-découverts lors de l'OAuth
+        .route("/api/social/ads/accounts", get(list_meta_ad_accounts))
         // ── Distribution produits ──────────────────────────────────────────
         // Distribuer une sélection de produits vers des plateformes
         .route("/api/social/products/distribute", post(distribute_products))

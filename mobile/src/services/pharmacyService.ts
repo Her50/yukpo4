@@ -243,7 +243,7 @@ export const pharmacyService = {
     },
 
     // ✅ Ordonnance IA: extraire médicaments d'une image
-    extractOrdonnance: async (imageBase64: string): Promise<{
+    extractOrdonnance: async (imageBase64: string, lat?: number, lng?: number): Promise<{
         success: boolean;
         medications?: Array<{ name: string; dosage?: string; quantity?: number; posologie?: string }>;
         error?: string;
@@ -251,6 +251,8 @@ export const pharmacyService = {
         try {
             const response = await apiPost<any>('/api/pharmacies/ai/extract-ordonnance', {
                 image_base64: imageBase64,
+                lat,
+                lng,
             });
             if (response.success) {
                 return { success: true, medications: response.medications || [] };

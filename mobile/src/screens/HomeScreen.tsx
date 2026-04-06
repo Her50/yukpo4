@@ -658,8 +658,8 @@ const HomeScreen: React.FC = () => {
                             navigate('Delivery');
                         }}
                     >
-                        {/* Icône livraison : cycliste Lucide, bonhomme orange distinctif */}
-                        <SafeIcon name="Bike" size={26} color="#F97316" type="lucide" />
+                        {/* Icône livraison : même emoji 🚴 que le lien "Devenir coursier" dans le menu avatar */}
+                        <Text style={styles.deliveryButtonIcon}>🚴</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.headerButton, styles.notificationButton]}
@@ -1018,7 +1018,7 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     deliveryButtonIcon: {
-        fontSize: 22, // ✅ Taille de l'emoji coursier
+        fontSize: 24,
     },
     headerButtonIcon: {
         fontSize: 20,

@@ -138,33 +138,70 @@ export default function TrendPulseDashboardScreen() {
 
     const pulseAnim = useRef(new Animated.Value(0)).current;
 
+    // ─── Mapping backend → TrendTopic ────────────────────────────────────────
+
+    /** Convertit un TrendItem backend (champs Rust) vers l'interface TrendTopic du mobile */
+    const mapTrendItem = (item: any): TrendTopic => {
+        // Dériver trend_direction depuis momentum_pct (champ backend)
+        const momentum: number = item.momentum_pct ?? item.momentum ?? 0;
+        let trend_direction: TrendTopic['trend_direction'] = 'stable';
+        if (momentum >= 70) trend_direction = 'peak';
+        else if (momentum >= 35) trend_direction = 'rising';
+        else if (momentum <= -10) trend_direction = 'declining';
+
+        return {
+            topic: item.topic ?? '',
+            score: item.social_score ?? item.score ?? 0,          // backend → social_score
+            social_score: item.social_score ?? 0,
+            opportunity_score: item.opportunity_score ?? 0,
+            trend_direction,
+            region: Array.isArray(item.regions) ? (item.regions[0] ?? '') : (item.region ?? ''),
+            categories: item.categories ?? [],
+            sources: item.sources ?? [],
+            forecast_day3: item.forecast_day3,
+            forecast_day7: item.forecast_day7,
+            confidence: item.confidence,
+        };
+    };
+
+    const mapPersonalizedTrend = (item: any): PersonalizedTrend => ({
+        ...mapTrendItem(item),
+        opportunity_score: item.opportunity_score ?? 0,
+        matching_products: (item.matching_products ?? []).map((p: any) => p.product_name ?? p),
+        recommended_action: item.recommended_action?.title ?? item.recommended_action ?? undefined,
+    });
+
     // ─── Chargement ─────────────────────────────────────────────────────────
 
     const loadPulse = useCallback(async () => {
         try {
             const params = new URLSearchParams({ region, period, limit: '20' });
             if (selectedCategory) params.set('category', selectedCategory);
-            const data: any = await apiGet(`/api/trends/pulse?${params}`);
-            setTrends(data.trends ?? []);
-            setTopPersonalities(data.top_personalities ?? []);
-            setTopSectors(data.top_sectors ?? []);
+            const res: any = await apiGet(`/api/trends/pulse?${params}`);
+            // apiGet retourne { success, data: <corps backend> }
+            const body = res?.data ?? res;
+            setTrends((body?.trends ?? []).map(mapTrendItem));
+            setTopPersonalities((body?.top_personalities ?? []).map((p: any) => p.name ?? p));
+            setTopSectors((body?.top_sectors ?? []).map((s: any) => s.sector ?? s));
         } catch { }
     }, [region, period, selectedCategory]);
 
     const loadMyTrends = useCallback(async () => {
         if (tab !== 'forme') return;
         try {
-            const data: any = await apiGet(`/api/trends/for-me?region=${region}&period=${period}&limit=15`);
-            setMyTrends(data.personalized_trends ?? []);
-            setHighOppCount(data.high_opportunity_count ?? 0);
+            const res: any = await apiGet(`/api/trends/for-me?region=${region}&period=${period}&limit=15`);
+            const body = res?.data ?? res;
+            setMyTrends((body?.personalized_trends ?? []).map(mapPersonalizedTrend));
+            setHighOppCount(body?.high_opportunity_count ?? 0);
         } catch { }
     }, [tab, region, period]);
 
     const loadDrafts = useCallback(async () => {
         if (tab !== 'drafts' || !serviceId) return;
         try {
-            const data: any = await apiGet(`/api/trends/auto-drafts/${serviceId}`);
-            setDrafts(data.drafts ?? []);
+            const res: any = await apiGet(`/api/trends/auto-drafts/${serviceId}`);
+            const body = res?.data ?? res;
+            setDrafts(body?.drafts ?? []);
         } catch { }
     }, [tab, serviceId]);
 
@@ -217,8 +254,9 @@ export default function TrendPulseDashboardScreen() {
         if (!forecastTopic.trim()) return;
         setLoadingForecast(true);
         try {
-            const data: any = await apiGet(`/api/trends/forecast?topic=${encodeURIComponent(forecastTopic)}&region=${region}`);
-            setForecast(data.forecast ?? null);
+            const res: any = await apiGet(`/api/trends/forecast?topic=${encodeURIComponent(forecastTopic)}&region=${region}`);
+            const body = res?.data ?? res;
+            setForecast(body?.forecast ?? null);
         } catch {
             Alert.alert('Erreur', 'Prévision indisponible pour ce topic');
         } finally {

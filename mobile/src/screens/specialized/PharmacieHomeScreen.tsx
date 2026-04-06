@@ -464,7 +464,11 @@ const PharmacieHomeScreen: React.FC = () => {
 
                 // Étape 1 : extraction IA des médicaments via le vrai endpoint Vision AI
                 const base64Pure = asset.base64!;
-                const extraction = await pharmacyService.extractOrdonnance(base64Pure);
+                const extraction = await pharmacyService.extractOrdonnance(
+                    base64Pure,
+                    location?.coords?.latitude,
+                    location?.coords?.longitude,
+                );
 
                 if (extraction.success && extraction.medications && extraction.medications.length > 0) {
                     const firstMed = extraction.medications[0];
@@ -553,7 +557,11 @@ const PharmacieHomeScreen: React.FC = () => {
         const base64 = result.assets[0].base64!;
         setExtractingOrdonnance(true);
         try {
-            const extraction = await pharmacyService.extractOrdonnance(base64);
+            const extraction = await pharmacyService.extractOrdonnance(
+                base64,
+                location?.coords?.latitude,
+                location?.coords?.longitude,
+            );
             if (extraction.success && extraction.medications && extraction.medications.length > 0) {
                 const names = extraction.medications.map(m => m.name);
                 setTextMedications(prev => {
@@ -930,29 +938,35 @@ const PharmacieHomeScreen: React.FC = () => {
                     </View>
 
                     {/* Tags médicaments ajoutés + bouton lancer la recherche */}
-                    {textMedications.length > 0 && (
+                    {(textMedications.length > 0 || medInputValue.trim().length > 0) && (
                         <View style={styles.medTagsInHeader}>
-                            <View style={styles.medTagsRowInHeader}>
-                                {textMedications.map((name, idx) => (
-                                    <TouchableOpacity
-                                        key={idx}
-                                        style={styles.medTagChip}
-                                        onPress={() => removeTextMedication(name)}
-                                        activeOpacity={0.7}
-                                    >
-                                        <SafeIcon name="pill" size={11} color="#9D174D" type="lucide" />
-                                        <Text style={styles.medTagChipText}>{name}</Text>
-                                        <SafeIcon name="x" size={11} color="#9CA3AF" type="lucide" />
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                            {textMedications.length > 0 && (
+                                <View style={styles.medTagsRowInHeader}>
+                                    {textMedications.map((name, idx) => (
+                                        <TouchableOpacity
+                                            key={idx}
+                                            style={styles.medTagChip}
+                                            onPress={() => removeTextMedication(name)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <SafeIcon name="pill" size={11} color="#9D174D" type="lucide" />
+                                            <Text style={styles.medTagChipText}>{name}</Text>
+                                            <SafeIcon name="x" size={11} color="#9CA3AF" type="lucide" />
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
                             <TouchableOpacity
                                 style={styles.searchMedBtn}
                                 onPress={handleSearchByMedications}
                                 activeOpacity={0.8}
                             >
                                 <SafeIcon name="search" size={15} color="#FFFFFF" type="lucide" />
-                                <Text style={styles.searchMedBtnText}>Trouver ces médicaments</Text>
+                                <Text style={styles.searchMedBtnText}>
+                                    {textMedications.length > 0
+                                        ? 'Trouver ces médicaments'
+                                        : `Chercher "${medInputValue.trim()}"`}
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -1140,11 +1154,12 @@ const PharmacieHomeScreen: React.FC = () => {
                             style={[
                                 styles.aiChatWrapper,
                                 {
-                                    maxHeight: aiChatHeight.interpolate({
+                                    height: aiChatHeight.interpolate({
                                         inputRange: [0, 1],
                                         outputRange: [0, 480],
                                     }),
                                     opacity: aiChatHeight,
+                                    overflow: 'hidden',
                                 }
                             ]}
                         >
@@ -3042,16 +3057,15 @@ const styles = StyleSheet.create({
         color: '#6B7280',
     },
     aiChatWrapper: {
-        maxHeight: 500, // ✅ Hauteur maximale pour limiter l'affichage
         backgroundColor: '#F9FAFB',
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
-        // ✅ Note: La hauteur réelle est gérée par l'animation Animated.View
+        marginTop: 4,
+        // hauteur gérée par l'animation (height: 0→480)
     },
     aiChatScrollView: {
-        flex: 1,
+        height: 340,
         backgroundColor: '#F9FAFB',
-        maxHeight: 350,
     },
     aiChatScrollContent: {
         padding: 16,

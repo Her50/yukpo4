@@ -40,13 +40,14 @@ use crate::{
         get_optimal_schedule,
         get_thread,
         instagram_dm_webhook,
+        // Ads
+        link_ad_account,
         list_campaigns,
         // Inbox
         list_inbox,
         list_posts,
         messenger_webhook,
         resolve_thread,
-        // Ads
         save_ad_account,
         search_inbox,
         // Chatbot
@@ -111,6 +112,7 @@ pub fn social_ai_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         )
         // ── Meta Ads ───────────────────────────────────────────────────────────
         .route("/api/social-ai/ads/account", post(save_ad_account))
+        .route("/api/social-ai/ads/account/link", post(link_ad_account))
         .route(
             "/api/social-ai/ads/campaigns/{service_id}",
             get(list_campaigns),

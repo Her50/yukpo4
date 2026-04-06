@@ -12,6 +12,8 @@ use uuid::Uuid;
 
 use crate::middlewares::jwt::AuthenticatedUser;
 use crate::routes::yukpo_ia_session_routes;
+use crate::services::document_generation_service;
+use crate::services::visual_generation_service;
 use crate::services::yukpo_ia_billing;
 use crate::services::yukpo_ia_chat_enrich;
 use crate::services::yukpo_ia_preprocess;
@@ -1276,6 +1278,11 @@ pub(crate) async fn yukpo_ia_chat_core_inner(
         session_continuity,
     );
 
+    // Instructions de génération de documents (PPTX/DOCX/PDF)
+    system_prompt.push_str(document_generation_service::document_generation_system_instructions());
+    // Instructions de génération de visuels marketing
+    system_prompt.push_str(visual_generation_service::visual_generation_system_instructions());
+
     if context_has_vision_images(&payload.context) {
         system_prompt.push_str(
             "\n\n=== VISION — IMAGES / CAPTURES (requête en cours) ===\n\
@@ -1339,10 +1346,21 @@ L’utilisateur a joint une ou plusieurs **images** (souvent des **captures d’
     // AppIA sélectionne automatiquement le meilleur modèle disponible par priorité
     // avec fallback : OpenAI → Claude → Gemini → Mistral → DeepSeek → Ollama → Cohere
     let ia_start = Instant::now();
-    // Réponses longues (formations, synthèses) : 8000 max_tokens completion — facturation inchangée côté usage
+    // Détection de génération de document ou visuel : on augmente le budget de tokens
+    // pour un outline/spec complet et dense, sans troncature.
+    let is_doc_request =
+        document_generation_service::is_document_generation_request(&sanitized_message);
+    let is_visual_request =
+        visual_generation_service::is_visual_generation_request(&sanitized_message);
+    let max_tokens = if is_doc_request { 16000 } else { 8000 };
+    let temperature = if is_doc_request || is_visual_request {
+        0.55
+    } else {
+        0.72
+    };
     let (model_name, raw_content, comp_tokens_u64, total_tokens_u64) = match state
         .ia
-        .chat_completion_with_messages(&messages_vec, has_vision, 8000, 0.72)
+        .chat_completion_with_messages(&messages_vec, has_vision, max_tokens, temperature)
         .await
     {
         Ok(result) => result,
@@ -1434,6 +1452,55 @@ L’utilisateur a joint une ou plusieurs **images** (souvent des **captures d’
                 "session_id".to_string(),
                 serde_json::Value::String(sid.to_string()),
             );
+        }
+    }
+
+    // Génération de documents (PPTX / DOCX / PDF) si l'IA a fourni un outline.
+    if let Some(mut outline) = document_generation_service::extract_document_outline(&body) {
+        // Injecte le logo/bannière de l'utilisateur s'il a joint une image
+        document_generation_service::inject_user_logo_into_outline(&mut outline, &payload.context);
+        // Supprime le champ de la réponse (pas besoin de l'exposer au client)
+        if let Some(obj) = body.as_object_mut() {
+            obj.remove("document_generation");
+            obj.remove("document_outline");
+        }
+        match document_generation_service::generate_document_attachment(&state, user_id, &outline)
+            .await
+        {
+            Some(att) => {
+                yukpo_ia_chat_enrich::merge_extra_attachments(&mut body, &[att]);
+                info!(
+                    "[YukpoIA] Document généré et attaché pour user_id={}",
+                    user_id
+                );
+            }
+            None => {
+                warn!(
+                    "[YukpoIA] Génération document échouée pour user_id={}",
+                    user_id
+                );
+            }
+        }
+    }
+
+    // Génération de visuels marketing si l'IA a fourni un spec.
+    if let Some(mut spec) = visual_generation_service::extract_visual_spec(&body) {
+        visual_generation_service::inject_user_assets_into_spec(&mut spec, &payload.context);
+        if let Some(obj) = body.as_object_mut() {
+            obj.remove("visual_generation");
+            obj.remove("visual_spec");
+        }
+        match visual_generation_service::generate_visual_attachment(&state, user_id, &spec).await {
+            Some(att) => {
+                yukpo_ia_chat_enrich::merge_extra_attachments(&mut body, &[att]);
+                info!("[YukpoIA] Visuel marketing généré pour user_id={}", user_id);
+            }
+            None => {
+                warn!(
+                    "[YukpoIA] Génération visuel échouée pour user_id={}",
+                    user_id
+                );
+            }
         }
     }
 

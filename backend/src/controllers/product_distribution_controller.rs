@@ -41,12 +41,13 @@ pub async fn facebook_authorize(
 
     let state_key = create_oauth_state(&state.redis_client, user.id).await?;
 
-    // Scopes complets : Pages + Instagram + commentaires + messagerie + catalogue
+    // Scopes complets : Pages + Instagram + messagerie + catalogue + Marketing API (ads)
     let scope = encode(
         "pages_manage_posts,pages_read_engagement,pages_show_list,\
          pages_manage_metadata,pages_manage_comments,pages_messaging,\
          instagram_content_publish,instagram_basic,instagram_manage_comments,\
-         catalog_management,public_profile",
+         catalog_management,public_profile,\
+         ads_management,ads_read,business_management",
     );
     let extras = encode(r#"{"setup":{"channel":"IG_API_ONBOARDING"}}"#);
     let auth_url = format!(
@@ -121,12 +122,14 @@ pub async fn facebook_callback(
         .json()
         .await?;
 
+    let user_token = long_resp.access_token.clone();
+
     // Découverte complète : Pages Facebook + Instagram liés, tokens individuels par Page
     let ecosystem =
         crate::services::social_connector_service::discover_and_save_facebook_ecosystem(
             state.clone(),
             user_id,
-            &long_resp.access_token,
+            &user_token,
             None,
         )
         .await;
@@ -150,7 +153,7 @@ pub async fn facebook_callback(
                 SocialTokenPayload {
                     platform: "facebook".to_string(),
                     account_handle: None,
-                    access_token: long_resp.access_token.clone(),
+                    access_token: user_token.clone(),
                     refresh_token: None,
                     expires_at,
                     scope: long_resp.scope.clone(),
@@ -161,7 +164,135 @@ pub async fn facebook_callback(
         }
     }
 
-    Ok(Html(oauth_success_page("Facebook & Instagram")))
+    // Auto-découverte des comptes publicitaires Meta (Marketing API)
+    // Utilise le même token long-lived — ne bloque pas si l'utilisateur n'a pas de compte pub
+    let _ = discover_and_save_meta_ad_accounts(&state, user_id, &user_token).await;
+
+    Ok(Html(oauth_success_page("Facebook, Instagram & Meta Ads")))
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auto-découverte des comptes publicitaires Meta
+// ─────────────────────────────────────────────────────────────
+
+/// Appelle GET /me/adaccounts via le token long-lived et enregistre en DB.
+/// Silencieux (Ok(())) si l'utilisateur n'a pas de compte pub ou pas les perms.
+async fn discover_and_save_meta_ad_accounts(
+    state: &Arc<AppState>,
+    user_id: i32,
+    user_token: &str,
+) -> Result<(), String> {
+    let http = Client::new();
+
+    let resp = http
+        .get("https://graph.facebook.com/v19.0/me/adaccounts")
+        .query(&[
+            ("access_token", user_token),
+            (
+                "fields",
+                "id,name,account_status,currency,business{id,name}",
+            ),
+            ("limit", "10"),
+        ])
+        .timeout(std::time::Duration::from_secs(8))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !resp.status().is_success() {
+        log::warn!("[MetaAds] /me/adaccounts HTTP {}", resp.status());
+        return Ok(()); // pas de pub → silencieux
+    }
+
+    let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let accounts = match body["data"].as_array() {
+        Some(a) => a.clone(),
+        None => return Ok(()),
+    };
+
+    if accounts.is_empty() {
+        log::info!(
+            "[MetaAds] user={} — aucun compte publicitaire trouvé",
+            user_id
+        );
+        return Ok(());
+    }
+
+    for acc in &accounts {
+        let ext_id = acc["id"].as_str().unwrap_or_default(); // "act_XXXXXXXX"
+        let name = acc["name"].as_str().unwrap_or("Mon compte pub");
+        let currency = acc["currency"].as_str().unwrap_or("XAF");
+        let status: i64 = acc["account_status"].as_i64().unwrap_or(1);
+        if ext_id.is_empty() {
+            continue;
+        }
+
+        let _ = sqlx::query(
+            r#"INSERT INTO meta_ad_accounts
+               (user_id, ad_account_id, access_token, currency, monthly_budget_fcfa)
+               VALUES ($1, $2, $3, $4, 0)
+               ON CONFLICT (user_id, ad_account_id)
+               DO UPDATE SET
+                   access_token = EXCLUDED.access_token,
+                   currency = EXCLUDED.currency,
+                   updated_at = NOW()"#,
+        )
+        .bind(user_id)
+        .bind(ext_id)
+        .bind(user_token)
+        .bind(currency)
+        .execute(&state.pg)
+        .await;
+
+        log::info!(
+            "[MetaAds] user={} — compte pub enregistré: {} ({}) status={}",
+            user_id,
+            name,
+            ext_id,
+            status
+        );
+    }
+
+    Ok(())
+}
+
+/// GET /api/social/ads/accounts
+/// Retourne les comptes publicitaires Meta auto-découverts pour l'utilisateur connecté.
+pub async fn list_meta_ad_accounts(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<axum::response::Json<serde_json::Value>> {
+    use sqlx::Row;
+
+    let rows = sqlx::query(
+        r#"SELECT id, ad_account_id, currency, monthly_budget_fcfa,
+                  monthly_spent_fcfa, created_at
+           FROM meta_ad_accounts
+           WHERE user_id = $1
+           ORDER BY created_at ASC"#,
+    )
+    .bind(user.id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let accounts: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.try_get::<i32, _>("id").unwrap_or(0),
+                "ad_account_id": r.try_get::<String, _>("ad_account_id").unwrap_or_default(),
+                "currency": r.try_get::<String, _>("currency").unwrap_or_else(|_| "XAF".into()),
+                "monthly_budget_fcfa": r.try_get::<i64, _>("monthly_budget_fcfa").unwrap_or(0),
+                "monthly_spent_fcfa": r.try_get::<i64, _>("monthly_spent_fcfa").unwrap_or(0),
+            })
+        })
+        .collect();
+
+    Ok(axum::response::Json(serde_json::json!({
+        "accounts": accounts,
+        "count": accounts.len(),
+    })))
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -958,6 +958,56 @@ pub async fn save_ad_account(
     ))
 }
 
+/// POST /api/social-ai/ads/account/link
+/// Lie un compte pub Meta auto-découvert (token déjà en DB via OAuth) à un service.
+/// Aucun token à saisir — utilise le token stocké dans meta_ad_accounts.
+#[derive(Deserialize)]
+pub struct AdAccountLinkRequest {
+    pub service_id: i32,
+    pub ad_account_id: String,
+    pub monthly_budget_fcfa: Option<i64>,
+}
+
+pub async fn link_ad_account(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<AdAccountLinkRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    let budget = payload.monthly_budget_fcfa.unwrap_or(50000);
+    let ad_account_id = if payload.ad_account_id.starts_with("act_") {
+        payload.ad_account_id.clone()
+    } else {
+        format!("act_{}", payload.ad_account_id)
+    };
+
+    // Mettre à jour service_id et budget sur le compte pub existant (token déjà stocké via OAuth)
+    let result = sqlx::query(
+        r#"UPDATE meta_ad_accounts
+           SET service_id = $1, monthly_budget_fcfa = $2, updated_at = NOW()
+           WHERE user_id = $3 AND ad_account_id = $4
+           RETURNING id"#,
+    )
+    .bind(payload.service_id)
+    .bind(budget)
+    .bind(user.id)
+    .bind(&ad_account_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
+
+    if result.is_none() {
+        return Err(crate::core::types::AppError::BadRequest(
+            "Compte publicitaire introuvable. Reconnectez votre compte Facebook.".into(),
+        ));
+    }
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Compte publicitaire lié au service",
+        "ad_account_id": ad_account_id,
+    })))
+}
+
 /// POST /api/social-ai/ads/campaign/promo
 #[derive(Deserialize)]
 pub struct PromoCampaignRequest {

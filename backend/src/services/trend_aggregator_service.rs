@@ -811,99 +811,263 @@ async fn load_historical_momentum(
         .collect()
 }
 
+// ─── Chargement depuis les snapshots DB ──────────────────────────────────────
+
+/// Charge les tendances récentes depuis la table trend_snapshots (cache fiable).
+/// Retourne None si pas de snapshots récents (< 4 heures).
+async fn load_trends_from_snapshots(
+    pg: &sqlx::PgPool,
+    region: &str,
+    period: &str,
+    limit: usize,
+) -> Option<Vec<TrendItem>> {
+    use sqlx::Row;
+
+    // Filtre de région : si ALL → toutes les régions connues
+    let rows = if region == "ALL" {
+        sqlx::query(
+            r#"SELECT id, region, topic, social_score, commerce_score,
+                      opportunity_score, momentum_pct, categories, sources, snapshot_at
+               FROM trend_snapshots
+               WHERE snapshot_at >= NOW() - INTERVAL '4 hours'
+               ORDER BY social_score DESC, snapshot_at DESC
+               LIMIT $1"#,
+        )
+        .bind(limit as i64)
+        .fetch_all(pg)
+        .await
+        .unwrap_or_default()
+    } else {
+        sqlx::query(
+            r#"SELECT id, region, topic, social_score, commerce_score,
+                      opportunity_score, momentum_pct, categories, sources, snapshot_at
+               FROM trend_snapshots
+               WHERE region = $1
+                 AND snapshot_at >= NOW() - INTERVAL '4 hours'
+               ORDER BY social_score DESC, snapshot_at DESC
+               LIMIT $2"#,
+        )
+        .bind(region)
+        .bind(limit as i64)
+        .fetch_all(pg)
+        .await
+        .unwrap_or_default()
+    };
+
+    if rows.is_empty() {
+        // Essayer avec une fenêtre plus large (24h) si rien de récent
+        let rows_24h = if region == "ALL" {
+            sqlx::query(
+                r#"SELECT DISTINCT ON (topic) id, region, topic, social_score, commerce_score,
+                          opportunity_score, momentum_pct, categories, sources, snapshot_at
+                   FROM trend_snapshots
+                   WHERE snapshot_at >= NOW() - INTERVAL '24 hours'
+                   ORDER BY topic, snapshot_at DESC, social_score DESC
+                   LIMIT $1"#,
+            )
+            .bind(limit as i64)
+            .fetch_all(pg)
+            .await
+            .unwrap_or_default()
+        } else {
+            sqlx::query(
+                r#"SELECT DISTINCT ON (topic) id, region, topic, social_score, commerce_score,
+                          opportunity_score, momentum_pct, categories, sources, snapshot_at
+                   FROM trend_snapshots
+                   WHERE region = $1
+                     AND snapshot_at >= NOW() - INTERVAL '24 hours'
+                   ORDER BY topic, snapshot_at DESC, social_score DESC
+                   LIMIT $2"#,
+            )
+            .bind(region)
+            .bind(limit as i64)
+            .fetch_all(pg)
+            .await
+            .unwrap_or_default()
+        };
+
+        if rows_24h.is_empty() {
+            return None;
+        }
+
+        return Some(
+            rows_24h
+                .into_iter()
+                .filter_map(|r| snapshot_row_to_trend_item(&r, period))
+                .collect(),
+        );
+    }
+
+    Some(
+        rows.into_iter()
+            .filter_map(|r| snapshot_row_to_trend_item(&r, period))
+            .collect(),
+    )
+}
+
+fn snapshot_row_to_trend_item(r: &sqlx::postgres::PgRow, period: &str) -> Option<TrendItem> {
+    use sqlx::Row;
+    let id: i32 = r.try_get("id").ok()?;
+    let region: String = r.try_get("region").ok()?;
+    let topic: String = r.try_get("topic").ok()?;
+    if topic.is_empty() {
+        return None;
+    }
+
+    let social_score: f64 = r.try_get("social_score").unwrap_or(0.0);
+    let commerce_score: f64 = r.try_get("commerce_score").unwrap_or(0.0);
+    let opportunity_score: f64 = r.try_get("opportunity_score").unwrap_or(0.0);
+    let momentum_pct: f64 = r.try_get("momentum_pct").unwrap_or(0.0);
+    let categories: Vec<String> = r.try_get::<Vec<String>, _>("categories").unwrap_or_default();
+    let sources: Vec<String> = r.try_get::<Vec<String>, _>("sources").unwrap_or_default();
+
+    Some(TrendItem {
+        id: format!("snap-{}", id),
+        topic,
+        social_score: social_score as f32,
+        commerce_score: commerce_score as f32,
+        opportunity_score: opportunity_score as f32,
+        momentum_pct: momentum_pct as f32,
+        categories,
+        regions: vec![region],
+        sources,
+        period: period.to_string(),
+        matching_products: vec![],
+        recommended_action: None,
+    })
+}
+
 // ─── Point d'entrée principal ─────────────────────────────────────────────────
 
 /// Collecte et agrège les tendances pour une région donnée,
 /// puis les score selon le profil commercial de l'utilisateur.
+/// Stratégie : snapshots DB en priorité (fiables), APIs externes en fallback.
 pub async fn get_trend_pulse(
     state: &Arc<AppState>,
     region: &str,
     period: &str,
     user_ctx: Option<&UserCommercialContext>,
 ) -> TrendPulseResult {
-    let client = Client::new();
+    // ─── Priorité 1 : snapshots DB (data fiable, générée par le worker horaire) ─
+    let snapshot_trends = load_trends_from_snapshots(&state.pg, region, period, 50).await;
 
-    // Lire les clés API depuis la config (variables d'environnement)
-    let youtube_key = std::env::var("YOUTUBE_API_KEY").unwrap_or_default();
-    let newsapi_key = std::env::var("NEWSAPI_KEY").unwrap_or_default();
-    let twitter_bearer = std::env::var("TWITTER_BEARER_TOKEN").unwrap_or_default();
-    let tiktok_token = std::env::var("TIKTOK_ACCESS_TOKEN").unwrap_or_default();
-
-    // Codes pays normalisés pour chaque source
-    let newsapi_country = region_to_newsapi_country(region);
-
-    // Collecte parallèle de TOUTES les sources (6 sources)
-    let (google_trends, youtube_trends, news_trends, twitter_trends, tiktok_trends, reddit_trends) = tokio::join!(
-        fetch_google_trends(&client, region),
-        fetch_youtube_trends(&client, region, &youtube_key),
-        fetch_newsapi_trends(&client, &newsapi_country, &newsapi_key),
-        fetch_twitter_trends(&client, region, &twitter_bearer),
-        fetch_tiktok_trends(&client, region, &tiktok_token),
-        fetch_reddit_trends(&client, region),
-    );
-
-    log::info!(
-        "[TrendAggregator] Sources collectées pour {} : Google={} YT={} News={} Twitter={} TikTok={} Reddit={}",
-        region,
-        google_trends.len(), youtube_trends.len(), news_trends.len(),
-        twitter_trends.len(), tiktok_trends.len(), reddit_trends.len()
-    );
-
-    // Signaux internes Yukpo
-    let internal_signals = load_yukpo_internal_signals(&state.pg, region).await;
-
-    // Historique snapshots pour enrichir le momentum multi-jours
-    let historical_momentum = load_historical_momentum(&state.pg, region).await;
-
-    // Fusionner et dédupliquer les tendances (6 sources)
-    let mut all_trends: Vec<TrendItem> = Vec::new();
-    let mut seen_topics: std::collections::HashSet<String> = std::collections::HashSet::new();
-
-    for mut trend in google_trends
-        .into_iter()
-        .chain(youtube_trends.into_iter())
-        .chain(news_trends.into_iter())
-        .chain(twitter_trends.into_iter())
-        .chain(tiktok_trends.into_iter())
-        .chain(reddit_trends.into_iter())
-    {
-        let key = trend.topic.to_lowercase();
-        // Déduplique les topics très similaires (5 premiers chars)
-        let short_key = key.chars().take(10).collect::<String>();
-        if seen_topics.insert(short_key) {
-            // Enrichir avec le momentum historique depuis les snapshots DB
-            if let Some(&hist_momentum) = historical_momentum.get(&trend.topic.to_lowercase()) {
-                // Bonus : si en hausse sur 3+ snapshots consécutifs, amplifier le momentum
-                trend.momentum_pct = (trend.momentum_pct + hist_momentum).min(100.0);
+    let mut all_trends: Vec<TrendItem> = if let Some(mut snap) = snapshot_trends {
+        log::info!(
+            "[TrendAggregator] {} snapshots DB chargés pour région={}",
+            snap.len(),
+            region
+        );
+        // Enrichir avec signaux internes et scoring utilisateur
+        let internal_signals = load_yukpo_internal_signals(&state.pg, region).await;
+        if let Some(ctx) = user_ctx {
+            for trend in &mut snap {
+                score_trend_for_user(trend, ctx, &internal_signals);
             }
-            // Enrichir avec les signaux internes
-            if let Some(ctx) = user_ctx {
-                score_trend_for_user(&mut trend, ctx, &internal_signals);
-            }
-            all_trends.push(trend);
         }
-    }
+        snap
+    } else {
+        // ─── Priorité 2 : APIs externes en temps réel (fallback si pas de snapshots) ─
+        log::warn!(
+            "[TrendAggregator] Pas de snapshots récents pour {}, fallback APIs externes",
+            region
+        );
+        let client = Client::new();
 
-    // Trier par opportunity_score décroissant (ou social_score si pas de contexte user)
+        let youtube_key = std::env::var("YOUTUBE_API_KEY").unwrap_or_default();
+        let newsapi_key = std::env::var("NEWSAPI_KEY").unwrap_or_default();
+        let twitter_bearer = std::env::var("TWITTER_BEARER_TOKEN").unwrap_or_default();
+        let tiktok_token = std::env::var("TIKTOK_ACCESS_TOKEN").unwrap_or_default();
+        let newsapi_country = region_to_newsapi_country(region);
+
+        let (
+            google_trends,
+            youtube_trends,
+            news_trends,
+            twitter_trends,
+            tiktok_trends,
+            reddit_trends,
+        ) = tokio::join!(
+            fetch_google_trends(&client, region),
+            fetch_youtube_trends(&client, region, &youtube_key),
+            fetch_newsapi_trends(&client, &newsapi_country, &newsapi_key),
+            fetch_twitter_trends(&client, region, &twitter_bearer),
+            fetch_tiktok_trends(&client, region, &tiktok_token),
+            fetch_reddit_trends(&client, region),
+        );
+
+        log::info!(
+            "[TrendAggregator] Fallback APIs pour {} : Google={} YT={} News={} Twitter={} TikTok={} Reddit={}",
+            region, google_trends.len(), youtube_trends.len(), news_trends.len(),
+            twitter_trends.len(), tiktok_trends.len(), reddit_trends.len()
+        );
+
+        let internal_signals = load_yukpo_internal_signals(&state.pg, region).await;
+        let historical_momentum = load_historical_momentum(&state.pg, region).await;
+
+        let mut merged: Vec<TrendItem> = Vec::new();
+        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        for mut trend in google_trends
+            .into_iter()
+            .chain(youtube_trends)
+            .chain(news_trends)
+            .chain(twitter_trends)
+            .chain(tiktok_trends)
+            .chain(reddit_trends)
+        {
+            let short_key = trend.topic.to_lowercase().chars().take(10).collect::<String>();
+            if seen.insert(short_key) {
+                if let Some(&hist) = historical_momentum.get(&trend.topic.to_lowercase()) {
+                    trend.momentum_pct = (trend.momentum_pct + hist).min(100.0);
+                }
+                if let Some(ctx) = user_ctx {
+                    score_trend_for_user(&mut trend, ctx, &internal_signals);
+                }
+                merged.push(trend);
+            }
+        }
+        merged
+    };
+
+    // Trier par social_score puis opportunity_score
     all_trends.sort_by(|a, b| {
-        b.opportunity_score
-            .partial_cmp(&a.opportunity_score)
-            .unwrap_or(std::cmp::Ordering::Equal)
+        let score_a = if a.opportunity_score > 0.0 {
+            a.opportunity_score
+        } else {
+            a.social_score
+        };
+        let score_b = if b.opportunity_score > 0.0 {
+            b.opportunity_score
+        } else {
+            b.social_score
+        };
+        score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    // Trends personnalisées = uniquement celles avec des produits matchants
-    let personalized_trends: Vec<TrendItem> = all_trends
+    // Trends personnalisées = celles avec produits matchants OU haute opportunité
+    // Fallback : si pas assez de trends scorées, compléter avec les top trends globales
+    let mut personalized_trends: Vec<TrendItem> = all_trends
         .iter()
-        .filter(|t| !t.matching_products.is_empty())
+        .filter(|t| !t.matching_products.is_empty() || t.opportunity_score >= 40.0)
         .take(10)
         .cloned()
         .collect();
+    if personalized_trends.len() < 5 {
+        // Compléter avec les meilleures tendances globales (par social_score)
+        let already_ids: std::collections::HashSet<&str> =
+            personalized_trends.iter().map(|t| t.id.as_str()).collect();
+        let extra: Vec<TrendItem> = all_trends
+            .iter()
+            .filter(|t| !already_ids.contains(t.id.as_str()))
+            .take(10 - personalized_trends.len())
+            .cloned()
+            .collect();
+        personalized_trends.extend(extra);
+    }
 
-    // Top personnalités (extraites des titres d'articles)
+    let internal_signals_for_sectors = load_yukpo_internal_signals(&state.pg, region).await;
     let top_personalities = extract_personalities(&all_trends);
-
-    // Top secteurs depuis les signaux internes
-    let top_sectors = build_sector_trends(&internal_signals, region);
+    let top_sectors = build_sector_trends(&internal_signals_for_sectors, region);
 
     TrendPulseResult {
         region: region.to_string(),

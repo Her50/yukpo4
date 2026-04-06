@@ -281,44 +281,89 @@ impl PharmacyAIService {
     pub async fn extract_ordonnance_medications(
         &self,
         image_base64: &str,
+        lat: Option<f64>,
+        lng: Option<f64>,
     ) -> AppResult<Vec<ExtractedMedication>> {
-        let prompt = r#"
-Tu es un pharmacien expert spécialisé dans les ordonnances d'Afrique subsaharienne (Cameroun, Sénégal, Côte d'Ivoire, Congo, etc.) pour la plateforme Yukpo.
+        // Contexte géographique dynamique basé sur la position de l'utilisateur
+        let geo_context = match (lat, lng) {
+            (Some(la), Some(lo)) => {
+                // Détermination approximative de la région à partir des coordonnées
+                let region = if la > -35.0 && la < 37.5 && lo > -17.5 && lo < 51.0 {
+                    // Afrique
+                    if la > 0.0 && lo > 8.0 && lo < 16.0 {
+                        "Afrique centrale (Cameroun, Gabon, Congo, RCA)"
+                    } else if la > 10.0 && la < 20.0 && lo > -17.5 && lo < 5.0 {
+                        "Afrique de l'Ouest (Sénégal, Mali, Guinée, Côte d'Ivoire, Burkina Faso)"
+                    } else if la > 4.0 && la < 15.0 && lo > 0.0 && lo < 15.0 {
+                        "Afrique de l'Ouest (Nigeria, Ghana, Bénin, Togo)"
+                    } else if la < 0.0 && lo < 20.0 {
+                        "Afrique centrale / Afrique de l'Est (RDC, Angola, Tanzanie, Kenya)"
+                    } else if la > 20.0 && lo > 25.0 {
+                        "Afrique du Nord / Moyen-Orient (Égypte, Libye, Soudan)"
+                    } else {
+                        "Afrique subsaharienne"
+                    }
+                } else if la > 35.0 && lo > -10.0 && lo < 45.0 {
+                    "Europe"
+                } else if la > 15.0 && lo > 60.0 && lo < 150.0 {
+                    "Asie du Sud / Asie du Sud-Est"
+                } else if la < -10.0 && lo > 100.0 {
+                    "Océanie / Pacifique"
+                } else if lo < -30.0 {
+                    "Amériques"
+                } else {
+                    "Monde"
+                };
+                format!(
+                    "L'utilisateur se trouve à une latitude de {:.2}° et une longitude de {:.2}°, région probable : {}. ",
+                    la, lo, region
+                )
+            }
+            _ => String::new(),
+        };
+
+        let prompt = format!(
+            r#"
+Tu es un pharmacien expert en extraction d'ordonnances médicales pour la plateforme Yukpo.
+
+CONTEXTE GÉOGRAPHIQUE :
+{}Les ordonnances peuvent provenir du monde entier (Afrique subsaharienne, Europe, Asie, Amériques, etc.).
+Adapte ta connaissance des médicaments à la région détectée : noms commerciaux locaux, DCI internationales, noms génériques.
 
 CONTEXTE IMPORTANT :
 - L'image peut être une ordonnance médicale manuscrite ou imprimée
 - L'image peut aussi être la photo d'un emballage / boîte de médicament
-- Les ordonnances africaines sont souvent manuscrites, avec une écriture difficile à lire
-- Les noms peuvent être en français, en DCI (dénomination commune internationale), ou en noms commerciaux locaux
-- L'orthographe peut être phonétique ou approximative (ex: "paracétamol" → "paracetamol", "amoxiciline" → "amoxicilline")
-- Les médicaments courants dans la région : Paracétamol, Amoxicilline, Cotrimoxazole, Artémether-Luméfantrine (Coartem), Doxycycline, Métronidazole, Ibuprofène, Fer folate, Vitamine C, Oméprazole, Cétirizine, Loratadine, Salbutamol, Prednisolone, Dexaméthasone, Ampicilline, Gentamicine, Acide folique, Zinc, Mébendazole, Albendazole, Chloroquine, Quinine, Clotrimazole, Fluconazole, Amlodipine, Hydrochlorothiazide, Metformine, Insuline, Tramadol, Diclofénac, Kétoprofène, Ciprofloxacine, Érythromycine, Azithromycine, etc.
+- ATTENTION : les médecins ont très souvent une écriture manuscrite difficile à lire (illisible, petite, stylisée). Tu dois faire un effort maximal de déchiffrage même sur les écritures les plus compliquées.
+- Les noms peuvent être en DCI (dénomination commune internationale), en noms commerciaux locaux, ou abrégés
+- L'orthographe peut être phonétique ou approximative (ex : "paracetamol", "amoxiciline", "ibuprofene")
+- Médicaments courants à reconnaître (liste non exhaustive) : Paracétamol/Doliprane/Efferalgan, Amoxicilline/Clamoxyl, Ibuprofène/Advil/Nurofen, Cotrimoxazole/Bactrim, Métronidazole/Flagyl, Oméprazole/Mopral, Azithromycine/Zithromax, Ciprofloxacine/Ciflox, Doxycycline, Artémether-Luméfantrine/Coartem, Salbutamol/Ventoline, Amlodipine, Metformine/Glucophage, Diclofénac/Voltarène, Tramadol, Prednisolone, Cétirizine/Zyrtec, Loratadine/Clarityne, Fluconazole/Triflucan, Clotrimazole/Canesten, etc.
 
 TÂCHE : Analyse l'image et identifie TOUS les médicaments visibles, même partiellement lisibles.
 
 RÈGLES D'EXTRACTION :
-1. Identifie chaque médicament même si l'écriture est difficile — fais de ton mieux pour déchiffrer
-2. Pour les noms partiellement lisibles : propose le nom le plus probable (ex : "Amoxici..." → "Amoxicilline")
+1. Déchiffre l'écriture avec le maximum d'effort — même sur des écritures très difficiles, propose toujours le nom médical le plus probable
+2. Pour les noms partiellement lisibles : propose le nom complet le plus probable (ex : "Amoxici..." → "Amoxicilline")
 3. Corrige les orthographes phonétiques ou approximatives vers le nom médical standard
 4. Extrait le dosage si visible (ex: "500mg", "250mg/5ml")
-5. Extrait la quantité si précisée (boîte, comprimés, flacons)
+5. Extrait la quantité si précisée (boîtes, comprimés, flacons)
 6. Extrait la posologie si présente (fréquence, durée, mode d'administration)
 7. Si c'est un emballage : extrait le nom du médicament principal et son dosage
 8. N'omets aucun médicament visible, même si tu n'as qu'une partie du nom
 
 RÉPONSE ATTENDUE (JSON strict, tableau, SANS texte autour) :
 [
-  {
+  {{
     "name": "Amoxicilline",
     "dosage": "500mg",
     "quantity": 21,
     "posologie": "1 comprimé 3 fois par jour pendant 7 jours"
-  },
-  {
+  }},
+  {{
     "name": "Paracétamol",
     "dosage": "1000mg",
     "quantity": 16,
     "posologie": "1 comprimé toutes les 6 heures si douleur"
-  }
+  }}
 ]
 
 IMPORTANT :
@@ -326,11 +371,13 @@ IMPORTANT :
 - Si vraiment aucun médicament n'est identifiable (image totalement illisible, hors sujet), retourne : []
 - Ne mets JAMAIS de texte avant ou après le JSON
 - Ne mets JAMAIS de balises markdown ```json``` autour du JSON
-"#;
+"#,
+            geo_context
+        );
 
         let (model_name, response, tokens) = self
             .app_ia
-            .predict_multimodal(prompt, Some(vec![image_base64.to_string()]))
+            .predict_multimodal(&prompt, Some(vec![image_base64.to_string()]))
             .await?;
 
         log::info!(

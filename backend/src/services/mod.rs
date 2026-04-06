@@ -60,6 +60,7 @@ pub mod delivery_traffic_service; // ✅ NOUVEAU: Service trafic avec API réell
 pub mod delivery_vrp_solver; // ✅ NOUVEAU: VRP Solver pour optimisation routes multi-livraisons
 pub mod delivery_weather_service; // ✅ NOUVEAU: Service météo avec API réelle
 pub mod distribution_automation_service;
+pub mod document_generation_service; // ✅ NOUVEAU: Génération PPTX/DOCX/PDF depuis YukpoIA
 pub mod dynamic_preparation_time_service; // ✅ NOUVEAU : Calcul dynamique durée préparation par catégorie
 pub mod effect_preview_service; // ✅ NOUVEAU: Service de génération de previews d'effets
 pub mod email_service; // ✅ Phase 10 - Service Email avec SendGrid
@@ -234,6 +235,7 @@ pub mod video_generation_service;
 pub mod video_job_service;
 pub mod video_quality_service;
 pub mod video_renderer;
+pub mod visual_generation_service; // ✅ NOUVEAU: Génération visuels marketing / invitations
 pub mod voice_profile_service;
 // ✅ NOUVEAU 2025-01-XX: Services de scalabilité pour millions de créations vidéo simultanées
 pub mod covoiturage_insurance_service; // ✅ NOUVEAU 2025-01-29: Service assurance passagers

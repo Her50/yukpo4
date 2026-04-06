@@ -112,7 +112,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
     libgl1 \
     libglu1 \
-    && rm -rf /var/lib/apt/lists/*
+    python3 \
+    python3-pip \
+    python3-venv \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 install --no-cache-dir --break-system-packages python-pptx python-docx fpdf2 Pillow lxml
 
 # Copier Blender depuis le contexte local (OBLIGATOIRE)
 # Accepte .tar ou .tar.xz (compressé ou non)
@@ -161,8 +165,10 @@ COPY --from=builder --chown=appuser:appuser /app/ia_intentions_instructions.md /
 # ✅ CRITIQUE : Copier le dossier public pour servir les fichiers .well-known
 COPY --from=builder --chown=appuser:appuser /app/public /app/public
 
-# Copier le script de démarrage
+# Copier les scripts (démarrage + générateur de documents Python)
 COPY scripts/start-cloud.sh /app/start-cloud.sh
+COPY scripts/document_generator.py /app/scripts/document_generator.py
+COPY scripts/visual_generator.py /app/scripts/visual_generator.py
 RUN chmod +x /app/start-cloud.sh
 
 # Variables d'environnement par défaut
