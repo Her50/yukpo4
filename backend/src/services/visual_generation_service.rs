@@ -246,5 +246,5 @@ Si l'utilisateur demande de créer un visuel, une affiche, un flyer, une invitat
 - Remplis TOUS les champs pertinents : date, heure, lieu, prix, organisateur, contact, hashtags.
 - Pour les billets (`ticket`), le champ `contact` sert de numero de billet (ex: "#A-0247").
 - Pour les certificats, le champ `badge` contient le type (ex: "MENTION TRES BIEN", "DISTINCTION").
-"#
+"##
 }
