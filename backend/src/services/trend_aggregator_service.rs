@@ -98,43 +98,85 @@ pub struct SectorTrend {
 /// Récupère les tendances Google Trends pour une région africaine
 /// Utilise l'endpoint non-officiel Google Trends (RSS dailytrends)
 async fn fetch_google_trends(client: &Client, region: &str) -> Vec<TrendItem> {
-    // geo code: CM=Cameroun, SN=Sénégal, CI=Côte d'Ivoire, NG=Nigeria
-    let geo = match region {
-        "CM" => "CM",
-        "SN" => "SN",
-        "CI" => "CI",
-        "NG" => "NG",
-        _ => "CM",
-    };
+    let geo = region.to_uppercase();
 
-    // ✅ Priorité : SerpAPI Google Trends (contourne le blocage GCP)
-    // SerpAPI route via proxies résidentiels → pas de CAPTCHA/403
     let serpapi_key = std::env::var("SERPAPI_KEY").unwrap_or_default();
-    if !serpapi_key.is_empty() {
-        let url = format!(
-            "https://serpapi.com/search.json?engine=google_trends&q=trending&geo={}&data_type=TRENDING_SEARCHES&api_key={}",
-            geo, serpapi_key
-        );
-        if let Ok(resp) = client.get(&url).timeout(std::time::Duration::from_secs(10)).send().await
-        {
-            if resp.status().is_success() {
-                if let Ok(body) = resp.text().await {
-                    let parsed = parse_serpapi_trends(&body, region);
-                    if !parsed.is_empty() {
-                        return parsed;
-                    }
+    if serpapi_key.is_empty() {
+        return vec![];
+    }
+
+    // ── Essai 1 : Google Trends Trending Searches via SerpAPI ─────────────────
+    // URL correcte : PAS de q=, data_type=TRENDING_SEARCHES, hl=fr
+    let url = format!(
+        "https://serpapi.com/search.json?engine=google_trends&data_type=TRENDING_SEARCHES&geo={}&hl=fr&api_key={}",
+        geo, serpapi_key
+    );
+    if let Ok(resp) = client.get(&url).timeout(std::time::Duration::from_secs(12)).send().await {
+        let status = resp.status();
+        if let Ok(body) = resp.text().await {
+            if status.is_success() {
+                let parsed = parse_serpapi_trends(&body, region);
+                if !parsed.is_empty() {
+                    log::info!(
+                        "[TrendAggregator] SerpAPI Trending OK pour {} : {} items",
+                        region,
+                        parsed.len()
+                    );
+                    return parsed;
+                }
+                log::warn!(
+                    "[TrendAggregator] SerpAPI Trending vide pour {} — réponse: {}",
+                    region,
+                    &body[..body.len().min(300)]
+                );
+            } else {
+                log::warn!(
+                    "[TrendAggregator] SerpAPI HTTP {} pour {} : {}",
+                    status,
+                    region,
+                    &body[..body.len().min(200)]
+                );
+            }
+        }
+    }
+
+    // ── Essai 2 : SerpAPI Google Search (actualités région) ───────────────────
+    // Plus fiable pour régions peu couvertes par Google Trends
+    let country_name = match region {
+        "CI" => "Côte d'Ivoire tendances",
+        "CM" => "Cameroun tendances actualité",
+        "SN" => "Sénégal tendances actualité",
+        "NG" => "Nigeria trends today",
+        _ => "Afrique tendances",
+    };
+    let country_code = region.to_lowercase();
+    let q_enc = urlencoding::encode(country_name);
+    let url2 = format!(
+        "https://serpapi.com/search.json?engine=google&q={}&gl={}&hl=fr&num=15&api_key={}",
+        q_enc, country_code, serpapi_key
+    );
+    if let Ok(resp) = client.get(&url2).timeout(std::time::Duration::from_secs(12)).send().await {
+        if resp.status().is_success() {
+            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                let trends = parse_serpapi_organic_results(&body, region);
+                if !trends.is_empty() {
+                    log::info!(
+                        "[TrendAggregator] SerpAPI Organic OK pour {} : {} items",
+                        region,
+                        trends.len()
+                    );
+                    return trends;
                 }
             }
         }
     }
 
-    // Fallback : RSS direct (fonctionne parfois selon l'IP)
-    let url = format!(
+    // ── Fallback : RSS Google Trends direct (parfois bloqué sur GCP) ─────────
+    let url3 = format!(
         "https://trends.google.com/trends/trendingsearches/daily/rss?geo={}",
         geo
     );
-
-    match client.get(&url).timeout(std::time::Duration::from_secs(8)).send().await {
+    match client.get(&url3).timeout(std::time::Duration::from_secs(8)).send().await {
         Ok(resp) if resp.status().is_success() => {
             if let Ok(body) = resp.text().await {
                 parse_google_trends_rss(&body, region)
@@ -158,7 +200,17 @@ fn parse_serpapi_trends(json_body: &str, region: &str) -> Vec<TrendItem> {
         .take(20)
         .enumerate()
         .filter_map(|(i, item)| {
-            let topic = item.get("query")?.as_str()?.to_string();
+            // Structure SerpAPI : item["title"]["query"] (pas item["query"] directement)
+            let topic = item
+                .get("title")
+                .and_then(|t| t.get("query"))
+                .and_then(|q| q.as_str())
+                // Fallback : certaines versions retournent item["query"]["query"]
+                .or_else(|| item.get("query").and_then(|q| q.get("query")).and_then(|q| q.as_str()))
+                // Fallback 2 : item["query"] directement (ancienne API)
+                .or_else(|| item.get("query").and_then(|q| q.as_str()))
+                .map(|s| s.to_string())?;
+
             if topic.is_empty() {
                 return None;
             }
@@ -170,17 +222,17 @@ fn parse_serpapi_trends(json_body: &str, region: &str) -> Vec<TrendItem> {
                         .replace(',', "")
                         .replace('K', "000")
                         .parse::<f32>()
-                        .unwrap_or(0.0)
+                        .unwrap_or(1000.0)
                 })
-                .unwrap_or(0.0);
-            let social_score = (traffic / 200000.0 * 100.0).min(100.0).max(5.0);
+                .unwrap_or(1000.0);
+            let social_score = (traffic / 200000.0 * 100.0).min(100.0).max(10.0);
             Some(TrendItem {
                 id: format!("serp-{}-{}", region, i),
                 topic,
                 social_score,
                 commerce_score: 0.0,
                 opportunity_score: 0.0,
-                momentum_pct: (80.0 - i as f32 * 3.5).max(10.0),
+                momentum_pct: (85.0 - i as f32 * 3.5).max(10.0),
                 categories: vec![],
                 regions: vec![region.to_string()],
                 sources: vec!["Google Trends".to_string()],
@@ -190,6 +242,36 @@ fn parse_serpapi_trends(json_body: &str, region: &str) -> Vec<TrendItem> {
             })
         })
         .collect()
+}
+
+/// Parse les résultats organiques Google via SerpAPI (fallback Google Search)
+fn parse_serpapi_organic_results(data: &serde_json::Value, region: &str) -> Vec<TrendItem> {
+    let mut trends = Vec::new();
+    let Some(results) = data.get("organic_results").and_then(|r| r.as_array()) else {
+        return trends;
+    };
+    for (i, item) in results.iter().take(10).enumerate() {
+        let title = item.get("title").and_then(|t| t.as_str()).unwrap_or("");
+        if title.is_empty() || title.len() < 5 {
+            continue;
+        }
+        let social_score = (75.0 - i as f32 * 4.0).max(20.0);
+        trends.push(TrendItem {
+            id: format!("serp-organic-{}-{}", region, i),
+            topic: title.to_string(),
+            social_score,
+            commerce_score: 0.0,
+            opportunity_score: 0.0,
+            momentum_pct: (70.0 - i as f32 * 4.0).max(10.0),
+            categories: vec!["actualité".to_string()],
+            regions: vec![region.to_string()],
+            sources: vec!["Google".to_string()],
+            period: "24h".to_string(),
+            matching_products: vec![],
+            recommended_action: None,
+        });
+    }
+    trends
 }
 
 fn parse_google_trends_rss(rss: &str, region: &str) -> Vec<TrendItem> {
@@ -253,20 +335,48 @@ async fn fetch_youtube_trends(client: &Client, region_code: &str, api_key: &str)
         return vec![];
     }
 
+    // ── Essai 1 : mostPopular par pays ────────────────────────────────────────
     let url = format!(
-        "https://www.googleapis.com/youtube/v3/videos\
-         ?part=snippet,statistics\
-         &chart=mostPopular\
-         &regionCode={}\
-         &maxResults=20\
-         &key={}",
+        "https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&chart=mostPopular&regionCode={}&maxResults=20&key={}",
         region_code, api_key
     );
+    if let Ok(resp) = client.get(&url).timeout(std::time::Duration::from_secs(8)).send().await {
+        if resp.status().is_success() {
+            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                let parsed = parse_youtube_response(&body, region_code);
+                if !parsed.is_empty() {
+                    return parsed;
+                }
+                // Log si l'API répond mais retourne vide (quota, région non couverte…)
+                if let Some(err) = body.get("error") {
+                    log::warn!(
+                        "[TrendAggregator] YouTube API erreur pour {} : {}",
+                        region_code,
+                        err
+                    );
+                }
+            }
+        }
+    }
 
-    match client.get(&url).timeout(std::time::Duration::from_secs(8)).send().await {
+    // ── Essai 2 : recherche YouTube par mots-clés africains ───────────────────
+    // YouTube peut ne pas avoir de trending data pour CI/CM/SN → search query
+    let search_query = match region_code {
+        "CI" => "Côte d'Ivoire musique tendance 2025",
+        "CM" => "Cameroun musique makossa tendance",
+        "SN" => "Sénégal mbalax tendance 2025",
+        "NG" => "Nigeria afrobeats trending 2025",
+        _ => "Afrique musique tendance 2025",
+    };
+    let q_enc = urlencoding::encode(search_query);
+    let url2 = format!(
+        "https://www.googleapis.com/youtube/v3/search?part=snippet&q={}&type=video&order=viewCount&maxResults=15&relevanceLanguage=fr&key={}",
+        q_enc, api_key
+    );
+    match client.get(&url2).timeout(std::time::Duration::from_secs(8)).send().await {
         Ok(resp) if resp.status().is_success() => {
             if let Ok(body) = resp.json::<serde_json::Value>().await {
-                parse_youtube_response(&body, region_code)
+                parse_youtube_search_response(&body, region_code)
             } else {
                 vec![]
             }
@@ -316,6 +426,35 @@ fn parse_youtube_response(data: &serde_json::Value, region: &str) -> Vec<TrendIt
     trends
 }
 
+fn parse_youtube_search_response(data: &serde_json::Value, region: &str) -> Vec<TrendItem> {
+    let mut trends = Vec::new();
+    let Some(items) = data.get("items").and_then(|i| i.as_array()) else {
+        return trends;
+    };
+    for (i, item) in items.iter().take(12).enumerate() {
+        let title = item["snippet"]["title"].as_str().unwrap_or("").to_string();
+        if title.is_empty() {
+            continue;
+        }
+        let social_score = (70.0 - i as f32 * 3.0).max(10.0);
+        trends.push(TrendItem {
+            id: format!("youtube-search-{}-{}", region, i),
+            topic: title,
+            social_score,
+            commerce_score: 0.0,
+            opportunity_score: 0.0,
+            momentum_pct: (65.0 - i as f32 * 3.0).max(10.0),
+            categories: vec!["musique".to_string()],
+            regions: vec![region.to_string()],
+            sources: vec!["YouTube".to_string()],
+            period: "24h".to_string(),
+            matching_products: vec![],
+            recommended_action: None,
+        });
+    }
+    trends
+}
+
 fn youtube_category_name(id: &str) -> String {
     match id {
         "1" => "Film",
@@ -335,23 +474,52 @@ fn youtube_category_name(id: &str) -> String {
 }
 
 /// Récupère les actualités depuis NewsAPI
+/// NewsAPI top-headlines ne supporte que ~55 pays — CI/CM/SN ne sont PAS supportés.
+/// Fallback : /v2/everything avec mots-clés spécifiques à la région.
 async fn fetch_newsapi_trends(client: &Client, country: &str, api_key: &str) -> Vec<TrendItem> {
     if api_key.is_empty() {
         return vec![];
     }
 
-    let url = format!(
-        "https://newsapi.org/v2/top-headlines\
-         ?country={}\
-         &pageSize=20\
-         &apiKey={}",
-        country, api_key
-    );
+    // Pays supportés par NewsAPI top-headlines (liste partielle West Africa)
+    let supported = ["ng", "za", "eg", "ma"];
+    let region_upper = country.to_uppercase();
 
-    match client.get(&url).timeout(std::time::Duration::from_secs(8)).send().await {
+    if supported.contains(&country) {
+        // Pays supporté → top-headlines direct
+        let url = format!(
+            "https://newsapi.org/v2/top-headlines?country={}&pageSize=20&apiKey={}",
+            country, api_key
+        );
+        if let Ok(resp) = client.get(&url).timeout(std::time::Duration::from_secs(8)).send().await {
+            if resp.status().is_success() {
+                if let Ok(body) = resp.json::<serde_json::Value>().await {
+                    let parsed = parse_newsapi_response(&body, &region_upper);
+                    if !parsed.is_empty() {
+                        return parsed;
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback : /v2/everything avec mots-clés régionaux (fonctionne pour tous les pays)
+    let keyword = match country {
+        "ci" => "\"Côte d'Ivoire\" OR \"Abidjan\" tendance",
+        "cm" => "\"Cameroun\" OR \"Yaoundé\" OR \"Douala\" tendance",
+        "sn" => "\"Sénégal\" OR \"Dakar\" tendance",
+        "ng" => "Nigeria trend Lagos",
+        _ => "Afrique tendances",
+    };
+    let q_enc = urlencoding::encode(keyword);
+    let url2 = format!(
+        "https://newsapi.org/v2/everything?q={}&language=fr&sortBy=publishedAt&pageSize=20&apiKey={}",
+        q_enc, api_key
+    );
+    match client.get(&url2).timeout(std::time::Duration::from_secs(8)).send().await {
         Ok(resp) if resp.status().is_success() => {
             if let Ok(body) = resp.json::<serde_json::Value>().await {
-                parse_newsapi_response(&body, country)
+                parse_newsapi_response(&body, &region_upper)
             } else {
                 vec![]
             }
