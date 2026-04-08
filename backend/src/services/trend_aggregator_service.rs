@@ -107,6 +107,28 @@ async fn fetch_google_trends(client: &Client, region: &str) -> Vec<TrendItem> {
         _ => "CM",
     };
 
+    // ✅ Priorité : SerpAPI Google Trends (contourne le blocage GCP)
+    // SerpAPI route via proxies résidentiels → pas de CAPTCHA/403
+    let serpapi_key = std::env::var("SERPAPI_KEY").unwrap_or_default();
+    if !serpapi_key.is_empty() {
+        let url = format!(
+            "https://serpapi.com/search.json?engine=google_trends&q=trending&geo={}&data_type=TRENDING_SEARCHES&api_key={}",
+            geo, serpapi_key
+        );
+        if let Ok(resp) = client.get(&url).timeout(std::time::Duration::from_secs(10)).send().await
+        {
+            if resp.status().is_success() {
+                if let Ok(body) = resp.text().await {
+                    let parsed = parse_serpapi_trends(&body, region);
+                    if !parsed.is_empty() {
+                        return parsed;
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback : RSS direct (fonctionne parfois selon l'IP)
     let url = format!(
         "https://trends.google.com/trends/trendingsearches/daily/rss?geo={}",
         geo
@@ -122,6 +144,52 @@ async fn fetch_google_trends(client: &Client, region: &str) -> Vec<TrendItem> {
         }
         _ => vec![],
     }
+}
+
+fn parse_serpapi_trends(json_body: &str, region: &str) -> Vec<TrendItem> {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(json_body) else {
+        return vec![];
+    };
+    let Some(searches) = v.get("trending_searches").and_then(|s| s.as_array()) else {
+        return vec![];
+    };
+    searches
+        .iter()
+        .take(20)
+        .enumerate()
+        .filter_map(|(i, item)| {
+            let topic = item.get("query")?.as_str()?.to_string();
+            if topic.is_empty() {
+                return None;
+            }
+            let traffic: f32 = item
+                .get("formattedTraffic")
+                .and_then(|t| t.as_str())
+                .map(|s| {
+                    s.replace('+', "")
+                        .replace(',', "")
+                        .replace('K', "000")
+                        .parse::<f32>()
+                        .unwrap_or(0.0)
+                })
+                .unwrap_or(0.0);
+            let social_score = (traffic / 200000.0 * 100.0).min(100.0).max(5.0);
+            Some(TrendItem {
+                id: format!("serp-{}-{}", region, i),
+                topic,
+                social_score,
+                commerce_score: 0.0,
+                opportunity_score: 0.0,
+                momentum_pct: (80.0 - i as f32 * 3.5).max(10.0),
+                categories: vec![],
+                regions: vec![region.to_string()],
+                sources: vec!["Google Trends".to_string()],
+                period: "24h".to_string(),
+                matching_products: vec![],
+                recommended_action: None,
+            })
+        })
+        .collect()
 }
 
 fn parse_google_trends_rss(rss: &str, region: &str) -> Vec<TrendItem> {

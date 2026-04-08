@@ -25,9 +25,20 @@ pub async fn start_trend_snapshot_worker(state: Arc<AppState>) {
         CRON_INTERVAL_SECS
     );
 
+    // ✅ Premier snapshot immédiat au démarrage (pas d'attente 1h)
+    log::info!(
+        "[TrendSnapshot] ⏰ Collecte initiale snapshots pour {} régions...",
+        REGIONS.len()
+    );
+    for region in REGIONS {
+        if let Err(e) = run_snapshot_for_region(&state, region).await {
+            log::error!("[TrendSnapshot] ❌ Erreur région {}: {}", region, e);
+        }
+    }
+
+    // Puis toutes les heures
     let mut ticker = interval(Duration::from_secs(CRON_INTERVAL_SECS));
-    // Premier tick immédiat
-    ticker.tick().await;
+    ticker.tick().await; // consomme le tick immédiat du ticker
 
     loop {
         ticker.tick().await;

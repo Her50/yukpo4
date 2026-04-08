@@ -247,8 +247,18 @@ jobs:
             YUKPO_IMMO_COMMISSION_RATE: "0.05",
 
             GOOGLE_CLIENT_ID: "738929393617-4kt4e9ed1g79j70dng7epskqn7rkqnm2.apps.googleusercontent.com",
-            CORS_ALLOWED_ORIGINS: "https://yukpo.com,https://yukpo-backend-376093909298.europe-west1.run.app"
-          }' --arg GCP_PROJECT_ID "$PROJECT_ID" --args)
+            CORS_ALLOWED_ORIGINS: "https://yukpo.com,https://yukpo-backend-376093909298.europe-west1.run.app",
+
+            YOUTUBE_API_KEY:       $ENV.YOUTUBE_API_KEY,
+            NEWSAPI_KEY:           $ENV.NEWSAPI_KEY,
+            TWITTER_BEARER_TOKEN:  $ENV.TWITTER_BEARER_TOKEN,
+            SERPAPI_KEY:           $ENV.SERPAPI_KEY
+          }' --arg GCP_PROJECT_ID "$PROJECT_ID" \
+             --arg YOUTUBE_API_KEY "${{ secrets.YOUTUBE_API_KEY }}" \
+             --arg NEWSAPI_KEY "${{ secrets.NEWSAPI_KEY }}" \
+             --arg TWITTER_BEARER_TOKEN "${{ secrets.TWITTER_BEARER_TOKEN }}" \
+             --arg SERPAPI_KEY "${{ secrets.SERPAPI_KEY }}" \
+             --args)
 
           # Convertir JSON → "KEY=VALUE;KEY2=VALUE2" (séparateur ; pour gcloud)
           ENV_VARS=$(echo "$ENV_JSON" | jq -r 'to_entries | map("\(.key)=\(.value)") | join(";")')
