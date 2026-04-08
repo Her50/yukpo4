@@ -440,3 +440,247 @@ fn oauth_error_page(platform: &str, error: &str) -> String {
         error_enc = urlencoding::encode(error)
     )
 }
+
+// ─── WhatsApp Business OAuth (Embedded Signup via Facebook OAuth) ─────────────
+
+/// GET /api/social/whatsapp/authorize  (protected)
+/// Génère l'URL Facebook OAuth avec les scopes WhatsApp Business
+/// L'utilisateur n'a pas à copier-coller de token — 1 clic suffit.
+pub async fn whatsapp_oauth_authorize(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<Json<serde_json::Value>> {
+    let app_id = env::var("FACEBOOK_APP_ID").map_err(|_| {
+        AppError::Internal("FACEBOOK_APP_ID manquant — contactez le support Yukpo".into())
+    })?;
+    let redirect_uri = env::var("WHATSAPP_REDIRECT_URI")
+        .or_else(|_| env::var("FACEBOOK_REDIRECT_URI"))
+        .unwrap_or_else(|_| {
+            let base = env::var("API_BASE_URL").unwrap_or_else(|_| {
+                "https://yukpo-backend-376093909298.europe-west1.run.app".to_string()
+            });
+            format!("{}/api/social/whatsapp/callback", base)
+        });
+
+    let state_key = create_oauth_state(&state.redis_client, user.id).await?;
+
+    // Scopes WhatsApp Business : gestion WABA + envoi messages
+    let scope = encode(
+        "whatsapp_business_management,whatsapp_business_messaging,business_management,public_profile",
+    );
+
+    let auth_url = format!(
+        "https://www.facebook.com/v19.0/dialog/oauth\
+         ?client_id={}&redirect_uri={}&scope={}&response_type=code&state={}",
+        encode(&app_id),
+        encode(&redirect_uri),
+        scope,
+        encode(&state_key),
+    );
+
+    Ok(Json(serde_json::json!({
+        "authorization_url": auth_url,
+        "info": "Connexion WhatsApp Business via Meta — aucun token à copier.",
+    })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WhatsAppOAuthCallbackParams {
+    pub code: Option<String>,
+    pub state: Option<String>,
+    pub error: Option<String>,
+    pub error_description: Option<String>,
+}
+
+/// GET /api/social/whatsapp/callback  (public — redirect Meta)
+/// Échange le code OAuth → token long-lived → auto-découverte WABA + numéro
+pub async fn whatsapp_oauth_callback(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<WhatsAppOAuthCallbackParams>,
+) -> AppResult<Html<String>> {
+    if let Some(error) = params.error {
+        let desc = params.error_description.unwrap_or_default();
+        return Ok(Html(oauth_error_page(
+            "WhatsApp Business",
+            &format!("{}: {}", error, desc),
+        )));
+    }
+
+    let code = params.code.ok_or_else(|| AppError::BadRequest("Code OAuth manquant".into()))?;
+    let state_key = params
+        .state
+        .ok_or_else(|| AppError::BadRequest("State OAuth manquant".into()))?;
+
+    let user_id = consume_oauth_state(&state.redis_client, &state_key).await?.ok_or_else(|| {
+        AppError::BadRequest("State invalide ou expiré — relancez la connexion".into())
+    })?;
+
+    let app_id = env::var("FACEBOOK_APP_ID")
+        .map_err(|_| AppError::Internal("FACEBOOK_APP_ID manquant".into()))?;
+    let app_secret = env::var("FACEBOOK_APP_SECRET")
+        .map_err(|_| AppError::Internal("FACEBOOK_APP_SECRET manquant".into()))?;
+    let redirect_uri = env::var("WHATSAPP_REDIRECT_URI")
+        .or_else(|_| env::var("FACEBOOK_REDIRECT_URI"))
+        .unwrap_or_else(|_| {
+            let base = env::var("API_BASE_URL").unwrap_or_else(|_| {
+                "https://yukpo-backend-376093909298.europe-west1.run.app".to_string()
+            });
+            format!("{}/api/social/whatsapp/callback", base)
+        });
+
+    let http = Client::new();
+
+    // ── Étape 1 : Échange code → token court ────────────────────────────────
+    #[derive(serde::Deserialize)]
+    struct FbToken {
+        access_token: String,
+        expires_in: Option<i64>,
+    }
+
+    let short_resp = http
+        .get("https://graph.facebook.com/v19.0/oauth/access_token")
+        .query(&[
+            ("client_id", app_id.as_str()),
+            ("redirect_uri", redirect_uri.as_str()),
+            ("client_secret", app_secret.as_str()),
+            ("code", code.as_str()),
+        ])
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(format!("Meta API: {}", e)))?;
+
+    if !short_resp.status().is_success() {
+        let body = short_resp.text().await.unwrap_or_default();
+        log::warn!("[WA OAuth] Échec échange code: {}", body);
+        return Ok(Html(oauth_error_page(
+            "WhatsApp Business",
+            "Échange du code OAuth échoué. Réessayez.",
+        )));
+    }
+
+    let short_token: FbToken = short_resp
+        .json()
+        .await
+        .map_err(|_| AppError::Internal("Réponse Meta illisible".into()))?;
+
+    // ── Étape 2 : Échange token court → long (60 jours) ─────────────────────
+    let long_resp = http
+        .get("https://graph.facebook.com/v19.0/oauth/access_token")
+        .query(&[
+            ("grant_type", "fb_exchange_token"),
+            ("client_id", app_id.as_str()),
+            ("client_secret", app_secret.as_str()),
+            ("fb_exchange_token", short_token.access_token.as_str()),
+        ])
+        .send()
+        .await
+        .map_err(|e| AppError::Internal(e.to_string()))?;
+
+    let user_token = if long_resp.status().is_success() {
+        long_resp
+            .json::<FbToken>()
+            .await
+            .map(|t| t.access_token)
+            .unwrap_or(short_token.access_token)
+    } else {
+        short_token.access_token
+    };
+
+    // ── Étape 3 : Découvrir le numéro WhatsApp Business ──────────────────────
+    // Essai 1 : /me/phone_numbers (scope whatsapp_business_messaging)
+    let phones_url = format!(
+        "https://graph.facebook.com/v20.0/me/phone_numbers?fields=id,display_phone_number,verified_name&access_token={}",
+        encode(&user_token)
+    );
+    let phones_data: serde_json::Value = match http.get(&phones_url).send().await {
+        Ok(r) => r.json().await.unwrap_or(serde_json::json!({})),
+        Err(_) => serde_json::json!({}),
+    };
+
+    let first_phone_id = phones_data["data"][0]["id"].as_str().unwrap_or("").to_string();
+    let first_display = phones_data["data"][0]["display_phone_number"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+
+    // Essai 2 si pas de numéro via /me/phone_numbers : /me/whatsapp_business_accounts
+    let (phone_number_id, display_phone) = if !first_phone_id.is_empty() {
+        (first_phone_id, first_display)
+    } else {
+        let waba_url = format!(
+            "https://graph.facebook.com/v19.0/me/whatsapp_business_accounts?fields=id,name,phone_numbers{{id,display_phone_number,verified_name}}&access_token={}",
+            encode(&user_token)
+        );
+        let waba_data: serde_json::Value = match http.get(&waba_url).send().await {
+            Ok(r) => r.json().await.unwrap_or(serde_json::json!({})),
+            Err(_) => serde_json::json!({}),
+        };
+
+        let pid = waba_data["data"][0]["phone_numbers"]["data"][0]["id"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+        let ph = waba_data["data"][0]["phone_numbers"]["data"][0]["display_phone_number"]
+            .as_str()
+            .unwrap_or(&pid)
+            .to_string();
+        (pid, ph)
+    };
+
+    if phone_number_id.is_empty() {
+        log::warn!(
+            "[WA OAuth] user={} — aucun numéro WhatsApp Business trouvé",
+            user_id
+        );
+        return Ok(Html(oauth_error_page(
+            "WhatsApp Business",
+            "Aucun numéro WhatsApp Business trouvé sur ce compte Meta. Assurez-vous d'avoir un compte WhatsApp Business API actif.",
+        )));
+    }
+
+    // ── Étape 4 : Auto-enregistrement webhook ────────────────────────────────
+    let webhook_base = env::var("API_BASE_URL")
+        .unwrap_or_else(|_| "https://yukpo-backend-376093909298.europe-west1.run.app".to_string());
+    let verify_token = "yukpo_webhook_2026";
+
+    let sub_url = format!(
+        "https://graph.facebook.com/v20.0/{}/subscribed_apps?access_token={}",
+        encode(&phone_number_id),
+        encode(&user_token)
+    );
+    let _sub = http
+        .post(&sub_url)
+        .json(&serde_json::json!({
+            "subscribed_fields": ["messages", "message_deliveries", "message_reads"]
+        }))
+        .send()
+        .await
+        .ok();
+
+    // ── Étape 5 : Sauvegarder ────────────────────────────────────────────────
+    let save_payload = SocialTokenPayload {
+        platform: "whatsapp".to_string(),
+        access_token: user_token.clone(),
+        account_handle: Some(phone_number_id.clone()),
+        metadata: Some(serde_json::json!({
+            "phone_number_id": phone_number_id,
+            "display_phone": display_phone,
+            "webhook_registered": true,
+            "webhook_url": format!("{}/api/social-ai/webhook/whatsapp", webhook_base),
+            "verify_token": verify_token,
+            "connected_via": "oauth",
+        })),
+        expires_at: None,
+        refresh_token: None,
+        scope: Some("whatsapp_business_management,whatsapp_business_messaging".to_string()),
+    };
+    upsert_social_account(state, user_id, save_payload).await?;
+
+    log::info!(
+        "[WA OAuth] user={} — numéro {} connecté via OAuth",
+        user_id,
+        phone_number_id
+    );
+
+    Ok(Html(oauth_success_page("WhatsApp Business")))
+}

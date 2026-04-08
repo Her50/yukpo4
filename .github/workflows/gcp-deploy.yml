@@ -12,7 +12,7 @@ on:
       force_deploy:
         description: 'Forcer le déploiement même sans changements backend'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 env:
@@ -252,7 +252,13 @@ jobs:
             YOUTUBE_API_KEY:       $ENV.YOUTUBE_API_KEY,
             NEWSAPI_KEY:           $ENV.NEWSAPI_KEY,
             TWITTER_BEARER_TOKEN:  $ENV.TWITTER_BEARER_TOKEN,
-            SERPAPI_KEY:           $ENV.SERPAPI_KEY
+            SERPAPI_KEY:           $ENV.SERPAPI_KEY,
+
+            WHATSAPP_REDIRECT_URI: "https://yukpo-backend-376093909298.europe-west1.run.app/api/social/whatsapp/callback",
+            INSTAGRAM_REDIRECT_URI: "https://yukpo-backend-376093909298.europe-west1.run.app/api/social/instagram/callback",
+
+            DB_POOL_SIZE:          "30",
+            DB_POOL_MIN_SIZE:      "5"
           }' --arg GCP_PROJECT_ID "$PROJECT_ID" \
              --arg YOUTUBE_API_KEY "${{ secrets.YOUTUBE_API_KEY }}" \
              --arg NEWSAPI_KEY "${{ secrets.NEWSAPI_KEY }}" \
@@ -281,7 +287,7 @@ jobs:
           STARTUP_PROBE="timeoutSeconds=3,periodSeconds=10,initialDelaySeconds=0,failureThreshold=60,tcpSocket.port=8080"
 
           # Secrets gérés par Secret Manager (jamais en clair dans les env vars)
-          SECRETS="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest"
+          SECRETS="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest,FACEBOOK_APP_ID=meta-app-id:latest,FACEBOOK_APP_SECRET=meta-app-secret:latest,INSTAGRAM_APP_ID=meta-app-id:latest,INSTAGRAM_APP_SECRET=meta-app-secret:latest,META_APP_ID=meta-app-id:latest,META_APP_SECRET=meta-app-secret:latest,META_ACCESS_TOKEN=meta-access-token:latest,WHATSAPP_ACCESS_TOKEN=meta-access-token:latest,INSTAGRAM_MONITOR_TOKEN=meta-access-token:latest,META_WEBHOOK_VERIFY_TOKEN=meta-webhook-verify-token:latest,WHATSAPP_PHONE_NUMBER_ID=whatsapp-phone-number-id:latest,WHATSAPP_BUSINESS_ACCOUNT_ID=whatsapp-business-account-id:latest,TWILIO_WHATSAPP_NUMBER=twilio-whatsapp-number:latest,FACEBOOK_REDIRECT_URI=FACEBOOK_REDIRECT_URI:latest"
 
           # ✅ Retirer les anciennes liaisons secrets pour YOUTUBE_API_KEY/NEWSAPI_KEY/SERPAPI_KEY
           # (elles étaient liées comme secrets Cloud Run, on les passe maintenant en env vars)

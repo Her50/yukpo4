@@ -61,11 +61,8 @@ const PLATFORMS: PlatformConfig[] = [
         label: 'WhatsApp Business',
         icon: 'logo-whatsapp',
         color: '#25D366',
-        description: 'Nécessite un compte WhatsApp Business API via Meta Business Manager. Entrez votre Phone Number ID.',
-        method: 'manual',
-        manualLabel: 'Phone Number ID',
-        manualPlaceholder: '1234567890123456',
-        manualHint: 'Trouvez-le dans Meta Business Manager → WhatsApp → numéros de téléphone',
+        description: '1 clic via votre compte Meta. Yukpo détecte automatiquement votre numéro WhatsApp Business et configure le webhook — aucun token à copier.',
+        method: 'oauth',
     },
     {
         key: 'tiktok',
@@ -132,10 +129,10 @@ export default function SocialAccountSetupScreen() {
     const connectOAuth = async (platformKey: string) => {
         setConnecting(platformKey);
         try {
-            // Facebook/Instagram utilisent le même endpoint OAuth
-            // Facebook et Instagram : même endpoint OAuth (Facebook couvre les deux)
-        const endpoint = platformKey === 'tiktok'
+            const endpoint = platformKey === 'tiktok'
                 ? '/api/social/accounts/tiktok/authorize'
+                : platformKey === 'whatsapp'
+                ? '/api/social/whatsapp/authorize'
                 : '/api/social/facebook/authorize'; // découvre Pages + Instagram automatiquement
 
             const data = await apiGet(endpoint, token);

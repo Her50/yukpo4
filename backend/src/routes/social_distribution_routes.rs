@@ -18,7 +18,8 @@ use crate::{
         },
         social_connector_controller::{
             connect_account, get_accounts, instagram_authorize, instagram_callback,
-            whatsapp_business_info, whatsapp_guided_setup, youtube_authorize, youtube_callback,
+            whatsapp_business_info, whatsapp_guided_setup, whatsapp_oauth_authorize,
+            whatsapp_oauth_callback, youtube_authorize, youtube_callback,
         },
     },
     middlewares::jwt::jwt_auth,
@@ -41,10 +42,15 @@ pub fn social_distribution_routes(state: Arc<AppState>) -> Router<Arc<AppState>>
         .route("/api/social/youtube/authorize", get(youtube_authorize))
         // WhatsApp Business info (pas d'OAuth individuel)
         .route("/api/social/whatsapp/info", get(whatsapp_business_info))
-        // WhatsApp guided setup : token → auto-discover + auto-webhook
+        // WhatsApp guided setup : token → auto-discover + auto-webhook (fallback manuel)
         .route(
             "/api/social/accounts/whatsapp/setup-guided",
             post(whatsapp_guided_setup),
+        )
+        // WhatsApp OAuth 1-clic via Facebook Login
+        .route(
+            "/api/social/whatsapp/authorize",
+            get(whatsapp_oauth_authorize),
         )
         // Comptes publicitaires Meta auto-découverts lors de l'OAuth
         .route("/api/social/ads/accounts", get(list_meta_ad_accounts))
@@ -73,6 +79,10 @@ pub fn social_distribution_routes(state: Arc<AppState>) -> Router<Arc<AppState>>
         .route("/api/social/facebook/callback", get(facebook_callback))
         .route("/api/social/instagram/callback", get(instagram_callback))
         .route("/api/social/youtube/callback", get(youtube_callback))
+        .route(
+            "/api/social/whatsapp/callback",
+            get(whatsapp_oauth_callback),
+        )
         // Tracking clics retour depuis les posts distribués
         .route("/api/social/track", get(track_distribution_click))
         // Feeds produits publics (Google Merchant Center, Jumia, etc.)
