@@ -327,7 +327,7 @@ export const pharmacyService = {
     }> => {
         try {
             const response = await apiGet<any>(`/api/pharmacies/orders/${orderId}/qr`);
-            if (response.success) return response;
+            if (response.success) return response as any;
             return { success: false, error: response.error || 'Erreur récupération QR' };
         } catch (error: any) {
             return { success: false, error: error.message || 'Erreur réseau' };
@@ -345,7 +345,7 @@ export const pharmacyService = {
     }> => {
         try {
             const response = await apiPost<any>('/api/pharmacies/orders/qr/validate', { qr_code: qrCode });
-            if (response.success) return response;
+            if (response.success) return response as any;
             return { success: false, error: response.error || 'Validation échouée' };
         } catch (error: any) {
             return { success: false, error: error.message || 'Erreur réseau' };
@@ -356,7 +356,7 @@ export const pharmacyService = {
     getOrderDetail: async (orderId: string): Promise<{ success: boolean; order?: any; error?: string }> => {
         try {
             const response = await apiGet<any>(`/api/pharmacies/orders/${orderId}/detail`);
-            if (response.success) return response;
+            if (response.success) return response as any;
             return { success: false, error: response.error || 'Erreur récupération détail' };
         } catch (error: any) {
             return { success: false, error: error.message || 'Erreur réseau' };
@@ -396,7 +396,7 @@ export const pharmacyService = {
     }> => {
         try {
             const response = await apiPost<any>('/api/pharmacies/orders/multi', payload);
-            if (response.success) return response;
+            if (response.success) return response as any;
             return { success: false, error: response.error || 'Création multi-commande échouée' };
         } catch (error: any) {
             return { success: false, error: error.message || 'Erreur réseau' };
@@ -430,7 +430,7 @@ export const pharmacyService = {
     }> => {
         try {
             const response = await apiGet<any>(`/api/pharmacies/multi-orders/${multiOrderId}`);
-            if (response.success) return response;
+            if (response.success) return response as any;
             return { success: false, error: response.error || 'Erreur récupération multi-commande' };
         } catch (error: any) {
             return { success: false, error: error.message || 'Erreur réseau' };
