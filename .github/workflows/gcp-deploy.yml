@@ -73,6 +73,7 @@ jobs:
             -e '/^COPY --from=/! s#^COPY (Cargo\.toml Cargo\.lock) #COPY backend/\1 #' \
             -e '/^COPY --from=/! s#^COPY \.sqlx #COPY backend/.sqlx #' \
             -e '/^COPY --from=/! s#^COPY (src|scripts|ia_prompts|config|migrations|blender|public) #COPY backend/\1 #' \
+            -e '/^COPY --from=/! s#^COPY scripts/#COPY backend/scripts/#' \
             -e '/^COPY --from=/! s#^COPY ([^/ ]+\.(md|toml|lock)) #COPY backend/\1 #' \
             backend/Dockerfile.cloud.optimized > Dockerfile.build
           echo "✅ Dockerfile.build généré"
