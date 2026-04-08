@@ -70,12 +70,15 @@ jobs:
             exit 1
           fi
           sed -E \
-            -e '/^COPY --from=/! s#^COPY (Cargo\.toml Cargo\.lock) #COPY backend/\1 #' \
+            -e '/^COPY --from=/! s#^COPY (Cargo\.toml) (Cargo\.lock) #COPY backend/\1 backend/\2 #' \
             -e '/^COPY --from=/! s#^COPY \.sqlx #COPY backend/.sqlx #' \
             -e '/^COPY --from=/! s#^COPY (src|scripts|ia_prompts|config|migrations|blender|public) #COPY backend/\1 #' \
             -e '/^COPY --from=/! s#^COPY scripts/#COPY backend/scripts/#' \
             -e '/^COPY --from=/! s#^COPY ([^/ ]+\.(md|toml|lock)) #COPY backend/\1 #' \
             backend/Dockerfile.cloud.optimized > Dockerfile.build
+          # Les générateurs Python sont dans scripts/ racine (pas backend/scripts/) — annuler la sur-transformation
+          sed -i 's#COPY backend/scripts/document_generator\.py#COPY scripts/document_generator.py#g' Dockerfile.build
+          sed -i 's#COPY backend/scripts/visual_generator\.py#COPY scripts/visual_generator.py#g' Dockerfile.build
           echo "✅ Dockerfile.build généré"
           head -5 Dockerfile.build
 
