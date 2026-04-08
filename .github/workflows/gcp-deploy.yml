@@ -304,8 +304,8 @@ jobs:
             --format "value(status.traffic[?tag='sha-${{ steps.sha.outputs.short }}'].url)" 2>/dev/null || echo "")
 
           if [ -z "$TAGGED_URL" ]; then
-            # Fallback : URL de service principale (révision sans trafic peut quand même répondre)
-            TAGGED_URL="${{ env.HEALTH_URL }}"
+            # Fallback : URL de base du service (le step health check ajoute /health)
+            TAGGED_URL="https://yukpo-backend-376093909298.europe-west1.run.app"
           fi
 
           echo "tagged_url=$TAGGED_URL" >> "$GITHUB_OUTPUT"
