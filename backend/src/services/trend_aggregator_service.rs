@@ -1,4 +1,4 @@
-// TrendPulse Aggregator — Yukpo
+// TrendPulse Aggregator — Yukpo (SerpAPI + YouTube + NewsAPI activés)
 // Collecte les tendances multi-sources (externe + interne Yukpo)
 // Calcule le Trend Velocity Score personnalisé par utilisateur
 // Sources externes : Google Trends (pytrends-like), YouTube Data API, NewsAPI, Reddit
