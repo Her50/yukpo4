@@ -133,7 +133,7 @@ jobs:
             INSTANCE_ID:                         "backend-1",
             GCP_PROJECT_ID:                      $ENV.GCP_PROJECT_ID,
 
-            DB_POOL_SIZE:                        "20",
+            DB_POOL_SIZE:                        "30",
             DB_POOL_MIN_SIZE:                    "5",
             DB_ACQUIRE_TIMEOUT_SECS:             "30",
             DB_HEALTH_CHECK_INTERVAL_SECS:       "30",
@@ -257,8 +257,7 @@ jobs:
             WHATSAPP_REDIRECT_URI: "https://yukpo-backend-376093909298.europe-west1.run.app/api/social/whatsapp/callback",
             INSTAGRAM_REDIRECT_URI: "https://yukpo-backend-376093909298.europe-west1.run.app/api/social/instagram/callback",
 
-            DB_POOL_SIZE:          "30",
-            DB_POOL_MIN_SIZE:      "5"
+            DB_ACQUIRE_TIMEOUT_SECS:             "45"
           }' --arg GCP_PROJECT_ID "$PROJECT_ID" \
              --arg YOUTUBE_API_KEY "${{ secrets.YOUTUBE_API_KEY }}" \
              --arg NEWSAPI_KEY "${{ secrets.NEWSAPI_KEY }}" \
