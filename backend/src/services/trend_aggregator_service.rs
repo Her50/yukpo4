@@ -1771,8 +1771,9 @@ fn extract_personalities(trends: &[TrendItem]) -> Vec<PersonalityTrend> {
 
 // ─── Facebook & Instagram Trending via SerpAPI ───────────────────────────────
 
-/// Récupère les tendances Facebook pour une région via SerpAPI.
-/// SerpAPI interroge Facebook via proxies résidentiels → pas de blocage.
+/// Récupère les tendances Facebook pour une région via SerpAPI Google News.
+/// SerpAPI n'a pas d'API "trending Facebook" native — on cherche les actualités
+/// virales de la région qui reflètent ce qui circule sur Facebook.
 async fn fetch_facebook_trends_via_serpapi(
     client: &Client,
     region: &str,
@@ -1781,22 +1782,53 @@ async fn fetch_facebook_trends_via_serpapi(
     if serpapi_key.is_empty() {
         return vec![];
     }
-    let country = match region {
-        "CM" => "cm",
-        "SN" => "sn",
-        "CI" => "ci",
-        "NG" => "ng",
-        _ => "cm",
+    let (country_code, query) = match region {
+        "CI" => ("ci", "tendances viral Côte d'Ivoire facebook"),
+        "CM" => ("cm", "tendances viral Cameroun facebook"),
+        "SN" => ("sn", "tendances viral Sénégal facebook"),
+        "NG" => ("ng", "viral trending Nigeria facebook"),
+        _ => ("cm", "tendances viral Afrique facebook"),
     };
-    // SerpAPI Google Trends avec filtre Facebook comme source de contenu
+
+    // Google News via SerpAPI — reflète les sujets viraux sur les réseaux sociaux
+    let q_enc = urlencoding::encode(query);
     let url = format!(
-        "https://serpapi.com/search.json?engine=google_trends&q=facebook+trending+{}&geo={}&data_type=TIMESERIES&api_key={}",
-        country, region, serpapi_key
+        "https://serpapi.com/search.json?engine=google_news&q={}&gl={}&hl=fr&api_key={}",
+        q_enc, country_code, serpapi_key
     );
-    match client.get(&url).timeout(std::time::Duration::from_secs(10)).send().await {
+    if let Ok(resp) = client.get(&url).timeout(std::time::Duration::from_secs(10)).send().await {
+        if resp.status().is_success() {
+            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                let parsed = parse_google_news_serpapi(&body, region, "Facebook");
+                if !parsed.is_empty() {
+                    return parsed;
+                }
+            }
+        }
+    }
+
+    // Fallback : Google Search organique pour topics Facebook de la région
+    let q2 = match region {
+        "CI" => urlencoding::encode("site:facebook.com Côte d'Ivoire tendance"),
+        "CM" => urlencoding::encode("site:facebook.com Cameroun tendance"),
+        "SN" => urlencoding::encode("site:facebook.com Sénégal tendance"),
+        "NG" => urlencoding::encode("site:facebook.com Nigeria trending"),
+        _ => urlencoding::encode("site:facebook.com Afrique tendance"),
+    };
+    let url2 = format!(
+        "https://serpapi.com/search.json?engine=google&q={}&gl={}&hl=fr&num=10&api_key={}",
+        q2, country_code, serpapi_key
+    );
+    match client.get(&url2).timeout(std::time::Duration::from_secs(10)).send().await {
         Ok(resp) if resp.status().is_success() => {
-            if let Ok(body) = resp.text().await {
-                parse_serpapi_social_trends(&body, region, "Facebook")
+            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                parse_serpapi_organic_results(&body, region)
+                    .into_iter()
+                    .map(|mut t| {
+                        t.sources = vec!["Facebook".to_string()];
+                        t
+                    })
+                    .collect()
             } else {
                 vec![]
             }
@@ -1805,7 +1837,7 @@ async fn fetch_facebook_trends_via_serpapi(
     }
 }
 
-/// Récupère les tendances Instagram via SerpAPI (hashtags populaires).
+/// Récupère les tendances Instagram via SerpAPI (hashtags et contenus populaires).
 async fn fetch_instagram_trends_via_serpapi(
     client: &Client,
     region: &str,
@@ -1814,28 +1846,102 @@ async fn fetch_instagram_trends_via_serpapi(
     if serpapi_key.is_empty() {
         return vec![];
     }
-    let country = match region {
-        "CM" => "cm",
-        "SN" => "sn",
-        "CI" => "ci",
-        "NG" => "ng",
-        _ => "cm",
+    let (country_code, query) = match region {
+        "CI" => ("ci", "tendances hashtag Instagram Côte d'Ivoire"),
+        "CM" => ("cm", "tendances hashtag Instagram Cameroun"),
+        "SN" => ("sn", "tendances hashtag Instagram Sénégal"),
+        "NG" => ("ng", "trending hashtag Instagram Nigeria"),
+        _ => ("cm", "tendances hashtag Instagram Afrique"),
     };
-    // Instagram trending hashtags via SerpAPI
+
+    // Google News pour les sujets Instagram viraux
+    let q_enc = urlencoding::encode(query);
     let url = format!(
-        "https://serpapi.com/search.json?engine=google_trends&q=instagram+trending+{}&geo={}&data_type=TIMESERIES&api_key={}",
-        country, region, serpapi_key
+        "https://serpapi.com/search.json?engine=google_news&q={}&gl={}&hl=fr&api_key={}",
+        q_enc, country_code, serpapi_key
     );
-    match client.get(&url).timeout(std::time::Duration::from_secs(10)).send().await {
+    if let Ok(resp) = client.get(&url).timeout(std::time::Duration::from_secs(10)).send().await {
+        if resp.status().is_success() {
+            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                let parsed = parse_google_news_serpapi(&body, region, "Instagram");
+                if !parsed.is_empty() {
+                    return parsed;
+                }
+            }
+        }
+    }
+
+    // Fallback : recherche des hashtags Instagram les plus populaires de la région
+    let q2 = match region {
+        "CI" => urlencoding::encode("hashtag instagram populaire Côte d'Ivoire 2025"),
+        "CM" => urlencoding::encode("hashtag instagram populaire Cameroun 2025"),
+        "SN" => urlencoding::encode("hashtag instagram populaire Sénégal 2025"),
+        "NG" => urlencoding::encode("hashtag instagram popular Nigeria 2025"),
+        _ => urlencoding::encode("hashtag instagram populaire Afrique 2025"),
+    };
+    let url2 = format!(
+        "https://serpapi.com/search.json?engine=google&q={}&gl={}&hl=fr&num=10&api_key={}",
+        q2, country_code, serpapi_key
+    );
+    match client.get(&url2).timeout(std::time::Duration::from_secs(10)).send().await {
         Ok(resp) if resp.status().is_success() => {
-            if let Ok(body) = resp.text().await {
-                parse_serpapi_social_trends(&body, region, "Instagram")
+            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                parse_serpapi_organic_results(&body, region)
+                    .into_iter()
+                    .map(|mut t| {
+                        t.sources = vec!["Instagram".to_string()];
+                        t
+                    })
+                    .collect()
             } else {
                 vec![]
             }
         }
         _ => vec![],
     }
+}
+
+/// Parse une réponse Google News SerpAPI pour extraire des topics tendances.
+fn parse_google_news_serpapi(
+    data: &serde_json::Value,
+    region: &str,
+    source: &str,
+) -> Vec<TrendItem> {
+    let mut trends = Vec::new();
+
+    // Google News SerpAPI retourne news_results[] ou top_stories[]
+    let items = data
+        .get("news_results")
+        .and_then(|r| r.as_array())
+        .or_else(|| data.get("top_stories").and_then(|r| r.as_array()));
+
+    let Some(items) = items else {
+        return trends;
+    };
+
+    for (i, item) in items.iter().take(12).enumerate() {
+        let title = item.get("title").and_then(|t| t.as_str()).unwrap_or("");
+        if title.len() < 5 {
+            continue;
+        }
+
+        let social_score = (72.0 - i as f32 * 4.0).max(15.0);
+        trends.push(TrendItem {
+            id: format!("gn-{}-{}-{}", source.to_lowercase(), region, i),
+            topic: title.to_string(),
+            social_score,
+            commerce_score: 0.0,
+            opportunity_score: 0.0,
+            momentum_pct: (68.0 - i as f32 * 4.0).max(10.0),
+            categories: vec!["actualité".to_string()],
+            regions: vec![region.to_string()],
+            sources: vec![source.to_string()],
+            period: "24h".to_string(),
+            matching_products: vec![],
+            recommended_action: None,
+        });
+    }
+    trends
 }
 
 /// Parse la réponse SerpAPI pour extraire des topics sociaux (Facebook/Instagram)
