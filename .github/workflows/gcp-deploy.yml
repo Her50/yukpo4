@@ -133,8 +133,8 @@ jobs:
             INSTANCE_ID:                         "backend-1",
             GCP_PROJECT_ID:                      $ENV.GCP_PROJECT_ID,
 
-            DB_POOL_SIZE:                        "10",
-            DB_POOL_MIN_SIZE:                    "2",
+            DB_POOL_SIZE:                        "20",
+            DB_POOL_MIN_SIZE:                    "5",
             DB_ACQUIRE_TIMEOUT_SECS:             "30",
             DB_HEALTH_CHECK_INTERVAL_SECS:       "30",
             DATABASE_TIMEOUT:                    "10",

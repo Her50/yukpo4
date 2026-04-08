@@ -427,6 +427,8 @@ const apiCallInternal = async <T>(
                                   ? 30000  // ✅ 30s pour chargement services (peut être lent avec cache Redis)
                                   : endpoint.includes('/api/bus-tickets/')
                                     ? 45000  // ✅ Agence voyage : horaires / billets — cold start GCP ou requêtes plus lentes
+                                    : endpoint.startsWith('/ai/chat')
+                                    ? 60000  // ✅ YukpoIA chat : LLM GPT-4o peut prendre 14-20s + pool DB saturé
                                     : 15000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
