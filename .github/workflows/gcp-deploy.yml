@@ -39,6 +39,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set short SHA
+        id: sha
+        run: echo "short=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
       # ── 2. Auth GCP via Workload Identity Federation ─────────
       #   Aucune clé JSON — token OIDC éphémère, rotation automatique
       - name: Authenticate to Google Cloud (WIF)
@@ -290,14 +294,14 @@ jobs:
             --cpu-throttling \
             --service-account "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}" \
             --project "$PROJECT_ID" \
-            --tag "sha-${{ github.sha }}" \
+            --tag "sha-${{ steps.sha.outputs.short }}" \
             --quiet
 
           # Récupérer l'URL de la révision taggée pour le health check
           TAGGED_URL=$(gcloud run services describe "$SERVICE_NAME" \
             --region "$REGION" \
             --project "$PROJECT_ID" \
-            --format "value(status.traffic[?tag='sha-${{ github.sha }}'].url)" 2>/dev/null || echo "")
+            --format "value(status.traffic[?tag='sha-${{ steps.sha.outputs.short }}'].url)" 2>/dev/null || echo "")
 
           if [ -z "$TAGGED_URL" ]; then
             # Fallback : URL de service principale (révision sans trafic peut quand même répondre)
@@ -333,11 +337,11 @@ jobs:
       # ── 12. Basculer 100% du trafic vers la nouvelle révision ─
       - name: Migrate traffic to new revision
         run: |
-          echo "🔀 Bascule du trafic vers sha-${{ github.sha }}..."
+          echo "🔀 Bascule du trafic vers sha-${{ steps.sha.outputs.short }}..."
           gcloud run services update-traffic "$SERVICE_NAME" \
             --region "$REGION" \
             --project "$PROJECT_ID" \
-            --to-tags "sha-${{ github.sha }}=100" \
+            --to-tags "sha-${{ steps.sha.outputs.short }}=100" \
             --quiet
           echo "✅ 100% du trafic sur la nouvelle révision"
 
