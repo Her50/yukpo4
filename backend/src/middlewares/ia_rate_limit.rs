@@ -39,8 +39,19 @@ pub async fn ia_rate_limit(
     let limit_per_minute = 10;
     let limit_per_hour = 100;
 
-    // Vérifier limite par minute
-    match state.redis_client.get_multiplexed_async_connection().await {
+    // Vérifier limite par minute — timeout 2s pour éviter de bloquer la requête si Redis est mort
+    let redis_conn_result = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        state.redis_client.get_multiplexed_async_connection(),
+    )
+    .await
+    .unwrap_or_else(|_| {
+        Err(redis::RedisError::from(std::io::Error::new(
+            std::io::ErrorKind::TimedOut,
+            "Redis connection timeout (2s)",
+        )))
+    });
+    match redis_conn_result {
         Ok(mut conn) => {
             // Vérifier compteur minute
             let minute_count: i32 =
