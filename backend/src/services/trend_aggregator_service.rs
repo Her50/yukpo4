@@ -937,6 +937,144 @@ fn snapshot_row_to_trend_item(r: &sqlx::postgres::PgRow, period: &str) -> Option
     })
 }
 
+// ─── Fallback trends Yukpo natives ────────────────────────────────────────────
+
+/// Génère des tendances à partir des données internes Yukpo quand les sources
+/// externes (APIs tierce, snapshots DB) sont indisponibles.
+/// Utilise : produits populaires, catégories actives, signaux chatbot.
+async fn generate_yukpo_native_trends(
+    pg: &PgPool,
+    region: &str,
+    internal_signals: &[InternalSignal],
+    _user_ctx: Option<&UserCommercialContext>,
+) -> Vec<TrendItem> {
+    use sqlx::Row;
+    let mut trends: Vec<TrendItem> = Vec::new();
+
+    // 1. Produits les plus commandés récemment → topics commerce
+    let top_products = sqlx::query(
+        r#"SELECT sp.titre AS topic,
+                  COUNT(oi.id) AS order_count,
+                  AVG(oi.price_at_purchase) AS avg_price,
+                  s.category
+           FROM order_items oi
+           JOIN service_products sp ON sp.id = oi.product_id
+           JOIN services s ON s.id = sp.service_id
+           WHERE oi.created_at >= NOW() - INTERVAL '7 days'
+             AND sp.titre IS NOT NULL
+           GROUP BY sp.titre, s.category
+           ORDER BY order_count DESC
+           LIMIT 15"#,
+    )
+    .fetch_all(pg)
+    .await
+    .unwrap_or_default();
+
+    for (i, row) in top_products.iter().enumerate() {
+        let topic: String = row.try_get("topic").unwrap_or_default();
+        if topic.is_empty() {
+            continue;
+        }
+        let order_count: i64 = row.try_get("order_count").unwrap_or(1);
+        let category: String = row.try_get("category").unwrap_or_else(|_| "général".to_string());
+        let social_score = (50.0 + (order_count as f32).log10() * 15.0).min(95.0);
+        let momentum = 60.0 - (i as f32 * 3.0);
+
+        trends.push(TrendItem {
+            id: format!("yukpo-prod-{}-{}", region, i),
+            topic,
+            social_score,
+            commerce_score: social_score * 1.2_f32.min(100.0),
+            opportunity_score: 0.0,
+            momentum_pct: momentum,
+            categories: vec![category],
+            regions: vec![region.to_string()],
+            sources: vec!["Yukpo Commerce".to_string()],
+            period: "24h".to_string(),
+            matching_products: vec![],
+            recommended_action: None,
+        });
+    }
+
+    // 2. Signaux chatbot les plus fréquents → topics demande
+    for (i, signal) in internal_signals.iter().take(10).enumerate() {
+        if signal.keyword.len() < 4 {
+            continue;
+        }
+        let social_score = (40.0 + signal.score * 2.0).min(85.0);
+        trends.push(TrendItem {
+            id: format!("yukpo-chat-{}-{}", region, i),
+            topic: signal.keyword.clone(),
+            social_score,
+            commerce_score: social_score,
+            opportunity_score: 0.0,
+            momentum_pct: 45.0 - (i as f32 * 2.0),
+            categories: vec![signal.category.clone().unwrap_or_else(|| "demande".to_string())],
+            regions: vec![region.to_string()],
+            sources: vec!["Yukpo Chatbots".to_string()],
+            period: "24h".to_string(),
+            matching_products: vec![],
+            recommended_action: None,
+        });
+    }
+
+    // 3. Services les plus actifs → topics secteur
+    let top_services = sqlx::query(
+        r#"SELECT s.titre_service AS topic,
+                  s.category,
+                  COUNT(DISTINCT o.id) AS order_count
+           FROM services s
+           LEFT JOIN orders o ON o.service_id = s.id
+             AND o.created_at >= NOW() - INTERVAL '7 days'
+           WHERE s.is_active = true
+             AND s.titre_service IS NOT NULL
+           GROUP BY s.titre_service, s.category
+           ORDER BY order_count DESC, s.created_at DESC
+           LIMIT 10"#,
+    )
+    .fetch_all(pg)
+    .await
+    .unwrap_or_default();
+
+    for (i, row) in top_services.iter().enumerate() {
+        let topic: String = row.try_get("topic").unwrap_or_default();
+        if topic.is_empty() {
+            continue;
+        }
+        let category: String = row.try_get("category").unwrap_or_else(|_| "service".to_string());
+        let order_count: i64 = row.try_get("order_count").unwrap_or(0);
+
+        // Éviter les doublons avec les produits déjà ajoutés
+        if trends.iter().any(|t| t.topic.to_lowercase() == topic.to_lowercase()) {
+            continue;
+        }
+
+        let social_score = (35.0 + order_count as f32 * 3.0).min(80.0);
+        trends.push(TrendItem {
+            id: format!("yukpo-svc-{}-{}", region, i),
+            topic,
+            social_score,
+            commerce_score: social_score,
+            opportunity_score: 0.0,
+            momentum_pct: 40.0 - (i as f32 * 2.5),
+            categories: vec![category],
+            regions: vec![region.to_string()],
+            sources: vec!["Yukpo Services".to_string()],
+            period: "24h".to_string(),
+            matching_products: vec![],
+            recommended_action: None,
+        });
+    }
+
+    log::info!(
+        "[TrendAggregator] Trends Yukpo natives générées pour {} : {} items",
+        region,
+        trends.len()
+    );
+
+    trends
+}
+
 // ─── Point d'entrée principal ─────────────────────────────────────────────────
 
 /// Collecte et agrège les tendances pour une région donnée,
@@ -1026,6 +1164,23 @@ pub async fn get_trend_pulse(
                 merged.push(trend);
             }
         }
+
+        // ─── Priorité 3 : Trends natives Yukpo (fallback si APIs externes vides) ─
+        if merged.is_empty() {
+            log::warn!(
+                "[TrendAggregator] APIs externes vides pour {}, fallback trends Yukpo natives",
+                region
+            );
+            let native =
+                generate_yukpo_native_trends(&state.pg, region, &internal_signals, user_ctx).await;
+            for mut trend in native {
+                if let Some(ctx) = user_ctx {
+                    score_trend_for_user(&mut trend, ctx, &internal_signals);
+                }
+                merged.push(trend);
+            }
+        }
+
         merged
     };
 
