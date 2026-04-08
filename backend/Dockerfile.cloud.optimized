@@ -132,6 +132,10 @@ COPY scripts/health-server-simple.sh /app/health-server-simple.sh
 COPY scripts/health-server-python.py /app/health-server-python.py
 COPY scripts/startup-wrapper.sh /app/startup-wrapper.sh
 COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
+# Scripts Python de génération de documents et visuels (YukpoIA)
+RUN mkdir -p /app/scripts
+COPY scripts/document_generator.py /app/scripts/document_generator.py
+COPY scripts/visual_generator.py /app/scripts/visual_generator.py
 RUN chmod +x /app/start-cloud.sh /app/start-cloud-run.sh /app/start-health-server.sh /app/health-server-simple.sh /app/health-server-python.py /app/startup-wrapper.sh /app/docker-entrypoint.sh
 
 # Variables d'environnement
