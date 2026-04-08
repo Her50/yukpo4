@@ -100,10 +100,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     redis-tools \
     python3 \
+    python3-pip \
     ffmpeg \
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && apt-get clean \
+    && pip3 install --no-cache-dir \
+        python-pptx \
+        python-docx \
+        Pillow \
+        openpyxl
 
 # Créer utilisateur non-root
 RUN groupadd -r appuser -g 1000 && \

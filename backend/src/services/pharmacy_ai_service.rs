@@ -377,7 +377,7 @@ IMPORTANT :
 
         let (model_name, response, tokens) = self
             .app_ia
-            .predict_multimodal(&prompt, Some(vec![image_base64.to_string()]))
+            .predict_multimodal_ocr(&prompt, Some(vec![image_base64.to_string()]))
             .await?;
 
         log::info!(
@@ -482,13 +482,23 @@ fn clean_json_response(text: &str) -> String {
     s.to_string()
 }
 
-/// Extrait le premier tableau JSON d'une réponse IA
+/// Extrait le premier tableau JSON d'une réponse IA.
+/// Si la réponse est un objet unique `{...}`, le wrap dans `[{...}]`.
 fn extract_json_array(text: &str) -> String {
-    // Chercher le premier '[' et le dernier ']' correspondant
+    // Cas 1 : tableau JSON → extraire [...]
     if let Some(start) = text.find('[') {
         if let Some(end) = text.rfind(']') {
             if end > start {
                 return text[start..=end].to_string();
+            }
+        }
+    }
+    // Cas 2 : objet JSON unique `{...}` → wrapper dans un tableau
+    if let Some(start) = text.find('{') {
+        if let Some(end) = text.rfind('}') {
+            if end > start {
+                let obj = &text[start..=end];
+                return format!("[{}]", obj);
             }
         }
     }

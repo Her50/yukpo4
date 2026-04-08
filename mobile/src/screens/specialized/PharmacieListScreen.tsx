@@ -253,6 +253,28 @@ const PharmacieListScreen: React.FC = () => {
                     </View>
                 )}
 
+                {/* Détail médicament par médicament : ✓ disponible / ✗ manquant */}
+                {item.medications_availability && item.medications_availability.length > 0 && (
+                    <View style={styles.medsAvailList}>
+                        {item.medications_availability.map((med, idx) => (
+                            <View key={idx} style={styles.medAvailRow}>
+                                <SafeIcon
+                                    name={med.available ? 'check-circle' : 'x-circle'}
+                                    size={13}
+                                    color={med.available ? '#059669' : '#EF4444'}
+                                    type="lucide"
+                                />
+                                <Text style={[
+                                    styles.medAvailName,
+                                    { color: med.available ? '#065F46' : '#991B1B' }
+                                ]}>
+                                    {med.name}
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
                 {item.telephone && (
                     <View style={styles.phoneRow}>
                         <SafeIcon name="phone" size={14} color={modernColors.textSecondary} />
@@ -533,6 +555,22 @@ const styles = StyleSheet.create({
     },
     matchingDetailText: {
         fontSize: 13,
+        fontWeight: '500',
+    },
+    medsAvailList: {
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#F3F4F6',
+        gap: 4,
+    },
+    medAvailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    medAvailName: {
+        fontSize: 12,
         fontWeight: '500',
     },
     // Bannière multi-pharmacies

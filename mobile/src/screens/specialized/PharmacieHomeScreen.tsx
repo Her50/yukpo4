@@ -100,7 +100,7 @@ const PharmacieHomeScreen: React.FC = () => {
     // États pour scan ordonnance (extraction IA → recherche pharmacies)
     const [showOrdonnanceModal, setShowOrdonnanceModal] = useState(false);
     const [extractingOrdonnance, setExtractingOrdonnance] = useState(false);
-    const [extractedMedications, setExtractedMedications] = useState<Array<{ name: string; dosage?: string; quantity?: number; posologie?: string }> | null>(null);
+    // extractedMedications → remplacé par textMedications (scan auto-popule les tags)
 
     // États pour recherche multi-médicaments par texte + filtres proximité
     const [textMedications, setTextMedications] = useState<string[]>([]);
@@ -480,19 +480,16 @@ const PharmacieHomeScreen: React.FC = () => {
                     setAiQuestion(question);
 
                     const aiResult = await askPharmacyQuestion(question, [firstMed.name]);
-                    if (aiResult.success && aiResult.data) {
-                        setAiResponse(
-                            `📷 Médicament identifié : **${medNames}**\n\n` +
-                            (firstMed.dosage ? `Dosage : ${firstMed.dosage}\n` : '') +
-                            (firstMed.posologie ? `Posologie : ${firstMed.posologie}\n\n` : '\n') +
-                            aiResult.data
-                        );
-                    } else {
-                        setAiResponse(`📷 Médicament identifié : **${medNames}**` +
-                            (firstMed.dosage ? `\nDosage : ${firstMed.dosage}` : '') +
-                            (firstMed.posologie ? `\nPosologie : ${firstMed.posologie}` : '')
-                        );
-                    }
+                    // aiResult.data est {message, suggestions} — extraire .message
+                    const aiMessage = typeof aiResult.data === 'string'
+                        ? aiResult.data
+                        : (aiResult.data as any)?.message || '';
+                    const header = [
+                        `💊 ${medNames}`,
+                        firstMed.dosage ? `Dosage : ${firstMed.dosage}` : '',
+                        firstMed.posologie ? `Posologie : ${firstMed.posologie}` : '',
+                    ].filter(Boolean).join('\n');
+                    setAiResponse(aiMessage ? `${header}\n\n${aiMessage}` : header);
                     setShowAIChat(true);
                 } else {
                     // Aucun médicament détecté — l'image ne semble pas être une ordonnance ou un médicament
@@ -543,15 +540,15 @@ const PharmacieHomeScreen: React.FC = () => {
                 Alert.alert('Permission requise', 'Autorisez l\'accès à la caméra pour scanner une ordonnance.');
                 return;
             }
-            // quality: 1.0 pour OCR optimal sur ordonnances manuscrites ; pas de recadrage (allowsEditing: false)
-            result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], base64: true, quality: 1.0, allowsEditing: false });
+            // quality: 0.5 — suffisant pour l'OCR (réduit la payload de 8MB → ~1.5MB, accélère l'analyse IA)
+            result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], base64: true, quality: 0.5, allowsEditing: false });
         } else {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
                 Alert.alert('Permission requise', 'Autorisez l\'accès à la galerie.');
                 return;
             }
-            result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 1.0, allowsEditing: false });
+            result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.5, allowsEditing: false });
         }
         if (result.canceled || !result.assets?.[0]?.base64) return;
         const base64 = result.assets[0].base64!;
@@ -580,20 +577,6 @@ const PharmacieHomeScreen: React.FC = () => {
         } finally {
             setExtractingOrdonnance(false);
         }
-    };
-
-    const handleSearchByOrdonnance = () => {
-        if (!extractedMedications || extractedMedications.length === 0) return;
-        hapticPress();
-        const medications = extractedMedications.map(m => ({ name: m.name, quantity: m.quantity }));
-        navigation.navigate('PharmacieList' as never, {
-            filters: {
-                ordonnance_medications: medications,
-                lat: searchGpsData?.lat ?? location?.coords?.latitude,
-                lng: searchGpsData?.lng ?? location?.coords?.longitude,
-                max_distance_km: maxDistance > 0 ? maxDistance : undefined,
-            }
-        } as never);
     };
 
     // Gestion de la liste de médicaments saisie manuellement
@@ -1163,6 +1146,37 @@ const PharmacieHomeScreen: React.FC = () => {
                                 }
                             ]}
                         >
+                            {/* ── Barre de saisie IA — TOUJOURS VISIBLE EN HAUT ── */}
+                            <View style={styles.aiInputWrapper}>
+                                <View style={styles.aiInputContainer}>
+                                    <TextInput
+                                        style={styles.aiInput}
+                                        placeholder={t('pharmacieHome.exQuelsSontLesEffets')}
+                                        placeholderTextColor="#9CA3AF"
+                                        value={aiQuestion}
+                                        onChangeText={setAiQuestion}
+                                        multiline
+                                        maxLength={500}
+                                        textAlignVertical="top"
+                                        returnKeyType="send"
+                                        onSubmitEditing={handleAskAI}
+                                        blurOnSubmit={false}
+                                    />
+                                    <TouchableOpacity
+                                        style={[styles.aiSendButton, (!aiQuestion.trim() || aiLoading) && styles.aiSendButtonDisabled]}
+                                        onPress={handleAskAI}
+                                        disabled={!aiQuestion.trim() || aiLoading}
+                                        activeOpacity={0.7}
+                                    >
+                                        {aiLoading ? (
+                                            <ActivityIndicator size="small" color="#FFFFFF" />
+                                        ) : (
+                                            <SafeIcon name="send" size={18} color="#FFFFFF" type="lucide" />
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
                             <KeyboardAvoidingView
                                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                                 keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
@@ -1253,7 +1267,23 @@ const PharmacieHomeScreen: React.FC = () => {
                                             style={styles.aiResponseTextScroll}
                                             nestedScrollEnabled={true}
                                         >
-                                            <Text style={styles.aiResponseText}>{aiResponse}</Text>
+                                            {/* Rendu markdown simple : **gras** et retours à la ligne */}
+                                            <Text style={styles.aiResponseText}>
+                                                {(aiResponse || '').split('\n').map((line, li) => {
+                                                    // Découper les segments **bold**
+                                                    const parts = line.split(/\*\*(.*?)\*\*/g);
+                                                    return (
+                                                        <Text key={li}>
+                                                            {parts.map((part, pi) =>
+                                                                pi % 2 === 1
+                                                                    ? <Text key={pi} style={{ fontWeight: '700' }}>{part}</Text>
+                                                                    : <Text key={pi}>{part}</Text>
+                                                            )}
+                                                            {li < (aiResponse || '').split('\n').length - 1 ? '\n' : ''}
+                                                        </Text>
+                                                    );
+                                                })}
+                                            </Text>
                                         </ScrollView>
                                         <TouchableOpacity
                                             style={styles.aiClearButton}
@@ -1269,35 +1299,6 @@ const PharmacieHomeScreen: React.FC = () => {
                                 )}
 
                                 </ScrollView>
-                                <View style={styles.aiInputWrapper}>
-                                    <View style={styles.aiInputContainer}>
-                                        <TextInput
-                                            style={styles.aiInput}
-                                            placeholder={t('pharmacieHome.exQuelsSontLesEffets')}
-                                            placeholderTextColor="#9CA3AF"
-                                            value={aiQuestion}
-                                            onChangeText={setAiQuestion}
-                                            multiline
-                                            maxLength={500}
-                                            textAlignVertical="top"
-                                            returnKeyType="send"
-                                            onSubmitEditing={handleAskAI}
-                                            blurOnSubmit={false}
-                                        />
-                                        <TouchableOpacity
-                                            style={[styles.aiSendButton, (!aiQuestion.trim() || aiLoading) && styles.aiSendButtonDisabled]}
-                                            onPress={handleAskAI}
-                                            disabled={!aiQuestion.trim() || aiLoading}
-                                            activeOpacity={0.7}
-                                        >
-                                            {aiLoading ? (
-                                                <ActivityIndicator size="small" color="#FFFFFF" />
-                                            ) : (
-                                                <SafeIcon name="send" size={18} color="#FFFFFF" type="lucide" />
-                                            )}
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
                             </KeyboardAvoidingView>
                         </Animated.View>
                     )}
@@ -3107,12 +3108,11 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     aiInputWrapper: {
-        position: 'relative',
-        paddingBottom: 8,
-        paddingTop: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
         backgroundColor: '#F9FAFB',
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
     },
     aiInputContainer: {
         flexDirection: 'row',

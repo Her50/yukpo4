@@ -857,6 +857,72 @@ impl AppIA {
         self.predict(prompt).await
     }
 
+    /// Variante OCR légère : max_tokens réduit à 600 (suffisant pour JSON médicaments)
+    /// Utilise gpt-4o-mini en priorité — 3x plus rapide que gpt-4o pour l'extraction d'ordonnances
+    pub async fn predict_multimodal_ocr(
+        &self,
+        prompt: &str,
+        images: Option<Vec<String>>,
+    ) -> AppResult<(String, String, u32)> {
+        let start_time = SystemTime::now();
+        let interaction_id = Uuid::new_v4().to_string();
+
+        // Chercher gpt-4o-mini d'abord (plus rapide), fallback sur gpt-4o
+        let models = self.models.read().await;
+        let mut ocr_models: Vec<&ModelConfig> =
+            models.iter().filter(|m| m.enabled && self.supports_multimodal(m)).collect();
+        // Trier : gpt-4o-mini en priorité pour OCR (plus rapide et moins cher)
+        ocr_models.sort_by(|a, b| {
+            let a_mini = a.name.contains("mini");
+            let b_mini = b.name.contains("mini");
+            match (a_mini, b_mini) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => b.priority.cmp(&a.priority),
+            }
+        });
+
+        if ocr_models.is_empty() {
+            return self.predict(prompt).await;
+        }
+
+        for model in ocr_models.iter().take(2) {
+            // Cloner le modèle avec max_tokens réduit pour OCR
+            let mut ocr_model = (*model).clone();
+            ocr_model.max_tokens = 600; // JSON médicaments = max ~300 tokens
+
+            let timeout_future = tokio::time::timeout(
+                Duration::from_secs(45),
+                self.call_model_multimodal(&ocr_model, prompt, images.as_ref(), &interaction_id),
+            );
+
+            match timeout_future.await {
+                Ok(Ok((model_name, response, tokens_used))) => {
+                    let elapsed = SystemTime::now().duration_since(start_time).unwrap().as_millis();
+                    log::info!(
+                        "[AppIA OCR] ✅ Ordonnance extraite avec {} en {}ms (tokens: {})",
+                        model_name,
+                        elapsed,
+                        tokens_used
+                    );
+                    self.update_metrics_with_tokens(&model_name, true, start_time, tokens_used)
+                        .await;
+                    self.record_interaction(&interaction_id, prompt, &response, &model_name).await;
+                    return Ok((model_name, response.to_string(), tokens_used));
+                }
+                Ok(Err(e)) => {
+                    log::warn!("[AppIA OCR] Modèle {} échec: {}", model.name, e);
+                }
+                Err(_) => {
+                    log::warn!("[AppIA OCR] Modèle {} timeout (45s)", model.name);
+                }
+            }
+        }
+
+        log::warn!("[AppIA OCR] Tous les modèles OCR ont échoué, fallback texte");
+        self.predict(prompt).await
+    }
+
     /// Génère des sous-titres au format SRT via l'orchestrateur IA
     pub async fn generate_subtitles_srt(
         &self,
@@ -1918,7 +1984,7 @@ Réponds SEULEMENT le JSON, rien d'autre.",
                     "type": "image_url",
                     "image_url": {
                         "url": format!("data:image/jpeg;base64,{}", clean),
-                        "detail": "high"
+                        "detail": "auto"
                     }
                 }));
                 log::info!(
