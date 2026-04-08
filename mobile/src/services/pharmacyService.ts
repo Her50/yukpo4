@@ -255,9 +255,9 @@ export const pharmacyService = {
                 lng,
             });
             if (response.success) {
-                return { success: true, medications: response.medications || [] };
+                return { success: true, medications: response.data?.medications || response.medications || [] };
             }
-            return { success: false, error: response.error || 'Extraction échouée' };
+            return { success: false, error: response.data?.error || response.error || 'Extraction échouée' };
         } catch (error: any) {
             return { success: false, error: error.message || 'Erreur lors de l\'extraction' };
         }
