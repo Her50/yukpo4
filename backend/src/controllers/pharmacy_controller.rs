@@ -42,9 +42,12 @@ pub async fn list_pharmacies(
         _ => "",
     };
 
+    // ✅ FIX 2026-04-08: LEFT JOIN + filtre sur p.user_id pour inclure les pharmacies
+    // dont le service_id est NULL ou dont services.user_id diffère du partenaire.
+    // Les partenaires validés sans avoir passé par create_pharmacy avaient un INNER JOIN silencieux.
     let sql = format!(
         r#"
-        SELECT 
+        SELECT
             p.id,
             p.service_id,
             p.user_id,
@@ -67,8 +70,8 @@ pub async fn list_pharmacies(
             p.created_at,
             p.updated_at
         FROM pharmacies p
-        INNER JOIN services s ON s.id = p.service_id
-        WHERE s.user_id = $1 {}
+        LEFT JOIN services s ON s.id = p.service_id
+        WHERE p.user_id = $1 {}
         ORDER BY p.updated_at DESC
         LIMIT $2 OFFSET $3
         "#,
@@ -91,8 +94,8 @@ pub async fn list_pharmacies(
         r#"
         SELECT COUNT(*)::bigint
         FROM pharmacies p
-        INNER JOIN services s ON s.id = p.service_id
-        WHERE s.user_id = $1 {}
+        LEFT JOIN services s ON s.id = p.service_id
+        WHERE p.user_id = $1 {}
         "#,
         status_condition
     );
@@ -617,4 +620,140 @@ pub async fn get_pharmacies_on_duty(
             "count": pharmacies.len()
         })),
     ))
+}
+
+// ─── SUCCURSALES ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct CreateBranchRequest {
+    pub nom: String,
+    pub adresse: Option<String>,
+    pub quartier: Option<String>,
+    pub ville: Option<String>,
+    pub gps: Option<String>,
+    pub telephone: Option<String>,
+}
+
+#[derive(Debug, Serialize, FromRow)]
+pub struct PharmacyBranch {
+    pub id: i32,
+    pub pharmacy_id: i32,
+    pub nom: String,
+    pub adresse: Option<String>,
+    pub quartier: Option<String>,
+    pub ville: Option<String>,
+    pub gps: Option<String>,
+    pub telephone: Option<String>,
+    pub is_active: bool,
+}
+
+/// GET /api/pharmacies/{id}/branches
+pub async fn list_branches(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(pharmacy_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    // Vérifier propriété
+    let owned: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM pharmacies WHERE id = $1 AND user_id = $2)",
+    )
+    .bind(pharmacy_id)
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+    if !owned {
+        return Err(AppError::Forbidden("Accès refusé".into()));
+    }
+
+    let branches: Vec<PharmacyBranch> = sqlx::query_as(
+        "SELECT id, pharmacy_id, nom, adresse, quartier, ville, gps, telephone, is_active FROM pharmacy_branches WHERE pharmacy_id = $1 AND is_active = TRUE ORDER BY nom ASC"
+    ).bind(pharmacy_id).fetch_all(&state.pg).await
+    .map_err(|e| AppError::Internal(format!("Erreur chargement succursales: {}", e)))?;
+
+    Ok(Json(json!({ "success": true, "branches": branches })))
+}
+
+/// POST /api/pharmacies/{id}/branches
+pub async fn create_branch(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(pharmacy_id): Path<i32>,
+    Json(payload): Json<CreateBranchRequest>,
+) -> AppResult<impl IntoResponse> {
+    let owned: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM pharmacies WHERE id = $1 AND user_id = $2)",
+    )
+    .bind(pharmacy_id)
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+    if !owned {
+        return Err(AppError::Forbidden("Accès refusé".into()));
+    }
+
+    let branch: PharmacyBranch = sqlx::query_as(
+        r#"INSERT INTO pharmacy_branches (pharmacy_id, nom, adresse, quartier, ville, gps, telephone)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING id, pharmacy_id, nom, adresse, quartier, ville, gps, telephone, is_active"#,
+    )
+    .bind(pharmacy_id).bind(&payload.nom).bind(payload.adresse)
+    .bind(payload.quartier).bind(payload.ville).bind(payload.gps).bind(payload.telephone)
+    .fetch_one(&state.pg).await
+    .map_err(|e| AppError::Internal(format!("Erreur création succursale: {}", e)))?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({ "success": true, "branch": branch })),
+    ))
+}
+
+/// PATCH /api/pharmacies/branches/{branch_id}
+pub async fn update_branch(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(branch_id): Path<i32>,
+    Json(payload): Json<CreateBranchRequest>,
+) -> AppResult<impl IntoResponse> {
+    let owned: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM pharmacy_branches b JOIN pharmacies p ON p.id = b.pharmacy_id WHERE b.id = $1 AND p.user_id = $2)"
+    ).bind(branch_id).bind(user_id).fetch_one(&state.pg).await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+    if !owned {
+        return Err(AppError::Forbidden("Accès refusé".into()));
+    }
+
+    sqlx::query(
+        "UPDATE pharmacy_branches SET nom=$1, adresse=$2, quartier=$3, ville=$4, gps=$5, telephone=$6, updated_at=NOW() WHERE id=$7"
+    )
+    .bind(&payload.nom).bind(payload.adresse).bind(payload.quartier)
+    .bind(payload.ville).bind(payload.gps).bind(payload.telephone).bind(branch_id)
+    .execute(&state.pg).await
+    .map_err(|e| AppError::Internal(format!("Erreur mise à jour succursale: {}", e)))?;
+
+    Ok(Json(json!({ "success": true })))
+}
+
+/// DELETE /api/pharmacies/branches/{branch_id}
+pub async fn delete_branch(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(branch_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    let owned: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM pharmacy_branches b JOIN pharmacies p ON p.id = b.pharmacy_id WHERE b.id = $1 AND p.user_id = $2)"
+    ).bind(branch_id).bind(user_id).fetch_one(&state.pg).await
+    .map_err(|e| AppError::Internal(e.to_string()))?;
+    if !owned {
+        return Err(AppError::Forbidden("Accès refusé".into()));
+    }
+
+    sqlx::query("UPDATE pharmacy_branches SET is_active = FALSE WHERE id = $1")
+        .bind(branch_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur suppression succursale: {}", e)))?;
+
+    Ok(Json(json!({ "success": true })))
 }

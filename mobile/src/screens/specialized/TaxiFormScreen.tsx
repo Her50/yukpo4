@@ -210,6 +210,23 @@ const TaxiFormScreen: React.FC = () => {
     const renderOverview = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+
+            {/* Bannière setup si taxi non encore configuré */}
+            {!taxiData && (
+                <TouchableOpacity
+                    style={s.setupBanner}
+                    onPress={() => setActiveTab('service')}
+                    activeOpacity={0.8}
+                >
+                    <SafeIcon name="alert-circle" size={20} color="#92400E" type="lucide" />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={s.setupBannerTitle}>Configuration requise</Text>
+                        <Text style={s.setupBannerSub}>Renseignez les informations de votre taxi dans l'onglet "Service" pour commencer.</Text>
+                    </View>
+                    <SafeIcon name="chevron-right" size={18} color="#92400E" type="lucide" />
+                </TouchableOpacity>
+            )}
+
             <View style={s.statsGrid}>
                 {[
                     { label: t('taxiFormScreen.tarifBase'), value: `${formData.tarif_base} ${devise}`, icon: 'banknote', color: '#F59E0B' },
@@ -381,6 +398,19 @@ const TaxiFormScreen: React.FC = () => {
                             <Text style={s.dashTitle}>{formData.nom_chauffeur || t('taxiForm.monTaxi')}</Text>
                             <Text style={s.dashSub}>{formData.marque_modele || t('taxiForm.vehicule')} · {isAvailable ? `🟢 ${t('taxiFormScreen.disponible')}` : `🔴 ${t('taxiFormScreen.horsService')}`}</Text>
                         </View>
+                        <TouchableOpacity
+                            style={s.menuBtn}
+                            onPress={() => Alert.alert(
+                                'Options',
+                                '',
+                                [
+                                    { text: 'Se déconnecter', style: 'destructive', onPress: () => Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]) },
+                                    { text: 'Annuler', style: 'cancel' },
+                                ]
+                            )}
+                        >
+                            <SafeIcon name="more-vertical" size={22} color="#fff" type="lucide" />
+                        </TouchableOpacity>
                     </View>
                     <View style={s.tabsRow}>{tabs.map(t => (
                         <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabOn]} onPress={() => setActiveTab(t.key)}>
@@ -437,6 +467,10 @@ const s = StyleSheet.create({
     availDot: { width: 12, height: 12, borderRadius: 6 },
     availTitle: { fontSize: 15, fontWeight: '600' },
     availSub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    menuBtn: { padding: 6 },
+    setupBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FCD34D', borderRadius: 12, padding: 14, marginBottom: 16 },
+    setupBannerTitle: { fontSize: 14, fontWeight: '700', color: '#92400E' },
+    setupBannerSub: { fontSize: 12, color: '#B45309', marginTop: 2 },
     quickRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
     quickAction: { flex: 1, alignItems: 'center', gap: 6 },
     quickIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },

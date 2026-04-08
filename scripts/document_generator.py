@@ -921,6 +921,547 @@ def _render_pdf_table(pdf, td, cx, width, P, TA, TX, SB, A):
 
 # ─── Main ────────────────────────────────────────────────────────────────────
 
+# ─── Génération Excel (XLSX) ──────────────────────────────────────────────────
+
+def generate_xlsx(data: dict) -> bytes:
+    """Génère un fichier Excel d'analyse à partir de l'outline fourni par l'IA."""
+    from openpyxl import Workbook
+    from openpyxl.styles import (Font, PatternFill, Alignment, Border, Side,
+                                  GradientFill)
+    from openpyxl.utils import get_column_letter
+    from openpyxl.chart import BarChart, Reference
+    import io
+
+    wb = Workbook()
+
+    title = data.get("title", "Analyse")
+    theme_color = data.get("theme_color", "1F4E79")  # bleu foncé par défaut
+    accent_color = data.get("accent_color", "2E75B6")
+
+    # ── Styles de base ────────────────────────────────────────────────────────
+    header_font  = Font(bold=True, color="FFFFFF", size=11)
+    header_fill  = PatternFill("solid", fgColor=theme_color)
+    title_font   = Font(bold=True, color=theme_color, size=14)
+    sub_font     = Font(bold=True, color=accent_color, size=11)
+    section_fill = PatternFill("solid", fgColor="D6E4F0")
+    alt_fill     = PatternFill("solid", fgColor="EBF3FB")
+    center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left_align   = Alignment(horizontal="left",  vertical="center", wrap_text=True)
+    thin_border  = Border(
+        left=Side(style="thin", color="B0C4D8"),
+        right=Side(style="thin", color="B0C4D8"),
+        top=Side(style="thin", color="B0C4D8"),
+        bottom=Side(style="thin", color="B0C4D8"),
+    )
+
+    def style_header_row(ws, row_idx, num_cols):
+        for col in range(1, num_cols + 1):
+            cell = ws.cell(row=row_idx, column=col)
+            cell.font  = header_font
+            cell.fill  = header_fill
+            cell.alignment = center_align
+            cell.border = thin_border
+
+    def style_data_row(ws, row_idx, num_cols, alt=False):
+        fill = alt_fill if alt else PatternFill()
+        for col in range(1, num_cols + 1):
+            cell = ws.cell(row=row_idx, column=col)
+            cell.fill = fill
+            cell.alignment = left_align
+            cell.border = thin_border
+
+    sheets = data.get("sheets", [])
+
+    # Si l'IA fournit directement des "tables" (format simplifié), les convertir
+    if not sheets and data.get("tables"):
+        sheets = [{"name": t.get("title", f"Feuille {i+1}"), "table": t}
+                  for i, t in enumerate(data["tables"])]
+
+    # Feuille par défaut si l'IA n'a rien fourni
+    if not sheets:
+        sheets = [{"name": "Analyse", "table": data}]
+
+    first = True
+    for sheet_def in sheets:
+        sheet_name = str(sheet_def.get("name", "Feuille"))[:31]
+        if first:
+            ws = wb.active
+            ws.title = sheet_name
+            first = False
+        else:
+            ws = wb.create_sheet(title=sheet_name)
+
+        row = 1
+
+        # Titre de la feuille
+        ws.merge_cells(f"A{row}:H{row}")
+        ws[f"A{row}"] = sheet_def.get("sheet_title", title)
+        ws[f"A{row}"].font = title_font
+        ws[f"A{row}"].alignment = center_align
+        ws.row_dimensions[row].height = 28
+        row += 1
+
+        # Sous-titre / description
+        desc = sheet_def.get("description", "")
+        if desc:
+            ws.merge_cells(f"A{row}:H{row}")
+            ws[f"A{row}"] = desc
+            ws[f"A{row}"].font = Font(italic=True, color="666666", size=10)
+            ws[f"A{row}"].alignment = left_align
+            row += 1
+
+        row += 1  # ligne vide
+
+        # KPIs (résumé rapide en haut)
+        kpis = sheet_def.get("kpis", [])
+        if kpis:
+            ws.merge_cells(f"A{row}:H{row}")
+            ws[f"A{row}"] = "📊 Indicateurs clés"
+            ws[f"A{row}"].font = sub_font
+            ws[f"A{row}"].fill = section_fill
+            ws[f"A{row}"].alignment = left_align
+            row += 1
+
+            kpi_header = ["Indicateur", "Valeur", "Tendance", "Commentaire"]
+            for c, h in enumerate(kpi_header, 1):
+                ws.cell(row=row, column=c, value=h)
+            style_header_row(ws, row, len(kpi_header))
+            row += 1
+
+            for ki, kpi in enumerate(kpis):
+                ws.cell(row=row, column=1, value=kpi.get("label", ""))
+                ws.cell(row=row, column=2, value=kpi.get("value", ""))
+                trend = kpi.get("trend", "")
+                cell_trend = ws.cell(row=row, column=3, value=trend)
+                if isinstance(trend, str):
+                    if "+" in trend:
+                        cell_trend.font = Font(color="1D7A4B", bold=True)
+                    elif "-" in trend:
+                        cell_trend.font = Font(color="C00000", bold=True)
+                ws.cell(row=row, column=4, value=kpi.get("comment", ""))
+                style_data_row(ws, row, len(kpi_header), alt=ki % 2 == 1)
+                row += 1
+            row += 1
+
+        # Table principale
+        table_def = sheet_def.get("table", sheet_def)
+        headers = table_def.get("headers", [])
+        rows_data = table_def.get("rows", [])
+
+        if headers:
+            ws.merge_cells(f"A{row}:H{row}")
+            ws[f"A{row}"] = sheet_def.get("table_title", "📋 Données détaillées")
+            ws[f"A{row}"].font = sub_font
+            ws[f"A{row}"].fill = section_fill
+            ws[f"A{row}"].alignment = left_align
+            row += 1
+
+            for c, h in enumerate(headers, 1):
+                ws.cell(row=row, column=c, value=str(h))
+            style_header_row(ws, row, len(headers))
+            row += 1
+
+            for ri, data_row in enumerate(rows_data):
+                for c, val in enumerate(data_row, 1):
+                    cell = ws.cell(row=row, column=c, value=val)
+                    # Détecter les nombres pour formatage
+                    if isinstance(val, str):
+                        try:
+                            num = float(val.replace(" ", "").replace(",", ".").replace("%", ""))
+                            cell.value = num
+                            if "%" in val:
+                                cell.number_format = "0.0%"
+                        except ValueError:
+                            pass
+                style_data_row(ws, row, len(headers), alt=ri % 2 == 1)
+                row += 1
+
+            # Ligne totaux si définie
+            totals = table_def.get("totals")
+            if totals:
+                for c, val in enumerate(totals, 1):
+                    cell = ws.cell(row=row, column=c, value=val)
+                    cell.font = Font(bold=True, color=theme_color)
+                    cell.fill = PatternFill("solid", fgColor="D6E4F0")
+                    cell.border = thin_border
+                row += 1
+            row += 1
+
+        # Sections texte / analyse narrative
+        for section in sheet_def.get("sections", []):
+            ws.merge_cells(f"A{row}:H{row}")
+            ws[f"A{row}"] = section.get("title", "")
+            ws[f"A{row}"].font = sub_font
+            ws[f"A{row}"].fill = section_fill
+            ws[f"A{row}"].alignment = left_align
+            row += 1
+
+            for line in section.get("lines", []):
+                ws.merge_cells(f"A{row}:H{row}")
+                ws[f"A{row}"] = f"  • {line}"
+                ws[f"A{row}"].alignment = left_align
+                ws[f"A{row}"].font = Font(size=10)
+                row += 1
+            row += 1
+
+        # ── Graphiques (charts) ─────────────────────────────────────────────
+        # Génère les graphiques définis dans `charts` + auto-chart si data table présente
+        _add_charts_to_sheet(ws, sheet_def, row)
+
+        # Ajuster largeur colonnes
+        for col_cells in ws.columns:
+            max_len = 0
+            col_letter = get_column_letter(col_cells[0].column)
+            for cell in col_cells:
+                if cell.value:
+                    max_len = max(max_len, len(str(cell.value)))
+            ws.column_dimensions[col_letter].width = min(max(max_len + 2, 12), 45)
+
+        ws.freeze_panes = "A4"
+
+    # Onglet Métadonnées
+    ws_meta = wb.create_sheet("ℹ️ À propos")
+    ws_meta["A1"] = "Fichier généré par YukpoIA"
+    ws_meta["A1"].font = Font(bold=True, size=12, color=theme_color)
+    ws_meta["A2"] = f"Titre : {title}"
+    ws_meta["A3"] = f"Date de génération : {data.get('generated_at', '')}"
+    ws_meta["A4"] = "Source : Yukpo — Plateforme IA Africaine"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def _add_charts_to_sheet(ws, sheet_def: dict, data_end_row: int):
+    """
+    Ajoute des graphiques à une feuille Excel.
+    Supporte les specs explicites (`charts` dans sheet_def) et l'auto-detection.
+    """
+    try:
+        from openpyxl.chart import BarChart, LineChart, PieChart, Reference
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        return
+
+    table_def = sheet_def.get("table", sheet_def)
+    headers = table_def.get("headers", [])
+    rows_data = table_def.get("rows", [])
+
+    # Position d'ancrage des graphiques (à droite des données ou en dessous)
+    chart_anchor_col = len(headers) + 2
+    chart_anchor_letter = get_column_letter(max(chart_anchor_col, 1))
+    chart_row = 3  # commence sur la 3e ligne pour laisser le titre
+
+    # ── 1. Graphiques explicitement définis par l'IA ──────────────────────
+    explicit_charts = sheet_def.get("charts", [])
+    for chart_def in explicit_charts:
+        chart_type = chart_def.get("type", "bar").lower()
+        chart_title = chart_def.get("title", "Graphique")
+        data_col = chart_def.get("data_col", 2)   # colonne des valeurs (1-indexed)
+        cat_col  = chart_def.get("categories_col", 1)
+        from_row = chart_def.get("from_row", 2)
+        to_row   = chart_def.get("to_row", max(2, data_end_row - 1))
+        anchor   = chart_def.get("anchor", f"{chart_anchor_letter}{chart_row}")
+
+        try:
+            if chart_type == "pie":
+                chart = PieChart()
+            elif chart_type == "line":
+                chart = LineChart()
+            else:
+                chart = BarChart()
+
+            chart.title = chart_title
+            chart.style = 10
+            chart.width  = 18
+            chart.height = 10
+
+            data_ref = Reference(ws, min_col=data_col, min_row=from_row - 1, max_row=to_row)
+            cats_ref = Reference(ws, min_col=cat_col,  min_row=from_row,     max_row=to_row)
+            chart.add_data(data_ref, titles_from_data=True)
+            chart.set_categories(cats_ref)
+            ws.add_chart(chart, anchor)
+            chart_row += 20
+        except Exception as e:
+            pass  # ne pas faire planter la génération pour un graphique raté
+
+    # ── 2. Auto-chart : si table avec ≥ 3 lignes et ≥ 1 colonne numérique ──
+    auto_chart = sheet_def.get("auto_chart", len(explicit_charts) == 0)
+    if not auto_chart or not headers or len(rows_data) < 3:
+        return
+
+    # Détecter la première colonne numérique parmi les colonnes 2..N
+    numeric_col_idx = None
+    for ci in range(1, len(headers)):
+        num_count = 0
+        for row_vals in rows_data[:10]:
+            if ci < len(row_vals):
+                try:
+                    float(str(row_vals[ci]).replace(" ", "").replace(",", ".").replace("%", ""))
+                    num_count += 1
+                except ValueError:
+                    pass
+        if num_count >= min(3, len(rows_data)):
+            numeric_col_idx = ci
+            break
+
+    if numeric_col_idx is None:
+        return
+
+    # Trouver la plage de données dans la feuille
+    # Les headers sont écrits en ligne 3 (après titre + desc), rows à partir de 4
+    # On cherche la vraie ligne des headers dans la feuille
+    header_row_in_ws = None
+    for r_idx in range(1, min(20, ws.max_row + 1)):
+        cell_val = ws.cell(row=r_idx, column=1).value
+        if cell_val == headers[0]:
+            header_row_in_ws = r_idx
+            break
+
+    if header_row_in_ws is None:
+        return
+
+    data_start = header_row_in_ws + 1
+    data_end = data_start + len(rows_data) - 1
+
+    chart = BarChart()
+    chart.type = "col"
+    chart.style = 10
+    chart.title = sheet_def.get("chart_title", f"📊 {headers[numeric_col_idx]}")
+    chart.y_axis.title = headers[numeric_col_idx]
+    chart.x_axis.title = headers[0]
+    chart.width  = 20
+    chart.height = 12
+
+    data_ref = Reference(ws,
+                         min_col=numeric_col_idx + 1,
+                         min_row=header_row_in_ws,
+                         max_row=data_end)
+    cats_ref = Reference(ws,
+                         min_col=1,
+                         min_row=data_start,
+                         max_row=data_end)
+    chart.add_data(data_ref, titles_from_data=True)
+    chart.set_categories(cats_ref)
+
+    ws.add_chart(chart, f"{chart_anchor_letter}{chart_row}")
+
+
+# ─── Parsing Excel entrant (pour analyse par l'IA) ────────────────────────────
+
+def parse_excel_for_ai(data: dict) -> bytes:
+    """
+    Mode 'parse' : lit un fichier Excel base64, extrait les données structurées
+    et retourne un JSON texte (UTF-8) décrivant chaque feuille.
+    Ce JSON est ensuite injecté dans le contexte de l'IA pour analyse.
+    """
+    import base64
+    from openpyxl import load_workbook
+    import io
+
+    excel_b64 = data.get("excel_base64", "")
+    try:
+        excel_bytes = base64.b64decode(excel_b64)
+    except Exception as e:
+        result = json.dumps({"error": f"Impossible de décoder le base64 : {e}"})
+        return result.encode("utf-8")
+
+    try:
+        wb = load_workbook(io.BytesIO(excel_bytes), read_only=True, data_only=True)
+    except Exception:
+        # Essai avec xlrd pour les anciens .xls
+        try:
+            import xlrd
+            book = xlrd.open_workbook(file_contents=excel_bytes)
+            sheets_data = []
+            for sh in book.sheets():
+                headers = [str(sh.cell_value(0, c)) for c in range(sh.ncols)] if sh.nrows > 0 else []
+                rows = []
+                for r in range(1, min(sh.nrows, 201)):
+                    rows.append([str(sh.cell_value(r, c)) for c in range(sh.ncols)])
+                summary = _compute_summary(headers, rows)
+                sheets_data.append({
+                    "name": sh.name,
+                    "num_rows": sh.nrows - 1,
+                    "num_cols": sh.ncols,
+                    "headers": headers,
+                    "rows": rows[:200],
+                    "summary": summary,
+                    "chart_suggestions": _detect_chart_suggestions(headers, rows, summary),
+                })
+            result = json.dumps({"sheets": sheets_data, "num_sheets": len(sheets_data),
+                                 "instructions_for_ia": "Analyse ces données Excel en profondeur."}, ensure_ascii=False)
+            return result.encode("utf-8")
+        except Exception as e2:
+            result = json.dumps({"error": f"Impossible de lire le fichier Excel : {e2}"})
+            return result.encode("utf-8")
+
+    sheets_data = []
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        all_rows = list(ws.iter_rows(values_only=True))
+        if not all_rows:
+            continue
+
+        # Première ligne = en-têtes
+        headers = [str(h) if h is not None else f"Colonne_{i+1}"
+                   for i, h in enumerate(all_rows[0])]
+
+        data_rows = []
+        for r in all_rows[1:201]:  # max 200 lignes
+            data_rows.append([str(v) if v is not None else "" for v in r])
+
+        summary = _compute_summary(headers, data_rows)
+        chart_suggestions = _detect_chart_suggestions(headers, data_rows, summary)
+
+        sheets_data.append({
+            "name": sheet_name,
+            "num_rows": max(0, len(all_rows) - 1),
+            "num_cols": len(headers),
+            "headers": headers,
+            "rows": data_rows,
+            "summary": summary,
+            "chart_suggestions": chart_suggestions,
+        })
+
+    wb.close()
+
+    # Générer un prompt d'analyse préformaté pour aider l'IA
+    analysis_hints = []
+    for s in sheets_data:
+        for col, stats in s.get("summary", {}).items():
+            td = stats.get("trend_direction", "stable")
+            gp = stats.get("growth_pct")
+            if gp is not None:
+                g_str = f"+{gp}%" if gp > 0 else f"{gp}%"
+                analysis_hints.append(f"• {s['name']}/{col} : {td} ({g_str}, moy={stats['mean']}, somme={stats['sum']})")
+            if stats.get("anomalies"):
+                analysis_hints.append(f"  ⚠️ Anomalies détectées : {stats['anomalies']}")
+
+    result = json.dumps({
+        "sheets": sheets_data,
+        "num_sheets": len(sheets_data),
+        "analysis_hints": analysis_hints,
+        "instructions_for_ia": (
+            "Analyse ces données Excel en profondeur. "
+            "Identifie les tendances, anomalies et insights business clés. "
+            "Si l'utilisateur demande un fichier Excel, génère un `document_generation` "
+            "avec document_type=xlsx incluant des KPIs, des tableaux de données et des charts. "
+            "Les `chart_suggestions` dans chaque feuille indiquent les graphiques pertinents à générer."
+        )
+    }, ensure_ascii=False)
+    return result.encode("utf-8")
+
+
+def _compute_summary(headers: list, rows: list) -> dict:
+    """Calcule des statistiques avancées par colonne numérique avec tendances et anomalies."""
+    summary = {}
+    for i, header in enumerate(headers):
+        vals = []
+        for row in rows:
+            if i < len(row):
+                try:
+                    v = float(str(row[i]).replace(",", ".").replace(" ", "").replace("%", ""))
+                    vals.append(v)
+                except ValueError:
+                    pass
+        if len(vals) >= 2:
+            mean_val = sum(vals) / len(vals)
+            # Tendance : % de croissance entre première et dernière valeur
+            growth = None
+            if vals[0] != 0:
+                growth = round((vals[-1] - vals[0]) / abs(vals[0]) * 100, 1)
+            # Anomalies : valeurs à plus de 2 écarts-types de la moyenne
+            if len(vals) >= 4:
+                variance = sum((v - mean_val) ** 2 for v in vals) / len(vals)
+                std = variance ** 0.5
+                anomalies = [round(v, 2) for v in vals if std > 0 and abs(v - mean_val) > 2 * std]
+            else:
+                anomalies = []
+            # Direction de tendance pour l'IA
+            trend_direction = "stable"
+            if growth is not None:
+                if growth > 5:
+                    trend_direction = "hausse"
+                elif growth < -5:
+                    trend_direction = "baisse"
+            summary[header] = {
+                "min": round(min(vals), 2),
+                "max": round(max(vals), 2),
+                "mean": round(mean_val, 2),
+                "sum": round(sum(vals), 2),
+                "count": len(vals),
+                "growth_pct": growth,
+                "trend_direction": trend_direction,
+                "anomalies": anomalies[:5],  # max 5
+            }
+    return summary
+
+
+def _detect_chart_suggestions(headers: list, rows: list, summary: dict) -> list:
+    """Suggère des types de graphiques pertinents selon la structure des données."""
+    suggestions = []
+    if not headers or not rows:
+        return suggestions
+
+    # Chercher une colonne catégorielle (étiquettes) et des colonnes numériques
+    cat_cols = []
+    num_cols = []
+    for i, h in enumerate(headers):
+        if h in summary:
+            num_cols.append({"col_idx": i + 1, "header": h, "info": summary[h]})
+        else:
+            cat_cols.append({"col_idx": i + 1, "header": h})
+
+    if not num_cols:
+        return suggestions
+
+    cat = cat_cols[0] if cat_cols else None
+
+    # Suggestion graphique à barres (toujours pertinent avec catégories)
+    if cat and len(rows) >= 3:
+        best_num = max(num_cols, key=lambda c: abs(c["info"].get("sum", 0)))
+        suggestions.append({
+            "type": "bar",
+            "title": f"{best_num['header']} par {cat['header']}",
+            "categories_col": cat["col_idx"],
+            "data_col": best_num["col_idx"],
+            "reason": "comparaison catégorielle"
+        })
+
+    # Suggestion courbe si tendance temporelle détectée (label contient mois/année/jour)
+    temporal_keywords = ["mois", "année", "annee", "jan", "fév", "mar", "avr", "mai", "juin",
+                         "juil", "août", "aout", "sep", "oct", "nov", "déc", "dec",
+                         "2020", "2021", "2022", "2023", "2024", "2025", "2026",
+                         "q1", "q2", "q3", "q4", "trim", "sem"]
+    is_temporal = cat and any(
+        any(kw in str(r[cat["col_idx"] - 1]).lower() for kw in temporal_keywords)
+        for r in rows[:5] if len(r) >= cat["col_idx"]
+    )
+    if is_temporal and num_cols:
+        suggestions.append({
+            "type": "line",
+            "title": f"Évolution de {num_cols[0]['header']}",
+            "categories_col": cat["col_idx"] if cat else 1,
+            "data_col": num_cols[0]["col_idx"],
+            "reason": "série temporelle détectée"
+        })
+
+    # Suggestion camembert si 2-8 catégories
+    if cat and 2 <= len(rows) <= 8 and num_cols:
+        suggestions.append({
+            "type": "pie",
+            "title": f"Répartition de {num_cols[0]['header']}",
+            "categories_col": cat["col_idx"] if cat else 1,
+            "data_col": num_cols[0]["col_idx"],
+            "reason": "peu de catégories — répartition idéale"
+        })
+
+    return suggestions[:3]  # max 3 suggestions
+
+
+# ─── Main ────────────────────────────────────────────────────────────────────
+
 def main():
     try:
         raw = sys.stdin.buffer.read()
@@ -928,6 +1469,16 @@ def main():
     except Exception as e:
         sys.stderr.write(f"JSON parse error: {e}\n")
         sys.exit(1)
+
+    # Mode parse : retourne JSON structuré (texte, pas binaire)
+    if data.get("mode") == "parse":
+        try:
+            result = parse_excel_for_ai(data)
+        except Exception:
+            sys.stderr.write(f"Parse error:\n{traceback.format_exc()}\n")
+            sys.exit(2)
+        sys.stdout.buffer.write(result)
+        return
 
     doc_type = data.get("document_type", "pptx").lower()
 
@@ -937,6 +1488,8 @@ def main():
         "docx": (generate_docx, "docx"),
         "word": (generate_docx, "docx"),
         "pdf": (generate_pdf, "pdf"),
+        "xlsx": (generate_xlsx, "xlsx"),
+        "excel": (generate_xlsx, "xlsx"),
     }
 
     entry = generators.get(doc_type)

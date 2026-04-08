@@ -10,7 +10,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use log::info;
+use log::{error, info};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -88,12 +88,22 @@ pub async fn create_product(
         user_id, payload.pharmacy_service_id
     );
 
-    // Vérifier que l'utilisateur est propriétaire de la pharmacie
+    // ✅ FIX 2026-04-08: Vérification de propriété élargie.
+    // Ancienne version : vérifiait uniquement services.specialized_type = 'pharmacie',
+    // ce qui bloquait les partenaires dont la pharmacie était créée avant d'appeler create_pharmacy
+    // (le flag specialized_type n'était pas encore posé).
+    // Nouvelle version : accepte si l'une OU l'autre condition est vraie.
     let is_owner: bool = sqlx::query_scalar(
         r#"
         SELECT EXISTS (
+            -- Vérification via la table services (chemin normal)
             SELECT 1 FROM services
-            WHERE id = $1 AND user_id = $2 AND specialized_type = 'pharmacie'
+            WHERE id = $1 AND user_id = $2
+              AND specialized_type = 'pharmacie'
+            UNION ALL
+            -- Vérification directe via pharmacies.user_id (partenaires validés sans service complet)
+            SELECT 1 FROM pharmacies
+            WHERE service_id = $1 AND user_id = $2
         )
         "#,
     )
@@ -104,6 +114,10 @@ pub async fn create_product(
     .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
 
     if !is_owner {
+        error!(
+            "[create_product] Accès refusé: user_id={} n'est pas propriétaire du service_id={}",
+            user_id, payload.pharmacy_service_id
+        );
         return Err(AppError::Forbidden(
             "Vous n'êtes pas propriétaire de cette pharmacie".to_string(),
         ));

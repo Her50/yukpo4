@@ -307,18 +307,43 @@ pub async fn validate_partner(
         // ✅ NOUVEAU: Envoyer un email au partenaire
         let email_service = EmailService::new();
         if email_service.is_available() {
-            let email_subject = "✅ Votre inscription partenaire a été approuvée - Yukpo";
+            let email_subject = "✅ Votre compte partenaire Yukpo est activé — Prochaines étapes";
+            let partner_type_label = partner_info.partner_type.as_deref().unwrap_or("service");
+            let service_tab_instruction = match partner_info.partner_type.as_deref() {
+                Some("pharmacie") => "→ Onglet \"Service\" : renseignez le nom, l'adresse, les horaires d'ouverture et les jours de garde de votre pharmacie, puis appuyez sur \"Enregistrer\".\n\
+                → Onglet \"Produits\" : ajoutez votre catalogue de médicaments et produits pharmaceutiques.\n\
+                → Activez la garde si vous assurez des permanences.",
+                Some("taxi") => "→ Onglet \"Service\" : renseignez les informations de votre véhicule (marque, immatriculation, couleur), vos tarifs et zones de desserte, puis appuyez sur \"Enregistrer\".\n\
+                → Activez votre disponibilité depuis le tableau de bord pour apparaître dans les recherches.",
+                Some("agence_voyage") | Some("agence de voyage") => "→ Onglet \"Service\" : renseignez le nom de l'agence, les destinations desservies, les compagnies partenaires et les horaires, puis appuyez sur \"Enregistrer\".\n\
+                → Onglet \"Bus\" : ajoutez vos modèles de véhicules.\n\
+                → Ajoutez vos premiers horaires depuis le tableau de bord.",
+                _ => "→ Onglet \"Service\" : renseignez toutes les informations de votre service, puis appuyez sur \"Enregistrer\".\n\
+                → Une fois enregistré, vous pourrez accéder à toutes les fonctionnalités de votre tableau de bord.",
+            };
             let email_body = format!(
                 "Bonjour {},\n\n\
-                Félicitations ! Votre inscription en tant que partenaire sur Yukpo a été approuvée par nos administrateurs.\n\n\
-                Vous pouvez maintenant :\n\
-                - Accéder à votre espace partenaire\n\
-                - Configurer vos services spécialisés\n\
-                - Commencer à utiliser les fonctionnalités dédiées aux partenaires\n\n\
-                Connectez-vous à votre compte pour commencer.\n\n\
+                Excellente nouvelle ! Votre compte partenaire Yukpo ({}) vient d'être approuvé par notre équipe.\n\n\
+                ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\
+                ÉTAPES POUR DÉMARRER\n\
+                ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n\
+                1. Ouvrez l'application Yukpo et connectez-vous avec votre email et mot de passe.\n\n\
+                2. Accédez à votre espace partenaire : appuyez sur \"Mon Espace\" dans la barre de navigation.\n\n\
+                3. IMPORTANT — Finalisez la configuration de votre service :\n\
+                {}\n\n\
+                ⚠️  Tant que la configuration n'est pas enregistrée, vous ne pourrez pas ajouter de \
+                produits/horaires ni apparaître dans les recherches des clients.\n\n\
+                ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\
+                BESOIN D'AIDE ?\n\
+                ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n\
+                Notre assistant IA \"YukpoIA\" est disponible 24h/24 dans l'application pour répondre \
+                à vos questions et vous aider à optimiser votre service.\n\n\
+                Bienvenue dans la communauté Yukpo !\n\n\
                 Cordialement,\n\
                 L'équipe Yukpo",
-                partner_info.nom_complet.as_ref().unwrap_or(&partner_info.email)
+                partner_info.nom_complet.as_ref().unwrap_or(&partner_info.email),
+                partner_type_label,
+                service_tab_instruction,
             );
 
             match email_service

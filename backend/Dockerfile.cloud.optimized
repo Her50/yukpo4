@@ -105,11 +105,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
-    && pip3 install --no-cache-dir \
+    && pip3 install --no-cache-dir --break-system-packages \
         python-pptx \
         python-docx \
         Pillow \
-        openpyxl
+        openpyxl \
+        xlrd
 
 # Créer utilisateur non-root
 RUN groupadd -r appuser -g 1000 && \

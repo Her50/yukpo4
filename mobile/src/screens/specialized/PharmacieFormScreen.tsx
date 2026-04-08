@@ -6,6 +6,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -38,7 +39,7 @@ import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 import * as XLSX from 'xlsx';
 
 const STORAGE_KEY = '@pharmacie_form';
-type TabType = 'overview' | 'service' | 'products' | 'analytics' | 'team';
+type TabType = 'overview' | 'service' | 'products' | 'analytics' | 'team' | 'branches';
 
 interface PharmacyProduct {
     id: number;
@@ -131,6 +132,13 @@ const PharmacieFormScreen: React.FC = () => {
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPS, setSelectedGPS] = useState<string | null>(null);
     const [showGuardDaysModal, setShowGuardDaysModal] = useState(false);
+
+    // Succursales state
+    const [branches, setBranches] = useState<any[]>([]);
+    const [showBranchModal, setShowBranchModal] = useState(false);
+    const [editingBranch, setEditingBranch] = useState<any | null>(null);
+    const [branchForm, setBranchForm] = useState({ nom: '', adresse: '', quartier: '', telephone: '', gps: '' });
+    const [showBranchGPSModal, setShowBranchGPSModal] = useState(false);
 
     // Products state
     const [products, setProducts] = useState<PharmacyProduct[]>([]);
@@ -306,7 +314,34 @@ const PharmacieFormScreen: React.FC = () => {
         } catch (e) { Alert.alert(t('message.error'), t('pharmacie.cannotChangeStatus')); }
     };
 
-    const handleGPSSelect = (coords: string) => { setSelectedGPS(coords); setShowGPSModal(false); };
+    const handleGPSSelect = async (coords: string) => {
+        setSelectedGPS(coords);
+        setShowGPSModal(false);
+        // Auto-remplissage quartier via géocodage inverse
+        try {
+            const [latStr, lngStr] = coords.split(',');
+            const lat = parseFloat(latStr.trim());
+            const lng = parseFloat(lngStr.trim());
+            if (!isNaN(lat) && !isNaN(lng)) {
+                const results = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+                if (results && results.length > 0) {
+                    const addr = results[0];
+                    const lieu = addr.subregion || addr.district || addr.city || addr.region || '';
+                    const ville = addr.city || addr.region || '';
+                    const adresse = [addr.streetNumber, addr.street, addr.city].filter(Boolean).join(' ');
+                    if (lieu) {
+                        setFormData(prev => ({
+                            ...prev,
+                            quartier: { raw: lieu, place_name: lieu, components: { ville, pays: addr.country || '' } } as any,
+                            adresse: prev.adresse || adresse,
+                        }));
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[PharmacieForm] Géocodage inverse échoué:', e);
+        }
+    };
     const handleGuardDaysSave = (days: Record<string, number[]>) => { setFormData({ ...formData, jours_garde: days }); setShowGuardDaysModal(false); };
 
     const openProductModal = (product?: PharmacyProduct) => {
@@ -324,7 +359,18 @@ const PharmacieFormScreen: React.FC = () => {
     const handleSaveProduct = async () => {
         if (!productFormData.nom_produit.trim()) { Alert.alert(t('message.error'), t('pharmacie.productNameRequired')); return; }
         const pid = pharmacyData?.service_id || serviceId;
-        if (!pid) { Alert.alert(t('message.error'), t('pharmacie.pharmacyNotRegistered')); return; }
+        if (!pid) {
+            closeProductModal();
+            Alert.alert(
+                'Configuration requise',
+                'Votre pharmacie n\'est pas encore enregistrée.\n\nVeuillez d\'abord renseigner et enregistrer les informations de votre pharmacie dans l\'onglet "Service".',
+                [
+                    { text: 'Annuler', style: 'cancel' },
+                    { text: 'Configurer maintenant', style: 'default', onPress: () => setActiveTab('service') },
+                ]
+            );
+            return;
+        }
         setLoading(true);
         try {
             const payload = { pharmacy_service_id: pid, nom_produit: productFormData.nom_produit.trim(), description: productFormData.description || null, prix: parseFloat(productFormData.prix) || 0, stock: parseInt(productFormData.stock) || 0, unite: productFormData.unite, code_barre: productFormData.code_barre || null, categorie: productFormData.categorie || null };
@@ -625,6 +671,23 @@ const PharmacieFormScreen: React.FC = () => {
     const renderOverview = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+
+            {/* ✅ Bannière setup si pharmacie non encore enregistrée */}
+            {!pharmacyData && (
+                <TouchableOpacity
+                    style={s.setupBanner}
+                    onPress={() => setActiveTab('service')}
+                    activeOpacity={0.8}
+                >
+                    <SafeIcon name="alert-circle" size={20} color="#92400E" type="lucide" />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={s.setupBannerTitle}>Configuration requise</Text>
+                        <Text style={s.setupBannerSub}>Enregistrez les informations de votre pharmacie pour activer toutes les fonctionnalités.</Text>
+                    </View>
+                    <SafeIcon name="chevron-right" size={18} color="#92400E" type="lucide" />
+                </TouchableOpacity>
+            )}
+
             {/* Stats Grid */}
             <View style={s.statsGrid}>
                 {[
@@ -643,23 +706,20 @@ const PharmacieFormScreen: React.FC = () => {
 
             {/* Quick Actions */}
             <Text style={s.sectionTitle}>Actions rapides</Text>
-            <View style={s.quickRow}>
+            <View style={s.quickGrid}>
                 {[
-                    { label: isOnDuty ? 'En garde ✓' : 'Hors garde', icon: isOnDuty ? 'shield-check' : 'shield-off', color: isOnDuty ? '#10B981' : '#EF4444', onPress: handleToggleGuard },
                     { label: t('pharmacieForm.ajouterProduit'), icon: 'plus-circle', color: '#3B82F6', onPress: () => { setActiveTab('products'); setTimeout(() => openProductModal(), 200); } },
-                    { label: 'IA Interactions', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('PharmacyAIInteractions', { serviceId }) },
-                    { label: 'Commandes reçues', icon: 'clipboard-list', color: '#EC4899', onPress: () => (navigation as any).navigate('PharmacyPartnerOrders', { pharmacyId: pharmacyData?.service_id || serviceId }) },
-                    { label: 'Import Drive', icon: 'link', color: '#7C3AED', onPress: () => (navigation as any).navigate('DriveImportLink', { serviceType: 'pharmacie', serviceId: pharmacyData?.service_id || serviceId, serviceName: formData.nom || 'Pharmacie' }) },
+                    { label: 'Commandes', icon: 'clipboard-list', color: '#EC4899', onPress: () => (navigation as any).navigate('PharmacyPartnerOrders', { pharmacyId: pharmacyData?.service_id || serviceId }) },
+                    { label: 'Import Drive', icon: 'upload-cloud', color: '#7C3AED', onPress: () => (navigation as any).navigate('DriveImportLink', { serviceType: 'pharmacie', serviceId: pharmacyData?.service_id || serviceId, serviceName: formData.nom || 'Pharmacie' }) },
+                    { label: 'IA Santé', icon: 'brain', color: '#7C3AED', onPress: () => (navigation as any).navigate('PharmacyAIInteractions', { serviceId }) },
                     { label: 'Statistiques', icon: 'bar-chart-2', color: '#F59E0B', onPress: () => (navigation as any).navigate('PharmacyAnalytics', { serviceId }) },
-                    { label: 'Finances pharmacie', icon: 'wallet', color: '#0EA5E9', onPress: () => (navigation as any).navigate('PharmacyFinancial') },
-                    { label: t('financialTracking.wallet') || 'Portefeuille', icon: 'wallet', color: '#8B5CF6', onPress: () => (navigation as any).navigate('WalletFinancial') },
-                    { label: t('common.sortir'), icon: 'log-out', color: '#DC2626', onPress: () => { Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]); } },
+                    { label: 'Finances', icon: 'trending-up', color: '#0EA5E9', onPress: () => (navigation as any).navigate('PharmacyFinancial') },
                 ].map((a, i) => (
                     <TouchableOpacity key={i} style={s.quickAction} onPress={a.onPress}>
-                        <View style={[s.quickIcon, { backgroundColor: a.color + '15' }]}>
-                            <SafeIcon name={a.icon as any} size={22} color={a.color} />
+                        <View style={[s.quickIcon, { backgroundColor: a.color + '18' }]}>
+                            <SafeIcon name={a.icon as any} size={24} color={a.color} />
                         </View>
-                        <Text style={s.quickLabel} numberOfLines={2}>{a.label}</Text>
+                        <Text style={s.quickLabel} numberOfLines={1}>{a.label}</Text>
                     </TouchableOpacity>
                 ))}
             </View>
@@ -835,6 +895,124 @@ const PharmacieFormScreen: React.FC = () => {
                 )}
         </ScrollView>
     );
+
+    // ─── BRANCHES: Chargement ────────────────────────────────────────────
+    const loadBranches = async (pid: number) => {
+        try {
+            const resp = await apiGet(`/api/pharmacies/${pid}/branches`);
+            if (resp.success) setBranches(resp.branches || []);
+        } catch (e) { console.warn('[PharmacieForm] branches:', e); }
+    };
+
+    const handleSaveBranch = async () => {
+        if (!branchForm.nom.trim()) { Alert.alert('Erreur', 'Le nom de la succursale est requis'); return; }
+        const pid = pharmacyData?.id;
+        if (!pid) { Alert.alert('Erreur', 'Pharmacie principale non trouvée'); return; }
+        setLoading(true);
+        try {
+            const payload = { nom: branchForm.nom.trim(), adresse: branchForm.adresse || null, quartier: branchForm.quartier || null, telephone: branchForm.telephone || null, gps: branchForm.gps || null };
+            if (editingBranch) {
+                await apiPatch(`/api/pharmacies/branches/${editingBranch.id}`, payload);
+            } else {
+                await apiPost(`/api/pharmacies/${pid}/branches`, payload);
+            }
+            setShowBranchModal(false); setEditingBranch(null); setBranchForm({ nom: '', adresse: '', quartier: '', telephone: '', gps: '' });
+            loadBranches(pid);
+        } catch (e: any) { Alert.alert('Erreur', e.message || 'Impossible de sauvegarder'); } finally { setLoading(false); }
+    };
+
+    const handleDeleteBranch = (branch: any) => {
+        Alert.alert('Supprimer', `Supprimer la succursale "${branch.nom}" ?`, [
+            { text: 'Annuler', style: 'cancel' },
+            { text: 'Supprimer', style: 'destructive', onPress: async () => {
+                try { await apiPatch(`/api/pharmacies/branches/${branch.id}`, { ...branch, is_active: false }); loadBranches(pharmacyData?.id); }
+                catch (e: any) { Alert.alert('Erreur', e.message); }
+            }},
+        ]);
+    };
+
+    // ─── RENDER: Branches Tab ────────────────────────────────────────────
+    const renderBranches = () => {
+        const pid = pharmacyData?.id;
+        if (!pid) return (
+            <View style={{ padding: 24, alignItems: 'center' }}>
+                <Text style={{ color: '#6B7280' }}>Enregistrez d'abord votre pharmacie principale pour gérer les succursales.</Text>
+            </View>
+        );
+        // Charger si liste vide
+        if (branches.length === 0 && pid) { loadBranches(pid); }
+        return (
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+                <TouchableOpacity style={s.addBranchBtn} onPress={() => { setEditingBranch(null); setBranchForm({ nom: '', adresse: '', quartier: '', telephone: '', gps: '' }); setShowBranchModal(true); }}>
+                    <SafeIcon name="plus" size={18} color="#fff" type="lucide" />
+                    <Text style={s.addBranchBtnText}>Ajouter une succursale</Text>
+                </TouchableOpacity>
+                {branches.length === 0 ? (
+                    <View style={{ alignItems: 'center', marginTop: 32 }}>
+                        <SafeIcon name="git-branch" size={40} color="#D1D5DB" type="lucide" />
+                        <Text style={{ color: '#9CA3AF', marginTop: 12 }}>Aucune succursale enregistrée</Text>
+                    </View>
+                ) : branches.map((b, i) => (
+                    <View key={b.id || i} style={s.branchCard}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={s.branchName}>{b.nom}</Text>
+                            {b.adresse ? <Text style={s.branchInfo}><SafeIcon name="map-pin" size={12} color="#6B7280" /> {b.adresse}</Text> : null}
+                            {b.quartier ? <Text style={s.branchInfo}>{b.quartier}</Text> : null}
+                            {b.telephone ? <Text style={s.branchInfo}><SafeIcon name="phone" size={12} color="#6B7280" /> {b.telephone}</Text> : null}
+                            {b.gps ? <Text style={[s.branchInfo, { color: '#10B981' }]}><SafeIcon name="navigation" size={12} color="#10B981" /> GPS enregistré</Text> : null}
+                        </View>
+                        <View style={{ gap: 8 }}>
+                            <TouchableOpacity onPress={() => { setEditingBranch(b); setBranchForm({ nom: b.nom, adresse: b.adresse || '', quartier: b.quartier || '', telephone: b.telephone || '', gps: b.gps || '' }); setShowBranchModal(true); }}>
+                                <SafeIcon name="edit" size={18} color="#3B82F6" type="lucide" />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => handleDeleteBranch(b)}>
+                                <SafeIcon name="trash-2" size={18} color="#EF4444" type="lucide" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                ))}
+
+                {/* Modal ajout/édition succursale */}
+                <Modal visible={showBranchModal} transparent animationType="slide" onRequestClose={() => setShowBranchModal(false)}>
+                    <View style={s.modalOverlay}>
+                        <View style={s.modalContent}>
+                            <Text style={s.modalTitle}>{editingBranch ? 'Modifier la succursale' : 'Nouvelle succursale'}</Text>
+                            <NativeInput label="Nom de la succursale *" value={branchForm.nom} onChangeText={v => setBranchForm(f => ({ ...f, nom: v }))} placeholder="Ex: Succursale Centre-ville" />
+                            <View style={{ height: 12 }} />
+                            <NativeInput label="Adresse" value={branchForm.adresse} onChangeText={v => setBranchForm(f => ({ ...f, adresse: v }))} placeholder="Adresse complète" />
+                            <View style={{ height: 12 }} />
+                            <NativeInput label="Quartier / Zone" value={branchForm.quartier} onChangeText={v => setBranchForm(f => ({ ...f, quartier: v }))} placeholder="Quartier ou zone" />
+                            <View style={{ height: 12 }} />
+                            <NativeInput label="Téléphone" value={branchForm.telephone} onChangeText={v => setBranchForm(f => ({ ...f, telephone: v }))} placeholder="+XXX XXXXXXXXX" keyboardType="phone-pad" />
+                            <View style={{ height: 12 }} />
+                            <TouchableOpacity style={[s.gpsBtn, branchForm.gps ? { borderColor: '#10B981' } : {}]} onPress={() => setShowBranchGPSModal(true)}>
+                                <SafeIcon name="map-pin" size={18} color={branchForm.gps ? '#10B981' : '#6B7280'} type="lucide" />
+                                <Text style={[s.gpsBtnText, branchForm.gps ? { color: '#10B981' } : {}]}>{branchForm.gps ? 'Position GPS enregistrée ✓' : 'Sélectionner la position GPS'}</Text>
+                                <SafeIcon name="chevron-right" size={18} color="#9CA3AF" type="lucide" />
+                            </TouchableOpacity>
+                            <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+                                <NativeButton title="Annuler" onPress={() => setShowBranchModal(false)} variant="secondary" style={{ flex: 1 }} />
+                                <NativeButton title={loading ? 'Enregistrement...' : 'Enregistrer'} onPress={handleSaveBranch} variant="primary" style={{ flex: 1 }} disabled={loading} />
+                            </View>
+                        </View>
+                    </View>
+                    <ModernGPSModal visible={showBranchGPSModal} onClose={() => setShowBranchGPSModal(false)}
+                        onSelect={async (coords: string) => {
+                            setBranchForm(f => ({ ...f, gps: coords }));
+                            setShowBranchGPSModal(false);
+                            try {
+                                const [lat, lng] = coords.split(',').map(Number);
+                                const r = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+                                if (r?.[0]) { const a = r[0]; const lieu = a.subregion || a.district || a.city || ''; if (lieu && !branchForm.quartier) setBranchForm(f => ({ ...f, quartier: lieu, adresse: f.adresse || [a.streetNumber, a.street, a.city].filter(Boolean).join(' ') })); }
+                            } catch (_) {}
+                        }}
+                        currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null}
+                        title="Position de la succursale"
+                    />
+                </Modal>
+            </ScrollView>
+        );
+    };
 
     // ─── RENDER: Analytics Tab ───────────────────────────────────────────
     const renderAnalytics = () => (
@@ -1085,6 +1263,7 @@ const PharmacieFormScreen: React.FC = () => {
             { key: 'overview', label: t('pharmacieForm.accueil'), icon: 'layout-dashboard' },
             { key: 'service', label: 'Service', icon: 'settings' },
             { key: 'products', label: 'Produits', icon: 'package' },
+            { key: 'branches', label: 'Succursales', icon: 'git-branch' },
             { key: 'analytics', label: 'Stats', icon: 'bar-chart-2' },
             { key: 'team', label: t('pharmacieForm.equipe'), icon: 'users' },
         ];
@@ -1098,6 +1277,19 @@ const PharmacieFormScreen: React.FC = () => {
                             <Text style={s.dashTitle}>{pharmacyData?.nom || formData.nom || t('pharmacieForm.maPharmacie')}</Text>
                             <Text style={s.dashSub}>{stats.total} produit{stats.total !== 1 ? 's' : ''} · {isOnDuty ? '🟢 En garde' : '🔴 Hors garde'}</Text>
                         </View>
+                        <TouchableOpacity
+                            style={s.menuBtn}
+                            onPress={() => Alert.alert(
+                                'Options',
+                                '',
+                                [
+                                    { text: 'Se déconnecter', style: 'destructive', onPress: () => Alert.alert(t('common.deconnexion'), t('common.confirmDeconnexion'), [{ text: t('common.cancel'), style: 'cancel' }, { text: t('common.seDeconnecter'), style: 'destructive', onPress: logout }]) },
+                                    { text: 'Annuler', style: 'cancel' },
+                                ]
+                            )}
+                        >
+                            <SafeIcon name="more-vertical" size={22} color="#fff" type="lucide" />
+                        </TouchableOpacity>
                     </View>
                     <View style={s.tabsRow}>
                         {tabs.map(t => (
@@ -1112,6 +1304,7 @@ const PharmacieFormScreen: React.FC = () => {
                     {activeTab === 'overview' && renderOverview()}
                     {activeTab === 'service' && renderServiceForm()}
                     {activeTab === 'products' && renderProductsTab()}
+                    {activeTab === 'branches' && renderBranches()}
                     {activeTab === 'analytics' && renderAnalytics()}
                     {activeTab === 'team' && <ServiceTeamManager serviceId={serviceId?.toString()} onClose={() => setActiveTab('overview')} />}
                 </View>
@@ -1171,10 +1364,20 @@ const s = StyleSheet.create({
     statLabel: { fontSize: 12, color: '#6B7280', marginTop: 2 },
 
     // Quick Actions
+    menuBtn: { padding: 6 },
+    addBranchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#10B981', borderRadius: 12, padding: 14, marginBottom: 16 },
+    addBranchBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+    branchCard: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#E5E7EB', gap: 10 },
+    branchName: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 4 },
+    branchInfo: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+    setupBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#FCD34D', borderRadius: 12, padding: 14, marginBottom: 16 },
+    setupBannerTitle: { fontSize: 14, fontWeight: '700', color: '#92400E' },
+    setupBannerSub: { fontSize: 12, color: '#B45309', marginTop: 2 },
     quickRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-    quickAction: { flex: 1, alignItems: 'center', gap: 6 },
-    quickIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-    quickLabel: { fontSize: 11, color: '#374151', fontWeight: '500', textAlign: 'center' },
+    quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
+    quickAction: { width: '30%', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 4, backgroundColor: '#FAFAFA', borderRadius: 14, borderWidth: 1, borderColor: '#F0F0F0' },
+    quickIcon: { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+    quickLabel: { fontSize: 12, color: '#374151', fontWeight: '600', textAlign: 'center' },
 
     // Guard Card
     guardCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, backgroundColor: '#fff', borderRadius: 12, marginBottom: 20, elevation: 1, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },

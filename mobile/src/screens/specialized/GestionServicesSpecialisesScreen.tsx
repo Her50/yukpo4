@@ -1150,7 +1150,7 @@ const GestionServicesSpecialisesScreen: React.FC = () => {
                         <SafeIcon name="cpu" size={18} color="#fff" />
                     </View>
                     <View>
-                        <Text style={styles.socialAiBannerTitle}>Community Manager IA</Text>
+                        <Text style={styles.socialAiBannerTitle}>Community Manager Yukpo</Text>
                         <Text style={styles.socialAiBannerSub}>Contenu · Chatbot · Pubs Meta · Inbox</Text>
                     </View>
                 </View>

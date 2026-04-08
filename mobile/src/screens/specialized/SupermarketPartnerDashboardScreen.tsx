@@ -689,7 +689,7 @@ const SupermarketPartnerDashboardScreen: React.FC = () => {
                 >
                     <SafeIcon name="cpu" size={16} color="#fff" />
                     <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
-                        Community Manager IA
+                        Community Manager Yukpo
                     </Text>
                 </TouchableOpacity>
             </View>

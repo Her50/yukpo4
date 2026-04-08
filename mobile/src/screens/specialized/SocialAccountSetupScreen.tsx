@@ -135,7 +135,8 @@ export default function SocialAccountSetupScreen() {
                 ? '/api/social/whatsapp/authorize'
                 : '/api/social/facebook/authorize'; // découvre Pages + Instagram automatiquement
 
-            const data = await apiGet(endpoint, token);
+            const resp = await apiGet(endpoint, token);
+            const data = (resp as any)?.data ?? resp;
             const authUrl: string = data?.authorization_url;
             if (!authUrl) throw new Error('URL OAuth non reçue');
 

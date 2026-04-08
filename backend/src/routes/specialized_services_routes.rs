@@ -267,7 +267,17 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         // Routes protégées (création) - middleware appliqué au Router
         .route(
             "/api/pharmacies",
-            post(pharmacy_controller::create_pharmacy).get(pharmacy_controller::list_pharmacies), // ✅ Ajout GET
+            post(pharmacy_controller::create_pharmacy).get(pharmacy_controller::list_pharmacies),
+        )
+        // ✅ 2026-04-08: Succursales pharmacie
+        .route(
+            "/api/pharmacies/{id}/branches",
+            get(pharmacy_controller::list_branches).post(pharmacy_controller::create_branch),
+        )
+        .route(
+            "/api/pharmacies/branches/{branch_id}",
+            axum::routing::patch(pharmacy_controller::update_branch)
+                .delete(pharmacy_controller::delete_branch),
         )
         // ✅ NOUVEAU: Routes produits de pharmacie
         .route(
@@ -806,6 +816,17 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/bus-tickets/agencies/schedules/generate-products",
             post(bus_ticket_controller::generate_products_from_schedules),
+        )
+        // ✅ 2026-04-08: Succursales agences de voyage
+        .route(
+            "/api/agences/branches",
+            get(agency_schedule_controller::list_agence_branches)
+                .post(agency_schedule_controller::create_agence_branch),
+        )
+        .route(
+            "/api/agences/branches/{branch_id}",
+            axum::routing::patch(agency_schedule_controller::update_agence_branch)
+                .delete(agency_schedule_controller::delete_agence_branch),
         )
         // ✅ NOUVEAU: Endpoint unifié pour services spécialisés (remplace 6 appels par 1)
         .route(

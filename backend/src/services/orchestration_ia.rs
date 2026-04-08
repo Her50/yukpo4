@@ -1293,21 +1293,47 @@ async fn construire_input_context_ultra_avance(
         );
     }
 
-    // Excel avec analyse ultra-avanc?e - NOUVEAU PIPELINE UNIFI?
+    // Excel — parsing Python réel pour injection dans le contexte IA
     if let Some(excel_files) = &input.excel_base64 {
+        use crate::services::document_generation_service::parse_excel_for_ai;
         let mut excel_analyses = Vec::new();
         for (idx, excel) in excel_files.iter().enumerate() {
-            // ?? NOUVEAU : Plus d'analyse locale, tout passe par l'IA externe
-            excel_analyses.push(json!({
-                "index": idx,
-                "size": excel.len(),
-                "processing": "multimodal_ia_externe",
-                "status": "ready_for_ia_analysis"
-            }));
+            match parse_excel_for_ai(excel).await {
+                Some(parsed) => {
+                    let sheets_count = parsed
+                        .get("sheets")
+                        .and_then(|s| s.as_array())
+                        .map(|a| a.len())
+                        .unwrap_or(0);
+                    log::info!(
+                        "[Orchestration] Excel {} analysé: {} feuilles",
+                        idx,
+                        sheets_count
+                    );
+                    excel_analyses.push(json!({
+                        "index": idx,
+                        "excel_analysis": parsed,
+                        "processing": "python_parsed",
+                        "status": "analysed"
+                    }));
+                }
+                None => {
+                    log::warn!(
+                        "[Orchestration] Excel {} : parsing échoué, passage en mode opaque",
+                        idx
+                    );
+                    excel_analyses.push(json!({
+                        "index": idx,
+                        "size": excel.len(),
+                        "processing": "multimodal_ia_externe",
+                        "status": "ready_for_ia_analysis"
+                    }));
+                }
+            }
         }
         context["data_sources"]["excel"] = json!(excel_analyses);
         log::info!(
-            "[Orchestration] {} fichiers Excel pr?ts pour l'IA externe",
+            "[Orchestration] {} fichiers Excel traités",
             excel_files.len()
         );
     }
@@ -2388,17 +2414,25 @@ pub async fn convert_all_modals_to_images(input: &MultiModalInput) -> Vec<String
         }
     }
 
-    // 3. Excel -> Images (conversion feuille par feuille)
+    // 3. Excel -> texte structuré (parsing Python → injection dans messages texte)
+    // Note : on n'envoie pas d'images pour Excel car le parsing structuré est plus précis.
+    // Les données parsées sont déjà injectées dans context["data_sources"]["excel"].
     if let Some(excels) = &input.excel_base64 {
+        use crate::services::document_generation_service::parse_excel_for_ai;
         for (i, excel_base64) in excels.iter().enumerate() {
-            if let Ok(excel_images) = convert_excel_to_images(excel_base64).await {
-                let image_count = excel_images.len();
-                all_images.extend(excel_images);
-                log::info!(
-                    "[ModalConverter] Excel {} converti en {} images",
-                    i,
-                    image_count
-                );
+            match parse_excel_for_ai(excel_base64).await {
+                Some(parsed) => {
+                    let summary_text = format!(
+                        "[Excel {} analysé — {} feuilles, données structurées disponibles dans le contexte]",
+                        i,
+                        parsed.get("sheets").and_then(|s| s.as_array()).map(|a| a.len()).unwrap_or(0)
+                    );
+                    log::info!("[ModalConverter] {}", summary_text);
+                    // On ne génère pas d'image, les données sont dans le contexte JSON
+                }
+                None => {
+                    log::warn!("[ModalConverter] Excel {} : parsing Python échoué", i);
+                }
             }
         }
     }
@@ -2436,14 +2470,17 @@ pub async fn convert_pdf_to_images(
     Ok(vec!["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==".to_string()])
 }
 
-/// ?? Conversion Excel en images (optimale)
+/// Parsing Excel via Python (document_generator.py mode=parse)
+/// Retourne le JSON structuré des feuilles et données pour injection dans le contexte IA.
+#[allow(dead_code)]
 pub async fn convert_excel_to_images(
-    _excel_base64: &str,
+    excel_base64: &str,
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
-    // TODO: Impl?menter avec calamine + image generation
-    // Pour l'instant, simulation
-    log::info!("[ExcelConverter] Conversion Excel en images (simulation)");
-    Ok(vec!["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==".to_string()])
+    // Délégué à parse_excel_for_ai — retourne une liste vide car les données
+    // sont injectées dans le contexte JSON, pas converties en images.
+    use crate::services::document_generation_service::parse_excel_for_ai;
+    let _ = parse_excel_for_ai(excel_base64).await;
+    Ok(vec![])
 }
 
 /// 🎤 Transcription audio en texte (avec Whisper API)
