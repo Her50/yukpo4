@@ -283,6 +283,13 @@ jobs:
           # Secrets gérés par Secret Manager (jamais en clair dans les env vars)
           SECRETS="JWT_SECRET=jwt-secret:latest,DATABASE_URL=database-url:latest,REDIS_URL=redis-url:latest"
 
+          # ✅ Retirer les anciennes liaisons secrets pour YOUTUBE_API_KEY/NEWSAPI_KEY/SERPAPI_KEY
+          # (elles étaient liées comme secrets Cloud Run, on les passe maintenant en env vars)
+          gcloud run services update "$SERVICE_NAME" \
+            --region "$REGION" \
+            --remove-secrets="YOUTUBE_API_KEY,NEWSAPI_KEY,SERPAPI_KEY" \
+            --quiet 2>/dev/null || true
+
           gcloud run deploy "$SERVICE_NAME" \
             --image "${{ env.IMAGE_NAME }}:${{ github.sha }}" \
             --platform managed \
