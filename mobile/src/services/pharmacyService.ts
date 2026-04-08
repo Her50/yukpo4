@@ -298,14 +298,15 @@ export const pharmacyService = {
                 lng,
                 radius_km: radiusKm,
             });
-            if (response.success) {
+            const body = response.data || response;
+            if (body.success || (body.pharmacies && Array.isArray(body.pharmacies))) {
                 return {
                     success: true,
-                    pharmacies: response.pharmacies || [],
-                    total_medications_requested: response.total_medications_requested,
+                    pharmacies: body.pharmacies || [],
+                    total_medications_requested: body.total_medications_requested,
                 };
             }
-            return { success: false, error: response.error || 'Recherche échouée' };
+            return { success: false, error: body.error || response.error || 'Recherche échouée' };
         } catch (error: any) {
             return { success: false, error: error.message || 'Erreur lors de la recherche' };
         }

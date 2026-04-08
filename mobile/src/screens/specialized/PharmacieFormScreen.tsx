@@ -139,6 +139,18 @@ const PharmacieFormScreen: React.FC = () => {
     const [editingBranch, setEditingBranch] = useState<any | null>(null);
     const [branchForm, setBranchForm] = useState({ nom: '', adresse: '', quartier: '', telephone: '', gps: '' });
     const [showBranchGPSModal, setShowBranchGPSModal] = useState(false);
+    // Équipe par succursale
+    const [showBranchTeam, setShowBranchTeam] = useState(false);
+    const [branchTeamServiceId, setBranchTeamServiceId] = useState<number | null>(null);
+    const [branchTeamName, setBranchTeamName] = useState('');
+    // Produits par succursale
+    const [expandedBranch, setExpandedBranch] = useState<number | null>(null);
+    const [branchProducts, setBranchProducts] = useState<Record<number, any[]>>({});
+    const [branchProductLoading, setBranchProductLoading] = useState<Record<number, boolean>>({});
+    const [showBranchProductModal, setShowBranchProductModal] = useState(false);
+    const [targetBranchServiceId, setTargetBranchServiceId] = useState<number | null>(null);
+    const [branchProductForm, setBranchProductForm] = useState({ nom_produit: '', description: '', prix: '', stock: '', unite: 'Unité', code_barre: '', categorie: 'Médicament' });
+    const [editingBranchProduct, setEditingBranchProduct] = useState<any | null>(null);
 
     // Products state
     const [products, setProducts] = useState<PharmacyProduct[]>([]);
@@ -219,6 +231,10 @@ const PharmacieFormScreen: React.FC = () => {
                         const myPharmacy = pharmacies[0];
                         setPharmacyData(myPharmacy);
                         setIsDashboardMode(true);
+                        // Populate formData.nom from pharmacy record so "Mettre à jour" button is enabled
+                        if (myPharmacy.nom) {
+                            setFormData(prev => ({ ...prev, nom: myPharmacy.nom }));
+                        }
                         setIsOnDuty(myPharmacy.is_on_duty_now || false);
                         if (!serviceId && myPharmacy.service_id) setServiceId(myPharmacy.service_id);
                         // Load products + analytics
@@ -828,7 +844,7 @@ const PharmacieFormScreen: React.FC = () => {
                 </>
             )}
             <View style={s.field}><SimplePrestationSelector label={t('pharmacieForm.servicesProposes')} options={SERVICES_OPTIONS} selected={selectedServices} onSelectionChange={setSelectedServices} allowCustom placeholder={t('pharmacieForm.ajouterUnService')} /></View>
-            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? t('pharmacieFormScreen.mettreAJour') : 'Enregistrer la Pharmacie')} onPress={handleSubmit} disabled={loading || !formData.nom.trim()} variant="primary" size="large" style={{ marginTop: 24 }} />
+            <NativeButton title={loading ? 'Enregistrement...' : (isDashboardMode ? t('pharmacieFormScreen.mettreAJour') : 'Enregistrer la Pharmacie')} onPress={handleSubmit} disabled={loading || (!isDashboardMode && !formData.nom.trim())} variant="primary" size="large" style={{ marginTop: 24 }} />
         </ScrollView>
     );
 
@@ -904,6 +920,16 @@ const PharmacieFormScreen: React.FC = () => {
         } catch (e) { console.warn('[PharmacieForm] branches:', e); }
     };
 
+    const loadBranchProducts = async (branchServiceId: number) => {
+        setBranchProductLoading(prev => ({ ...prev, [branchServiceId]: true }));
+        try {
+            const resp = await apiGet(`/api/pharmacies/${branchServiceId}/products`);
+            const items = Array.isArray(resp?.data) ? resp.data : Array.isArray(resp) ? resp : [];
+            setBranchProducts(prev => ({ ...prev, [branchServiceId]: items }));
+        } catch (e) { console.warn('[PharmacieForm] branch products:', e); }
+        finally { setBranchProductLoading(prev => ({ ...prev, [branchServiceId]: false })); }
+    };
+
     const handleSaveBranch = async () => {
         if (!branchForm.nom.trim()) { Alert.alert('Erreur', 'Le nom de la succursale est requis'); return; }
         const pid = pharmacyData?.id;
@@ -925,7 +951,46 @@ const PharmacieFormScreen: React.FC = () => {
         Alert.alert('Supprimer', `Supprimer la succursale "${branch.nom}" ?`, [
             { text: 'Annuler', style: 'cancel' },
             { text: 'Supprimer', style: 'destructive', onPress: async () => {
-                try { await apiPatch(`/api/pharmacies/branches/${branch.id}`, { ...branch, is_active: false }); loadBranches(pharmacyData?.id); }
+                try {
+                    await apiDelete(`/api/pharmacies/branches/${branch.id}`);
+                    loadBranches(pharmacyData?.id);
+                } catch (e: any) { Alert.alert('Erreur', e.message); }
+            }},
+        ]);
+    };
+
+    const handleSaveBranchProduct = async () => {
+        if (!branchProductForm.nom_produit.trim() || !branchProductForm.prix) { Alert.alert('Erreur', 'Nom et prix requis'); return; }
+        if (!targetBranchServiceId) return;
+        setLoading(true);
+        try {
+            const payload = {
+                service_id: targetBranchServiceId,
+                nom_produit: branchProductForm.nom_produit.trim(),
+                description: branchProductForm.description || null,
+                prix: parseFloat(branchProductForm.prix),
+                stock: parseInt(branchProductForm.stock) || 0,
+                unite: branchProductForm.unite,
+                code_barre: branchProductForm.code_barre || null,
+                categorie: branchProductForm.categorie || null,
+            };
+            if (editingBranchProduct) {
+                await apiPatch(`/api/pharmacies/products/${editingBranchProduct.id}`, payload);
+            } else {
+                await apiPost('/api/pharmacies/products', payload);
+            }
+            setShowBranchProductModal(false);
+            setEditingBranchProduct(null);
+            setBranchProductForm({ nom_produit: '', description: '', prix: '', stock: '', unite: 'Unité', code_barre: '', categorie: 'Médicament' });
+            loadBranchProducts(targetBranchServiceId);
+        } catch (e: any) { Alert.alert('Erreur', e.message || 'Impossible de sauvegarder'); } finally { setLoading(false); }
+    };
+
+    const handleDeleteBranchProduct = (product: any, branchServiceId: number) => {
+        Alert.alert('Supprimer', `Supprimer "${product.nom_produit}" ?`, [
+            { text: 'Annuler', style: 'cancel' },
+            { text: 'Supprimer', style: 'destructive', onPress: async () => {
+                try { await apiDelete(`/api/pharmacies/products/${product.id}`); loadBranchProducts(branchServiceId); }
                 catch (e: any) { Alert.alert('Erreur', e.message); }
             }},
         ]);
@@ -936,46 +1001,116 @@ const PharmacieFormScreen: React.FC = () => {
         const pid = pharmacyData?.id;
         if (!pid) return (
             <View style={{ padding: 24, alignItems: 'center' }}>
-                <Text style={{ color: '#6B7280' }}>Enregistrez d'abord votre pharmacie principale pour gérer les succursales.</Text>
+                <Text style={{ color: '#6B7280', textAlign: 'center' }}>Enregistrez d'abord votre pharmacie principale pour gérer les succursales.</Text>
             </View>
         );
-        // Charger si liste vide
-        if (branches.length === 0 && pid) { loadBranches(pid); }
+        if (branches.length === 0) loadBranches(pid);
+
+        const openBranchProducts = (branch: any) => {
+            const sid = branch.service_id;
+            if (!sid) return;
+            if (expandedBranch === branch.id) { setExpandedBranch(null); return; }
+            setExpandedBranch(branch.id);
+            if (!branchProducts[sid]) loadBranchProducts(sid);
+        };
+
         return (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+                {/* Header info */}
+                <View style={{ backgroundColor: '#EFF6FF', borderRadius: 10, padding: 12, marginBottom: 16, flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+                    <SafeIcon name="info" size={16} color="#3B82F6" type="lucide" />
+                    <Text style={{ flex: 1, fontSize: 12, color: '#1D4ED8', lineHeight: 18 }}>
+                        Chaque succursale est une pharmacie autonome visible dans la recherche. Les patients trouvent la succursale la plus proche avec ses propres produits.
+                    </Text>
+                </View>
+
                 <TouchableOpacity style={s.addBranchBtn} onPress={() => { setEditingBranch(null); setBranchForm({ nom: '', adresse: '', quartier: '', telephone: '', gps: '' }); setShowBranchModal(true); }}>
                     <SafeIcon name="plus" size={18} color="#fff" type="lucide" />
                     <Text style={s.addBranchBtnText}>Ajouter une succursale</Text>
                 </TouchableOpacity>
+
                 {branches.length === 0 ? (
                     <View style={{ alignItems: 'center', marginTop: 32 }}>
                         <SafeIcon name="git-branch" size={40} color="#D1D5DB" type="lucide" />
                         <Text style={{ color: '#9CA3AF', marginTop: 12 }}>Aucune succursale enregistrée</Text>
                     </View>
-                ) : branches.map((b, i) => (
-                    <View key={b.id || i} style={s.branchCard}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.branchName}>{b.nom}</Text>
-                            {b.adresse ? <Text style={s.branchInfo}><SafeIcon name="map-pin" size={12} color="#6B7280" /> {b.adresse}</Text> : null}
-                            {b.quartier ? <Text style={s.branchInfo}>{b.quartier}</Text> : null}
-                            {b.telephone ? <Text style={s.branchInfo}><SafeIcon name="phone" size={12} color="#6B7280" /> {b.telephone}</Text> : null}
-                            {b.gps ? <Text style={[s.branchInfo, { color: '#10B981' }]}><SafeIcon name="navigation" size={12} color="#10B981" /> GPS enregistré</Text> : null}
+                ) : branches.map((b, i) => {
+                    const sid = b.service_id;
+                    const isExpanded = expandedBranch === b.id;
+                    const bProducts: any[] = branchProducts[sid] || [];
+                    const isLoadingP = branchProductLoading[sid];
+                    return (
+                        <View key={b.id || i} style={[s.branchCard, { flexDirection: 'column', padding: 0, overflow: 'hidden' }]}>
+                            {/* En-tête succursale */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 }}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={s.branchName}>{b.nom}</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                                        {b.quartier ? <Text style={s.branchInfo}>{b.quartier}</Text> : null}
+                                        {b.telephone ? <Text style={s.branchInfo}>{b.telephone}</Text> : null}
+                                        {b.gps ? <Text style={[s.branchInfo, { color: '#10B981' }]}>📍 GPS</Text> : null}
+                                    </View>
+                                    <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                                        {bProducts.length > 0 ? `${bProducts.length} produit${bProducts.length > 1 ? 's' : ''}` : isExpanded ? 'Aucun produit' : 'Voir les produits'}
+                                    </Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                                    <TouchableOpacity onPress={() => { if (sid) { setBranchTeamServiceId(sid); setBranchTeamName(b.nom); setShowBranchTeam(true); } }}>
+                                        <SafeIcon name="users" size={18} color="#8B5CF6" type="lucide" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => { setEditingBranch(b); setBranchForm({ nom: b.nom, adresse: b.adresse || '', quartier: b.quartier || '', telephone: b.telephone || '', gps: b.gps || '' }); setShowBranchModal(true); }}>
+                                        <SafeIcon name="edit" size={18} color="#3B82F6" type="lucide" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => handleDeleteBranch(b)}>
+                                        <SafeIcon name="trash-2" size={18} color="#EF4444" type="lucide" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => openBranchProducts(b)}>
+                                        <SafeIcon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#6B7280" type="lucide" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {/* Produits de la succursale (expandable) */}
+                            {isExpanded && (
+                                <View style={{ borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingHorizontal: 14, paddingBottom: 12 }}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, marginBottom: 8 }}>
+                                        <Text style={{ fontWeight: '600', fontSize: 13, color: '#374151' }}>Produits de cette succursale</Text>
+                                        <TouchableOpacity
+                                            style={{ flexDirection: 'row', gap: 4, alignItems: 'center', backgroundColor: '#3B82F6', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 }}
+                                            onPress={() => { setTargetBranchServiceId(sid); setEditingBranchProduct(null); setBranchProductForm({ nom_produit: '', description: '', prix: '', stock: '', unite: 'Unité', code_barre: '', categorie: 'Médicament' }); setShowBranchProductModal(true); }}
+                                        >
+                                            <SafeIcon name="plus" size={14} color="#fff" type="lucide" />
+                                            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Ajouter</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    {isLoadingP ? (
+                                        <ActivityIndicator size="small" color="#8B5CF6" />
+                                    ) : bProducts.length === 0 ? (
+                                        <Text style={{ color: '#9CA3AF', fontSize: 12, textAlign: 'center', paddingVertical: 8 }}>Aucun produit pour cette succursale</Text>
+                                    ) : bProducts.map((p: any) => (
+                                        <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', gap: 8 }}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }}>{p.nom_produit}</Text>
+                                                <Text style={{ fontSize: 11, color: '#6B7280' }}>{p.categorie} · Stock: {p.stock} · {formatPrice(p.prix)}</Text>
+                                            </View>
+                                            <TouchableOpacity onPress={() => { setTargetBranchServiceId(sid); setEditingBranchProduct(p); setBranchProductForm({ nom_produit: p.nom_produit, description: p.description || '', prix: String(p.prix), stock: String(p.stock), unite: p.unite || 'Unité', code_barre: p.code_barre || '', categorie: p.categorie || 'Médicament' }); setShowBranchProductModal(true); }}>
+                                                <SafeIcon name="edit" size={16} color="#3B82F6" type="lucide" />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity onPress={() => handleDeleteBranchProduct(p, sid)}>
+                                                <SafeIcon name="trash-2" size={16} color="#EF4444" type="lucide" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
                         </View>
-                        <View style={{ gap: 8 }}>
-                            <TouchableOpacity onPress={() => { setEditingBranch(b); setBranchForm({ nom: b.nom, adresse: b.adresse || '', quartier: b.quartier || '', telephone: b.telephone || '', gps: b.gps || '' }); setShowBranchModal(true); }}>
-                                <SafeIcon name="edit" size={18} color="#3B82F6" type="lucide" />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => handleDeleteBranch(b)}>
-                                <SafeIcon name="trash-2" size={18} color="#EF4444" type="lucide" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                ))}
+                    );
+                })}
 
                 {/* Modal ajout/édition succursale */}
                 <Modal visible={showBranchModal} transparent animationType="slide" onRequestClose={() => setShowBranchModal(false)}>
                     <View style={s.modalOverlay}>
-                        <View style={s.modalContent}>
+                        <ScrollView contentContainerStyle={s.modalContent} keyboardShouldPersistTaps="handled">
                             <Text style={s.modalTitle}>{editingBranch ? 'Modifier la succursale' : 'Nouvelle succursale'}</Text>
                             <NativeInput label="Nom de la succursale *" value={branchForm.nom} onChangeText={v => setBranchForm(f => ({ ...f, nom: v }))} placeholder="Ex: Succursale Centre-ville" />
                             <View style={{ height: 12 }} />
@@ -994,7 +1129,7 @@ const PharmacieFormScreen: React.FC = () => {
                                 <NativeButton title="Annuler" onPress={() => setShowBranchModal(false)} variant="secondary" style={{ flex: 1 }} />
                                 <NativeButton title={loading ? 'Enregistrement...' : 'Enregistrer'} onPress={handleSaveBranch} variant="primary" style={{ flex: 1 }} disabled={loading} />
                             </View>
-                        </View>
+                        </ScrollView>
                     </View>
                     <ModernGPSModal visible={showBranchGPSModal} onClose={() => setShowBranchGPSModal(false)}
                         onSelect={async (coords: string) => {
@@ -1009,6 +1144,49 @@ const PharmacieFormScreen: React.FC = () => {
                         currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null}
                         title="Position de la succursale"
                     />
+                </Modal>
+
+                {/* Modal équipe succursale */}
+                <Modal visible={showBranchTeam} animationType="slide" onRequestClose={() => setShowBranchTeam(false)}>
+                    <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 50, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', gap: 12 }}>
+                            <TouchableOpacity onPress={() => setShowBranchTeam(false)}>
+                                <SafeIcon name="arrow-left" size={22} color="#111827" type="lucide" />
+                            </TouchableOpacity>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontWeight: '700', fontSize: 16, color: '#111827' }}>Équipe — {branchTeamName}</Text>
+                                <Text style={{ fontSize: 12, color: '#6B7280' }}>Membres assignés à cette succursale</Text>
+                            </View>
+                        </View>
+                        <ServiceTeamManager serviceId={branchTeamServiceId?.toString()} onClose={() => setShowBranchTeam(false)} />
+                    </View>
+                </Modal>
+
+                {/* Modal produit succursale */}
+                <Modal visible={showBranchProductModal} transparent animationType="slide" onRequestClose={() => setShowBranchProductModal(false)}>
+                    <View style={s.modalOverlay}>
+                        <ScrollView contentContainerStyle={s.modalContent} keyboardShouldPersistTaps="handled">
+                            <Text style={s.modalTitle}>{editingBranchProduct ? 'Modifier le produit' : 'Nouveau produit'}</Text>
+                            <NativeInput label="Nom du produit *" value={branchProductForm.nom_produit} onChangeText={v => setBranchProductForm(f => ({ ...f, nom_produit: v }))} placeholder="Ex: Doliprane 500mg" />
+                            <View style={{ height: 10 }} />
+                            <NativeInput label="Description" value={branchProductForm.description} onChangeText={v => setBranchProductForm(f => ({ ...f, description: v }))} placeholder="Description optionnelle" multiline />
+                            <View style={{ height: 10 }} />
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
+                                <View style={{ flex: 1 }}>
+                                    <NativeInput label={`Prix (${devise}) *`} value={branchProductForm.prix} onChangeText={v => setBranchProductForm(f => ({ ...f, prix: v }))} placeholder="0" keyboardType="numeric" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <NativeInput label="Stock" value={branchProductForm.stock} onChangeText={v => setBranchProductForm(f => ({ ...f, stock: v }))} placeholder="0" keyboardType="numeric" />
+                                </View>
+                            </View>
+                            <View style={{ height: 10 }} />
+                            <NativeInput label="Code-barres" value={branchProductForm.code_barre} onChangeText={v => setBranchProductForm(f => ({ ...f, code_barre: v }))} placeholder="Optionnel" />
+                            <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+                                <NativeButton title="Annuler" onPress={() => setShowBranchProductModal(false)} variant="secondary" style={{ flex: 1 }} />
+                                <NativeButton title={loading ? 'Enregistrement...' : 'Enregistrer'} onPress={handleSaveBranchProduct} variant="primary" style={{ flex: 1 }} disabled={loading} />
+                            </View>
+                        </ScrollView>
+                    </View>
                 </Modal>
             </ScrollView>
         );
@@ -1291,14 +1469,14 @@ const PharmacieFormScreen: React.FC = () => {
                             <SafeIcon name="more-vertical" size={22} color="#fff" type="lucide" />
                         </TouchableOpacity>
                     </View>
-                    <View style={s.tabsRow}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabsRow} contentContainerStyle={{ gap: 4, paddingRight: 8 }}>
                         {tabs.map(t => (
                             <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabOn]} onPress={() => setActiveTab(t.key)}>
                                 <SafeIcon name={t.icon as any} size={14} color={activeTab === t.key ? '#fff' : '#ffffff70'} />
-                                <Text style={[s.tabText, activeTab === t.key && s.tabTextOn]}>{t.label}</Text>
+                                <Text style={[s.tabText, activeTab === t.key && s.tabTextOn]} numberOfLines={1}>{t.label}</Text>
                             </TouchableOpacity>
                         ))}
-                    </View>
+                    </ScrollView>
                 </LinearGradient>
                 <View style={s.dashContent}>
                     {activeTab === 'overview' && renderOverview()}
@@ -1351,8 +1529,8 @@ const s = StyleSheet.create({
     createTitle: { fontSize: 20, fontWeight: '700', color: '#fff' },
 
     // Tabs
-    tabsRow: { flexDirection: 'row', gap: 4, paddingBottom: 8 },
-    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: 8, backgroundColor: '#ffffff15' },
+    tabsRow: { paddingBottom: 8 },
+    tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#ffffff15', minWidth: 80 },
     tabOn: { backgroundColor: '#ffffff30' },
     tabText: { fontSize: 11, color: '#ffffff70', fontWeight: '500' },
     tabTextOn: { color: '#fff', fontWeight: '700' },

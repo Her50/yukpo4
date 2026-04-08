@@ -6,6 +6,29 @@ import { useCallback, useState } from 'react';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiPost } from '../services/api';
 
+/**
+ * Extrait le texte lisible d'une réponse IA potentiellement encapsulée en JSON.
+ * Le backend peut renvoyer : "texte brut", ou '{"message":"...","type":"text","confidence":0.9}'
+ */
+export function extractAIText(raw: any): string {
+    if (!raw) return '';
+    if (typeof raw === 'object') {
+        // Objet direct — prendre message, response, text, answer dans cet ordre
+        return raw.message || raw.response || raw.text || raw.answer || raw.content || JSON.stringify(raw);
+    }
+    if (typeof raw !== 'string') return String(raw);
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (typeof parsed === 'object' && parsed !== null) {
+                return parsed.message || parsed.response || parsed.text || parsed.answer || parsed.content || trimmed;
+            }
+        } catch (_) { /* pas du JSON valide, retourner tel quel */ }
+    }
+    return trimmed;
+}
+
 export interface AIFallbackResult<T = any> {
     success: boolean;
     source: 'primary' | 'chat' | 'local';
@@ -100,8 +123,13 @@ export const useAIWithFallback = () => {
                 language,
             });
             if (chatResult?.success && chatResult?.data) {
+                // Sanitiser le message si l'objet data contient un champ message encapsulé
+                const d = chatResult.data as any;
+                if (d?.message && typeof d.message === 'string') {
+                    d.message = extractAIText(d.message);
+                }
                 setLoading(false);
-                return { success: true, source: 'chat', data: chatResult.data as T };
+                return { success: true, source: 'chat', data: d as T };
             }
         } catch (err: any) {
             console.warn(`[useAIWithFallback] Niveau 2 échoué (${chatContext}):`, err?.message || err);
@@ -133,8 +161,15 @@ export const useAIWithFallback = () => {
                     type: 'question',
                     language,
                 });
-                if (response?.success && response?.data?.message) {
-                    return { message: response.data.message, suggestions: response.data.suggestions || [] };
+                // Accepter la réponse même sans champ success (quota/auth fast-fail du backend)
+                const raw = response?.data || response;
+                if (raw) {
+                    const msg = extractAIText(raw.message || raw.response || raw.text || raw);
+                    if (msg && !msg.includes('Authentification requise') && !msg.includes('Quota')) {
+                        return { message: msg, suggestions: raw.suggestions || [] };
+                    }
+                    // Si quota ou auth → afficher l'erreur quand même
+                    if (msg) return { message: msg, suggestions: [] };
                 }
                 return null;
             },

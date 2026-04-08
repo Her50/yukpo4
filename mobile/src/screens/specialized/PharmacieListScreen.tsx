@@ -5,6 +5,7 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
+    Linking,
     RefreshControl,
     StyleSheet,
     Text,
@@ -40,7 +41,8 @@ interface Pharmacie {
     available_count?: number;
     total_requested?: number;
     // Disponibilité par médicament (pour calcul split multi-pharmacies)
-    medications_availability?: Array<{ name: string; available: boolean }>;
+    medications_availability?: Array<{ name: string; available: boolean; prix?: number }>;
+    gps?: string;
 }
 
 const PharmacieListScreen: React.FC = () => {
@@ -99,6 +101,7 @@ const PharmacieListScreen: React.FC = () => {
                         available_count: p.available_count,
                         total_requested: p.total_requested,
                         medications_availability: p.medications_availability || [],
+                        gps: p.gps,
                     }));
                     setPharmacies(isRefresh || currentPage === 1 ? mapped : [...pharmacies, ...mapped]);
                     // Si aucune pharmacie n'a 100% → proposer la multi-commande
@@ -184,106 +187,133 @@ const PharmacieListScreen: React.FC = () => {
         navigation.navigate('PharmacieDetails' as never, { pharmacieId: pharmacie.id } as never);
     };
 
-    const renderPharmacie = ({ item }: { item: Pharmacie }) => (
-        <TouchableOpacity onPress={() => handlePharmaciePress(item)}>
-            <NativeCard style={styles.pharmacieCard}>
-                <View style={styles.pharmacieHeader}>
-                    <View style={styles.pharmacieInfo}>
-                        <Text style={styles.pharmacieNom}>{item.nom}</Text>
+    const openGoogleMaps = (pharmacie: Pharmacie) => {
+        if (pharmacie.gps) {
+            const [lat, lng] = pharmacie.gps.split(',').map(s => s.trim());
+            if (lat && lng) {
+                const label = encodeURIComponent(pharmacie.nom);
+                Linking.openURL(`https://maps.google.com/?q=${lat},${lng}&label=${label}&travelmode=driving`);
+                return;
+            }
+        }
+        // Fallback : recherche par nom + ville
+        const q = encodeURIComponent([pharmacie.nom, pharmacie.quartier, pharmacie.ville].filter(Boolean).join(', '));
+        Linking.openURL(`https://maps.google.com/?q=${q}`);
+    };
+
+    const renderPharmacie = ({ item }: { item: Pharmacie }) => {
+        const isFullMatch = item.matching_score === 100;
+        const isAvailable = item.is_available_now;
+        const accentColor = isFullMatch ? '#059669' : isAvailable ? '#2563EB' : '#9CA3AF';
+
+        return (
+            <TouchableOpacity onPress={() => handlePharmaciePress(item)} activeOpacity={0.92}>
+                <View style={[styles.pharmacieCard, { borderLeftColor: accentColor }]}>
+                    {/* En-tête : avatar + nom + distance */}
+                    <View style={styles.pharmacieHeader}>
+                        <View style={[styles.pharmacieAvatar, { backgroundColor: accentColor + '20' }]}>
+                            <SafeIcon name="pill" size={20} color={accentColor} type="lucide" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.pharmacieNom} numberOfLines={1}>{item.nom}</Text>
+                            {(item.ville || item.quartier) && (
+                                <Text style={styles.locationText} numberOfLines={1}>
+                                    {[item.quartier, item.ville].filter(Boolean).join(' · ')}
+                                </Text>
+                            )}
+                        </View>
+                        {item.distance_km !== undefined && (
+                            <TouchableOpacity
+                                style={styles.distanceBadge}
+                                onPress={() => openGoogleMaps(item)}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                                <SafeIcon name="navigation" size={10} color="#374151" type="lucide" />
+                                <Text style={styles.distanceBadgeText}>{item.distance_km.toFixed(1)} km</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
+
+                    {/* Badges statut */}
                     <View style={styles.badgesContainer}>
                         {item.matching_score !== undefined ? (
-                            <View style={[
-                                styles.matchingBadge,
-                                item.matching_score === 100 ? styles.matchingBadge100 : styles.matchingBadgePartial
-                            ]}>
-                                <Text style={[
-                                    styles.matchingText,
-                                    item.matching_score === 100 ? styles.matchingText100 : styles.matchingTextPartial
-                                ]}>
+                            <View style={[styles.matchingBadge, isFullMatch ? styles.matchingBadge100 : styles.matchingBadgePartial]}>
+                                <SafeIcon name={isFullMatch ? 'check-circle' : 'alert-circle'} size={11} color={isFullMatch ? '#065F46' : '#92400E'} type="lucide" />
+                                <Text style={[styles.matchingText, isFullMatch ? styles.matchingText100 : styles.matchingTextPartial]}>
                                     {item.matching_label || `${item.matching_score}%`}
                                 </Text>
                             </View>
                         ) : (
-                            <View style={[styles.statusBadge, item.is_available_now && styles.statusBadgeAvailable]}>
-                                <Text style={[styles.statusText, item.is_available_now && styles.statusTextAvailable]}>
-                                    {item.is_available_now ? 'Disponible' : 'Indisponible'}
+                            <View style={[styles.statusBadge, isAvailable && styles.statusBadgeAvailable]}>
+                                <View style={[styles.statusDot, { backgroundColor: isAvailable ? '#059669' : '#9CA3AF' }]} />
+                                <Text style={[styles.statusText, isAvailable && styles.statusTextAvailable]}>
+                                    {isAvailable ? 'Disponible' : 'Indisponible'}
                                 </Text>
                             </View>
                         )}
                         {item.is_on_duty && (
                             <View style={styles.dutyBadge}>
+                                <SafeIcon name="moon" size={11} color="#1E40AF" type="lucide" />
                                 <Text style={styles.dutyText}>De garde</Text>
                             </View>
                         )}
                     </View>
-                </View>
 
-                {(item.ville || item.quartier) && (
-                    <View style={styles.locationRow}>
-                        <SafeIcon name="map-pin" size={14} color={modernColors.textSecondary} />
-                        <Text style={styles.locationText}>
-                            {[item.ville, item.quartier].filter(Boolean).join(', ')}
-                        </Text>
-                    </View>
-                )}
+                    {/* Disponibilité médicaments (recherche par image/multi-med) */}
+                    {item.available_count !== undefined && item.total_requested !== undefined && (
+                        <View style={styles.availBar}>
+                            <View style={[styles.availBarFill, {
+                                width: `${(item.available_count / item.total_requested) * 100}%` as any,
+                                backgroundColor: isFullMatch ? '#059669' : '#F59E0B'
+                            }]} />
+                            <Text style={styles.availBarLabel}>
+                                {item.available_count}/{item.total_requested} médicament{item.total_requested > 1 ? 's' : ''} disponible{item.available_count > 1 ? 's' : ''}
+                            </Text>
+                        </View>
+                    )}
 
-                {item.distance_km !== undefined && (
-                    <View style={styles.distanceRow}>
-                        <SafeIcon name="map-pin" size={14} color={modernColors.textSecondary} />
-                        <Text style={styles.distanceText}>{item.distance_km.toFixed(1)} km</Text>
-                    </View>
-                )}
-                {item.nom_produit && (
-                    <View style={styles.distanceRow}>
-                        <SafeIcon name="pill" size={14} color={modernColors.textSecondary} />
-                        <Text style={styles.distanceText}>
-                            {item.nom_produit}
-                            {item.prix ? ` • ${Number(item.prix).toLocaleString()} FCFA` : ''}
-                        </Text>
-                    </View>
-                )}
+                    {/* Détail par médicament */}
+                    {item.medications_availability && item.medications_availability.length > 0 && (
+                        <View style={styles.medsAvailList}>
+                            {item.medications_availability.map((med, idx) => (
+                                <View key={idx} style={styles.medAvailRow}>
+                                    <SafeIcon name={med.available ? 'check-circle' : 'x-circle'} size={13}
+                                        color={med.available ? '#059669' : '#EF4444'} type="lucide" />
+                                    <Text style={[styles.medAvailName, { color: med.available ? '#065F46' : '#991B1B' }]}>
+                                        {med.name}
+                                    </Text>
+                                    {med.prix ? <Text style={styles.medPrice}>{Number(med.prix).toLocaleString()} FCFA</Text> : null}
+                                </View>
+                            ))}
+                        </View>
+                    )}
 
-                {item.available_count !== undefined && item.total_requested !== undefined && (
-                    <View style={styles.matchingDetailRow}>
-                        <SafeIcon name="pill" size={14} color={item.matching_score === 100 ? '#059669' : '#D97706'} type="lucide" />
-                        <Text style={[styles.matchingDetailText, { color: item.matching_score === 100 ? '#059669' : '#D97706' }]}>
-                            {item.available_count}/{item.total_requested} médicament{item.total_requested > 1 ? 's' : ''} disponible{item.available_count > 1 ? 's' : ''}
-                        </Text>
-                    </View>
-                )}
+                    {/* Produit unitaire */}
+                    {item.nom_produit && (
+                        <View style={styles.productRow}>
+                            <SafeIcon name="package" size={13} color="#6B7280" type="lucide" />
+                            <Text style={styles.productName}>{item.nom_produit}</Text>
+                            {item.prix ? <Text style={styles.productPrice}>{Number(item.prix).toLocaleString()} FCFA</Text> : null}
+                        </View>
+                    )}
 
-                {/* Détail médicament par médicament : ✓ disponible / ✗ manquant */}
-                {item.medications_availability && item.medications_availability.length > 0 && (
-                    <View style={styles.medsAvailList}>
-                        {item.medications_availability.map((med, idx) => (
-                            <View key={idx} style={styles.medAvailRow}>
-                                <SafeIcon
-                                    name={med.available ? 'check-circle' : 'x-circle'}
-                                    size={13}
-                                    color={med.available ? '#059669' : '#EF4444'}
-                                    type="lucide"
-                                />
-                                <Text style={[
-                                    styles.medAvailName,
-                                    { color: med.available ? '#065F46' : '#991B1B' }
-                                ]}>
-                                    {med.name}
-                                </Text>
+                    {/* Footer : téléphone + CTA */}
+                    <View style={styles.pharmacieFooter}>
+                        {item.telephone ? (
+                            <View style={styles.phoneRow}>
+                                <SafeIcon name="phone" size={13} color="#6B7280" type="lucide" />
+                                <Text style={styles.phoneText}>{item.telephone}</Text>
                             </View>
-                        ))}
+                        ) : <View />}
+                        <View style={[styles.ctaBtn, { backgroundColor: accentColor }]}>
+                            <SafeIcon name="arrow-right" size={14} color="#fff" type="lucide" />
+                            <Text style={styles.ctaBtnText}>Voir</Text>
+                        </View>
                     </View>
-                )}
-
-                {item.telephone && (
-                    <View style={styles.phoneRow}>
-                        <SafeIcon name="phone" size={14} color={modernColors.textSecondary} />
-                        <Text style={styles.phoneText}>{item.telephone}</Text>
-                    </View>
-                )}
-            </NativeCard>
-        </TouchableOpacity>
-    );
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     if (loading && pharmacies.length === 0) {
         return (
@@ -301,7 +331,7 @@ const PharmacieListScreen: React.FC = () => {
                 <Text style={styles.emptyTitle}>{t('pharmacieList.aucunePharmacieTrouvee')}</Text>
                 <Text style={styles.emptyText}>{t('pharmacieList.essayezDeModifierVosCriteres')}</Text>
                 <TouchableOpacity
-                    style={styles.backButton}
+                    style={styles.newSearchButton}
                     onPress={() => navigation.goBack()}
                 >
                     <Text style={styles.backButtonText}>{t('pharmacieList.nouvelleRecherche')}</Text>
@@ -405,6 +435,12 @@ const styles = StyleSheet.create({
     backButton: {
         marginRight: 12,
     },
+    newSearchButton: {
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 10,
+    },
     title: {
         fontSize: 20,
         fontWeight: 'bold',
@@ -415,36 +451,80 @@ const styles = StyleSheet.create({
     },
     pharmacieCard: {
         marginBottom: 12,
-        padding: 16,
+        backgroundColor: '#fff',
+        borderRadius: 14,
+        borderLeftWidth: 4,
+        borderLeftColor: '#059669',
+        padding: 14,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+        elevation: 3,
+    },
+    pharmacieAvatar: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
     },
     pharmacieHeader: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-    },
-    pharmacieInfo: {
-        flex: 1,
+        alignItems: 'center',
+        marginBottom: 10,
     },
     pharmacieNom: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 15,
+        fontWeight: '700',
         color: '#111827',
+    },
+    locationText: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 1,
+    },
+    distanceBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        marginLeft: 6,
+    },
+    distanceBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#374151',
     },
     badgesContainer: {
         flexDirection: 'row',
-        gap: 8,
+        gap: 6,
+        flexWrap: 'wrap',
+        marginBottom: 10,
     },
     statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 4,
+        borderRadius: 20,
         backgroundColor: '#F3F4F6',
+    },
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
     },
     statusBadgeAvailable: {
         backgroundColor: '#D1FAE5',
     },
     statusText: {
-        fontSize: 12,
+        fontSize: 11,
         color: '#6B7280',
         fontWeight: '600',
     },
@@ -452,35 +532,18 @@ const styles = StyleSheet.create({
         color: '#065F46',
     },
     dutyBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 4,
+        borderRadius: 20,
         backgroundColor: '#DBEAFE',
     },
     dutyText: {
         fontSize: 12,
         color: '#1E40AF',
         fontWeight: '600',
-    },
-    locationRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 8,
-        gap: 6,
-    },
-    locationText: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-    },
-    distanceRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4,
-        gap: 6,
-    },
-    distanceText: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
     },
     phoneRow: {
         flexDirection: 'row',
@@ -527,6 +590,9 @@ const styles = StyleSheet.create({
     },
     // Matching badges pour mode ordonnance
     matchingBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 4,
@@ -570,8 +636,78 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     medAvailName: {
+        flex: 1,
         fontSize: 12,
         fontWeight: '500',
+    },
+    medPrice: {
+        fontSize: 11,
+        color: '#059669',
+        fontWeight: '700',
+    },
+    availBar: {
+        height: 16,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+        marginTop: 8,
+        overflow: 'hidden',
+        justifyContent: 'center',
+    },
+    availBarFill: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        height: '100%',
+        borderRadius: 8,
+        opacity: 0.35,
+    },
+    availBarLabel: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#374151',
+        textAlign: 'center',
+    },
+    productRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#F3F4F6',
+    },
+    productName: {
+        flex: 1,
+        fontSize: 12,
+        color: '#374151',
+        fontWeight: '500',
+    },
+    productPrice: {
+        fontSize: 11,
+        color: '#059669',
+        fontWeight: '700',
+    },
+    pharmacieFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 10,
+        paddingTop: 10,
+        borderTopWidth: 1,
+        borderTopColor: '#F3F4F6',
+    },
+    ctaBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    ctaBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#fff',
     },
     // Bannière multi-pharmacies
     multiBanner: {

@@ -29,7 +29,8 @@ import { SafeNativeView } from '../../components/SafeNativeView';
 import { useToaster } from '../../components/ToasterProvider';
 import { useLanguageSafe } from '../../contexts/LanguageContext';
 import { useLocation } from '../../contexts/LocationContext';
-import { useAIWithFallback } from '../../hooks/useAIWithFallback';
+import { extractAIText, useAIWithFallback } from '../../hooks/useAIWithFallback';
+import * as Clipboard from 'expo-clipboard';
 import {
     NearbyMedicineFilters,
     PharmacyProduct,
@@ -110,6 +111,7 @@ const PharmacieHomeScreen: React.FC = () => {
     const [searchAvailableOnly, setSearchAvailableOnly] = useState(true);
     const [showSearchGPSModal, setShowSearchGPSModal] = useState(false);
     const [searchGpsString, setSearchGpsString] = useState('');
+    const [searchGpsLabel, setSearchGpsLabel] = useState('');
     const [searchGpsData, setSearchGpsData] = useState<{ lat: number; lng: number } | null>(null);
     const [showAdvancedSearchFilters, setShowAdvancedSearchFilters] = useState(false);
 
@@ -376,24 +378,26 @@ const PharmacieHomeScreen: React.FC = () => {
 
         hapticPress();
         setAiResponse(null);
+        setShowAIChat(true); // toujours ouvrir le panel avant l'appel
 
         const medNames = medications.slice(0, 5).map(m => m.nom_produit);
         const result = await askPharmacyQuestion(aiQuestion, medNames);
 
-        if (result.success && result.data) {
-            const message = result.data.message || t('pharmacieHome.reponseNonDisponible');
-            setAiResponse(message);
-            if (result.data.suggestions?.length > 0) {
-                setAiSuggestions(result.data.suggestions);
-            }
-            if (result.source === 'local') {
-                toaster?.show?.(t('pharmacieHome.responseLocalData'), 'info');
-            } else {
-                toaster?.show?.(t('pharmacieHome.aiResponseGenerated'), 'success');
-            }
-        } else {
-            setAiResponse(t('pharmacieHomeScreen.consultezVotrePharmacienPourDesConseils'));
+        const data = result.data as any;
+        const message = data?.message
+            || (typeof data === 'string' ? data : null)
+            || (result.success ? t('pharmacieHome.reponseNonDisponible') : t('pharmacieHomeScreen.consultezVotrePharmacienPourDesConseils'));
+
+        setAiResponse(extractAIText(message));
+
+        if (data?.suggestions?.length > 0) {
+            setAiSuggestions(data.suggestions);
+        }
+
+        if (!result.success) {
             toaster?.show?.(t('pharmacieHome.aiTemporarilyUnavailable'), 'error');
+        } else if (result.source === 'local') {
+            toaster?.show?.(t('pharmacieHome.responseLocalData'), 'info');
         }
     };
 
@@ -480,10 +484,10 @@ const PharmacieHomeScreen: React.FC = () => {
                     setAiQuestion(question);
 
                     const aiResult = await askPharmacyQuestion(question, [firstMed.name]);
-                    // aiResult.data est {message, suggestions} — extraire .message
-                    const aiMessage = typeof aiResult.data === 'string'
-                        ? aiResult.data
-                        : (aiResult.data as any)?.message || '';
+                    // aiResult.data est {message, suggestions} — extraire + sanitiser le message
+                    const aiMessage = extractAIText(
+                        typeof aiResult.data === 'string' ? aiResult.data : (aiResult.data as any)?.message
+                    );
                     const header = [
                         `💊 ${medNames}`,
                         firstMed.dosage ? `Dosage : ${firstMed.dosage}` : '',
@@ -649,8 +653,9 @@ const PharmacieHomeScreen: React.FC = () => {
     };
 
     // GPS sélection pour la recherche de médicaments
-    const handleSearchGPSSelect = (coordinates: string) => {
+    const handleSearchGPSSelect = (coordinates: string, label?: string) => {
         setSearchGpsString(coordinates);
+        setSearchGpsLabel(label || 'Position sélectionnée');
         const [lat, lng] = coordinates.split(',').map(parseFloat);
         if (!isNaN(lat) && !isNaN(lng)) {
             setSearchGpsData({ lat, lng });
@@ -663,6 +668,7 @@ const PharmacieHomeScreen: React.FC = () => {
         if (location?.coords && !searchGpsData) {
             setSearchGpsData({ lat: location.coords.latitude, lng: location.coords.longitude });
             setSearchGpsString(`${location.coords.latitude.toFixed(4)},${location.coords.longitude.toFixed(4)}`);
+            setSearchGpsLabel('Ma position actuelle');
         }
     }, [location]);
 
@@ -1015,7 +1021,7 @@ const PharmacieHomeScreen: React.FC = () => {
                         >
                             <SafeIcon name="map-pin" size={18} color="#EC4899" type="lucide" />
                             <Text style={styles.gpsButtonText} numberOfLines={1}>
-                                {searchGpsString || 'Utiliser ma position GPS (optionnel)'}
+                                {searchGpsLabel || (searchGpsString ? 'Position sélectionnée' : 'Utiliser ma position GPS (optionnel)')}
                             </Text>
                             <SafeIcon name="chevron-right" size={18} color="#9CA3AF" type="lucide" />
                         </TouchableOpacity>
@@ -1256,45 +1262,83 @@ const PharmacieHomeScreen: React.FC = () => {
                                     </View>
                                 )}
 
-                                {/* Réponse IA (avant le champ : le composer reste en bas du scroll pour le clavier) */}
+                                {/* Réponse IA */}
                                 {aiResponse && (
                                     <View style={styles.aiResponseContainer}>
+                                        {/* Header avec titre + actions */}
                                         <View style={styles.aiResponseHeader}>
-                                            <SafeIcon name="brain" size={16} color="#059669" type="lucide" />
-                                            <Text style={styles.aiResponseTitle}>{t('pharmacieHome.reponseIa')}</Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                                <View style={styles.aiResponseIconBadge}>
+                                                    <SafeIcon name="brain" size={14} color="#fff" type="lucide" />
+                                                </View>
+                                                <Text style={styles.aiResponseTitle}>{t('pharmacieHome.reponseIa')}</Text>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                                                <TouchableOpacity
+                                                    style={styles.aiActionBtn}
+                                                    onPress={async () => {
+                                                        await Clipboard.setStringAsync(extractAIText(aiResponse));
+                                                        toaster?.show?.('Copié !', 'success');
+                                                    }}
+                                                >
+                                                    <SafeIcon name="copy" size={14} color="#059669" type="lucide" />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.aiActionBtn}
+                                                    onPress={() => { hapticPress(); setAiResponse(null); setAiQuestion(''); }}
+                                                >
+                                                    <SafeIcon name="x" size={14} color="#6B7280" type="lucide" />
+                                                </TouchableOpacity>
+                                            </View>
                                         </View>
+
+                                        {/* Contenu scrollable */}
                                         <ScrollView
                                             style={styles.aiResponseTextScroll}
                                             nestedScrollEnabled={true}
+                                            showsVerticalScrollIndicator={true}
+                                            persistentScrollbar={true}
                                         >
-                                            {/* Rendu markdown simple : **gras** et retours à la ligne */}
-                                            <Text style={styles.aiResponseText}>
-                                                {(aiResponse || '').split('\n').map((line, li) => {
-                                                    // Découper les segments **bold**
-                                                    const parts = line.split(/\*\*(.*?)\*\*/g);
+                                            {extractAIText(aiResponse).split('\n').map((line, li) => {
+                                                if (!line.trim()) return <View key={li} style={{ height: 8 }} />;
+                                                // Ligne titre (commence par # ou ##)
+                                                if (line.startsWith('## ') || line.startsWith('# ')) {
+                                                    return <Text key={li} style={styles.aiResponseHeading}>{line.replace(/^#+\s*/, '')}</Text>;
+                                                }
+                                                // Ligne bullet (- ou •)
+                                                if (line.trimStart().startsWith('- ') || line.trimStart().startsWith('• ')) {
+                                                    const content = line.replace(/^\s*[-•]\s*/, '');
                                                     return (
-                                                        <Text key={li}>
-                                                            {parts.map((part, pi) =>
-                                                                pi % 2 === 1
-                                                                    ? <Text key={pi} style={{ fontWeight: '700' }}>{part}</Text>
-                                                                    : <Text key={pi}>{part}</Text>
-                                                            )}
-                                                            {li < (aiResponse || '').split('\n').length - 1 ? '\n' : ''}
-                                                        </Text>
+                                                        <View key={li} style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
+                                                            <Text style={{ color: '#059669', fontWeight: '700', fontSize: 14 }}>•</Text>
+                                                            <Text style={[styles.aiResponseText, { flex: 1, marginBottom: 0 }]}>{content}</Text>
+                                                        </View>
                                                     );
-                                                })}
-                                            </Text>
+                                                }
+                                                // Ligne normale avec **gras**
+                                                const parts = line.split(/\*\*(.*?)\*\*/g);
+                                                return (
+                                                    <Text key={li} style={styles.aiResponseText}>
+                                                        {parts.map((part, pi) =>
+                                                            pi % 2 === 1
+                                                                ? <Text key={pi} style={{ fontWeight: '700', color: '#065F46' }}>{part}</Text>
+                                                                : <Text key={pi}>{part}</Text>
+                                                        )}
+                                                    </Text>
+                                                );
+                                            })}
                                         </ScrollView>
-                                        <TouchableOpacity
-                                            style={styles.aiClearButton}
-                                            onPress={() => {
-                                                hapticPress();
-                                                setAiResponse(null);
-                                                setAiQuestion('');
-                                            }}
-                                        >
-                                            <Text style={styles.aiClearButtonText}>{t('pharmacieHome.nouvelleQuestion')}</Text>
-                                        </TouchableOpacity>
+
+                                        {/* Pied avec bouton nouvelle question */}
+                                        <View style={styles.aiResponseFooter}>
+                                            <TouchableOpacity
+                                                style={styles.aiClearButton}
+                                                onPress={() => { hapticPress(); setAiResponse(null); setAiQuestion(''); }}
+                                            >
+                                                <SafeIcon name="refresh-cw" size={12} color="#059669" type="lucide" />
+                                                <Text style={styles.aiClearButtonText}>{t('pharmacieHome.nouvelleQuestion')}</Text>
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
                                 )}
 
@@ -3148,38 +3192,75 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
     aiResponseContainer: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        padding: 16,
+        backgroundColor: '#F0FDF4',
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#86EFAC',
         marginTop: 8,
-        maxHeight: 300,
-    },
-    aiResponseTextScroll: {
-        maxHeight: 200,
+        overflow: 'hidden',
     },
     aiResponseHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        marginBottom: 12,
+        justifyContent: 'space-between',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        backgroundColor: '#DCFCE7',
+        borderBottomWidth: 1,
+        borderBottomColor: '#86EFAC',
+    },
+    aiResponseIconBadge: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#059669',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     aiResponseTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#065F46',
+    },
+    aiActionBtn: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#D1FAE5',
+    },
+    aiResponseTextScroll: {
+        maxHeight: 260,
+        paddingHorizontal: 14,
+        paddingTop: 12,
+    },
+    aiResponseHeading: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#059669',
+        color: '#065F46',
+        marginBottom: 6,
+        marginTop: 4,
     },
     aiResponseText: {
         fontSize: 14,
-        color: '#111827',
-        lineHeight: 20,
-        marginBottom: 12,
+        color: '#1F2937',
+        lineHeight: 22,
+        marginBottom: 6,
+    },
+    aiResponseFooter: {
+        borderTopWidth: 1,
+        borderTopColor: '#D1FAE5',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
     },
     aiClearButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
         alignSelf: 'flex-start',
-        paddingVertical: 6,
-        paddingHorizontal: 12,
     },
     aiClearButtonText: {
         fontSize: 12,

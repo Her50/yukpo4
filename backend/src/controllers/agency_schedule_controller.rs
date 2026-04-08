@@ -706,11 +706,13 @@ pub struct AgenceBranchRequest {
     pub telephone: Option<String>,
 }
 
+/// Succursale agence = agence enfant (parent_agence_id IS NOT NULL)
 #[derive(Debug, serde::Serialize, sqlx::FromRow)]
 pub struct AgenceBranch {
     pub id: i32,
-    pub agence_voyage_id: Option<i32>,
-    pub nom: String,
+    pub service_id: i32,
+    pub parent_agence_id: Option<i32>,
+    pub nom_agence: String,
     pub adresse: Option<String>,
     pub quartier: Option<String>,
     pub ville: Option<String>,
@@ -719,17 +721,16 @@ pub struct AgenceBranch {
     pub is_active: bool,
 }
 
-/// GET /api/agences/branches  — succursales de l'agence de l'utilisateur connecté
+/// GET /api/agences/branches  — succursales de l'agence principale de l'utilisateur
 pub async fn list_agence_branches(
     State(state): State<Arc<crate::state::AppState>>,
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
 ) -> crate::core::types::AppResult<impl axum::response::IntoResponse> {
+    // Trouver l'agence principale (sans parent)
     let agence_id: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM agences_voyage WHERE user_id = $1 AND is_active = TRUE LIMIT 1",
+        "SELECT id FROM agences_voyage WHERE user_id = $1 AND is_active = TRUE AND parent_agence_id IS NULL LIMIT 1",
     )
-    .bind(user.id)
-    .fetch_optional(&state.pg)
-    .await
+    .bind(user.id).fetch_optional(&state.pg).await
     .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
 
     let Some(agence_id) = agence_id else {
@@ -739,7 +740,10 @@ pub async fn list_agence_branches(
     };
 
     let branches: Vec<AgenceBranch> = sqlx::query_as(
-        "SELECT id, agence_voyage_id, nom, adresse, quartier, ville, gps, telephone, is_active FROM agence_branches WHERE agence_voyage_id = $1 AND is_active = TRUE ORDER BY nom ASC"
+        r#"SELECT id, service_id, parent_agence_id, nom_agence, adresse, quartier, ville, gps, telephone, is_active
+           FROM agences_voyage
+           WHERE parent_agence_id = $1 AND is_active = TRUE
+           ORDER BY nom_agence ASC"#,
     ).bind(agence_id).fetch_all(&state.pg).await
     .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur branches: {}", e)))?;
 
@@ -748,31 +752,44 @@ pub async fn list_agence_branches(
     ))
 }
 
-/// POST /api/agences/branches
+/// POST /api/agences/branches — crée une succursale autonome (services + agences_voyage enfant)
 pub async fn create_agence_branch(
     State(state): State<Arc<crate::state::AppState>>,
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
     axum::Json(payload): axum::Json<AgenceBranchRequest>,
 ) -> crate::core::types::AppResult<impl axum::response::IntoResponse> {
     let agence_id: Option<i32> = sqlx::query_scalar(
-        "SELECT id FROM agences_voyage WHERE user_id = $1 AND is_active = TRUE LIMIT 1",
+        "SELECT id FROM agences_voyage WHERE user_id = $1 AND is_active = TRUE AND parent_agence_id IS NULL LIMIT 1",
     )
-    .bind(user.id)
-    .fetch_optional(&state.pg)
-    .await
+    .bind(user.id).fetch_optional(&state.pg).await
     .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
 
-    let agence_id = agence_id
-        .ok_or_else(|| crate::core::types::AppError::NotFound("Agence non trouvée".into()))?;
+    let agence_id = agence_id.ok_or_else(|| {
+        crate::core::types::AppError::NotFound("Agence principale non trouvée".into())
+    })?;
 
-    let branch: AgenceBranch = sqlx::query_as(
-        r#"INSERT INTO agence_branches (agence_voyage_id, nom, adresse, quartier, ville, gps, telephone)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)
-           RETURNING id, agence_voyage_id, nom, adresse, quartier, ville, gps, telephone, is_active"#,
-    ).bind(agence_id).bind(&payload.nom).bind(payload.adresse)
-    .bind(payload.quartier).bind(payload.ville).bind(payload.gps).bind(payload.telephone)
+    // 1. Créer un service dédié à la succursale
+    let branch_service_id: i32 = sqlx::query_scalar(
+        r#"INSERT INTO services (user_id, titre_service, description, category, specialized_type, is_active, created_at, updated_at)
+           VALUES ($1, $2, 'Succursale agence de voyage', 'voyage', 'agence_voyage', TRUE, NOW(), NOW())
+           RETURNING id"#,
+    )
+    .bind(user.id).bind(&payload.nom)
     .fetch_one(&state.pg).await
-    .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur création: {}", e)))?;
+    .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur création service succursale: {}", e)))?;
+
+    // 2. Créer l'agence enfant liée au service + parent
+    let branch: AgenceBranch = sqlx::query_as(
+        r#"INSERT INTO agences_voyage (service_id, user_id, nom_agence, adresse, quartier, ville, gps, telephone, is_active, parent_agence_id, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9, NOW(), NOW())
+           RETURNING id, service_id, parent_agence_id, nom_agence, adresse, quartier, ville, gps, telephone, is_active"#,
+    )
+    .bind(branch_service_id).bind(user.id)
+    .bind(&payload.nom).bind(&payload.adresse).bind(&payload.quartier)
+    .bind(&payload.ville).bind(&payload.gps).bind(&payload.telephone)
+    .bind(agence_id)
+    .fetch_one(&state.pg).await
+    .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur création succursale agence: {}", e)))?;
 
     Ok((
         axum::http::StatusCode::CREATED,
@@ -788,7 +805,7 @@ pub async fn update_agence_branch(
     axum::Json(payload): axum::Json<AgenceBranchRequest>,
 ) -> crate::core::types::AppResult<impl axum::response::IntoResponse> {
     let owned: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM agence_branches b JOIN agences_voyage a ON a.id = b.agence_voyage_id WHERE b.id = $1 AND a.user_id = $2)"
+        "SELECT EXISTS(SELECT 1 FROM agences_voyage WHERE id = $1 AND user_id = $2 AND parent_agence_id IS NOT NULL)"
     ).bind(branch_id).bind(user.id).fetch_one(&state.pg).await
     .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
     if !owned {
@@ -797,11 +814,20 @@ pub async fn update_agence_branch(
         ));
     }
 
-    sqlx::query("UPDATE agence_branches SET nom=$1,adresse=$2,quartier=$3,ville=$4,gps=$5,telephone=$6,updated_at=NOW() WHERE id=$7")
-    .bind(&payload.nom).bind(payload.adresse).bind(payload.quartier)
-    .bind(payload.ville).bind(payload.gps).bind(payload.telephone).bind(branch_id)
+    sqlx::query(
+        "UPDATE agences_voyage SET nom_agence=$1, adresse=$2, quartier=$3, ville=$4, gps=$5, telephone=$6, updated_at=NOW() WHERE id=$7"
+    )
+    .bind(&payload.nom).bind(&payload.adresse).bind(&payload.quartier)
+    .bind(&payload.ville).bind(&payload.gps).bind(&payload.telephone).bind(branch_id)
     .execute(&state.pg).await
     .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
+
+    // Synchroniser le titre du service
+    sqlx::query(
+        "UPDATE services SET titre_service=$1, updated_at=NOW() WHERE id = (SELECT service_id FROM agences_voyage WHERE id=$2)"
+    )
+    .bind(&payload.nom).bind(branch_id)
+    .execute(&state.pg).await.ok();
 
     Ok(axum::Json(serde_json::json!({ "success": true })))
 }
@@ -813,7 +839,7 @@ pub async fn delete_agence_branch(
     axum::extract::Path(branch_id): axum::extract::Path<i32>,
 ) -> crate::core::types::AppResult<impl axum::response::IntoResponse> {
     let owned: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM agence_branches b JOIN agences_voyage a ON a.id = b.agence_voyage_id WHERE b.id = $1 AND a.user_id = $2)"
+        "SELECT EXISTS(SELECT 1 FROM agences_voyage WHERE id = $1 AND user_id = $2 AND parent_agence_id IS NOT NULL)"
     ).bind(branch_id).bind(user.id).fetch_one(&state.pg).await
     .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
     if !owned {
@@ -822,11 +848,16 @@ pub async fn delete_agence_branch(
         ));
     }
 
-    sqlx::query("UPDATE agence_branches SET is_active=FALSE WHERE id=$1")
+    sqlx::query("UPDATE agences_voyage SET is_active=FALSE, updated_at=NOW() WHERE id=$1")
         .bind(branch_id)
         .execute(&state.pg)
         .await
         .map_err(|e| crate::core::types::AppError::Internal(e.to_string()))?;
+
+    sqlx::query(
+        "UPDATE services SET is_active=FALSE, updated_at=NOW() WHERE id=(SELECT service_id FROM agences_voyage WHERE id=$1)"
+    )
+    .bind(branch_id).execute(&state.pg).await.ok();
 
     Ok(axum::Json(serde_json::json!({ "success": true })))
 }

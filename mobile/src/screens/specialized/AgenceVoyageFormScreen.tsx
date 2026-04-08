@@ -35,7 +35,7 @@ import { useLocation } from '../../contexts/LocationContext';
 import { clearSavedFormData, useFormAutoSave } from '../../hooks/useFormAutoSave';
 import { useFormValidation } from '../../hooks/useFormValidation';
 import { usePartnerData } from '../../hooks/usePartnerData';
-import { apiDelete, apiGet, apiPost, apiPut, servicesApi } from '../../services/api';
+import { apiDelete, apiGet, apiPatch, apiPost, apiPut, servicesApi } from '../../services/api';
 import { getCurrencyIntelligently } from '../../utils/currencyUtils';
 
 const STORAGE_KEY = '@agence_voyage_form';
@@ -193,6 +193,10 @@ const AgenceVoyageFormScreen: React.FC = () => {
     const [editingAgenceBranch, setEditingAgenceBranch] = useState<any | null>(null);
     const [agenceBranchForm, setAgenceBranchForm] = useState({ nom: '', adresse: '', quartier: '', telephone: '', gps: '' });
     const [showAgenceBranchGPS, setShowAgenceBranchGPS] = useState(false);
+    // Équipe par succursale
+    const [showAgenceBranchTeam, setShowAgenceBranchTeam] = useState(false);
+    const [agenceBranchTeamServiceId, setAgenceBranchTeamServiceId] = useState<number | null>(null);
+    const [agenceBranchTeamName, setAgenceBranchTeamName] = useState('');
 
     // Schedules
     const [schedules, setSchedules] = useState<any[]>([]);
@@ -798,67 +802,122 @@ const AgenceVoyageFormScreen: React.FC = () => {
         </ScrollView>
     );
 
+    // ─── BRANCHES: helpers ───────────────────────────────────────────────
+    const loadAgenceBranches = async () => {
+        try { const r = await apiGet('/api/agences/branches'); if (r.success) setAgenceBranches(r.branches || []); } catch (_) {}
+    };
+
+    const handleSaveAgenceBranch = async () => {
+        if (!agenceBranchForm.nom.trim()) { Alert.alert('Erreur', 'Nom requis'); return; }
+        try {
+            const p = { nom: agenceBranchForm.nom, adresse: agenceBranchForm.adresse || null, quartier: agenceBranchForm.quartier || null, telephone: agenceBranchForm.telephone || null, gps: agenceBranchForm.gps || null };
+            if (editingAgenceBranch) await apiPatch(`/api/agences/branches/${editingAgenceBranch.id}`, p);
+            else await apiPost('/api/agences/branches', p);
+            setShowAgenceBranchModal(false); setEditingAgenceBranch(null); setAgenceBranchForm({ nom: '', adresse: '', quartier: '', telephone: '', gps: '' });
+            loadAgenceBranches();
+        } catch (e: any) { Alert.alert('Erreur', e.message); }
+    };
+
+    const handleDeleteAgenceBranch = (b: any) => {
+        Alert.alert('Supprimer', `Supprimer "${b.nom_agence || b.nom}" ?`, [
+            { text: 'Annuler', style: 'cancel' },
+            { text: 'Supprimer', style: 'destructive', onPress: async () => {
+                try { await apiDelete(`/api/agences/branches/${b.id}`); loadAgenceBranches(); }
+                catch (e: any) { Alert.alert('Erreur', e.message); }
+            }},
+        ]);
+    };
+
     // ─── RENDER: Branches Tab ────────────────────────────────────────────
     const renderAgenceBranches = () => {
-        const loadBranches = async () => { try { const r = await apiGet('/api/agences/branches'); if (r.success) setAgenceBranches(r.branches || []); } catch (_) {} };
-        if (agenceBranches.length === 0) loadBranches();
-        const saveBranch = async () => {
-            if (!agenceBranchForm.nom.trim()) { Alert.alert('Erreur', 'Nom requis'); return; }
-            try {
-                const p = { nom: agenceBranchForm.nom, adresse: agenceBranchForm.adresse || null, quartier: agenceBranchForm.quartier || null, telephone: agenceBranchForm.telephone || null, gps: agenceBranchForm.gps || null };
-                if (editingAgenceBranch) await apiPatch(`/api/agences/branches/${editingAgenceBranch.id}`, p);
-                else await apiPost('/api/agences/branches', p);
-                setShowAgenceBranchModal(false); setEditingAgenceBranch(null); setAgenceBranchForm({ nom: '', adresse: '', quartier: '', telephone: '', gps: '' });
-                loadBranches();
-            } catch (e: any) { Alert.alert('Erreur', e.message); }
-        };
+        if (agenceBranches.length === 0) loadAgenceBranches();
         return (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
+                {/* Info banner */}
+                <View style={{ backgroundColor: '#EFF6FF', borderRadius: 10, padding: 12, marginBottom: 16, flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+                    <SafeIcon name="info" size={16} color="#2563EB" type="lucide" />
+                    <Text style={{ flex: 1, fontSize: 12, color: '#1D4ED8', lineHeight: 18 }}>
+                        Chaque succursale est une agence autonome visible dans la recherche, avec ses propres horaires et son équipe dédiée.
+                    </Text>
+                </View>
+
                 <TouchableOpacity style={s.addBranchBtn} onPress={() => { setEditingAgenceBranch(null); setAgenceBranchForm({ nom: '', adresse: '', quartier: '', telephone: '', gps: '' }); setShowAgenceBranchModal(true); }}>
                     <SafeIcon name="plus" size={18} color="#fff" type="lucide" />
                     <Text style={s.addBranchBtnText}>Ajouter une succursale</Text>
                 </TouchableOpacity>
+
                 {agenceBranches.length === 0 ? (
                     <View style={{ alignItems: 'center', marginTop: 32 }}>
                         <SafeIcon name="git-branch" size={40} color="#D1D5DB" type="lucide" />
                         <Text style={{ color: '#9CA3AF', marginTop: 12 }}>Aucune succursale enregistrée</Text>
                     </View>
                 ) : agenceBranches.map((b: any, i: number) => (
-                    <View key={b.id || i} style={s.branchCard}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={s.branchName}>{b.nom}</Text>
-                            {b.adresse ? <Text style={s.branchInfo}>{b.adresse}</Text> : null}
-                            {b.quartier ? <Text style={s.branchInfo}>{b.quartier}</Text> : null}
-                            {b.telephone ? <Text style={s.branchInfo}>{b.telephone}</Text> : null}
-                            {b.gps ? <Text style={[s.branchInfo, { color: '#2563EB' }]}>GPS enregistré ✓</Text> : null}
-                        </View>
-                        <View style={{ gap: 8 }}>
-                            <TouchableOpacity onPress={() => { setEditingAgenceBranch(b); setAgenceBranchForm({ nom: b.nom, adresse: b.adresse || '', quartier: b.quartier || '', telephone: b.telephone || '', gps: b.gps || '' }); setShowAgenceBranchModal(true); }}><SafeIcon name="edit" size={18} color="#3B82F6" type="lucide" /></TouchableOpacity>
-                            <TouchableOpacity onPress={() => Alert.alert('Supprimer', `Supprimer "${b.nom}" ?`, [{ text: 'Annuler', style: 'cancel' }, { text: 'Supprimer', style: 'destructive', onPress: async () => { await apiPatch(`/api/agences/branches/${b.id}`, { ...b, is_active: false }); loadBranches(); } }])}><SafeIcon name="trash-2" size={18} color="#EF4444" type="lucide" /></TouchableOpacity>
+                    <View key={b.id || i} style={[s.branchCard, { flexDirection: 'column', padding: 0, overflow: 'hidden' }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.branchName}>{b.nom_agence || b.nom}</Text>
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                                    {b.quartier ? <Text style={s.branchInfo}>{b.quartier}</Text> : null}
+                                    {b.telephone ? <Text style={s.branchInfo}>{b.telephone}</Text> : null}
+                                    {b.gps ? <Text style={[s.branchInfo, { color: '#2563EB' }]}>📍 GPS</Text> : null}
+                                </View>
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                                {/* Équipe */}
+                                <TouchableOpacity onPress={() => { if (b.service_id) { setAgenceBranchTeamServiceId(b.service_id); setAgenceBranchTeamName(b.nom_agence || b.nom); setShowAgenceBranchTeam(true); } }}>
+                                    <SafeIcon name="users" size={18} color="#8B5CF6" type="lucide" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => { setEditingAgenceBranch(b); setAgenceBranchForm({ nom: b.nom_agence || b.nom, adresse: b.adresse || '', quartier: b.quartier || '', telephone: b.telephone || '', gps: b.gps || '' }); setShowAgenceBranchModal(true); }}>
+                                    <SafeIcon name="edit" size={18} color="#3B82F6" type="lucide" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => handleDeleteAgenceBranch(b)}>
+                                    <SafeIcon name="trash-2" size={18} color="#EF4444" type="lucide" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
                 ))}
-                <Modal visible={showAgenceBranchModal} transparent animationType="slide" onRequestClose={() => setShowAgenceBranchModal(false)}>
-                    <View style={s.modalOverlay}><View style={s.modalContent}>
-                        <Text style={s.modalTitle}>{editingAgenceBranch ? 'Modifier la succursale' : 'Nouvelle succursale'}</Text>
-                        <NativeInput label="Nom *" value={agenceBranchForm.nom} onChangeText={v => setAgenceBranchForm(f => ({ ...f, nom: v }))} placeholder="Ex: Agence Plateau" />
-                        <View style={{ height: 10 }} />
-                        <NativeInput label="Adresse" value={agenceBranchForm.adresse} onChangeText={v => setAgenceBranchForm(f => ({ ...f, adresse: v }))} placeholder="Adresse" />
-                        <View style={{ height: 10 }} />
-                        <NativeInput label="Quartier" value={agenceBranchForm.quartier} onChangeText={v => setAgenceBranchForm(f => ({ ...f, quartier: v }))} placeholder="Quartier ou zone" />
-                        <View style={{ height: 10 }} />
-                        <NativeInput label="Téléphone" value={agenceBranchForm.telephone} onChangeText={v => setAgenceBranchForm(f => ({ ...f, telephone: v }))} placeholder="+XXX" keyboardType="phone-pad" />
-                        <View style={{ height: 10 }} />
-                        <TouchableOpacity style={[s.gpsBtn, agenceBranchForm.gps ? { borderColor: '#2563EB' } : {}]} onPress={() => setShowAgenceBranchGPS(true)}>
-                            <SafeIcon name="map-pin" size={18} color={agenceBranchForm.gps ? '#2563EB' : '#6B7280'} type="lucide" />
-                            <Text style={[s.gpsBtnText, agenceBranchForm.gps ? { color: '#2563EB' } : {}]}>{agenceBranchForm.gps ? 'GPS enregistré ✓' : 'Position GPS'}</Text>
-                            <SafeIcon name="chevron-right" size={18} color="#9CA3AF" type="lucide" />
-                        </TouchableOpacity>
-                        <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-                            <NativeButton title="Annuler" onPress={() => setShowAgenceBranchModal(false)} variant="secondary" style={{ flex: 1 }} />
-                            <NativeButton title="Enregistrer" onPress={saveBranch} variant="primary" style={{ flex: 1 }} />
+
+                {/* Modal équipe succursale */}
+                <Modal visible={showAgenceBranchTeam} animationType="slide" onRequestClose={() => setShowAgenceBranchTeam(false)}>
+                    <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 50, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', gap: 12 }}>
+                            <TouchableOpacity onPress={() => setShowAgenceBranchTeam(false)}>
+                                <SafeIcon name="arrow-left" size={22} color="#111827" type="lucide" />
+                            </TouchableOpacity>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontWeight: '700', fontSize: 16, color: '#111827' }}>Équipe — {agenceBranchTeamName}</Text>
+                                <Text style={{ fontSize: 12, color: '#6B7280' }}>Membres assignés à cette succursale</Text>
+                            </View>
                         </View>
-                    </View></View>
+                        <ServiceTeamManager serviceId={agenceBranchTeamServiceId?.toString()} onClose={() => setShowAgenceBranchTeam(false)} />
+                    </View>
+                </Modal>
+
+                {/* Modal ajout/édition succursale */}
+                <Modal visible={showAgenceBranchModal} transparent animationType="slide" onRequestClose={() => setShowAgenceBranchModal(false)}>
+                    <View style={s.modalOverlay}>
+                        <ScrollView contentContainerStyle={s.modalContent} keyboardShouldPersistTaps="handled">
+                            <Text style={s.modalTitle}>{editingAgenceBranch ? 'Modifier la succursale' : 'Nouvelle succursale'}</Text>
+                            <NativeInput label="Nom *" value={agenceBranchForm.nom} onChangeText={v => setAgenceBranchForm(f => ({ ...f, nom: v }))} placeholder="Ex: Agence Plateau" />
+                            <View style={{ height: 10 }} />
+                            <NativeInput label="Adresse" value={agenceBranchForm.adresse} onChangeText={v => setAgenceBranchForm(f => ({ ...f, adresse: v }))} placeholder="Adresse" />
+                            <View style={{ height: 10 }} />
+                            <NativeInput label="Quartier" value={agenceBranchForm.quartier} onChangeText={v => setAgenceBranchForm(f => ({ ...f, quartier: v }))} placeholder="Quartier ou zone" />
+                            <View style={{ height: 10 }} />
+                            <NativeInput label="Téléphone" value={agenceBranchForm.telephone} onChangeText={v => setAgenceBranchForm(f => ({ ...f, telephone: v }))} placeholder="+XXX" keyboardType="phone-pad" />
+                            <View style={{ height: 10 }} />
+                            <TouchableOpacity style={[s.gpsBtn, agenceBranchForm.gps ? { borderColor: '#2563EB' } : {}]} onPress={() => setShowAgenceBranchGPS(true)}>
+                                <SafeIcon name="map-pin" size={18} color={agenceBranchForm.gps ? '#2563EB' : '#6B7280'} type="lucide" />
+                                <Text style={[s.gpsBtnText, agenceBranchForm.gps ? { color: '#2563EB' } : {}]}>{agenceBranchForm.gps ? 'GPS enregistré ✓' : 'Position GPS'}</Text>
+                                <SafeIcon name="chevron-right" size={18} color="#9CA3AF" type="lucide" />
+                            </TouchableOpacity>
+                            <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                                <NativeButton title="Annuler" onPress={() => setShowAgenceBranchModal(false)} variant="secondary" style={{ flex: 1 }} />
+                                <NativeButton title="Enregistrer" onPress={handleSaveAgenceBranch} variant="primary" style={{ flex: 1 }} />
+                            </View>
+                        </ScrollView>
+                    </View>
                     <ModernGPSModal visible={showAgenceBranchGPS} onClose={() => setShowAgenceBranchGPS(false)}
                         onSelect={async (c: string) => { setAgenceBranchForm(f => ({ ...f, gps: c })); setShowAgenceBranchGPS(false); try { const [lat, lng] = c.split(',').map(Number); const r = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng }); if (r?.[0]) { const a = r[0]; const lieu = a.subregion || a.district || a.city || ''; if (lieu) setAgenceBranchForm(f => ({ ...f, quartier: f.quartier || lieu, adresse: f.adresse || [a.streetNumber, a.street, a.city].filter(Boolean).join(' ') })); } } catch (_) {} }}
                         currentLocation={location ? { lat: location.coords.latitude, lng: location.coords.longitude } : null}

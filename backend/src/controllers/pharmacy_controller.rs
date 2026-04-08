@@ -634,10 +634,12 @@ pub struct CreateBranchRequest {
     pub telephone: Option<String>,
 }
 
+/// Succursale = pharmacie enfant (parent_pharmacy_id IS NOT NULL)
 #[derive(Debug, Serialize, FromRow)]
 pub struct PharmacyBranch {
     pub id: i32,
-    pub pharmacy_id: i32,
+    pub service_id: i32,
+    pub parent_pharmacy_id: Option<i32>,
     pub nom: String,
     pub adresse: Option<String>,
     pub quartier: Option<String>,
@@ -648,12 +650,12 @@ pub struct PharmacyBranch {
 }
 
 /// GET /api/pharmacies/{id}/branches
+/// Retourne toutes les succursales (pharmacies enfant) de la pharmacie principale
 pub async fn list_branches(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Path(pharmacy_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
-    // Vérifier propriété
     let owned: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM pharmacies WHERE id = $1 AND user_id = $2)",
     )
@@ -667,14 +669,19 @@ pub async fn list_branches(
     }
 
     let branches: Vec<PharmacyBranch> = sqlx::query_as(
-        "SELECT id, pharmacy_id, nom, adresse, quartier, ville, gps, telephone, is_active FROM pharmacy_branches WHERE pharmacy_id = $1 AND is_active = TRUE ORDER BY nom ASC"
-    ).bind(pharmacy_id).fetch_all(&state.pg).await
+        r#"SELECT id, service_id, parent_pharmacy_id, nom, adresse, quartier, ville, gps, telephone, is_active
+           FROM pharmacies
+           WHERE parent_pharmacy_id = $1 AND is_active = TRUE
+           ORDER BY nom ASC"#,
+    )
+    .bind(pharmacy_id).fetch_all(&state.pg).await
     .map_err(|e| AppError::Internal(format!("Erreur chargement succursales: {}", e)))?;
 
     Ok(Json(json!({ "success": true, "branches": branches })))
 }
 
 /// POST /api/pharmacies/{id}/branches
+/// Crée une succursale autonome : services + pharmacies(parent_pharmacy_id = id)
 pub async fn create_branch(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
@@ -693,13 +700,27 @@ pub async fn create_branch(
         return Err(AppError::Forbidden("Accès refusé".into()));
     }
 
-    let branch: PharmacyBranch = sqlx::query_as(
-        r#"INSERT INTO pharmacy_branches (pharmacy_id, nom, adresse, quartier, ville, gps, telephone)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING id, pharmacy_id, nom, adresse, quartier, ville, gps, telephone, is_active"#,
+    // 1. Créer un service dédié à la succursale
+    let branch_service_id: i32 = sqlx::query_scalar(
+        r#"INSERT INTO services (user_id, titre_service, description, category, specialized_type, is_active, created_at, updated_at)
+           VALUES ($1, $2, 'Succursale pharmacie', 'sante', 'pharmacie', TRUE, NOW(), NOW())
+           RETURNING id"#,
     )
-    .bind(pharmacy_id).bind(&payload.nom).bind(payload.adresse)
-    .bind(payload.quartier).bind(payload.ville).bind(payload.gps).bind(payload.telephone)
+    .bind(user_id)
+    .bind(&payload.nom)
+    .fetch_one(&state.pg).await
+    .map_err(|e| AppError::Internal(format!("Erreur création service succursale: {}", e)))?;
+
+    // 2. Créer la pharmacie enfant liée au service + parent
+    let branch: PharmacyBranch = sqlx::query_as(
+        r#"INSERT INTO pharmacies (service_id, user_id, nom, adresse, quartier, ville, gps, telephone, is_active, parent_pharmacy_id, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9, NOW(), NOW())
+           RETURNING id, service_id, parent_pharmacy_id, nom, adresse, quartier, ville, gps, telephone, is_active"#,
+    )
+    .bind(branch_service_id).bind(user_id)
+    .bind(&payload.nom).bind(&payload.adresse).bind(&payload.quartier)
+    .bind(&payload.ville).bind(&payload.gps).bind(&payload.telephone)
+    .bind(pharmacy_id)
     .fetch_one(&state.pg).await
     .map_err(|e| AppError::Internal(format!("Erreur création succursale: {}", e)))?;
 
@@ -710,6 +731,7 @@ pub async fn create_branch(
 }
 
 /// PATCH /api/pharmacies/branches/{branch_id}
+/// branch_id = id dans pharmacies (succursale enfant)
 pub async fn update_branch(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
@@ -717,20 +739,28 @@ pub async fn update_branch(
     Json(payload): Json<CreateBranchRequest>,
 ) -> AppResult<impl IntoResponse> {
     let owned: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM pharmacy_branches b JOIN pharmacies p ON p.id = b.pharmacy_id WHERE b.id = $1 AND p.user_id = $2)"
+        "SELECT EXISTS(SELECT 1 FROM pharmacies WHERE id = $1 AND user_id = $2 AND parent_pharmacy_id IS NOT NULL)"
     ).bind(branch_id).bind(user_id).fetch_one(&state.pg).await
     .map_err(|e| AppError::Internal(e.to_string()))?;
     if !owned {
         return Err(AppError::Forbidden("Accès refusé".into()));
     }
 
+    // Mettre à jour pharmacies + service lié
     sqlx::query(
-        "UPDATE pharmacy_branches SET nom=$1, adresse=$2, quartier=$3, ville=$4, gps=$5, telephone=$6, updated_at=NOW() WHERE id=$7"
+        "UPDATE pharmacies SET nom=$1, adresse=$2, quartier=$3, ville=$4, gps=$5, telephone=$6, updated_at=NOW() WHERE id=$7"
     )
-    .bind(&payload.nom).bind(payload.adresse).bind(payload.quartier)
-    .bind(payload.ville).bind(payload.gps).bind(payload.telephone).bind(branch_id)
+    .bind(&payload.nom).bind(&payload.adresse).bind(&payload.quartier)
+    .bind(&payload.ville).bind(&payload.gps).bind(&payload.telephone).bind(branch_id)
     .execute(&state.pg).await
     .map_err(|e| AppError::Internal(format!("Erreur mise à jour succursale: {}", e)))?;
+
+    // Synchroniser le titre du service
+    sqlx::query(
+        "UPDATE services SET titre_service=$1, updated_at=NOW() WHERE id = (SELECT service_id FROM pharmacies WHERE id=$2)"
+    )
+    .bind(&payload.nom).bind(branch_id)
+    .execute(&state.pg).await.ok();
 
     Ok(Json(json!({ "success": true })))
 }
@@ -742,18 +772,24 @@ pub async fn delete_branch(
     Path(branch_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     let owned: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM pharmacy_branches b JOIN pharmacies p ON p.id = b.pharmacy_id WHERE b.id = $1 AND p.user_id = $2)"
+        "SELECT EXISTS(SELECT 1 FROM pharmacies WHERE id = $1 AND user_id = $2 AND parent_pharmacy_id IS NOT NULL)"
     ).bind(branch_id).bind(user_id).fetch_one(&state.pg).await
     .map_err(|e| AppError::Internal(e.to_string()))?;
     if !owned {
         return Err(AppError::Forbidden("Accès refusé".into()));
     }
 
-    sqlx::query("UPDATE pharmacy_branches SET is_active = FALSE WHERE id = $1")
+    // Désactiver la pharmacie enfant + son service
+    sqlx::query("UPDATE pharmacies SET is_active = FALSE, updated_at=NOW() WHERE id = $1")
         .bind(branch_id)
         .execute(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur suppression succursale: {}", e)))?;
+
+    sqlx::query(
+        "UPDATE services SET is_active = FALSE, updated_at=NOW() WHERE id = (SELECT service_id FROM pharmacies WHERE id=$1)"
+    )
+    .bind(branch_id).execute(&state.pg).await.ok();
 
     Ok(Json(json!({ "success": true })))
 }

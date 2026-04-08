@@ -8575,10 +8575,16 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto pharmacy advanced tables: {}", e),
     }
 
-    // ✅ 2026-04-08 : Table succursales pharmacie
-    match ensure_pharmacy_branches_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: pharmacy_branches table OK"),
-        Err(e) => error!("❌ Erreur migration auto pharmacy_branches: {}", e),
+    // ✅ 2026-04-08 : Succursales pharmacie via parent_pharmacy_id
+    match ensure_pharmacy_parent_migration(pool).await {
+        Ok(_) => info!("✅ Migration auto: pharmacy parent_pharmacy_id OK"),
+        Err(e) => error!("❌ Erreur migration auto pharmacy parent: {}", e),
+    }
+
+    // ✅ 2026-04-08 : Succursales agence via parent_agence_id
+    match ensure_agence_parent_migration(pool).await {
+        Ok(_) => info!("✅ Migration auto: agence parent_agence_id OK"),
+        Err(e) => error!("❌ Erreur migration auto agence parent: {}", e),
     }
 
     // ✅ 2025-01-27 : Tables avancées pour Laboratoires/Imagerie
@@ -21954,24 +21960,25 @@ pub async fn ensure_product_distribution_jobs(pool: &PgPool) -> Result<(), sqlx:
     Ok(())
 }
 
-pub async fn ensure_pharmacy_branches_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification/création de la table pharmacy_branches...");
+pub async fn ensure_pharmacy_parent_migration(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration succursales: ajout parent_pharmacy_id sur pharmacies...");
+    // Ajoute parent_pharmacy_id (nullable) si absent
     sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS pharmacy_branches (
-            id SERIAL PRIMARY KEY,
-            pharmacy_id INTEGER NOT NULL REFERENCES pharmacies(id) ON DELETE CASCADE,
-            nom VARCHAR(255) NOT NULL,
-            adresse TEXT,
-            quartier VARCHAR(255),
-            ville VARCHAR(255),
-            gps VARCHAR(100),
-            telephone VARCHAR(50),
-            is_active BOOLEAN NOT NULL DEFAULT TRUE,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        );
-        CREATE INDEX IF NOT EXISTS idx_pharmacy_branches_pharmacy_id ON pharmacy_branches(pharmacy_id);
+        ALTER TABLE pharmacies
+            ADD COLUMN IF NOT EXISTS parent_pharmacy_id INTEGER REFERENCES pharmacies(id) ON DELETE CASCADE;
+        CREATE INDEX IF NOT EXISTS idx_pharmacies_parent_id ON pharmacies(parent_pharmacy_id);
     "#).execute(pool).await?;
-    info!("✅ Table pharmacy_branches prête");
+    info!("✅ Migration succursales pharmacies OK");
+    Ok(())
+}
+
+pub async fn ensure_agence_parent_migration(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration succursales agences: ajout parent_agence_id sur agences_voyage...");
+    sqlx::query(r#"
+        ALTER TABLE agences_voyage
+            ADD COLUMN IF NOT EXISTS parent_agence_id INTEGER REFERENCES agences_voyage(id) ON DELETE CASCADE;
+        CREATE INDEX IF NOT EXISTS idx_agences_parent_id ON agences_voyage(parent_agence_id);
+    "#).execute(pool).await?;
+    info!("✅ Migration succursales agences OK");
     Ok(())
 }
