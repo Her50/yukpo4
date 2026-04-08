@@ -27,8 +27,8 @@ const DAYS_OF_WEEK = [
 ];
 
 const MONTHS = [
-    'Janvier', t('guardDaysSelector.fevrier'), 'Mars', 'Avril', 'Mai', 'Juin',
-    'Juillet', t('guardDaysSelector.aout'), 'Septembre', 'Octobre', 'Novembre', t('guardDaysSelector.decembre')
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
 ];
 
 interface GuardDaysSelectorProps {
