@@ -12,17 +12,21 @@ use std::sync::Arc;
 
 /// Crée les routes WhatsApp
 pub fn create_whatsapp_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
-    let whatsapp_service = Arc::new(WhatsAppService::new());
+    // with_db active le chatbot Yukpo (pharmacies, bus, transfusion sanguine)
+    let whatsapp_service = Arc::new(WhatsAppService::with_db(
+        Arc::new(state.pg.clone()),
+        state.ia.clone(),
+    ));
 
     Router::new()
-        // Webhook pour recevoir les messages WhatsApp
-        .route("/webhook", post(whatsapp_webhook_handler))
+        // Webhook pour recevoir les messages WhatsApp (Twilio pointe ici)
+        .route("/api/whatsapp/webhook", post(whatsapp_webhook_handler))
         // Endpoint de test pour vérifier la configuration
-        .route("/status", get(check_whatsapp_status))
+        .route("/api/whatsapp/status", get(check_whatsapp_status))
         // Endpoint pour envoyer un message manuellement
-        .route("/send", post(send_manual_message))
+        .route("/api/whatsapp/send", post(send_manual_message))
         // Endpoint pour lister les groupes configurés
-        .route("/groups", get(list_groups))
+        .route("/api/whatsapp/groups", get(list_groups))
         .with_state(whatsapp_service)
         .with_state(state)
 }

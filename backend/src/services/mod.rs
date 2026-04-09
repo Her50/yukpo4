@@ -320,7 +320,18 @@ pub mod twitter_publisher_service; // ✅ 2026-04-03: Publication tweets/threads
 pub mod user_context_service; // ✅ 2026-04-03: Profil commercial complet utilisateur (services, produits, ads, chatbot)
 pub mod video_transcoding_service; // ✅ NOUVEAU 2026-03-05: Service de transcodage vidéo HLS/DASH (TikTok/Shorts)
 pub mod watermark_service; // ✅ NOUVEAU 2025-01-27: Service de watermark Yukpo pour branding vidéo
+pub mod whatsapp_alert_service; // ✅ 2026-04-09: Alertes communautaires WhatsApp (Radar, Police, Accident…)
+pub mod whatsapp_books_service; // ✅ 2026-04-09: Bourse du livre scolaire via WhatsApp (scan multi-livres)
+pub mod whatsapp_chatbot_service; // ✅ 2026-04-09: Chatbot WhatsApp Yukpo — orchestrateur tous modules
+pub mod whatsapp_cm_service; // ✅ 2026-04-09: Community Manager + Trends via WhatsApp (publications, tendances)
+pub mod whatsapp_commerce_service; // ✅ 2026-04-09: Commandes, livraison, paiement MTN/Orange via WhatsApp
+pub mod whatsapp_ia_service; // ✅ 2026-04-09: YukpoIA conversationnel + génération docs + analyse données via WhatsApp
+pub mod whatsapp_partner_service; // ✅ 2026-04-09: Onboarding partenaires + gestion business via WhatsApp
+pub mod whatsapp_product_service; // ✅ 2026-04-09: Création produit marketplace via image WhatsApp
+pub mod whatsapp_provider_service; // ✅ 2026-04-09: Gestion produits/services prestataire via WhatsApp (MesProduitsScreen)
+pub mod whatsapp_realestate_service; // ✅ 2026-04-09: Immobilier, hôtel, meublé, réservation via WhatsApp
 pub mod whatsapp_service; // ✅ NOUVEAU 2026-03-06: Service WhatsApp Business avec routing automatique
+pub mod whatsapp_session_service; // ✅ 2026-04-09: Gestion sessions/états conversations WhatsApp
 pub mod youtube_audio_service;
 pub mod youtube_publisher_service; // ✅ 2026-04-03: Upload vidéos YouTube + Shorts + playlists
 pub mod yukpo_ia_billing; // YukpoIA — quota journalier + prélèvement jetons

@@ -111,12 +111,30 @@ pub struct EntityItem {
 /// Strip ```json ... ``` wrappers that LLMs commonly add around JSON output.
 fn strip_json_markdown(raw: &str) -> String {
     let trimmed = raw.trim();
+
+    // Cas 1 : commence directement par un bloc code
     let s = if trimmed.starts_with("```json") {
         trimmed.strip_prefix("```json").unwrap_or(trimmed).trim_start()
     } else if trimmed.starts_with("```") {
         trimmed.strip_prefix("```").unwrap_or(trimmed).trim_start()
     } else {
-        trimmed
+        // Cas 2 : le LLM a écrit du texte AVANT le bloc JSON ("Voici :\n```json\n{...}\n```")
+        // → extraire le contenu entre ```json ... ``` ou ```  ... ```
+        if let Some(start) = trimmed.find("```json") {
+            let inner = &trimmed[start + 7..];
+            if let Some(end) = inner.find("```") {
+                return inner[..end].trim().to_string();
+            }
+            return inner.trim().to_string();
+        } else if let Some(start) = trimmed.find("```") {
+            let inner = &trimmed[start + 3..];
+            if let Some(end) = inner.find("```") {
+                return inner[..end].trim().to_string();
+            }
+            return inner.trim().to_string();
+        } else {
+            trimmed
+        }
     };
     let s = if s.ends_with("```") {
         s.strip_suffix("```").unwrap_or(s).trim_end()
@@ -124,6 +142,24 @@ fn strip_json_markdown(raw: &str) -> String {
         s
     };
     s.to_string()
+}
+
+/// Tente d'extraire un objet JSON valide de `s` en recherchant `{` et `}` englobants.
+/// Utile quand le LLM produit un JSON tronqué ou entouré de texte résiduel.
+fn extract_json_object(s: &str) -> Option<serde_json::Value> {
+    // 1. Tente d'abord la chaîne entière
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(s) {
+        return Some(v);
+    }
+    // 2. Cherche le premier '{' et le dernier '}' et essaie de parser le sous-ensemble
+    if let (Some(start), Some(end)) = (s.find('{'), s.rfind('}')) {
+        if end > start {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(&s[start..=end]) {
+                return Some(v);
+            }
+        }
+    }
+    None
 }
 
 fn get_language_instruction(lang_code: &str) -> &'static str {
@@ -1423,9 +1459,36 @@ L’utilisateur a joint une ou plusieurs **images** (souvent des **captures d’
 
     let billing_for_persist = billing.clone();
 
-    let mut body = if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&cleaned) {
-        merge_billing_into_response(parsed, billing.clone())
+    // Tente d'abord un parse strict, puis un extract_json_object (récupère les JSON tronqués
+    // ou précédés de texte que strip_json_markdown n'a pas nettoyé).
+    let mut body = if let Some(parsed) = extract_json_object(&cleaned) {
+        // Si le JSON parsé contient un champ "message" non-vide ou un champ "document_generation",
+        // on l'utilise tel quel. Sinon on traite la réponse comme texte brut.
+        let has_message = parsed
+            .get("message")
+            .and_then(|v| v.as_str())
+            .map(|s| !s.trim().is_empty())
+            .unwrap_or(false);
+        let has_doc =
+            parsed.get("document_generation").is_some() || parsed.get("document_outline").is_some();
+        let has_visual =
+            parsed.get("visual_generation").is_some() || parsed.get("visual_spec").is_some();
+        if has_message || has_doc || has_visual {
+            merge_billing_into_response(parsed, billing.clone())
+        } else {
+            // JSON parsé mais sans contenu utile → texte brut
+            merge_billing_into_response(
+                serde_json::json!({
+                    "message": cleaned,
+                    "type": "text",
+                    "confidence": 0.7,
+                    "suggestions": ["Plus d'informations", "Aide"]
+                }),
+                billing,
+            )
+        }
     } else {
+        // Pas de JSON du tout → réponse texte brute
         merge_billing_into_response(
             serde_json::json!({
                 "message": cleaned,
@@ -1508,12 +1571,21 @@ L’utilisateur a joint une ou plusieurs **images** (souvent des **captures d’
     yukpo_ia_chat_enrich::enrich_response_attachments(&state, user_id, &mut body).await;
 
     if let Some(sid) = payload.session_id {
+        // ⚠️ Stocker UNIQUEMENT le message texte, jamais le JSON brut ni l'outline document.
+        // Cela évite d'injecter un JSON de 20k+ caractères dans le contexte des tours suivants.
         let assistant_text = body
             .get("message")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
-            .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| cleaned.clone());
+            .filter(|s| !s.is_empty() && !s.trim_start().starts_with('{'))
+            .unwrap_or_else(|| {
+                // Fallback : si body.message est vide ou est du JSON, on retourne un résumé court
+                if is_doc_request {
+                    "Document généré avec succès.".to_string()
+                } else {
+                    "Réponse YukpoIA.".to_string()
+                }
+            });
         match yukpo_ia_session_store::persist_chat_turn(
             &state.pg,
             sid,

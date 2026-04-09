@@ -1,31 +1,34 @@
-# Exclure tout sauf le backend pour Cloud Build
-.gcloudignore
-.git/
-.gitignore
+# .gcloudignore — Cloud Build upload filter
+# Files are INCLUDED by default; only list what to EXCLUDE
 
-# Mobile et frontend (inutiles pour le build backend)
+# Artefacts Rust (très lourds — jusqu'à 6 GB)
+backend/target/
+
+# Mobile et frontend
 mobile/
 node_modules/
 .expo/
 
-# Fichiers volumineux inutiles
+# Git et IDE
+.git/
+.gitignore
+.gitattributes
+.vscode/
+.idea/
+.claude/
+
+# CI/CD inutile
+.github/
+.travis.yml
+.circleci/
+docker-compose*.yml
+
+# Fichiers volumineux non nécessaires au build
 *.pptx
 *.pdf
 *.backup
 *.bak
 *.zip
-*.tar
-*.tgz
-
-# Scripts Python
-*.py
-scripts/__pycache__/
-
-# Docs et présentations
-docs/
-deployment/
-*.md
-!README.md
 
 # Logs et temporaires
 *.log
@@ -33,20 +36,14 @@ deployment/
 logs/
 tmp/
 temp/
+scripts/__pycache__/
 
-# IDE
-.vscode/
-.idea/
-.claude/
+# Docs
+docs/
+deployment/
 
-# CI/CD files non nécessaires
-.github/
-.travis.yml
-.circleci/
-docker-compose*.yml
-
-# Garder le backend complet
-!backend/
-!backend/**
-!Dockerfile
-!cloudbuild.yaml
+# Fichiers de l'éditeur
+*.swp
+*.swo
+*~
+.DS_Store

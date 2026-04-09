@@ -1,9 +1,13 @@
 // ✅ Service WhatsApp Business avec Twilio API
-// Redirection automatique vers groupes spécifiques
+// Redirection automatique vers groupes spécifiques + Chatbot Yukpo
 
 use crate::core::types::{AppError, AppResult};
+use crate::services::app_ia::AppIA;
+use crate::services::whatsapp_chatbot_service::WhatsAppChatbotService;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// Configuration du service WhatsApp Business
 #[derive(Debug, Clone)]
@@ -240,6 +244,7 @@ pub struct WhatsAppService {
     config: WhatsAppConfig,
     client: reqwest::Client,
     routing_service: WhatsAppRoutingService,
+    chatbot: Option<WhatsAppChatbotService>,
 }
 
 impl WhatsAppService {
@@ -252,6 +257,22 @@ impl WhatsAppService {
             config,
             client,
             routing_service,
+            chatbot: None,
+        }
+    }
+
+    /// Initialise le service avec accès à la base de données et à l'IA (pour le chatbot)
+    pub fn with_db(pool: Arc<PgPool>, ia: Arc<AppIA>) -> Self {
+        let config = WhatsAppConfig::from_env();
+        let client = reqwest::Client::new();
+        let routing_service = WhatsAppRoutingService::new();
+        let chatbot = Some(WhatsAppChatbotService::new(pool, ia));
+
+        Self {
+            config,
+            client,
+            routing_service,
+            chatbot,
         }
     }
 
@@ -441,18 +462,21 @@ impl WhatsAppService {
             message_id
         );
 
-        // Router vers le groupe approprié et envoyer une réponse automatique
-        let result = self.send_message_with_routing(from, body, None).await?;
+        // 1. Chatbot Yukpo — répondre intelligemment si disponible
+        if let Some(ref chatbot) = self.chatbot {
+            let bot_response = chatbot.handle_webhook(from, &payload).await;
+            log::info!("[WhatsAppService] 🤖 Réponse chatbot générée pour {}", from);
+            let _ = self.send_via_twilio(from, &bot_response).await;
+        } else {
+            // Fallback — routing vers groupe humain
+            let _ = self.send_message_with_routing(from, body, None).await;
+        }
 
-        // Construire la réponse du webhook
+        // 2. Construire la réponse du webhook
         let webhook_response = serde_json::json!({
             "status": "processed",
             "message_id": message_id,
-            "routing_result": {
-                "success": result.success,
-                "group_redirected": result.group_redirected,
-                "error": result.error
-            }
+            "chatbot_active": self.chatbot.is_some()
         });
 
         Ok(webhook_response)
@@ -475,11 +499,18 @@ impl Default for WhatsAppService {
     }
 }
 
-/// Handler pour les webhooks WhatsApp
+/// Handler pour les webhooks WhatsApp (Twilio envoie application/x-www-form-urlencoded)
 pub async fn whatsapp_webhook_handler(
     whatsapp_service: axum::extract::State<std::sync::Arc<WhatsAppService>>,
-    axum::extract::Json(payload): axum::extract::Json<serde_json::Value>,
+    axum::extract::Form(form): axum::extract::Form<std::collections::HashMap<String, String>>,
 ) -> AppResult<axum::response::Json<serde_json::Value>> {
+    // Convertir le form en serde_json::Value pour process_webhook
+    let payload: serde_json::Value = form
+        .into_iter()
+        .map(|(k, v)| (k, serde_json::Value::String(v)))
+        .collect::<serde_json::Map<String, serde_json::Value>>()
+        .into();
+
     let result = whatsapp_service.process_webhook(payload).await?;
     Ok(axum::response::Json(result))
 }
