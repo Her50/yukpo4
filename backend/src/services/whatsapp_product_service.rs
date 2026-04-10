@@ -353,30 +353,32 @@ impl WhatsAppProductService {
     // ── Recherche de services/prestataires ────────────────────────────────────
 
     /// Recherche des services/prestataires dans la base Yukpo
+    /// Utilise les colonnes plates confirmées par whatsapp_partner_service.rs :
+    /// titre_service, category, specialized_type, telephone, whatsapp, adresse, ville, actif
+    /// + service_products.product_name pour les produits des prestataires
     pub async fn search_services(&self, query: &str) -> Vec<ServiceSearchResult> {
         let search = format!("%{}%", query.trim().to_lowercase());
 
+        // ── Recherche dans les services (prestataires) ────────────────────────
         let rows = sqlx::query(
             r#"
             SELECT
-                s.id as service_id,
-                COALESCE(s.data->>'nom_structure', s.data->>'titre_service', s.nom, 'Service') as service_name,
-                COALESCE(s.categorie, s.type_service, 'Service') as category,
-                COALESCE(s.data->>'adresse', s.data->>'localisation', '') as address,
-                COALESCE(s.data->>'telephone', s.data->>'whatsapp', '') as phone,
-                COALESCE(s.data->>'ville', 'Cameroun') as city,
-                COALESCE(s.rating, 0.0) as rating
+                s.id                                                    AS service_id,
+                COALESCE(s.titre_service, 'Service')                   AS service_name,
+                COALESCE(s.specialized_type, s.category, 'Service')   AS category,
+                COALESCE(s.adresse, s.ville, '')                       AS address,
+                COALESCE(s.telephone, s.whatsapp, '')                  AS phone,
+                COALESCE(s.ville, 'Cameroun')                          AS city
             FROM services s
             WHERE s.actif = true
               AND (
-                  LOWER(COALESCE(s.data->>'nom_structure', '')) LIKE $1
-                  OR LOWER(COALESCE(s.data->>'titre_service', '')) LIKE $1
-                  OR LOWER(COALESCE(s.nom, '')) LIKE $1
-                  OR LOWER(COALESCE(s.categorie, '')) LIKE $1
-                  OR LOWER(COALESCE(s.type_service, '')) LIKE $1
-                  OR LOWER(COALESCE(s.data->>'description', '')) LIKE $1
+                  LOWER(COALESCE(s.titre_service, ''))     LIKE $1
+                  OR LOWER(COALESCE(s.description, ''))    LIKE $1
+                  OR LOWER(COALESCE(s.category, ''))       LIKE $1
+                  OR LOWER(COALESCE(s.specialized_type, '')) LIKE $1
+                  OR LOWER(COALESCE(s.ville, ''))          LIKE $1
               )
-            ORDER BY s.rating DESC NULLS LAST, s.created_at DESC
+            ORDER BY s.created_at DESC
             LIMIT 5
             "#,
         )
@@ -385,7 +387,8 @@ impl WhatsAppProductService {
         .await
         .unwrap_or_default();
 
-        rows.iter()
+        let mut results: Vec<ServiceSearchResult> = rows
+            .iter()
             .map(|r| ServiceSearchResult {
                 service_id: r.try_get("service_id").unwrap_or(0),
                 name: r.try_get("service_name").unwrap_or_default(),
@@ -393,9 +396,60 @@ impl WhatsAppProductService {
                 address: r.try_get("address").unwrap_or_default(),
                 phone: r.try_get("phone").unwrap_or_default(),
                 city: r.try_get("city").unwrap_or_default(),
-                rating: r.try_get::<f64, _>("rating").unwrap_or(0.0),
+                rating: 0.0,
             })
-            .collect()
+            .collect();
+
+        // ── Recherche dans les produits de services (service_products) ────────
+        // Couvre les produits des prestataires partenaires (restaurant, boutique…)
+        if results.len() < 5 {
+            let limit = (5 - results.len()) as i64;
+            let sp_rows = sqlx::query(
+                r#"
+                SELECT
+                    s.id                                                    AS service_id,
+                    COALESCE(s.titre_service, 'Service')                   AS service_name,
+                    COALESCE(s.specialized_type, s.category, 'Service')   AS category,
+                    COALESCE(s.adresse, s.ville, '')                       AS address,
+                    COALESCE(s.telephone, s.whatsapp, '')                  AS phone,
+                    COALESCE(s.ville, 'Cameroun')                          AS city
+                FROM service_products sp
+                INNER JOIN services s ON s.id = sp.service_id
+                WHERE sp.is_active = true
+                  AND s.actif = true
+                  AND LOWER(COALESCE(sp.product_name, '')) LIKE $1
+                GROUP BY s.id, s.titre_service, s.specialized_type, s.category,
+                         s.adresse, s.ville, s.telephone, s.whatsapp
+                ORDER BY s.created_at DESC
+                LIMIT $2
+                "#,
+            )
+            .bind(&search)
+            .bind(limit)
+            .fetch_all(&*self.pool)
+            .await
+            .unwrap_or_default();
+
+            let existing_ids: std::collections::HashSet<i32> =
+                results.iter().map(|r| r.service_id).collect();
+
+            for r in &sp_rows {
+                let sid: i32 = r.try_get("service_id").unwrap_or(0);
+                if !existing_ids.contains(&sid) {
+                    results.push(ServiceSearchResult {
+                        service_id: sid,
+                        name: r.try_get("service_name").unwrap_or_default(),
+                        category: r.try_get("category").unwrap_or_default(),
+                        address: r.try_get("address").unwrap_or_default(),
+                        phone: r.try_get("phone").unwrap_or_default(),
+                        city: r.try_get("city").unwrap_or_default(),
+                        rating: 0.0,
+                    });
+                }
+            }
+        }
+
+        results
     }
 
     pub fn format_service_results(results: &[ServiceSearchResult], query: &str) -> String {
