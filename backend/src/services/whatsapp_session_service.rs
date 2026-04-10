@@ -409,7 +409,8 @@ impl WhatsAppSessionService {
     /// Sauvegarde l'état de la session
     pub async fn save_state(&self, phone: &str, state: &ConversationState) {
         let state_json = serde_json::to_string(state).unwrap_or_default();
-        let _ = sqlx::query(
+        log::info!("[Session] 💾 save_state {} → {}", phone, state_json);
+        match sqlx::query(
             r#"
             INSERT INTO whatsapp_sessions (phone_number, state_json, context_json)
             VALUES ($1, $2, '{}')
@@ -419,7 +420,11 @@ impl WhatsAppSessionService {
         .bind(phone)
         .bind(&state_json)
         .execute(&*self.pool)
-        .await;
+        .await
+        {
+            Ok(_) => log::info!("[Session] ✅ state sauvegardé OK"),
+            Err(e) => log::error!("[Session] ❌ ERREUR save_state: {}", e),
+        }
     }
 
     /// Sauvegarde état + contexte (abonnements alertes, etc.)
