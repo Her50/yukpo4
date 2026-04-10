@@ -244,7 +244,7 @@ pub struct WhatsAppService {
     config: WhatsAppConfig,
     client: reqwest::Client,
     routing_service: WhatsAppRoutingService,
-    chatbot: Option<WhatsAppChatbotService>,
+    chatbot: Option<Arc<WhatsAppChatbotService>>,
 }
 
 impl WhatsAppService {
@@ -266,7 +266,7 @@ impl WhatsAppService {
         let config = WhatsAppConfig::from_env();
         let client = reqwest::Client::new();
         let routing_service = WhatsAppRoutingService::new();
-        let chatbot = Some(WhatsAppChatbotService::new(pool, ia));
+        let chatbot = Some(Arc::new(WhatsAppChatbotService::new(pool, ia)));
 
         Self {
             config,
@@ -472,12 +472,10 @@ impl WhatsAppService {
     ) -> AppResult<serde_json::Value> {
         log::info!("[WhatsAppService] 📥 Traitement webhook WhatsApp reçu");
 
-        // Extraire les informations du message
-        let from = payload.get("From").and_then(|v| v.as_str()).unwrap_or("");
-
-        let body = payload.get("Body").and_then(|v| v.as_str()).unwrap_or("");
-
-        let message_id = payload.get("MessageSid").and_then(|v| v.as_str()).unwrap_or("");
+        let from = payload.get("From").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let body = payload.get("Body").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let message_id =
+            payload.get("MessageSid").and_then(|v| v.as_str()).unwrap_or("").to_string();
 
         log::info!(
             "[WhatsAppService] 📨 Message de {}: {} (ID: {})",
@@ -486,24 +484,89 @@ impl WhatsAppService {
             message_id
         );
 
-        // 1. Chatbot Yukpo — répondre intelligemment si disponible
-        if let Some(ref chatbot) = self.chatbot {
-            let bot_response = chatbot.handle_webhook(from, &payload).await;
-            log::info!("[WhatsAppService] 🤖 Réponse chatbot générée pour {}", from);
-            let _ = self.send_via_twilio(from, &bot_response).await;
+        // ✅ 2026-04-10: Traitement en arrière-plan — répondre IMMÉDIATEMENT à Twilio (< 15s)
+        // Avant: le webhook attendait handle_webhook() + send_twilio() de façon synchrone.
+        // Si le pool DB était saturé, Twilio timeout au bout de 15s et réessayait en boucle.
+        if let Some(chatbot) = self.chatbot.clone() {
+            let twilio_sid = self.config.twilio_account_sid.clone().unwrap_or_default();
+            let twilio_token = self.config.twilio_auth_token.clone().unwrap_or_default();
+            let twilio_from = self
+                .config
+                .twilio_whatsapp_number
+                .clone()
+                .unwrap_or_else(|| "whatsapp:+14155238886".to_string());
+            let from_clone = from.clone();
+            let payload_clone = payload.clone();
+
+            tokio::spawn(async move {
+                let bot_response = chatbot.handle_webhook(&from_clone, &payload_clone).await;
+                log::info!(
+                    "[WhatsAppService] 🤖 Réponse chatbot générée pour {}",
+                    from_clone
+                );
+
+                // Envoi Twilio outbound
+                let to_wa = if from_clone.starts_with("whatsapp:") {
+                    from_clone.clone()
+                } else {
+                    format!("whatsapp:{}", from_clone)
+                };
+                let url = format!(
+                    "https://api.twilio.com/2010-04-01/Accounts/{}/Messages.json",
+                    twilio_sid
+                );
+                log::info!(
+                    "[WhatsAppService] 📤 Envoi WhatsApp Twilio → {} depuis {}",
+                    to_wa,
+                    twilio_from
+                );
+                log::info!(
+                    "[WhatsAppService] 🔑 SID utilisé: {}...",
+                    &twilio_sid[..8.min(twilio_sid.len())]
+                );
+                let client = reqwest::Client::builder()
+                    .timeout(std::time::Duration::from_secs(10))
+                    .build()
+                    .unwrap_or_default();
+                let params = [
+                    ("From", twilio_from.as_str()),
+                    ("To", to_wa.as_str()),
+                    ("Body", bot_response.as_str()),
+                ];
+                match client
+                    .post(&url)
+                    .basic_auth(&twilio_sid, Some(&twilio_token))
+                    .form(&params)
+                    .send()
+                    .await
+                {
+                    Ok(r) if r.status().is_success() => {
+                        log::info!("[WhatsAppService] ✅ Message envoyé à {}", to_wa);
+                    }
+                    Ok(r) => {
+                        let status = r.status();
+                        let err = r.text().await.unwrap_or_default();
+                        log::warn!(
+                            "[WhatsAppService] ⚠️ Erreur envoi WhatsApp Twilio (status {}): {}",
+                            status,
+                            err
+                        );
+                    }
+                    Err(e) => {
+                        log::error!("[WhatsAppService] ❌ Erreur réseau Twilio: {}", e);
+                    }
+                }
+            });
         } else {
-            // Fallback — routing vers groupe humain
-            let _ = self.send_message_with_routing(from, body, None).await;
+            // Pas de chatbot configuré — rien à faire
         }
 
-        // 2. Construire la réponse du webhook
-        let webhook_response = serde_json::json!({
-            "status": "processed",
+        // Réponse immédiate à Twilio — pas d'attente du traitement
+        Ok(serde_json::json!({
+            "status": "accepted",
             "message_id": message_id,
             "chatbot_active": self.chatbot.is_some()
-        });
-
-        Ok(webhook_response)
+        }))
     }
 
     /// Vérifie si le service WhatsApp est configuré et disponible

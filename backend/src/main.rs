@@ -435,9 +435,9 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
         // Cloud SQL a une limite de connexions (généralement 100), mais avec plusieurs instances Cloud Run,
         // il faut limiter le pool par instance pour éviter la saturation
         let cloud_run_max = env::var("DB_POOL_SIZE")
-            .unwrap_or_else(|_| "10".to_string()) // ✅ CORRIGÉ: Réduit de 20 à 10
+            .unwrap_or_else(|_| "20".to_string()) // ✅ 2026-04-10: Augmenté à 20 — workers saturaient le pool à 10
             .parse()
-            .unwrap_or(10);
+            .unwrap_or(20);
         let cloud_run_min = 0; // ✅ CORRIGÉ: 0 pour démarrage rapide même si DB non accessible
         log::info!(
             "🔧 Cloud Run: Pool configuré (max={}, min={}) - Démarrage non-bloquant",
@@ -482,22 +482,13 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
             })
             .after_connect(|conn, _meta| {
                 Box::pin(async move {
-                    if let Err(e) =
-                        sqlx::query("SET statement_timeout = 0").execute(&mut *conn).await
-                    {
-                        let error_msg = e.to_string();
-                        if error_msg.contains("TLS")
-                            || error_msg.contains("close_notify")
-                            || error_msg.contains("Connection reset")
-                            || error_msg.contains("peer closed")
-                        {
-                            log::debug!(
-                                "⚠️ Configuration statement_timeout échouée: {}",
-                                error_msg
-                            );
-                        }
-                    }
-                    let _ = sqlx::query("SET idle_in_transaction_session_timeout = '180s'")
+                    // ✅ 2026-04-10: statement_timeout 30s — tue les requêtes lentes qui saturent le pool
+                    // Les workers background (delivery, gpu) faisaient des requêtes >2s sans limite
+                    let _ = sqlx::query("SET statement_timeout = '30s'").execute(&mut *conn).await;
+                    // lock_timeout court pour éviter les blocages en cascade sur les locks
+                    let _ = sqlx::query("SET lock_timeout = '10s'").execute(&mut *conn).await;
+                    // idle_in_transaction réduit pour libérer les connexions plus vite
+                    let _ = sqlx::query("SET idle_in_transaction_session_timeout = '30s'")
                         .execute(&mut *conn)
                         .await;
                     Ok(())
