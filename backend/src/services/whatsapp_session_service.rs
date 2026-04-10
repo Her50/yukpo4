@@ -121,6 +121,24 @@ pub enum ConversationState {
         category: String,
     },
 
+    // Produit via texte
+    AwaitingProductTextConfirmation {
+        name: String,
+        category: String,
+        price_suggestion: i64,
+        description: String,
+    },
+    AwaitingProductTextPrice {
+        name: String,
+        category: String,
+        description: String,
+    },
+
+    // Recherche service/prestataire
+    AwaitingServiceSearchChoice {
+        results: Vec<ServiceSearchResult>,
+    },
+
     // YukpoIA conversationnel + documents + analyse
     YukpoIAChat,
     AwaitingDocumentTopic {
@@ -287,6 +305,17 @@ pub struct WATrend {
     pub score: i32,
     pub momentum: String,
     pub category: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceSearchResult {
+    pub service_id: i32,
+    pub name: String,
+    pub category: String,
+    pub address: String,
+    pub phone: String,
+    pub city: String,
+    pub rating: f64,
 }
 
 // ─── Session utilisateur ──────────────────────────────────────────────────────

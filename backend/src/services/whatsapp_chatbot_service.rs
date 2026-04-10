@@ -92,6 +92,16 @@ enum Intent {
     // Gestion produits prestataire
     MesProduits,
 
+    // Recherche service/prestataire
+    RechercheService {
+        query: String,
+    },
+
+    // Publier produit via texte libre
+    PublierProduitTexte {
+        description: String,
+    },
+
     // Partenaire
     Devenir {
         partner_type: Option<String>,
@@ -170,13 +180,26 @@ impl WhatsAppChatbotService {
     pub async fn handle_webhook(&self, from: &str, payload: &serde_json::Value) -> String {
         let message = payload.get("Body").and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
         let image_url = extract_image_url_from_payload(payload);
-        // Type MIME du média (image/jpeg, application/pdf, text/csv, etc.)
+        // Type MIME du média (image/jpeg, application/pdf, text/csv, audio/ogg, etc.)
         let media_content_type = payload
             .get("MediaContentType0")
             .and_then(|v| v.as_str())
             .unwrap_or("image/jpeg")
             .to_string();
         let location = extract_location_from_payload(payload);
+
+        // ── Message vocal → transcription Whisper → traiter comme texte ─────
+        if let Some(media_url) = image_url.as_deref() {
+            let ct = media_content_type.to_lowercase();
+            if ct.contains("audio")
+                || ct.contains("ogg")
+                || ct.contains("mpeg")
+                || ct.contains("mp4")
+            {
+                let session = self.sessions.get_or_create(from).await;
+                return self.handle_audio(from, &session, media_url).await;
+            }
+        }
 
         // Récupérer la session
         let session = self.sessions.get_or_create(from).await;
@@ -1887,6 +1910,109 @@ impl WhatsAppChatbotService {
                 ));
             }
 
+            // ── Produit via texte — confirmation ──────────────────────────────
+            ConversationState::AwaitingProductTextConfirmation {
+                name,
+                category,
+                price_suggestion,
+                description,
+            } => {
+                let (n, cat, price, desc) = (
+                    name.clone(),
+                    category.clone(),
+                    *price_suggestion,
+                    description.clone(),
+                );
+                match message.trim() {
+                    "1" => {
+                        if let Some(user_id) = session.user_id {
+                            let product_id = self
+                                .products
+                                .publish_product(user_id, "", &n, &cat, price, &desc)
+                                .await;
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some(WhatsAppProductService::published_product_message(
+                                &n,
+                                product_id.as_deref().unwrap_or("N/A"),
+                            ));
+                        }
+                        self.sessions.reset_to_menu(phone).await;
+                        return Some(
+                            "🔐 Créez votre compte Yukpo pour publier.\nTapez *MENU*.".to_string(),
+                        );
+                    }
+                    "2" => {
+                        self.sessions
+                            .save_state(
+                                phone,
+                                &ConversationState::AwaitingProductTextPrice {
+                                    name: n,
+                                    category: cat,
+                                    description: desc,
+                                },
+                            )
+                            .await;
+                        return Some(WhatsAppProductService::ask_product_price("votre produit"));
+                    }
+                    "3" => {
+                        self.sessions.reset_to_menu(phone).await;
+                        return Some(format!("↩️ Annulé.\n\n{}", self.main_menu()));
+                    }
+                    _ => {}
+                }
+            }
+
+            ConversationState::AwaitingProductTextPrice {
+                name,
+                category,
+                description,
+            } => {
+                let (n, cat, desc) = (name.clone(), category.clone(), description.clone());
+                if let Ok(price) =
+                    message.trim().replace(" ", "").replace("fcfa", "").parse::<i64>()
+                {
+                    if price > 0 {
+                        if let Some(user_id) = session.user_id {
+                            let product_id = self
+                                .products
+                                .publish_product(user_id, "", &n, &cat, price, &desc)
+                                .await;
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some(WhatsAppProductService::published_product_message(
+                                &n,
+                                product_id.as_deref().unwrap_or("N/A"),
+                            ));
+                        }
+                    }
+                }
+                return Some(
+                    "Tapez le prix en FCFA (chiffres uniquement).\nEx : *5000*".to_string(),
+                );
+            }
+
+            // ── Recherche service — sélection résultat ────────────────────────
+            ConversationState::AwaitingServiceSearchChoice { results } => {
+                let results_clone = results.clone();
+                if let Ok(n) = message.trim().parse::<usize>() {
+                    if n >= 1 && n <= results_clone.len() {
+                        let r = &results_clone[n - 1];
+                        self.sessions.reset_to_menu(phone).await;
+                        return Some(format!(
+                            "📞 *{}*\n\n\
+                            📍 {} — {}\n\
+                            📱 {}\n\n\
+                            _Contactez directement ce prestataire._\n\
+                            Tapez *MENU* pour revenir.",
+                            r.name, r.address, r.city, r.phone
+                        ));
+                    }
+                }
+                return Some(WhatsAppProductService::format_service_results(
+                    &results_clone,
+                    "service",
+                ));
+            }
+
             // ── Sous-menus ────────────────────────────────────────────────────
             ConversationState::SubMenu { category } => {
                 let cat = category.clone();
@@ -1932,9 +2058,23 @@ impl WhatsAppChatbotService {
                             self.sessions.reset_to_menu(phone).await;
                             return Some(
                                 "📦 *Publier un produit*\n\n\
-                                📸 Envoyez une *photo* de votre produit.\n\
-                                Je l'identifie automatiquement et vous propose de le publier sur Yukpo.\n\n\
-                                _Prix, catégorie et description seront suggérés._".to_string()
+                                Choisissez comment décrire votre produit :\n\n\
+                                📸 Envoyez une *photo* — identification automatique\n\
+                                📝 Tapez une *description* — Ex: _Vends chaussures Nike 42 à 15000 FCFA_\n\
+                                🎤 Envoyez un *message vocal* — transcription automatique".to_string()
+                            );
+                        }
+                        "7" => {
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some(
+                                "🔍 *Rechercher un service*\n\n\
+                                Tapez ce que vous cherchez.\n\n\
+                                Exemples :\n\
+                                • _plombier Douala_\n\
+                                • _coiffeur Yaoundé_\n\
+                                • _mécanicien Bafoussam_\n\
+                                • _restaurant pizza Akwa_"
+                                    .to_string(),
                             );
                         }
                         _ => return Some(self.submenu_services()),
@@ -2435,6 +2575,34 @@ impl WhatsAppChatbotService {
         }
     }
 
+    // ── Gestion message vocal ─────────────────────────────────────────────────
+
+    async fn handle_audio(
+        &self,
+        phone: &str,
+        session: &crate::services::whatsapp_session_service::WhatsAppSession,
+        audio_url: &str,
+    ) -> String {
+        log::info!("[Chatbot] 🎤 Audio reçu depuis {}", phone);
+
+        // Transcrire via Whisper
+        let transcription = self.products.transcribe_audio(audio_url).await;
+
+        match transcription {
+            Some(text) if !text.is_empty() => {
+                log::info!("[Chatbot] 🎤 Transcription: '{}'", text);
+                // Traiter la transcription comme un message texte normal
+                let intent = detect_intent(&text);
+                let formatted = format!("🎤 _Message vocal transcrit :_\n_{}_\n\n", text);
+                let response = self.handle_intent(session, phone, intent, &text).await;
+                format!("{}{}", formatted, response)
+            }
+            _ => {
+                "🎤 Impossible de transcrire votre message vocal.\n\nEssayez :\n• Parler plus clairement\n• Envoyer un message texte\n• Réessayer dans un endroit plus calme".to_string()
+            }
+        }
+    }
+
     // ── Gestion des intents libres ────────────────────────────────────────────
 
     async fn handle_intent(
@@ -2682,6 +2850,45 @@ impl WhatsAppChatbotService {
                 "📊 *Analyse de données*\n\nEnvoyez votre fichier CSV, Excel ou PDF et je l'analyserai pour vous !\n\n_Coût : 15 tokens par analyse._".to_string()
             }
 
+            Intent::RechercheService { query } => {
+                if query.is_empty() {
+                    return "🔍 *Recherche de service*\n\nTapez ce que vous cherchez.\n\nEx : _plombier Douala_, _coiffeur Yaoundé_, _restaurant pizza Akwa_".to_string();
+                }
+                let results = self.products.search_services(&query).await;
+                let msg = WhatsAppProductService::format_service_results(&results, &query);
+                if !results.is_empty() {
+                    self.sessions
+                        .save_state(
+                            phone,
+                            &ConversationState::AwaitingServiceSearchChoice { results },
+                        )
+                        .await;
+                } else {
+                    self.sessions.reset_to_menu(phone).await;
+                }
+                msg
+            }
+
+            Intent::PublierProduitTexte { description } => {
+                if description.is_empty() {
+                    return "📝 *Publier une annonce*\n\nDécrivez votre produit ou service.\n\nEx : _Je vends des chaussures Nike taille 42 à 15000 FCFA_\nOu : _Cours de maths à domicile Douala, 5000 FCFA/heure_".to_string();
+                }
+                let product = self.products.analyze_product_from_text(&description).await;
+                let msg = WhatsAppProductService::format_detected_product_from_text(&product);
+                self.sessions
+                    .save_state(
+                        phone,
+                        &ConversationState::AwaitingProductTextConfirmation {
+                            name: product.name,
+                            category: product.category,
+                            price_suggestion: product.price_suggestion,
+                            description: product.description,
+                        },
+                    )
+                    .await;
+                msg
+            }
+
             Intent::MesProduits => {
                 if let Some(user_id) = session.user_id {
                     let products = self.provider.list_user_products(user_id).await;
@@ -2826,7 +3033,9 @@ impl WhatsAppChatbotService {
             "B. 🛒 *Services* — Pharmacie, Bus, Immobilier, Livres\n",
             "C. 🚨 *Communauté* — Alertes, Sang, Abonnements\n",
             "D. 💼 *Mon compte* — Tokens, Produits, Partenaire\n\n",
-            "📸 Envoyez une *photo* pour publier un produit\n\n",
+            "📸 *Photo* pour publier un produit\n",
+            "🎤 *Vocal* pour dicter une annonce ou une question\n",
+            "📝 _Tapez \"je vends...\" pour publier par texte_\n\n",
             "_Tapez A, B, C ou D_"
         )
         .to_string()
@@ -2840,7 +3049,8 @@ impl WhatsAppChatbotService {
             "3. 🏠 Immobilier — Louer, acheter, hôtel\n",
             "4. 📚 Livres scolaires — Trouver / vendre\n",
             "5. 🛵 Livraison — Commander une livraison\n",
-            "6. 📦 Publier un produit — Vendre sur Yukpo\n\n",
+            "6. 📦 Publier un produit — Vendre sur Yukpo\n",
+            "7. 🔍 Rechercher un service — Plombier, coiffeur…\n\n",
             "0. ↩️ Menu principal"
         )
         .to_string()
@@ -2993,6 +3203,77 @@ fn detect_intent(message: &str) -> Intent {
         || msg == "services"
     {
         return Intent::MesProduits;
+    }
+
+    // Recherche de service/prestataire (plombier, coiffeur, mécanicien, restaurant, etc.)
+    let service_kw = [
+        "plombier",
+        "electricien",
+        "électricien",
+        "menuisier",
+        "peintre",
+        "maçon",
+        "macon",
+        "mécanicien",
+        "mecanicien",
+        "coiffeur",
+        "coiffeuse",
+        "esthétiste",
+        "estetiste",
+        "restaurant",
+        "maquis",
+        "traiteur",
+        "comptable",
+        "avocat",
+        "médecin",
+        "medecin",
+        "dentiste",
+        "infirmier",
+        "pharmacien",
+        "technicien",
+        "informaticien",
+        "graphiste",
+        "photographe",
+        "vigile",
+        "gardien",
+        "chauffeur",
+        "livreur",
+        "prestataire",
+        "artisan",
+        "cherche un",
+        "cherche une",
+        "trouver un",
+        "trouver une",
+        "besoin d'un",
+        "besoin d'une",
+        "je cherche",
+        "qui peut",
+        "quelqu'un pour",
+    ];
+    if service_kw.iter().any(|k| msg.contains(k)) {
+        return Intent::RechercheService {
+            query: message.to_string(),
+        };
+    }
+
+    // Publier produit via texte libre ("je vends...", "à vendre...", "je propose...")
+    let vente_kw = [
+        "je vends",
+        "je vend",
+        "à vendre",
+        "a vendre",
+        "vends",
+        "vend ",
+        "je propose",
+        "je cède",
+        "je cede",
+        "annonce vente",
+        "en vente",
+    ];
+    if vente_kw.iter().any(|k| msg.contains(k)) && message.len() > 15 {
+        return Intent::PublierProduitTexte {
+            description: message.to_string(),
+        };
     }
 
     // Alertes

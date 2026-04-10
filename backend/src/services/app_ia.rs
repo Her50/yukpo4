@@ -1980,6 +1980,10 @@ Réponds SEULEMENT le JSON, rien d'autre.",
         if let Some(image_data) = images {
             for (i, image_base64) in image_data.iter().enumerate() {
                 let clean = Self::multimodal_image_base64_clean(image_base64);
+                if clean.is_empty() {
+                    log::warn!("[OpenAI Multimodal] Image {} ignorée (base64 vide)", i + 1);
+                    continue;
+                }
                 content_parts.push(json!({
                     "type": "image_url",
                     "image_url": {
