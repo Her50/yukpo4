@@ -139,6 +139,41 @@ pub enum ConversationState {
         results: Vec<ServiceSearchResult>,
     },
 
+    // Covoiturage — création multi-étapes
+    AwaitingCovoiturageDepart,
+    AwaitingCovoiturageDestination {
+        depart: String,
+    },
+    AwaitingCovoiturageDate {
+        depart: String,
+        destination: String,
+    },
+    AwaitingCovoiturageTime {
+        depart: String,
+        destination: String,
+        date: String,
+    },
+    AwaitingCovoiturageSeats {
+        depart: String,
+        destination: String,
+        date: String,
+        time: String,
+    },
+    AwaitingCovoituragePrice {
+        depart: String,
+        destination: String,
+        date: String,
+        time: String,
+        seats: i32,
+    },
+
+    // Covoiturage — résultats de recherche
+    CovoiturageSearchResults {
+        results: Vec<CovoiturageResult>,
+        depart: String,
+        destination: String,
+    },
+
     // YukpoIA conversationnel + documents + analyse
     YukpoIAChat,
     AwaitingDocumentTopic {
@@ -305,6 +340,20 @@ pub struct WATrend {
     pub score: i32,
     pub momentum: String,
     pub category: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CovoiturageResult {
+    pub trip_id: i32,
+    pub depart: String,
+    pub destination: String,
+    pub date: String,
+    pub time: String,
+    pub places_dispo: i32,
+    pub prix: i64,
+    pub devise: String,
+    pub driver_name: String,
+    pub driver_phone: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

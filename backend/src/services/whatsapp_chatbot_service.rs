@@ -16,6 +16,9 @@ use crate::services::whatsapp_commerce_service::{
     generate_payment_reference, parse_pack_choice, payment_instructions, payment_method_menu,
     token_pack_menu, WhatsAppCommerceService,
 };
+use crate::services::whatsapp_covoiturage_service::{
+    extraire_villes_covoiturage, WhatsAppCovoiturageService,
+};
 use crate::services::whatsapp_ia_service::{
     format_document_generating, ia_welcome_message, WhatsAppIAService, AI_QUERY_TOKEN_COST,
     DATA_ANALYSIS_COST, DOCUMENT_GENERATION_COST,
@@ -102,6 +105,12 @@ enum Intent {
         description: String,
     },
 
+    // Covoiturage
+    CovoiturageSearch {
+        query: String,
+    },
+    CovoiturageCreate,
+
     // Partenaire
     Devenir {
         partner_type: Option<String>,
@@ -146,6 +155,7 @@ pub struct WhatsAppChatbotService {
     ia: Arc<WhatsAppIAService>,
     partner: Arc<WhatsAppPartnerService>,
     cm: Arc<WhatsAppCMService>,
+    covoiturage: Arc<WhatsAppCovoiturageService>,
 }
 
 impl WhatsAppChatbotService {
@@ -160,6 +170,7 @@ impl WhatsAppChatbotService {
         let ia = Arc::new(WhatsAppIAService::new(pool.clone()));
         let partner = Arc::new(WhatsAppPartnerService::new(pool.clone()));
         let cm = Arc::new(WhatsAppCMService::new(pool.clone()));
+        let covoiturage = Arc::new(WhatsAppCovoiturageService::new(pool.clone()));
         Self {
             pool,
             app_ia,
@@ -173,6 +184,7 @@ impl WhatsAppChatbotService {
             ia,
             partner,
             cm,
+            covoiturage,
         }
     }
 
@@ -1910,6 +1922,209 @@ impl WhatsAppChatbotService {
                 ));
             }
 
+            // ── Covoiturage — résultats de recherche, sélection ─────────────
+            ConversationState::CovoiturageSearchResults {
+                results,
+                depart,
+                destination,
+            } => {
+                let (results_clone, dep, dest) =
+                    (results.clone(), depart.clone(), destination.clone());
+                if let Ok(n) = message.trim().parse::<usize>() {
+                    if n >= 1 && n <= results_clone.len() {
+                        let r = &results_clone[n - 1];
+                        self.sessions.reset_to_menu(phone).await;
+                        return Some(WhatsAppCovoiturageService::format_trip_detail(r));
+                    }
+                }
+                return Some(WhatsAppCovoiturageService::format_trip_results(
+                    &results_clone,
+                    &dep,
+                    &dest,
+                ));
+            }
+
+            // ── Covoiturage — création multi-étapes ───────────────────────────
+            ConversationState::AwaitingCovoiturageDepart => {
+                let v = message.trim().to_string();
+                if v.len() < 2 {
+                    return Some("Entrez la ville de départ (ex : _Douala_).".to_string());
+                }
+                self.sessions
+                    .save_state(
+                        phone,
+                        &ConversationState::AwaitingCovoiturageDestination { depart: v.clone() },
+                    )
+                    .await;
+                return Some(format!(
+                    "✅ Départ : *{}*\n\nÉtape 2/5 — 📍 *Ville d'arrivée ?*\n\nEx : _Yaoundé_, _Bafoussam_",
+                    v
+                ));
+            }
+
+            ConversationState::AwaitingCovoiturageDestination { depart } => {
+                let (dep, dest) = (depart.clone(), message.trim().to_string());
+                if dest.len() < 2 {
+                    return Some("Entrez la ville d'arrivée (ex : _Yaoundé_).".to_string());
+                }
+                self.sessions
+                    .save_state(
+                        phone,
+                        &ConversationState::AwaitingCovoiturageDate {
+                            depart: dep.clone(),
+                            destination: dest.clone(),
+                        },
+                    )
+                    .await;
+                return Some(format!(
+                    "✅ Trajet : *{}* → *{}*\n\nÉtape 3/5 — 📅 *Date de départ ?*\n\nFormat : *JJ/MM/AAAA*\nEx : _15/04/2026_",
+                    dep, dest
+                ));
+            }
+
+            ConversationState::AwaitingCovoiturageDate {
+                depart,
+                destination,
+            } => {
+                let (dep, dest) = (depart.clone(), destination.clone());
+                let date = message.trim().to_string();
+                // Validation basique de format DD/MM/YYYY
+                let parts: Vec<&str> = date.split('/').collect();
+                if parts.len() < 3 || parts[2].len() < 4 {
+                    return Some(
+                        "Format invalide. Tapez la date au format *JJ/MM/AAAA*\nEx : _15/04/2026_"
+                            .to_string(),
+                    );
+                }
+                self.sessions
+                    .save_state(
+                        phone,
+                        &ConversationState::AwaitingCovoiturageTime {
+                            depart: dep,
+                            destination: dest,
+                            date: date.clone(),
+                        },
+                    )
+                    .await;
+                return Some(format!(
+                    "✅ Date : *{}*\n\nÉtape 4/5 — 🕐 *Heure de départ ?*\n\nFormat : *HH:MM*\nEx : _08:00_, _14:30_",
+                    date
+                ));
+            }
+
+            ConversationState::AwaitingCovoiturageTime {
+                depart,
+                destination,
+                date,
+            } => {
+                let (dep, dest, d) = (depart.clone(), destination.clone(), date.clone());
+                let time = message.trim().to_string();
+                if !time.contains(':') || time.len() < 4 {
+                    return Some(
+                        "Format invalide. Tapez l'heure au format *HH:MM*\nEx : _08:00_"
+                            .to_string(),
+                    );
+                }
+                self.sessions
+                    .save_state(
+                        phone,
+                        &ConversationState::AwaitingCovoiturageSeats {
+                            depart: dep,
+                            destination: dest,
+                            date: d,
+                            time: time.clone(),
+                        },
+                    )
+                    .await;
+                return Some(format!(
+                    "✅ Heure : *{}*\n\nÉtape 5/5 — 💺 *Combien de places proposez-vous ?*\n\nEx : _3_, _4_",
+                    time
+                ));
+            }
+
+            ConversationState::AwaitingCovoiturageSeats {
+                depart,
+                destination,
+                date,
+                time,
+            } => {
+                let (dep, dest, d, t) = (
+                    depart.clone(),
+                    destination.clone(),
+                    date.clone(),
+                    time.clone(),
+                );
+                if let Ok(seats) = message.trim().parse::<i32>() {
+                    if seats >= 1 && seats <= 10 {
+                        self.sessions
+                            .save_state(
+                                phone,
+                                &ConversationState::AwaitingCovoituragePrice {
+                                    depart: dep,
+                                    destination: dest,
+                                    date: d,
+                                    time: t,
+                                    seats,
+                                },
+                            )
+                            .await;
+                        return Some(format!(
+                            "✅ *{}* place(s)\n\n💰 *Prix par place ?* (en FCFA)\n\nEx : _3000_, _5000_",
+                            seats
+                        ));
+                    }
+                }
+                return Some("Tapez le nombre de places (entre 1 et 10).".to_string());
+            }
+
+            ConversationState::AwaitingCovoituragePrice {
+                depart,
+                destination,
+                date,
+                time,
+                seats,
+            } => {
+                let (dep, dest, d, t, s) = (
+                    depart.clone(),
+                    destination.clone(),
+                    date.clone(),
+                    time.clone(),
+                    *seats,
+                );
+                if let Ok(prix) = message
+                    .trim()
+                    .replace(" ", "")
+                    .replace("fcfa", "")
+                    .replace("FCFA", "")
+                    .parse::<i64>()
+                {
+                    if prix > 0 {
+                        if let Some(uid) = session.user_id {
+                            let phone_normalized =
+                                phone.trim_start_matches("whatsapp:").to_string();
+                            let trip_id = self
+                                .covoiturage
+                                .create_trip(uid, &dep, &dest, &d, &t, s, prix, &phone_normalized)
+                                .await;
+                            self.sessions.reset_to_menu(phone).await;
+                            if let Some(tid) = trip_id {
+                                return Some(WhatsAppCovoiturageService::creation_success_message(
+                                    &dep, &dest, &d, s, prix, tid,
+                                ));
+                            }
+                            return Some(format!(
+                                "❌ Erreur lors de la création du trajet. Réessayez.\n\n{}",
+                                self.main_menu()
+                            ));
+                        }
+                    }
+                }
+                return Some(
+                    "Tapez le prix par place en FCFA (chiffres uniquement).\nEx : *3000*"
+                        .to_string(),
+                );
+            }
+
             // ── Produit via texte — confirmation ──────────────────────────────
             ConversationState::AwaitingProductTextConfirmation {
                 name,
@@ -2039,13 +2254,23 @@ impl WhatsAppChatbotService {
                         }
                         "3" => {
                             self.sessions.reset_to_menu(phone).await;
-                            return Some("🏠 *Immobilier*\n\nTapez votre recherche.\nEx : _studio meublé Douala_, _hôtel Kribi_".to_string());
+                            return Some(
+                                "🚗 *Covoiturage*\n\n\
+                                Tapez votre trajet pour *chercher* un covoiturage :\n\
+                                Ex : _covoiturage Douala Yaoundé_\n\n\
+                                Ou tapez *proposer covoiturage* pour *créer une annonce*."
+                                    .to_string(),
+                            );
                         }
                         "4" => {
                             self.sessions.reset_to_menu(phone).await;
-                            return Some("📚 *Livres scolaires*\n\nTapez votre recherche.\nEx : _livres Lycée de la Retraite 5ème_\n\nOu tapez *vendre mes livres* pour scanner et vendre vos livres.".to_string());
+                            return Some("🏠 *Immobilier*\n\nTapez votre recherche.\nEx : _studio meublé Douala_, _hôtel Kribi_".to_string());
                         }
                         "5" => {
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some("📚 *Livres scolaires*\n\nTapez votre recherche.\nEx : _livres Lycée de la Retraite 5ème_\n\nOu tapez *vendre mes livres* pour scanner et vendre vos livres.".to_string());
+                        }
+                        "6" => {
                             self.sessions.reset_to_menu(phone).await;
                             return Some(
                                 "🛵 *Livraison Yukpo*\n\n\
@@ -2054,7 +2279,7 @@ impl WhatsAppChatbotService {
                                     .to_string(),
                             );
                         }
-                        "6" => {
+                        "7" => {
                             self.sessions.reset_to_menu(phone).await;
                             return Some(
                                 "📦 *Publier un produit*\n\n\
@@ -2064,7 +2289,7 @@ impl WhatsAppChatbotService {
                                 🎤 Envoyez un *message vocal* — transcription automatique".to_string()
                             );
                         }
-                        "7" => {
+                        "8" => {
                             self.sessions.reset_to_menu(phone).await;
                             return Some(
                                 "🔍 *Rechercher un service*\n\n\
@@ -2298,6 +2523,15 @@ impl WhatsAppChatbotService {
                         return msg;
                     }
                 }
+                // Compte requis pour publier un produit
+                if session.user_id.is_none() {
+                    self.sessions.save_state(phone, &ConversationState::AwaitingName).await;
+                    return "🔐 *Compte requis pour publier*\n\n\
+                        Créez votre compte Yukpo gratuit pour publier vos produits !\n\n\
+                        Étape 1/2 — Comment vous appelez-vous ?\n\
+                        _(Tapez votre prénom)_"
+                        .to_string();
+                }
                 // Pas une ordonnance reconnaissable → traiter comme produit
                 let product = self.products.analyze_product_image(media_url).await;
                 let msg = WhatsAppProductService::format_detected_product(&product);
@@ -2411,6 +2645,15 @@ impl WhatsAppChatbotService {
             }
             // Hors contexte → interpréter comme un produit à vendre
             _ => {
+                // Compte requis
+                if session.user_id.is_none() {
+                    self.sessions.save_state(phone, &ConversationState::AwaitingName).await;
+                    return "🔐 *Compte requis pour publier*\n\n\
+                        Créez votre compte Yukpo gratuit pour publier vos produits !\n\n\
+                        Étape 1/2 — Comment vous appelez-vous ?\n\
+                        _(Tapez votre prénom)_"
+                        .to_string();
+                }
                 let product = self.products.analyze_product_image(media_url).await;
                 let msg = WhatsAppProductService::format_detected_product(&product);
                 self.sessions
@@ -2870,6 +3113,15 @@ impl WhatsAppChatbotService {
             }
 
             Intent::PublierProduitTexte { description } => {
+                // Compte requis avant la détection IA (évite de gaspiller un appel API)
+                if session.user_id.is_none() {
+                    self.sessions.save_state(phone, &ConversationState::AwaitingName).await;
+                    return "🔐 *Compte requis pour publier*\n\n\
+                        Créez votre compte Yukpo gratuit pour publier vos produits !\n\n\
+                        Étape 1/2 — Comment vous appelez-vous ?\n\
+                        _(Tapez votre prénom)_"
+                        .to_string();
+                }
                 if description.is_empty() {
                     return "📝 *Publier une annonce*\n\nDécrivez votre produit ou service.\n\nEx : _Je vends des chaussures Nike taille 42 à 15000 FCFA_\nOu : _Cours de maths à domicile Douala, 5000 FCFA/heure_".to_string();
                 }
@@ -2887,6 +3139,57 @@ impl WhatsAppChatbotService {
                     )
                     .await;
                 msg
+            }
+
+            Intent::CovoiturageSearch { query } => {
+                let (depart, destination_opt) = extraire_villes_covoiturage(&query);
+                if let Some(dest) = destination_opt {
+                    let results = self.covoiturage.search_trips(&depart, &dest).await;
+                    let msg =
+                        WhatsAppCovoiturageService::format_trip_results(&results, &depart, &dest);
+                    if !results.is_empty() {
+                        self.sessions
+                            .save_state(
+                                phone,
+                                &ConversationState::CovoiturageSearchResults {
+                                    results,
+                                    depart,
+                                    destination: dest,
+                                },
+                            )
+                            .await;
+                    } else {
+                        self.sessions.reset_to_menu(phone).await;
+                    }
+                    msg
+                } else {
+                    // Une seule ville → demander la destination
+                    "🚗 *Covoiturage*\n\n\
+                    Tapez votre trajet complet.\n\n\
+                    Exemples :\n\
+                    • _covoiturage Douala Yaoundé_\n\
+                    • _trajet Bafoussam Douala_\n\n\
+                    Ou tapez *proposer covoiturage* pour créer une annonce."
+                        .to_string()
+                }
+            }
+
+            Intent::CovoiturageCreate => {
+                if session.user_id.is_none() {
+                    self.sessions.save_state(phone, &ConversationState::AwaitingName).await;
+                    return "🔐 *Compte requis*\n\n\
+                        Créez votre compte Yukpo pour proposer des trajets !\n\n\
+                        Étape 1/2 — Comment vous appelez-vous ?\n\
+                        _(Tapez votre prénom)_"
+                        .to_string();
+                }
+                self.sessions
+                    .save_state(phone, &ConversationState::AwaitingCovoiturageDepart)
+                    .await;
+                "🚗 *Proposer un covoiturage*\n\n\
+                Étape 1/5 — 📍 *Ville de départ ?*\n\n\
+                Ex : _Douala_, _Yaoundé_, _Bafoussam_"
+                    .to_string()
             }
 
             Intent::MesProduits => {
@@ -3046,11 +3349,12 @@ impl WhatsAppChatbotService {
             "🛒 *Services Yukpo*\n\n",
             "1. 💊 Pharmacie — Trouver un médicament\n",
             "2. 🚌 Bus — Réserver un trajet\n",
-            "3. 🏠 Immobilier — Louer, acheter, hôtel\n",
-            "4. 📚 Livres scolaires — Trouver / vendre\n",
-            "5. 🛵 Livraison — Commander une livraison\n",
-            "6. 📦 Publier un produit — Vendre sur Yukpo\n",
-            "7. 🔍 Rechercher un service — Plombier, coiffeur…\n\n",
+            "3. 🚗 Covoiturage — Chercher / proposer un trajet\n",
+            "4. 🏠 Immobilier — Louer, acheter, hôtel\n",
+            "5. 📚 Livres scolaires — Trouver / vendre\n",
+            "6. 🛵 Livraison — Commander une livraison\n",
+            "7. 📦 Publier un produit — Vendre sur Yukpo\n",
+            "8. 🔍 Rechercher un service — Plombier, coiffeur…\n\n",
             "0. ↩️ Menu principal"
         )
         .to_string()
@@ -3302,6 +3606,28 @@ fn detect_intent(message: &str) -> Intent {
     if blood_groups.iter().any(|g| msg.contains(g)) {
         return Intent::Sang {
             groupe: extraire_groupe_sanguin(&msg),
+        };
+    }
+
+    // Covoiturage — AVANT bus car "trajet" et "voyage" sont communs aux deux
+    let covoit_create_kw = [
+        "proposer covoiturage",
+        "proposer trajet",
+        "offrir covoiturage",
+        "offrir trajet",
+        "créer covoiturage",
+        "creer covoiturage",
+        "je conduis",
+        "j'ai des places",
+        "je propose trajet",
+        "conducteur covoit",
+    ];
+    if msg.contains("covoiturage") || msg.contains("covoit") {
+        if covoit_create_kw.iter().any(|k| msg.contains(k)) {
+            return Intent::CovoiturageCreate;
+        }
+        return Intent::CovoiturageSearch {
+            query: message.to_string(),
         };
     }
 

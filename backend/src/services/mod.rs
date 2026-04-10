@@ -325,6 +325,7 @@ pub mod whatsapp_books_service; // ✅ 2026-04-09: Bourse du livre scolaire via 
 pub mod whatsapp_chatbot_service; // ✅ 2026-04-09: Chatbot WhatsApp Yukpo — orchestrateur tous modules
 pub mod whatsapp_cm_service; // ✅ 2026-04-09: Community Manager + Trends via WhatsApp (publications, tendances)
 pub mod whatsapp_commerce_service; // ✅ 2026-04-09: Commandes, livraison, paiement MTN/Orange via WhatsApp
+pub mod whatsapp_covoiturage_service; // ✅ 2026-04-10: Covoiturage WhatsApp — recherche et création de trajets
 pub mod whatsapp_ia_service; // ✅ 2026-04-09: YukpoIA conversationnel + génération docs + analyse données via WhatsApp
 pub mod whatsapp_partner_service; // ✅ 2026-04-09: Onboarding partenaires + gestion business via WhatsApp
 pub mod whatsapp_product_service; // ✅ 2026-04-09: Création produit marketplace via image WhatsApp
