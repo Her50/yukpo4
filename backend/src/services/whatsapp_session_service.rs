@@ -301,6 +301,7 @@ pub struct WhatsAppSessionService {
 
 impl WhatsAppSessionService {
     pub fn new(pool: Arc<PgPool>) -> Self {
+        // 2026-04-10: session manager WhatsApp Yukpo
         Self { pool }
     }
 
