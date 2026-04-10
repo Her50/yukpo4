@@ -139,6 +139,11 @@ pub enum ConversationState {
         results: Vec<ServiceSearchResult>,
     },
 
+    // Médicament détecté — choix entre acheter ou s'informer
+    AwaitingMedicationAction {
+        med_name: String,
+    },
+
     // Mode voyage — signalement rapide en cours de route
     EnRoute {
         last_lat: Option<f64>,

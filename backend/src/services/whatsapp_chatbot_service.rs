@@ -2325,6 +2325,56 @@ impl WhatsAppChatbotService {
                 );
             }
 
+            // ── Médicament détecté — choix Acheter / S'informer ──────────────
+            ConversationState::AwaitingMedicationAction { med_name } => {
+                let med = med_name.clone();
+                match message.trim() {
+                    "1" => {
+                        // Acheter → recherche pharmacies
+                        let results = self.commerce.search_pharmacies(&med).await;
+                        let msg = WhatsAppCommerceService::format_pharmacy_results(&results, &med);
+                        if !results.is_empty() {
+                            self.sessions
+                                .save_state(
+                                    phone,
+                                    &ConversationState::AwaitingPharmacyChoice { results },
+                                )
+                                .await;
+                        } else {
+                            self.sessions.reset_to_menu(phone).await;
+                        }
+                        return Some(msg);
+                    }
+                    "2" => {
+                        // S'informer → appel IA avec contexte médicament
+                        let prompt = format!(
+                            "Donne-moi des informations claires sur le médicament *{}* : \
+                            indications (à quoi ça sert), posologie habituelle, \
+                            précautions importantes, et si une ordonnance est nécessaire. \
+                            Réponds de manière simple et en français.",
+                            med
+                        );
+                        let info = self.ia.chat(&prompt, session.name.as_deref()).await;
+                        self.sessions.reset_to_menu(phone).await;
+                        return Some(format!(
+                            "💊 *{}*\n\n{}\n\n\
+                            ⚠️ _Ces informations sont indicatives. Consultez un professionnel de santé._\n\n\
+                            Tapez *pharmacie {}* pour trouver où l'acheter.",
+                            med, info, med
+                        ));
+                    }
+                    _ => {
+                        return Some(format!(
+                            "💊 *{}* — Que souhaitez-vous faire ?\n\n\
+                            *1.* 🏪 Trouver une pharmacie qui l'a en stock\n\
+                            *2.* ℹ️ Informations sur ce médicament\n\n\
+                            _Tapez 1 ou 2_",
+                            med
+                        ));
+                    }
+                }
+            }
+
             // ── Recherche service — sélection résultat ────────────────────────
             ConversationState::AwaitingServiceSearchChoice { results } => {
                 let results_clone = results.clone();
@@ -2646,40 +2696,23 @@ impl WhatsAppChatbotService {
                 // Pas une ordonnance → tester si c'est un médicament (boîte/comprimés)
                 if ct.contains("image") {
                     if let Some(med_name) = self.detect_medication_from_image(media_url).await {
-                        let results = self.commerce.search_pharmacies(&med_name).await;
-                        let msg = if results.is_empty() {
-                            format!(
-                                "💊 *Médicament détecté : {}*\n\n\
-                                😔 Non trouvé en stock dans les pharmacies Yukpo.\n\n\
-                                Tapez le nom pour réessayer ou *MENU* pour revenir.",
-                                med_name
+                        // Demander à l'utilisateur ce qu'il veut faire
+                        self.sessions
+                            .save_state(
+                                phone,
+                                &ConversationState::AwaitingMedicationAction {
+                                    med_name: med_name.clone(),
+                                },
                             )
-                        } else {
-                            let mut m =
-                                format!("💊 *{}* — {} pharmacie(s) :\n\n", med_name, results.len());
-                            for (i, p) in results.iter().take(3).enumerate() {
-                                m.push_str(&format!(
-                                    "{}. *{}*\n📍 {}\n📞 {}\n💰 {} FCFA\n\n",
-                                    i + 1,
-                                    p.pharmacy_name,
-                                    p.address,
-                                    p.phone,
-                                    p.price_fcfa
-                                ));
-                            }
-                            if !results.is_empty() {
-                                self.sessions
-                                    .save_state(
-                                        phone,
-                                        &ConversationState::AwaitingPharmacyChoice {
-                                            results: results.clone(),
-                                        },
-                                    )
-                                    .await;
-                            }
-                            m
-                        };
-                        return msg;
+                            .await;
+                        return format!(
+                            "💊 *Médicament détecté : {}*\n\n\
+                            Que souhaitez-vous faire ?\n\n\
+                            *1.* 🏪 Trouver une pharmacie qui l'a en stock\n\
+                            *2.* ℹ️ Obtenir des informations sur ce médicament\n\n\
+                            _Tapez 1 ou 2_",
+                            med_name
+                        );
                     }
                 }
                 // Compte requis pour publier un produit
