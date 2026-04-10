@@ -308,17 +308,20 @@ impl WhatsAppSessionService {
     /// Récupère ou crée une session pour un numéro WhatsApp
     pub async fn get_or_create(&self, phone: &str) -> WhatsAppSession {
         // Chercher session existante
+        // Normaliser le numéro : enlever le préfixe "whatsapp:" pour le JOIN users
+        let phone_normalized = phone.trim_start_matches("whatsapp:");
         let row = sqlx::query(
             r#"
             SELECT ws.state_json, ws.context_json,
                    u.id as user_id, u.nom as user_name,
                    u.ville as user_city, u.token_balance
             FROM whatsapp_sessions ws
-            LEFT JOIN users u ON u.telephone = $1
+            LEFT JOIN users u ON u.phone = $2
             WHERE ws.phone_number = $1
             "#,
         )
         .bind(phone)
+        .bind(phone_normalized)
         .fetch_optional(&*self.pool)
         .await
         .ok()
@@ -356,9 +359,9 @@ impl WhatsAppSessionService {
         } else {
             // Vérifier si user existe par téléphone
             let user_row = sqlx::query(
-                "SELECT id, nom, ville, token_balance FROM users WHERE telephone = $1 LIMIT 1",
+                "SELECT id, nom, ville, token_balance FROM users WHERE phone = $1 LIMIT 1",
             )
-            .bind(phone)
+            .bind(phone_normalized)
             .fetch_optional(&*self.pool)
             .await
             .ok()
@@ -458,15 +461,16 @@ impl WhatsAppSessionService {
 
     /// Crée un compte utilisateur via WhatsApp
     pub async fn create_account(&self, phone: &str, name: &str, city: &str) -> Option<i32> {
+        let phone_normalized = phone.trim_start_matches("whatsapp:");
         let result = sqlx::query(
             r#"
-            INSERT INTO users (telephone, nom, ville, token_balance, created_at)
+            INSERT INTO users (phone, nom, ville, token_balance, created_at)
             VALUES ($1, $2, $3, 50, NOW())
-            ON CONFLICT (telephone) DO UPDATE SET nom = $2, ville = $3
+            ON CONFLICT (phone) DO UPDATE SET nom = $2, ville = $3
             RETURNING id
             "#,
         )
-        .bind(phone)
+        .bind(phone_normalized)
         .bind(name)
         .bind(city)
         .fetch_optional(&*self.pool)
