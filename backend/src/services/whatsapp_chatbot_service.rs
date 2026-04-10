@@ -619,6 +619,43 @@ impl WhatsAppChatbotService {
                 ));
             }
 
+            // ── Bourse du livre — attente verso ──────────────────────────────
+            ConversationState::AwaitingBookVerso { recto_url, books } => {
+                let (recto, books_clone) = (recto_url.clone(), books.clone());
+                let msg_t = message.trim().to_lowercase();
+                if msg_t == "analyser" || msg_t == "passer" || msg_t == "ok" {
+                    // Analyser avec le recto seulement
+                    let book = self.books.identify_book_from_image(&recto).await;
+                    let index = books_clone.len() + 1;
+                    let result_msg = WhatsAppBooksService::format_scan_result(&book, index);
+                    let mut updated = books_clone;
+                    updated.push(book);
+                    self.sessions
+                        .save_state(
+                            phone,
+                            &ConversationState::BookScanSession { books: updated },
+                        )
+                        .await;
+                    return Some(result_msg);
+                }
+                if msg_t == "fin" || msg_t == "terminer" {
+                    if books_clone.is_empty() {
+                        self.sessions.reset_to_menu(phone).await;
+                        return Some(format!("Aucun livre scanné.\n\n{}", self.main_menu()));
+                    }
+                    self.sessions
+                        .save_state(
+                            phone,
+                            &ConversationState::AwaitingBookScanAction {
+                                books: books_clone.clone(),
+                            },
+                        )
+                        .await;
+                    return Some(WhatsAppBooksService::format_scan_recap(&books_clone));
+                }
+                return Some("📸 Envoyez le *verso* du livre, ou tapez *ANALYSER* pour identifier avec cette photo, ou *FIN* pour terminer.".to_string());
+            }
+
             // ── Bourse du livre — scan multiple ──────────────────────────────
             ConversationState::BookScanSession { books } => {
                 // Message texte dans la session scan → commandes
@@ -676,7 +713,7 @@ impl WhatsAppChatbotService {
                             self.main_menu()
                         ));
                     }
-                    "4" | "annuler" => {
+                    "3" | "annuler" => {
                         self.sessions.reset_to_menu(phone).await;
                         return Some(format!("↩️ Annulé.\n\n{}", self.main_menu()));
                     }
@@ -1880,7 +1917,25 @@ impl WhatsAppChatbotService {
                         }
                         "4" => {
                             self.sessions.reset_to_menu(phone).await;
-                            return Some("📚 *Livres scolaires*\n\nTapez votre recherche.\nEx : _livres Lycée de la Retraite 5ème_\n\nOu tapez *vendre mes livres* pour scanner vos livres.".to_string());
+                            return Some("📚 *Livres scolaires*\n\nTapez votre recherche.\nEx : _livres Lycée de la Retraite 5ème_\n\nOu tapez *vendre mes livres* pour scanner et vendre vos livres.".to_string());
+                        }
+                        "5" => {
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some(
+                                "🛵 *Livraison Yukpo*\n\n\
+                                Tapez votre commande.\nEx : _livraison colis Akwa Douala_\n\n\
+                                Ou précisez l'adresse de prise en charge et de livraison."
+                                    .to_string(),
+                            );
+                        }
+                        "6" => {
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some(
+                                "📦 *Publier un produit*\n\n\
+                                📸 Envoyez une *photo* de votre produit.\n\
+                                Je l'identifie automatiquement et vous propose de le publier sur Yukpo.\n\n\
+                                _Prix, catégorie et description seront suggérés._".to_string()
+                            );
                         }
                         _ => return Some(self.submenu_services()),
                     },
@@ -2119,9 +2174,25 @@ impl WhatsAppChatbotService {
                     .await;
                 return msg;
             }
-            // Image pendant session scan livres → identifier le livre
+            // Image pendant session scan livres → demander le verso d'abord
             ConversationState::BookScanSession { books } => {
-                let mut books_updated = books.clone();
+                let books_clone = books.clone();
+                let index = books_clone.len();
+                self.sessions
+                    .save_state(
+                        phone,
+                        &ConversationState::AwaitingBookVerso {
+                            recto_url: media_url.to_string(),
+                            books: books_clone,
+                        },
+                    )
+                    .await;
+                WhatsAppBooksService::ask_for_verso(index)
+            }
+            // Verso reçu → analyser recto+verso ensemble
+            ConversationState::AwaitingBookVerso { recto_url, books } => {
+                let (recto, mut books_updated) = (recto_url.clone(), books.clone());
+                // Analyser avec les deux images (on passe le verso, le recto est contexte)
                 let book = self.books.identify_book_from_image(media_url).await;
                 let index = books_updated.len() + 1;
                 let msg = WhatsAppBooksService::format_scan_result(&book, index);
@@ -2767,7 +2838,9 @@ impl WhatsAppChatbotService {
             "1. 💊 Pharmacie — Trouver un médicament\n",
             "2. 🚌 Bus — Réserver un trajet\n",
             "3. 🏠 Immobilier — Louer, acheter, hôtel\n",
-            "4. 📚 Livres scolaires — Trouver / vendre\n\n",
+            "4. 📚 Livres scolaires — Trouver / vendre\n",
+            "5. 🛵 Livraison — Commander une livraison\n",
+            "6. 📦 Publier un produit — Vendre sur Yukpo\n\n",
             "0. ↩️ Menu principal"
         )
         .to_string()

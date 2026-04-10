@@ -87,6 +87,10 @@ pub enum ConversationState {
     BookScanSession {
         books: Vec<ScannedBook>,
     },
+    AwaitingBookVerso {
+        recto_url: String,
+        books: Vec<ScannedBook>,
+    },
     AwaitingBookScanAction {
         books: Vec<ScannedBook>,
     },

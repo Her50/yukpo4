@@ -33,6 +33,7 @@ steps:
       - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/yukpo-backend/yukpo-backend:latest'
       - '--region=europe-west1'
       - '--platform=managed'
+      - '--min-instances=1'
       - '--quiet'
 
 images:

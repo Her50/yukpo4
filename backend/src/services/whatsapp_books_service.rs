@@ -438,15 +438,29 @@ impl WhatsAppBooksService {
 
     pub fn format_scan_result(book: &ScannedBook, index: usize) -> String {
         format!(
-            "📚 *Livre {}* détecté :\n\n\
-            📖 Titre : *{}*\n\
+            "📚 *Livre {}* identifié :\n\n\
+            📖 *{}*\n\
             📐 Matière : {}\n\
             🎓 Niveau : {}\n\
             ✨ État : {}\n\
             💰 Prix suggéré : {} FCFA\n\n\
-            [✅ Confirmer] [✏️ Corriger]\n\n\
-            _Envoyez une autre photo ou tapez *FIN* pour le récapitulatif._",
+            1. ✅ Confirmer ce livre\n\
+            2. ✏️ Corriger le prix\n\
+            3. ❌ Ignorer ce livre\n\n\
+            _Ou envoyez une autre photo de livre._\n\
+            _Tapez *FIN* pour le récapitulatif._",
             index, book.title, book.subject, book.level, book.condition, book.price_suggestion
+        )
+    }
+
+    pub fn ask_for_verso(index: usize) -> String {
+        format!(
+            "📸 *Photo {} reçue !*\n\n\
+            Pour une meilleure identification, envoyez le *verso* du livre.\n\n\
+            Ou tapez :\n\
+            • *ANALYSER* — identifier avec cette photo seulement\n\
+            • *FIN* — terminer le scan",
+            index + 1
         )
     }
 
@@ -464,11 +478,10 @@ impl WhatsAppBooksService {
         }
         msg.push_str(&format!("\n💵 *Total estimé : {} FCFA*\n\n", total));
         msg.push_str("Que souhaitez-vous faire ?\n\n");
-        msg.push_str("1️⃣ 💰 Mettre en vente\n");
-        msg.push_str("2️⃣ 🔄 Proposer en troc\n");
-        msg.push_str("3️⃣ ✏️ Modifier les prix\n");
-        msg.push_str("4️⃣ ❌ Annuler\n");
-        msg.push_str("\n_Tapez le numéro de votre choix._");
+        msg.push_str("1. 💰 *Vente* — vendre contre argent\n");
+        msg.push_str("2. 🔄 *Troc* — échanger contre un autre livre\n");
+        msg.push_str("3. ❌ Annuler\n");
+        msg.push_str("\n_Tapez 1 ou 2._");
         msg
     }
 

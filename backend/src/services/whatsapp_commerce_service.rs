@@ -25,28 +25,28 @@ pub const TOKEN_PACKS: &[TokenPack] = &[
         tokens: 500,
         amount_fcfa: 1000,
         bonus: 0,
-        label: "500 tokens — 1 000 FCFA",
+        label: "1 000 FCFA — Starter",
     },
     TokenPack {
         id: "pack_1000",
         tokens: 1000,
         amount_fcfa: 1800,
         bonus: 50,
-        label: "1 000 tokens — 1 800 FCFA ⭐ Populaire",
+        label: "1 800 FCFA ⭐ Populaire",
     },
     TokenPack {
         id: "pack_2000",
         tokens: 2000,
         amount_fcfa: 3000,
         bonus: 200,
-        label: "2 000 tokens — 3 000 FCFA (+200 bonus)",
+        label: "3 000 FCFA — Standard",
     },
     TokenPack {
         id: "pack_5000",
         tokens: 5000,
         amount_fcfa: 6500,
         bonus: 500,
-        label: "5 000 tokens — 6 500 FCFA (+500 bonus)",
+        label: "6 500 FCFA — Premium",
     },
 ];
 
@@ -70,12 +70,12 @@ pub fn token_pack_menu(action_context: &str) -> String {
 
 pub fn payment_method_menu(pack: &TokenPack) -> String {
     format!(
-        "💳 *Pack {} tokens — {} FCFA*\n\n\
+        "💳 *Recharge {} FCFA*\n\n\
         Choisissez votre mode de paiement :\n\n\
-        1️⃣ 📱 MTN Mobile Money\n\
-        2️⃣ 🟠 Orange Money\n\n\
+        1. 📱 MTN Mobile Money\n\
+        2. 🟠 Orange Money\n\n\
         _Tapez 1 ou 2._",
-        pack.tokens, pack.amount_fcfa
+        pack.amount_fcfa
     )
 }
 
