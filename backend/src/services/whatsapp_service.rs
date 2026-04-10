@@ -348,9 +348,33 @@ impl WhatsAppService {
             });
         }
 
-        let account_sid = self.config.twilio_account_sid.as_ref().unwrap();
-        let auth_token = self.config.twilio_auth_token.as_ref().unwrap();
-        let from_number = self.config.twilio_whatsapp_number.as_ref().unwrap();
+        // Relire les vars d'env à chaque envoi pour prendre en compte les mises à jour de secrets
+        let sid_from_env = std::env::var("TWILIO_ACCOUNT_SID").unwrap_or_default();
+        let token_from_env = std::env::var("TWILIO_AUTH_TOKEN").unwrap_or_default();
+        let number_from_env = std::env::var("TWILIO_WHATSAPP_NUMBER").unwrap_or_default();
+
+        let account_sid = if !sid_from_env.is_empty() {
+            &sid_from_env
+        } else {
+            self.config.twilio_account_sid.as_deref().unwrap_or("")
+        };
+        let auth_token = if !token_from_env.is_empty() {
+            &token_from_env
+        } else {
+            self.config.twilio_auth_token.as_deref().unwrap_or("")
+        };
+        let from_number_str;
+        let from_number = if !number_from_env.is_empty() {
+            &number_from_env
+        } else {
+            from_number_str = self.config.twilio_whatsapp_number.clone().unwrap_or_default();
+            &from_number_str
+        };
+
+        log::info!(
+            "[WhatsAppService] 🔑 SID utilisé: {}...",
+            &account_sid[..8.min(account_sid.len())]
+        );
 
         // Formater le numéro pour WhatsApp (whatsapp:+...)
         let to_whatsapp = if to.starts_with("whatsapp:+") {
