@@ -314,7 +314,7 @@ impl WhatsAppSessionService {
             r#"
             SELECT ws.state_json, ws.context_json,
                    u.id as user_id, u.nom as user_name,
-                   u.ville as user_city, u.token_balance
+                   u.token_balance
             FROM whatsapp_sessions ws
             LEFT JOIN users u ON u.phone = $2
             WHERE ws.phone_number = $1
@@ -332,7 +332,6 @@ impl WhatsAppSessionService {
             let context_json: Option<String> = r.try_get("context_json").ok();
             let user_id: Option<i32> = r.try_get("user_id").ok();
             let user_name: Option<String> = r.try_get("user_name").ok();
-            let user_city: Option<String> = r.try_get("user_city").ok();
             let token_balance: Option<i32> = r.try_get("token_balance").ok();
 
             let state: ConversationState = state_json
@@ -351,45 +350,37 @@ impl WhatsAppSessionService {
                 phone: phone.to_string(),
                 user_id,
                 name: user_name,
-                city: user_city,
+                city: None,
                 token_balance: token_balance.unwrap_or(0),
                 state,
                 alert_subscriptions: subscriptions,
             }
         } else {
             // Vérifier si user existe par téléphone
-            let user_row = sqlx::query(
-                "SELECT id, nom, ville, token_balance FROM users WHERE phone = $1 LIMIT 1",
-            )
-            .bind(phone_normalized)
-            .fetch_optional(&*self.pool)
-            .await
-            .ok()
-            .flatten();
+            let user_row =
+                sqlx::query("SELECT id, nom, token_balance FROM users WHERE phone = $1 LIMIT 1")
+                    .bind(phone_normalized)
+                    .fetch_optional(&*self.pool)
+                    .await
+                    .ok()
+                    .flatten();
 
-            let (user_id, name, city, balance, initial_state) = if let Some(u) = user_row {
+            let (user_id, name, balance, initial_state) = if let Some(u) = user_row {
                 let id: i32 = u.try_get("id").unwrap_or(0);
                 let nom: Option<String> = u.try_get("nom").ok();
-                let ville: Option<String> = u.try_get("ville").ok();
                 let bal: Option<i32> = u.try_get("token_balance").ok();
-                (
-                    Some(id),
-                    nom,
-                    ville,
-                    bal.unwrap_or(0),
-                    ConversationState::MainMenu,
-                )
+                (Some(id), nom, bal.unwrap_or(0), ConversationState::MainMenu)
             } else {
-                (None, None, None, 0, ConversationState::New)
+                (None, None, 0, ConversationState::New)
             };
 
-            // Créer la session
+            // Créer la session — DO NOTHING pour ne pas écraser un état existant
             let state_json = serde_json::to_string(&initial_state).unwrap_or_default();
             let _ = sqlx::query(
                 r#"
                 INSERT INTO whatsapp_sessions (phone_number, state_json, context_json)
                 VALUES ($1, $2, '{}')
-                ON CONFLICT (phone_number) DO UPDATE SET state_json = $2, updated_at = NOW()
+                ON CONFLICT (phone_number) DO NOTHING
                 "#,
             )
             .bind(phone)
@@ -397,13 +388,25 @@ impl WhatsAppSessionService {
             .execute(&*self.pool)
             .await;
 
+            // Relire l'état réel depuis la DB (peut être différent si DO NOTHING a joué)
+            let real_state =
+                sqlx::query("SELECT state_json FROM whatsapp_sessions WHERE phone_number = $1")
+                    .bind(phone)
+                    .fetch_optional(&*self.pool)
+                    .await
+                    .ok()
+                    .flatten()
+                    .and_then(|r| r.try_get::<String, _>("state_json").ok())
+                    .and_then(|s| serde_json::from_str(&s).ok())
+                    .unwrap_or(initial_state);
+
             WhatsAppSession {
                 phone: phone.to_string(),
                 user_id,
                 name,
-                city,
+                city: None,
                 token_balance: balance,
-                state: initial_state,
+                state: real_state,
                 alert_subscriptions: vec![],
             }
         }
