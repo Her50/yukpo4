@@ -164,7 +164,7 @@ impl WhatsAppBooksService {
                     COALESCE(ls.prix_detecte, 0) as prix,
                     COALESCE(ls.mode_listing, 'vente') as type_transaction,
                     COALESCE(u.nom, 'Vendeur') as vendeur_nom,
-                    COALESCE(u.telephone, '') as vendeur_tel,
+                    COALESCE(u.phone, '') as vendeur_tel,
                     COALESCE(ls.ville, 'Cameroun') as ville
                 FROM livres_scolaires ls
                 JOIN users u ON u.id = ls.user_id

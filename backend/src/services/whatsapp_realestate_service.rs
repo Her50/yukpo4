@@ -79,7 +79,7 @@ impl WhatsAppRealEstateService {
                 COALESCE(p.categorie, '') as property_type,
                 COALESCE(p.prix::text, 'Prix à négocier') as price,
                 COALESCE(s.adresse, s.ville, '') as location,
-                COALESCE(s.telephone, u.telephone, '') as contact
+                COALESCE(s.data->>'telephone', s.data->>'whatsapp', u.phone, '') as contact
             FROM products p
             LEFT JOIN services s ON s.id = p.service_id
             LEFT JOIN users u ON u.id = p.user_id

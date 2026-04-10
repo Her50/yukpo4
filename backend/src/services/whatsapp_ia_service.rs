@@ -487,7 +487,6 @@ pub fn token_cost_message(action: &str, cost: i32, balance: i32) -> String {
 // ── Helpers internes ──────────────────────────────────────────────────────────
 
 fn base64_encode(data: &[u8]) -> String {
-    use std::fmt::Write;
     let chars = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
     for chunk in data.chunks(3) {

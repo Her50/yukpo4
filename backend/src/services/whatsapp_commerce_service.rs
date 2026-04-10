@@ -136,9 +136,9 @@ impl WhatsAppCommerceService {
             r#"
             SELECT
                 s.id as pharmacy_id,
-                s.nom_service as pharmacy_name,
-                COALESCE(s.adresse, '') as address,
-                COALESCE(s.telephone, '') as phone,
+                COALESCE(s.data->>'nom_structure', s.data->>'titre_service', 'Pharmacie') as pharmacy_name,
+                COALESCE(s.data->>'adresse', '') as address,
+                COALESCE(s.data->>'telephone', s.data->>'whatsapp', '') as phone,
                 pp.nom_produit as product_name,
                 COALESCE(pp.prix::bigint, 0) as price_fcfa,
                 COALESCE(pp.stock, 0) as stock

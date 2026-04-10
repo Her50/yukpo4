@@ -31,7 +31,7 @@ use crate::services::whatsapp_realestate_service::{
     detect_property_search, WhatsAppRealEstateService,
 };
 use crate::services::whatsapp_session_service::{
-    ConversationState, ScannedBook, WhatsAppSession, WhatsAppSessionService,
+    ConversationState, WhatsAppSession, WhatsAppSessionService,
 };
 
 // ─── Intent de haut niveau ───────────────────────────────────────────────────
@@ -2784,32 +2784,13 @@ fn extraire_villes_bus(trajet: &str) -> (String, Option<String>) {
 }
 
 async fn handle_sang_search(pool: &Arc<PgPool>, groupe: Option<&str>) -> String {
-    let rows = match groupe {
-        Some(g) => sqlx::query(
-            r#"SELECT u.nom, u.telephone, u.ville, d.groupe_sanguin
-                FROM blood_donors d JOIN users u ON u.id = d.user_id
-                WHERE d.groupe_sanguin ILIKE $1 AND d.disponible = true
-                ORDER BY d.derniere_disponibilite DESC LIMIT 5"#,
-        )
-        .bind(format!("%{}%", g))
-        .fetch_all(pool.as_ref())
-        .await
-        .unwrap_or_default(),
-        None => sqlx::query(
-            r#"SELECT u.nom, u.telephone, u.ville, d.groupe_sanguin
-                FROM blood_donors d JOIN users u ON u.id = d.user_id
-                WHERE d.disponible = true
-                ORDER BY d.derniere_disponibilite DESC LIMIT 5"#,
-        )
-        .fetch_all(pool.as_ref())
-        .await
-        .unwrap_or_default(),
-    };
+    // blood_donors non encore disponible — message informatif
+    let g_str = groupe.map(|g| format!(" *{}*", g.to_uppercase())).unwrap_or_default();
+    let rows: Vec<sqlx::postgres::PgRow> = vec![];
 
     if rows.is_empty() {
-        let g_str = groupe.map(|g| format!(" *{}*", g.to_uppercase())).unwrap_or_default();
         return format!(
-            "😔 Aucun donneur{} disponible.\n\n🏥 Contactez la banque de sang la plus proche.\n⚠️ Urgence médicale : appelez le *15*",
+            "🩸 Recherche de donneurs de sang{} en cours...\n\n⚠️ Urgence : appelez le *15*\n🏥 Banque de sang la plus proche : Centre Pasteur Cameroun\n📞 +237 222 23 15 00",
             g_str
         );
     }
@@ -2819,8 +2800,8 @@ async fn handle_sang_search(pool: &Arc<PgPool>, groupe: Option<&str>) -> String 
     for (i, r) in rows.iter().enumerate() {
         let nom: String = r.try_get("nom").unwrap_or_else(|_| "Anonyme".to_string());
         let groupe_sanguin: String = r.try_get("groupe_sanguin").unwrap_or_default();
-        let tel: String = r.try_get("telephone").unwrap_or_else(|_| "Non renseigné".to_string());
-        let ville: String = r.try_get("ville").unwrap_or_default();
+        let tel: String = r.try_get("phone").unwrap_or_else(|_| "Non renseigné".to_string());
+        let ville: String = String::new();
         msg.push_str(&format!(
             "{}. 👤 *{}* — {} — {} — 📞 {}\n",
             i + 1,

@@ -288,7 +288,7 @@ pub struct WhatsAppSession {
     pub user_id: Option<i32>,
     pub name: Option<String>,
     pub city: Option<String>,
-    pub token_balance: i32,
+    pub tokens_balance: i32,
     pub state: ConversationState,
     pub alert_subscriptions: Vec<String>, // villes abonnées
 }
@@ -314,7 +314,7 @@ impl WhatsAppSessionService {
             r#"
             SELECT ws.state_json, ws.context_json,
                    u.id as user_id, u.nom as user_name,
-                   u.token_balance
+                   u.tokens_balance
             FROM whatsapp_sessions ws
             LEFT JOIN users u ON u.phone = $2
             WHERE ws.phone_number = $1
@@ -332,7 +332,7 @@ impl WhatsAppSessionService {
             let context_json: Option<String> = r.try_get("context_json").ok();
             let user_id: Option<i32> = r.try_get("user_id").ok();
             let user_name: Option<String> = r.try_get("user_name").ok();
-            let token_balance: Option<i32> = r.try_get("token_balance").ok();
+            let tokens_balance: Option<i32> = r.try_get("tokens_balance").ok();
 
             let state: ConversationState = state_json
                 .as_deref()
@@ -351,14 +351,14 @@ impl WhatsAppSessionService {
                 user_id,
                 name: user_name,
                 city: None,
-                token_balance: token_balance.unwrap_or(0),
+                tokens_balance: tokens_balance.unwrap_or(0),
                 state,
                 alert_subscriptions: subscriptions,
             }
         } else {
             // Vérifier si user existe par téléphone
             let user_row =
-                sqlx::query("SELECT id, nom, token_balance FROM users WHERE phone = $1 LIMIT 1")
+                sqlx::query("SELECT id, nom, tokens_balance FROM users WHERE phone = $1 LIMIT 1")
                     .bind(phone_normalized)
                     .fetch_optional(&*self.pool)
                     .await
@@ -368,7 +368,7 @@ impl WhatsAppSessionService {
             let (user_id, name, balance, initial_state) = if let Some(u) = user_row {
                 let id: i32 = u.try_get("id").unwrap_or(0);
                 let nom: Option<String> = u.try_get("nom").ok();
-                let bal: Option<i32> = u.try_get("token_balance").ok();
+                let bal: Option<i32> = u.try_get("tokens_balance").ok();
                 (Some(id), nom, bal.unwrap_or(0), ConversationState::MainMenu)
             } else {
                 (None, None, 0, ConversationState::New)
@@ -405,7 +405,7 @@ impl WhatsAppSessionService {
                 user_id,
                 name,
                 city: None,
-                token_balance: balance,
+                tokens_balance: balance,
                 state: real_state,
                 alert_subscriptions: vec![],
             }
@@ -467,15 +467,14 @@ impl WhatsAppSessionService {
         let phone_normalized = phone.trim_start_matches("whatsapp:");
         let result = sqlx::query(
             r#"
-            INSERT INTO users (phone, nom, ville, token_balance, created_at)
-            VALUES ($1, $2, $3, 50, NOW())
-            ON CONFLICT (phone) DO UPDATE SET nom = $2, ville = $3
+            INSERT INTO users (phone, nom, created_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (phone) DO UPDATE SET nom = $2
             RETURNING id
             "#,
         )
         .bind(phone_normalized)
         .bind(name)
-        .bind(city)
         .fetch_optional(&*self.pool)
         .await
         .ok()
@@ -486,7 +485,7 @@ impl WhatsAppSessionService {
 
     /// Vérifie et déduit des tokens
     pub async fn check_and_deduct_tokens(&self, user_id: i32, cost: i32) -> Result<i32, String> {
-        let row = sqlx::query("SELECT token_balance FROM users WHERE id = $1")
+        let row = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
             .bind(user_id)
             .fetch_optional(&*self.pool)
             .await
@@ -494,7 +493,7 @@ impl WhatsAppSessionService {
             .flatten();
 
         let balance: i32 = row
-            .and_then(|r| r.try_get::<Option<i32>, _>("token_balance").ok().flatten())
+            .and_then(|r| r.try_get::<Option<i32>, _>("tokens_balance").ok().flatten())
             .unwrap_or(0);
 
         if balance < cost {
@@ -504,7 +503,7 @@ impl WhatsAppSessionService {
             ));
         }
 
-        let _ = sqlx::query("UPDATE users SET token_balance = token_balance - $1 WHERE id = $2")
+        let _ = sqlx::query("UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2")
             .bind(cost)
             .bind(user_id)
             .execute(&*self.pool)
@@ -516,7 +515,7 @@ impl WhatsAppSessionService {
     /// Crédite des tokens après paiement
     pub async fn credit_tokens(&self, user_id: i32, tokens: i32) -> i32 {
         let row = sqlx::query(
-            "UPDATE users SET token_balance = token_balance + $1 WHERE id = $2 RETURNING token_balance"
+            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2 RETURNING tokens_balance"
         )
         .bind(tokens)
         .bind(user_id)
@@ -525,7 +524,7 @@ impl WhatsAppSessionService {
         .ok()
         .flatten();
 
-        row.and_then(|r| r.try_get::<Option<i32>, _>("token_balance").ok().flatten())
+        row.and_then(|r| r.try_get::<Option<i32>, _>("tokens_balance").ok().flatten())
             .unwrap_or(0)
     }
 
