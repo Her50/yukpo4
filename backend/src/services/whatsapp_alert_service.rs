@@ -1,8 +1,35 @@
 // ✅ WhatsApp Alert Service — Alertes communautaires (NavigationScreen workflow)
 // Radar, Police, Accident, Danger, Travaux, Dos-d'âne, Contrôle, Mintransport
+// Fonctionnalités :
+//  - Création alerte + synchronisation navigation_checkpoints
+//  - Recherche alertes par rayon GPS (critères différents par type)
+//  - Broadcast sortant WhatsApp Twilio aux abonnés à proximité
 
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
+
+// Rayon de notification (km) par type d'alerte
+pub fn alert_radius_km(alert_type: &str) -> f64 {
+    match alert_type {
+        "radar" | "road_check" | "transport_control" => 3.0, // contrôles : rayon court
+        "police" => 5.0,
+        "accident" | "danger" => 10.0, // accidents : rayon large
+        "road_works" => 2.0,           // travaux : zone locale
+        "speed_bump" => 1.0,           // dos-d'âne : très local
+        _ => 5.0,
+    }
+}
+
+// Durée d'expiration (heures) par type d'alerte
+pub fn alert_expires_hours(alert_type: &str) -> i64 {
+    match alert_type {
+        "road_works" | "speed_bump" => 48,
+        "radar" | "police" | "road_check" | "transport_control" => 4,
+        "accident" => 2,
+        "danger" => 3,
+        _ => 2,
+    }
+}
 
 pub struct WhatsAppAlertService {
     pool: Arc<PgPool>,
@@ -40,7 +67,7 @@ impl WhatsAppAlertService {
         Self { pool }
     }
 
-    /// Enregistre une alerte communautaire
+    /// Enregistre une alerte communautaire + synchronise avec navigation_checkpoints
     pub async fn create_alert(
         &self,
         alert_type: &str,
@@ -55,12 +82,14 @@ impl WhatsAppAlertService {
             _ => format!("https://maps.google.com/?q={}", urlencoding(address)),
         };
 
+        let expires_hours = alert_expires_hours(alert_type);
+
         let result = sqlx::query(
             r#"
             INSERT INTO community_alerts
                 (alert_type, latitude, longitude, address, city, reported_by, maps_url,
                  status, confirmations, created_at, expires_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 1, NOW(), NOW() + INTERVAL '2 hours')
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 1, NOW(), NOW() + ($8 || ' hours')::INTERVAL)
             RETURNING id
             "#,
         )
@@ -71,12 +100,46 @@ impl WhatsAppAlertService {
         .bind(city)
         .bind(reported_by)
         .bind(&maps_url)
+        .bind(expires_hours)
         .fetch_optional(&*self.pool)
         .await
         .ok()
         .flatten();
 
-        result.and_then(|r| r.try_get::<i32, _>("id").ok())
+        let alert_id = result.and_then(|r| r.try_get::<i32, _>("id").ok())?;
+
+        // Synchroniser avec navigation_checkpoints si coordonnées GPS disponibles
+        if let (Some(lat), Some(lng)) = (latitude, longitude) {
+            let nav_type = match alert_type {
+                "radar" => "radar",
+                "police" | "road_check" | "transport_control" => "police",
+                "accident" => "accident",
+                "danger" => "danger",
+                "road_works" => "road_works",
+                "speed_bump" => "speed_bump",
+                _ => "danger",
+            };
+            let expires_at = chrono::Utc::now() + chrono::Duration::hours(expires_hours);
+            let description = format!("Signalé via WhatsApp par {} — {}", reported_by, address);
+            let _ = sqlx::query(
+                r#"
+                INSERT INTO navigation_checkpoints
+                    (reported_by, checkpoint_type, latitude, longitude,
+                     description, is_permanent, expires_at)
+                VALUES (0, $1, $2, $3, $4, false, $5)
+                ON CONFLICT DO NOTHING
+                "#,
+            )
+            .bind(nav_type)
+            .bind(lat)
+            .bind(lng)
+            .bind(&description)
+            .bind(expires_at)
+            .execute(&*self.pool)
+            .await;
+        }
+
+        Some(alert_id)
     }
 
     /// Récupère les alertes actives dans une ville
@@ -118,6 +181,153 @@ impl WhatsAppAlertService {
                 }
             })
             .collect()
+    }
+
+    /// Récupère les alertes actives à proximité GPS (rayon adapté par type)
+    pub async fn get_active_alerts_nearby(
+        &self,
+        lat: f64,
+        lng: f64,
+        radius_km_override: Option<f64>,
+    ) -> Vec<CommunityAlert> {
+        // Rayon maximal recherché (on filtre ensuite par type)
+        let max_radius = radius_km_override.unwrap_or(15.0);
+        let lat_delta = max_radius / 111.0;
+        let lng_delta = max_radius / (111.0 * lat.to_radians().cos().abs().max(0.01));
+
+        let rows = sqlx::query(
+            r#"
+            SELECT id, alert_type, latitude, longitude, address, city,
+                   reported_by, confirmations, status, maps_url
+            FROM community_alerts
+            WHERE status = 'active'
+              AND expires_at > NOW()
+              AND latitude IS NOT NULL AND longitude IS NOT NULL
+              AND latitude  BETWEEN $1 - $3 AND $1 + $3
+              AND longitude BETWEEN $2 - $4 AND $2 + $4
+            ORDER BY created_at DESC
+            LIMIT 20
+            "#,
+        )
+        .bind(lat)
+        .bind(lng)
+        .bind(lat_delta)
+        .bind(lng_delta)
+        .fetch_all(&*self.pool)
+        .await
+        .unwrap_or_default();
+
+        rows.iter()
+            .filter_map(|r| {
+                let alert_type: String = r.try_get("alert_type").unwrap_or_default();
+                let a_lat: f64 = r.try_get("latitude").ok()?;
+                let a_lng: f64 = r.try_get("longitude").ok()?;
+                // Calcul haversine précis
+                let dist = haversine_km(lat, lng, a_lat, a_lng);
+                let allowed_radius = alert_radius_km(&alert_type);
+                if dist > allowed_radius {
+                    return None;
+                }
+                let (icon, label) = alert_icon_label(&alert_type);
+                Some(CommunityAlert {
+                    id: r.try_get("id").unwrap_or(0),
+                    alert_type,
+                    icon: icon.to_string(),
+                    label: label.to_string(),
+                    latitude: Some(a_lat),
+                    longitude: Some(a_lng),
+                    address: r.try_get("address").unwrap_or_default(),
+                    city: r.try_get("city").unwrap_or_default(),
+                    reported_by: r.try_get("reported_by").unwrap_or_default(),
+                    confirmations: r.try_get("confirmations").unwrap_or(1),
+                    status: r.try_get("status").unwrap_or_default(),
+                    maps_url: r.try_get("maps_url").unwrap_or_default(),
+                })
+            })
+            .collect()
+    }
+
+    /// Diffuse une alerte aux abonnés WhatsApp à proximité GPS
+    /// Utilise Twilio Messages API (outbound)
+    pub async fn broadcast_to_nearby_subscribers(
+        &self,
+        alert: &CommunityAlert,
+        reporter_name: Option<&str>,
+    ) -> usize {
+        let (lat, lng) = match (alert.latitude, alert.longitude) {
+            (Some(a), Some(b)) => (a, b),
+            _ => {
+                // Pas de GPS → diffuser à tous les abonnés de la ville
+                return self.broadcast_to_city_subscribers(alert, reporter_name).await;
+            }
+        };
+
+        let radius = alert_radius_km(&alert.alert_type);
+        let lat_delta = radius / 111.0;
+        let lng_delta = radius / (111.0 * lat.to_radians().cos().abs().max(0.01));
+
+        // Récupérer les abonnés dans la zone GPS (whatsapp_alert_subscriptions avec coords OU par ville)
+        let rows = sqlx::query(
+            r#"
+            SELECT DISTINCT was.phone_number
+            FROM whatsapp_alert_subscriptions was
+            WHERE was.active = TRUE
+              AND (
+                  -- Abonnés par ville (sans GPS) → notifier si ville correspond
+                  (was.latitude IS NULL AND LOWER(was.city) = LOWER($5))
+                  OR
+                  -- Abonnés avec GPS → notifier si dans le rayon
+                  (was.latitude IS NOT NULL AND was.longitude IS NOT NULL
+                   AND was.latitude  BETWEEN $1 - $3 AND $1 + $3
+                   AND was.longitude BETWEEN $2 - $4 AND $2 + $4)
+              )
+            LIMIT 500
+            "#,
+        )
+        .bind(lat)
+        .bind(lng)
+        .bind(lat_delta)
+        .bind(lng_delta)
+        .bind(&alert.city)
+        .fetch_all(&*self.pool)
+        .await
+        .unwrap_or_default();
+
+        let phones: Vec<String> =
+            rows.iter().filter_map(|r| r.try_get("phone_number").ok()).collect();
+
+        let message = self.build_broadcast_message(alert, reporter_name);
+        let mut sent = 0;
+        for phone in &phones {
+            if send_whatsapp_outbound(phone, &message).await {
+                sent += 1;
+            }
+        }
+        sent
+    }
+
+    async fn broadcast_to_city_subscribers(
+        &self,
+        alert: &CommunityAlert,
+        reporter_name: Option<&str>,
+    ) -> usize {
+        let rows = sqlx::query(
+            "SELECT phone_number FROM whatsapp_alert_subscriptions WHERE active = TRUE AND LOWER(city) = LOWER($1) LIMIT 500",
+        )
+        .bind(&alert.city)
+        .fetch_all(&*self.pool)
+        .await
+        .unwrap_or_default();
+        let subscribers: Vec<String> =
+            rows.iter().filter_map(|r| r.try_get("phone_number").ok()).collect();
+        let message = self.build_broadcast_message(alert, reporter_name);
+        let mut sent = 0;
+        for phone in &subscribers {
+            if send_whatsapp_outbound(phone, &message).await {
+                sent += 1;
+            }
+        }
+        sent
     }
 
     /// Confirme une alerte (elle est toujours active)
@@ -182,6 +392,85 @@ pub fn alert_icon_label(alert_type: &str) -> (&'static str, &'static str) {
         }
     }
     ("⚠️", "Alerte")
+}
+
+/// Distance haversine en km entre deux points GPS
+pub fn haversine_km(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
+    let r = 6371.0_f64;
+    let dlat = (lat2 - lat1).to_radians();
+    let dlng = (lng2 - lng1).to_radians();
+    let a = (dlat / 2.0).sin().powi(2)
+        + lat1.to_radians().cos() * lat2.to_radians().cos() * (dlng / 2.0).sin().powi(2);
+    let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
+    r * c
+}
+
+/// Détecte le code court d'alerte rapide (R=radar, P=police, A=accident, etc.)
+pub fn parse_quick_alert_code(msg: &str) -> Option<&'static str> {
+    match msg.trim().to_uppercase().as_str() {
+        "R" | "RADAR" => Some("radar"),
+        "P" | "POLICE" | "GENDARMERIE" => Some("police"),
+        "A" | "ACCIDENT" => Some("accident"),
+        "D" | "DANGER" => Some("danger"),
+        "T" | "TRAVAUX" => Some("road_works"),
+        "C" | "CONTROLE" | "CONTRÔLE" => Some("road_check"),
+        "M" | "MINTRANSPORT" => Some("transport_control"),
+        "DOS" | "RALENTISSEUR" => Some("speed_bump"),
+        _ => None,
+    }
+}
+
+/// Envoie un message WhatsApp sortant via l'API Twilio
+/// Returns true si succès
+pub async fn send_whatsapp_outbound(to: &str, message: &str) -> bool {
+    let sid = match std::env::var("TWILIO_ACCOUNT_SID") {
+        Ok(s) if !s.is_empty() => s,
+        _ => return false,
+    };
+    let token = match std::env::var("TWILIO_AUTH_TOKEN") {
+        Ok(t) if !t.is_empty() => t,
+        _ => return false,
+    };
+    let from = std::env::var("TWILIO_WHATSAPP_NUMBER")
+        .unwrap_or_else(|_| "whatsapp:+14155238886".to_string());
+
+    // Normaliser le numéro destinataire
+    let to_wa = if to.starts_with("whatsapp:") {
+        to.to_string()
+    } else {
+        format!("whatsapp:{}", to)
+    };
+
+    let url = format!(
+        "https://api.twilio.com/2010-04-01/Accounts/{}/Messages.json",
+        sid
+    );
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .unwrap_or_default();
+
+    let params = [
+        ("From", from.as_str()),
+        ("To", to_wa.as_str()),
+        ("Body", message),
+    ];
+
+    match client.post(&url).basic_auth(&sid, Some(&token)).form(&params).send().await {
+        Ok(r) if r.status().is_success() => {
+            log::info!("[AlertBroadcast] ✅ WhatsApp envoyé à {}", to_wa);
+            true
+        }
+        Ok(r) => {
+            log::warn!("[AlertBroadcast] ⚠️ Twilio {} pour {}", r.status(), to_wa);
+            false
+        }
+        Err(e) => {
+            log::error!("[AlertBroadcast] ❌ Erreur Twilio: {}", e);
+            false
+        }
+    }
 }
 
 fn urlencoding(s: &str) -> String {

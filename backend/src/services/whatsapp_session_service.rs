@@ -139,6 +139,13 @@ pub enum ConversationState {
         results: Vec<ServiceSearchResult>,
     },
 
+    // Mode voyage — signalement rapide en cours de route
+    EnRoute {
+        last_lat: Option<f64>,
+        last_lng: Option<f64>,
+        city: String,
+    },
+
     // Covoiturage — création multi-étapes
     AwaitingCovoiturageDepart,
     AwaitingCovoiturageDestination {
@@ -615,20 +622,54 @@ impl WhatsAppSessionService {
             .unwrap_or(0)
     }
 
-    /// S'abonner aux alertes d'une zone
+    /// S'abonner aux alertes d'une zone (avec coordonnées GPS optionnelles)
     pub async fn subscribe_alerts(&self, phone: &str, city: &str, user_id: Option<i32>) {
-        let _ = sqlx::query(
+        self.subscribe_alerts_with_gps(phone, city, user_id, None, None).await;
+    }
+
+    /// S'abonner aux alertes avec position GPS pour notifications de proximité
+    pub async fn subscribe_alerts_with_gps(
+        &self,
+        phone: &str,
+        city: &str,
+        user_id: Option<i32>,
+        latitude: Option<f64>,
+        longitude: Option<f64>,
+    ) {
+        // Ajouter latitude/longitude si la colonne existe (migration douce)
+        let res = sqlx::query(
             r#"
-            INSERT INTO whatsapp_alert_subscriptions (phone_number, city, user_id)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (phone_number, city) DO UPDATE SET active = true
+            INSERT INTO whatsapp_alert_subscriptions (phone_number, city, user_id, latitude, longitude)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (phone_number, city) DO UPDATE
+                SET active = true,
+                    latitude = COALESCE($4, whatsapp_alert_subscriptions.latitude),
+                    longitude = COALESCE($5, whatsapp_alert_subscriptions.longitude)
             "#,
         )
         .bind(phone)
         .bind(city)
         .bind(user_id)
+        .bind(latitude)
+        .bind(longitude)
         .execute(&*self.pool)
         .await;
+
+        if res.is_err() {
+            // Fallback si colonnes GPS absentes (migration pas encore appliquée)
+            let _ = sqlx::query(
+                r#"
+                INSERT INTO whatsapp_alert_subscriptions (phone_number, city, user_id)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (phone_number, city) DO UPDATE SET active = true
+                "#,
+            )
+            .bind(phone)
+            .bind(city)
+            .bind(user_id)
+            .execute(&*self.pool)
+            .await;
+        }
     }
 
     /// Récupère tous les abonnés d'une zone pour diffusion

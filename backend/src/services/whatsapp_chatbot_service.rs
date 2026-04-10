@@ -1922,6 +1922,126 @@ impl WhatsAppChatbotService {
                 ));
             }
 
+            // ── Mode Voyage — signalement rapide (R/P/A/D/T/C/M) ────────────
+            ConversationState::EnRoute {
+                last_lat,
+                last_lng,
+                city,
+            } => {
+                use crate::services::whatsapp_alert_service::parse_quick_alert_code;
+                let (ll, llng, cty) = (*last_lat, *last_lng, city.clone());
+                let msg_up = message.trim().to_uppercase();
+
+                // Quitter le mode voyage
+                if msg_up == "STOP" || msg_up == "QUITTER" || message.trim() == "0" {
+                    self.sessions.reset_to_menu(phone).await;
+                    return Some(format!("🛑 Mode voyage terminé.\n\n{}", self.main_menu()));
+                }
+
+                // Voir alertes à proximité
+                if msg_up == "ALERTES" || msg_up == "V" {
+                    if let (Some(lat), Some(lng)) = (ll, llng) {
+                        let nearby = self.alerts.get_active_alerts_nearby(lat, lng, None).await;
+                        if nearby.is_empty() {
+                            return Some("✅ Aucune alerte à proximité.\n\n_R=Radar P=Police A=Accident D=Danger T=Travaux C=Contrôle_\n_STOP pour quitter_".to_string());
+                        }
+                        let mut resp = "🚨 *Alertes à proximité :*\n\n".to_string();
+                        for a in &nearby {
+                            resp.push_str(&format!("{} *{}* — {}\n", a.icon, a.label, a.address));
+                        }
+                        resp.push_str("\n_R=Radar P=Police A=Accident STOP=Quitter_");
+                        return Some(resp);
+                    }
+                    return Some(
+                        "📍 Partagez votre position GPS pour voir les alertes à proximité."
+                            .to_string(),
+                    );
+                }
+
+                // Signalement rapide par code
+                if let Some(alert_type) = parse_quick_alert_code(message.trim()) {
+                    let address = if ll.is_some() {
+                        format!(
+                            "Position GPS ({:.4}, {:.4})",
+                            ll.unwrap_or(0.0),
+                            llng.unwrap_or(0.0)
+                        )
+                    } else {
+                        cty.clone()
+                    };
+                    let reporter = session.name.as_deref().unwrap_or(phone);
+                    let alert_id = self
+                        .alerts
+                        .create_alert(alert_type, ll, llng, &address, &cty, reporter)
+                        .await;
+                    let (icon, label) =
+                        crate::services::whatsapp_alert_service::alert_icon_label(alert_type);
+
+                    // Broadcast aux abonnés à proximité
+                    if let Some(aid) = alert_id {
+                        let alert_obj = crate::services::whatsapp_alert_service::CommunityAlert {
+                            id: aid,
+                            alert_type: alert_type.to_string(),
+                            icon: icon.to_string(),
+                            label: label.to_string(),
+                            latitude: ll,
+                            longitude: llng,
+                            address: address.clone(),
+                            city: cty.clone(),
+                            reported_by: reporter.to_string(),
+                            confirmations: 1,
+                            status: "active".to_string(),
+                            maps_url: ll
+                                .map(|lat| {
+                                    format!(
+                                        "https://maps.google.com/?q={},{}",
+                                        lat,
+                                        llng.unwrap_or(0.0)
+                                    )
+                                })
+                                .unwrap_or_default(),
+                        };
+                        let sent = self
+                            .alerts
+                            .broadcast_to_nearby_subscribers(&alert_obj, Some(reporter))
+                            .await;
+                        // Mise à jour GPS dans l'état
+                        self.sessions
+                            .save_state(
+                                phone,
+                                &ConversationState::EnRoute {
+                                    last_lat: ll,
+                                    last_lng: llng,
+                                    city: cty,
+                                },
+                            )
+                            .await;
+                        return Some(format!(
+                            "✅ {} *{}* signalé !\n👥 {} conducteur(s) alerté(s)\n\n\
+                            _Continuez à conduire prudemment._\n\
+                            _R=Radar P=Police A=Accident V=Voir alertes STOP=Quitter_",
+                            icon, label, sent
+                        ));
+                    }
+                }
+
+                // Message non reconnu en mode voyage
+                return Some(format!(
+                    "🚗 *Mode Voyage actif* — *{}*\n\n\
+                    Codes rapides :\n\
+                    *R* 📸 Radar\n\
+                    *P* 👮 Police\n\
+                    *A* 🚨 Accident\n\
+                    *D* ⚠️ Danger\n\
+                    *T* 🔧 Travaux\n\
+                    *C* 🚧 Contrôle\n\
+                    *V* 👁️ Voir alertes proches\n\
+                    *STOP* ↩️ Quitter\n\n\
+                    _Partagez votre position GPS pour localiser précisément l'alerte._",
+                    cty
+                ));
+            }
+
             // ── Covoiturage — résultats de recherche, sélection ─────────────
             ConversationState::CovoiturageSearchResults {
                 results,
@@ -2523,6 +2643,45 @@ impl WhatsAppChatbotService {
                         return msg;
                     }
                 }
+                // Pas une ordonnance → tester si c'est un médicament (boîte/comprimés)
+                if ct.contains("image") {
+                    if let Some(med_name) = self.detect_medication_from_image(media_url).await {
+                        let results = self.commerce.search_pharmacies(&med_name).await;
+                        let msg = if results.is_empty() {
+                            format!(
+                                "💊 *Médicament détecté : {}*\n\n\
+                                😔 Non trouvé en stock dans les pharmacies Yukpo.\n\n\
+                                Tapez le nom pour réessayer ou *MENU* pour revenir.",
+                                med_name
+                            )
+                        } else {
+                            let mut m =
+                                format!("💊 *{}* — {} pharmacie(s) :\n\n", med_name, results.len());
+                            for (i, p) in results.iter().take(3).enumerate() {
+                                m.push_str(&format!(
+                                    "{}. *{}*\n📍 {}\n📞 {}\n💰 {} FCFA\n\n",
+                                    i + 1,
+                                    p.pharmacy_name,
+                                    p.address,
+                                    p.phone,
+                                    p.price_fcfa
+                                ));
+                            }
+                            if !results.is_empty() {
+                                self.sessions
+                                    .save_state(
+                                        phone,
+                                        &ConversationState::AwaitingPharmacyChoice {
+                                            results: results.clone(),
+                                        },
+                                    )
+                                    .await;
+                            }
+                            m
+                        };
+                        return msg;
+                    }
+                }
                 // Compte requis pour publier un produit
                 if session.user_id.is_none() {
                     self.sessions.save_state(phone, &ConversationState::AwaitingName).await;
@@ -2715,19 +2874,98 @@ impl WhatsAppChatbotService {
         }
 
         let city = user_city.unwrap_or("Douala");
+
+        // Recherche automatique pour le premier médicament détecté
+        let first_med = &medications[0].name;
+        let pharmacy_results = self.commerce.search_pharmacies(first_med).await;
+
         let med_list = medications
             .iter()
             .map(|m| format!("• {}", m.name))
             .collect::<Vec<_>>()
             .join("\n");
 
-        Some(format!(
-            "💊 *Ordonnance détectée !*\n\n\
-            Médicaments trouvés :\n{}\n\n\
-            🔍 Tapez le nom d'un médicament pour trouver une pharmacie à *{}*.\n\
-            Ex : _paracétamol_, _amoxicilline_",
-            med_list, city
-        ))
+        if pharmacy_results.is_empty() {
+            Some(format!(
+                "💊 *Ordonnance détectée !*\n\n\
+                Médicaments :\n{}\n\n\
+                😔 *{}* non trouvé en stock à *{}*.\n\
+                Tapez le nom d'un médicament pour relancer la recherche.",
+                med_list, first_med, city
+            ))
+        } else {
+            let mut result_msg = format!(
+                "💊 *Ordonnance détectée !*\n\n\
+                Médicaments :\n{}\n\n\
+                🏥 *{}* disponible dans {} pharmacie(s) :\n\n",
+                med_list,
+                first_med,
+                pharmacy_results.len()
+            );
+            for (i, p) in pharmacy_results.iter().take(3).enumerate() {
+                result_msg.push_str(&format!(
+                    "{}. *{}*\n📍 {}\n📞 {}\n💰 {} FCFA\n\n",
+                    i + 1,
+                    p.pharmacy_name,
+                    p.address,
+                    p.phone,
+                    p.price_fcfa
+                ));
+            }
+            result_msg.push_str("_Tapez un autre médicament de la liste pour le chercher._");
+            Some(result_msg)
+        }
+    }
+
+    /// Détecte si une image contient un médicament (boîte, comprimés)
+    /// via l'IA multimodale — utilisé hors contexte ordonnance
+    async fn detect_medication_from_image(&self, image_url: &str) -> Option<String> {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(20))
+            .build()
+            .ok()?;
+
+        let twilio_sid = std::env::var("TWILIO_ACCOUNT_SID").unwrap_or_default();
+        let twilio_token = std::env::var("TWILIO_AUTH_TOKEN").unwrap_or_default();
+        let req = if !twilio_sid.is_empty() {
+            client.get(image_url).basic_auth(&twilio_sid, Some(&twilio_token))
+        } else {
+            client.get(image_url)
+        };
+
+        let bytes = req.send().await.ok()?.bytes().await.ok()?;
+        if bytes.is_empty() {
+            return None;
+        }
+
+        use base64::{engine::general_purpose::STANDARD, Engine as _};
+        let image_b64 = STANDARD.encode(&bytes);
+
+        // Demander à l'IA si l'image contient un médicament
+        let prompt = "Cette image montre-t-elle un médicament (boîte de médicament, comprimés, sirop, ampoule) ? \
+            Si oui, réponds UNIQUEMENT avec le nom du médicament en JSON: {\"medicament\": \"nom\"}. \
+            Si non, réponds: {\"medicament\": null}";
+
+        let detected = self.app_ia.predict_multimodal(prompt, Some(vec![image_b64])).await.ok()?.1;
+        if detected.is_empty() {
+            return None;
+        }
+
+        // Parser la réponse JSON
+        let clean = detected
+            .trim()
+            .trim_start_matches("```json")
+            .trim_start_matches("```")
+            .trim_end_matches("```")
+            .trim();
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(clean) {
+            if let Some(name) = v["medicament"].as_str() {
+                if !name.is_empty() && name != "null" {
+                    return Some(name.to_string());
+                }
+            }
+        }
+        None
     }
 
     // ── Gestion localisation GPS ──────────────────────────────────────────────
@@ -2741,25 +2979,76 @@ impl WhatsAppChatbotService {
         address: &str,
     ) -> String {
         match &session.state {
+            // ── Position GPS reçue en mode voyage → mise à jour + alertes proches
+            ConversationState::EnRoute { city, .. } => {
+                let cty = city.clone();
+                // Mettre à jour la position GPS dans la session
+                self.sessions
+                    .save_state(
+                        phone,
+                        &ConversationState::EnRoute {
+                            last_lat: Some(lat),
+                            last_lng: Some(lng),
+                            city: cty.clone(),
+                        },
+                    )
+                    .await;
+                // Mettre à jour le GPS dans l'abonnement alertes
+                self.sessions
+                    .subscribe_alerts_with_gps(phone, &cty, session.user_id, Some(lat), Some(lng))
+                    .await;
+                // Afficher alertes à proximité
+                let nearby = self.alerts.get_active_alerts_nearby(lat, lng, None).await;
+                if nearby.is_empty() {
+                    return format!(
+                        "📍 Position mise à jour.\n✅ Aucune alerte à proximité.\n\n\
+                        _R=Radar P=Police A=Accident V=Voir alertes STOP=Quitter_"
+                    );
+                }
+                let mut resp = format!(
+                    "📍 Position mise à jour.\n🚨 *{} alerte(s) à proximité :*\n\n",
+                    nearby.len()
+                );
+                for a in &nearby {
+                    resp.push_str(&format!("{} *{}* — {}\n", a.icon, a.label, a.address));
+                }
+                resp.push_str("\n_R=Radar P=Police A=Accident STOP=Quitter_");
+                resp
+            }
+
             ConversationState::AwaitingAlertLocation { alert_type } => {
                 let at = alert_type.clone();
                 let city = detect_city(address);
                 let maps_url = format!("https://maps.google.com/?q={},{}", lat, lng);
+                let reporter = session.name.as_deref().unwrap_or(phone);
 
                 let alert_id = self
                     .alerts
-                    .create_alert(
-                        &at,
-                        Some(lat),
-                        Some(lng),
-                        address,
-                        &city,
-                        session.name.as_deref().unwrap_or(phone),
-                    )
+                    .create_alert(&at, Some(lat), Some(lng), address, &city, reporter)
                     .await;
 
-                let subscribers = self.sessions.get_alert_subscribers(&city).await;
                 let (icon, label) = crate::services::whatsapp_alert_service::alert_icon_label(&at);
+
+                // Broadcast aux abonnés à proximité (outbound WhatsApp)
+                let sent = if let Some(aid) = alert_id {
+                    let alert_obj = crate::services::whatsapp_alert_service::CommunityAlert {
+                        id: aid,
+                        alert_type: at.clone(),
+                        icon: icon.to_string(),
+                        label: label.to_string(),
+                        latitude: Some(lat),
+                        longitude: Some(lng),
+                        address: address.to_string(),
+                        city: city.clone(),
+                        reported_by: reporter.to_string(),
+                        confirmations: 1,
+                        status: "active".to_string(),
+                        maps_url: maps_url.clone(),
+                    };
+                    self.alerts.broadcast_to_nearby_subscribers(&alert_obj, Some(reporter)).await
+                } else {
+                    0
+                };
 
                 self.sessions.reset_to_menu(phone).await;
                 format!(
@@ -2769,11 +3058,7 @@ impl WhatsAppChatbotService {
                     🗺️ {}\n\
                     👥 {} conducteur(s) notifiés\n\n\
                     Merci pour la communauté Yukpo ! 🙏",
-                    icon,
-                    label,
-                    address,
-                    maps_url,
-                    subscribers.len()
+                    icon, label, address, maps_url, sent
                 )
             }
             ConversationState::AwaitingDeliveryAddress {
