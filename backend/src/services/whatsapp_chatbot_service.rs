@@ -264,12 +264,22 @@ impl WhatsAppChatbotService {
             _ => {}
         }
 
-        // ── Annuler / Reset ───────────────────────────────────────────────────
+        // ── Mots-clés globaux — priorité absolue sur tout état ───────────────
         let msg_lower = message.to_lowercase();
-        if msg_lower == "annuler" || msg_lower == "cancel" || msg_lower == "0" {
+        let msg_lower = msg_lower.trim();
+        if msg_lower == "menu"
+            || msg_lower == "aide"
+            || msg_lower == "help"
+            || msg_lower == "00"
+            || msg_lower == "bonjour"
+            || msg_lower == "annuler"
+            || msg_lower == "cancel"
+            || msg_lower == "0"
+        {
             self.sessions.reset_to_menu(phone).await;
-            return format!("↩️ Annulé.\n\n{}", self.main_menu());
+            return self.main_menu();
         }
+        let msg_lower = msg_lower.to_string();
 
         // ── Image reçue → traitement spécifique selon état ────────────────────
         if let Some(url) = image_url {
