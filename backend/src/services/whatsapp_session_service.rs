@@ -21,6 +21,11 @@ pub enum ConversationState {
     // Menu principal
     MainMenu,
 
+    // Sous-menus
+    SubMenu {
+        category: String, // "services" | "ia" | "communaute" | "moncompte"
+    },
+
     // Tokens insuffisants
     AwaitingTokenPackChoice {
         action_context: String,

@@ -101,6 +101,11 @@ enum Intent {
     CommunityManager,
     TendancesMarche,
 
+    // Sous-menu (catégorie)
+    SousMenu {
+        category: String,
+    },
+
     // Annuler / Retour
     Annuler,
 
@@ -212,6 +217,17 @@ impl WhatsAppChatbotService {
         // ── Onboarding prioritaire ────────────────────────────────────────────
         match &session.state {
             ConversationState::New => {
+                if session.user_id.is_some() {
+                    // Le numéro est déjà lié à un compte → reconnexion automatique
+                    self.sessions.save_state(phone, &ConversationState::MainMenu).await;
+                    let name = session.name.as_deref().unwrap_or("vous");
+                    return format!(
+                        "👋 Ravi de vous revoir *{}* !\n\n{}",
+                        name,
+                        self.main_menu()
+                    );
+                }
+                // Nouveau numéro → créer un compte
                 self.sessions.save_state(phone, &ConversationState::AwaitingName).await;
                 return self.welcome_new_user();
             }
@@ -225,9 +241,10 @@ impl WhatsAppChatbotService {
                             },
                         )
                         .await;
-                    return format!("Super *{}* ! 📍 Dans quelle ville êtes-vous ?", message);
+                    return format!("Super *{}* ! 👍\n\nÉtape 2/2 — 📍 Dans quelle ville êtes-vous ?\n_(Ex : Douala, Yaoundé, Bafoussam)_", message);
                 }
-                return "Pouvez-vous nous donner votre prénom ?".to_string();
+                return "Étape 1/2 — Comment vous appelez-vous ? _(Tapez votre prénom)_"
+                    .to_string();
             }
             ConversationState::AwaitingCity { name } => {
                 let city = detect_city(message);
@@ -843,6 +860,25 @@ impl WhatsAppChatbotService {
                     return Some(ia_welcome_message().to_string());
                 }
 
+                // Détecter demande de création de compte → rediriger vers inscription
+                let msg_low = msg_trim.to_lowercase();
+                if session.user_id.is_none()
+                    && (msg_low.contains("créer mon compte")
+                        || msg_low.contains("creer mon compte")
+                        || msg_low.contains("créer un compte")
+                        || msg_low.contains("m'inscrire")
+                        || msg_low.contains("m inscrire")
+                        || msg_low.contains("inscription")
+                        || msg_low.contains("s'inscrire")
+                        || msg_low.contains("compte yukpo"))
+                {
+                    self.sessions.save_state(phone, &ConversationState::AwaitingName).await;
+                    return Some(
+                        "✍️ *Créons votre compte Yukpo !*\n\nÉtape 1/2 — Comment vous appelez-vous ?\n_(Tapez votre prénom)_"
+                            .to_string(),
+                    );
+                }
+
                 // Détecter génération de document
                 if let Some((doc_type, topic)) =
                     WhatsAppIAService::detect_document_request(msg_trim)
@@ -876,7 +912,7 @@ impl WhatsAppChatbotService {
                             let name = session.name.as_deref();
                             let answer = self.ia.chat(msg_trim, name).await;
                             return Some(format!(
-                                "🤖 *YukpoIA*\n\n{}\n\n💎 _{} tokens_",
+                                "🤖 *YukpoIA*\n\n{}\n\n💎 _{} tokens_ — tapez *MENU* pour revenir au menu",
                                 answer, new_balance
                             ));
                         }
@@ -893,10 +929,10 @@ impl WhatsAppChatbotService {
                         }
                     }
                 } else {
-                    // Pas de compte — répondre quand même gratuitement (limited)
+                    // Pas de compte — répondre gratuitement (limité) + invitation à créer compte
                     let answer = self.ia.chat(msg_trim, None).await;
                     return Some(format!(
-                        "🤖 *YukpoIA*\n\n{}\n\n💡 _Créez un compte Yukpo pour plus de questions !_",
+                        "🤖 *YukpoIA*\n\n{}\n\n💡 _Tapez *MENU* pour les autres services ou *créer mon compte* pour profiter de Yukpo !_",
                         answer
                     ));
                 }
@@ -1804,6 +1840,190 @@ impl WhatsAppChatbotService {
                 ));
             }
 
+            // ── Sous-menus ────────────────────────────────────────────────────
+            ConversationState::SubMenu { category } => {
+                let cat = category.clone();
+                let choice = message.trim();
+
+                // 0 = retour menu principal depuis n'importe quel sous-menu
+                if choice == "0" {
+                    self.sessions.reset_to_menu(phone).await;
+                    return Some(self.main_menu());
+                }
+
+                match cat.as_str() {
+                    "services" => match choice {
+                        "1" => {
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some("💊 *Pharmacie*\n\nTapez le nom du médicament.\nEx : _amoxicilline_, _doliprane_".to_string());
+                        }
+                        "2" => {
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some(
+                                "🚌 *Bus*\n\nTapez votre trajet.\nEx : _bus Douala Yaoundé_"
+                                    .to_string(),
+                            );
+                        }
+                        "3" => {
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some("🏠 *Immobilier*\n\nTapez votre recherche.\nEx : _studio meublé Douala_, _hôtel Kribi_".to_string());
+                        }
+                        "4" => {
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some("📚 *Livres scolaires*\n\nTapez votre recherche.\nEx : _livres Lycée de la Retraite 5ème_\n\nOu tapez *vendre mes livres* pour scanner vos livres.".to_string());
+                        }
+                        _ => return Some(self.submenu_services()),
+                    },
+                    "communaute" => match choice {
+                        "1" => {
+                            self.sessions
+                                .save_state(phone, &ConversationState::AwaitingAlertType)
+                                .await;
+                            return Some(WhatsAppAlertService::alert_type_menu());
+                        }
+                        "2" => {
+                            self.sessions.reset_to_menu(phone).await;
+                            let city = session.city.as_deref().unwrap_or("Douala");
+                            let alerts = self.alerts.get_active_alerts(city).await;
+                            if alerts.is_empty() {
+                                return Some(format!(
+                                    "✅ Aucune alerte active à *{}* pour le moment.",
+                                    city
+                                ));
+                            }
+                            let mut msg = format!("🚨 *Alertes actives à {}*\n\n", city);
+                            for a in &alerts {
+                                msg.push_str(&format!(
+                                    "{} *{}*\n📍 {}\n\n",
+                                    a.icon, a.label, a.address
+                                ));
+                            }
+                            return Some(msg);
+                        }
+                        "3" => {
+                            self.sessions.reset_to_menu(phone).await;
+                            let city = session.city.as_deref().unwrap_or("Douala");
+                            self.sessions.subscribe_alerts(phone, city, session.user_id).await;
+                            return Some(format!("🔔 Abonné aux alertes de *{}* !", city));
+                        }
+                        "4" => {
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some(handle_sang_search(&self.pool, None).await);
+                        }
+                        _ => return Some(self.submenu_communaute()),
+                    },
+                    "moncompte" => match choice {
+                        "1" => {
+                            self.sessions
+                                .save_state(
+                                    phone,
+                                    &ConversationState::AwaitingTokenPackChoice {
+                                        action_context: "recharge".to_string(),
+                                    },
+                                )
+                                .await;
+                            return Some(
+                                crate::services::whatsapp_commerce_service::token_pack_menu(
+                                    "recharge",
+                                ),
+                            );
+                        }
+                        "2" => {
+                            if let Some(user_id) = session.user_id {
+                                let products = self.provider.list_user_products(user_id).await;
+                                let msg = WhatsAppProviderService::format_products_list(&products);
+                                if !products.is_empty() {
+                                    self.sessions
+                                        .save_state(
+                                            phone,
+                                            &ConversationState::ProviderMyProducts { products },
+                                        )
+                                        .await;
+                                } else {
+                                    self.sessions.reset_to_menu(phone).await;
+                                }
+                                return Some(msg);
+                            }
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some(
+                                "🔐 Créez votre compte pour gérer vos produits.\nTapez *MENU*."
+                                    .to_string(),
+                            );
+                        }
+                        "3" => {
+                            self.sessions
+                                .save_state(phone, &ConversationState::PartnerTypeSelection)
+                                .await;
+                            return Some(WhatsAppPartnerService::partner_type_menu());
+                        }
+                        "4" => {
+                            if let Some(user_id) = session.user_id {
+                                if let Some((sid, sname, ptype_str)) =
+                                    self.partner.get_partner_service(user_id).await
+                                {
+                                    let stats = self.partner.get_stats(sid).await;
+                                    self.sessions
+                                        .save_state(
+                                            phone,
+                                            &ConversationState::PartnerMenu {
+                                                service_id: sid,
+                                                partner_type: ptype_str,
+                                                service_name: sname,
+                                            },
+                                        )
+                                        .await;
+                                    return Some(WhatsAppPartnerService::format_dashboard(&stats));
+                                }
+                            }
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some("Vous n'avez pas encore d'espace partenaire.\nTapez *3* depuis Mon compte pour vous inscrire.".to_string());
+                        }
+                        "5" => {
+                            if let Some(user_id) = session.user_id {
+                                if let Some((sid, sname, ptype_str)) =
+                                    self.partner.get_partner_service(user_id).await
+                                {
+                                    let ptype = PartnerType::from_db(&ptype_str);
+                                    let category = ptype.db_value().to_string();
+                                    self.sessions
+                                        .save_state(
+                                            phone,
+                                            &ConversationState::CMMenu {
+                                                service_id: sid,
+                                                category,
+                                            },
+                                        )
+                                        .await;
+                                    return Some(WhatsAppCMService::cm_menu_message(&sname));
+                                }
+                            }
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some("📣 Community Manager disponible pour les partenaires.\nTapez *3* pour devenir partenaire.".to_string());
+                        }
+                        "6" => {
+                            let category = if let Some(uid) = session.user_id {
+                                self.partner
+                                    .get_partner_service(uid)
+                                    .await
+                                    .map(|(_, _, pt)| pt)
+                                    .unwrap_or_else(|| "commerce".into())
+                            } else {
+                                "commerce".into()
+                            };
+                            let city = session.city.as_deref().unwrap_or("Douala");
+                            let trends = self.cm.get_trends_for_category(&category, city).await;
+                            self.sessions.reset_to_menu(phone).await;
+                            return Some(WhatsAppCMService::format_trends(&trends, &category));
+                        }
+                        _ => return Some(self.submenu_moncompte()),
+                    },
+                    _ => {
+                        self.sessions.reset_to_menu(phone).await;
+                        return Some(self.main_menu());
+                    }
+                }
+            }
+
             _ => {}
         }
 
@@ -2149,7 +2369,27 @@ impl WhatsAppChatbotService {
                 self.main_menu()
             }
 
+            Intent::SousMenu { category } => {
+                self.sessions
+                    .save_state(
+                        phone,
+                        &ConversationState::SubMenu {
+                            category: category.clone(),
+                        },
+                    )
+                    .await;
+                match category.as_str() {
+                    "services" => self.submenu_services(),
+                    "communaute" => self.submenu_communaute(),
+                    "moncompte" => self.submenu_moncompte(),
+                    _ => self.main_menu(),
+                }
+            }
+
             Intent::Pharmacie { medicament } => {
+                if medicament.is_empty() {
+                    return "💊 *Pharmacie*\n\nTapez le nom du médicament recherché.\n\nEx : _amoxicilline_, _doliprane_, _paracétamol_".to_string();
+                }
                 let results = self.commerce.search_pharmacies(&medicament).await;
                 let msg = WhatsAppCommerceService::format_pharmacy_results(&results, &medicament);
                 if !results.is_empty() {
@@ -2166,6 +2406,9 @@ impl WhatsAppChatbotService {
             }
 
             Intent::Bus { trajet } => {
+                if trajet.is_empty() {
+                    return "🚌 *Bus*\n\nTapez votre trajet.\n\nEx : _bus Douala Yaoundé_, _billet Bafoussam_".to_string();
+                }
                 let (depart, arrivee) = extraire_villes_bus(&trajet);
                 let results = self.commerce.search_bus(&depart, arrivee.as_deref()).await;
                 let msg = WhatsAppCommerceService::format_bus_results(
@@ -2222,6 +2465,9 @@ impl WhatsAppChatbotService {
             }
 
             Intent::Immobilier { query } => {
+                if query.is_empty() {
+                    return "🏠 *Immobilier*\n\nTapez votre recherche.\n\nEx : _studio meublé Douala_, _villa louer Yaoundé_, _hôtel Kribi_".to_string();
+                }
                 let (q, search_type) = detect_property_search(&query);
                 let results = self.realestate.search_properties(&q, &search_type).await;
                 let msg =
@@ -2240,6 +2486,9 @@ impl WhatsAppChatbotService {
             }
 
             Intent::LivresScolaires { query } => {
+                if query.is_empty() {
+                    return "📚 *Livres scolaires*\n\nTapez votre recherche.\n\nEx : _livres Lycée de la Retraite 5ème_, _Terminale D Douala_\n\nOu tapez *vendre mes livres* pour scanner et vendre vos livres.".to_string();
+                }
                 // Détecter si c'est une recherche d'établissement ou un livre direct
                 let schools = self.books.search_school_programs(&query).await;
                 if !schools.is_empty() {
@@ -2482,40 +2731,66 @@ impl WhatsAppChatbotService {
 
     fn welcome_new_user(&self) -> String {
         "👋 *Bienvenue sur Yukpo !*\n\n\
-        Je suis votre assistant personnel Yukpo.\n\
-        Avant de commencer, comment vous appelez-vous ?"
+        Je suis votre assistant : pharmacies, bus, alertes, IA et bien plus.\n\n\
+        ✍️ *Créons votre compte en 2 étapes.*\n\
+        Étape 1/2 — Comment vous appelez-vous ?\n\
+        _(Tapez votre prénom)_"
             .to_string()
     }
 
     fn main_menu(&self) -> String {
         concat!(
             "🌟 *Menu Yukpo*\n\n",
-            "🤖 *YukpoIA* — Posez n'importe quelle question\n",
-            "📄 *Document* — _génère une présentation sur X_\n",
-            "📊 *Analyse* — envoyez un fichier CSV/Excel/PDF\n",
-            "──────────────\n",
-            "💊 *Pharmacie* — _pharmacie amoxicilline_\n",
-            "🚌 *Bus* — _bus Douala Yaoundé_\n",
-            "🩸 *Sang* — _sang O+_\n",
-            "🚨 *Alertes* — _signaler alerte_ ou _alertes Douala_\n",
-            "🏠 *Immobilier* — _studio meublé Douala_\n",
-            "📚 *Livres* — _livres Lycée de la Retraite 5ème_\n",
-            "🛍️ *Publier produit* — envoyez une photo\n",
-            "📦 *Mes produits* — _mes produits_\n",
-            "💎 *Tokens* — _recharger_\n",
-            "──────────────\n",
-            "🤝 *Devenir partenaire* — _partenaire_\n",
-            "📊 *Mon dashboard* — _mon dashboard_\n",
-            "📣 *Community Manager* — _community manager_\n",
-            "📈 *Tendances* — _tendances marché_\n\n",
-            "_Tapez votre demande directement !_\n",
-            "📲 App complète bientôt sur *Google Play*"
+            "A. 🤖 *YukpoIA* — Assistant intelligent\n",
+            "B. 🛒 *Services* — Pharmacie, Bus, Immobilier, Livres\n",
+            "C. 🚨 *Communauté* — Alertes, Sang, Abonnements\n",
+            "D. 💼 *Mon compte* — Tokens, Produits, Partenaire\n\n",
+            "📸 Envoyez une *photo* pour publier un produit\n\n",
+            "_Tapez A, B, C ou D_"
+        )
+        .to_string()
+    }
+
+    fn submenu_services(&self) -> String {
+        concat!(
+            "🛒 *Services Yukpo*\n\n",
+            "1. 💊 Pharmacie — Trouver un médicament\n",
+            "2. 🚌 Bus — Réserver un trajet\n",
+            "3. 🏠 Immobilier — Louer, acheter, hôtel\n",
+            "4. 📚 Livres scolaires — Trouver / vendre\n\n",
+            "0. ↩️ Menu principal"
+        )
+        .to_string()
+    }
+
+    fn submenu_communaute(&self) -> String {
+        concat!(
+            "🚨 *Communauté Yukpo*\n\n",
+            "1. 🚨 Signaler une alerte\n",
+            "2. 📢 Voir les alertes de ma ville\n",
+            "3. 🔔 S'abonner aux alertes\n",
+            "4. 🩸 Don de sang — Trouver un donneur\n\n",
+            "0. ↩️ Menu principal"
+        )
+        .to_string()
+    }
+
+    fn submenu_moncompte(&self) -> String {
+        concat!(
+            "💼 *Mon compte Yukpo*\n\n",
+            "1. 💎 Recharger mes tokens\n",
+            "2. 📦 Mes produits / annonces\n",
+            "3. 🤝 Devenir partenaire\n",
+            "4. 📊 Mon espace partenaire\n",
+            "5. 📣 Community Manager\n",
+            "6. 📈 Tendances marché\n\n",
+            "0. ↩️ Menu principal"
         )
         .to_string()
     }
 
     fn handle_inconnu(&self) -> String {
-        "🤔 Je n'ai pas compris.\n\nTapez *AIDE* pour voir le menu.\n\nExemples :\n• _pharmacie doliprane_\n• _bus Douala Yaoundé_\n• _sang O+_\n• _signaler alerte_\n• _studio meublé Douala_".to_string()
+        "🤔 Je n'ai pas compris.\n\nTapez *MENU* ou une lettre :\n\n*A* → 🤖 YukpoIA\n*B* → 🛒 Services\n*C* → 🚨 Communauté\n*D* → 💼 Mon compte".to_string()
     }
 }
 
@@ -2537,6 +2812,31 @@ fn detect_intent(message: &str) -> Intent {
 
     if msg == "annuler" || msg == "cancel" || msg == "0" {
         return Intent::Annuler;
+    }
+
+    // ── Raccourcis lettres A-D (menu principal) ───────────────────────────────
+    match msg.as_str() {
+        "a" => {
+            return Intent::YukpoIA {
+                question: String::new(),
+            }
+        }
+        "b" => {
+            return Intent::SousMenu {
+                category: "services".to_string(),
+            }
+        }
+        "c" => {
+            return Intent::SousMenu {
+                category: "communaute".to_string(),
+            }
+        }
+        "d" => {
+            return Intent::SousMenu {
+                category: "moncompte".to_string(),
+            }
+        }
+        _ => {}
     }
 
     // ── Partenaire ────────────────────────────────────────────────────────────
