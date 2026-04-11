@@ -298,12 +298,6 @@ const PartnerRegisterScreen: React.FC = () => {
       return;
     }
 
-    // ✅ Validation spécifique pour établissementscolaire
-    if (form.partner_type === 'etablissementscolaire' && !form.etablissement_type) {
-      setError(t('partnerRegister.veuillezSelectionnerLeTypeDetablissementScolaire'));
-      return;
-    }
-
     // ✅ NOUVEAU: Validation spécifique pour chauffeur
     if (form.partner_type === 'chauffeur') {
       if (!form.driver_license_number?.trim()) {

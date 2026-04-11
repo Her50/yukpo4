@@ -241,33 +241,29 @@ impl WhatsAppPartnerService {
         let description = build_description(&ptype, extra);
         let category = partner_type.to_string();
 
-        // Extraire le prix si c'est un numérique (hôtel, meublé)
-        let prix: Option<i64> = extra
-            .trim()
-            .split_whitespace()
-            .next()
-            .and_then(|s| s.replace("fcfa", "").replace(" ", "").parse::<i64>().ok());
+        // Construire le JSONB data comme le fait CreateServiceScreen
+        let data = serde_json::json!({
+            "titre_service": name,
+            "description": description,
+            "telephone": phone,
+            "whatsapp": phone,
+            "adresse": city,
+            "ville": city,
+            "horaires": extra,
+            "devise": "XAF",
+        });
 
         let result = sqlx::query(
             r#"
             INSERT INTO services
-                (user_id, titre_service, description, category, specialized_type,
-                 telephone, whatsapp, adresse, ville, horaires, prix, devise,
-                 actif, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $4,
-                    $5, $5, $6, $6, $7, $8, 'XAF',
-                    true, NOW(), NOW())
+                (user_id, data, category, specialized_type, is_active, created_at, updated_at)
+            VALUES ($1, $2, $3, $3, true, NOW(), NOW())
             RETURNING id
             "#,
         )
         .bind(user_id)
-        .bind(name)
-        .bind(&description)
+        .bind(data)
         .bind(category)
-        .bind(phone)
-        .bind(city)
-        .bind(extra)
-        .bind(prix)
         .fetch_optional(&*self.pool)
         .await
         .ok()
@@ -291,7 +287,7 @@ impl WhatsAppPartnerService {
     /// Trouve le service principal d'un partenaire
     pub async fn get_partner_service(&self, user_id: i32) -> Option<(i32, String, String)> {
         let row = sqlx::query(
-            "SELECT id, titre_service, COALESCE(specialized_type, category, '') as partner_type FROM services WHERE user_id = $1 AND actif = true ORDER BY created_at DESC LIMIT 1"
+            "SELECT id, data, COALESCE(specialized_type, category, '') as partner_type FROM services WHERE user_id = $1 AND is_active = true ORDER BY created_at DESC LIMIT 1"
         )
         .bind(user_id)
         .fetch_optional(&*self.pool)
@@ -299,9 +295,16 @@ impl WhatsAppPartnerService {
         .ok()
         .flatten()?;
 
+        let data: serde_json::Value = row.try_get("data").unwrap_or(serde_json::Value::Null);
+        let titre = data
+            .get("titre_service")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+
         Some((
             row.try_get("id").unwrap_or(0),
-            row.try_get("titre_service").unwrap_or_default(),
+            titre,
             row.try_get("partner_type").unwrap_or_default(),
         ))
     }
