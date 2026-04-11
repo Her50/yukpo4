@@ -61,6 +61,8 @@ const PartnerRegisterScreen: React.FC = () => {
     rccm_doc: null as string | null, // Photo certificat RCCM (base64)
     numero_contribuable: '' as string, // Numéro contribuable/fiscal (entreprises)
     niu_doc: null as string | null,  // Photo attestation NIU entreprise (base64)
+    // Champ spécifique établissement scolaire : primaire | secondaire | superieur | formation
+    etablissement_type: '' as string,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -298,6 +300,12 @@ const PartnerRegisterScreen: React.FC = () => {
       return;
     }
 
+    // Validation type d'établissement scolaire
+    if (form.partner_type === 'etablissementscolaire' && !form.etablissement_type) {
+      setError('Veuillez sélectionner le type d\'établissement (primaire, secondaire, universitaire ou école de formation)');
+      return;
+    }
+
     // ✅ NOUVEAU: Validation spécifique pour chauffeur
     if (form.partner_type === 'chauffeur') {
       if (!form.driver_license_number?.trim()) {
@@ -388,6 +396,11 @@ const PartnerRegisterScreen: React.FC = () => {
         registerData.numero_contribuable = form.numero_contribuable.trim();
         if (form.rccm_doc) registerData.rccm_doc_base64 = form.rccm_doc;
         if (form.niu_doc) registerData.niu_doc_base64 = form.niu_doc;
+      }
+
+      // Type d'établissement scolaire
+      if (form.partner_type === 'etablissementscolaire' && form.etablissement_type) {
+        registerData.etablissement_type = form.etablissement_type;
       }
 
       // ✅ Ajouter les moyens de paiement si configurés
@@ -694,13 +707,38 @@ const PartnerRegisterScreen: React.FC = () => {
             </View>
 
             {form.partner_type === 'etablissementscolaire' && (
-              <View style={styles.infoBanner}>
-                <Text style={styles.infoBannerText}>
-                  {t(
-                  'partnerRegister.etablissementScolaireHint',
-                  'Après validation de votre compte, complétez filières, programmes et concours depuis votre tableau de bord orientation.',
-                )}
-                </Text>
+              <View style={{ marginBottom: 16 }}>
+                <Text style={styles.label}>Type d'établissement *</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                  {[
+                    { value: 'primaire', label: 'Primaire' },
+                    { value: 'secondaire', label: 'Secondaire' },
+                    { value: 'superieur', label: 'Universitaire' },
+                    { value: 'formation', label: 'École de Formation' },
+                  ].map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      onPress={() => setForm({ ...form, etablissement_type: opt.value })}
+                      style={{
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        borderWidth: 1.5,
+                        borderColor: form.etablissement_type === opt.value ? theme.colors.primary : '#D1D5DB',
+                        backgroundColor: form.etablissement_type === opt.value ? theme.colors.primary + '15' : '#F9FAFB',
+                      }}
+                    >
+                      <Text style={{ color: form.etablissement_type === opt.value ? theme.colors.primary : '#374151', fontWeight: form.etablissement_type === opt.value ? '700' : '400' }}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <View style={styles.infoBanner}>
+                  <Text style={styles.infoBannerText}>
+                    {t('partnerRegister.etablissementScolaireHint', 'Après validation, complétez filières, programmes et manuels depuis votre tableau de bord orientation.')}
+                  </Text>
+                </View>
               </View>
             )}
 

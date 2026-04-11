@@ -58,12 +58,14 @@ const CreateEtablissementScreen: React.FC = () => {
     const { location } = useLocation();
     const params = route.params as any;
     const etablissementId = params?.etablissementId;
+    // Pré-remplir le type si transmis depuis l'inscription partenaire
+    const initialType = (params?.etablissement_type || params?.typeEtablissement || 'primaire') as EtablissementFormData['type_etablissement'];
 
     const [loading, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(!!etablissementId);
     const [formData, setFormData] = useState<EtablissementFormData>({
         nom_etablissement: '',
-        type_etablissement: 'primaire',
+        type_etablissement: initialType,
         adresse: '',
         ville: '',
         region: '',

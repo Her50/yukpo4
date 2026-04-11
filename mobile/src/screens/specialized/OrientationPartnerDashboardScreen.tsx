@@ -280,6 +280,24 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
     const renderVitrine = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+
+            {/* Aucun établissement créé — invitation à créer la fiche */}
+            {!selectedEtab && mineEtabs.length === 0 && (
+                <View style={{ backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', borderRadius: 14, padding: 20, margin: 16, alignItems: 'center' }}>
+                    <SafeIcon name="school" size={40} color="#2563EB" />
+                    <Text style={{ fontSize: 17, fontWeight: '700', color: '#1E40AF', marginTop: 12, textAlign: 'center' }}>Créez votre fiche établissement</Text>
+                    <Text style={{ fontSize: 13, color: '#3B82F6', textAlign: 'center', marginTop: 8, lineHeight: 19 }}>
+                        Renseignez le nom, la ville, le type (primaire / secondaire / universitaire) et la position GPS de votre école.
+                        Vous pourrez ensuite déposer vos programmes et manuels pour la Bourse du Livre Yukpo.
+                    </Text>
+                    <NativeButton
+                        title="Créer la fiche de l'établissement"
+                        onPress={() => (navigation as any).navigate('CreateEtablissement')}
+                        style={{ marginTop: 16, width: '100%' }}
+                    />
+                </View>
+            )}
+
             {mineEtabs.length > 1 && (
                 <>
                     <Text style={s.sectionTitle}>Établissement sélectionné</Text>
@@ -422,6 +440,23 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                 ))}
             </View>
 
+            {/* ⚠️ Alerte si type_etablissement non défini */}
+            {selectedEtab && !selectedEtab.type_etablissement && (
+                <TouchableOpacity
+                    style={{ backgroundColor: '#FEF3C7', borderWidth: 1, borderColor: '#F59E0B', borderRadius: 12, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                    onPress={() => (navigation as any).navigate('CreateEtablissement', { mode: 'edit', etablissementId: selectedEtab?.id })}
+                >
+                    <SafeIcon name="alert-triangle" size={20} color="#B45309" />
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontWeight: '700', color: '#92400E', fontSize: 14 }}>Type d'établissement non défini</Text>
+                        <Text style={{ color: '#B45309', fontSize: 13, marginTop: 2 }}>
+                            Définissez le type (primaire, secondaire, universitaire…) pour activer les fonctions programmes et bourse du livre.
+                        </Text>
+                        <Text style={{ color: '#2563EB', fontSize: 13, marginTop: 4, fontWeight: '600' }}>→ Modifier la fiche</Text>
+                    </View>
+                </TouchableOpacity>
+            )}
+
             {selectedEtab && (
                 <>
                     <View style={s.sectionRow}>
@@ -429,7 +464,16 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                         <TouchableOpacity onPress={() => setActiveTab('admissions')}><Text style={s.seeAll}>Compléter</Text></TouchableOpacity>
                     </View>
                     <View style={s.keyInfoCard}>
-                        <Text style={s.keyInfoLine}>Type: {selectedEtab.type_etablissement || 'non renseigné'}</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <Text style={s.keyInfoLine}>
+                                Type: <Text style={{ fontWeight: '700', color: selectedEtab.type_etablissement ? '#1F2937' : '#EF4444' }}>
+                                    {selectedEtab.type_etablissement || '⚠ non défini — cliquez Modifier'}
+                                </Text>
+                            </Text>
+                            <TouchableOpacity onPress={() => (navigation as any).navigate('CreateEtablissement', { mode: 'edit', etablissementId: selectedEtab?.id })}>
+                                <Text style={{ fontSize: 12, color: '#2563EB', fontWeight: '600' }}>Modifier</Text>
+                            </TouchableOpacity>
+                        </View>
                         {isK12 ? (
                             <>
                                 <Text style={s.keyInfoLine}>
@@ -454,16 +498,43 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                 </>
             )}
 
+            {/* Bloc upload programme — visible dès que le type K12 est défini */}
+            {isK12 && selectedEtab && (
+                <>
+                    <Text style={s.sectionTitle}>Programme scolaire & manuels</Text>
+                    <View style={{ backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE', borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                        <Text style={{ fontSize: 13, color: '#1E40AF', lineHeight: 19, marginBottom: 12 }}>
+                            Photographiez ou importez la liste des manuels scolaires, le programme officiel, l'emploi du temps… Ces documents alimentent la <Text style={{ fontWeight: '700' }}>Bourse du Livre Yukpo</Text> et permettent aux parents de préparer la rentrée.
+                        </Text>
+                        <NativeButton
+                            title="📷  Ajouter programme / manuels (caméra, galerie, PDF)"
+                            onPress={() => (navigation as any).navigate('EtablissementScolaire', {
+                                etablissementId: selectedEtab.id,
+                                nomEtablissement: selectedEtab.nom_etablissement,
+                                typeEtablissement: selectedEtab.type_etablissement,
+                            })}
+                            variant="primary"
+                            style={{ marginBottom: 8 }}
+                        />
+                        <NativeButton
+                            title="📋  Voir les programmes déjà déposés"
+                            onPress={() => (navigation as any).navigate('ProgrammesList', { etablissement_id: selectedEtab.id })}
+                            variant="outline"
+                        />
+                    </View>
+                </>
+            )}
+
             {programs.length === 0 && (
                 <View style={s.emptyState}>
                     <SafeIcon name="graduation-cap" size={48} color="#9CA3AF" />
                     <Text style={s.emptyTitle}>{t('orientationPartnerDashboard.aucunProgramme')}</Text>
                     <Text style={s.emptyText}>
                         {isK12
-                            ? 'Déposez vos programmes et listes officielles (PDF/Excel) et complétez vos statistiques de réussite depuis les actions rapides.'
+                            ? 'Utilisez le bloc "Programme scolaire & manuels" ci-dessus pour déposer vos documents.'
                             : 'Configurez votre établissement supérieur pour publier la vitrine formations.'}
                     </Text>
-                    <NativeButton title="Configurer" onPress={() => (navigation as any).navigate('CreateEtablissement')} style={{ marginTop: 16 }} />
+                    {!isK12 && <NativeButton title="Configurer" onPress={() => (navigation as any).navigate('CreateEtablissement')} style={{ marginTop: 16 }} />}
                 </View>
             )}
         </ScrollView>
