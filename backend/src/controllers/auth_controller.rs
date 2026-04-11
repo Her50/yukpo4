@@ -547,6 +547,9 @@ pub async fn register_user(
                             IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'banquesang' AND enumtypid = 'delivery_partner_type'::regtype) THEN
                                 ALTER TYPE delivery_partner_type ADD VALUE 'banquesang';
                             END IF;
+                            IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'restaurant' AND enumtypid = 'delivery_partner_type'::regtype) THEN
+                                ALTER TYPE delivery_partner_type ADD VALUE 'restaurant';
+                            END IF;
                         END
                         $$;
                         "#
@@ -886,6 +889,9 @@ pub async fn register_user(
                 END IF;
                 IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'banquesang' AND enumtypid = 'delivery_partner_type'::regtype) THEN
                     ALTER TYPE delivery_partner_type ADD VALUE 'banquesang';
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumlabel = 'restaurant' AND enumtypid = 'delivery_partner_type'::regtype) THEN
+                    ALTER TYPE delivery_partner_type ADD VALUE 'restaurant';
                 END IF;
                 -- ✅ NOUVEAU: Colonnes documents administratifs partenaire
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='delivery_partners' AND column_name='rccm') THEN
