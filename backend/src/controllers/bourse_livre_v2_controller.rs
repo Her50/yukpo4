@@ -281,9 +281,45 @@ pub async fn analyze_recto_verso(
     let verso_b64 = extract_base64(&request.image_verso);
 
     // Charger les programmes scolaires pour le matching
+    // Stratégie : filtrer par pays (GPS utilisateur) + prioriser les programmes
+    // d'établissements locaux — garantit que le matching est pertinent même
+    // quand la base contient plusieurs milliers de lignes de pays différents.
+    let user_lat = request.user_lat;
+    let user_lng = request.user_lng;
+    let user_pays: &str = match (user_lat, user_lng) {
+        (Some(lat), Some(lng)) => {
+            crate::services::book_exchange_ai_service::detect_country_from_gps(lat, lng)
+        }
+        _ => {
+            // Fallback : pays de la session GPS récupération (vendeur)
+            if let Some(gps) = session.gps_recuperation.as_deref() {
+                if let Some((lat, lng)) = parse_lat_lng_coords(gps) {
+                    crate::services::book_exchange_ai_service::detect_country_from_gps(lat, lng)
+                } else {
+                    "cm"
+                }
+            } else {
+                "cm"
+            }
+        }
+    };
     let programmes: Vec<ProgrammeScolaire> = sqlx::query_as::<_, ProgrammeScolaire>(
-        "SELECT * FROM programmes_scolaires WHERE is_active = true LIMIT 200",
+        r#"
+        SELECT * FROM programmes_scolaires
+        WHERE is_active = true
+          AND (
+              LOWER(pays) = LOWER($1)
+              OR LOWER(pays) IN ('cameroun', 'cameroon')  -- fallback si pays vide/inconnu
+              OR pays IS NULL
+          )
+        ORDER BY
+            (etablissement_id IS NOT NULL) DESC,  -- programmes établissement en priorité
+            classe NULLS LAST,
+            matiere NULLS LAST
+        LIMIT 500
+        "#,
     )
+    .bind(user_pays)
     .fetch_all(&state.pg)
     .await
     .unwrap_or_default();
