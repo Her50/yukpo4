@@ -176,8 +176,15 @@ export const orientationScolaireApi = {
             success?: boolean;
             data?: { etablissements?: any[] };
         }>('/api/orientation/etablissements/mine');
-        const data = (response as any)?.data ?? response;
-        const etablissements = data?.etablissements ?? [];
+        // apiGet enveloppe le body dans { success, data: <body> }
+        // Le backend renvoie { success, data: { etablissements: [...] } }
+        // Donc: response.data = { success, data: { etablissements: [...] } }
+        // Et:   response.data.data = { etablissements: [...] }
+        const rawData = (response as any)?.data;
+        const etablissements =
+            rawData?.data?.etablissements ??   // format habituel backend
+            rawData?.etablissements ??          // fallback si data non imbriqué
+            [];
         return { etablissements };
     },
 };
