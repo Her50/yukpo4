@@ -3650,14 +3650,10 @@ impl WhatsAppChatbotService {
     fn main_menu(&self) -> String {
         concat!(
             "🌟 *Menu Yukpo*\n\n",
-            "A. 🤖 *YukpoIA* — Assistant intelligent\n",
-            "B. 🛒 *Services* — Pharmacie, Bus, Immobilier, Livres\n",
-            "C. 🚨 *Communauté* — Alertes, Sang, Abonnements\n",
-            "D. 💼 *Mon compte* — Tokens, Produits, Partenaire\n\n",
-            "📸 *Photo* pour publier un produit\n",
-            "🎤 *Vocal* pour dicter une annonce ou une question\n",
-            "📝 _Tapez \"je vends...\" pour publier par texte_\n\n",
-            "_Tapez A, B, C ou D_"
+            "1. 💊 *Pharmacie* — Trouver un médicament\n",
+            "2. 📚 *Bourse du livre scolaire* — Trouver / vendre des livres\n",
+            "3. 🤖 *YukpoIA* — Assistant intelligent\n\n",
+            "_Tapez 1, 2 ou 3_"
         )
         .to_string()
     }
@@ -3705,7 +3701,7 @@ impl WhatsAppChatbotService {
     }
 
     fn handle_inconnu(&self) -> String {
-        "🤔 Je n'ai pas compris.\n\nTapez *MENU* ou une lettre :\n\n*A* → 🤖 YukpoIA\n*B* → 🛒 Services\n*C* → 🚨 Communauté\n*D* → 💼 Mon compte".to_string()
+        "🤔 Je n'ai pas compris.\n\nTapez *MENU* ou un chiffre :\n\n*1* → 💊 Pharmacie\n*2* → 📚 Bourse du livre scolaire\n*3* → 🤖 YukpoIA".to_string()
     }
 }
 
@@ -3729,26 +3725,21 @@ fn detect_intent(message: &str) -> Intent {
         return Intent::Annuler;
     }
 
-    // ── Raccourcis lettres A-D (menu principal) ───────────────────────────────
+    // ── Raccourcis chiffres 1-3 (menu principal) ─────────────────────────────
     match msg.as_str() {
-        "a" => {
+        "1" => {
+            return Intent::Pharmacie {
+                medicament: String::new(),
+            }
+        }
+        "2" => {
+            return Intent::LivresScolaires {
+                query: String::new(),
+            }
+        }
+        "3" => {
             return Intent::YukpoIA {
                 question: String::new(),
-            }
-        }
-        "b" => {
-            return Intent::SousMenu {
-                category: "services".to_string(),
-            }
-        }
-        "c" => {
-            return Intent::SousMenu {
-                category: "communaute".to_string(),
-            }
-        }
-        "d" => {
-            return Intent::SousMenu {
-                category: "moncompte".to_string(),
             }
         }
         _ => {}

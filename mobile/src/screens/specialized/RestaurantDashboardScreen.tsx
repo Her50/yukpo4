@@ -97,6 +97,7 @@ const RestaurantDashboardScreen: React.FC = () => {
     const devise = useCurrencyDetection() || 'XAF';
 
     const loadData = useCallback(async () => {
+        setLoading(true);
         try {
             const [dashData, hoursData, overviewData] = await Promise.allSettled([
                 restaurantManagementService.getDashboardData(),
@@ -181,10 +182,11 @@ const RestaurantDashboardScreen: React.FC = () => {
         }
         setSavingItem(true);
         try {
+            let resp: any;
             if (editItem.id) {
-                await restaurantManagementService.updateMenuItem(editItem.id, editItem);
+                resp = await restaurantManagementService.updateMenuItem(editItem.id, editItem);
             } else {
-                await restaurantManagementService.createMenuItem({
+                resp = await restaurantManagementService.createMenuItem({
                     nom: editItem.nom!,
                     description: editItem.description,
                     prix: editItem.prix!,
@@ -194,11 +196,16 @@ const RestaurantDashboardScreen: React.FC = () => {
                     video_url: editItem.video_url,
                 });
             }
+            // Vérifier explicitement le succès — apiPost ne throw pas sur les erreurs HTTP
+            if (resp && resp.success === false) {
+                const msg = resp.error || resp.message || 'Erreur inconnue';
+                throw new Error(msg);
+            }
             setMenuModal(false);
             setEditItem(null);
             await loadData();
-        } catch {
-            Alert.alert('Erreur', 'Impossible de sauvegarder le plat.');
+        } catch (e: any) {
+            Alert.alert('Erreur', e?.message || 'Impossible de sauvegarder le plat. Vérifiez votre connexion.');
         } finally {
             setSavingItem(false);
         }

@@ -268,8 +268,8 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
-            {/* ── Bloc manuels / programmes (K12) ── */}
-            {isK12 && (
+            {/* ── Bloc manuels / programmes scolaires — toujours visible sauf pour le supérieur/formation ── */}
+            {!isHigher && (
                 <>
                     <Text style={s.sectionTitle}>📚 Manuels & programmes scolaires</Text>
                     <View style={s.manuelCard}>
@@ -378,12 +378,16 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
     const renderProgrammes = () => (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.tabContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
-            {isK12 ? (
+
+            {/* Section documents / manuels — pour K12 ET établissements dont le type est non défini */}
+            {!isHigher && (
                 <>
                     <View style={s.infoBox}>
                         <SafeIcon name="info" size={16} color="#1E40AF" />
                         <Text style={s.infoBoxText}>
-                            Le programme national est défini par l'État. Vous déposez ici vos listes de manuels, emplois du temps et grilles officielles (PDF, Excel ou photo).
+                            {isK12
+                                ? 'Le programme national est défini par l\'État. Vous déposez ici vos listes de manuels, emplois du temps et grilles officielles (PDF, Excel ou photo).'
+                                : 'Déposez ici vos listes de manuels, programmes et emplois du temps. Ces documents alimentent la Bourse du Livre Yukpo.'}
                         </Text>
                     </View>
                     <TouchableOpacity style={[s.actionCardPrimary, { marginBottom: 10 }]} onPress={navigateToProgrammeUpload}>
@@ -403,7 +407,10 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
                         <SafeIcon name="chevron-right" size={18} color="#2563EB" />
                     </TouchableOpacity>
                 </>
-            ) : (
+            )}
+
+            {/* Section filières — supérieur / formation uniquement */}
+            {isHigher && (
                 <>
                     <View style={s.infoBox}>
                         <SafeIcon name="info" size={16} color="#1E40AF" />

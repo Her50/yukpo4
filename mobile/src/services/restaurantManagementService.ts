@@ -109,6 +109,19 @@ export interface RestaurantDashboardData {
 const ensureArray = <T>(value: unknown): T[] =>
   Array.isArray(value) ? (value as T[]) : [];
 
+// Extrait un tableau de menu depuis divers formats de réponse backend
+// Gère : { data: { items: [] } }, { data: { menu: [] } }, { data: [] }, { items: [] }
+const extractMenuItems = (resp: unknown): RestaurantMenuItem[] => {
+  const r = resp as any;
+  return ensureArray<RestaurantMenuItem>(
+    r?.data?.items ??
+    r?.data?.menu ??
+    (Array.isArray(r?.data) ? r.data : null) ??
+    r?.items ??
+    r?.menu
+  );
+};
+
 // ────────────────────────────────────────────────────────────
 // Service
 // ────────────────────────────────────────────────────────────
@@ -123,7 +136,7 @@ export const restaurantManagementService = {
 
     const menuItems =
       menuResp.status === 'fulfilled'
-        ? ensureArray<RestaurantMenuItem>((menuResp.value as any)?.data?.items)
+        ? extractMenuItems(menuResp.value)
         : [];
 
     const pendingOrders =
@@ -164,7 +177,7 @@ export const restaurantManagementService = {
   // ─── Menu items (partenaire) ──────────────────────────────
   async getMenuItems(): Promise<RestaurantMenuItem[]> {
     const resp = await apiGet('/api/restaurant/menu');
-    return ensureArray<RestaurantMenuItem>((resp as any)?.data?.items);
+    return extractMenuItems(resp);
   },
 
   async createMenuItem(data: {
