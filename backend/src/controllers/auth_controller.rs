@@ -207,23 +207,26 @@ pub async fn register_user(
     validate_email(&payload.email)?;
     validate_password_strength(&payload.password)?;
 
-    // Valider les noms si fournis
-    if let Some(ref nom) = payload.nom {
-        validate_name(nom, "Nom")?;
-    }
-    if let Some(ref prenom) = payload.prenom {
-        validate_name(prenom, "Prénom")?;
-    }
-    if let Some(ref name) = payload.name {
-        validate_name(name, "Nom complet")?;
-    }
-
-    // ✅ NOUVEAU: Déterminer le rôle
+    // ✅ Déterminer le rôle en premier pour adapter la validation des noms
     let user_role = if payload.is_partner.unwrap_or(false) {
         "partenaire"
     } else {
         "user"
     };
+
+    // Valider les noms si fournis — seulement pour les utilisateurs ordinaires.
+    // Pour les partenaires, `nom` est la raison sociale (peut contenir des chiffres/symboles).
+    if user_role != "partenaire" {
+        if let Some(ref nom) = payload.nom {
+            validate_name(nom, "Nom")?;
+        }
+        if let Some(ref prenom) = payload.prenom {
+            validate_name(prenom, "Prénom")?;
+        }
+        if let Some(ref name) = payload.name {
+            validate_name(name, "Nom complet")?;
+        }
+    }
 
     // ✅ RENFORCÉ: Validation stricte du partner_type - OBLIGATOIRE pour un partenaire
     if user_role == "partenaire" {

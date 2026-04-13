@@ -3,6 +3,7 @@
 // de charger leurs informations, filières, statistiques, performances, etc.
 
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ExpoLocation from 'expo-location';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -15,6 +16,7 @@ import {
     View,
 } from 'react-native';
 import { KeyboardAwareScreen } from '../../components/KeyboardAwareScreen';
+import { LocationSelector } from '../../components/LocationSelector';
 import ModernGPSModal from '../../components/ModernGPSModal';
 import SafeIcon from '../../components/SafeIcon';
 import { NativeButton, NativeCard, NativeInput } from '../../components/SafeNativeDesign';
@@ -64,14 +66,15 @@ const CreateEtablissementScreen: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(!!etablissementId);
     const [formData, setFormData] = useState<EtablissementFormData>({
-        nom_etablissement: '',
+        // Pré-remplir avec les données du partenaire disponibles dans le JWT
+        nom_etablissement: !etablissementId ? (user?.nom_entreprise || '') : '',
         type_etablissement: initialType,
         adresse: '',
         ville: '',
         region: '',
         quartier: '',
-        telephone: '',
-        email: '',
+        telephone: !etablissementId ? (user?.phone || '') : '',
+        email: !etablissementId ? (user?.email || '') : '',
         site_web: '',
         gps_lat: '',
         gps_lon: '',
@@ -104,6 +107,22 @@ const CreateEtablissementScreen: React.FC = () => {
             loadEtablissement();
         }
     }, [etablissementId]);
+
+    const reverseGeocode = async (lat: number, lon: number): Promise<string | null> => {
+        try {
+            const results = await ExpoLocation.reverseGeocodeAsync({ latitude: lat, longitude: lon });
+            if (results.length > 0) {
+                const g = results[0];
+                const parts = [g.name, g.street, g.district, g.subregion, g.city]
+                    .filter(Boolean)
+                    .filter((v, i, arr) => arr.indexOf(v) === i); // dédoublonner
+                return parts.slice(0, 3).join(', ') || null;
+            }
+        } catch {
+            // silencieux — on affiche juste les coordonnées si ça échoue
+        }
+        return null;
+    };
 
     const loadEtablissement = async () => {
         try {
@@ -144,6 +163,11 @@ const CreateEtablissementScreen: React.FC = () => {
                     taux_reussite_examens: data.taux_reussite_examens?.toString() || '',
                     classement_national: data.classement_national?.toString() || '',
                 });
+                // Reverse geocoding pour afficher le lieu précis au lieu des coordonnées
+                if (latStr && lonStr) {
+                    const label = await reverseGeocode(parseFloat(latStr), parseFloat(lonStr));
+                    if (label) setGpsPlaceLabel(label);
+                }
             }
         } catch (error: any) {
             console.error('[CreateEtablissementScreen] Erreur:', error);
@@ -153,13 +177,16 @@ const CreateEtablissementScreen: React.FC = () => {
         }
     };
 
-    const handleUseCurrentLocation = () => {
+    const handleUseCurrentLocation = async () => {
         if (location?.coords) {
-            setFormData({
-                ...formData,
-                gps_lat: location.coords.latitude.toString(),
-                gps_lon: location.coords.longitude.toString(),
-            });
+            const { latitude, longitude } = location.coords;
+            setFormData(prev => ({
+                ...prev,
+                gps_lat: latitude.toString(),
+                gps_lon: longitude.toString(),
+            }));
+            const label = await reverseGeocode(latitude, longitude);
+            setGpsPlaceLabel(label || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
         } else {
             Alert.alert(t('message.error'), t('createEtablissement.gpsUnavailable'));
         }
@@ -357,11 +384,19 @@ const CreateEtablissementScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>Ville *</Text>
-                    <NativeInput
+                    <LocationSelector
+                        label="Ville *"
                         value={formData.ville}
-                        onChangeText={(text) => setFormData({ ...formData, ville: text })}
+                        onSelect={(loc) => {
+                            setFormData(prev => ({
+                                ...prev,
+                                ville: loc.components?.ville || loc.place_name || loc.raw,
+                                region: prev.region || loc.components?.region || '',
+                            }));
+                        }}
+                        scope="city"
                         placeholder="Ex: Douala"
+                        required
                     />
                 </View>
 
@@ -375,20 +410,43 @@ const CreateEtablissementScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>Quartier</Text>
-                    <NativeInput
+                    <LocationSelector
+                        label="Quartier"
                         value={formData.quartier}
-                        onChangeText={(text) => setFormData({ ...formData, quartier: text })}
+                        onSelect={(loc) => {
+                            setFormData(prev => ({
+                                ...prev,
+                                quartier: loc.components?.quartier || loc.place_name || loc.raw,
+                                ville: prev.ville || loc.components?.ville || '',
+                            }));
+                        }}
+                        scope="neighborhood"
+                        cityContext={formData.ville}
                         placeholder="Ex: Akwa"
                     />
                 </View>
 
                 <View style={styles.field}>
-                    <Text style={styles.label}>Adresse complète</Text>
-                    <NativeInput
+                    <LocationSelector
+                        label="Adresse complète"
                         value={formData.adresse}
-                        onChangeText={(text) => setFormData({ ...formData, adresse: text })}
-                        placeholder="Adresse complète"
+                        onSelect={(loc) => {
+                            setFormData(prev => ({
+                                ...prev,
+                                adresse: loc.raw || loc.place_name,
+                                ville: prev.ville || loc.components?.ville || '',
+                                region: prev.region || loc.components?.region || '',
+                                quartier: prev.quartier || loc.components?.quartier || '',
+                                // Pré-remplir GPS si les coordonnées sont disponibles
+                                gps_lat: loc.coordinates ? String(loc.coordinates.lat) : prev.gps_lat,
+                                gps_lon: loc.coordinates ? String(loc.coordinates.lng) : prev.gps_lon,
+                            }));
+                            if (loc.coordinates) {
+                                setGpsPlaceLabel(loc.place_name || loc.raw || null);
+                            }
+                        }}
+                        scope="all"
+                        placeholder="Adresse complète de l'établissement"
                     />
                 </View>
 
@@ -411,9 +469,12 @@ const CreateEtablissementScreen: React.FC = () => {
                         <Text style={styles.modernGpsBtnText}>Choisir sur la carte (GPS précis)</Text>
                     </TouchableOpacity>
                     {(gpsPlaceLabel || (formData.gps_lat && formData.gps_lon)) ? (
-                        <Text style={styles.gpsSummary} numberOfLines={2}>
-                            {gpsPlaceLabel || `${formData.gps_lat}, ${formData.gps_lon}`}
-                        </Text>
+                        <View style={styles.gpsSummaryRow}>
+                            <SafeIcon name="map-pin" size={14} color="#10B981" type="lucide" />
+                            <Text style={styles.gpsSummary} numberOfLines={2}>
+                                {gpsPlaceLabel || 'Position enregistrée'}
+                            </Text>
+                        </View>
                     ) : null}
                     <View style={styles.gpsRow}>
                         <NativeInput
@@ -843,10 +904,17 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '700',
     },
-    gpsSummary: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
+    gpsSummaryRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
         marginBottom: 8,
+    },
+    gpsSummary: {
+        fontSize: 13,
+        color: '#065F46',
+        fontWeight: '500',
+        flex: 1,
     },
     k12DocsCard: {
         backgroundColor: '#ECFDF5',

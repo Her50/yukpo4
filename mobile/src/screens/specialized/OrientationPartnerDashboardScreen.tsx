@@ -90,6 +90,7 @@ const OrientationPartnerDashboardScreen: React.FC = () => {
     };
 
     const loadData = useCallback(async () => {
+        setLoading(true);
         try {
             const mine = await orientationScolaireApi.getMyEtablissements();
             const etabs = Array.isArray(mine?.etablissements) ? mine.etablissements : [];
