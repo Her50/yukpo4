@@ -194,20 +194,21 @@ const pickSquareThumbnail = async (
     return null;
 };
 
-const STEPS = [
-    { id: 'info', label: 'Infos', icon: 'file-text' },
-    { id: 'products', label: 'Produits', icon: 'package' },
-    { id: 'media', label: t('createPublicite.medias'), icon: 'video' },
-    { id: 'budget', label: 'Budget', icon: 'dollar-sign' },
-    { id: 'targeting', label: 'Ciblage', icon: 'target' },
-    { id: 'confirm', label: t('createPublicite.creer'), icon: 'check-circle' },
-];
-
 const CreatePubliciteScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
     const { t, language } = useLanguageSafe();
+
+    // STEPS doit être à l'intérieur du composant car il utilise t() (hook useLanguageSafe)
+    const STEPS = useMemo(() => [
+        { id: 'info', label: 'Infos', icon: 'file-text' },
+        { id: 'products', label: 'Produits', icon: 'package' },
+        { id: 'media', label: t('createPublicite.medias'), icon: 'video' },
+        { id: 'budget', label: 'Budget', icon: 'dollar-sign' },
+        { id: 'targeting', label: 'Ciblage', icon: 'target' },
+        { id: 'confirm', label: t('createPublicite.creer'), icon: 'check-circle' },
+    ], [t]);
 
     // ✅ Mode: 'create', 'edit', ou 'relance'
     const publiciteId = (route.params as any)?.publiciteId;

@@ -17046,31 +17046,36 @@ pub async fn ensure_services_specialized_type(pool: &PgPool) -> Result<(), sqlx:
         }
     }
 
-    // Ajouter contrainte CHECK si elle n'existe pas
+    // Recréer la contrainte CHECK pour inclure 'restaurant' (drop + recreate)
     sqlx::query(
         r#"
         DO $$
         BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.table_constraints 
-                WHERE constraint_name = 'check_specialized_type' 
+            -- Supprimer l'ancienne contrainte si elle existe (pour pouvoir la recréer avec restaurant)
+            IF EXISTS (
+                SELECT 1 FROM information_schema.table_constraints
+                WHERE constraint_name = 'check_specialized_type'
                 AND table_name = 'services'
             ) THEN
-                ALTER TABLE services 
-                ADD CONSTRAINT check_specialized_type 
-                CHECK (
-                    specialized_type IS NULL 
-                    OR specialized_type IN (
-                        'pharmacie',
-                        'hopital_clinique',
-                        'laboratoire_imagerie',
-                        'agence_voyage',
-                        'covoiturage',
-                        'taxi_ville',
-                        'banque_sang'
-                    )
-                );
+                ALTER TABLE services DROP CONSTRAINT check_specialized_type;
             END IF;
+            -- Recréer avec la liste complète incluant 'restaurant'
+            ALTER TABLE services
+            ADD CONSTRAINT check_specialized_type
+            CHECK (
+                specialized_type IS NULL
+                OR specialized_type IN (
+                    'pharmacie',
+                    'hopital_clinique',
+                    'laboratoire_imagerie',
+                    'agence_voyage',
+                    'covoiturage',
+                    'taxi_ville',
+                    'banque_sang',
+                    'restaurant',
+                    'etablissement_scolaire'
+                )
+            );
         END
         $$;
         "#,

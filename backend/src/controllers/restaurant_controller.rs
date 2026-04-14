@@ -21,6 +21,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 async fn restaurant_service_id_for_user(pool: &sqlx::PgPool, user_id: i32) -> AppResult<i32> {
+    // 1. Chercher le service existant
     let id: Option<i32> = sqlx::query_scalar(
         r#"
         SELECT id FROM services
@@ -33,7 +34,47 @@ async fn restaurant_service_id_for_user(pool: &sqlx::PgPool, user_id: i32) -> Ap
     .fetch_optional(pool)
     .await?;
 
-    id.ok_or_else(|| AppError::NotFound("Aucun service restaurant pour ce compte".to_string()))
+    if let Some(id) = id {
+        return Ok(id);
+    }
+
+    // 2. Aucun service trouvé → auto-créer depuis delivery_partners (self-healing)
+    //    Couvre les comptes créés avant que cette étape soit dans le flux d'inscription.
+    let partner_name: Option<String> = sqlx::query_scalar(
+        "SELECT name FROM delivery_partners WHERE created_by = $1 AND partner_type::text = 'restaurant' ORDER BY id DESC LIMIT 1",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .unwrap_or(None);
+
+    let nom = partner_name.unwrap_or_else(|| "Mon Restaurant".to_string());
+
+    let data_json = serde_json::json!({
+        "titre_service": nom,
+        "nom": nom,
+        "category": "restaurant"
+    });
+
+    let new_id: i32 = sqlx::query_scalar(
+        r#"
+        INSERT INTO services (user_id, data, category, specialized_type, is_active, created_at, updated_at)
+        VALUES ($1, $2, 'restaurant', 'restaurant', TRUE, NOW(), NOW())
+        RETURNING id
+        "#,
+    )
+    .bind(user_id)
+    .bind(&data_json)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| AppError::Internal(format!("Impossible de créer le service restaurant: {}", e)))?;
+
+    info!(
+        "[restaurant] Service auto-créé pour user_id={} (service_id={}, nom='{}')",
+        user_id, new_id, nom
+    );
+
+    Ok(new_id)
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
