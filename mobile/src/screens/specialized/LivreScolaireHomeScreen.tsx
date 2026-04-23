@@ -309,6 +309,29 @@ const LivreScolaireHomeScreen: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
+            {/* ── Scanner une liste de classe ── */}
+            <TouchableOpacity
+                style={styles.scanProgrammeCard}
+                onPress={() => safeNavigate('EtablissementScolaire', { parentMode: true })}
+                activeOpacity={0.88}
+            >
+                <View style={styles.scanProgrammeIconWrap}>
+                    <SafeIcon name="scan-line" size={22} color="#4F46E5" type="lucide" />
+                </View>
+                <View style={styles.scanProgrammeTextWrap}>
+                    <Text style={styles.scanProgrammeTitle} numberOfLines={1}>
+                        {t('livreScolaireHome.scanProgrammeTitle', 'Scanner une liste de classe')}
+                    </Text>
+                    <Text style={styles.scanProgrammeSubtitle} numberOfLines={2}>
+                        {t('livreScolaireHome.scanProgrammeSub', 'Photo du programme → l\'IA extrait les manuels à acheter')}
+                    </Text>
+                </View>
+                <View style={styles.scanProgrammeBadge}>
+                    <Text style={styles.scanProgrammeBadgeText}>IA</Text>
+                </View>
+                <SafeIcon name="chevron-right" size={18} color="#4F46E5" type="lucide" />
+            </TouchableOpacity>
+
             <View style={styles.userFlowSection}>
                 <Text style={styles.userFlowTitle}>{t('bourseUx.userFlowTitle', 'Votre parcours')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.userFlowScroll}>
@@ -710,6 +733,54 @@ const styles = StyleSheet.create({
         lineHeight: 15,
         color: '#6d28d9',
         opacity: 0.9,
+    },
+    scanProgrammeCard: {
+        marginHorizontal: 16,
+        marginTop: 10,
+        marginBottom: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: '#EEF2FF',
+        borderWidth: 1.5,
+        borderColor: '#C7D2FE',
+        borderRadius: 14,
+        paddingVertical: 13,
+        paddingHorizontal: 14,
+    },
+    scanProgrammeIconWrap: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        backgroundColor: '#E0E7FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    scanProgrammeTextWrap: {
+        flex: 1,
+    },
+    scanProgrammeTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#312E81',
+        marginBottom: 2,
+    },
+    scanProgrammeSubtitle: {
+        fontSize: 11,
+        color: '#4338CA',
+        lineHeight: 15,
+    },
+    scanProgrammeBadge: {
+        backgroundColor: '#4F46E5',
+        borderRadius: 6,
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+    },
+    scanProgrammeBadgeText: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        letterSpacing: 0.5,
     },
     userFlowSection: {
         marginHorizontal: 16,

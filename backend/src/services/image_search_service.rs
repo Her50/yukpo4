@@ -255,7 +255,7 @@ impl ImageSearchService {
     /// Cette fonction devrait être appelée lors de l'upload d'une image
     #[cfg(feature = "image_search")]
     pub fn generate_image_signature(image_data: &[u8]) -> AppResult<Vec<f32>> {
-        use image::{DynamicImage, ImageReader};
+        use image::io::Reader as ImageReader;
         use std::io::Cursor;
 
         log_info("[ImageSearch] Génération de signature vectorielle d'image");
@@ -365,7 +365,7 @@ impl ImageSearchService {
     /// Extraire les métadonnées d'une image
     #[cfg(feature = "image_search")]
     pub fn extract_image_metadata(image_data: &[u8]) -> AppResult<serde_json::Value> {
-        use image::{DynamicImage, ImageReader};
+        use image::{io::Reader as ImageReader, DynamicImage, GenericImageView};
         use std::io::Cursor;
 
         // Charger l'image pour extraire les métadonnées

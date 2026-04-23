@@ -48,7 +48,7 @@ const LivreScolaireListPage: React.FC = () => {
             queryParams.append('limit', '20');
             queryParams.append('offset', ((page - 1) * 20).toString());
 
-            const response = await apiGet(`/api/livres-scolaires/search?${queryParams.toString()}`);
+            const response = await apiGet(`/api/bourse-livre/search?${queryParams.toString()}`);
             const data = await response.json();
 
             if (data.success && data.data) {
@@ -116,7 +116,7 @@ const LivreScolaireListPage: React.FC = () => {
                 </h1>
                 <Button
                     variant="outline"
-                    onClick={() => navigate('/livres-scolaires/search')}
+                    onClick={() => navigate('/search')}
                 >
                     Modifier la recherche
                 </Button>
@@ -130,7 +130,7 @@ const LivreScolaireListPage: React.FC = () => {
                         <p className="text-gray-600 mb-4">
                             Essayez de modifier vos critères de recherche
                         </p>
-                        <Button onClick={() => navigate('/livres-scolaires/search')}>
+                        <Button onClick={() => navigate('/search')}>
                             Nouvelle recherche
                         </Button>
                     </CardContent>
@@ -146,7 +146,7 @@ const LivreScolaireListPage: React.FC = () => {
                                 <Card
                                     key={livre.id}
                                     className="cursor-pointer hover:shadow-lg transition-shadow"
-                                    onClick={() => navigate(`/livres-scolaires/${livre.id}`)}
+                                    onClick={() => navigate(`/${livre.id}`)}
                                 >
                                     {firstImage && (
                                         <div className="w-full h-48 overflow-hidden rounded-t-lg">

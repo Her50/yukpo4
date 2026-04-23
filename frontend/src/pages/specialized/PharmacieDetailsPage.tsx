@@ -1,185 +1,151 @@
-// ✅ Détails d'une pharmacie avec boutons d'action (Frontend)
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/buttons';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Mail, MapPin, Phone, Pill } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Mail, MapPin, Phone, Pill } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { apiGet } from '../../services/apiService';
 
 interface PharmacieDetails {
-    id: number;
-    service_id: number;
-    user_id: number;
-    nom: string;
-    adresse?: string;
-    quartier?: string;
-    ville?: string;
-    gps?: string;
-    is_available_now: boolean;
-    is_on_duty: boolean;
-    telephone?: string;
-    telephone_urgence?: string;
-    email?: string;
-    horaires?: any;
+  id: number;
+  nom: string;
+  adresse?: string;
+  quartier?: string;
+  ville?: string;
+  gps?: string;
+  is_available_now: boolean;
+  is_on_duty: boolean;
+  telephone?: string;
+  telephone_urgence?: string;
+  email?: string;
+  horaires?: any;
 }
 
 const PharmacieDetailsPage: React.FC = () => {
-    const navigate = useNavigate();
-    const { id } = useParams<{ id: string }>();
-    const { user } = useAuth();
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const [pharmacie, setPharmacie] = useState<PharmacieDetails | null>(null);
+  const [loading, setLoading] = useState(true);
 
-    const [pharmacie, setPharmacie] = useState<PharmacieDetails | null>(null);
-    const [loading, setLoading] = useState(true);
+  useEffect(() => { if (id) load(); }, [id]);
 
-    useEffect(() => {
-        if (id) {
-            loadPharmacieDetails();
-        }
-    }, [id]);
+  const load = async () => {
+    try {
+      const res = await apiGet(`/api/pharmacies/${id}`);
+      const data = await res.json();
+      if (data.success && data.data) setPharmacie(data.data);
+      else { toast({ title: 'Pharmacie introuvable', variant: 'destructive' }); navigate(-1); }
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+      navigate(-1);
+    } finally { setLoading(false); }
+  };
 
-    const loadPharmacieDetails = async () => {
-        try {
-            setLoading(true);
-            const response = await apiGet(`/api/pharmacies/${id}`);
-            const data = await response.json();
+  const openMaps = () => {
+    if (!pharmacie) return;
+    const query = pharmacie.gps || `${pharmacie.adresse || ''} ${pharmacie.quartier || ''} ${pharmacie.ville || ''}`.trim();
+    window.open(`https://maps.google.com/maps?q=${encodeURIComponent(query)}`, '_blank');
+  };
 
-            if (data.success && data.data) {
-                setPharmacie(data.data);
-            } else {
-                alert('Impossible de charger les détails de la pharmacie');
-                navigate('/pharmacies/search');
-            }
-        } catch (error: any) {
-            console.error('[PharmacieDetailsPage] Erreur:', error);
-            alert(error.message || 'Impossible de charger les détails');
-            navigate('/pharmacies/search');
-        } finally {
-            setLoading(false);
-        }
-    };
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center gap-3 z-10">
+        <button onClick={() => navigate(-1)} className="p-1 text-gray-500"><ArrowLeft className="w-5 h-5" /></button>
+        <span className="font-semibold text-gray-800">Détails</span>
+      </div>
+      <div className="flex-1 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    </div>
+  );
 
-    const handleCall = () => {
-        if (pharmacie?.telephone) {
-            window.open(`tel:${pharmacie.telephone}`, '_self');
-        }
-    };
+  if (!pharmacie) return null;
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Chargement...</p>
-                </div>
-            </div>
-        );
-    }
+  return (
+    <div className="min-h-screen bg-gray-50 pb-24">
+      <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center gap-3 z-10 shadow-sm">
+        <button onClick={() => navigate(-1)} className="p-1 text-gray-500 active:text-gray-800"><ArrowLeft className="w-5 h-5" /></button>
+        <span className="font-semibold text-gray-800 flex-1 truncate">{pharmacie.nom}</span>
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${pharmacie.is_available_now ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+          {pharmacie.is_available_now ? 'Ouvert' : 'Fermé'}
+        </span>
+      </div>
 
-    if (!pharmacie) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <p className="text-gray-600">Pharmacie non trouvée</p>
-            </div>
-        );
-    }
-
-    return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="max-w-4xl mx-auto px-4">
-                <Button
-                    variant="ghost"
-                    onClick={() => navigate(-1)}
-                    className="mb-6"
-                >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Retour
-                </Button>
-
-                <Card className="mb-6">
-                    <CardHeader>
-                        <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                                <CardTitle className="text-3xl mb-2 flex items-center gap-2">
-                                    <Pill className="w-8 h-8" />
-                                    {pharmacie.nom}
-                                </CardTitle>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <Badge
-                                    variant={pharmacie.is_available_now ? 'default' : 'secondary'}
-                                    className={`text-lg px-4 py-2 ${pharmacie.is_available_now ? 'bg-green-100 text-green-800 border-green-300' : ''}`}
-                                >
-                                    {pharmacie.is_available_now ? 'Disponible' : 'Indisponible'}
-                                </Badge>
-                                {pharmacie.is_on_duty && (
-                                    <Badge className="bg-blue-100 text-blue-800 border-blue-300">
-                                        De garde
-                                    </Badge>
-                                )}
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {(pharmacie.adresse || pharmacie.ville || pharmacie.quartier) && (
-                            <div className="flex items-start text-gray-700">
-                                <MapPin className="w-5 h-5 mr-3 text-gray-400 mt-0.5" />
-                                <div>
-                                    {pharmacie.adresse && <p>{pharmacie.adresse}</p>}
-                                    <p className="text-sm text-gray-600">
-                                        {[pharmacie.quartier, pharmacie.ville].filter(Boolean).join(', ')}
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        {pharmacie.gps && (
-                            <div className="flex items-center text-gray-700">
-                                <MapPin className="w-5 h-5 mr-3 text-gray-400" />
-                                <span>{pharmacie.gps}</span>
-                            </div>
-                        )}
-
-                        {pharmacie.telephone && (
-                            <div className="flex items-center text-gray-700">
-                                <Phone className="w-5 h-5 mr-3 text-gray-400" />
-                                <span>{pharmacie.telephone}</span>
-                            </div>
-                        )}
-
-                        {pharmacie.telephone_urgence && (
-                            <div className="flex items-center text-red-700">
-                                <Phone className="w-5 h-5 mr-3 text-red-400" />
-                                <span className="font-semibold">Urgences: {pharmacie.telephone_urgence}</span>
-                            </div>
-                        )}
-
-                        {pharmacie.email && (
-                            <div className="flex items-center text-gray-700">
-                                <Mail className="w-5 h-5 mr-3 text-gray-400" />
-                                <span>{pharmacie.email}</span>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <div className="space-y-3">
-                    {pharmacie.telephone && (
-                        <Button
-                            variant="outline"
-                            onClick={handleCall}
-                            className="w-full"
-                        >
-                            <Phone className="w-4 h-4 mr-2" />
-                            Appeler
-                        </Button>
-                    )}
-                </div>
-            </div>
+      {/* Hero */}
+      <div className="bg-white px-5 py-6 border-b">
+        <div className="flex items-start gap-3">
+          <div className="w-14 h-14 rounded-2xl bg-blue-100 flex items-center justify-center shrink-0">
+            <Pill className="w-7 h-7 text-blue-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold text-gray-900 leading-tight">{pharmacie.nom}</h1>
+            {(pharmacie.quartier || pharmacie.ville) && (
+              <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                <MapPin className="w-3.5 h-3.5" />
+                {[pharmacie.quartier, pharmacie.ville].filter(Boolean).join(', ')}
+              </p>
+            )}
+            {pharmacie.is_on_duty && (
+              <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full font-medium">De garde</span>
+            )}
+          </div>
         </div>
-    );
+
+        {/* CTAs principaux */}
+        <div className="flex gap-3 mt-5">
+          {pharmacie.telephone && (
+            <a
+              href={`tel:${pharmacie.telephone}`}
+              className="flex-1 bg-green-600 active:bg-green-700 text-white py-3.5 rounded-xl flex items-center justify-center gap-2 font-semibold text-sm shadow-md shadow-green-200"
+            >
+              <Phone className="w-4 h-4" /> Appeler
+            </a>
+          )}
+          <button
+            onClick={openMaps}
+            className="flex-1 bg-white border-2 border-blue-600 text-blue-600 py-3.5 rounded-xl flex items-center justify-center gap-2 font-semibold text-sm active:bg-blue-50"
+          >
+            <ExternalLink className="w-4 h-4" /> Itinéraire
+          </button>
+        </div>
+      </div>
+
+      {/* Infos */}
+      <div className="px-4 py-4 space-y-3">
+        {pharmacie.telephone_urgence && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+            <Phone className="w-5 h-5 text-red-500 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-red-500 uppercase">Urgences</p>
+              <a href={`tel:${pharmacie.telephone_urgence}`} className="font-bold text-red-700 text-base">
+                {pharmacie.telephone_urgence}
+              </a>
+            </div>
+          </div>
+        )}
+
+        {pharmacie.adresse && (
+          <div className="bg-white rounded-xl p-4 flex items-center gap-3 border border-gray-100">
+            <MapPin className="w-5 h-5 text-gray-400 shrink-0" />
+            <p className="text-sm text-gray-700">{pharmacie.adresse}</p>
+          </div>
+        )}
+
+        {pharmacie.telephone && (
+          <a href={`tel:${pharmacie.telephone}`} className="bg-white rounded-xl p-4 flex items-center gap-3 border border-gray-100 w-full text-left">
+            <Phone className="w-5 h-5 text-gray-400 shrink-0" />
+            <p className="text-sm text-gray-700">{pharmacie.telephone}</p>
+          </a>
+        )}
+
+        {pharmacie.email && (
+          <a href={`mailto:${pharmacie.email}`} className="bg-white rounded-xl p-4 flex items-center gap-3 border border-gray-100 w-full text-left">
+            <Mail className="w-5 h-5 text-gray-400 shrink-0" />
+            <p className="text-sm text-gray-700">{pharmacie.email}</p>
+          </a>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default PharmacieDetailsPage;
-

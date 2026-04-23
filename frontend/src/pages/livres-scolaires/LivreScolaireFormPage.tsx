@@ -60,7 +60,7 @@ const LivreScolaireFormPage: React.FC = () => {
     const loadLivreData = async () => {
         try {
             setLoading(true);
-            const response = await apiGet(`/api/livres-scolaires/${livreId}`);
+            const response = await apiGet(`/api/bourse-livre/${livreId}`);
             const data = await response.json();
 
             if (data.success && data.data?.livre) {
@@ -187,9 +187,9 @@ const LivreScolaireFormPage: React.FC = () => {
 
             let response;
             if (mode === 'edit' && livreId) {
-                response = await apiPut(`/api/livres-scolaires/${livreId}`, payload);
+                response = await apiPut(`/api/bourse-livre/${livreId}`, payload);
             } else {
-                response = await apiPost('/api/livres-scolaires', payload);
+                response = await apiPost('/api/bourse-livre', payload);
             }
             const data = await response.json();
 
@@ -198,7 +198,7 @@ const LivreScolaireFormPage: React.FC = () => {
                     title: 'Succès',
                     description: mode === 'edit' ? 'Livre modifié avec succès !' : 'Livre créé avec succès !',
                 });
-                navigate(`/livres-scolaires/${mode === 'edit' ? livreId : data.data?.livre?.id || ''}`);
+                navigate(`/${mode === 'edit' ? livreId : data.data?.livre?.id || ''}`);
             } else {
                 toast({
                     title: 'Erreur',

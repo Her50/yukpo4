@@ -40,7 +40,7 @@ const MesLivresPage: React.FC = () => {
     const loadLivres = async () => {
         try {
             setLoading(true);
-            const response = await apiGet('/api/livres-scolaires/mes-livres');
+            const response = await apiGet('/api/bourse-livre/mes-livres');
             const data = await response.json();
 
             if (data.success && data.data) {
@@ -66,7 +66,7 @@ const MesLivresPage: React.FC = () => {
 
     const handleToggleAvailability = async (livre: LivreScolaire) => {
         try {
-            const response = await apiPost(`/api/livres-scolaires/${livre.id}/availability`, {
+            const response = await apiPost(`/api/bourse-livre/${livre.id}/availability`, {
                 is_available: !livre.is_available,
             });
             const data = await response.json();
@@ -96,7 +96,7 @@ const MesLivresPage: React.FC = () => {
     const handleDelete = async (livre: LivreScolaire) => {
         if (confirm(`Êtes-vous sûr de vouloir supprimer "${livre.titre}" ?`)) {
             try {
-                const response = await apiDelete(`/api/livres-scolaires/${livre.id}`);
+                const response = await apiDelete(`/api/bourse-livre/${livre.id}`);
                 const data = await response.json();
                 if (data.success) {
                     await loadLivres();
@@ -148,7 +148,7 @@ const MesLivresPage: React.FC = () => {
         <div className="container mx-auto px-4 py-8 max-w-6xl">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-3xl font-bold">Mes Livres</h1>
-                <Button onClick={() => navigate('/livres-scolaires/new')}>
+                <Button onClick={() => navigate('/nouveau')}>
                     <Plus className="h-4 w-4 mr-2" />
                     Créer un livre
                 </Button>
@@ -162,7 +162,7 @@ const MesLivresPage: React.FC = () => {
                         <p className="text-gray-600 mb-4">
                             Créez votre premier livre scolaire pour commencer à échanger
                         </p>
-                        <Button onClick={() => navigate('/livres-scolaires/new')}>
+                        <Button onClick={() => navigate('/nouveau')}>
                             <Plus className="h-4 w-4 mr-2" />
                             Créer un livre
                         </Button>
@@ -210,7 +210,7 @@ const MesLivresPage: React.FC = () => {
                                             variant="outline"
                                             size="sm"
                                             className="flex-1"
-                                            onClick={() => navigate(`/livres-scolaires/${livre.id}/edit`)}
+                                            onClick={() => navigate(`/${livre.id}/modifier`)}
                                         >
                                             <Edit className="h-4 w-4 mr-1" />
                                             Modifier

@@ -6,12 +6,11 @@
     "strictNullChecks": false,
     "skipLibCheck": true,
     "noEmitOnError": false,
-    "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "jsx": "react-jsx",
+    "jsx": "react-native",
     "isolatedModules": true,
     "baseUrl": ".",
     "paths": {

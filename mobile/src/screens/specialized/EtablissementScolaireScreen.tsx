@@ -48,6 +48,8 @@ type EtabRouteParams = {
     nomEtablissement?: string;
     /** orientation: primaire | secondaire | superieur | formation */
     typeEtablissement?: string;
+    /** Mode parent : affiche d'abord les boutons upload, formulaire optionnel ensuite */
+    parentMode?: boolean;
 };
 
 const EtablissementScolaireScreen: React.FC = () => {
@@ -71,6 +73,8 @@ const EtablissementScolaireScreen: React.FC = () => {
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const isParentMode = !!params.parentMode;
+    const [parentStep, setParentStep] = useState<'pick' | 'details'>(isParentMode ? 'pick' : 'details');
 
     const toggleNiveau = useCallback((id: string) => {
         setNiveaux(prev => {
@@ -117,12 +121,13 @@ const EtablissementScolaireScreen: React.FC = () => {
                     type: 'image',
                     base64: asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : undefined,
                 }]);
+                if (isParentMode) setParentStep('details');
             }
         } catch (err) {
             logger.error('[EtablissementScolaire] Erreur photo:', err);
             Alert.alert('Erreur', t('etablissementScolaire.photoError', 'Impossible de prendre la photo.'));
         }
-    }, [t]);
+    }, [t, isParentMode]);
 
     // ========================
     // Galerie d'images
@@ -150,12 +155,13 @@ const EtablissementScolaireScreen: React.FC = () => {
                     base64: asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : undefined,
                 }));
                 setFiles(prev => [...prev, ...newFiles]);
+                if (isParentMode) setParentStep('details');
             }
         } catch (err) {
             logger.error('[EtablissementScolaire] Erreur galerie:', err);
             Alert.alert('Erreur', t('etablissementScolaire.galleryError', 'Impossible de sélectionner l\'image.'));
         }
-    }, [t]);
+    }, [t, isParentMode]);
 
     // ========================
     // Fichier joint (PDF, etc.)
@@ -186,11 +192,12 @@ const EtablissementScolaireScreen: React.FC = () => {
                 });
             }
             setFiles(prev => [...prev, ...newFiles]);
+            if (isParentMode) setParentStep('details');
         } catch (err) {
             logger.error('[EtablissementScolaire] Erreur document picker:', err);
             Alert.alert('Erreur', t('etablissementScolaire.fileError', 'Impossible de sélectionner le fichier.'));
         }
-    }, [t]);
+    }, [t, isParentMode]);
 
     const removeFile = useCallback((id: string) => {
         setFiles(prev => prev.filter(f => f.id !== id));
@@ -299,6 +306,60 @@ const EtablissementScolaireScreen: React.FC = () => {
                         <Text style={styles.backButtonBottomText}>
                             {t('etablissementScolaire.backToBourse', 'Retour à la bourse du livre')}
                         </Text>
+                    </TouchableOpacity>
+                </View>
+            </SafeNativeView>
+        );
+    }
+
+    // ========================
+    // Mode parent — étape 1 : choisir la source (upload direct)
+    // ========================
+    if (isParentMode && parentStep === 'pick') {
+        return (
+            <SafeNativeView style={styles.container}>
+                <LinearGradient colors={['#D97706', '#F59E0B', '#FCD34D']} style={styles.header}>
+                    <TouchableOpacity onPress={() => { hapticPress(); navigation.goBack(); }} style={styles.backBtn}>
+                        <SafeIcon name="arrow-left" size={24} color="#fff" />
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.headerTitle}>Scanner une liste</Text>
+                        <Text style={styles.headerSubtitle}>YUKPO analyse et extrait les manuels automatiquement</Text>
+                    </View>
+                    <SafeIcon name="scan" size={28} color="rgba(255,255,255,0.7)" type="lucide" />
+                </LinearGradient>
+
+                <View style={styles.pickContainer}>
+                    <Text style={styles.pickTitle}>Comment souhaitez-vous importer la liste ?</Text>
+
+                    <TouchableOpacity style={[styles.pickBtn, styles.pickBtnCamera]} onPress={takePhoto} activeOpacity={0.85}>
+                        <View style={styles.pickBtnIcon}>
+                            <SafeIcon name="camera" size={36} color="#fff" type="lucide" />
+                        </View>
+                        <View style={styles.pickBtnText}>
+                            <Text style={styles.pickBtnTitle}>Prendre une photo</Text>
+                            <Text style={styles.pickBtnSub}>Photographier la liste de classe directement</Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.pickBtn, styles.pickBtnGallery]} onPress={pickImage} activeOpacity={0.85}>
+                        <View style={styles.pickBtnIcon}>
+                            <SafeIcon name="image" size={36} color="#fff" type="lucide" />
+                        </View>
+                        <View style={styles.pickBtnText}>
+                            <Text style={styles.pickBtnTitle}>Depuis la galerie</Text>
+                            <Text style={styles.pickBtnSub}>Choisir une photo déjà prise</Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.pickBtn, styles.pickBtnFile]} onPress={pickDocument} activeOpacity={0.85}>
+                        <View style={styles.pickBtnIcon}>
+                            <SafeIcon name="file-text" size={36} color="#fff" type="lucide" />
+                        </View>
+                        <View style={styles.pickBtnText}>
+                            <Text style={styles.pickBtnTitle}>Importer un fichier</Text>
+                            <Text style={styles.pickBtnSub}>PDF, Excel ou image depuis le téléphone</Text>
+                        </View>
                     </TouchableOpacity>
                 </View>
             </SafeNativeView>
@@ -646,6 +707,25 @@ const styles = StyleSheet.create({
     successButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
     backButtonBottom: { marginTop: 16, paddingVertical: 12 },
     backButtonBottomText: { color: '#6B7280', fontSize: 14, fontWeight: '500' },
+    pickContainer: { flex: 1, padding: 20, gap: 16, justifyContent: 'center' },
+    pickTitle: { fontSize: 16, fontWeight: '600', color: '#374151', textAlign: 'center', marginBottom: 8 },
+    pickBtn: {
+        flexDirection: 'row', alignItems: 'center', gap: 16,
+        borderRadius: 16, padding: 20,
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
+    },
+    pickBtnCamera: { backgroundColor: '#D97706' },
+    pickBtnGallery: { backgroundColor: '#2563EB' },
+    pickBtnFile: { backgroundColor: '#059669' },
+    pickBtnIcon: {
+        width: 64, height: 64, borderRadius: 32,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        alignItems: 'center', justifyContent: 'center',
+    },
+    pickBtnText: { flex: 1 },
+    pickBtnTitle: { fontSize: 17, fontWeight: '700', color: '#fff', marginBottom: 4 },
+    pickBtnSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 18 },
 });
 
 export default EtablissementScolaireScreen;

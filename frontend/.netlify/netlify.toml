@@ -7,10 +7,10 @@ plugins = []
 [functions."*"]
 
 [build]
-publish = "C:\\Users\\23767\\yukpomnang\\frontend\\dist"
+publish = "C:\\Users\\23767\\yukpomnang2\\frontend\\dist"
 publishOrigin = "config"
 commandOrigin = "config"
-base = "C:\\Users\\23767\\yukpomnang\\frontend"
+base = "C:\\Users\\23767\\yukpomnang2\\frontend"
 command = "npm install && npm run build"
 
 [build.environment]
@@ -96,7 +96,7 @@ X-Content-Type-Options = "nosniff"
 
 [[redirects]]
 from = "/api/*"
-to = "https://yukpomnang.onrender.com/api/:splat"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/:splat"
 status = 200.0
 force = true
 
@@ -109,7 +109,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/auth/*"
-to = "https://yukpomnang.onrender.com/auth/:splat"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/auth/:splat"
 status = 200.0
 force = true
 
@@ -122,7 +122,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/services/*"
-to = "https://yukpomnang.onrender.com/services/:splat"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/services/:splat"
 status = 200.0
 force = true
 
@@ -135,7 +135,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/healthz"
-to = "https://yukpomnang.onrender.com/healthz"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/healthz"
 status = 200.0
 force = true
 
@@ -148,7 +148,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/prestataire/*"
-to = "https://yukpomnang.onrender.com/prestataire/:splat"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/prestataire/:splat"
 status = 200.0
 force = true
 
@@ -161,7 +161,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/user/*"
-to = "https://yukpomnang.onrender.com/user/:splat"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/user/:splat"
 status = 200.0
 force = true
 
@@ -174,7 +174,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/users/*"
-to = "https://yukpomnang.onrender.com/users/:splat"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/users/:splat"
 status = 200.0
 force = true
 
@@ -187,7 +187,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/ia/*"
-to = "https://yukpomnang.onrender.com/ia/:splat"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/ia/:splat"
 status = 200.0
 force = true
 
@@ -200,7 +200,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/ws/*"
-to = "https://yukpomnang.onrender.com/ws/:splat"
+to = "wss://yukpo-backend-376093909298.europe-west1.run.app/ws/:splat"
 status = 200.0
 force = true
 
@@ -213,7 +213,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/fournitures/*"
-to = "https://yukpomnang.onrender.com/fournitures/:splat"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/fournitures/:splat"
 status = 200.0
 force = true
 
@@ -226,7 +226,7 @@ Access-Control-Allow-Origin = "*"
 
 [[redirects]]
 from = "/echange/*"
-to = "https://yukpomnang.onrender.com/echange/:splat"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/echange/:splat"
 status = 200.0
 force = true
 

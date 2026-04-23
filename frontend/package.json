@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:lite": "vite --config vite.lite.config.ts",
     "build": "vite build",
+    "build:lite": "vite build --config vite.lite.config.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",

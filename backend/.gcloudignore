@@ -11,11 +11,18 @@ blender/*.tar
 
 # Fichiers temporaires
 *.pdb
+NONE
 *.dSYM
 *.swp
 *.swo
 *~
 .DS_Store
+
+# Docs (dossier uniquement — ne pas glob *.md car le Dockerfile en copie certains)
+docs/
+
+# Tools Windows (non nécessaires au build Linux)
+tools/cloud-sql-proxy.exe
 
 # Git
 .git/

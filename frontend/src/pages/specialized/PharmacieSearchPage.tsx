@@ -1,214 +1,130 @@
-// ✅ Page de recherche de pharmacies (Frontend)
-import { Button } from '@/components/ui/buttons';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { MapPin, Pill, Search } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-interface PharmacieSearchFilters {
-    ville?: string;
-    quartier?: string;
-    lat?: number;
-    lng?: number;
-    max_distance_km?: number;
-    on_duty_only?: boolean;
-    available_only?: boolean;
-    product_search?: string;
-}
+import { useToast } from '@/hooks/use-toast';
 
 const PharmacieSearchPage: React.FC = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [ville, setVille] = useState('');
+  const [productSearch, setProductSearch] = useState('');
+  const [gpsCoords, setGpsCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [onDutyOnly, setOnDutyOnly] = useState(false);
+  const [maxDistance, setMaxDistance] = useState(20);
+  const [locating, setLocating] = useState(false);
 
-    const [ville, setVille] = useState('');
-    const [quartier, setQuartier] = useState('');
-    const [gpsString, setGpsString] = useState('');
-    const [maxDistance, setMaxDistance] = useState(50);
-    const [onDutyOnly, setOnDutyOnly] = useState(false);
-    const [availableOnly, setAvailableOnly] = useState(true);
-    const [loading, setLoading] = useState(false);
-    const [productSearch, setProductSearch] = useState('');
-
-    const handleUseCurrentLocation = () => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    setGpsString(`${lat},${lng}`);
-                },
-                (error) => {
-                    alert('Impossible d\'obtenir votre position');
-                }
-            );
-        } else {
-            alert('La géolocalisation n\'est pas supportée par votre navigateur');
-        }
-    };
-
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!ville.trim() && !quartier.trim() && !gpsString.trim() && !productSearch.trim()) {
-            alert('Veuillez renseigner une ville/quartier ou un point GPS');
-            return;
-        }
-
-        const filters: PharmacieSearchFilters = {};
-        if (ville.trim()) filters.ville = ville.trim();
-        if (quartier.trim()) filters.quartier = quartier.trim();
-        if (gpsString.trim()) {
-            const [lat, lng] = gpsString.split(',').map(parseFloat);
-            if (!isNaN(lat) && !isNaN(lng)) {
-                filters.lat = lat;
-                filters.lng = lng;
-            }
-        }
-        if (maxDistance > 0) filters.max_distance_km = maxDistance;
-        if (onDutyOnly) filters.on_duty_only = true;
-        if (availableOnly) filters.available_only = true;
-        if (productSearch.trim()) filters.product_search = productSearch.trim();
-
-        navigate('/pharmacies/list', { state: { filters } });
-    };
-
-    return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="max-w-4xl mx-auto px-4">
-                <h1 className="text-3xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <Pill className="w-8 h-8" />
-                    Rechercher une pharmacie
-                </h1>
-
-                <Card className="mb-6">
-                    <CardHeader>
-                        <CardTitle>Critères de recherche</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleSearch} className="space-y-6">
-                            {/* Ville */}
-                            <div>
-                                <Label htmlFor="productSearch">Médicament / produit (optionnel)</Label>
-                                <Input
-                                    id="productSearch"
-                                    value={productSearch}
-                                    onChange={(e) => setProductSearch(e.target.value)}
-                                    placeholder="Ex: paracétamol, amoxicilline"
-                                />
-                            </div>
-
-                            {/* Ville */}
-                            <div>
-                                <Label htmlFor="ville">Ville</Label>
-                                <Input
-                                    id="ville"
-                                    value={ville}
-                                    onChange={(e) => setVille(e.target.value)}
-                                    placeholder="Ex: Douala, Yaoundé"
-                                />
-                            </div>
-
-                            {/* Quartier */}
-                            <div>
-                                <Label htmlFor="quartier">Quartier (optionnel)</Label>
-                                <Input
-                                    id="quartier"
-                                    value={quartier}
-                                    onChange={(e) => setQuartier(e.target.value)}
-                                    placeholder="Ex: Bonanjo, Akwa"
-                                />
-                            </div>
-
-                            {/* GPS */}
-                            <div>
-                                <Label htmlFor="gps">Position GPS (optionnel)</Label>
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
-                                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                        <Input
-                                            id="gps"
-                                            value={gpsString}
-                                            onChange={(e) => setGpsString(e.target.value)}
-                                            placeholder="Ex: 4.0511,9.7679"
-                                            className="pl-10"
-                                        />
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleUseCurrentLocation}
-                                    >
-                                        Ma position
-                                    </Button>
-                                </div>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    Format: latitude,longitude
-                                </p>
-                            </div>
-
-                            {/* Distance max */}
-                            <div>
-                                <Label>Distance maximale: {maxDistance} km</Label>
-                                <div className="flex items-center gap-4 mt-2">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setMaxDistance(Math.max(5, maxDistance - 5))}
-                                    >
-                                        -
-                                    </Button>
-                                    <span className="flex-1 text-center font-semibold">{maxDistance} km</span>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setMaxDistance(Math.min(200, maxDistance + 5))}
-                                    >
-                                        +
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* Options */}
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="onDutyOnly"
-                                        checked={onDutyOnly}
-                                        onChange={(e) => setOnDutyOnly(e.target.checked)}
-                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                    />
-                                    <Label htmlFor="onDutyOnly" className="cursor-pointer">
-                                        De garde uniquement
-                                    </Label>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="availableOnly"
-                                        checked={availableOnly}
-                                        onChange={(e) => setAvailableOnly(e.target.checked)}
-                                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                    />
-                                    <Label htmlFor="availableOnly" className="cursor-pointer">
-                                        Disponibles maintenant
-                                    </Label>
-                                </div>
-                            </div>
-
-                            <Button type="submit" disabled={loading} className="w-full">
-                                <Search className="w-4 h-4 mr-2" />
-                                {loading ? 'Recherche en cours...' : 'Rechercher'}
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
-            </div>
-        </div>
+  const handleGPS = () => {
+    if (!navigator.geolocation) {
+      toast({ title: 'Géolocalisation non supportée', variant: 'destructive' });
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+        toast({ title: 'Position GPS détectée' });
+      },
+      () => {
+        setLocating(false);
+        toast({ title: "Impossible d'obtenir la position", variant: 'destructive' });
+      }
     );
+  };
+
+  const handleSearch = () => {
+    if (!ville.trim() && !gpsCoords && !productSearch.trim()) {
+      toast({ title: 'Saisissez une ville ou activez le GPS', variant: 'destructive' });
+      return;
+    }
+    const filters: Record<string, any> = { max_distance_km: maxDistance, available_only: true };
+    if (ville.trim()) filters.ville = ville.trim();
+    if (gpsCoords) { filters.lat = gpsCoords.lat; filters.lng = gpsCoords.lng; }
+    if (onDutyOnly) filters.on_duty_only = true;
+    if (productSearch.trim()) filters.product_search = productSearch.trim();
+    navigate('/list', { state: { filters } });
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-500">
+      <div className="px-5 pt-10 pb-8 text-white">
+        <div className="flex items-center gap-2 mb-1">
+          <Pill className="w-7 h-7" />
+          <h1 className="text-2xl font-bold">Pharmacies</h1>
+        </div>
+        <p className="text-blue-100 text-sm">Trouvez une pharmacie près de chez vous</p>
+      </div>
+
+      <div className="bg-white rounded-t-3xl min-h-screen px-5 pt-6 pb-24">
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Médicament (optionnel)</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              className="w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+              placeholder="Ex: paracétamol, amoxicilline..."
+              value={productSearch}
+              onChange={e => setProductSearch(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Ville</label>
+          <input
+            className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+            placeholder="Ex: Douala, Yaoundé, Bafoussam..."
+            value={ville}
+            onChange={e => setVille(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+          />
+        </div>
+
+        <button
+          onClick={handleGPS}
+          disabled={locating}
+          className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 mb-5 text-sm font-medium transition-all ${gpsCoords ? 'border-green-500 bg-green-50 text-green-700' : 'border-blue-300 bg-blue-50 text-blue-700'}`}
+        >
+          <MapPin className="w-4 h-4" />
+          {locating ? 'Localisation en cours...' : gpsCoords ? `GPS actif · ${gpsCoords.lat.toFixed(3)}, ${gpsCoords.lng.toFixed(3)}` : 'Utiliser ma position GPS'}
+        </button>
+
+        <div className="mb-5">
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Rayon de recherche</label>
+            <span className="text-sm font-bold text-blue-600">{maxDistance} km</span>
+          </div>
+          <input
+            type="range" min={5} max={100} step={5}
+            value={maxDistance}
+            onChange={e => setMaxDistance(Number(e.target.value))}
+            className="w-full accent-blue-600 h-2"
+          />
+          <div className="flex justify-between text-xs text-gray-400 mt-1">
+            <span>5 km</span><span>100 km</span>
+          </div>
+        </div>
+
+        <label className="flex items-center gap-3 mb-7 cursor-pointer select-none">
+          <button
+            onClick={() => setOnDutyOnly(!onDutyOnly)}
+            className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 shrink-0 ${onDutyOnly ? 'bg-blue-600' : 'bg-gray-200'}`}
+          >
+            <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${onDutyOnly ? 'translate-x-6' : 'translate-x-0'}`} />
+          </button>
+          <span className="text-sm text-gray-700 font-medium">De garde uniquement</span>
+        </label>
+
+        <button
+          onClick={handleSearch}
+          className="w-full bg-blue-600 active:bg-blue-700 text-white py-4 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 shadow-lg shadow-blue-200"
+        >
+          <Search className="w-5 h-5" />
+          Rechercher des pharmacies
+        </button>
+      </div>
+    </div>
+  );
 };
 
 export default PharmacieSearchPage;
-

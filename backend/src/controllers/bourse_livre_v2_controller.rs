@@ -19,6 +19,7 @@ use axum::{
     Json,
 };
 use log::{error, info, warn};
+use redis;
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
@@ -2326,13 +2327,42 @@ fn infer_file_type_from_client_and_mime(client: &str, meta: Option<&String>) -> 
     "image"
 }
 
+/// GET /api/bourse-livre/v2/programmes-scolaires/status/:job_id
+/// Interroge l'avancement d'un job de scan (polling après le 202 initial).
+pub async fn get_scan_job_status(
+    State(state): State<Arc<AppState>>,
+    Path(job_id): Path<String>,
+) -> AppResult<impl IntoResponse> {
+    let redis_key = format!("scan_job:{}", job_id);
+    match state.redis_client.get_multiplexed_async_connection().await {
+        Ok(mut conn) => {
+            let value: Option<String> =
+                redis::cmd("GET").arg(&redis_key).query_async(&mut conn).await.unwrap_or(None);
+            match value {
+                Some(json_str) => {
+                    let data: serde_json::Value = serde_json::from_str(&json_str).unwrap_or_else(
+                        |_| serde_json::json!({"status":"error","message":"Réponse invalide"}),
+                    );
+                    Ok(Json(data))
+                }
+                None => Err(AppError::NotFound(
+                    "Analyse non trouvée ou expirée (max 30 min)".to_string(),
+                )),
+            }
+        }
+        Err(e) => Err(AppError::Internal(format!("Redis indisponible: {}", e))),
+    }
+}
+
 /// POST /api/bourse-livre/v2/programmes-scolaires/submit
-/// Établissement envoie PDF / Excel / images — extraction IA (AppIA) comme l'admin.
+/// Établissement envoie PDF / Excel / images — extraction IA asynchrone.
+/// Retourne immédiatement 202 + job_id ; le client interroge /status/:job_id.
 pub async fn submit_programmes_scolaires_etablissement(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    user_auth: Option<Extension<AuthenticatedUser>>,
     Json(payload): Json<SubmitProgrammesEtablissementRequest>,
 ) -> AppResult<impl IntoResponse> {
+    let user_id: i32 = user_auth.map(|ext| ext.id).unwrap_or(0);
     if payload.fichiers.is_empty() {
         return Err(AppError::BadRequest("Aucun fichier fourni".to_string()));
     }
@@ -2342,6 +2372,59 @@ pub async fn submit_programmes_scolaires_etablissement(
         ));
     }
 
+    let job_id = Uuid::new_v4().to_string();
+    let redis_key = format!("scan_job:{}", job_id);
+
+    // Marquer le job comme "en cours" dans Redis (TTL 30 min)
+    if let Ok(mut conn) = state.redis_client.get_multiplexed_async_connection().await {
+        let _: Result<(), _> = redis::cmd("SETEX")
+            .arg(&redis_key)
+            .arg(1800i64)
+            .arg(r#"{"status":"processing"}"#)
+            .query_async(&mut conn)
+            .await;
+    }
+
+    // Lancer le traitement IA en tâche de fond
+    let state_bg = state.clone();
+    let job_id_bg = job_id.clone();
+    tokio::spawn(async move {
+        let result = do_programme_extraction(state_bg.clone(), user_id, payload).await;
+        let key = format!("scan_job:{}", job_id_bg);
+        if let Ok(mut conn) = state_bg.redis_client.get_multiplexed_async_connection().await {
+            let val = match result {
+                Ok(mut v) => {
+                    v["status"] = serde_json::json!("done");
+                    serde_json::to_string(&v).unwrap_or_else(|_| {
+                        r#"{"status":"error","message":"Erreur sérialisation"}"#.to_string()
+                    })
+                }
+                Err(e) => {
+                    let msg = e.to_string().replace('"', "'");
+                    format!(r#"{{"status":"error","message":"{}"}}"#, msg)
+                }
+            };
+            let _: Result<(), _> =
+                redis::cmd("SETEX").arg(&key).arg(1800i64).arg(val).query_async(&mut conn).await;
+        }
+    });
+
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(serde_json::json!({
+            "job_id": job_id,
+            "status": "processing",
+            "message": "Analyse lancée. Interrogez /status/{job_id} pour suivre l'avancement.",
+        })),
+    ))
+}
+
+/// Traitement effectif : extraction IA + insertion DB (exécuté en tâche de fond).
+async fn do_programme_extraction(
+    state: Arc<AppState>,
+    user_id: i32,
+    payload: SubmitProgrammesEtablissementRequest,
+) -> AppResult<serde_json::Value> {
     let niveau_label = payload.niveaux.join(", ");
     let periode = payload.annee_scolaire.clone();
     let pays = payload.pays.clone().unwrap_or_else(|| "Cameroun".to_string());
@@ -2481,7 +2564,7 @@ pub async fn submit_programmes_scolaires_etablissement(
             .bind(&periode)
             .bind(livre.est_obligatoire)
             .bind(prix)
-            .bind(user_id as i32)
+            .bind(user_id)
             .bind(&periode)
             .bind(etablissement_id)
             .fetch_one(&state.pg)
@@ -2570,14 +2653,14 @@ pub async fn submit_programmes_scolaires_etablissement(
         0
     };
 
-    Ok(Json(json!({
+    Ok(json!({
         "success": true,
         "message": format!("{} ligne(s) enregistrée(s) dans le référentiel Yukpo (après extraction IA).", total_inserted),
         "lignes_inserees": total_inserted,
         "etablissement_id": etablissement_id,
         "extractions": extractions,
         "notifications_librairies": notifications_librairies,
-    })))
+    }))
 }
 
 // ============================================================================

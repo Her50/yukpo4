@@ -108,6 +108,16 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/bourse-livre/v2/compare-prices",
             get(bourse_livre_v2_controller::compare_prices),
+        )
+        // Établissement / parent : dépôt liste de manuels (PDF/Excel/image) + extraction IA — public (auth optionnelle)
+        .route(
+            "/api/bourse-livre/v2/programmes-scolaires/submit",
+            post(bourse_livre_v2_controller::submit_programmes_scolaires_etablissement),
+        )
+        // Polling statut d'un job de scan (retourné en 202 par /submit)
+        .route(
+            "/api/bourse-livre/v2/programmes-scolaires/status/:job_id",
+            get(bourse_livre_v2_controller::get_scan_job_status),
         );
 
     // V2 Routes protégées
@@ -175,11 +185,6 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/bourse-livre/v2/admin/programmes/upload",
             post(bourse_livre_v2_controller::upload_programme_file),
-        )
-        // Établissement : dépôt liste de manuels (PDF/Excel) + extraction IA
-        .route(
-            "/api/bourse-livre/v2/programmes-scolaires/submit",
-            post(bourse_livre_v2_controller::submit_programmes_scolaires_etablissement),
         )
         // Matching IA livre ↔ programme (avec date)
         .route(

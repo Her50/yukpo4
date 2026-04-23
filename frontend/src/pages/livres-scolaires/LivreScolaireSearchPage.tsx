@@ -1,262 +1,167 @@
-// ✅ Page de recherche de livres scolaires (Frontend)
-
 import { BookOpen, MapPin, Search } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
 import { useToast } from '../../hooks/use-toast';
 
-const niveaux = ['Primaire', 'Collège', 'Lycée'];
-const etats = ['Neuf', 'Très bon', 'Bon', 'Acceptable'];
-
-interface SearchFilters {
-    classe_actuelle?: string;
-    classe_souhaitee?: string;
-    matiere?: string;
-    niveau?: string;
-    etat_livre?: string;
-    ville?: string;
-    quartier?: string;
-    gps_lat?: number;
-    gps_lon?: number;
-    rayon_km?: number;
-}
+const NIVEAUX = ['Primaire', 'Collège', 'Lycée'];
+const ETATS = ['Neuf', 'Très bon', 'Bon', 'Acceptable'];
 
 const LivreScolaireSearchPage: React.FC = () => {
-    const navigate = useNavigate();
-    const { toast } = useToast();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-    const [filters, setFilters] = useState<SearchFilters>({
-        classe_actuelle: '',
-        classe_souhaitee: '',
-        matiere: '',
-        niveau: '',
-        etat_livre: '',
-        ville: '',
-        quartier: '',
-        rayon_km: 10,
-    });
+  const [classe, setClasse] = useState('');
+  const [matiere, setMatiere] = useState('');
+  const [niveau, setNiveau] = useState('');
+  const [etat, setEtat] = useState('');
+  const [ville, setVille] = useState('');
+  const [gps, setGps] = useState<{ lat: number; lon: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [rayon, setRayon] = useState(10);
 
-    const [selectedNiveau, setSelectedNiveau] = useState('');
-    const [selectedEtat, setSelectedEtat] = useState('');
-    const [rayonKm, setRayonKm] = useState(10);
-
-    const handleSearch = () => {
-        if (!filters.classe_actuelle && !filters.classe_souhaitee && !filters.matiere) {
-            toast({
-                title: 'Erreur',
-                description: 'Veuillez renseigner au moins une classe ou une matière',
-                variant: 'destructive',
-            });
-            return;
-        }
-
-        const searchParams = new URLSearchParams();
-        if (filters.classe_actuelle) searchParams.append('classe_actuelle', filters.classe_actuelle);
-        if (filters.classe_souhaitee) searchParams.append('classe_souhaitee', filters.classe_souhaitee);
-        if (filters.matiere) searchParams.append('matiere', filters.matiere);
-        if (selectedNiveau) searchParams.append('niveau', selectedNiveau);
-        if (selectedEtat) searchParams.append('etat_livre', selectedEtat);
-        if (filters.ville) searchParams.append('ville', filters.ville);
-        if (filters.quartier) searchParams.append('quartier', filters.quartier);
-        if (filters.gps_lat) searchParams.append('gps_lat', filters.gps_lat.toString());
-        if (filters.gps_lon) searchParams.append('gps_lon', filters.gps_lon.toString());
-        if (rayonKm) searchParams.append('rayon_km', rayonKm.toString());
-
-        navigate(`/livres-scolaires/list?${searchParams.toString()}`);
-    };
-
-    const handleGPSLocation = () => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setFilters({
-                        ...filters,
-                        gps_lat: position.coords.latitude,
-                        gps_lon: position.coords.longitude,
-                    });
-                    toast({
-                        title: 'Position GPS détectée',
-                        description: 'Votre position a été enregistrée',
-                    });
-                },
-                (error) => {
-                    toast({
-                        title: 'Erreur GPS',
-                        description: 'Impossible d\'obtenir votre position',
-                        variant: 'destructive',
-                    });
-                }
-            );
-        }
-    };
-
-    return (
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-            <Card className="mb-6">
-                <CardHeader>
-                    <div className="flex items-center gap-3">
-                        <BookOpen className="h-8 w-8 text-indigo-600" />
-                        <div>
-                            <CardTitle className="text-2xl">Rechercher un livre scolaire</CardTitle>
-                            <CardDescription>
-                                Trouvez le livre dont vous avez besoin pour échanger
-                            </CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    {/* Classe actuelle */}
-                    <div className="space-y-2">
-                        <Label htmlFor="classe_actuelle">Classe actuelle *</Label>
-                        <Input
-                            id="classe_actuelle"
-                            placeholder="Ex: 6ème, 5ème, Terminale"
-                            value={filters.classe_actuelle}
-                            onChange={(e) => setFilters({ ...filters, classe_actuelle: e.target.value })}
-                        />
-                    </div>
-
-                    {/* Classe souhaitée */}
-                    <div className="space-y-2">
-                        <Label htmlFor="classe_souhaitee">Classe souhaitée *</Label>
-                        <Input
-                            id="classe_souhaitee"
-                            placeholder="Ex: 5ème, 4ème, 1ère"
-                            value={filters.classe_souhaitee}
-                            onChange={(e) => setFilters({ ...filters, classe_souhaitee: e.target.value })}
-                        />
-                    </div>
-
-                    {/* Matière */}
-                    <div className="space-y-2">
-                        <Label htmlFor="matiere">Matière *</Label>
-                        <Input
-                            id="matiere"
-                            placeholder="Ex: Mathématiques, Français"
-                            value={filters.matiere}
-                            onChange={(e) => setFilters({ ...filters, matiere: e.target.value })}
-                        />
-                    </div>
-
-                    {/* Niveau */}
-                    <div className="space-y-2">
-                        <Label>Niveau</Label>
-                        <div className="flex flex-wrap gap-2">
-                            {niveaux.map((n) => (
-                                <Badge
-                                    key={n}
-                                    variant={selectedNiveau === n ? 'default' : 'outline'}
-                                    className="cursor-pointer px-4 py-2"
-                                    onClick={() => setSelectedNiveau(selectedNiveau === n ? '' : n)}
-                                >
-                                    {n}
-                                </Badge>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* État du livre */}
-                    <div className="space-y-2">
-                        <Label>État du livre</Label>
-                        <div className="flex flex-wrap gap-2">
-                            {etats.map((etat) => (
-                                <Badge
-                                    key={etat}
-                                    variant={selectedEtat === etat ? 'default' : 'outline'}
-                                    className="cursor-pointer px-4 py-2"
-                                    onClick={() => setSelectedEtat(selectedEtat === etat ? '' : etat)}
-                                >
-                                    {etat}
-                                </Badge>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Localisation */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="ville">Ville</Label>
-                            <Input
-                                id="ville"
-                                placeholder="Ex: Douala, Yaoundé"
-                                value={filters.ville}
-                                onChange={(e) => setFilters({ ...filters, ville: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="quartier">Quartier</Label>
-                            <Input
-                                id="quartier"
-                                placeholder="Ex: Bonanjo, Akwa"
-                                value={filters.quartier}
-                                onChange={(e) => setFilters({ ...filters, quartier: e.target.value })}
-                            />
-                        </div>
-                    </div>
-
-                    {/* GPS */}
-                    <div className="space-y-2">
-                        <Label>Position GPS (optionnel)</Label>
-                        <div className="flex items-center gap-4">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handleGPSLocation}
-                                className="flex items-center gap-2"
-                            >
-                                <MapPin className="h-4 w-4" />
-                                {filters.gps_lat ? 'Position enregistrée' : 'Utiliser ma position'}
-                            </Button>
-                            {filters.gps_lat && (
-                                <span className="text-sm text-gray-600">
-                                    {filters.gps_lat.toFixed(4)}, {filters.gps_lon?.toFixed(4)}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Rayon de recherche */}
-                    {filters.gps_lat && (
-                        <div className="space-y-2">
-                            <Label>Rayon de recherche: {rayonKm} km</Label>
-                            <div className="flex items-center gap-4">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setRayonKm(Math.max(1, rayonKm - 1))}
-                                >
-                                    -
-                                </Button>
-                                <span className="font-medium">{rayonKm} km</span>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setRayonKm(Math.min(50, rayonKm + 1))}
-                                >
-                                    +
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Bouton de recherche */}
-                    <Button onClick={handleSearch} className="w-full" size="lg">
-                        <Search className="h-4 w-4 mr-2" />
-                        Rechercher
-                    </Button>
-                </CardContent>
-            </Card>
-        </div>
+  const handleGPS = () => {
+    if (!navigator.geolocation) { toast({ title: 'GPS non supporté', variant: 'destructive' }); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setGps({ lat: pos.coords.latitude, lon: pos.coords.longitude }); setLocating(false); toast({ title: 'Position GPS détectée' }); },
+      () => { setLocating(false); toast({ title: "Impossible d'obtenir la position", variant: 'destructive' }); }
     );
+  };
+
+  const handleSearch = () => {
+    if (!classe.trim() && !matiere.trim()) {
+      toast({ title: 'Saisissez une classe ou une matière', variant: 'destructive' });
+      return;
+    }
+    const p = new URLSearchParams();
+    if (classe.trim()) { p.append('classe_actuelle', classe.trim()); p.append('classe_souhaitee', classe.trim()); }
+    if (matiere.trim()) p.append('matiere', matiere.trim());
+    if (niveau) p.append('niveau', niveau);
+    if (etat) p.append('etat_livre', etat);
+    if (ville.trim()) p.append('ville', ville.trim());
+    if (gps) { p.append('gps_lat', gps.lat.toString()); p.append('gps_lon', gps.lon.toString()); p.append('rayon_km', rayon.toString()); }
+    navigate(`/list?${p.toString()}`);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-indigo-600 to-indigo-500">
+      <div className="px-5 pt-10 pb-8 text-white">
+        <div className="flex items-center gap-2 mb-1">
+          <BookOpen className="w-7 h-7" />
+          <h1 className="text-2xl font-bold">Bourse du Livre</h1>
+        </div>
+        <p className="text-indigo-100 text-sm">Trouvez et échangez des livres scolaires</p>
+      </div>
+
+      <div className="bg-white rounded-t-3xl min-h-screen px-5 pt-6 pb-24">
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Classe</label>
+          <input
+            className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50"
+            placeholder="Ex: 6ème, 5ème, Terminale, CM2..."
+            value={classe}
+            onChange={e => setClasse(e.target.value)}
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Matière</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              className="w-full pl-10 pr-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50"
+              placeholder="Ex: Mathématiques, Français, SVT..."
+              value={matiere}
+              onChange={e => setMatiere(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            />
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">Niveau</label>
+          <div className="flex gap-2 flex-wrap">
+            {NIVEAUX.map(n => (
+              <button
+                key={n}
+                onClick={() => setNiveau(niveau === n ? '' : n)}
+                className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${niveau === n ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 text-gray-600 bg-white'}`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">État du livre</label>
+          <div className="flex gap-2 flex-wrap">
+            {ETATS.map(e => (
+              <button
+                key={e}
+                onClick={() => setEtat(etat === e ? '' : e)}
+                className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${etat === e ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 text-gray-600 bg-white'}`}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 block">Ville (optionnel)</label>
+          <input
+            className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50"
+            placeholder="Ex: Douala, Yaoundé..."
+            value={ville}
+            onChange={e => setVille(e.target.value)}
+          />
+        </div>
+
+        <button
+          onClick={handleGPS}
+          disabled={locating}
+          className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 mb-5 text-sm font-medium transition-all ${gps ? 'border-green-500 bg-green-50 text-green-700' : 'border-indigo-300 bg-indigo-50 text-indigo-700'}`}
+        >
+          <MapPin className="w-4 h-4" />
+          {locating ? 'Localisation...' : gps ? `GPS actif · ${gps.lat.toFixed(3)}, ${gps.lon.toFixed(3)}` : 'Utiliser ma position GPS'}
+        </button>
+
+        {gps && (
+          <div className="mb-5">
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Rayon de recherche</label>
+              <span className="text-sm font-bold text-indigo-600">{rayon} km</span>
+            </div>
+            <input type="range" min={1} max={50} step={1} value={rayon} onChange={e => setRayon(Number(e.target.value))} className="w-full accent-indigo-600 h-2" />
+          </div>
+        )}
+
+        <button
+          onClick={handleSearch}
+          className="w-full bg-indigo-600 active:bg-indigo-700 text-white py-4 rounded-2xl font-semibold text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+        >
+          <Search className="w-5 h-5" />
+          Rechercher des livres
+        </button>
+
+        <div className="mt-5 flex gap-3">
+          <button
+            onClick={() => navigate('/nouveau')}
+            className="flex-1 border-2 border-indigo-600 text-indigo-600 py-3.5 rounded-xl font-semibold text-sm text-center"
+          >
+            + Publier un livre
+          </button>
+          <button
+            onClick={() => navigate('/mes-livres')}
+            className="flex-1 border-2 border-gray-200 text-gray-600 py-3.5 rounded-xl font-semibold text-sm text-center"
+          >
+            Mes livres
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default LivreScolaireSearchPage;
-

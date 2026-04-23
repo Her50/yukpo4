@@ -11,7 +11,7 @@ import { useToast } from '../../hooks/use-toast';
 import { apiGet, apiPost } from '../../services/apiService';
 
 const LivreScolaireDetailsPage: React.FC = () => {
-    const { livreId } = useParams<{ livreId: string }>();
+    const { id: livreId } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
@@ -29,7 +29,7 @@ const LivreScolaireDetailsPage: React.FC = () => {
     const loadLivreDetails = async () => {
         try {
             setLoading(true);
-            const response = await apiGet(`/api/livres-scolaires/${livreId}`);
+            const response = await apiGet(`/api/bourse-livre/${livreId}`);
             const data = await response.json();
 
             if (data.success && data.data?.livre) {
@@ -40,7 +40,7 @@ const LivreScolaireDetailsPage: React.FC = () => {
                     description: 'Impossible de charger les détails du livre',
                     variant: 'destructive',
                 });
-                navigate('/livres-scolaires/search');
+                navigate('/search');
             }
         } catch (error: any) {
             console.error('[LivreScolaireDetailsPage] Erreur:', error);
@@ -49,7 +49,7 @@ const LivreScolaireDetailsPage: React.FC = () => {
                 description: error.message || 'Impossible de charger les détails',
                 variant: 'destructive',
             });
-            navigate('/livres-scolaires/search');
+            navigate('/search');
         } finally {
             setLoading(false);
         }
@@ -67,7 +67,7 @@ const LivreScolaireDetailsPage: React.FC = () => {
             const data = await response.json();
 
             if (data.success && data.data?.matchings) {
-                navigate(`/livres-scolaires/${livre.id}/match`, {
+                navigate(`/${livre.id}/matching`, {
                     state: { matchings: data.data.matchings }
                 });
             } else {
@@ -91,7 +91,7 @@ const LivreScolaireDetailsPage: React.FC = () => {
 
         try {
             setUpdating(true);
-            const response = await apiPost(`/api/livres-scolaires/${livre.id}/availability`, {
+            const response = await apiPost(`/api/bourse-livre/${livre.id}/availability`, {
                 is_available: !livre.is_available,
             });
             const data = await response.json();
@@ -308,7 +308,7 @@ const LivreScolaireDetailsPage: React.FC = () => {
                 <Card>
                     <CardContent className="p-6 space-y-4">
                         <Button
-                            onClick={() => navigate(`/livres-scolaires/${livre.id}/edit`)}
+                            onClick={() => navigate(`/${livre.id}/modifier`)}
                             variant="outline"
                             className="w-full"
                         >
