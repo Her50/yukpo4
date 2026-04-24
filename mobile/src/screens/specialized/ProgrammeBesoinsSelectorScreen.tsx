@@ -441,7 +441,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
         if (totalLignesSelectionnees === 0) {
             Alert.alert(
                 t('programmeBesoins.aucuneSelection', 'Aucune sélection'),
-                t('programmeBesoins.aucuneSelectionBody', 'Indiquez au moins un livre (neuf ou occasion) pour un enfant.')
+                t('programmeBesoins.aucuneSelectionBody', 'Indiquez au moins un livre (neuf ou occasion) pour une classe.')
             );
             return;
         }
@@ -511,7 +511,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
             for (const enfant of enfants) {
                 const label =
                     enfant.prenom.trim() ||
-                    t('programmeBesoins.enfantNum', 'Enfant {{n}}', { n: enfants.indexOf(enfant) + 1 });
+                    t('programmeBesoins.enfantNum', 'Classe {{n}}', { n: enfants.indexOf(enfant) + 1 });
                 if (!enfant.classe) continue;
 
                 for (const p of enfant.programmes) {
@@ -1003,7 +1003,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                 <View style={styles.enfantRow}>
                     <View style={styles.sectionTitleRow}>
                         <SafeIcon name="users" size={18} color={modernColors.primary} type="lucide" />
-                        <Text style={styles.sectionIconTitle}>{t('programmeBesoins.enfants', 'Enfants')}</Text>
+                        <Text style={styles.sectionIconTitle}>{t('programmeBesoins.enfants', 'Classes')}</Text>
                     </View>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.enfantChips}>
                         {enfants.map((e, idx) => {
@@ -1033,7 +1033,7 @@ const ProgrammeBesoinsSelectorScreen: React.FC = () => {
                 </View>
                 {enfants.length > 1 && (
                     <TouchableOpacity style={styles.removeEnfantLink} onPress={() => retirerEnfant(activeId)}>
-                        <Text style={styles.linkMutedSmall}>{t('programmeBesoins.retirerEnfantActif', 'Retirer cet enfant')}</Text>
+                        <Text style={styles.linkMutedSmall}>{t('programmeBesoins.retirerEnfantActif', 'Retirer cette classe')}</Text>
                     </TouchableOpacity>
                 )}
 

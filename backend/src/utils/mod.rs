@@ -4,6 +4,7 @@ pub mod db_monitor;
 pub mod db_retry;
 pub mod detect_intention;
 pub mod embedding_client;
+pub mod etablissement_upsert;
 pub mod jwt_manager;
 pub mod lang;
 pub mod livekit;
@@ -15,6 +16,7 @@ pub mod redis_tcp_direct;
 pub mod retry;
 pub mod role_helpers;
 pub mod sanitize_logs;
+pub mod session_academique;
 pub mod validation;
 pub mod version;
 

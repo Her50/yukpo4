@@ -112,11 +112,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // Établissement / parent : dépôt liste de manuels (PDF/Excel/image) + extraction IA — public (auth optionnelle)
         .route(
             "/api/bourse-livre/v2/programmes-scolaires/submit",
-            post(bourse_livre_v2_controller::submit_programmes_scolaires_etablissement),
+            post(bourse_livre_v2_controller::submit_programmes_scolaires_etablissement)
+                .layer(axum::extract::DefaultBodyLimit::max(20_000_000)), // 20 MB — photos base64
         )
         // Polling statut d'un job de scan (retourné en 202 par /submit)
         .route(
-            "/api/bourse-livre/v2/programmes-scolaires/status/:job_id",
+            "/api/bourse-livre/v2/programmes-scolaires/status/{job_id}",
             get(bourse_livre_v2_controller::get_scan_job_status),
         );
 
@@ -287,10 +288,14 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/v2/packages/qr-validate",
             post(bourse_livre_v2_controller::validate_package_qr),
         )
-        // Libraire: Publier livres neufs en lot
+        // Libraire: Publier livres neufs en lot + bulk upload catalogue IA
         .route(
             "/api/bourse-livre/v2/libraire/publish",
             post(bourse_livre_v2_controller::libraire_publish_new_books),
+        )
+        .route(
+            "/api/bourse-livre/v2/libraire/bulk-upload",
+            post(bourse_livre_v2_controller::libraire_bulk_upload),
         )
         .route(
             "/api/bourse-livre/v2/libraire/programmes/synthese",

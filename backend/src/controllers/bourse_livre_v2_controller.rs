@@ -11,6 +11,7 @@ use crate::models::livre_scolaire::{
 };
 use crate::services::book_exchange_ai_service::BookExchangeAIService;
 use crate::state::AppState;
+use crate::utils::etablissement_upsert::{upsert_etablissement, EtablissementUpsertInput};
 use crate::utils::role_helpers::ensure_admin_role;
 use axum::{
     extract::{Extension, Path, Query, State},
@@ -2500,6 +2501,13 @@ async fn do_programme_extraction(
     let ai_service = BookExchangeAIService::new(state.ia.clone());
     let mut total_inserted = 0i32;
     let mut extractions = Vec::new();
+    let mut manuels_extraits: Vec<serde_json::Value> = Vec::new();
+    // Métadonnées détectées par l'IA (premier document qui les fournit fait foi).
+    let mut meta_etablissement: Option<String> = None;
+    let mut meta_ville: Option<String> = None;
+    let mut meta_session: Option<String> = None;
+    let mut meta_classe: Option<String> = None;
+    let mut accessoires_extraits: Vec<serde_json::Value> = Vec::new();
 
     for f in &payload.fichiers {
         let (raw_b64, meta) = strip_data_url_base64(&f.base64);
@@ -2529,6 +2537,30 @@ async fn do_programme_extraction(
             "nombre": result.nombre_total,
             "confidence": result.confidence,
         }));
+
+        if meta_etablissement.is_none() {
+            meta_etablissement =
+                result.etablissement_detecte.clone().filter(|s| !s.trim().is_empty());
+        }
+        if meta_ville.is_none() {
+            meta_ville = result.ville_detectee.clone().filter(|s| !s.trim().is_empty());
+        }
+        if meta_session.is_none() {
+            meta_session = result.session_detectee.clone().filter(|s| !s.trim().is_empty());
+        }
+        if meta_classe.is_none() {
+            meta_classe = result.classe_detectee.clone().filter(|s| !s.trim().is_empty());
+        }
+        for acc in &result.accessoires {
+            accessoires_extraits.push(json!({
+                "nom": acc.nom,
+                "quantite": acc.quantite,
+                "gamme": acc.gamme,
+                "prix_indicatif": acc.prix_indicatif,
+                "notes": acc.notes,
+                "fichier": f.nom,
+            }));
+        }
 
         for livre in &result.livres {
             let matiere = matiere_avec_type_article(livre);
@@ -2572,6 +2604,17 @@ async fn do_programme_extraction(
 
             if let Ok(row_id) = ins {
                 total_inserted += 1;
+                manuels_extraits.push(json!({
+                    "id": row_id,
+                    "titre": livre.titre,
+                    "auteur": livre.auteur,
+                    "editeur": livre.editeur,
+                    "matiere": matiere,
+                    "classe": classe,
+                    "type": "livre",
+                    "prix_officiel": prix.map(|p| p.to_string()),
+                    "est_obligatoire": livre.est_obligatoire.unwrap_or(true),
+                }));
                 if etablissement_id.is_some() {
                     let besoin_prix =
                         prix.map(|p| p <= rust_decimal::Decimal::ZERO).unwrap_or(true);
@@ -2603,6 +2646,78 @@ async fn do_programme_extraction(
                 .to_string(),
         ));
     }
+
+    // Upsert établissement IA : si aucun établissement lié et l'IA a détecté un nom, on tente
+    // de retrouver (ou créer) un établissement pour enrichir les lignes insérées.
+    let etablissement_id_final: Option<i32> = if etablissement_id.is_none() {
+        if let Some(ref nom_ia) = meta_etablissement {
+            if !nom_ia.trim().is_empty() {
+                let ville_ia = meta_ville
+                    .as_deref()
+                    .or(payload.ville.as_deref())
+                    .unwrap_or("Inconnu")
+                    .to_string();
+                let pays_ia = pays.clone();
+                let gps_ia = payload.gps_coords.as_deref().and_then(parse_lat_lng_coords);
+                // Récupère le service_id de l'utilisateur (premier service)
+                let svc_id: Option<i32> = sqlx::query_scalar(
+                    r#"SELECT id FROM services WHERE user_id = $1 ORDER BY id DESC LIMIT 1"#,
+                )
+                .bind(user_id)
+                .fetch_optional(&state.pg)
+                .await
+                .unwrap_or(None);
+                if let Some(sid) = svc_id {
+                    let input = EtablissementUpsertInput {
+                        nom: nom_ia.trim().to_string(),
+                        ville: ville_ia,
+                        pays: pays_ia,
+                        type_etablissement: "ecole".to_string(),
+                        gps: gps_ia,
+                        user_id,
+                        service_id: sid,
+                    };
+                    match upsert_etablissement(&state.pg, &input).await {
+                        Ok(eid) => {
+                            info!(
+                                "[scan] upsert_etablissement OK → id={} nom={:?}",
+                                eid, nom_ia
+                            );
+                            // Rétroactivement on relie les lignes venant d'être insérées
+                            if total_inserted > 0 {
+                                let _ = sqlx::query(
+                                    r#"UPDATE programmes_scolaires
+                                       SET etablissement_id = $1
+                                       WHERE etablissement_id IS NULL
+                                         AND created_by = $2
+                                         AND annee_scolaire = $3
+                                         AND created_at >= NOW() - INTERVAL '5 minutes'"#,
+                                )
+                                .bind(eid)
+                                .bind(user_id)
+                                .bind(&periode)
+                                .execute(&state.pg)
+                                .await;
+                            }
+                            Some(eid)
+                        }
+                        Err(e) => {
+                            warn!("[scan] upsert_etablissement échoué: {}", e);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        etablissement_id
+    };
 
     // Notifications librairies (ville / rayon GPS) — si au moins une ligne insérée
     let notifications_librairies = if total_inserted > 0 {
@@ -2653,13 +2768,63 @@ async fn do_programme_extraction(
         0
     };
 
+    // Si aucun item nouveau (tout existait déjà), requêter la DB pour retourner les items existants
+    if manuels_extraits.is_empty() {
+        use sqlx::Row;
+        if let Ok(rows) = sqlx::query(
+            r#"SELECT id, titre_livre, auteur_livre, editeur_livre, matiere, classe
+               FROM programmes_scolaires
+               WHERE annee_scolaire = $1 AND niveau = $2 AND is_active = true
+               ORDER BY matiere, titre_livre
+               LIMIT 100"#,
+        )
+        .bind(&periode)
+        .bind(&niveau_label)
+        .fetch_all(&state.pg)
+        .await
+        {
+            for row in rows {
+                let id: i32 = row.try_get("id").unwrap_or(0);
+                let titre: Option<String> = row.try_get("titre_livre").ok().flatten();
+                let auteur: Option<String> = row.try_get("auteur_livre").ok().flatten();
+                let editeur: Option<String> = row.try_get("editeur_livre").ok().flatten();
+                let matiere: Option<String> = row.try_get("matiere").ok().flatten();
+                let classe: Option<String> = row.try_get("classe").ok().flatten();
+                manuels_extraits.push(json!({
+                    "id": id,
+                    "titre": titre,
+                    "auteur": auteur,
+                    "editeur": editeur,
+                    "matiere": matiere,
+                    "classe": classe,
+                    "type": "livre",
+                }));
+            }
+        }
+    }
+
     Ok(json!({
         "success": true,
         "message": format!("{} ligne(s) enregistrée(s) dans le référentiel Yukpo (après extraction IA).", total_inserted),
         "lignes_inserees": total_inserted,
-        "etablissement_id": etablissement_id,
+        "manuels": manuels_extraits,
+        "etablissement_id": etablissement_id_final,
         "extractions": extractions,
         "notifications_librairies": notifications_librairies,
+        "detection": {
+            "etablissement": meta_etablissement,
+            "ville": meta_ville,
+            "session": meta_session,
+            "classe": meta_classe,
+            "session_attendue": periode,
+            "session_coherente": meta_session.as_deref().map(|s| s.trim() == periode.trim()),
+            "classe_coherente": meta_classe.as_deref().and_then(|c| {
+                if payload.niveaux.is_empty() { None } else {
+                    Some(payload.niveaux.iter().any(|n| n.trim().eq_ignore_ascii_case(c.trim())))
+                }
+            }),
+        },
+        "accessoires": accessoires_extraits,
     }))
 }
 
@@ -5148,6 +5313,159 @@ pub async fn libraire_publish_new_books(
         "errors": errors,
         "total_published": published.len(),
         "total_errors": errors.len()
+    })))
+}
+
+// ============================================================================
+// BULK UPLOAD STOCK LIBRAIRIE — Analyse IA + matching programme
+// ============================================================================
+
+/// Payload : fichier CSV/Excel/image du catalogue libraire → extraction IA + matching programmes.
+#[derive(Debug, Deserialize)]
+pub struct LibrairieBulkUploadPayload {
+    /// Fichier encodé en base64 (CSV, Excel, image, PDF)
+    pub fichier_base64: String,
+    /// Type : "csv", "excel", "image", "pdf"
+    pub file_type: String,
+    /// Niveau scolaire ciblé (ex: "Collège / Lycée")
+    pub niveau: Option<String>,
+    /// Année scolaire (ex: "2025-2026")
+    pub annee_scolaire: String,
+    pub ville: Option<String>,
+    pub gps: Option<String>,
+}
+
+/// POST /api/bourse-livre/v2/libraire/bulk-upload
+/// Analyse un fichier stock librairie via l'IA et tente de matcher chaque ligne
+/// avec un programme_scolaire existant (matching titre + classe + matière via pg_trgm).
+/// Retourne les lignes enrichies pour validation côté libraire avant publication.
+pub async fn libraire_bulk_upload(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<LibrairieBulkUploadPayload>,
+) -> AppResult<impl IntoResponse> {
+    // Vérification rôle libraire ou admin
+    let is_libraire: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM delivery_partners WHERE user_id = $1 AND partner_type = 'libraire')",
+    )
+    .bind(user.id)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(false);
+
+    if !is_libraire && !crate::utils::role_helpers::is_admin_role(&user.role) {
+        return Err(AppError::Forbidden(
+            "Seuls les partenaires libraires peuvent utiliser ce service".into(),
+        ));
+    }
+
+    let ai_service = BookExchangeAIService::new(state.ia.clone());
+    let niveau = payload.niveau.as_deref().unwrap_or("Collège / Lycée");
+
+    // Extraction IA du fichier catalogue (réutilise le même pipeline que les programmes scolaires)
+    let (raw_b64, meta) = strip_data_url_base64(&payload.fichier_base64);
+    let file_kind = infer_file_type_from_client_and_mime(&payload.file_type, meta.as_ref());
+
+    let extraction = ai_service
+        .extract_programme_from_file(&raw_b64, file_kind, niveau, &payload.annee_scolaire, None)
+        .await
+        .map_err(|e| AppError::Internal(format!("Extraction IA: {}", e)))?;
+
+    if extraction.livres.is_empty() {
+        return Ok(Json(json!({
+            "success": false,
+            "message": "Aucun article détecté dans le fichier. Vérifiez que le fichier est lisible.",
+            "confidence": extraction.confidence,
+            "lignes": []
+        })));
+    }
+
+    // Pour chaque livre extrait, cherche le meilleur match dans programmes_scolaires
+    let mut lignes: Vec<serde_json::Value> = Vec::new();
+
+    for livre in &extraction.livres {
+        let classe = livre.classe.as_deref().unwrap_or("Toutes");
+        let matiere = livre.matiere.as_deref().unwrap_or("");
+
+        // Matching via pg_trgm : similarity(titre_normalisé, titre_candidat) + classe + matière
+        #[derive(sqlx::FromRow)]
+        struct MatchRow {
+            id: i32,
+            titre_livre: String,
+            classe: Option<String>,
+            matiere: Option<String>,
+            prix_officiel: Option<rust_decimal::Decimal>,
+            annee_scolaire: Option<String>,
+            score: f64,
+        }
+
+        let matched: Option<MatchRow> = sqlx::query_as(
+            r#"
+            SELECT id, titre_livre,
+                   classe::text, matiere::text,
+                   prix_officiel,
+                   annee_scolaire::text,
+                   similarity(lower(unaccent(titre_livre)), lower(unaccent($1))) AS score
+            FROM programmes_scolaires
+            WHERE is_active = true
+              AND similarity(lower(unaccent(titre_livre)), lower(unaccent($1))) >= 0.3
+              AND (classe ILIKE $2 OR $2 = 'Toutes' OR classe = 'Toutes')
+            ORDER BY score DESC, annee_scolaire DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(&livre.titre)
+        .bind(classe)
+        .fetch_optional(&state.pg)
+        .await
+        .unwrap_or(None);
+
+        let (prog_id, prog_titre, prog_prix, match_score, matched_bool) = match &matched {
+            Some(m) => (
+                Some(m.id),
+                Some(m.titre_livre.clone()),
+                m.prix_officiel.map(|p| p.to_string()),
+                m.score,
+                m.score >= 0.6,
+            ),
+            None => (None, None, None, 0.0, false),
+        };
+
+        lignes.push(json!({
+            "titre": livre.titre,
+            "auteur": livre.auteur,
+            "editeur": livre.editeur,
+            "isbn": livre.isbn,
+            "classe": classe,
+            "matiere": matiere,
+            "prix_indicatif": livre.prix_officiel,
+            "est_obligatoire": livre.est_obligatoire.unwrap_or(true),
+            // Matching résultat
+            "programme_scolaire_id": prog_id,
+            "programme_titre": prog_titre,
+            "programme_prix_officiel": prog_prix,
+            "match_score": (match_score * 100.0).round() / 100.0,
+            "matched": matched_bool,
+        }));
+    }
+
+    let total = lignes.len();
+    let nb_matched = lignes.iter().filter(|l| l["matched"].as_bool().unwrap_or(false)).count();
+    let nb_accessoires = extraction.accessoires.len();
+
+    Ok(Json(json!({
+        "success": true,
+        "confidence": extraction.confidence,
+        "stats": {
+            "total_lignes": total,
+            "lignes_matchees": nb_matched,
+            "lignes_sans_match": total - nb_matched,
+            "accessoires_detectes": nb_accessoires,
+        },
+        "lignes": lignes,
+        "accessoires": extraction.accessoires,
+        "etablissement_detecte": extraction.etablissement_detecte,
+        "annee_scolaire": payload.annee_scolaire,
     })))
 }
 

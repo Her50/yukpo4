@@ -24,7 +24,24 @@ RUN apt-get update && apt-get install -y \
     lld \
     curl \
     ca-certificates \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
+
+# Pré-télécharger ONNX Runtime avec retry (cdn.pyke.io retourne parfois des 504)
+# ORT_DYLIB_PATH indique à ort-sys d'utiliser ce binaire au lieu de télécharger
+RUN mkdir -p /opt/ort && \
+    for i in 1 2 3 4 5; do \
+      echo "=== Téléchargement ONNX Runtime, tentative $i/5 ===" && \
+      curl -fsSL --max-time 180 \
+        "https://cdn.pyke.io/0/pyke:ort-rs/ms@1.24.2/x86_64-unknown-linux-gnu.tar.lzma2" \
+        -o /tmp/ort.tar.lzma2 && \
+      xz -d /tmp/ort.tar.lzma2 && \
+      tar -xf /tmp/ort.tar -C /opt/ort && \
+      echo "=== Téléchargement réussi ===" && break; \
+      echo "Tentative $i échouée, attente 60s..." && sleep 60 && rm -f /tmp/ort.tar.lzma2 /tmp/ort.tar; \
+    done && \
+    find /opt/ort -name "libonnxruntime*" -type f | head -3
+ENV ORT_DYLIB_PATH=/opt/ort/libonnxruntime.so.1.24.2
 
 # Copier les fichiers de configuration Rust
 # Note: Cargo.lock sera généré automatiquement par Cargo lors du build si absent

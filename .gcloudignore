@@ -4,10 +4,19 @@
 # Artefacts Rust (très lourds — jusqu'à 6 GB)
 backend/target/
 
-# Mobile et frontend
+# Mobile et frontend (tout sauf le code source backend)
 mobile/
+mobile-apps/
 node_modules/
+frontend/
+web-app/
 .expo/
+dist-bourse/
+dist-pharmacie/
+dist-restaurant/
+dist-lite/
+dist/
+deploy-*.zip
 
 # Git et IDE
 .git/

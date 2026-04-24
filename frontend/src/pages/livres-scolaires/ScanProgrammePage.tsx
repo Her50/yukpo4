@@ -9,6 +9,7 @@ import { useToast } from '../../hooks/use-toast';
 import {
   CLASSES_PAR_SYSTEME_NIVEAU, NIVEAUX_PAR_SYSTEME,
   Systeme, TypeItem, useParentShop,
+  Enfant,
 } from '../../hooks/useParentShop';
 import { apiGet } from '../../services/apiService';
 
@@ -22,17 +23,48 @@ interface ExtractedItem {
   selected: boolean;
 }
 
+interface ScanDetection {
+  etablissement?: string | null;
+  ville?: string | null;
+  session?: string | null;
+  classe?: string | null;
+  session_attendue?: string | null;
+  session_coherente?: boolean | null;
+  classe_coherente?: boolean | null;
+}
+
 type Step = 'pick' | 'details' | 'uploading' | 'results' | 'done';
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(',')[1] ?? result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    // Images only: resize to max 1200px and compress to 70% JPEG to stay under proxy limits
+    if (file.type.startsWith('image/')) {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const MAX = 1200;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+          else { width = Math.round((width * MAX) / height); height = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', 0.7).split(',')[1]);
+      };
+      img.onerror = reject;
+      img.src = url;
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1] ?? result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    }
   });
 }
 
@@ -42,7 +74,7 @@ const ScanProgrammePage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { enfants, addItems } = useParentShop();
+  const { enfants, addItems, addEnfant } = useParentShop();
 
   const enfantId = searchParams.get('enfantId') || enfants[0]?.id || '';
   const [selectedEnfantId, setSelectedEnfantId] = useState(enfantId);
@@ -60,8 +92,10 @@ const ScanProgrammePage: React.FC = () => {
   );
   const [classe, setClasse] = useState(activeEnfant?.classe ?? '');
   const [items, setItems] = useState<ExtractedItem[]>([]);
+  const [detection, setDetection] = useState<ScanDetection | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [quickClasse, setQuickClasse] = useState('');
 
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -102,6 +136,25 @@ const ScanProgrammePage: React.FC = () => {
   const allSelected = items.length > 0 && items.every(it => it.selected);
   const selectedCount = items.filter(it => it.selected).length;
 
+  const fetchProgrammesFallback = async (): Promise<ExtractedItem[]> => {
+    try {
+      const params = new URLSearchParams({ niveau });
+      if (classe) params.set('classe', classe);
+      const r = await fetch(`/api/bourse-livre/v2/programmes?${params}`);
+      const d = await r.json().catch(() => ({}));
+      const list: any[] = d?.programmes || [];
+      return list.map((m: any) => ({
+        titre: m.titre_livre || m.titre || 'Manuel',
+        auteur: m.auteur_livre || m.auteur,
+        matiere: m.matiere,
+        editeur: m.editeur_livre || m.editeur,
+        type: 'livre' as TypeItem,
+        quantite: 1,
+        selected: true,
+      }));
+    } catch { return []; }
+  };
+
   const pollJobStatus = async (jobId: string, classeQuery: string): Promise<void> => {
     const MAX_POLLS = 40; // 40 × 3s = 2 minutes max
     for (let i = 0; i < MAX_POLLS; i++) {
@@ -110,29 +163,28 @@ const ScanProgrammePage: React.FC = () => {
         const r = await fetch(`/api/bourse-livre/v2/programmes-scolaires/status/${jobId}`);
         const d = await r.json().catch(() => ({}));
         if (d?.status === 'done') {
-          // Récupérer les livres en base
-          let fromDb: ExtractedItem[] = [];
-          try {
-            const br = await apiGet(
-              `/api/bourse-livre/v2/browse-by-class?classe=${encodeURIComponent(classeQuery)}&limit=60`,
-              { isAuthenticated: false }
-            );
-            if (br.ok) {
-              const bd = await br.json().catch(() => ({}));
-              const raw: any[] = bd?.data?.items || bd?.items || bd?.manuels || [];
-              fromDb = raw.map((m: any) => ({
-                titre: m.titre || m.title || 'Manuel',
-                auteur: m.auteur || m.author,
-                matiere: m.matiere || m.subject,
-                editeur: m.editeur || m.publisher,
-                type: (m.type as TypeItem) || 'livre',
-                quantite: m.quantite,
-                selected: true,
-              }));
+          let raw: any[] = d?.manuels || [];
+          // Fallback : si le job ne retourne rien, interroger le référentiel existant
+          if (raw.length === 0) {
+            const fallback = await fetchProgrammesFallback();
+            if (fallback.length > 0) {
+              setItems(fallback);
+              setStep('results');
+              return;
             }
-          } catch { /**/ }
-          setItems(fromDb);
-          setStep(fromDb.length > 0 ? 'results' : 'done');
+          }
+          const fromJob: ExtractedItem[] = raw.map((m: any) => ({
+            titre: m.titre_livre || m.titre || 'Manuel',
+            auteur: m.auteur_livre || m.auteur,
+            matiere: m.matiere,
+            editeur: m.editeur_livre || m.editeur,
+            type: (m.type as TypeItem) || 'livre',
+            quantite: 1,
+            selected: true,
+          }));
+          setItems(fromJob);
+          if (d?.detection) setDetection(d.detection as ScanDetection);
+          setStep(fromJob.length > 0 ? 'results' : 'done');
           return;
         }
         if (d?.status === 'error') {
@@ -176,7 +228,7 @@ const ScanProgrammePage: React.FC = () => {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(30000),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -194,31 +246,20 @@ const ScanProgrammePage: React.FC = () => {
         return;
       }
 
-      // Réponse synchrone (compatibilité)
-      const classeQuery = classe || niveau;
-      let fromDb: ExtractedItem[] = [];
-      try {
-        const br = await apiGet(
-          `/api/bourse-livre/v2/browse-by-class?classe=${encodeURIComponent(classeQuery)}&limit=60`,
-          { isAuthenticated: false }
-        );
-        if (br.ok) {
-          const bd = await br.json().catch(() => ({}));
-          const raw: any[] = bd?.data?.items || bd?.items || bd?.manuels || [];
-          fromDb = raw.map((m: any) => ({
-            titre: m.titre || m.title || 'Manuel',
-            auteur: m.auteur || m.author,
-            matiere: m.matiere || m.subject,
-            editeur: m.editeur || m.publisher,
-            type: (m.type as TypeItem) || 'livre',
-            quantite: m.quantite,
-            selected: true,
-          }));
-        }
-      } catch { /**/ }
-
-      setItems(fromDb);
-      setStep(fromDb.length > 0 ? 'results' : 'done');
+      // Réponse synchrone (compatibilité) — utilise les manuels du job directement
+      const raw: any[] = data?.manuels || [];
+      const fromJob: ExtractedItem[] = raw.map((m: any) => ({
+        titre: m.titre || 'Manuel',
+        auteur: m.auteur,
+        matiere: m.matiere,
+        editeur: m.editeur,
+        type: (m.type as TypeItem) || 'livre',
+        quantite: 1,
+        selected: true,
+      }));
+      setItems(fromJob);
+      if (data?.detection) setDetection(data.detection as ScanDetection);
+      setStep(fromJob.length > 0 ? 'results' : 'done');
     } catch (e: any) {
       const isTimeout = e?.name === 'AbortError' || e?.name === 'TimeoutError';
       setError(
@@ -232,13 +273,12 @@ const ScanProgrammePage: React.FC = () => {
     }
   };
 
-  const addToCart = () => {
-    if (!selectedEnfantId) { toast({ title: 'Sélectionnez un enfant', variant: 'destructive' }); return; }
+  const doAddToCart = (enfantId: string) => {
     const selected = items.filter(it => it.selected);
     if (!selected.length) { toast({ title: 'Sélectionnez au moins un article', variant: 'destructive' }); return; }
     setSaving(true);
     addItems(selected.map(it => ({
-      enfantId: selectedEnfantId,
+      enfantId,
       titre: it.titre,
       auteur: it.auteur,
       matiere: it.matiere,
@@ -248,7 +288,25 @@ const ScanProgrammePage: React.FC = () => {
     })));
     setSaving(false);
     toast({ title: `${selected.length} article${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''} à votre sélection` });
-    navigate('/parent-selection');
+    navigate('/recap');
+  };
+
+  const addToCart = () => {
+    if (!selectedEnfantId) { toast({ title: 'Sélectionnez une classe', variant: 'destructive' }); return; }
+    doAddToCart(selectedEnfantId);
+  };
+
+  const addChildAndCart = () => {
+    if (!quickClasse) {
+      toast({ title: 'Sélectionnez la classe', variant: 'destructive' });
+      return;
+    }
+    const childNiveau = Object.entries(CLASSES_PAR_SYSTEME_NIVEAU[systeme]).find(([, cls]) =>
+      cls.includes(quickClasse)
+    )?.[0] ?? niveau;
+    const newEnfant: Enfant = addEnfant({ prenom: quickClasse, systeme, niveau: childNiveau, classe: quickClasse });
+    setSelectedEnfantId(newEnfant.id);
+    doAddToCart(newEnfant.id);
   };
 
   /* ────────────────────────────────────────────────
@@ -401,10 +459,10 @@ const ScanProgrammePage: React.FC = () => {
             </button>
           </div>
 
-          {/* Pour quel enfant */}
+          {/* Pour quelle classe */}
           {enfants.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Pour quel enfant ?</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Pour quelle classe ?</p>
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                 {enfants.map(e => (
                   <button key={e.id} onClick={() => {
@@ -418,8 +476,8 @@ const ScanProgrammePage: React.FC = () => {
                         ? 'bg-amber-500 text-white border-amber-500'
                         : 'bg-white text-gray-700 border-gray-200'
                     }`}>
-                    <span className="w-5 h-5 rounded-full bg-black/10 flex items-center justify-center text-xs">{e.prenom[0]}</span>
-                    {e.prenom} <span className="text-xs opacity-70">{e.classe}</span>
+                    <span className="w-5 h-5 rounded-full bg-black/10 flex items-center justify-center text-xs">{e.classe[0]}</span>
+                    {e.classe} <span className="text-xs opacity-70">{e.niveau}</span>
                   </button>
                 ))}
               </div>
@@ -536,6 +594,7 @@ const ScanProgrammePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-amber-600 px-4 pt-10 pb-5 text-white">
+        <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-3">
           <button onClick={() => setStep('details')} className="p-2 rounded-full bg-white/20">
             <ArrowLeft className="w-5 h-5 text-white" />
@@ -556,9 +615,76 @@ const ScanProgrammePage: React.FC = () => {
             {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
           </button>
         </div>
+        </div>
       </div>
 
-      <div className="px-4 pt-4 pb-36">
+      <div className="px-4 pt-4 pb-36 max-w-2xl mx-auto">
+        {/* Bandeau de vérification post-scan (métadonnées détectées par l'IA) */}
+        {detection && (detection.etablissement || detection.ville || detection.session || detection.classe) && (
+          <div className="mb-4 bg-white rounded-2xl border border-gray-200 p-4">
+            <div className="flex items-start gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+              <p className="text-sm font-semibold text-gray-900">Vérifiez les informations détectées</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              {detection.etablissement && (
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <p className="text-gray-500">École</p>
+                  <p className="font-semibold text-gray-800 truncate">{detection.etablissement}</p>
+                </div>
+              )}
+              {detection.ville && (
+                <div className="bg-gray-50 rounded-lg p-2">
+                  <p className="text-gray-500">Ville</p>
+                  <p className="font-semibold text-gray-800 truncate">{detection.ville}</p>
+                </div>
+              )}
+              {detection.session && (
+                <div className={`rounded-lg p-2 ${detection.session_coherente === false ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
+                  <p className="text-gray-500">Session</p>
+                  <p className={`font-semibold truncate ${detection.session_coherente === false ? 'text-red-700' : 'text-gray-800'}`}>
+                    {detection.session}
+                    {detection.session_coherente === false && detection.session_attendue && (
+                      <span className="block text-[10px] text-red-500 font-normal">Attendue : {detection.session_attendue}</span>
+                    )}
+                  </p>
+                </div>
+              )}
+              {detection.classe && (
+                <div className={`rounded-lg p-2 ${detection.classe_coherente === false ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
+                  <p className="text-gray-500">Classe</p>
+                  <p className={`font-semibold truncate ${detection.classe_coherente === false ? 'text-red-700' : 'text-gray-800'}`}>
+                    {detection.classe}
+                    {detection.classe_coherente === false && (
+                      <span className="block text-[10px] text-red-500 font-normal">≠ classe sélectionnée ({niveau})</span>
+                    )}
+                  </p>
+                </div>
+              )}
+            </div>
+            {(detection.session_coherente === false || detection.classe_coherente === false) && (
+              <p className="mt-2 text-xs text-amber-700 bg-amber-50 rounded-lg p-2 border border-amber-200">
+                ⚠️ Une incohérence a été détectée. Vérifiez que la liste correspond bien à la classe choisie.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Aucune classe enregistrée → sélection de classe inline */}
+        {enfants.length === 0 && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <p className="text-sm font-semibold text-amber-800 mb-1">Pour quelle classe ?</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(CLASSES_PAR_SYSTEME_NIVEAU[systeme][niveau] ?? []).map(c => (
+                <button key={c} onClick={() => setQuickClasse(c)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                    quickClasse === c ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
+                  }`}>{c}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {enfants.length > 1 && (
           <div className="mb-4">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ajouter pour</p>
@@ -609,12 +735,15 @@ const ScanProgrammePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="fixed bottom-16 left-0 right-0 px-4 pb-2 z-40">
-        <button disabled={selectedCount === 0 || saving} onClick={addToCart}
-          className="w-full bg-amber-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg">
+      <div className="fixed bottom-16 left-0 right-0 px-4 pb-2 z-40 max-w-2xl mx-auto">
+        <button
+          disabled={selectedCount === 0 || saving}
+          onClick={enfants.length === 0 ? addChildAndCart : addToCart}
+          className="w-full bg-amber-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg"
+        >
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingCart className="w-5 h-5" />}
           Ajouter {selectedCount > 0 ? `${selectedCount} article${selectedCount > 1 ? 's' : ''}` : ''} à ma sélection
-          {activeEnfant && <ChevronRight className="w-4 h-4 ml-auto" />}
+          <ChevronRight className="w-4 h-4 ml-auto" />
         </button>
       </div>
     </div>

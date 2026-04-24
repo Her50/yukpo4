@@ -8696,6 +8696,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         ),
     }
 
+    // ✅ 2026-04-24 : pays + is_national sur etablissements_scolaires / programmes_scolaires
+    match ensure_bourse_livre_pays_national(pool).await {
+        Ok(_) => info!("✅ Migration auto: bourse_livre pays + is_national OK"),
+        Err(e) => error!("❌ Erreur migration auto bourse_livre pays/national: {}", e),
+    }
+
+    // ✅ 2026-04-24 : table accessoires_populaires_par_classe
+    match ensure_accessoires_populaires_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: accessoires_populaires_par_classe OK"),
+        Err(e) => error!("❌ Erreur migration auto accessoires_populaires: {}", e),
+    }
+
     // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
     match ensure_delivery_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
@@ -22053,5 +22065,176 @@ pub async fn ensure_whatsapp_chatbot_tables(pool: &PgPool) -> Result<(), sqlx::E
     "#).await?;
 
     info!("✅ WhatsApp chatbot tables créées/vérifiées");
+    Ok(())
+}
+
+/// ✅ 2026-04-24 : Migration Bourse du Livre — pays + is_national.
+/// Applique le contenu de migrations/20260424_001_bourse_livre_pays_national.sql.
+pub async fn ensure_bourse_livre_pays_national(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/ajout colonnes pays + is_national (bourse_livre)...");
+
+    // 1) Colonne pays sur etablissements_scolaires
+    execute_migration_sql_safe(
+        pool,
+        r#"
+        ALTER TABLE etablissements_scolaires ADD COLUMN IF NOT EXISTS pays TEXT;
+        UPDATE etablissements_scolaires SET pays = 'CM' WHERE pays IS NULL;
+        ALTER TABLE etablissements_scolaires ALTER COLUMN pays SET DEFAULT 'CM';
+        ALTER TABLE etablissements_scolaires ALTER COLUMN pays SET NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_etablissements_pays ON etablissements_scolaires(pays, is_active);
+        CREATE INDEX IF NOT EXISTS idx_etablissements_pays_ville ON etablissements_scolaires(pays, ville, is_active);
+        "#,
+    )
+    .await?;
+
+    // 2) is_national
+    execute_migration_sql_safe(
+        pool,
+        r#"
+        ALTER TABLE etablissements_scolaires ADD COLUMN IF NOT EXISTS is_national BOOLEAN NOT NULL DEFAULT false;
+        CREATE INDEX IF NOT EXISTS idx_etablissements_national ON etablissements_scolaires(pays, is_national) WHERE is_national = true;
+        "#,
+    )
+    .await?;
+
+    // 3) pays sur programmes_scolaires
+    execute_migration_sql_safe(
+        pool,
+        r#"
+        ALTER TABLE programmes_scolaires ADD COLUMN IF NOT EXISTS pays TEXT;
+        UPDATE programmes_scolaires SET pays = 'CM' WHERE pays IS NULL OR pays = '';
+        CREATE INDEX IF NOT EXISTS idx_programmes_pays ON programmes_scolaires(pays, niveau, classe) WHERE is_active = true;
+        "#,
+    )
+    .await?;
+
+    // 4) Index unique pour upsert idempotent
+    execute_migration_sql_safe(
+        pool,
+        r#"
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_programmes_etab_classe_annee
+            ON programmes_scolaires(etablissement_id, classe, annee_scolaire)
+            WHERE is_active = true AND classe IS NOT NULL;
+        "#,
+    )
+    .await?;
+
+    // 5) Seed national établissement par pays
+    let admin_user_id: Option<(i32,)> =
+        sqlx::query_as("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1")
+            .fetch_optional(pool)
+            .await?;
+
+    let admin_user_id = match admin_user_id {
+        Some((id,)) => Some(id),
+        None => sqlx::query_as::<_, (i32,)>("SELECT id FROM users ORDER BY id LIMIT 1")
+            .fetch_optional(pool)
+            .await?
+            .map(|(id,)| id),
+    };
+
+    let Some(admin_user_id) = admin_user_id else {
+        info!("ℹ️ Pas d'utilisateur → skip seed national");
+        return Ok(());
+    };
+
+    let service_id: (i32,) = match sqlx::query_as::<_, (i32,)>(
+        "SELECT id FROM services WHERE user_id = $1 AND category = 'orientation_scolaire' ORDER BY id LIMIT 1",
+    )
+    .bind(admin_user_id)
+    .fetch_optional(pool)
+    .await?
+    {
+        Some(s) => s,
+        None => {
+            sqlx::query_as::<_, (i32,)>(
+                r#"INSERT INTO services (user_id, category, data, is_active)
+                   VALUES ($1, 'orientation_scolaire',
+                           '{"titre_service":{"type_donnee":"string","valeur":"Programmes nationaux"}}'::jsonb,
+                           true) RETURNING id"#,
+            )
+            .bind(admin_user_id)
+            .fetch_one(pool)
+            .await?
+        }
+    };
+
+    let pays_list: &[(&str, &str)] = &[
+        ("CM", "Cameroun"),
+        ("CI", "Côte d'Ivoire"),
+        ("SN", "Sénégal"),
+        ("GA", "Gabon"),
+        ("CG", "Congo"),
+        ("CD", "République démocratique du Congo"),
+        ("BJ", "Bénin"),
+        ("TG", "Togo"),
+        ("BF", "Burkina Faso"),
+        ("ML", "Mali"),
+        ("NE", "Niger"),
+        ("NG", "Nigeria"),
+        ("GH", "Ghana"),
+    ];
+
+    for (code, nom) in pays_list {
+        sqlx::query(
+            r#"
+            INSERT INTO etablissements_scolaires
+                (service_id, user_id, nom_etablissement, type_etablissement,
+                 ville, pays, is_national, is_active, is_verified)
+            SELECT $1, $2, $3, 'secondaire', '-', $4, true, true, true
+            WHERE NOT EXISTS (
+                SELECT 1 FROM etablissements_scolaires
+                WHERE pays = $4 AND is_national = true
+            )
+            "#,
+        )
+        .bind(service_id.0)
+        .bind(admin_user_id)
+        .bind(format!("Programme national — {}", nom))
+        .bind(code)
+        .execute(pool)
+        .await?;
+    }
+
+    info!("✅ Migration bourse_livre pays/national appliquée");
+    Ok(())
+}
+
+/// ✅ 2026-04-24 : Table accessoires_populaires_par_classe (historisation).
+pub async fn ensure_accessoires_populaires_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création accessoires_populaires_par_classe...");
+    execute_migration_sql_safe(
+        pool,
+        r#"
+        CREATE TABLE IF NOT EXISTS accessoires_populaires_par_classe (
+            id SERIAL PRIMARY KEY,
+            pays TEXT NOT NULL DEFAULT 'CM',
+            systeme_id TEXT,
+            niveau TEXT NOT NULL,
+            classe TEXT NOT NULL,
+            nom TEXT NOT NULL,
+            nom_normalise TEXT NOT NULL,
+            quantite_mediane INTEGER,
+            gamme_defaut TEXT,
+            prix_min DECIMAL(12,2),
+            prix_median DECIMAL(12,2),
+            prix_max DECIMAL(12,2),
+            devise TEXT DEFAULT 'XAF',
+            occurrences INTEGER NOT NULL DEFAULT 1,
+            derniere_vue TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS uniq_acc_pop_pays_niveau_classe_nom
+            ON accessoires_populaires_par_classe(pays, niveau, classe, nom_normalise);
+        CREATE INDEX IF NOT EXISTS idx_acc_pop_pays_classe
+            ON accessoires_populaires_par_classe(pays, classe, occurrences DESC);
+        CREATE INDEX IF NOT EXISTS idx_acc_pop_systeme
+            ON accessoires_populaires_par_classe(systeme_id, classe, occurrences DESC)
+            WHERE systeme_id IS NOT NULL;
+        "#,
+    )
+    .await?;
+    info!("✅ Table accessoires_populaires_par_classe créée/vérifiée");
     Ok(())
 }

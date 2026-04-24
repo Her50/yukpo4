@@ -52,6 +52,15 @@ export default function AdminProgrammeUploadScreen({ navigation }: any) {
     programme_id: number;
     extraction: ProgrammeExtractionResult | null;
     message: string;
+    detection?: {
+      etablissement?: string;
+      ville?: string;
+      session?: string;
+      classe?: string;
+      session_coherente?: boolean | null;
+      classe_coherente?: boolean | null;
+    };
+    accessoires?: Array<{ nom: string; quantite?: number; gamme?: string }>;
   } | null>(null);
 
   const applyImageAssetBase64 = useCallback(async (asset: ImagePicker.ImagePickerAsset, fallbackName: string) => {
@@ -348,6 +357,67 @@ export default function AdminProgrammeUploadScreen({ navigation }: any) {
       </TouchableOpacity>
 
       {/* Résultat */}
+      {/* Bannière de validation IA — établissement, ville, session, classe */}
+      {result?.detection && (
+        <View style={styles.detectionBanner}>
+          <Text style={styles.detectionTitle}>Détection IA</Text>
+          <View style={styles.detectionGrid}>
+            {result.detection.etablissement ? (
+              <View style={styles.detectionCell}>
+                <Text style={styles.detectionLabel}>École</Text>
+                <Text style={styles.detectionValue} numberOfLines={1}>{result.detection.etablissement}</Text>
+              </View>
+            ) : null}
+            {result.detection.ville ? (
+              <View style={styles.detectionCell}>
+                <Text style={styles.detectionLabel}>Ville</Text>
+                <Text style={styles.detectionValue}>{result.detection.ville}</Text>
+              </View>
+            ) : null}
+            {result.detection.session ? (
+              <View style={[styles.detectionCell, result.detection.session_coherente === false && styles.detectionCellError]}>
+                <Text style={styles.detectionLabel}>Session</Text>
+                <Text style={[styles.detectionValue, result.detection.session_coherente === false && styles.detectionValueError]}>
+                  {result.detection.session}
+                  {result.detection.session_coherente === false ? ' ⚠️' : ''}
+                </Text>
+              </View>
+            ) : null}
+            {result.detection.classe ? (
+              <View style={[styles.detectionCell, result.detection.classe_coherente === false && styles.detectionCellError]}>
+                <Text style={styles.detectionLabel}>Classe</Text>
+                <Text style={[styles.detectionValue, result.detection.classe_coherente === false && styles.detectionValueError]}>
+                  {result.detection.classe}
+                  {result.detection.classe_coherente === false ? ' ⚠️' : ''}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          {(result.detection.session_coherente === false || result.detection.classe_coherente === false) && (
+            <Text style={styles.detectionWarning}>
+              ⚠️ La session ou la classe détectée ne correspond pas à vos paramètres — vérifiez le document.
+            </Text>
+          )}
+        </View>
+      )}
+
+      {/* Accessoires détectés */}
+      {result?.accessoires && result.accessoires.length > 0 && (
+        <View style={styles.accessoiresCard}>
+          <Text style={styles.resultTitle}>Accessoires détectés ({result.accessoires.length})</Text>
+          {result.accessoires.map((a, i) => (
+            <View key={i} style={styles.recapRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.recapRowTitle}>{a.nom}</Text>
+                <Text style={styles.recapRowMeta}>
+                  {[a.quantite ? `×${a.quantite}` : null, a.gamme].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
       {result?.extraction && (
         <View style={styles.resultCard}>
           <Text style={styles.resultTitle}>
@@ -516,4 +586,47 @@ const styles = StyleSheet.create({
   livreTitre: { fontSize: 14, fontWeight: '600', color: '#333' },
   livreDetail: { fontSize: 12, color: '#888', marginTop: 2 },
   moreText: { fontSize: 13, color: '#4A90D9', textAlign: 'center', marginTop: 8 },
+  // Detection banner
+  detectionBanner: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 16,
+  },
+  detectionTitle: { fontSize: 13, fontWeight: '700', color: '#92400E', marginBottom: 8 },
+  detectionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  detectionCell: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  detectionCellError: { borderColor: '#FCA5A5', backgroundColor: '#FFF1F1' },
+  detectionLabel: { fontSize: 10, color: '#9CA3AF', fontWeight: '600', textTransform: 'uppercase', marginBottom: 2 },
+  detectionValue: { fontSize: 13, fontWeight: '700', color: '#374151' },
+  detectionValueError: { color: '#DC2626' },
+  detectionWarning: { fontSize: 12, color: '#B45309', marginTop: 10, lineHeight: 17 },
+  // Accessoires card
+  accessoiresCard: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 12,
+  },
+  recapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E5E7EB',
+  },
+  recapRowTitle: { fontSize: 13, fontWeight: '600', color: '#1F2937' },
+  recapRowMeta: { fontSize: 11, color: '#6B7280', marginTop: 1 },
 });

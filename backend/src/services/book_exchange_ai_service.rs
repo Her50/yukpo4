@@ -1906,57 +1906,64 @@ Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, cla
         let classe_str = classe.unwrap_or("Toutes");
 
         let prompt = format!(
-            r#"Tu es un expert en extraction de données de programmes scolaires officiels.
+            r#"Tu es un expert mondial en extraction de listes scolaires officielles. Tu traites des documents provenant de n'importe quel pays (Afrique, Europe, Amérique, Asie…) dans n'importe quelle langue.
 
 CONTEXTE :
 - Type de fichier : {}
-- Niveau : {}
-- Classe : {}
+- Niveau déclaré : {}
+- Classe déclarée : {}
 - Période académique : {}
 
-TON RÔLE :
-- Analyser le document (liste officielle des manuels et fournitures scolaires de l'établissement)
-- Extraire chaque ligne : livres, cahiers, classeurs, fournitures spécifiques listées au programme
-- Pour chaque ligne extraire : titre, auteur, éditeur, ISBN (si visible), classe, matière, prix officiel (si mentionné), si obligatoire ou recommandé
-- Renseigner "type_article" pour chaque ligne : "livre" (manuel papier), "cahier", "fourniture" (autre)
+DOCUMENT : Liste officielle de manuels, fournitures et matériel scolaire émise par un établissement scolaire. Peut être une photo de smartphone, un scan ou un PDF — parfois partiel, flou, ou partiellement manuscrit. La langue du document peut être française, anglaise, arabe, espagnole, ou autre.
 
-IMPORTANT :
-- Extraire TOUTES les lignes utiles aux familles (pas seulement les livres)
-- Si le document couvre plusieurs classes, indiquer la classe pour chaque livre
-- Les prix sont généralement en XAF (FCFA)
-- Distinguer "obligatoire" vs "recommandé/optionnel"
+RÈGLES D'EXTRACTION EXHAUSTIVE :
+1. Extraire TOUTES les lignes : manuels scolaires, cahiers, fournitures, accessoires
+2. Si une classe ou série (ex: A, C, D, Sciences, Lettres, Form 4, Year 9…) est visible sur le document, l'utiliser en priorité sur la valeur déclarée
+3. Retranscrire les titres tels quels (majuscules, abréviations comprises)
+4. Prix dans la devise locale — extraire la valeur numérique brute
+5. "est_obligatoire" = true si "O", "Oblig.", "✓", "Required", "Must", souligné, ou aucune mention ; false si "R", "Optionnel", "Recommended", "Facultatif"
+6. Si le document est illisible ou vide, retourner livres:[] avec confidence < 0.3 et une note explicative
+7. Ne pas inventer des titres non visibles dans le document
 
-RÉPONSE ATTENDUE (JSON strict) :
+MÉTADONNÉES À EXTRAIRE DE L'EN-TÊTE :
+- etablissement_detecte : nom de l'école (null si non visible)
+- ville_detectee : ville ou région (null si non visible)
+- session_detectee : année scolaire format "AAAA-AAAA" (null si non visible)
+- classe_detectee : classe lisible sur le document (null si non visible)
+
+RÉPONSE — JSON BRUT UNIQUEMENT, sans texte avant ni après, sans bloc markdown :
 {{
     "livres": [
         {{
-            "titre": "Titre du livre",
-            "auteur": "Nom de l'auteur",
-            "editeur": "Maison d'édition",
-            "isbn": "ISBN si disponible",
-            "classe": "6ème",
-            "matiere": "Mathématiques",
-            "prix_officiel": 5000.0,
-            "est_obligatoire": true,
-            "type_article": "livre"
-        }},
-        {{
-            "titre": "Cahier 200 pages Seyès",
-            "auteur": null,
+            "titre": "Mathématiques Terminale C",
+            "auteur": "CEPER",
             "editeur": null,
             "isbn": null,
-            "classe": "6ème",
-            "matiere": "Fournitures",
-            "prix_officiel": 1500.0,
+            "classe": "Tle C",
+            "matiere": "Mathématiques",
+            "prix_officiel": 4500.0,
             "est_obligatoire": true,
-            "type_article": "cahier"
+            "type_article": "livre"
         }}
     ],
-    "nombre_total": 15,
-    "classes_couvertes": ["6ème", "5ème"],
-    "matieres_couvertes": ["Mathématiques", "Français"],
-    "notes": "Observations sur le document",
-    "confidence": 0.85
+    "accessoires": [
+        {{
+            "nom": "Cahier 200 pages grands carreaux",
+            "quantite": 3,
+            "gamme": "standard",
+            "prix_indicatif": null,
+            "notes": null
+        }}
+    ],
+    "nombre_total": 12,
+    "classes_couvertes": ["Tle C"],
+    "matieres_couvertes": ["Mathématiques", "Physique"],
+    "etablissement_detecte": "Lycée Général Leclerc",
+    "ville_detectee": "Douala",
+    "session_detectee": "2025-2026",
+    "classe_detectee": "Tle C",
+    "notes": null,
+    "confidence": 0.92
 }}"#,
             file_type, niveau, classe_str, periode_academique
         );
@@ -1977,13 +1984,21 @@ RÉPONSE ATTENDUE (JSON strict) :
             tokens
         );
 
-        let result: ProgrammeExtractionResult = match serde_json::from_str(&response) {
+        // Strip markdown code blocks if IA wraps response in ```json ... ```
+        let clean_response = response
+            .trim()
+            .trim_start_matches("```json")
+            .trim_start_matches("```")
+            .trim_end_matches("```")
+            .trim();
+
+        let result: ProgrammeExtractionResult = match serde_json::from_str(clean_response) {
             Ok(r) => r,
             Err(e) => {
                 log::warn!(
                     "[BookExchangeAIService] Erreur parsing extraction: {}. Réponse: {}",
                     e,
-                    &response[..response.len().min(500)]
+                    &clean_response[..clean_response.len().min(500)]
                 );
                 ProgrammeExtractionResult {
                     livres: vec![],
@@ -1992,6 +2007,11 @@ RÉPONSE ATTENDUE (JSON strict) :
                     matieres_couvertes: vec![],
                     notes: Some(format!("Erreur parsing: {}", e)),
                     confidence: 0.2,
+                    etablissement_detecte: None,
+                    ville_detectee: None,
+                    session_detectee: None,
+                    classe_detectee: None,
+                    accessoires: vec![],
                 }
             }
         };
@@ -2361,6 +2381,36 @@ pub struct ProgrammeExtractionResult {
     pub matieres_couvertes: Vec<String>,
     pub notes: Option<String>,
     pub confidence: f64,
+    /// Nom d'établissement détecté sur l'entête du document (optionnel).
+    #[serde(default)]
+    pub etablissement_detecte: Option<String>,
+    /// Ville détectée sur l'entête (optionnel).
+    #[serde(default)]
+    pub ville_detectee: Option<String>,
+    /// Session académique détectée ("2025-2026") (optionnel).
+    #[serde(default)]
+    pub session_detectee: Option<String>,
+    /// Classe détectée sur le document (pour détection mismatch).
+    #[serde(default)]
+    pub classe_detectee: Option<String>,
+    /// Accessoires avec quantité et gamme (optionnels).
+    #[serde(default)]
+    pub accessoires: Vec<AccessoireExtrait>,
+}
+
+/// Accessoire scolaire détecté dans une liste (cahier, trousse, compas…).
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AccessoireExtrait {
+    pub nom: String,
+    #[serde(default)]
+    pub quantite: Option<i32>,
+    /// "entree" | "standard" | "premium"
+    #[serde(default)]
+    pub gamme: Option<String>,
+    #[serde(default)]
+    pub prix_indicatif: Option<f64>,
+    #[serde(default)]
+    pub notes: Option<String>,
 }
 
 /// Résultat de matching livre ↔ programme
