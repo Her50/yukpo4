@@ -7,11 +7,11 @@ plugins = []
 [functions."*"]
 
 [build]
-publish = "C:\\Users\\23767\\yukpomnang2\\frontend\\dist"
+publish = "C:\\Users\\23767\\yukpomnang2\\frontend\\dist-bourse"
 publishOrigin = "config"
 commandOrigin = "config"
 base = "C:\\Users\\23767\\yukpomnang2\\frontend"
-command = "npm install && npm run build"
+command = "npm install && npx vite build --config vite.bourse.config.ts"
 
 [build.environment]
 VITE_API_BASE_URL = ""
@@ -93,6 +93,66 @@ for = "/*"
 X-Frame-Options = "DENY"
 X-XSS-Protection = "1; mode=block"
 X-Content-Type-Options = "nosniff"
+
+[[redirects]]
+from = "/api/*"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/:splat"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/auth/*"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/auth/:splat"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/ai/*"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/ai/:splat"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/ws/*"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/ws/:splat"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/healthz"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/healthz"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
 
 [[redirects]]
 from = "/api/*"

@@ -7,10 +7,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 import {
-  CLASSES_PAR_SYSTEME_NIVEAU, NIVEAUX_PAR_SYSTEME,
   Systeme, TypeItem, useParentShop,
   Enfant,
 } from '../../hooks/useParentShop';
+import {
+  getSystemesForPays, getSystemeById, LISTE_PAYS_UNIQUES, type PaysCode,
+} from '../../data/schoolSystems';
 import { apiGet } from '../../services/apiService';
 
 interface ExtractedItem {
@@ -84,13 +86,23 @@ const ScanProgrammePage: React.FC = () => {
   const [step, setStep] = useState<Step>('pick');
   const [files, setFiles] = useState<File[]>([]);
   const [etablissement, setEtablissement] = useState('');
-  const [systeme, setSysteme] = useState<Systeme>(
-    activeEnfant?.systeme ?? 'francophone'
-  );
-  const [niveau, setNiveau] = useState(
-    activeEnfant?.niveau ?? 'Collège / Lycée'
-  );
-  const [classe, setClasse] = useState(activeEnfant?.classe ?? '');
+
+  // Sélection pays / système / niveau / classe / série
+  const [pays, setPays] = useState<PaysCode>(activeEnfant?.pays ?? 'CM');
+  const [systemeId, setSystemeId] = useState(activeEnfant?.systemeId ?? 'CM-fr');
+  const [niveauNom, setNiveauNom] = useState(activeEnfant?.niveau ?? '');
+  const [classeNom, setClasseNom] = useState(activeEnfant?.classe?.split(' ')[0] ?? '');
+  const [serieCode, setSerieCode] = useState(activeEnfant?.serie ?? '');
+
+  const currentSystemeObj = getSystemeById(systemeId) ?? getSystemesForPays(pays)[0];
+  const currentNiveaux = currentSystemeObj?.niveaux ?? [];
+  const currentNiveauObj = currentNiveaux.find(n => n.nom === niveauNom);
+  const currentClasseObj = currentNiveauObj?.classes.find(c => c.nom === classeNom);
+  const hasClasseSeries = (currentClasseObj?.series?.length ?? 0) > 0;
+  const classe = serieCode ? `${classeNom} ${serieCode}` : classeNom;
+  const systeme: Systeme = currentSystemeObj?.langue === 'en' ? 'anglophone' : 'francophone';
+  const niveau = niveauNom;
+
   const [items, setItems] = useState<ExtractedItem[]>([]);
   const [detection, setDetection] = useState<ScanDetection | null>(null);
   const [error, setError] = useState('');
@@ -101,14 +113,21 @@ const ScanProgrammePage: React.FC = () => {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
-  const niveaux = NIVEAUX_PAR_SYSTEME[systeme];
-  const classes = CLASSES_PAR_SYSTEME_NIVEAU[systeme][niveau] ?? [];
+  const handlePaysChange = (p: PaysCode) => {
+    setPays(p);
+    const newSystemes = getSystemesForPays(p);
+    setSystemeId(newSystemes[0]?.id ?? '');
+    const nv = newSystemes[0]?.niveaux ?? [];
+    setNiveauNom(nv[2]?.nom ?? nv[0]?.nom ?? '');
+    setClasseNom(''); setSerieCode('');
+  };
 
-  const handleSystemeChange = (s: Systeme) => {
-    setSysteme(s);
-    const def = NIVEAUX_PAR_SYSTEME[s][2] ?? NIVEAUX_PAR_SYSTEME[s][1] ?? NIVEAUX_PAR_SYSTEME[s][0];
-    setNiveau(def);
-    setClasse('');
+  const handleSystemeIdChange = (id: string) => {
+    setSystemeId(id);
+    const s = getSystemeById(id);
+    const nv = s?.niveaux ?? [];
+    setNiveauNom(nv[2]?.nom ?? nv[0]?.nom ?? '');
+    setClasseNom(''); setSerieCode('');
   };
 
   const handleFiles = (newFiles: FileList | null) => {
@@ -117,8 +136,10 @@ const ScanProgrammePage: React.FC = () => {
       f => f.type.startsWith('image/') || f.type === 'application/pdf'
     );
     if (arr.length === 0) return;
-    setFiles(prev => [...prev, ...arr].slice(0, 5));
-    setStep('details');
+    const merged = [...files, ...arr].slice(0, 5);
+    setFiles(merged);
+    // Lancer l'analyse immédiatement sans attendre le bouton
+    submitWithFiles(merged);
   };
 
   const removeFile = (i: number) => {
@@ -199,12 +220,12 @@ const ScanProgrammePage: React.FC = () => {
     setStep('details');
   };
 
-  const submit = async () => {
+  const submitWithFiles = async (filesToUpload: File[]) => {
     setStep('uploading');
     setError('');
     try {
       const fichiers = await Promise.all(
-        files.map(async f => ({
+        filesToUpload.map(async f => ({
           nom: f.name,
           type: f.type || 'application/octet-stream',
           base64: await fileToBase64(f),
@@ -234,7 +255,6 @@ const ScanProgrammePage: React.FC = () => {
       const data = await res.json().catch(() => ({}));
 
       if (res.status === 202 && data?.job_id) {
-        // Lancement asynchrone : interroger le statut toutes les 3s
         await pollJobStatus(data.job_id, classe || niveau);
         return;
       }
@@ -246,7 +266,6 @@ const ScanProgrammePage: React.FC = () => {
         return;
       }
 
-      // Réponse synchrone (compatibilité) — utilise les manuels du job directement
       const raw: any[] = data?.manuels || [];
       const fromJob: ExtractedItem[] = raw.map((m: any) => ({
         titre: m.titre || 'Manuel',
@@ -272,6 +291,8 @@ const ScanProgrammePage: React.FC = () => {
       setStep('details');
     }
   };
+
+  const submit = () => submitWithFiles(files);
 
   const doAddToCart = (enfantId: string) => {
     const selected = items.filter(it => it.selected);
@@ -301,10 +322,7 @@ const ScanProgrammePage: React.FC = () => {
       toast({ title: 'Sélectionnez la classe', variant: 'destructive' });
       return;
     }
-    const childNiveau = Object.entries(CLASSES_PAR_SYSTEME_NIVEAU[systeme]).find(([, cls]) =>
-      cls.includes(quickClasse)
-    )?.[0] ?? niveau;
-    const newEnfant: Enfant = addEnfant({ prenom: quickClasse, systeme, niveau: childNiveau, classe: quickClasse });
+    const newEnfant: Enfant = addEnfant({ prenom: quickClasse, systeme, niveau: niveauNom, classe: quickClasse, pays, systemeId });
     setSelectedEnfantId(newEnfant.id);
     doAddToCart(newEnfant.id);
   };
@@ -467,9 +485,11 @@ const ScanProgrammePage: React.FC = () => {
                 {enfants.map(e => (
                   <button key={e.id} onClick={() => {
                     setSelectedEnfantId(e.id);
-                    setSysteme(e.systeme ?? 'francophone');
-                    setNiveau(e.niveau);
-                    setClasse(e.classe);
+                    if (e.pays) setPays(e.pays);
+                    if (e.systemeId) setSystemeId(e.systemeId);
+                    setNiveauNom(e.niveau);
+                    setClasseNom(e.classe.split(' ')[0]);
+                    setSerieCode(e.serie ?? '');
                   }}
                     className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold ${
                       selectedEnfantId === e.id
@@ -484,48 +504,85 @@ const ScanProgrammePage: React.FC = () => {
             </div>
           )}
 
-          {/* Système + Niveau + Classe (compacts) */}
+          {/* Pays + Système + Niveau + Classe (compacts) */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
             <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Précisions <span className="font-normal normal-case text-gray-400">(optionnel)</span></p>
 
+            {/* Pays */}
             <div>
-              <p className="text-xs text-gray-500 mb-1.5">Système</p>
-              <div className="flex gap-2">
-                {(['francophone', 'anglophone'] as Systeme[]).map(s => (
-                  <button key={s} onClick={() => handleSystemeChange(s)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-semibold border ${
-                      systeme === s ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
-                    }`}>
-                    {s === 'francophone' ? '🇫🇷 Francophone' : '🇬🇧 Anglophone'}
-                  </button>
+              <p className="text-xs text-gray-500 mb-1.5">Pays</p>
+              <select
+                value={pays}
+                onChange={e => handlePaysChange(e.target.value as PaysCode)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400"
+              >
+                {LISTE_PAYS_UNIQUES.map(p => (
+                  <option key={p.code} value={p.code}>{p.emoji} {p.label}</option>
                 ))}
-              </div>
+              </select>
             </div>
 
+            {/* Système (si plusieurs pour ce pays) */}
+            {getSystemesForPays(pays).length > 1 && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1.5">Système</p>
+                <div className="flex gap-2">
+                  {getSystemesForPays(pays).map(s => (
+                    <button key={s.id} onClick={() => handleSystemeIdChange(s.id)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold border ${
+                        systemeId === s.id ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
+                      }`}>
+                      {s.systemeLabel}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Niveau */}
             <div>
               <p className="text-xs text-gray-500 mb-1.5">Niveau</p>
               <div className="flex flex-wrap gap-1.5">
-                {niveaux.map(n => (
-                  <button key={n} onClick={() => { setNiveau(n); setClasse(''); }}
+                {currentNiveaux.map(n => (
+                  <button key={n.nom} onClick={() => { setNiveauNom(n.nom); setClasseNom(''); setSerieCode(''); }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
-                      niveau === n ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
+                      niveauNom === n.nom ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
                     }`}>
-                    {n}
+                    {n.nom}
                   </button>
                 ))}
               </div>
             </div>
 
-            {classes.length > 0 && (
+            {/* Classe */}
+            {currentNiveauObj && (
               <div>
                 <p className="text-xs text-gray-500 mb-1.5">Classe</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {classes.map(c => (
-                    <button key={c} onClick={() => setClasse(prev => prev === c ? '' : c)}
+                  {currentNiveauObj.classes.map(c => (
+                    <button key={c.nom} onClick={() => { setClasseNom(prev => prev === c.nom ? '' : c.nom); setSerieCode(''); }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
-                        classe === c ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
+                        classeNom === c.nom ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
                       }`}>
-                      {c}
+                      {c.nom}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Série / Filière */}
+            {currentClasseObj && hasClasseSeries && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1.5">Série / Filière</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {currentClasseObj.series!.map(s => (
+                    <button key={s.code} onClick={() => setSerieCode(prev => prev === s.code ? '' : s.code)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-baseline gap-1 ${
+                        serieCode === s.code ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
+                      }`}>
+                      <span className="font-bold">{s.code}</span>
+                      {s.label && <span className={`text-[10px] ${serieCode === s.code ? 'text-white/80' : 'text-gray-400'}`}>{s.label}</span>}
                     </button>
                   ))}
                 </div>
@@ -671,15 +728,15 @@ const ScanProgrammePage: React.FC = () => {
         )}
 
         {/* Aucune classe enregistrée → sélection de classe inline */}
-        {enfants.length === 0 && (
+        {enfants.length === 0 && currentNiveauObj && (
           <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4">
             <p className="text-sm font-semibold text-amber-800 mb-1">Pour quelle classe ?</p>
             <div className="flex flex-wrap gap-1.5">
-              {(CLASSES_PAR_SYSTEME_NIVEAU[systeme][niveau] ?? []).map(c => (
-                <button key={c} onClick={() => setQuickClasse(c)}
+              {currentNiveauObj.classes.map(c => (
+                <button key={c.nom} onClick={() => setQuickClasse(c.nom)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
-                    quickClasse === c ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
-                  }`}>{c}</button>
+                    quickClasse === c.nom ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
+                  }`}>{c.nom}</button>
               ))}
             </div>
           </div>

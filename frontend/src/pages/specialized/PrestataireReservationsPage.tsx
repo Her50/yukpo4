@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiGet, apiPatch } from '../../services/api';
+import { apiGet, apiPatch } from '../../services/apiService';
 
 interface Reservation {
     id: number;

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { apiPost } from '../../services/api';
+import { apiPost } from '../../services/apiService';
 
 const ReservationPage: React.FC = () => {
     const { serviceId, serviceType } = useParams<{ serviceId: string; serviceType: string }>();

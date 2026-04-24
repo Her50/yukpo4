@@ -6,7 +6,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, X, MapPin, Loader2 } from 'lucide-react';
 import { placesService, PlaceScope } from '@/services/placesService';
-import { apiGet } from '@/services/api';
+import { apiGet } from '../../services/apiService';
 
 // ✅ Parser string location en composants (gère "Pays - Ville", "Quartier, Ville, Pays", "Pays" seul)
 const parseLocationString = (locationStr: string): LocationObject => {

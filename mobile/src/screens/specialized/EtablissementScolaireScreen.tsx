@@ -74,7 +74,9 @@ const EtablissementScolaireScreen: React.FC = () => {
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
     const isParentMode = !!params.parentMode;
-    const [parentStep, setParentStep] = useState<'pick' | 'details'>(isParentMode ? 'pick' : 'details');
+    const [parentStep, setParentStep] = useState<'pick' | 'uploading' | 'results' | 'details'>(isParentMode ? 'pick' : 'details');
+    const [parentManuels, setParentManuels] = useState<Array<{ titre: string; auteur?: string; matiere?: string; editeur?: string; type?: string }>>([]);
+    const [parentError, setParentError] = useState<string | null>(null);
 
     const toggleNiveau = useCallback((id: string) => {
         setNiveaux(prev => {
@@ -114,14 +116,19 @@ const EtablissementScolaireScreen: React.FC = () => {
             });
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
-                setFiles(prev => [...prev, {
+                const newFile: AttachedFile = {
                     id: `cam-${Date.now()}`,
                     uri: asset.uri,
                     name: `photo_${Date.now()}.jpg`,
                     type: 'image',
                     base64: asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : undefined,
-                }]);
-                if (isParentMode) setParentStep('details');
+                };
+                setFiles(prev => [...prev, newFile]);
+                if (isParentMode) {
+                    submitParentFiles([...files, newFile]);
+                } else {
+                    setParentStep('details');
+                }
             }
         } catch (err) {
             logger.error('[EtablissementScolaire] Erreur photo:', err);
@@ -155,7 +162,11 @@ const EtablissementScolaireScreen: React.FC = () => {
                     base64: asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : undefined,
                 }));
                 setFiles(prev => [...prev, ...newFiles]);
-                if (isParentMode) setParentStep('details');
+                if (isParentMode) {
+                    submitParentFiles([...files, ...newFiles]);
+                } else {
+                    setParentStep('details');
+                }
             }
         } catch (err) {
             logger.error('[EtablissementScolaire] Erreur galerie:', err);
@@ -192,7 +203,11 @@ const EtablissementScolaireScreen: React.FC = () => {
                 });
             }
             setFiles(prev => [...prev, ...newFiles]);
-            if (isParentMode) setParentStep('details');
+            if (isParentMode) {
+                submitParentFiles([...files, ...newFiles]);
+            } else {
+                setParentStep('details');
+            }
         } catch (err) {
             logger.error('[EtablissementScolaire] Erreur document picker:', err);
             Alert.alert('Erreur', t('etablissementScolaire.fileError', 'Impossible de sélectionner le fichier.'));
@@ -202,6 +217,87 @@ const EtablissementScolaireScreen: React.FC = () => {
     const removeFile = useCallback((id: string) => {
         setFiles(prev => prev.filter(f => f.id !== id));
     }, []);
+
+    // ========================
+    // Soumission auto (parentMode)
+    // ========================
+    const pollParentJob = useCallback(async (jobId: string): Promise<void> => {
+        const MAX_POLLS = 40;
+        const token = user?.token as string | undefined;
+        for (let i = 0; i < MAX_POLLS; i++) {
+            await new Promise(r => setTimeout(r, 3000));
+            try {
+                const r = await fetch(`/api/bourse-livre/v2/programmes-scolaires/status/${jobId}`, {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                });
+                const d = await r.json().catch(() => ({}));
+                if (d?.status === 'done') {
+                    const manuels: any[] = d?.manuels || [];
+                    setParentManuels(manuels);
+                    setParentStep('results');
+                    return;
+                }
+                if (d?.status === 'error') {
+                    setParentError(d?.message || "Erreur lors de l'analyse.");
+                    setParentStep('pick');
+                    return;
+                }
+            } catch { /* continue polling */ }
+        }
+        setParentError("L'analyse a pris trop de temps. Réessayez avec une image plus nette.");
+        setParentStep('pick');
+    }, [user]);
+
+    const submitParentFiles = useCallback(async (filesToUpload: AttachedFile[]) => {
+        setParentError(null);
+        setParentStep('uploading');
+        try {
+            const token = user?.token as string | undefined;
+            const payload = {
+                nom_etablissement: nomEtablissement.trim() || 'Établissement non précisé',
+                niveaux: niveaux.size > 0 ? Array.from(niveaux) : ['college', 'lycee'],
+                annee_scolaire: anneeScolaire,
+                commentaire: commentaire.trim() || '',
+                fichiers: filesToUpload.map(f => ({
+                    nom: f.name,
+                    type: f.type,
+                    base64: f.base64,
+                })),
+                user_id: user?.id,
+                etablissement_id: typeof params.etablissementId === 'number' ? params.etablissementId : undefined,
+            };
+            const res = await fetch('/api/bourse-livre/v2/programmes-scolaires/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify(payload),
+                // @ts-ignore – signal with timeout (React Native >= 0.72 supports it)
+                signal: AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined,
+            });
+            const data = await res.json().catch(() => ({}));
+
+            // Async job
+            const jobId = data?.job_id || data?.data?.job_id;
+            if (res.status === 202 && jobId) {
+                await pollParentJob(jobId);
+                return;
+            }
+            if (!res.ok) {
+                setParentError(data?.message || data?.error || `Erreur serveur (${res.status})`);
+                setParentStep('pick');
+                return;
+            }
+            // Sync response
+            const manuels: any[] = data?.manuels || data?.data?.manuels || [];
+            setParentManuels(manuels);
+            setParentStep('results');
+        } catch (err: any) {
+            setParentError(err?.message || 'Impossible de joindre le serveur Yukpo.');
+            setParentStep('pick');
+        }
+    }, [user, nomEtablissement, niveaux, anneeScolaire, commentaire, params.etablissementId, pollParentJob]);
 
     // ========================
     // Soumission
@@ -330,6 +426,12 @@ const EtablissementScolaireScreen: React.FC = () => {
                 </LinearGradient>
 
                 <View style={styles.pickContainer}>
+                    {parentError ? (
+                        <View style={{ backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA', borderRadius: 12, padding: 14, marginBottom: 12 }}>
+                            <Text style={{ fontSize: 13, color: '#B91C1C', fontWeight: '600' }}>Analyse impossible</Text>
+                            <Text style={{ fontSize: 12, color: '#DC2626', marginTop: 4 }}>{parentError}</Text>
+                        </View>
+                    ) : null}
                     <Text style={styles.pickTitle}>Comment souhaitez-vous importer la liste ?</Text>
 
                     <TouchableOpacity style={[styles.pickBtn, styles.pickBtnCamera]} onPress={takePhoto} activeOpacity={0.85}>
@@ -362,6 +464,84 @@ const EtablissementScolaireScreen: React.FC = () => {
                         </View>
                     </TouchableOpacity>
                 </View>
+            </SafeNativeView>
+        );
+    }
+
+    // ========================
+    // Mode parent — chargement
+    // ========================
+    if (isParentMode && parentStep === 'uploading') {
+        return (
+            <SafeNativeView style={styles.container}>
+                <LinearGradient colors={['#D97706', '#F59E0B', '#FCD34D']} style={styles.header}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.headerTitle}>Analyse en cours…</Text>
+                        <Text style={styles.headerSubtitle}>YUKPO lit la liste et extrait les manuels</Text>
+                    </View>
+                    <SafeIcon name="scan" size={28} color="rgba(255,255,255,0.7)" type="lucide" />
+                </LinearGradient>
+                <View style={styles.pickContainer}>
+                    <ActivityIndicator size="large" color="#D97706" />
+                    <Text style={{ marginTop: 20, fontSize: 15, color: '#374151', textAlign: 'center' }}>
+                        Yukpo analyse la liste…{'\n'}Cela peut prendre quelques secondes.
+                    </Text>
+                </View>
+            </SafeNativeView>
+        );
+    }
+
+    // ========================
+    // Mode parent — résultats manuels
+    // ========================
+    if (isParentMode && parentStep === 'results') {
+        return (
+            <SafeNativeView style={styles.container}>
+                <LinearGradient colors={['#D97706', '#F59E0B', '#FCD34D']} style={styles.header}>
+                    <TouchableOpacity onPress={() => { hapticPress(); navigation.goBack(); }} style={styles.backBtn}>
+                        <SafeIcon name="arrow-left" size={24} color="#fff" />
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.headerTitle}>{parentManuels.length} manuel{parentManuels.length > 1 ? 'x' : ''} trouvé{parentManuels.length > 1 ? 's' : ''}</Text>
+                        <Text style={styles.headerSubtitle}>Liste extraite par Yukpo IA</Text>
+                    </View>
+                </LinearGradient>
+                <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+                    {parentManuels.length === 0 ? (
+                        <View style={{ alignItems: 'center', paddingTop: 40 }}>
+                            <SafeIcon name="book-open" size={48} color="#9CA3AF" type="lucide" />
+                            <Text style={{ marginTop: 16, fontSize: 15, color: '#6B7280', textAlign: 'center' }}>
+                                Aucun manuel extrait.{'\n'}La liste est enregistrée — les autres parents en profiteront.
+                            </Text>
+                        </View>
+                    ) : (
+                        parentManuels.map((m, i) => (
+                            <View key={i} style={{ backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>{m.titre}</Text>
+                                {m.auteur ? <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{m.auteur}</Text> : null}
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                                    {m.matiere ? <Text style={{ fontSize: 11, backgroundColor: '#F3F4F6', color: '#374151', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>{m.matiere}</Text> : null}
+                                    {m.type ? <Text style={{ fontSize: 11, backgroundColor: '#EFF6FF', color: '#1D4ED8', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>{m.type}</Text> : null}
+                                </View>
+                            </View>
+                        ))
+                    )}
+                    <TouchableOpacity
+                        style={[styles.submitButton, { marginTop: 16 }]}
+                        onPress={() => (navigation as any).navigate('ProgrammeBesoinsSelector')}
+                        activeOpacity={0.85}
+                    >
+                        <SafeIcon name="list-checks" size={20} color="#fff" type="lucide" />
+                        <Text style={styles.submitButtonText}>Accéder à ma liste scolaire</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.backButtonBottom]}
+                        onPress={() => { setParentStep('pick'); setFiles([]); setParentManuels([]); }}
+                    >
+                        <Text style={styles.backButtonBottomText}>Scanner une autre liste</Text>
+                    </TouchableOpacity>
+                    <View style={{ height: 40 }} />
+                </ScrollView>
             </SafeNativeView>
         );
     }

@@ -3,7 +3,7 @@
  * Adapté depuis mobile/src/services/placesService.ts
  */
 
-import { apiGet } from './api';
+import { apiGet } from './apiService';
 import { buildUrl } from '../config/api.config';
 
 export type PlaceScope = 'city' | 'point' | 'neighborhood' | 'all';

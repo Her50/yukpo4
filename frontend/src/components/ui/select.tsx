@@ -26,3 +26,13 @@ export const Select: React.FC<SelectProps> = ({ options, defaultValue, onValueCh
     </select>
   );
 };
+
+// Radix-compatible stubs for pages that use the decomposed API
+export const SelectTrigger: React.FC<React.HTMLAttributes<HTMLButtonElement> & { children?: React.ReactNode }> = ({ children, ...props }) => (
+  <button type="button" className="flex items-center justify-between text-sm px-2 py-1 border rounded" {...props}>{children}</button>
+);
+export const SelectValue: React.FC<{ placeholder?: string }> = ({ placeholder }) => <span>{placeholder}</span>;
+export const SelectContent: React.FC<{ children?: React.ReactNode }> = ({ children }) => <div>{children}</div>;
+export const SelectItem: React.FC<{ value: string; children?: React.ReactNode }> = ({ value, children }) => (
+  <option value={value}>{children}</option>
+);

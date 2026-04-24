@@ -764,7 +764,6 @@ const DeliveryParcelFlowPage: React.FC = () => {
                             </div>
                         </div>
                     )}
-                </section>
 
                     {/* Formulaire pour Déménagement */}
                     {parcelType === 'moving' && (

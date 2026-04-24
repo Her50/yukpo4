@@ -102,6 +102,14 @@ export const apiPut = async (endpoint: string, data: any, options: ApiServiceOpt
   });
 };
 
+export const apiPatch = async (endpoint: string, data: any, options: ApiServiceOptions = {}) => {
+  return apiService(endpoint, {
+    ...options,
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+};
+
 // Helper function for DELETE requests
 export const apiDelete = async (endpoint: string, options: ApiServiceOptions = {}) => {
   return apiService(endpoint, { ...options, method: 'DELETE' });

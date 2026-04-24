@@ -27,7 +27,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/buttons';
 import ProductManager from '@/components/ui/ProductManager';
 import { useUser } from '@/hooks/useUser';
-import { apiPost } from '@/services/api';
+import { apiPost } from '../services/apiService';
 import { cloudUploadService } from '@/services/cloudUploadService';
 import { ArrowLeft, Package, Save } from 'lucide-react';
 

@@ -7,10 +7,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 import {
-  CLASSES_PAR_SYSTEME_NIVEAU, NIVEAUX_PAR_SYSTEME,
   Enfant, PanierItem, Systeme, TypeItem,
   useParentShop
 } from '../../hooks/useParentShop';
+import {
+  getSystemesForPays, LISTE_PAYS_UNIQUES, type PaysCode,
+} from '../../data/schoolSystems';
 import { apiGet } from '../../services/apiService';
 
 const TYPE_LABELS: Record<TypeItem, string> = {
@@ -43,77 +45,148 @@ interface ProgrammeItem {
 function AddEnfantForm({
   onAdd,
 }: {
-  onAdd: (prenom: string, systeme: Systeme, niveau: string, classe: string) => void;
+  onAdd: (data: { classe: string; systeme: Systeme; niveau: string; pays: PaysCode; systemeId: string; serie?: string }) => void;
 }) {
-  const [systeme, setSysteme] = useState<Systeme>('francophone');
-  const [niveau, setNiveau] = useState('Collège / Lycée');
-  const [classe, setClasse] = useState('');
+  const [pays, setPays] = useState<PaysCode>('CM');
+  const systemes = getSystemesForPays(pays);
+  const [systemeId, setSystemeId] = useState(systemes[0]?.id ?? 'CM-fr');
+  const systemeObj = systemes.find(s => s.id === systemeId) ?? systemes[0];
+  const [niveauNom, setNiveauNom] = useState(() => {
+    const nv = systemeObj?.niveaux ?? [];
+    return nv[2]?.nom ?? nv[0]?.nom ?? '';
+  });
+  const niveauObj = systemeObj?.niveaux.find(n => n.nom === niveauNom);
+  const [classeNom, setClasseNom] = useState('');
+  const classeObj = niveauObj?.classes.find(c => c.nom === classeNom);
+  const [serieCode, setSerieCode] = useState('');
+  const hasSeries = (classeObj?.series?.length ?? 0) > 0;
+  const canAdd = classeNom && (!hasSeries || serieCode);
+  const finalClasse = serieCode ? `${classeNom} ${serieCode}` : classeNom;
+  const systeme: Systeme = systemeObj?.langue === 'en' ? 'anglophone' : 'francophone';
 
-  const niveaux = NIVEAUX_PAR_SYSTEME[systeme];
-  const classes = CLASSES_PAR_SYSTEME_NIVEAU[systeme][niveau] ?? [];
+  const handlePaysChange = (p: PaysCode) => {
+    setPays(p);
+    const newSystemes = getSystemesForPays(p);
+    const firstId = newSystemes[0]?.id ?? '';
+    setSystemeId(firstId);
+    const nv = newSystemes[0]?.niveaux ?? [];
+    setNiveauNom(nv[2]?.nom ?? nv[0]?.nom ?? '');
+    setClasseNom(''); setSerieCode('');
+  };
 
-  const handleSystemeChange = (s: Systeme) => {
-    setSysteme(s);
-    const def = NIVEAUX_PAR_SYSTEME[s][2] ?? NIVEAUX_PAR_SYSTEME[s][1] ?? NIVEAUX_PAR_SYSTEME[s][0];
-    setNiveau(def);
-    setClasse('');
+  const handleSystemeChange = (id: string) => {
+    setSystemeId(id);
+    const s = systemes.find(s => s.id === id);
+    const nv = s?.niveaux ?? [];
+    setNiveauNom(nv[2]?.nom ?? nv[0]?.nom ?? '');
+    setClasseNom(''); setSerieCode('');
   };
 
   return (
     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
       <p className="text-sm font-semibold text-amber-800 mb-3">Nouvelle classe</p>
 
-      {/* Système */}
-      <div className="grid grid-cols-2 gap-1.5 mb-3">
-        {(['francophone', 'anglophone'] as Systeme[]).map(s => (
-          <button
-            key={s}
-            onClick={() => handleSystemeChange(s)}
-            className={`py-2 rounded-xl text-xs font-semibold border ${
-              systeme === s ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
-            }`}
-          >
-            {s === 'francophone' ? '🇫🇷 Francophone' : '🇬🇧 Anglophone'}
-          </button>
-        ))}
+      {/* Pays */}
+      <div className="mb-3">
+        <label className="text-[11px] text-gray-500 uppercase tracking-wide mb-1 block">Pays</label>
+        <select
+          value={pays}
+          onChange={e => handlePaysChange(e.target.value as PaysCode)}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400"
+        >
+          {LISTE_PAYS_UNIQUES.map(p => (
+            <option key={p.code} value={p.code}>{p.emoji} {p.label}</option>
+          ))}
+        </select>
       </div>
 
+      {/* Système (si plusieurs — ex : CM fr/en) */}
+      {systemes.length > 1 && (
+        <div className="grid grid-cols-2 gap-1.5 mb-3">
+          {systemes.map(s => (
+            <button
+              key={s.id}
+              onClick={() => handleSystemeChange(s.id)}
+              className={`py-2 rounded-xl text-xs font-semibold border ${
+                systemeId === s.id ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
+              }`}
+            >
+              {s.systemeLabel}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Niveau */}
-      <div className="flex flex-wrap gap-1.5 mb-3">
-        {niveaux.map(n => (
-          <button
-            key={n}
-            onClick={() => { setNiveau(n); setClasse(''); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
-              niveau === n ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
-            }`}
-          >
-            {n}
-          </button>
-        ))}
+      <div className="mb-3">
+        <label className="text-[11px] text-gray-500 uppercase tracking-wide mb-1 block">Niveau</label>
+        <div className="flex flex-wrap gap-1.5">
+          {(systemeObj?.niveaux ?? []).map(n => (
+            <button
+              key={n.nom}
+              onClick={() => { setNiveauNom(n.nom); setClasseNom(''); setSerieCode(''); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                niveauNom === n.nom ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
+              }`}
+            >
+              {n.nom}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Classe */}
-      <div className="flex flex-wrap gap-1.5 mb-3">
-        {classes.map(c => (
-          <button
-            key={c}
-            onClick={() => setClasse(c)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
-              classe === c ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
-            }`}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
+      {niveauObj && (
+        <div className="mb-3">
+          <label className="text-[11px] text-gray-500 uppercase tracking-wide mb-1 block">Classe</label>
+          <div className="flex flex-wrap gap-1.5">
+            {niveauObj.classes.map(c => (
+              <button
+                key={c.nom}
+                onClick={() => { setClasseNom(c.nom); setSerieCode(''); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                  classeNom === c.nom ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
+                }`}
+              >
+                {c.nom}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Série / Filière */}
+      {classeObj && hasSeries && (
+        <div className="mb-3">
+          <label className="text-[11px] text-gray-500 uppercase tracking-wide mb-1 block">Série / Filière</label>
+          <div className="flex flex-wrap gap-1.5">
+            {classeObj.series!.map(s => (
+              <button
+                key={s.code}
+                onClick={() => setSerieCode(s.code)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-baseline gap-1 ${
+                  serieCode === s.code ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
+                }`}
+              >
+                <span className="font-bold">{s.code}</span>
+                {s.label && (
+                  <span className={`text-[10px] ${serieCode === s.code ? 'text-white/80' : 'text-gray-400'}`}>
+                    {s.label}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <button
-        disabled={!classe}
+        disabled={!canAdd}
         onClick={() => {
-          if (classe) {
-            onAdd(classe, systeme, niveau, classe);
-            setClasse('');
+          if (canAdd) {
+            onAdd({ classe: finalClasse, systeme, niveau: niveauNom, pays, systemeId, serie: serieCode || undefined });
+            setClasseNom('');
+            setSerieCode('');
           }
         }}
         className="w-full bg-amber-500 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold py-2.5 rounded-xl text-sm"
@@ -337,8 +410,8 @@ const ParentSelectionPage: React.FC = () => {
         {showAddForm && (
           <div className="mb-4">
             <AddEnfantForm
-              onAdd={(prenom, systeme, niveau, classe) => {
-                const e = addEnfant({ prenom, systeme, niveau, classe });
+              onAdd={({ classe, systeme, niveau, pays, systemeId, serie }) => {
+                const e = addEnfant({ prenom: classe, systeme, niveau, classe, pays, systemeId, serie });
                 setActiveEnfantId(e.id);
                 setShowAddForm(false);
               }}

@@ -3,7 +3,7 @@ import LocationSelector, { LocationObject } from '@/components/ui/LocationSelect
 import { API_BASE_URL } from '@/config/api';
 import { useUser } from '@/hooks/useUser';
 import { ROUTES } from '@/routes/AppRoutesRegistry';
-import { AlertCircle, Building, CheckCircle, Envelope, Image as ImageIcon, Lock, LockKey, Phone, X, XCircle } from 'lucide-react';
+import { AlertCircle, Building, CheckCircle, Mail as Envelope, Image as ImageIcon, Lock, KeyRound as LockKey, Phone, X, XCircle } from 'lucide-react';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';

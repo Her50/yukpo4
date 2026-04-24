@@ -27,21 +27,8 @@ RUN apt-get update && apt-get install -y \
     xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# Pré-télécharger ONNX Runtime avec retry (cdn.pyke.io retourne parfois des 504)
-# ORT_DYLIB_PATH indique à ort-sys d'utiliser ce binaire au lieu de télécharger
-RUN mkdir -p /opt/ort && \
-    for i in 1 2 3 4 5; do \
-      echo "=== Téléchargement ONNX Runtime, tentative $i/5 ===" && \
-      curl -fsSL --max-time 180 \
-        "https://cdn.pyke.io/0/pyke:ort-rs/ms@1.24.2/x86_64-unknown-linux-gnu.tar.lzma2" \
-        -o /tmp/ort.tar.lzma2 && \
-      xz -d /tmp/ort.tar.lzma2 && \
-      tar -xf /tmp/ort.tar -C /opt/ort && \
-      echo "=== Téléchargement réussi ===" && break; \
-      echo "Tentative $i échouée, attente 60s..." && sleep 60 && rm -f /tmp/ort.tar.lzma2 /tmp/ort.tar; \
-    done && \
-    find /opt/ort -name "libonnxruntime*" -type f | head -3
-ENV ORT_DYLIB_PATH=/opt/ort/libonnxruntime.so.1.24.2
+# Avec ort feature "load-dynamic", pas besoin de la lib au build — on la fournit au runtime
+# ORT_DYLIB_PATH est lu dynamiquement au démarrage du binaire (pas au cargo build)
 
 # Copier les fichiers de configuration Rust
 # Note: Cargo.lock sera généré automatiquement par Cargo lors du build si absent
@@ -168,6 +155,15 @@ RUN if [ -f "/tmp/blender/blender-4.0.0-linux-x64.tar.xz" ]; then \
     mkdir -p /opt/blender; \
     fi
 
+# Télécharger ONNX Runtime pour le chargement dynamique au runtime (ort feature "load-dynamic")
+RUN mkdir -p /opt/ort/lib && \
+    curl -fL --retry 5 --retry-delay 30 --max-time 300 \
+      "https://github.com/microsoft/onnxruntime/releases/download/v1.24.2/onnxruntime-linux-x64-1.24.2.tgz" \
+      -o /tmp/ort.tgz && \
+    tar -xzf /tmp/ort.tgz -C /opt/ort --strip-components=1 && \
+    rm /tmp/ort.tgz && \
+    ls /opt/ort/lib/libonnxruntime*
+
 # Créer un utilisateur non-root pour la sécurité
 RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
 
@@ -198,6 +194,7 @@ ENV RUST_BACKTRACE=1
 ENV APP_ENV=production
 ENV PORT=8080
 ENV HOST=0.0.0.0
+ENV ORT_DYLIB_PATH=/opt/ort/lib/libonnxruntime.so.1.24.2
 
 # Exposer le port (par défaut 8080 pour AWS ALB)
 EXPOSE 8080

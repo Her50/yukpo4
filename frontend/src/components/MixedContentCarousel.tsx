@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiGet, apiPost } from '../services/api';
+import { apiGet, apiPost } from '../services/apiService';
 
 interface MixedContentCarouselProps {
     userId?: string;

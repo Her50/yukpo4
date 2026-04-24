@@ -32,4 +32,7 @@ const Tooltip = ({ children, content, side = "top", delay = 300 }: {
   );
 };
 
-export { Tooltip };
+const TooltipContent = TooltipPrimitive.Content;
+const TooltipTrigger = TooltipPrimitive.Trigger;
+
+export { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger };

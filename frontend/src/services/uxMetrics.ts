@@ -83,47 +83,5 @@ export const flushUxMetrics = (endpoint: string = '/internal/metrics/ui'): void 
     }
 }
 
-type UxEventName =
-    | 'wizard_open'
-    | 'storyboard_generate_click'
-    | 'storyboard_apply'
-    | 'scene_chip_tap'
-    | 'media_assignment_change'
-    | 'preview_short_click'
-    | 'preview_short_completed';
-
-type UxEventPayload = {
-    name: UxEventName;
-    ts: number;
-    meta?: Record<string, unknown>;
-};
-
-const buffer: UxEventPayload[] = [];
-
-export function trackUxEvent(name: UxEventName, meta?: Record<string, unknown>) {
-    const ts = performance.now();
-    const event: UxEventPayload = { name, ts, meta };
-    buffer.push(event);
-
-    // Log local pour debug bench UX
-    if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
-        console.debug('[UX]', name, meta ?? {}, `+${Math.round(ts)}ms`);
-    }
-
-    // En prod, on peut plus tard utiliser sendBeacon ou un endpoint dédié
-    if (buffer.length >= 20 && navigator.sendBeacon) {
-        const payload = JSON.stringify({
-            sessionId: (window as any).__YUKPO_SESSION_ID ?? null,
-            events: buffer.splice(0, buffer.length),
-        });
-        // Endpoint à activer plus tard côté backend si besoin
-        try {
-            navigator.sendBeacon('/internal/metrics/ui', payload);
-        } catch {
-            // silent fail – on ne bloque jamais l’UI
-        }
-    }
-}
 
 

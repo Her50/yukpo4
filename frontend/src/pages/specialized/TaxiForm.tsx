@@ -7,7 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { buildUrl } from '../config/api.config';
+import { buildUrl } from '../../config/api.config';
 
 export default function TaxiForm() {
     const navigate = useNavigate();

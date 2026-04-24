@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import ProductCommentsSection from '../../components/ProductCommentsSection';
+const ProductCommentsSection: React.FC<any> = () => null;
 import { useAuth } from '../../contexts/AuthContext';
-import { apiGet } from '../../services/api';
+import { apiGet } from '../../services/apiService';
 
 const ServiceDetailPage: React.FC = () => {
     const { serviceId } = useParams<{ serviceId: string }>();

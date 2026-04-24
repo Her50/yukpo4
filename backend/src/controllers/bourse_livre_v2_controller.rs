@@ -2582,6 +2582,7 @@ async fn do_programme_extraction(
                     $9, COALESCE($10, true), $11, true, $12,
                     $13, 'done', $14
                 )
+                ON CONFLICT DO NOTHING
                 RETURNING id
                 "#,
             )
@@ -2602,19 +2603,23 @@ async fn do_programme_extraction(
             .fetch_one(&state.pg)
             .await;
 
-            if let Ok(row_id) = ins {
+            // Toujours exposer l'item au frontend, même si l'INSERT échoue (doublon existant, FK, etc.)
+            let db_id = ins.unwrap_or(0);
+            if db_id > 0 {
                 total_inserted += 1;
-                manuels_extraits.push(json!({
-                    "id": row_id,
-                    "titre": livre.titre,
-                    "auteur": livre.auteur,
-                    "editeur": livre.editeur,
-                    "matiere": matiere,
-                    "classe": classe,
-                    "type": "livre",
-                    "prix_officiel": prix.map(|p| p.to_string()),
-                    "est_obligatoire": livre.est_obligatoire.unwrap_or(true),
-                }));
+            }
+            manuels_extraits.push(json!({
+                "id": db_id,
+                "titre": livre.titre,
+                "auteur": livre.auteur,
+                "editeur": livre.editeur,
+                "matiere": matiere,
+                "classe": classe,
+                "type": "livre",
+                "prix_officiel": prix.map(|p| p.to_string()),
+                "est_obligatoire": livre.est_obligatoire.unwrap_or(true),
+            }));
+            if db_id > 0 {
                 if etablissement_id.is_some() {
                     let besoin_prix =
                         prix.map(|p| p <= rust_decimal::Decimal::ZERO).unwrap_or(true);
@@ -2623,7 +2628,7 @@ async fn do_programme_extraction(
                             .enrich_etablissement_row_prix_depuis_national(
                                 &state.pg,
                                 Some(&state.redis_client),
-                                row_id,
+                                db_id,
                                 &livre.titre,
                                 livre.auteur.as_deref(),
                                 &classe,

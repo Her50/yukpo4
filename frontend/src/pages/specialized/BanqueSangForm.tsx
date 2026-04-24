@@ -8,7 +8,7 @@ import { ArrowLeft, Droplet, Heart, Phone } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { buildUrl } from '../config/api.config';
+import { buildUrl } from '../../config/api.config';
 
 const GROUPES_SANGUINS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 

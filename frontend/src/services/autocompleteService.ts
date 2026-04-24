@@ -3,7 +3,7 @@
  * Adapté depuis mobile/src/services/autocompleteHistoryService.ts
  */
 
-import { apiGet, apiPost } from './api';
+import { apiGet, apiPost } from './apiService';
 
 export interface AutocompleteSuggestion {
     valeur: string;

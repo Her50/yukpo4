@@ -167,7 +167,7 @@ lru = "0.12"
 # Phase 3: ML & Optimisation pour livraisons
 # Pour VRP et optimisations geographiques (geo deja present)
 # Pour ML: Support ONNX avec apprentissage automatique
-ort = "2.0.0-rc.10"  # ✅ ONNX Runtime pour inference ML (toujours activé)
+ort = { version = "2.0.0-rc.10", features = ["load-dynamic"] }  # ✅ ONNX Runtime — load-dynamic évite tout download au build
 ndarray = "0.15"  # Arrays pour features ML (toujours activé)
 
 # �️ OG Image dynamique (SVG → PNG pour previews WhatsApp/Facebook)

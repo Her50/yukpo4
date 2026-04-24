@@ -4,7 +4,7 @@
  */
 
 import AppLayout from '@/components/layout/AppLayout';
-import { ProductCard } from '@/components/products/ProductCard';
+import ProductCard from '@/components/products/ProductCard';
 import { Button } from '@/components/ui/buttons/Button';
 import { apiService } from '@/services/apiService';
 import { ArrowLeft, Search } from 'lucide-react';

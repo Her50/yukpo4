@@ -78,3 +78,5 @@ cloud-run-config.json
 cloud-run-env-check.json
 mobile/google-services.json
 mobile/android/app/google-services.json
+# Local Netlify folder
+.netlify

@@ -214,7 +214,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     };
 
     // Ajouter une modalité
-    const addModality = useCallback((modality: string) => {
+    const addModality = useCallback(async (modality: string) => {
         if (!modality || selectedModalities.includes(modality)) return;
 
         const newModalities = [...selectedModalities, modality];
