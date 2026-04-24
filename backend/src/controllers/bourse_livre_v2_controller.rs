@@ -2560,13 +2560,86 @@ async fn do_programme_extraction(
                 "notes": acc.notes,
                 "fichier": f.nom,
             }));
+            // Fusion dans manuels_extraits pour affichage UI (type=fourniture)
+            let prix_acc = acc
+                .prix_indicatif
+                .and_then(rust_decimal::Decimal::from_f64_retain)
+                .and_then(|p| p.to_string().parse::<f64>().ok());
+            manuels_extraits.push(json!({
+                "id": 0,
+                "titre": acc.nom,
+                "auteur": null,
+                "editeur": null,
+                "matiere": "Fournitures",
+                "classe": meta_classe.clone().or_else(|| payload.niveaux.first().cloned()),
+                "type": "fourniture",
+                "quantite_defaut": acc.quantite.unwrap_or(1),
+                "gamme": acc.gamme,
+                "prix_officiel": prix_acc,
+                "est_obligatoire": true,
+                "source": "scan",
+            }));
+            // Upsert dans accessoires_populaires_par_classe (historisation)
+            let classe_acc = meta_classe
+                .clone()
+                .or_else(|| payload.niveaux.first().cloned())
+                .unwrap_or_else(|| "Toutes".to_string());
+            let nom_norm = acc.nom.to_lowercase().split_whitespace().collect::<Vec<_>>().join(" ");
+            let _ = sqlx::query(
+                r#"INSERT INTO accessoires_populaires_par_classe
+                   (pays, niveau, classe, nom, nom_normalise, quantite_mediane, gamme_defaut, prix_min, prix_median, prix_max, occurrences, derniere_vue, updated_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $8, 1, NOW(), NOW())
+                   ON CONFLICT (pays, niveau, classe, nom_normalise) DO UPDATE
+                   SET occurrences = accessoires_populaires_par_classe.occurrences + 1,
+                       quantite_mediane = COALESCE(EXCLUDED.quantite_mediane, accessoires_populaires_par_classe.quantite_mediane),
+                       prix_min = LEAST(COALESCE(EXCLUDED.prix_min, accessoires_populaires_par_classe.prix_min), COALESCE(accessoires_populaires_par_classe.prix_min, EXCLUDED.prix_min)),
+                       prix_max = GREATEST(COALESCE(EXCLUDED.prix_max, accessoires_populaires_par_classe.prix_max), COALESCE(accessoires_populaires_par_classe.prix_max, EXCLUDED.prix_max)),
+                       derniere_vue = NOW(), updated_at = NOW()"#,
+            )
+            .bind(&pays)
+            .bind(&niveau_label)
+            .bind(&classe_acc)
+            .bind(&acc.nom)
+            .bind(&nom_norm)
+            .bind(acc.quantite)
+            .bind(acc.gamme.as_deref())
+            .bind(acc.prix_indicatif.and_then(rust_decimal::Decimal::from_f64_retain))
+            .execute(&state.pg)
+            .await;
         }
 
         for livre in &result.livres {
             let matiere = matiere_avec_type_article(livre);
             let classe = livre.classe.clone().or_else(|| Some("Toutes".to_string())).unwrap();
 
-            let prix = livre.prix_officiel.and_then(rust_decimal::Decimal::from_f64_retain);
+            // Prix : IA d'abord, sinon matching référentiel national programmes_scolaires
+            let mut prix = livre.prix_officiel.and_then(rust_decimal::Decimal::from_f64_retain);
+            if prix.is_none() || prix.map(|p| p <= rust_decimal::Decimal::ZERO).unwrap_or(true) {
+                if let Ok(Some(p_ref)) = sqlx::query_scalar::<_, Option<rust_decimal::Decimal>>(
+                    r#"SELECT prix_officiel
+                       FROM programmes_scolaires
+                       WHERE is_active = true
+                         AND etablissement_id IS NULL
+                         AND pays = $1
+                         AND annee_scolaire = $2
+                         AND (classe ILIKE $3 OR classe ILIKE $4)
+                         AND similarity(lower(unaccent(titre_livre)), lower(unaccent($5))) >= 0.4
+                         AND prix_officiel IS NOT NULL
+                         AND prix_officiel > 0
+                       ORDER BY similarity(lower(unaccent(titre_livre)), lower(unaccent($5))) DESC
+                       LIMIT 1"#,
+                )
+                .bind(&pays)
+                .bind(&periode)
+                .bind(format!("%{}%", classe))
+                .bind(&classe)
+                .bind(&livre.titre)
+                .fetch_optional(&state.pg)
+                .await
+                {
+                    prix = p_ref;
+                }
+            }
 
             let ins = sqlx::query_scalar::<_, i32>(
                 r#"
@@ -2781,6 +2854,57 @@ async fn do_programme_extraction(
     } else {
         0
     };
+
+    // Suggestion accessoires par défaut : si l'IA n'a rien extrait, proposer les top populaires
+    // pour cette classe (pré-cochés côté UI). Déduplication sur titre pour ne pas ré-injecter
+    // un accessoire déjà présent dans les extraits.
+    let has_accessoires_extraits = manuels_extraits
+        .iter()
+        .any(|m| m.get("type").and_then(|t| t.as_str()) == Some("fourniture"));
+    if !has_accessoires_extraits {
+        let classe_sug = meta_classe
+            .clone()
+            .or_else(|| payload.niveaux.first().cloned())
+            .unwrap_or_else(|| "Toutes".to_string());
+        if let Ok(rows) = sqlx::query(
+            r#"SELECT nom, quantite_mediane, gamme_defaut, prix_median
+               FROM accessoires_populaires_par_classe
+               WHERE pays = $1
+                 AND (classe ILIKE $2 OR niveau ILIKE $3)
+               ORDER BY occurrences DESC
+               LIMIT 15"#,
+        )
+        .bind(&pays)
+        .bind(format!("%{}%", classe_sug))
+        .bind(&niveau_label)
+        .fetch_all(&state.pg)
+        .await
+        {
+            use sqlx::Row;
+            for row in rows {
+                let nom: Option<String> = row.try_get("nom").ok();
+                let qte: Option<i32> = row.try_get("quantite_mediane").ok().flatten();
+                let gamme: Option<String> = row.try_get("gamme_defaut").ok().flatten();
+                let prix: Option<rust_decimal::Decimal> = row.try_get("prix_median").ok().flatten();
+                if let Some(nom) = nom {
+                    manuels_extraits.push(json!({
+                        "id": 0,
+                        "titre": nom,
+                        "auteur": null,
+                        "editeur": null,
+                        "matiere": "Fournitures",
+                        "classe": classe_sug,
+                        "type": "fourniture",
+                        "quantite_defaut": qte.unwrap_or(1),
+                        "gamme": gamme,
+                        "prix_officiel": prix.and_then(|p| p.to_string().parse::<f64>().ok()),
+                        "est_obligatoire": false,
+                        "source": "suggestion",
+                    }));
+                }
+            }
+        }
+    }
 
     // Si aucun item nouveau (tout existait déjà), requêter la DB pour retourner les items existants
     if manuels_extraits.is_empty() {

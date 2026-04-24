@@ -23,6 +23,7 @@ interface ExtractedItem {
   type: TypeItem;
   quantite: number;
   prix?: number;           // prix unitaire officiel en devise locale
+  source?: 'scan' | 'suggestion'; // suggestion = proposition backend par défaut
   selected: boolean;
 }
 
@@ -196,8 +197,9 @@ const ScanProgrammePage: React.FC = () => {
         matiere: m.matiere,
         editeur: m.editeur_livre || m.editeur,
         type: (m.type as TypeItem) || 'livre',
-        quantite: 1,
+        quantite: typeof m.quantite_defaut === 'number' ? m.quantite_defaut : 1,
         prix: parseFloat(m.prix_officiel ?? m.prix ?? '') || undefined,
+        source: m.source === 'suggestion' ? 'suggestion' : 'scan',
         selected: true,
       }));
     } catch { return []; }
@@ -227,8 +229,9 @@ const ScanProgrammePage: React.FC = () => {
             matiere: m.matiere,
             editeur: m.editeur_livre || m.editeur,
             type: (m.type as TypeItem) || 'livre',
-            quantite: 1,
+            quantite: typeof m.quantite_defaut === 'number' ? m.quantite_defaut : 1,
             prix: typeof m.prix_officiel === 'number' ? m.prix_officiel : parseFloat(m.prix_officiel ?? '') || undefined,
+            source: m.source === 'suggestion' ? 'suggestion' : 'scan',
             selected: true,
           }));
           setItems(fromJob);
@@ -301,8 +304,9 @@ const ScanProgrammePage: React.FC = () => {
         matiere: m.matiere,
         editeur: m.editeur,
         type: (m.type as TypeItem) || 'livre',
-        quantite: 1,
+        quantite: typeof m.quantite_defaut === 'number' ? m.quantite_defaut : 1,
         prix: typeof m.prix_officiel === 'number' ? m.prix_officiel : parseFloat(m.prix_officiel ?? '') || undefined,
+        source: m.source === 'suggestion' ? 'suggestion' : 'scan',
         selected: true,
       }));
       setItems(fromJob);
@@ -905,6 +909,11 @@ const ScanProgrammePage: React.FC = () => {
                       (item.type as any) === 'workbook' ? 'bg-teal-50 text-teal-700 border-teal-200' :
                       'bg-gray-50 text-gray-600 border-gray-200'
                     }`}>{item.type}</span>
+                    {item.source === 'suggestion' && (
+                      <span className="text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full">
+                        Suggéré
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-gray-100">
                     <div className="flex items-center gap-1">

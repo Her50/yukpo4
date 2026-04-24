@@ -1929,6 +1929,18 @@ RÈGLES D'EXTRACTION EXHAUSTIVE :
    - Article secondaire → type_article="workbook" si cahier d'exercices/livret/work book, "cahier" sinon ; titre = "{titre principal} — Workbook" ou "{titre principal} — Livret"
    Les deux partagent matière, classe et éditeur.
 9. Éditeur : toujours extraire quand mentionné (NATHAN, CLE, MONDOUX, CAMBRIDGE, NMI, HABIBI, HUEBER, BELIN, etc.). L'éditeur suit souvent le titre ou l'auteur, parfois en colonne séparée.
+10. SECTION ACCESSOIRES / FOURNITURES — OBLIGATOIRE À EXPLORER. Les listes primaires et collège contiennent presque toujours une section "FOURNITURES SCOLAIRES", "MATÉRIEL", "ACCESSOIRES", "ARTICLES DIVERS", "PAPETERIE", parfois en bas ou au verso du document, parfois sous forme de tableau ou liste à puces. Scanner cette section systématiquement et extraire :
+    - Cahiers (préciser pagination 32/48/96/100/200 pages, type Seyès/petits carreaux/grands carreaux, format cahier TP / travaux pratiques)
+    - Stylos (bille bleu/rouge/vert/noir), crayons HB, crayons de couleur, feutres, surligneurs
+    - Gomme, taille-crayon, règle (20/30 cm), équerre, rapporteur, compas, stylo-plume, cartouches
+    - Ardoise, craies, chiffon, éponge
+    - Blouse / tablier / uniforme / tenue de sport
+    - Sac / cartable, trousse, porte-documents, classeurs, chemises cartonnées, pochettes plastifiées
+    - Ramette de papier A4, papier dessin, Canson, papier calque, étiquettes
+    - Colle, ciseaux, agrafeuse, scotch, perforatrice
+    - Calculatrice scientifique (mentionner modèle Casio FX / Texas Instruments si précisé)
+    - Dictionnaire (Larousse, Robert, etc.), Bescherelle
+    Chaque accessoire va dans le tableau `accessoires`, avec quantité si précisée. Si aucune section accessoires n'est détectable malgré exploration, retourner `accessoires: []` et préciser dans `notes`.
 
 MÉTADONNÉES À EXTRAIRE DE L'EN-TÊTE :
 - etablissement_detecte : nom de l'école (null si non visible)
@@ -1963,13 +1975,12 @@ RÉPONSE — JSON BRUT UNIQUEMENT, sans texte avant ni après, sans bloc markdow
         }}
     ],
     "accessoires": [
-        {{
-            "nom": "Cahier 200 pages grands carreaux",
-            "quantite": 3,
-            "gamme": "standard",
-            "prix_indicatif": null,
-            "notes": null
-        }}
+        {{ "nom": "Cahier 200 pages grands carreaux", "quantite": 3, "gamme": "standard", "prix_indicatif": null, "notes": null }},
+        {{ "nom": "Cahier 96 pages Seyès", "quantite": 5, "gamme": "standard", "prix_indicatif": null, "notes": null }},
+        {{ "nom": "Stylo bille bleu", "quantite": 4, "gamme": "entree", "prix_indicatif": null, "notes": null }},
+        {{ "nom": "Crayon HB", "quantite": 3, "gamme": "entree", "prix_indicatif": null, "notes": null }},
+        {{ "nom": "Ardoise + craies + chiffon", "quantite": 1, "gamme": "standard", "prix_indicatif": null, "notes": null }},
+        {{ "nom": "Blouse blanche", "quantite": 2, "gamme": "standard", "prix_indicatif": null, "notes": null }}
     ],
     "nombre_total": 12,
     "classes_couvertes": ["Tle C"],
