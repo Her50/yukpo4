@@ -2608,6 +2608,15 @@ async fn do_programme_extraction(
             if db_id > 0 {
                 total_inserted += 1;
             }
+            // Mapping type_article IA → TypeItem frontend
+            let type_item = match livre.type_article.as_deref().map(|s| s.to_lowercase()) {
+                Some(ref t) if t == "workbook" || t == "livret" || t == "cahier_exercices" => {
+                    "workbook"
+                }
+                Some(ref t) if t == "cahier" => "cahier",
+                Some(ref t) if t == "fourniture" || t == "accessoire" => "fourniture",
+                _ => "livre",
+            };
             manuels_extraits.push(json!({
                 "id": db_id,
                 "titre": livre.titre,
@@ -2615,8 +2624,8 @@ async fn do_programme_extraction(
                 "editeur": livre.editeur,
                 "matiere": matiere,
                 "classe": classe,
-                "type": "livre",
-                "prix_officiel": prix.map(|p| p.to_string()),
+                "type": type_item,
+                "prix_officiel": prix.and_then(|p| p.to_string().parse::<f64>().ok()),
                 "est_obligatoire": livre.est_obligatoire.unwrap_or(true),
             }));
             if db_id > 0 {

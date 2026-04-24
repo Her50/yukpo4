@@ -1,7 +1,7 @@
 import {
   AlertCircle, ArrowLeft, BookOpen, Camera, CheckSquare,
-  ChevronRight, FileText, Image as ImageIcon, Loader2,
-  Minus, ShoppingCart, Upload, X
+  ChevronRight, Copy, FileText, Image as ImageIcon, Loader2,
+  Minus, Plus, Search, ShoppingCart, Upload, X
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -21,7 +21,8 @@ interface ExtractedItem {
   matiere?: string;
   editeur?: string;
   type: TypeItem;
-  quantite?: number;
+  quantite: number;
+  prix?: number;           // prix unitaire officiel en devise locale
   selected: boolean;
 }
 
@@ -35,7 +36,18 @@ interface ScanDetection {
   classe_coherente?: boolean | null;
 }
 
-type Step = 'pick' | 'details' | 'uploading' | 'results' | 'done';
+type Step = 'pick' | 'details' | 'uploading' | 'results' | 'next-action' | 'done';
+
+const DEVISE_LOCALE_PAR_PAYS: Record<string, string> = {
+  CM: 'XAF', CI: 'XOF', SN: 'XOF', GA: 'XAF', CG: 'XAF', CD: 'CDF',
+  BJ: 'XOF', TG: 'XOF', BF: 'XOF', ML: 'XOF', NE: 'XOF', NG: 'NGN', GH: 'GHS',
+};
+
+function formatPrix(prix: number | undefined, pays: string): string {
+  if (!prix || prix <= 0) return '—';
+  const devise = DEVISE_LOCALE_PAR_PAYS[pays] ?? 'XAF';
+  return `${prix.toLocaleString('fr-FR')} ${devise}`;
+}
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -154,8 +166,22 @@ const ScanProgrammePage: React.FC = () => {
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, selected: !it.selected } : it));
   const selectAll = () => setItems(prev => prev.map(it => ({ ...it, selected: true })));
   const deselectAll = () => setItems(prev => prev.map(it => ({ ...it, selected: false })));
+  const adjustQuantite = (idx: number, delta: number) =>
+    setItems(prev => prev.map((it, i) => i === idx
+      ? { ...it, quantite: Math.max(1, (it.quantite ?? 1) + delta) }
+      : it));
+  const duplicateItem = (idx: number) =>
+    setItems(prev => {
+      const src = prev[idx];
+      if (!src) return prev;
+      const copy: ExtractedItem = { ...src, quantite: 1, selected: true };
+      return [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)];
+    });
   const allSelected = items.length > 0 && items.every(it => it.selected);
   const selectedCount = items.filter(it => it.selected).length;
+  const totalEstime = items
+    .filter(it => it.selected && it.prix && it.prix > 0)
+    .reduce((sum, it) => sum + (it.prix ?? 0) * (it.quantite ?? 1), 0);
 
   const fetchProgrammesFallback = async (): Promise<ExtractedItem[]> => {
     try {
@@ -169,8 +195,9 @@ const ScanProgrammePage: React.FC = () => {
         auteur: m.auteur_livre || m.auteur,
         matiere: m.matiere,
         editeur: m.editeur_livre || m.editeur,
-        type: 'livre' as TypeItem,
+        type: (m.type as TypeItem) || 'livre',
         quantite: 1,
+        prix: parseFloat(m.prix_officiel ?? m.prix ?? '') || undefined,
         selected: true,
       }));
     } catch { return []; }
@@ -201,6 +228,7 @@ const ScanProgrammePage: React.FC = () => {
             editeur: m.editeur_livre || m.editeur,
             type: (m.type as TypeItem) || 'livre',
             quantite: 1,
+            prix: typeof m.prix_officiel === 'number' ? m.prix_officiel : parseFloat(m.prix_officiel ?? '') || undefined,
             selected: true,
           }));
           setItems(fromJob);
@@ -274,6 +302,7 @@ const ScanProgrammePage: React.FC = () => {
         editeur: m.editeur,
         type: (m.type as TypeItem) || 'livre',
         quantite: 1,
+        prix: typeof m.prix_officiel === 'number' ? m.prix_officiel : parseFloat(m.prix_officiel ?? '') || undefined,
         selected: true,
       }));
       setItems(fromJob);
@@ -305,11 +334,13 @@ const ScanProgrammePage: React.FC = () => {
       matiere: it.matiere,
       type: it.type,
       editeur: it.editeur,
+      prixNeuf: it.prix,
+      quantite: it.quantite ?? 1,
       choix: 'indifferent' as const,
     })));
     setSaving(false);
     toast({ title: `${selected.length} article${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''} à votre sélection` });
-    navigate('/recap');
+    setStep('next-action');
   };
 
   const addToCart = () => {
@@ -626,6 +657,86 @@ const ScanProgrammePage: React.FC = () => {
     );
   }
 
+  /* ── NEXT ACTION — après ajout, proposer scan autre classe ou récap ── */
+  if (step === 'next-action') {
+    const autresEnfants = enfants.filter(e => e.id !== selectedEnfantId);
+    const resetForNewScan = () => {
+      setFiles([]);
+      setItems([]);
+      setDetection(null);
+      setEtablissement('');
+      setError('');
+      setStep('pick');
+    };
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="bg-amber-600 px-5 pt-12 pb-8 text-white text-center">
+          <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+            <CheckSquare className="w-7 h-7 text-white" />
+          </div>
+          <h1 className="text-xl font-bold mb-1">Ajouté à votre sélection</h1>
+          <p className="text-amber-100 text-sm">Que souhaitez-vous faire maintenant ?</p>
+        </div>
+
+        <div className="flex-1 px-5 pt-6 pb-10 max-w-2xl mx-auto w-full space-y-3">
+          <button onClick={resetForNewScan}
+            className="w-full flex items-center gap-4 bg-white border-2 border-amber-200 rounded-2xl px-4 py-4 active:bg-amber-50 text-left">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center shrink-0">
+              <Camera className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-gray-900 text-sm">Scanner une autre liste</p>
+              <p className="text-xs text-gray-500">Pour un autre enfant ou une autre classe</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-amber-400" />
+          </button>
+
+          <button onClick={() => { setItems([]); setFiles([]); setStep('details'); }}
+            className="w-full flex items-center gap-4 bg-white border-2 border-blue-200 rounded-2xl px-4 py-4 active:bg-blue-50 text-left">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center shrink-0">
+              <Search className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-gray-900 text-sm">Rechercher le programme d'une autre classe</p>
+              <p className="text-xs text-gray-500">Depuis le référentiel national / établissement</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-blue-400" />
+          </button>
+
+          {autresEnfants.length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">
+                Vos autres enfants / classes
+              </p>
+              <div className="space-y-1.5">
+                {autresEnfants.map(e => (
+                  <button key={e.id} onClick={() => {
+                    setSelectedEnfantId(e.id);
+                    setItems([]); setFiles([]); setStep('details');
+                  }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-gray-50 text-left">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">{e.prenom}</p>
+                      <p className="text-xs text-gray-500">{e.classe}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button onClick={() => navigate('/recap')}
+            className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg mt-6">
+            <ShoppingCart className="w-5 h-5" />
+            Terminer & voir mon récapitulatif
+            <ChevronRight className="w-4 h-4 ml-auto" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   /* ── DONE ── */
   if (step === 'done') {
     return (
@@ -762,34 +873,74 @@ const ScanProgrammePage: React.FC = () => {
 
         <div className="space-y-2">
           {items.map((item, i) => (
-            <button key={i} onClick={() => toggleItem(i)}
-              className={`w-full flex items-start gap-3 p-3.5 rounded-2xl border transition-colors text-left ${
+            <div key={i}
+              className={`w-full rounded-2xl border transition-colors ${
                 item.selected ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-100'
               }`}>
-              <div className={`w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center shrink-0 ${
-                item.selected ? 'bg-amber-500 border-amber-500' : 'border-gray-300'
-              }`}>
-                {item.selected && <span className="text-white text-xs font-bold">✓</span>}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold leading-tight ${item.selected ? 'text-amber-900' : 'text-gray-800'}`}>
-                  {item.titre}
-                </p>
-                {item.auteur && <p className="text-xs text-gray-500 mt-0.5">{item.auteur}</p>}
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {item.matiere && (
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{item.matiere}</span>
-                  )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                    item.type === 'livre' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                    item.type === 'cahier' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                    'bg-gray-50 text-gray-600 border-gray-200'
-                  }`}>{item.type}</span>
+              <div className="flex items-start gap-3 p-3.5">
+                <button onClick={() => toggleItem(i)} className="shrink-0 mt-0.5" aria-label="Sélectionner">
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
+                    item.selected ? 'bg-amber-500 border-amber-500' : 'border-gray-300'
+                  }`}>
+                    {item.selected && <span className="text-white text-xs font-bold">✓</span>}
+                  </div>
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold leading-tight ${item.selected ? 'text-amber-900' : 'text-gray-800'}`}>
+                    {item.titre}
+                  </p>
+                  {item.auteur && <p className="text-xs text-gray-500 mt-0.5">{item.auteur}</p>}
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {item.matiere && (
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{item.matiere}</span>
+                    )}
+                    {item.editeur && (
+                      <span className="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full">
+                        Éditeur : {item.editeur}
+                      </span>
+                    )}
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                      item.type === 'livre' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                      item.type === 'cahier' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      (item.type as any) === 'workbook' ? 'bg-teal-50 text-teal-700 border-teal-200' :
+                      'bg-gray-50 text-gray-600 border-gray-200'
+                    }`}>{item.type}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-gray-100">
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => adjustQuantite(i, -1)}
+                        disabled={(item.quantite ?? 1) <= 1}
+                        className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center disabled:opacity-40">
+                        <Minus className="w-3.5 h-3.5 text-gray-600" />
+                      </button>
+                      <span className="text-sm font-semibold text-gray-800 w-7 text-center">{item.quantite ?? 1}</span>
+                      <button onClick={() => adjustQuantite(i, 1)}
+                        className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center">
+                        <Plus className="w-3.5 h-3.5 text-gray-600" />
+                      </button>
+                      <button onClick={() => duplicateItem(i)}
+                        className="ml-2 px-2 h-7 rounded-full bg-white border border-gray-200 flex items-center gap-1 text-xs text-gray-600"
+                        title="Dupliquer (2e enfant, même livre)">
+                        <Copy className="w-3 h-3" /> Dupliquer
+                      </button>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-400">Prix unitaire</p>
+                      <p className="text-sm font-bold text-amber-700">{formatPrix(item.prix, pays)}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
+
+        {totalEstime > 0 && (
+          <div className="mt-4 bg-white border border-amber-200 rounded-2xl p-3 flex items-center justify-between">
+            <span className="text-sm text-gray-600">Total estimé ({selectedCount} article{selectedCount > 1 ? 's' : ''})</span>
+            <span className="text-lg font-bold text-amber-700">{formatPrix(totalEstime, pays)}</span>
+          </div>
+        )}
       </div>
 
       <div className="fixed bottom-16 left-0 right-0 px-4 pb-2 z-40 max-w-2xl mx-auto">

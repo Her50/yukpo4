@@ -1917,13 +1917,18 @@ CONTEXTE :
 DOCUMENT : Liste officielle de manuels, fournitures et matériel scolaire émise par un établissement scolaire. Peut être une photo de smartphone, un scan ou un PDF — parfois partiel, flou, ou partiellement manuscrit. La langue du document peut être française, anglaise, arabe, espagnole, ou autre.
 
 RÈGLES D'EXTRACTION EXHAUSTIVE :
-1. Extraire TOUTES les lignes : manuels scolaires, cahiers, fournitures, accessoires
+1. Extraire TOUTES les lignes : manuels scolaires, cahiers d'exercices (workbook/livret), fournitures, accessoires
 2. Si une classe ou série (ex: A, C, D, Sciences, Lettres, Form 4, Year 9…) est visible sur le document, l'utiliser en priorité sur la valeur déclarée
 3. Retranscrire les titres tels quels (majuscules, abréviations comprises)
-4. Prix dans la devise locale — extraire la valeur numérique brute
+4. Prix dans la devise locale — extraire la valeur numérique brute. Si un prix "ensemble" couvre plusieurs articles d'une même ligne, le répartir (si clair) ou le mettre uniquement sur l'article principal (livre de l'élève).
 5. "est_obligatoire" = true si "O", "Oblig.", "✓", "Required", "Must", souligné, ou aucune mention ; false si "R", "Optionnel", "Recommended", "Facultatif"
 6. Si le document est illisible ou vide, retourner livres:[] avec confidence < 0.3 et une note explicative
 7. Ne pas inventer des titres non visibles dans le document
+8. SÉPARATION CRITIQUE : si une ligne regroupe plusieurs articles distincts (ex: "Innovative Mathematics class 1 + Work Bk1", "Parlons Français 6ème + Livret d'activités", "Winners in English + Workbook", "Méthode de lecture + Cahier d'exercices"), créer DEUX entrées distinctes :
+   - Article principal → type_article="livre", titre = titre original nettoyé (sans "+ Workbook…")
+   - Article secondaire → type_article="workbook" si cahier d'exercices/livret/work book, "cahier" sinon ; titre = "{titre principal} — Workbook" ou "{titre principal} — Livret"
+   Les deux partagent matière, classe et éditeur.
+9. Éditeur : toujours extraire quand mentionné (NATHAN, CLE, MONDOUX, CAMBRIDGE, NMI, HABIBI, HUEBER, BELIN, etc.). L'éditeur suit souvent le titre ou l'auteur, parfois en colonne séparée.
 
 MÉTADONNÉES À EXTRAIRE DE L'EN-TÊTE :
 - etablissement_detecte : nom de l'école (null si non visible)
@@ -1935,15 +1940,26 @@ RÉPONSE — JSON BRUT UNIQUEMENT, sans texte avant ni après, sans bloc markdow
 {{
     "livres": [
         {{
-            "titre": "Mathématiques Terminale C",
-            "auteur": "CEPER",
-            "editeur": null,
+            "titre": "Innovative Mathematics class 1",
+            "auteur": null,
+            "editeur": "NMI",
             "isbn": null,
-            "classe": "Tle C",
-            "matiere": "Mathématiques",
+            "classe": "Class 1",
+            "matiere": "Mathematics",
             "prix_officiel": 4500.0,
             "est_obligatoire": true,
             "type_article": "livre"
+        }},
+        {{
+            "titre": "Innovative Mathematics class 1 — Workbook",
+            "auteur": null,
+            "editeur": "NMI",
+            "isbn": null,
+            "classe": "Class 1",
+            "matiere": "Mathematics",
+            "prix_officiel": null,
+            "est_obligatoire": true,
+            "type_article": "workbook"
         }}
     ],
     "accessoires": [
