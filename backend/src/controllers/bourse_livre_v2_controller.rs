@@ -2866,43 +2866,95 @@ async fn do_programme_extraction(
             .clone()
             .or_else(|| payload.niveaux.first().cloned())
             .unwrap_or_else(|| "Toutes".to_string());
-        if let Ok(rows) = sqlx::query(
-            r#"SELECT nom, quantite_mediane, gamme_defaut, prix_median
-               FROM accessoires_populaires_par_classe
-               WHERE pays = $1
-                 AND (classe ILIKE $2 OR niveau ILIKE $3)
-               ORDER BY occurrences DESC
-               LIMIT 15"#,
-        )
-        .bind(&pays)
-        .bind(format!("%{}%", classe_sug))
-        .bind(&niveau_label)
-        .fetch_all(&state.pg)
-        .await
-        {
-            use sqlx::Row;
-            for row in rows {
-                let nom: Option<String> = row.try_get("nom").ok();
-                let qte: Option<i32> = row.try_get("quantite_mediane").ok().flatten();
-                let gamme: Option<String> = row.try_get("gamme_defaut").ok().flatten();
-                let prix: Option<rust_decimal::Decimal> = row.try_get("prix_median").ok().flatten();
-                if let Some(nom) = nom {
-                    manuels_extraits.push(json!({
-                        "id": 0,
-                        "titre": nom,
-                        "auteur": null,
-                        "editeur": null,
-                        "matiere": "Fournitures",
-                        "classe": classe_sug,
-                        "type": "fourniture",
-                        "quantite_defaut": qte.unwrap_or(1),
-                        "gamme": gamme,
-                        "prix_officiel": prix.and_then(|p| p.to_string().parse::<f64>().ok()),
-                        "est_obligatoire": false,
-                        "source": "suggestion",
-                    }));
+
+        // Priorité 1 : accessoires historisés pour CET établissement sur CETTE classe
+        // (issus des scans/commandes précédents de parents du même établissement).
+        // Fallback sur l'agrégat national accessoires_populaires_par_classe.
+        let mut suggestions_rows: Vec<(
+            String,
+            Option<i32>,
+            Option<String>,
+            Option<rust_decimal::Decimal>,
+        )> = Vec::new();
+
+        if let Some(eid) = etablissement_id_final {
+            if let Ok(rows) = sqlx::query(
+                r#"SELECT titre_livre AS nom,
+                          NULL::INT AS quantite_mediane,
+                          NULL::TEXT AS gamme_defaut,
+                          prix_officiel AS prix_median
+                   FROM programmes_scolaires
+                   WHERE is_active = true
+                     AND etablissement_id = $1
+                     AND classe ILIKE $2
+                     AND type IN ('fourniture', 'accessoire')
+                   ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
+                   LIMIT 15"#,
+            )
+            .bind(eid)
+            .bind(format!("%{}%", classe_sug))
+            .fetch_all(&state.pg)
+            .await
+            {
+                use sqlx::Row;
+                for row in rows {
+                    let nom: Option<String> = row.try_get("nom").ok();
+                    let qte: Option<i32> = row.try_get("quantite_mediane").ok().flatten();
+                    let gamme: Option<String> = row.try_get("gamme_defaut").ok().flatten();
+                    let prix: Option<rust_decimal::Decimal> =
+                        row.try_get("prix_median").ok().flatten();
+                    if let Some(nom) = nom {
+                        suggestions_rows.push((nom, qte, gamme, prix));
+                    }
                 }
             }
+        }
+
+        // Fallback national si pas d'historique établissement
+        if suggestions_rows.is_empty() {
+            if let Ok(rows) = sqlx::query(
+                r#"SELECT nom, quantite_mediane, gamme_defaut, prix_median
+                   FROM accessoires_populaires_par_classe
+                   WHERE pays = $1
+                     AND (classe ILIKE $2 OR niveau ILIKE $3)
+                   ORDER BY occurrences DESC
+                   LIMIT 15"#,
+            )
+            .bind(&pays)
+            .bind(format!("%{}%", classe_sug))
+            .bind(&niveau_label)
+            .fetch_all(&state.pg)
+            .await
+            {
+                use sqlx::Row;
+                for row in rows {
+                    let nom: Option<String> = row.try_get("nom").ok();
+                    let qte: Option<i32> = row.try_get("quantite_mediane").ok().flatten();
+                    let gamme: Option<String> = row.try_get("gamme_defaut").ok().flatten();
+                    let prix: Option<rust_decimal::Decimal> =
+                        row.try_get("prix_median").ok().flatten();
+                    if let Some(nom) = nom {
+                        suggestions_rows.push((nom, qte, gamme, prix));
+                    }
+                }
+            }
+        }
+
+        for (nom, qte, gamme, prix) in suggestions_rows {
+            manuels_extraits.push(json!({
+                "id": 0,
+                "titre": nom,
+                "auteur": null,
+                "editeur": null,
+                "matiere": "Fournitures",
+                "classe": classe_sug,
+                "type": "fourniture",
+                "quantite_defaut": qte.unwrap_or(1),
+                "gamme": gamme,
+                "prix_officiel": prix.and_then(|p| p.to_string().parse::<f64>().ok()),
+                "est_obligatoire": false,
+                "source": "suggestion",
+            }));
         }
     }
 

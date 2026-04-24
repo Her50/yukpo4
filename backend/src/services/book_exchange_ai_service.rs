@@ -1926,7 +1926,7 @@ RÈGLES D'EXTRACTION EXHAUSTIVE :
 7. Ne pas inventer des titres non visibles dans le document
 8. SÉPARATION CRITIQUE : si une ligne regroupe plusieurs articles distincts (ex: "Innovative Mathematics class 1 + Work Bk1", "Parlons Français 6ème + Livret d'activités", "Winners in English + Workbook", "Méthode de lecture + Cahier d'exercices"), créer DEUX entrées distinctes :
    - Article principal → type_article="livre", titre = titre original nettoyé (sans "+ Workbook…")
-   - Article secondaire → type_article="workbook" si cahier d'exercices/livret/work book, "cahier" sinon ; titre = "{titre principal} — Workbook" ou "{titre principal} — Livret"
+   - Article secondaire → type_article="workbook" si cahier d'exercices/livret/work book, "cahier" sinon ; titre = "{{titre principal}} — Workbook" ou "{{titre principal}} — Livret"
    Les deux partagent matière, classe et éditeur.
 9. Éditeur : toujours extraire quand mentionné (NATHAN, CLE, MONDOUX, CAMBRIDGE, NMI, HABIBI, HUEBER, BELIN, etc.). L'éditeur suit souvent le titre ou l'auteur, parfois en colonne séparée.
 10. SECTION ACCESSOIRES / FOURNITURES — OBLIGATOIRE À EXPLORER. Les listes primaires et collège contiennent presque toujours une section "FOURNITURES SCOLAIRES", "MATÉRIEL", "ACCESSOIRES", "ARTICLES DIVERS", "PAPETERIE", parfois en bas ou au verso du document, parfois sous forme de tableau ou liste à puces. Scanner cette section systématiquement et extraire :
