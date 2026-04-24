@@ -41,9 +41,10 @@ export interface SystemeScolaire {
 
 /* ─── Séries standard réutilisables ─── */
 
-/** Lycée général francophone Cameroun — 1ère et Terminale */
+/** Lycée général francophone Cameroun — 1ère et Terminale (MINESEC 2025-2026) */
 const SERIES_LYCEE_CM_FR: Serie[] = [
   { code: 'A', label: 'Lettres & Sciences humaines' },
+  { code: 'SES', label: 'Sciences Économiques & Sociales' },
   { code: 'B', label: 'Lettres bilingues' },
   { code: 'C', label: 'Maths & Sciences physiques' },
   { code: 'D', label: 'Maths & Sciences de la Vie' },
@@ -51,10 +52,13 @@ const SERIES_LYCEE_CM_FR: Serie[] = [
   { code: 'TI', label: 'Technologie de l\'Information' },
 ];
 
-/** 2nde au lycée général francophone (orientation — Cameroun, Gabon, Congo) */
+/** 2nde au lycée général francophone Cameroun (MINESEC) + variante GA/CG */
 const SERIES_SECONDE_FR: Serie[] = [
-  { code: 'A', label: 'Lettres (orientation)' },
-  { code: 'C', label: 'Sciences (orientation)' },
+  { code: 'A', label: 'Lettres' },
+  { code: 'SES', label: 'Sciences Économiques & Sociales' },
+  { code: 'C', label: 'Maths & Sciences physiques' },
+  { code: 'E', label: 'Maths & Technique' },
+  { code: 'AC', label: 'Arts Cinématographiques' },
 ];
 
 /** Lycée général GA/CG/CD — 1ère et Terminale (séries sans B ni E/TI) */
