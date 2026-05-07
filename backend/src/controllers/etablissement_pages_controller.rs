@@ -765,56 +765,7 @@ pub async fn delete_evenement(
     Ok((StatusCode::OK, Json(json!({ "ok": true }))))
 }
 
-/// POST /api/v2/admin/bootstrap/promote-self?token=...
-/// Endpoint de bootstrap : promeut l'utilisateur connecté en `admin` ET crée
-/// pour lui un `librairie_partners` super_librairie actif si absent.
-/// Protégé par un token secret (env var YUKPO_BOOTSTRAP_TOKEN).
-/// Permet au fondateur de débloquer son compte la première fois.
-#[derive(Debug, Deserialize)]
-pub struct BootstrapQuery {
-    pub token: String,
-}
-
-pub async fn bootstrap_promote_self(
-    State(state): State<Arc<AppState>>,
-    Query(params): Query<BootstrapQuery>,
-    Extension(AuthenticatedUser {
-        id: user_id,
-        role: _,
-    }): Extension<AuthenticatedUser>,
-) -> AppResult<impl IntoResponse> {
-    let expected = std::env::var("YUKPO_BOOTSTRAP_TOKEN").unwrap_or_default();
-    if expected.is_empty() || params.token != expected {
-        return Err(AppError::Forbidden(
-            "Token de bootstrap invalide".to_string(),
-        ));
-    }
-
-    // 1. Promotion en admin
-    sqlx::query("UPDATE users SET role = 'admin' WHERE id = $1")
-        .bind(user_id)
-        .execute(&state.pg)
-        .await
-        .map_err(|e| AppError::Database(format!("promote admin: {}", e)))?;
-
-    // 2. S'assurer qu'au moins un super-libraire actif existe (ne dépend pas
-    // du schéma exact de librairie_partners — best-effort uniquement).
-    let _ = sqlx::query(
-        "UPDATE librairie_partners SET est_super_librairie = true, est_actif = true WHERE id = (SELECT id FROM librairie_partners ORDER BY created_at DESC LIMIT 1)",
-    )
-    .execute(&state.pg)
-    .await;
-
-    Ok((
-        StatusCode::OK,
-        Json(json!({
-            "ok": true,
-            "user_id": user_id,
-            "role": "admin",
-            "message": "Compte promu admin + super libraire activé",
-        })),
-    ))
-}
+// Endpoint bootstrap_promote_self supprimé après usage initial (2026-05-07).
 
 /// POST /api/v2/admin/etablissement/{id}/claim
 /// Permet à un utilisateur ADMIN (ou super_admin) de devenir gérant d'un

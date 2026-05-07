@@ -50,7 +50,7 @@ pub enum LibrairieStatut {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct CommandeMixte {
     pub id: Uuid,
-    pub user_id: Uuid,
+    pub user_id: i32,
     pub reference_commande: String, // Format: CMD-2025-XXXXX
     pub budget_total: f64,
     pub devise: String,

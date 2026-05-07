@@ -438,11 +438,6 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/v2/admin/etablissement/create-demo",
             post(etablissement_pages_controller::create_demo_etablissement),
         )
-        // Endpoint bootstrap : promotion self admin (protégé par token)
-        .route(
-            "/api/v2/admin/bootstrap/promote-self",
-            post(etablissement_pages_controller::bootstrap_promote_self),
-        )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     Router::new()
