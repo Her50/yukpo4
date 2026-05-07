@@ -1,8 +1,8 @@
 // ✅ Page de création/édition d'un livre scolaire (Frontend)
 
-import { ArrowLeft, BookOpen, Loader2, MapPin } from 'lucide-react';
+import { ArrowLeft, BookOpen, Gift, Loader2, MapPin, Repeat, ShoppingBag } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
@@ -15,11 +15,31 @@ import { apiGet, apiPost, apiPut } from '../../services/apiService';
 const niveaux = ['Primaire', 'Collège', 'Lycée'];
 const etats = ['Neuf', 'Très bon', 'Bon', 'Acceptable'];
 
+type ModeListing = 'troc' | 'vente' | 'don';
+const MODE_LABELS: Record<ModeListing, string> = {
+    troc: 'Échanger (troc)',
+    vente: 'Vendre',
+    don: 'Donner',
+};
+const MODE_DESCRIPTIONS: Record<ModeListing, string> = {
+    troc: 'Échanger contre un autre livre dont j\'ai besoin',
+    vente: 'Mettre en vente d\'occasion (sans troc)',
+    don: 'Donner gratuitement',
+};
+
 const LivreScolaireFormPage: React.FC = () => {
     const { livreId } = useParams<{ livreId?: string }>();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { toast } = useToast();
     const mode = livreId ? 'edit' : 'create';
+
+    // Mode listing pré-sélectionné via URL (?mode=vente) ; défaut 'troc' (cohérent avec backend).
+    const initialMode: ModeListing = (() => {
+        const m = searchParams.get('mode');
+        return m === 'vente' || m === 'don' ? m : 'troc';
+    })();
+    const [modeListing, setModeListing] = useState<ModeListing>(initialMode);
 
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -183,6 +203,7 @@ const LivreScolaireFormPage: React.FC = () => {
                 gps: gpsCoordinates.lat && gpsCoordinates.lng
                     ? `${gpsCoordinates.lat},${gpsCoordinates.lng}`
                     : null,
+                mode_listing: modeListing,
             };
 
             let response;
@@ -226,12 +247,20 @@ const LivreScolaireFormPage: React.FC = () => {
                             <BookOpen className="h-8 w-8 text-indigo-600" />
                             <div>
                                 <CardTitle className="text-2xl">
-                                    {mode === 'edit' ? 'Modifier le livre' : 'Créer un livre'}
+                                    {mode === 'edit'
+                                        ? 'Modifier le livre'
+                                        : modeListing === 'vente' ? 'Vendre un livre d\'occasion'
+                                        : modeListing === 'don' ? 'Donner un livre'
+                                        : 'Mettre un livre au troc'}
                                 </CardTitle>
                                 <CardDescription>
                                     {mode === 'edit'
                                         ? 'Modifiez les informations de votre livre'
-                                        : 'Publiez un livre scolaire pour l\'échanger'}
+                                        : modeListing === 'vente'
+                                        ? 'Mise en vente directe — pas de troc, vente à un acheteur via Yukpo'
+                                        : modeListing === 'don'
+                                        ? 'Faites un geste solidaire en donnant ce livre gratuitement'
+                                        : 'Échangez ce livre contre un livre dont vous avez besoin'}
                                 </CardDescription>
                             </div>
                         </div>
@@ -242,6 +271,41 @@ const LivreScolaireFormPage: React.FC = () => {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                    {/* Sélecteur de mode (uniquement en création) */}
+                    {mode === 'create' && (
+                        <div className="space-y-2">
+                            <Label>Type d'annonce *</Label>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                {(['troc', 'vente', 'don'] as ModeListing[]).map(m => {
+                                    const isActive = modeListing === m;
+                                    const Icon = m === 'troc' ? Repeat : m === 'vente' ? ShoppingBag : Gift;
+                                    return (
+                                        <button
+                                            key={m}
+                                            type="button"
+                                            onClick={() => setModeListing(m)}
+                                            className={`flex items-start gap-2 p-3 rounded-xl border-2 text-left transition-colors ${
+                                                isActive
+                                                    ? m === 'vente'
+                                                        ? 'bg-orange-50 border-orange-400 text-orange-900'
+                                                        : m === 'don'
+                                                        ? 'bg-emerald-50 border-emerald-400 text-emerald-900'
+                                                        : 'bg-amber-50 border-amber-400 text-amber-900'
+                                                    : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <Icon className="w-4 h-4 shrink-0 mt-0.5" />
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-bold leading-tight">{MODE_LABELS[m]}</p>
+                                                <p className="text-[11px] opacity-75 leading-tight mt-0.5">{MODE_DESCRIPTIONS[m]}</p>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Titre */}
                     <div className="space-y-2">
                         <Label htmlFor="titre">Titre du livre *</Label>

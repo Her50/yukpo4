@@ -250,51 +250,53 @@ const CM_FRANCOPHONE: SystemeScolaire = {
       ],
     },
     {
-      nom: 'Collège',
+      // Au Cameroun, "Collège" et "Lycée général" sont interchangeables :
+      // les deux types d'établissements couvrent tout le secondaire (6ème → Tle).
+      // On regroupe donc en un seul niveau "Secondaire général".
+      nom: 'Secondaire général',
       classes: [
         { nom: '6ème' }, { nom: '5ème' }, { nom: '4ème' }, { nom: '3ème' },
-      ],
-    },
-    {
-      nom: 'Lycée général',
-      classes: [
         { nom: '2nde', series: SERIES_SECONDE_FR },
         { nom: '1ère', series: SERIES_LYCEE_CM_FR },
         { nom: 'Tle', series: SERIES_LYCEE_CM_FR },
       ],
     },
     {
-      nom: 'Lycée technique — Industriel',
+      // Au Cameroun, un Lycée Technique (ou CETIC) intègre TOUTES les filières
+      // (industrielle, commerciale, agro-pastorale, hôtelière) dans un seul
+      // établissement. On regroupe donc en un seul niveau, avec les voies
+      // distinguées par la classe (2nde F/G/EA/HR puis 1ère/Tle par voie).
+      nom: 'Lycée/Collège technique',
       classes: [
-        { nom: '6ème TI' }, { nom: '5ème TI' }, { nom: '4ème TI' }, { nom: '3ème TI' },
-        { nom: '2nde F', series: SERIES_2NDE_F_CM },
-        { nom: '1ère', series: SERIES_TECHNIQUE_INDUSTRIEL_CM },
-        { nom: 'Tle', series: SERIES_TECHNIQUE_INDUSTRIEL_CM },
-      ],
-    },
-    {
-      nom: 'Lycée technique — Commercial',
-      classes: [
-        { nom: '6ème CG' }, { nom: '5ème CG' }, { nom: '4ème CG' }, { nom: '3ème CG' },
-        { nom: '2nde G', series: SERIES_2NDE_G_CM },
-        { nom: '1ère', series: SERIES_TECHNIQUE_COMMERCIAL_CM },
-        { nom: 'Tle', series: SERIES_TECHNIQUE_COMMERCIAL_CM },
-      ],
-    },
-    {
-      nom: 'Lycée agro-pastoral',
-      classes: [
-        { nom: '2nde EA' },
-        { nom: '1ère', series: SERIES_AGRO_CM },
-        { nom: 'Tle', series: SERIES_AGRO_CM },
-      ],
-    },
-    {
-      nom: 'Lycée hôtellerie & restauration',
-      classes: [
-        { nom: '2nde HR' },
-        { nom: '1ère', series: SERIES_HOTELLERIE_CM },
-        { nom: 'Tle', series: SERIES_HOTELLERIE_CM },
+        // Sous-cycle technique (1er cycle, 6ème → 3ème) — toutes les filières
+        // proposées dans les CETIC / Lycées Techniques camerounais.
+        // TI = Technologie Industrielle, CG = Commerce-Gestion,
+        // MB = Menuiserie-Bois, ESF = Économie Sociale Familiale,
+        // HC = Habillement-Couture, BTP = Bâtiment / Travaux Publics,
+        // MA = Mécanique Auto.
+        { nom: '6ème TI' }, { nom: '6ème CG' }, { nom: '6ème MB' },
+        { nom: '6ème ESF' }, { nom: '6ème HC' }, { nom: '6ème BTP' }, { nom: '6ème MA' },
+        { nom: '5ème TI' }, { nom: '5ème CG' }, { nom: '5ème MB' },
+        { nom: '5ème ESF' }, { nom: '5ème HC' }, { nom: '5ème BTP' }, { nom: '5ème MA' },
+        { nom: '4ème TI' }, { nom: '4ème CG' }, { nom: '4ème MB' },
+        { nom: '4ème ESF' }, { nom: '4ème HC' }, { nom: '4ème BTP' }, { nom: '4ème MA' },
+        { nom: '3ème TI' }, { nom: '3ème CG' }, { nom: '3ème MB' },
+        { nom: '3ème ESF' }, { nom: '3ème HC' }, { nom: '3ème BTP' }, { nom: '3ème MA' },
+        // 2nde — entrée du second cycle, par voie
+        { nom: '2nde F',  series: SERIES_2NDE_F_CM },           // industrielle
+        { nom: '2nde G',  series: SERIES_2NDE_G_CM },           // commerciale
+        { nom: '2nde EA' },                                      // agro-pastoral
+        { nom: '2nde HR' },                                      // hôtellerie
+        // 1ère — par voie
+        { nom: '1ère F',  series: SERIES_TECHNIQUE_INDUSTRIEL_CM },
+        { nom: '1ère G',  series: SERIES_TECHNIQUE_COMMERCIAL_CM },
+        { nom: '1ère EA', series: SERIES_AGRO_CM },
+        { nom: '1ère HR', series: SERIES_HOTELLERIE_CM },
+        // Terminale — par voie
+        { nom: 'Tle F',   series: SERIES_TECHNIQUE_INDUSTRIEL_CM },
+        { nom: 'Tle G',   series: SERIES_TECHNIQUE_COMMERCIAL_CM },
+        { nom: 'Tle EA',  series: SERIES_AGRO_CM },
+        { nom: 'Tle HR',  series: SERIES_HOTELLERIE_CM },
       ],
     },
     {

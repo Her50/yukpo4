@@ -42,7 +42,7 @@ const GlowCTA: React.FC<GlowCTAProps> = ({
                 animate={{ scale: [1, 1.04, 1], opacity: 1 }}
                 transition={{ duration: 0.6, repeat: Infinity, repeatType: 'mirror', ease: 'easeInOut' }}
                 style={{ background: theme.secondary }}
-                onClick={(event) => {
+                onClick={(event: React.MouseEvent<HTMLAnchorElement>) => {
                     if (!url) {
                         event.preventDefault();
                     }

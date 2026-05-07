@@ -389,15 +389,14 @@ impl GpuService {
             }
         }
 
-        // Toutes les tentatives ont échoué
+        // Toutes les tentatives ont échoué — passé en `debug!` pour ne pas
+        // polluer les logs Cloud Logging (1 ligne toutes les 60s = facture).
+        // Le worker GPU est souvent absent en dev/preview ; ce n'est pas une
+        // erreur applicative. On garde l'info en debug.
         let error_msg = last_error.unwrap_or_else(|| "Erreur inconnue".to_string());
-        warn!(
-            "[GpuService] ⚠️ Impossible de récupérer métriques GPU après {} tentatives: {} - Utilisation par défaut",
-            max_retries,
-            error_msg
-        );
         log::debug!(
-            "[GpuService] Endpoint GPU: {}, Dernière erreur: {}",
+            "[GpuService] Métriques GPU indisponibles ({} tentatives, endpoint={}): {} — fallback métriques locales",
+            max_retries,
             endpoint,
             error_msg
         );
@@ -572,13 +571,12 @@ impl GpuService {
                 }
             }
             Ok(resp) => {
-                warn!(
-                    "[GpuService] ⚠️ Worker GPU non prêt (HTTP {})",
-                    resp.status()
-                );
+                log::debug!("[GpuService] Worker GPU non prêt (HTTP {})", resp.status());
             }
             Err(e) => {
-                warn!("[GpuService] ⚠️ Worker GPU injoignable: {}", e);
+                // Passé en `debug!` — ce log était émis toutes les 60s et
+                // engendrait des $ inutiles en Cloud Logging.
+                log::debug!("[GpuService] Worker GPU injoignable: {}", e);
                 // Mettre active_instances à 0 si le worker est down
                 let mut metrics = self.metrics.write().await;
                 metrics.active_instances = 0;

@@ -45,6 +45,7 @@ pub mod creator_analytics_controller; // ✅ NOUVEAU: Contrôleur pour analytics
 pub mod debug_controller;
 pub mod duet_remix_controller; // ✅ NOUVEAU: Contrôleur pour duet/remix
 pub mod embedding_controller;
+pub mod etablissement_pages_controller; // ✅ 2026-05-07: Pages Officielles Établissements (CMS multi-blocs)
 pub mod export_controller; // ✅ NOUVEAU Phase 2.3: Contrôleur pour jobs d'export vidéo
 pub mod extended_audio_controller; // ✅ NOUVEAU Phase 2.2: Contrôleur pour bibliothèque audio étendue
 pub mod flash_promo_controller; // ✅ NOUVEAU: Contrôleur pour flash promotionnels de produits (gratuit)

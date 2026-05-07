@@ -8,6 +8,7 @@ use axum::{
 use std::sync::Arc;
 
 use crate::controllers::bourse_livre_v2_controller;
+use crate::controllers::etablissement_pages_controller;
 use crate::controllers::livres_scolaires_controller;
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -192,6 +193,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/v2/match-programme",
             post(bourse_livre_v2_controller::match_livre_programme),
         )
+        // Matching IA batch par titre (sans livre_id) — utilisé après scan pour
+        // retrouver prix_officiel des items extraits via pg_trgm + IA fuzzy fallback
+        .route(
+            "/api/bourse-livre/v2/match-programmes-by-title",
+            post(bourse_livre_v2_controller::match_programmes_by_title),
+        )
         // Achats directs (sans échange)
         .route(
             "/api/bourse-livre/v2/purchases",
@@ -365,11 +372,81 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         post(bourse_livre_v2_controller::book_purchase_webhook),
     );
 
+    // ─────────────────────────────────────────────────────────────────────
+    // ✅ 2026-05-07 : Pages Officielles Établissements (CMS multi-blocs)
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Routes publiques (sans JWT) — recherche & consultation page école
+    let etab_public_routes = Router::new()
+        .route(
+            "/api/v2/etablissements/search",
+            get(etablissement_pages_controller::search_etablissements),
+        )
+        .route(
+            "/api/v2/ecole/{slug}",
+            get(etablissement_pages_controller::get_ecole_publique),
+        )
+        .route(
+            "/api/v2/ecole/{slug}/classe/{classe}/programme",
+            get(etablissement_pages_controller::get_programme_classe_etablissement),
+        );
+
+    // Routes admin (JWT requis) — gérant de l'établissement
+    let etab_admin_routes = Router::new()
+        .route(
+            "/api/v2/admin/etablissement/mes-etablissements",
+            get(etablissement_pages_controller::get_my_etablissements),
+        )
+        .route(
+            "/api/v2/admin/etablissement/{id}/blocs",
+            get(etablissement_pages_controller::get_blocs_admin),
+        )
+        .route(
+            "/api/v2/admin/etablissement/{id}/bloc/{type_bloc}",
+            axum::routing::put(etablissement_pages_controller::upsert_bloc),
+        )
+        .route(
+            "/api/v2/admin/etablissement/{id}/publier",
+            post(etablissement_pages_controller::publier_page),
+        )
+        .route(
+            "/api/v2/admin/etablissement/{id}/annonces",
+            post(etablissement_pages_controller::create_annonce),
+        )
+        .route(
+            "/api/v2/admin/etablissement/{id}/annonces/{annonce_id}",
+            axum::routing::delete(etablissement_pages_controller::delete_annonce),
+        )
+        .route(
+            "/api/v2/admin/etablissement/{id}/evenements",
+            post(etablissement_pages_controller::create_evenement),
+        )
+        .route(
+            "/api/v2/admin/etablissement/{id}/evenements/{event_id}",
+            axum::routing::delete(etablissement_pages_controller::delete_evenement),
+        )
+        .route(
+            "/api/v2/admin/etablissement/{id}/stats",
+            get(etablissement_pages_controller::get_stats),
+        )
+        // Endpoints réservés aux admins (test / démo)
+        .route(
+            "/api/v2/admin/etablissement/{id}/claim",
+            post(etablissement_pages_controller::claim_etablissement),
+        )
+        .route(
+            "/api/v2/admin/etablissement/create-demo",
+            post(etablissement_pages_controller::create_demo_etablissement),
+        )
+        .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
+
     Router::new()
         .merge(public_routes)
         .merge(protected_routes)
         .merge(v2_public_routes)
         .merge(v2_protected_routes)
         .merge(webhook_routes)
+        .merge(etab_public_routes)
+        .merge(etab_admin_routes)
         .with_state(state)
 }

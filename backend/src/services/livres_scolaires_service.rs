@@ -19,16 +19,36 @@ impl LivresScolairesService {
         Self { pool }
     }
 
-    /// Créer un livre scolaire
+    /// Créer un livre scolaire.
+    ///
+    /// Harmonisé avec le finalize V2 mobile : `mode_listing` est honoré (défaut
+    /// `'troc'`) et `situation_troc` est dérivée :
+    ///   - `mode_listing='troc'` → `situation_troc='offre_demande'`
+    ///   - `mode_listing IN ('vente','don')` → `situation_troc='offre'`
     pub async fn create_livre_scolaire(
         &self,
         user_id: i32,
         request: CreateLivreScolaireRequest,
     ) -> AppResult<LivreScolaire> {
         info!(
-            "[LIVRES_SCOLAIRES] Création livre: user_id={}, titre={}",
-            user_id, request.titre
+            "[LIVRES_SCOLAIRES] Création livre: user_id={}, titre={}, mode_listing={:?}",
+            user_id, request.titre, request.mode_listing
         );
+
+        // Normalisation mode_listing : valeurs autorisées 'troc'|'vente'|'don'
+        let mode_listing = request
+            .mode_listing
+            .as_deref()
+            .map(|s| s.trim().to_lowercase())
+            .filter(|s| matches!(s.as_str(), "troc" | "vente" | "don"))
+            .unwrap_or_else(|| "troc".to_string());
+
+        // Dérivation situation_troc (cohérent avec finalize V2)
+        let situation_troc = if mode_listing == "troc" {
+            "offre_demande"
+        } else {
+            "offre"
+        };
 
         let livre = sqlx::query_as::<_, LivreScolaire>(
             r#"
@@ -36,9 +56,10 @@ impl LivresScolairesService {
                 service_id, user_id, titre, auteur, editeur, isbn,
                 classe_actuelle, classe_souhaitee, matiere, niveau,
                 etat_livre, description_etat, images_urls, video_url,
-                gps, ville, quartier, is_available, is_active
+                gps, ville, quartier, is_available, is_active,
+                mode_listing, situation_troc
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
             RETURNING *
             "#
         )
@@ -61,11 +82,16 @@ impl LivresScolairesService {
         .bind(request.quartier)
         .bind(true) // is_available
         .bind(true) // is_active
+        .bind(&mode_listing)
+        .bind(situation_troc)
         .fetch_one(&*self.pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur création livre scolaire: {}", e)))?;
 
-        info!("[LIVRES_SCOLAIRES] ✅ Livre créé: id={}", livre.id);
+        info!(
+            "[LIVRES_SCOLAIRES] ✅ Livre créé: id={}, mode_listing={}, situation_troc={}",
+            livre.id, mode_listing, situation_troc
+        );
         Ok(livre)
     }
 

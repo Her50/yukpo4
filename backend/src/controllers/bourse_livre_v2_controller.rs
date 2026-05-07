@@ -2773,12 +2773,14 @@ async fn do_programme_extraction(
                             // Rétroactivement on relie les lignes venant d'être insérées
                             if total_inserted > 0 {
                                 let _ = sqlx::query(
+                                    // Fenêtre élargie à 60 min : couvre largement le temps maximal
+                                    // d'extraction IA (Redis TTL job = 30 min). 5 min était trop court.
                                     r#"UPDATE programmes_scolaires
                                        SET etablissement_id = $1
                                        WHERE etablissement_id IS NULL
                                          AND created_by = $2
                                          AND annee_scolaire = $3
-                                         AND created_at >= NOW() - INTERVAL '5 minutes'"#,
+                                         AND created_at >= NOW() - INTERVAL '60 minutes'"#,
                                 )
                                 .bind(eid)
                                 .bind(user_id)
@@ -2910,19 +2912,100 @@ async fn do_programme_extraction(
             }
         }
 
-        // Fallback national si pas d'historique établissement
+        // Fallback national si pas d'historique établissement.
+        // Filtre par systeme_id pour respecter la langue d'origine :
+        // un parent francophone reçoit des suggestions FR, anglophone reçoit EN.
+        // Détection heuristique du système à partir du niveau / classe ET aussi
+        // du contenu des manuels extraits par l'IA (mots-clés anglais distinctifs).
+        let is_anglophone_label = |s: &str| -> bool {
+            let lower = s.to_lowercase();
+            lower.contains("primary")
+                || lower.contains("secondary")
+                || lower.contains("high school")
+                || lower.contains("nursery")
+                || lower.contains("form ")
+                || lower.contains("class ")
+                || lower.contains("sixth")
+        };
+        // Score basé sur les titres extraits : si la majorité regarde l'anglais,
+        // on bascule sur CM-en — corrige le cas où le user a oublié de choisir
+        // le système correct mais a scanné un document anglophone.
+        let extracted_anglo_score: i32 = manuels_extraits
+            .iter()
+            .map(|m| {
+                let titre = m.get("titre").and_then(|t| t.as_str()).unwrap_or("").to_lowercase();
+                let anglo_kw = [
+                    "english",
+                    "form ",
+                    "class ",
+                    "history",
+                    "mathematics",
+                    "physics",
+                    "chemistry",
+                    "citizen",
+                    "computer",
+                    "geography",
+                    "biology",
+                    "literature",
+                    "introduction",
+                    "patriotic",
+                    "secondary",
+                    "primary",
+                    "advanced",
+                    "integrated",
+                    "innovative",
+                    "winners",
+                    "prime",
+                    "explaining",
+                    "elementary",
+                ];
+                let franco_kw = [
+                    "français",
+                    "anglais",
+                    "latin",
+                    "grec",
+                    "histoire",
+                    "géographie",
+                    "education",
+                    "citoyenneté",
+                    "mathématiques",
+                    "sciences",
+                    "informatique",
+                    "philosophie",
+                    "littérature",
+                    "allemand",
+                    "espagnol",
+                    "italien",
+                    "chinois",
+                    "arabe",
+                ];
+                let a = anglo_kw.iter().filter(|k| titre.contains(*k)).count() as i32;
+                let f = franco_kw.iter().filter(|k| titre.contains(*k)).count() as i32;
+                a - f
+            })
+            .sum();
+        let preferred_systeme = if is_anglophone_label(&niveau_label)
+            || is_anglophone_label(&classe_sug)
+            || extracted_anglo_score >= 2
+        {
+            "CM-en"
+        } else {
+            "CM-fr"
+        };
         if suggestions_rows.is_empty() {
             if let Ok(rows) = sqlx::query(
                 r#"SELECT nom, quantite_mediane, gamme_defaut, prix_median
                    FROM accessoires_populaires_par_classe
                    WHERE pays = $1
                      AND (classe ILIKE $2 OR niveau ILIKE $3)
+                     AND (systeme_id IS NULL OR systeme_id = $4)
                    ORDER BY occurrences DESC
                    LIMIT 15"#,
             )
             .bind(&pays)
             .bind(format!("%{}%", classe_sug))
             .bind(&niveau_label)
+            .bind(preferred_systeme)
             .fetch_all(&state.pg)
             .await
             {
@@ -3106,6 +3189,499 @@ pub async fn match_livre_programme(
         "matching": match_result,
         "livre_id": payload.livre_id,
         "date_troc": date_troc
+    })))
+}
+
+// ============================================================================
+// MATCHING IA BATCH PAR TITRE (sans livre_id pré-existant)
+// ============================================================================
+// Cas d'usage : après un scan d'une liste scolaire, le frontend a une liste de
+// titres bruts (ex: "Innovative Mathematics 6e") et veut récupérer le
+// programme_scolaire_id + prix_officiel correspondant. pg_trgm est utilisé en
+// pré-filtre rapide ; l'IA n'est appelée que si la similarité reste faible.
+
+#[derive(Debug, Deserialize)]
+pub struct MatchProgrammesByTitleRequest {
+    pub items: Vec<MatchItemInput>,
+    pub pays: Option<String>,
+    pub annee_scolaire: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MatchItemInput {
+    pub titre: String,
+    pub auteur: Option<String>,
+    pub classe: String,
+    pub matiere: String,
+    /// Type d'item : 'livre'/'workbook' (défaut) → table programmes_scolaires ;
+    /// 'fourniture'/'cahier'/'accessoire' → table accessoires_populaires_par_classe.
+    pub r#type: Option<String>,
+    /// Niveau (Primaire / Secondaire général / Lycée/Collège technique / etc.)
+    /// utilisé pour le matching accessoires (ces derniers peuvent matcher par
+    /// niveau si la classe ne donne pas de candidat).
+    pub niveau: Option<String>,
+}
+
+fn is_livre_type(t: &str) -> bool {
+    matches!(t.to_lowercase().as_str(), "" | "livre" | "workbook")
+}
+
+/// POST /api/bourse-livre/v2/match-programmes-by-title
+/// Matche une liste d'items contre la base de référence appropriée :
+///   - livres / workbooks → programmes_scolaires (titre_livre, prix_officiel)
+///   - fournitures / cahiers / accessoires → accessoires_populaires_par_classe
+/// Utilise pg_trgm pour le pré-filtre, IA Claude en fallback fuzzy si besoin.
+pub async fn match_programmes_by_title(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<MatchProgrammesByTitleRequest>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[match_programmes_by_title] {} items, pays={:?}",
+        payload.items.len(),
+        payload.pays
+    );
+
+    let pays = payload.pays.unwrap_or_else(|| "CM".to_string());
+    let annee = payload.annee_scolaire.unwrap_or_else(|| "2025-2026".to_string());
+
+    let mut matches: Vec<serde_json::Value> = Vec::with_capacity(payload.items.len());
+    let ai_service = BookExchangeAIService::new(state.ia.clone());
+    let date_troc = chrono::Utc::now().format("%Y-%m-%d").to_string();
+
+    for (idx, item) in payload.items.iter().enumerate() {
+        let item_type = item.r#type.clone().unwrap_or_else(|| "livre".to_string());
+
+        // ────────────────────────────────────────────────────────────────────
+        // BRANCHE LIVRES / WORKBOOKS
+        // Stratégie en 2 niveaux :
+        //   1. Inventaire libraires (livres_scolaires.mode_listing='vente') →
+        //      si match → on retourne LE PRIX RÉEL DU LIBRAIRE (median si
+        //      plusieurs libraires) — c'est ce que paiera le parent.
+        //   2. Sinon : référentiel MINESEC (programmes_scolaires.prix_officiel)
+        //      en fallback — prix indicatif.
+        //   Dans les deux cas, IA Claude fuzzy disponible pour titres divergents.
+        // ────────────────────────────────────────────────────────────────────
+        if is_livre_type(&item_type) {
+            // Étape 1 : libraires inventory
+            let libraire_candidates = sqlx::query_as::<
+                _,
+                (
+                    i32,
+                    Option<String>,
+                    Option<String>,
+                    Option<String>,
+                    Option<f64>,
+                    Option<String>,
+                    Option<String>,
+                    f32,
+                ),
+            >(
+                r#"
+                SELECT id,
+                       titre,
+                       auteur,
+                       editeur,
+                       CAST(prix_detecte AS DOUBLE PRECISION) AS prix_detecte,
+                       matiere,
+                       classe_actuelle,
+                       similarity(unaccent(lower(COALESCE(titre,''))), unaccent(lower($1))) AS sim
+                  FROM livres_scolaires
+                 WHERE is_active = true
+                   AND is_available = true
+                   AND mode_listing = 'vente'
+                   AND classe_actuelle ILIKE $2
+                   AND matiere ILIKE $3
+                 ORDER BY sim DESC
+                 LIMIT 10
+                "#,
+            )
+            .bind(&item.titre)
+            .bind(format!("%{}%", item.classe))
+            .bind(format!("%{}%", item.matiere))
+            .fetch_all(&state.pg)
+            .await
+            .unwrap_or_default();
+
+            let lib_best = libraire_candidates.first();
+            let lib_top_sim = lib_best.map(|c| c.7).unwrap_or(0.0);
+
+            // Si un libraire a un match fort → priorité absolue, prix réel marché
+            if lib_top_sim >= 0.5 {
+                // Médiane des prix des libraires top-3 pour lisser les outliers
+                let mut prices: Vec<f64> = libraire_candidates
+                    .iter()
+                    .take(3)
+                    .filter(|c| c.7 >= 0.4)
+                    .filter_map(|c| c.4)
+                    .collect();
+                prices.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+                let median = if prices.is_empty() {
+                    None
+                } else {
+                    let mid = prices.len() / 2;
+                    Some(if prices.len() % 2 == 0 {
+                        (prices[mid - 1] + prices[mid]) / 2.0
+                    } else {
+                        prices[mid]
+                    })
+                };
+
+                if let Some((id, titre_l, _, _, _prix, _, _, _)) = lib_best {
+                    matches.push(serde_json::json!({
+                        "input_index": idx,
+                        "matched": true,
+                        "method": "pg_trgm_libraire",
+                        "kind": "livre",
+                        "source": "libraire",
+                        "ref_id": id,
+                        "livre_scolaire_id": id,
+                        "score_match": lib_top_sim,
+                        "titre_match": titre_l,
+                        "prix_officiel": median,
+                        "nb_libraires": prices.len(),
+                    }));
+                    continue;
+                }
+            }
+
+            // Étape 2 : programmes_scolaires (référentiel MINESEC)
+            let candidates = sqlx::query_as::<_, (i32, Option<String>, Option<String>, Option<String>, Option<f64>, Option<String>, Option<String>, f32)>(
+                r#"
+                SELECT id,
+                       titre_livre,
+                       auteur_livre,
+                       editeur_livre,
+                       CAST(prix_officiel AS DOUBLE PRECISION) AS prix_officiel,
+                       matiere,
+                       classe,
+                       similarity(unaccent(lower(COALESCE(titre_livre,''))), unaccent(lower($1))) AS sim
+                  FROM programmes_scolaires
+                 WHERE is_active = true
+                   AND pays = $2
+                   AND classe ILIKE $3
+                   AND matiere ILIKE $4
+                 ORDER BY sim DESC
+                 LIMIT 10
+                "#,
+            )
+            .bind(&item.titre)
+            .bind(&pays)
+            .bind(format!("%{}%", item.classe))
+            .bind(format!("%{}%", item.matiere))
+            .fetch_all(&state.pg)
+            .await
+            .unwrap_or_default();
+
+            let best = candidates.first();
+            let top_sim = best.map(|c| c.7).unwrap_or(0.0);
+
+            if top_sim >= 0.5 {
+                if let Some((id, titre_p, _, _, prix, _, _, _)) = best {
+                    matches.push(serde_json::json!({
+                        "input_index": idx,
+                        "matched": true,
+                        "method": "pg_trgm",
+                        "kind": "livre",
+                        "ref_id": id,
+                        "programme_scolaire_id": id,
+                        "score_match": top_sim,
+                        "titre_match": titre_p,
+                        "prix_officiel": prix,
+                    }));
+                    continue;
+                }
+            }
+
+            // IA Claude fuzzy
+            if !candidates.is_empty() {
+                let progs_json = serde_json::to_string(
+                    &candidates
+                        .iter()
+                        .map(|c| {
+                            serde_json::json!({
+                                "id": c.0,
+                                "titre_livre": c.1,
+                                "auteur_livre": c.2,
+                                "editeur_livre": c.3,
+                                "prix_officiel": c.4,
+                                "matiere": c.5,
+                                "classe": c.6,
+                            })
+                        })
+                        .collect::<Vec<_>>(),
+                )
+                .unwrap_or_else(|_| "[]".to_string());
+
+                match ai_service
+                    .match_livre_to_programme(
+                        &item.titre,
+                        item.auteur.as_deref(),
+                        &item.classe,
+                        &item.matiere,
+                        &date_troc,
+                        &progs_json,
+                    )
+                    .await
+                {
+                    Ok(r) => {
+                        matches.push(serde_json::json!({
+                            "input_index": idx,
+                            "matched": r.matched,
+                            "method": "ia_fuzzy",
+                            "kind": "livre",
+                            "ref_id": r.programme_scolaire_id,
+                            "programme_scolaire_id": r.programme_scolaire_id,
+                            "score_match": r.score_match,
+                            "titre_match": r.titre_programme,
+                            "prix_officiel": r.prix_officiel,
+                            "alternatives": r.alternatives,
+                        }));
+                    }
+                    Err(_) => {
+                        if let Some((id, titre_p, _, _, prix, _, _, sim)) = best {
+                            matches.push(serde_json::json!({
+                                "input_index": idx,
+                                "matched": *sim >= 0.3,
+                                "method": "trgm_fallback",
+                                "kind": "livre",
+                                "ref_id": id,
+                                "programme_scolaire_id": id,
+                                "score_match": sim,
+                                "titre_match": titre_p,
+                                "prix_officiel": prix,
+                            }));
+                        } else {
+                            matches.push(serde_json::json!({
+                                "input_index": idx,
+                                "matched": false,
+                                "method": "no_match",
+                                "kind": "livre",
+                            }));
+                        }
+                    }
+                }
+            } else {
+                matches.push(serde_json::json!({
+                    "input_index": idx,
+                    "matched": false,
+                    "method": "no_candidates",
+                    "kind": "livre",
+                }));
+            }
+            continue;
+        }
+
+        // ────────────────────────────────────────────────────────────────────
+        // BRANCHE FOURNITURES / CAHIERS / ACCESSOIRES → accessoires_populaires_par_classe
+        // ────────────────────────────────────────────────────────────────────
+        // Stratégie : on cherche d'abord par classe ; si rien, on retombe sur le
+        // niveau (qui couvre toutes les classes du même cycle).
+        let niveau_for_match = item.niveau.clone().unwrap_or_default();
+        // Recherche permissive : on ranke par similarité de NOM puis on bonifie
+        // les lignes qui matchent classe ET/OU niveau ET/OU systeme_id.
+        // Aucun filtre dur sur classe/niveau → si la base ne contient pas la classe
+        // exacte du parent, on retourne quand même un prix (via une autre classe
+        // proche ou la moyenne nationale). Mieux que pas de prix du tout.
+        let candidates_acc = sqlx::query_as::<
+            _,
+            (
+                i32,
+                String,
+                Option<i32>,
+                Option<String>,
+                Option<f64>,
+                Option<f64>,
+                Option<f64>,
+                Option<String>,
+                Option<String>,
+                f32,
+            ),
+        >(
+            r#"
+            SELECT id,
+                   nom,
+                   quantite_mediane,
+                   gamme_defaut,
+                   CAST(prix_min AS DOUBLE PRECISION) AS prix_min,
+                   CAST(prix_median AS DOUBLE PRECISION) AS prix_median,
+                   CAST(prix_max AS DOUBLE PRECISION) AS prix_max,
+                   classe,
+                   niveau,
+                   (
+                       similarity(unaccent(lower(nom)), unaccent(lower($1)))
+                       + CASE WHEN classe ILIKE $3 THEN 0.15 ELSE 0 END
+                       + CASE WHEN niveau ILIKE $4 THEN 0.10 ELSE 0 END
+                       + CASE WHEN systeme_id IS NULL OR systeme_id = $5 THEN 0.05 ELSE 0 END
+                   )::real AS sim
+              FROM accessoires_populaires_par_classe
+             WHERE pays = $2
+             ORDER BY sim DESC
+             LIMIT 10
+            "#,
+        )
+        .bind(&item.titre)
+        .bind(&pays)
+        .bind(if item.classe.trim().is_empty() {
+            "%".to_string()
+        } else {
+            format!("%{}%", item.classe)
+        })
+        .bind(if niveau_for_match.is_empty() {
+            "%".to_string()
+        } else {
+            format!("%{}%", niveau_for_match)
+        })
+        .bind({
+            // Heuristique : détecter anglophone vs francophone à partir du niveau/classe/titre
+            let lower_n = niveau_for_match.to_lowercase();
+            let lower_c = item.classe.to_lowercase();
+            let lower_t = item.titre.to_lowercase();
+            let is_anglo = lower_n.contains("primary")
+                || lower_n.contains("secondary")
+                || lower_n.contains("high school")
+                || lower_n.contains("nursery")
+                || lower_c.contains("form ")
+                || lower_c.contains("class ")
+                || lower_c.contains("sixth")
+                || lower_t.contains("exercise book")
+                || lower_t.contains("notebook")
+                || lower_t.contains("pencil")
+                || lower_t.contains("pgs");
+            if is_anglo {
+                "CM-en"
+            } else {
+                "CM-fr"
+            }
+        })
+        .fetch_all(&state.pg)
+        .await
+        .unwrap_or_default();
+
+        let best_acc = candidates_acc.first();
+        let top_sim_acc = best_acc.map(|c| c.9).unwrap_or(0.0);
+
+        // Fast path : pg_trgm >= 0.5
+        if top_sim_acc >= 0.5 {
+            if let Some((id, nom, qte, gamme, p_min, p_med, p_max, _cl, _niv, _sim)) = best_acc {
+                matches.push(serde_json::json!({
+                    "input_index": idx,
+                    "matched": true,
+                    "method": "pg_trgm",
+                    "kind": "accessoire",
+                    "ref_id": id,
+                    "accessoire_id": id,
+                    "score_match": top_sim_acc,
+                    "titre_match": nom,
+                    "prix_min": p_min,
+                    "prix_median": p_med,
+                    "prix_max": p_max,
+                    "prix_officiel": p_med, // alias pratique pour le frontend
+                    "quantite_mediane": qte,
+                    "gamme_defaut": gamme,
+                }));
+                continue;
+            }
+        }
+
+        // Slow path : IA Claude fuzzy sur accessoires (réutilisation match_livre_to_programme
+        // car la fonction est générique : elle envoie le titre + un JSON de candidats à Claude).
+        if !candidates_acc.is_empty() {
+            let candidates_json = serde_json::to_string(
+                &candidates_acc
+                    .iter()
+                    .map(|c| {
+                        serde_json::json!({
+                            "id": c.0,
+                            "titre_livre": c.1,        // mappé pour réutiliser le prompt existant
+                            "auteur_livre": serde_json::Value::Null,
+                            "editeur_livre": serde_json::Value::Null,
+                            "prix_officiel": c.5,      // prix_median
+                            "matiere": "Fournitures",
+                            "classe": c.7,
+                        })
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .unwrap_or_else(|_| "[]".to_string());
+
+            match ai_service
+                .match_livre_to_programme(
+                    &item.titre,
+                    None, // pas d'auteur pour un accessoire
+                    &item.classe,
+                    "Fournitures", // matière fictive cohérente avec le JSON
+                    &date_troc,
+                    &candidates_json,
+                )
+                .await
+            {
+                Ok(r) => {
+                    // Récupère les détails du candidat retenu pour exposer prix_min/median/max
+                    let chosen_id = r.programme_scolaire_id;
+                    let chosen = chosen_id.and_then(|id| candidates_acc.iter().find(|c| c.0 == id));
+                    matches.push(serde_json::json!({
+                        "input_index": idx,
+                        "matched": r.matched,
+                        "method": "ia_fuzzy",
+                        "kind": "accessoire",
+                        "ref_id": chosen_id,
+                        "accessoire_id": chosen_id,
+                        "score_match": r.score_match,
+                        "titre_match": chosen.map(|c| &c.1).cloned(),
+                        "prix_min": chosen.and_then(|c| c.4),
+                        "prix_median": chosen.and_then(|c| c.5),
+                        "prix_max": chosen.and_then(|c| c.6),
+                        "prix_officiel": chosen.and_then(|c| c.5),
+                        "quantite_mediane": chosen.and_then(|c| c.2),
+                        "gamme_defaut": chosen.and_then(|c| c.3.clone()),
+                        "alternatives": r.alternatives,
+                    }));
+                }
+                Err(_) => {
+                    if let Some((id, nom, qte, gamme, p_min, p_med, p_max, _cl, _niv, sim)) =
+                        best_acc
+                    {
+                        matches.push(serde_json::json!({
+                            "input_index": idx,
+                            "matched": *sim >= 0.3,
+                            "method": "trgm_fallback",
+                            "kind": "accessoire",
+                            "ref_id": id,
+                            "accessoire_id": id,
+                            "score_match": sim,
+                            "titre_match": nom,
+                            "prix_min": p_min,
+                            "prix_median": p_med,
+                            "prix_max": p_max,
+                            "prix_officiel": p_med,
+                            "quantite_mediane": qte,
+                            "gamme_defaut": gamme,
+                        }));
+                    } else {
+                        matches.push(serde_json::json!({
+                            "input_index": idx,
+                            "matched": false,
+                            "method": "no_match",
+                            "kind": "accessoire",
+                        }));
+                    }
+                }
+            }
+        } else {
+            matches.push(serde_json::json!({
+                "input_index": idx,
+                "matched": false,
+                "method": "no_candidates",
+                "kind": "accessoire",
+            }));
+        }
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "matches": matches,
+        "annee_scolaire": annee,
+        "pays": pays,
     })))
 }
 

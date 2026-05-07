@@ -37,14 +37,11 @@ class PlacesService {
                 params.append('city_context', cityContext);
             }
 
-            const response = await apiGet<{
-                success: boolean;
-                data: string[];
-                count: number;
-            }>(`/api/places/autocomplete?${params.toString()}`);
+            const response = await apiGet(`/api/places/autocomplete?${params.toString()}`);
+            const json: any = await response.json().catch(() => ({}));
 
-            if (response.success && Array.isArray(response.data)) {
-                return response.data;
+            if (json?.success && Array.isArray(json?.data)) {
+                return json.data as string[];
             }
 
             return [];
@@ -79,9 +76,11 @@ class PlacesService {
                 params.append('country', country);
             }
 
-            const response = await apiGet<{
-                success: boolean;
-                data: {
+            const response = await apiGet(`/api/places/enrich?${params.toString()}`);
+            const json: any = await response.json().catch(() => ({}));
+
+            if (json?.success && json?.data) {
+                return json.data as {
                     place_name: string;
                     coordinates?: { lat: number; lng: number };
                     geoname_id?: number;
@@ -89,10 +88,6 @@ class PlacesService {
                     hierarchy?: { parents?: string[] };
                     metadata?: { country?: string };
                 };
-            }>(`/api/places/enrich?${params.toString()}`);
-
-            if (response.success && response.data) {
-                return response.data;
             }
 
             return null;

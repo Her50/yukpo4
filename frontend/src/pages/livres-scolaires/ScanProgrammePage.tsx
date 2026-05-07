@@ -14,6 +14,7 @@ import {
   getSystemesForPays, getSystemeById, LISTE_PAYS_UNIQUES, type PaysCode,
 } from '../../data/schoolSystems';
 import { apiGet } from '../../services/apiService';
+import GammeSelector, { Gamme, priceForGamme } from '../../components/livres-scolaires/GammeSelector';
 
 interface ExtractedItem {
   titre: string;
@@ -22,10 +23,54 @@ interface ExtractedItem {
   editeur?: string;
   type: TypeItem;
   quantite: number;
-  prix?: number;           // prix unitaire officiel en devise locale
+  prix?: number;           // prix unitaire officiel en devise locale (gamme standard)
   source?: 'scan' | 'suggestion'; // suggestion = proposition backend par défaut
   selected: boolean;
+  /** Choix d'achat — par défaut 'neuf'. Toggle dispo uniquement pour les livres. */
+  choix: 'neuf' | 'occasion';
+  /** Gamme choisie — uniquement pour fournitures/cahiers/accessoires.
+   *  Le prix effectif est `prix × ratio(gamme)`. Défaut 'standard' (ratio 1.0). */
+  gamme?: Gamme;
 }
+
+/** Indique si le toggle neuf/occasion s'applique à ce type d'article.
+ *  Les fournitures, cahiers et accessoires sont toujours "neufs". */
+const isOccasionableType = (t: TypeItem): boolean =>
+  t === 'livre' || (t as string) === 'workbook';
+
+/** Indique si l'article supporte le sélecteur de gamme (fournitures/cahiers/autres) */
+const isGammeableType = (t: TypeItem): boolean =>
+  t === 'fourniture' || t === 'cahier' || t === 'autre';
+
+/** Catégorie d'affichage pour le regroupement par rubrique dans le tableau. */
+type CategorieAffichage = 'livres' | 'cahiers' | 'fournitures';
+
+const categorieLabel: Record<CategorieAffichage, string> = {
+  livres: 'Manuels & workbooks',
+  cahiers: 'Cahiers',
+  fournitures: 'Fournitures & accessoires',
+};
+
+const categorieStyle: Record<CategorieAffichage, { bg: string; border: string; text: string; dot: string }> = {
+  livres:      { bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-800',    dot: 'bg-blue-500' },
+  cahiers:     { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' },
+  fournitures: { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   dot: 'bg-amber-500' },
+};
+
+const categorieDe = (t: TypeItem): CategorieAffichage => {
+  const s = String(t).toLowerCase();
+  if (s === 'livre' || s === 'workbook') return 'livres';
+  if (s === 'cahier') return 'cahiers';
+  return 'fournitures';
+};
+
+/** Prix effectif d'un item après application de la gamme (1.0 si non gammeable). */
+const effectivePrice = (it: ExtractedItem): number => {
+  if (!it.prix) return 0;
+  return isGammeableType(it.type)
+    ? priceForGamme(it.prix, it.gamme || 'standard')
+    : it.prix;
+};
 
 interface ScanDetection {
   etablissement?: string | null;
@@ -171,18 +216,117 @@ const ScanProgrammePage: React.FC = () => {
     setItems(prev => prev.map((it, i) => i === idx
       ? { ...it, quantite: Math.max(1, (it.quantite ?? 1) + delta) }
       : it));
-  const duplicateItem = (idx: number) =>
+  const toggleChoix = (idx: number) =>
+    setItems(prev => prev.map((it, i) => i === idx && isOccasionableType(it.type)
+      ? { ...it, choix: it.choix === 'neuf' ? 'occasion' : 'neuf' }
+      : it));
+  /** Set direct du choix neuf/occasion — évite tout effet de stale closure
+   *  par rapport à un toggle conditionnel. Utilisé par les boutons 2-segments. */
+  const setChoix = (idx: number, choix: 'neuf' | 'occasion') =>
+    setItems(prev => prev.map((it, i) => i === idx && isOccasionableType(it.type)
+      ? { ...it, choix }
+      : it));
+  const setGamme = (idx: number, g: Gamme) =>
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, gamme: g } : it));
+  const [confirmDupIdx, setConfirmDupIdx] = useState<number | null>(null);
+  const requestDuplicate = (idx: number) => setConfirmDupIdx(idx);
+  const performDuplicate = () => {
+    if (confirmDupIdx === null) return;
+    const idx = confirmDupIdx;
+    const src = items[idx];
+    if (!src) { setConfirmDupIdx(null); return; }
     setItems(prev => {
-      const src = prev[idx];
-      if (!src) return prev;
-      const copy: ExtractedItem = { ...src, quantite: 1, selected: true };
+      const s = prev[idx];
+      if (!s) return prev;
+      const copy: ExtractedItem = { ...s, quantite: 1, selected: true };
       return [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)];
     });
+    toast({ title: 'Article dupliqué', description: src.titre });
+    setConfirmDupIdx(null);
+  };
+  // alias pour retro-compatibilité
+  const duplicateItem = (idx: number) => requestDuplicate(idx);
   const allSelected = items.length > 0 && items.every(it => it.selected);
   const selectedCount = items.filter(it => it.selected).length;
+  const occasionCount = items.filter(it => it.selected && it.choix === 'occasion').length;
   const totalEstime = items
     .filter(it => it.selected && it.prix && it.prix > 0)
-    .reduce((sum, it) => sum + (it.prix ?? 0) * (it.quantite ?? 1), 0);
+    .reduce((sum, it) => sum + effectivePrice(it) * (it.quantite ?? 1), 0);
+
+  /** Items regroupés par rubrique dans l'ordre fixe : livres → cahiers → fournitures.
+   *  On conserve l'index original pour rester compatible avec les handlers
+   *  toggleItem(i)/adjustQuantite(i)/duplicateItem(i) etc. */
+  const groupedItems: { cat: CategorieAffichage; entries: { item: ExtractedItem; idx: number }[] }[] = (() => {
+    const buckets: Record<CategorieAffichage, { item: ExtractedItem; idx: number }[]> = {
+      livres: [], cahiers: [], fournitures: [],
+    };
+    items.forEach((item, idx) => {
+      buckets[categorieDe(item.type)].push({ item, idx });
+    });
+    return (['livres', 'cahiers', 'fournitures'] as CategorieAffichage[])
+      .filter(cat => buckets[cat].length > 0)
+      .map(cat => ({ cat, entries: buckets[cat] }));
+  })();
+
+  /** Enrichit les items dont le prix est manquant via le matching IA backend
+   *  (POST /api/bourse-livre/v2/match-programmes-by-title : pg_trgm + IA Claude
+   *  fuzzy en fallback). Mise à jour en place via setItems. Tolère l'échec : si
+   *  l'endpoint n'existe pas (404) ou plante, on laisse les items tels quels. */
+  /** Matching IA backend pour TOUS les types : livres → programmes_scolaires,
+   *  accessoires/cahiers/fournitures → accessoires_populaires_par_classe.
+   *  pg_trgm + IA Claude fuzzy en fallback. */
+  const enrichMissingPrices = async (currentItems: ExtractedItem[]) => {
+    const indices: number[] = [];
+    const payload: any[] = [];
+    currentItems.forEach((it, i) => {
+      // Items sans prix ET avec un minimum d'info pour matcher
+      if ((!it.prix || it.prix <= 0) && classe) {
+        indices.push(i);
+        payload.push({
+          titre: it.titre,
+          auteur: it.auteur,
+          classe,
+          matiere: it.matiere || (it.type === 'livre' ? '' : 'Fournitures'),
+          type: it.type,
+          niveau,
+        });
+      }
+    });
+    if (payload.length === 0) return;
+    try {
+      const res = await fetch('/api/bourse-livre/v2/match-programmes-by-title', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: payload, pays }),
+      });
+      if (!res.ok) return;
+      const data = await res.json().catch(() => null);
+      if (!data?.matches) return;
+      setItems(prev => {
+        const next = [...prev];
+        for (const m of data.matches) {
+          const idx = indices[m.input_index];
+          if (idx === undefined) continue;
+          // On accepte le prix même si matched=false : pour les accessoires, le
+          // backend retourne souvent un prix-indicatif (méd. nationale d'un
+          // accessoire approchant) et on préfère afficher une fourchette plutôt
+          // qu'un blanc — le parent peut au moins évaluer son budget.
+          const prixSrc = m.prix_officiel ?? m.prix_median ?? m.prix_min;
+          if (prixSrc && Number(prixSrc) > 0) {
+            const updated: ExtractedItem = { ...next[idx], prix: Number(prixSrc) };
+            if (m.kind === 'accessoire' && m.gamme_defaut && !updated.gamme) {
+              const g = String(m.gamme_defaut).toLowerCase();
+              if (g === 'entree' || g === 'standard' || g === 'premium') {
+                updated.gamme = g as Gamme;
+              }
+            }
+            next[idx] = updated;
+          }
+        }
+        return next;
+      });
+    } catch { /* silencieux */ }
+  };
 
   const fetchProgrammesFallback = async (): Promise<ExtractedItem[]> => {
     try {
@@ -201,6 +345,7 @@ const ScanProgrammePage: React.FC = () => {
         prix: parseFloat(m.prix_officiel ?? m.prix ?? '') || undefined,
         source: m.source === 'suggestion' ? 'suggestion' : 'scan',
         selected: true,
+        choix: 'neuf' as const,
       }));
     } catch { return []; }
   };
@@ -233,10 +378,32 @@ const ScanProgrammePage: React.FC = () => {
             prix: typeof m.prix_officiel === 'number' ? m.prix_officiel : parseFloat(m.prix_officiel ?? '') || undefined,
             source: m.source === 'suggestion' ? 'suggestion' : 'scan',
             selected: true,
+            choix: 'neuf' as const,
           }));
+          // Filet de sécurité : si le backend renvoie aussi un champ "accessoires" séparé
+          // qui n'a pas été fusionné dans manuels, on l'intègre ici comme fournitures.
+          const rawAccessoires: any[] = d?.accessoires || [];
+          const titresExistants = new Set(fromJob.map(it => it.titre.toLowerCase().trim()));
+          for (const acc of rawAccessoires) {
+            const nom = (acc.nom || acc.titre || '').trim();
+            if (!nom || titresExistants.has(nom.toLowerCase())) continue;
+            fromJob.push({
+              titre: nom,
+              matiere: 'Fournitures',
+              type: 'fourniture' as TypeItem,
+              quantite: typeof acc.quantite === 'number' ? acc.quantite : 1,
+              prix: typeof acc.prix_indicatif === 'number' ? acc.prix_indicatif : undefined,
+              source: 'scan',
+              selected: true,
+              choix: 'neuf' as const,
+            });
+            titresExistants.add(nom.toLowerCase());
+          }
           setItems(fromJob);
           if (d?.detection) setDetection(d.detection as ScanDetection);
-          setStep(fromJob.length > 0 ? 'results' : 'done');
+          setStep('results'); // toujours montrer la page résultats, même si vide (empty state explicite)
+          // Enrichissement asynchrone des prix manquants via matching IA
+          enrichMissingPrices(fromJob).catch(() => {});
           return;
         }
         if (d?.status === 'error') {
@@ -308,10 +475,31 @@ const ScanProgrammePage: React.FC = () => {
         prix: typeof m.prix_officiel === 'number' ? m.prix_officiel : parseFloat(m.prix_officiel ?? '') || undefined,
         source: m.source === 'suggestion' ? 'suggestion' : 'scan',
         selected: true,
+        choix: 'neuf' as const,
       }));
+      // Filet de sécurité : intégrer aussi les "accessoires" si renvoyés séparément.
+      const rawAccessoires: any[] = data?.accessoires || [];
+      const titresExistants = new Set(fromJob.map(it => it.titre.toLowerCase().trim()));
+      for (const acc of rawAccessoires) {
+        const nom = (acc.nom || acc.titre || '').trim();
+        if (!nom || titresExistants.has(nom.toLowerCase())) continue;
+        fromJob.push({
+          titre: nom,
+          matiere: 'Fournitures',
+          type: 'fourniture' as TypeItem,
+          quantite: typeof acc.quantite === 'number' ? acc.quantite : 1,
+          prix: typeof acc.prix_indicatif === 'number' ? acc.prix_indicatif : undefined,
+          source: 'scan',
+          selected: true,
+          choix: 'neuf' as const,
+        });
+        titresExistants.add(nom.toLowerCase());
+      }
       setItems(fromJob);
       if (data?.detection) setDetection(data.detection as ScanDetection);
-      setStep(fromJob.length > 0 ? 'results' : 'done');
+      setStep('results'); // toujours montrer la page résultats, même si vide (empty state explicite)
+      // Enrichissement asynchrone des prix manquants via matching IA
+      enrichMissingPrices(fromJob).catch(() => {});
     } catch (e: any) {
       const isTimeout = e?.name === 'AbortError' || e?.name === 'TimeoutError';
       setError(
@@ -338,9 +526,10 @@ const ScanProgrammePage: React.FC = () => {
       matiere: it.matiere,
       type: it.type,
       editeur: it.editeur,
-      prixNeuf: it.prix,
+      prixNeuf: effectivePrice(it) || it.prix,
       quantite: it.quantite ?? 1,
-      choix: 'indifferent' as const,
+      choix: it.choix,
+      gamme: isGammeableType(it.type) ? (it.gamme || 'standard') : undefined,
     })));
     setSaving(false);
     toast({ title: `${selected.length} article${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''} à votre sélection` });
@@ -353,11 +542,29 @@ const ScanProgrammePage: React.FC = () => {
   };
 
   const addChildAndCart = () => {
-    if (!quickClasse) {
-      toast({ title: 'Sélectionnez la classe', variant: 'destructive' });
+    // Priorité (en cascade) : sélection rapide > classe choisie au step détails >
+    // classe lue par l'IA sur le document > niveau choisi en step détails (ex: "6ème").
+    // Le niveau est toujours rempli (sélecteur obligatoire à l'upload), donc cette
+    // cascade ne peut JAMAIS retomber sur "aucune classe" — on évite ainsi de
+    // bloquer le parent qui a un programme listé sans nom de classe imprimé.
+    const classeRetenue =
+      quickClasse || classeNom || detection?.classe || niveauNom || niveau || '';
+    if (!classeRetenue) {
+      toast({
+        title: 'Aucune classe détectée',
+        description: 'Sélectionnez la classe ci-dessus ou reprenez le scan avec une photo plus nette.',
+        variant: 'destructive',
+      });
       return;
     }
-    const newEnfant: Enfant = addEnfant({ prenom: quickClasse, systeme, niveau: niveauNom, classe: quickClasse, pays, systemeId });
+    const newEnfant: Enfant = addEnfant({
+      prenom: classeRetenue,
+      systeme,
+      niveau: niveauNom || '',
+      classe: classeRetenue,
+      pays,
+      systemeId,
+    });
     setSelectedEnfantId(newEnfant.id);
     doAddToCart(newEnfant.id);
   };
@@ -436,6 +643,28 @@ const ScanProgrammePage: React.FC = () => {
               <p className="text-xs text-gray-500 mt-0.5">Importez un PDF, Excel ou image</p>
             </div>
             <ChevronRight className="w-5 h-5 text-emerald-400 shrink-0" />
+          </button>
+
+          {/* Séparateur */}
+          <div className="flex items-center gap-3 my-1">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-[11px] text-gray-400 uppercase tracking-wide">ou</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
+          {/* Recherche par école — pas besoin de scanner */}
+          <button
+            onClick={() => navigate('/programme-ecole')}
+            className="flex items-center gap-5 bg-purple-50 border-2 border-purple-200 rounded-2xl px-5 py-5 active:bg-purple-100 text-left"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-purple-500 flex items-center justify-center shrink-0">
+              <Search className="w-7 h-7 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-gray-900 text-base">Chercher par école</p>
+              <p className="text-xs text-gray-500 mt-0.5">Programme officiel d'une école et d'une classe</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-purple-400 shrink-0" />
           </button>
 
           <p className="text-center text-xs text-gray-400 mt-2">
@@ -589,8 +818,8 @@ const ScanProgrammePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Classe */}
-            {currentNiveauObj && (
+            {/* Classe — dropdown si > 6 options, pills sinon */}
+            {currentNiveauObj && currentNiveauObj.classes.length <= 6 && (
               <div>
                 <p className="text-xs text-gray-500 mb-1.5">Classe</p>
                 <div className="flex flex-wrap gap-1.5">
@@ -605,22 +834,53 @@ const ScanProgrammePage: React.FC = () => {
                 </div>
               </div>
             )}
+            {currentNiveauObj && currentNiveauObj.classes.length > 6 && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1.5">Classe</p>
+                <select
+                  value={classeNom}
+                  onChange={e => { setClasseNom(e.target.value); setSerieCode(''); }}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400"
+                >
+                  <option value="">— Choisir une classe —</option>
+                  {currentNiveauObj.classes.map(c => (
+                    <option key={c.nom} value={c.nom}>{c.nom}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Série / Filière */}
             {currentClasseObj && hasClasseSeries && (
               <div>
                 <p className="text-xs text-gray-500 mb-1.5">Série / Filière</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {currentClasseObj.series!.map(s => (
-                    <button key={s.code} onClick={() => setSerieCode(prev => prev === s.code ? '' : s.code)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-baseline gap-1 ${
-                        serieCode === s.code ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
-                      }`}>
-                      <span className="font-bold">{s.code}</span>
-                      {s.label && <span className={`text-[10px] ${serieCode === s.code ? 'text-white/80' : 'text-gray-400'}`}>{s.label}</span>}
-                    </button>
-                  ))}
-                </div>
+                {/* Dropdown si > 4 séries (lycées techniques en ont 8+), pills sinon */}
+                {currentClasseObj.series!.length > 4 ? (
+                  <select
+                    value={serieCode}
+                    onChange={e => setSerieCode(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="">— Choisir une série —</option>
+                    {currentClasseObj.series!.map(s => (
+                      <option key={s.code} value={s.code}>
+                        {s.code}{s.label ? ` — ${s.label}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {currentClasseObj.series!.map(s => (
+                      <button key={s.code} onClick={() => setSerieCode(prev => prev === s.code ? '' : s.code)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-baseline gap-1 ${
+                          serieCode === s.code ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
+                        }`}>
+                        <span className="font-bold">{s.code}</span>
+                        {s.label && <span className={`text-[10px] ${serieCode === s.code ? 'text-white/80' : 'text-gray-400'}`}>{s.label}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -720,8 +980,8 @@ const ScanProgrammePage: React.FC = () => {
                   }}
                     className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-gray-50 text-left">
                     <div>
-                      <p className="text-sm font-semibold text-gray-800">{e.prenom}</p>
-                      <p className="text-xs text-gray-500">{e.classe}</p>
+                      <p className="text-sm font-semibold text-gray-800">{e.classe}</p>
+                      <p className="text-xs text-gray-500">{e.niveau || ''}</p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-gray-400" />
                   </button>
@@ -765,6 +1025,40 @@ const ScanProgrammePage: React.FC = () => {
   /* ── RESULTS ── */
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Modale de confirmation de duplication */}
+      {confirmDupIdx !== null && items[confirmDupIdx] && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+             onClick={() => setConfirmDupIdx(null)}>
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 pb-8 sm:pb-6"
+               onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
+                <Copy className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-gray-900 text-base leading-tight">Dupliquer cet article ?</h3>
+                <p className="text-sm text-gray-600 mt-0.5 truncate" title={items[confirmDupIdx]?.titre}>
+                  {items[confirmDupIdx]?.titre}
+                </p>
+              </div>
+            </div>
+            <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">
+              Une copie sera ajoutée juste après — utile pour acheter le même article pour un autre enfant.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDupIdx(null)}
+                className="flex-1 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold text-sm">
+                Annuler
+              </button>
+              <button onClick={performDuplicate}
+                className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold text-sm">
+                Dupliquer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-amber-600 px-4 pt-10 pb-5 text-white">
         <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-3">
@@ -868,85 +1162,202 @@ const ScanProgrammePage: React.FC = () => {
                       ? 'bg-amber-500 text-white border-amber-500'
                       : 'bg-white text-gray-700 border-gray-200'
                   }`}>
-                  {e.prenom} <span className="text-xs opacity-70">{e.classe}</span>
+                  <span>{e.classe}</span>
+                  {e.niveau && <span className="text-[10px] opacity-70">{e.niveau}</span>}
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        <div className="space-y-2">
-          {items.map((item, i) => (
-            <div key={i}
-              className={`w-full rounded-2xl border transition-colors ${
-                item.selected ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-100'
-              }`}>
-              <div className="flex items-start gap-3 p-3.5">
-                <button onClick={() => toggleItem(i)} className="shrink-0 mt-0.5" aria-label="Sélectionner">
-                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
-                    item.selected ? 'bg-amber-500 border-amber-500' : 'border-gray-300'
-                  }`}>
-                    {item.selected && <span className="text-white text-xs font-bold">✓</span>}
-                  </div>
-                </button>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold leading-tight ${item.selected ? 'text-amber-900' : 'text-gray-800'}`}>
-                    {item.titre}
-                  </p>
-                  {item.auteur && <p className="text-xs text-gray-500 mt-0.5">{item.auteur}</p>}
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {item.matiere && (
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{item.matiere}</span>
-                    )}
-                    {item.editeur && (
-                      <span className="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full">
-                        Éditeur : {item.editeur}
+        {/* État vide — extraction IA n'a rien retrouvé */}
+        {items.length === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
+            <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+            <p className="text-sm font-bold text-amber-900 mb-1">Aucun manuel ou fourniture détecté</p>
+            <p className="text-[12px] text-amber-700 mb-4 leading-relaxed">
+              Yukpo n'a pas pu lire la liste sur cette photo (image floue, partielle ou non standard).
+              Réessayez avec une photo plus nette, ou consultez le programme officiel de la classe.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <button
+                onClick={() => { setItems([]); setFiles([]); setStep('pick'); }}
+                className="bg-amber-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs"
+              >
+                Reprendre une photo
+              </button>
+              <button
+                onClick={() => navigate('/programme-ecole')}
+                className="bg-white border border-amber-300 text-amber-700 font-bold px-4 py-2.5 rounded-xl text-xs"
+              >
+                Voir le programme officiel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tableau regroupé par rubrique : Manuels → Cahiers → Fournitures.
+            Lignes ~38-44px, toggle Neuf/Occasion à 2 segments toujours visible. */}
+        {items.length > 0 && (
+          <div className="space-y-3">
+            {groupedItems.map(({ cat, entries }) => {
+              const style = categorieStyle[cat];
+              return (
+                <div key={cat} className={`rounded-2xl border ${style.border} overflow-hidden bg-white`}>
+                  {/* En-tête de section */}
+                  <div className={`flex items-center justify-between px-3 py-2 ${style.bg}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                      <span className={`text-[11px] font-bold uppercase tracking-wide ${style.text}`}>
+                        {categorieLabel[cat]}
                       </span>
-                    )}
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                      item.type === 'livre' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                      item.type === 'cahier' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                      (item.type as any) === 'workbook' ? 'bg-teal-50 text-teal-700 border-teal-200' :
-                      'bg-gray-50 text-gray-600 border-gray-200'
-                    }`}>{item.type}</span>
-                    {item.source === 'suggestion' && (
-                      <span className="text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full">
-                        Suggéré
-                      </span>
-                    )}
+                    </div>
+                    <span className="text-[10px] text-gray-500 font-semibold">
+                      {entries.length} article{entries.length > 1 ? 's' : ''}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-gray-100">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => adjustQuantite(i, -1)}
-                        disabled={(item.quantite ?? 1) <= 1}
-                        className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center disabled:opacity-40">
-                        <Minus className="w-3.5 h-3.5 text-gray-600" />
-                      </button>
-                      <span className="text-sm font-semibold text-gray-800 w-7 text-center">{item.quantite ?? 1}</span>
-                      <button onClick={() => adjustQuantite(i, 1)}
-                        className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center">
-                        <Plus className="w-3.5 h-3.5 text-gray-600" />
-                      </button>
-                      <button onClick={() => duplicateItem(i)}
-                        className="ml-2 px-2 h-7 rounded-full bg-white border border-gray-200 flex items-center gap-1 text-xs text-gray-600"
-                        title="Dupliquer (2e enfant, même livre)">
-                        <Copy className="w-3 h-3" /> Dupliquer
-                      </button>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-400">Prix unitaire</p>
-                      <p className="text-sm font-bold text-amber-700">{formatPrix(item.prix, pays)}</p>
-                    </div>
+
+                  <div className="divide-y divide-gray-100">
+                    {entries.map(({ item, idx: i }) => (
+                      <div key={i}
+                        className={`px-2.5 py-1.5 transition-colors ${
+                          item.selected ? 'bg-amber-50/60' : 'bg-white hover:bg-gray-50'
+                        }`}>
+                        <div className="flex items-center gap-2">
+                          {/* Checkbox */}
+                          <button onClick={() => toggleItem(i)} className="shrink-0" aria-label="Sélectionner">
+                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
+                              item.selected ? 'bg-amber-500 border-amber-500' : 'border-gray-300'
+                            }`}>
+                              {item.selected && <span className="text-white text-xs font-bold leading-none">✓</span>}
+                            </div>
+                          </button>
+
+                          {/* Titre + meta (langue d'origine, pas de transformation) */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              {/* Petit tag livre / workbook pour différencier dans la section "Manuels & workbooks" */}
+                              {(item.type as string) === 'workbook' && (
+                                <span className="text-[9px] font-bold bg-teal-100 text-teal-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">
+                                  Wb
+                                </span>
+                              )}
+                              {item.type === 'livre' && (
+                                <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">
+                                  Livre
+                                </span>
+                              )}
+                              <p className={`text-[13px] font-semibold leading-tight truncate ${
+                                item.selected ? 'text-amber-900' : 'text-gray-800'
+                              }`} title={item.titre} dir="auto">
+                                {item.titre}
+                              </p>
+                            </div>
+                            {(item.auteur || item.editeur || item.source === 'suggestion') && (
+                              <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500 leading-tight" dir="auto">
+                                {item.auteur && (
+                                  <span className="truncate max-w-[110px]" title={item.auteur}>{item.auteur}</span>
+                                )}
+                                {item.auteur && item.editeur && <span className="text-gray-300">·</span>}
+                                {item.editeur && (
+                                  <span className="truncate max-w-[110px] text-purple-700" title={`Éditeur : ${item.editeur}`}>
+                                    {item.editeur}
+                                  </span>
+                                )}
+                                {item.source === 'suggestion' && (
+                                  <span className="bg-orange-50 text-orange-700 border border-orange-200 px-1 py-0.5 rounded">
+                                    Suggéré
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Quantité compacte — design "stepper" épuré, ~70px de large */}
+                          <div className="inline-flex items-center bg-gray-50 border border-gray-200 rounded-md shrink-0 overflow-hidden">
+                            <button onClick={() => adjustQuantite(i, -1)}
+                              disabled={(item.quantite ?? 1) <= 1}
+                              className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-base leading-none"
+                              aria-label="Diminuer">−</button>
+                            <span className="text-xs font-bold text-gray-800 w-5 text-center tabular-nums leading-none">
+                              {item.quantite ?? 1}
+                            </span>
+                            <button onClick={() => adjustQuantite(i, 1)}
+                              className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-base leading-none"
+                              aria-label="Augmenter">+</button>
+                          </div>
+
+                          {/* Prix unitaire — collapsé si inconnu pour libérer la place au titre */}
+                          {(effectivePrice(item) || 0) > 0 && (
+                            <span className="text-right text-[12px] font-bold text-amber-700 tabular-nums shrink-0">
+                              {formatPrix(effectivePrice(item) || undefined, pays)}
+                            </span>
+                          )}
+
+                          {/* Dupliquer : masqué pour libérer la largeur du titre.
+                              Garde la fonction (long-press / menu contextuel à venir si besoin). */}
+                        </div>
+
+                        {/* Toggle Neuf ⇄ Occasion (livres) ou Gamme (fournitures) — sur ligne 2.
+                            Les 2 segments toujours visibles → affordance claire */}
+                        {(isOccasionableType(item.type) || isGammeableType(item.type)) && (
+                          <div className="flex items-center gap-2 mt-1 ml-7">
+                            {isOccasionableType(item.type) && (
+                              <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
+                                <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">État</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setChoix(i, 'neuf'); }}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                    item.choix === 'neuf'
+                                      ? 'bg-emerald-500 text-white shadow-sm'
+                                      : 'text-gray-500 hover:bg-gray-200'
+                                  }`}
+                                  title="Acheter neuf"
+                                >Neuf</button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setChoix(i, 'occasion'); }}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                    item.choix === 'occasion'
+                                      ? 'bg-orange-500 text-white shadow-sm'
+                                      : 'text-gray-500 hover:bg-gray-200'
+                                  }`}
+                                  title="Acheter d'occasion"
+                                >Occasion</button>
+                              </div>
+                            )}
+                            {isGammeableType(item.type) && (
+                              <div className="inline-flex items-center gap-1">
+                                <span className="text-[9px] text-gray-400 uppercase font-bold">Gamme</span>
+                                <GammeSelector
+                                  prixOfficiel={item.prix}
+                                  gamme={item.gamme || 'standard'}
+                                  devise={DEVISE_LOCALE_PAR_PAYS[pays] ?? 'XAF'}
+                                  onChange={(g) => setGamme(i, g)}
+                                  variant="inline"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {totalEstime > 0 && (
           <div className="mt-4 bg-white border border-amber-200 rounded-2xl p-3 flex items-center justify-between">
-            <span className="text-sm text-gray-600">Total estimé ({selectedCount} article{selectedCount > 1 ? 's' : ''})</span>
+            <div className="flex flex-col">
+              <span className="text-sm text-gray-600">Total estimé ({selectedCount} article{selectedCount > 1 ? 's' : ''})</span>
+              {occasionCount > 0 && (
+                <span className="text-[11px] text-orange-700 font-medium mt-0.5">
+                  {occasionCount} en occasion
+                </span>
+              )}
+            </div>
             <span className="text-lg font-bold text-amber-700">{formatPrix(totalEstime, pays)}</span>
           </div>
         )}

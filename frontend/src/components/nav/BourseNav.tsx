@@ -1,12 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Camera, BookOpen, Package } from 'lucide-react';
+import { Home, ListChecks, Truck } from 'lucide-react';
 
+// Nav simplifiée : Accueil (relancer un scan), Récap (commande en cours),
+// Suivi (statut des commandes envoyées). Reste accessible via pages internes.
 const tabs = [
   { to: '/', label: 'Accueil', icon: Home, exact: true },
-  { to: '/scan-programme', label: 'Scanner', icon: Camera },
-  { to: '/mes-livres', label: 'Mes livres', icon: BookOpen },
-  { to: '/trocs/mes-trocs', label: 'Mes trocs', icon: Package },
+  { to: '/recap', label: 'Récap', icon: ListChecks },
+  { to: '/mes-commandes', label: 'Suivi', icon: Truck },
 ];
 
 const BourseNav: React.FC = () => {

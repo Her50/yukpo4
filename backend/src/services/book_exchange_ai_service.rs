@@ -1919,7 +1919,20 @@ DOCUMENT : Liste officielle de manuels, fournitures et matériel scolaire émise
 RÈGLES D'EXTRACTION EXHAUSTIVE :
 1. Extraire TOUTES les lignes : manuels scolaires, cahiers d'exercices (workbook/livret), fournitures, accessoires
 2. Si une classe ou série (ex: A, C, D, Sciences, Lettres, Form 4, Year 9…) est visible sur le document, l'utiliser en priorité sur la valeur déclarée
-3. Retranscrire les titres tels quels (majuscules, abréviations comprises)
+3. Retranscrire TOUS les libellés (titres de livres, ET noms d'accessoires/fournitures) **EXACTEMENT** comme ils sont écrits sur le document. NE JAMAIS TRADUIRE, NE JAMAIS REFORMULER, NE JAMAIS PRÉFIXER avec un terme générique ("Exercise book", "Cahier", "Notebook"...) si ce terme n'est pas écrit littéralement sur la ligne. Si le document écrit "200 pgs squared", garde "200 pgs squared", PAS "Exercise book 200 pages squared". Si le document écrit "Cahier 96p Seyès", garde "Cahier 96p Seyès", PAS "Cahier 96 pages Seyès". Conserver majuscules, abréviations, ponctuation tels quels. Les exemples donnés plus bas dans ce prompt sont là UNIQUEMENT pour illustrer la règle "ne pas traduire" — ils ne doivent PAS servir de gabarit ou de préfixe.
+
+3-bis. **QUANTITÉ vs LIBELLÉ — RÈGLE CRITIQUE** : la quantité va UNIQUEMENT dans le champ `quantite` (entier numérique), JAMAIS dans le titre/nom. Supprimer du libellé tout préfixe quantitatif, qu'il soit chiffré OU écrit en toutes lettres :
+   - "Eight 60 leaves plain lines" → titre = "60 leaves plain lines", quantite = 8
+   - "Two 80 leaves plain lines"   → titre = "80 leaves plain lines", quantite = 2
+   - "1 packet pencils"            → titre = "packet pencils", quantite = 1
+   - "5 cahiers 96 pages Seyès"    → titre = "cahier 96 pages Seyès" (singulier OK), quantite = 5
+   Détecter les nombres en lettres EN/FR (one/two/three/four/five/six/seven/eight/nine/ten/un/deux/trois/quatre/cinq/six/sept/huit/neuf/dix) et les convertir en `quantite` numérique.
+
+3-ter. **PRINCIPE GÉNÉRAL — UNE ENTRÉE = UN ARTICLE COMMERCIALISABLE INDIVIDUELLEMENT**. Quand une seule ligne du document énumère PLUSIEURS articles distincts (peu importe le format : énumération avec virgules, points-virgules, slashs, plus, "et"/"and"/"&", listes avec puces internes, parenthèses listant des composants, retours à la ligne dans la même cellule, etc.), tu DOIS produire UNE ENTRÉE SÉPARÉE par article, chacune avec son propre nom + sa propre quantité.
+   Heuristique : un article est "individuel" si on peut l'acheter seul en magasin. Crayons, gommes, taille-crayons, règles, équerres, compas, rapporteurs, stylos de couleurs différentes, cahiers de paginations différentes, etc., sont chacun individuels et doivent occuper une ligne propre dans la sortie même s'ils étaient regroupés dans une seule ligne du document.
+   Quand il n'y a aucun nombre devant un sous-article énuméré, considérer que sa quantité est 1 (sauf si une quantité globale s'applique manifestement à toute l'énumération).
+   Seule exception (rare) : ne pas splitter si la ligne mentionne explicitement un PRODUIT VENDU EN KIT inséparable du commerce (ex: "kit géométrie", "set de géométrie", "trousse complète"), auquel cas tu gardes UNE seule entrée avec ce nom de kit. Dans le doute → splitter (mieux vaut quelques lignes de plus que des données fusionnées).
+   Cette règle s'applique à toutes les ligues du document — fournitures, accessoires, manuels regroupés, etc. — sans aucune limite quant au nombre d'articles ou au type d'énumération.
 4. Prix dans la devise locale — extraire la valeur numérique brute. Si un prix "ensemble" couvre plusieurs articles d'une même ligne, le répartir (si clair) ou le mettre uniquement sur l'article principal (livre de l'élève).
 5. "est_obligatoire" = true si "O", "Oblig.", "✓", "Required", "Must", souligné, ou aucune mention ; false si "R", "Optionnel", "Recommended", "Facultatif"
 6. Si le document est illisible ou vide, retourner livres:[] avec confidence < 0.3 et une note explicative
@@ -1948,6 +1961,8 @@ MÉTADONNÉES À EXTRAIRE DE L'EN-TÊTE :
 - session_detectee : année scolaire format "AAAA-AAAA" (null si non visible)
 - classe_detectee : classe lisible sur le document (null si non visible)
 
+RÈGLE LANGUE D'ORIGINE — RAPPEL : recopier les libellés tels qu'ils figurent sur le document, **sans** ajouter de préfixe générique ("Exercise book", "Notebook", "Cahier") ni traduire. Si la ligne dit "Maths 200 pgs", garde "Maths 200 pgs". Si elle dit "English copybook 96p", garde "English copybook 96p". L'IA doit COPIER, pas REFORMULER.
+
 RÉPONSE — JSON BRUT UNIQUEMENT, sans texte avant ni après, sans bloc markdown :
 {{
     "livres": [
@@ -1975,12 +1990,7 @@ RÉPONSE — JSON BRUT UNIQUEMENT, sans texte avant ni après, sans bloc markdow
         }}
     ],
     "accessoires": [
-        {{ "nom": "Cahier 200 pages grands carreaux", "quantite": 3, "gamme": "standard", "prix_indicatif": null, "notes": null }},
-        {{ "nom": "Cahier 96 pages Seyès", "quantite": 5, "gamme": "standard", "prix_indicatif": null, "notes": null }},
-        {{ "nom": "Stylo bille bleu", "quantite": 4, "gamme": "entree", "prix_indicatif": null, "notes": null }},
-        {{ "nom": "Crayon HB", "quantite": 3, "gamme": "entree", "prix_indicatif": null, "notes": null }},
-        {{ "nom": "Ardoise + craies + chiffon", "quantite": 1, "gamme": "standard", "prix_indicatif": null, "notes": null }},
-        {{ "nom": "Blouse blanche", "quantite": 2, "gamme": "standard", "prix_indicatif": null, "notes": null }}
+        {{ "nom": "<copier la ligne EXACTE du document — ne pas reformuler ni préfixer>", "quantite": 3, "gamme": "standard", "prix_indicatif": null, "notes": null }}
     ],
     "nombre_total": 12,
     "classes_couvertes": ["Tle C"],

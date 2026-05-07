@@ -9,6 +9,7 @@ interface AuthContextType {
         role?: string;
         name?: string;
         photo?: string;
+        phone?: string;
         credits?: number;
         currency?: string;
     } | null;
@@ -28,6 +29,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             role: user.role,
             name: user.name,
             photo: user.photo,
+            phone: user.phone,
             credits: user.credits,
             currency: user.currency,
         } : null,

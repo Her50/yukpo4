@@ -1,13 +1,18 @@
 import {
   AlertTriangle, ArrowLeft, BookOpen, Check, ChevronRight,
-  Loader2, MapPin, Minus, Package, Phone, Plus,
-  ShoppingCart, Trash2, X
+  Loader2, MapPin, Minus, Package, Phone, Plus, Repeat,
+  ShoppingCart, ShoppingBag, Trash2, X
 } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/use-toast';
 import { Choix, PanierItem, TypeItem, useParentShop } from '../../hooks/useParentShop';
+import { apiPost } from '../../services/apiService';
+
+// Picker GPS minimaliste (Google Maps + Places) — chargé à la demande pour
+// ne pas alourdir le bundle initial.
+const DeliveryMapPicker = lazy(() => import('../../components/livres-scolaires/DeliveryMapPicker'));
 
 const TYPE_LABELS: Record<TypeItem, string> = {
   livre: 'Livres',
@@ -94,87 +99,115 @@ function GammeSwitcher({ item, onUpdate }: { item: PanierItem; onUpdate: (id: st
   );
 }
 
-/* ─── Carte article ─── */
+/* ─── Ligne compacte d'un item du panier (style aligné avec ScanProgrammePage) ─── */
 function ItemCard({
   item,
   onRemove,
   onUpdateChoix,
   onUpdateQuantite,
   onUpdateGamme,
-  onDuplicate,
 }: {
   item: PanierItem;
   onRemove: () => void;
   onUpdateChoix: (id: string, choix: Choix) => void;
   onUpdateQuantite: (id: string, q: number) => void;
   onUpdateGamme: (id: string, g: Gamme) => void;
-  onDuplicate: (newQ: number) => void;
+  onDuplicate?: (newQ: number) => void;
 }) {
-  const isAccessoire = item.type !== 'livre';
   const quantite = item.quantite ?? 1;
-  const showQuantite = true; // accessoires + livres (duplication si plusieurs dans la même classe)
+  // Normaliser : workbook/livret comptent comme livres pour l'UI (toggle Neuf/Occasion).
+  const rawType = String(item.type ?? '');
+  const isLivre = rawType === 'livre' || rawType === 'workbook' || rawType === 'livret';
+  const isGammeable = rawType === 'cahier' || rawType === 'fourniture' || rawType === 'autre';
+  // Prix effectif selon choix neuf/occasion ou gamme
+  const RATIOS: Record<Gamme, number> = { entree: 0.6, standard: 1.0, premium: 1.5 };
+  const prixEff = (() => {
+    if (item.choix === 'occasion' && item.prixOccasion && item.prixOccasion > 0) return item.prixOccasion;
+    const base = item.prixNeuf ?? 0;
+    if (isGammeable && base > 0) return Math.round(base * RATIOS[item.gamme || 'standard']);
+    return base;
+  })();
   return (
-    <div className="flex items-start gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
-      <div className={`w-8 h-8 rounded-xl ${TYPE_COLORS[item.type].bg} flex items-center justify-center shrink-0`}>
-        <span className={TYPE_COLORS[item.type].text}>{TYPE_ICONS[item.type]}</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">{item.titre}</p>
-        {item.auteur && <p className="text-xs text-gray-500 mt-0.5">{item.auteur}</p>}
-        {item.matiere && (
-          <span className="inline-block text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full mt-1">
-            {item.matiere}
-          </span>
-        )}
-        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-          {!isAccessoire && <ChoixBadge item={item} onUpdate={onUpdateChoix} />}
-          {isAccessoire && (item.type === 'cahier' || item.type === 'fourniture') && (
-            <GammeSwitcher item={item} onUpdate={onUpdateGamme} />
-          )}
-          {item.prixNeuf && item.choix !== 'occasion' && (
-            <span className="text-xs text-green-700 font-semibold">{item.prixNeuf.toLocaleString()} F</span>
-          )}
-          {item.prixOccasion && item.choix !== 'neuf' && (
-            <span className="text-xs text-orange-600 font-semibold">{item.prixOccasion.toLocaleString()} F</span>
+    <div className="px-2.5 py-1.5 border-b border-gray-100 last:border-b-0 bg-white">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            {isLivre && (
+              <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">Livre</span>
+            )}
+            <p className="text-[13px] font-semibold leading-tight truncate text-gray-800" title={item.titre} dir="auto">
+              {item.titre}
+            </p>
+          </div>
+          {(item.auteur || item.editeur) && (
+            <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500 leading-tight" dir="auto">
+              {item.auteur && <span className="truncate max-w-[110px]" title={item.auteur}>{item.auteur}</span>}
+              {item.auteur && item.editeur && <span className="text-gray-300">·</span>}
+              {item.editeur && (
+                <span className="truncate max-w-[110px] text-purple-700" title={`Éditeur : ${item.editeur}`}>
+                  {item.editeur}
+                </span>
+              )}
+            </div>
           )}
         </div>
-        {showQuantite && (
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-[11px] text-gray-400 uppercase tracking-wide">
-              {isAccessoire ? 'Quantité' : 'Exemplaires'}
-            </span>
-            {quantite > 1 && !isAccessoire && (
-              <span className="text-[11px] text-amber-600 font-semibold flex items-center gap-0.5">
-                <AlertTriangle className="w-3 h-3" /> ×{quantite} — plusieurs élèves
-              </span>
-            )}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => onUpdateQuantite(item.id, Math.max(1, quantite - 1))}
-                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center active:bg-gray-200"
-                aria-label="Diminuer"
-              >
-                <Minus className="w-3.5 h-3.5 text-gray-600" />
-              </button>
-              <span className="min-w-[24px] text-center text-sm font-bold text-gray-900">{quantite}</span>
-              <button
-                onClick={() => {
-                  const newQ = quantite + 1;
-                  onUpdateQuantite(item.id, newQ);
-                  if (!isAccessoire) onDuplicate(newQ);
-                }}
-                className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center active:bg-amber-200"
-                aria-label="Augmenter"
-              >
-                <Plus className="w-3.5 h-3.5 text-amber-700" />
-              </button>
-            </div>
-          </div>
-        )}
+
+        {/* Quantité — stepper compact */}
+        <div className="inline-flex items-center bg-gray-50 border border-gray-200 rounded-md shrink-0 overflow-hidden">
+          <button
+            onClick={() => onUpdateQuantite(item.id, Math.max(1, quantite - 1))}
+            disabled={quantite <= 1}
+            className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 text-base leading-none"
+            aria-label="Diminuer">−</button>
+          <span className="text-xs font-bold text-gray-800 w-5 text-center tabular-nums leading-none">{quantite}</span>
+          <button
+            onClick={() => onUpdateQuantite(item.id, quantite + 1)}
+            className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-base leading-none"
+            aria-label="Augmenter">+</button>
+        </div>
+
+        {/* Prix unitaire — toujours affiché ; "—" si inconnu pour que la
+            colonne reste visible et que l'utilisateur sache qu'on ne l'a pas */}
+        <span
+          className={`text-right text-[12px] font-bold tabular-nums shrink-0 min-w-[50px] ${
+            prixEff > 0 ? 'text-amber-700' : 'text-gray-300'
+          }`}
+          title={prixEff > 0 ? undefined : 'Prix non disponible'}
+        >
+          {prixEff > 0 ? `${prixEff.toLocaleString('fr-FR')} F` : '—'}
+        </span>
+
+        {/* Supprimer */}
+        <button onClick={onRemove}
+          className="w-6 h-6 rounded bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 shrink-0"
+          title="Retirer cet article" aria-label="Retirer">
+          <Trash2 className="w-3 h-3" />
+        </button>
       </div>
-      <button onClick={onRemove} className="p-1.5 rounded-full bg-gray-100 shrink-0">
-        <Trash2 className="w-3.5 h-3.5 text-gray-400" />
-      </button>
+
+      {/* Toggle Neuf/Occasion (livres) ou Gamme (fournitures) sous-ligne */}
+      {(isLivre || (isGammeable && item.prixNeuf && item.prixNeuf > 0)) && (
+        <div className="flex items-center gap-2 mt-1 ml-0">
+          {isLivre && (
+            <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
+              <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">État</span>
+              <button
+                onClick={() => onUpdateChoix(item.id, 'neuf')}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                  item.choix === 'neuf' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
+                }`}>Neuf</button>
+              <button
+                onClick={() => onUpdateChoix(item.id, 'occasion')}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                  item.choix === 'occasion' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
+                }`}>Occasion</button>
+            </div>
+          )}
+          {isGammeable && item.prixNeuf && item.prixNeuf > 0 && (
+            <GammeSwitcher item={item} onUpdate={onUpdateGamme} />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -184,6 +217,7 @@ interface DeliveryInfo {
   adresse: string;
   telephone: string;
   note: string;
+  gps?: { lat: number; lon: number };
 }
 
 function DeliveryModal({
@@ -198,28 +232,46 @@ function DeliveryModal({
   const [adresse, setAdresse] = useState('');
   const [telephone, setTelephone] = useState(defaultPhone ?? '');
   const [note, setNote] = useState('');
-  const [locating, setLocating] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
-  const locateMe = () => {
-    setLocating(true);
-    navigator.geolocation?.getCurrentPosition(
-      async pos => {
-        const { latitude: lat, longitude: lon } = pos.coords;
-        setCoords({ lat, lon });
-        // Reverse geocoding léger via OSM Nominatim (gratuit, sans clé)
-        try {
-          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
-          const d = await r.json();
-          const addr = [d.address?.road, d.address?.suburb, d.address?.city || d.address?.town]
-            .filter(Boolean).join(', ');
-          if (addr) setAdresse(addr);
-        } catch { /* adresse restée manuelle */ }
-        setLocating(false);
-      },
-      () => setLocating(false)
-    );
+  // Autocomplete adresse via Nominatim (OSM, gratuit, CORS-friendly).
+  type Suggestion = { display_name: string; lat: string; lon: string };
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<number | null>(null);
+
+  const handleAdresseChange = (val: string) => {
+    setAdresse(val);
+    setShowSuggestions(true);
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    if (val.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    debounceRef.current = window.setTimeout(async () => {
+      setSearching(true);
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=cm&q=${encodeURIComponent(val)}`;
+        const r = await fetch(url, { headers: { 'Accept-Language': 'fr' } });
+        const d = await r.json();
+        setSuggestions(Array.isArray(d) ? d : []);
+      } catch { setSuggestions([]); }
+      finally { setSearching(false); }
+    }, 350);
   };
+
+  const pickSuggestion = (s: Suggestion) => {
+    setAdresse(s.display_name);
+    setCoords({ lat: parseFloat(s.lat), lon: parseFloat(s.lon) });
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
+
+  // Validation WhatsApp : 8 chiffres min (numéros internationaux 8-15 chiffres)
+  const phoneDigits = telephone.replace(/\D/g, '');
+  const phoneValid = phoneDigits.length >= 8 && phoneDigits.length <= 15;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center sm:items-center sm:p-4" onClick={onClose}>
@@ -232,47 +284,108 @@ function DeliveryModal({
           <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
 
-        {/* Adresse GPS */}
-        <div className="mb-4">
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Adresse de livraison</label>
-          <div className="flex gap-2">
+        {/* Adresse de livraison — autocomplete (Nominatim OSM, CORS-friendly) */}
+        <div className="mb-4 relative">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
+            Adresse de livraison <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
             <input
               value={adresse}
-              onChange={e => setAdresse(e.target.value)}
-              placeholder="Quartier, rue, point de repère…"
-              className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-amber-400"
+              onChange={e => handleAdresseChange(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              onBlur={() => window.setTimeout(() => setShowSuggestions(false), 200)}
+              placeholder="Tapez : quartier, rue, point de repère…"
+              autoComplete="off"
+              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 pr-9 outline-none focus:border-amber-400"
             />
-            <button
-              onClick={locateMe}
-              disabled={locating}
-              className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 shrink-0"
-              title="Utiliser ma position GPS"
-            >
-              {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
-            </button>
+            {searching && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500 animate-spin" />
+            )}
           </div>
-          {coords && (
-            <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
-              <Check className="w-3 h-3" /> Position GPS enregistrée ({coords.lat.toFixed(4)}, {coords.lon.toFixed(4)})
-            </p>
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute z-20 mt-1 left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+              {suggestions.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onMouseDown={() => pickSuggestion(s)}
+                  className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 border-b border-gray-100 last:border-b-0 flex items-start gap-2"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <span className="leading-tight">{s.display_name}</span>
+                </button>
+              ))}
+            </div>
           )}
+          <p className="text-[11px] text-gray-500 mt-1">
+            Tapez 3 lettres minimum — choisissez parmi les suggestions ou continuez à taper.
+          </p>
         </div>
 
-        {/* Téléphone */}
+        {/* Localisation cartographique — bouton qui ouvre la carte interactive
+            (Google Maps + IA déjà implémentée dans l'app), au lieu d'une auto-
+            capture. Le parent place lui-même le marqueur où la livraison doit
+            se faire — beaucoup plus fiable qu'un GPS qui hésite. */}
         <div className="mb-4">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-            Numéro de téléphone
+            Localisation précise (optionnel)
           </label>
-          <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2.5">
-            <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+          <button
+            type="button"
+            onClick={() => setShowMapPicker(true)}
+            className={`w-full flex items-center gap-2.5 border rounded-xl px-3 py-2.5 text-sm transition-colors ${
+              coords
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
+            }`}
+          >
+            <MapPin className={`w-4 h-4 shrink-0 ${coords ? 'text-emerald-600' : 'text-amber-600'}`} />
+            <span className="flex-1 text-left font-medium">
+              {coords
+                ? `Position définie · ${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}`
+                : 'Choisir sur la carte'}
+            </span>
+            {coords && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+            <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+          </button>
+          <p className="text-[11px] text-gray-500 mt-1">
+            Aide le livreur à trouver le bon point de livraison (sinon l'adresse texte sera utilisée).
+          </p>
+        </div>
+
+        {/* WhatsApp — utilisé pour notifier le statut commande + livraison */}
+        <div className="mb-4">
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
+            Numéro WhatsApp <span className="text-red-500">*</span>
+          </label>
+          <div className={`flex items-center gap-2 border rounded-xl px-3 py-2.5 ${
+            telephone && !phoneValid
+              ? 'border-red-300 bg-red-50'
+              : phoneValid
+                ? 'border-emerald-300 bg-emerald-50'
+                : 'border-gray-200'
+          }`}>
+            <Phone className="w-4 h-4 text-emerald-500 shrink-0" />
             <input
               value={telephone}
               onChange={e => setTelephone(e.target.value)}
               placeholder="+237 6XX XXX XXX"
               type="tel"
-              className="flex-1 text-sm outline-none"
+              inputMode="tel"
+              className="flex-1 text-sm outline-none bg-transparent"
             />
+            {phoneValid && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
           </div>
+          {telephone && !phoneValid ? (
+            <p className="text-[11px] text-red-600 mt-1">
+              Numéro incomplet — saisissez 8 chiffres minimum.
+            </p>
+          ) : (
+            <p className="text-[11px] text-gray-500 mt-1">
+              Yukpo vous notifiera par WhatsApp (validation libraire, départ livreur, livraison).
+            </p>
+          )}
         </div>
 
         {/* Note */}
@@ -290,56 +403,317 @@ function DeliveryModal({
         </div>
 
         <button
-          disabled={!adresse.trim() || !telephone.trim()}
-          onClick={() => onConfirm({ adresse, telephone, note })}
+          disabled={!adresse.trim() || !phoneValid}
+          onClick={() => onConfirm({ adresse, telephone, note, gps: coords ?? undefined })}
           className="w-full bg-amber-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3.5 rounded-2xl text-sm"
         >
           Confirmer la commande
         </button>
         <p className="text-center text-xs text-gray-400 mt-2">
-          {!adresse.trim() || !telephone.trim() ? 'Adresse et téléphone requis' : 'En appuyant, votre sélection est transmise aux librairies partenaires'}
+          {!adresse.trim()
+            ? 'Adresse requise'
+            : !phoneValid
+              ? 'Numéro WhatsApp valide requis'
+              : !coords
+                ? 'Sans GPS, le libraire le plus proche sera estimé via votre adresse'
+                : 'Yukpo cherchera le libraire le plus proche pour votre livraison'}
+        </p>
+      </div>
+
+      {/* Picker GPS — chargé uniquement quand l'utilisateur la demande */}
+      {showMapPicker && (
+        <Suspense fallback={<div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center"><Loader2 className="w-8 h-8 text-white animate-spin" /></div>}>
+          <DeliveryMapPicker
+            onClose={() => setShowMapPicker(false)}
+            initialLocation={coords ? { lat: coords.lat, lng: coords.lon } : undefined}
+            onConfirm={({ lat, lng, address: addr }) => {
+              setCoords({ lat, lon: lng });
+              if (addr && !adresse.trim()) setAdresse(addr);
+              setShowMapPicker(false);
+            }}
+          />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+
+/* ─── Modale de décision pour les livres marqués "occasion" ───
+ *  S'affiche au premier passage sur le récap si le panier contient des items
+ *  avec choix='occasion'. Trois actions :
+ *   • Aller au troc (l'utilisateur a des livres à échanger)
+ *   • Basculer en neuf (l'utilisateur n'a rien à échanger, prend du neuf)
+ *   • Continuer en occasion sans troc (achat direct chez un libraire/vendeur)
+ */
+function OccasionDecisionModal({
+  occasionCount,
+  onWantTroc,
+  onSwitchToNeuf,
+  onKeepOccasion,
+}: {
+  occasionCount: number;
+  onWantTroc: () => void;
+  onSwitchToNeuf: () => void;
+  onKeepOccasion: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md sm:max-w-lg p-5 pb-8 sm:pb-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-11 h-11 rounded-2xl bg-orange-100 flex items-center justify-center shrink-0">
+            <Repeat className="w-5 h-5 text-orange-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-gray-900 text-base leading-tight">
+              {occasionCount} livre{occasionCount > 1 ? 's' : ''} marqué{occasionCount > 1 ? 's' : ''} en occasion
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Avez-vous des livres à échanger contre eux ?
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2 mt-4">
+          <button
+            onClick={onWantTroc}
+            className="w-full flex items-center gap-3 p-3 rounded-2xl border-2 border-amber-300 bg-amber-50 text-left active:bg-amber-100"
+          >
+            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center shrink-0">
+              <Repeat className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-amber-900">Oui, j'ai des livres à échanger</p>
+              <p className="text-[11px] text-amber-700">Mes livres de l'an passé financent ceux de la classe suivante</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-amber-500 shrink-0" />
+          </button>
+
+          <button
+            onClick={onSwitchToNeuf}
+            className="w-full flex items-center gap-3 p-3 rounded-2xl border border-gray-200 bg-white text-left hover:bg-gray-50"
+          >
+            <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+              <BookOpen className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900">Non, je préfère du neuf</p>
+              <p className="text-[11px] text-gray-500">Tous les livres seront commandés en neuf</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+          </button>
+
+          <button
+            onClick={onKeepOccasion}
+            className="w-full flex items-center gap-3 p-3 rounded-2xl border border-gray-200 bg-white text-left hover:bg-gray-50"
+          >
+            <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+              <ShoppingBag className="w-4 h-4 text-orange-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900">Acheter d'occasion sans troc</p>
+              <p className="text-[11px] text-gray-500">Yukpo cherche un vendeur qui propose ces livres d'occasion</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+          </button>
+        </div>
+
+        <p className="text-[11px] text-gray-400 text-center mt-4">
+          Vous pouvez modifier votre choix à tout moment depuis le récapitulatif.
         </p>
       </div>
     </div>
   );
 }
 
+const TROC_DECISION_KEY = 'yukpo_recap_troc_choice';
+
 /* ─── Page principale ─── */
 const RecapAchatPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { enfants, panier, removeItem, updateChoix, updateQuantite, updateGamme, getItemsForEnfant, countByEnfant } = useParentShop();
+  const { enfants, panier, removeItem, updateChoix, updateQuantite, updateGamme, getItemsForEnfant, countByEnfant, clearPanierForEnfant, clearPanier } = useParentShop();
 
   const [activeEnfantId, setActiveEnfantId] = useState(
     enfants.find(e => countByEnfant(e.id) > 0)?.id || enfants[0]?.id || ''
   );
+  /** 'classe' = vue par enfant (onglets de classes) ; 'rubrique' = vue agrégée
+   *  toutes classes confondues (cumul des quantités d'un même article + gamme). */
+  const [viewMode, setViewMode] = useState<'classe' | 'rubrique'>('classe');
   const [showDelivery, setShowDelivery] = useState(false);
+  const [showOccasionModal, setShowOccasionModal] = useState(false);
+  const [submittingOrder, setSubmittingOrder] = useState(false);
+
+  /* ─── Décision troc/occasion ───
+   *  Au montage : si le panier contient des livres marqués "occasion" et que
+   *  l'utilisateur n'a pas encore pris de décision, on affiche la modale.
+   */
+  const occasionItemsInPanier = panier.filter(p => p.choix === 'occasion');
+  useEffect(() => {
+    const decision = sessionStorage.getItem(TROC_DECISION_KEY);
+    if (!decision && occasionItemsInPanier.length > 0) {
+      setShowOccasionModal(true);
+    }
+    // Si le panier ne contient plus aucun item occasion, on réinitialise la décision
+    if (occasionItemsInPanier.length === 0 && decision) {
+      sessionStorage.removeItem(TROC_DECISION_KEY);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panier.length]);
+
+  const handleWantTroc = () => {
+    sessionStorage.setItem(TROC_DECISION_KEY, 'troc');
+    setShowOccasionModal(false);
+    navigate('/troc-prep');
+  };
+  const handleSwitchToNeuf = () => {
+    occasionItemsInPanier.forEach(it => updateChoix(it.id, 'neuf'));
+    sessionStorage.setItem(TROC_DECISION_KEY, 'neuf');
+    setShowOccasionModal(false);
+    toast({ title: `${occasionItemsInPanier.length} article(s) basculé(s) en neuf` });
+  };
+  const handleKeepOccasion = () => {
+    sessionStorage.setItem(TROC_DECISION_KEY, 'occasion-direct');
+    setShowOccasionModal(false);
+  };
+  /** Permet à l'utilisateur de réouvrir la modale s'il change d'avis. */
+  const reopenOccasionModal = () => {
+    sessionStorage.removeItem(TROC_DECISION_KEY);
+    setShowOccasionModal(true);
+  };
 
   const activeEnfant = enfants.find(e => e.id === activeEnfantId);
   const activeItems = activeEnfant ? getItemsForEnfant(activeEnfant.id) : [];
 
-  /* Grouper par type */
+  /* Grouper par type — 'workbook'/'livret' sont normalisés en 'livre' pour
+   *  apparaître dans "Manuels & workbooks" plutôt qu'en fournitures. */
+  const normalizeType = (t: any): TypeItem => {
+    const raw = String(t ?? '');
+    if (raw === 'workbook' || raw === 'livret') return 'livre';
+    if (raw === 'livre' || raw === 'cahier' || raw === 'fourniture' || raw === 'autre') return raw as TypeItem;
+    return 'autre';
+  };
   const types: TypeItem[] = ['livre', 'cahier', 'fourniture', 'autre'];
   const grouped = types
-    .map(t => ({ type: t, items: activeItems.filter(it => it.type === t) }))
+    .map(t => ({ type: t, items: activeItems.filter(it => normalizeType(it.type) === t) }))
     .filter(g => g.items.length > 0);
 
-  /* Totaux — accessoires multiplient par quantité */
-  const estimateItem = (it: PanierItem): number => {
-    const unit = it.choix === 'neuf'
-      ? (it.prixNeuf ?? 0)
-      : it.choix === 'occasion'
-      ? (it.prixOccasion ?? 0)
-      : (it.prixOccasion ?? it.prixNeuf ?? 0);
+  /* ─── Vue agrégée par rubrique (toutes classes) ───
+   *  Règles métier (validées avec le PO) :
+   *   • Même libellé + même gamme  → 1 ligne, qty = somme des qty toutes classes,
+   *     prix = max des prixNeuf rencontrés (prix de référence le plus à jour).
+   *   • Même libellé + gammes différentes → autant de lignes que de gammes.
+   *   • Le `choix` (neuf/occasion) sépare aussi les lignes : un livre demandé
+   *     en neuf pour une classe et en occasion pour une autre reste en 2 lignes.
+   *  La clé d'agrégation : titre normalisé (lower+trim) + type + gamme + choix.
+   */
+  const aggregatedByRubrique = (() => {
+    const buckets = new Map<string, {
+      sample: PanierItem;        // un item représentatif (pour titre, prix, etc.)
+      totalQuantite: number;
+      classes: string[];         // classes contributrices, ex: ["6ème", "5ème"]
+      enfantIds: string[];       // pour permettre la suppression depuis cette vue
+    }>();
+    for (const it of panier) {
+      const titreNorm = (it.titre || '').toLowerCase().trim();
+      const key = `${it.type}::${titreNorm}::${it.gamme || '-'}::${it.choix || 'neuf'}`;
+      const enfant = enfants.find(e => e.id === it.enfantId);
+      const classeLabel = enfant?.classe || '';
+      const existing = buckets.get(key);
+      if (existing) {
+        existing.totalQuantite += it.quantite ?? 1;
+        if (classeLabel && !existing.classes.includes(classeLabel)) {
+          existing.classes.push(classeLabel);
+        }
+        existing.enfantIds.push(it.enfantId);
+        // Conserve le prix le plus élevé (référence) pour ne pas sous-estimer
+        if ((it.prixNeuf ?? 0) > (existing.sample.prixNeuf ?? 0)) {
+          existing.sample = it;
+        }
+      } else {
+        buckets.set(key, {
+          sample: it,
+          totalQuantite: it.quantite ?? 1,
+          classes: classeLabel ? [classeLabel] : [],
+          enfantIds: [it.enfantId],
+        });
+      }
+    }
+    // Regrouper par type pour respecter le même ordre de sections que la vue par classe.
+    // 'workbook' (livret d'exercices) est un livre → on le ramène à 'livre' pour
+    // qu'il s'affiche dans la section "Manuels & workbooks", pas en "Fournitures".
+    const byType: Record<TypeItem, Array<typeof buckets extends Map<any, infer V> ? V : never>> = {
+      livre: [], cahier: [], fourniture: [], autre: [],
+    };
+    const validTypes = new Set<TypeItem>(['livre', 'cahier', 'fourniture', 'autre']);
+    for (const v of buckets.values()) {
+      const raw = String(v.sample.type ?? '');
+      let safeType: TypeItem;
+      if (raw === 'workbook' || raw === 'livret') safeType = 'livre';
+      else if (validTypes.has(raw as TypeItem)) safeType = raw as TypeItem;
+      else safeType = 'autre';
+      byType[safeType].push(v);
+    }
+    return types
+      .map(t => ({ type: t, lignes: byType[t] }))
+      .filter(g => g.lignes.length > 0);
+  })();
+
+  /* ─── Calcul des bornes [min, max] par item ───
+   *  Cohérent avec les ratios backend (RATIO_ETAT_BON = 0.70, ACCEPTABLE = 0.40) :
+   *   - choix='neuf'      : min = max = prix_neuf
+   *   - choix='occasion'  : min = prix_neuf × 0.40, max = prix_neuf × 0.70
+   *     (sauf si prixOccasion est déjà connu après analyse IA → valeur figée)
+   */
+  const RATIO_OCCASION_MIN = 0.40; // état "acceptable"
+  const RATIO_OCCASION_MAX = 0.70; // état "bon"
+
+  const estimateItemRange = (it: PanierItem): { min: number; max: number } => {
     const q = it.quantite ?? 1;
-    return unit * q;
+    if (it.choix === 'occasion') {
+      // Si l'IA a déjà calculé la valeur (livre photographié au troc) → valeur figée
+      if (it.prixOccasion && it.prixOccasion > 0) {
+        return { min: it.prixOccasion * q, max: it.prixOccasion * q };
+      }
+      // Sinon : fourchette estimée d'après le prix neuf
+      const base = it.prixNeuf ?? 0;
+      return {
+        min: Math.round(base * RATIO_OCCASION_MIN) * q,
+        max: Math.round(base * RATIO_OCCASION_MAX) * q,
+      };
+    }
+    // Neuf ou indifférent : prix figé
+    const v = (it.prixNeuf ?? it.prixOccasion ?? 0) * q;
+    return { min: v, max: v };
   };
 
-  const totalEnfant = activeItems.reduce((s, it) => s + estimateItem(it), 0);
-  const grandTotal = enfants.reduce((s, e) => {
-    return s + getItemsForEnfant(e.id).reduce((ss, it) => ss + estimateItem(it), 0);
-  }, 0);
+  const estimateItem = (it: PanierItem): number => estimateItemRange(it).max;
+
+  const totalEnfantRange = activeItems.reduce(
+    (s, it) => {
+      const r = estimateItemRange(it);
+      return { min: s.min + r.min, max: s.max + r.max };
+    },
+    { min: 0, max: 0 }
+  );
+  const totalEnfant = totalEnfantRange.max;
+
+  const grandTotalRange = enfants.reduce(
+    (s, e) => {
+      const items = getItemsForEnfant(e.id);
+      const r = items.reduce(
+        (ss, it) => {
+          const ir = estimateItemRange(it);
+          return { min: ss.min + ir.min, max: ss.max + ir.max };
+        },
+        { min: 0, max: 0 }
+      );
+      return { min: s.min + r.min, max: s.max + r.max };
+    },
+    { min: 0, max: 0 }
+  );
+  const grandTotal = grandTotalRange.max;
+  const hasOccasionRange = grandTotalRange.min !== grandTotalRange.max;
   const totalItems = panier.length;
 
   if (totalItems === 0) {
@@ -370,17 +744,101 @@ const RecapAchatPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {showOccasionModal && (
+        <OccasionDecisionModal
+          occasionCount={occasionItemsInPanier.length}
+          onWantTroc={handleWantTroc}
+          onSwitchToNeuf={handleSwitchToNeuf}
+          onKeepOccasion={handleKeepOccasion}
+        />
+      )}
       {showDelivery && (
         <DeliveryModal
           defaultPhone={user?.phone ?? ''}
           onClose={() => setShowDelivery(false)}
-          onConfirm={info => {
-            setShowDelivery(false);
-            toast({
-              title: 'Commande transmise',
-              description: `Livraison à : ${info.adresse}`,
-            });
-            navigate('/search');
+          onConfirm={async info => {
+            // Construit le payload pour POST /api/librairie-network/commandes
+            // Aligné sur la struct backend CreateCommandeMixteRequest.
+            setSubmittingOrder(true);
+            try {
+              const livres_neufs: any[] = [];
+              const livres_occasion: { livre_scolaire_id: number; quantite: number }[] = [];
+
+              for (const e of enfants) {
+                const items = getItemsForEnfant(e.id);
+                for (const it of items) {
+                  // Cas livre d'occasion AVEC livre proposé au troc → livres_occasion[]
+                  if (it.choix === 'occasion' && it.trocLivreId) {
+                    livres_occasion.push({
+                      livre_scolaire_id: it.trocLivreId,
+                      quantite: it.quantite ?? 1,
+                    });
+                    continue;
+                  }
+                  // Tous les autres cas (neuf, indifférent, occasion-sans-troc) → livres_neufs
+                  livres_neufs.push({
+                    titre: it.titre,
+                    auteur: it.auteur ?? null,
+                    editeur: it.editeur ?? null,
+                    isbn: it.isbn ?? null,
+                    classe: e.classe || '',
+                    matiere: it.matiere ?? '',
+                    niveau: e.niveau ?? null,
+                    prix_officiel: it.prixNeuf ?? 0,
+                    quantite: it.quantite ?? 1,
+                    est_au_programme: true,
+                  });
+                }
+              }
+
+              // Le backend rejette budget_total <= 0. Si tous les articles sont
+              // des fournitures sans prix encore, on plancher à 1 pour passer la
+              // validation — le total réel est recalculé côté serveur.
+              const safeBudget = grandTotal > 0 ? grandTotal : 1;
+              const payload = {
+                budget_total: safeBudget,
+                devise: 'XAF',
+                mode_livraison: 'domicile',
+                adresse_livraison: info.adresse,
+                gps_livraison: info.gps ? `${info.gps.lat},${info.gps.lon}` : null,
+                notes_client: [
+                  info.telephone ? `WhatsApp: ${info.telephone}` : '',
+                  info.note ? info.note : '',
+                ].filter(Boolean).join(' · ') || null,
+                livres_neufs,
+                livres_occasion,
+              };
+
+              const res = await apiPost('/api/librairie-network/commandes', payload);
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok || data?.success === false) {
+                // Loggue le détail brut du serveur pour faciliter le diagnostic
+                console.error('[create_commande] HTTP', res.status, data);
+                throw new Error(
+                  data?.error || data?.message || data?.detail
+                    || `Erreur serveur (${res.status}). Réessayez dans un instant.`
+                );
+              }
+
+              setShowDelivery(false);
+              sessionStorage.removeItem(TROC_DECISION_KEY);
+              // Vide le panier — la commande est désormais en base, le suivi se fait via /mes-commandes
+              enfants.forEach(e => clearPanierForEnfant(e.id));
+              toast({
+                title: 'Commande créée',
+                description: `Yukpo cherche un libraire pour vos ${livres_neufs.length + livres_occasion.length} article(s).`,
+              });
+              const commandeId = data?.commande_id || data?.id || data?.data?.commande_id || data?.data?.id;
+              navigate(commandeId ? `/mes-commandes?focus=${commandeId}` : '/mes-commandes');
+            } catch (e: any) {
+              toast({
+                title: 'Erreur création commande',
+                description: e?.message || 'Réessayez dans un instant',
+                variant: 'destructive',
+              });
+            } finally {
+              setSubmittingOrder(false);
+            }
           }}
         />
       )}
@@ -395,39 +853,75 @@ const RecapAchatPage: React.FC = () => {
             <h1 className="font-bold text-lg leading-tight">Récapitulatif des achats</h1>
             <p className="text-amber-100 text-xs">{totalItems} article{totalItems > 1 ? 's' : ''} sélectionné{totalItems > 1 ? 's' : ''}</p>
           </div>
+          {totalItems > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm('Vider tout le panier ? Cette action est irréversible.')) {
+                  clearPanier();
+                  toast({ title: 'Panier vidé' });
+                }
+              }}
+              className="px-3 py-1.5 rounded-full bg-white/20 text-white text-xs font-semibold border border-white/30"
+              title="Vider tout le panier"
+            >
+              Vider
+            </button>
+          )}
         </div>
 
-        {/* Tabs enfants — uniquement ceux avec des articles */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {enfants.filter(e => countByEnfant(e.id) > 0).map(enfant => {
-            const count = countByEnfant(enfant.id);
-            const isActive = enfant.id === activeEnfantId;
-            return (
-              <button
-                key={enfant.id}
-                onClick={() => setActiveEnfantId(enfant.id)}
-                className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
-                  isActive
-                    ? 'bg-white text-amber-700 border-white'
-                    : 'bg-white/20 text-white border-white/30'
-                }`}
-              >
-                {enfant.classe}
-                <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                  isActive ? 'bg-amber-500 text-white' : 'bg-white/30 text-white'
-                }`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
+        {/* Toggle vue : Par classe ⇄ Par rubrique (cumul cross-classes) */}
+        <div className="inline-flex bg-white/15 backdrop-blur-sm rounded-full p-0.5 mb-2.5">
+          <button
+            onClick={() => setViewMode('classe')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
+              viewMode === 'classe' ? 'bg-white text-amber-700' : 'text-white/90'
+            }`}
+          >
+            Par classe
+          </button>
+          <button
+            onClick={() => setViewMode('rubrique')}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-colors ${
+              viewMode === 'rubrique' ? 'bg-white text-amber-700' : 'text-white/90'
+            }`}
+          >
+            Par rubrique
+          </button>
         </div>
+
+        {/* Tabs enfants — uniquement en vue 'classe' */}
+        {viewMode === 'classe' && (
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {enfants.filter(e => countByEnfant(e.id) > 0).map(enfant => {
+              const count = countByEnfant(enfant.id);
+              const isActive = enfant.id === activeEnfantId;
+              return (
+                <button
+                  key={enfant.id}
+                  onClick={() => setActiveEnfantId(enfant.id)}
+                  className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+                    isActive
+                      ? 'bg-white text-amber-700 border-white'
+                      : 'bg-white/20 text-white border-white/30'
+                  }`}
+                >
+                  {enfant.classe}
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                    isActive ? 'bg-amber-500 text-white' : 'bg-white/30 text-white'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
         </div>
       </div>
 
       <div className="px-4 pt-4 pb-48 max-w-2xl mx-auto">
-        {/* Infos classe */}
-        {activeEnfant && (
+        {/* Infos classe — uniquement en vue 'classe' */}
+        {viewMode === 'classe' && activeEnfant && (
           <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
               <BookOpen className="w-5 h-5 text-amber-700" />
@@ -448,44 +942,187 @@ const RecapAchatPage: React.FC = () => {
           </div>
         )}
 
-        {/* Items groupés par type */}
-        {grouped.map(({ type, items: gItems }) => {
-          const typeTotal = gItems.reduce((s, it) => s + estimateItem(it), 0);
-          const colors = TYPE_COLORS[type];
-          return (
-            <div key={type} className="mb-5">
-              {/* Section header */}
-              <div className={`flex items-center justify-between px-3 py-2 rounded-xl ${colors.bg} border ${colors.border} mb-2`}>
-                <div className={`flex items-center gap-2 font-semibold text-sm ${colors.text}`}>
-                  {TYPE_ICONS[type]}
-                  {TYPE_LABELS[type]}
-                  <span className="text-xs font-normal opacity-70">({gItems.length})</span>
-                </div>
-                {typeTotal > 0 && (
-                  <span className={`text-xs font-bold ${colors.text}`}>{typeTotal.toLocaleString()} F</span>
-                )}
-              </div>
-              <div className="space-y-2">
-                {gItems.map(item => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    onRemove={() => removeItem(item.id)}
-                    onUpdateChoix={updateChoix}
-                    onUpdateQuantite={updateQuantite}
-                    onUpdateGamme={updateGamme}
-                    onDuplicate={(newQ) => {
-                      toast({
-                        title: `×${newQ} exemplaires`,
-                        description: `"${item.titre.slice(0, 40)}${item.titre.length > 40 ? '…' : ''}" — pour ${newQ} élèves dans la même classe. Vérifiez que c'est intentionnel.`,
+        {/* Items regroupés par rubrique — style aligné avec ScanProgrammePage.
+            Sections fixes : Manuels & workbooks → Cahiers → Fournitures & accessoires.
+            Deux modes :
+              • 'classe'   → items de la classe active, modifiables (ItemCard)
+              • 'rubrique' → cumul cross-classes par (libellé, gamme, choix), lecture seule */}
+        {(() => {
+          const labels: Record<TypeItem, string> = {
+            livre: 'Manuels & workbooks',
+            cahier: 'Cahiers',
+            fourniture: 'Fournitures & accessoires',
+            autre: 'Fournitures & accessoires',
+          };
+          const sectionStyles: Record<TypeItem, { bg: string; border: string; text: string; dot: string }> = {
+            livre:      { bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-800',    dot: 'bg-blue-500' },
+            cahier:     { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' },
+            fourniture: { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   dot: 'bg-amber-500' },
+            autre:      { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   dot: 'bg-amber-500' },
+          };
+
+          if (viewMode === 'rubrique') {
+            return aggregatedByRubrique.map(({ type, lignes }) => {
+              const style = sectionStyles[type];
+              const typeTotal = lignes.reduce((s, l) => {
+                const r = estimateItemRange({ ...l.sample, quantite: l.totalQuantite });
+                return s + r.max;
+              }, 0);
+              return (
+                <div key={type} className={`rounded-2xl border ${style.border} overflow-hidden bg-white mb-3`}>
+                  <div className={`flex items-center justify-between px-3 py-2 ${style.bg}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                      <span className={`text-[11px] font-bold uppercase tracking-wide ${style.text}`}>
+                        {labels[type]}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-500 font-semibold">
+                        {lignes.length} ligne{lignes.length > 1 ? 's' : ''}
+                      </span>
+                      {typeTotal > 0 && (
+                        <span className={`text-[11px] font-bold ${style.text}`}>
+                          {typeTotal.toLocaleString('fr-FR')} F
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    {lignes.map((l, idx) => {
+                      const r = estimateItemRange({ ...l.sample, quantite: l.totalQuantite });
+                      const prixUnit = l.sample.prixNeuf ?? 0;
+                      // Pour ajuster la quantité globale d'une ligne agrégée :
+                      // on ajuste UNIQUEMENT le 1er item du bucket — les autres restent
+                      // en l'état. C'est le compromis le plus simple et compréhensible
+                      // pour le parent (il modifie « la quantité de cet article ce qu'il
+                      // doit acheter ») sans devoir naviguer classe par classe.
+                      const itemsInBucket = panier.filter(p => {
+                        const titreNorm = (p.titre || '').toLowerCase().trim();
+                        const sampleTitreNorm = (l.sample.titre || '').toLowerCase().trim();
+                        return p.type === l.sample.type
+                            && titreNorm === sampleTitreNorm
+                            && (p.gamme || '-') === (l.sample.gamme || '-')
+                            && (p.choix || 'neuf') === (l.sample.choix || 'neuf');
                       });
-                    }}
-                  />
-                ))}
+                      const firstId = itemsInBucket[0]?.id;
+                      const adjustQte = (delta: number) => {
+                        if (!firstId) return;
+                        const first = itemsInBucket[0];
+                        const newQ = Math.max(1, (first.quantite ?? 1) + delta);
+                        updateQuantite(firstId, newQ);
+                      };
+                      const removeAll = () => {
+                        if (!window.confirm(`Retirer "${l.sample.titre}" de toutes les classes ?`)) return;
+                        itemsInBucket.forEach(it => removeItem(it.id));
+                      };
+                      return (
+                        <div key={`${l.sample.titre}-${idx}`} className="flex items-center gap-2 px-2.5 py-2 border-t border-gray-100 first:border-t-0">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold text-gray-900 leading-tight truncate" dir="auto">{l.sample.titre}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              {l.sample.gamme && (
+                                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">
+                                  {l.sample.gamme}
+                                </span>
+                              )}
+                              {l.sample.choix === 'occasion' && (
+                                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-100">
+                                  Occasion
+                                </span>
+                              )}
+                              {l.classes.length > 0 && (
+                                <span className="text-[10px] text-gray-500 truncate">{l.classes.join(' · ')}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Stepper quantité (cumul) */}
+                          <div className="inline-flex items-center bg-gray-50 border border-gray-200 rounded-md shrink-0 overflow-hidden">
+                            <button
+                              onClick={() => adjustQte(-1)}
+                              disabled={l.totalQuantite <= 1}
+                              className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 text-base leading-none"
+                              aria-label="Diminuer">−</button>
+                            <span className="text-xs font-bold text-gray-800 w-5 text-center tabular-nums leading-none">{l.totalQuantite}</span>
+                            <button
+                              onClick={() => adjustQte(+1)}
+                              className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-base leading-none"
+                              aria-label="Augmenter">+</button>
+                          </div>
+
+                          {/* Prix unitaire */}
+                          <span
+                            className={`text-right text-[11px] font-bold tabular-nums shrink-0 min-w-[44px] ${prixUnit > 0 ? 'text-amber-700' : 'text-gray-300'}`}
+                            title={prixUnit > 0 ? undefined : 'Prix non disponible'}
+                          >
+                            {prixUnit > 0 ? `${prixUnit.toLocaleString('fr-FR')} F` : '—'}
+                          </span>
+
+                          {/* Total ligne */}
+                          <span className={`text-right text-[12px] font-bold tabular-nums shrink-0 min-w-[64px] ${style.text}`}>
+                            {prixUnit > 0
+                              ? (r.min === r.max
+                                  ? `${r.max.toLocaleString('fr-FR')} F`
+                                  : `${r.min.toLocaleString('fr-FR')}–${r.max.toLocaleString('fr-FR')}`)
+                              : '—'}
+                          </span>
+
+                          {/* Supprimer */}
+                          <button
+                            onClick={removeAll}
+                            className="w-6 h-6 rounded bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 shrink-0"
+                            title="Retirer cette ligne (toutes classes)" aria-label="Retirer">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            });
+          }
+
+          return grouped.map(({ type, items: gItems }) => {
+            const typeTotal = gItems.reduce((s, it) => s + estimateItem(it), 0);
+            const style = sectionStyles[type];
+            return (
+              <div key={type} className={`rounded-2xl border ${style.border} overflow-hidden bg-white mb-3`}>
+                <div className={`flex items-center justify-between px-3 py-2 ${style.bg}`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                    <span className={`text-[11px] font-bold uppercase tracking-wide ${style.text}`}>
+                      {labels[type]}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-500 font-semibold">
+                      {gItems.length} article{gItems.length > 1 ? 's' : ''}
+                    </span>
+                    {typeTotal > 0 && (
+                      <span className={`text-[11px] font-bold ${style.text}`}>
+                        {typeTotal.toLocaleString('fr-FR')} F
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  {gItems.map(item => (
+                    <ItemCard
+                      key={item.id}
+                      item={item}
+                      onRemove={() => removeItem(item.id)}
+                      onUpdateChoix={updateChoix}
+                      onUpdateQuantite={updateQuantite}
+                      onUpdateGamme={updateGamme}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          });
+        })()}
 
         {/* Synthèse globale tous enfants */}
         {enfants.filter(e => countByEnfant(e.id) > 0).length > 1 && (
@@ -511,17 +1148,41 @@ const RecapAchatPage: React.FC = () => {
             })}
             <div className="border-t border-amber-300 mt-2 pt-2 flex items-center justify-between">
               <p className="font-bold text-amber-900 text-sm">Total estimé</p>
-              <p className="font-bold text-amber-800 text-base">
-                {grandTotal > 0 ? `${grandTotal.toLocaleString()} FCFA` : '—'}
+              <p className="font-bold text-amber-800 text-base text-right">
+                {hasOccasionRange ? (
+                  <>
+                    {grandTotalRange.min.toLocaleString()} – {grandTotalRange.max.toLocaleString()}
+                    <span className="text-xs font-normal text-amber-600 ml-1">FCFA</span>
+                  </>
+                ) : grandTotal > 0 ? (
+                  `${grandTotal.toLocaleString()} FCFA`
+                ) : '—'}
               </p>
             </div>
+            {hasOccasionRange && (
+              <p className="text-[11px] text-amber-700 mt-1.5 leading-snug">
+                Fourchette estimée : prix d'occasion confirmé après troc / analyse des livres
+                (Bon&nbsp;: 70%, Acceptable&nbsp;: 40% du prix neuf).
+              </p>
+            )}
           </div>
+        )}
+
+        {/* Modifier les choix occasion / troc — visible si la décision a été prise */}
+        {occasionItemsInPanier.length > 0 && (
+          <button
+            onClick={reopenOccasionModal}
+            className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 bg-orange-50 border border-orange-200 rounded-2xl text-orange-700 font-semibold text-xs"
+          >
+            <Repeat className="w-3.5 h-3.5" />
+            Modifier mes choix occasion / troc ({occasionItemsInPanier.length} item{occasionItemsInPanier.length > 1 ? 's' : ''})
+          </button>
         )}
 
         {/* Ajouter d'autres articles */}
         <button
           onClick={() => navigate('/parent-selection')}
-          className="w-full mt-4 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-amber-300 rounded-2xl text-amber-700 font-semibold text-sm"
+          className="w-full mt-3 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-amber-300 rounded-2xl text-amber-700 font-semibold text-sm"
         >
           + Ajouter des articles
         </button>
@@ -532,9 +1193,18 @@ const RecapAchatPage: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-4 max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-xs text-gray-500">Total estimé</p>
-              <p className="font-bold text-gray-900 text-xl">
-                {grandTotal > 0 ? `${grandTotal.toLocaleString()} FCFA` : '—'}
+              <p className="text-xs text-gray-500">
+                {hasOccasionRange ? 'Fourchette estimée' : 'Total estimé'}
+              </p>
+              <p className="font-bold text-gray-900 text-xl tabular-nums">
+                {hasOccasionRange ? (
+                  <>
+                    {grandTotalRange.min.toLocaleString()}
+                    <span className="text-sm font-normal mx-1 text-gray-500">à</span>
+                    {grandTotalRange.max.toLocaleString()}
+                    <span className="text-sm font-normal text-gray-500 ml-1">F</span>
+                  </>
+                ) : grandTotal > 0 ? `${grandTotal.toLocaleString()} F` : '—'}
               </p>
             </div>
             <p className="text-xs text-gray-400 text-right">
@@ -544,10 +1214,11 @@ const RecapAchatPage: React.FC = () => {
           </div>
           <button
             onClick={() => setShowDelivery(true)}
-            className="w-full bg-amber-600 text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2"
+            disabled={submittingOrder}
+            className="w-full bg-amber-600 disabled:bg-gray-300 text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2"
           >
-            <MapPin className="w-5 h-5" />
-            Préciser la livraison
+            {submittingOrder ? <Loader2 className="w-5 h-5 animate-spin" /> : <MapPin className="w-5 h-5" />}
+            {submittingOrder ? 'Envoi commande…' : 'Préciser la livraison'}
             <ChevronRight className="w-4 h-4 ml-auto" />
           </button>
           <p className="text-center text-xs text-gray-400 mt-2">

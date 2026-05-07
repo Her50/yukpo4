@@ -41,6 +41,10 @@ export interface PanierItem {
   choix: Choix;
   quantite?: number;        // nouveau : pour accessoires
   gamme?: 'entree' | 'standard' | 'premium'; // nouveau : pour accessoires
+  /** ID du livre dans la table livres_scolaires si l'utilisateur a proposé un livre
+   *  pour cet item via le workflow troc (TrocPrepPage). Permet de référencer ce
+   *  livre dans le payload de POST /api/librairie-network/commandes (livres_occasion[]). */
+  trocLivreId?: number;
 }
 
 /* ─── Exports legacy (ancien code qui n'a pas migré) ─── */
@@ -50,7 +54,11 @@ export const CLASSES_PAR_NIVEAU = CPSN_LEGACY.francophone;
 export { PAYS_PAR_DEFAUT };
 
 export function getClassesForEnfant(systeme: Systeme, niveau: string): string[] {
-  return CPSN_LEGACY[systeme]?.[niveau] ?? [];
+  // Accès dynamique au mapping legacy (les clés sont typées const, mais on en
+  // ignore le typage strict pour permettre une lookup par chaîne quelconque).
+  const niveauxDuSysteme = CPSN_LEGACY[systeme] as Record<string, readonly string[]> | undefined;
+  const classes = niveauxDuSysteme?.[niveau];
+  return classes ? Array.from(classes) : [];
 }
 
 /* ─── Hook ─── */
@@ -148,6 +156,11 @@ export function useParentShop() {
     setPanier(prev => prev.map(p => (p.id === id ? { ...p, choix } : p)));
   }, []);
 
+  /** Associe un livre proposé au troc (livres_scolaires.id) à un item du panier. */
+  const updateTrocMatch = useCallback((id: string, trocLivreId: number | undefined) => {
+    setPanier(prev => prev.map(p => (p.id === id ? { ...p, trocLivreId } : p)));
+  }, []);
+
   const updateQuantite = useCallback((id: string, quantite: number) => {
     setPanier(prev => prev.map(p => (p.id === id ? { ...p, quantite: Math.max(0, quantite) } : p)));
   }, []);
@@ -176,6 +189,10 @@ export function useParentShop() {
     setPanier(prev => prev.filter(p => p.enfantId !== enfantId));
   }, []);
 
+  const clearPanier = useCallback(() => {
+    setPanier([]);
+  }, []);
+
   return {
     enfants,
     panier,
@@ -186,12 +203,14 @@ export function useParentShop() {
     addItems,
     removeItem,
     updateChoix,
+    updateTrocMatch,
     updateQuantite,
     updateGamme,
     isInPanier,
     getItemsForEnfant,
     countByEnfant,
     clearPanierForEnfant,
+    clearPanier,
     totalItems: panier.length,
     // Helpers système scolaire
     getSystemeById,

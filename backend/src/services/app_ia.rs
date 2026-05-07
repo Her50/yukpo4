@@ -315,10 +315,13 @@ impl AppIA {
                     base_url: "https://api.openai.com/v1".to_string(),
                     model: "gpt-4o".to_string(),
                     temperature: 0.2, // R?duit pour plus de coh?rence et rapidit?
-                    max_tokens: 1500, // R?duit pour acc?l?rer
-                    top_p: 0.8,       // R?duit pour plus de pr?cision
+                    // ⚠️ 1500 était insuffisant pour les listes scolaires longues
+                    // (12 livres + 10 fournitures = JSON tronqué → "EOF while parsing").
+                    // 8000 couvre une liste très exhaustive sans coupure.
+                    max_tokens: 8000,
+                    top_p: 0.8,             // R?duit pour plus de pr?cision
                     frequency_penalty: 0.0, // Supprim? pour acc?l?rer
-                    presence_penalty: 0.0, // Supprim? pour acc?l?rer
+                    presence_penalty: 0.0,  // Supprim? pour acc?l?rer
                     timeout: 60, // ✅ Augmenté à 60s pour analyse complète des images (éviter timeouts)
                     retry_count: 2, // R?duit ? 2 tentatives
                     priority: 10,
@@ -344,8 +347,9 @@ impl AppIA {
                     api_key,
                     base_url: "https://api.openai.com/v1".to_string(),
                     model: "gpt-4o-mini".to_string(),
-                    temperature: 0.3,       // R?duit pour plus de rapidit?
-                    max_tokens: 2000,       // R?duit pour acc?l?rer
+                    temperature: 0.3, // R?duit pour plus de rapidit?
+                    // ⚠️ Idem gpt4o : 2000 trop court pour les programmes scolaires longs.
+                    max_tokens: 8000,
                     top_p: 0.8,             // R?duit pour plus de pr?cision
                     frequency_penalty: 0.0, // Supprim? pour acc?l?rer
                     presence_penalty: 0.0,  // Supprim? pour acc?l?rer

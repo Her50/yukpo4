@@ -167,6 +167,22 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/librairie-network/super-librairie/team/{member_id}",
             axum::routing::delete(crate::controllers::librairie_network_controller::super_librairie_remove_team),
         )
+        .route(
+            "/api/librairie-network/super-librairie/parents-contacts",
+            get(crate::controllers::librairie_network_controller::super_librairie_parents_contacts),
+        )
+        .route(
+            "/api/librairie-network/super-librairie/campaigns",
+            post(crate::controllers::librairie_network_controller::super_librairie_send_campaign),
+        )
+        .route(
+            "/api/librairie-network/super-librairie/delivery-routes",
+            get(crate::controllers::librairie_network_controller::super_librairie_delivery_routes),
+        )
+        .route(
+            "/api/librairie-network/super-librairie/wholesale-order",
+            get(crate::controllers::librairie_network_controller::super_librairie_wholesale_order),
+        )
         // ========================================
         // ADMINISTRATION
         // ========================================

@@ -255,17 +255,38 @@ pub async fn create_commande_mixte(
 
     let devise = payload.devise.unwrap_or_else(|| "XAF".to_string());
     let mode_livraison = payload.mode_livraison.unwrap_or_else(|| "coursier".to_string());
+
+    // Génération de la référence commande côté application — la migration de prod
+    // ne contient pas le trigger SQL `generer_reference_commande` qui devait remplir
+    // automatiquement ce champ NOT NULL. Format : CMD-{année}-{6 caractères aléatoires}.
+    // L'unicité est garantie par la combinaison année + UUID v4 tronqué (probabilité
+    // de collision négligeable + contrainte UNIQUE en base qui retournera une erreur
+    // claire en cas improbable de duplicata).
+    let reference_commande = {
+        let annee = chrono::Utc::now().format("%Y");
+        let suffix = uuid::Uuid::new_v4()
+            .to_string()
+            .replace('-', "")
+            .chars()
+            .take(6)
+            .collect::<String>()
+            .to_uppercase();
+        format!("CMD-{}-{}", annee, suffix)
+    };
+
     let commande = sqlx::query_as::<_, CommandeMixte>(
         r#"
         INSERT INTO commandes_mixtes (
+            reference_commande,
             user_id, budget_total, devise, statut, mode_livraison,
             adresse_livraison, gps_livraison, notes_client,
             commission_app, montant_net_libraires
         )
-        VALUES ($1, $2, $3, 'edition', $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, 'edition', $5, $6, $7, $8, $9, $10)
         RETURNING *
         "#,
     )
+    .bind(&reference_commande)
     .bind(user_id)
     .bind(payload.budget_total)
     .bind(&devise)
@@ -1132,6 +1153,714 @@ pub async fn super_librairie_dashboard(
         "success": true,
         "commandes": result,
         "total": result.len()
+    })))
+}
+
+// ============================================================================
+// SUPER LIBRAIRIE — CARNET D'ADRESSES PARENTS + CAMPAGNES WHATSAPP
+// ============================================================================
+
+/// Helper interne : vérifie que l'appelant a accès au super-libraire (admin OU
+/// super-libraire enregistré OU membre actif d'équipe). Retourne 403 sinon.
+async fn ensure_super_libraire_access(
+    pg: &sqlx::PgPool,
+    user_id: i32,
+    role: &str,
+) -> Result<(), AppError> {
+    if role == "admin" || role == "super_admin" {
+        return Ok(());
+    }
+    let ok = sqlx::query_scalar::<_, bool>(
+        r#"SELECT EXISTS(
+            SELECT 1 FROM librairie_partners
+            WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true
+        ) OR EXISTS(
+            SELECT 1 FROM libraire_team_members ltm
+            JOIN librairie_partners lp ON lp.id = ltm.librairie_id
+            WHERE ltm.user_id = $1 AND ltm.is_active = true
+              AND lp.est_super_librairie = true AND lp.est_actif = true
+        )"#,
+    )
+    .bind(user_id)
+    .fetch_one(pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur auth: {}", e)))?;
+    if !ok {
+        return Err(AppError::Forbidden(
+            "Accès réservé à Yukpo Librairie".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+/// GET /api/librairie-network/super-librairie/parents-contacts
+/// Liste les parents distincts ayant passé au moins une commande, avec leurs
+/// coordonnées WhatsApp et la dernière adresse de livraison connue.
+/// Utilisé par le portail Yukpo Librairie pour le carnet d'adresses + campagnes.
+pub async fn super_librairie_parents_contacts(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> AppResult<impl IntoResponse> {
+    ensure_super_libraire_access(&state.pg, user_id, &role).await?;
+
+    let search = params.get("search").map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let limit: i64 = params.get("limit").and_then(|v| v.parse().ok()).unwrap_or(200).clamp(1, 500);
+    let offset: i64 = params.get("offset").and_then(|v| v.parse().ok()).unwrap_or(0);
+
+    // Agrégat par utilisateur : dernière commande, total commandes, dernière
+    // adresse non vide. Filtre optionnel sur nom/email/téléphone/ville.
+    let pattern = search.as_ref().map(|s| format!("%{}%", s.to_lowercase()));
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            u.id AS user_id,
+            u.nom,
+            u.prenom,
+            u.email,
+            u.phone,
+            COUNT(cm.id) AS nb_commandes,
+            MAX(cm.created_at) AS derniere_commande,
+            (
+                SELECT cm2.adresse_livraison FROM commandes_mixtes cm2
+                 WHERE cm2.user_id = u.id
+                   AND cm2.adresse_livraison IS NOT NULL
+                   AND cm2.adresse_livraison <> ''
+                 ORDER BY cm2.created_at DESC LIMIT 1
+            ) AS derniere_adresse,
+            (
+                SELECT cm3.gps_livraison FROM commandes_mixtes cm3
+                 WHERE cm3.user_id = u.id AND cm3.gps_livraison IS NOT NULL
+                 ORDER BY cm3.created_at DESC LIMIT 1
+            ) AS dernier_gps,
+            COALESCE(SUM(cm.budget_total), 0)::DOUBLE PRECISION AS budget_cumule
+        FROM users u
+        JOIN commandes_mixtes cm ON cm.user_id = u.id
+        WHERE u.phone IS NOT NULL AND u.phone <> ''
+          AND ($1::text IS NULL
+               OR LOWER(COALESCE(u.nom, '') || ' ' || COALESCE(u.prenom, '') || ' ' || COALESCE(u.email, '') || ' ' || COALESCE(u.phone, '')) LIKE $1
+               OR LOWER(COALESCE((SELECT adresse_livraison FROM commandes_mixtes WHERE user_id = u.id ORDER BY created_at DESC LIMIT 1), '')) LIKE $1)
+        GROUP BY u.id, u.nom, u.prenom, u.email, u.phone
+        ORDER BY MAX(cm.created_at) DESC NULLS LAST
+        LIMIT $2 OFFSET $3
+        "#,
+    )
+    .bind(pattern.as_deref())
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur carnet: {}", e)))?;
+
+    use sqlx::Row;
+    let parents: Vec<serde_json::Value> = rows
+        .into_iter()
+        .map(|r| {
+            serde_json::json!({
+                "user_id": r.try_get::<i32, _>("user_id").unwrap_or(0),
+                "nom": r.try_get::<Option<String>, _>("nom").unwrap_or(None),
+                "prenom": r.try_get::<Option<String>, _>("prenom").unwrap_or(None),
+                "email": r.try_get::<Option<String>, _>("email").unwrap_or(None),
+                "phone": r.try_get::<Option<String>, _>("phone").unwrap_or(None),
+                "nb_commandes": r.try_get::<i64, _>("nb_commandes").unwrap_or(0),
+                "derniere_commande": r
+                    .try_get::<Option<chrono::DateTime<Utc>>, _>("derniere_commande")
+                    .unwrap_or(None)
+                    .map(|t| t.to_rfc3339()),
+                "derniere_adresse": r.try_get::<Option<String>, _>("derniere_adresse").unwrap_or(None),
+                "dernier_gps": r.try_get::<Option<String>, _>("dernier_gps").unwrap_or(None),
+                "budget_cumule": r.try_get::<Option<f64>, _>("budget_cumule").unwrap_or(None),
+            })
+        })
+        .collect();
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "parents": parents,
+        "total": parents.len(),
+    })))
+}
+
+/// POST /api/librairie-network/super-librairie/campaigns
+/// Diffuse un message WhatsApp à tous les parents matchant les critères.
+/// Body: { message: String, segment?: { search?: String, last_days?: i64 } }
+/// Renvoie un compteur des envois réussis. L'envoi est best-effort (Twilio
+/// peut échouer pour certains numéros — on continue les autres).
+#[derive(Debug, serde::Deserialize)]
+pub struct CampaignRequest {
+    pub message: String,
+    pub segment: Option<CampaignSegment>,
+    /// `dry_run = true` → ne fait que compter les destinataires sans envoyer.
+    #[serde(default)]
+    pub dry_run: bool,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct CampaignSegment {
+    pub search: Option<String>,
+    pub last_days: Option<i64>,
+}
+
+pub async fn super_librairie_send_campaign(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
+    Json(payload): Json<CampaignRequest>,
+) -> AppResult<impl IntoResponse> {
+    ensure_super_libraire_access(&state.pg, user_id, &role).await?;
+
+    let msg = payload.message.trim().to_string();
+    if msg.len() < 10 {
+        return Err(AppError::BadRequest(
+            "Message trop court (10 caractères minimum)".to_string(),
+        ));
+    }
+    if msg.len() > 4000 {
+        return Err(AppError::BadRequest(
+            "Message trop long (4000 caractères maximum)".to_string(),
+        ));
+    }
+
+    let seg = payload.segment.unwrap_or(CampaignSegment {
+        search: None,
+        last_days: None,
+    });
+    let pattern = seg
+        .search
+        .as_ref()
+        .map(|s| format!("%{}%", s.trim().to_lowercase()))
+        .filter(|s| s != "%%");
+
+    // Récupère tous les destinataires distincts éligibles (téléphone non vide)
+    let rows = sqlx::query(
+        r#"
+        SELECT DISTINCT u.id AS user_id, u.phone, COALESCE(u.nom, u.prenom, u.email, '') AS contact_name
+        FROM users u
+        JOIN commandes_mixtes cm ON cm.user_id = u.id
+        WHERE u.phone IS NOT NULL AND u.phone <> ''
+          AND ($1::text IS NULL
+               OR LOWER(COALESCE(u.nom, '') || ' ' || COALESCE(u.prenom, '') || ' ' || COALESCE(u.email, '') || ' ' || COALESCE(u.phone, '')) LIKE $1)
+          AND ($2::bigint IS NULL
+               OR cm.created_at >= NOW() - ($2::bigint || ' days')::interval)
+        "#,
+    )
+    .bind(pattern.as_deref())
+    .bind(seg.last_days)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur destinataires: {}", e)))?;
+
+    use sqlx::Row;
+    let recipients: Vec<(i32, String, String)> = rows
+        .into_iter()
+        .filter_map(|r| {
+            let uid = r.try_get::<i32, _>("user_id").ok()?;
+            let phone = r.try_get::<Option<String>, _>("phone").ok().flatten()?;
+            let name = r
+                .try_get::<Option<String>, _>("contact_name")
+                .ok()
+                .flatten()
+                .unwrap_or_default();
+            Some((uid, phone, name))
+        })
+        .collect();
+
+    if payload.dry_run {
+        return Ok(Json(serde_json::json!({
+            "success": true,
+            "dry_run": true,
+            "total_recipients": recipients.len(),
+        })));
+    }
+
+    // Envoi best-effort via Twilio (ou notification interne en fallback)
+    let total = recipients.len();
+    let mut sent_wa = 0_i64;
+    let mut sent_notif = 0_i64;
+    let mut failed = 0_i64;
+
+    for (uid, phone, _name) in recipients {
+        let ok =
+            crate::services::whatsapp_alert_service::send_whatsapp_outbound(&phone, &msg).await;
+        if ok {
+            sent_wa += 1;
+        } else {
+            failed += 1;
+        }
+        // En complément on pousse une notification in-app pour garder une trace
+        // côté utilisateur même quand Twilio n'est pas configuré.
+        let _ = crate::utils::send_notification(
+            &state,
+            uid,
+            "Yukpo Librairie",
+            &msg,
+            Some(serde_json::json!({
+                "type": "yukpo_librairie_campaign",
+                "sent_by": user_id,
+            })),
+        )
+        .await;
+        sent_notif += 1;
+    }
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "total_recipients": total,
+        "whatsapp_sent": sent_wa,
+        "whatsapp_failed": failed,
+        "notifications_sent": sent_notif,
+    })))
+}
+
+/// GET /api/librairie-network/super-librairie/delivery-routes
+/// Regroupe les commandes en tournées de livraison logiques :
+///   - 1 cluster = 1 ville (extraite de l'adresse) + sous-clusters GPS
+///     (distance haversine < `bucket_km`, défaut 2 km).
+///   - Chaque ligne renvoie l'adresse, le téléphone WhatsApp, les classes
+///     concernées et une "référence paquet" stable (CMD-XXXX#PKG-NN) que
+///     le coursier peut scanner / mentionner.
+/// Filtre uniquement les commandes en cours de préparation/livraison
+/// (statuts : validee_complete, validee_partielle, en_preparation, en_livraison).
+pub async fn super_librairie_delivery_routes(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> AppResult<impl IntoResponse> {
+    ensure_super_libraire_access(&state.pg, user_id, &role).await?;
+
+    let bucket_km: f64 = {
+        let v: f64 = params.get("bucket_km").and_then(|v| v.parse::<f64>().ok()).unwrap_or(2.0);
+        v.max(0.5_f64)
+    };
+
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            cm.id AS commande_id,
+            cm.reference_commande,
+            cm.statut,
+            cm.adresse_livraison,
+            cm.gps_livraison,
+            cm.created_at,
+            u.id AS user_id,
+            u.nom,
+            u.prenom,
+            u.phone,
+            u.email,
+            COUNT(DISTINCT cln.id) AS nb_neufs,
+            COUNT(DISTINCT clo.id) AS nb_occasion,
+            COALESCE(SUM(cln.quantite), 0)::INT AS total_articles_neufs,
+            ARRAY_AGG(DISTINCT cln.classe) FILTER (WHERE cln.classe IS NOT NULL) AS classes
+        FROM commandes_mixtes cm
+        JOIN users u ON u.id = cm.user_id
+        LEFT JOIN commande_livres_neufs cln ON cln.commande_id = cm.id
+        LEFT JOIN commande_livres_occasion clo ON clo.commande_id = cm.id
+        WHERE cm.statut IN ('validee_complete', 'validee_partielle', 'en_preparation', 'en_livraison')
+        GROUP BY cm.id, u.id
+        ORDER BY cm.adresse_livraison NULLS LAST, cm.created_at ASC
+        "#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur tournées: {}", e)))?;
+
+    use sqlx::Row;
+    #[derive(Clone)]
+    struct Item {
+        commande_id: String,
+        reference_commande: String,
+        statut: String,
+        adresse: Option<String>,
+        gps_str: Option<String>,
+        gps: Option<(f64, f64)>,
+        nom: String,
+        phone: Option<String>,
+        email: Option<String>,
+        nb_neufs: i64,
+        nb_occasion: i64,
+        total_articles: i32,
+        classes: Vec<String>,
+    }
+    let items: Vec<Item> = rows
+        .into_iter()
+        .map(|r| {
+            let gps_str: Option<String> =
+                r.try_get::<Option<String>, _>("gps_livraison").unwrap_or(None);
+            let gps = gps_str.as_ref().and_then(|g| {
+                let p: Vec<&str> = g.split(',').collect();
+                if p.len() == 2 {
+                    Some((
+                        p[0].trim().parse::<f64>().ok()?,
+                        p[1].trim().parse::<f64>().ok()?,
+                    ))
+                } else {
+                    None
+                }
+            });
+            let nom = [
+                r.try_get::<Option<String>, _>("prenom").unwrap_or(None).unwrap_or_default(),
+                r.try_get::<Option<String>, _>("nom").unwrap_or(None).unwrap_or_default(),
+            ]
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ");
+            Item {
+                commande_id: r
+                    .try_get::<uuid::Uuid, _>("commande_id")
+                    .ok()
+                    .map(|u| u.to_string())
+                    .unwrap_or_default(),
+                reference_commande: r
+                    .try_get::<Option<String>, _>("reference_commande")
+                    .unwrap_or(None)
+                    .unwrap_or_default(),
+                statut: r
+                    .try_get::<Option<String>, _>("statut")
+                    .unwrap_or(None)
+                    .unwrap_or_default(),
+                adresse: r.try_get::<Option<String>, _>("adresse_livraison").unwrap_or(None),
+                gps_str,
+                gps,
+                nom: if nom.is_empty() { "Parent".into() } else { nom },
+                phone: r.try_get::<Option<String>, _>("phone").unwrap_or(None),
+                email: r.try_get::<Option<String>, _>("email").unwrap_or(None),
+                nb_neufs: r.try_get::<i64, _>("nb_neufs").unwrap_or(0),
+                nb_occasion: r.try_get::<i64, _>("nb_occasion").unwrap_or(0),
+                total_articles: r.try_get::<i32, _>("total_articles_neufs").unwrap_or(0),
+                classes: r
+                    .try_get::<Option<Vec<String>>, _>("classes")
+                    .unwrap_or(None)
+                    .unwrap_or_default(),
+            }
+        })
+        .collect();
+
+    // Heuristique d'extraction de la ville : dernier morceau séparé par ","
+    // ou avant une virgule contenant un mot-clé géographique. Fallback "Sans
+    // adresse".
+    fn extract_city(addr: &Option<String>) -> String {
+        let a = addr.as_deref().unwrap_or("").trim();
+        if a.is_empty() {
+            return "Sans adresse".into();
+        }
+        let parts: Vec<&str> = a.rsplit(',').collect();
+        for p in &parts {
+            let s = p.trim();
+            if !s.is_empty() && s.len() < 60 {
+                return s.to_string();
+            }
+        }
+        a.to_string()
+    }
+
+    fn haversine_km(a: (f64, f64), b: (f64, f64)) -> f64 {
+        let r = 6371.0;
+        let lat1 = a.0.to_radians();
+        let lat2 = b.0.to_radians();
+        let dlat = (b.0 - a.0).to_radians();
+        let dlon = (b.1 - a.1).to_radians();
+        let h = (dlat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
+        2.0 * r * h.sqrt().asin()
+    }
+
+    // Groupement : ville → sous-clusters GPS (greedy par distance).
+    use std::collections::BTreeMap;
+    let mut by_city: BTreeMap<String, Vec<Item>> = BTreeMap::new();
+    for it in items {
+        by_city.entry(extract_city(&it.adresse)).or_default().push(it);
+    }
+
+    let mut routes: Vec<serde_json::Value> = Vec::new();
+    for (city, list) in by_city {
+        // Sous-clusters GPS greedy : on parcourt les items, et on rattache à
+        // un cluster existant si la distance haversine au centre est < bucket_km.
+        let mut clusters: Vec<Vec<Item>> = Vec::new();
+        for it in list {
+            let mut placed = false;
+            if let Some(g) = it.gps {
+                for c in clusters.iter_mut() {
+                    if let Some(centre) = c.first().and_then(|x| x.gps) {
+                        if haversine_km(g, centre) <= bucket_km {
+                            c.push(it.clone());
+                            placed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if !placed {
+                clusters.push(vec![it]);
+            }
+        }
+        for (idx, cluster) in clusters.into_iter().enumerate() {
+            let pkg_ref = format!("PKG-{:03}", idx + 1);
+            let count = cluster.len();
+            let parents: Vec<serde_json::Value> = cluster
+                .iter()
+                .map(|x| {
+                    serde_json::json!({
+                        "package_ref": format!("{}#{}", x.reference_commande, pkg_ref),
+                        "commande_id": x.commande_id,
+                        "reference_commande": x.reference_commande,
+                        "statut": x.statut,
+                        "adresse": x.adresse,
+                        "gps": x.gps_str,
+                        "nom": x.nom,
+                        "phone": x.phone,
+                        "email": x.email,
+                        "nb_neufs": x.nb_neufs,
+                        "nb_occasion": x.nb_occasion,
+                        "total_articles": x.total_articles,
+                        "classes": x.classes,
+                    })
+                })
+                .collect();
+
+            routes.push(serde_json::json!({
+                "city": city,
+                "cluster_ref": format!("{}-{}", city.chars().filter(|c| c.is_alphanumeric()).take(6).collect::<String>().to_uppercase(), pkg_ref),
+                "package_count": count,
+                "centre_gps": cluster.first().and_then(|x| x.gps).map(|(la, lo)| format!("{:.5},{:.5}", la, lo)),
+                "parents": parents,
+            }));
+        }
+    }
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "bucket_km": bucket_km,
+        "routes": routes,
+        "total_packages": routes.iter().map(|r| r["package_count"].as_i64().unwrap_or(0)).sum::<i64>(),
+    })))
+}
+
+/// Catégorise un article (titre+matière) en `manuel | cahier | fourniture`.
+/// Heuristique pragmatique :
+///   - Titre contenant "cahier", "exercise book", "notebook", "copybook",
+///     "carnet" → cahier
+///   - Matière vide / "Fournitures" / titre contenant accessoire connu → fourniture
+///   - Sinon → manuel (livre scolaire de matière)
+fn classify_article(titre: &str, matiere: &str) -> &'static str {
+    let t = titre.to_lowercase();
+    let m = matiere.to_lowercase();
+
+    // Cahiers
+    let cahier_keywords = [
+        "cahier",
+        "exercise book",
+        "exercise-book",
+        "notebook",
+        "copybook",
+        "copy book",
+        "carnet",
+        "workbook",
+        "livret",
+    ];
+    if cahier_keywords.iter().any(|k| t.contains(k)) {
+        return "cahier";
+    }
+
+    // Fournitures / accessoires : matière explicitement Fournitures ou titre
+    // contenant un accessoire connu.
+    let fourniture_keywords = [
+        "stylo",
+        "crayon",
+        "pen",
+        "pencil",
+        "gomme",
+        "eraser",
+        "taille-crayon",
+        "sharpener",
+        "règle",
+        "ruler",
+        "équerre",
+        "set square",
+        "rapporteur",
+        "protractor",
+        "compas",
+        "compass",
+        "calculatrice",
+        "calculator",
+        "casio",
+        "ti-30",
+        "ardoise",
+        "slate",
+        "craie",
+        "chalk",
+        "blouse",
+        "lab coat",
+        "tablier",
+        "uniforme",
+        "uniform",
+        "cartable",
+        "sac",
+        "bag",
+        "trousse",
+        "pencil case",
+        "classeur",
+        "binder",
+        "pochette",
+        "pochettes",
+        "intercalaire",
+        "ramette",
+        "ream",
+        "papier",
+        "paper",
+        "colle",
+        "glue",
+        "ciseaux",
+        "scissors",
+        "agrafeuse",
+        "stapler",
+        "scotch",
+        "tape",
+        "marqueur",
+        "marker",
+        "feutre",
+        "felt",
+        "surligneur",
+        "highlighter",
+        "atlas",
+        "dictionnaire",
+        "dictionary",
+        "bescherelle",
+        "bouteille d'eau",
+        "water bottle",
+        "geometry set",
+        "mathematical set",
+        "boîte de géométrie",
+        "fournitures",
+    ];
+    if m == "fournitures" || fourniture_keywords.iter().any(|k| t.contains(k) || m.contains(k)) {
+        return "fourniture";
+    }
+
+    "manuel"
+}
+
+/// GET /api/librairie-network/super-librairie/wholesale-order
+/// Bon de commande grossiste : agrège tous les articles neufs en cours de
+/// préparation (statuts validee_*/en_preparation), regroupe par titre+auteur+
+/// éditeur (normalisés), somme les quantités, et **classifie en 3 sections**
+/// (manuel/cahier/fourniture) car les grossistes sont généralement différents.
+/// Sortie destinée à être imprimée en PDF côté frontend (window.print).
+pub async fn super_librairie_wholesale_order(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    ensure_super_libraire_access(&state.pg, user_id, &role).await?;
+
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            COALESCE(NULLIF(TRIM(cln.titre), ''), 'Sans titre') AS titre,
+            COALESCE(NULLIF(TRIM(cln.auteur), ''), '') AS auteur,
+            COALESCE(NULLIF(TRIM(cln.editeur), ''), '') AS editeur,
+            COALESCE(NULLIF(TRIM(cln.isbn), ''), '') AS isbn,
+            COALESCE(NULLIF(TRIM(cln.classe), ''), '') AS classe_principale,
+            COALESCE(NULLIF(TRIM(cln.matiere), ''), '') AS matiere,
+            SUM(cln.quantite)::INT AS quantite_totale,
+            COUNT(DISTINCT cln.commande_id) AS nb_commandes,
+            AVG(COALESCE(cln.prix_final, cln.prix_officiel))::DOUBLE PRECISION AS prix_moyen,
+            ARRAY_AGG(DISTINCT cln.classe) FILTER (WHERE cln.classe IS NOT NULL) AS classes
+        FROM commande_livres_neufs cln
+        JOIN commandes_mixtes cm ON cm.id = cln.commande_id
+        WHERE cm.statut IN ('validee_complete', 'validee_partielle', 'en_preparation')
+          AND (cln.statut_validation IS NULL OR cln.statut_validation::text != 'indisponible')
+        GROUP BY
+            LOWER(REGEXP_REPLACE(COALESCE(cln.titre, ''), '\s+', ' ', 'g')),
+            LOWER(COALESCE(cln.auteur, '')),
+            LOWER(COALESCE(cln.editeur, '')),
+            COALESCE(cln.isbn, ''),
+            cln.titre, cln.auteur, cln.editeur, cln.isbn, cln.classe, cln.matiere
+        ORDER BY quantite_totale DESC, titre ASC
+        "#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur grossiste: {}", e)))?;
+
+    use sqlx::Row;
+    let mut articles: Vec<serde_json::Value> = Vec::new();
+    let mut sec_manuels: Vec<usize> = Vec::new();
+    let mut sec_cahiers: Vec<usize> = Vec::new();
+    let mut sec_fournitures: Vec<usize> = Vec::new();
+
+    for r in rows.into_iter() {
+        let titre = r.try_get::<String, _>("titre").unwrap_or_default();
+        let matiere = r.try_get::<String, _>("matiere").unwrap_or_default();
+        let category = classify_article(&titre, &matiere);
+        let qte = r.try_get::<i32, _>("quantite_totale").unwrap_or(0);
+        let prix = r.try_get::<Option<f64>, _>("prix_moyen").unwrap_or(None);
+        let entry = serde_json::json!({
+            "titre": titre,
+            "auteur": r.try_get::<String, _>("auteur").unwrap_or_default(),
+            "editeur": r.try_get::<String, _>("editeur").unwrap_or_default(),
+            "isbn": r.try_get::<String, _>("isbn").unwrap_or_default(),
+            "matiere": matiere,
+            "category": category,
+            "classes": r.try_get::<Option<Vec<String>>, _>("classes").unwrap_or(None).unwrap_or_default(),
+            "quantite_totale": qte,
+            "nb_commandes": r.try_get::<i64, _>("nb_commandes").unwrap_or(0),
+            "prix_moyen": prix,
+            "valeur_estimee": prix.map(|p| p * qte as f64),
+        });
+        let idx = articles.len();
+        articles.push(entry);
+        match category {
+            "manuel" => sec_manuels.push(idx),
+            "cahier" => sec_cahiers.push(idx),
+            _ => sec_fournitures.push(idx),
+        }
+    }
+
+    fn section_totals(articles: &[serde_json::Value], idxs: &[usize]) -> (i64, f64) {
+        let mut q = 0_i64;
+        let mut v = 0.0_f64;
+        for i in idxs {
+            q += articles[*i]["quantite_totale"].as_i64().unwrap_or(0);
+            v += articles[*i]["valeur_estimee"].as_f64().unwrap_or(0.0);
+        }
+        (q, v)
+    }
+    let (qm, vm) = section_totals(&articles, &sec_manuels);
+    let (qc, vc) = section_totals(&articles, &sec_cahiers);
+    let (qf, vf) = section_totals(&articles, &sec_fournitures);
+
+    let make_section = |idxs: &[usize], q: i64, v: f64| -> serde_json::Value {
+        let items: Vec<&serde_json::Value> = idxs.iter().map(|i| &articles[*i]).collect();
+        serde_json::json!({
+            "lignes": items,
+            "total_articles": q,
+            "total_valeur_estimee": v,
+            "nb_lignes": idxs.len(),
+        })
+    };
+
+    let total_articles = qm + qc + qf;
+    let total_valeur = vm + vc + vf;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "sections": {
+            "manuels": make_section(&sec_manuels, qm, vm),
+            "cahiers": make_section(&sec_cahiers, qc, vc),
+            "fournitures": make_section(&sec_fournitures, qf, vf),
+        },
+        // Champs aplatis pour rétrocompatibilité avec d'éventuels appelants.
+        "articles": articles,
+        "total_lignes": articles.len(),
+        "total_articles": total_articles,
+        "total_valeur_estimee": total_valeur,
+        "generated_at": chrono::Utc::now().to_rfc3339(),
     })))
 }
 
@@ -2189,15 +2918,22 @@ pub async fn get_librairies_proches(
 /// Get détails complets d'une commande
 pub async fn get_commande_details(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
     Path(commande_id): Path<Uuid>,
 ) -> AppResult<impl IntoResponse> {
     info!(
-        "[get_commande_details] User: {}, Commande: {}",
-        user_id, commande_id
+        "[get_commande_details] User: {}, Role: {}, Commande: {}",
+        user_id, role, commande_id
     );
 
-    let allowed = sqlx::query_scalar::<_, bool>(
+    // Autorisation : (a) propriétaire de la commande, (b) admin/super_admin,
+    // (c) super-libraire actif (un seul, qui voit tout), (d) libraire associé
+    // à la commande via super_librairie_id ou via libraire_team_members.
+    let is_admin = role == "admin" || role == "super_admin";
+
+    let is_owner = sqlx::query_scalar::<_, bool>(
         "SELECT EXISTS(SELECT 1 FROM commandes_mixtes WHERE id = $1 AND user_id = $2)",
     )
     .bind(commande_id)
@@ -2205,15 +2941,68 @@ pub async fn get_commande_details(
     .fetch_one(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur auth commande: {}", e)))?;
-    if !allowed {
+
+    let is_super_libraire = !is_admin && !is_owner && {
+        sqlx::query_scalar::<_, bool>(
+            r#"SELECT EXISTS(
+                SELECT 1 FROM librairie_partners
+                WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true
+            ) OR EXISTS(
+                SELECT 1 FROM libraire_team_members ltm
+                JOIN librairie_partners lp ON lp.id = ltm.librairie_id
+                WHERE ltm.user_id = $1 AND ltm.is_active = true
+                  AND lp.est_super_librairie = true AND lp.est_actif = true
+            )"#,
+        )
+        .bind(user_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur auth super: {}", e)))?
+    };
+
+    let is_libraire_partenaire = !is_admin
+        && !is_owner
+        && !is_super_libraire
+        && user_est_librairie_avec_validation_commande(&state.pg, commande_id, user_id).await?;
+
+    if !(is_owner || is_admin || is_super_libraire || is_libraire_partenaire) {
         return Err(AppError::Forbidden("Accès non autorisé".to_string()));
     }
 
     let details = fetch_commande_details(&state.pg, commande_id).await?;
 
+    // Pour les libraires, on ajoute les coordonnées du parent (téléphone +
+    // email + nom) afin de permettre une prise de contact directe (WhatsApp).
+    // Le propriétaire n'a pas besoin de ces infos puisque ce sont les siennes.
+    let parent_contact: Option<serde_json::Value> = if is_owner {
+        None
+    } else {
+        sqlx::query_as::<_, (Option<String>, Option<String>, Option<String>)>(
+            r#"
+            SELECT u.phone, u.email, u.nom
+              FROM commandes_mixtes cm
+              JOIN users u ON u.id = cm.user_id
+             WHERE cm.id = $1
+            "#,
+        )
+        .bind(commande_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten()
+        .map(|(phone, email, nom)| {
+            serde_json::json!({
+                "phone": phone,
+                "email": email,
+                "nom": nom,
+            })
+        })
+    };
+
     Ok(Json(serde_json::json!({
         "success": true,
-        "details": details
+        "details": details,
+        "parent_contact": parent_contact,
     })))
 }
 

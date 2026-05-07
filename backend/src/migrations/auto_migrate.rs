@@ -8708,6 +8708,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto accessoires_populaires: {}", e),
     }
 
+    // ✅ 2026-05-07 : Pages Officielles Établissements (CMS multi-blocs)
+    match ensure_etablissement_pages_tables(pool).await {
+        Ok(_) => info!("✅ Migration auto: etablissement_pages (CMS) OK"),
+        Err(e) => error!("❌ Erreur migration auto etablissement_pages: {}", e),
+    }
+
     // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
     match ensure_delivery_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
@@ -22236,5 +22242,142 @@ pub async fn ensure_accessoires_populaires_table(pool: &PgPool) -> Result<(), sq
     )
     .await?;
     info!("✅ Table accessoires_populaires_par_classe créée/vérifiée");
+    Ok(())
+}
+
+/// ✅ 2026-05-07 : Pages Officielles Établissements (CMS multi-blocs)
+/// Étend etablissements_scolaires + crée 5 tables : etablissement_blocs,
+/// etablissement_blocs_audit, etablissement_annonces, etablissement_evenements,
+/// etablissement_visites.
+pub async fn ensure_etablissement_pages_tables(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification/création tables Pages Officielles Établissements...");
+    execute_migration_sql_safe(
+        pool,
+        r#"
+        -- 1. Slugify helper
+        CREATE OR REPLACE FUNCTION etab_slugify(input TEXT) RETURNS TEXT AS $$
+        BEGIN
+            RETURN lower(
+                regexp_replace(
+                    regexp_replace(
+                        unaccent(coalesce(input, '')),
+                        '[^a-zA-Z0-9]+', '-', 'g'
+                    ),
+                    '(^-+|-+$)', '', 'g'
+                )
+            );
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE;
+
+        -- 2. Extension etablissements_scolaires
+        ALTER TABLE etablissements_scolaires
+            ADD COLUMN IF NOT EXISTS slug TEXT,
+            ADD COLUMN IF NOT EXISTS logo_url TEXT,
+            ADD COLUMN IF NOT EXISTS banniere_url TEXT,
+            ADD COLUMN IF NOT EXISTS description TEXT,
+            ADD COLUMN IF NOT EXISTS gerant_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            ADD COLUMN IF NOT EXISTS page_status TEXT NOT NULL DEFAULT 'draft',
+            ADD COLUMN IF NOT EXISTS page_published_at TIMESTAMPTZ,
+            ADD COLUMN IF NOT EXISTS qr_code_url TEXT,
+            ADD COLUMN IF NOT EXISTS stats_views_30d INTEGER NOT NULL DEFAULT 0;
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_etablissements_slug_unique
+            ON etablissements_scolaires(slug)
+            WHERE slug IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_etablissements_gerant
+            ON etablissements_scolaires(gerant_user_id)
+            WHERE gerant_user_id IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_etablissements_nom_trgm
+            ON etablissements_scolaires
+            USING GIN (nom_etablissement gin_trgm_ops);
+
+        -- Backfill des slugs manquants
+        UPDATE etablissements_scolaires
+        SET slug = etab_slugify(nom_etablissement) || '-' || id::text
+        WHERE slug IS NULL;
+
+        -- 3. Table CMS unifiée
+        CREATE TABLE IF NOT EXISTS etablissement_blocs (
+            id              SERIAL PRIMARY KEY,
+            etablissement_id INTEGER NOT NULL REFERENCES etablissements_scolaires(id) ON DELETE CASCADE,
+            type_bloc       TEXT NOT NULL,
+            titre           TEXT,
+            contenu_json    JSONB NOT NULL DEFAULT '{}'::jsonb,
+            medias_urls     TEXT[] DEFAULT ARRAY[]::TEXT[],
+            position        INTEGER NOT NULL DEFAULT 0,
+            is_active       BOOLEAN NOT NULL DEFAULT true,
+            published_at    TIMESTAMPTZ,
+            created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            updated_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE(etablissement_id, type_bloc)
+        );
+        CREATE INDEX IF NOT EXISTS idx_etab_blocs_etab_active
+            ON etablissement_blocs(etablissement_id, is_active, position);
+
+        -- 4. Audit log
+        CREATE TABLE IF NOT EXISTS etablissement_blocs_audit (
+            id              BIGSERIAL PRIMARY KEY,
+            etablissement_id INTEGER NOT NULL,
+            type_bloc       TEXT NOT NULL,
+            action          TEXT NOT NULL,
+            user_id         INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            diff_json       JSONB,
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_etab_audit_etab_date
+            ON etablissement_blocs_audit(etablissement_id, created_at DESC);
+
+        -- 5. Annonces
+        CREATE TABLE IF NOT EXISTS etablissement_annonces (
+            id              SERIAL PRIMARY KEY,
+            etablissement_id INTEGER NOT NULL REFERENCES etablissements_scolaires(id) ON DELETE CASCADE,
+            titre           TEXT NOT NULL,
+            contenu         TEXT NOT NULL,
+            image_url       TEXT,
+            is_pinned       BOOLEAN NOT NULL DEFAULT false,
+            published_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            expires_at      TIMESTAMPTZ,
+            created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_etab_annonces_etab_date
+            ON etablissement_annonces(etablissement_id, published_at DESC);
+
+        -- 6. Événements
+        CREATE TABLE IF NOT EXISTS etablissement_evenements (
+            id              SERIAL PRIMARY KEY,
+            etablissement_id INTEGER NOT NULL REFERENCES etablissements_scolaires(id) ON DELETE CASCADE,
+            titre           TEXT NOT NULL,
+            description     TEXT,
+            type_event      TEXT,
+            date_debut      TIMESTAMPTZ NOT NULL,
+            date_fin        TIMESTAMPTZ,
+            classe_concernee TEXT,
+            is_active       BOOLEAN NOT NULL DEFAULT true,
+            created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_etab_evenements_etab_date
+            ON etablissement_evenements(etablissement_id, date_debut)
+            WHERE is_active = true;
+
+        -- 7. Statistiques visites
+        CREATE TABLE IF NOT EXISTS etablissement_visites (
+            etablissement_id INTEGER NOT NULL REFERENCES etablissements_scolaires(id) ON DELETE CASCADE,
+            date            DATE NOT NULL,
+            visites         INTEGER NOT NULL DEFAULT 0,
+            visiteurs_unq   INTEGER NOT NULL DEFAULT 0,
+            clics_commande  INTEGER NOT NULL DEFAULT 0,
+            clics_infos     INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (etablissement_id, date)
+        );
+        CREATE INDEX IF NOT EXISTS idx_etab_visites_date
+            ON etablissement_visites(date DESC);
+        "#,
+    )
+    .await?;
+    info!("✅ Tables Pages Officielles Établissements créées/vérifiées");
     Ok(())
 }

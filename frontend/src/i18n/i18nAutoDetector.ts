@@ -6,26 +6,41 @@ import en from "@/locales/en.json";
 import ff from "@/locales/ff.json";
 import pt from "@/locales/pt.json";
 import ar from "@/locales/ar.json";
+import { BOURSE_TRANSLATIONS, SUPPORTED_LNGS } from "./bourse_etablissement";
+
+// Fusionne les ressources Bourse (clés `bourse.*`, `etabAdmin.*`, `common.*`)
+// dans les ressources existantes de chaque langue. Utilisable depuis toute
+// l'app via useTranslation().
+const mergeResources = () => {
+  const base: Record<string, { translation: any }> = {
+    fr: { translation: { ...fr, ...BOURSE_TRANSLATIONS.fr } },
+    en: { translation: { ...en, ...BOURSE_TRANSLATIONS.en } },
+    pt: { translation: { ...pt, ...BOURSE_TRANSLATIONS.pt } },
+    ar: { translation: { ...ar, ...BOURSE_TRANSLATIONS.ar } },
+    ff: { translation: { ...ff, ...BOURSE_TRANSLATIONS.ff } },
+  };
+  return base;
+};
 
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     fallbackLng: "fr",
-    supportedLngs: ["fr", "en", "pt", "ar", "ff"],
-    resources: {
-      fr: { translation: fr },
-      en: { translation: en },
-      pt: { translation: pt },
-      ar: { translation: ar },
-      ff: { translation: ff },
-    },
+    supportedLngs: SUPPORTED_LNGS,
+    resources: mergeResources(),
     detection: {
+      // Ordre de détection : préférence utilisateur > langue système téléphone
+      // > balise HTML. Compatible Android/iOS via navigator.languages.
       order: ["localStorage", "navigator", "htmlTag"],
+      lookupLocalStorage: "yukpo_lang",
       caches: ["localStorage"],
     },
     interpolation: {
       escapeValue: false,
+    },
+    react: {
+      useSuspense: false,
     },
   });
 

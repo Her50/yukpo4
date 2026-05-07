@@ -25,6 +25,22 @@ import ParentSelectionPage from './pages/livres-scolaires/ParentSelectionPage';
 import ScanProgrammePage from './pages/livres-scolaires/ScanProgrammePage';
 import RecapAchatPage from './pages/livres-scolaires/RecapAchatPage';
 import LibrairieBulkUploadPage from './pages/livres-scolaires/LibrairieBulkUploadPage';
+import BrowseProgrammeByEtablissementPage from './pages/livres-scolaires/BrowseProgrammeByEtablissementPage';
+import TrocPrepPage from './pages/livres-scolaires/TrocPrepPage';
+import VendreLivresPage from './pages/livres-scolaires/VendreLivresPage';
+import MesCommandesPage from './pages/livres-scolaires/MesCommandesPage';
+import { LibrairieDashboardPage, LibrairieCommandeDetailPage } from './pages/livres-scolaires/LibrairiePortalPage';
+import EcoleSearchPage from './pages/livres-scolaires/EcoleSearchPage';
+import {
+  EcoleDecisionPage,
+  EcoleSelectClassePage,
+  EcoleListeScolairePage,
+  EcoleInfosPage,
+} from './pages/livres-scolaires/EcolePublicPage';
+import {
+  EtablissementPortalHomePage,
+  EtablissementDashboardPage,
+} from './pages/livres-scolaires/EtablissementPortalPage';
 
 // Troc
 import TrocMatchingPage from './pages/trocs/TrocMatchingPage';
@@ -33,6 +49,7 @@ import TrocLiveValidationPage from './pages/trocs/TrocLiveValidationPage';
 import MesTrocsPage from './pages/trocs/MesTrocsPage';
 
 import RequireAuth from './components/auth/RequireAuth';
+import { useGuestAuth } from './hooks/useGuestAuth';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
   state = { error: null };
@@ -52,6 +69,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 }
 
 function BourseLayout({ children }: { children: React.ReactNode }) {
+  // Création silencieuse d'un compte invité au premier passage afin que toute
+  // la Bourse du Livre soit utilisable sans login. Cela ne bloque PAS le rendu :
+  // pendant la création, le visiteur peut déjà naviguer.
+  useGuestAuth();
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
       {children}
@@ -83,6 +104,13 @@ function AppBourse() {
               {/* Parcours parent */}
               <Route path="/parent-selection" element={<BourseLayout><ParentSelectionPage /></BourseLayout>} />
               <Route path="/scan-programme" element={<BourseLayout><ScanProgrammePage /></BourseLayout>} />
+              <Route path="/programme-ecole" element={<BourseLayout><BrowseProgrammeByEtablissementPage /></BourseLayout>} />
+              {/* Routes Bourse du Livre accessibles sans login : auth demandée
+                  uniquement au moment de la finalisation (POST commande / vente).
+                  Cohérent avec une utilisation périodique de la rentrée scolaire. */}
+              <Route path="/troc-prep" element={<BourseLayout><TrocPrepPage /></BourseLayout>} />
+              <Route path="/vendre" element={<BourseLayout><VendreLivresPage /></BourseLayout>} />
+              <Route path="/mes-commandes" element={<BourseLayout><MesCommandesPage /></BourseLayout>} />
               <Route path="/recap" element={<BourseLayout><RecapAchatPage /></BourseLayout>} />
 
               {/* Livres */}
@@ -92,6 +120,22 @@ function AppBourse() {
               <Route path="/mes-livres" element={<BourseLayout><RequireAuth><MesLivresPage /></RequireAuth></BourseLayout>} />
               <Route path="/:id/modifier" element={<BourseLayout><RequireAuth><LivreScolaireFormPage /></RequireAuth></BourseLayout>} />
               <Route path="/:id" element={<BourseLayout><LivreScolaireDetailsPage /></BourseLayout>} />
+
+              {/* Yukpo Librairie — portail libraire (login obligatoire, pas guest) */}
+              <Route path="/librairie" element={<BourseLayout><RequireAuth><LibrairieDashboardPage /></RequireAuth></BourseLayout>} />
+              <Route path="/librairie/commandes/:commandeId" element={<BourseLayout><RequireAuth><LibrairieCommandeDetailPage /></RequireAuth></BourseLayout>} />
+
+              {/* ✅ 2026-05-07 : Pages Officielles Établissements */}
+              {/* Côté parent (mode invité OK) */}
+              <Route path="/recherche-ecole" element={<BourseLayout><EcoleSearchPage /></BourseLayout>} />
+              <Route path="/ecole/:slug" element={<BourseLayout><EcoleDecisionPage /></BourseLayout>} />
+              <Route path="/ecole/:slug/commander" element={<BourseLayout><EcoleSelectClassePage /></BourseLayout>} />
+              <Route path="/ecole/:slug/commander/:classe" element={<BourseLayout><EcoleListeScolairePage /></BourseLayout>} />
+              <Route path="/ecole/:slug/infos" element={<BourseLayout><EcoleInfosPage /></BourseLayout>} />
+
+              {/* Côté admin établissement (login requis) */}
+              <Route path="/etablissement-portal" element={<BourseLayout><RequireAuth><EtablissementPortalHomePage /></RequireAuth></BourseLayout>} />
+              <Route path="/etablissement-portal/:etabId" element={<BourseLayout><RequireAuth><EtablissementDashboardPage /></RequireAuth></BourseLayout>} />
 
               {/* Rôles secondaires */}
               <Route path="/etablissement" element={<BourseLayout><EtablissementScolaireFormPage /></BourseLayout>} />
