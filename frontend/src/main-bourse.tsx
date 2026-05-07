@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import AppBourse from './AppBourse';
+import './i18n/i18nAutoDetector'; // i18n + détection auto langue système téléphone
 import './index.css';
 
 const showError = (msg: string) => {
