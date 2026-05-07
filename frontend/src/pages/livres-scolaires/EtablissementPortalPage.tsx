@@ -58,14 +58,19 @@ export const EtablissementPortalHomePage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [etabs, setEtabs] = useState<MyEtab[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const isGuest = isGuestAccount();
 
   useEffect(() => {
-    if (!user || isGuestAccount()) {
-      navigate('/login?redirect=/etablissement-portal');
+    // Attendre la fin du chargement de l'auth — sinon double redirection
+    if (authLoading) return;
+    // Pas de double-redirect : RequireAuth gère déjà le cas !user.
+    // On charge simplement les établissements pour l'utilisateur connecté.
+    if (!user || isGuest) {
+      setLoading(false);
       return;
     }
     (async () => {
@@ -80,7 +85,39 @@ export const EtablissementPortalHomePage: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, [user, navigate, t]);
+  }, [user, authLoading, isGuest, t]);
+
+  // Mode invité : afficher un écran d'invitation à créer un vrai compte
+  if (!authLoading && isGuest) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-2">
+          <button onClick={() => navigate('/')} className="p-2 -ml-2 rounded-full hover:bg-gray-100">
+            <ArrowLeft className="w-5 h-5 text-gray-700" />
+          </button>
+          <h1 className="text-base font-bold text-gray-900 flex-1">
+            {t('etabAdmin.portal.title')}
+          </h1>
+        </div>
+        <div className="p-6 text-center">
+          <School className="w-16 h-16 text-emerald-300 mx-auto mb-4" />
+          <p className="text-base font-semibold text-gray-900 mb-2">
+            Connexion requise
+          </p>
+          <p className="text-sm text-gray-500 mb-6">
+            L'espace établissement nécessite un compte Yukpo non-invité.
+            Créez votre compte ou connectez-vous pour continuer.
+          </p>
+          <button
+            onClick={() => navigate('/login?redirect=/etablissement-portal')}
+            className="px-6 py-3 bg-emerald-600 text-white text-sm font-bold rounded-full"
+          >
+            Se connecter / S'inscrire
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const createDemo = async () => {
     const nom = window.prompt('Nom de l\'établissement de démo :', 'Collège Bilingue La Gaieté');
