@@ -4,6 +4,49 @@ import AppBourse from './AppBourse';
 import './i18n/i18nAutoDetector'; // i18n + détection auto langue système téléphone
 import './index.css';
 
+// ✅ 2026-05-08 — Kill-switch : si l'app détecte une migration majeure (changement
+// de version), elle purge tous les Service Workers + caches + storage et recharge.
+// Bumper la constante BOURSE_APP_VERSION force la purge chez tous les clients.
+const BOURSE_APP_VERSION = 'v3-2026-05-08-09h';
+(async () => {
+  try {
+    const lastVersion = localStorage.getItem('bourse_app_version');
+    if (lastVersion !== BOURSE_APP_VERSION) {
+      console.log(`[Bourse] Migration ${lastVersion} → ${BOURSE_APP_VERSION} : purge en cours…`);
+      // Désinscrire les SW
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      }
+      // Vider les caches
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(c => caches.delete(c)));
+      }
+      // Préserver token & guest flag uniquement si présents et non corrompus
+      const token = localStorage.getItem('token');
+      const guestFlag = localStorage.getItem('yukpo_guest_account');
+      // Le guest flag est obsolète depuis v3 : on le retire systématiquement
+      localStorage.removeItem('yukpo_guest_account');
+      // Vider sessionStorage (rarement utile à conserver)
+      sessionStorage.clear();
+      // Marquer la version pour ne pas re-purger au prochain reload
+      localStorage.setItem('bourse_app_version', BOURSE_APP_VERSION);
+      // Si on avait un token guest (créé par l'ancien useGuestAuth), on le purge
+      // pour forcer la création d'un vrai compte.
+      if (guestFlag && token) {
+        localStorage.removeItem('token');
+      }
+      console.log('[Bourse] Purge terminée. Rechargement…');
+      // Reload doux pour repartir sur un état propre
+      setTimeout(() => location.reload(), 100);
+      return;
+    }
+  } catch (e) {
+    console.warn('[Bourse] Kill-switch: erreur silencieuse', e);
+  }
+})();
+
 const showError = (msg: string) => {
   document.body.style.cssText = 'margin:0;padding:20px;font-family:monospace;background:#fff';
   document.body.innerHTML = `<h2 style="color:red">Erreur de démarrage</h2><pre style="white-space:pre-wrap;font-size:13px;color:#333;background:#f5f5f5;padding:16px;border-radius:8px">${msg}</pre>`;

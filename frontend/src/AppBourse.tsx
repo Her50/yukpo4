@@ -50,7 +50,6 @@ import TrocLiveValidationPage from './pages/trocs/TrocLiveValidationPage';
 import MesTrocsPage from './pages/trocs/MesTrocsPage';
 
 import RequireAuth from './components/auth/RequireAuth';
-import { useGuestAuth } from './hooks/useGuestAuth';
 import PartnerRegisterPage from './pages/PartnerRegisterPage';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
@@ -71,11 +70,11 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 }
 
 function BourseLayout({ children }: { children: React.ReactNode }) {
-  // ✅ 2026-05-08 v2 : compte invité auto rétabli pour les parents (zéro
-  // friction au 1er accès — la home s'ouvre directement, le scan fonctionne
-  // immédiatement). L'authentification reste OBLIGATOIRE pour les portails
-  // partenaire (Librairie, Établissement) via RequireAuth.
-  useGuestAuth();
+  // ✅ 2026-05-08 v3 : philosophie finale — tous les parents doivent créer
+  // un compte au 1er accès. Une fois connecté, le token JWT persiste dans
+  // localStorage donc ils ne se reconnectent pas à chaque visite. Pas de
+  // compte invité silencieux. La connexion est obligatoire pour TOUTES les
+  // pages de la Bourse du Livre (parent + partenaires).
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
       {children}

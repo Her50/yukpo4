@@ -3,7 +3,7 @@
 //           cache-first uniquement pour images/fonts (rarement changeantes).
 // Bumper CACHE_NAME force la purge des anciens caches au prochain "activate".
 
-const CACHE_NAME = 'yukpo-bourse-v9';
+const CACHE_NAME = 'yukpo-bourse-v10';
 const STATIC_ASSETS = ['/'];
 
 self.addEventListener('install', (event) => {

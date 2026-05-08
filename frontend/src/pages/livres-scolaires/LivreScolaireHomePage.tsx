@@ -1,10 +1,11 @@
 import {
   Camera, ChevronRight, ScanLine, School, Search, ShoppingCart, Sparkles, Store,
 } from 'lucide-react';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useParentShop } from '../../hooks/useParentShop';
+import { useUser } from '../../hooks/useUser';
 
 /**
  * Page d'accueil minimaliste de la Bourse du Livre.
@@ -19,9 +20,25 @@ const LivreScolaireHomePage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { totalItems } = useParentShop();
-  // ✅ 2026-05-08 v2 : la home parent reste accessible en mode invité auto
-  // (useGuestAuth dans BourseLayout). L'authentification est exigée uniquement
-  // aux portails partenaires (Librairie, Établissement) via RequireAuth.
+  const { user, isLoading } = useUser();
+
+  // ✅ 2026-05-08 v3 : connexion obligatoire pour tous (parents + partenaires).
+  // Une fois le compte créé, le JWT reste en localStorage → pas de reconnexion
+  // à chaque visite. Si pas de token, redirection vers /login (qui propose le
+  // bouton "Devenir partenaire" pour les écoles, libraires, etc.).
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate('/login?source=shared_service&redirect=%2F', { replace: true });
+    }
+  }, [isLoading, user, navigate]);
+
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-amber-50">
+        <p className="text-sm text-gray-500">Chargement…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-600 via-amber-500 to-amber-400 flex flex-col">
