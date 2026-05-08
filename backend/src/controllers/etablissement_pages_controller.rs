@@ -1084,27 +1084,71 @@ pub async fn create_demo_etablissement(
     let ville = payload.ville.clone().unwrap_or_else(|| "Douala".to_string());
     let quartier = payload.quartier.clone();
 
-    let row = sqlx::query(
+    // Génération d'un slug propre :
+    // - Pour un partenaire qui déclare son école : slug lisible
+    //   "college-bilingue-yukpo-yassa" (avec quartier si dispo). Si collision,
+    //   on suffixe par l'id de l'établissement.
+    // - Pour un admin qui crée une démo : suffixe "-demo-{timestamp}" pour
+    //   éviter de polluer les vrais slugs.
+    let slug_expr: &str = if is_admin {
+        "etab_slugify($3) || '-demo-' || extract(epoch from NOW())::bigint::text"
+    } else if quartier.is_some() {
+        "etab_slugify($3 || '-' || $6::text)"
+    } else {
+        "etab_slugify($3 || '-' || $5::text)"
+    };
+
+    let sql = format!(
         r#"
         INSERT INTO etablissements_scolaires
             (service_id, user_id, gerant_user_id, nom_etablissement,
              type_etablissement, ville, quartier, page_status, page_published_at,
              slug, created_at, updated_at)
         VALUES ($1, $2, $2, $3, $4, $5, $6, 'published', NOW(),
-                etab_slugify($3) || '-demo-' || extract(epoch from NOW())::bigint::text,
+                {slug_expr},
                 NOW(), NOW())
+        ON CONFLICT (slug) WHERE slug IS NOT NULL DO UPDATE
+            SET nom_etablissement = EXCLUDED.nom_etablissement,
+                updated_at = NOW()
         RETURNING id, slug, nom_etablissement
-        "#,
-    )
-    .bind(service_id)
-    .bind(user_id)
-    .bind(&payload.nom_etablissement)
-    .bind(&type_etab)
-    .bind(&ville)
-    .bind(&quartier)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| AppError::Database(format!("create_demo insert: {}", e)))?;
+        "#
+    );
+
+    let row_result = sqlx::query(&sql)
+        .bind(service_id)
+        .bind(user_id)
+        .bind(&payload.nom_etablissement)
+        .bind(&type_etab)
+        .bind(&ville)
+        .bind(&quartier)
+        .fetch_one(&state.pg)
+        .await;
+
+    // Si conflit (slug déjà pris malgré l'UPSERT), fallback : suffixer par l'id
+    let row = match row_result {
+        Ok(r) => r,
+        Err(_) => sqlx::query(
+            r#"
+            INSERT INTO etablissements_scolaires
+                (service_id, user_id, gerant_user_id, nom_etablissement,
+                 type_etablissement, ville, quartier, page_status, page_published_at,
+                 slug, created_at, updated_at)
+            VALUES ($1, $2, $2, $3, $4, $5, $6, 'published', NOW(),
+                    etab_slugify($3) || '-' || nextval('etablissements_scolaires_id_seq')::text,
+                    NOW(), NOW())
+            RETURNING id, slug, nom_etablissement
+            "#,
+        )
+        .bind(service_id)
+        .bind(user_id)
+        .bind(&payload.nom_etablissement)
+        .bind(&type_etab)
+        .bind(&ville)
+        .bind(&quartier)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| AppError::Database(format!("create insert: {}", e)))?,
+    };
 
     use sqlx::Row;
     Ok((

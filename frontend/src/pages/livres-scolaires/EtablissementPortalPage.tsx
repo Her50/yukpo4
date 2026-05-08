@@ -63,6 +63,10 @@ export const EtablissementPortalHomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const isGuest = isGuestAccount();
+  // Le bouton "Nouvel établissement de démo" est réservé aux admins Yukpo
+  // (et masqué pour les directeurs d'école qui ont déjà déclaré leur école).
+  const isYukpoAdmin = (user?.role || '').toLowerCase() === 'admin'
+    || (user?.role || '').toLowerCase() === 'super_admin';
 
   useEffect(() => {
     // Attendre la fin du chargement de l'auth — sinon double redirection
@@ -165,13 +169,19 @@ export const EtablissementPortalHomePage: React.FC = () => {
             <p className="text-base font-semibold text-gray-700 mb-2">
               {t('etabAdmin.portal.no_etab')}
             </p>
-            <p className="text-sm text-gray-500 mb-6">{t('etabAdmin.portal.claim_help')}</p>
+            <p className="text-sm text-gray-500 mb-6">
+              {isYukpoAdmin
+                ? t('etabAdmin.portal.claim_help')
+                : "Cliquez ci-dessous pour déclarer votre établissement scolaire et créer sa page officielle."}
+            </p>
             <button
               onClick={createDemo}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-full"
             >
               <Plus className="w-4 h-4" />
-              Créer un établissement de démo (admin)
+              {isYukpoAdmin
+                ? "Créer un établissement de démo (admin)"
+                : "Déclarer mon établissement"}
             </button>
           </div>
         )}
@@ -236,13 +246,16 @@ export const EtablissementPortalHomePage: React.FC = () => {
           </button>
         ))}
 
-        {etabs.length > 0 && (
+        {/* Bouton "Nouvel établissement" : visible UNIQUEMENT pour les admins
+            Yukpo (test/démo). Les directeurs d'école n'ont normalement qu'un
+            seul établissement à gérer, donc on masque ce bouton pour eux. */}
+        {etabs.length > 0 && isYukpoAdmin && (
           <button
             onClick={createDemo}
             className="w-full mt-2 inline-flex items-center justify-center gap-2 px-5 py-2.5 border border-emerald-300 text-emerald-700 text-sm font-semibold rounded-full"
           >
             <Plus className="w-4 h-4" />
-            Nouvel établissement de démo
+            Nouvel établissement de démo (admin)
           </button>
         )}
       </div>
