@@ -10,13 +10,14 @@ export type Role = 'admin' | 'user' | 'client' | 'public';
 export interface DecodedToken {
   sub: string | number; // <-- Correction : correspond à l'id utilisateur dans le JWT
   email: string;
-  role: Role;
+  role: Role | string;
   exp: number;
   name?: string;
   photo?: string;
   picture?: string;
   tokens_balance?: number; // <-- Correspond au champ du JWT backend
   currency?: string;
+  partner_type?: string | null; // ✅ pharmacie | restaurant | hopital | livraison | etc.
 }
 
 export interface User {
@@ -25,6 +26,8 @@ export interface User {
   role: Role;
   isAdmin: boolean;
   isUser: boolean;
+  isPartner: boolean;          // ✅ true si role==='partenaire' OU partner_type défini
+  partnerType?: string | null; // ✅ pharmacie | restaurant | …
   name: string;
   photo: string;
   // Champs de profil utilisateur
@@ -62,13 +65,17 @@ export const useUser = () => {
         console.log('[useUser] Token décodé:', decoded);
         
         if (decoded.exp * 1000 > Date.now()) {
+          const partnerType = decoded.partner_type ?? null;
+          const isPartner = decoded.role === 'partenaire' || !!partnerType;
           currentUser = {
             id: String(decoded.sub),
             email: decoded.email,
-            role: decoded.role,
+            role: decoded.role as Role,
             // ✅ CORRECTION 2026-02-06: Vérifier admin OU super_admin
             isAdmin: isAdminRole(decoded.role),
             isUser: decoded.role === 'user',
+            isPartner,
+            partnerType,
             name: decoded.name || '',
             photo: decoded.photo || decoded.picture || '',
             credits: decoded.tokens_balance ?? 0,
@@ -100,6 +107,8 @@ export const useUser = () => {
         role: "admin",
         isAdmin: true,
         isUser: false,
+        isPartner: false,
+        partnerType: null,
         name: "Dev Admin",
         photo: "",
         credits: 9999,

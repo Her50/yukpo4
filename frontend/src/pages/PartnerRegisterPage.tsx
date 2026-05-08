@@ -2,6 +2,7 @@
 import LocationSelector, { LocationObject } from '@/components/ui/LocationSelector';
 import { API_BASE_URL } from '@/config/api';
 import { useUser } from '@/hooks/useUser';
+import { usePartnerContext } from '@/hooks/usePartnerContext';
 import { ROUTES } from '@/routes/AppRoutesRegistry';
 import { AlertCircle, Building, CheckCircle, Mail as Envelope, Image as ImageIcon, Lock, KeyRound as LockKey, Phone, X, XCircle } from 'lucide-react';
 import React, { useState } from 'react';
@@ -11,13 +12,15 @@ import { Link, useNavigate } from 'react-router-dom';
 const PartnerRegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useUser();
+  const { appPartnerType } = usePartnerContext(); // ✅ pré-sélection selon sous-domaine (pharmacie/restaurant)
   const [form, setForm] = useState({
     partner_name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    partner_type: '' as
+    partner_type: (appPartnerType ?? '') as
       | 'pharmacie'
+      | 'restaurant'
       | 'hopital'
       | 'laboratoire'
       | 'agence de voyage'
@@ -30,6 +33,8 @@ const PartnerRegisterPage: React.FC = () => {
       | 'telecom'
       | 'hotel'
       | 'meuble'
+      | 'etablissementscolaire'
+      | 'banquesang'
       | '',
     partner_phone: '',
     partner_address: null as LocationObject | null,
@@ -45,15 +50,18 @@ const PartnerRegisterPage: React.FC = () => {
   });
   const [confirmPasswordMatch, setConfirmPasswordMatch] = useState<boolean | null>(null);
 
-  // ✅ TOUS les types partenaires valides selon le backend
+  // ✅ TOUS les types partenaires valides selon le backend (auth_controller.rs ligne 236-256)
   const partnerTypes = [
     { value: 'pharmacie', label: 'Pharmacie' },
+    { value: 'restaurant', label: 'Restaurant' },
     { value: 'hopital', label: 'Hôpital/Clinique' },
     { value: 'laboratoire', label: 'Laboratoire' },
+    { value: 'banquesang', label: 'Banque de sang' },
+    { value: 'etablissementscolaire', label: 'Établissement scolaire' },
     { value: 'agence de voyage', label: 'Agence de Voyage' },
     { value: 'demenagement', label: 'Déménagement' },
-    { value: 'livraison', label: 'Livraison' }, // ✅ NOUVEAU: Type partenaire livraison générale
-    { value: 'livraison_courses_marche', label: 'Livraison - Courses au marché' }, // ✅ NOUVEAU: Type partenaire pour courses au marché (coursier spécialisé)
+    { value: 'livraison', label: 'Livraison' },
+    { value: 'livraison_courses_marche', label: 'Livraison - Courses au marché' },
     { value: 'transport', label: 'Transport' },
     { value: 'assureur', label: 'Assureur' },
     { value: 'supermarche', label: 'Supermarché' },
@@ -322,7 +330,7 @@ const PartnerRegisterPage: React.FC = () => {
                     onSelect={(location) => {
                       setForm({ ...form, partner_address: location });
                       if (location.components?.pays) {
-                        setForm(prev => ({ ...prev, partner_country: location.components.pays }));
+                        setForm(prev => ({ ...prev, partner_country: location.components?.pays ?? '' }));
                       }
                     }}
                     placeholder="Rechercher l'adresse complète..."

@@ -12,15 +12,22 @@ interface AuthContextType {
         phone?: string;
         credits?: number;
         currency?: string;
+        isPartner?: boolean;
+        partnerType?: string | null;
     } | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    isPartner: boolean;
+    partnerType: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { user, isLoading } = useUser();
+
+    const isPartner = !!user?.isPartner;
+    const partnerType = user?.partnerType ?? null;
 
     const value: AuthContextType = {
         user: user ? {
@@ -32,9 +39,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             phone: user.phone,
             credits: user.credits,
             currency: user.currency,
+            isPartner,
+            partnerType,
         } : null,
         isAuthenticated: !!user,
         isLoading,
+        isPartner,
+        partnerType,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -47,4 +58,3 @@ export const useAuth = (): AuthContextType => {
     }
     return context;
 };
-

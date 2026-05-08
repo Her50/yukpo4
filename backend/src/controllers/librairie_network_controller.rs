@@ -766,7 +766,7 @@ pub async fn broadcast_commande_librairies(
         // ----------------------------------------------------------------
         // Routage vers YukpoLibrairie
         // ----------------------------------------------------------------
-        let sl_id: uuid::Uuid = sl.get("id");
+        let sl_id: i32 = sl.get("id");
         let sl_user_id: i32 = sl.get("user_id");
         let delai_s: i32 =
             sl.get::<Option<i32>, _>("delai_validation_super_librairie_s").unwrap_or(300);
@@ -1076,7 +1076,7 @@ pub async fn super_librairie_dashboard(
             )
         })?
     };
-    let sl_id: uuid::Uuid = sl_row.get("id");
+    let sl_id: i32 = sl_row.get("id");
 
     let limit = params.limit.unwrap_or(50);
     let offset = params.offset.unwrap_or(0);
@@ -1901,7 +1901,7 @@ pub async fn super_librairie_liberer_commande(
     .ok_or_else(|| AppError::Forbidden("Accès réservé au super libraire".to_string()))?;
 
     use sqlx::Row as _;
-    let sl_id: uuid::Uuid = sl_row.get("id");
+    let sl_id: i32 = sl_row.get("id");
 
     // Vérifier que la commande est bien chez le super libraire
     let commande_row = sqlx::query(
@@ -1986,7 +1986,7 @@ pub async fn super_librairie_list_team(
     }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     let is_admin = role == "admin" || role == "super_admin";
-    let sl_id: uuid::Uuid = if is_admin {
+    let sl_id: i32 = if is_admin {
         sqlx::query_scalar(
             "SELECT id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1"
         )
@@ -2055,7 +2055,7 @@ pub async fn super_librairie_invite_team(
     Json(payload): Json<SuperLibraireInviteTeamPayload>,
 ) -> AppResult<impl IntoResponse> {
     let is_admin = role == "admin" || role == "super_admin";
-    let sl_id: uuid::Uuid = if is_admin {
+    let sl_id: i32 = if is_admin {
         sqlx::query_scalar(
             "SELECT id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1"
         )
@@ -2150,7 +2150,7 @@ pub async fn super_librairie_remove_team(
     Path(member_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     let is_admin = role == "admin" || role == "super_admin";
-    let sl_id: uuid::Uuid = if is_admin {
+    let sl_id: i32 = if is_admin {
         sqlx::query_scalar(
             "SELECT id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1"
         )

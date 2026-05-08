@@ -438,6 +438,11 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/v2/admin/etablissement/create-demo",
             post(etablissement_pages_controller::create_demo_etablissement),
         )
+        // Migration manuelle Pages Établissements (idempotent, réservé admin)
+        .route(
+            "/api/v2/admin/etablissement/migrate",
+            post(etablissement_pages_controller::migrate_etablissement_pages),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     Router::new()

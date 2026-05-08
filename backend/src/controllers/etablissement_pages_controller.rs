@@ -767,6 +767,203 @@ pub async fn delete_evenement(
 
 // Endpoint bootstrap_promote_self supprimé après usage initial (2026-05-07).
 
+/// POST /api/v2/admin/etablissement/migrate
+/// Force l'exécution de la migration des Pages Établissements (création
+/// des colonnes slug, gerant_user_id, page_status etc. + tables CMS).
+/// Réservé aux admins. Idempotent.
+pub async fn migrate_etablissement_pages(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: _user_id, role }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let role_lower = role.to_lowercase();
+    if !["admin", "super_admin", "superadmin"].contains(&role_lower.as_str()) {
+        return Err(AppError::Forbidden(
+            "Réservé aux administrateurs".to_string(),
+        ));
+    }
+
+    // Activation extension unaccent (préalable nécessaire pour etab_slugify)
+    let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS unaccent").execute(&state.pg).await;
+    let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_trgm").execute(&state.pg).await;
+
+    // Fonction slugify
+    sqlx::query(
+        r#"
+        CREATE OR REPLACE FUNCTION etab_slugify(input TEXT) RETURNS TEXT AS $$
+        BEGIN
+            RETURN lower(
+                regexp_replace(
+                    regexp_replace(
+                        unaccent(coalesce(input, '')),
+                        '[^a-zA-Z0-9]+', '-', 'g'
+                    ),
+                    '(^-+|-+$)', '', 'g'
+                )
+            );
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE
+        "#,
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("etab_slugify: {}", e)))?;
+
+    // Extension de etablissements_scolaires
+    sqlx::query(
+        r#"
+        ALTER TABLE etablissements_scolaires
+            ADD COLUMN IF NOT EXISTS slug TEXT,
+            ADD COLUMN IF NOT EXISTS logo_url TEXT,
+            ADD COLUMN IF NOT EXISTS banniere_url TEXT,
+            ADD COLUMN IF NOT EXISTS description TEXT,
+            ADD COLUMN IF NOT EXISTS gerant_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            ADD COLUMN IF NOT EXISTS page_status TEXT NOT NULL DEFAULT 'draft',
+            ADD COLUMN IF NOT EXISTS page_published_at TIMESTAMPTZ,
+            ADD COLUMN IF NOT EXISTS qr_code_url TEXT,
+            ADD COLUMN IF NOT EXISTS stats_views_30d INTEGER NOT NULL DEFAULT 0
+        "#,
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("ALTER etablissements_scolaires: {}", e)))?;
+
+    // Index uniques + GIN trigram
+    let _ = sqlx::query(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_etablissements_slug_unique \
+         ON etablissements_scolaires(slug) WHERE slug IS NOT NULL",
+    )
+    .execute(&state.pg)
+    .await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_etablissements_gerant \
+         ON etablissements_scolaires(gerant_user_id) WHERE gerant_user_id IS NOT NULL",
+    )
+    .execute(&state.pg)
+    .await;
+    let _ = sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_etablissements_nom_trgm \
+         ON etablissements_scolaires USING GIN (nom_etablissement gin_trgm_ops)",
+    )
+    .execute(&state.pg)
+    .await;
+
+    // Backfill des slugs manquants
+    sqlx::query(
+        "UPDATE etablissements_scolaires SET slug = etab_slugify(nom_etablissement) || '-' || id::text WHERE slug IS NULL",
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("backfill slug: {}", e)))?;
+
+    // Tables CMS
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS etablissement_blocs (
+            id              SERIAL PRIMARY KEY,
+            etablissement_id INTEGER NOT NULL REFERENCES etablissements_scolaires(id) ON DELETE CASCADE,
+            type_bloc       TEXT NOT NULL,
+            titre           TEXT,
+            contenu_json    JSONB NOT NULL DEFAULT '{}'::jsonb,
+            medias_urls     TEXT[] DEFAULT ARRAY[]::TEXT[],
+            position        INTEGER NOT NULL DEFAULT 0,
+            is_active       BOOLEAN NOT NULL DEFAULT true,
+            published_at    TIMESTAMPTZ,
+            created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            updated_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            UNIQUE(etablissement_id, type_bloc)
+        )
+        "#,
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("CREATE etablissement_blocs: {}", e)))?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS etablissement_blocs_audit (
+            id              BIGSERIAL PRIMARY KEY,
+            etablissement_id INTEGER NOT NULL,
+            type_bloc       TEXT NOT NULL,
+            action          TEXT NOT NULL,
+            user_id         INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            diff_json       JSONB,
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("CREATE etablissement_blocs_audit: {}", e)))?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS etablissement_annonces (
+            id              SERIAL PRIMARY KEY,
+            etablissement_id INTEGER NOT NULL REFERENCES etablissements_scolaires(id) ON DELETE CASCADE,
+            titre           TEXT NOT NULL,
+            contenu         TEXT NOT NULL,
+            image_url       TEXT,
+            is_pinned       BOOLEAN NOT NULL DEFAULT false,
+            published_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            expires_at      TIMESTAMPTZ,
+            created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("CREATE etablissement_annonces: {}", e)))?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS etablissement_evenements (
+            id              SERIAL PRIMARY KEY,
+            etablissement_id INTEGER NOT NULL REFERENCES etablissements_scolaires(id) ON DELETE CASCADE,
+            titre           TEXT NOT NULL,
+            description     TEXT,
+            type_event      TEXT,
+            date_debut      TIMESTAMPTZ NOT NULL,
+            date_fin        TIMESTAMPTZ,
+            classe_concernee TEXT,
+            is_active       BOOLEAN NOT NULL DEFAULT true,
+            created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("CREATE etablissement_evenements: {}", e)))?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS etablissement_visites (
+            etablissement_id INTEGER NOT NULL REFERENCES etablissements_scolaires(id) ON DELETE CASCADE,
+            date            DATE NOT NULL,
+            visites         INTEGER NOT NULL DEFAULT 0,
+            visiteurs_unq   INTEGER NOT NULL DEFAULT 0,
+            clics_commande  INTEGER NOT NULL DEFAULT 0,
+            clics_infos     INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (etablissement_id, date)
+        )
+        "#,
+    )
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("CREATE etablissement_visites: {}", e)))?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "ok": true,
+            "message": "Migration Pages Établissements appliquée avec succès",
+        })),
+    ))
+}
+
 /// POST /api/v2/admin/etablissement/{id}/claim
 /// Permet à un utilisateur ADMIN (ou super_admin) de devenir gérant d'un
 /// établissement existant pour effectuer les tests. Réservé aux admins.

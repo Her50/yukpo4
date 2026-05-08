@@ -1,7 +1,9 @@
 import OAuthButton from "@/components/auth/OAuthButton";
 import { API_BASE_URL } from "@/config/api";
 import { useUser } from "@/hooks/useUser";
+import { usePartnerContext } from "@/hooks/usePartnerContext";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import { jwtDecode } from "jwt-decode";
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -11,6 +13,7 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useUser();
+  const { appPartnerType } = usePartnerContext();
   const [showLogoutMessage, setShowLogoutMessage] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -80,15 +83,29 @@ const LoginPage: React.FC = () => {
 
           login(data.token);
 
-          // Redirection intelligente selon la source
+          // ✅ Redirection contextuelle (apps standalone partenaire)
+          let target: string | null = null;
           if (isSharedService && redirectUrl) {
-            // Rediriger vers le service partagé
-            toast.success('Connexion réussie ! Redirection vers le service...');
-            navigate(decodeURIComponent(redirectUrl));
+            target = decodeURIComponent(redirectUrl);
+          } else if (redirectUrl) {
+            target = decodeURIComponent(redirectUrl);
+          } else if (appPartnerType) {
+            // Sur app standalone (pharmacie/restaurant) : si l'utilisateur est partenaire du bon type → /dashboard
+            try {
+              const decoded: any = jwtDecode(data.token);
+              const isPartnerHere =
+                decoded?.role === 'partenaire' ||
+                (decoded?.partner_type && decoded.partner_type === appPartnerType);
+              target = isPartnerHere ? '/dashboard' : ROUTES.HOME;
+            } catch {
+              target = ROUTES.HOME;
+            }
           } else {
-            // Redirection normale vers l'accueil
-            navigate(ROUTES.HOME);
+            target = ROUTES.HOME;
           }
+
+          toast.success('Connexion réussie !');
+          navigate(target);
           window.location.reload();
         } else {
           console.error('[LoginPage] Pas de token dans la rponse');
