@@ -41,6 +41,7 @@ import {
   EtablissementPortalHomePage,
   EtablissementDashboardPage,
 } from './pages/livres-scolaires/EtablissementPortalPage';
+import TeamInvitationAcceptPage from './pages/livres-scolaires/TeamInvitationAcceptPage';
 
 // Troc
 import TrocMatchingPage from './pages/trocs/TrocMatchingPage';
@@ -49,7 +50,7 @@ import TrocLiveValidationPage from './pages/trocs/TrocLiveValidationPage';
 import MesTrocsPage from './pages/trocs/MesTrocsPage';
 
 import RequireAuth from './components/auth/RequireAuth';
-import { useGuestAuth } from './hooks/useGuestAuth';
+import PartnerRegisterPage from './pages/PartnerRegisterPage';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
   state = { error: null };
@@ -69,10 +70,9 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 }
 
 function BourseLayout({ children }: { children: React.ReactNode }) {
-  // Création silencieuse d'un compte invité au premier passage afin que toute
-  // la Bourse du Livre soit utilisable sans login. Cela ne bloque PAS le rendu :
-  // pendant la création, le visiteur peut déjà naviguer.
-  useGuestAuth();
+  // ✅ 2026-05-08 : on a retiré la création silencieuse d'un compte invité.
+  // À la 1ère ouverture, l'utilisateur doit créer son compte (parent ou
+  // partenaire). Cela offre une UX plus claire et trace la base utilisateur.
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
       {children}
@@ -97,6 +97,9 @@ function AppBourse() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/register/confirmation" element={<ConfirmationPage />} />
+              {/* Inscription partenaire (établissement scolaire, libraire, etc.) */}
+              <Route path="/partner-register" element={<PartnerRegisterPage />} />
+              <Route path="/register/partner" element={<PartnerRegisterPage />} />
 
               {/* Home */}
               <Route path="/" element={<BourseLayout><LivreScolaireHomePage /></BourseLayout>} />
@@ -136,6 +139,9 @@ function AppBourse() {
               {/* Côté admin établissement (login requis) */}
               <Route path="/etablissement-portal" element={<BourseLayout><RequireAuth><EtablissementPortalHomePage /></RequireAuth></BourseLayout>} />
               <Route path="/etablissement-portal/:etabId" element={<BourseLayout><RequireAuth><EtablissementDashboardPage /></RequireAuth></BourseLayout>} />
+
+              {/* Acceptation d'invitation d'équipe (lien WhatsApp) */}
+              <Route path="/team/accept" element={<TeamInvitationAcceptPage />} />
 
               {/* Rôles secondaires */}
               <Route path="/etablissement" element={<BourseLayout><EtablissementScolaireFormPage /></BourseLayout>} />

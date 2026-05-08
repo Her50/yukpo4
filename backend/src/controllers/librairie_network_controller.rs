@@ -1977,6 +1977,247 @@ pub struct SuperLibraireInviteTeamPayload {
     pub nom: Option<String>,
 }
 
+// ============================================================================
+// Invitations WhatsApp avec traçage (table libraire_team_invitations)
+// ============================================================================
+
+async fn ensure_invitations_table(pool: &sqlx::PgPool) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS libraire_team_invitations (
+            id              SERIAL PRIMARY KEY,
+            librairie_id    INTEGER NOT NULL,
+            invitation_token TEXT NOT NULL UNIQUE,
+            role            VARCHAR(20) NOT NULL DEFAULT 'preparer',
+            telephone       VARCHAR(50),
+            nom_affiche     VARCHAR(255),
+            invited_by      INTEGER REFERENCES users(id),
+            opened_at       TIMESTAMPTZ,
+            accepted_at     TIMESTAMPTZ,
+            accepted_user_id INTEGER REFERENCES users(id),
+            expires_at      TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '30 days',
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        "#,
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_libraire_invitations_lib ON libraire_team_invitations(librairie_id, accepted_at)")
+        .execute(pool).await.ok();
+    Ok(())
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct CreateInvitationPayload {
+    pub role: String,
+    pub telephone: Option<String>,
+    pub nom_affiche: Option<String>,
+}
+
+/// POST /api/librairie-network/super-librairie/team/invitations
+pub async fn super_librairie_create_invitation(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
+    Json(payload): Json<CreateInvitationPayload>,
+) -> AppResult<impl IntoResponse> {
+    let _ = ensure_invitations_table(&state.pg).await;
+    let is_admin = role == "admin" || role == "super_admin";
+    let sl_id: i32 = if is_admin {
+        sqlx::query_scalar("SELECT id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1")
+            .fetch_optional(&state.pg).await
+            .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+            .ok_or_else(|| AppError::NotFound("Aucun super libraire actif".to_string()))?
+    } else {
+        sqlx::query_scalar("SELECT id FROM librairie_partners WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true LIMIT 1")
+            .bind(user_id).fetch_optional(&state.pg).await
+            .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+            .ok_or_else(|| AppError::Forbidden("Réservé au super libraire ou aux administrateurs".to_string()))?
+    };
+
+    let token = uuid::Uuid::new_v4().to_string();
+    let row = sqlx::query(
+        "INSERT INTO libraire_team_invitations (librairie_id, invitation_token, role, telephone, nom_affiche, invited_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id"
+    )
+    .bind(sl_id).bind(&token).bind(&payload.role)
+    .bind(payload.telephone.as_ref()).bind(payload.nom_affiche.as_ref()).bind(user_id)
+    .fetch_one(&state.pg).await
+    .map_err(|e| AppError::Internal(format!("Erreur invitation: {}", e)))?;
+
+    use sqlx::Row;
+    let invitation_id: i32 = row.try_get("id").unwrap_or(0);
+    let invitation_path = format!("/team/accept?token={}", token);
+    let role_label = match payload.role.as_str() {
+        "manager" => "Gestionnaire",
+        "preparer" => "Préparateur",
+        "cashier" => "Caisse",
+        _ => &payload.role,
+    };
+    let whatsapp_msg = format!(
+        "Bonjour ! Vous êtes invité(e) à rejoindre l'équipe Yukpo Librairie en tant que {}. Cliquez ici pour créer votre compte et accepter : https://bourse.yukpomnang.com{}",
+        role_label, invitation_path
+    );
+    let phone_clean = payload.telephone.unwrap_or_default().replace('+', "").replace(' ', "");
+
+    Ok(Json(serde_json::json!({
+        "success": true, "invitation_id": invitation_id, "token": token,
+        "invitation_path": invitation_path,
+        "whatsapp_url": format!("https://wa.me/{}?text={}", phone_clean,
+            whatsapp_msg.chars().map(|c| match c {
+                ' ' => "%20".to_string(),
+                c if c.is_ascii_alphanumeric() || ":/?=&._-".contains(c) => c.to_string(),
+                c => format!("%{:02X}", c as u32),
+            }).collect::<String>()),
+        "whatsapp_message": whatsapp_msg,
+    })))
+}
+
+/// GET /api/librairie-network/super-librairie/team/invitations
+pub async fn super_librairie_list_invitations(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let _ = ensure_invitations_table(&state.pg).await;
+    let is_admin = role == "admin" || role == "super_admin";
+    let sl_id: i32 = if is_admin {
+        sqlx::query_scalar("SELECT id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1")
+            .fetch_optional(&state.pg).await
+            .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+            .ok_or_else(|| AppError::NotFound("Aucun super libraire actif".to_string()))?
+    } else {
+        sqlx::query_scalar("SELECT id FROM librairie_partners WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true LIMIT 1")
+            .bind(user_id).fetch_optional(&state.pg).await
+            .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+            .ok_or_else(|| AppError::Forbidden("Accès réservé".to_string()))?
+    };
+
+    let rows = sqlx::query(
+        "SELECT i.id, i.invitation_token, i.role, i.telephone, i.nom_affiche, \
+                i.opened_at, i.accepted_at, i.accepted_user_id, i.expires_at, i.created_at, \
+                u.email AS accepted_email, u.nom AS accepted_nom \
+         FROM libraire_team_invitations i \
+         LEFT JOIN users u ON u.id = i.accepted_user_id \
+         WHERE i.librairie_id = $1 ORDER BY i.created_at DESC LIMIT 100",
+    )
+    .bind(sl_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur liste: {}", e)))?;
+
+    use sqlx::Row;
+    let invitations: Vec<serde_json::Value> = rows.iter().map(|r| {
+        let token: String = r.try_get("invitation_token").unwrap_or_default();
+        let opened: Option<chrono::DateTime<Utc>> = r.try_get("opened_at").ok().flatten();
+        let accepted: Option<chrono::DateTime<Utc>> = r.try_get("accepted_at").ok().flatten();
+        let status = if accepted.is_some() { "accepted" } else if opened.is_some() { "opened" } else { "pending" };
+        serde_json::json!({
+            "id": r.try_get::<i32, _>("id").unwrap_or(0),
+            "token": &token,
+            "invitation_path": format!("/team/accept?token={}", token),
+            "role": r.try_get::<Option<String>, _>("role").unwrap_or(None),
+            "telephone": r.try_get::<Option<String>, _>("telephone").unwrap_or(None),
+            "nom_affiche": r.try_get::<Option<String>, _>("nom_affiche").unwrap_or(None),
+            "status": status,
+            "opened_at": opened.map(|t| t.to_rfc3339()),
+            "accepted_at": accepted.map(|t| t.to_rfc3339()),
+            "accepted_user_id": r.try_get::<Option<i32>, _>("accepted_user_id").unwrap_or(None),
+            "accepted_email": r.try_get::<Option<String>, _>("accepted_email").unwrap_or(None),
+            "accepted_nom": r.try_get::<Option<String>, _>("accepted_nom").unwrap_or(None),
+            "expires_at": r.try_get::<chrono::DateTime<Utc>, _>("expires_at").ok().map(|t| t.to_rfc3339()),
+            "created_at": r.try_get::<chrono::DateTime<Utc>, _>("created_at").ok().map(|t| t.to_rfc3339()),
+        })
+    }).collect();
+
+    Ok(Json(
+        serde_json::json!({ "success": true, "invitations": invitations }),
+    ))
+}
+
+/// GET /api/team/invitation-preview/{token} (public)
+pub async fn preview_invitation(
+    State(state): State<Arc<AppState>>,
+    Path(token): Path<String>,
+) -> AppResult<impl IntoResponse> {
+    let _ = ensure_invitations_table(&state.pg).await;
+    let inv = sqlx::query(
+        "SELECT i.role, i.expires_at, i.accepted_at, lp.nom AS librairie_nom \
+         FROM libraire_team_invitations i \
+         LEFT JOIN librairie_partners lp ON lp.id = i.librairie_id \
+         WHERE i.invitation_token = $1",
+    )
+    .bind(&token)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Invitation introuvable".to_string()))?;
+
+    let _ = sqlx::query("UPDATE libraire_team_invitations SET opened_at = COALESCE(opened_at, NOW()) WHERE invitation_token = $1")
+        .bind(&token).execute(&state.pg).await;
+
+    use sqlx::Row;
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "role": inv.try_get::<Option<String>, _>("role").unwrap_or(None),
+        "librairie_nom": inv.try_get::<Option<String>, _>("librairie_nom").unwrap_or(None),
+        "already_accepted": inv.try_get::<Option<chrono::DateTime<Utc>>, _>("accepted_at").ok().flatten().is_some(),
+        "expired": inv.try_get::<chrono::DateTime<Utc>, _>("expires_at").map(|t| t < Utc::now()).unwrap_or(true),
+    })))
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct AcceptInvitationPayload {
+    pub token: String,
+}
+
+/// POST /api/team/invitation-accept
+pub async fn accept_team_invitation(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<AcceptInvitationPayload>,
+) -> AppResult<impl IntoResponse> {
+    let _ = ensure_invitations_table(&state.pg).await;
+    let inv = sqlx::query(
+        "SELECT id, librairie_id, role, accepted_at, expires_at FROM libraire_team_invitations WHERE invitation_token = $1"
+    )
+    .bind(&payload.token).fetch_optional(&state.pg).await
+    .map_err(|e| AppError::Internal(format!("Erreur token: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Invitation introuvable".to_string()))?;
+
+    use sqlx::Row;
+    let inv_id: i32 = inv.try_get("id").unwrap_or(0);
+    let librairie_id: i32 = inv.try_get("librairie_id").unwrap_or(0);
+    let role_str: String = inv.try_get("role").unwrap_or_else(|_| "preparer".to_string());
+    let already: Option<chrono::DateTime<Utc>> = inv.try_get("accepted_at").ok().flatten();
+    let expires: chrono::DateTime<Utc> = inv.try_get("expires_at").unwrap_or_else(|_| Utc::now());
+
+    if already.is_some() {
+        return Err(AppError::BadRequest("Invitation déjà acceptée".to_string()));
+    }
+    if expires < Utc::now() {
+        return Err(AppError::BadRequest("Invitation expirée".to_string()));
+    }
+
+    sqlx::query("UPDATE libraire_team_invitations SET accepted_at = NOW(), accepted_user_id = $1 WHERE id = $2")
+        .bind(user_id).bind(inv_id).execute(&state.pg).await
+        .map_err(|e| AppError::Internal(format!("Erreur update: {}", e)))?;
+
+    let _ = sqlx::query(
+        "INSERT INTO libraire_team_members (librairie_id, user_id, role, is_active, created_at, updated_at) \
+         VALUES ($1, $2, $3, true, NOW(), NOW()) \
+         ON CONFLICT (librairie_id, user_id) DO UPDATE SET role = EXCLUDED.role, is_active = true, updated_at = NOW()"
+    ).bind(librairie_id).bind(user_id).bind(&role_str).execute(&state.pg).await;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Bienvenue dans l'équipe Yukpo Librairie !",
+        "librairie_id": librairie_id,
+        "role": role_str,
+    })))
+}
+
 /// GET /api/librairie-network/super-librairie/team
 /// Liste les membres de l'équipe YukpoLibrairie (admin + super libraire)
 pub async fn super_librairie_list_team(

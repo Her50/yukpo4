@@ -42,6 +42,11 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/librairie-network/librairies-proches",
             get(crate::controllers::librairie_network_controller::get_librairies_proches),
+        )
+        // Preview invitation (public — affiché avant connexion)
+        .route(
+            "/api/team/invitation-preview/{token}",
+            get(crate::controllers::librairie_network_controller::preview_invitation),
         );
 
     // Routes protégées (avec JWT)
@@ -166,6 +171,16 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/librairie-network/super-librairie/team/{member_id}",
             axum::routing::delete(crate::controllers::librairie_network_controller::super_librairie_remove_team),
+        )
+        // Invitations WhatsApp avec traçage
+        .route(
+            "/api/librairie-network/super-librairie/team/invitations",
+            get(crate::controllers::librairie_network_controller::super_librairie_list_invitations)
+                .post(crate::controllers::librairie_network_controller::super_librairie_create_invitation),
+        )
+        .route(
+            "/api/team/invitation-accept",
+            post(crate::controllers::librairie_network_controller::accept_team_invitation),
         )
         .route(
             "/api/librairie-network/super-librairie/parents-contacts",

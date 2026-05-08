@@ -1026,17 +1026,33 @@ pub async fn create_demo_etablissement(
     Json(payload): Json<CreateDemoEtabPayload>,
 ) -> AppResult<impl IntoResponse> {
     let role_lower = role.to_lowercase();
-    if !["admin", "super_admin", "superadmin"].contains(&role_lower.as_str()) {
-        return Err(AppError::Forbidden(
-            "Seuls les administrateurs peuvent créer un établissement de démo".to_string(),
-        ));
+    let is_admin = ["admin", "super_admin", "superadmin"].contains(&role_lower.as_str());
+
+    // Self-service : ouvert aussi aux comptes partenaires de type
+    // 'etablissementscolaire' afin qu'un directeur puisse déclarer son école.
+    if !is_admin {
+        let is_etab_partner: bool = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND COALESCE(partner_type, '') = 'etablissementscolaire')",
+        )
+        .bind(user_id)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|e| AppError::Database(format!("check partner_type: {}", e)))?;
+
+        if !is_etab_partner {
+            return Err(AppError::Forbidden(
+                "Réservé aux admins ou aux comptes partenaires de type 'etablissementscolaire'"
+                    .to_string(),
+            ));
+        }
     }
 
     if payload.nom_etablissement.trim().is_empty() {
         return Err(AppError::BadRequest("Le nom est requis".to_string()));
     }
 
-    // Récupère le premier service de l'admin (FK obligatoire vers services)
+    // Récupère le premier service du user OU crée un service minimal si absent
+    // (les comptes partenaires fraîchement créés peuvent ne pas en avoir).
     let service_id: Option<i32> =
         sqlx::query_scalar("SELECT id FROM services WHERE user_id = $1 ORDER BY id ASC LIMIT 1")
             .bind(user_id)
@@ -1044,12 +1060,25 @@ pub async fn create_demo_etablissement(
             .await
             .map_err(|e| AppError::Database(format!("create_demo find service: {}", e)))?;
 
-    let service_id = service_id.ok_or_else(|| {
-        AppError::BadRequest(
-            "L'admin doit avoir au moins un service créé pour rattacher l'établissement de démo"
-                .to_string(),
-        )
-    })?;
+    let service_id = match service_id {
+        Some(id) => id,
+        None => {
+            let row = sqlx::query(
+                r#"
+                INSERT INTO services (user_id, data, created_at, updated_at)
+                VALUES ($1, jsonb_build_object('titre', jsonb_build_object('value', $2)), NOW(), NOW())
+                RETURNING id
+                "#,
+            )
+            .bind(user_id)
+            .bind(&payload.nom_etablissement)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| AppError::Database(format!("create_demo new service: {}", e)))?;
+            use sqlx::Row;
+            row.try_get::<i32, _>("id").unwrap_or(0)
+        }
+    };
 
     let type_etab = payload.type_etablissement.clone().unwrap_or_else(|| "secondaire".to_string());
     let ville = payload.ville.clone().unwrap_or_else(|| "Douala".to_string());

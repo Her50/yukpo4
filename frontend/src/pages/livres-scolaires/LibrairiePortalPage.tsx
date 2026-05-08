@@ -221,19 +221,54 @@ const TeamModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 </button>
               ))}
             </div>
-            <button
-              onClick={invite}
-              disabled={inviting || !tel.trim()}
-              className="w-full bg-indigo-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5"
-            >
-              {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-              Ajouter à l'équipe
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={invite}
+                disabled={inviting || !tel.trim()}
+                className="bg-indigo-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5"
+                title="Ajouter directement si compte Yukpo existant"
+              >
+                {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                Ajouter direct
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await apiPost('/api/librairie-network/super-librairie/team/invitations', {
+                      role,
+                      telephone: tel.trim() ? tel.replace(/\s/g, '') : null,
+                      nom_affiche: nom.trim() || null,
+                    });
+                    const d = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(d?.error || d?.message || `HTTP ${res.status}`);
+                    if (d.whatsapp_url) {
+                      window.open(d.whatsapp_url, '_blank', 'noopener,noreferrer');
+                    } else {
+                      navigator.clipboard?.writeText(`https://bourse.yukpomnang.com${d.invitation_path}`);
+                      toast({ title: 'Lien copié', description: 'Partagez-le avec le futur membre' });
+                    }
+                    setTel(''); setNom('');
+                    load();
+                    window.dispatchEvent(new CustomEvent('libraire:invitation-changed'));
+                  } catch (e: any) {
+                    toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+                  }
+                }}
+                className="bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5"
+                title="Générer un lien d'invitation et le partager via WhatsApp"
+              >
+                <Send className="w-4 h-4" />
+                Inviter par WhatsApp
+              </button>
+            </div>
             <p className="text-[10px] text-indigo-700/80">
-              Le numéro doit correspondre à un utilisateur Yukpo existant. Il recevra une notification.
+              <b>Ajouter direct</b> : si la personne a déjà un compte Yukpo. <b>Inviter par WhatsApp</b> : génère un lien d'inscription que le futur membre cliquera pour créer son compte et rejoindre l'équipe.
             </p>
           </div>
         </div>
+
+        {/* Tableau des invitations en cours / acceptées */}
+        <InvitationsTable />
 
         {/* Liste des membres */}
         <div>
@@ -275,6 +310,121 @@ const TeamModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─── TABLEAU DES INVITATIONS WHATSAPP (avec traçage) ─── */
+interface InvitationRow {
+  id: number;
+  token: string;
+  invitation_path: string;
+  role: string;
+  telephone?: string | null;
+  nom_affiche?: string | null;
+  status: 'pending' | 'opened' | 'accepted';
+  opened_at?: string | null;
+  accepted_at?: string | null;
+  accepted_email?: string | null;
+  accepted_nom?: string | null;
+  expires_at?: string | null;
+  created_at?: string | null;
+}
+
+const InvitationsTable: React.FC = () => {
+  const { toast } = useToast();
+  const [invitations, setInvitations] = useState<InvitationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await apiGet('/api/librairie-network/super-librairie/team/invitations');
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.error || d?.message || `HTTP ${res.status}`);
+      setInvitations(Array.isArray(d?.invitations) ? d.invitations : []);
+    } catch {
+      // silencieux : peut être absent si pas encore d'invitation créée
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const handler = () => load();
+    window.addEventListener('libraire:invitation-changed', handler);
+    const interval = setInterval(load, 30000); // refresh 30s
+    return () => {
+      window.removeEventListener('libraire:invitation-changed', handler);
+      clearInterval(interval);
+    };
+  }, [load]);
+
+  if (loading && invitations.length === 0) return null;
+  if (invitations.length === 0) return null;
+
+  const statusLabel = (s: string) =>
+    s === 'accepted' ? '✅ Acceptée' : s === 'opened' ? '👁 Lien ouvert' : '⏳ En attente';
+  const statusColor = (s: string) =>
+    s === 'accepted' ? 'bg-emerald-100 text-emerald-700'
+    : s === 'opened' ? 'bg-blue-100 text-blue-700'
+    : 'bg-gray-100 text-gray-600';
+
+  return (
+    <div className="mb-4 bg-white border border-gray-100 rounded-2xl overflow-hidden">
+      <div className="bg-emerald-50 border-b border-emerald-100 px-3 py-2">
+        <p className="text-xs font-bold text-emerald-800 uppercase tracking-wide flex items-center gap-1.5">
+          <Send className="w-3.5 h-3.5" /> Invitations WhatsApp ({invitations.length})
+        </p>
+      </div>
+      <div className="divide-y divide-gray-100">
+        {invitations.map(inv => {
+          const fullUrl = `${window.location.origin}${inv.invitation_path}`;
+          return (
+            <div key={inv.id} className="p-2.5">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="text-xs font-semibold text-gray-900 truncate">
+                  {inv.nom_affiche || inv.accepted_nom || inv.telephone || 'Anonyme'}
+                  {' '}
+                  <span className="text-[10px] font-bold text-indigo-700 uppercase">{ROLE_LABELS[inv.role] || inv.role}</span>
+                </p>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${statusColor(inv.status)}`}>
+                  {statusLabel(inv.status)}
+                </span>
+              </div>
+              {inv.accepted_email && (
+                <p className="text-[10px] text-emerald-700">→ {inv.accepted_email}</p>
+              )}
+              {inv.status !== 'accepted' && (
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard?.writeText(fullUrl);
+                      toast({ title: 'Lien copié' });
+                    }}
+                    className="text-[10px] px-2 py-1 bg-gray-100 text-gray-700 rounded font-semibold"
+                  >
+                    Copier le lien
+                  </button>
+                  {inv.telephone && (
+                    <a
+                      href={`https://wa.me/${inv.telephone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(
+                        `Rejoignez l'équipe Yukpo Librairie : ${fullUrl}`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] px-2 py-1 bg-emerald-600 text-white rounded font-semibold"
+                    >
+                      Renvoyer WhatsApp
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
