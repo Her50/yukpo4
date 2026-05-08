@@ -51,6 +51,10 @@ pub fn restaurant_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/restaurant/public/orders/{order_id}/rate",
             post(restaurant_controller::rate_order),
         )
+        .route(
+            "/api/restaurant/public/orders/{order_id}/confirm-arrival",
+            post(restaurant_controller::client_confirm_arrival),
+        )
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state.clone());
 
@@ -108,6 +112,10 @@ pub fn restaurant_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/restaurant/orders/{id}/status",
             patch(restaurant_controller::update_order_status_with_payout),
+        )
+        .route(
+            "/api/restaurant/orders/{id}/mark-no-show",
+            post(restaurant_controller::partner_mark_no_show),
         )
         .route(
             "/api/restaurant/financial-summary",

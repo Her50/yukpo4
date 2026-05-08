@@ -874,9 +874,15 @@ const ORDER_SELECT: &str = r#"
            o.client_name, o.client_phone, o.notes, o.table_id,
            o.estimated_ready_at::text AS estimated_ready_at,
            o.requested_arrival_time::text AS requested_arrival_time,
+           o.arrival_confirmed_at::text AS arrival_confirmed_at,
            o.created_at::text AS created_at,
            o.yukpo_commission::float8, o.net_partner_amount::float8,
            o.payment_status, o.delivery_order_id,
+           o.client_user_id,
+           COALESCE(
+               (SELECT restaurant_no_show_count FROM users WHERE id = o.client_user_id),
+               0
+           ) AS client_no_show_count,
            COALESCE(
                json_agg(json_build_object(
                    'id', oi.id,
@@ -936,6 +942,9 @@ fn map_order_row(r: &sqlx::postgres::PgRow) -> serde_json::Value {
         "table_id": r.get::<Option<i32>,_>("table_id"),
         "estimated_ready_at": r.get::<Option<String>,_>("estimated_ready_at"),
         "requested_arrival_time": r.try_get::<Option<String>,_>("requested_arrival_time").ok().flatten(),
+        "arrival_confirmed_at": r.try_get::<Option<String>,_>("arrival_confirmed_at").ok().flatten(),
+        "client_user_id": r.try_get::<Option<i32>,_>("client_user_id").ok().flatten(),
+        "client_no_show_count": r.try_get::<i32,_>("client_no_show_count").unwrap_or(0),
         "created_at": r.get::<Option<String>,_>("created_at"),
         "yukpo_commission": r.try_get::<Option<f64>,_>("yukpo_commission").ok().flatten(),
         "net_partner_amount": r.try_get::<Option<f64>,_>("net_partner_amount").ok().flatten(),
@@ -2309,6 +2318,99 @@ pub async fn rate_order(
     Ok((
         StatusCode::OK,
         Json(json!({ "success": true, "message": "Merci pour votre avis !" })),
+    ))
+}
+
+/// POST /api/restaurant/public/orders/:order_id/confirm-arrival
+/// Le client confirme qu'il est en route → signal au restaurateur de démarrer la prép.
+/// Idempotent : un 2ème appel ne change rien (le timestamp reste le 1er).
+pub async fn client_confirm_arrival(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(order_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    let updated = sqlx::query(
+        r#"UPDATE restaurant_orders
+              SET arrival_confirmed_at = COALESCE(arrival_confirmed_at, NOW())
+            WHERE id = $1
+              AND client_user_id = $2
+              AND status NOT IN ('completed', 'cancelled')"#,
+    )
+    .bind(order_id)
+    .bind(user.id)
+    .execute(&state.pg)
+    .await?;
+
+    if updated.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "Commande introuvable, déjà terminée ou annulée".to_string(),
+        ));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "message": "Le restaurant a été notifié de votre arrivée."
+        })),
+    ))
+}
+
+/// POST /api/restaurant/orders/:id/mark-no-show
+/// Le partenaire marque une commande comme "no-show" (client n'est pas venu).
+/// Annule la commande + incrémente le compteur du client pour la détection future.
+pub async fn partner_mark_no_show(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(order_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    let service_id = restaurant_service_id_for_user(&state.pg, user.id).await?;
+
+    let row = sqlx::query(
+        r#"SELECT client_user_id, status
+             FROM restaurant_orders
+            WHERE id = $1 AND service_id = $2"#,
+    )
+    .bind(order_id)
+    .bind(service_id)
+    .fetch_optional(&state.pg)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Commande introuvable".to_string()))?;
+
+    let status: String = row.get("status");
+    if matches!(status.as_str(), "completed" | "cancelled") {
+        return Err(AppError::BadRequest(
+            "Cette commande est déjà terminée ou annulée".to_string(),
+        ));
+    }
+    let client_user_id: Option<i32> = row.try_get("client_user_id").ok();
+
+    sqlx::query(
+        r#"UPDATE restaurant_orders
+              SET status = 'cancelled',
+                  notes = COALESCE(notes, '') || ' [NO_SHOW marqué par restaurant]'
+            WHERE id = $1"#,
+    )
+    .bind(order_id)
+    .execute(&state.pg)
+    .await?;
+
+    if let Some(uid) = client_user_id {
+        sqlx::query(
+            r#"UPDATE users
+                  SET restaurant_no_show_count = COALESCE(restaurant_no_show_count, 0) + 1,
+                      restaurant_no_show_last_at = NOW()
+                WHERE id = $1"#,
+        )
+        .bind(uid)
+        .execute(&state.pg)
+        .await
+        .ok();
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "message": "Commande marquée no-show." })),
     ))
 }
 

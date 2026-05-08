@@ -41,6 +41,11 @@ export function detectDeviceLanguage(): SupportedLng {
 export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
   fr: {
     bourse: {
+      nav: {
+        home: 'Accueil',
+        recap: 'Récap',
+        tracking: 'Suivi',
+      },
       home: {
         title: 'Bourse du Livre',
         subtitle: "Scannez votre liste — on s'occupe du reste.",
@@ -144,6 +149,11 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
   },
   en: {
     bourse: {
+      nav: {
+        home: 'Home',
+        recap: 'Recap',
+        tracking: 'Tracking',
+      },
       home: {
         title: 'Book Exchange',
         subtitle: "Scan your list — we'll handle the rest.",

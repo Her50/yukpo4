@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import AppPharmacie from './AppPharmacie';
+import './i18n/i18nAutoDetector'; // ✅ détecte langue système (navigator.language) + persiste localStorage
 import './index.css';
 
 const showError = (msg: string) => {

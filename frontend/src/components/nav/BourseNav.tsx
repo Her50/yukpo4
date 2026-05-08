@@ -1,17 +1,19 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 import { Home, ListChecks, Truck } from 'lucide-react';
 
 // Nav simplifiée : Accueil (relancer un scan), Récap (commande en cours),
-// Suivi (statut des commandes envoyées). Reste accessible via pages internes.
-const tabs = [
-  { to: '/', label: 'Accueil', icon: Home, exact: true },
-  { to: '/recap', label: 'Récap', icon: ListChecks },
-  { to: '/mes-commandes', label: 'Suivi', icon: Truck },
-];
+// Suivi (statut des commandes envoyées). Labels traduits via i18n.
 
 const BourseNav: React.FC = () => {
+  const { t } = useTranslation();
   const path = window.location.pathname;
+  const tabs = [
+    { to: '/', label: t('bourse.nav.home'), icon: Home, exact: true },
+    { to: '/recap', label: t('bourse.nav.recap'), icon: ListChecks },
+    { to: '/mes-commandes', label: t('bourse.nav.tracking'), icon: Truck },
+  ];
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 flex"
