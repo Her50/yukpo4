@@ -45,18 +45,21 @@ const LivreScolaireHomePage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-amber-600 via-amber-500 to-amber-400 flex flex-col">
       {/* Header */}
       <div className="px-5 pt-12 pb-6 text-white">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h1 className="text-2xl font-bold leading-tight">{t('bourse.home.title')}</h1>
-          {totalItems > 0 && (
-            <button
-              onClick={() => navigate('/recap')}
-              className="relative flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full"
-              aria-label="Voir mon récapitulatif"
-            >
-              <ShoppingCart className="w-4 h-4 text-white" />
-              <span className="text-white text-sm font-semibold">{totalItems}</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <LanguageSwitcherBourse tone="white" />
+            {totalItems > 0 && (
+              <button
+                onClick={() => navigate('/recap')}
+                className="relative flex items-center gap-1.5 bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full"
+                aria-label="Voir mon récapitulatif"
+              >
+                <ShoppingCart className="w-4 h-4 text-white" />
+                <span className="text-white text-sm font-semibold">{totalItems}</span>
+              </button>
+            )}
+          </div>
         </div>
         <p className="text-amber-50 text-sm mt-1">{t('bourse.home.subtitle')}</p>
       </div>
