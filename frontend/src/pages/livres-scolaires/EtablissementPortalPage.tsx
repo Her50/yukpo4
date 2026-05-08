@@ -6,7 +6,7 @@
 // consulter les statistiques d'audience.
 
 import {
-  ArrowLeft, BarChart3, Bus, Calendar, Check, Coffee, Copy, Edit2, ExternalLink,
+  ArrowLeft, BarChart3, Bus, Calendar, Check, ChevronRight, Coffee, Copy, Edit2, ExternalLink,
   FileText, GraduationCap, Home as HomeIcon, Info, Loader2, LogOut, Megaphone,
   Phone, Plus, Save, School, Shirt, ShoppingCart, Trophy, X,
 } from 'lucide-react';
@@ -182,11 +182,21 @@ export const EtablissementPortalHomePage: React.FC = () => {
           </p>
         )}
 
+        {etabs.length > 0 && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 mb-3">
+            <p className="text-xs text-emerald-800 leading-relaxed">
+              👉 <b>Cliquez sur votre établissement</b> ci-dessous pour configurer
+              les 10 blocs (inscription, transport, cantine, activités, calendrier,
+              annonces, contacts, etc.) et publier votre page officielle.
+            </p>
+          </div>
+        )}
+
         {etabs.map(e => (
           <button
             key={e.id}
             onClick={() => navigate(`/etablissement-portal/${e.id}`)}
-            className="w-full bg-white p-4 rounded-2xl border border-gray-100 active:bg-gray-50 text-left flex items-center gap-3"
+            className="w-full bg-white p-4 rounded-2xl border-2 border-emerald-100 hover:border-emerald-400 active:bg-emerald-50 text-left flex items-center gap-3 shadow-sm"
           >
             <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 overflow-hidden">
               {e.logo_url ? (
@@ -215,6 +225,13 @@ export const EtablissementPortalHomePage: React.FC = () => {
                   </span>
                 )}
               </div>
+              <p className="text-xs text-emerald-700 font-semibold mt-1.5 flex items-center gap-1">
+                Configurer la page
+                <ChevronRight className="w-3.5 h-3.5" />
+              </p>
+            </div>
+            <div className="shrink-0 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+              <ChevronRight className="w-5 h-5" />
             </div>
           </button>
         ))}
@@ -326,15 +343,15 @@ export const EtablissementDashboardPage: React.FC = () => {
       <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-2 sticky top-0 z-10">
         <button
           onClick={() => navigate('/etablissement-portal')}
-          className="p-2 -ml-2 rounded-full hover:bg-gray-100"
+          className="p-2 -ml-2 rounded-full hover:bg-gray-100 shrink-0"
         >
           <ArrowLeft className="w-5 h-5 text-gray-700" />
         </button>
-        <h1 className="text-base font-bold text-gray-900 truncate flex-1">
+        <h1 className="text-base font-bold text-gray-900 truncate flex-1 min-w-0">
           {etab.nom_etablissement}
         </h1>
         <span
-          className={`text-[10px] px-2 py-1 rounded-full font-semibold ${
+          className={`text-[10px] px-2 py-1 rounded-full font-semibold whitespace-nowrap shrink-0 ${
             etab.page_status === 'published'
               ? 'bg-emerald-100 text-emerald-700'
               : 'bg-amber-100 text-amber-700'
@@ -344,7 +361,7 @@ export const EtablissementDashboardPage: React.FC = () => {
         </span>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="p-3 sm:p-4 max-w-3xl mx-auto space-y-3 sm:space-y-4">
         {/* URL publique */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">
