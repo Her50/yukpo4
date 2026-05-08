@@ -50,6 +50,7 @@ import TrocLiveValidationPage from './pages/trocs/TrocLiveValidationPage';
 import MesTrocsPage from './pages/trocs/MesTrocsPage';
 
 import RequireAuth from './components/auth/RequireAuth';
+import { useGuestAuth } from './hooks/useGuestAuth';
 import PartnerRegisterPage from './pages/PartnerRegisterPage';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
@@ -70,9 +71,11 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 }
 
 function BourseLayout({ children }: { children: React.ReactNode }) {
-  // ✅ 2026-05-08 : on a retiré la création silencieuse d'un compte invité.
-  // À la 1ère ouverture, l'utilisateur doit créer son compte (parent ou
-  // partenaire). Cela offre une UX plus claire et trace la base utilisateur.
+  // ✅ 2026-05-08 v2 : compte invité auto rétabli pour les parents (zéro
+  // friction au 1er accès — la home s'ouvre directement, le scan fonctionne
+  // immédiatement). L'authentification reste OBLIGATOIRE pour les portails
+  // partenaire (Librairie, Établissement) via RequireAuth.
+  useGuestAuth();
   return (
     <div className="min-h-screen bg-gray-50 pb-16">
       {children}

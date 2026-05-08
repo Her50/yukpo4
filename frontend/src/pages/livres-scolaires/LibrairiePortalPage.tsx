@@ -1304,15 +1304,23 @@ export const LibrairieDashboardPage: React.FC = () => {
     }
   }, [user, navigate]);
 
+  const [needsReauth, setNeedsReauth] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    setNeedsReauth(false);
     try {
       const res = await apiGet('/api/librairie-network/super-librairie/commandes?limit=100');
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (res.status === 403) {
-          throw new Error("Accès refusé : vous n'êtes pas enregistré comme libraire partenaire.");
+        if (res.status === 403 || res.status === 401) {
+          // JWT obsolète (rôle changé en base après le login) ou pas autorisé.
+          // On propose une reconnexion immédiate pour rafraîchir le token.
+          setNeedsReauth(true);
+          throw new Error(
+            "Votre session a besoin d'être actualisée pour accéder à Yukpo Librairie."
+          );
         }
         throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
       }
@@ -1324,6 +1332,14 @@ export const LibrairieDashboardPage: React.FC = () => {
       setLoading(false);
     }
   }, []);
+
+  const reauth = () => {
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('yukpo_guest_account');
+    } catch { /* */ }
+    navigate('/login?source=shared_service&redirect=' + encodeURIComponent('/librairie'));
+  };
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -1448,11 +1464,22 @@ export const LibrairieDashboardPage: React.FC = () => {
 
         {error && !loading && (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3">
-            <p className="text-sm font-semibold text-red-800 mb-1">Erreur</p>
-            <p className="text-xs text-red-700">{error}</p>
-            <button onClick={load} className="mt-2 text-xs underline text-red-700 font-semibold">
-              Réessayer
-            </button>
+            <p className="text-sm font-semibold text-red-800 mb-1">
+              {needsReauth ? 'Session à actualiser' : 'Erreur'}
+            </p>
+            <p className="text-xs text-red-700 mb-2">{error}</p>
+            {needsReauth ? (
+              <button
+                onClick={reauth}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold"
+              >
+                Se reconnecter avec mon compte Yukpo Librairie
+              </button>
+            ) : (
+              <button onClick={load} className="text-xs underline text-red-700 font-semibold">
+                Réessayer
+              </button>
+            )}
           </div>
         )}
 
