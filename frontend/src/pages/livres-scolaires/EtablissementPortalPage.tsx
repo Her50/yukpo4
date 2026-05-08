@@ -8,7 +8,7 @@
 import {
   ArrowLeft, BarChart3, Bus, Calendar, Check, ChevronRight, Coffee, Copy, Edit2, ExternalLink,
   FileText, GraduationCap, Home as HomeIcon, Info, Loader2, LogOut, Megaphone,
-  Phone, Plus, Save, School, Shirt, ShoppingCart, Trophy, X,
+  Phone, Plus, Save, School, Shirt, ShoppingCart, Sparkles, Trophy, Upload, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -286,6 +286,7 @@ export const EtablissementDashboardPage: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editingType, setEditingType] = useState<string | null>(null);
+  const [showIaUpload, setShowIaUpload] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -414,6 +415,24 @@ export const EtablissementDashboardPage: React.FC = () => {
           )}
         </div>
 
+        {/* CTA IA — pré-remplissage automatique des blocs */}
+        <button
+          onClick={() => setShowIaUpload(true)}
+          className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white p-4 rounded-2xl shadow-md flex items-center gap-3 active:from-violet-700 active:to-fuchsia-700"
+        >
+          <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="font-bold text-sm">Configurer toute la page avec l'IA</p>
+            <p className="text-xs text-violet-100 mt-0.5 leading-relaxed">
+              Uploadez vos brochures, règlement, listes scolaires existantes — l'IA remplit
+              automatiquement tous les blocs. Vous pouvez tout éditer ensuite.
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5" />
+        </button>
+
         {/* Statistiques */}
         {stats && (
           <div className="bg-white rounded-2xl border border-gray-100 p-4">
@@ -487,6 +506,230 @@ export const EtablissementDashboardPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* Modal Upload IA */}
+      {showIaUpload && (
+        <IaUploadModal
+          etabId={etabId}
+          onClose={() => setShowIaUpload(false)}
+          onSuccess={() => {
+            setShowIaUpload(false);
+            load();
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// ============================================================================
+// Modal d'upload IA — multi-fichiers (PDF, image, Word, Excel)
+// ============================================================================
+const IaUploadModal: React.FC<{
+  etabId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}> = ({ etabId, onClose, onSuccess }) => {
+  const { toast } = useToast();
+  const [files, setFiles] = useState<File[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFiles = (list: FileList | null) => {
+    if (!list) return;
+    const arr = Array.from(list).slice(0, 12);
+    setFiles(arr);
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const submit = async () => {
+    if (files.length === 0) {
+      toast({ title: 'Aucun fichier sélectionné', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const fichiers = await Promise.all(
+        files.map(async (f) => ({
+          nom: f.name,
+          file_type: f.type || null,
+          base64: await fileToBase64(f),
+        }))
+      );
+      const token = localStorage.getItem('token');
+      // Timeout long côté front : 6 min pour traiter plusieurs fichiers
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 360_000);
+      const res = await fetch(`/api/v2/admin/etablissement/${etabId}/ia-extract`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ fichiers }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(d?.message || d?.error || `HTTP ${res.status}`);
+      }
+      setResult(d);
+      toast({
+        title: 'Page configurée par l\'IA',
+        description: `${d.blocs_saved} blocs · ${d.events_saved} événements · ${d.articles_saved} articles`,
+      });
+    } catch (e: any) {
+      const msg = e?.name === 'AbortError'
+        ? 'L\'extraction IA a pris trop de temps. Réessayez avec moins de fichiers.'
+        : e?.message || 'Erreur lors de l\'extraction IA';
+      toast({ title: 'Erreur', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+          <Sparkles className="w-5 h-5 text-violet-600" />
+          <p className="font-bold text-gray-900 flex-1">Configurer la page avec l'IA</p>
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <p className="text-xs text-gray-600 leading-relaxed bg-violet-50 border border-violet-200 rounded-xl p-3">
+            <b>Astuce :</b> téléversez tout ce que vous avez déjà — brochure de l'école, règlement
+            intérieur, lettre aux parents, fiches d'inscription, programme officiel des manuels,
+            menu de la cantine, photos de panneaux. L'IA lit tous ces documents et remplit
+            <b> automatiquement</b> les blocs Inscription, Transport, Cantine, Activités, Internat,
+            Uniforme, Contacts, Calendrier, Annonces et les listes scolaires par classe.
+          </p>
+
+          {!result && (
+            <>
+              <div
+                onClick={() => fileRef.current?.click()}
+                className="border-2 border-dashed border-violet-300 rounded-2xl p-6 text-center cursor-pointer hover:bg-violet-50"
+              >
+                <Upload className="w-10 h-10 text-violet-400 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-gray-700">
+                  Cliquez pour sélectionner vos fichiers
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  PDF, image, Word, Excel · maximum 12 fichiers
+                </p>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  multiple
+                  accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
+                  className="hidden"
+                  onChange={(e) => handleFiles(e.target.files)}
+                />
+              </div>
+
+              {files.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                    {files.length} fichier{files.length > 1 ? 's' : ''} sélectionné{files.length > 1 ? 's' : ''}
+                  </p>
+                  {files.map((f, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2"
+                    >
+                      <FileText className="w-4 h-4 text-violet-500 shrink-0" />
+                      <span className="text-xs text-gray-700 flex-1 truncate">{f.name}</span>
+                      <span className="text-[10px] text-gray-400 shrink-0">
+                        {Math.round(f.size / 1024)} Ko
+                      </span>
+                      <button
+                        onClick={() => setFiles((p) => p.filter((_, j) => j !== i))}
+                        className="p-1 rounded text-gray-400 hover:text-red-500"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={submit}
+                disabled={loading || files.length === 0}
+                className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 disabled:opacity-50 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Analyse en cours (peut prendre 1-3 min)…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Lancer l'analyse IA
+                  </>
+                )}
+              </button>
+            </>
+          )}
+
+          {result && (
+            <div className="space-y-3">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <p className="text-sm font-bold text-emerald-800 mb-2">
+                  ✅ Page configurée avec succès
+                </p>
+                <ul className="text-xs text-emerald-700 space-y-1">
+                  <li>• {result.blocs_saved} blocs CMS pré-remplis</li>
+                  <li>• {result.events_saved} événements ajoutés au calendrier</li>
+                  <li>• {result.annonces_saved} annonces créées</li>
+                  <li>• {result.articles_saved} articles ajoutés aux listes scolaires</li>
+                  {result.confidence != null && (
+                    <li>• Confiance IA : {Math.round(result.confidence * 100)}%</li>
+                  )}
+                </ul>
+                {result.notes && (
+                  <p className="text-[11px] text-emerald-700 italic mt-2">{result.notes}</p>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Vous pouvez maintenant <b>vérifier et éditer</b> chaque bloc depuis le dashboard.
+                Les listes scolaires extraites apparaissent dans la page publique de votre école
+                pour chaque classe.
+              </p>
+              <button
+                onClick={onSuccess}
+                className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm"
+              >
+                Voir le résultat
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

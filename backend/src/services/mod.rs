@@ -69,6 +69,7 @@ pub mod embedding_service;
 pub mod embedding_tracker;
 pub mod emploi_ai_service; // ✅ NOUVEAU: Service IA emploi
 pub mod enrich_google_places; // ✅ NOUVEAU: Enrichissement services avec données Google Places complètes
+pub mod etablissement_ia_service; // ✅ 2026-05-08: Extraction IA infos d'établissement depuis documents
 pub mod exchange_rate_service; // ✅ 2026-03-18: Taux de change live via ExchangeRate-API (gratuit, cache 24h)
 pub mod exhaustive_combination_generator;
 pub mod facebook_publisher_service; // ✅ 2026-04-03: Publication réelle sur Facebook Page + sync catalogue Commerce Manager

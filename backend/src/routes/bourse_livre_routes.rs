@@ -443,6 +443,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/v2/admin/etablissement/migrate",
             post(etablissement_pages_controller::migrate_etablissement_pages),
         )
+        // ✅ 2026-05-08 : extraction IA des infos établissement depuis documents
+        .route(
+            "/api/v2/admin/etablissement/{id}/ia-extract",
+            post(etablissement_pages_controller::ia_extract_etablissement)
+                .layer(axum::extract::DefaultBodyLimit::max(50_000_000)),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     Router::new()

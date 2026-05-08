@@ -964,6 +964,269 @@ pub async fn migrate_etablissement_pages(
     ))
 }
 
+// ============================================================================
+// IA EXTRACTION DES INFOS ÉTABLISSEMENT DEPUIS DES DOCUMENTS
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct IaExtractFichier {
+    pub nom: String,
+    pub file_type: Option<String>,
+    pub base64: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct IaExtractPayload {
+    pub fichiers: Vec<IaExtractFichier>,
+    pub nom_etablissement_hint: Option<String>,
+    #[serde(default)]
+    pub annee_scolaire: Option<String>,
+}
+
+/// POST /api/v2/admin/etablissement/{id}/ia-extract
+/// Le directeur upload 1+ documents → l'IA extrait toutes les infos →
+/// les blocs CMS sont pré-remplis automatiquement, listes scolaires insérées
+/// dans programmes_scolaires, événements + annonces enregistrés.
+pub async fn ia_extract_etablissement(
+    State(state): State<Arc<AppState>>,
+    Path(etab_id): Path<i32>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(payload): Json<IaExtractPayload>,
+) -> AppResult<impl IntoResponse> {
+    require_etab_admin(&state, user_id, etab_id).await?;
+
+    if payload.fichiers.is_empty() {
+        return Err(AppError::BadRequest("Aucun fichier fourni".to_string()));
+    }
+    if payload.fichiers.len() > 12 {
+        return Err(AppError::BadRequest(
+            "Maximum 12 fichiers par extraction (limite IA)".to_string(),
+        ));
+    }
+
+    let files_b64: Vec<String> = payload
+        .fichiers
+        .iter()
+        .map(|f| {
+            let s = &f.base64;
+            if let Some(comma) = s.find(',') {
+                if s[..comma].contains("base64") {
+                    return s[(comma + 1)..].to_string();
+                }
+            }
+            s.clone()
+        })
+        .collect();
+
+    let nom_hint: String = if let Some(h) = payload.nom_etablissement_hint.as_ref() {
+        h.clone()
+    } else {
+        sqlx::query_scalar::<_, String>(
+            "SELECT nom_etablissement FROM etablissements_scolaires WHERE id = $1",
+        )
+        .bind(etab_id)
+        .fetch_optional(&state.pg)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_default()
+    };
+
+    let ia =
+        crate::services::etablissement_ia_service::EtablissementIAService::new(state.ia.clone());
+    let extraction = ia.extract_etablissement_info(&files_b64, Some(&nom_hint)).await?;
+
+    // 1) Description de l'établissement
+    if let Some(desc) = extraction.description.as_ref() {
+        if !desc.trim().is_empty() {
+            let _ = sqlx::query(
+                "UPDATE etablissements_scolaires SET description = $1, updated_at = NOW() WHERE id = $2",
+            )
+            .bind(desc)
+            .bind(etab_id)
+            .execute(&state.pg)
+            .await;
+        }
+    }
+
+    // 2) Upsert blocs CMS éditoriaux
+    let blocs_to_save: [(&str, &Value); 8] = [
+        ("inscription", &extraction.inscription),
+        ("transport", &extraction.transport),
+        ("cantine", &extraction.cantine),
+        ("perisco", &extraction.perisco),
+        ("internat", &extraction.internat),
+        ("uniforme", &extraction.uniforme),
+        ("contacts", &extraction.contacts),
+        ("laureats", &extraction.laureats),
+    ];
+    let mut blocs_saved = 0;
+    for (type_bloc, contenu) in blocs_to_save {
+        let json = contenu.clone();
+        let is_empty = json.is_null()
+            || matches!(&json, Value::Object(m) if m.values().all(|v| v.is_null()
+                || (v.is_string() && v.as_str().unwrap_or("").is_empty())
+                || (v.is_array() && v.as_array().unwrap().is_empty())));
+        if is_empty {
+            continue;
+        }
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO etablissement_blocs
+                (etablissement_id, type_bloc, contenu_json, is_active, published_at,
+                 created_by, updated_by)
+            VALUES ($1, $2, $3, true, NOW(), $4, $4)
+            ON CONFLICT (etablissement_id, type_bloc) DO UPDATE
+            SET contenu_json = EXCLUDED.contenu_json,
+                is_active = true,
+                published_at = NOW(),
+                updated_by = $4,
+                updated_at = NOW()
+            "#,
+        )
+        .bind(etab_id)
+        .bind(type_bloc)
+        .bind(&json)
+        .bind(user_id)
+        .execute(&state.pg)
+        .await;
+        blocs_saved += 1;
+    }
+
+    // 3) Événements
+    let mut events_saved = 0;
+    for ev in &extraction.evenements {
+        let titre = ev.get("titre").and_then(|v| v.as_str()).unwrap_or("").trim();
+        if titre.is_empty() {
+            continue;
+        }
+        let dt: Option<chrono::DateTime<chrono::Utc>> = ev
+            .get("date_debut")
+            .and_then(|v| v.as_str())
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+            .map(|d| d.with_timezone(&chrono::Utc));
+        let dt = match dt {
+            Some(d) => d,
+            None => continue,
+        };
+        let dt_fin: Option<chrono::DateTime<chrono::Utc>> = ev
+            .get("date_fin")
+            .and_then(|v| v.as_str())
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+            .map(|d| d.with_timezone(&chrono::Utc));
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO etablissement_evenements
+                (etablissement_id, titre, description, type_event, date_debut, date_fin,
+                 classe_concernee, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            "#,
+        )
+        .bind(etab_id)
+        .bind(titre)
+        .bind(ev.get("description").and_then(|v| v.as_str()))
+        .bind(ev.get("type_event").and_then(|v| v.as_str()))
+        .bind(dt)
+        .bind(dt_fin)
+        .bind(ev.get("classe_concernee").and_then(|v| v.as_str()))
+        .bind(user_id)
+        .execute(&state.pg)
+        .await;
+        events_saved += 1;
+    }
+
+    // 4) Annonces
+    let mut annonces_saved = 0;
+    for an in &extraction.annonces {
+        let titre = an.get("titre").and_then(|v| v.as_str()).unwrap_or("").trim();
+        let contenu = an.get("contenu").and_then(|v| v.as_str()).unwrap_or("").trim();
+        if titre.is_empty() || contenu.is_empty() {
+            continue;
+        }
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO etablissement_annonces
+                (etablissement_id, titre, contenu, created_by)
+            VALUES ($1, $2, $3, $4)
+            "#,
+        )
+        .bind(etab_id)
+        .bind(titre)
+        .bind(contenu)
+        .bind(user_id)
+        .execute(&state.pg)
+        .await;
+        annonces_saved += 1;
+    }
+
+    // 5) Listes scolaires (programmes_scolaires)
+    let annee = payload.annee_scolaire.clone().unwrap_or_else(|| "2026-2027".to_string());
+    let mut articles_saved = 0;
+    for liste in &extraction.listes_scolaires {
+        let classe = liste.get("classe").and_then(|v| v.as_str()).unwrap_or("").trim();
+        if classe.is_empty() {
+            continue;
+        }
+        let articles = match liste.get("articles").and_then(|v| v.as_array()) {
+            Some(a) => a,
+            None => continue,
+        };
+        for art in articles {
+            let titre = art.get("titre").and_then(|v| v.as_str()).unwrap_or("").trim();
+            if titre.is_empty() {
+                continue;
+            }
+            let prix: Option<f64> =
+                art.get("prix_officiel").and_then(|v| v.as_f64()).or_else(|| {
+                    art.get("prix_officiel").and_then(|v| v.as_str()).and_then(|s| s.parse().ok())
+                });
+            let _ = sqlx::query(
+                r#"
+                INSERT INTO programmes_scolaires
+                    (etablissement_id, pays, niveau, classe, matiere,
+                     titre_livre, auteur_livre, editeur_livre, type,
+                     prix_officiel, devise, annee_scolaire,
+                     est_obligatoire, is_active, created_at, updated_at)
+                VALUES ($1, 'CM', 'Secondaire', $2, $3, $4, $5, $6, $7,
+                        $8, 'XAF', $9, $10, true, NOW(), NOW())
+                ON CONFLICT DO NOTHING
+                "#,
+            )
+            .bind(etab_id)
+            .bind(classe)
+            .bind(art.get("matiere").and_then(|v| v.as_str()))
+            .bind(titre)
+            .bind(art.get("auteur").and_then(|v| v.as_str()))
+            .bind(art.get("editeur").and_then(|v| v.as_str()))
+            .bind(art.get("type").and_then(|v| v.as_str()).unwrap_or("livre"))
+            .bind(prix)
+            .bind(&annee)
+            .bind(art.get("est_obligatoire").and_then(|v| v.as_bool()).unwrap_or(true))
+            .execute(&state.pg)
+            .await;
+            articles_saved += 1;
+        }
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "ok": true,
+            "blocs_saved": blocs_saved,
+            "events_saved": events_saved,
+            "annonces_saved": annonces_saved,
+            "articles_saved": articles_saved,
+            "confidence": extraction.confidence,
+            "notes": extraction.notes,
+            "extraction": {
+                "description": extraction.description,
+                "meta": extraction.meta,
+                "listes_scolaires_count": extraction.listes_scolaires.len(),
+            },
+        })),
+    ))
+}
+
 /// POST /api/v2/admin/etablissement/{id}/claim
 /// Permet à un utilisateur ADMIN (ou super_admin) de devenir gérant d'un
 /// établissement existant pour effectuer les tests. Réservé aux admins.
