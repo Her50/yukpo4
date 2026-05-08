@@ -12,8 +12,12 @@ pub fn is_billing_enabled() -> bool {
         .unwrap_or(true)
 }
 
-/// Quota gratuit **mensuel** (UTC) en unités d’app — défaut **4000** (`YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET`).
-/// Rétrocompat : si absent, lit encore `YUKPO_IA_DAILY_FREE_TOKEN_BUDGET` (anciens déploiements).
+/// Quota gratuit **mensuel** (UTC) en unités d'app — défaut **0** depuis 2026-05-08.
+///
+/// **Nouveau modèle** : le bonus de bienvenue Yukpo est crédité **une seule fois**
+/// à l'inscription (cf. `signup_bonus_tokens` dans `auth_controller`), pas chaque mois.
+/// Override possible via `YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET` (campagnes promo, etc.).
+/// Rétrocompat : ancien `YUKPO_IA_DAILY_FREE_TOKEN_BUDGET` toujours lu si présent.
 fn monthly_free_budget() -> i64 {
     std::env::var("YUKPO_IA_MONTHLY_FREE_TOKEN_BUDGET")
         .ok()
@@ -23,7 +27,7 @@ fn monthly_free_budget() -> i64 {
                 .ok()
                 .and_then(|s| s.parse().ok())
         })
-        .unwrap_or(4000)
+        .unwrap_or(0)
 }
 
 /// Premier jour du mois (UTC) — clé de période dans `yukpo_ia_daily_usage.usage_date`.

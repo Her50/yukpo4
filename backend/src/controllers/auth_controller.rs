@@ -34,9 +34,15 @@ async fn check_rate_limit(_key: &str, _window_seconds: i64, _max_attempts: i64) 
     Ok(())
 }
 
-// ✅ NOUVEAU 2026-02-06: Plus de tokens initiaux - les utilisateurs commencent à 0
-// Les tokens seront gagnés via la phase de lancement (produits gratuits) ou achat
-const INITIAL_TOKENS: i64 = 0;
+/// Bonus de bienvenue Yukpo : crédité **une seule fois** à la création du compte.
+/// Remplace l'ancien quota mensuel gratuit (qui se renouvelait chaque mois).
+/// Override possible via env var `YUKPO_SIGNUP_BONUS_TOKENS`.
+fn signup_bonus_tokens() -> i64 {
+    std::env::var("YUKPO_SIGNUP_BONUS_TOKENS")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(4000)
+}
 
 #[derive(Deserialize)]
 pub struct LoginInput {
@@ -718,7 +724,7 @@ pub async fn register_user(
     .bind(&payload.email)
     .bind(&password_hash)
     .bind(user_role)
-    .bind(INITIAL_TOKENS)
+    .bind(signup_bonus_tokens())
     .bind(payload.lang.as_deref().unwrap_or("fr"))
     .bind(default_token_price_user)
     .bind(default_token_price_provider)
@@ -1740,7 +1746,7 @@ pub async fn oauth_login_handler(
             )
             .bind(email)
             .bind("user")
-            .bind(INITIAL_TOKENS)
+            .bind(signup_bonus_tokens())
             .bind(oauth_name.as_deref()) // ✅ NOUVEAU: sauvegarder le nom depuis OAuth
             .fetch_one(db)
             .await;
