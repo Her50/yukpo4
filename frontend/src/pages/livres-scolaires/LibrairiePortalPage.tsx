@@ -5,7 +5,9 @@ import {
   Warehouse, X, XCircle,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import LanguageSwitcherBourse from '../../components/LanguageSwitcherBourse';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/use-toast';
 import { apiGet, apiPost } from '../../services/apiService';
@@ -1277,6 +1279,7 @@ const WholesalePanel: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
 /* ─── DASHBOARD ─── */
 export const LibrairieDashboardPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -1318,16 +1321,14 @@ export const LibrairieDashboardPage: React.FC = () => {
           // JWT obsolète (rôle changé en base après le login) ou pas autorisé.
           // On propose une reconnexion immédiate pour rafraîchir le token.
           setNeedsReauth(true);
-          throw new Error(
-            "Votre session a besoin d'être actualisée pour accéder à Yukpo Librairie."
-          );
+          throw new Error(t('librairie.session_expired'));
         }
         throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
       }
       const list: CommandeListItem[] = data?.commandes || [];
       setCommandes(Array.isArray(list) ? list : []);
     } catch (e: any) {
-      setError(e?.message || 'Impossible de charger les commandes');
+      setError(e?.message || t('librairie.error') + ' (commandes)');
     } finally {
       setLoading(false);
     }
@@ -1372,20 +1373,21 @@ export const LibrairieDashboardPage: React.FC = () => {
         <div className="max-w-3xl mx-auto">
           {/* Ligne 1 : retour + titre + déconnexion (toujours visible) */}
           <div className="flex items-center gap-3 mb-2.5">
-            <button onClick={() => navigate('/')} className="p-2 rounded-full bg-white/20 shrink-0" aria-label="Retour">
+            <button onClick={() => navigate('/')} className="p-2 rounded-full bg-white/20 shrink-0" aria-label={t('etabAdmin.dashboard.back')}>
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex-1 min-w-0">
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full tracking-wider uppercase">
-                Yukpo Librairie
+                {t('librairie.title')}
               </span>
-              <h1 className="font-bold text-lg leading-tight mt-1 truncate">Mes commandes</h1>
-              <p className="text-indigo-100 text-xs hidden sm:block">Validez prix, confirmez disponibilités, déclenchez la préparation.</p>
+              <h1 className="font-bold text-lg leading-tight mt-1 truncate">{t('librairie.mes_commandes')}</h1>
+              <p className="text-indigo-100 text-xs hidden sm:block">{t('librairie.validate_help')}</p>
             </div>
+            <LanguageSwitcherBourse tone="white" />
             <button
               onClick={() => { logout(); navigate('/login'); }}
               className="p-2 rounded-full bg-white/15 hover:bg-white/25 shrink-0"
-              title="Déconnexion"
+              title={t('librairie.logout')}
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -1398,37 +1400,37 @@ export const LibrairieDashboardPage: React.FC = () => {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold whitespace-nowrap shrink-0"
             >
               <Truck className="w-3.5 h-3.5" />
-              Tournées
+              {t('librairie.tournees')}
             </button>
             <button
               onClick={() => setShowWholesale(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold whitespace-nowrap shrink-0"
             >
               <Warehouse className="w-3.5 h-3.5" />
-              Grossiste
+              {t('librairie.grossiste')}
             </button>
             <button
               onClick={() => setShowContacts(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold whitespace-nowrap shrink-0"
             >
               <Megaphone className="w-3.5 h-3.5" />
-              Parents
+              {t('librairie.parents')}
             </button>
             <button
               onClick={() => setShowTeam(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold whitespace-nowrap shrink-0"
             >
               <Users className="w-3.5 h-3.5" />
-              Équipe
+              {t('librairie.equipe')}
             </button>
           </div>
 
           {/* Filtres */}
           <div className="inline-flex bg-white/15 backdrop-blur-sm rounded-full p-0.5 gap-0.5">
             {[
-              { v: 'pending', label: 'À traiter', n: commandes.filter(c => ['envoyee_super_librairie', 'envoyee_librairies', 'en_validation', 'validee_partielle'].includes(c.statut)).length },
-              { v: 'done', label: 'Traitées', n: commandes.filter(c => ['validee_complete', 'en_preparation', 'en_livraison', 'livree', 'annulee'].includes(c.statut)).length },
-              { v: 'all', label: 'Toutes', n: commandes.length },
+              { v: 'pending', label: t('librairie.tabs.pending'), n: commandes.filter(c => ['envoyee_super_librairie', 'envoyee_librairies', 'en_validation', 'validee_partielle'].includes(c.statut)).length },
+              { v: 'done', label: t('librairie.tabs.done'), n: commandes.filter(c => ['validee_complete', 'en_preparation', 'en_livraison', 'livree', 'annulee'].includes(c.statut)).length },
+              { v: 'all', label: t('librairie.tabs.all'), n: commandes.length },
             ].map(f => (
               <button
                 key={f.v}
@@ -1448,7 +1450,7 @@ export const LibrairieDashboardPage: React.FC = () => {
         {/* Refresh */}
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs text-gray-500">
-            {filtered.length} commande{filtered.length > 1 ? 's' : ''} · mise à jour auto 30s
+            {t(filtered.length > 1 ? 'librairie.orders_count_other' : 'librairie.orders_count', { count: filtered.length })} · {t('librairie.auto_refresh')}
           </p>
           <button
             onClick={load}
@@ -1456,21 +1458,21 @@ export const LibrairieDashboardPage: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-700 hover:bg-gray-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
+            {t('librairie.refresh')}
           </button>
         </div>
 
         {loading && commandes.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 p-8 flex flex-col items-center">
             <Loader2 className="w-6 h-6 text-indigo-600 animate-spin mb-2" />
-            <p className="text-sm text-gray-500">Chargement…</p>
+            <p className="text-sm text-gray-500">{t('common.loading')}</p>
           </div>
         )}
 
         {error && !loading && (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3">
             <p className="text-sm font-semibold text-red-800 mb-1">
-              {needsReauth ? 'Session à actualiser' : 'Erreur'}
+              {needsReauth ? t('librairie.session_to_refresh') : t('librairie.error')}
             </p>
             <p className="text-xs text-red-700 mb-2">{error}</p>
             {needsReauth ? (
@@ -1478,11 +1480,11 @@ export const LibrairieDashboardPage: React.FC = () => {
                 onClick={reauth}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg text-xs font-bold"
               >
-                Se reconnecter avec mon compte Yukpo Librairie
+                {t('librairie.reauth_button')}
               </button>
             ) : (
               <button onClick={load} className="text-xs underline text-red-700 font-semibold">
-                Réessayer
+                {t('librairie.retry')}
               </button>
             )}
           </div>
@@ -1491,8 +1493,8 @@ export const LibrairieDashboardPage: React.FC = () => {
         {!loading && !error && filtered.length === 0 && (
           <div className="bg-white border border-dashed border-gray-300 rounded-2xl p-8 text-center">
             <ShoppingBag className="w-12 h-12 text-indigo-300 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-gray-700 mb-1">Rien à afficher</p>
-            <p className="text-xs text-gray-500">Aucune commande dans ce filtre.</p>
+            <p className="text-sm font-semibold text-gray-700 mb-1">{t('librairie.nothing_to_show', 'Rien à afficher')}</p>
+            <p className="text-xs text-gray-500">{t('librairie.no_orders')}</p>
           </div>
         )}
 

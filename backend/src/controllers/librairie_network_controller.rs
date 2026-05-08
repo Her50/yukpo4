@@ -36,6 +36,21 @@ use crate::{
     utils::{generate_qr_code, generate_reference, send_notification},
 };
 
+/// Projection SELECT pour `commandes_mixtes` : caste les colonnes monétaires
+/// `NUMERIC(12,2)` en `DOUBLE PRECISION` pour matcher les `f64` du struct
+/// `CommandeMixte`. À utiliser à la place de `SELECT *`.
+///
+/// Utilisation : `&format!("SELECT {} FROM commandes_mixtes WHERE …", COMMANDES_MIXTES_PROJECTION)`.
+const COMMANDES_MIXTES_PROJECTION: &str = "
+    id, user_id, reference_commande,
+    budget_total::DOUBLE PRECISION AS budget_total,
+    devise, statut, mode_livraison,
+    adresse_livraison, gps_livraison, notes_client,
+    commission_app::DOUBLE PRECISION AS commission_app,
+    montant_net_libraires::DOUBLE PRECISION AS montant_net_libraires,
+    created_at, updated_at
+";
+
 pub struct ConfigurationSysteme;
 impl ConfigurationSysteme {
     pub const COMMISSION_APP: f64 = 0.05;
@@ -274,6 +289,10 @@ pub async fn create_commande_mixte(
         format!("CMD-{}-{}", annee, suffix)
     };
 
+    // ⚠️ Les colonnes monétaires sont en NUMERIC(12,2) côté SQL alors que le
+    // struct CommandeMixte expose des f64. On cast explicitement au RETURNING
+    // pour éviter `mismatched types; Rust type f64 ... is not compatible with
+    // SQL type NUMERIC` au décodage sqlx.
     let commande = sqlx::query_as::<_, CommandeMixte>(
         r#"
         INSERT INTO commandes_mixtes (
@@ -283,7 +302,14 @@ pub async fn create_commande_mixte(
             commission_app, montant_net_libraires
         )
         VALUES ($1, $2, $3, $4, 'edition', $5, $6, $7, $8, $9, $10)
-        RETURNING *
+        RETURNING
+            id, user_id, reference_commande,
+            budget_total::DOUBLE PRECISION AS budget_total,
+            devise, statut, mode_livraison,
+            adresse_livraison, gps_livraison, notes_client,
+            commission_app::DOUBLE PRECISION AS commission_app,
+            montant_net_libraires::DOUBLE PRECISION AS montant_net_libraires,
+            created_at, updated_at
         "#,
     )
     .bind(&reference_commande)
@@ -416,9 +442,10 @@ pub async fn update_commande_mixte(
     );
 
     // Vérifier que la commande appartient à l'utilisateur et est en édition
-    let _commande = sqlx::query_as::<_, CommandeMixte>(
-        "SELECT * FROM commandes_mixtes WHERE id = $1 AND user_id = $2 AND statut = 'edition'",
-    )
+    let _commande = sqlx::query_as::<_, CommandeMixte>(&format!(
+        "SELECT {} FROM commandes_mixtes WHERE id = $1 AND user_id = $2 AND statut = 'edition'",
+        COMMANDES_MIXTES_PROJECTION
+    ))
     .bind(commande_id)
     .bind(user_id)
     .fetch_optional(&state.pg)
@@ -586,9 +613,10 @@ pub async fn valider_budget_commande(
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
 
     // Vérifier commande et calculer totaux
-    let commande = sqlx::query_as::<_, CommandeMixte>(
-        "SELECT * FROM commandes_mixtes WHERE id = $1 AND user_id = $2 AND statut = 'edition'",
-    )
+    let commande = sqlx::query_as::<_, CommandeMixte>(&format!(
+        "SELECT {} FROM commandes_mixtes WHERE id = $1 AND user_id = $2 AND statut = 'edition'",
+        COMMANDES_MIXTES_PROJECTION
+    ))
     .bind(payload.commande_id)
     .bind(user_id)
     .fetch_optional(&mut *tx)
@@ -1085,7 +1113,20 @@ pub async fn super_librairie_dashboard(
     let commandes = sqlx::query(
         r#"
         SELECT
-            cm.*,
+            cm.id,
+            cm.user_id,
+            cm.reference_commande,
+            cm.budget_total::DOUBLE PRECISION AS budget_total,
+            cm.devise,
+            cm.statut::text AS statut,
+            cm.mode_livraison,
+            cm.adresse_livraison,
+            cm.gps_livraison,
+            cm.notes_client,
+            cm.commission_app::DOUBLE PRECISION AS commission_app,
+            cm.montant_net_libraires::DOUBLE PRECISION AS montant_net_libraires,
+            cm.created_at,
+            cm.updated_at,
             cv.statut AS validation_statut,
             COUNT(DISTINCT cln.id) AS nb_neufs,
             COUNT(DISTINCT clo.id) AS nb_occasion,
@@ -2654,7 +2695,10 @@ pub async fn finaliser_commande(
 
     // Vérifier commande
     let _commande = sqlx::query_as::<_, CommandeMixte>(
-        "SELECT * FROM commandes_mixtes WHERE id = $1 AND user_id = $2 AND statut IN ('validee_complete', 'validee_partielle')",
+        &format!(
+            "SELECT {} FROM commandes_mixtes WHERE id = $1 AND user_id = $2 AND statut IN ('validee_complete', 'validee_partielle')",
+            COMMANDES_MIXTES_PROJECTION
+        ),
     )
     .bind(payload.commande_id)
     .bind(user_id)
@@ -2991,7 +3035,20 @@ pub async fn get_mes_commandes(
     let offset = params.offset.unwrap_or(0);
 
     let mut query = "
-        SELECT cm.*, 
+        SELECT cm.id,
+               cm.user_id,
+               cm.reference_commande,
+               cm.budget_total::DOUBLE PRECISION AS budget_total,
+               cm.devise,
+               cm.statut,
+               cm.mode_livraison,
+               cm.adresse_livraison,
+               cm.gps_livraison,
+               cm.notes_client,
+               cm.commission_app::DOUBLE PRECISION AS commission_app,
+               cm.montant_net_libraires::DOUBLE PRECISION AS montant_net_libraires,
+               cm.created_at,
+               cm.updated_at,
                COUNT(DISTINCT cln.id) as nb_livres_neufs,
                COUNT(DISTINCT clo.id) as nb_livres_occasion
         FROM commandes_mixtes cm
@@ -3051,7 +3108,7 @@ pub async fn get_librairie_mes_commandes_mixtes(
         SELECT cm.id,
                cm.reference_commande,
                cm.statut::text AS statut,
-               cm.budget_total,
+               cm.budget_total::DOUBLE PRECISION AS budget_total,
                cm.created_at
         FROM commandes_mixtes cm
         WHERE EXISTS (
@@ -3462,12 +3519,14 @@ async fn fetch_commande_details(
     pg: &sqlx::PgPool,
     commande_id: Uuid,
 ) -> Result<CommandeDetail, AppError> {
-    let commande =
-        sqlx::query_as::<_, CommandeMixte>("SELECT * FROM commandes_mixtes WHERE id = $1")
-            .bind(commande_id)
-            .fetch_one(pg)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+    let commande = sqlx::query_as::<_, CommandeMixte>(&format!(
+        "SELECT {} FROM commandes_mixtes WHERE id = $1",
+        COMMANDES_MIXTES_PROJECTION
+    ))
+    .bind(commande_id)
+    .fetch_one(pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
     let livres_neufs = sqlx::query_as::<_, CommandeLivreNeuf>(
         "SELECT * FROM commande_livres_neufs WHERE commande_id = $1",

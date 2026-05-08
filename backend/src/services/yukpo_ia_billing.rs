@@ -63,7 +63,21 @@ pub fn whisper_app_charge_units() -> i64 {
     ((w as f64 * mult).ceil() as i64).max(1)
 }
 
+/// Liste des types partenaires exemptés de débit IA (outils internes gratuits).
+/// Ces partenaires utilisent l'IA pour leurs opérations métier (catalogue, etc.) ;
+/// la marge plateforme Yukpo se fait sur leurs **clients finaux**, pas sur eux.
+/// → ajouter ici tout type partenaire qui bénéficie de la gratuité côté outils.
+pub fn is_partner_exempt_from_ia_debit(partner_type: Option<&str>) -> bool {
+    matches!(
+        partner_type,
+        Some("pharmacie") // pharmaciens : import catalogue, OCR ordonnance assist, etc.
+    )
+}
+
 /// Débit commun : quota gratuit mensuel (UTC) puis `tokens_balance`. Utilisé pour le chat et pour Whisper.
+///
+/// Exemption : les partenaires listés dans `is_partner_exempt_from_ia_debit` sont **gratuits**
+/// (vérification effectuée par lookup `users.partner_type`).
 pub async fn debit_yukpo_ia_units(
     pool: &PgPool,
     user_id: i32,
@@ -85,6 +99,29 @@ pub async fn debit_yukpo_ia_units(
             "notice": null,
             "insufficient_balance": false,
             "service": service_name
+        }));
+    }
+
+    // ✅ Partenaires métier exemptés (pharmaciens, etc.) : gratuit pour les outils internes.
+    let partner_type: Option<String> =
+        sqlx::query_scalar("SELECT partner_type FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await?
+            .flatten();
+    if is_partner_exempt_from_ia_debit(partner_type.as_deref()) {
+        return Ok(json!({
+            "enabled": false,
+            "tokens_charged": 0,
+            "from_free_quota": true,
+            "daily_free_remaining": monthly_free_budget(),
+            "monthly_free_remaining": monthly_free_budget(),
+            "balance_after": null,
+            "notice": "Partenaire exempté (outils métier internes Yukpo)",
+            "insufficient_balance": false,
+            "service": service_name,
+            "partner_exempt": true,
+            "partner_type": partner_type
         }));
     }
 

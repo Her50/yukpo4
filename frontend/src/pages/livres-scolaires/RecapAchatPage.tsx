@@ -4,7 +4,9 @@ import {
   ShoppingCart, ShoppingBag, Trash2, X
 } from 'lucide-react';
 import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import LanguageSwitcherBourse from '../../components/LanguageSwitcherBourse';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/use-toast';
 import { Choix, PanierItem, TypeItem, useParentShop } from '../../hooks/useParentShop';
@@ -114,6 +116,7 @@ function ItemCard({
   onUpdateGamme: (id: string, g: Gamme) => void;
   onDuplicate?: (newQ: number) => void;
 }) {
+  const { t } = useTranslation();
   const quantite = item.quantite ?? 1;
   // Normaliser : workbook/livret comptent comme livres pour l'UI (toggle Neuf/Occasion).
   const rawType = String(item.type ?? '');
@@ -133,7 +136,7 @@ function ItemCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {isLivre && (
-              <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">Livre</span>
+              <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">{t('bourse.recap.tag_book')}</span>
             )}
             <p className="text-[13px] font-semibold leading-tight truncate text-gray-800" title={item.titre} dir="auto">
               {item.titre}
@@ -144,7 +147,7 @@ function ItemCard({
               {item.auteur && <span className="truncate max-w-[110px]" title={item.auteur}>{item.auteur}</span>}
               {item.auteur && item.editeur && <span className="text-gray-300">·</span>}
               {item.editeur && (
-                <span className="truncate max-w-[110px] text-purple-700" title={`Éditeur : ${item.editeur}`}>
+                <span className="truncate max-w-[110px] text-purple-700" title={t('bourse.recap.editor_title', { name: item.editeur })}>
                   {item.editeur}
                 </span>
               )}
@@ -158,12 +161,12 @@ function ItemCard({
             onClick={() => onUpdateQuantite(item.id, Math.max(1, quantite - 1))}
             disabled={quantite <= 1}
             className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 text-base leading-none"
-            aria-label="Diminuer">−</button>
+            aria-label={t('bourse.recap.decrease')}>−</button>
           <span className="text-xs font-bold text-gray-800 w-5 text-center tabular-nums leading-none">{quantite}</span>
           <button
             onClick={() => onUpdateQuantite(item.id, quantite + 1)}
             className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-base leading-none"
-            aria-label="Augmenter">+</button>
+            aria-label={t('bourse.recap.increase')}>+</button>
         </div>
 
         {/* Prix unitaire — toujours affiché ; "—" si inconnu pour que la
@@ -172,7 +175,7 @@ function ItemCard({
           className={`text-right text-[12px] font-bold tabular-nums shrink-0 min-w-[50px] ${
             prixEff > 0 ? 'text-amber-700' : 'text-gray-300'
           }`}
-          title={prixEff > 0 ? undefined : 'Prix non disponible'}
+          title={prixEff > 0 ? undefined : t('bourse.recap.price_unavailable')}
         >
           {prixEff > 0 ? `${prixEff.toLocaleString('fr-FR')} F` : '—'}
         </span>
@@ -180,7 +183,7 @@ function ItemCard({
         {/* Supprimer */}
         <button onClick={onRemove}
           className="w-6 h-6 rounded bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 shrink-0"
-          title="Retirer cet article" aria-label="Retirer">
+          title={t('bourse.recap.remove_item')} aria-label={t('bourse.recap.remove_aria')}>
           <Trash2 className="w-3 h-3" />
         </button>
       </div>
@@ -190,17 +193,17 @@ function ItemCard({
         <div className="flex items-center gap-2 mt-1 ml-0">
           {isLivre && (
             <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
-              <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">État</span>
+              <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">{t('bourse.recap.state')}</span>
               <button
                 onClick={() => onUpdateChoix(item.id, 'neuf')}
                 className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
                   item.choix === 'neuf' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
-                }`}>Neuf</button>
+                }`}>{t('bourse.recap.new')}</button>
               <button
                 onClick={() => onUpdateChoix(item.id, 'occasion')}
                 className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
                   item.choix === 'occasion' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
-                }`}>Occasion</button>
+                }`}>{t('bourse.recap.used')}</button>
             </div>
           )}
           {isGammeable && item.prixNeuf && item.prixNeuf > 0 && (
@@ -229,6 +232,7 @@ function DeliveryModal({
   onConfirm: (info: DeliveryInfo) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [adresse, setAdresse] = useState('');
   const [telephone, setTelephone] = useState(defaultPhone ?? '');
   const [note, setNote] = useState('');
@@ -280,14 +284,14 @@ function DeliveryModal({
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-gray-900 text-base">Infos de livraison</h3>
+          <h3 className="font-bold text-gray-900 text-base">{t('bourse.recap.delivery_title')}</h3>
           <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100"><X className="w-4 h-4 text-gray-500" /></button>
         </div>
 
         {/* Adresse de livraison — autocomplete (Nominatim OSM, CORS-friendly) */}
         <div className="mb-4 relative">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-            Adresse de livraison <span className="text-red-500">*</span>
+            {t('bourse.recap.delivery_address_required')} <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <input
@@ -295,7 +299,7 @@ function DeliveryModal({
               onChange={e => handleAdresseChange(e.target.value)}
               onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
               onBlur={() => window.setTimeout(() => setShowSuggestions(false), 200)}
-              placeholder="Tapez : quartier, rue, point de repère…"
+              placeholder={t('bourse.recap.delivery_address_placeholder')}
               autoComplete="off"
               className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 pr-9 outline-none focus:border-amber-400"
             />
@@ -319,7 +323,7 @@ function DeliveryModal({
             </div>
           )}
           <p className="text-[11px] text-gray-500 mt-1">
-            Tapez 3 lettres minimum — choisissez parmi les suggestions ou continuez à taper.
+            {t('bourse.recap.address_help')}
           </p>
         </div>
 
@@ -329,7 +333,7 @@ function DeliveryModal({
             se faire — beaucoup plus fiable qu'un GPS qui hésite. */}
         <div className="mb-4">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-            Localisation précise (optionnel)
+            {t('bourse.recap.location_precise')}
           </label>
           <button
             type="button"
@@ -343,21 +347,21 @@ function DeliveryModal({
             <MapPin className={`w-4 h-4 shrink-0 ${coords ? 'text-emerald-600' : 'text-amber-600'}`} />
             <span className="flex-1 text-left font-medium">
               {coords
-                ? `Position définie · ${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}`
-                : 'Choisir sur la carte'}
+                ? `${t('bourse.recap.position_set')} · ${coords.lat.toFixed(4)}, ${coords.lon.toFixed(4)}`
+                : t('bourse.recap.choose_on_map')}
             </span>
             {coords && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
             <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
           </button>
           <p className="text-[11px] text-gray-500 mt-1">
-            Aide le livreur à trouver le bon point de livraison (sinon l'adresse texte sera utilisée).
+            {t('bourse.recap.location_help')}
           </p>
         </div>
 
         {/* WhatsApp — utilisé pour notifier le statut commande + livraison */}
         <div className="mb-4">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-            Numéro WhatsApp <span className="text-red-500">*</span>
+            {t('bourse.recap.whatsapp_number')} <span className="text-red-500">*</span>
           </label>
           <div className={`flex items-center gap-2 border rounded-xl px-3 py-2.5 ${
             telephone && !phoneValid
@@ -370,7 +374,7 @@ function DeliveryModal({
             <input
               value={telephone}
               onChange={e => setTelephone(e.target.value)}
-              placeholder="+237 6XX XXX XXX"
+              placeholder={t('bourse.recap.whatsapp_placeholder')}
               type="tel"
               inputMode="tel"
               className="flex-1 text-sm outline-none bg-transparent"
@@ -379,11 +383,11 @@ function DeliveryModal({
           </div>
           {telephone && !phoneValid ? (
             <p className="text-[11px] text-red-600 mt-1">
-              Numéro incomplet — saisissez 8 chiffres minimum.
+              {t('bourse.recap.phone_invalid')}
             </p>
           ) : (
             <p className="text-[11px] text-gray-500 mt-1">
-              Yukpo vous notifiera par WhatsApp (validation libraire, départ livreur, livraison).
+              {t('bourse.recap.whatsapp_help')}
             </p>
           )}
         </div>
@@ -391,12 +395,12 @@ function DeliveryModal({
         {/* Note */}
         <div className="mb-5">
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
-            Note (optionnel)
+            {t('bourse.recap.note_label')}
           </label>
           <textarea
             value={note}
             onChange={e => setNote(e.target.value)}
-            placeholder="Horaire préféré, code portail…"
+            placeholder={t('bourse.recap.note_placeholder')}
             rows={2}
             className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:border-amber-400 resize-none"
           />
@@ -407,16 +411,16 @@ function DeliveryModal({
           onClick={() => onConfirm({ adresse, telephone, note, gps: coords ?? undefined })}
           className="w-full bg-amber-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-3.5 rounded-2xl text-sm"
         >
-          Confirmer la commande
+          {t('bourse.recap.confirm_order')}
         </button>
         <p className="text-center text-xs text-gray-400 mt-2">
           {!adresse.trim()
-            ? 'Adresse requise'
+            ? t('bourse.recap.addr_required')
             : !phoneValid
-              ? 'Numéro WhatsApp valide requis'
+              ? t('bourse.recap.phone_required')
               : !coords
-                ? 'Sans GPS, le libraire le plus proche sera estimé via votre adresse'
-                : 'Yukpo cherchera le libraire le plus proche pour votre livraison'}
+                ? t('bourse.recap.no_gps_help')
+                : t('bourse.recap.find_closest')}
         </p>
       </div>
 
@@ -456,6 +460,7 @@ function OccasionDecisionModal({
   onSwitchToNeuf: () => void;
   onKeepOccasion: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4">
       <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md sm:max-w-lg p-5 pb-8 sm:pb-6 max-h-[90vh] overflow-y-auto">
@@ -465,10 +470,10 @@ function OccasionDecisionModal({
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-gray-900 text-base leading-tight">
-              {occasionCount} livre{occasionCount > 1 ? 's' : ''} marqué{occasionCount > 1 ? 's' : ''} en occasion
+              {t(occasionCount > 1 ? 'bourse.recap.decision_title_other' : 'bourse.recap.decision_title_one', { count: occasionCount })}
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              Avez-vous des livres à échanger contre eux ?
+              {t('bourse.recap.decision_subtitle')}
             </p>
           </div>
         </div>
@@ -482,8 +487,8 @@ function OccasionDecisionModal({
               <Repeat className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-amber-900">Oui, j'ai des livres à échanger</p>
-              <p className="text-[11px] text-amber-700">Mes livres de l'an passé financent ceux de la classe suivante</p>
+              <p className="text-sm font-bold text-amber-900">{t('bourse.recap.decision_troc_title')}</p>
+              <p className="text-[11px] text-amber-700">{t('bourse.recap.decision_troc_desc')}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-amber-500 shrink-0" />
           </button>
@@ -496,8 +501,8 @@ function OccasionDecisionModal({
               <BookOpen className="w-4 h-4 text-blue-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900">Non, je préfère du neuf</p>
-              <p className="text-[11px] text-gray-500">Tous les livres seront commandés en neuf</p>
+              <p className="text-sm font-semibold text-gray-900">{t('bourse.recap.decision_neuf_title')}</p>
+              <p className="text-[11px] text-gray-500">{t('bourse.recap.decision_neuf_desc')}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
           </button>
@@ -510,15 +515,15 @@ function OccasionDecisionModal({
               <ShoppingBag className="w-4 h-4 text-orange-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900">Acheter d'occasion sans troc</p>
-              <p className="text-[11px] text-gray-500">Yukpo cherche un vendeur qui propose ces livres d'occasion</p>
+              <p className="text-sm font-semibold text-gray-900">{t('bourse.recap.decision_occasion_title')}</p>
+              <p className="text-[11px] text-gray-500">{t('bourse.recap.decision_occasion_desc')}</p>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
           </button>
         </div>
 
         <p className="text-[11px] text-gray-400 text-center mt-4">
-          Vous pouvez modifier votre choix à tout moment depuis le récapitulatif.
+          {t('bourse.recap.decision_help')}
         </p>
       </div>
     </div>
@@ -529,6 +534,7 @@ const TROC_DECISION_KEY = 'yukpo_recap_troc_choice';
 
 /* ─── Page principale ─── */
 const RecapAchatPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -723,19 +729,20 @@ const RecapAchatPage: React.FC = () => {
           <button onClick={() => navigate('/livres-scolaires')} className="p-2 rounded-full bg-white/20">
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
-          <h1 className="font-bold text-lg">Récapitulatif</h1>
+          <h1 className="font-bold text-lg flex-1">{t('bourse.recap.title')}</h1>
+          <LanguageSwitcherBourse tone="white" />
         </div>
         <div className="flex flex-col items-center justify-center py-24 text-center px-6">
           <ShoppingCart className="w-14 h-14 text-gray-200 mb-4" />
-          <p className="text-gray-500 text-sm font-medium mb-1">Aucun article sélectionné</p>
+          <p className="text-gray-500 text-sm font-medium mb-1">{t('bourse.recap.empty')}</p>
           <p className="text-gray-400 text-xs mb-6">
-            Ajoutez une classe et sélectionnez les manuels à acheter.
+            {t('bourse.recap.empty_help')}
           </p>
           <button
             onClick={() => navigate('/parent-selection')}
             className="bg-amber-500 text-white font-bold px-6 py-3 rounded-2xl text-sm"
           >
-            Gérer mes achats
+            {t('bourse.recap.empty_cta')}
           </button>
         </div>
       </div>
@@ -816,7 +823,7 @@ const RecapAchatPage: React.FC = () => {
                 console.error('[create_commande] HTTP', res.status, data);
                 throw new Error(
                   data?.error || data?.message || data?.detail
-                    || `Erreur serveur (${res.status}). Réessayez dans un instant.`
+                    || t('bourse.recap.error_server_status', { status: res.status })
                 );
               }
 
@@ -824,16 +831,19 @@ const RecapAchatPage: React.FC = () => {
               sessionStorage.removeItem(TROC_DECISION_KEY);
               // Vide le panier — la commande est désormais en base, le suivi se fait via /mes-commandes
               enfants.forEach(e => clearPanierForEnfant(e.id));
-              toast({
-                title: 'Commande créée',
-                description: `Yukpo cherche un libraire pour vos ${livres_neufs.length + livres_occasion.length} article(s).`,
-              });
+              {
+                const nbArticles = livres_neufs.length + livres_occasion.length;
+                toast({
+                  title: t('bourse.recap.toast_order_created'),
+                  description: t(nbArticles > 1 ? 'bourse.recap.toast_order_desc_other' : 'bourse.recap.toast_order_desc_one', { count: nbArticles }),
+                });
+              }
               const commandeId = data?.commande_id || data?.id || data?.data?.commande_id || data?.data?.id;
               navigate(commandeId ? `/mes-commandes?focus=${commandeId}` : '/mes-commandes');
             } catch (e: any) {
               toast({
-                title: 'Erreur création commande',
-                description: e?.message || 'Réessayez dans un instant',
+                title: t('bourse.recap.toast_order_error'),
+                description: e?.message || t('bourse.recap.toast_order_error_retry'),
                 variant: 'destructive',
               });
             } finally {
@@ -850,21 +860,22 @@ const RecapAchatPage: React.FC = () => {
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-bold text-lg leading-tight">Récapitulatif des achats</h1>
-            <p className="text-amber-100 text-xs">{totalItems} article{totalItems > 1 ? 's' : ''} sélectionné{totalItems > 1 ? 's' : ''}</p>
+            <h1 className="font-bold text-lg leading-tight">{t('bourse.recap.title_long')}</h1>
+            <p className="text-amber-100 text-xs">{t(totalItems > 1 ? 'bourse.recap.items_other' : 'bourse.recap.items_one', { count: totalItems })}</p>
           </div>
+          <LanguageSwitcherBourse tone="white" />
           {totalItems > 0 && (
             <button
               onClick={() => {
-                if (window.confirm('Vider tout le panier ? Cette action est irréversible.')) {
+                if (window.confirm(t('bourse.recap.clear_all_confirm'))) {
                   clearPanier();
-                  toast({ title: 'Panier vidé' });
+                  toast({ title: t('bourse.recap.cart_cleared') });
                 }
               }}
               className="px-3 py-1.5 rounded-full bg-white/20 text-white text-xs font-semibold border border-white/30"
-              title="Vider tout le panier"
+              title={t('bourse.recap.clear_all_title')}
             >
-              Vider
+              {t('bourse.recap.clear_all')}
             </button>
           )}
         </div>
@@ -877,7 +888,7 @@ const RecapAchatPage: React.FC = () => {
               viewMode === 'classe' ? 'bg-white text-amber-700' : 'text-white/90'
             }`}
           >
-            Par classe
+            {t('bourse.recap.view_by_class')}
           </button>
           <button
             onClick={() => setViewMode('rubrique')}
@@ -885,7 +896,7 @@ const RecapAchatPage: React.FC = () => {
               viewMode === 'rubrique' ? 'bg-white text-amber-700' : 'text-white/90'
             }`}
           >
-            Par rubrique
+            {t('bourse.recap.view_by_category')}
           </button>
         </div>
 
@@ -934,7 +945,7 @@ const RecapAchatPage: React.FC = () => {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-400">Estimation</p>
+              <p className="text-xs text-gray-400">{t('bourse.recap.estimation')}</p>
               <p className="font-bold text-amber-700 text-sm">
                 {totalEnfant > 0 ? `${totalEnfant.toLocaleString()} F` : '—'}
               </p>
@@ -949,10 +960,10 @@ const RecapAchatPage: React.FC = () => {
               • 'rubrique' → cumul cross-classes par (libellé, gamme, choix), lecture seule */}
         {(() => {
           const labels: Record<TypeItem, string> = {
-            livre: 'Manuels & workbooks',
-            cahier: 'Cahiers',
-            fourniture: 'Fournitures & accessoires',
-            autre: 'Fournitures & accessoires',
+            livre: t('bourse.recap.cat_books'),
+            cahier: t('bourse.recap.cat_notebooks'),
+            fourniture: t('bourse.recap.cat_supplies'),
+            autre: t('bourse.recap.cat_supplies'),
           };
           const sectionStyles: Record<TypeItem, { bg: string; border: string; text: string; dot: string }> = {
             livre:      { bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-800',    dot: 'bg-blue-500' },
@@ -979,7 +990,7 @@ const RecapAchatPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-gray-500 font-semibold">
-                        {lignes.length} ligne{lignes.length > 1 ? 's' : ''}
+                        {t(lignes.length > 1 ? 'bourse.recap.lines_other' : 'bourse.recap.lines_one', { count: lignes.length })}
                       </span>
                       {typeTotal > 0 && (
                         <span className={`text-[11px] font-bold ${style.text}`}>
@@ -1013,7 +1024,7 @@ const RecapAchatPage: React.FC = () => {
                         updateQuantite(firstId, newQ);
                       };
                       const removeAll = () => {
-                        if (!window.confirm(`Retirer "${l.sample.titre}" de toutes les classes ?`)) return;
+                        if (!window.confirm(t('bourse.recap.remove_line_q', { titre: l.sample.titre }))) return;
                         itemsInBucket.forEach(it => removeItem(it.id));
                       };
                       return (
@@ -1028,7 +1039,7 @@ const RecapAchatPage: React.FC = () => {
                               )}
                               {l.sample.choix === 'occasion' && (
                                 <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-100">
-                                  Occasion
+                                  {t('bourse.recap.used')}
                                 </span>
                               )}
                               {l.classes.length > 0 && (
@@ -1043,18 +1054,18 @@ const RecapAchatPage: React.FC = () => {
                               onClick={() => adjustQte(-1)}
                               disabled={l.totalQuantite <= 1}
                               className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 text-base leading-none"
-                              aria-label="Diminuer">−</button>
+                              aria-label={t('bourse.recap.decrease')}>−</button>
                             <span className="text-xs font-bold text-gray-800 w-5 text-center tabular-nums leading-none">{l.totalQuantite}</span>
                             <button
                               onClick={() => adjustQte(+1)}
                               className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-base leading-none"
-                              aria-label="Augmenter">+</button>
+                              aria-label={t('bourse.recap.increase')}>+</button>
                           </div>
 
                           {/* Prix unitaire */}
                           <span
                             className={`text-right text-[11px] font-bold tabular-nums shrink-0 min-w-[44px] ${prixUnit > 0 ? 'text-amber-700' : 'text-gray-300'}`}
-                            title={prixUnit > 0 ? undefined : 'Prix non disponible'}
+                            title={prixUnit > 0 ? undefined : t('bourse.recap.price_unavailable')}
                           >
                             {prixUnit > 0 ? `${prixUnit.toLocaleString('fr-FR')} F` : '—'}
                           </span>
@@ -1072,7 +1083,7 @@ const RecapAchatPage: React.FC = () => {
                           <button
                             onClick={removeAll}
                             className="w-6 h-6 rounded bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 shrink-0"
-                            title="Retirer cette ligne (toutes classes)" aria-label="Retirer">
+                            title={t('bourse.recap.remove_line_title')} aria-label={t('bourse.recap.remove_aria')}>
                             <Trash2 className="w-3 h-3" />
                           </button>
                         </div>
@@ -1098,7 +1109,7 @@ const RecapAchatPage: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-gray-500 font-semibold">
-                      {gItems.length} article{gItems.length > 1 ? 's' : ''}
+                      {t(gItems.length > 1 ? 'bourse.recap.articles_other' : 'bourse.recap.articles_one', { count: gItems.length })}
                     </span>
                     {typeTotal > 0 && (
                       <span className={`text-[11px] font-bold ${style.text}`}>
@@ -1127,7 +1138,7 @@ const RecapAchatPage: React.FC = () => {
         {/* Synthèse globale tous enfants */}
         {enfants.filter(e => countByEnfant(e.id) > 0).length > 1 && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mt-2">
-            <p className="font-semibold text-amber-800 text-sm mb-3">Synthèse globale</p>
+            <p className="font-semibold text-amber-800 text-sm mb-3">{t('bourse.recap.synthesis')}</p>
             {enfants.filter(e => countByEnfant(e.id) > 0).map(e => {
               const items = getItemsForEnfant(e.id);
               const total = items.reduce((s, it) => s + estimateItem(it), 0);
@@ -1139,7 +1150,7 @@ const RecapAchatPage: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-amber-800">
-                      {items.length} article{items.length > 1 ? 's' : ''}
+                      {t(items.length > 1 ? 'bourse.recap.articles_other' : 'bourse.recap.articles_one', { count: items.length })}
                     </p>
                     {total > 0 && <p className="text-xs text-amber-600">{total.toLocaleString()} F</p>}
                   </div>
@@ -1147,7 +1158,7 @@ const RecapAchatPage: React.FC = () => {
               );
             })}
             <div className="border-t border-amber-300 mt-2 pt-2 flex items-center justify-between">
-              <p className="font-bold text-amber-900 text-sm">Total estimé</p>
+              <p className="font-bold text-amber-900 text-sm">{t('bourse.recap.total_estimated')}</p>
               <p className="font-bold text-amber-800 text-base text-right">
                 {hasOccasionRange ? (
                   <>
@@ -1161,8 +1172,7 @@ const RecapAchatPage: React.FC = () => {
             </div>
             {hasOccasionRange && (
               <p className="text-[11px] text-amber-700 mt-1.5 leading-snug">
-                Fourchette estimée : prix d'occasion confirmé après troc / analyse des livres
-                (Bon&nbsp;: 70%, Acceptable&nbsp;: 40% du prix neuf).
+                {t('bourse.recap.range_help')}
               </p>
             )}
           </div>
@@ -1175,7 +1185,7 @@ const RecapAchatPage: React.FC = () => {
             className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 bg-orange-50 border border-orange-200 rounded-2xl text-orange-700 font-semibold text-xs"
           >
             <Repeat className="w-3.5 h-3.5" />
-            Modifier mes choix occasion / troc ({occasionItemsInPanier.length} item{occasionItemsInPanier.length > 1 ? 's' : ''})
+            {t(occasionItemsInPanier.length > 1 ? 'bourse.recap.modify_occasion_other' : 'bourse.recap.modify_occasion_one', { count: occasionItemsInPanier.length })}
           </button>
         )}
 
@@ -1184,7 +1194,7 @@ const RecapAchatPage: React.FC = () => {
           onClick={() => navigate('/parent-selection')}
           className="w-full mt-3 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-amber-300 rounded-2xl text-amber-700 font-semibold text-sm"
         >
-          + Ajouter des articles
+          {t('bourse.recap.add_more')}
         </button>
       </div>
 
@@ -1194,13 +1204,13 @@ const RecapAchatPage: React.FC = () => {
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-xs text-gray-500">
-                {hasOccasionRange ? 'Fourchette estimée' : 'Total estimé'}
+                {hasOccasionRange ? t('bourse.recap.range_estimated') : t('bourse.recap.total_estimated')}
               </p>
               <p className="font-bold text-gray-900 text-xl tabular-nums">
                 {hasOccasionRange ? (
                   <>
                     {grandTotalRange.min.toLocaleString()}
-                    <span className="text-sm font-normal mx-1 text-gray-500">à</span>
+                    <span className="text-sm font-normal mx-1 text-gray-500">–</span>
                     {grandTotalRange.max.toLocaleString()}
                     <span className="text-sm font-normal text-gray-500 ml-1">F</span>
                   </>
@@ -1208,8 +1218,8 @@ const RecapAchatPage: React.FC = () => {
               </p>
             </div>
             <p className="text-xs text-gray-400 text-right">
-              {totalItems} article{totalItems > 1 ? 's' : ''}<br />
-              {enfants.filter(e => countByEnfant(e.id) > 0).length} classe{enfants.filter(e => countByEnfant(e.id) > 0).length > 1 ? 's' : ''}
+              {t(totalItems > 1 ? 'bourse.recap.articles_other' : 'bourse.recap.articles_one', { count: totalItems })}<br />
+              {(() => { const n = enfants.filter(e => countByEnfant(e.id) > 0).length; return t(n > 1 ? 'bourse.recap.classes_other' : 'bourse.recap.classes_one', { count: n }); })()}
             </p>
           </div>
           <button
@@ -1218,11 +1228,11 @@ const RecapAchatPage: React.FC = () => {
             className="w-full bg-amber-600 disabled:bg-gray-300 text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2"
           >
             {submittingOrder ? <Loader2 className="w-5 h-5 animate-spin" /> : <MapPin className="w-5 h-5" />}
-            {submittingOrder ? 'Envoi commande…' : 'Préciser la livraison'}
+            {submittingOrder ? t('bourse.recap.sending_order') : t('bourse.recap.precise_delivery')}
             <ChevronRight className="w-4 h-4 ml-auto" />
           </button>
           <p className="text-center text-xs text-gray-400 mt-2">
-            Adresse + téléphone requis avant validation de la commande
+            {t('bourse.recap.delivery_required')}
           </p>
         </div>
       </div>

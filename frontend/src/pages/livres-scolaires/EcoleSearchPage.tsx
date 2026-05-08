@@ -154,7 +154,7 @@ const EcoleSearchPage: React.FC = () => {
 
         {query.trim().length < 2 && (
           <div className="text-center text-xs text-gray-400 py-12">
-            Saisissez au moins 2 caractères pour lancer la recherche.
+            {t('bourse.search.min_chars')}
           </div>
         )}
       </div>

@@ -7,5 +7,103 @@
     "home": "الرئيسية",
     "services": "الخدمات",
     "plans": "الخطط"
+  },
+  "partnerNav": {
+    "home": "الرئيسية",
+    "search": "بحث",
+    "pharmacies": "الصيدليات",
+    "myOrders": "الطلبات",
+    "account": "الحساب",
+    "dashboard": "لوحة التحكم",
+    "orders": "الطلبات",
+    "products": "المنتجات",
+    "menu": "القائمة"
+  },
+  "fab": {
+    "myPartnerSpace": "مساحتي"
+  },
+  "compte": {
+    "title": "حسابي",
+    "welcome": "مرحبا بك في {{appName}}",
+    "loading": "جار التحميل…",
+    "login": "تسجيل الدخول",
+    "registerClient": "إنشاء حساب عميل",
+    "logout": "تسجيل الخروج",
+    "balance": "الرصيد",
+    "user": "مستخدم",
+    "partnerBadge": "شريك {{type}}",
+    "myPartnerSpace": "مساحة الشريك",
+    "becomePartnerLong": "كن شريكا {{type}}",
+    "partnerCtaTitlePharmacien": "هل أنت صيدلي؟",
+    "partnerCtaTitleRestaurateur": "هل أنت صاحب مطعم؟",
+    "partnerCtaText": "سجل مؤسستك لإدارة طلباتك وقائمتك ونشاطك.",
+    "partnerCtaLink": "كن شريكا"
+  },
+  "balance": {
+    "title": "الرصيد",
+    "subtitle": "أرصدة Yukpo للتحليل الذكي",
+    "recharge": "شحن",
+    "rechargeTooltip": "شحن رصيدي",
+    "low": "رصيد منخفض"
+  },
+  "common": {
+    "loading": "جار التحميل…",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "close": "إغلاق",
+    "back": "رجوع",
+    "refresh": "تحديث",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "confirm": "تأكيد",
+    "search": "بحث",
+    "yes": "نعم",
+    "no": "لا",
+    "today": "اليوم",
+    "noResults": "لا نتائج",
+    "fcfa": "FCFA",
+    "xaf": "XAF"
+  },
+  "wallet": {
+    "title": "محفظتي",
+    "subtitle": "متابعة الاستهلاك والشحن",
+    "consumptionTitle": "استهلاكي",
+    "totalRequests": "الطلبات",
+    "totalConsumed": "أرصدة مستخدمة",
+    "totalSpent": "التكلفة الإجمالية",
+    "byIntention": "تفصيل حسب الفئة",
+    "noConsumption": "لا استهلاك في هذه الفترة.",
+    "paymentHistory": "سجل الشحن",
+    "disclaimer": "تشمل التكاليف هامش منصة Yukpo (شفافية كاملة).",
+    "period": {
+      "7d": "٧ أيام",
+      "30d": "٣٠ يوما",
+      "90d": "٣ أشهر",
+      "1y": "سنة"
+    }
+  },
+  "recharge": {
+    "title": "شحن حسابي",
+    "subtitle": "اختر مبلغا وطريقة دفع",
+    "amountLabel": "المبلغ المراد شحنه",
+    "amountCustom": "مبلغ آخر",
+    "summary": "ستحصل على {{credits}} رصيد Yukpo",
+    "methodLabel": "طريقة الدفع",
+    "method": {
+      "mtn": "MTN Mobile Money",
+      "orange": "Orange Money",
+      "card": "بطاقة بنكية"
+    },
+    "submit": "ادفع {{amount}} {{currency}}",
+    "submitting": "جار الدفع…",
+    "successTitle": "تم تأكيد الدفع",
+    "errorTitle": "خطأ في الدفع",
+    "noteSecure": "مدفوعات آمنة عبر Yukpo. لا يتم تخزين بيانات بنكية."
+  },
+  "clientOrders": {
+    "title": "طلباتي",
+    "loading": "جار تحميل طلباتك…",
+    "iAmOnRoute": "أنا في الطريق",
+    "youConfirmed": "لقد أكدت قدومك"
   }
 }

@@ -195,9 +195,7 @@ export const EtablissementPortalHomePage: React.FC = () => {
         {etabs.length > 0 && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 mb-3">
             <p className="text-xs text-emerald-800 leading-relaxed">
-              👉 <b>Cliquez sur votre établissement</b> ci-dessous pour configurer
-              les 10 blocs (inscription, transport, cantine, activités, calendrier,
-              annonces, contacts, etc.) et publier votre page officielle.
+              {t('etabAdmin.portal.click_help')}
             </p>
           </div>
         )}
@@ -341,9 +339,9 @@ export const EtablissementDashboardPage: React.FC = () => {
   if (!etab) {
     return (
       <div className="p-8 text-center">
-        <p className="text-sm text-gray-500">Établissement introuvable.</p>
+        <p className="text-sm text-gray-500">{t('etabAdmin.dashboard.not_found')}</p>
         <button onClick={() => navigate('/etablissement-portal')} className="mt-4 px-4 py-2 bg-emerald-500 text-white rounded-full text-sm">
-          Retour
+          {t('etabAdmin.dashboard.back')}
         </button>
       </div>
     );
@@ -424,10 +422,9 @@ export const EtablissementDashboardPage: React.FC = () => {
             <Sparkles className="w-6 h-6" />
           </div>
           <div className="flex-1 text-left">
-            <p className="font-bold text-sm">Configurer toute la page avec l'IA</p>
+            <p className="font-bold text-sm">{t('etabAdmin.ia.cta_title')}</p>
             <p className="text-xs text-violet-100 mt-0.5 leading-relaxed">
-              Uploadez vos brochures, règlement, listes scolaires existantes — l'IA remplit
-              automatiquement tous les blocs. Vous pouvez tout éditer ensuite.
+              {t('etabAdmin.ia.cta_desc')}
             </p>
           </div>
           <ChevronRight className="w-5 h-5" />
@@ -530,6 +527,7 @@ const IaUploadModal: React.FC<{
   onClose: () => void;
   onSuccess: () => void;
 }> = ({ etabId, onClose, onSuccess }) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
@@ -556,7 +554,7 @@ const IaUploadModal: React.FC<{
 
   const submit = async () => {
     if (files.length === 0) {
-      toast({ title: 'Aucun fichier sélectionné', variant: 'destructive' });
+      toast({ title: t('etabAdmin.ia.no_files'), variant: 'destructive' });
       return;
     }
     setLoading(true);
@@ -588,14 +586,14 @@ const IaUploadModal: React.FC<{
       }
       setResult(d);
       toast({
-        title: 'Page configurée par l\'IA',
-        description: `${d.blocs_saved} blocs · ${d.events_saved} événements · ${d.articles_saved} articles`,
+        title: t('etabAdmin.ia.success_title'),
+        description: `${d.blocs_saved} blocs · ${d.events_saved} events · ${d.articles_saved} articles`,
       });
     } catch (e: any) {
       const msg = e?.name === 'AbortError'
-        ? 'L\'extraction IA a pris trop de temps. Réessayez avec moins de fichiers.'
-        : e?.message || 'Erreur lors de l\'extraction IA';
-      toast({ title: 'Erreur', description: msg, variant: 'destructive' });
+        ? t('etabAdmin.ia.timeout_error')
+        : e?.message || t('etabAdmin.ia.error');
+      toast({ title: t('librairie.error'), description: msg, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -612,7 +610,7 @@ const IaUploadModal: React.FC<{
       >
         <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
           <Sparkles className="w-5 h-5 text-violet-600" />
-          <p className="font-bold text-gray-900 flex-1">Configurer la page avec l'IA</p>
+          <p className="font-bold text-gray-900 flex-1">{t('etabAdmin.ia.modal_title')}</p>
           <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
             <X className="w-4 h-4 text-gray-500" />
           </button>
@@ -620,11 +618,7 @@ const IaUploadModal: React.FC<{
 
         <div className="p-5 space-y-4">
           <p className="text-xs text-gray-600 leading-relaxed bg-violet-50 border border-violet-200 rounded-xl p-3">
-            <b>Astuce :</b> téléversez tout ce que vous avez déjà — brochure de l'école, règlement
-            intérieur, lettre aux parents, fiches d'inscription, programme officiel des manuels,
-            menu de la cantine, photos de panneaux. L'IA lit tous ces documents et remplit
-            <b> automatiquement</b> les blocs Inscription, Transport, Cantine, Activités, Internat,
-            Uniforme, Contacts, Calendrier, Annonces et les listes scolaires par classe.
+            {t('etabAdmin.ia.tip')}
           </p>
 
           {!result && (
@@ -635,10 +629,10 @@ const IaUploadModal: React.FC<{
               >
                 <Upload className="w-10 h-10 text-violet-400 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-gray-700">
-                  Cliquez pour sélectionner vos fichiers
+                  {t('etabAdmin.ia.upload_label')}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  PDF, image, Word, Excel · maximum 12 fichiers
+                  {t('etabAdmin.ia.upload_help')}
                 </p>
                 <input
                   ref={fileRef}
@@ -653,7 +647,7 @@ const IaUploadModal: React.FC<{
               {files.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">
-                    {files.length} fichier{files.length > 1 ? 's' : ''} sélectionné{files.length > 1 ? 's' : ''}
+                    {t(files.length > 1 ? 'etabAdmin.ia.files_selected_other' : 'etabAdmin.ia.files_selected_one', { count: files.length })}
                   </p>
                   {files.map((f, i) => (
                     <div
@@ -684,12 +678,12 @@ const IaUploadModal: React.FC<{
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Analyse en cours (peut prendre 1-3 min)…
+                    {t('etabAdmin.ia.analyzing')}
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    Lancer l'analyse IA
+                    {t('etabAdmin.ia.analyze_button')}
                   </>
                 )}
               </button>
@@ -700,15 +694,15 @@ const IaUploadModal: React.FC<{
             <div className="space-y-3">
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
                 <p className="text-sm font-bold text-emerald-800 mb-2">
-                  ✅ Page configurée avec succès
+                  {t('etabAdmin.ia.success_title')}
                 </p>
                 <ul className="text-xs text-emerald-700 space-y-1">
-                  <li>• {result.blocs_saved} blocs CMS pré-remplis</li>
-                  <li>• {result.events_saved} événements ajoutés au calendrier</li>
-                  <li>• {result.annonces_saved} annonces créées</li>
-                  <li>• {result.articles_saved} articles ajoutés aux listes scolaires</li>
+                  <li>{t('etabAdmin.ia.success_blocs', { count: result.blocs_saved })}</li>
+                  <li>{t('etabAdmin.ia.success_events', { count: result.events_saved })}</li>
+                  <li>{t('etabAdmin.ia.success_annonces', { count: result.annonces_saved })}</li>
+                  <li>{t('etabAdmin.ia.success_articles', { count: result.articles_saved })}</li>
                   {result.confidence != null && (
-                    <li>• Confiance IA : {Math.round(result.confidence * 100)}%</li>
+                    <li>{t('etabAdmin.ia.success_confidence', { percent: Math.round(result.confidence * 100) })}</li>
                   )}
                 </ul>
                 {result.notes && (
@@ -716,15 +710,13 @@ const IaUploadModal: React.FC<{
                 )}
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Vous pouvez maintenant <b>vérifier et éditer</b> chaque bloc depuis le dashboard.
-                Les listes scolaires extraites apparaissent dans la page publique de votre école
-                pour chaque classe.
+                {t('etabAdmin.ia.success_help')}
               </p>
               <button
                 onClick={onSuccess}
                 className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm"
               >
-                Voir le résultat
+                {t('etabAdmin.ia.view_result')}
               </button>
             </div>
           )}
@@ -930,7 +922,7 @@ const BlocEditModal: React.FC<{
               onChange={e => setIsActive(e.target.checked)}
               className="w-4 h-4 accent-emerald-600"
             />
-            <span className="text-sm text-gray-700">Bloc actif (visible publiquement)</span>
+            <span className="text-sm text-gray-700">{t('etabAdmin.blocs.active_label')}</span>
           </label>
         </div>
 

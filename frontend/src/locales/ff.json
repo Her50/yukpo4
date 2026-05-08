@@ -7,5 +7,51 @@
     "home": "Aade",
     "services": "Baɗte",
     "plans": "Ñaamde"
+  },
+  "partnerNav": {
+    "home": "Aade",
+    "search": "Ɗaɓɓo",
+    "pharmacies": "Farmasi",
+    "myOrders": "Komanda",
+    "account": "Ñaamre",
+    "dashboard": "Defte",
+    "orders": "Komanda",
+    "products": "Marsanji",
+    "menu": "Menu"
+  },
+  "fab": {
+    "myPartnerSpace": "Ñaamre am"
+  },
+  "compte": {
+    "title": "Ñaamre am",
+    "loading": "E loowee…",
+    "login": "Naat",
+    "logout": "Yaltu",
+    "balance": "Kaalis",
+    "user": "Janooɗo",
+    "myPartnerSpace": "Ñaamre konagol am"
+  },
+  "balance": {
+    "title": "Kaalis",
+    "recharge": "Yarni",
+    "low": "Kaalis famɗu"
+  },
+  "common": {
+    "loading": "E loowee…",
+    "save": "Reenu",
+    "cancel": "Salo",
+    "close": "Uddu",
+    "back": "Hooto",
+    "refresh": "Hesɗintin",
+    "yes": "Eey",
+    "no": "Alaa"
+  },
+  "wallet": {
+    "title": "Pos am",
+    "consumptionTitle": "Ko mi huutori"
+  },
+  "recharge": {
+    "title": "Yarni ñaamre am",
+    "submit": "Yoɓ {{amount}} {{currency}}"
   }
 }

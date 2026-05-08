@@ -41,10 +41,75 @@
   },
   "balance": {
     "title": "Solde",
-    "subtitle": "Crédits disponibles pour l'IA",
+    "subtitle": "Crédits Yukpo pour l'analyse intelligente",
     "recharge": "Recharger",
     "rechargeTooltip": "Recharger mon solde",
     "low": "Solde bas"
+  },
+  "cost": {
+    "estimatedTooltip": "Coût estimé en crédits Yukpo. Le débit réel dépend de la taille du fichier.",
+    "estimatedBanner": "Coût estimé : ≈ {{cost}} crédits Yukpo",
+    "insufficientTitle": "Solde insuffisant",
+    "insufficientMsg": "Cette action coûte ≈ {{cost}} crédits, votre solde est de {{balance}}.",
+    "insufficientTooltip": "Rechargez votre compte pour utiliser cette fonctionnalité"
+  },
+  "wallet": {
+    "title": "Mon portefeuille",
+    "subtitle": "Suivi consommation et recharge",
+    "loading": "Chargement de vos statistiques…",
+    "consumptionTitle": "Ma consommation",
+    "totalRequests": "Requêtes",
+    "totalConsumed": "Crédits utilisés",
+    "totalSpent": "Coût total",
+    "byIntention": "Détail par rubrique",
+    "noConsumption": "Aucune consommation sur cette période.",
+    "paymentHistory": "Historique des recharges",
+    "disclaimer": "Les coûts incluent la marge plateforme Yukpo (transparence totale).",
+    "period": {
+      "7d": "7 jours",
+      "30d": "30 jours",
+      "90d": "3 mois",
+      "1y": "1 an"
+    }
+  },
+  "walletHistory": {
+    "title": "Historique des recharges",
+    "subtitle": "Tous vos paiements Yukpo",
+    "loading": "Chargement de l'historique…",
+    "empty": "Aucune recharge effectuée pour le moment.",
+    "totalRecharged": "Total rechargé",
+    "newRecharge": "Nouvelle recharge",
+    "status": {
+      "success": "Réussi",
+      "pending": "En attente",
+      "failed": "Échoué",
+      "cancelled": "Annulé",
+      "unknown": "Inconnu"
+    }
+  },
+  "recharge": {
+    "title": "Recharger mon compte",
+    "subtitle": "Choisissez un montant et un moyen de paiement",
+    "amountLabel": "Montant à recharger",
+    "amountCustom": "Autre montant",
+    "amountPlaceholder": "Ex : 5000",
+    "summary": "Vous recevrez {{credits}} crédits Yukpo",
+    "summaryBonus": "Bonus : +{{bonus}} crédits",
+    "methodLabel": "Moyen de paiement",
+    "method": {
+      "mtn": "MTN Mobile Money",
+      "orange": "Orange Money",
+      "card": "Carte bancaire (Visa/MC)"
+    },
+    "phoneLabel": "Numéro {{method}}",
+    "phonePlaceholder": "6XX XXX XXX",
+    "submit": "Payer {{amount}} {{currency}}",
+    "submitting": "Paiement en cours…",
+    "successTitle": "Paiement confirmé",
+    "successMsg": "Votre compte sera crédité dès validation. Cela peut prendre 1-2 minutes.",
+    "errorTitle": "Erreur de paiement",
+    "errorMsg": "Réessayez ou contactez le support si le problème persiste.",
+    "noteSecure": "Paiements sécurisés via Yukpo. Aucune donnée bancaire stockée."
   },
   "common": {
     "loading": "Chargement…",
@@ -186,8 +251,8 @@
         "external": "Lien"
       },
       "pasteFormat": "Format CSV : nom,prix,categorie,description,image_url — ou tableau JSON.",
-      "filesFormat": "Formats : CSV, TSV, Excel. Les colonnes inconnues sont reconnues automatiquement par IA.",
-      "filesAnalyzing": "🤖 Analyse intelligente en cours…",
+      "filesFormat": "Formats : CSV, TSV, Excel. Yukpo reconnaît automatiquement vos colonnes.",
+      "filesAnalyzing": "Yukpo analyse votre fichier…",
       "filesPick": "Cliquer pour choisir un fichier",
       "extFormat": "URL retournant CSV ou JSON (Google Sheet publié, API tierce). L'URL doit autoriser CORS.",
       "extUrl": "URL du menu (CSV ou JSON)",
@@ -200,7 +265,7 @@
       "ignored": "({{count}} ignorés)",
       "ignoredHeading": "Lignes ignorées :",
       "moreItems": "… et {{count}} autres",
-      "aiBadge": "🤖 Colonnes détectées par IA (mémorisées pour la prochaine fois) :",
+      "aiBadge": "✨ Colonnes reconnues par Yukpo (mémorisées pour la prochaine fois) :",
       "progress": "Import en cours… {{done}} / {{total}}",
       "doImport": "Importer",
       "importing": "Import…",
@@ -274,9 +339,9 @@
       "import": {
         "title": "Importer le catalogue",
         "previewTitle": "Prévisualisation",
-        "filesFormat": "Formats : CSV, TSV, Excel (.xlsx, .xls). Les colonnes inconnues sont reconnues automatiquement par IA — vos noms de colonnes peuvent être en français, anglais, avec accents…",
+        "filesFormat": "Formats : CSV, TSV, Excel (.xlsx, .xls). Yukpo reconnaît vos colonnes même en français, anglais, avec accents ou variations diverses.",
         "filesPick": "Cliquer pour choisir un fichier",
-        "filesAnalyzing": "🤖 Analyse intelligente en cours…",
+        "filesAnalyzing": "Yukpo analyse votre fichier…",
         "pasteFormat": "Format CSV : nom,prix,stock,unite,code_barre,categorie,description — ou un tableau JSON.",
         "extFormat": "URL retournant du JSON. Le serveur récupère les produits à intervalles réguliers (Google Sheet publié, ERP, etc.).",
         "extUrl": "URL de l'API / Google Sheet (JSON)",
@@ -292,7 +357,7 @@
         "importing": "Import…",
         "back": "Retour",
         "doneToast": "Import terminé.\nCréés : {{created}} · Mis à jour : {{updated}}{{errors}}",
-        "aiBadge": "🤖 Colonnes détectées par IA (mémorisées pour la prochaine fois) :",
+        "aiBadge": "✨ Colonnes reconnues par Yukpo (mémorisées pour la prochaine fois) :",
         "ignoredHeading": "Lignes ignorées :"
       }
     },

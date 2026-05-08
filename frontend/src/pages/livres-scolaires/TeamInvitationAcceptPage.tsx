@@ -12,16 +12,12 @@
 
 import { CheckCircle2, Clock, LogIn, UserCheck, UserPlus, XCircle } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import LanguageSwitcherBourse from '../../components/LanguageSwitcherBourse';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/use-toast';
 import { apiPost } from '../../services/apiService';
-
-const ROLE_LABELS: Record<string, string> = {
-  manager: 'Gestionnaire',
-  preparer: 'Préparateur',
-  cashier: 'Caisse',
-};
 
 interface InvitationPreview {
   success: boolean;
@@ -32,6 +28,7 @@ interface InvitationPreview {
 }
 
 const TeamInvitationAcceptPage: React.FC = () => {
+  const { t } = useTranslation();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -40,6 +37,12 @@ const TeamInvitationAcceptPage: React.FC = () => {
   const [preview, setPreview] = useState<InvitationPreview | null>(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
+
+  const ROLE_LABELS: Record<string, string> = {
+    manager: t('librairie.invitation.role_manager'),
+    preparer: t('librairie.invitation.role_preparer'),
+    cashier: t('librairie.invitation.role_cashier'),
+  };
 
   useEffect(() => {
     if (!token) {
@@ -63,12 +66,12 @@ const TeamInvitationAcceptPage: React.FC = () => {
       const res = await apiPost('/api/team/invitation-accept', { token });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d?.message || d?.error || `HTTP ${res.status}`);
-      toast({ title: 'Invitation acceptée !', description: d.message });
+      toast({ title: t('librairie.invitation.accepted_title'), description: d.message });
       navigate('/librairie');
     } catch (e: any) {
       toast({
-        title: 'Erreur',
-        description: e?.message || 'Impossible d\'accepter l\'invitation',
+        title: t('librairie.error'),
+        description: e?.message || t('librairie.invitation.accept_error'),
         variant: 'destructive',
       });
     } finally {
@@ -89,7 +92,7 @@ const TeamInvitationAcceptPage: React.FC = () => {
   if (loading || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-indigo-50">
-        <p className="text-sm text-gray-500">Chargement…</p>
+        <p className="text-sm text-gray-500">{t('common.loading')}</p>
       </div>
     );
   }
@@ -98,10 +101,10 @@ const TeamInvitationAcceptPage: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-indigo-50 p-6 text-center">
         <XCircle className="w-16 h-16 text-red-400 mb-4" />
-        <h1 className="text-lg font-bold text-gray-900 mb-2">Invitation invalide</h1>
-        <p className="text-sm text-gray-500 mb-6">Le lien d'invitation est invalide ou introuvable.</p>
+        <h1 className="text-lg font-bold text-gray-900 mb-2">{t('librairie.invitation.invalid')}</h1>
+        <p className="text-sm text-gray-500 mb-6">{t('librairie.invitation.invalid_help')}</p>
         <button onClick={() => navigate('/')} className="px-5 py-2.5 bg-indigo-500 text-white rounded-full text-sm font-bold">
-          Retour à l'accueil
+          {t('librairie.invitation.back_home')}
         </button>
       </div>
     );
@@ -111,10 +114,10 @@ const TeamInvitationAcceptPage: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-indigo-50 p-6 text-center">
         <Clock className="w-16 h-16 text-orange-400 mb-4" />
-        <h1 className="text-lg font-bold text-gray-900 mb-2">Invitation expirée</h1>
-        <p className="text-sm text-gray-500 mb-6">Cette invitation a dépassé sa date de validité. Demandez un nouveau lien au gérant.</p>
+        <h1 className="text-lg font-bold text-gray-900 mb-2">{t('librairie.invitation.expired')}</h1>
+        <p className="text-sm text-gray-500 mb-6">{t('librairie.invitation.expired_help')}</p>
         <button onClick={() => navigate('/')} className="px-5 py-2.5 bg-indigo-500 text-white rounded-full text-sm font-bold">
-          Retour à l'accueil
+          {t('librairie.invitation.back_home')}
         </button>
       </div>
     );
@@ -124,45 +127,54 @@ const TeamInvitationAcceptPage: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-emerald-50 p-6 text-center">
         <CheckCircle2 className="w-16 h-16 text-emerald-500 mb-4" />
-        <h1 className="text-lg font-bold text-gray-900 mb-2">Invitation déjà acceptée</h1>
-        <p className="text-sm text-gray-500 mb-6">Vous avez déjà rejoint cette équipe.</p>
+        <h1 className="text-lg font-bold text-gray-900 mb-2">{t('librairie.invitation.already_accepted')}</h1>
+        <p className="text-sm text-gray-500 mb-6">{t('librairie.invitation.already_help')}</p>
         <button onClick={() => navigate('/librairie')} className="px-5 py-2.5 bg-indigo-500 text-white rounded-full text-sm font-bold">
-          Aller à mon espace librairie
+          {t('librairie.invitation.go_to_workspace')}
         </button>
       </div>
     );
   }
 
+  const teamName = preview.librairie_nom || t('librairie.invitation.invited_team');
+  const roleLabel = ROLE_LABELS[preview.role || ''] || preview.role || '';
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white p-5 flex flex-col items-center justify-center">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcherBourse />
+      </div>
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-6 text-center">
         <div className="w-16 h-16 mx-auto rounded-3xl bg-indigo-100 flex items-center justify-center mb-4">
           <UserCheck className="w-8 h-8 text-indigo-700" />
         </div>
         <h1 className="text-xl font-bold text-gray-900 mb-1.5">
-          Invitation Yukpo Librairie
+          {t('librairie.invitation.title')}
         </h1>
         <p className="text-sm text-gray-500 mb-5">
-          Vous êtes invité(e) à rejoindre <b>{preview.librairie_nom || 'l\'équipe'}</b>
-          {' '}en tant que <b className="text-indigo-700">{ROLE_LABELS[preview.role || ''] || preview.role}</b>.
+          <Trans
+            i18nKey="librairie.invitation.invited_as"
+            values={{ name: teamName, role: roleLabel }}
+            components={{ b: <b className="text-indigo-700" /> }}
+          />
         </p>
 
         {!user ? (
           <div className="space-y-3">
-            <p className="text-xs text-gray-500">Pour accepter, créez votre compte ou connectez-vous :</p>
+            <p className="text-xs text-gray-500">{t('librairie.invitation.login_help')}</p>
             <button
               onClick={goRegister}
               className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
             >
               <UserPlus className="w-4 h-4" />
-              Créer mon compte Yukpo
+              {t('librairie.invitation.create_account')}
             </button>
             <button
               onClick={goLogin}
               className="w-full bg-white border-2 border-indigo-200 text-indigo-700 py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
             >
               <LogIn className="w-4 h-4" />
-              J'ai déjà un compte
+              {t('librairie.invitation.existing_account')}
             </button>
           </div>
         ) : (
@@ -172,7 +184,7 @@ const TeamInvitationAcceptPage: React.FC = () => {
             className="w-full bg-emerald-600 disabled:opacity-50 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4" />
-            {accepting ? 'Validation…' : 'Accepter l\'invitation'}
+            {accepting ? t('librairie.invitation.validating') : t('librairie.invitation.accept')}
           </button>
         )}
       </div>
