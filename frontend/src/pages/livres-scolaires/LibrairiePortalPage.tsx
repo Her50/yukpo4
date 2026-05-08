@@ -1370,51 +1370,56 @@ export const LibrairieDashboardPage: React.FC = () => {
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 pt-10 pb-5">
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-3 mb-3">
-            <button onClick={() => navigate('/')} className="p-2 rounded-full bg-white/20" aria-label="Retour">
+          {/* Ligne 1 : retour + titre + déconnexion (toujours visible) */}
+          <div className="flex items-center gap-3 mb-2.5">
+            <button onClick={() => navigate('/')} className="p-2 rounded-full bg-white/20 shrink-0" aria-label="Retour">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="flex-1 min-w-0">
               <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full tracking-wider uppercase">
                 Yukpo Librairie
               </span>
-              <h1 className="font-bold text-lg leading-tight mt-1">Mes commandes</h1>
-              <p className="text-indigo-100 text-xs">Validez prix, confirmez disponibilités, déclenchez la préparation.</p>
+              <h1 className="font-bold text-lg leading-tight mt-1 truncate">Mes commandes</h1>
+              <p className="text-indigo-100 text-xs hidden sm:block">Validez prix, confirmez disponibilités, déclenchez la préparation.</p>
             </div>
             <button
-              onClick={() => setShowRoutes(true)}
-              className="p-2 rounded-full bg-white/15 hover:bg-white/25"
-              title="Tournées de livraison"
-            >
-              <Truck className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setShowWholesale(true)}
-              className="p-2 rounded-full bg-white/15 hover:bg-white/25"
-              title="Bon grossiste"
-            >
-              <Warehouse className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setShowContacts(true)}
-              className="p-2 rounded-full bg-white/15 hover:bg-white/25"
-              title="Carnet d'adresses parents"
-            >
-              <Megaphone className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setShowTeam(true)}
-              className="p-2 rounded-full bg-white/15 hover:bg-white/25"
-              title="Équipe"
-            >
-              <Users className="w-4 h-4" />
-            </button>
-            <button
               onClick={() => { logout(); navigate('/login'); }}
-              className="p-2 rounded-full bg-white/15 hover:bg-white/25"
+              className="p-2 rounded-full bg-white/15 hover:bg-white/25 shrink-0"
               title="Déconnexion"
             >
               <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Ligne 2 : actions (scroll horizontal sur mobile) */}
+          <div className="flex items-center gap-2 mb-3 overflow-x-auto -mx-1 px-1 pb-1 scrollbar-none">
+            <button
+              onClick={() => setShowRoutes(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold whitespace-nowrap shrink-0"
+            >
+              <Truck className="w-3.5 h-3.5" />
+              Tournées
+            </button>
+            <button
+              onClick={() => setShowWholesale(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold whitespace-nowrap shrink-0"
+            >
+              <Warehouse className="w-3.5 h-3.5" />
+              Grossiste
+            </button>
+            <button
+              onClick={() => setShowContacts(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold whitespace-nowrap shrink-0"
+            >
+              <Megaphone className="w-3.5 h-3.5" />
+              Parents
+            </button>
+            <button
+              onClick={() => setShowTeam(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold whitespace-nowrap shrink-0"
+            >
+              <Users className="w-3.5 h-3.5" />
+              Équipe
             </button>
           </div>
 
