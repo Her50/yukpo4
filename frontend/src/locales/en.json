@@ -7,5 +7,397 @@
     "home": "Home",
     "services": "Services",
     "plans": "Plans"
+  },
+  "partnerNav": {
+    "home": "Home",
+    "search": "Search",
+    "pharmacies": "Pharmacies",
+    "myOrders": "Orders",
+    "account": "Account",
+    "dashboard": "Dashboard",
+    "orders": "Orders",
+    "products": "Products",
+    "menu": "Menu"
+  },
+  "fab": {
+    "myPartnerSpace": "My space"
+  },
+  "compte": {
+    "title": "My account",
+    "welcome": "Welcome to {{appName}}",
+    "loading": "Loading…",
+    "login": "Sign in",
+    "registerClient": "Create a client account",
+    "logout": "Sign out",
+    "balance": "Balance",
+    "user": "User",
+    "partnerBadge": "{{type}} partner",
+    "myPartnerSpace": "My partner space",
+    "becomePartnerLong": "Become a {{type}} partner",
+    "partnerCtaTitlePharmacien": "Are you a pharmacist?",
+    "partnerCtaTitleRestaurateur": "Are you a restaurant owner?",
+    "partnerCtaText": "Register your business to manage your orders, menu and operations.",
+    "partnerCtaLink": "Become a partner"
+  },
+  "balance": {
+    "title": "Balance",
+    "subtitle": "Credits available for AI",
+    "recharge": "Top up",
+    "rechargeTooltip": "Top up my balance",
+    "low": "Low balance"
+  },
+  "common": {
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "back": "Back",
+    "refresh": "Refresh",
+    "edit": "Edit",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "search": "Search",
+    "yes": "Yes",
+    "no": "No",
+    "today": "Today",
+    "noResults": "No results",
+    "fcfa": "FCFA",
+    "xaf": "XAF"
+  },
+  "restoPartner": {
+    "headerTitle": "Dashboard",
+    "headerSubtitle": "Manage your restaurant",
+    "tab": {
+      "overview": "Overview",
+      "menu": "Menu",
+      "orders": "Orders",
+      "hours": "Hours",
+      "finances": "Finances"
+    },
+    "stat": {
+      "totalDishes": "Menu items",
+      "available": "{{count}} available",
+      "ordersToday": "Orders today",
+      "pendingOrders": "{{count}} pending",
+      "revenueToday": "Revenue today",
+      "tables": "Tables",
+      "reservationsCount": "{{count}} bookings",
+      "monthRevenue": "Revenue (month)",
+      "monthOrders": "Orders (month)",
+      "avgTicket": "Avg ticket"
+    },
+    "overview": {
+      "pendingOrdersTitle": "Pending orders",
+      "noPending": "No pending orders.",
+      "client": "Client",
+      "addDish": "Add dish"
+    },
+    "menu": {
+      "importBtn": "Import a file",
+      "newDish": "New dish",
+      "empty": "No dishes in the menu",
+      "dish": {
+        "available": "Avail.",
+        "unavailable": "Off",
+        "edit": "Edit",
+        "delete": "Delete",
+        "deleteConfirm": "Disable this dish from the menu?"
+      },
+      "edit": {
+        "newTitle": "New dish",
+        "editTitle": "Edit dish",
+        "name": "Name",
+        "price": "Price (XAF)",
+        "category": "Category",
+        "description": "Description",
+        "availabilityDays": "Days available",
+        "availabilityHelp": "Tick the days this dish is served. None ticked = available every day.",
+        "presetAll": "All",
+        "presetWeekdays": "Mon-Fri",
+        "presetWeekend": "Weekend",
+        "presetNone": "None"
+      },
+      "categories": {
+        "entree": "Starters",
+        "plat": "Mains",
+        "dessert": "Desserts",
+        "boisson": "Drinks",
+        "specialite": "Specials"
+      },
+      "days": {
+        "all": "Every day",
+        "weekdays": "Mon-Fri",
+        "weekend": "Weekend",
+        "today": "Today",
+        "notToday": "Not today"
+      }
+    },
+    "orders": {
+      "prepareNowBanner": "{{count}} order to prepare now",
+      "prepareNowBanner_plural": "{{count}} orders to prepare now",
+      "prepareNowSub": "Start preparation to meet the arrival time",
+      "prepareNowAlert": "🔔 PREPARE NOW — client arrives in {{minutes}} min",
+      "filter": {
+        "all": "All",
+        "dineIn": "Dine in",
+        "takeaway": "Takeaway",
+        "delivery": "Delivery"
+      },
+      "modeLabel": {
+        "dineIn": "Dine in",
+        "takeaway": "Takeaway",
+        "delivery": "Delivery"
+      },
+      "empty": "No orders",
+      "emptyFiltered": "No {{mode}} orders",
+      "emptyDineIn": "dine-in",
+      "emptyTakeaway": "takeaway",
+      "emptyDelivery": "delivery",
+      "client": "Client",
+      "arrivalScheduled": "⏰ {{time}}",
+      "clientOnRoute": "✅ Client on the way",
+      "clientNotConfirmed": "⏳ Not yet confirmed",
+      "clientAtRisk": "⚠️ At-risk client ({{count}})",
+      "cancel": "Cancel",
+      "cancelConfirm": "Cancel this order?",
+      "noShow": "⚠️ No-show",
+      "noShowTooltip": "The client didn't show up",
+      "noShowConfirm": "Mark this order #{{id}} as \"no-show\"? The client will be flagged for future orders.",
+      "advance": "Advance"
+    },
+    "hours": {
+      "modal": {
+        "title": "Hours — {{day}}",
+        "closedToday": "Closed this day",
+        "openTime": "Opens",
+        "closeTime": "Closes"
+      },
+      "closed": "Closed"
+    },
+    "finances": {
+      "withdrawalNote": "Withdrawals are made from your mobile app."
+    },
+    "import": {
+      "title": "Import menu",
+      "previewTitle": "Preview",
+      "src": {
+        "paste": "Paste",
+        "file": "File",
+        "external": "Link"
+      },
+      "pasteFormat": "CSV format: name,price,category,description,image_url — or JSON array.",
+      "filesFormat": "Formats: CSV, TSV, Excel. Unknown columns are detected automatically by AI.",
+      "filesAnalyzing": "🤖 Smart analysis in progress…",
+      "filesPick": "Click to pick a file",
+      "extFormat": "URL returning CSV or JSON (published Google Sheet, third-party API). The URL must allow CORS.",
+      "extUrl": "Menu URL (CSV or JSON)",
+      "extPath": "Items path in JSON (optional)",
+      "extFetch": "Load from URL",
+      "extFetching": "Downloading…",
+      "preview": "Preview",
+      "ready": "{{count}} dish ready to import.",
+      "ready_plural": "{{count}} dishes ready to import.",
+      "ignored": "({{count}} skipped)",
+      "ignoredHeading": "Skipped lines:",
+      "moreItems": "… and {{count}} more",
+      "aiBadge": "🤖 Columns detected by AI (memorised for next time):",
+      "progress": "Importing… {{done}} / {{total}}",
+      "doImport": "Import",
+      "importing": "Importing…",
+      "doneToast": "Import done.\nCreated: {{created}}/{{total}}{{errors}}"
+    }
+  },
+  "pharmaPartner": {
+    "headerTitle": "Dashboard",
+    "headerSubtitle": "{{name}}",
+    "headerSubtitleDefault": "Pharmacist space",
+    "tab": {
+      "orders": "Orders",
+      "products": "Products",
+      "stats": "Stats",
+      "qr": "Scanner",
+      "finances": "Finances"
+    },
+    "orders": {
+      "filter": {
+        "all": "All",
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "ready": "Ready",
+        "delivered": "Delivered"
+      },
+      "status": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "processing": "Preparing",
+        "ready": "Ready",
+        "in_delivery": "In delivery",
+        "delivered": "Delivered",
+        "cancelled": "Cancelled"
+      },
+      "empty": "No orders",
+      "client": "Client",
+      "method": {
+        "pickup": "pickup",
+        "delivery": "delivery"
+      },
+      "btn": {
+        "confirm": "Confirm",
+        "ready": "Ready",
+        "deliver": "Deliver",
+        "cancel": "Cancel"
+      }
+    },
+    "products": {
+      "stat": {
+        "total": "Products",
+        "inStock": "In stock",
+        "outOfStock": "Out of stock",
+        "stockValue": "Stock value"
+      },
+      "importBtn": "Import a file",
+      "searchPlaceholder": "Search a product, barcode, category…",
+      "empty": "No products. Import your catalogue or add one.",
+      "noResults": "No results.",
+      "deleteConfirm": "Remove \"{{name}}\" from the catalogue?",
+      "edit": {
+        "newTitle": "New product",
+        "editTitle": "Edit product",
+        "name": "Product name *",
+        "price": "Price (XAF) *",
+        "stock": "Stock *",
+        "unit": "Unit",
+        "category": "Category",
+        "barcode": "Barcode",
+        "description": "Description"
+      },
+      "import": {
+        "title": "Import catalogue",
+        "previewTitle": "Preview",
+        "filesFormat": "Formats: CSV, TSV, Excel (.xlsx, .xls). Unknown columns are detected automatically by AI — your column names can be in French, English, with accents…",
+        "filesPick": "Click to pick a file",
+        "filesAnalyzing": "🤖 Smart analysis in progress…",
+        "pasteFormat": "CSV format: name,price,stock,unit,barcode,category,description — or a JSON array.",
+        "extFormat": "URL returning JSON. The server fetches products at regular intervals (published Google Sheet, ERP, etc.).",
+        "extUrl": "API / Google Sheet URL (JSON)",
+        "extPath": "Items path in the response",
+        "extToken": "Bearer token (optional)",
+        "overwrite": "Replace existing products (by name)",
+        "preview": "Preview",
+        "sync": "Sync",
+        "syncing": "Syncing…",
+        "ready": "{{count}} product ready to import.",
+        "ready_plural": "{{count}} products ready to import.",
+        "doImport": "Import",
+        "importing": "Importing…",
+        "back": "Back",
+        "doneToast": "Import done.\nCreated: {{created}} · Updated: {{updated}}{{errors}}",
+        "aiBadge": "🤖 Columns detected by AI (memorised for next time):",
+        "ignoredHeading": "Skipped lines:"
+      }
+    },
+    "stats": {
+      "total": "Total orders",
+      "last7d": "Last 7 days",
+      "last30d": "Last 30 days",
+      "totalRevenue": "Total revenue",
+      "avgBasket": "Avg basket"
+    },
+    "qr": {
+      "title": "Validate a pickup",
+      "subtitle": "Enter or paste the QR code provided by the client.",
+      "placeholder": "QR code…",
+      "validate": "Validate",
+      "tip": "💡 To scan with the camera, use the mobile app."
+    },
+    "finances": {
+      "totalRevenue": "Total revenue",
+      "movements": "Recent transactions",
+      "noMovements": "No transactions.",
+      "withdrawalNote": "Withdrawals are made from the mobile app."
+    }
+  },
+  "clientOrders": {
+    "title": "My orders",
+    "subtitleResto": "Track your current and past orders",
+    "subtitlePharma": "Track your pharmacy orders",
+    "loading": "Loading your orders…",
+    "empty": "You don't have any orders yet.",
+    "emptyPharma": "No orders for now.",
+    "discoverResto": "Discover restaurants",
+    "findMed": "Find a medicine",
+    "orderNum": "Order #{{id}}",
+    "type": "Type:",
+    "ready": "Ready:",
+    "note": "Note:",
+    "rate": "Rate this order",
+    "ratingTitle": "Rate your order",
+    "ratingPlaceholder": "Your comment (optional)…",
+    "send": "Send",
+    "autoRefresh": "🔄 Status updates automatically every 30s",
+    "autoRefreshPharma": "🔄 Auto refresh every 30s",
+    "iAmOnRoute": "I'm on the way",
+    "youConfirmed": "You confirmed your arrival",
+    "method": "Method:",
+    "pickup": "Pickup",
+    "delivery": "Delivery",
+    "address": "Address:",
+    "showQr": "Show pickup QR",
+    "qrTitle": "Pickup code",
+    "qrSubtitle": "Show this code to the pharmacist.",
+    "qrUnavailable": "QR not available. Try again later.",
+    "qrOrderNum": "Order #{{id}}",
+    "status": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "readyToPickup": "Ready to pick up",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "confirmed": "Confirmed",
+      "in_delivery": "In delivery",
+      "delivered": "Delivered"
+    }
+  },
+  "restoMenuPage": {
+    "title": "Menu",
+    "menuUnavailable": "Menu unavailable",
+    "noToday": "No dishes available today. Come back another day.",
+    "indispo": "Unavailable",
+    "orderConfirmed": "Order confirmed",
+    "orderConfirmedSub": "The restaurant received your order",
+    "orderNumber": "Order number",
+    "keepNumber": "Keep this number to identify yourself on site",
+    "mode": "Mode",
+    "arrival": "Arrival",
+    "deliveryTo": "Delivery to",
+    "addressLabel": "Address",
+    "total": "Total",
+    "preparingInfo": "🍳 The restaurant has been notified and will start preparing {{when}}. Track progress in My Orders.",
+    "preparingFor": "for it to be ready at {{time}}",
+    "preparingNow": "immediately",
+    "viewMyOrders": "View my orders",
+    "cart": {
+      "modeDineIn": "Dine in",
+      "modeTakeaway": "Takeaway",
+      "modeDelivery": "Delivery",
+      "arrivalLabel": "{{mode}} requested — the restaurant will start in time",
+      "arrivalNow": "Right now",
+      "arrivalIn30": "In 30 min",
+      "arrivalIn60": "In 1 h",
+      "arrivalCustom": "Choose",
+      "arrivalConfirm": "✓ The restaurant will prepare for {{time}}",
+      "addressPlaceholder": "Full delivery address",
+      "phonePlaceholder": "Contact phone",
+      "notesPlaceholder": "Note for the restaurant (allergies, no spicy…)",
+      "order": "Order",
+      "ordering": "Sending...",
+      "loginToOrder": "Sign in"
+    },
+    "addressRequired": "Address required",
+    "addressRequiredDesc": "Provide the delivery address.",
+    "timeRequired": "Time required",
+    "timeRequiredDesc": "Choose your arrival time."
   }
 }

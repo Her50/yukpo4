@@ -4,7 +4,9 @@ import {
   Minus, Plus, Search, ShoppingCart, Upload, X
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import LanguageSwitcherBourse from '../../components/LanguageSwitcherBourse';
 import { useToast } from '../../hooks/use-toast';
 import {
   Systeme, TypeItem, useParentShop,
@@ -45,10 +47,10 @@ const isGammeableType = (t: TypeItem): boolean =>
 /** Catégorie d'affichage pour le regroupement par rubrique dans le tableau. */
 type CategorieAffichage = 'livres' | 'cahiers' | 'fournitures';
 
-const categorieLabel: Record<CategorieAffichage, string> = {
-  livres: 'Manuels & workbooks',
-  cahiers: 'Cahiers',
-  fournitures: 'Fournitures & accessoires',
+const categorieLabelKey: Record<CategorieAffichage, string> = {
+  livres: 'bourse.scan.cat_books',
+  cahiers: 'bourse.scan.cat_notebooks',
+  fournitures: 'bourse.scan.cat_supplies',
 };
 
 const categorieStyle: Record<CategorieAffichage, { bg: string; border: string; text: string; dot: string }> = {
@@ -131,6 +133,7 @@ function fileToBase64(file: File): Promise<string> {
 const ANNEE_SCOLAIRE = '2025-2026';
 
 const ScanProgrammePage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -241,7 +244,7 @@ const ScanProgrammePage: React.FC = () => {
       const copy: ExtractedItem = { ...s, quantite: 1, selected: true };
       return [...prev.slice(0, idx + 1), copy, ...prev.slice(idx + 1)];
     });
-    toast({ title: 'Article dupliqué', description: src.titre });
+    toast({ title: t('bourse.scan.toast_duplicated'), description: src.titre });
     setConfirmDupIdx(null);
   };
   // alias pour retro-compatibilité
@@ -407,14 +410,14 @@ const ScanProgrammePage: React.FC = () => {
           return;
         }
         if (d?.status === 'error') {
-          setError(d?.message || "Erreur lors de l'analyse. Réessayez.");
+          setError(d?.message || t('bourse.scan.error_analysis_retry'));
           setStep('details');
           return;
         }
         // status === 'processing' → continue polling
       } catch { /**/ }
     }
-    setError("L'analyse a pris trop de temps. Réessayez avec une image plus petite.");
+    setError(t('bourse.scan.error_timeout'));
     setStep('details');
   };
 
@@ -459,7 +462,7 @@ const ScanProgrammePage: React.FC = () => {
 
       if (!res.ok) {
         const msg = data?.message || data?.error || data?.detail;
-        setError(msg || `Erreur serveur (${res.status}). Réessayez.`);
+        setError(msg || t('bourse.scan.error_server_status', { status: res.status }));
         setStep('details');
         return;
       }
@@ -504,10 +507,10 @@ const ScanProgrammePage: React.FC = () => {
       const isTimeout = e?.name === 'AbortError' || e?.name === 'TimeoutError';
       setError(
         isTimeout
-          ? "L'analyse a pris trop de temps. Réessayez avec une image plus petite."
+          ? t('bourse.scan.error_timeout')
           : (e?.message && !e.message.includes('fetch')
               ? e.message
-              : 'Impossible de joindre le serveur Yukpo. Vérifiez votre connexion.')
+              : t('bourse.scan.error_server'))
       );
       setStep('details');
     }
@@ -517,7 +520,7 @@ const ScanProgrammePage: React.FC = () => {
 
   const doAddToCart = (enfantId: string) => {
     const selected = items.filter(it => it.selected);
-    if (!selected.length) { toast({ title: 'Sélectionnez au moins un article', variant: 'destructive' }); return; }
+    if (!selected.length) { toast({ title: t('bourse.scan.toast_select_one'), variant: 'destructive' }); return; }
     setSaving(true);
     addItems(selected.map(it => ({
       enfantId,
@@ -532,12 +535,12 @@ const ScanProgrammePage: React.FC = () => {
       gamme: isGammeableType(it.type) ? (it.gamme || 'standard') : undefined,
     })));
     setSaving(false);
-    toast({ title: `${selected.length} article${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''} à votre sélection` });
+    toast({ title: t(selected.length > 1 ? 'bourse.scan.toast_added_other' : 'bourse.scan.toast_added_one', { count: selected.length }) });
     setStep('next-action');
   };
 
   const addToCart = () => {
-    if (!selectedEnfantId) { toast({ title: 'Sélectionnez une classe', variant: 'destructive' }); return; }
+    if (!selectedEnfantId) { toast({ title: t('bourse.scan.toast_select_class'), variant: 'destructive' }); return; }
     doAddToCart(selectedEnfantId);
   };
 
@@ -551,8 +554,8 @@ const ScanProgrammePage: React.FC = () => {
       quickClasse || classeNom || detection?.classe || niveauNom || niveau || '';
     if (!classeRetenue) {
       toast({
-        title: 'Aucune classe détectée',
-        description: 'Sélectionnez la classe ci-dessus ou reprenez le scan avec une photo plus nette.',
+        title: t('bourse.scan.toast_no_class_title'),
+        description: t('bourse.scan.toast_no_class_desc'),
         variant: 'destructive',
       });
       return;
@@ -588,16 +591,17 @@ const ScanProgrammePage: React.FC = () => {
           <button onClick={() => navigate(-1)} className="p-2 rounded-full bg-white/20">
             <ArrowLeft className="w-5 h-5 text-white" />
           </button>
-          <div>
+          <div className="flex-1">
             <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full tracking-wider text-white">YUKPO</span>
-            <h1 className="font-bold text-xl text-white leading-tight mt-1">Scanner une liste de classe</h1>
+            <h1 className="font-bold text-xl text-white leading-tight mt-1">{t('bourse.scan.title')}</h1>
           </div>
+          <LanguageSwitcherBourse tone="white" />
         </div>
 
         {/* Corps — 3 grands boutons */}
         <div className="flex-1 bg-white rounded-t-3xl px-5 pt-8 pb-12 flex flex-col gap-4">
           <p className="text-sm text-gray-500 text-center mb-2">
-            Choisissez comment importer votre liste scolaire
+            {t('bourse.scan.choose_import')}
           </p>
 
           {/* Caméra */}
@@ -609,8 +613,8 @@ const ScanProgrammePage: React.FC = () => {
               <Camera className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 text-base">Prendre une photo</p>
-              <p className="text-xs text-gray-500 mt-0.5">Photographiez la liste reçue de l'école</p>
+              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.take_photo')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.take_photo_desc')}</p>
             </div>
             <ChevronRight className="w-5 h-5 text-amber-400 shrink-0" />
           </button>
@@ -624,8 +628,8 @@ const ScanProgrammePage: React.FC = () => {
               <ImageIcon className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 text-base">Depuis la galerie</p>
-              <p className="text-xs text-gray-500 mt-0.5">Sélectionnez une photo déjà prise</p>
+              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.from_gallery')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.from_gallery_desc')}</p>
             </div>
             <ChevronRight className="w-5 h-5 text-blue-400 shrink-0" />
           </button>
@@ -639,8 +643,8 @@ const ScanProgrammePage: React.FC = () => {
               <FileText className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 text-base">PDF ou fichier</p>
-              <p className="text-xs text-gray-500 mt-0.5">Importez un PDF, Excel ou image</p>
+              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.pdf_file')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.pdf_file_desc')}</p>
             </div>
             <ChevronRight className="w-5 h-5 text-emerald-400 shrink-0" />
           </button>
@@ -648,7 +652,7 @@ const ScanProgrammePage: React.FC = () => {
           {/* Séparateur */}
           <div className="flex items-center gap-3 my-1">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-[11px] text-gray-400 uppercase tracking-wide">ou</span>
+            <span className="text-[11px] text-gray-400 uppercase tracking-wide">{t('bourse.home.or')}</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
 
@@ -661,14 +665,14 @@ const ScanProgrammePage: React.FC = () => {
               <Search className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 text-base">Chercher par école</p>
-              <p className="text-xs text-gray-500 mt-0.5">Programme officiel d'une école et d'une classe</p>
+              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.search_school')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.search_school_desc')}</p>
             </div>
             <ChevronRight className="w-5 h-5 text-purple-400 shrink-0" />
           </button>
 
           <p className="text-center text-xs text-gray-400 mt-2">
-            Yukpo analyse la liste et l'enregistre pour tous les parents de la même classe
+            {t('bourse.scan.helper_bottom')}
           </p>
         </div>
       </div>
@@ -697,9 +701,10 @@ const ScanProgrammePage: React.FC = () => {
             <div>
               <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full tracking-wider">YUKPO</span>
               <h1 className="font-bold text-lg leading-tight mt-0.5">
-                {files.length} fichier{files.length > 1 ? 's' : ''} sélectionné{files.length > 1 ? 's' : ''}
+                {t(files.length > 1 ? 'bourse.scan.files_other' : 'bourse.scan.files_one', { count: files.length })}
               </h1>
             </div>
+            <div className="ml-auto"><LanguageSwitcherBourse tone="white" /></div>
           </div>
         </div>
 
@@ -708,9 +713,9 @@ const ScanProgrammePage: React.FC = () => {
             <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-2xl p-4">
               <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-red-700">Analyse impossible</p>
+                <p className="text-sm font-semibold text-red-700">{t('bourse.scan.error_title')}</p>
                 <p className="text-xs text-red-600 mt-0.5">{error}</p>
-                <p className="text-xs text-red-400 mt-1">Astuce : photo bien éclairée et nette</p>
+                <p className="text-xs text-red-400 mt-1">{t('bourse.scan.error_tip')}</p>
               </div>
             </div>
           )}
@@ -737,14 +742,14 @@ const ScanProgrammePage: React.FC = () => {
               onClick={() => cameraRef.current?.click()}
               className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-amber-300 rounded-xl text-amber-600 text-xs font-semibold"
             >
-              <Camera className="w-4 h-4" /> Ajouter une autre photo
+              <Camera className="w-4 h-4" /> {t('bourse.scan.add_another_photo')}
             </button>
           </div>
 
           {/* Pour quelle classe */}
           {enfants.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Pour quelle classe ?</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('bourse.scan.for_which_class')}</p>
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                 {enfants.map(e => (
                   <button key={e.id} onClick={() => {
@@ -770,11 +775,11 @@ const ScanProgrammePage: React.FC = () => {
 
           {/* Pays + Système + Niveau + Classe (compacts) */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
-            <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Précisions <span className="font-normal normal-case text-gray-400">(optionnel)</span></p>
+            <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">{t('bourse.scan.precisions')} <span className="font-normal normal-case text-gray-400">{t('bourse.scan.optional')}</span></p>
 
             {/* Pays */}
             <div>
-              <p className="text-xs text-gray-500 mb-1.5">Pays</p>
+              <p className="text-xs text-gray-500 mb-1.5">{t('bourse.scan.country')}</p>
               <select
                 value={pays}
                 onChange={e => handlePaysChange(e.target.value as PaysCode)}
@@ -789,7 +794,7 @@ const ScanProgrammePage: React.FC = () => {
             {/* Système (si plusieurs pour ce pays) */}
             {getSystemesForPays(pays).length > 1 && (
               <div>
-                <p className="text-xs text-gray-500 mb-1.5">Système</p>
+                <p className="text-xs text-gray-500 mb-1.5">{t('bourse.scan.system')}</p>
                 <div className="flex gap-2">
                   {getSystemesForPays(pays).map(s => (
                     <button key={s.id} onClick={() => handleSystemeIdChange(s.id)}
@@ -805,7 +810,7 @@ const ScanProgrammePage: React.FC = () => {
 
             {/* Niveau */}
             <div>
-              <p className="text-xs text-gray-500 mb-1.5">Niveau</p>
+              <p className="text-xs text-gray-500 mb-1.5">{t('bourse.scan.level')}</p>
               <div className="flex flex-wrap gap-1.5">
                 {currentNiveaux.map(n => (
                   <button key={n.nom} onClick={() => { setNiveauNom(n.nom); setClasseNom(''); setSerieCode(''); }}
@@ -821,7 +826,7 @@ const ScanProgrammePage: React.FC = () => {
             {/* Classe — dropdown si > 6 options, pills sinon */}
             {currentNiveauObj && currentNiveauObj.classes.length <= 6 && (
               <div>
-                <p className="text-xs text-gray-500 mb-1.5">Classe</p>
+                <p className="text-xs text-gray-500 mb-1.5">{t('bourse.scan.class')}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {currentNiveauObj.classes.map(c => (
                     <button key={c.nom} onClick={() => { setClasseNom(prev => prev === c.nom ? '' : c.nom); setSerieCode(''); }}
@@ -836,13 +841,13 @@ const ScanProgrammePage: React.FC = () => {
             )}
             {currentNiveauObj && currentNiveauObj.classes.length > 6 && (
               <div>
-                <p className="text-xs text-gray-500 mb-1.5">Classe</p>
+                <p className="text-xs text-gray-500 mb-1.5">{t('bourse.scan.class')}</p>
                 <select
                   value={classeNom}
                   onChange={e => { setClasseNom(e.target.value); setSerieCode(''); }}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400"
                 >
-                  <option value="">— Choisir une classe —</option>
+                  <option value="">{t('bourse.scan.choose_class')}</option>
                   {currentNiveauObj.classes.map(c => (
                     <option key={c.nom} value={c.nom}>{c.nom}</option>
                   ))}
@@ -853,7 +858,7 @@ const ScanProgrammePage: React.FC = () => {
             {/* Série / Filière */}
             {currentClasseObj && hasClasseSeries && (
               <div>
-                <p className="text-xs text-gray-500 mb-1.5">Série / Filière</p>
+                <p className="text-xs text-gray-500 mb-1.5">{t('bourse.scan.series')}</p>
                 {/* Dropdown si > 4 séries (lycées techniques en ont 8+), pills sinon */}
                 {currentClasseObj.series!.length > 4 ? (
                   <select
@@ -861,7 +866,7 @@ const ScanProgrammePage: React.FC = () => {
                     onChange={e => setSerieCode(e.target.value)}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400"
                   >
-                    <option value="">— Choisir une série —</option>
+                    <option value="">{t('bourse.scan.choose_serie')}</option>
                     {currentClasseObj.series!.map(s => (
                       <option key={s.code} value={s.code}>
                         {s.code}{s.label ? ` — ${s.label}` : ''}
@@ -886,7 +891,7 @@ const ScanProgrammePage: React.FC = () => {
 
             <input
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-amber-400"
-              placeholder="Nom de l'établissement (optionnel)"
+              placeholder={t('bourse.scan.etab_placeholder')}
               value={etablissement}
               onChange={e => setEtablissement(e.target.value)}
             />
@@ -898,7 +903,7 @@ const ScanProgrammePage: React.FC = () => {
           <button onClick={submit}
             className="w-full bg-amber-600 text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg">
             <Upload className="w-5 h-5" />
-            Analyser avec Yukpo
+            {t('bourse.scan.analyze_button')}
           </button>
         </div>
       </div>
@@ -913,9 +918,9 @@ const ScanProgrammePage: React.FC = () => {
           <Loader2 className="w-10 h-10 animate-spin text-white" />
         </div>
         <span className="text-xs font-bold bg-white/20 px-3 py-1 rounded-full tracking-widest mb-3">YUKPO</span>
-        <h2 className="text-xl font-bold mb-2 text-center">Analyse en cours…</h2>
+        <h2 className="text-xl font-bold mb-2 text-center">{t('bourse.scan.analyzing')}</h2>
         <p className="text-amber-100 text-sm text-center leading-relaxed">
-          Yukpo lit votre liste et enregistre les manuels pour tous les parents de la même classe.
+          {t('bourse.scan.scanning')}
         </p>
       </div>
     );
@@ -938,8 +943,8 @@ const ScanProgrammePage: React.FC = () => {
           <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
             <CheckSquare className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-xl font-bold mb-1">Ajouté à votre sélection</h1>
-          <p className="text-amber-100 text-sm">Que souhaitez-vous faire maintenant ?</p>
+          <h1 className="text-xl font-bold mb-1">{t('bourse.scan.added_to_selection')}</h1>
+          <p className="text-amber-100 text-sm">{t('bourse.scan.what_next')}</p>
         </div>
 
         <div className="flex-1 px-5 pt-6 pb-10 max-w-2xl mx-auto w-full space-y-3">
@@ -949,8 +954,8 @@ const ScanProgrammePage: React.FC = () => {
               <Camera className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <p className="font-bold text-gray-900 text-sm">Scanner une autre liste</p>
-              <p className="text-xs text-gray-500">Pour un autre enfant ou une autre classe</p>
+              <p className="font-bold text-gray-900 text-sm">{t('bourse.scan.scan_another_list')}</p>
+              <p className="text-xs text-gray-500">{t('bourse.scan.scan_another_desc')}</p>
             </div>
             <ChevronRight className="w-5 h-5 text-amber-400" />
           </button>
@@ -961,8 +966,8 @@ const ScanProgrammePage: React.FC = () => {
               <Search className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <p className="font-bold text-gray-900 text-sm">Rechercher le programme d'une autre classe</p>
-              <p className="text-xs text-gray-500">Depuis le référentiel national / établissement</p>
+              <p className="font-bold text-gray-900 text-sm">{t('bourse.scan.search_other_class')}</p>
+              <p className="text-xs text-gray-500">{t('bourse.scan.search_other_class_desc')}</p>
             </div>
             <ChevronRight className="w-5 h-5 text-blue-400" />
           </button>
@@ -970,7 +975,7 @@ const ScanProgrammePage: React.FC = () => {
           {autresEnfants.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-2xl p-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">
-                Vos autres enfants / classes
+                {t('bourse.scan.other_children')}
               </p>
               <div className="space-y-1.5">
                 {autresEnfants.map(e => (
@@ -993,7 +998,7 @@ const ScanProgrammePage: React.FC = () => {
           <button onClick={() => navigate('/recap')}
             className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg mt-6">
             <ShoppingCart className="w-5 h-5" />
-            Terminer & voir mon récapitulatif
+            {t('bourse.scan.finish_recap')}
             <ChevronRight className="w-4 h-4 ml-auto" />
           </button>
         </div>
@@ -1009,14 +1014,14 @@ const ScanProgrammePage: React.FC = () => {
           <BookOpen className="w-8 h-8 text-amber-600" />
         </div>
         <span className="text-xs font-bold text-amber-600 tracking-widest mb-2">YUKPO</span>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Liste enregistrée !</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">{t('bourse.scan.list_saved')}</h2>
         <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-          Yukpo a analysé et enregistré votre liste.<br />
-          Les autres parents de <strong>{classe || niveau}</strong> en bénéficieront aussi.
+          {t('bourse.scan.list_saved_desc')}<br />
+          {t('bourse.scan.list_saved_class', { classe: classe || niveau })}
         </p>
         <button onClick={() => navigate('/parent-selection')}
           className="bg-amber-500 text-white font-bold px-6 py-3 rounded-2xl text-sm">
-          Retour à mes achats
+          {t('bourse.scan.back_to_purchases')}
         </button>
       </div>
     );
@@ -1036,23 +1041,23 @@ const ScanProgrammePage: React.FC = () => {
                 <Copy className="w-5 h-5 text-amber-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 text-base leading-tight">Dupliquer cet article ?</h3>
+                <h3 className="font-bold text-gray-900 text-base leading-tight">{t('bourse.scan.duplicate_q')}</h3>
                 <p className="text-sm text-gray-600 mt-0.5 truncate" title={items[confirmDupIdx]?.titre}>
                   {items[confirmDupIdx]?.titre}
                 </p>
               </div>
             </div>
             <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">
-              Une copie sera ajoutée juste après — utile pour acheter le même article pour un autre enfant.
+              {t('bourse.scan.duplicate_help')}
             </p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmDupIdx(null)}
                 className="flex-1 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold text-sm">
-                Annuler
+                {t('bourse.scan.cancel')}
               </button>
               <button onClick={performDuplicate}
                 className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold text-sm">
-                Dupliquer
+                {t('bourse.scan.confirm_duplicate')}
               </button>
             </div>
           </div>
@@ -1068,17 +1073,18 @@ const ScanProgrammePage: React.FC = () => {
           <div className="flex-1 min-w-0">
             <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full tracking-wider">YUKPO</span>
             <h1 className="font-bold text-lg leading-tight mt-0.5">
-              {items.length} manuel{items.length > 1 ? 'x' : ''} trouvé{items.length > 1 ? 's' : ''}
+              {t(items.length > 1 ? 'bourse.scan.results_count_other' : 'bourse.scan.results_count_one', { count: items.length })}
             </h1>
-            <p className="text-amber-100 text-xs">Sélectionnez ce que vous voulez acheter</p>
+            <p className="text-amber-100 text-xs">{t('bourse.scan.select_to_buy')}</p>
           </div>
+          <LanguageSwitcherBourse tone="white" />
         </div>
         <div className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2">
-          <span className="text-white text-sm font-medium">{selectedCount} sélectionné{selectedCount > 1 ? 's' : ''}</span>
+          <span className="text-white text-sm font-medium">{t(selectedCount > 1 ? 'bourse.scan.selected_other' : 'bourse.scan.selected_one', { count: selectedCount })}</span>
           <button onClick={allSelected ? deselectAll : selectAll}
             className="flex items-center gap-1 text-amber-100 text-xs font-semibold">
             {allSelected ? <Minus className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
-            {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+            {allSelected ? t('bourse.scan.deselect_all') : t('bourse.scan.select_all')}
           </button>
         </div>
         </div>
@@ -1090,39 +1096,39 @@ const ScanProgrammePage: React.FC = () => {
           <div className="mb-4 bg-white rounded-2xl border border-gray-200 p-4">
             <div className="flex items-start gap-2 mb-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-              <p className="text-sm font-semibold text-gray-900">Vérifiez les informations détectées</p>
+              <p className="text-sm font-semibold text-gray-900">{t('bourse.scan.verify_detected')}</p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               {detection.etablissement && (
                 <div className="bg-gray-50 rounded-lg p-2">
-                  <p className="text-gray-500">École</p>
+                  <p className="text-gray-500">{t('bourse.scan.school')}</p>
                   <p className="font-semibold text-gray-800 truncate">{detection.etablissement}</p>
                 </div>
               )}
               {detection.ville && (
                 <div className="bg-gray-50 rounded-lg p-2">
-                  <p className="text-gray-500">Ville</p>
+                  <p className="text-gray-500">{t('bourse.scan.city')}</p>
                   <p className="font-semibold text-gray-800 truncate">{detection.ville}</p>
                 </div>
               )}
               {detection.session && (
                 <div className={`rounded-lg p-2 ${detection.session_coherente === false ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
-                  <p className="text-gray-500">Session</p>
+                  <p className="text-gray-500">{t('bourse.scan.session')}</p>
                   <p className={`font-semibold truncate ${detection.session_coherente === false ? 'text-red-700' : 'text-gray-800'}`}>
                     {detection.session}
                     {detection.session_coherente === false && detection.session_attendue && (
-                      <span className="block text-[10px] text-red-500 font-normal">Attendue : {detection.session_attendue}</span>
+                      <span className="block text-[10px] text-red-500 font-normal">{t('bourse.scan.session_expected', { session: detection.session_attendue })}</span>
                     )}
                   </p>
                 </div>
               )}
               {detection.classe && (
                 <div className={`rounded-lg p-2 ${detection.classe_coherente === false ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
-                  <p className="text-gray-500">Classe</p>
+                  <p className="text-gray-500">{t('bourse.scan.class')}</p>
                   <p className={`font-semibold truncate ${detection.classe_coherente === false ? 'text-red-700' : 'text-gray-800'}`}>
                     {detection.classe}
                     {detection.classe_coherente === false && (
-                      <span className="block text-[10px] text-red-500 font-normal">≠ classe sélectionnée ({niveau})</span>
+                      <span className="block text-[10px] text-red-500 font-normal">{t('bourse.scan.class_mismatch', { niveau })}</span>
                     )}
                   </p>
                 </div>
@@ -1130,7 +1136,7 @@ const ScanProgrammePage: React.FC = () => {
             </div>
             {(detection.session_coherente === false || detection.classe_coherente === false) && (
               <p className="mt-2 text-xs text-amber-700 bg-amber-50 rounded-lg p-2 border border-amber-200">
-                ⚠️ Une incohérence a été détectée. Vérifiez que la liste correspond bien à la classe choisie.
+                {t('bourse.scan.incoherence_warning')}
               </p>
             )}
           </div>
@@ -1139,7 +1145,7 @@ const ScanProgrammePage: React.FC = () => {
         {/* Aucune classe enregistrée → sélection de classe inline */}
         {enfants.length === 0 && currentNiveauObj && (
           <div className="mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-4">
-            <p className="text-sm font-semibold text-amber-800 mb-1">Pour quelle classe ?</p>
+            <p className="text-sm font-semibold text-amber-800 mb-1">{t('bourse.scan.for_which_class')}</p>
             <div className="flex flex-wrap gap-1.5">
               {currentNiveauObj.classes.map(c => (
                 <button key={c.nom} onClick={() => setQuickClasse(c.nom)}
@@ -1153,7 +1159,7 @@ const ScanProgrammePage: React.FC = () => {
 
         {enfants.length > 1 && (
           <div className="mb-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Ajouter pour</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t('bourse.scan.add_for')}</p>
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {enfants.map(e => (
                 <button key={e.id} onClick={() => setSelectedEnfantId(e.id)}
@@ -1174,23 +1180,22 @@ const ScanProgrammePage: React.FC = () => {
         {items.length === 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
             <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-            <p className="text-sm font-bold text-amber-900 mb-1">Aucun manuel ou fourniture détecté</p>
+            <p className="text-sm font-bold text-amber-900 mb-1">{t('bourse.scan.no_items_title')}</p>
             <p className="text-[12px] text-amber-700 mb-4 leading-relaxed">
-              Yukpo n'a pas pu lire la liste sur cette photo (image floue, partielle ou non standard).
-              Réessayez avec une photo plus nette, ou consultez le programme officiel de la classe.
+              {t('bourse.scan.no_items_help')}
             </p>
             <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <button
                 onClick={() => { setItems([]); setFiles([]); setStep('pick'); }}
                 className="bg-amber-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs"
               >
-                Reprendre une photo
+                {t('bourse.scan.retake_photo')}
               </button>
               <button
                 onClick={() => navigate('/programme-ecole')}
                 className="bg-white border border-amber-300 text-amber-700 font-bold px-4 py-2.5 rounded-xl text-xs"
               >
-                Voir le programme officiel
+                {t('bourse.scan.view_official')}
               </button>
             </div>
           </div>
@@ -1209,11 +1214,11 @@ const ScanProgrammePage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
                       <span className={`text-[11px] font-bold uppercase tracking-wide ${style.text}`}>
-                        {categorieLabel[cat]}
+                        {t(categorieLabelKey[cat])}
                       </span>
                     </div>
                     <span className="text-[10px] text-gray-500 font-semibold">
-                      {entries.length} article{entries.length > 1 ? 's' : ''}
+                      {t(entries.length > 1 ? 'bourse.scan.articles_other' : 'bourse.scan.articles_one', { count: entries.length })}
                     </span>
                   </div>
 
@@ -1225,7 +1230,7 @@ const ScanProgrammePage: React.FC = () => {
                         }`}>
                         <div className="flex items-center gap-2">
                           {/* Checkbox */}
-                          <button onClick={() => toggleItem(i)} className="shrink-0" aria-label="Sélectionner">
+                          <button onClick={() => toggleItem(i)} className="shrink-0" aria-label={t('bourse.scan.select_aria')}>
                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
                               item.selected ? 'bg-amber-500 border-amber-500' : 'border-gray-300'
                             }`}>
@@ -1239,12 +1244,12 @@ const ScanProgrammePage: React.FC = () => {
                               {/* Petit tag livre / workbook pour différencier dans la section "Manuels & workbooks" */}
                               {(item.type as string) === 'workbook' && (
                                 <span className="text-[9px] font-bold bg-teal-100 text-teal-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">
-                                  Wb
+                                  {t('bourse.scan.tag_workbook')}
                                 </span>
                               )}
                               {item.type === 'livre' && (
                                 <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">
-                                  Livre
+                                  {t('bourse.scan.tag_book')}
                                 </span>
                               )}
                               <p className={`text-[13px] font-semibold leading-tight truncate ${
@@ -1260,13 +1265,13 @@ const ScanProgrammePage: React.FC = () => {
                                 )}
                                 {item.auteur && item.editeur && <span className="text-gray-300">·</span>}
                                 {item.editeur && (
-                                  <span className="truncate max-w-[110px] text-purple-700" title={`Éditeur : ${item.editeur}`}>
+                                  <span className="truncate max-w-[110px] text-purple-700" title={t('bourse.scan.editor_title', { name: item.editeur })}>
                                     {item.editeur}
                                   </span>
                                 )}
                                 {item.source === 'suggestion' && (
                                   <span className="bg-orange-50 text-orange-700 border border-orange-200 px-1 py-0.5 rounded">
-                                    Suggéré
+                                    {t('bourse.scan.suggested')}
                                   </span>
                                 )}
                               </div>
@@ -1278,13 +1283,13 @@ const ScanProgrammePage: React.FC = () => {
                             <button onClick={() => adjustQuantite(i, -1)}
                               disabled={(item.quantite ?? 1) <= 1}
                               className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-base leading-none"
-                              aria-label="Diminuer">−</button>
+                              aria-label={t('bourse.scan.decrease')}>−</button>
                             <span className="text-xs font-bold text-gray-800 w-5 text-center tabular-nums leading-none">
                               {item.quantite ?? 1}
                             </span>
                             <button onClick={() => adjustQuantite(i, 1)}
                               className="w-5 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-base leading-none"
-                              aria-label="Augmenter">+</button>
+                              aria-label={t('bourse.scan.increase')}>+</button>
                           </div>
 
                           {/* Prix unitaire — collapsé si inconnu pour libérer la place au titre */}
@@ -1304,7 +1309,7 @@ const ScanProgrammePage: React.FC = () => {
                           <div className="flex items-center gap-2 mt-1 ml-7">
                             {isOccasionableType(item.type) && (
                               <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
-                                <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">État</span>
+                                <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">{t('bourse.scan.state')}</span>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setChoix(i, 'neuf'); }}
                                   className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
@@ -1312,8 +1317,8 @@ const ScanProgrammePage: React.FC = () => {
                                       ? 'bg-emerald-500 text-white shadow-sm'
                                       : 'text-gray-500 hover:bg-gray-200'
                                   }`}
-                                  title="Acheter neuf"
-                                >Neuf</button>
+                                  title={t('bourse.scan.buy_new')}
+                                >{t('bourse.scan.new')}</button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setChoix(i, 'occasion'); }}
                                   className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
@@ -1321,13 +1326,13 @@ const ScanProgrammePage: React.FC = () => {
                                       ? 'bg-orange-500 text-white shadow-sm'
                                       : 'text-gray-500 hover:bg-gray-200'
                                   }`}
-                                  title="Acheter d'occasion"
-                                >Occasion</button>
+                                  title={t('bourse.scan.buy_used')}
+                                >{t('bourse.scan.used')}</button>
                               </div>
                             )}
                             {isGammeableType(item.type) && (
                               <div className="inline-flex items-center gap-1">
-                                <span className="text-[9px] text-gray-400 uppercase font-bold">Gamme</span>
+                                <span className="text-[9px] text-gray-400 uppercase font-bold">{t('bourse.scan.range')}</span>
                                 <GammeSelector
                                   prixOfficiel={item.prix}
                                   gamme={item.gamme || 'standard'}
@@ -1351,10 +1356,10 @@ const ScanProgrammePage: React.FC = () => {
         {totalEstime > 0 && (
           <div className="mt-4 bg-white border border-amber-200 rounded-2xl p-3 flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-sm text-gray-600">Total estimé ({selectedCount} article{selectedCount > 1 ? 's' : ''})</span>
+              <span className="text-sm text-gray-600">{t('bourse.scan.total_estimated')} ({t(selectedCount > 1 ? 'bourse.scan.articles_other' : 'bourse.scan.articles_one', { count: selectedCount })})</span>
               {occasionCount > 0 && (
                 <span className="text-[11px] text-orange-700 font-medium mt-0.5">
-                  {occasionCount} en occasion
+                  {t('bourse.scan.used_count', { count: occasionCount })}
                 </span>
               )}
             </div>
@@ -1370,7 +1375,7 @@ const ScanProgrammePage: React.FC = () => {
           className="w-full bg-amber-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg"
         >
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingCart className="w-5 h-5" />}
-          Ajouter {selectedCount > 0 ? `${selectedCount} article${selectedCount > 1 ? 's' : ''}` : ''} à ma sélection
+          {t('bourse.scan.add_to_selection', { label: selectedCount > 0 ? `${t(selectedCount > 1 ? 'bourse.scan.articles_other' : 'bourse.scan.articles_one', { count: selectedCount })} ` : '' })}
           <ChevronRight className="w-4 h-4 ml-auto" />
         </button>
       </div>

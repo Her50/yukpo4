@@ -37,11 +37,14 @@ pub fn daily_free_token_budget() -> i64 {
     monthly_free_budget()
 }
 
+/// Multiplicateur de marge appliqué au coût brut du LLM (tokens × prix unitaire).
+/// Defaut : **20.0** (marge plateforme Yukpo standard).
+/// Override possible via `YUKPO_IA_TOKEN_MULTIPLIER` pour campagnes ponctuelles.
 fn token_multiplier() -> f64 {
     std::env::var("YUKPO_IA_TOKEN_MULTIPLIER")
         .ok()
         .and_then(|s| s.parse().ok())
-        .unwrap_or(1.0)
+        .unwrap_or(20.0)
 }
 
 /// Unités de base facturées **une fois** par transcription Whisper (avant `YUKPO_IA_TOKEN_MULTIPLIER`).
