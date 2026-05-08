@@ -844,6 +844,8 @@ pub struct CreateRestaurantOrderBody {
     pub client_name: Option<String>,
     pub client_phone: Option<String>,
     pub delivery_address: Option<String>,
+    /// Heure d'arrivée souhaitée par le client (ISO 8601). NULL = "tout de suite".
+    pub requested_arrival_time: Option<String>,
     pub items: Vec<OrderItemInput>,
 }
 
@@ -871,6 +873,7 @@ const ORDER_SELECT: &str = r#"
     SELECT o.id, o.order_type, o.status, o.total_amount::float8,
            o.client_name, o.client_phone, o.notes, o.table_id,
            o.estimated_ready_at::text AS estimated_ready_at,
+           o.requested_arrival_time::text AS requested_arrival_time,
            o.created_at::text AS created_at,
            o.yukpo_commission::float8, o.net_partner_amount::float8,
            o.payment_status, o.delivery_order_id,
@@ -932,6 +935,7 @@ fn map_order_row(r: &sqlx::postgres::PgRow) -> serde_json::Value {
         "notes": r.get::<Option<String>,_>("notes"),
         "table_id": r.get::<Option<i32>,_>("table_id"),
         "estimated_ready_at": r.get::<Option<String>,_>("estimated_ready_at"),
+        "requested_arrival_time": r.try_get::<Option<String>,_>("requested_arrival_time").ok().flatten(),
         "created_at": r.get::<Option<String>,_>("created_at"),
         "yukpo_commission": r.try_get::<Option<f64>,_>("yukpo_commission").ok().flatten(),
         "net_partner_amount": r.try_get::<Option<f64>,_>("net_partner_amount").ok().flatten(),
@@ -973,10 +977,17 @@ pub async fn create_order(
     let order_type = body.order_type.as_deref().unwrap_or("dine_in");
     let total: f64 = body.items.iter().map(|i| i.item_price * i.quantity.unwrap_or(1) as f64).sum();
 
+    // Parse l'ISO datetime fourni par le client (RFC3339 / ISO8601). Tolère un format invalide → NULL.
+    let arrival_time: Option<chrono::DateTime<chrono::Utc>> = body
+        .requested_arrival_time
+        .as_deref()
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map(|d| d.with_timezone(&chrono::Utc));
+
     let order_id: i32 = sqlx::query_scalar(
         r#"INSERT INTO restaurant_orders
-               (service_id, client_user_id, order_type, table_id, status, total_amount, notes, client_name, client_phone)
-           VALUES ($1,$2,$3,$4,'pending',$5,$6,$7,$8)
+               (service_id, client_user_id, order_type, table_id, status, total_amount, notes, client_name, client_phone, requested_arrival_time)
+           VALUES ($1,$2,$3,$4,'pending',$5,$6,$7,$8,$9)
            RETURNING id"#,
     )
     .bind(service_id)
@@ -987,6 +998,7 @@ pub async fn create_order(
     .bind(body.notes.as_deref())
     .bind(body.client_name.as_deref())
     .bind(body.client_phone.as_deref())
+    .bind(arrival_time)
     .fetch_one(&state.pg)
     .await?;
 
@@ -1375,14 +1387,21 @@ pub async fn public_create_order(
         0
     };
 
+    // Parse l'ISO datetime du client si fourni (RFC3339).
+    let arrival_time: Option<chrono::DateTime<chrono::Utc>> = body
+        .requested_arrival_time
+        .as_deref()
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+        .map(|d| d.with_timezone(&chrono::Utc));
+
     let order_id: i32 = sqlx::query_scalar(
         r#"INSERT INTO restaurant_orders
                (service_id, client_user_id, order_type, table_id, status,
                 total_amount, yukpo_commission, net_partner_amount,
                 payment_status, payment_method, notes, client_name, client_phone,
                 delivery_fee_cents, insurance_fee_cents, total_with_fees_cents,
-                wallet_reserved_cents, delivery_address)
-           VALUES ($1,$2,$3,$4,'pending',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+                wallet_reserved_cents, delivery_address, requested_arrival_time)
+           VALUES ($1,$2,$3,$4,'pending',$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
            RETURNING id"#,
     )
     .bind(service_id)
@@ -1402,6 +1421,7 @@ pub async fn public_create_order(
     .bind(total_with_fees_cents as i32)
     .bind(wallet_reserved_cents_val)
     .bind(delivery_addr)
+    .bind(arrival_time)
     .fetch_one(&state.pg)
     .await?;
 
