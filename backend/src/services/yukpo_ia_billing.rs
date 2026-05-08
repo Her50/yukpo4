@@ -68,13 +68,23 @@ pub fn whisper_app_charge_units() -> i64 {
 }
 
 /// Liste des types partenaires exemptés de débit IA (outils internes gratuits).
-/// Ces partenaires utilisent l'IA pour leurs opérations métier (catalogue, etc.) ;
+/// Ces partenaires utilisent l'IA pour leurs opérations métier (catalogue, OCR, etc.) ;
 /// la marge plateforme Yukpo se fait sur leurs **clients finaux**, pas sur eux.
-/// → ajouter ici tout type partenaire qui bénéficie de la gratuité côté outils.
+///
+/// Override global via env var `YUKPO_IA_EXEMPT_ALL_PARTNERS=true` :
+/// → tous les utilisateurs avec un `partner_type` non-null deviennent gratuits.
 pub fn is_partner_exempt_from_ia_debit(partner_type: Option<&str>) -> bool {
+    if std::env::var("YUKPO_IA_EXEMPT_ALL_PARTNERS")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+    {
+        return partner_type.is_some();
+    }
     matches!(
         partner_type,
-        Some("pharmacie") // pharmaciens : import catalogue, OCR ordonnance assist, etc.
+        // pharmaciens : import catalogue, OCR ordonnance assist, détection colonnes Yukpo
+        // restaurateurs : import menu, détection colonnes Yukpo
+        Some("pharmacie" | "restaurant")
     )
 }
 
