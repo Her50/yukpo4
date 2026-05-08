@@ -18,9 +18,12 @@ const RequireAuth: React.FC<RequireAuthProps> = ({ children, allowedRoles }) => 
     return <div className="flex justify-center items-center min-h-screen">Chargement...</div>;
   }
 
-  // 🔐 Non connecté
+  // 🔐 Non connecté → redirige vers /login avec source=shared_service pour
+  // que LoginPage revienne sur la page demandée après connexion.
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    const path = `${location.pathname}${location.search || ''}`;
+    const target = `/login?source=shared_service&redirect=${encodeURIComponent(path)}`;
+    return <Navigate to={target} state={{ from: location }} replace />;
   }
 
   // ⛔ Non autorisé par rôle
