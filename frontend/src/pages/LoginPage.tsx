@@ -152,15 +152,9 @@ const LoginPage: React.FC = () => {
             Yukpo
           </span>
         </h1>
-        <p className="text-center text-gray-600 dark:text-gray-300 mb-6">
-          Connectez-vous avec votre compte <strong>Google</strong> ou <strong>Facebook</strong>
-        </p>
-        <div className="flex flex-col sm:flex-row justify-center gap-4 mb-6">
-          <OAuthButton provider="google" />
-          <OAuthButton provider="facebook" />
-        </div>
+        {/* OAuth Google/Facebook désactivés temporairement (non opérationnels) */}
         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">
-          ou utilisez vos identifiants :
+          Saisissez vos identifiants pour vous connecter :
         </p>
         <form className="flex flex-col gap-4 mt-2" onSubmit={handleLogin}>
           <input

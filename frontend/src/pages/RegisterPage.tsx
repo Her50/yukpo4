@@ -179,21 +179,10 @@ const RegisterPage: React.FC = () => {
             </p>
           </div>
         )}
+        {/* OAuth Google/Facebook désactivés temporairement (non opérationnels) */}
         <p className="text-center text-gray-600 mb-4">
-          Utilisez votre compte <strong>Google</strong> ou <strong>Facebook</strong> pour vous inscrire rapidement :
+          Créez votre compte Yukpo en quelques secondes :
         </p>
-        <div className="flex justify-center gap-4 mb-6">
-          <OAuthButton provider="google" />
-          <OAuthButton provider="facebook" />
-        </div>
-        <div className="relative mb-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">ou créez un compte manuellement</span>
-          </div>
-        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
