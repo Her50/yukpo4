@@ -1207,12 +1207,19 @@ pub async fn super_librairie_parents_contacts(
     ensure_super_libraire_access(&state.pg, user_id, &role).await?;
 
     let search = params.get("search").map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let ville_filter = params.get("ville").map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+    let quartier_filter =
+        params.get("quartier").map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
     let limit: i64 = params.get("limit").and_then(|v| v.parse().ok()).unwrap_or(200).clamp(1, 500);
     let offset: i64 = params.get("offset").and_then(|v| v.parse().ok()).unwrap_or(0);
 
     // Agrégat par utilisateur : dernière commande, total commandes, dernière
-    // adresse non vide. Filtre optionnel sur nom/email/téléphone/ville.
+    // adresse non vide. Filtres optionnels : recherche libre + ville + quartier.
+    // Note : on n'exige plus `phone IS NOT NULL` afin d'afficher tous les
+    // parents ayant commandé. Le tri WhatsApp se fait côté UI.
     let pattern = search.as_ref().map(|s| format!("%{}%", s.to_lowercase()));
+    let ville_pattern = ville_filter.as_ref().map(|s| format!("%{}%", s.to_lowercase()));
+    let quartier_pattern = quartier_filter.as_ref().map(|s| format!("%{}%", s.to_lowercase()));
     let rows = sqlx::query(
         r#"
         SELECT
@@ -1238,10 +1245,14 @@ pub async fn super_librairie_parents_contacts(
             COALESCE(SUM(cm.budget_total), 0)::DOUBLE PRECISION AS budget_cumule
         FROM users u
         JOIN commandes_mixtes cm ON cm.user_id = u.id
-        WHERE u.phone IS NOT NULL AND u.phone <> ''
-          AND ($1::text IS NULL
-               OR LOWER(COALESCE(u.nom, '') || ' ' || COALESCE(u.prenom, '') || ' ' || COALESCE(u.email, '') || ' ' || COALESCE(u.phone, '')) LIKE $1
-               OR LOWER(COALESCE((SELECT adresse_livraison FROM commandes_mixtes WHERE user_id = u.id ORDER BY created_at DESC LIMIT 1), '')) LIKE $1)
+        WHERE
+            ($1::text IS NULL
+             OR LOWER(COALESCE(u.nom, '') || ' ' || COALESCE(u.prenom, '') || ' ' || COALESCE(u.email, '') || ' ' || COALESCE(u.phone, '')) LIKE $1
+             OR LOWER(COALESCE((SELECT adresse_livraison FROM commandes_mixtes WHERE user_id = u.id ORDER BY created_at DESC LIMIT 1), '')) LIKE $1)
+            AND ($4::text IS NULL
+                 OR LOWER(COALESCE((SELECT adresse_livraison FROM commandes_mixtes WHERE user_id = u.id ORDER BY created_at DESC LIMIT 1), '')) LIKE $4)
+            AND ($5::text IS NULL
+                 OR LOWER(COALESCE((SELECT adresse_livraison FROM commandes_mixtes WHERE user_id = u.id ORDER BY created_at DESC LIMIT 1), '')) LIKE $5)
         GROUP BY u.id, u.nom, u.prenom, u.email, u.phone
         ORDER BY MAX(cm.created_at) DESC NULLS LAST
         LIMIT $2 OFFSET $3
@@ -1250,6 +1261,8 @@ pub async fn super_librairie_parents_contacts(
     .bind(pattern.as_deref())
     .bind(limit)
     .bind(offset)
+    .bind(ville_pattern.as_deref())
+    .bind(quartier_pattern.as_deref())
     .fetch_all(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur carnet: {}", e)))?;
