@@ -44,7 +44,9 @@ jobs:
 
       - name: Free runner disk space (avoid 'no space left' during big Rust build)
         run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache /opt/microsoft || true
+          # ATTENTION : NE PAS supprimer /opt/hostedtoolcache — il contient flyctl
+          # (et les toolchains node/python utilisées par d'autres steps).
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/microsoft /usr/local/share/boost /usr/local/share/powershell || true
           sudo apt-get clean
           docker system prune -af 2>/dev/null || true
           df -h
