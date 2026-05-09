@@ -1,6 +1,8 @@
 name: Deploy to Fly.io (backend Yukpo)
 
-# ✅ ne se déclenche QUE sur la branche fly-deploy → ne touche pas au workflow GCP
+# ✅ Trigger UNIQUEMENT sur la branche fly-deploy → ne touche pas au workflow GCP
+# Build Docker sur le runner GitHub (16 GB RAM, plus que Fly remote = pas d'OOM Rust),
+# puis push vers Fly registry et deploy.
 on:
   push:
     branches: [fly-deploy]
@@ -8,25 +10,20 @@ on:
       - 'backend/**'
       - '.github/workflows/fly-deploy.yml'
   workflow_dispatch:
-    inputs:
-      force_deploy:
-        description: 'Forcer le déploiement même sans changements backend'
-        required: false
-        default: false
-        type: boolean
 
 env:
   FLY_APP: yukpo-fly-backend
   FLY_REGION: cdg
+  IMAGE_TAG: registry.fly.io/yukpo-fly-backend:${{ github.sha }}
 
 concurrency:
   group: fly-deploy-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Build → Push → Deploy → Verify
-    runs-on: ubuntu-latest
+  build-and-deploy:
+    name: Docker build (GH runner) → Fly registry → Deploy
+    runs-on: ubuntu-latest    # 4 vCPU, 16 GB RAM — assez pour compiler Rust monolithique
     permissions:
       contents: read
 
@@ -42,36 +39,61 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: flyctl auth whoami
 
-      - name: Deploy backend
-        working-directory: backend
+      - name: Free runner disk space (avoid 'no space left' during big Rust build)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          df -h
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Fly registry
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl auth docker
+
+      - name: Build & push Docker image (on GH runner, 16 GB RAM)
+        uses: docker/build-push-action@v5
+        with:
+          context: backend
+          file: backend/Dockerfile.fly
+          tags: ${{ env.IMAGE_TAG }}
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Limite explicitement les workers BuildKit pour éviter pic RAM
+          build-args: |
+            CARGO_BUILD_JOBS=2
+
+      - name: Deploy image to Fly (no rebuild)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        working-directory: backend
         run: |
-          # --remote-only : build se fait sur les serveurs Fly (pas localement, plus rapide en CI)
-          # --strategy rolling : zero-downtime deploy
           flyctl deploy \
             --app "$FLY_APP" \
-            --remote-only \
+            --image "$IMAGE_TAG" \
             --strategy rolling \
-            --wait-timeout 300
+            --wait-timeout 600
 
       - name: Smoke test health endpoint
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          sleep 10
+          sleep 15
           HEALTH_URL="https://${FLY_APP}.fly.dev/health"
           echo "Testing $HEALTH_URL"
-          for i in 1 2 3 4 5; do
-            if curl -sf "$HEALTH_URL" > /dev/null; then
-              echo "✅ Health check OK (attempt $i)"
+          for i in 1 2 3 4 5 6; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo 000)
+            if [[ "$CODE" == "200" ]]; then
+              echo "✅ Health check OK (attempt $i, HTTP $CODE)"
               exit 0
             fi
-            echo "⏳ Attempt $i failed, retrying in 10s…"
-            sleep 10
+            echo "⏳ Attempt $i: HTTP $CODE — retrying in 15s…"
+            sleep 15
           done
-          echo "❌ Health check failed after 5 attempts"
-          flyctl logs --app "$FLY_APP" --no-tail | tail -50
+          echo "❌ Health check failed after 6 attempts"
+          flyctl logs --app "$FLY_APP" --no-tail | tail -80
           exit 1
 
       - name: Show app status
