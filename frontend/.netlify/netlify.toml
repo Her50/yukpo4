@@ -96,7 +96,7 @@ X-Content-Type-Options = "nosniff"
 
 [[redirects]]
 from = "/api/*"
-to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/:splat"
+to = "https://yukpo-fly-backend.fly.dev/api/:splat"
 status = 200.0
 force = false
 
@@ -108,7 +108,7 @@ force = false
 
 [[redirects]]
 from = "/auth/*"
-to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/auth/:splat"
+to = "https://yukpo-fly-backend.fly.dev/api/auth/:splat"
 status = 200.0
 force = false
 
@@ -120,7 +120,7 @@ force = false
 
 [[redirects]]
 from = "/ai/*"
-to = "https://yukpo-backend-376093909298.europe-west1.run.app/ai/:splat"
+to = "https://yukpo-fly-backend.fly.dev/ai/:splat"
 status = 200.0
 force = false
 
@@ -132,7 +132,7 @@ force = false
 
 [[redirects]]
 from = "/ws/*"
-to = "https://yukpo-backend-376093909298.europe-west1.run.app/ws/:splat"
+to = "https://yukpo-fly-backend.fly.dev/ws/:splat"
 status = 200.0
 force = false
 
@@ -144,7 +144,7 @@ force = false
 
 [[redirects]]
 from = "/healthz"
-to = "https://yukpo-backend-376093909298.europe-west1.run.app/healthz"
+to = "https://yukpo-fly-backend.fly.dev/healthz"
 status = 200.0
 force = false
 

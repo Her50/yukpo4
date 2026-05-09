@@ -2330,8 +2330,14 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
 
     // ✅ CORRECTION: Convertir automatiquement redis:// en rediss:// pour Upstash avec TLS
     // Note: Si l'URL a déjà rediss://, cette conversion ne fait rien
+    // ⚠️ Exception : Fly Redis privé (host commence par "fly-") tourne en plaintext sur 6379
+    //    via le réseau privé 6PN — pas de TLS. Garder redis://.
     let original_url = redis_url.clone();
-    if redis_url.contains("upstash.io") && redis_url.starts_with("redis://") {
+    let is_fly_private_redis = redis_url.contains("@fly-") && redis_url.contains(".upstash.io");
+    if redis_url.contains("upstash.io")
+        && redis_url.starts_with("redis://")
+        && !is_fly_private_redis
+    {
         redis_url = redis_url.replace("redis://", "rediss://");
         log::info!(
             "✅ Redis: URL corrigée automatiquement pour Upstash TLS (redis:// → rediss://)"
