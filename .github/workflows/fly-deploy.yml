@@ -66,22 +66,29 @@ jobs:
           free -h
           echo "=== diag done ==="
 
-      - name: Deploy to Fly (build local sur runner + push + deploy)
+      - name: Deploy to Fly (capture output + upload to 0x0.st on failure)
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           NO_COLOR: "1"
         run: |
-          set -euxo pipefail
+          set +e
           cd backend
-          pwd
-          ls Dockerfile.fly
           flyctl deploy \
             --app "$FLY_APP" \
             --local-only \
             --dockerfile Dockerfile.fly \
             --strategy rolling \
             --wait-timeout 900 \
-            --verbose 2>&1
+            --verbose > /tmp/deploy-output.log 2>&1
+          DEPLOY_EXIT=$?
+          echo "=== deploy exit code: $DEPLOY_EXIT ==="
+          echo "=== last 200 lines of deploy output ==="
+          tail -200 /tmp/deploy-output.log || true
+          if [ $DEPLOY_EXIT -ne 0 ]; then
+            echo "=== uploading full log to 0x0.st for diagnosis ==="
+            curl -fsSL -F "file=@/tmp/deploy-output.log" https://0x0.st || true
+          fi
+          exit $DEPLOY_EXIT
 
       - name: Smoke test health endpoint
         env:
