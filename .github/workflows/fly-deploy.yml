@@ -49,21 +49,22 @@ jobs:
           docker system prune -af 2>/dev/null || true
           df -h
 
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Diagnostic env (debug 0s failure)
+      - name: Diagnostic env (pre-deploy)
         run: |
-          set -x
+          set +e
+          echo "=== pwd / ls ==="
           pwd
           ls -la
           ls -la backend/ | head -10
-          which flyctl docker
-          flyctl version
-          docker version
+          echo "=== binaries ==="
+          which flyctl
+          which docker
+          flyctl version || true
+          docker version || true
+          echo "=== resources ==="
           df -h | head -5
           free -h
-          set +x
+          echo "=== diag done ==="
 
       - name: Deploy to Fly (build local sur runner + push + deploy)
         env:
