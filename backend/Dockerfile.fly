@@ -1,0 +1,165 @@
+# 🚀 Dockerfile.cloud OPTIMISÉ - Version réduite pour builds rapides
+# Réduction de taille : 2.4GB → ~800MB-1GB
+# Build plus rapide grâce au cache intelligent
+
+############################################
+# Stage 1: Builder - Compilation Rust optimisée
+############################################
+# ✅ CORRIGÉ 2026-03-23: debian:trixie = GLIBC 2.39
+# rust:latest = bookworm = GLIBC 2.36 → trop vieux pour ort_sys (ONNX Runtime)
+# qui exige __isoc23_strtoll etc. (GLIBC 2.38+).
+# On installe Rust via rustup sur trixie pour avoir GLIBC 2.39.
+FROM debian:trixie AS builder
+
+WORKDIR /app
+
+# Installer Rust via rustup + dépendances de compilation
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    build-essential \
+    git \
+    pkg-config \
+    libssl-dev \
+    libpq-dev \
+    libclang-dev \
+    clang \
+    lld \
+    ca-certificates \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# ✅ SQLx OFFLINE : Activer le mode offline SQLx dès le début
+ENV SQLX_OFFLINE=true
+# Note: target-cpu=native retiré pour compatibilité AWS Fargate (évite "Illegal instruction")
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+
+# Copier les fichiers de configuration Rust (LAYER CACHE)
+COPY Cargo.toml Cargo.lock ./
+
+# ✅ SQLx OFFLINE : copier le cache SQLx AVANT le code source
+COPY .sqlx ./.sqlx
+
+# Créer une couche de cache pour les dépendances (optimisation build)
+# Cette couche ne sera reconstruite que si Cargo.toml change
+# Utiliser BuildKit cache mount pour accélérer les builds
+RUN --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/root/.cargo/git \
+    --mount=type=cache,target=/app/target \
+    mkdir -p src && \
+    echo "fn main() {}" > src/main.rs && \
+    cargo build --release --jobs 2 --features image 2>&1 | head -20 || true && \
+    rm -rf src
+
+# Copier le code source (APRÈS le cache des dépendances)
+# Cette couche change à chaque modification du code
+COPY src ./src
+COPY scripts ./scripts
+COPY ia_prompts ./ia_prompts
+COPY config ./config
+COPY migrations ./migrations
+COPY public ./public
+COPY ia_intentions_instructions.md ./
+
+# Construire l'application avec optimisations maximales
+# Utiliser BuildKit cache mount pour accélérer les builds
+# IMPORTANT: Copier le binaire dans /app/bin pendant que le cache mount est encore monté
+# Le cache mount ne persiste pas les fichiers dans l'image, donc on doit copier le binaire
+RUN --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/root/.cargo/git \
+    --mount=type=cache,target=/app/target \
+    cargo build --release --jobs 2 --features image \
+    && strip target/release/yukpomnang_backend \
+    && mkdir -p /app/bin \
+    && cp target/release/yukpomnang_backend /app/bin/yukpomnang_backend \
+    && chmod +x /app/bin/yukpomnang_backend
+
+############################################
+# Stage 2: Runtime - Image finale OPTIMISÉE
+############################################
+# ✅ CORRIGÉ 2026-03-23: trixie-slim = GLIBC 2.39+ (requis par ort_sys/ONNX Runtime)
+# rust:latest est aussi trixie-based → même GLIBC, pas de mismatch.
+FROM debian:trixie-slim
+
+LABEL maintainer="Yukpomnang Team"
+LABEL description="Yukpomnang Backend Cloud - Version Optimisée (sans Blender)"
+LABEL version="2.0.0-optimized"
+
+# Installer uniquement les dépendances runtime essentielles (SANS Blender et X11)
+# ✅ AJOUTÉ: Python3 pour serveur HTTP minimal de health check (plus fiable que socat/netcat)
+# ✅ CORRIGÉ 2026-03-11: Ajout de ffmpeg (REQUIS pour la génération vidéo marketing)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    libpq5 \
+    libssl3 \
+    libstdc++6 \
+    curl \
+    postgresql-client \
+    redis-tools \
+    python3 \
+    python3-pip \
+    ffmpeg \
+    fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && pip3 install --no-cache-dir --break-system-packages \
+        python-pptx \
+        python-docx \
+        Pillow \
+        openpyxl \
+        xlrd
+
+# Créer utilisateur non-root
+RUN groupadd -r appuser -g 1000 && \
+    useradd -r -g appuser -u 1000 -m -d /home/appuser -s /bin/bash appuser
+
+# Créer les répertoires
+# ✅ IMPORTANT: l'app utilise UPLOAD_STORAGE_PATH par défaut = /var/data/uploads
+RUN mkdir -p /app/config /app/logs /app/data /app/uploads /app/migrations /app/ia_prompts /var/data/uploads \
+    && chown -R appuser:appuser /app /var/data
+
+# Copier l'exécutable depuis le builder (copié dans /app/bin pour persister hors du cache mount)
+COPY --from=builder --chown=appuser:appuser /app/bin/yukpomnang_backend /app/yukpomnang_backend
+
+# Copier les fichiers de configuration
+COPY --from=builder --chown=appuser:appuser /app/config /app/config
+COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
+COPY --from=builder --chown=appuser:appuser /app/ia_prompts /app/ia_prompts
+COPY --from=builder --chown=appuser:appuser /app/public /app/public
+COPY --from=builder --chown=appuser:appuser /app/ia_intentions_instructions.md /app/
+
+# Scripts de démarrage
+COPY scripts/start-cloud.sh /app/start-cloud.sh
+COPY scripts/start-cloud-run.sh /app/start-cloud-run.sh
+COPY scripts/start-health-server.sh /app/start-health-server.sh
+COPY scripts/health-server-simple.sh /app/health-server-simple.sh
+COPY scripts/health-server-python.py /app/health-server-python.py
+COPY scripts/startup-wrapper.sh /app/startup-wrapper.sh
+COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
+# Scripts Python de génération de documents et visuels (YukpoIA)
+RUN mkdir -p /app/scripts
+COPY scripts/document_generator.py /app/scripts/document_generator.py
+COPY scripts/visual_generator.py /app/scripts/visual_generator.py
+RUN chmod +x /app/start-cloud.sh /app/start-cloud-run.sh /app/start-health-server.sh /app/health-server-simple.sh /app/health-server-python.py /app/startup-wrapper.sh /app/docker-entrypoint.sh
+
+# Variables d'environnement
+ENV RUST_LOG=info
+ENV RUST_BACKTRACE=1
+ENV APP_ENV=production
+ENV PORT=8080
+ENV HOST=0.0.0.0
+
+EXPOSE 8080
+WORKDIR /app
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Cloud Run (image GCP) : lancer le binaire directement — pas de bash/ldd avant le bind sur :PORT
+# (docker-entrypoint.sh reste dans l'image pour debug manuel si besoin.)
+ENTRYPOINT ["/app/yukpomnang_backend"]
+

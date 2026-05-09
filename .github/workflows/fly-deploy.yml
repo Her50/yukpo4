@@ -1,0 +1,83 @@
+name: Deploy to Fly.io (backend Yukpo)
+
+# ✅ ne se déclenche QUE sur la branche fly-deploy → ne touche pas au workflow GCP
+on:
+  push:
+    branches: [fly-deploy]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/fly-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Forcer le déploiement même sans changements backend'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FLY_APP: yukpo-fly-backend
+  FLY_REGION: cdg
+
+concurrency:
+  group: fly-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build → Push → Deploy → Verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Verify Fly auth
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl auth whoami
+
+      - name: Deploy backend
+        working-directory: backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          # --remote-only : build se fait sur les serveurs Fly (pas localement, plus rapide en CI)
+          # --strategy rolling : zero-downtime deploy
+          flyctl deploy \
+            --app "$FLY_APP" \
+            --remote-only \
+            --strategy rolling \
+            --wait-timeout 300
+
+      - name: Smoke test health endpoint
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          sleep 10
+          HEALTH_URL="https://${FLY_APP}.fly.dev/health"
+          echo "Testing $HEALTH_URL"
+          for i in 1 2 3 4 5; do
+            if curl -sf "$HEALTH_URL" > /dev/null; then
+              echo "✅ Health check OK (attempt $i)"
+              exit 0
+            fi
+            echo "⏳ Attempt $i failed, retrying in 10s…"
+            sleep 10
+          done
+          echo "❌ Health check failed after 5 attempts"
+          flyctl logs --app "$FLY_APP" --no-tail | tail -50
+          exit 1
+
+      - name: Show app status
+        if: always()
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl status --app "$FLY_APP" || true
+          flyctl machine list --app "$FLY_APP" || true

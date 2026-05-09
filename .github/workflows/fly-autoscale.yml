@@ -1,0 +1,33 @@
+name: Fly autoscale (vertical) — toutes les 5 min
+
+# Cron 5 min sur la branche fly-deploy uniquement.
+# Ne touche pas au workflow GCP existant.
+# Se désactive automatiquement si la branche fly-deploy n'existe pas.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # toutes les 5 minutes
+  workflow_dispatch:
+
+jobs:
+  autoscale:
+    name: Monitor + scale Fly backend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/fly-deploy'
+
+    steps:
+      - name: Checkout fly-deploy branch
+        uses: actions/checkout@v4
+        with:
+          ref: fly-deploy
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Run autoscale check
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_APP: yukpo-fly-backend
+        run: |
+          chmod +x scripts/fly-monitor-and-scale.sh
+          ./scripts/fly-monitor-and-scale.sh

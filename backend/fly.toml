@@ -1,0 +1,80 @@
+# Configuration Fly.io pour le backend Yukpo (apps bourse, pharmacie, restaurant).
+# Déploiement temporaire — remplace GCP Cloud Run pendant la coupure facturation.
+#
+# Caractéristiques :
+#   - Auto-scale horizontal via concurrence (req/s)
+#   - VM 1GB pour démarrer (free tier compatible si org dédiée)
+#   - Modules GPU/Broll/Stream désactivés par env var (non utilisés par les 3 apps)
+#   - Health check sur /health
+#   - Région CDG (Paris) — même que yukpo_assurance, latence minimale
+
+app = "yukpo-fly-backend"
+primary_region = "cdg"
+
+[build]
+  # Dockerfile dédié Fly : compile sans la feature `gpu` (lourde et inutile pour bourse/pharma/resto).
+  # Évite les OOM lors du build remote Fly (limité à 4-6 GB RAM par défaut).
+  dockerfile = "Dockerfile.fly"
+
+[env]
+  # Ports + log
+  PORT = "8080"
+  HOST = "0.0.0.0"
+  RUST_LOG = "info"
+  APP_ENV = "production"
+  CLOUD_RUN = "false"        # ✅ flag : on n'est plus sur Cloud Run, désactive les hacks GCP-spécifiques
+
+  # ✅ Modules **désactivés** sur Fly (non utilisés par bourse/pharma/resto) :
+  GPU_ENABLED = "false"
+  ENABLE_AI_OPTIMIZATIONS = "true"
+
+  # Pool DB (à ajuster selon Fly Postgres single-node max ~95 connexions)
+  DB_POOL_SIZE = "20"
+  DB_POOL_MIN_SIZE = "2"
+  DB_ACQUIRE_TIMEOUT_SECS = "10"
+
+  # Sécurité / billing Yukpo
+  YUKPO_IA_TOKEN_MULTIPLIER = "20"
+  YUKPO_SIGNUP_BONUS_TOKENS = "4000"
+  YUKPO_IA_EXEMPT_ALL_PARTNERS = "true"   # phase de lancement : tous partenaires gratuits
+
+  # Migrations auto au démarrage (sqlx::migrate!)
+  ENABLE_AUTO_MIGRATIONS = "true"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"      # machines excédentaires s'arrêtent après 5 min idle
+  auto_start_machines = true       # démarrage auto sous charge
+  min_machines_running = 2         # 2 machines toujours chaudes (HA, pas de cold-start)
+
+  # ✅ Auto-scale horizontal :
+  # Fly démarre une nouvelle machine dès qu'une dépasse `soft_limit` requêtes simultanées.
+  # `hard_limit` = protection (refus poli si > N req actives).
+  # Avec 2 machines min + soft 200 / hard 400 → ~400 simultanés couverts ; jusqu'à 8 machines auto.
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 400
+
+  [http_service.http_options]
+    response_timeout = 120         # 2 min — large marge pour appels LLM lourds
+
+[[vm]]
+  # Démarrage minimal — 1 GB suffit pour Rust Axum + sqlx (très léger).
+  # Vertical scaling manuel : `fly scale memory 2gb -a yukpo-fly-backend` si RAM saturée.
+  # Cf. scripts/fly-monitor-and-scale.sh pour automatisation (cron horaire).
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# Health check Fly (différent du HEALTHCHECK Docker, plus rapide)
+[checks]
+  [checks.health]
+    grace_period = "60s"           # 1 min pour boot Rust + connexion DB + migrations
+    interval = "15s"
+    method = "get"
+    path = "/health"
+    port = 8080
+    timeout = "10s"
+    type = "http"
