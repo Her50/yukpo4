@@ -50,7 +50,10 @@ jobs:
       - name: Login to Fly registry
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl auth docker
+        run: |
+          # docker login direct — fonctionne avec un token deploy ET un token org
+          # alors que `flyctl auth docker` exige parfois un token plus large.
+          echo "$FLY_API_TOKEN" | docker login registry.fly.io -u x --password-stdin
 
       - name: Build & push Docker image (on GH runner, 16 GB RAM)
         uses: docker/build-push-action@v5

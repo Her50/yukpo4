@@ -3,7 +3,9 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 
-const GCP_BACKEND = 'https://yukpo-backend-376093909298.europe-west1.run.app';
+// Backend cible pour les rewrites Netlify (_redirects).
+// Override via env var pour rollback : YUKPO_BACKEND_URL=https://yukpo-backend-376093909298.europe-west1.run.app npm run build:bourse
+const GCP_BACKEND = process.env.YUKPO_BACKEND_URL || 'https://yukpo-fly-backend.fly.dev';
 
 interface LiteAppConfig {
   app: 'bourse' | 'pharmacie' | 'restaurant';

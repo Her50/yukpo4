@@ -83,6 +83,26 @@ const LoginPage: React.FC = () => {
 
           login(data.token);
 
+          // Récupérer le profil pour cacher le numéro WhatsApp en local.
+          // Permet à DeliveryModal (récap d'achat) de pré-remplir le champ
+          // sans dépendre d'un claim JWT supplémentaire. Best-effort, non
+          // bloquant — si /api/user/me échoue, l'utilisateur saisira son
+          // numéro manuellement à la commande.
+          try {
+            const meRes = await fetch(`${API_BASE_URL}/api/user/me`, {
+              headers: { Authorization: `Bearer ${data.token}` },
+            });
+            if (meRes.ok) {
+              const me = await meRes.json().catch(() => ({}));
+              if (me?.phone) {
+                localStorage.setItem('yukpo_user_phone', String(me.phone));
+                if (me.phone_country) {
+                  localStorage.setItem('yukpo_user_phone_country', String(me.phone_country));
+                }
+              }
+            }
+          } catch { /* non bloquant */ }
+
           // ✅ Redirection contextuelle (apps standalone partenaire)
           let target: string | null = null;
           if (isSharedService && redirectUrl) {

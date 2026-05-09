@@ -761,7 +761,11 @@ const RecapAchatPage: React.FC = () => {
       )}
       {showDelivery && (
         <DeliveryModal
-          defaultPhone={user?.phone ?? ''}
+          // Pré-remplissage du WhatsApp : on privilégie user.phone (issu du
+          // JWT / fetch /api/user/me), puis le cache local rempli à la
+          // création du compte (yukpo_user_phone). L'utilisateur peut
+          // toujours éditer si besoin.
+          defaultPhone={user?.phone || (typeof localStorage !== 'undefined' ? localStorage.getItem('yukpo_user_phone') ?? '' : '')}
           onClose={() => setShowDelivery(false)}
           onConfirm={async info => {
             // Construit le payload pour POST /api/librairie-network/commandes

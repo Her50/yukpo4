@@ -13,6 +13,11 @@ const RegisterPage: React.FC = () => {
     nom: "",
     prenom: "",
     email: "",
+    // Numéro WhatsApp utilisé pour les notifications de commande/livraison.
+    // Stocké en clair dans `users.phone` (cf. backend register_user) et copié
+    // localement dans `yukpo_user_phone` pour pré-remplir le récap d'achat.
+    phone: "",
+    phone_country: "CM",
     password: "",
     confirmPassword: "",
   });
@@ -25,7 +30,7 @@ const RegisterPage: React.FC = () => {
   const source = searchParams.get('source');
   const isSharedService = source === 'shared_service';
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -44,6 +49,14 @@ const RegisterPage: React.FC = () => {
       setLoading(false);
       return;
     }
+    // Validation WhatsApp : 8 chiffres min (numéros internationaux 8-15 chiffres).
+    // Identique à la validation côté DeliveryModal pour cohérence.
+    const phoneDigits = form.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 8 || phoneDigits.length > 15) {
+      setError("Numéro WhatsApp invalide : 8 à 15 chiffres requis.");
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetch(`/auth/register`, {
         method: "POST",
@@ -54,6 +67,8 @@ const RegisterPage: React.FC = () => {
           name: form.nom || form.prenom || `${form.nom} ${form.prenom}`.trim(),
           email: form.email,
           password: form.password,
+          phone: form.phone.trim(),
+          phone_country: form.phone_country,
           lang: 'fr',
         }),
       });
@@ -68,6 +83,14 @@ const RegisterPage: React.FC = () => {
         if (data.token) {
           localStorage.setItem('token', data.token);
           localStorage.setItem('tokens_balance', data.tokens_balance.toString());
+          // Cacher le numéro WhatsApp localement pour pré-remplir le récap
+          // d'achat (DeliveryModal) sans dépendre d'un fetch /api/user/me.
+          if (form.phone.trim()) {
+            try {
+              localStorage.setItem('yukpo_user_phone', form.phone.trim());
+              localStorage.setItem('yukpo_user_phone_country', form.phone_country);
+            } catch { /* quota exceeded — non bloquant */ }
+          }
           window.dispatchEvent(new CustomEvent('tokens_updated'));
           login(data.token);
 
@@ -214,6 +237,46 @@ const RegisterPage: React.FC = () => {
             required
             disabled={loading}
           />
+          {/* Numéro WhatsApp — utilisé pour les notifications de commande et
+              pré-rempli automatiquement à l'étape de livraison. */}
+          <div className="flex gap-2">
+            <select
+              name="phone_country"
+              value={form.phone_country}
+              onChange={handleChange}
+              className="border px-2 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent bg-white"
+              disabled={loading}
+              aria-label="Pays"
+            >
+              <option value="CM">🇨🇲 +237</option>
+              <option value="CI">🇨🇮 +225</option>
+              <option value="SN">🇸🇳 +221</option>
+              <option value="GA">🇬🇦 +241</option>
+              <option value="CG">🇨🇬 +242</option>
+              <option value="BJ">🇧🇯 +229</option>
+              <option value="TG">🇹🇬 +228</option>
+              <option value="BF">🇧🇫 +226</option>
+              <option value="ML">🇲🇱 +223</option>
+              <option value="NE">🇳🇪 +227</option>
+              <option value="FR">🇫🇷 +33</option>
+              <option value="BE">🇧🇪 +32</option>
+              <option value="CA">🇨🇦 +1</option>
+            </select>
+            <input
+              type="tel"
+              name="phone"
+              inputMode="tel"
+              placeholder="Numéro WhatsApp"
+              value={form.phone}
+              onChange={handleChange}
+              className="flex-1 border px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+              required
+              disabled={loading}
+            />
+          </div>
+          <p className="text-xs text-gray-500 -mt-2 italic">
+            Yukpo vous notifiera sur ce numéro à chaque étape de votre commande.
+          </p>
           <input
             type="password"
             name="password"

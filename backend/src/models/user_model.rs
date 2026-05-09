@@ -45,6 +45,14 @@ pub struct User {
     pub photo_profil: Option<String>,
     /// URL vers l'avatar de l'utilisateur
     pub avatar_url: Option<String>,
+    /// Numéro WhatsApp / téléphone utilisé pour les notifications (commandes,
+    /// livraison). Saisi à la création du compte ; pré-rempli ensuite à
+    /// l'étape « infos de livraison » du récap d'achat.
+    #[sqlx(default)]
+    pub phone: Option<String>,
+    /// Code pays ISO (CM, CI, SN…) pour normaliser le préfixe international.
+    #[sqlx(default)]
+    pub phone_country: Option<String>,
 }
 
 impl Default for User {
@@ -69,6 +77,8 @@ impl Default for User {
             nom_complet: None,
             photo_profil: None,
             avatar_url: None,
+            phone: None,
+            phone_country: None,
         }
     }
 }

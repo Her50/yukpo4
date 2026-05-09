@@ -106,7 +106,8 @@ pub async fn get_user_profile(
         SELECT id, email, password_hash, role, is_provider, tokens_balance,
                token_price_user, token_price_provider, commission_pct,
                preferred_lang, created_at, updated_at, gps, gps_consent,
-               nom, prenom, nom_complet, photo_profil, avatar_url
+               nom, prenom, nom_complet, photo_profil, avatar_url,
+               phone, phone_country
         FROM users WHERE id = $1
         "#,
     )
@@ -969,7 +970,8 @@ pub async fn get_user_by_id(
         SELECT id, email, password_hash, role, is_provider, tokens_balance,
                token_price_user, token_price_provider, commission_pct,
                preferred_lang, created_at, updated_at, gps, gps_consent,
-               nom, prenom, nom_complet, photo_profil, avatar_url
+               nom, prenom, nom_complet, photo_profil, avatar_url,
+               phone, phone_country
         FROM users WHERE id = $1
         "#,
     )
