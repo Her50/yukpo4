@@ -52,18 +52,35 @@ jobs:
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Diagnostic env (debug 0s failure)
+        run: |
+          set -x
+          pwd
+          ls -la
+          ls -la backend/ | head -10
+          which flyctl docker
+          flyctl version
+          docker version
+          df -h | head -5
+          free -h
+          set +x
+
       - name: Deploy to Fly (build local sur runner + push + deploy)
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        working-directory: backend
+          NO_COLOR: "1"
         run: |
+          set -euxo pipefail
+          cd backend
+          pwd
+          ls Dockerfile.fly
           flyctl deploy \
             --app "$FLY_APP" \
             --local-only \
             --dockerfile Dockerfile.fly \
             --strategy rolling \
             --wait-timeout 900 \
-            --verbose
+            --verbose 2>&1
 
       - name: Smoke test health endpoint
         env:
