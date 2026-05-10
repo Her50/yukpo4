@@ -257,8 +257,10 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         decision_troc_desc: "J'ai un vieux livre à proposer en échange et je veux un crédit immédiat.",
         // Sous-question révélée quand on choisit Occasion
         occasion_sub_question: "Comment voulez-vous l'obtenir d'occasion ?",
-        occasion_buy_only_title: "Acheter uniquement (sans échange)",
-        occasion_buy_only_desc: "Yukpo cherche un vendeur d'occasion pour vous.",
+        // Mini-hint discret au-dessus des listes (Neuf/Occasion/Échange)
+        choices_hint: "💡 Neuf = livre neuf au prix officiel · Occasion = livre déjà utilisé, vendu par un autre parent (Yukpo trouve le vendeur) · Échange = vous donnez votre vieux livre, crédit immédiat ≈ 60 %.",
+        occasion_buy_only_title: "Acheter d'occasion (sans échange)",
+        occasion_buy_only_desc: "Livre d'occasion vendu par un autre parent. Yukpo trouve le vendeur pour vous.",
         occasion_troc_title: "J'échange un de mes anciens livres",
         occasion_troc_done_title: "Échange enregistré ✓",
         occasion_troc_desc: "Photographiez votre vieux livre — crédit immédiat ≈ 60 % de sa valeur sur cette commande.",
@@ -928,8 +930,9 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         decision_troc_desc: 'I have an old book to trade in for an instant credit.',
         // Sub-question shown when "Used" is picked
         occasion_sub_question: 'How do you want to get it used?',
-        occasion_buy_only_title: 'Buy only (no trade)',
-        occasion_buy_only_desc: 'Yukpo finds a used seller for you.',
+        choices_hint: '💡 New = brand-new book at official price · Used = already-used book, sold by another parent (Yukpo finds the seller) · Trade = you give your old book, instant credit ≈ 60%.',
+        occasion_buy_only_title: 'Buy used (no trade)',
+        occasion_buy_only_desc: 'Used book sold by another parent. Yukpo finds the seller for you.',
         occasion_troc_title: 'Trade in one of my old books',
         occasion_troc_done_title: 'Trade saved ✓',
         occasion_troc_desc: 'Photograph your old book — instant credit ≈ 60% of its value on this order.',

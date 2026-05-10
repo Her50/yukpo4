@@ -414,6 +414,9 @@ const RentreeCenterPage: React.FC = () => {
         {/* Liste des articles pour la classe active */}
         {active && itemsForActive.length > 0 && (
           <section className="space-y-2 mt-2">
+            <p className="text-[11px] text-gray-500 leading-snug px-1 mb-1">
+              {t('bourse.rentree.choices_hint')}
+            </p>
             <div className="flex items-center justify-between px-1">
               <h2 className="font-bold text-sm text-gray-800">
                 {t('bourse.rentree.items_for_class', { classe: active.classe })}

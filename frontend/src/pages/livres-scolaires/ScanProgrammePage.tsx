@@ -1072,6 +1072,9 @@ const ScanProgrammePage: React.FC = () => {
       </div>
 
       <div className="px-4 pt-4 pb-36 max-w-2xl mx-auto">
+        <p className="text-[11px] text-gray-500 leading-snug px-1 mb-3">
+          {t('bourse.rentree.choices_hint')}
+        </p>
         {/* Bandeau de vérification post-scan (métadonnées détectées par l'IA) */}
         {detection && (detection.etablissement || detection.ville || detection.session || detection.classe) && (
           <div className="mb-4 bg-white rounded-2xl border border-gray-200 p-4">

@@ -540,17 +540,22 @@ export const EcoleListeScolairePage: React.FC = () => {
         )}
 
         {articles.length > 0 && !loading && (
-          <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-3 py-2 mb-2">
-            <span className="text-xs font-semibold text-gray-700">
-              {articles.filter(a => selected[a.id]).length} / {articles.length} sélectionnés
-            </span>
-            <button
-              onClick={toggleAllSelection}
-              className="text-xs font-bold text-amber-700 active:text-amber-800"
-            >
-              {allSelected ? 'Tout décocher' : 'Tout cocher'}
-            </button>
-          </div>
+          <>
+            <p className="text-[11px] text-gray-500 leading-snug px-1 mb-1">
+              {t('bourse.rentree.choices_hint')}
+            </p>
+            <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-3 py-2 mb-2">
+              <span className="text-xs font-semibold text-gray-700">
+                {articles.filter(a => selected[a.id]).length} / {articles.length} sélectionnés
+              </span>
+              <button
+                onClick={toggleAllSelection}
+                className="text-xs font-bold text-amber-700 active:text-amber-800"
+              >
+                {allSelected ? 'Tout décocher' : 'Tout cocher'}
+              </button>
+            </div>
+          </>
         )}
 
         {articles.map(a => {
