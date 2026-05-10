@@ -131,27 +131,16 @@ function ItemCard({
     return base;
   })();
   return (
-    <div className="px-2.5 py-1.5 border-b border-gray-100 last:border-b-0 bg-white">
-      <div className="flex items-center gap-2">
+    <div className="px-2 py-1 border-b border-gray-100 last:border-b-0 bg-white text-[12px]">
+      <div className="flex items-center gap-1.5">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            {isLivre && (
-              <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">{t('bourse.recap.tag_book')}</span>
-            )}
-            <p className="text-[13px] font-semibold leading-tight truncate text-gray-800" title={item.titre} dir="auto">
-              {item.titre}
-            </p>
-          </div>
+          <p className="font-semibold leading-tight truncate text-gray-800" title={item.titre} dir="auto">
+            {item.titre}
+          </p>
           {(item.auteur || item.editeur) && (
-            <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500 leading-tight" dir="auto">
-              {item.auteur && <span className="truncate max-w-[110px]" title={item.auteur}>{item.auteur}</span>}
-              {item.auteur && item.editeur && <span className="text-gray-300">·</span>}
-              {item.editeur && (
-                <span className="truncate max-w-[110px] text-purple-700" title={t('bourse.recap.editor_title', { name: item.editeur })}>
-                  {item.editeur}
-                </span>
-              )}
-            </div>
+            <p className="text-[10px] text-gray-500 leading-tight truncate" dir="auto">
+              {[item.auteur, item.editeur].filter(Boolean).join(' · ')}
+            </p>
           )}
         </div>
 
@@ -188,21 +177,20 @@ function ItemCard({
         </button>
       </div>
 
-      {/* Toggle Neuf/Occasion (livres) ou Gamme (fournitures) sous-ligne */}
+      {/* Toggle Neuf/Occasion (livres) ou Gamme (fournitures) sous-ligne — réduit */}
       {(isLivre || (isGammeable && item.prixNeuf && item.prixNeuf > 0)) && (
-        <div className="flex items-center gap-2 mt-1 ml-0">
+        <div className="flex items-center gap-2 mt-0.5">
           {isLivre && (
-            <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
-              <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">{t('bourse.recap.state')}</span>
+            <div className="inline-flex bg-gray-100 rounded p-[1px] gap-[1px] items-center">
               <button
                 onClick={() => onUpdateChoix(item.id, 'neuf')}
-                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                  item.choix === 'neuf' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
+                className={`px-1.5 py-px rounded text-[9px] font-bold transition-colors ${
+                  item.choix === 'neuf' ? 'bg-emerald-500 text-white' : 'text-gray-500'
                 }`}>{t('bourse.recap.new')}</button>
               <button
                 onClick={() => onUpdateChoix(item.id, 'occasion')}
-                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                  item.choix === 'occasion' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
+                className={`px-1.5 py-px rounded text-[9px] font-bold transition-colors ${
+                  item.choix === 'occasion' ? 'bg-orange-500 text-white' : 'text-gray-500'
                 }`}>{t('bourse.recap.used')}</button>
             </div>
           )}
@@ -605,17 +593,29 @@ const RecapAchatPage: React.FC = () => {
   const activeEnfant = enfants.find(e => e.id === activeEnfantId);
   const activeItems = activeEnfant ? getItemsForEnfant(activeEnfant.id) : [];
 
-  /* Grouper par type — 'workbook'/'livret' sont normalisés en 'livre' pour
-   *  apparaître dans "Manuels & workbooks" plutôt qu'en fournitures. */
+  /* Grouper par type — toutes les variantes "manuel-like" et "fourniture-like"
+   *  sont ramenées à la catégorie principale pour que la section "Manuels &
+   *  workbooks" apparaisse toujours EN PREMIER (avant cahiers et fournitures). */
   const normalizeType = (t: any): TypeItem => {
-    const raw = String(t ?? '');
-    if (raw === 'workbook' || raw === 'livret') return 'livre';
-    if (raw === 'livre' || raw === 'cahier' || raw === 'fourniture' || raw === 'autre') return raw as TypeItem;
+    const raw = String(t ?? '').toLowerCase();
+    // Tout ce qui ressemble à un livre/manuel scolaire → 'livre'
+    if (['livre', 'workbook', 'livret', 'manuel', 'textbook', 'book'].includes(raw)) return 'livre';
+    if (raw === 'cahier') return 'cahier';
+    // 'accessoire' (règle, calculatrice, etc.) = fourniture côté UX
+    if (['fourniture', 'accessoire', 'supply'].includes(raw)) return 'fourniture';
+    if (raw === 'autre') return 'autre';
     return 'autre';
   };
+  // Ordre figé : Manuels d'abord (la pièce maîtresse de la rentrée),
+  // puis cahiers, fournitures, et enfin un éventuel "Autres".
   const types: TypeItem[] = ['livre', 'cahier', 'fourniture', 'autre'];
+  // Tri intra-section : on stabilise par titre alphabétique pour qu'un même
+  // panier soit affiché identiquement quel que soit l'ordre d'ajout (scan,
+  // suggestions, école partenaire).
+  const sortItems = (a: PanierItem, b: PanierItem) =>
+    (a.titre || '').localeCompare(b.titre || '', undefined, { sensitivity: 'base' });
   const grouped = types
-    .map(t => ({ type: t, items: activeItems.filter(it => normalizeType(it.type) === t) }))
+    .map(t => ({ type: t, items: activeItems.filter(it => normalizeType(it.type) === t).sort(sortItems) }))
     .filter(g => g.items.length > 0);
 
   /* ─── Vue agrégée par rubrique (toutes classes) ───
@@ -665,14 +665,15 @@ const RecapAchatPage: React.FC = () => {
     const byType: Record<TypeItem, Array<typeof buckets extends Map<any, infer V> ? V : never>> = {
       livre: [], cahier: [], fourniture: [], autre: [],
     };
-    const validTypes = new Set<TypeItem>(['livre', 'cahier', 'fourniture', 'autre']);
     for (const v of buckets.values()) {
-      const raw = String(v.sample.type ?? '');
-      let safeType: TypeItem;
-      if (raw === 'workbook' || raw === 'livret') safeType = 'livre';
-      else if (validTypes.has(raw as TypeItem)) safeType = raw as TypeItem;
-      else safeType = 'autre';
+      const safeType = normalizeType(v.sample.type);
       byType[safeType].push(v);
+    }
+    // Tri intra-section alphabétique pour cohérence avec la vue par classe.
+    for (const tk of types) {
+      byType[tk].sort((a, b) =>
+        (a.sample.titre || '').localeCompare(b.sample.titre || '', undefined, { sensitivity: 'base' }),
+      );
     }
     return types
       .map(t => ({ type: t, lignes: byType[t] }))
