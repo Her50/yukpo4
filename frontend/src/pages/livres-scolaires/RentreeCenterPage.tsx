@@ -120,23 +120,59 @@ const RentreeCenterPage: React.FC = () => {
     if (!navigator.geolocation || gps) return;
     navigator.geolocation.getCurrentPosition(
       pos => setGps({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      () => { /* GPS optionnel */ },
+      () => { /* permission refusée au montage : on retentera au clic */ },
       { timeout: 5000, maximumAge: 60000 },
     );
+  }, [gps]);
+
+  /** Demande la position GPS à la demande (au moment du clic "Photographier").
+   *  Si la permission a été refusée au montage, ce 2e appel re-déclenchera
+   *  le prompt navigateur sur la plupart des plateformes. */
+  const requestGpsNow = useCallback((): Promise<{ lat: number; lon: number } | null> => {
+    return new Promise((resolve) => {
+      if (gps) return resolve(gps);
+      if (!navigator.geolocation) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+          setGps(coords);
+          resolve(coords);
+        },
+        () => resolve(null),
+        { timeout: 8000, maximumAge: 60000 },
+      );
+    });
   }, [gps]);
 
   const ensureSession = useCallback(async (): Promise<string | null> => {
     if (sessionId) return sessionId;
     if (sessionCreating || sessionInitRef.current) return null;
+    // ✅ Le backend (POST /api/bourse-livre/v2/sessions) exige un
+    // gps_recuperation non vide. On le demande JIT — si l'utilisateur
+    // refuse, on lui dit clairement pourquoi on ne peut pas continuer.
+    let coords = gps;
+    if (!coords) coords = await requestGpsNow();
+    if (!coords) {
+      toast({
+        title: 'Localisation requise',
+        description: "Yukpo a besoin de votre position pour organiser la récupération du livre. Autorisez la géolocalisation dans votre navigateur puis réessayez.",
+        variant: 'destructive',
+      });
+      return null;
+    }
     sessionInitRef.current = true;
     setSessionCreating(true);
     try {
-      const payload: Record<string, any> = { mode_listing_defaut: 'troc' };
-      if (gps) payload.gps_recuperation = `${gps.lat},${gps.lon}`;
+      const payload: Record<string, any> = {
+        mode_listing_defaut: 'troc',
+        gps_recuperation: `${coords.lat},${coords.lon}`,
+      };
       const res = await apiPost('/api/bourse-livre/v2/sessions', payload);
       const data = await res.json().catch(() => ({}));
-      const newId = data?.session_id || data?.id || data?.data?.session_id || data?.data?.id;
-      if (!res.ok || !newId) throw new Error(data?.error || 'session creation failed');
+      const newId = data?.session_id || data?.id || data?.data?.session_id || data?.data?.id || data?.session?.id;
+      if (!res.ok || !newId) {
+        throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
+      }
       setSessionId(newId);
       return newId;
     } catch (e: any) {
@@ -146,7 +182,7 @@ const RentreeCenterPage: React.FC = () => {
     } finally {
       setSessionCreating(false);
     }
-  }, [gps, sessionId, sessionCreating, toast]);
+  }, [gps, sessionId, sessionCreating, toast, requestGpsNow]);
 
   // ─── Suggestions (modal "ajouter manuellement") ───
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
