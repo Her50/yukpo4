@@ -8733,6 +8733,15 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         ),
     }
 
+    // ✅ 2026-05-10 : Table etablissement_team_invitations (équipe page établissement)
+    match ensure_etablissement_team_invitations(pool).await {
+        Ok(_) => info!("✅ Migration auto: etablissement_team_invitations OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto etablissement_team_invitations: {}",
+            e
+        ),
+    }
+
     // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
     match ensure_delivery_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
@@ -22422,5 +22431,16 @@ pub async fn ensure_programmes_unique_index_fix(pool: &PgPool) -> Result<(), sql
     let sql = include_str!("../../migrations/20260510_002_fix_programmes_unique_index.sql");
     execute_migration_sql_safe(pool, sql).await?;
     info!("✅ Fix unique-index programmes_scolaires OK");
+    Ok(())
+}
+
+/// ✅ 2026-05-10 : Table d'invitations d'équipe pour la page établissement
+/// (manager / editor / viewer).
+/// Migration : 20260510_003_etablissement_team_invitations.sql
+pub async fn ensure_etablissement_team_invitations(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration etablissement_team_invitations...");
+    let sql = include_str!("../../migrations/20260510_003_etablissement_team_invitations.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ Table etablissement_team_invitations OK");
     Ok(())
 }

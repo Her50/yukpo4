@@ -10,6 +10,7 @@ use std::sync::Arc;
 use crate::controllers::bourse_livre_v2_controller;
 use crate::controllers::etablissement_pages_controller;
 use crate::controllers::etablissement_programmes_controller;
+use crate::controllers::etablissement_team_controller;
 use crate::controllers::livres_scolaires_controller;
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -480,6 +481,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/v2/admin/programme-national/import",
             post(etablissement_programmes_controller::import_national_csv)
                 .layer(axum::extract::DefaultBodyLimit::max(10_000_000)),
+        )
+        // ✅ 2026-05-10 : Équipe établissement (invitations + liste)
+        .route(
+            "/api/v2/admin/etablissement/{id}/team/invitations",
+            get(etablissement_team_controller::list_invitations)
+                .post(etablissement_team_controller::create_invitation),
         )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 

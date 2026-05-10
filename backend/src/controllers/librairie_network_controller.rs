@@ -2178,12 +2178,19 @@ pub async fn super_librairie_list_invitations(
 }
 
 /// GET /api/team/invitation-preview/{token} (public)
+///
+/// Cherche d'abord dans la table d'invitations librairie ; si rien n'est trouvé,
+/// fallback sur etablissement_team_invitations. Le client (TeamInvitationAcceptPage)
+/// reçoit un champ `source` lui indiquant quel dashboard ouvrir après acceptation.
 pub async fn preview_invitation(
     State(state): State<Arc<AppState>>,
     Path(token): Path<String>,
 ) -> AppResult<impl IntoResponse> {
     let _ = ensure_invitations_table(&state.pg).await;
-    let inv = sqlx::query(
+    use sqlx::Row;
+
+    // 1. Tente librairie
+    if let Some(inv) = sqlx::query(
         "SELECT i.role, i.expires_at, i.accepted_at, lp.nom AS librairie_nom \
          FROM libraire_team_invitations i \
          LEFT JOIN librairie_partners lp ON lp.id = i.librairie_id \
@@ -2193,16 +2200,40 @@ pub async fn preview_invitation(
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+    {
+        let _ = sqlx::query("UPDATE libraire_team_invitations SET opened_at = COALESCE(opened_at, NOW()) WHERE invitation_token = $1")
+            .bind(&token).execute(&state.pg).await;
+        return Ok(Json(serde_json::json!({
+            "success": true,
+            "source": "librairie",
+            "role": inv.try_get::<Option<String>, _>("role").unwrap_or(None),
+            "librairie_nom": inv.try_get::<Option<String>, _>("librairie_nom").unwrap_or(None),
+            "already_accepted": inv.try_get::<Option<chrono::DateTime<Utc>>, _>("accepted_at").ok().flatten().is_some(),
+            "expired": inv.try_get::<chrono::DateTime<Utc>, _>("expires_at").map(|t| t < Utc::now()).unwrap_or(true),
+        })));
+    }
+
+    // 2. Fallback établissement
+    let inv = sqlx::query(
+        "SELECT i.role, i.expires_at, i.accepted_at, e.nom_etablissement AS etablissement_nom \
+         FROM etablissement_team_invitations i \
+         LEFT JOIN etablissements_scolaires e ON e.id = i.etablissement_id \
+         WHERE i.invitation_token = $1",
+    )
+    .bind(&token)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Invitation introuvable".to_string()))?;
 
-    let _ = sqlx::query("UPDATE libraire_team_invitations SET opened_at = COALESCE(opened_at, NOW()) WHERE invitation_token = $1")
+    let _ = sqlx::query("UPDATE etablissement_team_invitations SET opened_at = COALESCE(opened_at, NOW()) WHERE invitation_token = $1")
         .bind(&token).execute(&state.pg).await;
 
-    use sqlx::Row;
     Ok(Json(serde_json::json!({
         "success": true,
+        "source": "etablissement",
         "role": inv.try_get::<Option<String>, _>("role").unwrap_or(None),
-        "librairie_nom": inv.try_get::<Option<String>, _>("librairie_nom").unwrap_or(None),
+        "etablissement_nom": inv.try_get::<Option<String>, _>("etablissement_nom").unwrap_or(None),
         "already_accepted": inv.try_get::<Option<chrono::DateTime<Utc>>, _>("accepted_at").ok().flatten().is_some(),
         "expired": inv.try_get::<chrono::DateTime<Utc>, _>("expires_at").map(|t| t < Utc::now()).unwrap_or(true),
     })))
@@ -2214,23 +2245,68 @@ pub struct AcceptInvitationPayload {
 }
 
 /// POST /api/team/invitation-accept
+///
+/// Cherche le token dans `libraire_team_invitations` ET
+/// `etablissement_team_invitations`. La réponse inclut `source` pour que le
+/// client redirige vers le bon dashboard (`/librairie` ou `/etablissement-portal`).
 pub async fn accept_team_invitation(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<AcceptInvitationPayload>,
 ) -> AppResult<impl IntoResponse> {
     let _ = ensure_invitations_table(&state.pg).await;
-    let inv = sqlx::query(
+    use sqlx::Row;
+
+    // 1. Tentative librairie
+    if let Some(inv) = sqlx::query(
         "SELECT id, librairie_id, role, accepted_at, expires_at FROM libraire_team_invitations WHERE invitation_token = $1"
+    )
+    .bind(&payload.token).fetch_optional(&state.pg).await
+    .map_err(|e| AppError::Internal(format!("Erreur token: {}", e)))?
+    {
+        let inv_id: i32 = inv.try_get("id").unwrap_or(0);
+        let librairie_id: i32 = inv.try_get("librairie_id").unwrap_or(0);
+        let role_str: String = inv.try_get("role").unwrap_or_else(|_| "preparer".to_string());
+        let already: Option<chrono::DateTime<Utc>> = inv.try_get("accepted_at").ok().flatten();
+        let expires: chrono::DateTime<Utc> = inv.try_get("expires_at").unwrap_or_else(|_| Utc::now());
+
+        if already.is_some() {
+            return Err(AppError::BadRequest("Invitation déjà acceptée".to_string()));
+        }
+        if expires < Utc::now() {
+            return Err(AppError::BadRequest("Invitation expirée".to_string()));
+        }
+
+        sqlx::query("UPDATE libraire_team_invitations SET accepted_at = NOW(), accepted_user_id = $1 WHERE id = $2")
+            .bind(user_id).bind(inv_id).execute(&state.pg).await
+            .map_err(|e| AppError::Internal(format!("Erreur update: {}", e)))?;
+
+        let _ = sqlx::query(
+            "INSERT INTO libraire_team_members (librairie_id, user_id, role, is_active, created_at, updated_at) \
+             VALUES ($1, $2, $3, true, NOW(), NOW()) \
+             ON CONFLICT (librairie_id, user_id) DO UPDATE SET role = EXCLUDED.role, is_active = true, updated_at = NOW()"
+        ).bind(librairie_id).bind(user_id).bind(&role_str).execute(&state.pg).await;
+
+        return Ok(Json(serde_json::json!({
+            "success": true,
+            "source": "librairie",
+            "message": "Bienvenue dans l'équipe Yukpo Librairie !",
+            "librairie_id": librairie_id,
+            "role": role_str,
+        })));
+    }
+
+    // 2. Fallback établissement
+    let inv = sqlx::query(
+        "SELECT id, etablissement_id, role, accepted_at, expires_at FROM etablissement_team_invitations WHERE invitation_token = $1"
     )
     .bind(&payload.token).fetch_optional(&state.pg).await
     .map_err(|e| AppError::Internal(format!("Erreur token: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Invitation introuvable".to_string()))?;
 
-    use sqlx::Row;
     let inv_id: i32 = inv.try_get("id").unwrap_or(0);
-    let librairie_id: i32 = inv.try_get("librairie_id").unwrap_or(0);
-    let role_str: String = inv.try_get("role").unwrap_or_else(|_| "preparer".to_string());
+    let etablissement_id: i32 = inv.try_get("etablissement_id").unwrap_or(0);
+    let role_str: String = inv.try_get("role").unwrap_or_else(|_| "editor".to_string());
     let already: Option<chrono::DateTime<Utc>> = inv.try_get("accepted_at").ok().flatten();
     let expires: chrono::DateTime<Utc> = inv.try_get("expires_at").unwrap_or_else(|_| Utc::now());
 
@@ -2241,20 +2317,15 @@ pub async fn accept_team_invitation(
         return Err(AppError::BadRequest("Invitation expirée".to_string()));
     }
 
-    sqlx::query("UPDATE libraire_team_invitations SET accepted_at = NOW(), accepted_user_id = $1 WHERE id = $2")
+    sqlx::query("UPDATE etablissement_team_invitations SET accepted_at = NOW(), accepted_user_id = $1 WHERE id = $2")
         .bind(user_id).bind(inv_id).execute(&state.pg).await
         .map_err(|e| AppError::Internal(format!("Erreur update: {}", e)))?;
 
-    let _ = sqlx::query(
-        "INSERT INTO libraire_team_members (librairie_id, user_id, role, is_active, created_at, updated_at) \
-         VALUES ($1, $2, $3, true, NOW(), NOW()) \
-         ON CONFLICT (librairie_id, user_id) DO UPDATE SET role = EXCLUDED.role, is_active = true, updated_at = NOW()"
-    ).bind(librairie_id).bind(user_id).bind(&role_str).execute(&state.pg).await;
-
     Ok(Json(serde_json::json!({
         "success": true,
-        "message": "Bienvenue dans l'équipe Yukpo Librairie !",
-        "librairie_id": librairie_id,
+        "source": "etablissement",
+        "message": "Bienvenue dans l'équipe de l'établissement !",
+        "etablissement_id": etablissement_id,
         "role": role_str,
     })))
 }

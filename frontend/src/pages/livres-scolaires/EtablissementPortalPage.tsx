@@ -262,6 +262,25 @@ export const EtablissementPortalHomePage: React.FC = () => {
             Nouvel établissement de démo (admin)
           </button>
         )}
+
+        {/* Outils admin Yukpo */}
+        {isYukpoAdmin && (
+          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-3">
+            <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wide mb-2">
+              Outils admin Yukpo
+            </p>
+            <button
+              onClick={() => navigate('/admin-yukpo/programme-national/import')}
+              className="w-full inline-flex items-center justify-between gap-2 px-4 py-2.5 bg-white border border-amber-200 text-amber-800 text-xs font-semibold rounded-xl"
+            >
+              <span className="flex items-center gap-2">
+                <Upload className="w-3.5 h-3.5" />
+                Importer un programme national (CSV)
+              </span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -503,6 +522,9 @@ export const EtablissementDashboardPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Équipe */}
+        <TeamSection etabId={etabId} etabNom={etab.nom_etablissement} />
 
         {/* Liste des 10 blocs CMS */}
         <div className="space-y-2">
@@ -1233,6 +1255,299 @@ const EtablissementConfigModal: React.FC<{
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Enregistrer
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// 5. Section Équipe — invitations WhatsApp avec tracking
+// ============================================================================
+
+interface TeamInvitation {
+  id: number;
+  token: string;
+  invitation_path: string;
+  role: string | null;
+  telephone: string | null;
+  nom_affiche: string | null;
+  status: 'pending' | 'opened' | 'accepted';
+  opened_at: string | null;
+  accepted_at: string | null;
+  accepted_email: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+}
+
+const ROLES_INVITATION: { id: 'manager' | 'editor' | 'viewer'; label: string; desc: string }[] = [
+  { id: 'manager', label: 'Gestionnaire', desc: 'Tous les droits sauf inviter d\'autres gestionnaires' },
+  { id: 'editor',  label: 'Éditeur de contenu', desc: 'Peut éditer les blocs et la liste scolaire' },
+  { id: 'viewer',  label: 'Consultation',  desc: 'Voit les statistiques sans pouvoir modifier' },
+];
+
+const TeamSection: React.FC<{ etabId: string; etabNom: string }> = ({ etabId, etabNom }) => {
+  const { toast } = useToast();
+  const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showInvite, setShowInvite] = useState(false);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await apiGet(`/api/v2/admin/etablissement/${etabId}/team/invitations`);
+      const d = await res.json().catch(() => ({}));
+      setInvitations(Array.isArray(d?.invitations) ? d.invitations : []);
+    } finally {
+      setLoading(false);
+    }
+  }, [etabId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const accepted = invitations.filter(i => i.status === 'accepted');
+  const pending = invitations.filter(i => i.status !== 'accepted');
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+          Équipe ({accepted.length} membre{accepted.length > 1 ? 's' : ''})
+        </p>
+        <button
+          onClick={() => setShowInvite(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Inviter un membre
+        </button>
+      </div>
+
+      {loading && <p className="text-xs text-gray-400 text-center py-3">Chargement…</p>}
+
+      {!loading && invitations.length === 0 && (
+        <p className="text-xs text-gray-500 leading-relaxed">
+          Aucune invitation envoyée. Cliquez sur « Inviter un membre » pour partager
+          un lien WhatsApp avec un collaborateur (gestionnaire, éditeur ou consultation).
+        </p>
+      )}
+
+      {!loading && invitations.length > 0 && (
+        <div className="space-y-2">
+          {invitations.map(inv => {
+            const link = `${window.location.origin}${inv.invitation_path}`;
+            const roleLabel = ROLES_INVITATION.find(r => r.id === inv.role)?.label || inv.role || '—';
+            const statusBadge =
+              inv.status === 'accepted' ? { color: 'bg-emerald-100 text-emerald-800', text: '✓ Accepté' }
+              : inv.status === 'opened' ? { color: 'bg-blue-100 text-blue-800', text: '👁 Ouvert' }
+              : { color: 'bg-amber-100 text-amber-800', text: '⏳ En attente' };
+            return (
+              <div key={inv.id} className="flex items-start gap-2 bg-gray-50 rounded-xl p-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {inv.nom_affiche || inv.accepted_email || inv.telephone || 'Sans nom'}
+                    </p>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${statusBadge.color}`}>
+                      {statusBadge.text}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-0.5">{roleLabel}</p>
+                  {inv.status !== 'accepted' && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(link);
+                        toast({ title: 'Lien copié' });
+                      }}
+                      className="mt-1 text-[11px] text-emerald-700 font-semibold underline truncate max-w-full text-left"
+                    >
+                      Copier le lien d'invitation
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {pending.length > 0 && (
+            <p className="text-[10px] text-gray-400 italic mt-1">
+              Les liens en attente expirent au bout de 30 jours.
+            </p>
+          )}
+        </div>
+      )}
+
+      {showInvite && (
+        <InviteTeamMemberModal
+          etabId={etabId}
+          etabNom={etabNom}
+          onClose={() => setShowInvite(false)}
+          onCreated={() => { setShowInvite(false); reload(); }}
+        />
+      )}
+    </div>
+  );
+};
+
+const InviteTeamMemberModal: React.FC<{
+  etabId: string;
+  etabNom: string;
+  onClose: () => void;
+  onCreated: () => void;
+}> = ({ etabId, etabNom: _etabNom, onClose, onCreated }) => {
+  const { toast } = useToast();
+  const [role, setRole] = useState<'manager' | 'editor' | 'viewer'>('editor');
+  const [nom, setNom] = useState('');
+  const [tel, setTel] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [created, setCreated] = useState<{ whatsapp_url: string; invitation_path: string } | null>(null);
+
+  const submit = async () => {
+    setSubmitting(true);
+    try {
+      const res = await apiPost(`/api/v2/admin/etablissement/${etabId}/team/invitations`, {
+        role,
+        nom_affiche: nom.trim() || null,
+        telephone: tel.trim() || null,
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.message || `HTTP ${res.status}`);
+      setCreated({
+        whatsapp_url: d.whatsapp_url || '',
+        invitation_path: d.invitation_path || '',
+      });
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+      <div className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+          <Plus className="w-5 h-5 text-emerald-600" />
+          <p className="font-bold text-gray-900 flex-1">Inviter un membre d'équipe</p>
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {!created && (
+            <>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                  Nom affiché (optionnel)
+                </label>
+                <input
+                  value={nom}
+                  onChange={e => setNom(e.target.value)}
+                  placeholder="Ex: Mme Mballa"
+                  className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                  Numéro WhatsApp (optionnel)
+                </label>
+                <input
+                  type="tel"
+                  value={tel}
+                  onChange={e => setTel(e.target.value)}
+                  placeholder="+237 6XX XX XX XX"
+                  className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+                />
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Sert à pré-remplir le message WhatsApp à envoyer.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+                  Rôle *
+                </label>
+                <div className="mt-2 space-y-2">
+                  {ROLES_INVITATION.map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => setRole(r.id)}
+                      className={`w-full text-left p-3 rounded-xl border-2 transition-colors ${
+                        role === r.id
+                          ? 'border-emerald-500 bg-emerald-50'
+                          : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {role === r.id && <Check className="w-3.5 h-3.5 text-emerald-700" />}
+                        <p className="text-sm font-semibold text-gray-900">{r.label}</p>
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-0.5">{r.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {created && (
+            <div className="space-y-3">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <p className="text-sm font-bold text-emerald-800 mb-1">Invitation créée ✓</p>
+                <p className="text-xs text-emerald-700 leading-relaxed">
+                  Partagez le lien suivant via WhatsApp ou tout autre canal.
+                  L'invité créera son compte (s'il n'en a pas) puis acceptera.
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3 break-all">
+                <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Lien d'invitation</p>
+                <p className="text-xs text-gray-800 font-mono">
+                  {window.location.origin}{created.invitation_path}
+                </p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}${created.invitation_path}`);
+                  }}
+                  className="mt-2 text-xs font-semibold text-emerald-700 underline"
+                >
+                  Copier le lien
+                </button>
+              </div>
+              {created.whatsapp_url && (
+                <a
+                  href={created.whatsapp_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full block text-center py-3 bg-green-600 text-white rounded-xl font-bold text-sm"
+                >
+                  📱 Ouvrir WhatsApp avec le message pré-rempli
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="p-5 sticky bottom-0 bg-white border-t border-gray-100 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold">
+            {created ? 'Fermer' : 'Annuler'}
+          </button>
+          {!created && (
+            <button
+              onClick={submit}
+              disabled={submitting}
+              className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              Créer l'invitation
+            </button>
+          )}
+          {created && (
+            <button onClick={onCreated} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold">
+              Terminé
+            </button>
+          )}
         </div>
       </div>
     </div>
