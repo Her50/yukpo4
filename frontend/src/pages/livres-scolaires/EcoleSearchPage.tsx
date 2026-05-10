@@ -9,6 +9,7 @@ import { apiGet } from '../../services/apiService';
 interface EcoleSummary {
   id: number;
   nom_etablissement: string;
+  nom_abrege: string | null;
   slug: string | null;
   ville: string | null;
   quartier: string | null;
@@ -138,6 +139,11 @@ const EcoleSearchPage: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">
                     {ecole.nom_etablissement}
+                    {ecole.nom_abrege && (
+                      <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 rounded-full px-1.5 py-0.5 align-middle">
+                        {ecole.nom_abrege}
+                      </span>
+                    )}
                   </p>
                   {(ecole.quartier || ecole.ville) && (
                     <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">

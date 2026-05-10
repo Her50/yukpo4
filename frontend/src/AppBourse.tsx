@@ -41,6 +41,7 @@ import {
   EtablissementPortalHomePage,
   EtablissementDashboardPage,
 } from './pages/livres-scolaires/EtablissementPortalPage';
+import EtablissementListeScolairePage from './pages/livres-scolaires/EtablissementListeScolairePage';
 import TeamInvitationAcceptPage from './pages/livres-scolaires/TeamInvitationAcceptPage';
 
 // Troc
@@ -141,6 +142,7 @@ function AppBourse() {
               {/* Côté admin établissement (login requis) */}
               <Route path="/etablissement-portal" element={<BourseLayout><RequireAuth><EtablissementPortalHomePage /></RequireAuth></BourseLayout>} />
               <Route path="/etablissement-portal/:etabId" element={<BourseLayout><RequireAuth><EtablissementDashboardPage /></RequireAuth></BourseLayout>} />
+              <Route path="/etablissement-portal/:etabId/liste-scolaire" element={<BourseLayout><RequireAuth><EtablissementListeScolairePage /></RequireAuth></BourseLayout>} />
 
               {/* Acceptation d'invitation d'équipe (lien WhatsApp) */}
               <Route path="/team/accept" element={<TeamInvitationAcceptPage />} />

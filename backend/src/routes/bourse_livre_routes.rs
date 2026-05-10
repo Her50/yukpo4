@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use crate::controllers::bourse_livre_v2_controller;
 use crate::controllers::etablissement_pages_controller;
+use crate::controllers::etablissement_programmes_controller;
 use crate::controllers::livres_scolaires_controller;
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -448,6 +449,31 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/v2/admin/etablissement/{id}/ia-extract",
             post(etablissement_pages_controller::ia_extract_etablissement)
                 .layer(axum::extract::DefaultBodyLimit::max(50_000_000)),
+        )
+        // ✅ 2026-05-10 : Configuration étendue (nom_abrege/systeme/cycles)
+        .route(
+            "/api/v2/admin/etablissement/{id}/config",
+            axum::routing::put(etablissement_programmes_controller::update_config),
+        )
+        // ✅ 2026-05-10 : Liste scolaire — sources de préchargement
+        .route(
+            "/api/v2/admin/etablissement/{id}/programmes/preload-sources",
+            get(etablissement_programmes_controller::preload_sources),
+        )
+        .route(
+            "/api/v2/admin/etablissement/{id}/programmes/preload",
+            post(etablissement_programmes_controller::preload),
+        )
+        // ✅ 2026-05-10 : Liste scolaire — CRUD articles
+        .route(
+            "/api/v2/admin/etablissement/{id}/programmes",
+            get(etablissement_programmes_controller::list_programmes)
+                .post(etablissement_programmes_controller::create_article),
+        )
+        .route(
+            "/api/v2/admin/etablissement/{id}/programmes/{prog_id}",
+            patch(etablissement_programmes_controller::patch_article)
+                .delete(etablissement_programmes_controller::delete_article),
         )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 

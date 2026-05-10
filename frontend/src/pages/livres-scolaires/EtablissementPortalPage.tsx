@@ -6,17 +6,19 @@
 // consulter les statistiques d'audience.
 
 import {
-  ArrowLeft, BarChart3, Bus, Calendar, Check, ChevronRight, Coffee, Copy, Edit2, ExternalLink,
-  FileText, GraduationCap, Home as HomeIcon, Info, Loader2, LogOut, Megaphone,
-  Phone, Plus, Save, School, Shirt, ShoppingCart, Sparkles, Trophy, Upload, X,
+  ArrowLeft, BarChart3, BookOpen, Bus, Calendar, Camera, Check, ChevronRight, Coffee, Copy, Edit2,
+  ExternalLink, FileText, GraduationCap, Home as HomeIcon, Info, Loader2, LogOut, Megaphone,
+  Paperclip, Phone, Plus, Save, School, Settings, Shirt, ShoppingCart, Sparkles, Trophy, Upload, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/use-toast';
 import { isGuestAccount } from '../../hooks/useGuestAuth';
 import { apiGet, apiPost, apiPut } from '../../services/apiService';
+import { CYCLES, CycleId, SystemeScolaireDB } from '../../data/etablissementSetup';
+import { LISTE_PAYS_UNIQUES, PaysCode } from '../../data/schoolSystems';
 
 const TYPES_BLOCS = [
   'inscription', 'transport', 'cantine', 'perisco', 'internat',
@@ -39,10 +41,14 @@ const TYPE_ICONS: Record<string, any> = {
 interface MyEtab {
   id: number;
   nom_etablissement: string;
+  nom_abrege?: string | null;
   slug: string | null;
   type_etablissement: string | null;
+  pays?: string | null;
   ville: string | null;
   quartier: string | null;
+  systeme_scolaire?: SystemeScolaireDB | null;
+  cycles_offerts?: string[];
   logo_url: string | null;
   banniere_url: string | null;
   page_status: string;
@@ -277,6 +283,7 @@ interface BlocCMS {
 export const EtablissementDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { etabId = '' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
   const { toast } = useToast();
   const [etab, setEtab] = useState<MyEtab | null>(null);
@@ -285,6 +292,7 @@ export const EtablissementDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editingType, setEditingType] = useState<string | null>(null);
   const [showIaUpload, setShowIaUpload] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -309,6 +317,21 @@ export const EtablissementDashboardPage: React.FC = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Auto-ouverture de la modale config / IA depuis un query param
+  // (utilisé par la page Liste scolaire pour orienter vers la config).
+  useEffect(() => {
+    if (searchParams.get('config') === 'open') {
+      setShowConfig(true);
+      searchParams.delete('config');
+      setSearchParams(searchParams, { replace: true });
+    }
+    if (searchParams.get('ia') === 'open') {
+      setShowIaUpload(true);
+      searchParams.delete('ia');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const publier = async () => {
     try {
@@ -362,6 +385,14 @@ export const EtablissementDashboardPage: React.FC = () => {
         <h1 className="text-base font-bold text-gray-900 truncate flex-1 min-w-0">
           {etab.nom_etablissement}
         </h1>
+        <button
+          onClick={() => setShowConfig(true)}
+          className="p-2 rounded-full hover:bg-gray-100 shrink-0"
+          aria-label="Configuration"
+          title="Configuration de l'établissement"
+        >
+          <Settings className="w-5 h-5 text-gray-600" />
+        </button>
         <span
           className={`text-[10px] px-2 py-1 rounded-full font-semibold whitespace-nowrap shrink-0 ${
             etab.page_status === 'published'
@@ -412,6 +443,23 @@ export const EtablissementDashboardPage: React.FC = () => {
             </button>
           )}
         </div>
+
+        {/* CTA Liste scolaire — gestion des programmes par classe */}
+        <button
+          onClick={() => navigate(`/etablissement-portal/${etabId}/liste-scolaire`)}
+          className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-2xl shadow-md flex items-center gap-3 active:from-emerald-700 active:to-teal-700"
+        >
+          <div className="w-11 h-11 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+            <BookOpen className="w-6 h-6" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="font-bold text-sm">Liste scolaire</p>
+            <p className="text-xs text-emerald-50 mt-0.5 leading-relaxed">
+              Configurer les livres, cahiers et fournitures par classe
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5" />
+        </button>
 
         {/* CTA IA — pré-remplissage automatique des blocs */}
         <button
@@ -515,6 +563,15 @@ export const EtablissementDashboardPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* Modal configuration établissement */}
+      {showConfig && etab && (
+        <EtablissementConfigModal
+          etab={etab}
+          onClose={() => setShowConfig(false)}
+          onSaved={() => { setShowConfig(false); load(); }}
+        />
+      )}
     </div>
   );
 };
@@ -532,12 +589,18 @@ const IaUploadModal: React.FC<{
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const fileRef = React.useRef<HTMLInputElement>(null);
 
-  const handleFiles = (list: FileList | null) => {
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  const galleryInputRef = React.useRef<HTMLInputElement>(null);
+  const documentInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFiles = (list: FileList | null, append = true) => {
     if (!list) return;
-    const arr = Array.from(list).slice(0, 12);
-    setFiles(arr);
+    const arr = Array.from(list);
+    setFiles(prev => {
+      const merged = append ? [...prev, ...arr] : arr;
+      return merged.slice(0, 12);
+    });
   };
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -623,26 +686,49 @@ const IaUploadModal: React.FC<{
 
           {!result && (
             <>
-              <div
-                onClick={() => fileRef.current?.click()}
-                className="border-2 border-dashed border-violet-300 rounded-2xl p-6 text-center cursor-pointer hover:bg-violet-50"
-              >
-                <Upload className="w-10 h-10 text-violet-400 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-gray-700">
-                  {t('etabAdmin.ia.upload_label')}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {t('etabAdmin.ia.upload_help')}
-                </p>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  multiple
-                  accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
-                  className="hidden"
-                  onChange={(e) => handleFiles(e.target.files)}
-                />
+              {/* Trois sources d'import explicites — évite que le navigateur mobile
+                  force la caméra par défaut quand `accept` mêle image/* et autres types */}
+              <div className="grid grid-cols-3 gap-2">
+                <label className="flex flex-col items-center gap-1.5 py-4 bg-white border-2 border-dashed border-violet-300 rounded-2xl cursor-pointer active:bg-violet-50 text-center">
+                  <Camera className="w-5 h-5 text-violet-600" />
+                  <span className="text-xs text-violet-700 font-semibold">Caméra</span>
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
+                  />
+                </label>
+                <label className="flex flex-col items-center gap-1.5 py-4 bg-white border-2 border-dashed border-blue-300 rounded-2xl cursor-pointer active:bg-blue-50 text-center">
+                  <Upload className="w-5 h-5 text-blue-600" />
+                  <span className="text-xs text-blue-700 font-semibold">Galerie</span>
+                  <input
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
+                  />
+                </label>
+                <label className="flex flex-col items-center gap-1.5 py-4 bg-white border-2 border-dashed border-fuchsia-300 rounded-2xl cursor-pointer active:bg-fuchsia-50 text-center">
+                  <Paperclip className="w-5 h-5 text-fuchsia-600" />
+                  <span className="text-xs text-fuchsia-700 font-semibold">PDF / Word / Excel</span>
+                  <input
+                    ref={documentInputRef}
+                    type="file"
+                    accept="application/pdf,.pdf,application/msword,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,application/vnd.ms-excel,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx"
+                    multiple
+                    className="hidden"
+                    onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
+                  />
+                </label>
               </div>
+              <p className="text-[11px] text-gray-500 text-center -mt-1">
+                {t('etabAdmin.ia.upload_help')}
+              </p>
 
               {files.length > 0 && (
                 <div className="space-y-2">
@@ -940,6 +1026,212 @@ const BlocEditModal: React.FC<{
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {t('etabAdmin.blocs.save')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// 4. Modale de configuration de l'établissement
+//    nom_etablissement, nom_abrege, pays, systeme_scolaire, cycles_offerts
+// ============================================================================
+
+const SYSTEMES: { id: SystemeScolaireDB; label: string; emoji: string }[] = [
+  { id: 'francophone', label: 'Francophone',          emoji: '🇫🇷' },
+  { id: 'anglophone',  label: 'Anglophone',           emoji: '🇬🇧' },
+  { id: 'bilingue',    label: 'Bilingue (FR + EN)',   emoji: '🌍' },
+];
+
+const EtablissementConfigModal: React.FC<{
+  etab: MyEtab;
+  onClose: () => void;
+  onSaved: () => void;
+}> = ({ etab, onClose, onSaved }) => {
+  const { toast } = useToast();
+  const [nom, setNom] = useState(etab.nom_etablissement || '');
+  const [nomAbrege, setNomAbrege] = useState(etab.nom_abrege || '');
+  const [pays, setPays] = useState<PaysCode>((etab.pays || 'CM') as PaysCode);
+  const [systeme, setSysteme] = useState<SystemeScolaireDB | null>(
+    (etab.systeme_scolaire as SystemeScolaireDB) || null,
+  );
+  const [cycles, setCycles] = useState<Set<CycleId>>(
+    new Set((etab.cycles_offerts || []) as CycleId[]),
+  );
+  const [ville, setVille] = useState(etab.ville || '');
+  const [quartier, setQuartier] = useState(etab.quartier || '');
+  const [saving, setSaving] = useState(false);
+
+  const toggleCycle = (id: CycleId) => {
+    setCycles(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+
+  const submit = async () => {
+    if (!nom.trim()) {
+      toast({ title: 'Nom requis', variant: 'destructive' });
+      return;
+    }
+    if (!systeme) {
+      toast({ title: 'Système scolaire requis', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await apiPut(`/api/v2/admin/etablissement/${etab.id}/config`, {
+        nom_etablissement: nom.trim(),
+        nom_abrege: nomAbrege.trim() || null,
+        pays,
+        ville: ville.trim() || null,
+        quartier: quartier.trim() || null,
+        systeme_scolaire: systeme,
+        cycles_offerts: Array.from(cycles),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.message || `HTTP ${res.status}`);
+      toast({ title: 'Configuration enregistrée' });
+      onSaved();
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+      <div className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+          <Settings className="w-5 h-5 text-emerald-600" />
+          <p className="font-bold text-gray-900 flex-1">Configuration de l'établissement</p>
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Nom + Nom abrégé */}
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Nom complet *</label>
+            <input
+              value={nom}
+              onChange={e => setNom(e.target.value)}
+              placeholder="Collège Bilingue La Gaieté"
+              className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+              Nom abrégé (sigle / forme courte populaire)
+            </label>
+            <input
+              value={nomAbrege}
+              onChange={e => setNomAbrege(e.target.value)}
+              placeholder="CBLG, ENAM, Vogt, Sainte-Thérèse…"
+              className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+            />
+            <p className="mt-1 text-[11px] text-gray-500">
+              Permet aux parents de retrouver votre école par son sigle dans la recherche.
+            </p>
+          </div>
+
+          {/* Pays */}
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Pays *</label>
+            <select
+              value={pays}
+              onChange={e => setPays(e.target.value as PaysCode)}
+              className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+            >
+              {LISTE_PAYS_UNIQUES.map(p => (
+                <option key={p.code} value={p.code}>{p.emoji} {p.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Ville + Quartier */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Ville</label>
+              <input
+                value={ville}
+                onChange={e => setVille(e.target.value)}
+                className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Quartier</label>
+              <input
+                value={quartier}
+                onChange={e => setQuartier(e.target.value)}
+                className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Système scolaire */}
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Système scolaire *</label>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {SYSTEMES.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => setSysteme(s.id)}
+                  className={`py-3 px-2 rounded-xl text-xs font-semibold border-2 transition-colors ${
+                    systeme === s.id
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+                      : 'border-gray-200 bg-white text-gray-700'
+                  }`}
+                >
+                  <div className="text-lg mb-1">{s.emoji}</div>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cycles offerts */}
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+              Cycles offerts *
+            </label>
+            <p className="mt-1 text-[11px] text-gray-500 mb-2">
+              Sélectionnez tous les niveaux dispensés par votre établissement.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {CYCLES.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => toggleCycle(c.id)}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-semibold border-2 text-left ${
+                    cycles.has(c.id)
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+                      : 'border-gray-200 bg-white text-gray-600'
+                  }`}
+                >
+                  {cycles.has(c.id) && <Check className="w-3 h-3 inline mr-1" />}
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5 sticky bottom-0 bg-white border-t border-gray-100 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold">
+            Annuler
+          </button>
+          <button
+            onClick={submit}
+            disabled={saving || !nom.trim() || !systeme || cycles.size === 0}
+            className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Enregistrer
           </button>
         </div>
       </div>

@@ -1,0 +1,727 @@
+// ✅ Page admin — Liste scolaire d'un établissement
+// Date : 2026-05-10
+//
+// Permet au directeur d'école de configurer la liste scolaire (livres,
+// cahiers, fournitures, accessoires) par classe et par année.
+//
+// Fonctionnalités clés :
+//  - Préchargement intelligent : programme national officiel, année précédente
+//    de mon établissement, ou copie depuis un établissement similaire.
+//  - Édition par classe (filtrée par les cycles offerts par l'établissement,
+//    cf. config systeme_scolaire + cycles_offerts).
+//  - Vue tabulée par type d'article (livres / cahiers / fournitures).
+//
+import {
+  ArrowLeft, Book, Copy, Edit2, FileText, GraduationCap, Loader2, NotebookPen,
+  Package, Plus, RefreshCw, School, Sparkles, Trash2, X,
+} from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useToast } from '../../hooks/use-toast';
+import { apiDelete, apiGet, apiPatch, apiPost } from '../../services/apiService';
+import {
+  CycleId, SystemeScolaireDB,
+  filtrerNiveauxParCycles, getSystemesPourEtablissement,
+} from '../../data/etablissementSetup';
+import {
+  Classe, Niveau, PaysCode, SystemeScolaire,
+} from '../../data/schoolSystems';
+
+const TYPES_ARTICLE = [
+  { id: 'livre',      label: 'Livres',       Icon: Book },
+  { id: 'workbook',   label: 'Workbooks',    Icon: NotebookPen },
+  { id: 'cahier',     label: 'Cahiers',      Icon: FileText },
+  { id: 'fourniture', label: 'Fournitures',  Icon: Package },
+  { id: 'accessoire', label: 'Accessoires',  Icon: GraduationCap },
+] as const;
+
+type TypeArticle = typeof TYPES_ARTICLE[number]['id'];
+
+interface Article {
+  id: number;
+  niveau: string;
+  classe: string;
+  matiere: string;
+  titre_livre: string;
+  auteur_livre: string | null;
+  editeur_livre: string | null;
+  isbn_livre: string | null;
+  annee_scolaire: string | null;
+  est_obligatoire: boolean | null;
+  prix_officiel: number | null;
+  devise: string | null;
+  type_article: TypeArticle;
+  quantite_defaut: number;
+  systeme_educatif: string;
+  pays: string | null;
+}
+
+interface EtabConfig {
+  id: number;
+  nom_etablissement: string;
+  nom_abrege: string | null;
+  pays: string | null;
+  systeme_scolaire: SystemeScolaireDB | null;
+  cycles_offerts: string[];
+}
+
+interface PreloadSources {
+  previous_years: string[];
+  national: { etablissement_id: number; nom_etablissement: string; pays: string; nb_articles: number } | null;
+  similar_etabs: Array<{
+    id: number; nom_etablissement: string; nom_abrege: string | null;
+    ville: string | null; pays: string; systeme_scolaire: string | null; nb_articles: number;
+  }>;
+}
+
+const ANNEES_DISPO = (() => {
+  const now = new Date();
+  const y = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  return [
+    `${y - 1}-${y}`,
+    `${y}-${y + 1}`,
+    `${y + 1}-${y + 2}`,
+  ];
+})();
+const ANNEE_DEFAUT = ANNEES_DISPO[1];
+
+const EtablissementListeScolairePage: React.FC = () => {
+  const navigate = useNavigate();
+  const { etabId = '' } = useParams();
+  const { toast } = useToast();
+
+  const [etab, setEtab] = useState<EtabConfig | null>(null);
+  const [annee, setAnnee] = useState(ANNEE_DEFAUT);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [sources, setSources] = useState<PreloadSources | null>(null);
+  const [activeClasseFull, setActiveClasseFull] = useState<string | null>(null);
+  const [activeBilingue, setActiveBilingue] = useState<'fr' | 'en'>('fr');
+  const [loading, setLoading] = useState(true);
+  const [showArticleModal, setShowArticleModal] = useState<{
+    classe: string; niveau: string; type: TypeArticle; article?: Article;
+  } | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [etabsRes, progRes, srcRes] = await Promise.all([
+        apiGet('/api/v2/admin/etablissement/mes-etablissements'),
+        apiGet(`/api/v2/admin/etablissement/${etabId}/programmes?annee=${encodeURIComponent(annee)}`),
+        apiGet(`/api/v2/admin/etablissement/${etabId}/programmes/preload-sources?target_annee=${encodeURIComponent(annee)}`),
+      ]);
+      const etabData = await etabsRes.json().catch(() => ({}));
+      const myEtab = (etabData?.etablissements || []).find((e: any) => String(e.id) === etabId);
+      setEtab(myEtab || null);
+
+      const progData = await progRes.json().catch(() => ({}));
+      setArticles(Array.isArray(progData?.programmes) ? progData.programmes : []);
+
+      const srcData = await srcRes.json().catch(() => ({}));
+      setSources(srcData?.previous_years ? srcData : null);
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e?.message || 'Chargement impossible', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }, [etabId, annee, toast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const systemes: SystemeScolaire[] = useMemo(() => {
+    if (!etab) return [];
+    const pays = (etab.pays || 'CM') as PaysCode;
+    const systeme = (etab.systeme_scolaire || 'francophone') as SystemeScolaireDB;
+    return getSystemesPourEtablissement(pays, systeme);
+  }, [etab]);
+
+  const isBilingue = etab?.systeme_scolaire === 'bilingue' && systemes.length >= 2;
+
+  const systemeActif: SystemeScolaire | null = useMemo(() => {
+    if (systemes.length === 0) return null;
+    if (!isBilingue) return systemes[0];
+    return systemes.find(s => s.langue === activeBilingue) || systemes[0];
+  }, [systemes, isBilingue, activeBilingue]);
+
+  const niveauxFiltres: Niveau[] = useMemo(() => {
+    if (!systemeActif) return [];
+    const cycles = (etab?.cycles_offerts || []) as CycleId[];
+    return filtrerNiveauxParCycles(systemeActif, cycles);
+  }, [systemeActif, etab?.cycles_offerts]);
+
+  const articlesByClasse = useMemo(() => {
+    const map = new Map<string, Article[]>();
+    for (const a of articles) {
+      const key = a.classe;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(a);
+    }
+    return map;
+  }, [articles]);
+
+  const handlePreload = async (
+    source: 'national' | 'previous_year' | 'etablissement',
+    extra: { source_annee?: string; source_etab_id?: number } = {},
+  ) => {
+    try {
+      const body: any = { source, target_annee: annee, mode: 'merge', ...extra };
+      const res = await apiPost(
+        `/api/v2/admin/etablissement/${etabId}/programmes/preload`,
+        body,
+      );
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.message || `HTTP ${res.status}`);
+      toast({
+        title: 'Préchargement effectué',
+        description: `${d.copied} article(s) ajouté(s) — ${d.skipped_existing} déjà présent(s)`,
+      });
+      load();
+    } catch (e: any) {
+      toast({ title: 'Erreur préchargement', description: e?.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Supprimer cet article ?')) return;
+    try {
+      const res = await apiDelete(`/api/v2/admin/etablissement/${etabId}/programmes/${id}`);
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.message || `HTTP ${res.status}`);
+      toast({ title: 'Article supprimé' });
+      load();
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+    }
+  };
+
+  if (loading && !etab) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  if (!etab) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-sm text-gray-500">Établissement introuvable</p>
+        <button
+          onClick={() => navigate('/etablissement-portal')}
+          className="mt-4 px-4 py-2 bg-emerald-500 text-white rounded-full text-sm"
+        >
+          Retour
+        </button>
+      </div>
+    );
+  }
+
+  const showConfigBanner = !etab.systeme_scolaire || (etab.cycles_offerts || []).length === 0;
+  const cyclesCount = etab.cycles_offerts?.length ?? 0;
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-2 sticky top-0 z-10">
+        <button
+          onClick={() => navigate(`/etablissement-portal/${etabId}`)}
+          className="p-2 -ml-2 rounded-full hover:bg-gray-100 shrink-0"
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-700" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-base font-bold text-gray-900 truncate">Liste scolaire</h1>
+          <p className="text-xs text-gray-500 truncate">{etab.nom_etablissement}</p>
+        </div>
+        <select
+          value={annee}
+          onChange={e => setAnnee(e.target.value)}
+          className="text-xs font-semibold bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5"
+        >
+          {ANNEES_DISPO.map(a => <option key={a} value={a}>{a}</option>)}
+        </select>
+      </div>
+
+      <div className="max-w-3xl mx-auto p-3 sm:p-4 space-y-3">
+        {/* Bandeau config requise */}
+        {showConfigBanner && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <p className="text-sm font-bold text-amber-900 mb-1">
+              Configuration de l'établissement requise
+            </p>
+            <p className="text-xs text-amber-800 leading-relaxed">
+              Pour proposer les classes adéquates, indiquez votre système scolaire
+              (francophone, anglophone ou bilingue) et les cycles offerts (primaire,
+              collège, lycée, technique…).
+            </p>
+            <button
+              onClick={() => navigate(`/etablissement-portal/${etabId}?config=open`)}
+              className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-xs font-semibold rounded-full"
+            >
+              <School className="w-3.5 h-3.5" />
+              Configurer mon établissement
+            </button>
+          </div>
+        )}
+
+        {/* Sources de préchargement */}
+        {sources && articles.length === 0 && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
+              Démarrer rapidement — Préchargement
+            </p>
+            <p className="text-xs text-gray-600 leading-relaxed mb-3">
+              Pas besoin de tout saisir manuellement. Choisissez une source pour
+              pré-remplir cette année. Vous pourrez ensuite ajuster.
+            </p>
+            <div className="space-y-2">
+              {sources.previous_years.length > 0 && sources.previous_years.map(y => (
+                <PreloadButton
+                  key={y}
+                  Icon={RefreshCw}
+                  title={`Copier depuis l'année ${y}`}
+                  desc="Réutilise vos saisies de l'an dernier — vous ajustez ce qui change"
+                  color="violet"
+                  onClick={() => handlePreload('previous_year', { source_annee: y })}
+                />
+              ))}
+              {sources.national && (
+                <PreloadButton
+                  Icon={Sparkles}
+                  title={`Programme national officiel (${sources.national.pays})`}
+                  desc={`${sources.national.nb_articles} livres — référentiel officiel du ministère`}
+                  color="emerald"
+                  onClick={() => handlePreload('national')}
+                />
+              )}
+              {sources.similar_etabs.slice(0, 3).map(s => (
+                <PreloadButton
+                  key={s.id}
+                  Icon={Copy}
+                  title={`Copier depuis : ${s.nom_etablissement}`}
+                  desc={`${s.ville || s.pays} · ${s.nb_articles} articles · même système`}
+                  color="indigo"
+                  onClick={() => handlePreload('etablissement', { source_etab_id: s.id })}
+                />
+              ))}
+              <button
+                onClick={() => navigate(`/etablissement-portal/${etabId}?ia=open`)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-fuchsia-200 bg-fuchsia-50 active:bg-fuchsia-100 text-left"
+              >
+                <div className="w-9 h-9 rounded-xl bg-fuchsia-200 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-fuchsia-700" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-fuchsia-900">Importer depuis documents IA</p>
+                  <p className="text-xs text-fuchsia-700">Photos, PDF, Word, Excel — extraction auto</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Onglets bilingue */}
+        {isBilingue && (
+          <div className="flex gap-2 bg-white p-1 rounded-2xl border border-gray-100">
+            {systemes.map(s => (
+              <button
+                key={s.id}
+                onClick={() => { setActiveBilingue(s.langue); setActiveClasseFull(null); }}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${
+                  activeBilingue === s.langue
+                    ? 'bg-emerald-500 text-white'
+                    : 'text-gray-600'
+                }`}
+              >
+                {s.systemeLabel}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Sélecteur de classe */}
+        {!activeClasseFull && niveauxFiltres.length > 0 && (
+          <div className="space-y-3">
+            {cyclesCount > 0 && (
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide px-1">
+                Choisissez une classe
+              </p>
+            )}
+            {niveauxFiltres.map(niveau => (
+              <div key={niveau.nom} className="bg-white rounded-2xl border border-gray-100 p-3">
+                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-2">
+                  {niveau.nom}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {niveau.classes.map(c => {
+                    const fullName = c.nom;
+                    const count = articlesByClasse.get(fullName)?.length || 0;
+                    return (
+                      <button
+                        key={fullName}
+                        onClick={() => setActiveClasseFull(fullName)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                          count > 0
+                            ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
+                            : 'border-gray-200 bg-gray-50 text-gray-700'
+                        }`}
+                      >
+                        {fullName}
+                        {count > 0 && (
+                          <span className="ml-1.5 text-[10px] bg-emerald-600 text-white rounded-full px-1.5">
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Vue d'une classe */}
+        {activeClasseFull && (
+          <ClasseView
+            etabId={etabId}
+            classe={activeClasseFull}
+            niveau={findNiveauForClasse(systemeActif, activeClasseFull)}
+            annee={annee}
+            articles={articlesByClasse.get(activeClasseFull) || []}
+            onBack={() => setActiveClasseFull(null)}
+            onAddArticle={(type) => setShowArticleModal({
+              classe: activeClasseFull,
+              niveau: findNiveauForClasse(systemeActif, activeClasseFull),
+              type,
+            })}
+            onEditArticle={(article) => setShowArticleModal({
+              classe: activeClasseFull,
+              niveau: findNiveauForClasse(systemeActif, activeClasseFull),
+              type: article.type_article,
+              article,
+            })}
+            onDeleteArticle={handleDelete}
+          />
+        )}
+      </div>
+
+      {showArticleModal && (
+        <ArticleEditModal
+          etabId={etabId}
+          init={showArticleModal}
+          annee={annee}
+          systemeEducatif={systemeActif?.langue === 'en' ? 'anglophone' : 'francophone'}
+          pays={(etab.pays || 'CM')}
+          onClose={() => setShowArticleModal(null)}
+          onSaved={() => { setShowArticleModal(null); load(); }}
+        />
+      )}
+    </div>
+  );
+};
+
+const findNiveauForClasse = (systeme: SystemeScolaire | null, classeFull: string): string => {
+  if (!systeme) return '';
+  for (const n of systeme.niveaux) {
+    if (n.classes.some(c => c.nom === classeFull)) return n.nom;
+  }
+  return '';
+};
+
+// ============================================================================
+// Bouton de préchargement
+// ============================================================================
+const PreloadButton: React.FC<{
+  Icon: React.ComponentType<any>;
+  title: string;
+  desc: string;
+  color: 'violet' | 'emerald' | 'indigo';
+  onClick: () => void;
+}> = ({ Icon, title, desc, color, onClick }) => {
+  const palette = {
+    violet:  { bg: 'bg-violet-50',  border: 'border-violet-200',  iconBg: 'bg-violet-200',  iconCol: 'text-violet-700',  titleCol: 'text-violet-900', descCol: 'text-violet-700' },
+    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', iconBg: 'bg-emerald-200', iconCol: 'text-emerald-700', titleCol: 'text-emerald-900', descCol: 'text-emerald-700' },
+    indigo:  { bg: 'bg-indigo-50',  border: 'border-indigo-200',  iconBg: 'bg-indigo-200',  iconCol: 'text-indigo-700',  titleCol: 'text-indigo-900', descCol: 'text-indigo-700' },
+  }[color];
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 p-3 rounded-xl border ${palette.border} ${palette.bg} active:opacity-80 text-left`}
+    >
+      <div className={`w-9 h-9 rounded-xl ${palette.iconBg} flex items-center justify-center shrink-0`}>
+        <Icon className={`w-4 h-4 ${palette.iconCol}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-semibold ${palette.titleCol}`}>{title}</p>
+        <p className={`text-xs ${palette.descCol}`}>{desc}</p>
+      </div>
+    </button>
+  );
+};
+
+// ============================================================================
+// Vue détaillée d'une classe
+// ============================================================================
+const ClasseView: React.FC<{
+  etabId: string;
+  classe: string;
+  niveau: string;
+  annee: string;
+  articles: Article[];
+  onBack: () => void;
+  onAddArticle: (type: TypeArticle) => void;
+  onEditArticle: (article: Article) => void;
+  onDeleteArticle: (id: number) => void;
+}> = ({ classe, niveau, articles, onBack, onAddArticle, onEditArticle, onDeleteArticle }) => {
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={onBack}
+        className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" />
+        Toutes les classes
+      </button>
+
+      <div className="bg-white border border-emerald-100 rounded-2xl p-4">
+        <p className="text-xs text-gray-500">{niveau}</p>
+        <h2 className="text-lg font-bold text-gray-900">{classe}</h2>
+        <p className="text-xs text-gray-500 mt-1">{articles.length} article(s) au total</p>
+      </div>
+
+      {TYPES_ARTICLE.map(({ id, label, Icon }) => {
+        const items = articles.filter(a => a.type_article === id);
+        if (items.length === 0) {
+          return (
+            <details key={id} className="bg-white border border-gray-100 rounded-2xl">
+              <summary className="p-3.5 cursor-pointer flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4 text-gray-500" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-semibold text-gray-700">{label}</p>
+                  <p className="text-xs text-gray-400">Aucun article</p>
+                </div>
+              </summary>
+              <div className="px-4 pb-4">
+                <button
+                  onClick={() => onAddArticle(id)}
+                  className="w-full py-2.5 border-2 border-dashed border-emerald-300 text-xs font-semibold text-emerald-700 rounded-xl"
+                >
+                  <Plus className="w-3.5 h-3.5 inline mr-1" />
+                  Ajouter {label.toLowerCase()}
+                </button>
+              </div>
+            </details>
+          );
+        }
+        return (
+          <details key={id} open className="bg-white border border-emerald-100 rounded-2xl">
+            <summary className="p-3.5 cursor-pointer flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                <Icon className="w-4 h-4 text-emerald-700" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-semibold text-emerald-800">{label}</p>
+                <p className="text-xs text-gray-500">{items.length} article(s)</p>
+              </div>
+            </summary>
+            <div className="px-3 pb-3 space-y-2">
+              {items.map(a => (
+                <div key={a.id} className="flex items-start gap-2 bg-gray-50 rounded-xl p-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{a.titre_livre}</p>
+                    <div className="flex flex-wrap gap-2 mt-1 text-[11px] text-gray-600">
+                      {a.matiere && <span>{a.matiere}</span>}
+                      {a.auteur_livre && <span>· {a.auteur_livre}</span>}
+                      {a.editeur_livre && <span>· {a.editeur_livre}</span>}
+                      {a.prix_officiel && (
+                        <span className="font-semibold text-emerald-700">
+                          {Math.round(a.prix_officiel).toLocaleString('fr-FR')} {a.devise || 'XAF'}
+                        </span>
+                      )}
+                      {a.quantite_defaut > 1 && <span>× {a.quantite_defaut}</span>}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onEditArticle(a)}
+                    className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-200"
+                    aria-label="Modifier"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => onDeleteArticle(a.id)}
+                    className="p-1.5 rounded-lg text-red-500 hover:bg-red-50"
+                    aria-label="Supprimer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => onAddArticle(id)}
+                className="w-full py-2 border-2 border-dashed border-emerald-300 text-xs font-semibold text-emerald-700 rounded-xl"
+              >
+                <Plus className="w-3.5 h-3.5 inline mr-1" />
+                Ajouter
+              </button>
+            </div>
+          </details>
+        );
+      })}
+    </div>
+  );
+};
+
+// ============================================================================
+// Modale création / édition d'un article
+// ============================================================================
+const ArticleEditModal: React.FC<{
+  etabId: string;
+  init: { classe: string; niveau: string; type: TypeArticle; article?: Article };
+  annee: string;
+  systemeEducatif: 'francophone' | 'anglophone';
+  pays: string;
+  onClose: () => void;
+  onSaved: () => void;
+}> = ({ etabId, init, annee, systemeEducatif, pays, onClose, onSaved }) => {
+  const { toast } = useToast();
+  const a = init.article;
+  const [titre, setTitre] = useState(a?.titre_livre || '');
+  const [matiere, setMatiere] = useState(a?.matiere || '');
+  const [auteur, setAuteur] = useState(a?.auteur_livre || '');
+  const [editeur, setEditeur] = useState(a?.editeur_livre || '');
+  const [isbn, setIsbn] = useState(a?.isbn_livre || '');
+  const [prix, setPrix] = useState<string>(a?.prix_officiel?.toString() || '');
+  const [quantite, setQuantite] = useState<string>(String(a?.quantite_defaut ?? 1));
+  const [obligatoire, setObligatoire] = useState(a?.est_obligatoire ?? true);
+  const [type, setType] = useState<TypeArticle>(init.type);
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!titre.trim()) {
+      toast({ title: 'Titre requis', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload: any = {
+        niveau: init.niveau,
+        classe: init.classe,
+        matiere: matiere.trim() || (type === 'livre' || type === 'workbook' ? '' : 'Général'),
+        titre_livre: titre.trim(),
+        auteur_livre: auteur.trim() || null,
+        editeur_livre: editeur.trim() || null,
+        isbn_livre: isbn.trim() || null,
+        annee_scolaire: annee,
+        est_obligatoire: obligatoire,
+        prix_officiel: prix ? Number(prix) : null,
+        type_article: type,
+        quantite_defaut: Number(quantite) || 1,
+        systeme_educatif: systemeEducatif,
+        pays,
+      };
+      const res = a
+        ? await apiPatch(`/api/v2/admin/etablissement/${etabId}/programmes/${a.id}`, payload)
+        : await apiPost(`/api/v2/admin/etablissement/${etabId}/programmes`, payload);
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d?.message || `HTTP ${res.status}`);
+      toast({ title: a ? 'Article modifié' : 'Article ajouté' });
+      onSaved();
+    } catch (e: any) {
+      toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+      <div className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+          <p className="font-bold text-gray-900 flex-1">
+            {a ? 'Modifier l\'article' : 'Ajouter un article'}
+          </p>
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-3">
+          <p className="text-xs text-gray-500">{init.niveau} · {init.classe}</p>
+
+          {/* Type article */}
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Type</label>
+            <select
+              value={type}
+              onChange={e => setType(e.target.value as TypeArticle)}
+              className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+            >
+              {TYPES_ARTICLE.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+            </select>
+          </div>
+
+          <Field label="Titre / désignation *" value={titre} onChange={setTitre} placeholder={type === 'cahier' ? 'Cahier 200p grands carreaux' : 'Mathématiques 6ème — Vogue'} />
+
+          {(type === 'livre' || type === 'workbook') && (
+            <>
+              <Field label="Matière" value={matiere} onChange={setMatiere} placeholder="Mathématiques, Anglais, ..." />
+              <Field label="Auteur" value={auteur} onChange={setAuteur} />
+              <Field label="Éditeur" value={editeur} onChange={setEditeur} placeholder="Vogue, Hachette, NER..." />
+              <Field label="ISBN" value={isbn} onChange={setIsbn} />
+            </>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Prix officiel (XAF)" type="number" value={prix} onChange={setPrix} />
+            <Field label="Quantité" type="number" value={quantite} onChange={setQuantite} />
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer pt-1">
+            <input
+              type="checkbox"
+              checked={obligatoire}
+              onChange={e => setObligatoire(e.target.checked)}
+              className="w-4 h-4 accent-emerald-600"
+            />
+            <span className="text-sm text-gray-700">Article obligatoire</span>
+          </label>
+        </div>
+
+        <div className="p-5 sticky bottom-0 bg-white border-t border-gray-100 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold">
+            Annuler
+          </button>
+          <button
+            onClick={submit}
+            disabled={saving || !titre.trim()}
+            className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+            {a ? 'Enregistrer' : 'Ajouter'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const Field: React.FC<{
+  label: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; type?: 'text' | 'number';
+}> = ({ label, value, onChange, placeholder, type = 'text' }) => (
+  <div>
+    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{label}</label>
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+    />
+  </div>
+);
+
+export default EtablissementListeScolairePage;

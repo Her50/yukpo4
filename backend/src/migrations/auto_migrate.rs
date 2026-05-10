@@ -8714,6 +8714,16 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto etablissement_pages: {}", e),
     }
 
+    // ✅ 2026-05-10 : nom_abrege + systeme_scolaire + cycles_offerts (etablissements)
+    //                 + type_article + quantite_defaut (programmes_scolaires)
+    match ensure_etablissement_setup_extended(pool).await {
+        Ok(_) => info!("✅ Migration auto: etablissement_setup_extended OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto etablissement_setup_extended: {}",
+            e
+        ),
+    }
+
     // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
     match ensure_delivery_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
@@ -22379,5 +22389,17 @@ pub async fn ensure_etablissement_pages_tables(pool: &PgPool) -> Result<(), sqlx
     )
     .await?;
     info!("✅ Tables Pages Officielles Établissements créées/vérifiées");
+    Ok(())
+}
+
+/// ✅ 2026-05-10 : étend le setup établissement
+///   - etablissements_scolaires : nom_abrege, systeme_scolaire (FR/EN/bilingue), cycles_offerts[]
+///   - programmes_scolaires : type_article, quantite_defaut
+/// Migration : 20260510_001_etablissement_setup_extended.sql
+pub async fn ensure_etablissement_setup_extended(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration setup étendu établissement (nom_abrege/systeme/cycles + type_article)...");
+    let sql = include_str!("../../migrations/20260510_001_etablissement_setup_extended.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ Setup étendu établissement OK");
     Ok(())
 }

@@ -125,7 +125,11 @@ FORMAT DE SORTIE — JSON STRICT (pas de texte avant ou après, pas de balises m
   "description": "string ou null  (2-4 phrases publiques, ton accueillant)",
   "meta": {{
     "nom_etablissement": "string ou null",
+    "nom_abrege": "string ou null  (sigle ou forme courte populaire — ex: CBLG, GBHS, Vogt)",
     "type_etablissement": "primaire | secondaire | superieur | mixte ou null",
+    "systeme_scolaire": "francophone | anglophone | bilingue ou null",
+    "cycles_offerts": ["maternelle" | "primaire" | "college" | "lycee" | "technique" | "professionnelle" | "superieur"],
+    "pays": "code ISO-2 (CM, CI, SN, GA, NG, GH…) ou null",
     "ville": "string ou null",
     "quartier": "string ou null",
     "adresse": "string ou null",

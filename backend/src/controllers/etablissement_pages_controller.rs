@@ -28,6 +28,7 @@ use std::sync::Arc;
 pub struct EtablissementSummary {
     pub id: i32,
     pub nom_etablissement: String,
+    pub nom_abrege: Option<String>,
     pub slug: Option<String>,
     pub ville: Option<String>,
     pub quartier: Option<String>,
@@ -149,6 +150,7 @@ pub async fn search_etablissements(
         SELECT
             e.id,
             e.nom_etablissement,
+            e.nom_abrege,
             e.slug,
             e.ville,
             e.quartier,
@@ -159,10 +161,14 @@ pub async fn search_etablissements(
             e.page_status = 'published'
             AND (
                 e.nom_etablissement ILIKE $1
+                OR e.nom_abrege     ILIKE $1
                 OR similarity(lower(e.nom_etablissement), lower($2)) > 0.2
+                OR similarity(lower(coalesce(e.nom_abrege, '')), lower($2)) > 0.4
                 OR e.quartier ILIKE $1
             )
         ORDER BY
+            -- Priorise un match exact sur le sigle (CBLG, ENAM…)
+            CASE WHEN lower(coalesce(e.nom_abrege, '')) = lower($2) THEN 0 ELSE 1 END,
             similarity(lower(e.nom_etablissement), lower($2)) DESC NULLS LAST,
             e.nom_etablissement
         LIMIT $3
@@ -443,7 +449,8 @@ pub async fn get_my_etablissements(
     let rows = sqlx::query(
         r#"
         SELECT
-            id, nom_etablissement, slug, type_etablissement, ville, quartier,
+            id, nom_etablissement, nom_abrege, slug, type_etablissement,
+            pays, ville, quartier, systeme_scolaire, cycles_offerts,
             logo_url, banniere_url, page_status, page_published_at, qr_code_url,
             stats_views_30d
         FROM etablissements_scolaires
@@ -463,10 +470,14 @@ pub async fn get_my_etablissements(
             json!({
                 "id": r.try_get::<i32, _>("id").ok(),
                 "nom_etablissement": r.try_get::<String, _>("nom_etablissement").ok(),
+                "nom_abrege": r.try_get::<Option<String>, _>("nom_abrege").ok().flatten(),
                 "slug": r.try_get::<Option<String>, _>("slug").ok().flatten(),
                 "type_etablissement": r.try_get::<Option<String>, _>("type_etablissement").ok().flatten(),
+                "pays": r.try_get::<Option<String>, _>("pays").ok().flatten(),
                 "ville": r.try_get::<Option<String>, _>("ville").ok().flatten(),
                 "quartier": r.try_get::<Option<String>, _>("quartier").ok().flatten(),
+                "systeme_scolaire": r.try_get::<Option<String>, _>("systeme_scolaire").ok().flatten(),
+                "cycles_offerts": r.try_get::<Option<Vec<String>>, _>("cycles_offerts").ok().flatten().unwrap_or_default(),
                 "logo_url": r.try_get::<Option<String>, _>("logo_url").ok().flatten(),
                 "banniere_url": r.try_get::<Option<String>, _>("banniere_url").ok().flatten(),
                 "page_status": r.try_get::<String, _>("page_status").ok(),
@@ -1036,18 +1047,74 @@ pub async fn ia_extract_etablissement(
         crate::services::etablissement_ia_service::EtablissementIAService::new(state.ia.clone());
     let extraction = ia.extract_etablissement_info(&files_b64, Some(&nom_hint)).await?;
 
-    // 1) Description de l'établissement
-    if let Some(desc) = extraction.description.as_ref() {
-        if !desc.trim().is_empty() {
-            let _ = sqlx::query(
-                "UPDATE etablissements_scolaires SET description = $1, updated_at = NOW() WHERE id = $2",
-            )
-            .bind(desc)
-            .bind(etab_id)
-            .execute(&state.pg)
-            .await;
-        }
-    }
+    // 1) Description + meta (nom_abrege, systeme_scolaire, cycles_offerts) auto-détectés
+    let meta = &extraction.meta;
+    let detected_nom_abrege = meta
+        .get("nom_abrege")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let detected_systeme = meta
+        .get("systeme_scolaire")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| matches!(*s, "francophone" | "anglophone" | "bilingue"));
+    let detected_pays = meta
+        .get("pays")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| s.len() == 2);
+    let detected_cycles: Vec<String> = meta
+        .get("cycles_offerts")
+        .and_then(|v| v.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(str::to_string))
+                .filter(|s| {
+                    matches!(
+                        s.as_str(),
+                        "maternelle"
+                            | "primaire"
+                            | "college"
+                            | "lycee"
+                            | "technique"
+                            | "professionnelle"
+                            | "superieur"
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let detected_cycles_opt: Option<Vec<String>> = if detected_cycles.is_empty() {
+        None
+    } else {
+        Some(detected_cycles)
+    };
+
+    let _ = sqlx::query(
+        r#"
+        UPDATE etablissements_scolaires
+        SET description       = COALESCE($2, description),
+            nom_abrege        = COALESCE($3, nom_abrege),
+            systeme_scolaire  = COALESCE($4, systeme_scolaire),
+            pays              = COALESCE($5, pays),
+            cycles_offerts    = CASE
+                                  WHEN $6::text[] IS NOT NULL AND array_length(cycles_offerts, 1) IS NULL
+                                  THEN $6::text[]
+                                  ELSE cycles_offerts
+                                END,
+            updated_at        = NOW()
+        WHERE id = $1
+        "#,
+    )
+    .bind(etab_id)
+    .bind(extraction.description.as_deref().filter(|s| !s.trim().is_empty()))
+    .bind(detected_nom_abrege)
+    .bind(detected_systeme)
+    .bind(detected_pays)
+    .bind(detected_cycles_opt.as_deref())
+    .execute(&state.pg)
+    .await;
 
     // 2) Upsert blocs CMS éditoriaux
     let blocs_to_save: [(&str, &Value); 8] = [
@@ -1180,31 +1247,76 @@ pub async fn ia_extract_etablissement(
                 art.get("prix_officiel").and_then(|v| v.as_f64()).or_else(|| {
                     art.get("prix_officiel").and_then(|v| v.as_str()).and_then(|s| s.parse().ok())
                 });
-            let _ = sqlx::query(
+            let prix_dec: Option<rust_decimal::Decimal> =
+                prix.and_then(rust_decimal::Decimal::from_f64_retain);
+            // Type IA — on accepte 'livre','workbook','cahier','fourniture','accessoire'
+            let raw_type =
+                art.get("type").and_then(|v| v.as_str()).unwrap_or("livre").to_lowercase();
+            let type_article: &str = match raw_type.as_str() {
+                "workbook" | "wb" | "cahier d'exercices" => "workbook",
+                "cahier" => "cahier",
+                "fourniture" | "supply" => "fourniture",
+                "accessoire" | "accessory" | "kit" => "accessoire",
+                _ => "livre",
+            };
+            // Pays + système préalablement détectés (sinon défaut 'CM' / 'francophone')
+            let pays_bind = detected_pays.unwrap_or("CM");
+            let systeme_bind: &str = detected_systeme
+                .map(|s| {
+                    if s == "anglophone" {
+                        "anglophone"
+                    } else {
+                        "francophone"
+                    }
+                })
+                .unwrap_or("francophone");
+            let qte: i32 = art
+                .get("quantite_defaut")
+                .and_then(|v| v.as_i64())
+                .map(|n| n as i32)
+                .unwrap_or(1);
+            let res = sqlx::query(
                 r#"
                 INSERT INTO programmes_scolaires
-                    (etablissement_id, pays, niveau, classe, matiere,
-                     titre_livre, auteur_livre, editeur_livre, type,
+                    (etablissement_id, pays, systeme_educatif, niveau, classe, matiere,
+                     titre_livre, auteur_livre, editeur_livre, type_article,
                      prix_officiel, devise, annee_scolaire,
-                     est_obligatoire, is_active, created_at, updated_at)
-                VALUES ($1, 'CM', 'Secondaire', $2, $3, $4, $5, $6, $7,
-                        $8, 'XAF', $9, $10, true, NOW(), NOW())
-                ON CONFLICT DO NOTHING
+                     est_obligatoire, quantite_defaut, is_active, created_at, updated_at,
+                     created_by)
+                SELECT $1, $2, $3, COALESCE($4, 'Secondaire'), $5, $6,
+                       $7, $8, $9, $10, $11, 'XAF', $12, $13, $14, true, NOW(), NOW(), $15
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM programmes_scolaires p
+                    WHERE p.etablissement_id = $1
+                      AND p.classe = $5
+                      AND p.titre_livre = $7
+                      AND p.annee_scolaire = $12
+                      AND p.is_active = true
+                )
                 "#,
             )
             .bind(etab_id)
+            .bind(pays_bind)
+            .bind(systeme_bind)
+            .bind(art.get("niveau").and_then(|v| v.as_str()))
             .bind(classe)
-            .bind(art.get("matiere").and_then(|v| v.as_str()))
+            .bind(art.get("matiere").and_then(|v| v.as_str()).unwrap_or(""))
             .bind(titre)
             .bind(art.get("auteur").and_then(|v| v.as_str()))
             .bind(art.get("editeur").and_then(|v| v.as_str()))
-            .bind(art.get("type").and_then(|v| v.as_str()).unwrap_or("livre"))
-            .bind(prix)
+            .bind(type_article)
+            .bind(prix_dec)
             .bind(&annee)
             .bind(art.get("est_obligatoire").and_then(|v| v.as_bool()).unwrap_or(true))
+            .bind(qte)
+            .bind(user_id)
             .execute(&state.pg)
             .await;
-            articles_saved += 1;
+            if let Ok(r) = res {
+                if r.rows_affected() > 0 {
+                    articles_saved += 1;
+                }
+            }
         }
     }
 
