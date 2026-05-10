@@ -128,6 +128,60 @@ pub async fn create_invitation(
     ))
 }
 
+/// DELETE /api/v2/admin/etablissement/{id}/team/invitations/{inv_id}
+///
+/// Supprime une invitation. Si elle est encore en attente : suppression nette.
+/// Si elle a déjà été acceptée : on retire le membre (DELETE de la ligne)
+/// — l'utilisateur perd immédiatement l'accès. C'est le seul vecteur pour
+/// révoquer un membre, donc il doit être réservé aux managers.
+pub async fn delete_invitation(
+    State(state): State<Arc<AppState>>,
+    Path((etab_id, inv_id)): Path<(i32, i32)>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    require_etab_admin(&state, user_id, etab_id).await?;
+
+    // Garde-fou : on ne peut pas se retirer soi-même via cette voie
+    // (sinon un manager pourrait perdre l'accès à son propre établissement
+    // par mégarde et se retrouver bloqué). Le retrait du gérant principal
+    // est une opération admin Yukpo qui n'est pas exposée ici.
+    let me_self: bool = sqlx::query_scalar::<_, bool>(
+        r#"SELECT EXISTS(
+             SELECT 1 FROM etablissement_team_invitations
+             WHERE id = $1 AND etablissement_id = $2 AND accepted_user_id = $3
+        )"#,
+    )
+    .bind(inv_id)
+    .bind(etab_id)
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("delete_invitation: self check: {}", e)))?;
+    if me_self {
+        return Err(AppError::BadRequest(
+            "Vous ne pouvez pas vous retirer vous-même de l'équipe.".into(),
+        ));
+    }
+
+    let res = sqlx::query(
+        r#"DELETE FROM etablissement_team_invitations
+           WHERE id = $1 AND etablissement_id = $2"#,
+    )
+    .bind(inv_id)
+    .bind(etab_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("delete_invitation: {}", e)))?;
+
+    if res.rows_affected() == 0 {
+        return Err(AppError::NotFound(format!(
+            "Invitation {} introuvable",
+            inv_id
+        )));
+    }
+    Ok((StatusCode::OK, Json(json!({ "ok": true }))))
+}
+
 /// GET /api/v2/admin/etablissement/{id}/team/invitations
 pub async fn list_invitations(
     State(state): State<Arc<AppState>>,

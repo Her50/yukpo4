@@ -482,11 +482,15 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             post(etablissement_programmes_controller::import_national_csv)
                 .layer(axum::extract::DefaultBodyLimit::max(10_000_000)),
         )
-        // ✅ 2026-05-10 : Équipe établissement (invitations + liste)
+        // ✅ 2026-05-10 : Équipe établissement (invitations + liste + suppression)
         .route(
             "/api/v2/admin/etablissement/{id}/team/invitations",
             get(etablissement_team_controller::list_invitations)
                 .post(etablissement_team_controller::create_invitation),
+        )
+        .route(
+            "/api/v2/admin/etablissement/{id}/team/invitations/{inv_id}",
+            axum::routing::delete(etablissement_team_controller::delete_invitation),
         )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 

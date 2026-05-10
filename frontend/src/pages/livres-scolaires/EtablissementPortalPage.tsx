@@ -16,7 +16,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/use-toast';
 import { isGuestAccount } from '../../hooks/useGuestAuth';
-import { apiGet, apiPost, apiPut } from '../../services/apiService';
+import { apiDelete, apiGet, apiPost, apiPut } from '../../services/apiService';
 import { CYCLES, CycleId, SystemeScolaireDB } from '../../data/etablissementSetup';
 import { LISTE_PAYS_UNIQUES, PaysCode } from '../../data/schoolSystems';
 
@@ -1369,6 +1369,23 @@ const TeamSection: React.FC<{ etabId: string; etabNom: string }> = ({ etabId, et
               inv.status === 'accepted' ? { color: 'bg-emerald-100 text-emerald-800', text: '✓ Accepté' }
               : inv.status === 'opened' ? { color: 'bg-blue-100 text-blue-800', text: '👁 Ouvert' }
               : { color: 'bg-amber-100 text-amber-800', text: '⏳ En attente' };
+            const removeMember = async () => {
+              const isAccepted = inv.status === 'accepted';
+              const who = inv.nom_affiche || inv.accepted_email || inv.telephone || 'ce membre';
+              const msg = isAccepted
+                ? `Retirer ${who} de l'équipe ?\n\nCet utilisateur perdra immédiatement l'accès à l'établissement.`
+                : `Révoquer l'invitation pour ${who} ?\n\nLe lien WhatsApp partagé deviendra inutilisable.`;
+              if (!window.confirm(msg)) return;
+              try {
+                const res = await apiDelete(`/api/v2/admin/etablissement/${etabId}/team/invitations/${inv.id}`);
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d?.message || `HTTP ${res.status}`);
+                toast({ title: isAccepted ? 'Membre retiré' : 'Invitation révoquée' });
+                reload();
+              } catch (e: any) {
+                toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+              }
+            };
             return (
               <div key={inv.id} className="flex items-start gap-2 bg-gray-50 rounded-xl p-3">
                 <div className="flex-1 min-w-0">
@@ -1393,6 +1410,14 @@ const TeamSection: React.FC<{ etabId: string; etabNom: string }> = ({ etabId, et
                     </button>
                   )}
                 </div>
+                <button
+                  onClick={removeMember}
+                  className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 shrink-0"
+                  aria-label={inv.status === 'accepted' ? 'Retirer le membre' : 'Révoquer l\'invitation'}
+                  title={inv.status === 'accepted' ? 'Retirer ce membre de l\'équipe' : 'Révoquer cette invitation'}
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             );
           })}
