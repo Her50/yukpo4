@@ -44,6 +44,8 @@ import {
 import EtablissementListeScolairePage from './pages/livres-scolaires/EtablissementListeScolairePage';
 import AdminProgrammeNationalImportPage from './pages/livres-scolaires/AdminProgrammeNationalImportPage';
 import TeamInvitationAcceptPage from './pages/livres-scolaires/TeamInvitationAcceptPage';
+import ComptePage from './pages/ComptePage';
+import RechargePage from './pages/RechargePage';
 
 // Troc
 import TrocMatchingPage from './pages/trocs/TrocMatchingPage';
@@ -145,6 +147,10 @@ function AppBourse() {
               <Route path="/etablissement-portal/:etabId" element={<BourseLayout><RequireAuth><EtablissementDashboardPage /></RequireAuth></BourseLayout>} />
               <Route path="/etablissement-portal/:etabId/liste-scolaire" element={<BourseLayout><RequireAuth><EtablissementListeScolairePage /></RequireAuth></BourseLayout>} />
               <Route path="/admin-yukpo/programme-national/import" element={<BourseLayout><RequireAuth><AdminProgrammeNationalImportPage /></RequireAuth></BourseLayout>} />
+              {/* Compte / profil parent — accès au solde de crédits, recharge, infos compte */}
+              <Route path="/compte" element={<BourseLayout><RequireAuth><ComptePage /></RequireAuth></BourseLayout>} />
+              <Route path="/profil" element={<BourseLayout><RequireAuth><ComptePage /></RequireAuth></BourseLayout>} />
+              <Route path="/recharge" element={<BourseLayout><RequireAuth><RechargePage /></RequireAuth></BourseLayout>} />
 
               {/* Acceptation d'invitation d'équipe (lien WhatsApp) */}
               <Route path="/team/accept" element={<TeamInvitationAcceptPage />} />

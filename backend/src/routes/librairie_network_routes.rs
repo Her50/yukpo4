@@ -178,6 +178,11 @@ pub fn librairie_network_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(crate::controllers::librairie_network_controller::super_librairie_list_invitations)
                 .post(crate::controllers::librairie_network_controller::super_librairie_create_invitation),
         )
+        // ✅ 2026-05-10 : suppression d'invitation / retrait membre librairie
+        .route(
+            "/api/librairie-network/super-librairie/team/invitations/{invitation_id}",
+            axum::routing::delete(crate::controllers::librairie_network_controller::super_librairie_delete_invitation),
+        )
         .route(
             "/api/team/invitation-accept",
             post(crate::controllers::librairie_network_controller::accept_team_invitation),

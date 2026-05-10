@@ -384,17 +384,45 @@ const InvitationsTable: React.FC = () => {
       <div className="divide-y divide-gray-100">
         {invitations.map(inv => {
           const fullUrl = `${window.location.origin}${inv.invitation_path}`;
+          const removeMember = async () => {
+            const isAccepted = inv.status === 'accepted';
+            const who = inv.nom_affiche || inv.accepted_nom || inv.accepted_email || inv.telephone || 'ce membre';
+            const msg = isAccepted
+              ? `Retirer ${who} de l'équipe ?\n\nL'utilisateur perdra immédiatement l'accès à Yukpo Librairie.`
+              : `Révoquer l'invitation pour ${who} ?\n\nLe lien WhatsApp partagé deviendra inutilisable.`;
+            if (!window.confirm(msg)) return;
+            try {
+              const res = await fetch(`/api/librairie-network/super-librairie/team/invitations/${inv.id}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+              });
+              const d = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(d?.message || d?.error || `HTTP ${res.status}`);
+              toast({ title: isAccepted ? 'Membre retiré' : 'Invitation révoquée' });
+              window.dispatchEvent(new CustomEvent('libraire:invitation-changed'));
+            } catch (e: any) {
+              toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+            }
+          };
           return (
             <div key={inv.id} className="p-2.5">
               <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-xs font-semibold text-gray-900 truncate">
+                <p className="text-xs font-semibold text-gray-900 truncate flex-1 min-w-0">
                   {inv.nom_affiche || inv.accepted_nom || inv.telephone || 'Anonyme'}
                   {' '}
                   <span className="text-[10px] font-bold text-indigo-700 uppercase">{ROLE_LABELS[inv.role] || inv.role}</span>
                 </p>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${statusColor(inv.status)}`}>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${statusColor(inv.status)} shrink-0`}>
                   {statusLabel(inv.status)}
                 </span>
+                <button
+                  onClick={removeMember}
+                  className="p-1 rounded text-red-500 hover:bg-red-50 shrink-0"
+                  title={inv.status === 'accepted' ? 'Retirer ce membre' : "Révoquer l'invitation"}
+                  aria-label="Supprimer"
+                >
+                  ×
+                </button>
               </div>
               {inv.accepted_email && (
                 <p className="text-[10px] text-emerald-700">→ {inv.accepted_email}</p>

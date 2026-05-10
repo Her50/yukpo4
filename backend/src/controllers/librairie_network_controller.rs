@@ -2114,6 +2114,83 @@ pub async fn super_librairie_create_invitation(
     })))
 }
 
+/// DELETE /api/librairie-network/super-librairie/team/invitations/{invitation_id}
+///
+/// Révoque une invitation (pending/opened) ou retire un membre (accepted) en
+/// supprimant la ligne. Réservé aux admins Yukpo et au super-libraire actif.
+/// Garde-fou : on ne peut pas se retirer soi-même.
+pub async fn super_librairie_delete_invitation(
+    State(state): State<Arc<AppState>>,
+    Path(invitation_id): Path<i32>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let _ = ensure_invitations_table(&state.pg).await;
+    let is_admin = role == "admin" || role == "super_admin";
+    let sl_id: uuid::Uuid = if is_admin {
+        sqlx::query_scalar(
+            "SELECT id FROM librairie_partners WHERE est_super_librairie = true AND est_actif = true LIMIT 1",
+        )
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+        .ok_or_else(|| AppError::NotFound("Aucun super libraire actif".to_string()))?
+    } else {
+        sqlx::query_scalar(
+            "SELECT id FROM librairie_partners WHERE user_id = $1 AND est_super_librairie = true AND est_actif = true LIMIT 1",
+        )
+        .bind(user_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
+        .ok_or_else(|| AppError::Forbidden("Réservé au super libraire ou aux administrateurs".to_string()))?
+    };
+
+    // Vérifie que l'invitation appartient bien à cette librairie + qu'on ne se
+    // retire pas soi-même.
+    use sqlx::Row;
+    let row = sqlx::query(
+        "SELECT librairie_id, accepted_user_id FROM libraire_team_invitations WHERE id = $1",
+    )
+    .bind(invitation_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lookup: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Invitation introuvable".to_string()))?;
+
+    let target_lib: uuid::Uuid = row.try_get("librairie_id").unwrap_or_default();
+    let accepted_user: Option<i32> = row.try_get("accepted_user_id").ok().flatten();
+    if target_lib != sl_id {
+        return Err(AppError::Forbidden(
+            "Cette invitation n'appartient pas à votre librairie".into(),
+        ));
+    }
+    if accepted_user == Some(user_id) {
+        return Err(AppError::BadRequest(
+            "Vous ne pouvez pas vous retirer vous-même de l'équipe.".into(),
+        ));
+    }
+
+    // Suppression nette : invitation supprimée + membre désactivé s'il était accepté
+    sqlx::query("DELETE FROM libraire_team_invitations WHERE id = $1")
+        .bind(invitation_id)
+        .execute(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur delete: {}", e)))?;
+    if let Some(uid) = accepted_user {
+        let _ = sqlx::query(
+            "UPDATE libraire_team_members SET is_active = false, updated_at = NOW() WHERE librairie_id = $1 AND user_id = $2",
+        )
+        .bind(sl_id)
+        .bind(uid)
+        .execute(&state.pg)
+        .await;
+    }
+
+    Ok(Json(serde_json::json!({ "success": true })))
+}
+
 /// GET /api/librairie-network/super-librairie/team/invitations
 pub async fn super_librairie_list_invitations(
     State(state): State<Arc<AppState>>,
@@ -2553,15 +2630,42 @@ pub async fn valider_livres_commande(
         librairie_user_id, payload.commande_id
     );
 
-    // Vérifier que c'est un librairie
-    let librairie = sqlx::query_as::<_, LibrairiePartner>(
+    // Vérifier que c'est un librairie OU un membre d'équipe avec rôle
+    // autorisé à valider (manager / preparer). Le cashier (caisse) n'a pas
+    // accès à la validation des prix — c'est le rôle du préparateur.
+    let mut librairie: Option<LibrairiePartner> = sqlx::query_as::<_, LibrairiePartner>(
         "SELECT * FROM librairie_partners WHERE user_id = $1 AND est_actif = true AND statut = 'actif'",
     )
     .bind(librairie_user_id)
     .fetch_optional(&state.pg)
     .await
-        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
-        .ok_or_else(|| AppError::Forbidden("Accès réservé aux librairies actives".to_string()))?;
+    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+
+    if librairie.is_none() {
+        librairie = sqlx::query_as::<_, LibrairiePartner>(
+            r#"
+            SELECT lp.* FROM librairie_partners lp
+            JOIN libraire_team_members tm ON tm.librairie_id = lp.id
+            WHERE tm.user_id = $1
+              AND tm.is_active = true
+              AND tm.role IN ('manager','preparer')
+              AND lp.est_actif = true
+              AND lp.statut = 'actif'
+            LIMIT 1
+            "#,
+        )
+        .bind(librairie_user_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur team: {}", e)))?;
+    }
+
+    let librairie = librairie.ok_or_else(|| {
+        AppError::Forbidden(
+            "Validation réservée au gérant ou aux membres d'équipe (manager / préparateur)"
+                .to_string(),
+        )
+    })?;
 
     let mut tx = state
         .pg
