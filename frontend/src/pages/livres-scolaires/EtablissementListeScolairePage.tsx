@@ -12,7 +12,7 @@
 //  - Vue tabulée par type d'article (livres / cahiers / fournitures).
 //
 import {
-  ArrowLeft, Book, Copy, Edit2, ExternalLink, Eye, FileText, GraduationCap, Loader2, NotebookPen,
+  ArrowLeft, Book, Copy, CopyPlus, Edit2, ExternalLink, Eye, FileText, GraduationCap, Loader2, NotebookPen,
   Package, Plus, RefreshCw, School, Sparkles, Trash2, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -378,6 +378,17 @@ const EtablissementListeScolairePage: React.FC = () => {
           </div>
         )}
 
+        {/* Statistiques rapides — visible dès qu'au moins 1 article est saisi */}
+        {!activeClasseFull && articles.length > 0 && (
+          <StatsCard
+            articles={articles}
+            classesConfiguredCount={articlesByClasse.size}
+            classesTotalCount={
+              niveauxFiltres.reduce((s, n) => s + n.classes.length, 0)
+            }
+          />
+        )}
+
         {/* Sélecteur de classe */}
         {!activeClasseFull && niveauxFiltres.length > 0 && (
           <div className="space-y-3">
@@ -429,6 +440,7 @@ const EtablissementListeScolairePage: React.FC = () => {
             annee={annee}
             slug={etab.slug || null}
             articles={articlesByClasse.get(activeClasseFull) || []}
+            niveauxFiltres={niveauxFiltres}
             onBack={() => setActiveClasseFull(null)}
             onAddArticle={(type) => setShowArticleModal({
               classe: activeClasseFull,
@@ -442,6 +454,7 @@ const EtablissementListeScolairePage: React.FC = () => {
               article,
             })}
             onDeleteArticle={handleDelete}
+            onDuplicated={() => load()}
           />
         )}
       </div>
@@ -510,11 +523,14 @@ const ClasseView: React.FC<{
   annee: string;
   slug: string | null;
   articles: Article[];
+  niveauxFiltres: Niveau[];
   onBack: () => void;
   onAddArticle: (type: TypeArticle) => void;
   onEditArticle: (article: Article) => void;
   onDeleteArticle: (id: number) => void;
-}> = ({ classe, niveau, slug, articles, onBack, onAddArticle, onEditArticle, onDeleteArticle }) => {
+  onDuplicated: () => void;
+}> = ({ etabId, classe, niveau, annee, slug, articles, niveauxFiltres, onBack, onAddArticle, onEditArticle, onDeleteArticle, onDuplicated }) => {
+  const [showDuplicate, setShowDuplicate] = useState(false);
   const previewUrl = slug
     ? `${window.location.origin}/ecole/${slug}/classe/${encodeURIComponent(classe)}/programme`
     : null;
@@ -529,27 +545,51 @@ const ClasseView: React.FC<{
       </button>
 
       <div className="bg-white border border-emerald-100 rounded-2xl p-4">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-2 flex-wrap">
           <div className="flex-1 min-w-0">
             <p className="text-xs text-gray-500">{niveau}</p>
             <h2 className="text-lg font-bold text-gray-900">{classe}</h2>
             <p className="text-xs text-gray-500 mt-1">{articles.length} article(s) au total</p>
           </div>
-          {previewUrl && articles.length > 0 && (
-            <a
-              href={previewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold whitespace-nowrap hover:bg-emerald-200"
-              title="Aperçu côté parent"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              Voir comme parent
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            {articles.length > 0 && (
+              <button
+                onClick={() => setShowDuplicate(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-100 text-violet-700 rounded-full text-xs font-semibold whitespace-nowrap hover:bg-violet-200"
+                title="Dupliquer cette liste vers une autre classe"
+              >
+                <CopyPlus className="w-3.5 h-3.5" />
+                Dupliquer
+              </button>
+            )}
+            {previewUrl && articles.length > 0 && (
+              <a
+                href={previewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold whitespace-nowrap hover:bg-emerald-200"
+                title="Aperçu côté parent"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Voir comme parent
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </div>
         </div>
       </div>
+
+      {showDuplicate && (
+        <DuplicateClasseModal
+          etabId={etabId}
+          sourceClasse={classe}
+          sourceArticles={articles}
+          annee={annee}
+          niveauxFiltres={niveauxFiltres}
+          onClose={() => setShowDuplicate(false)}
+          onDone={() => { setShowDuplicate(false); onDuplicated(); }}
+        />
+      )}
 
       {TYPES_ARTICLE.map(({ id, label, Icon }) => {
         const items = articles.filter(a => a.type_article === id);
@@ -785,5 +825,234 @@ const Field: React.FC<{
     />
   </div>
 );
+
+// ============================================================================
+// Modale de duplication d'une classe vers une autre
+// ============================================================================
+const DuplicateClasseModal: React.FC<{
+  etabId: string;
+  sourceClasse: string;
+  sourceArticles: Article[];
+  annee: string;
+  niveauxFiltres: Niveau[];
+  onClose: () => void;
+  onDone: () => void;
+}> = ({ etabId, sourceClasse, sourceArticles, annee, niveauxFiltres, onClose, onDone }) => {
+  const { toast } = useToast();
+  const [target, setTarget] = useState<string>('');
+  const [running, setRunning] = useState(false);
+
+  // Liste des classes destinations possibles : toutes les classes des cycles
+  // offerts SAUF la source elle-même.
+  const destinations: Array<{ niveau: string; classe: string }> = [];
+  for (const n of niveauxFiltres) {
+    for (const c of n.classes) {
+      if (c.nom !== sourceClasse) {
+        destinations.push({ niveau: n.nom, classe: c.nom });
+      }
+    }
+  }
+
+  const submit = async () => {
+    if (!target) {
+      toast({ title: 'Sélectionnez une classe cible', variant: 'destructive' });
+      return;
+    }
+    const ok = window.confirm(
+      `Dupliquer ${sourceArticles.length} article(s) de « ${sourceClasse} » vers « ${target} » ?\n\n` +
+      `Les articles déjà présents en ${target} ne seront pas réécrits.`
+    );
+    if (!ok) return;
+    setRunning(true);
+    let created = 0;
+    let skipped = 0;
+    let errors = 0;
+    const targetNiveau = niveauxFiltres.find(n =>
+      n.classes.some(c => c.nom === target)
+    )?.nom || '';
+    for (const a of sourceArticles) {
+      try {
+        const payload = {
+          niveau: targetNiveau || a.niveau,
+          classe: target,
+          matiere: a.matiere || '',
+          titre_livre: a.titre_livre,
+          auteur_livre: a.auteur_livre,
+          editeur_livre: a.editeur_livre,
+          isbn_livre: a.isbn_livre,
+          annee_scolaire: annee,
+          est_obligatoire: a.est_obligatoire ?? true,
+          prix_officiel: a.prix_officiel,
+          devise: a.devise || 'XAF',
+          type_article: a.type_article,
+          quantite_defaut: a.quantite_defaut,
+          systeme_educatif: a.systeme_educatif,
+          pays: a.pays,
+        };
+        const res = await apiPost(
+          `/api/v2/admin/etablissement/${etabId}/programmes`,
+          payload
+        );
+        if (res.ok) created++;
+        else if (res.status === 409 || res.status === 400) skipped++;
+        else errors++;
+      } catch {
+        errors++;
+      }
+    }
+    setRunning(false);
+    toast({
+      title: 'Duplication terminée',
+      description: `${created} ajouté(s), ${skipped} déjà présent(s), ${errors} erreur(s)`,
+    });
+    onDone();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+      <div className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+          <CopyPlus className="w-5 h-5 text-violet-600" />
+          <p className="font-bold text-gray-900 flex-1">Dupliquer la classe</p>
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-3">
+          <p className="text-xs text-gray-600 leading-relaxed bg-violet-50 border border-violet-200 rounded-xl p-3">
+            Copie les <strong>{sourceArticles.length} article(s)</strong> de <strong>{sourceClasse}</strong> vers
+            la classe choisie. Pratique pour démarrer rapidement la configuration d'une autre classe similaire,
+            puis ajuster ce qui change.
+          </p>
+
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+              Classe destination
+            </label>
+            <select
+              value={target}
+              onChange={e => setTarget(e.target.value)}
+              className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+            >
+              <option value="">— Choisir une classe —</option>
+              {destinations.map(d => (
+                <option key={`${d.niveau}-${d.classe}`} value={d.classe}>
+                  {d.niveau} · {d.classe}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="p-5 sticky bottom-0 bg-white border-t border-gray-100 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold">
+            Annuler
+          </button>
+          <button
+            onClick={submit}
+            disabled={!target || running}
+            className="flex-1 py-3 bg-violet-600 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {running && <Loader2 className="w-4 h-4 animate-spin" />}
+            Dupliquer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// Carte de statistiques (vue d'ensemble année courante)
+// ============================================================================
+const StatsCard: React.FC<{
+  articles: Article[];
+  classesConfiguredCount: number;
+  classesTotalCount: number;
+}> = ({ articles, classesConfiguredCount, classesTotalCount }) => {
+  const counts: Record<TypeArticle, number> = {
+    livre: 0, workbook: 0, cahier: 0, fourniture: 0, accessoire: 0,
+  };
+  let totalPrix = 0;
+  let nbPrix = 0;
+  for (const a of articles) {
+    counts[a.type_article] = (counts[a.type_article] || 0) + 1;
+    if (a.prix_officiel != null) {
+      totalPrix += a.prix_officiel * (a.quantite_defaut || 1);
+      nbPrix++;
+    }
+  }
+  const prixMoyenParArticle = nbPrix > 0 ? Math.round(totalPrix / nbPrix) : null;
+  const coutMoyenParClasse = classesConfiguredCount > 0
+    ? Math.round(totalPrix / classesConfiguredCount)
+    : null;
+  const completion = classesTotalCount > 0
+    ? Math.round((classesConfiguredCount / classesTotalCount) * 100)
+    : null;
+
+  return (
+    <div className="bg-white border border-emerald-100 rounded-2xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+          Vue d'ensemble
+        </p>
+        {completion != null && (
+          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 rounded-full px-2 py-0.5">
+            {classesConfiguredCount}/{classesTotalCount} classes · {completion}%
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Stat label="Articles" value={articles.length} color="emerald" />
+        <Stat label="Livres" value={counts.livre + counts.workbook} color="indigo" />
+        <Stat label="Cahiers/Four." value={counts.cahier + counts.fourniture + counts.accessoire} color="amber" />
+      </div>
+
+      {(prixMoyenParArticle || coutMoyenParClasse) && (
+        <div className="grid grid-cols-2 gap-2 pt-1">
+          {coutMoyenParClasse != null && (
+            <Stat
+              label="Coût moyen / classe"
+              value={`${coutMoyenParClasse.toLocaleString('fr-FR')} XAF`}
+              color="violet"
+              compact
+            />
+          )}
+          {prixMoyenParArticle != null && (
+            <Stat
+              label="Prix moyen / article"
+              value={`${prixMoyenParArticle.toLocaleString('fr-FR')} XAF`}
+              color="rose"
+              compact
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const Stat: React.FC<{
+  label: string;
+  value: number | string;
+  color: 'emerald' | 'indigo' | 'amber' | 'violet' | 'rose';
+  compact?: boolean;
+}> = ({ label, value, color, compact }) => {
+  const palette: Record<string, string> = {
+    emerald: 'bg-emerald-50 text-emerald-700',
+    indigo:  'bg-indigo-50 text-indigo-700',
+    amber:   'bg-amber-50 text-amber-700',
+    violet:  'bg-violet-50 text-violet-700',
+    rose:    'bg-rose-50 text-rose-700',
+  };
+  return (
+    <div className={`${palette[color]} rounded-xl px-3 py-2 text-center`}>
+      <p className={compact ? 'text-base font-bold' : 'text-xl font-bold'}>{value}</p>
+      <p className="text-[10px] uppercase tracking-wide font-semibold mt-0.5">{label}</p>
+    </div>
+  );
+};
 
 export default EtablissementListeScolairePage;
