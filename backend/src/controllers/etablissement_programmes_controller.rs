@@ -112,6 +112,11 @@ pub async fn update_config(
         }
     }
 
+    // Sigle saisi par l'admin uniquement (jamais auto-généré).
+    // Si vide/None, on laisse la valeur en base inchangée via COALESCE.
+    let nom_abrege_explicit: Option<&str> =
+        payload.nom_abrege.as_deref().map(str::trim).filter(|s| !s.is_empty());
+
     sqlx::query(
         r#"
         UPDATE etablissements_scolaires
@@ -129,7 +134,7 @@ pub async fn update_config(
     )
     .bind(etab_id)
     .bind(payload.nom_etablissement.as_deref())
-    .bind(payload.nom_abrege.as_deref())
+    .bind(nom_abrege_explicit)
     .bind(payload.systeme_scolaire.as_deref())
     .bind(payload.cycles_offerts.as_deref())
     .bind(payload.type_etablissement.as_deref())

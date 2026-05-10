@@ -12,7 +12,7 @@
 //  - Vue tabulée par type d'article (livres / cahiers / fournitures).
 //
 import {
-  ArrowLeft, Book, Copy, Edit2, FileText, GraduationCap, Loader2, NotebookPen,
+  ArrowLeft, Book, Copy, Edit2, ExternalLink, Eye, FileText, GraduationCap, Loader2, NotebookPen,
   Package, Plus, RefreshCw, School, Sparkles, Trash2, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -63,6 +63,7 @@ interface EtabConfig {
   pays: string | null;
   systeme_scolaire: SystemeScolaireDB | null;
   cycles_offerts: string[];
+  slug?: string | null;
 }
 
 interface PreloadSources {
@@ -161,7 +162,19 @@ const EtablissementListeScolairePage: React.FC = () => {
   const handlePreload = async (
     source: 'national' | 'previous_year' | 'etablissement',
     extra: { source_annee?: string; source_etab_id?: number } = {},
+    sourceLabel = 'cette source',
+    expectedCount?: number,
   ) => {
+    // Confirmation explicite — l'admin doit savoir que des articles vont être
+    // ajoutés massivement avant qu'on n'écrive en base.
+    const countMsg = expectedCount != null
+      ? `\n\nLa source contient ~${expectedCount} article(s).`
+      : '';
+    const ok = window.confirm(
+      `Précharger depuis ${sourceLabel} pour l'année ${annee} ?${countMsg}\n\n` +
+      `Mode merge : les articles déjà saisis ne seront pas réécrits.`
+    );
+    if (!ok) return;
     try {
       // Restreint les niveaux importés aux cycles offerts par l'établissement
       // (sinon on copie p.ex. les classes du lycée alors qu'on n'a que primaire+collège).
@@ -294,7 +307,11 @@ const EtablissementListeScolairePage: React.FC = () => {
                   title={`Copier depuis l'année ${y}`}
                   desc="Réutilise vos saisies de l'an dernier — vous ajustez ce qui change"
                   color="violet"
-                  onClick={() => handlePreload('previous_year', { source_annee: y })}
+                  onClick={() => handlePreload(
+                    'previous_year',
+                    { source_annee: y },
+                    `votre année ${y}`,
+                  )}
                 />
               ))}
               {sources.national && (
@@ -303,7 +320,12 @@ const EtablissementListeScolairePage: React.FC = () => {
                   title={`Programme national officiel (${sources.national.pays})`}
                   desc={`${sources.national.nb_articles} livres — référentiel officiel du ministère`}
                   color="emerald"
-                  onClick={() => handlePreload('national')}
+                  onClick={() => handlePreload(
+                    'national',
+                    {},
+                    `le programme national ${sources.national!.pays}`,
+                    sources.national!.nb_articles,
+                  )}
                 />
               )}
               {sources.similar_etabs.slice(0, 3).map(s => (
@@ -313,7 +335,12 @@ const EtablissementListeScolairePage: React.FC = () => {
                   title={`Copier depuis : ${s.nom_etablissement}`}
                   desc={`${s.ville || s.pays} · ${s.nb_articles} articles · même système`}
                   color="indigo"
-                  onClick={() => handlePreload('etablissement', { source_etab_id: s.id })}
+                  onClick={() => handlePreload(
+                    'etablissement',
+                    { source_etab_id: s.id },
+                    s.nom_etablissement,
+                    s.nb_articles,
+                  )}
                 />
               ))}
               <button
@@ -400,6 +427,7 @@ const EtablissementListeScolairePage: React.FC = () => {
             classe={activeClasseFull}
             niveau={findNiveauForClasse(systemeActif, activeClasseFull)}
             annee={annee}
+            slug={etab.slug || null}
             articles={articlesByClasse.get(activeClasseFull) || []}
             onBack={() => setActiveClasseFull(null)}
             onAddArticle={(type) => setShowArticleModal({
@@ -480,12 +508,16 @@ const ClasseView: React.FC<{
   classe: string;
   niveau: string;
   annee: string;
+  slug: string | null;
   articles: Article[];
   onBack: () => void;
   onAddArticle: (type: TypeArticle) => void;
   onEditArticle: (article: Article) => void;
   onDeleteArticle: (id: number) => void;
-}> = ({ classe, niveau, articles, onBack, onAddArticle, onEditArticle, onDeleteArticle }) => {
+}> = ({ classe, niveau, slug, articles, onBack, onAddArticle, onEditArticle, onDeleteArticle }) => {
+  const previewUrl = slug
+    ? `${window.location.origin}/ecole/${slug}/classe/${encodeURIComponent(classe)}/programme`
+    : null;
   return (
     <div className="space-y-3">
       <button
@@ -497,9 +529,26 @@ const ClasseView: React.FC<{
       </button>
 
       <div className="bg-white border border-emerald-100 rounded-2xl p-4">
-        <p className="text-xs text-gray-500">{niveau}</p>
-        <h2 className="text-lg font-bold text-gray-900">{classe}</h2>
-        <p className="text-xs text-gray-500 mt-1">{articles.length} article(s) au total</p>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-gray-500">{niveau}</p>
+            <h2 className="text-lg font-bold text-gray-900">{classe}</h2>
+            <p className="text-xs text-gray-500 mt-1">{articles.length} article(s) au total</p>
+          </div>
+          {previewUrl && articles.length > 0 && (
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold whitespace-nowrap hover:bg-emerald-200"
+              title="Aperçu côté parent"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Voir comme parent
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
       </div>
 
       {TYPES_ARTICLE.map(({ id, label, Icon }) => {

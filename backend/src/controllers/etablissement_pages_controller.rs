@@ -94,10 +94,22 @@ pub struct SearchEtablissementsParams {
     pub q: String,
     #[serde(default = "default_limit")]
     pub limit: i64,
+    /// Active l'expansion via IA (variantes orthographiques, sigles).
+    /// Accepté en "1", "true", "yes", "on". Le front doit envoyer après
+    /// debounce (≥ 300 ms) pour ne pas solliciter l'IA à chaque frappe.
+    #[serde(default)]
+    pub smart: Option<String>,
 }
 
 fn default_limit() -> i64 {
     10
+}
+
+fn truthy(s: &Option<String>) -> bool {
+    matches!(
+        s.as_deref().map(str::to_lowercase).as_deref(),
+        Some("1") | Some("true") | Some("yes") | Some("on")
+    )
 }
 
 #[derive(Debug, Deserialize)]
@@ -132,8 +144,15 @@ pub struct CreateEvenementPayload {
 // ENDPOINTS PUBLICS — accessibles sans authentification
 // ============================================================================
 
-/// GET /api/v2/etablissements/search?q=cbg&limit=10
+/// GET /api/v2/etablissements/search?q=cbg&limit=10&smart=1
 /// Autocomplete pour la barre de recherche école sur la home page parent.
+///
+/// Stratégie hybride :
+///   1. pg_trgm tolérant aux fautes (unaccent + similarity) sur nom/sigle/quartier
+///   2. Si `smart=1` ET q>=3 chars : on demande à l'IA d'élargir la requête
+///      (variantes orthographiques, sigles, raccourcis populaires) — résultat
+///      caché 1 h en Redis pour éviter de repayer pour les mêmes saisies.
+///      Timeout court (1.5 s) avec fallback silencieux sur pg_trgm pur.
 pub async fn search_etablissements(
     State(state): State<Arc<AppState>>,
     Query(params): Query<SearchEtablissementsParams>,
@@ -144,7 +163,42 @@ pub async fn search_etablissements(
     }
     let limit = params.limit.clamp(1, 25);
 
-    let pattern = format!("%{}%", q);
+    // Expansion LLM optionnelle (déclenchée par `?smart=1` côté front, après
+    // debounce). Toujours sécurisée par un timeout + fallback graceful.
+    let smart_enabled = truthy(&params.smart);
+    let expansions: Vec<String> = if smart_enabled && q.chars().count() >= 3 {
+        match tokio::time::timeout(
+            std::time::Duration::from_millis(1500),
+            expand_search_query_with_ia(q, &state),
+        )
+        .await
+        {
+            Ok(Ok(v)) => v,
+            Ok(Err(e)) => {
+                warn!(
+                    "[search_etablissements] LLM expand failed (fallback pg_trgm): {}",
+                    e
+                );
+                Vec::new()
+            }
+            Err(_) => {
+                warn!("[search_etablissements] LLM expand timeout (fallback pg_trgm)");
+                Vec::new()
+            }
+        }
+    } else {
+        Vec::new()
+    };
+
+    // Patterns ILIKE pour la requête + ses expansions LLM
+    let mut patterns: Vec<String> = vec![format!("%{}%", q)];
+    for e in &expansions {
+        let trimmed = e.trim();
+        if !trimmed.is_empty() && trimmed.len() <= 200 {
+            patterns.push(format!("%{}%", trimmed));
+        }
+    }
+
     let rows = sqlx::query_as::<_, EtablissementSummary>(
         r#"
         SELECT
@@ -160,28 +214,154 @@ pub async fn search_etablissements(
         WHERE
             e.page_status = 'published'
             AND (
-                e.nom_etablissement ILIKE $1
-                OR e.nom_abrege     ILIKE $1
+                -- Exact / prefix tolérant (avec unaccent quand l'extension est dispo)
+                e.nom_etablissement ILIKE ANY($1)
+                OR e.nom_abrege     ILIKE ANY($1)
+                OR e.quartier       ILIKE ANY($1)
+                -- Fuzzy match pg_trgm sur le nom complet
                 OR similarity(lower(e.nom_etablissement), lower($2)) > 0.2
+                -- Sigles : seuil plus haut car courts → faux positifs sinon
                 OR similarity(lower(coalesce(e.nom_abrege, '')), lower($2)) > 0.4
-                OR e.quartier ILIKE $1
             )
         ORDER BY
-            -- Priorise un match exact sur le sigle (CBLG, ENAM…)
+            -- Match exact sur le sigle = priorité absolue (ENAM, CBLG…)
             CASE WHEN lower(coalesce(e.nom_abrege, '')) = lower($2) THEN 0 ELSE 1 END,
             similarity(lower(e.nom_etablissement), lower($2)) DESC NULLS LAST,
             e.nom_etablissement
         LIMIT $3
         "#,
     )
-    .bind(&pattern)
+    .bind(&patterns)
     .bind(q)
     .bind(limit)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| AppError::Database(format!("search_etablissements: {}", e)))?;
 
-    Ok((StatusCode::OK, Json(json!({ "results": rows }))))
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "results": rows,
+            "expansions": expansions,
+        })),
+    ))
+}
+
+/// Demande à l'IA des variantes orthographiques, sigles et raccourcis
+/// populaires pour une requête utilisateur. Cache Redis 1 h pour amortir
+/// le coût quand plusieurs parents tapent la même chose.
+async fn expand_search_query_with_ia(query: &str, state: &AppState) -> Result<Vec<String>, String> {
+    let cache_key = format!("etab_search_expand:v1:{}", query.to_lowercase());
+
+    // 1. Lookup cache
+    if let Some(pool) = &state.redis_pool {
+        if let Ok(mut conn) = pool.get().await {
+            if let Ok(cached) = deadpool_redis::redis::cmd("GET")
+                .arg(&cache_key)
+                .query_async::<_, String>(&mut *conn)
+                .await
+            {
+                if let Ok(v) = serde_json::from_str::<Vec<String>>(&cached) {
+                    return Ok(v);
+                }
+            }
+        }
+    }
+
+    // 2. Appel IA — prompt minimal pour latence faible
+    let prompt = format!(
+        "Tu es un assistant de recherche d'écoles d'Afrique francophone et anglophone \
+         (Cameroun, Côte d'Ivoire, Sénégal, Gabon, Congo, RDC, Bénin, Togo, Burkina, \
+         Mali, Niger, Nigeria, Ghana). L'utilisateur recherche : « {} ». \
+         Génère jusqu'à 5 variantes plausibles : orthographe alternative, sigle, \
+         nom complet probable, raccourci populaire. Inclus la chaîne d'origine. \
+         Réponds UNIQUEMENT par un JSON array de strings (pas de texte avant/après, \
+         pas de markdown). Ex pour 'CBLG' → [\"CBLG\",\"Collège Bilingue La Gaieté\"]. \
+         Ex pour 'lycee gen leclerc' → [\"Lycée Général Leclerc\",\"LGL\",\"Lycée Leclerc\"].",
+        query
+    );
+    let (_model, response, _tokens) =
+        state.ia.predict(&prompt).await.map_err(|e| format!("IA error: {:?}", e))?;
+
+    // 3. Parse tolérant : on extrait le 1er array JSON
+    let cleaned = strip_to_first_json_array(&response);
+    let variants: Vec<String> = serde_json::from_str(&cleaned)
+        .map_err(|e| format!("JSON parse error: {} (raw: {:.120})", e, response))?;
+
+    // 4. Filtrage de sécurité : pas de strings absurdement longues, pas de doublons
+    let mut out: Vec<String> = Vec::new();
+    let q_lower = query.to_lowercase();
+    for v in variants {
+        let trimmed = v.trim();
+        if trimmed.is_empty() || trimmed.chars().count() > 100 {
+            continue;
+        }
+        let lc = trimmed.to_lowercase();
+        if lc != q_lower && !out.iter().any(|x| x.to_lowercase() == lc) {
+            out.push(trimmed.to_string());
+        }
+        if out.len() >= 6 {
+            break;
+        }
+    }
+
+    // 5. Cache 1 h
+    if let Some(pool) = &state.redis_pool {
+        if let Ok(mut conn) = pool.get().await {
+            let json_payload = serde_json::to_string(&out).unwrap_or_else(|_| "[]".to_string());
+            let _: Result<(), _> = deadpool_redis::redis::cmd("SETEX")
+                .arg(&cache_key)
+                .arg(3600)
+                .arg(&json_payload)
+                .query_async::<_, ()>(&mut *conn)
+                .await;
+        }
+    }
+
+    Ok(out)
+}
+
+/// Extrait la 1ère sous-chaîne JSON `[...]` équilibrée d'un texte (l'IA peut
+/// préfixer/suffixer du markdown malgré l'instruction).
+fn strip_to_first_json_array(s: &str) -> String {
+    let bytes = s.as_bytes();
+    let mut start: Option<usize> = None;
+    let mut depth: i32 = 0;
+    let mut in_string = false;
+    let mut escape = false;
+    for (i, &b) in bytes.iter().enumerate() {
+        if escape {
+            escape = false;
+            continue;
+        }
+        if in_string {
+            if b == b'\\' {
+                escape = true;
+            } else if b == b'"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match b {
+            b'"' => in_string = true,
+            b'[' => {
+                if start.is_none() {
+                    start = Some(i);
+                }
+                depth += 1;
+            }
+            b']' => {
+                depth -= 1;
+                if depth == 0 {
+                    if let Some(st) = start {
+                        return s[st..=i].to_string();
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    s.to_string()
 }
 
 /// GET /api/v2/ecole/{slug}

@@ -23,7 +23,8 @@ const EcoleSearchPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<EcoleSummary[]>([]);
   const [loading, setLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fastDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const smartDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -31,27 +32,46 @@ const EcoleSearchPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.trim().length < 2) {
+    // Stratégie en 2 vagues :
+    //   - vague 1 (300 ms) : pg_trgm pur — réponse quasi instantanée
+    //   - vague 2 (1100 ms) : pg_trgm + expansion LLM (sigles, variantes ortho)
+    // La 2e vague remplace les résultats si elle ramène autre chose.
+    if (fastDebounce.current) clearTimeout(fastDebounce.current);
+    if (smartDebounce.current) clearTimeout(smartDebounce.current);
+    const q = query.trim();
+    if (q.length < 2) {
       setResults([]);
       return;
     }
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true);
+
+    let cancelled = false;
+    const fetchSearch = async (smart: boolean) => {
       try {
-        const res = await apiGet(
-          `/api/v2/etablissements/search?q=${encodeURIComponent(query.trim())}&limit=12`
-        );
+        const url = `/api/v2/etablissements/search?q=${encodeURIComponent(q)}&limit=12${smart ? '&smart=1' : ''}`;
+        const res = await apiGet(url);
         const data = await res.json().catch(() => ({}));
-        setResults(Array.isArray(data?.results) ? data.results : []);
+        if (!cancelled) {
+          setResults(Array.isArray(data?.results) ? data.results : []);
+        }
       } catch {
-        setResults([]);
+        if (!cancelled && !smart) setResults([]);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    };
+
+    fastDebounce.current = setTimeout(() => {
+      setLoading(true);
+      fetchSearch(false);
     }, 300);
+    smartDebounce.current = setTimeout(() => {
+      fetchSearch(true);
+    }, 1100);
+
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      cancelled = true;
+      if (fastDebounce.current) clearTimeout(fastDebounce.current);
+      if (smartDebounce.current) clearTimeout(smartDebounce.current);
     };
   }, [query]);
 
