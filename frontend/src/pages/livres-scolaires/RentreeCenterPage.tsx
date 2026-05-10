@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 // note : i18next plural form `_one|_other` est résolu automatiquement par t() avec count.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { apiPost, apiGet } from '../../services/apiService';
 import { useToast } from '../../hooks/use-toast';
@@ -38,6 +38,7 @@ type GroupeFilter = 'livres' | 'fournitures';
 const RentreeCenterPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const {
     enfants, panier, addEnfant,
@@ -62,6 +63,18 @@ const RentreeCenterPage: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showTrocExplainer, setShowTrocExplainer] = useState<{ itemId: string } | null>(null);
   const [showPhotoCapture, setShowPhotoCapture] = useState<{ itemId: string } | null>(null);
+
+  // ✅ Lien direct depuis l'accueil : ?suggestions=1 ouvre directement le modal.
+  // Si aucune classe → on ouvre le formulaire de classe d'abord.
+  useEffect(() => {
+    if (searchParams.get('suggestions') === '1') {
+      if (enfants.length === 0) setShowClassForm(true);
+      else setShowSuggestions(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('suggestions');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, enfants.length, setSearchParams]);
 
   // ─── Session troc (créée à la demande quand on photographie) ───
   const [sessionId, setSessionId] = useState<string | null>(null);
