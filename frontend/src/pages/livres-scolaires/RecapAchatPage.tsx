@@ -580,9 +580,11 @@ const RecapAchatPage: React.FC = () => {
   }, [panier.length]);
 
   const handleWantTroc = () => {
+    // ✅ 2026-05-10 : le troc se fait désormais article-par-article depuis
+    // /rentree (Centre de Rentrée), pas via une page dédiée.
     sessionStorage.setItem(TROC_DECISION_KEY, 'troc');
     setShowOccasionModal(false);
-    navigate('/troc-prep');
+    navigate('/rentree');
   };
   const handleSwitchToNeuf = () => {
     occasionItemsInPanier.forEach(it => updateChoix(it.id, 'neuf'));

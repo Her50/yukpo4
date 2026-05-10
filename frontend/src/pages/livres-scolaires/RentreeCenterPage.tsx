@@ -538,7 +538,6 @@ const ClassFormModal: React.FC<{
   const handleSave = () => {
     if (!niveau || !classe) return;
     onSave({
-      prenom: '', // pas de nom enfant — le champ existe en TS mais reste vide
       systeme,
       niveau,
       classe,

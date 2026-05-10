@@ -13,8 +13,10 @@ export type TypeItem = 'livre' | 'cahier' | 'fourniture' | 'autre';
 export type Choix = 'neuf' | 'occasion' | 'indifferent';
 
 export interface Enfant {
+  // ✅ 2026-05-10 : volontairement pas de `prenom` ni d'identifiant nominatif.
+  // Les "enfants" du parent sont identifiés uniquement par leur classe — on ne
+  // collecte aucune donnée nominative côté UX comme côté localStorage.
   id: string;
-  prenom: string;
   systeme: Systeme;
   niveau: string;
   classe: string;

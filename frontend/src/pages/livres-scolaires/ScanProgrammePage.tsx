@@ -561,7 +561,6 @@ const ScanProgrammePage: React.FC = () => {
       return;
     }
     const newEnfant: Enfant = addEnfant({
-      prenom: classeRetenue,
       systeme,
       niveau: niveauNom || '',
       classe: classeRetenue,

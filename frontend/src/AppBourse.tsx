@@ -27,7 +27,6 @@ import RecapAchatPage from './pages/livres-scolaires/RecapAchatPage';
 import RentreeCenterPage from './pages/livres-scolaires/RentreeCenterPage';
 import LibrairieBulkUploadPage from './pages/livres-scolaires/LibrairieBulkUploadPage';
 import BrowseProgrammeByEtablissementPage from './pages/livres-scolaires/BrowseProgrammeByEtablissementPage';
-import TrocPrepPage from './pages/livres-scolaires/TrocPrepPage';
 import VendreLivresPage from './pages/livres-scolaires/VendreLivresPage';
 import MesCommandesPage from './pages/livres-scolaires/MesCommandesPage';
 import { LibrairieDashboardPage, LibrairieCommandeDetailPage } from './pages/livres-scolaires/LibrairiePortalPage';
@@ -118,7 +117,10 @@ function AppBourse() {
               {/* Routes Bourse du Livre accessibles sans login : auth demandée
                   uniquement au moment de la finalisation (POST commande / vente).
                   Cohérent avec une utilisation périodique de la rentrée scolaire. */}
-              <Route path="/troc-prep" element={<BourseLayout><TrocPrepPage /></BourseLayout>} />
+              {/* ✅ 2026-05-10 : /troc-prep est déprécié — le troc se fait désormais
+                  article-par-article depuis /rentree. On redirige les anciens
+                  liens (bookmarks parents) vers le Centre de Rentrée. */}
+              <Route path="/troc-prep" element={<Navigate to="/rentree" replace />} />
               <Route path="/vendre" element={<BourseLayout><VendreLivresPage /></BourseLayout>} />
               <Route path="/mes-commandes" element={<BourseLayout><MesCommandesPage /></BourseLayout>} />
               <Route path="/recap" element={<BourseLayout><RecapAchatPage /></BourseLayout>} />
