@@ -328,8 +328,11 @@ const RentreeCenterPage: React.FC = () => {
                   {e.classe}
                 </button>
               ))}
+              {/* "Ajouter une classe" → renvoie à l'accueil pour repicker une
+                  source (école partenaire / photo / suggestions). C'est là
+                  que se trouvent les 3 entrées qui créent une classe à la volée. */}
               <button
-                onClick={() => setShowClassForm(true)}
+                onClick={() => navigate('/')}
                 className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-2 min-h-[44px] rounded-full text-sm font-semibold bg-white/20 text-white border border-dashed border-white/50 active:bg-white/30"
               >
                 <Plus className="w-4 h-4" /> {t('bourse.rentree.add_class')}
@@ -340,14 +343,15 @@ const RentreeCenterPage: React.FC = () => {
       </div>
 
       <div className="max-w-md mx-auto px-4 pt-4">
-        {/* Empty state — aucune classe */}
+        {/* Empty state — aucune classe : on renvoie sur l'accueil qui propose
+            les 3 sources (école partenaire / photo / suggestions). */}
         {enfants.length === 0 && (
           <div className="bg-white rounded-2xl p-6 text-center shadow-sm">
             <School className="w-10 h-10 text-amber-400 mx-auto mb-2" />
             <h2 className="font-bold text-base text-gray-800">{t('bourse.rentree.no_class_yet')}</h2>
             <p className="text-sm text-gray-500 mt-1">{t('bourse.rentree.no_class_help')}</p>
             <button
-              onClick={() => setShowClassForm(true)}
+              onClick={() => navigate('/')}
               className="mt-4 w-full bg-amber-500 text-white font-bold py-3 rounded-xl active:bg-amber-600 min-h-[48px]"
             >
               {t('bourse.rentree.add_class')}
@@ -482,9 +486,35 @@ const RentreeCenterPage: React.FC = () => {
           </section>
         )}
 
+        {/* CTA "J'ai fini → récap général de toutes mes classes" — visible
+            dès qu'au moins un article est dans le panier (toutes classes
+            confondues). C'est l'option explicite quand l'utilisateur n'a
+            pas envie d'ajouter une autre classe. */}
+        {panier.length > 0 && (
+          <section className="mt-5">
+            <button
+              onClick={goRecap}
+              className="w-full bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4 text-left active:bg-emerald-100 min-h-[72px]"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-emerald-200 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Check className="w-5 h-5 text-emerald-800" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm text-emerald-900">{t('bourse.rentree.go_full_recap_title')}</div>
+                  <div className="text-xs text-emerald-700 mt-0.5">
+                    {t('bourse.rentree.go_full_recap_desc', { count: panier.length })}
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-emerald-700 mt-2 flex-shrink-0" />
+              </div>
+            </button>
+          </section>
+        )}
+
         {/* Vendre vieux livres SANS troc */}
         {active && (
-          <section className="mt-5 pt-4 border-t border-dashed border-gray-300">
+          <section className="mt-4 pt-4 border-t border-dashed border-gray-300">
             <button
               onClick={goVendre}
               className="w-full bg-white rounded-2xl p-4 text-left active:bg-gray-50 min-h-[64px]"

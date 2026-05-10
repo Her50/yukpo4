@@ -315,6 +315,9 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         to_pay_label: 'À payer',
         go_recap: 'Voir le récapitulatif',
         // Side action
+        // CTA "J'ai fini → récap général"
+        go_full_recap_title: "J'ai fini, voir mon récap général",
+        go_full_recap_desc: "{{count}} article(s) — toutes mes classes regroupées, prêt à commander.",
         sell_old_books_title: 'Je vends mes vieux livres SANS troc',
         sell_old_books_desc: 'Recevez du cash quand un acheteur sera trouvé. Pas appliqué à une commande.',
         sell_old_books_cta: 'Vendre mes vieux livres',
@@ -980,6 +983,8 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         credit_label: 'Trade credit',
         to_pay_label: 'To pay',
         go_recap: 'View recap',
+        go_full_recap_title: "I'm done, see my overall recap",
+        go_full_recap_desc: '{{count}} item(s) — all my classes grouped, ready to order.',
         sell_old_books_title: 'Sell my old books WITHOUT trading',
         sell_old_books_desc: 'Get cash when a buyer is found. Not applied to an order.',
         sell_old_books_cta: 'Sell my old books',
