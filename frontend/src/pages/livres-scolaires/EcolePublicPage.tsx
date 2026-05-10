@@ -389,9 +389,14 @@ export const EcoleListeScolairePage: React.FC = () => {
   const { slug = '', classe = '' } = useParams();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { addItems, enfants } = useParentShop();
+  const { addItems, addEnfant, enfants } = useParentShop();
   const [articles, setArticles] = useState<ArticleProgramme[]>([]);
   const [selected, setSelected] = useState<Record<number, boolean>>({});
+  // ✅ 2026-05-10 : choix d'achat par article (cohérent avec ScanProgrammePage
+  // et RentreeCenterPage). Trois états visibles inline pour les livres :
+  // 'neuf' | 'occasion' (sans échange) | 'occasion+troc' (échange contre crédit).
+  const [choix, setChoix] = useState<Record<number, 'neuf' | 'occasion'>>({});
+  const [trocIntent, setTrocIntent] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
   // Année courante détectée automatiquement par le backend (selon pays + date).
   // Le parent ne sélectionne rien — il voit toujours la rentrée en cours.
@@ -409,13 +414,33 @@ export const EcoleListeScolairePage: React.FC = () => {
         setArticles(items);
         if (typeof d?.annee_scolaire === 'string') setAnnee(d.annee_scolaire);
         const initSelected: Record<number, boolean> = {};
-        for (const it of items) initSelected[it.id] = true;
+        const initChoix: Record<number, 'neuf' | 'occasion'> = {};
+        for (const it of items) { initSelected[it.id] = true; initChoix[it.id] = 'neuf'; }
         setSelected(initSelected);
+        setChoix(initChoix);
       } finally {
         setLoading(false);
       }
     })();
   }, [slug, classe]);
+
+  const isOccasionable = (type?: string) =>
+    type === 'livre' || type === 'workbook';
+  const allSelected = articles.length > 0 && articles.every(a => selected[a.id]);
+  const toggleAllSelection = () => {
+    const next: Record<number, boolean> = {};
+    const target = !allSelected;
+    for (const a of articles) next[a.id] = target;
+    setSelected(next);
+  };
+  const setItemChoix = (id: number, c: 'neuf' | 'occasion') => {
+    setChoix(s => ({ ...s, [id]: c }));
+    if (c === 'neuf') setTrocIntent(s => ({ ...s, [id]: false }));
+  };
+  const setItemTrocIntent = (id: number, intent: boolean) => {
+    setChoix(s => ({ ...s, [id]: 'occasion' }));
+    setTrocIntent(s => ({ ...s, [id]: intent }));
+  };
 
   const total = useMemo(
     () =>
@@ -434,30 +459,46 @@ export const EcoleListeScolairePage: React.FC = () => {
       toast({ title: 'Sélectionnez au moins un article', variant: 'destructive' });
       return;
     }
-    const enfantId = enfants[0]?.id;
+    // ✅ 2026-05-10 : si aucune classe enregistrée, on en crée une à la
+    // volée à partir du nom de classe du programme partenaire — pas de
+    // détour par /parent-selection. Le parent peut affiner les détails
+    // (pays, série…) plus tard depuis le formulaire classe de /rentree.
+    let enfantId = enfants.find(e => e.classe === classe)?.id || enfants[0]?.id;
     if (!enfantId) {
-      toast({
-        title: 'Veuillez sélectionner un enfant',
-        description: 'Créez ou choisissez un enfant pour passer commande',
+      const created = addEnfant({
+        systeme: 'francophone',
+        niveau: '',
+        classe: classe || '',
       });
-      navigate('/parent-selection');
-      return;
+      enfantId = created.id;
     }
     addItems(
-      items.map(it => ({
-        enfantId,
-        titre: it.titre,
-        auteur: it.auteur || undefined,
-        matiere: it.matiere || undefined,
-        editeur: it.editeur || undefined,
-        type: (it.type as any) || 'livre',
-        prixNeuf: it.prix_officiel || undefined,
-        quantite: it.quantite_defaut || 1,
-        choix: 'neuf' as const,
-      }))
+      items.map(it => {
+        const c = choix[it.id] || 'neuf';
+        const trocOk = isOccasionable(it.type) && c === 'occasion' && !!trocIntent[it.id];
+        return {
+          enfantId: enfantId as string,
+          titre: it.titre,
+          auteur: it.auteur || undefined,
+          matiere: it.matiere || undefined,
+          editeur: it.editeur || undefined,
+          type: (it.type as any) || 'livre',
+          prixNeuf: it.prix_officiel || undefined,
+          quantite: it.quantite_defaut || 1,
+          choix: c,
+          troc_intent: trocOk || undefined,
+        };
+      })
     );
+    const trocCount = items.filter(
+      it => isOccasionable(it.type) && choix[it.id] === 'occasion' && trocIntent[it.id]
+    ).length;
     toast({ title: `${items.length} article(s) ajouté(s)` });
-    navigate('/recap');
+    if (trocCount > 0) {
+      navigate('/rentree?capture-troc=1');
+    } else {
+      navigate('/rentree');
+    }
   };
 
   return (
@@ -498,7 +539,24 @@ export const EcoleListeScolairePage: React.FC = () => {
           </div>
         )}
 
-        {articles.map(a => (
+        {articles.length > 0 && !loading && (
+          <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-3 py-2 mb-2">
+            <span className="text-xs font-semibold text-gray-700">
+              {articles.filter(a => selected[a.id]).length} / {articles.length} sélectionnés
+            </span>
+            <button
+              onClick={toggleAllSelection}
+              className="text-xs font-bold text-amber-700 active:text-amber-800"
+            >
+              {allSelected ? 'Tout décocher' : 'Tout cocher'}
+            </button>
+          </div>
+        )}
+
+        {articles.map(a => {
+          const c = choix[a.id] || 'neuf';
+          const isLivre = isOccasionable(a.type);
+          return (
           <div
             key={a.id}
             className={`p-3 bg-white rounded-2xl border transition ${
@@ -529,6 +587,33 @@ export const EcoleListeScolairePage: React.FC = () => {
                     </span>
                   )}
                 </div>
+
+                {/* 3-state segmented (Neuf / Occasion / Échange) — uniquement
+                    pour les livres et workbooks, et seulement si la ligne
+                    est sélectionnée. Cohérent avec ScanProgrammePage. */}
+                {isLivre && selected[a.id] && (
+                  <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center mt-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setItemChoix(a.id, 'neuf'); }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                        c === 'neuf' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-500'
+                      }`}
+                    >Neuf</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setItemTrocIntent(a.id, false); }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                        c === 'occasion' && !trocIntent[a.id] ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500'
+                      }`}
+                    >Occasion</button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setItemTrocIntent(a.id, true); }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                        c === 'occasion' && trocIntent[a.id] ? 'bg-cyan-600 text-white shadow-sm' : 'text-gray-500'
+                      }`}
+                      title="Troquer mon ancien livre — crédit immédiat ≈ 60 % de sa valeur."
+                    >Échange</button>
+                  </div>
+                )}
               </div>
               <div className="text-right shrink-0">
                 <p className="text-xs text-gray-400">×{a.quantite_defaut}</p>
@@ -538,7 +623,8 @@ export const EcoleListeScolairePage: React.FC = () => {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Bottom bar total + commander */}
