@@ -778,6 +778,281 @@ pub async fn patch_article(
     Ok((StatusCode::OK, Json(json!({ "ok": true }))))
 }
 
+// ============================================================================
+// Admin Yukpo : import du programme national depuis un CSV
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct ImportNationalPayload {
+    /// Code pays ISO-2 (CM, CI, SN, GA, NG, GH, …).
+    pub pays: String,
+    /// Année scolaire cible (ex: "2026-2027").
+    pub annee_scolaire: String,
+    /// Système éducatif : "francophone" | "anglophone".
+    /// Si absent, déduit du pays (CM,CI,SN,GA,CG,CD,BJ,TG,BF,ML,NE → fr ; NG,GH → en).
+    pub systeme_educatif: Option<String>,
+    /// Contenu CSV brut. Séparateur `;` ou `,`.
+    /// Colonnes attendues (1ère ligne = headers, ordre libre) :
+    ///   classe (req), niveau, matiere, titre_livre (req), auteur_livre, editeur_livre,
+    ///   isbn_livre, type_article (livre|workbook|cahier|fourniture|accessoire),
+    ///   prix_officiel, devise, quantite_defaut, est_obligatoire
+    pub csv: String,
+    /// Mode 'replace' désactive d'abord les programmes existants pour
+    /// (etablissement_national, annee_scolaire). 'merge' (défaut) ajoute sans écraser.
+    #[serde(default)]
+    pub mode: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ImportNationalResponse {
+    pub etablissement_national_id: i32,
+    pub inserted: i64,
+    pub skipped: i64,
+    pub errors: Vec<String>,
+}
+
+/// POST /api/v2/admin/programme-national/import
+/// Réservé aux comptes admin Yukpo. Importe un programme officiel par pays
+/// dans l'établissement « is_national=true » du pays.
+pub async fn import_national_csv(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { role, .. }): Extension<AuthenticatedUser>,
+    Json(p): Json<ImportNationalPayload>,
+) -> AppResult<impl IntoResponse> {
+    if role.to_lowercase() != "admin" && role.to_lowercase() != "super_admin" {
+        return Err(AppError::Forbidden(
+            "Réservé aux administrateurs Yukpo".into(),
+        ));
+    }
+    if p.pays.trim().is_empty() || p.annee_scolaire.trim().is_empty() {
+        return Err(AppError::BadRequest("pays et annee_scolaire requis".into()));
+    }
+
+    // Récupère l'établissement national pour ce pays
+    let nat_id: i32 = sqlx::query_scalar::<_, i32>(
+        r#"SELECT id FROM etablissements_scolaires
+           WHERE pays = $1 AND is_national = true AND is_active = true LIMIT 1"#,
+    )
+    .bind(&p.pays)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("import_national: lookup: {}", e)))?
+    .ok_or_else(|| {
+        AppError::NotFound(format!(
+            "Aucun établissement national pour le pays '{}'",
+            p.pays
+        ))
+    })?;
+
+    // Parse CSV
+    let parsed = parse_csv(&p.csv).map_err(AppError::BadRequest)?;
+    if parsed.rows.is_empty() {
+        return Err(AppError::BadRequest("CSV vide".into()));
+    }
+
+    // Système éducatif par défaut selon pays
+    let systeme_default = match p.pays.to_uppercase().as_str() {
+        "NG" | "GH" => "anglophone",
+        _ => "francophone",
+    };
+    let systeme = p.systeme_educatif.as_deref().unwrap_or(systeme_default).to_string();
+
+    let mode = p.mode.as_deref().unwrap_or("merge");
+    let mut tx = state
+        .pg
+        .begin()
+        .await
+        .map_err(|e| AppError::Database(format!("import_national: tx: {}", e)))?;
+
+    if mode == "replace" {
+        sqlx::query(
+            r#"UPDATE programmes_scolaires
+               SET is_active = false, updated_at = NOW()
+               WHERE etablissement_id = $1 AND annee_scolaire = $2 AND is_active = true"#,
+        )
+        .bind(nat_id)
+        .bind(&p.annee_scolaire)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AppError::Database(format!("import_national: replace clean: {}", e)))?;
+    }
+
+    let mut inserted: i64 = 0;
+    let mut skipped: i64 = 0;
+    let mut errors: Vec<String> = Vec::new();
+
+    for (line_no, row) in parsed.rows.iter().enumerate() {
+        let lookup = |k: &str| -> Option<String> {
+            parsed
+                .header_index(k)
+                .and_then(|i| row.get(i))
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+        };
+
+        let classe = match lookup("classe") {
+            Some(v) => v,
+            None => {
+                errors.push(format!("Ligne {}: classe manquante", line_no + 2));
+                continue;
+            }
+        };
+        let titre = match lookup("titre_livre") {
+            Some(v) => v,
+            None => {
+                errors.push(format!("Ligne {}: titre_livre manquant", line_no + 2));
+                continue;
+            }
+        };
+        let niveau = lookup("niveau").unwrap_or_else(|| "Secondaire".into());
+        let matiere = lookup("matiere").unwrap_or_default();
+        let auteur = lookup("auteur_livre");
+        let editeur = lookup("editeur_livre");
+        let isbn = lookup("isbn_livre");
+        let type_article_raw = lookup("type_article").unwrap_or_else(|| "livre".into());
+        let type_article = if ALLOWED_TYPE_ARTICLE.contains(&type_article_raw.as_str()) {
+            type_article_raw
+        } else {
+            "livre".into()
+        };
+        let devise = lookup("devise").unwrap_or_else(|| "XAF".into());
+        let prix: Option<rust_decimal::Decimal> = lookup("prix_officiel")
+            .and_then(|s| s.replace(',', ".").parse::<f64>().ok())
+            .and_then(rust_decimal::Decimal::from_f64_retain);
+        let qte: i32 = lookup("quantite_defaut").and_then(|s| s.parse::<i32>().ok()).unwrap_or(1);
+        let est_obligatoire: bool = lookup("est_obligatoire")
+            .map(|s| {
+                let lc = s.to_lowercase();
+                !matches!(lc.as_str(), "non" | "no" | "false" | "0" | "")
+            })
+            .unwrap_or(true);
+
+        let res = sqlx::query(
+            r#"
+            INSERT INTO programmes_scolaires (
+                pays, systeme_educatif, niveau, classe, matiere, titre_livre,
+                auteur_livre, editeur_livre, isbn_livre, annee_scolaire,
+                est_obligatoire, prix_officiel, devise, type_article, quantite_defaut,
+                etablissement_id, is_active, created_at, updated_at
+            )
+            SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+                   $16, true, NOW(), NOW()
+            WHERE NOT EXISTS (
+                SELECT 1 FROM programmes_scolaires p
+                WHERE p.etablissement_id = $16
+                  AND p.annee_scolaire = $10
+                  AND p.classe = $4
+                  AND p.titre_livre = $6
+                  AND COALESCE(p.matiere,'') = COALESCE($5,'')
+                  AND COALESCE(p.type_article,'livre') = COALESCE($14,'livre')
+                  AND p.is_active = true
+            )
+            "#,
+        )
+        .bind(&p.pays)
+        .bind(&systeme)
+        .bind(&niveau)
+        .bind(&classe)
+        .bind(&matiere)
+        .bind(&titre)
+        .bind(auteur.as_deref())
+        .bind(editeur.as_deref())
+        .bind(isbn.as_deref())
+        .bind(&p.annee_scolaire)
+        .bind(est_obligatoire)
+        .bind(prix)
+        .bind(&devise)
+        .bind(&type_article)
+        .bind(qte)
+        .bind(nat_id)
+        .execute(&mut *tx)
+        .await;
+
+        match res {
+            Ok(r) if r.rows_affected() > 0 => inserted += 1,
+            Ok(_) => skipped += 1,
+            Err(e) => errors.push(format!("Ligne {}: {}", line_no + 2, e)),
+        }
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| AppError::Database(format!("import_national: commit: {}", e)))?;
+
+    Ok((
+        StatusCode::OK,
+        Json(ImportNationalResponse {
+            etablissement_national_id: nat_id,
+            inserted,
+            skipped,
+            errors,
+        }),
+    ))
+}
+
+#[derive(Debug)]
+struct ParsedCsv {
+    headers: Vec<String>,
+    rows: Vec<Vec<String>>,
+}
+
+impl ParsedCsv {
+    fn header_index(&self, k: &str) -> Option<usize> {
+        let lk = k.to_lowercase();
+        self.headers.iter().position(|h| h.to_lowercase() == lk)
+    }
+}
+
+/// Parser CSV minimaliste : sépare par `;` ou `,` (auto-détection sur la 1ère ligne),
+/// gère les champs entre guillemets `"…"` avec doublement `""` pour échapper.
+/// Suffisant pour un upload manuel d'admin Yukpo.
+fn parse_csv(input: &str) -> Result<ParsedCsv, String> {
+    let lines: Vec<&str> = input
+        .lines()
+        .map(|l| l.trim_end_matches('\r'))
+        .filter(|l| !l.trim().is_empty())
+        .collect();
+    if lines.is_empty() {
+        return Err("CSV vide".into());
+    }
+
+    // Heuristique : si la 1ère ligne contient plus de `;` que de `,`, séparateur = `;`.
+    let header_line = lines[0];
+    let semi_count = header_line.matches(';').count();
+    let comma_count = header_line.matches(',').count();
+    let sep = if semi_count >= comma_count { ';' } else { ',' };
+
+    let split = |line: &str| -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        let mut buf = String::new();
+        let mut in_quote = false;
+        let mut chars = line.chars().peekable();
+        while let Some(c) = chars.next() {
+            if c == '"' {
+                if in_quote && chars.peek() == Some(&'"') {
+                    buf.push('"');
+                    chars.next();
+                } else {
+                    in_quote = !in_quote;
+                }
+            } else if c == sep && !in_quote {
+                out.push(std::mem::take(&mut buf));
+            } else {
+                buf.push(c);
+            }
+        }
+        out.push(buf);
+        out.into_iter().map(|s| s.trim().to_string()).collect()
+    };
+
+    let headers = split(header_line);
+    if headers.iter().all(|h| h.is_empty()) {
+        return Err("Headers CSV vides".into());
+    }
+    let rows: Vec<Vec<String>> = lines[1..].iter().map(|l| split(l)).collect();
+    Ok(ParsedCsv { headers, rows })
+}
+
 /// DELETE /api/v2/admin/etablissement/{id}/programmes/{prog_id}
 /// Soft delete : passe is_active=false.
 pub async fn delete_article(

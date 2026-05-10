@@ -16,6 +16,7 @@ import {
   Package, Plus, RefreshCw, School, Sparkles, Trash2, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../../services/apiService';
@@ -28,11 +29,11 @@ import {
 } from '../../data/schoolSystems';
 
 const TYPES_ARTICLE = [
-  { id: 'livre',      label: 'Livres',       Icon: Book },
-  { id: 'workbook',   label: 'Workbooks',    Icon: NotebookPen },
-  { id: 'cahier',     label: 'Cahiers',      Icon: FileText },
-  { id: 'fourniture', label: 'Fournitures',  Icon: Package },
-  { id: 'accessoire', label: 'Accessoires',  Icon: GraduationCap },
+  { id: 'livre',      labelKey: 'etabAdmin.listeScolaire.type_livre',      Icon: Book },
+  { id: 'workbook',   labelKey: 'etabAdmin.listeScolaire.type_workbook',   Icon: NotebookPen },
+  { id: 'cahier',     labelKey: 'etabAdmin.listeScolaire.type_cahier',     Icon: FileText },
+  { id: 'fourniture', labelKey: 'etabAdmin.listeScolaire.type_fourniture', Icon: Package },
+  { id: 'accessoire', labelKey: 'etabAdmin.listeScolaire.type_accessoire', Icon: GraduationCap },
 ] as const;
 
 type TypeArticle = typeof TYPES_ARTICLE[number]['id'];
@@ -89,6 +90,7 @@ const ANNEE_DEFAUT = ANNEES_DISPO[1];
 const EtablissementListeScolairePage: React.FC = () => {
   const navigate = useNavigate();
   const { etabId = '' } = useParams();
+  const { t } = useTranslation();
   const { toast } = useToast();
 
   const [etab, setEtab] = useState<EtabConfig | null>(null);
@@ -168,11 +170,12 @@ const EtablissementListeScolairePage: React.FC = () => {
     // Confirmation explicite — l'admin doit savoir que des articles vont être
     // ajoutés massivement avant qu'on n'écrive en base.
     const countMsg = expectedCount != null
-      ? `\n\nLa source contient ~${expectedCount} article(s).`
+      ? t('etabAdmin.listeScolaire.preload_confirm_count', { count: expectedCount })
       : '';
     const ok = window.confirm(
-      `Précharger depuis ${sourceLabel} pour l'année ${annee} ?${countMsg}\n\n` +
-      `Mode merge : les articles déjà saisis ne seront pas réécrits.`
+      t('etabAdmin.listeScolaire.preload_confirm', { source: sourceLabel, annee }) +
+      countMsg +
+      t('etabAdmin.listeScolaire.preload_confirm_merge')
     );
     if (!ok) return;
     try {
@@ -197,25 +200,27 @@ const EtablissementListeScolairePage: React.FC = () => {
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d?.message || `HTTP ${res.status}`);
       toast({
-        title: 'Préchargement effectué',
-        description: `${d.copied} article(s) ajouté(s) — ${d.skipped_existing} déjà présent(s)`,
+        title: t('etabAdmin.listeScolaire.preload_done_title'),
+        description: t('etabAdmin.listeScolaire.preload_done_desc', {
+          copied: d.copied, skipped: d.skipped_existing,
+        }),
       });
       load();
     } catch (e: any) {
-      toast({ title: 'Erreur préchargement', description: e?.message, variant: 'destructive' });
+      toast({ title: t('etabAdmin.listeScolaire.preload_error'), description: e?.message, variant: 'destructive' });
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Supprimer cet article ?')) return;
+    if (!window.confirm(t('etabAdmin.listeScolaire.article_delete_confirm'))) return;
     try {
       const res = await apiDelete(`/api/v2/admin/etablissement/${etabId}/programmes/${id}`);
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d?.message || `HTTP ${res.status}`);
-      toast({ title: 'Article supprimé' });
+      toast({ title: t('etabAdmin.listeScolaire.article_deleted') });
       load();
     } catch (e: any) {
-      toast({ title: 'Erreur', description: e?.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: e?.message, variant: 'destructive' });
     }
   };
 
@@ -255,7 +260,7 @@ const EtablissementListeScolairePage: React.FC = () => {
           <ArrowLeft className="w-5 h-5 text-gray-700" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-bold text-gray-900 truncate">Liste scolaire</h1>
+          <h1 className="text-base font-bold text-gray-900 truncate">{t('etabAdmin.listeScolaire.title')}</h1>
           <p className="text-xs text-gray-500 truncate">{etab.nom_etablissement}</p>
         </div>
         <select
@@ -272,19 +277,17 @@ const EtablissementListeScolairePage: React.FC = () => {
         {showConfigBanner && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
             <p className="text-sm font-bold text-amber-900 mb-1">
-              Configuration de l'établissement requise
+              {t('etabAdmin.listeScolaire.config_required_title')}
             </p>
             <p className="text-xs text-amber-800 leading-relaxed">
-              Pour proposer les classes adéquates, indiquez votre système scolaire
-              (francophone, anglophone ou bilingue) et les cycles offerts (primaire,
-              collège, lycée, technique…).
+              {t('etabAdmin.listeScolaire.config_required_desc')}
             </p>
             <button
               onClick={() => navigate(`/etablissement-portal/${etabId}?config=open`)}
               className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-xs font-semibold rounded-full"
             >
               <School className="w-3.5 h-3.5" />
-              Configurer mon établissement
+              {t('etabAdmin.listeScolaire.config_button')}
             </button>
           </div>
         )}
@@ -293,37 +296,36 @@ const EtablissementListeScolairePage: React.FC = () => {
         {sources && articles.length === 0 && (
           <div className="bg-white border border-gray-100 rounded-2xl p-4">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
-              Démarrer rapidement — Préchargement
+              {t('etabAdmin.listeScolaire.preload_title')}
             </p>
             <p className="text-xs text-gray-600 leading-relaxed mb-3">
-              Pas besoin de tout saisir manuellement. Choisissez une source pour
-              pré-remplir cette année. Vous pourrez ensuite ajuster.
+              {t('etabAdmin.listeScolaire.preload_desc')}
             </p>
             <div className="space-y-2">
               {sources.previous_years.length > 0 && sources.previous_years.map(y => (
                 <PreloadButton
                   key={y}
                   Icon={RefreshCw}
-                  title={`Copier depuis l'année ${y}`}
-                  desc="Réutilise vos saisies de l'an dernier — vous ajustez ce qui change"
+                  title={t('etabAdmin.listeScolaire.preload_previous', { year: y })}
+                  desc={t('etabAdmin.listeScolaire.preload_previous_desc')}
                   color="violet"
                   onClick={() => handlePreload(
                     'previous_year',
                     { source_annee: y },
-                    `votre année ${y}`,
+                    t('etabAdmin.listeScolaire.preload_previous', { year: y }),
                   )}
                 />
               ))}
               {sources.national && (
                 <PreloadButton
                   Icon={Sparkles}
-                  title={`Programme national officiel (${sources.national.pays})`}
-                  desc={`${sources.national.nb_articles} livres — référentiel officiel du ministère`}
+                  title={t('etabAdmin.listeScolaire.preload_national', { pays: sources.national.pays })}
+                  desc={t('etabAdmin.listeScolaire.preload_national_desc', { count: sources.national.nb_articles })}
                   color="emerald"
                   onClick={() => handlePreload(
                     'national',
                     {},
-                    `le programme national ${sources.national!.pays}`,
+                    t('etabAdmin.listeScolaire.preload_national', { pays: sources.national!.pays }),
                     sources.national!.nb_articles,
                   )}
                 />
@@ -332,8 +334,11 @@ const EtablissementListeScolairePage: React.FC = () => {
                 <PreloadButton
                   key={s.id}
                   Icon={Copy}
-                  title={`Copier depuis : ${s.nom_etablissement}`}
-                  desc={`${s.ville || s.pays} · ${s.nb_articles} articles · même système`}
+                  title={t('etabAdmin.listeScolaire.preload_etablissement', { name: s.nom_etablissement })}
+                  desc={t('etabAdmin.listeScolaire.preload_etablissement_desc', {
+                    ville: s.ville || s.pays,
+                    count: s.nb_articles,
+                  })}
                   color="indigo"
                   onClick={() => handlePreload(
                     'etablissement',
@@ -351,8 +356,8 @@ const EtablissementListeScolairePage: React.FC = () => {
                   <Sparkles className="w-4 h-4 text-fuchsia-700" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-fuchsia-900">Importer depuis documents IA</p>
-                  <p className="text-xs text-fuchsia-700">Photos, PDF, Word, Excel — extraction auto</p>
+                  <p className="text-sm font-semibold text-fuchsia-900">{t('etabAdmin.listeScolaire.preload_ia')}</p>
+                  <p className="text-xs text-fuchsia-700">{t('etabAdmin.listeScolaire.preload_ia_desc')}</p>
                 </div>
               </button>
             </div>
@@ -394,7 +399,7 @@ const EtablissementListeScolairePage: React.FC = () => {
           <div className="space-y-3">
             {cyclesCount > 0 && (
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide px-1">
-                Choisissez une classe
+                {t('etabAdmin.listeScolaire.choose_class')}
               </p>
             )}
             {niveauxFiltres.map(niveau => (
@@ -530,6 +535,7 @@ const ClasseView: React.FC<{
   onDeleteArticle: (id: number) => void;
   onDuplicated: () => void;
 }> = ({ etabId, classe, niveau, annee, slug, articles, niveauxFiltres, onBack, onAddArticle, onEditArticle, onDeleteArticle, onDuplicated }) => {
+  const { t } = useTranslation();
   const [showDuplicate, setShowDuplicate] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
   const previewUrl = slug
@@ -621,7 +627,8 @@ const ClasseView: React.FC<{
         />
       )}
 
-      {TYPES_ARTICLE.map(({ id, label, Icon }) => {
+      {TYPES_ARTICLE.map(({ id, labelKey, Icon }) => {
+        const label = t(labelKey);
         const items = articles.filter(a => a.type_article === id);
         if (items.length === 0) {
           return (
@@ -632,7 +639,7 @@ const ClasseView: React.FC<{
                 </div>
                 <div className="flex-1 text-left">
                   <p className="text-sm font-semibold text-gray-700">{label}</p>
-                  <p className="text-xs text-gray-400">Aucun article</p>
+                  <p className="text-xs text-gray-400">{t('etabAdmin.listeScolaire.articles_none')}</p>
                 </div>
               </summary>
               <div className="px-4 pb-4">
@@ -641,7 +648,7 @@ const ClasseView: React.FC<{
                   className="w-full py-2.5 border-2 border-dashed border-emerald-300 text-xs font-semibold text-emerald-700 rounded-xl"
                 >
                   <Plus className="w-3.5 h-3.5 inline mr-1" />
-                  Ajouter {label.toLowerCase()}
+                  {label}
                 </button>
               </div>
             </details>
@@ -655,7 +662,7 @@ const ClasseView: React.FC<{
               </div>
               <div className="flex-1 text-left">
                 <p className="text-sm font-semibold text-emerald-800">{label}</p>
-                <p className="text-xs text-gray-500">{items.length} article(s)</p>
+                <p className="text-xs text-gray-500">{t('etabAdmin.listeScolaire.articles_count', { count: items.length })}</p>
               </div>
             </summary>
             <div className="px-3 pb-3 space-y-2">
@@ -718,6 +725,7 @@ const ArticleEditModal: React.FC<{
   onClose: () => void;
   onSaved: () => void;
 }> = ({ etabId, init, annee, systemeEducatif, pays, onClose, onSaved }) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const a = init.article;
   const [titre, setTitre] = useState(a?.titre_livre || '');
@@ -791,7 +799,7 @@ const ArticleEditModal: React.FC<{
               onChange={e => setType(e.target.value as TypeArticle)}
               className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
             >
-              {TYPES_ARTICLE.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+              {TYPES_ARTICLE.map(ta => <option key={ta.id} value={ta.id}>{t(ta.labelKey)}</option>)}
             </select>
           </div>
 
@@ -918,6 +926,7 @@ const BulkAddModal: React.FC<{
   onClose: () => void;
   onDone: () => void;
 }> = ({ etabId, niveau, classe, annee, onClose, onDone }) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [type, setType] = useState<TypeArticle>('cahier');
   const [matiere, setMatiere] = useState('');
@@ -1007,7 +1016,7 @@ const BulkAddModal: React.FC<{
                 onChange={e => setType(e.target.value as TypeArticle)}
                 className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
               >
-                {TYPES_ARTICLE.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                {TYPES_ARTICLE.map(ta => <option key={ta.id} value={ta.id}>{t(ta.labelKey)}</option>)}
               </select>
             </div>
             <div>

@@ -475,6 +475,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             patch(etablissement_programmes_controller::patch_article)
                 .delete(etablissement_programmes_controller::delete_article),
         )
+        // ✅ 2026-05-10 : Import du programme national CSV (admin Yukpo only)
+        .route(
+            "/api/v2/admin/programme-national/import",
+            post(etablissement_programmes_controller::import_national_csv)
+                .layer(axum::extract::DefaultBodyLimit::max(10_000_000)),
+        )
         .layer(middleware::from_fn_with_state(state.clone(), jwt_auth));
 
     Router::new()

@@ -120,7 +120,7 @@ const EcoleSearchPage: React.FC = () => {
           {expansions.length > 0 && (
             <div className="flex items-start gap-1.5 mt-2 flex-wrap">
               <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide pt-1">
-                Aussi essayé :
+                {t('bourse.search.also_tried')}
               </span>
               {expansions.slice(0, 4).map((e, i) => (
                 <button
