@@ -1,5 +1,5 @@
 import {
-  AlertTriangle, ArrowLeft, BookOpen, Check, ChevronRight,
+  AlertTriangle, ArrowLeft, BookOpen, Camera, Check, ChevronRight,
   Loader2, MapPin, Minus, Package, Phone, Plus, Repeat,
   ShoppingCart, ShoppingBag, Trash2, X
 } from 'lucide-react';
@@ -983,6 +983,38 @@ const RecapAchatPage: React.FC = () => {
       </div>
 
       <div className="px-4 pt-4 pb-48 max-w-2xl mx-auto">
+        {/* ✅ 2026-05-10 : bannière "livres à photographier" — la commande
+            reste sur "attente" tant que les livres en échange n'ont pas
+            tous une photo recto/verso enregistrée. Clic → /rentree?capture-troc=1
+            qui ouvre auto la capture pour chaque livre en attente. */}
+        {(() => {
+          const pendingTrocCount = panier.filter(
+            (p: any) => p.choix === 'occasion' && p.troc_intent && !p.trocLivreId
+          ).length;
+          if (pendingTrocCount === 0) return null;
+          return (
+            <div className="mb-4 bg-amber-50 border border-amber-300 rounded-2xl p-3.5 flex items-start gap-3">
+              <div className="w-9 h-9 bg-amber-200 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-amber-800 text-sm">📷</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm text-amber-900 leading-tight">
+                  {t(pendingTrocCount > 1 ? 'bourse.rentree.troc_pending_summary_other' : 'bourse.rentree.troc_pending_summary_one', { count: pendingTrocCount })}
+                </div>
+                <p className="text-xs text-amber-800 mt-0.5">
+                  Votre commande sera mise en attente tant que les photos ne sont pas faites.
+                </p>
+                <button
+                  onClick={() => navigate('/rentree?capture-troc=1')}
+                  className="mt-2 bg-amber-500 text-white text-xs font-bold px-3 py-2 rounded-lg active:bg-amber-600"
+                >
+                  {t('bourse.rentree.troc_pending_cta')}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Infos classe — uniquement en vue 'classe' */}
         {viewMode === 'classe' && activeEnfant && (
           <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 mb-4">
@@ -1294,15 +1326,35 @@ const RecapAchatPage: React.FC = () => {
               {(() => { const n = enfants.filter(e => countByEnfant(e.id) > 0).length; return t(n > 1 ? 'bourse.recap.classes_other' : 'bourse.recap.classes_one', { count: n }); })()}
             </p>
           </div>
-          <button
-            onClick={() => setShowDelivery(true)}
-            disabled={submittingOrder}
-            className="w-full bg-amber-600 disabled:bg-gray-300 text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2"
-          >
-            {submittingOrder ? <Loader2 className="w-5 h-5 animate-spin" /> : <MapPin className="w-5 h-5" />}
-            {submittingOrder ? t('bourse.recap.sending_order') : t('bourse.recap.precise_delivery')}
-            <ChevronRight className="w-4 h-4 ml-auto" />
-          </button>
+          {(() => {
+            const pendingTrocCount = panier.filter(
+              (p: any) => p.choix === 'occasion' && p.troc_intent && !p.trocLivreId
+            ).length;
+            const blocked = pendingTrocCount > 0;
+            return (
+              <button
+                onClick={() => {
+                  if (blocked) {
+                    navigate('/rentree?capture-troc=1');
+                    return;
+                  }
+                  setShowDelivery(true);
+                }}
+                disabled={submittingOrder}
+                className={`w-full disabled:bg-gray-300 text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 ${
+                  blocked ? 'bg-amber-500 active:bg-amber-600' : 'bg-amber-600'
+                }`}
+              >
+                {submittingOrder ? <Loader2 className="w-5 h-5 animate-spin" /> : blocked ? <Camera className="w-5 h-5" /> : <MapPin className="w-5 h-5" />}
+                {submittingOrder
+                  ? t('bourse.recap.sending_order')
+                  : blocked
+                    ? t('bourse.rentree.troc_pending_cta')
+                    : t('bourse.recap.precise_delivery')}
+                <ChevronRight className="w-4 h-4 ml-auto" />
+              </button>
+            );
+          })()}
           <p className="text-center text-xs text-gray-400 mt-2">
             {t('bourse.recap.delivery_required')}
           </p>

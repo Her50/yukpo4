@@ -58,6 +58,13 @@ const RentreeCenterPage: React.FC = () => {
     [panier, active]
   );
 
+  // Nombre global d'items en attente de photo troc (toutes classes confondues).
+  // Sert à afficher la bannière "X livres à photographier" en haut.
+  const pendingTrocCount = useMemo(
+    () => panier.filter(p => p.choix === 'occasion' && p.troc_intent && !p.trocLivreId).length,
+    [panier],
+  );
+
   // ─── Modaux ───
   const [showClassForm, setShowClassForm] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -376,6 +383,34 @@ const RentreeCenterPage: React.FC = () => {
           </section>
         )}
 
+        {/* Bannière "X livres en échange à photographier" — visible dès qu'au
+            moins un item du panier global a une intention de troc non encore
+            associée à une photo. Permet de reprendre le scan à tout moment. */}
+        {pendingTrocCount > 0 && (
+          <section className="mt-3">
+            <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3.5 flex items-start gap-3">
+              <div className="w-9 h-9 bg-amber-200 rounded-full flex items-center justify-center flex-shrink-0">
+                <Camera className="w-4.5 h-4.5 text-amber-800" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm text-amber-900 leading-tight">
+                  {t(pendingTrocCount > 1 ? 'bourse.rentree.troc_pending_summary_other' : 'bourse.rentree.troc_pending_summary_one', { count: pendingTrocCount })}
+                </div>
+                <button
+                  onClick={() => {
+                    const next = new URLSearchParams(searchParams);
+                    next.set('capture-troc', '1');
+                    setSearchParams(next, { replace: true });
+                  }}
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-bold text-amber-700 active:text-amber-800"
+                >
+                  {t('bourse.rentree.troc_pending_cta')} <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Liste des articles pour la classe active */}
         {active && itemsForActive.length > 0 && (
           <section className="space-y-2 mt-2">
@@ -399,7 +434,9 @@ const RentreeCenterPage: React.FC = () => {
                   onChoix={(c) => updateChoix(it.id, c)}
                   onTroc={() => startTroc(it)}
                   onRemove={() => removeItem(it.id)}
+                  onCancelTrocIntent={() => clearTrocIntent(it.id)}
                   isTrocMatched={!!it.trocLivreId}
+                  isTrocPending={!!it.troc_intent && !it.trocLivreId}
                 />
               ))}
             </ul>
@@ -476,10 +513,16 @@ const RentreeCenterPage: React.FC = () => {
 
       {showTrocExplainer && (
         <TrocExplainerModal
-          onClose={() => {
-            // Si on est en mode capture-troc, lever l'intention pour ne pas
-            // re-déclencher la modale en boucle sur ce même item.
-            if (captureTrocActive) clearTrocIntent(showTrocExplainer.itemId);
+          onLater={() => {
+            // ✅ "Plus tard" : on garde l'intention de troc pour que l'item
+            // reste visiblement marqué "à photographier" dans /rentree et
+            // /recap, mais on stoppe la boucle capture-troc pour ne pas
+            // ré-ouvrir la modale en boucle sur ce même item.
+            if (captureTrocActive) {
+              const next = new URLSearchParams(searchParams);
+              next.delete('capture-troc');
+              setSearchParams(next, { replace: true });
+            }
             setShowTrocExplainer(null);
           }}
           onContinue={continueToCapture}
@@ -492,7 +535,13 @@ const RentreeCenterPage: React.FC = () => {
           sessionId={sessionId}
           gps={gps}
           onCancel={() => {
-            if (captureTrocActive) clearTrocIntent(showPhotoCapture.itemId);
+            // Annulation pendant la prise de photo : on garde aussi
+            // l'intention pour permettre au parent de revenir plus tard.
+            if (captureTrocActive) {
+              const next = new URLSearchParams(searchParams);
+              next.delete('capture-troc');
+              setSearchParams(next, { replace: true });
+            }
             setShowPhotoCapture(null);
           }}
           onAnalyzed={(r) => onPhotoAnalyzed(showPhotoCapture.itemId, r)}
@@ -513,13 +562,15 @@ const ItemCard: React.FC<{
   onChoix: (c: Choix) => void;
   onTroc: () => void;
   onRemove: () => void;
+  onCancelTrocIntent: () => void;
   isTrocMatched: boolean;
-}> = ({ item, onChoix, onTroc, onRemove, isTrocMatched }) => {
+  isTrocPending: boolean;
+}> = ({ item, onChoix, onTroc, onRemove, onCancelTrocIntent, isTrocMatched, isTrocPending }) => {
   const { t } = useTranslation();
   const isOccasionable = item.type === 'livre' || item.type === 'workbook' as any;
 
   return (
-    <li className="bg-white rounded-2xl p-3 shadow-sm">
+    <li className={`bg-white rounded-2xl p-3 shadow-sm ${isTrocPending ? 'ring-1 ring-amber-300' : ''}`}>
       <div className="flex items-start gap-2">
         <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center flex-shrink-0">
           <BookOpen className="w-4 h-4 text-amber-600" />
@@ -530,6 +581,28 @@ const ItemCard: React.FC<{
           {item.prixNeuf && (
             <div className="text-xs text-amber-700 font-semibold mt-0.5">
               {item.prixNeuf.toLocaleString('fr-FR')} XAF
+            </div>
+          )}
+          {/* Badge "Photo à faire" — visible si l'utilisateur a choisi un
+              échange mais n'a pas encore fait la photo recto/verso. */}
+          {isTrocPending && (
+            <div className="mt-1 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
+                <Camera className="w-3 h-3" /> {t('bourse.rentree.troc_pending_badge')}
+              </span>
+              <button
+                onClick={onTroc}
+                className="text-[11px] font-bold text-amber-700 active:text-amber-900 underline-offset-2 underline"
+              >
+                {t('bourse.rentree.troc_pending_action_photo')}
+              </button>
+              <span className="text-gray-300">·</span>
+              <button
+                onClick={onCancelTrocIntent}
+                className="text-[11px] text-gray-500 active:text-gray-700"
+              >
+                {t('bourse.rentree.troc_pending_action_cancel')}
+              </button>
             </div>
           )}
         </div>
@@ -956,27 +1029,38 @@ const SuggestionsModal: React.FC<{
 
 // ─── Modal explainer troc ───
 const TrocExplainerModal: React.FC<{
-  onClose: () => void;
+  onLater: () => void;
   onContinue: () => void;
   loading: boolean;
-}> = ({ onClose, onContinue, loading }) => {
+}> = ({ onLater, onContinue, loading }) => {
   const { t } = useTranslation();
   return (
-    <ModalShell onClose={onClose} title={t('bourse.rentree.troc_explainer_title')}>
+    <ModalShell onClose={onLater} title={t('bourse.rentree.troc_explainer_title')}>
       <ul className="space-y-3 text-sm text-gray-700">
         <li>{t('bourse.rentree.troc_explainer_step1')}</li>
         <li>{t('bourse.rentree.troc_explainer_step2')}</li>
         <li>{t('bourse.rentree.troc_explainer_step3')}</li>
         <li>{t('bourse.rentree.troc_explainer_step4')}</li>
       </ul>
-      <button
-        onClick={onContinue}
-        disabled={loading}
-        className="mt-5 w-full bg-green-600 text-white font-bold py-3 rounded-xl active:bg-green-700 disabled:bg-gray-300 min-h-[48px] inline-flex items-center justify-center gap-2"
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-        {t('bourse.rentree.troc_explainer_cta')}
-      </button>
+      <p className="text-xs text-gray-500 mt-3 leading-snug">
+        {t('bourse.rentree.troc_explainer_later_hint')}
+      </p>
+      <div className="mt-4 space-y-2">
+        <button
+          onClick={onContinue}
+          disabled={loading}
+          className="w-full bg-green-600 text-white font-bold py-3 rounded-xl active:bg-green-700 disabled:bg-gray-300 min-h-[48px] inline-flex items-center justify-center gap-2"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+          {t('bourse.rentree.troc_explainer_cta')}
+        </button>
+        <button
+          onClick={onLater}
+          className="w-full bg-gray-100 text-gray-700 font-semibold py-3 rounded-xl active:bg-gray-200 min-h-[48px]"
+        >
+          {t('bourse.rentree.troc_explainer_later')}
+        </button>
+      </div>
     </ModalShell>
   );
 };
