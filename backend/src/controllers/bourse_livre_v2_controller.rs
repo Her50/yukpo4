@@ -39,15 +39,20 @@ pub async fn create_upload_session(
     Json(payload): Json<CreateUploadSessionRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
-        "[create_upload_session] User ID: {}, GPS: {}",
+        "[create_upload_session] User ID: {}, GPS: '{}' (vide=ok, sera demandé à la finalisation)",
         user_id, payload.gps_recuperation
     );
 
-    if payload.gps_recuperation.is_empty() {
-        return Err(AppError::BadRequest(
-            "La localisation GPS est obligatoire avant d'envoyer des livres".to_string(),
-        ));
-    }
+    // ✅ 2026-05-10 : GPS désormais optionnel à la création de la session.
+    // Si le navigateur refuse la géolocalisation, l'utilisateur peut quand
+    // même photographier ses livres. L'adresse de récupération sera
+    // collectée à la finalisation de la commande (page récap → modale
+    // livraison où l'adresse est obligatoire).
+    let gps_value: Option<&str> = if payload.gps_recuperation.trim().is_empty() {
+        None
+    } else {
+        Some(payload.gps_recuperation.as_str())
+    };
 
     let session_id = Uuid::new_v4().to_string();
     let mode = payload.mode_listing_defaut.as_deref().unwrap_or("troc");
@@ -61,7 +66,7 @@ pub async fn create_upload_session(
     )
     .bind(&session_id)
     .bind(user_id)
-    .bind(&payload.gps_recuperation)
+    .bind(gps_value)
     .bind(&payload.adresse_recuperation)
     .bind(mode)
     .fetch_one(&state.pg)

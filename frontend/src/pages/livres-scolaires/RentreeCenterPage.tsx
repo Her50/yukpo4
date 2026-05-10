@@ -150,25 +150,18 @@ const RentreeCenterPage: React.FC = () => {
   const ensureSession = useCallback(async (): Promise<string | null> => {
     if (sessionId) return sessionId;
     if (sessionCreating || sessionInitRef.current) return null;
-    // ✅ Le backend (POST /api/bourse-livre/v2/sessions) exige un
-    // gps_recuperation non vide. On le demande JIT — si l'utilisateur
-    // refuse, on lui dit clairement pourquoi on ne peut pas continuer.
+    // GPS demandé JIT — désormais OPTIONNEL côté backend. Si l'utilisateur
+    // refuse, on continue avec une chaîne vide (la position de récupération
+    // sera collectée à la finalisation de la commande, étape "adresse de
+    // livraison" qui est déjà obligatoire).
     let coords = gps;
     if (!coords) coords = await requestGpsNow();
-    if (!coords) {
-      toast({
-        title: 'Localisation requise',
-        description: "Yukpo a besoin de votre position pour organiser la récupération du livre. Autorisez la géolocalisation dans votre navigateur puis réessayez.",
-        variant: 'destructive',
-      });
-      return null;
-    }
     sessionInitRef.current = true;
     setSessionCreating(true);
     try {
       const payload: Record<string, any> = {
         mode_listing_defaut: 'troc',
-        gps_recuperation: `${coords.lat},${coords.lon}`,
+        gps_recuperation: coords ? `${coords.lat},${coords.lon}` : '',
       };
       const res = await apiPost('/api/bourse-livre/v2/sessions', payload);
       const data = await res.json().catch(() => ({}));

@@ -345,6 +345,11 @@ pub struct BookUploadSession {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateUploadSessionRequest {
+    // ✅ 2026-05-10 : GPS optionnel à la création de la session. Si le
+    // navigateur refuse la géolocalisation, l'utilisateur peut quand même
+    // photographier ses livres. L'adresse précise est collectée à la
+    // finalisation de la commande.
+    #[serde(default)]
     pub gps_recuperation: String,
     pub adresse_recuperation: Option<String>,
     pub mode_listing_defaut: Option<String>,
