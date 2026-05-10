@@ -252,6 +252,13 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         decision_occasion_desc: 'Acheter d\'occasion — Yukpo trouve un vendeur.',
         decision_troc: 'Troquer mon ancien livre',
         decision_troc_desc: "J'ai un vieux livre à proposer en échange et je veux un crédit immédiat.",
+        // Sous-question révélée quand on choisit Occasion
+        occasion_sub_question: "Comment voulez-vous l'obtenir d'occasion ?",
+        occasion_buy_only_title: "Acheter uniquement (sans échange)",
+        occasion_buy_only_desc: "Yukpo cherche un vendeur d'occasion pour vous.",
+        occasion_troc_title: "J'échange un de mes anciens livres",
+        occasion_troc_done_title: "Échange enregistré ✓",
+        occasion_troc_desc: "Photographiez votre vieux livre — crédit immédiat ≈ 60 % de sa valeur sur cette commande.",
         // Troc explainer
         troc_explainer_title: 'Comment fonctionne le troc Yukpo ?',
         troc_explainer_step1: '📷 Vous photographiez votre ancien livre.',
@@ -904,6 +911,13 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         decision_occasion_desc: 'Buy used — Yukpo finds a seller.',
         decision_troc: 'Trade my old book',
         decision_troc_desc: 'I have an old book to trade in for an instant credit.',
+        // Sub-question shown when "Used" is picked
+        occasion_sub_question: 'How do you want to get it used?',
+        occasion_buy_only_title: 'Buy only (no trade)',
+        occasion_buy_only_desc: 'Yukpo finds a used seller for you.',
+        occasion_troc_title: 'Trade in one of my old books',
+        occasion_troc_done_title: 'Trade saved ✓',
+        occasion_troc_desc: 'Photograph your old book — instant credit ≈ 60% of its value on this order.',
         troc_explainer_title: 'How does Yukpo trade work?',
         troc_explainer_step1: '📷 You photograph your old book.',
         troc_explainer_step2: '🤖 AI estimates its value (title, condition, demand).',

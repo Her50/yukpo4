@@ -9,12 +9,12 @@ import { useTranslation } from 'react-i18next';
 import { apiPost, apiGet } from '../../services/apiService';
 import { useToast } from '../../hooks/use-toast';
 import { useParentShop, type Enfant, type PanierItem, type TypeItem, type Choix } from '../../hooks/useParentShop';
+import { PAYS_PAR_DEFAUT, type PaysCode } from '../../data/schoolSystemsLegacy';
 import {
-  CLASSES_PAR_SYSTEME_NIVEAU_LEGACY as CPSN,
-  NIVEAUX_PAR_SYSTEME_LEGACY as NPS,
-  PAYS_PAR_DEFAUT,
-  type PaysCode,
-} from '../../data/schoolSystemsLegacy';
+  getSystemesForPays,
+  LISTE_PAYS_UNIQUES,
+} from '../../data/schoolSystems';
+import type { Systeme } from '../../hooks/useParentShop';
 import BookPhotoCapture, { type AnalyzedBookResult } from '../../components/livres-scolaires/BookPhotoCapture';
 
 // ─── Types locaux ───
@@ -504,20 +504,77 @@ const ItemCard: React.FC<{
         </button>
       </div>
 
-      {/* Choix */}
+      {/* Choix principal : Neuf vs Occasion (2 boutons larges).
+          Quand Occasion est sélectionné, on déroule inline la sous-question
+          "voulez-vous troquer ou simplement acheter d'occasion ?" — c'est
+          plus clair que 3 pills cote à cote où l'utilisateur ne voit pas
+          le lien entre Occasion et Troc. */}
       {isOccasionable && (
-        <div className="mt-2 flex items-center gap-1.5">
-          <ChoixPill active={item.choix === 'neuf'} onClick={() => onChoix('neuf')}>
-            {t('bourse.rentree.decision_neuf')}
-          </ChoixPill>
-          <ChoixPill active={item.choix === 'occasion' && !isTrocMatched} onClick={() => onChoix('occasion')}>
-            {t('bourse.rentree.decision_occasion')}
-          </ChoixPill>
-          <ChoixPill active={isTrocMatched} onClick={onTroc} highlight>
-            <Repeat className="w-3 h-3 inline mr-0.5" />
-            {isTrocMatched ? <Check className="w-3 h-3 inline" /> : t('bourse.rentree.decision_troc')}
-          </ChoixPill>
-        </div>
+        <>
+          <div className="mt-2 flex items-center gap-1.5">
+            <ChoixPill active={item.choix === 'neuf'} onClick={() => onChoix('neuf')}>
+              {t('bourse.rentree.decision_neuf')}
+            </ChoixPill>
+            <ChoixPill active={item.choix === 'occasion'} onClick={() => onChoix('occasion')}>
+              {t('bourse.rentree.decision_occasion')}
+            </ChoixPill>
+          </div>
+
+          {item.choix === 'occasion' && (
+            <div className="mt-2 ml-1 pl-2.5 border-l-2 border-amber-200 space-y-1.5">
+              <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                {t('bourse.rentree.occasion_sub_question')}
+              </div>
+              {/* Sous-option 1 : sans troc */}
+              <button
+                onClick={() => { /* déjà en occasion sans troc */ }}
+                className={`w-full text-left p-2.5 rounded-lg border min-h-[48px] ${
+                  !isTrocMatched
+                    ? 'bg-amber-50 border-amber-300 text-amber-900'
+                    : 'bg-white border-gray-200 text-gray-700'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {!isTrocMatched && <Check className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />}
+                  <div className="flex-1">
+                    <div className="text-xs font-bold">{t('bourse.rentree.occasion_buy_only_title')}</div>
+                    <div className="text-[11px] text-gray-500 leading-tight">
+                      {t('bourse.rentree.occasion_buy_only_desc')}
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              {/* Sous-option 2 : troc avec crédit */}
+              <button
+                onClick={onTroc}
+                className={`w-full text-left p-2.5 rounded-lg border min-h-[48px] ${
+                  isTrocMatched
+                    ? 'bg-green-50 border-green-400 text-green-900'
+                    : 'bg-white border-green-200 text-green-800'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {isTrocMatched ? (
+                    <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  ) : (
+                    <Repeat className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                  )}
+                  <div className="flex-1">
+                    <div className="text-xs font-bold">
+                      {isTrocMatched
+                        ? t('bourse.rentree.occasion_troc_done_title')
+                        : t('bourse.rentree.occasion_troc_title')}
+                    </div>
+                    <div className="text-[11px] text-gray-500 leading-tight">
+                      {t('bourse.rentree.occasion_troc_desc')}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          )}
+        </>
       )}
     </li>
   );
@@ -544,79 +601,178 @@ const ChoixPill: React.FC<{
 );
 
 // ─── Modal ajout d'une classe (sans nom enfant) ───
+// Aligné sur AddEnfantForm de ParentSelectionPage : Pays → Système → Niveau →
+// Classe → Série/Filière. Multi-pays + multi-systèmes.
 const ClassFormModal: React.FC<{
   onClose: () => void;
   onSave: (e: Omit<Enfant, 'id'>) => void;
 }> = ({ onClose, onSave }) => {
   const { t } = useTranslation();
-  const [systeme, setSysteme] = useState<'francophone' | 'anglophone'>('francophone');
-  const [niveau, setNiveau] = useState<string>('');
-  const [classe, setClasse] = useState<string>('');
 
-  const niveaux = NPS[systeme];
-  const classes = niveau
-    ? ((CPSN as any)[systeme]?.[niveau] as readonly string[] | undefined) || []
-    : [];
+  const [pays, setPays] = useState<PaysCode>(PAYS_PAR_DEFAUT as PaysCode);
+  const systemes = useMemo(() => getSystemesForPays(pays), [pays]);
+  const [systemeId, setSystemeId] = useState(systemes[0]?.id ?? `${PAYS_PAR_DEFAUT}-fr`);
+  const systemeObj = systemes.find(s => s.id === systemeId) ?? systemes[0];
+  const [niveauNom, setNiveauNom] = useState('');
+  const niveauObj = systemeObj?.niveaux.find(n => n.nom === niveauNom);
+  const [classeNom, setClasseNom] = useState('');
+  const classeObj = niveauObj?.classes.find(c => c.nom === classeNom);
+  const [serieCode, setSerieCode] = useState('');
+  const hasSeries = (classeObj?.series?.length ?? 0) > 0;
+  const canSave = !!classeNom && (!hasSeries || !!serieCode);
+  const finalClasse = serieCode ? `${classeNom} ${serieCode}` : classeNom;
+  const systeme: Systeme = systemeObj?.langue === 'en' ? 'anglophone' : 'francophone';
+
+  const handlePaysChange = (p: PaysCode) => {
+    setPays(p);
+    const newSystemes = getSystemesForPays(p);
+    setSystemeId(newSystemes[0]?.id ?? '');
+    setNiveauNom('');
+    setClasseNom('');
+    setSerieCode('');
+  };
+
+  const handleSystemeChange = (id: string) => {
+    setSystemeId(id);
+    setNiveauNom('');
+    setClasseNom('');
+    setSerieCode('');
+  };
 
   const handleSave = () => {
-    if (!niveau || !classe) return;
+    if (!canSave || !systemeObj) return;
     onSave({
       systeme,
-      niveau,
-      classe,
-      pays: PAYS_PAR_DEFAUT as PaysCode,
-      systemeId: `${PAYS_PAR_DEFAUT}-${systeme === 'anglophone' ? 'en' : 'fr'}`,
+      niveau: niveauNom,
+      classe: finalClasse,
+      pays,
+      systemeId,
+      serie: serieCode || undefined,
     });
   };
 
   return (
-    <ModalShell onClose={onClose} title={t('bourse.rentree.class_form_title')}>
+    <ModalShell onClose={onClose} title={t('bourse.rentree.class_form_title')} fullScreen>
       <div className="space-y-4">
-        {/* Système */}
+        {/* Pays */}
         <div>
-          <label className="text-xs font-semibold text-gray-600 block mb-1">{t('bourse.rentree.class_form_system')}</label>
-          <div className="flex gap-2">
-            {(['francophone', 'anglophone'] as const).map(s => (
+          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+            {t('bourse.rentree.class_form_country')}
+          </label>
+          <select
+            value={pays}
+            onChange={(e) => handlePaysChange(e.target.value as PaysCode)}
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm bg-white min-h-[44px]"
+          >
+            {LISTE_PAYS_UNIQUES.map((p) => (
+              <option key={p.code} value={p.code}>
+                {p.emoji} {p.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Système (si plusieurs pour le pays choisi) */}
+        {systemes.length > 1 && (
+          <div>
+            <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+              {t('bourse.rentree.class_form_system')}
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {systemes.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => handleSystemeChange(s.id)}
+                  className={`py-2.5 rounded-xl text-xs font-semibold border min-h-[44px] ${
+                    systemeId === s.id
+                      ? 'bg-amber-500 text-white border-amber-500'
+                      : 'bg-white text-gray-700 border-gray-200'
+                  }`}
+                >
+                  {s.systemeLabel}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Niveau */}
+        <div>
+          <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+            {t('bourse.rentree.class_form_level')}
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {(systemeObj?.niveaux ?? []).map((n) => (
               <button
-                key={s}
-                onClick={() => { setSysteme(s); setNiveau(''); setClasse(''); }}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-semibold min-h-[44px] ${
-                  s === systeme ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-700'
+                key={n.nom}
+                onClick={() => { setNiveauNom(n.nom); setClasseNom(''); setSerieCode(''); }}
+                className={`px-3 py-2 rounded-lg text-xs font-semibold border min-h-[40px] ${
+                  niveauNom === n.nom
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : 'bg-white text-gray-700 border-gray-200'
                 }`}
               >
-                {s === 'francophone' ? 'Francophone' : 'Anglophone'}
+                {n.nom}
               </button>
             ))}
           </div>
         </div>
-        {/* Niveau */}
-        <div>
-          <label className="text-xs font-semibold text-gray-600 block mb-1">{t('bourse.rentree.class_form_level')}</label>
-          <select
-            value={niveau}
-            onChange={(e) => { setNiveau(e.target.value); setClasse(''); }}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-          >
-            <option value="">—</option>
-            {niveaux.map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
+
         {/* Classe */}
-        {niveau && (
+        {niveauObj && (
           <div>
-            <label className="text-xs font-semibold text-gray-600 block mb-1">{t('bourse.rentree.class_form_class')}</label>
-            <select
-              value={classe}
-              onChange={(e) => setClasse(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm min-h-[44px]"
-            >
-              <option value="">—</option>
-              {classes.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+              {t('bourse.rentree.class_form_class')}
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {niveauObj.classes.map((c) => (
+                <button
+                  key={c.nom}
+                  onClick={() => { setClasseNom(c.nom); setSerieCode(''); }}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium border min-h-[40px] ${
+                    classeNom === c.nom
+                      ? 'bg-amber-500 text-white border-amber-500'
+                      : 'bg-white text-gray-700 border-gray-200'
+                  }`}
+                >
+                  {c.nom}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Série / Filière (si applicable) */}
+        {classeObj && hasSeries && (
+          <div>
+            <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+              Série / Filière
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {classeObj.series!.map((s) => (
+                <button
+                  key={s.code}
+                  onClick={() => setSerieCode(s.code)}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium border flex items-baseline gap-1 min-h-[40px] ${
+                    serieCode === s.code
+                      ? 'bg-amber-500 text-white border-amber-500'
+                      : 'bg-white text-gray-700 border-gray-200'
+                  }`}
+                >
+                  <span className="font-bold">{s.code}</span>
+                  {s.label && (
+                    <span className={`text-[10px] ${serieCode === s.code ? 'text-white/80' : 'text-gray-400'}`}>
+                      {s.label}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
-      <div className="flex gap-2 mt-5">
+
+      <div className="flex gap-2 mt-6 sticky bottom-0 bg-white pt-3 -mx-4 px-4 pb-2 border-t border-gray-100">
         <button
           onClick={onClose}
           className="flex-1 bg-gray-100 text-gray-700 font-bold py-3 rounded-xl min-h-[48px]"
@@ -625,7 +781,7 @@ const ClassFormModal: React.FC<{
         </button>
         <button
           onClick={handleSave}
-          disabled={!niveau || !classe}
+          disabled={!canSave}
           className="flex-1 bg-amber-500 text-white font-bold py-3 rounded-xl disabled:bg-gray-300 min-h-[48px]"
         >
           {t('bourse.rentree.class_form_save')}
