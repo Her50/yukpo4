@@ -12,7 +12,7 @@
 //  - Vue tabulée par type d'article (livres / cahiers / fournitures).
 //
 import {
-  ArrowLeft, Book, Copy, CopyPlus, Edit2, ExternalLink, Eye, FileText, GraduationCap, Loader2, NotebookPen,
+  ArrowLeft, Book, Copy, CopyPlus, Download, Edit2, ExternalLink, Eye, FileText, GraduationCap, Loader2, NotebookPen,
   Package, Plus, RefreshCw, School, Sparkles, Trash2, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -563,6 +563,16 @@ const ClasseView: React.FC<{
             </button>
             {articles.length > 0 && (
               <button
+                onClick={() => exportClasseCSV(classe, annee, articles)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold whitespace-nowrap hover:bg-blue-200"
+                title="Exporter cette liste au format CSV"
+              >
+                <Download className="w-3.5 h-3.5" />
+                CSV
+              </button>
+            )}
+            {articles.length > 0 && (
+              <button
                 onClick={() => setShowDuplicate(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-100 text-violet-700 rounded-full text-xs font-semibold whitespace-nowrap hover:bg-violet-200"
                 title="Dupliquer cette liste vers une autre classe"
@@ -845,6 +855,47 @@ const Field: React.FC<{
     />
   </div>
 );
+
+// ============================================================================
+// Export CSV — liste scolaire d'une classe
+// ============================================================================
+// Génère un fichier CSV (séparateur ; pour Excel France/CM) téléchargeable.
+// Inclut un BOM UTF-8 pour que les accents s'affichent correctement dans Excel.
+// ============================================================================
+
+function exportClasseCSV(classe: string, annee: string, articles: Article[]) {
+  const headers = ['Type', 'Matière', 'Titre', 'Auteur', 'Éditeur', 'ISBN', 'Quantité', 'Prix officiel', 'Devise', 'Obligatoire'];
+  const escape = (s: string | null | undefined): string => {
+    const v = (s ?? '').toString();
+    if (v.includes(';') || v.includes('"') || v.includes('\n')) {
+      return `"${v.replace(/"/g, '""')}"`;
+    }
+    return v;
+  };
+  const rows = articles.map(a => [
+    a.type_article,
+    a.matiere || '',
+    a.titre_livre,
+    a.auteur_livre || '',
+    a.editeur_livre || '',
+    a.isbn_livre || '',
+    String(a.quantite_defaut || 1),
+    a.prix_officiel != null ? String(Math.round(a.prix_officiel)) : '',
+    a.devise || 'XAF',
+    a.est_obligatoire === false ? 'non' : 'oui',
+  ].map(escape).join(';'));
+
+  const csv = [headers.join(';'), ...rows].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `liste-scolaire-${classe.replace(/\s+/g, '-')}-${annee}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // ============================================================================
 // Modale d'ajout en lot d'articles dans une classe
