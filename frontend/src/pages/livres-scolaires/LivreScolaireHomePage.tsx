@@ -1,5 +1,5 @@
 import {
-  Camera, ChevronRight, ScanLine, School, Search, ShoppingCart, Sparkles, Store,
+  Camera, ChevronRight, ScanLine, School, ShoppingCart, Sparkles, Store,
 } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -78,12 +78,13 @@ const LivreScolaireHomePage: React.FC = () => {
             {t('bourse.home.scan_description')}
           </p>
 
+          {/* CTA principal : Centre de Rentrée (regroupe école partenaire / scan / manuel) */}
           <button
-            onClick={() => navigate('/scan-programme')}
-            className="w-full max-w-sm flex items-center justify-center gap-2.5 bg-gradient-to-r from-amber-500 to-amber-600 active:from-amber-600 active:to-amber-700 text-white font-bold py-4 rounded-2xl text-base shadow-md shadow-amber-200/60"
+            onClick={() => navigate('/rentree')}
+            className="w-full max-w-sm flex items-center justify-center gap-2.5 bg-gradient-to-r from-amber-500 to-amber-600 active:from-amber-600 active:to-amber-700 text-white font-bold py-4 rounded-2xl text-base shadow-md shadow-amber-200/60 min-h-[56px]"
           >
-            <Camera className="w-5 h-5" />
-            {t('bourse.home.scan_cta')}
+            <Sparkles className="w-5 h-5" />
+            {t('bourse.rentree.title')}
             <ChevronRight className="w-5 h-5 ml-1" />
           </button>
 
@@ -96,13 +97,13 @@ const LivreScolaireHomePage: React.FC = () => {
             <div className="flex-1 h-px bg-gray-200"></div>
           </div>
 
-          {/* CTA secondaire — école partenaire */}
+          {/* CTA secondaire — accès rapide scan direct */}
           <button
-            onClick={() => navigate('/recherche-ecole')}
-            className="w-full max-w-sm flex items-center justify-center gap-2.5 bg-white border-2 border-amber-300 active:bg-amber-50 text-amber-800 font-semibold py-3.5 rounded-2xl text-sm"
+            onClick={() => navigate('/scan-programme')}
+            className="w-full max-w-sm flex items-center justify-center gap-2.5 bg-white border-2 border-amber-300 active:bg-amber-50 text-amber-800 font-semibold py-3.5 rounded-2xl text-sm min-h-[48px]"
           >
-            <Search className="w-4.5 h-4.5" />
-            {t('bourse.home.partner_school_cta')}
+            <Camera className="w-4.5 h-4.5" />
+            {t('bourse.home.scan_cta')}
             <ChevronRight className="w-4 h-4 ml-1" />
           </button>
 

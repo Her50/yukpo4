@@ -81,6 +81,280 @@ pub struct FindMatchingsRequest {
     pub max_participants: Option<i32>,
 }
 
+/// GET /api/v2/admin/troc/consignation-pool
+/// Liste les livres en `troc_status='expired'` (60j sans match), à valoriser
+/// par l'admin Yukpo via canaux secondaires (vente boutique partenaire,
+/// don, retrait définitif). Réservé aux admins.
+pub async fn list_consignation_pool(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { role, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let r = role.to_lowercase();
+    if r != "admin" && r != "super_admin" {
+        return Err(AppError::Forbidden(
+            "Réservé aux administrateurs Yukpo".into(),
+        ));
+    }
+    use sqlx::Row;
+    let rows = sqlx::query(
+        r#"
+        SELECT l.id, l.titre, l.auteur, l.editeur, l.classe_actuelle, l.classe_souhaitee,
+               l.matiere, l.etat_classification,
+               l.valeur_calculee::float8 AS valeur_calculee,
+               l.prix_detecte::float8 AS prix_detecte,
+               l.gps, l.ville, l.quartier,
+               l.user_id, l.created_at, l.updated_at,
+               u.email AS owner_email
+        FROM livres_scolaires l
+        LEFT JOIN users u ON u.id = l.user_id
+        WHERE l.troc_status = 'expired'
+        ORDER BY l.updated_at DESC
+        LIMIT 200
+        "#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur listing pool: {}", e)))?;
+
+    let items: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id": r.try_get::<i32, _>("id").unwrap_or(0),
+                "titre": r.try_get::<Option<String>, _>("titre").unwrap_or(None),
+                "auteur": r.try_get::<Option<String>, _>("auteur").unwrap_or(None),
+                "editeur": r.try_get::<Option<String>, _>("editeur").unwrap_or(None),
+                "classe_actuelle": r.try_get::<Option<String>, _>("classe_actuelle").unwrap_or(None),
+                "classe_souhaitee": r.try_get::<Option<String>, _>("classe_souhaitee").unwrap_or(None),
+                "matiere": r.try_get::<Option<String>, _>("matiere").unwrap_or(None),
+                "etat_classification": r.try_get::<Option<String>, _>("etat_classification").unwrap_or(None),
+                "valeur_calculee": r.try_get::<Option<f64>, _>("valeur_calculee").unwrap_or(None),
+                "prix_detecte": r.try_get::<Option<f64>, _>("prix_detecte").unwrap_or(None),
+                "gps": r.try_get::<Option<String>, _>("gps").unwrap_or(None),
+                "ville": r.try_get::<Option<String>, _>("ville").unwrap_or(None),
+                "quartier": r.try_get::<Option<String>, _>("quartier").unwrap_or(None),
+                "user_id": r.try_get::<i32, _>("user_id").unwrap_or(0),
+                "owner_email": r.try_get::<Option<String>, _>("owner_email").unwrap_or(None),
+                "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok().map(|t| t.to_rfc3339()),
+                "expired_since": r.try_get::<chrono::DateTime<chrono::Utc>, _>("updated_at").ok().map(|t| t.to_rfc3339()),
+            })
+        })
+        .collect();
+
+    Ok(Json(
+        json!({ "success": true, "items": items, "count": items.len() }),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConsignationRecoveryPayload {
+    /// Montant XAF effectivement récupéré via canal secondaire (vente boutique,
+    /// don avec déduction fiscale, etc.). Sera crédité sur le wallet du parent
+    /// si ratio négocié — sinon 0 et on marque le livre comme "récupéré sans
+    /// rétribution parent".
+    pub amount_recovered_xaf: f64,
+    pub channel: String, // 'boutique_sale', 'donation', 'pulled', etc.
+    pub note: Option<String>,
+}
+
+/// POST /api/v2/admin/troc/consignation/{livre_id}/recover
+/// Marque un livre `expired` comme "récupéré" via un canal secondaire.
+/// Optionnellement crédite le wallet du parent si une partie de la valeur
+/// a été récupérée. Le livre passe en statut `delivered` (pour le sortir
+/// du pool d'expirés).
+pub async fn recover_consignation(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { role, .. }): Extension<AuthenticatedUser>,
+    Path(livre_id): Path<i32>,
+    Json(payload): Json<ConsignationRecoveryPayload>,
+) -> AppResult<impl IntoResponse> {
+    let r = role.to_lowercase();
+    if r != "admin" && r != "super_admin" {
+        return Err(AppError::Forbidden(
+            "Réservé aux administrateurs Yukpo".into(),
+        ));
+    }
+
+    // Récupère l'owner pour le crédit éventuel
+    let owner_id: Option<i32> = sqlx::query_scalar(
+        "SELECT user_id FROM livres_scolaires WHERE id = $1 AND troc_status = 'expired'",
+    )
+    .bind(livre_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lookup livre: {}", e)))?;
+
+    let owner_id = owner_id.ok_or_else(|| {
+        AppError::NotFound(format!(
+            "Livre {} introuvable ou pas en troc_status='expired'",
+            livre_id
+        ))
+    })?;
+
+    // Crédit wallet parent si le canal a généré une rentrée
+    if payload.amount_recovered_xaf > 0.0 {
+        use crate::services::wallet_credit_bourse_service as wallet;
+        let dec = rust_decimal::Decimal::from_f64_retain(payload.amount_recovered_xaf)
+            .unwrap_or_default();
+        wallet::apply_credit(
+            &state.pg,
+            owner_id,
+            dec,
+            wallet::CreditSource::ConsignationRecovery,
+            wallet::CreditMovementContext {
+                livre_id: Some(livre_id),
+                note: Some(format!(
+                    "Récupération via {} : {}",
+                    payload.channel,
+                    payload.note.as_deref().unwrap_or("(aucune note)")
+                )),
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur crédit récupération: {}", e)))?;
+    }
+
+    // Marque le livre comme "delivered" (sorti du pool)
+    sqlx::query(
+        r#"UPDATE livres_scolaires
+           SET troc_status = 'delivered', is_active = false, updated_at = NOW()
+           WHERE id = $1"#,
+    )
+    .bind(livre_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur update livre: {}", e)))?;
+
+    Ok(Json(json!({
+        "success": true,
+        "livre_id": livre_id,
+        "owner_id": owner_id,
+        "amount_credited": payload.amount_recovered_xaf,
+        "channel": payload.channel,
+    })))
+}
+
+/// POST /api/troc-livres/match-all-pending
+/// Trouve le DAG global pour TOUS les livres en `troc_status='pending'` du
+/// user authentifié, et calcule le crédit prévisionnel total.
+///
+/// Utilisé par le checkout (RecapAchatPage) pour appliquer un crédit immédiat
+/// sur la commande en cours, avant même l'engagement de la chaîne troc.
+///
+/// Réponse :
+///   {
+///     "livres_pending": [{ id, titre, valeur_calculee, credit_provisionnel,
+///                          a_un_match, distance_match_km, ... }],
+///     "credit_total_disponible": <decimal>,
+///     "credit_engageable_max": <decimal>,  // après application du cap commande
+///     "match_count": <int>
+///   }
+pub async fn match_all_pending(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Json(params): Json<MatchAllPendingParams>,
+) -> AppResult<impl IntoResponse> {
+    use crate::services::wallet_credit_bourse_service as wallet;
+
+    info!(
+        "[match_all_pending] user_id={}, target_amount={:?}",
+        user_id, params.target_amount
+    );
+
+    // 1. Récupère les livres en pending du user
+    use sqlx::Row;
+    let rows = sqlx::query(
+        r#"
+        SELECT id, titre, classe_actuelle, classe_souhaitee, matiere, valeur_calculee::float8 as valeur,
+               etat_classification, gps
+        FROM livres_scolaires
+        WHERE user_id = $1
+          AND troc_status = 'pending'
+          AND is_active = true
+          AND COALESCE(etat_classification, 'acceptable') != 'rejete'
+          AND COALESCE(mode_listing, 'troc') = 'troc'
+        ORDER BY valeur_calculee DESC NULLS LAST
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur listing pending: {}", e)))?;
+
+    let mut livres_pending: Vec<serde_json::Value> = Vec::new();
+    let mut credit_total: f64 = 0.0;
+    let mut match_count: i32 = 0;
+
+    let service = Service::new(Arc::new(state.pg.clone()));
+
+    for row in &rows {
+        let livre_id: i32 = row.try_get("id").unwrap_or(0);
+        let valeur: f64 = row.try_get("valeur").ok().unwrap_or(0.0);
+        let credit = wallet::compute_credit_for_book(valeur);
+
+        // Tentative de matching pour ce livre — on vérifie juste s'il y a
+        // un candidat (direct OU chaîne avec max=5 — le DAG cherche le minimum).
+        let direct = service.find_matching_direct(livre_id).await.unwrap_or_default();
+        let chain = if direct.is_empty() {
+            service.find_matching_chaine(livre_id, Some(5)).await.unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        let a_un_match = !direct.is_empty() || !chain.is_empty();
+        let distance_min =
+            direct.iter().filter_map(|m| m.distance_km).fold(f64::INFINITY, f64::min);
+        let distance_match_km = if distance_min.is_finite() {
+            Some(distance_min)
+        } else {
+            None
+        };
+
+        if a_un_match {
+            match_count += 1;
+            credit_total += credit;
+        }
+
+        livres_pending.push(serde_json::json!({
+            "id": livre_id,
+            "titre": row.try_get::<Option<String>, _>("titre").unwrap_or(None),
+            "classe_actuelle": row.try_get::<Option<String>, _>("classe_actuelle").unwrap_or(None),
+            "classe_souhaitee": row.try_get::<Option<String>, _>("classe_souhaitee").unwrap_or(None),
+            "matiere": row.try_get::<Option<String>, _>("matiere").unwrap_or(None),
+            "valeur_calculee": valeur,
+            "credit_provisionnel": credit,
+            "a_un_match": a_un_match,
+            "distance_match_km": distance_match_km,
+            "n_matchings_directs": direct.len(),
+            "n_matchings_chaines": chain.len(),
+        }));
+    }
+
+    // Cap selon la commande en cours (si fournie en query param)
+    let credit_engageable_max = match params.target_amount {
+        Some(montant) if montant > 0.0 => wallet::cap_credit_for_order(credit_total, montant),
+        _ => credit_total.min(wallet::CAP_CREDIT_PAR_PARENT_XAF),
+    };
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "livres_pending": livres_pending,
+        "credit_total_disponible": credit_total,
+        "credit_engageable_max": credit_engageable_max,
+        "match_count": match_count,
+        "ratio_credit_vs_valeur": wallet::RATIO_CREDIT_VS_VALEUR_IA,
+        "cap_par_parent": wallet::CAP_CREDIT_PAR_PARENT_XAF,
+        "ratio_max_dans_commande": wallet::RATIO_MAX_CREDIT_DANS_COMMANDE,
+    })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MatchAllPendingParams {
+    /// Montant total de la commande en cours (XAF). Sert à plafonner le
+    /// crédit utilisable selon `RATIO_MAX_CREDIT_DANS_COMMANDE`.
+    pub target_amount: Option<f64>,
+}
+
 /// POST /api/troc-livres/direct
 /// Créer un troc direct
 pub async fn create_troc_direct(

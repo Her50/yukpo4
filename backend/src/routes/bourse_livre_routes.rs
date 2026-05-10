@@ -12,6 +12,7 @@ use crate::controllers::etablissement_pages_controller;
 use crate::controllers::etablissement_programmes_controller;
 use crate::controllers::etablissement_team_controller;
 use crate::controllers::livres_scolaires_controller;
+use crate::controllers::parent_suggestions_controller;
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
 
@@ -481,6 +482,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/v2/admin/programme-national/import",
             post(etablissement_programmes_controller::import_national_csv)
                 .layer(axum::extract::DefaultBodyLimit::max(10_000_000)),
+        )
+        // ✅ 2026-05-10 : Suggestions par classe pour l'ajout manuel parent
+        //   (programmes scolaires + accessoires populaires fusionnés)
+        .route(
+            "/api/v2/parent/articles-suggested",
+            get(parent_suggestions_controller::articles_suggested),
         )
         // ✅ 2026-05-10 : Équipe établissement (invitations + liste + suppression)
         .route(

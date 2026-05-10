@@ -82,6 +82,7 @@ pub mod offres_emploi_controller; // ✅ NOUVEAU 2025-01-28: Contrôleur offres 
 pub mod orientation_scolaire_controller; // ✅ NOUVEAU 2025-01-28: Contrôleur orientation scolaire et établissements
 pub mod paiement_admin_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur admin paiements (fournisseurs, remboursements)
 pub mod paiement_agrege_controller; // ✅ NOUVEAU 2026-03-16: Contrôleur paiements agrégés
+pub mod parent_suggestions_controller; // ✅ 2026-05-10: Suggestions par classe pour ajout manuel parent
 pub mod partner_validation_controller;
 pub mod payment_controller;
 pub mod performance_controller; // ✅ NOUVEAU 2025-11-28: Contrôleur pour métriques de performance

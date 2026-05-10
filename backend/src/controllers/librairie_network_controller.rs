@@ -84,6 +84,10 @@ pub struct ScanQRCodeRequest {
 #[derive(Debug, Deserialize)]
 pub struct CreateCommandeMixteRequest {
     pub budget_total: f64,
+    /// Crédit Bourse (issu du troc) à débiter du wallet et déduire du budget.
+    /// Optionnel — si absent, pas de débit.
+    #[serde(default)]
+    pub credit_bourse_used_xaf: Option<f64>,
     pub devise: Option<String>,
     pub mode_livraison: Option<String>,
     pub adresse_livraison: Option<String>,
@@ -267,6 +271,40 @@ pub async fn create_commande_mixte(
         .begin()
         .await
         .map_err(|e| AppError::Internal(format!("Erreur transaction: {}", e)))?;
+
+    // ✅ 2026-05-10 : Application du crédit Bourse (modèle troc immédiat).
+    // Le frontend envoie `credit_bourse_used_xaf` après avoir lu match-all-pending.
+    // On vérifie qu'il ne dépasse pas le solde réel du wallet ni le plafond
+    // RATIO_MAX_CREDIT_DANS_COMMANDE, et on débite atomiquement dans la même tx.
+    let credit_used: f64 = if let Some(c) = payload.credit_bourse_used_xaf {
+        if c <= 0.0 {
+            0.0
+        } else {
+            use crate::services::wallet_credit_bourse_service as wallet;
+            let cap = wallet::cap_credit_for_order(c, payload.budget_total);
+            let dec = rust_decimal::Decimal::from_f64_retain(cap).unwrap_or_default();
+            // consume_credit_tx vérifie le solde et débite atomiquement.
+            // En cas d'insuffisance → erreur, on remonte 400.
+            wallet::consume_credit_tx(
+                &mut tx,
+                user_id,
+                dec,
+                wallet::CreditSource::OrderCreditUsed,
+                wallet::CreditMovementContext {
+                    note: Some(format!("Commande user {}", user_id)),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(|e| {
+                AppError::BadRequest(format!("Crédit Bourse insuffisant ou indisponible : {}", e))
+            })?;
+            cap
+        }
+    } else {
+        0.0
+    };
+    let _ = credit_used; // utilisé via le ledger ; pas besoin de le persister sur commande pour V1
 
     let devise = payload.devise.unwrap_or_else(|| "XAF".to_string());
     let mode_livraison = payload.mode_livraison.unwrap_or_else(|| "coursier".to_string());

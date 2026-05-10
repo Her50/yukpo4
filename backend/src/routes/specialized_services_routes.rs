@@ -952,6 +952,20 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/troc-livres/match",
             post(troc_livres_controller::find_matchings),
         )
+        // ✅ 2026-05-10 : match global pour le checkout (crédit prévisionnel)
+        .route(
+            "/api/troc-livres/match-all-pending",
+            post(troc_livres_controller::match_all_pending),
+        )
+        // ✅ 2026-05-10 : pool consignation (admin Yukpo only)
+        .route(
+            "/api/v2/admin/troc/consignation-pool",
+            get(troc_livres_controller::list_consignation_pool),
+        )
+        .route(
+            "/api/v2/admin/troc/consignation/{livre_id}/recover",
+            post(troc_livres_controller::recover_consignation),
+        )
         .route(
             "/api/troc-livres/direct",
             post(troc_livres_controller::create_troc_direct),

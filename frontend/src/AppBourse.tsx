@@ -24,6 +24,7 @@ import MesLivresPage from './pages/livres-scolaires/MesLivresPage';
 import ParentSelectionPage from './pages/livres-scolaires/ParentSelectionPage';
 import ScanProgrammePage from './pages/livres-scolaires/ScanProgrammePage';
 import RecapAchatPage from './pages/livres-scolaires/RecapAchatPage';
+import RentreeCenterPage from './pages/livres-scolaires/RentreeCenterPage';
 import LibrairieBulkUploadPage from './pages/livres-scolaires/LibrairieBulkUploadPage';
 import BrowseProgrammeByEtablissementPage from './pages/livres-scolaires/BrowseProgrammeByEtablissementPage';
 import TrocPrepPage from './pages/livres-scolaires/TrocPrepPage';
@@ -121,6 +122,8 @@ function AppBourse() {
               <Route path="/vendre" element={<BourseLayout><VendreLivresPage /></BourseLayout>} />
               <Route path="/mes-commandes" element={<BourseLayout><MesCommandesPage /></BourseLayout>} />
               <Route path="/recap" element={<BourseLayout><RecapAchatPage /></BourseLayout>} />
+              {/* ✅ 2026-05-10 : Centre de Rentrée — UX unique parent-centric, classe tabs, école partenaire prioritaire, troc article-par-article */}
+              <Route path="/rentree" element={<BourseLayout><RentreeCenterPage /></BourseLayout>} />
 
               {/* Livres */}
               <Route path="/search" element={<BourseLayout><LivreScolaireSearchPage /></BourseLayout>} />

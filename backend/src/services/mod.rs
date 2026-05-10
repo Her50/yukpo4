@@ -226,6 +226,7 @@ pub mod timeline_variant_service; // ✅ NOUVEAU: Service de génération de var
 pub mod traiter_echange;
 pub mod translation_optimizer;
 pub mod troc_intelligent_service; // ✅ NOUVEAU 2025-01-28: Service troc intelligent
+pub mod troc_lifecycle_service;
 pub mod upload_service; // ✅ NOUVEAU: Service pour upload préalable de fichiers
 pub mod valider_echange;
 pub mod valider_programme_scolaire;
@@ -238,7 +239,8 @@ pub mod video_quality_service;
 pub mod video_renderer;
 pub mod visual_generation_service; // ✅ NOUVEAU: Génération visuels marketing / invitations
 pub mod voice_profile_service;
-// ✅ NOUVEAU 2025-01-XX: Services de scalabilité pour millions de créations vidéo simultanées
+pub mod wallet_credit_bourse_service; // ✅ 2026-05-10: Crédit Bourse séparé (modèle troc immédiat) // ✅ 2026-05-10: Maintenance cron troc (expiration + fail-chain)
+                                                                                                    // ✅ NOUVEAU 2025-01-XX: Services de scalabilité pour millions de créations vidéo simultanées
 pub mod covoiturage_insurance_service; // ✅ NOUVEAU 2025-01-29: Service assurance passagers
 pub mod covoiturage_matching_service; // ✅ NOUVEAU 2025-01-29: Service matching intelligent
 pub mod covoiturage_proactive_notifications; // ✅ NOUVEAU 2025-01-29: Service notifications proactives

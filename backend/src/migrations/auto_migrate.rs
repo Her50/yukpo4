@@ -8766,6 +8766,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur seed MINESEC complet: {}", e),
     }
 
+    // ✅ 2026-05-10 : Wallet credit bourse + troc_status (pivot modèle troc)
+    match ensure_troc_credit_bourse(pool).await {
+        Ok(_) => info!("✅ Migration auto: wallet_credit_bourse + troc_status OK"),
+        Err(e) => error!("❌ Erreur migration wallet_credit_bourse: {}", e),
+    }
+
     // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
     match ensure_delivery_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
@@ -22522,5 +22528,19 @@ pub async fn ensure_seed_minesec_complet(pool: &PgPool) -> Result<(), sqlx::Erro
     let sql = include_str!("../../migrations/20260510_007_seed_minesec_complet.sql");
     execute_migration_sql_safe(pool, sql).await?;
     info!("✅ Seed MINESEC complet OK");
+    Ok(())
+}
+
+/// ✅ 2026-05-10 : pivot du modèle troc — passage du paiement post-completion
+/// au crédit immédiat in-app au checkout.
+///   - users.wallet_credit_bourse (séparé de tokens_balance général)
+///   - livres_scolaires.troc_status (pending/matched/chained/delivered/expired/returned)
+///   - wallet_credit_bourse_ledger (audit trail des mouvements)
+/// Migration : 20260510_008_troc_credit_bourse.sql
+pub async fn ensure_troc_credit_bourse(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration wallet_credit_bourse + troc_status...");
+    let sql = include_str!("../../migrations/20260510_008_troc_credit_bourse.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ Wallet credit bourse + troc_status OK");
     Ok(())
 }

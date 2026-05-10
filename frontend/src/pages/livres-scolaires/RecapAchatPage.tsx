@@ -550,6 +550,18 @@ const RecapAchatPage: React.FC = () => {
   const [showOccasionModal, setShowOccasionModal] = useState(false);
   const [submittingOrder, setSubmittingOrder] = useState(false);
 
+  /* ─── Crédit Bourse prévisionnel issu du troc ───
+   *  À chaque changement du total commande, on appelle match-all-pending
+   *  pour calculer combien de XAF de crédit le parent peut appliquer
+   *  immédiatement sur sa commande. Le crédit n'est PAS encore engagé en
+   *  base — il l'est seulement à la finalisation (POST /commandes).
+   */
+  const [pendingCredit, setPendingCredit] = useState<{
+    available: number;        // crédit total prévisionnel (livres avec match)
+    engageable: number;       // capé par % de la commande + cap absolu
+    matchedCount: number;     // nb de livres qui ont déjà un match potentiel
+  }>({ available: 0, engageable: 0, matchedCount: 0 });
+
   /* ─── Décision troc/occasion ───
    *  Au montage : si le panier contient des livres marqués "occasion" et que
    *  l'utilisateur n'a pas encore pris de décision, on affiche la modale.
@@ -722,6 +734,34 @@ const RecapAchatPage: React.FC = () => {
   const hasOccasionRange = grandTotalRange.min !== grandTotalRange.max;
   const totalItems = panier.length;
 
+  /* Appel match-all-pending : déclenché quand le total commande change
+   * de manière significative. Debouncé pour ne pas spammer le backend. */
+  useEffect(() => {
+    if (!user || grandTotal <= 0) {
+      setPendingCredit({ available: 0, engageable: 0, matchedCount: 0 });
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await apiPost('/api/troc-livres/match-all-pending', { target_amount: grandTotal });
+        const d = await res.json().catch(() => ({}));
+        if (d?.success) {
+          setPendingCredit({
+            available: Number(d.credit_total_disponible) || 0,
+            engageable: Number(d.credit_engageable_max) || 0,
+            matchedCount: Number(d.match_count) || 0,
+          });
+        }
+      } catch {
+        // silencieux : si l'endpoint échoue (rare), on n'affiche pas de crédit
+      }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [user?.id, grandTotal]);
+
+  // Total réellement à payer après application du crédit prévisionnel
+  const grandTotalAvecCredit = Math.max(0, grandTotal - pendingCredit.engageable);
+
   if (totalItems === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -806,8 +846,14 @@ const RecapAchatPage: React.FC = () => {
               // des fournitures sans prix encore, on plancher à 1 pour passer la
               // validation — le total réel est recalculé côté serveur.
               const safeBudget = grandTotal > 0 ? grandTotal : 1;
+              // Crédit Bourse engagé sur cette commande (issu des livres de troc).
+              // Le backend doit débiter wallet_credit_bourse + engager les livres.
+              const credit_used_xaf = pendingCredit.engageable > 0
+                ? Math.min(pendingCredit.engageable, safeBudget)
+                : 0;
               const payload = {
                 budget_total: safeBudget,
+                credit_bourse_used_xaf: credit_used_xaf,
                 devise: 'XAF',
                 mode_livraison: 'domicile',
                 adresse_livraison: info.adresse,
@@ -1174,6 +1220,26 @@ const RecapAchatPage: React.FC = () => {
                 ) : '—'}
               </p>
             </div>
+            {/* Crédit Bourse prévisionnel issu du troc — déduit du total */}
+            {pendingCredit.engageable > 0 && (
+              <>
+                <div className="mt-1.5 flex items-center justify-between">
+                  <p className="text-xs text-emerald-700 flex items-center gap-1">
+                    <Repeat className="w-3.5 h-3.5" />
+                    Crédit troc ({pendingCredit.matchedCount} livre{pendingCredit.matchedCount > 1 ? 's' : ''} matché{pendingCredit.matchedCount > 1 ? 's' : ''})
+                  </p>
+                  <p className="text-xs font-bold text-emerald-700">
+                    − {pendingCredit.engageable.toLocaleString()} FCFA
+                  </p>
+                </div>
+                <div className="mt-1.5 pt-1.5 border-t border-emerald-200 flex items-center justify-between">
+                  <p className="font-bold text-emerald-900 text-sm">À payer</p>
+                  <p className="font-bold text-emerald-800 text-base">
+                    {grandTotalAvecCredit.toLocaleString()} FCFA
+                  </p>
+                </div>
+              </>
+            )}
             {hasOccasionRange && (
               <p className="text-[11px] text-amber-700 mt-1.5 leading-snug">
                 {t('bourse.recap.range_help')}

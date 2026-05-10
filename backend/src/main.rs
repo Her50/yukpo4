@@ -3102,6 +3102,33 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
         .await;
     }));
 
+    // ✅ 2026-05-10 : Maintenance quotidienne du cycle de vie troc
+    //   - Expirer les livres en `pending` depuis > 60j
+    //   - Rollback les chaînes coincées sans coursier > 7j (release crédit)
+    let pool_clone_troc = app_state.pg.clone();
+    std::mem::drop(tokio::spawn(async move {
+        use tokio::time::{interval, Duration};
+        let mut tick = interval(Duration::from_secs(86400)); // 24 h
+                                                             // Première exécution après 5 min (laisse l'app stabiliser)
+        tokio::time::sleep(Duration::from_secs(300)).await;
+        loop {
+            tick.tick().await;
+            match yukpomnang_backend::services::troc_lifecycle_service::run_daily_maintenance(
+                &pool_clone_troc,
+            )
+            .await
+            {
+                Ok(report) => log::info!(
+                    "[troc_lifecycle] Daily maintenance done — expired={} chained_rolledback={} credit_returned={} XAF",
+                    report.expired_count,
+                    report.failed_chained_count,
+                    report.credit_rolled_back_xaf as i64
+                ),
+                Err(e) => log::error!("[troc_lifecycle] Erreur maintenance quotidienne: {}", e),
+            }
+        }
+    }));
+
     // ✅ NOUVEAU 2025-01-28: Lancer la tâche de notifications pour nouveaux matchings emploi (toutes les 6 heures)
     let pool_clone_matching = Arc::new(app_state.pg.clone());
     std::mem::drop(tokio::spawn(async move {

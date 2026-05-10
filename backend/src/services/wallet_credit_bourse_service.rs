@@ -1,0 +1,249 @@
+// ✅ Service Wallet Credit Bourse — pivot du modèle troc
+// Date : 2026-05-10
+//
+// Crédit utilisable UNIQUEMENT sur Bourse du Livre (manuels, fournitures,
+// frais de livraison côté Yukpo). Distinct de `users.tokens_balance` qui
+// reste un wallet cash général.
+//
+// Tous les mouvements passent par cette API, qui maintient :
+//   - users.wallet_credit_bourse (solde courant)
+//   - wallet_credit_bourse_ledger (audit trail FIFO)
+//
+// Sources canoniques (champ `source` du ledger) :
+//   - "troc_credit_provisional"   : crédit avancé à la finalisation TrocPrep
+//                                   (livre passe en troc_status='matched')
+//   - "troc_credit_engaged"       : engagement définitif quand chaîne créée
+//   - "troc_credit_rolled_back"   : rollback si chaîne échoue
+//   - "order_credit_used"         : utilisation au checkout (réduit la facture)
+//   - "consignation_recovery"     : récupération via vente boutique secondaire
+//   - "manual_admin_adjustment"   : ajustement par un admin Yukpo
+
+use rust_decimal::Decimal;
+use sqlx::{PgPool, Postgres, Transaction};
+
+#[derive(Debug, Clone, Copy)]
+pub enum CreditSource {
+    TrocCreditProvisional,
+    TrocCreditEngaged,
+    TrocCreditRolledBack,
+    OrderCreditUsed,
+    ConsignationRecovery,
+    ManualAdminAdjustment,
+}
+
+impl CreditSource {
+    fn as_str(&self) -> &'static str {
+        match self {
+            CreditSource::TrocCreditProvisional => "troc_credit_provisional",
+            CreditSource::TrocCreditEngaged => "troc_credit_engaged",
+            CreditSource::TrocCreditRolledBack => "troc_credit_rolled_back",
+            CreditSource::OrderCreditUsed => "order_credit_used",
+            CreditSource::ConsignationRecovery => "consignation_recovery",
+            CreditSource::ManualAdminAdjustment => "manual_admin_adjustment",
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct CreditMovementContext {
+    pub livre_id: Option<i32>,
+    pub chaine_id: Option<i32>,
+    pub troc_id: Option<i32>,
+    pub purchase_id: Option<i32>,
+    pub note: Option<String>,
+}
+
+/// Crédite le wallet bourse d'un user. Atomique. Renvoie le nouveau solde.
+/// Utilise une transaction interne — si tu veux composer avec une transaction
+/// extérieure, utilise `apply_credit_tx`.
+pub async fn apply_credit(
+    pool: &PgPool,
+    user_id: i32,
+    amount: Decimal,
+    source: CreditSource,
+    ctx: CreditMovementContext,
+) -> Result<Decimal, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    let new_balance = apply_credit_tx(&mut tx, user_id, amount, source, ctx).await?;
+    tx.commit().await?;
+    Ok(new_balance)
+}
+
+/// Variante composable : utilise une transaction existante (pour atomicité
+/// avec d'autres écritures dans la même unité de travail).
+pub async fn apply_credit_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    user_id: i32,
+    amount: Decimal,
+    source: CreditSource,
+    ctx: CreditMovementContext,
+) -> Result<Decimal, sqlx::Error> {
+    if amount <= Decimal::ZERO {
+        // Crédit nul ou négatif : on ne fait rien (mais pas d'erreur)
+        let bal: Decimal =
+            sqlx::query_scalar("SELECT wallet_credit_bourse FROM users WHERE id = $1")
+                .bind(user_id)
+                .fetch_one(&mut **tx)
+                .await?;
+        return Ok(bal);
+    }
+
+    let new_balance: Decimal = sqlx::query_scalar(
+        r#"
+        UPDATE users
+        SET wallet_credit_bourse = wallet_credit_bourse + $2,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING wallet_credit_bourse
+        "#,
+    )
+    .bind(user_id)
+    .bind(amount)
+    .fetch_one(&mut **tx)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO wallet_credit_bourse_ledger
+            (user_id, amount, direction, source, livre_id, chaine_id, troc_id, purchase_id, note, balance_after)
+        VALUES ($1, $2, 'credit', $3, $4, $5, $6, $7, $8, $9)
+        "#,
+    )
+    .bind(user_id)
+    .bind(amount)
+    .bind(source.as_str())
+    .bind(ctx.livre_id)
+    .bind(ctx.chaine_id)
+    .bind(ctx.troc_id)
+    .bind(ctx.purchase_id)
+    .bind(ctx.note.as_deref())
+    .bind(new_balance)
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(new_balance)
+}
+
+/// Débite le wallet. Échec si solde insuffisant.
+pub async fn consume_credit(
+    pool: &PgPool,
+    user_id: i32,
+    amount: Decimal,
+    source: CreditSource,
+    ctx: CreditMovementContext,
+) -> Result<Decimal, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    let new_balance = consume_credit_tx(&mut tx, user_id, amount, source, ctx).await?;
+    tx.commit().await?;
+    Ok(new_balance)
+}
+
+pub async fn consume_credit_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    user_id: i32,
+    amount: Decimal,
+    source: CreditSource,
+    ctx: CreditMovementContext,
+) -> Result<Decimal, sqlx::Error> {
+    if amount <= Decimal::ZERO {
+        let bal: Decimal =
+            sqlx::query_scalar("SELECT wallet_credit_bourse FROM users WHERE id = $1")
+                .bind(user_id)
+                .fetch_one(&mut **tx)
+                .await?;
+        return Ok(bal);
+    }
+
+    // Vérification + débit atomique : on update seulement si solde suffisant.
+    // Si pas suffisant, on lève une erreur explicite.
+    let result = sqlx::query_scalar::<_, Decimal>(
+        r#"
+        UPDATE users
+        SET wallet_credit_bourse = wallet_credit_bourse - $2,
+            updated_at = NOW()
+        WHERE id = $1 AND wallet_credit_bourse >= $2
+        RETURNING wallet_credit_bourse
+        "#,
+    )
+    .bind(user_id)
+    .bind(amount)
+    .fetch_optional(&mut **tx)
+    .await?;
+
+    let new_balance = match result {
+        Some(b) => b,
+        None => {
+            return Err(sqlx::Error::Protocol(format!(
+                "Solde wallet_credit_bourse insuffisant pour user {} (besoin: {})",
+                user_id, amount
+            )));
+        }
+    };
+
+    sqlx::query(
+        r#"
+        INSERT INTO wallet_credit_bourse_ledger
+            (user_id, amount, direction, source, livre_id, chaine_id, troc_id, purchase_id, note, balance_after)
+        VALUES ($1, $2, 'debit', $3, $4, $5, $6, $7, $8, $9)
+        "#,
+    )
+    .bind(user_id)
+    .bind(amount)
+    .bind(source.as_str())
+    .bind(ctx.livre_id)
+    .bind(ctx.chaine_id)
+    .bind(ctx.troc_id)
+    .bind(ctx.purchase_id)
+    .bind(ctx.note.as_deref())
+    .bind(new_balance)
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(new_balance)
+}
+
+/// Renvoie le solde actuel du wallet bourse d'un user.
+pub async fn get_balance(pool: &PgPool, user_id: i32) -> Result<Decimal, sqlx::Error> {
+    sqlx::query_scalar("SELECT wallet_credit_bourse FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(pool)
+        .await
+}
+
+// ============================================================================
+// Constantes du modèle de crédit
+// ============================================================================
+
+/// Ratio crédit / valeur IA — au lancement on est conservateur (60%).
+/// Si IA dit livre vaut 3850 XAF (état Bon = 70% du neuf), parent A reçoit
+/// 3850 × 0.60 = 2310 XAF de crédit. Marge Yukpo = 3850 - 2310 = 1540 XAF
+/// quand le livre est revendu à un parent B au prix IA.
+pub const RATIO_CREDIT_VS_VALEUR_IA: f64 = 0.60;
+
+/// Cap absolu de crédit avancé par parent par rentrée scolaire.
+pub const CAP_CREDIT_PAR_PARENT_XAF: f64 = 50_000.0;
+
+/// Pourcentage max de la commande payable en crédit (le reste en cash/MoMo).
+/// Évite qu'un parent paie 100% de sa rentrée en crédit non encore matché.
+pub const RATIO_MAX_CREDIT_DANS_COMMANDE: f64 = 0.30;
+
+/// Marge brute minimale Yukpo pour engager une chaîne troc. En dessous, la
+/// chaîne est rejetée (logistique trop coûteuse vs revenu attendu).
+pub const MIN_CHAIN_MARGIN_XAF: f64 = 500.0;
+
+/// TTL livre en `pending` avant bascule en `expired` (consignation backup).
+pub const TTL_PENDING_DAYS: i64 = 60;
+
+/// TTL livre en `chained` sans coursier assigné avant rollback (fail-chain).
+pub const TTL_CHAINED_WITHOUT_COURSIER_DAYS: i64 = 7;
+
+/// Calcule le crédit prévisionnel pour un livre selon sa valeur IA.
+pub fn compute_credit_for_book(valeur_calculee: f64) -> f64 {
+    (valeur_calculee * RATIO_CREDIT_VS_VALEUR_IA).max(0.0)
+}
+
+/// Plafonne le crédit utilisable au checkout selon la commande.
+pub fn cap_credit_for_order(credit_disponible: f64, montant_commande: f64) -> f64 {
+    let plafond = montant_commande * RATIO_MAX_CREDIT_DANS_COMMANDE;
+    credit_disponible.min(plafond).max(0.0)
+}
