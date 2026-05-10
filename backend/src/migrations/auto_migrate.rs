@@ -8772,6 +8772,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration wallet_credit_bourse: {}", e),
     }
 
+    // ✅ 2026-05-10 : Schéma complet programmes_scolaires (matiere, titre_livre…)
+    match ensure_programmes_scolaires_full_schema(pool).await {
+        Ok(_) => info!("✅ Migration auto: programmes_scolaires schéma complet OK"),
+        Err(e) => error!("❌ Erreur migration programmes_scolaires schéma: {}", e),
+    }
+
     // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
     match ensure_delivery_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
@@ -22542,5 +22548,16 @@ pub async fn ensure_troc_credit_bourse(pool: &PgPool) -> Result<(), sqlx::Error>
     let sql = include_str!("../../migrations/20260510_008_troc_credit_bourse.sql");
     execute_migration_sql_safe(pool, sql).await?;
     info!("✅ Wallet credit bourse + troc_status OK");
+    Ok(())
+}
+
+/// Migration : 20260510_009_programmes_scolaires_full_schema.sql
+/// Aligne le schéma de programmes_scolaires sur le schéma complet attendu
+/// par les contrôleurs (matiere, titre_livre, prix_officiel, etc.).
+pub async fn ensure_programmes_scolaires_full_schema(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration programmes_scolaires (alignement schéma complet)...");
+    let sql = include_str!("../../migrations/20260510_009_programmes_scolaires_full_schema.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ programmes_scolaires schéma complet OK");
     Ok(())
 }

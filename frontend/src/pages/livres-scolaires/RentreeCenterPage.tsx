@@ -120,31 +120,41 @@ const RentreeCenterPage: React.FC = () => {
   const [suggGroupe, setSuggGroupe] = useState<GroupeFilter>('livres');
   const [selectedSugg, setSelectedSugg] = useState<Record<string, number>>({}); // titre → qte
 
-  const loadSuggestions = useCallback(async () => {
-    if (!active) return;
+  // ✅ Évite les boucles : on ne dépend QUE des paramètres réels (classe, groupe,
+  // établissement) — `t`/`toast` ne doivent JAMAIS être dans les deps d'un effect
+  // qui déclenche un fetch + un toast en cas d'erreur (sinon : boucle infinie).
+  // Une seule erreur → un seul toast. Un changement réel d'input → re-fetch.
+  const errorShownRef = useRef(false);
+  useEffect(() => {
+    if (!showSuggestions || !active) return;
+    let cancelled = false;
     setLoadingSugg(true);
     setSuggestions([]);
-    try {
-      const params = new URLSearchParams();
-      params.set('classe', active.classe);
-      params.set('type_groupe', suggGroupe);
-      params.set('pays', active.pays || PAYS_PAR_DEFAUT);
-      if (active.systeme) params.set('systeme', active.systeme);
-      if (active.etablissementId) params.set('etablissement_id', String(active.etablissementId));
-      const res = await apiGet(`/api/v2/parent/articles-suggested?${params}`);
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.message || 'load failed');
-      setSuggestions((data?.items || []) as SuggestionItem[]);
-    } catch (e: any) {
-      toast({ title: t('bourse.rentree.error_load_items'), description: e?.message, variant: 'destructive' });
-    } finally {
-      setLoadingSugg(false);
-    }
-  }, [active, suggGroupe, toast, t]);
-
-  useEffect(() => {
-    if (showSuggestions) loadSuggestions();
-  }, [showSuggestions, suggGroupe, loadSuggestions]);
+    errorShownRef.current = false;
+    (async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set('classe', active.classe);
+        params.set('type_groupe', suggGroupe);
+        params.set('pays', active.pays || PAYS_PAR_DEFAUT);
+        if (active.systeme) params.set('systeme', active.systeme);
+        if (active.etablissementId) params.set('etablissement_id', String(active.etablissementId));
+        const res = await apiGet(`/api/v2/parent/articles-suggested?${params}`);
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (!res.ok) throw new Error(data?.message || 'load failed');
+        setSuggestions((data?.items || []) as SuggestionItem[]);
+      } catch (e: any) {
+        if (cancelled || errorShownRef.current) return;
+        errorShownRef.current = true;
+        toast({ title: t('bourse.rentree.error_load_items'), description: e?.message, variant: 'destructive' });
+      } finally {
+        if (!cancelled) setLoadingSugg(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSuggestions, suggGroupe, active?.classe, active?.systeme, active?.pays, active?.etablissementId]);
 
   // ─── Actions ───
   const handleAddSelectedSuggestions = () => {
