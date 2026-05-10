@@ -43,8 +43,8 @@ const LivreScolaireHomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-600 via-amber-500 to-amber-400 flex flex-col">
-      {/* Header */}
-      <div className="px-5 pt-12 pb-6 text-white">
+      {/* Header — épuré : titre + sous-titre directif court */}
+      <div className="px-5 pt-10 pb-5 text-white">
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-2xl font-bold leading-tight">{t('bourse.home.title')}</h1>
           <div className="flex items-center gap-2">
@@ -61,25 +61,19 @@ const LivreScolaireHomePage: React.FC = () => {
             )}
           </div>
         </div>
-        <p className="text-amber-50 text-sm mt-1">{t('bourse.home.subtitle')}</p>
+        <p className="text-amber-50 text-sm mt-1.5 font-medium">{t('bourse.home.subtitle')}</p>
       </div>
 
-      {/* ✅ 2026-05-10 : 3 sources directement sur l'accueil — école partenaire en
-          tête (priorité), scan en 2e (fallback liste papier), suggestions
-          intelligentes en 3e. Plus de doublon "Scanner ma liste" : c'est une des
-          trois cartes ci-dessous. */}
-      <div className="flex-1 bg-white rounded-t-3xl px-5 pt-7 pb-24 flex flex-col">
+      {/* ✅ 2026-05-10 : accueil épuré — header amber compact, puis directement
+          les 3 cartes source (école partenaire en priorité, photo, suggestions).
+          Pas d'intro paragraphique : chaque carte porte sa propre description. */}
+      <div className="flex-1 bg-white rounded-t-3xl px-5 pt-6 pb-24 flex flex-col">
         <div className="max-w-md w-full mx-auto flex-1 flex flex-col">
-          {/* Pitch : trois façons d'établir sa liste */}
-          <p className="text-sm text-gray-600 leading-relaxed text-center mb-5">
-            {t('bourse.home.intro')}
-          </p>
-
           {/* Reprise : si le parent a déjà des articles dans son panier */}
           {totalItems > 0 && (
             <button
               onClick={() => navigate('/rentree')}
-              className="w-full mb-5 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 active:from-amber-600 active:to-amber-700 text-white font-bold py-3.5 rounded-2xl text-sm shadow-md shadow-amber-200/60 min-h-[52px]"
+              className="w-full mb-4 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 active:from-amber-600 active:to-amber-700 text-white font-bold py-3.5 rounded-2xl text-sm shadow-md shadow-amber-200/60 min-h-[52px]"
             >
               <ShoppingCart className="w-4 h-4" />
               {t('bourse.home.continue_cta')} ({totalItems})
