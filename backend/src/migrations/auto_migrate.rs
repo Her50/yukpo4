@@ -8742,6 +8742,30 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         ),
     }
 
+    // ✅ 2026-05-10 : Indexes de performance pour la rentrée 2026-2027
+    match ensure_perf_indexes_2026_05(pool).await {
+        Ok(_) => info!("✅ Migration auto: perf indexes 2026-05 OK"),
+        Err(e) => error!("❌ Erreur migration auto perf indexes 2026-05: {}", e),
+    }
+
+    // ✅ 2026-05-10 : Seed MINEDUB primaire Cameroun 2025-2026 (programme officiel)
+    match ensure_seed_minedub_2025_2026(pool).await {
+        Ok(_) => info!("✅ Seed auto: MINEDUB primaire 2025-2026 OK"),
+        Err(e) => error!("❌ Erreur seed MINEDUB primaire 2025-2026: {}", e),
+    }
+
+    // ✅ 2026-05-10 : Seed MINESEC anglophone Form 1-5 (2024-2025, fallback rentrée)
+    match ensure_seed_minesec_anglophone_2024_2025(pool).await {
+        Ok(_) => info!("✅ Seed auto: MINESEC anglophone Form 1-5 OK"),
+        Err(e) => error!("❌ Erreur seed MINESEC anglophone: {}", e),
+    }
+
+    // ✅ 2026-05-10 : Seed complet (Lower/Upper Sixth + Secondaire FR + Technique)
+    match ensure_seed_minesec_complet(pool).await {
+        Ok(_) => info!("✅ Seed auto: MINESEC complet (A Level + FR + Tech) OK"),
+        Err(e) => error!("❌ Erreur seed MINESEC complet: {}", e),
+    }
+
     // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
     match ensure_delivery_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
@@ -22442,5 +22466,61 @@ pub async fn ensure_etablissement_team_invitations(pool: &PgPool) -> Result<(), 
     let sql = include_str!("../../migrations/20260510_003_etablissement_team_invitations.sql");
     execute_migration_sql_safe(pool, sql).await?;
     info!("✅ Table etablissement_team_invitations OK");
+    Ok(())
+}
+
+/// ✅ 2026-05-10 : indexes de performance ciblés rentrée 2026-2027
+///   - recherche école par ville (parents)
+///   - lookup invitation team par token (acceptation depuis WhatsApp)
+///   - membres librairie actifs (validation)
+///   - listing programmes par etab + année
+///   - lookup invitation établissement par accepted_user_id (require_etab_role)
+/// Migration : 20260510_004_perf_indexes.sql
+pub async fn ensure_perf_indexes_2026_05(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration indexes de performance 2026-05...");
+    let sql = include_str!("../../migrations/20260510_004_perf_indexes.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ Indexes de performance 2026-05 OK");
+    Ok(())
+}
+
+/// ✅ 2026-05-10 : seed MINEDUB Cameroun primaire/maternelle 2025-2026
+/// Source : PDF officiel signé par le Ministre de l'Éducation de Base
+/// (avril 2025). ~80 manuels couvrant Maternelle 1/2, Nursery 1/2, SIL,
+/// CP, CE1, CE2, CM1, CM2, Class 1 → Class 6 (FR + EN).
+/// Idempotent : ne re-insère pas un manuel déjà présent.
+pub async fn ensure_seed_minedub_2025_2026(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Seed MINEDUB primaire/maternelle 2025-2026...");
+    let sql = include_str!("../../migrations/20260510_005_seed_minedub_primaire_2025_2026.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ Seed MINEDUB OK");
+    Ok(())
+}
+
+/// ✅ 2026-05-10 : seed MINESEC anglophone Cameroun Form 1-5 (2024-2025)
+/// Source : OFFICIAL TEXTBOOK LIST 2024/2025 GENERAL SECONDARY EDUCATION
+/// signée par MINESEC (mars 2024). ~80 manuels Form 1 → Form 5.
+/// Provisoire jusqu'à publication de la liste 2025-2026 / 2026-2027 ; les
+/// admins peuvent dupliquer vers une nouvelle année via le préchargement.
+pub async fn ensure_seed_minesec_anglophone_2024_2025(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Seed MINESEC anglophone Form 1-5 (2024-2025)...");
+    let sql = include_str!("../../migrations/20260510_006_seed_minesec_anglophone_2024_2025.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ Seed MINESEC anglophone OK");
+    Ok(())
+}
+
+/// ✅ 2026-05-10 : seed complémentaire — couvre tout ce qui manquait :
+///   - Lower Sixth + Upper Sixth (A Level anglophone) — extrait PDF MINESEC
+///   - Secondaire francophone 6e → Tle (séries A/C/D)
+///   - Lycée technique francophone (2nde F/G + 1ère/Tle F1/G2)
+///   - Technical Secondary anglophone (Form 1T → 5T)
+/// Annee_scolaire : 2025-2026. Programme officiel stable (à valider par les
+/// directeurs d'école qui peuvent l'écraser via la page Liste scolaire admin).
+pub async fn ensure_seed_minesec_complet(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Seed MINESEC complet (A Level + FR + Tech)...");
+    let sql = include_str!("../../migrations/20260510_007_seed_minesec_complet.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ Seed MINESEC complet OK");
     Ok(())
 }

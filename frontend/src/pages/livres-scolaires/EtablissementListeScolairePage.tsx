@@ -65,6 +65,7 @@ interface EtabConfig {
   systeme_scolaire: SystemeScolaireDB | null;
   cycles_offerts: string[];
   slug?: string | null;
+  page_status?: string | null;
 }
 
 interface PreloadSources {
@@ -444,6 +445,7 @@ const EtablissementListeScolairePage: React.FC = () => {
             niveau={findNiveauForClasse(systemeActif, activeClasseFull)}
             annee={annee}
             slug={etab.slug || null}
+            isPublished={etab.page_status === 'published'}
             articles={articlesByClasse.get(activeClasseFull) || []}
             niveauxFiltres={niveauxFiltres}
             onBack={() => setActiveClasseFull(null)}
@@ -527,6 +529,7 @@ const ClasseView: React.FC<{
   niveau: string;
   annee: string;
   slug: string | null;
+  isPublished: boolean;
   articles: Article[];
   niveauxFiltres: Niveau[];
   onBack: () => void;
@@ -534,7 +537,7 @@ const ClasseView: React.FC<{
   onEditArticle: (article: Article) => void;
   onDeleteArticle: (id: number) => void;
   onDuplicated: () => void;
-}> = ({ etabId, classe, niveau, annee, slug, articles, niveauxFiltres, onBack, onAddArticle, onEditArticle, onDeleteArticle, onDuplicated }) => {
+}> = ({ etabId, classe, niveau, annee, slug, isPublished, articles, niveauxFiltres, onBack, onAddArticle, onEditArticle, onDeleteArticle, onDuplicated }) => {
   const { t } = useTranslation();
   const [showDuplicate, setShowDuplicate] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
@@ -587,7 +590,7 @@ const ClasseView: React.FC<{
                 Dupliquer
               </button>
             )}
-            {previewUrl && articles.length > 0 && (
+            {previewUrl && articles.length > 0 && isPublished && (
               <a
                 href={previewUrl}
                 target="_blank"
@@ -599,6 +602,15 @@ const ClasseView: React.FC<{
                 Voir comme parent
                 <ExternalLink className="w-3 h-3" />
               </a>
+            )}
+            {previewUrl && articles.length > 0 && !isPublished && (
+              <span
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-500 rounded-full text-xs font-semibold whitespace-nowrap cursor-not-allowed"
+                title="Publiez d'abord la page de l'établissement pour activer l'aperçu parent"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Voir comme parent (publiez d'abord)
+              </span>
             )}
           </div>
         </div>
