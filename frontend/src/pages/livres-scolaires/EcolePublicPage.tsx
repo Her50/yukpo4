@@ -469,6 +469,9 @@ export const EcoleListeScolairePage: React.FC = () => {
         systeme: 'francophone',
         niveau: '',
         classe: classe || '',
+        // ✅ Mémorise le slug pour pouvoir proposer "ajouter une autre
+        // classe dans la même école" sur /rentree.
+        etablissementSlug: slug,
       });
       enfantId = created.id;
     }

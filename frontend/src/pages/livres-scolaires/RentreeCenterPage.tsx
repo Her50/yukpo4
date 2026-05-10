@@ -70,6 +70,9 @@ const RentreeCenterPage: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showTrocExplainer, setShowTrocExplainer] = useState<{ itemId: string } | null>(null);
   const [showPhotoCapture, setShowPhotoCapture] = useState<{ itemId: string } | null>(null);
+  // Modal "Ajouter une autre classe" — si l'enfant courant vient d'une école
+  // partenaire, on propose de rester dans la même école (cas frère/sœur).
+  const [showAddClassChoice, setShowAddClassChoice] = useState(false);
 
   // ✅ Lien direct depuis l'accueil : ?suggestions=1 ouvre directement le modal.
   // Si aucune classe → on ouvre le formulaire de classe d'abord.
@@ -328,11 +331,19 @@ const RentreeCenterPage: React.FC = () => {
                   {e.classe}
                 </button>
               ))}
-              {/* "Ajouter une classe" → renvoie à l'accueil pour repicker une
-                  source (école partenaire / photo / suggestions). C'est là
-                  que se trouvent les 3 entrées qui créent une classe à la volée. */}
+              {/* "Ajouter une classe" — comportement adaptatif :
+                  • Si la classe active vient d'une école partenaire, on
+                    propose au parent de continuer dans la même école
+                    (frère/sœur) ou bien d'aller ailleurs (accueil).
+                  • Sinon : navigate('/') direct (les 3 sources de l'accueil). */}
               <button
-                onClick={() => navigate('/')}
+                onClick={() => {
+                  if (active?.etablissementSlug) {
+                    setShowAddClassChoice(true);
+                  } else {
+                    navigate('/');
+                  }
+                }}
                 className="flex-shrink-0 inline-flex items-center gap-1 px-3 py-2 min-h-[44px] rounded-full text-sm font-semibold bg-white/20 text-white border border-dashed border-white/50 active:bg-white/30"
               >
                 <Plus className="w-4 h-4" /> {t('bourse.rentree.add_class')}
@@ -597,6 +608,43 @@ const RentreeCenterPage: React.FC = () => {
           onContinue={continueToCapture}
           loading={sessionCreating}
         />
+      )}
+
+      {/* Modal "Ajouter une autre classe" — choix école courante vs autre */}
+      {showAddClassChoice && active?.etablissementSlug && (
+        <ModalShell
+          onClose={() => setShowAddClassChoice(false)}
+          title={t('bourse.rentree.add_class_choice_title')}
+        >
+          <p className="text-sm text-gray-600 mb-4">
+            {t('bourse.rentree.add_class_choice_desc', {
+              etab: active.etablissementNom || t('bourse.rentree.add_class_choice_same_school_fallback'),
+            })}
+          </p>
+          <div className="space-y-2">
+            <button
+              onClick={() => {
+                setShowAddClassChoice(false);
+                navigate(`/ecole/${active.etablissementSlug}/commander`);
+              }}
+              className="w-full bg-amber-500 text-white font-bold py-3 rounded-xl active:bg-amber-600 min-h-[48px] inline-flex items-center justify-center gap-2"
+            >
+              <School className="w-4 h-4" />
+              {t('bourse.rentree.add_class_choice_same_school', {
+                etab: active.etablissementNom || '',
+              })}
+            </button>
+            <button
+              onClick={() => {
+                setShowAddClassChoice(false);
+                navigate('/');
+              }}
+              className="w-full bg-gray-100 text-gray-700 font-semibold py-3 rounded-xl active:bg-gray-200 min-h-[48px]"
+            >
+              {t('bourse.rentree.add_class_choice_other')}
+            </button>
+          </div>
+        </ModalShell>
       )}
 
       {showPhotoCapture && sessionId && (

@@ -26,6 +26,10 @@ export interface Enfant {
   systemeId?: string;       // ex : "CM-fr", "CM-en"
   etablissementId?: number; // lien après choix autocomplete
   etablissementNom?: string;
+  /** Slug de l'établissement partenaire (utilisé pour rediriger vers
+   *  /ecole/:slug/commander quand le parent veut ajouter une classe
+   *  dans la même école — workflow "frère/sœur dans la même école"). */
+  etablissementSlug?: string;
   sessionAcademique?: string; // "2025-2026"
 }
 
