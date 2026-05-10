@@ -30,6 +30,10 @@ interface ExtractedItem {
   selected: boolean;
   /** Choix d'achat — par défaut 'neuf'. Toggle dispo uniquement pour les livres. */
   choix: 'neuf' | 'occasion';
+  /** Intention de troc : si l'utilisateur veut donner son ancien livre en
+   *  échange (capture photo recto/verso à la validation pour évaluer la
+   *  valeur). Implique choix='occasion'. Sinon : achat d'occasion classique. */
+  troc_intent?: boolean;
   /** Gamme choisie — uniquement pour fournitures/cahiers/accessoires.
    *  Le prix effectif est `prix × ratio(gamme)`. Défaut 'standard' (ratio 1.0). */
   gamme?: Gamme;
@@ -226,7 +230,13 @@ const ScanProgrammePage: React.FC = () => {
    *  par rapport à un toggle conditionnel. Utilisé par les boutons 2-segments. */
   const setChoix = (idx: number, choix: 'neuf' | 'occasion') =>
     setItems(prev => prev.map((it, i) => i === idx && isOccasionableType(it.type)
-      ? { ...it, choix }
+      ? { ...it, choix, troc_intent: choix === 'neuf' ? false : it.troc_intent }
+      : it));
+  /** Bascule entre "occasion sans échange" et "occasion avec échange (troc)".
+   *  Force choix='occasion' si pas déjà le cas. */
+  const setTrocIntent = (idx: number, intent: boolean) =>
+    setItems(prev => prev.map((it, i) => i === idx && isOccasionableType(it.type)
+      ? { ...it, choix: 'occasion' as const, troc_intent: intent }
       : it));
   const setGamme = (idx: number, g: Gamme) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, gamme: g } : it));
@@ -531,10 +541,21 @@ const ScanProgrammePage: React.FC = () => {
       prixNeuf: effectivePrice(it) || it.prix,
       quantite: it.quantite ?? 1,
       choix: it.choix,
+      troc_intent: it.choix === 'occasion' ? !!it.troc_intent : undefined,
       gamme: isGammeableType(it.type) ? (it.gamme || 'standard') : undefined,
     })));
     setSaving(false);
+
+    // ✅ 2026-05-10 : si l'utilisateur a marqué au moins un article en
+    // troc (intention d'échange), on bascule directement sur /rentree avec
+    // ?capture-troc=1 — la page ouvrira automatiquement la photo capture
+    // pour les livres en attente de matching. Sinon : recap classique.
+    const trocCount = selected.filter(it => it.choix === 'occasion' && it.troc_intent).length;
     toast({ title: t(selected.length > 1 ? 'bourse.scan.toast_added_other' : 'bourse.scan.toast_added_one', { count: selected.length }) });
+    if (trocCount > 0) {
+      navigate(`/rentree?capture-troc=1`);
+      return;
+    }
     setStep('next-action');
   };
 
@@ -1280,14 +1301,23 @@ const ScanProgrammePage: React.FC = () => {
                                   title={t('bourse.scan.buy_new')}
                                 >{t('bourse.scan.new')}</button>
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); setChoix(i, 'occasion'); }}
+                                  onClick={(e) => { e.stopPropagation(); setTrocIntent(i, false); }}
                                   className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                                    item.choix === 'occasion'
+                                    item.choix === 'occasion' && !item.troc_intent
                                       ? 'bg-orange-500 text-white shadow-sm'
                                       : 'text-gray-500 hover:bg-gray-200'
                                   }`}
                                   title={t('bourse.scan.buy_used')}
                                 >{t('bourse.scan.used')}</button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setTrocIntent(i, true); }}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                    item.choix === 'occasion' && item.troc_intent
+                                      ? 'bg-cyan-600 text-white shadow-sm'
+                                      : 'text-gray-500 hover:bg-gray-200'
+                                  }`}
+                                  title={t('bourse.scan.troc_title')}
+                                >{t('bourse.scan.troc_short')}</button>
                               </div>
                             )}
                             {isGammeableType(item.type) && (

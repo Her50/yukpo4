@@ -42,7 +42,7 @@ const RentreeCenterPage: React.FC = () => {
   const { toast } = useToast();
   const {
     enfants, panier, addEnfant,
-    addItems, removeItem, updateChoix, updateTrocMatch,
+    addItems, removeItem, updateChoix, updateTrocMatch, clearTrocIntent,
   } = useParentShop();
 
   // ─── Onglet classe actif (par défaut le 1er) ───
@@ -75,6 +75,33 @@ const RentreeCenterPage: React.FC = () => {
       setSearchParams(next, { replace: true });
     }
   }, [searchParams, enfants.length, setSearchParams]);
+
+  // ✅ Depuis la page scan : ?capture-troc=1 → ouvre directement la photo
+  // capture pour le 1er item marqué troc_intent (sans match déjà fait). Au
+  // résultat de chaque capture, on enchaîne sur le suivant. Quand tous sont
+  // traités, le param query est nettoyé.
+  const pendingTrocItem = useMemo(
+    () => panier.find(p => p.choix === 'occasion' && p.troc_intent && !p.trocLivreId),
+    [panier],
+  );
+  const captureTrocActive = searchParams.get('capture-troc') === '1';
+  useEffect(() => {
+    if (!captureTrocActive) return;
+    if (!pendingTrocItem) {
+      // Plus rien à capturer → on retire le param et reste sur la page recap.
+      const next = new URLSearchParams(searchParams);
+      next.delete('capture-troc');
+      setSearchParams(next, { replace: true });
+      return;
+    }
+    // Bascule l'item actif sur la classe du livre concerné (sinon
+    // l'utilisateur ne verrait pas l'item)
+    if (pendingTrocItem.enfantId !== activeId) setActiveId(pendingTrocItem.enfantId);
+    // Si pas encore en cours de capture, on lance le flow (explainer puis photo)
+    if (!showPhotoCapture && !showTrocExplainer) {
+      setShowTrocExplainer({ itemId: pendingTrocItem.id });
+    }
+  }, [captureTrocActive, pendingTrocItem, activeId, showPhotoCapture, showTrocExplainer, searchParams, setSearchParams]);
 
   // ─── Session troc (créée à la demande quand on photographie) ───
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -195,6 +222,9 @@ const RentreeCenterPage: React.FC = () => {
 
   const onPhotoAnalyzed = (itemId: string, result: AnalyzedBookResult) => {
     if (result.is_rejected) {
+      // Livre rejeté : on lève l'intention de troc pour éviter une boucle
+      // sur ce même item lors d'un éventuel ?capture-troc=1
+      clearTrocIntent(itemId);
       toast({
         title: 'Livre trop dégradé',
         description: 'Réessayez avec une meilleure photo ou choisissez le neuf.',
@@ -446,7 +476,12 @@ const RentreeCenterPage: React.FC = () => {
 
       {showTrocExplainer && (
         <TrocExplainerModal
-          onClose={() => setShowTrocExplainer(null)}
+          onClose={() => {
+            // Si on est en mode capture-troc, lever l'intention pour ne pas
+            // re-déclencher la modale en boucle sur ce même item.
+            if (captureTrocActive) clearTrocIntent(showTrocExplainer.itemId);
+            setShowTrocExplainer(null);
+          }}
           onContinue={continueToCapture}
           loading={sessionCreating}
         />
@@ -456,7 +491,10 @@ const RentreeCenterPage: React.FC = () => {
         <PhotoCaptureModal
           sessionId={sessionId}
           gps={gps}
-          onCancel={() => setShowPhotoCapture(null)}
+          onCancel={() => {
+            if (captureTrocActive) clearTrocIntent(showPhotoCapture.itemId);
+            setShowPhotoCapture(null);
+          }}
           onAnalyzed={(r) => onPhotoAnalyzed(showPhotoCapture.itemId, r)}
         />
       )}

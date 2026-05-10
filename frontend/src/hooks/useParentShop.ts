@@ -44,9 +44,13 @@ export interface PanierItem {
   quantite?: number;        // nouveau : pour accessoires
   gamme?: 'entree' | 'standard' | 'premium'; // nouveau : pour accessoires
   /** ID du livre dans la table livres_scolaires si l'utilisateur a proposé un livre
-   *  pour cet item via le workflow troc (TrocPrepPage). Permet de référencer ce
+   *  pour cet item via le workflow troc (photo capture). Permet de référencer ce
    *  livre dans le payload de POST /api/librairie-network/commandes (livres_occasion[]). */
   trocLivreId?: number;
+  /** Intention de troc cochée par l'utilisateur sur la page scan (avant que la
+   *  photo soit prise). Si true et trocLivreId vide → /rentree ouvre la
+   *  capture photo pour matcher cet item à un livre concret. */
+  troc_intent?: boolean;
 }
 
 /* ─── Exports legacy (ancien code qui n'a pas migré) ─── */
@@ -163,6 +167,13 @@ export function useParentShop() {
     setPanier(prev => prev.map(p => (p.id === id ? { ...p, trocLivreId } : p)));
   }, []);
 
+  /** Efface l'intention de troc — utilisé quand l'utilisateur abandonne ou
+   *  rejette la capture photo : l'item reste en occasion mais n'est plus
+   *  candidat à un échange. */
+  const clearTrocIntent = useCallback((id: string) => {
+    setPanier(prev => prev.map(p => (p.id === id ? { ...p, troc_intent: false } : p)));
+  }, []);
+
   const updateQuantite = useCallback((id: string, quantite: number) => {
     setPanier(prev => prev.map(p => (p.id === id ? { ...p, quantite: Math.max(0, quantite) } : p)));
   }, []);
@@ -206,6 +217,7 @@ export function useParentShop() {
     removeItem,
     updateChoix,
     updateTrocMatch,
+    clearTrocIntent,
     updateQuantite,
     updateGamme,
     isInPanier,
