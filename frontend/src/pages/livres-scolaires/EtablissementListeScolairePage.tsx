@@ -531,6 +531,7 @@ const ClasseView: React.FC<{
   onDuplicated: () => void;
 }> = ({ etabId, classe, niveau, annee, slug, articles, niveauxFiltres, onBack, onAddArticle, onEditArticle, onDeleteArticle, onDuplicated }) => {
   const [showDuplicate, setShowDuplicate] = useState(false);
+  const [showBulkAdd, setShowBulkAdd] = useState(false);
   const previewUrl = slug
     ? `${window.location.origin}/ecole/${slug}/classe/${encodeURIComponent(classe)}/programme`
     : null;
@@ -552,6 +553,14 @@ const ClasseView: React.FC<{
             <p className="text-xs text-gray-500 mt-1">{articles.length} article(s) au total</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setShowBulkAdd(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold whitespace-nowrap hover:bg-amber-200"
+              title="Ajouter plusieurs articles d'un coup"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Ajouter en lot
+            </button>
             {articles.length > 0 && (
               <button
                 onClick={() => setShowDuplicate(true)}
@@ -588,6 +597,17 @@ const ClasseView: React.FC<{
           niveauxFiltres={niveauxFiltres}
           onClose={() => setShowDuplicate(false)}
           onDone={() => { setShowDuplicate(false); onDuplicated(); }}
+        />
+      )}
+
+      {showBulkAdd && (
+        <BulkAddModal
+          etabId={etabId}
+          niveau={niveau}
+          classe={classe}
+          annee={annee}
+          onClose={() => setShowBulkAdd(false)}
+          onDone={() => { setShowBulkAdd(false); onDuplicated(); }}
         />
       )}
 
@@ -825,6 +845,178 @@ const Field: React.FC<{
     />
   </div>
 );
+
+// ============================================================================
+// Modale d'ajout en lot d'articles dans une classe
+// ============================================================================
+//
+// L'admin colle/saisit une liste de lignes (1 article = 1 ligne). Format souple :
+//   - "Cahier 200p grands carreaux"
+//   - "Cahier 100p × 2"        (× ou x suivi d'un nombre = quantité)
+//   - "Stylo bleu x4"
+// Le type, matière et caractère obligatoire sont fixés en en-tête de la modale.
+// ============================================================================
+
+const QUANTITE_REGEX = /\s*[x×]\s*(\d+)\s*$/i;
+
+const BulkAddModal: React.FC<{
+  etabId: string;
+  niveau: string;
+  classe: string;
+  annee: string;
+  onClose: () => void;
+  onDone: () => void;
+}> = ({ etabId, niveau, classe, annee, onClose, onDone }) => {
+  const { toast } = useToast();
+  const [type, setType] = useState<TypeArticle>('cahier');
+  const [matiere, setMatiere] = useState('');
+  const [obligatoire, setObligatoire] = useState(true);
+  const [text, setText] = useState('');
+  const [running, setRunning] = useState(false);
+
+  const parsed = (() => {
+    return text
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .map(line => {
+        const m = line.match(QUANTITE_REGEX);
+        if (m) {
+          return {
+            titre: line.replace(QUANTITE_REGEX, '').trim(),
+            quantite: Math.max(1, parseInt(m[1], 10) || 1),
+          };
+        }
+        return { titre: line, quantite: 1 };
+      })
+      .filter(a => a.titre.length > 0);
+  })();
+
+  const submit = async () => {
+    if (parsed.length === 0) {
+      toast({ title: 'Saisissez au moins un article', variant: 'destructive' });
+      return;
+    }
+    setRunning(true);
+    let created = 0;
+    let errors = 0;
+    for (const a of parsed) {
+      try {
+        const payload = {
+          niveau,
+          classe,
+          matiere: matiere.trim() || (type === 'livre' || type === 'workbook' ? '' : 'Général'),
+          titre_livre: a.titre,
+          annee_scolaire: annee,
+          est_obligatoire: obligatoire,
+          type_article: type,
+          quantite_defaut: a.quantite,
+        };
+        const res = await apiPost(
+          `/api/v2/admin/etablissement/${etabId}/programmes`,
+          payload
+        );
+        if (res.ok) created++;
+        else errors++;
+      } catch {
+        errors++;
+      }
+    }
+    setRunning(false);
+    toast({
+      title: 'Ajout en lot terminé',
+      description: `${created} article(s) ajouté(s)${errors > 0 ? `, ${errors} erreur(s)` : ''}`,
+    });
+    onDone();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+      <div className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[95vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+          <Plus className="w-5 h-5 text-amber-700" />
+          <p className="font-bold text-gray-900 flex-1">Ajouter en lot — {classe}</p>
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-3">
+          <p className="text-xs text-gray-600 leading-relaxed bg-amber-50 border border-amber-200 rounded-xl p-3">
+            Une ligne = un article. Ajoutez <code>× 2</code> ou <code>x 4</code> en fin de ligne pour
+            la quantité (par défaut 1). Le type, la matière et le caractère
+            obligatoire ci-dessous s'appliquent à tous les articles ajoutés.
+          </p>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Type</label>
+              <select
+                value={type}
+                onChange={e => setType(e.target.value as TypeArticle)}
+                className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+              >
+                {TYPES_ARTICLE.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Matière (optionnel)</label>
+              <input
+                value={matiere}
+                onChange={e => setMatiere(e.target.value)}
+                placeholder={type === 'livre' || type === 'workbook' ? 'Mathématiques' : 'Général'}
+                className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm"
+              />
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={obligatoire}
+              onChange={e => setObligatoire(e.target.checked)}
+              className="w-4 h-4 accent-emerald-600"
+            />
+            <span className="text-xs text-gray-700">Obligatoire (s'applique à tous)</span>
+          </label>
+
+          <div>
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">
+              Articles ({parsed.length} détectés)
+            </label>
+            <textarea
+              value={text}
+              onChange={e => setText(e.target.value)}
+              rows={10}
+              placeholder={
+                type === 'cahier'
+                  ? 'Cahier 200p grands carreaux × 2\nCahier 100p petits carreaux × 4\nCahier de dessin'
+                  : type === 'fourniture'
+                    ? 'Stylo bleu × 4\nStylo rouge × 2\nCrayon HB × 2\nGomme\nRègle 30cm'
+                    : 'Un titre par ligne\nUtilisez "× N" pour la quantité'
+              }
+              className="w-full mt-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono"
+            />
+          </div>
+        </div>
+
+        <div className="p-5 sticky bottom-0 bg-white border-t border-gray-100 flex gap-2">
+          <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold">
+            Annuler
+          </button>
+          <button
+            onClick={submit}
+            disabled={running || parsed.length === 0}
+            className="flex-1 py-3 bg-amber-600 text-white rounded-xl text-sm font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {running && <Loader2 className="w-4 h-4 animate-spin" />}
+            Ajouter {parsed.length > 0 ? `${parsed.length} article(s)` : ''}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ============================================================================
 // Modale de duplication d'une classe vers une autre

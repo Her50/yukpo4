@@ -22,6 +22,7 @@ const EcoleSearchPage: React.FC = () => {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<EcoleSummary[]>([]);
+  const [expansions, setExpansions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const fastDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const smartDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -41,6 +42,7 @@ const EcoleSearchPage: React.FC = () => {
     const q = query.trim();
     if (q.length < 2) {
       setResults([]);
+      setExpansions([]);
       return;
     }
 
@@ -52,6 +54,9 @@ const EcoleSearchPage: React.FC = () => {
         const data = await res.json().catch(() => ({}));
         if (!cancelled) {
           setResults(Array.isArray(data?.results) ? data.results : []);
+          if (smart) {
+            setExpansions(Array.isArray(data?.expansions) ? data.expansions : []);
+          }
         }
       } catch {
         if (!cancelled && !smart) setResults([]);
@@ -111,6 +116,23 @@ const EcoleSearchPage: React.FC = () => {
               </button>
             )}
           </div>
+          {/* Suggestions IA — variantes orthographiques / sigles détectés */}
+          {expansions.length > 0 && (
+            <div className="flex items-start gap-1.5 mt-2 flex-wrap">
+              <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide pt-1">
+                Aussi essayé :
+              </span>
+              {expansions.slice(0, 4).map((e, i) => (
+                <button
+                  key={i}
+                  onClick={() => setQuery(e)}
+                  className="text-[11px] bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-full px-2 py-0.5 border border-amber-200"
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
