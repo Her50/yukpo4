@@ -121,7 +121,10 @@ function AppBourse() {
                   article-par-article depuis /rentree. On redirige les anciens
                   liens (bookmarks parents) vers le Centre de Rentrée. */}
               <Route path="/troc-prep" element={<Navigate to="/rentree" replace />} />
-              <Route path="/vendre" element={<BourseLayout><VendreLivresPage /></BourseLayout>} />
+              {/* /vendre nécessite une session auth (POST /api/bourse-livre/v2/sessions
+                  est protégé par JWT). Sans RequireAuth, le bouton scan restait
+                  désactivé silencieusement après un 401. */}
+              <Route path="/vendre" element={<BourseLayout><RequireAuth><VendreLivresPage /></RequireAuth></BourseLayout>} />
               <Route path="/mes-commandes" element={<BourseLayout><MesCommandesPage /></BourseLayout>} />
               <Route path="/recap" element={<BourseLayout><RecapAchatPage /></BourseLayout>} />
               {/* ✅ 2026-05-10 : Centre de Rentrée — UX unique parent-centric, classe tabs, école partenaire prioritaire, troc article-par-article */}
