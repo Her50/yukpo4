@@ -326,6 +326,9 @@ pub struct PreloadPayload {
     pub mode: Option<String>,
     /// Optionnel : restreindre à certaines classes (sinon toutes)
     pub classes: Option<Vec<String>>,
+    /// Optionnel : restreindre à certains niveaux (ex: ['Primaire','Collège']).
+    /// Évite de copier des classes hors des cycles offerts par l'établissement.
+    pub niveaux: Option<Vec<String>>,
     /// Optionnel : restreindre à certains types ('livre','cahier',...)
     pub type_articles: Option<Vec<String>>,
 }
@@ -414,12 +417,14 @@ pub async fn preload(
           AND ($2::text IS NULL OR annee_scolaire = $2)
           AND ($3::text[] IS NULL OR classe = ANY($3))
           AND ($4::text[] IS NULL OR type_article = ANY($4))
+          AND ($5::text[] IS NULL OR niveau = ANY($5))
         "#,
     )
     .bind(source_etab_id)
     .bind(source_annee.as_deref())
     .bind(payload.classes.as_deref())
     .bind(payload.type_articles.as_deref())
+    .bind(payload.niveaux.as_deref())
     .fetch_one(&state.pg)
     .await
     .map_err(|e| AppError::Database(format!("preload: source_total: {}", e)))?;
@@ -483,6 +488,7 @@ pub async fn preload(
               AND ($5::text IS NULL OR src.annee_scolaire = $5)
               AND ($6::text[] IS NULL OR src.classe = ANY($6))
               AND ($7::text[] IS NULL OR src.type_article = ANY($7))
+              AND ($8::text[] IS NULL OR src.niveau = ANY($8))
               AND NOT EXISTS (
                 SELECT 1 FROM programmes_scolaires dst
                 WHERE dst.etablissement_id = $2
@@ -505,6 +511,7 @@ pub async fn preload(
     .bind(source_annee.as_deref())
     .bind(payload.classes.as_deref())
     .bind(payload.type_articles.as_deref())
+    .bind(payload.niveaux.as_deref())
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| AppError::Database(format!("preload: insert: {}", e)))?;

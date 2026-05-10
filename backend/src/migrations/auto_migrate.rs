@@ -8724,6 +8724,15 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         ),
     }
 
+    // ✅ 2026-05-10 : Fix unique-index erroné qui empêchait plusieurs livres par classe
+    match ensure_programmes_unique_index_fix(pool).await {
+        Ok(_) => info!("✅ Migration auto: fix unique-index programmes_scolaires OK"),
+        Err(e) => error!(
+            "❌ Erreur migration auto fix unique-index programmes_scolaires: {}",
+            e
+        ),
+    }
+
     // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
     match ensure_delivery_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
@@ -22401,5 +22410,17 @@ pub async fn ensure_etablissement_setup_extended(pool: &PgPool) -> Result<(), sq
     let sql = include_str!("../../migrations/20260510_001_etablissement_setup_extended.sql");
     execute_migration_sql_safe(pool, sql).await?;
     info!("✅ Setup étendu établissement OK");
+    Ok(())
+}
+
+/// ✅ 2026-05-10 : remplace l'index UNIQUE erroné `uniq_programmes_etab_classe_annee`
+///   (qui empêchait plusieurs livres par classe) par un index unique fonctionnel
+///   sur (etab, année, classe, matière, type, titre).
+/// Migration : 20260510_002_fix_programmes_unique_index.sql
+pub async fn ensure_programmes_unique_index_fix(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration fix unique-index programmes_scolaires...");
+    let sql = include_str!("../../migrations/20260510_002_fix_programmes_unique_index.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ Fix unique-index programmes_scolaires OK");
     Ok(())
 }

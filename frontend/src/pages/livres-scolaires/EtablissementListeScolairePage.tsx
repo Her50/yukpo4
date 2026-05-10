@@ -163,7 +163,20 @@ const EtablissementListeScolairePage: React.FC = () => {
     extra: { source_annee?: string; source_etab_id?: number } = {},
   ) => {
     try {
-      const body: any = { source, target_annee: annee, mode: 'merge', ...extra };
+      // Restreint les niveaux importés aux cycles offerts par l'établissement
+      // (sinon on copie p.ex. les classes du lycée alors qu'on n'a que primaire+collège).
+      // Exception : le programme national utilise des labels génériques (« Secondaire »)
+      // qui ne matchent pas notre référentiel — on copie tout, l'admin filtrera ensuite.
+      const niveauxAcceptes = source !== 'national' && niveauxFiltres.length > 0
+        ? niveauxFiltres.map(n => n.nom)
+        : undefined;
+      const body: any = {
+        source,
+        target_annee: annee,
+        mode: 'merge',
+        ...(niveauxAcceptes ? { niveaux: niveauxAcceptes } : {}),
+        ...extra,
+      };
       const res = await apiPost(
         `/api/v2/admin/etablissement/${etabId}/programmes/preload`,
         body,
