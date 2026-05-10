@@ -29,26 +29,13 @@ use std::sync::Arc;
 // Rôles autorisés pour les membres d'équipe d'un établissement.
 const ALLOWED_ROLES: [&str; 3] = ["manager", "editor", "viewer"];
 
+/// Inviter / lister l'équipe est réservé aux managers (= owner + manager team).
+/// Délégué au helper partagé `etablissement_pages_controller::require_etab_role`.
 async fn require_etab_admin(state: &AppState, user_id: i32, etab_id: i32) -> AppResult<()> {
-    let ok: bool = sqlx::query_scalar::<_, bool>(
-        r#"
-        SELECT EXISTS(
-            SELECT 1 FROM etablissements_scolaires
-            WHERE id = $1 AND (gerant_user_id = $2 OR user_id = $2)
-        )
-        "#,
+    crate::controllers::etablissement_pages_controller::require_etab_role(
+        state, user_id, etab_id, "manager",
     )
-    .bind(etab_id)
-    .bind(user_id)
-    .fetch_one(&state.pg)
     .await
-    .map_err(|e| AppError::Database(format!("require_etab_admin: {}", e)))?;
-    if !ok {
-        return Err(AppError::Forbidden(
-            "Vous n'êtes pas administrateur de cet établissement".into(),
-        ));
-    }
-    Ok(())
 }
 
 #[derive(Debug, Deserialize)]

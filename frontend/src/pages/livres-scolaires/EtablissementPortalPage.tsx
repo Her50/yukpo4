@@ -55,6 +55,19 @@ interface MyEtab {
   page_published_at: string | null;
   qr_code_url: string | null;
   stats_views_30d: number;
+  my_role?: 'owner' | 'manager' | 'editor' | 'viewer' | null;
+}
+
+// Hiérarchie des rôles : owner ≥ manager > editor > viewer.
+function hasRole(my: MyEtab['my_role'], min: 'manager' | 'editor' | 'viewer'): boolean {
+  const rank = (r?: string | null) => {
+    if (r === 'owner' || r === 'manager') return 3;
+    if (r === 'editor') return 2;
+    if (r === 'viewer') return 1;
+    return 0;
+  };
+  const need = min === 'manager' ? 3 : min === 'editor' ? 2 : 1;
+  return rank(my || undefined) >= need;
 }
 
 // ============================================================================
@@ -223,7 +236,7 @@ export const EtablissementPortalHomePage: React.FC = () => {
               <p className="font-semibold text-sm text-gray-900 truncate">
                 {e.nom_etablissement}
               </p>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
                     e.page_status === 'published'
@@ -233,6 +246,15 @@ export const EtablissementPortalHomePage: React.FC = () => {
                 >
                   {e.page_status === 'published' ? t('etabAdmin.dashboard.published') : t('etabAdmin.dashboard.draft')}
                 </span>
+                {e.my_role && e.my_role !== 'owner' && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-violet-100 text-violet-700">
+                    {e.my_role === 'manager'
+                      ? '👤 Gestionnaire'
+                      : e.my_role === 'editor'
+                        ? '✏️ Éditeur'
+                        : '👁 Consultation'}
+                  </span>
+                )}
                 {(e.quartier || e.ville) && (
                   <span className="text-xs text-gray-500">
                     {[e.quartier, e.ville].filter(Boolean).join(', ')}
@@ -404,14 +426,16 @@ export const EtablissementDashboardPage: React.FC = () => {
         <h1 className="text-base font-bold text-gray-900 truncate flex-1 min-w-0">
           {etab.nom_etablissement}
         </h1>
-        <button
-          onClick={() => setShowConfig(true)}
-          className="p-2 rounded-full hover:bg-gray-100 shrink-0"
-          aria-label="Configuration"
-          title="Configuration de l'établissement"
-        >
-          <Settings className="w-5 h-5 text-gray-600" />
-        </button>
+        {hasRole(etab.my_role, 'manager') && (
+          <button
+            onClick={() => setShowConfig(true)}
+            className="p-2 rounded-full hover:bg-gray-100 shrink-0"
+            aria-label="Configuration"
+            title="Configuration de l'établissement"
+          >
+            <Settings className="w-5 h-5 text-gray-600" />
+          </button>
+        )}
         <span
           className={`text-[10px] px-2 py-1 rounded-full font-semibold whitespace-nowrap shrink-0 ${
             etab.page_status === 'published'
@@ -523,8 +547,10 @@ export const EtablissementDashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* Équipe */}
-        <TeamSection etabId={etabId} etabNom={etab.nom_etablissement} />
+        {/* Équipe — visible uniquement aux managers/owners */}
+        {hasRole(etab.my_role, 'manager') && (
+          <TeamSection etabId={etabId} etabNom={etab.nom_etablissement} />
+        )}
 
         {/* Liste des 10 blocs CMS */}
         <div className="space-y-2">

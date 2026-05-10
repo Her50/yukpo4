@@ -486,13 +486,23 @@ pub async fn get_ecole_publique(
     ))
 }
 
-/// GET /api/v2/ecole/{slug}/classe/{classe}/programme
+#[derive(Debug, Deserialize)]
+pub struct ProgrammeClasseQuery {
+    /// Année scolaire ciblée (ex: "2026-2027"). Optionnel.
+    /// Si absent : on retourne l'année active la plus récente saisie pour
+    /// cette classe. Si l'admin n'a pas saisi d'année (ancienne donnée), on
+    /// inclut aussi les lignes sans année (NULL) en fallback.
+    pub annee: Option<String>,
+}
+
+/// GET /api/v2/ecole/{slug}/classe/{classe}/programme?annee=2026-2027
 /// Liste scolaire d'une classe précise (manuels + fournitures depuis
-/// programmes_scolaires filtrés par etablissement_id) — utilisée par le
-/// chemin "Commander" depuis la page école.
+/// programmes_scolaires filtrés par etablissement_id et année) — utilisée
+/// par le chemin "Commander" depuis la page école.
 pub async fn get_programme_classe_etablissement(
     State(state): State<Arc<AppState>>,
     Path((slug, classe)): Path<(String, String)>,
+    Query(q): Query<ProgrammeClasseQuery>,
 ) -> AppResult<impl IntoResponse> {
     let etab_id: Option<i32> = sqlx::query_scalar(
         "SELECT id FROM etablissements_scolaires WHERE slug = $1 AND page_status = 'published'",
@@ -518,7 +528,71 @@ pub async fn get_programme_classe_etablissement(
     .execute(&state.pg)
     .await;
 
-    // Récupération du programme (manuels + fournitures)
+    // Année effective :
+    //   1. si l'utilisateur a explicitement demandé une année → on l'utilise
+    //   2. sinon, on calcule la session COURANTE selon le pays de
+    //      l'établissement (ex: Cameroun = sept→juillet) → on cherche cette
+    //      année en base
+    //   3. fallback : la dernière année saisie pour cette classe (peut être
+    //      antérieure si l'admin n'a pas encore mis à jour la rentrée)
+    let etab_pays: Option<String> =
+        sqlx::query_scalar::<_, String>("SELECT pays FROM etablissements_scolaires WHERE id = $1")
+            .bind(etab_id)
+            .fetch_optional(&state.pg)
+            .await
+            .ok()
+            .flatten();
+    let session_courante = current_session_for_country(etab_pays.as_deref());
+    let effective_annee: Option<String> =
+        if let Some(a) = q.annee.as_deref().filter(|s| !s.trim().is_empty()) {
+            Some(a.to_string())
+        } else {
+            // 2. session courante si saisie en base
+            let has_current: bool = sqlx::query_scalar::<_, bool>(
+                r#"
+            SELECT EXISTS (
+                SELECT 1 FROM programmes_scolaires
+                WHERE etablissement_id = $1
+                  AND classe ILIKE $2
+                  AND is_active = true
+                  AND annee_scolaire = $3
+            )
+            "#,
+            )
+            .bind(etab_id)
+            .bind(&classe)
+            .bind(&session_courante)
+            .fetch_one(&state.pg)
+            .await
+            .unwrap_or(false);
+
+            if has_current {
+                Some(session_courante.clone())
+            } else {
+                // 3. fallback : la plus récente année saisie
+                sqlx::query_scalar::<_, String>(
+                    r#"
+                SELECT annee_scolaire FROM programmes_scolaires
+                WHERE etablissement_id = $1
+                  AND classe ILIKE $2
+                  AND is_active = true
+                  AND annee_scolaire IS NOT NULL
+                  AND annee_scolaire <> ''
+                ORDER BY annee_scolaire DESC
+                LIMIT 1
+                "#,
+                )
+                .bind(etab_id)
+                .bind(&classe)
+                .fetch_optional(&state.pg)
+                .await
+                .ok()
+                .flatten()
+            }
+        };
+
+    // Récupération du programme (manuels + fournitures) — filtré par année si
+    // dispo, fallback sur les lignes sans année (NULL) pour rétro-compat.
     let articles = sqlx::query(
         r#"
         SELECT
@@ -528,17 +602,19 @@ pub async fn get_programme_classe_etablissement(
             editeur_livre,
             matiere,
             classe,
-            type,
+            type_article AS type,
             prix_officiel,
             devise,
             est_obligatoire,
-            COALESCE(quantite_defaut, 1) AS quantite_defaut
+            COALESCE(quantite_defaut, 1) AS quantite_defaut,
+            annee_scolaire
         FROM programmes_scolaires
         WHERE etablissement_id = $1
           AND is_active = true
           AND classe ILIKE $2
+          AND ($3::text IS NULL OR annee_scolaire = $3 OR annee_scolaire IS NULL)
         ORDER BY
-            CASE type
+            CASE type_article
                 WHEN 'livre' THEN 1
                 WHEN 'workbook' THEN 2
                 WHEN 'cahier' THEN 3
@@ -551,6 +627,7 @@ pub async fn get_programme_classe_etablissement(
     )
     .bind(etab_id)
     .bind(&classe)
+    .bind(effective_annee.as_deref())
     .fetch_all(&state.pg)
     .await
     .map_err(|e| AppError::Database(format!("programme classe: {}", e)))?;
@@ -577,12 +654,33 @@ pub async fn get_programme_classe_etablissement(
         })
         .collect();
 
+    // Liste des années saisies pour cette classe (utile pour proposer un
+    // sélecteur côté parent : « voir la liste 2025-2026 »)
+    let annees_dispo: Vec<String> = sqlx::query_scalar::<_, String>(
+        r#"
+        SELECT DISTINCT annee_scolaire FROM programmes_scolaires
+        WHERE etablissement_id = $1
+          AND classe ILIKE $2
+          AND is_active = true
+          AND annee_scolaire IS NOT NULL
+          AND annee_scolaire <> ''
+        ORDER BY annee_scolaire DESC
+        "#,
+    )
+    .bind(etab_id)
+    .bind(&classe)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
     Ok((
         StatusCode::OK,
         Json(json!({
             "slug": slug,
             "classe": classe,
             "etablissement_id": etab_id,
+            "annee_scolaire": effective_annee,
+            "annees_disponibles": annees_dispo,
             "articles": items,
         })),
     ))
@@ -598,7 +696,28 @@ async fn require_etab_admin(
     user_id: i32,
     etablissement_id: i32,
 ) -> AppResult<()> {
-    let is_admin: bool = sqlx::query_scalar::<_, bool>(
+    // L'admin (gérant) reste exigé pour ce check legacy. Pour les rôles
+    // d'équipe (editor/viewer/manager), passer par `require_etab_role`.
+    require_etab_role(state, user_id, etablissement_id, "manager").await
+}
+
+/// Vérifie que l'utilisateur a au moins le rôle `min_role` sur l'établissement.
+///
+/// Hiérarchie : owner ≥ manager > editor > viewer.
+/// - Le gérant de l'établissement (gerant_user_id ou user_id) est considéré
+///   comme « manager » (donc passe tous les checks).
+/// - Sinon on cherche dans `etablissement_team_invitations` une invitation
+///   acceptée pour ce user, et on compare son rôle au minimum requis.
+///
+/// `min_role` ∈ {"manager", "editor", "viewer"}.
+pub async fn require_etab_role(
+    state: &AppState,
+    user_id: i32,
+    etablissement_id: i32,
+    min_role: &str,
+) -> AppResult<()> {
+    // 1. Owner = manager implicite
+    let is_owner: bool = sqlx::query_scalar::<_, bool>(
         r#"
         SELECT EXISTS(
             SELECT 1 FROM etablissements_scolaires
@@ -610,14 +729,84 @@ async fn require_etab_admin(
     .bind(user_id)
     .fetch_one(&state.pg)
     .await
-    .map_err(|e| AppError::Database(format!("require_etab_admin: {}", e)))?;
-
-    if !is_admin {
-        return Err(AppError::Forbidden(
-            "Vous n'êtes pas administrateur de cet établissement".to_string(),
-        ));
+    .map_err(|e| AppError::Database(format!("require_etab_role: owner check: {}", e)))?;
+    if is_owner {
+        return Ok(());
     }
-    Ok(())
+
+    // 2. Membre d'équipe : prend l'invitation acceptée avec le rôle le + élevé
+    let team_role: Option<String> = sqlx::query_scalar::<_, String>(
+        r#"
+        SELECT role FROM etablissement_team_invitations
+        WHERE etablissement_id = $1
+          AND accepted_user_id = $2
+          AND accepted_at IS NOT NULL
+        ORDER BY CASE role
+                   WHEN 'manager' THEN 0
+                   WHEN 'editor'  THEN 1
+                   WHEN 'viewer'  THEN 2
+                   ELSE 3
+                 END
+        LIMIT 1
+        "#,
+    )
+    .bind(etablissement_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("require_etab_role: team check: {}", e)))?;
+
+    if let Some(role) = team_role {
+        if role_rank(&role) >= role_rank(min_role) {
+            return Ok(());
+        }
+        return Err(AppError::Forbidden(format!(
+            "Rôle '{}' insuffisant — requis : '{}'",
+            role, min_role
+        )));
+    }
+
+    Err(AppError::Forbidden(
+        "Vous n'avez pas accès à cet établissement".to_string(),
+    ))
+}
+
+pub fn role_rank(role: &str) -> i32 {
+    match role {
+        "manager" => 3,
+        "editor" => 2,
+        "viewer" => 1,
+        _ => 0,
+    }
+}
+
+/// Calcule la session scolaire courante (ex "2026-2027") selon le pays et la
+/// date d'aujourd'hui. Permet au parent de voir automatiquement la liste de
+/// la rentrée en cours sans passer par un sélecteur.
+///
+/// Règle : la session change le 1er du mois de rentrée du pays.
+///   - Avant ce mois : session = N-1 → N (où N = année civile courante)
+///   - À partir de ce mois (inclus) : session = N → N+1
+///
+/// Mois de rentrée par pays (par défaut Septembre = 9) :
+///   - CM, CI, SN, GA, CG, CD, BJ, TG, BF, ML, NE : Septembre
+///   - NG, GH (calendar académique anglophone) : Septembre aussi
+/// On expose la fonction pour pouvoir l'utiliser ailleurs (preload défaut, etc.).
+pub fn current_session_for_country(pays: Option<&str>) -> String {
+    let start_month: u32 = match pays.unwrap_or("CM").to_uppercase().as_str() {
+        // Septembre pour la quasi-totalité de l'Afrique francophone et anglophone
+        "CM" | "CI" | "SN" | "GA" | "CG" | "CD" | "BJ" | "TG" | "BF" | "ML" | "NE" | "NG"
+        | "GH" => 9,
+        _ => 9,
+    };
+    let now = chrono::Utc::now();
+    let year = now.format("%Y").to_string().parse::<i32>().unwrap_or(2026);
+    let month = now.format("%m").to_string().parse::<u32>().unwrap_or(9);
+    if month >= start_month {
+        format!("{}-{}", year, year + 1)
+    } else {
+        format!("{}-{}", year - 1, year)
+    }
 }
 
 /// GET /api/v2/admin/etablissement/mes-etablissements
@@ -626,16 +815,44 @@ pub async fn get_my_etablissements(
     State(state): State<Arc<AppState>>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
+    // Inclut les établissements dont l'utilisateur est gérant OU membre d'équipe
+    // (invitation acceptée). On retourne aussi `my_role` pour que le front puisse
+    // adapter les actions disponibles (ex: griser certains boutons pour viewer).
     let rows = sqlx::query(
         r#"
         SELECT
-            id, nom_etablissement, nom_abrege, slug, type_etablissement,
-            pays, ville, quartier, systeme_scolaire, cycles_offerts,
-            logo_url, banniere_url, page_status, page_published_at, qr_code_url,
-            stats_views_30d
-        FROM etablissements_scolaires
-        WHERE gerant_user_id = $1 OR user_id = $1
-        ORDER BY id DESC
+            e.id, e.nom_etablissement, e.nom_abrege, e.slug, e.type_etablissement,
+            e.pays, e.ville, e.quartier, e.systeme_scolaire, e.cycles_offerts,
+            e.logo_url, e.banniere_url, e.page_status, e.page_published_at, e.qr_code_url,
+            e.stats_views_30d,
+            CASE
+                WHEN e.gerant_user_id = $1 OR e.user_id = $1 THEN 'owner'
+                ELSE COALESCE(
+                    (SELECT i.role
+                     FROM etablissement_team_invitations i
+                     WHERE i.etablissement_id = e.id
+                       AND i.accepted_user_id = $1
+                       AND i.accepted_at IS NOT NULL
+                     ORDER BY CASE i.role
+                                WHEN 'manager' THEN 0
+                                WHEN 'editor'  THEN 1
+                                WHEN 'viewer'  THEN 2
+                                ELSE 3
+                              END
+                     LIMIT 1),
+                    'viewer'
+                )
+            END AS my_role
+        FROM etablissements_scolaires e
+        WHERE e.gerant_user_id = $1
+           OR e.user_id = $1
+           OR EXISTS (
+                SELECT 1 FROM etablissement_team_invitations i
+                WHERE i.etablissement_id = e.id
+                  AND i.accepted_user_id = $1
+                  AND i.accepted_at IS NOT NULL
+           )
+        ORDER BY e.id DESC
         "#,
     )
     .bind(user_id)
@@ -664,6 +881,7 @@ pub async fn get_my_etablissements(
                 "page_published_at": r.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("page_published_at").ok().flatten(),
                 "qr_code_url": r.try_get::<Option<String>, _>("qr_code_url").ok().flatten(),
                 "stats_views_30d": r.try_get::<i32, _>("stats_views_30d").ok(),
+                "my_role": r.try_get::<String, _>("my_role").ok(),
             })
         })
         .collect();
@@ -672,13 +890,14 @@ pub async fn get_my_etablissements(
 }
 
 /// GET /api/v2/admin/etablissement/{id}/blocs
-/// Tous les blocs (publiés + brouillons) pour le gérant.
+/// Tous les blocs (publiés + brouillons) pour le gérant ou les membres d'équipe.
 pub async fn get_blocs_admin(
     State(state): State<Arc<AppState>>,
     Path(etab_id): Path<i32>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
-    require_etab_admin(&state, user_id, etab_id).await?;
+    // Lecture : accessible à tous les membres (viewer suffit).
+    require_etab_role(&state, user_id, etab_id, "viewer").await?;
 
     let blocs = sqlx::query_as::<_, EtablissementBlocOut>(
         r#"
@@ -705,7 +924,8 @@ pub async fn upsert_bloc(
 
     Json(payload): Json<UpsertBlocPayload>,
 ) -> AppResult<impl IntoResponse> {
-    require_etab_admin(&state, user_id, etab_id).await?;
+    // Édition de blocs : accessible aux editor + manager.
+    require_etab_role(&state, user_id, etab_id, "editor").await?;
 
     // Validation du type_bloc
     const TYPES_VALIDES: [&str; 10] = [
@@ -839,7 +1059,7 @@ pub async fn create_annonce(
 
     Json(payload): Json<CreateAnnoncePayload>,
 ) -> AppResult<impl IntoResponse> {
-    require_etab_admin(&state, user_id, etab_id).await?;
+    require_etab_role(&state, user_id, etab_id, "editor").await?;
 
     if payload.titre.trim().is_empty() || payload.contenu.trim().is_empty() {
         return Err(AppError::BadRequest(
@@ -882,7 +1102,7 @@ pub async fn delete_annonce(
     Path((etab_id, annonce_id)): Path<(i32, i32)>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
-    require_etab_admin(&state, user_id, etab_id).await?;
+    require_etab_role(&state, user_id, etab_id, "editor").await?;
 
     sqlx::query("DELETE FROM etablissement_annonces WHERE id = $1 AND etablissement_id = $2")
         .bind(annonce_id)
@@ -902,7 +1122,7 @@ pub async fn create_evenement(
 
     Json(payload): Json<CreateEvenementPayload>,
 ) -> AppResult<impl IntoResponse> {
-    require_etab_admin(&state, user_id, etab_id).await?;
+    require_etab_role(&state, user_id, etab_id, "editor").await?;
 
     if payload.titre.trim().is_empty() {
         return Err(AppError::BadRequest("Le titre est requis".to_string()));
@@ -944,7 +1164,7 @@ pub async fn delete_evenement(
     Path((etab_id, event_id)): Path<(i32, i32)>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
-    require_etab_admin(&state, user_id, etab_id).await?;
+    require_etab_role(&state, user_id, etab_id, "editor").await?;
 
     sqlx::query("DELETE FROM etablissement_evenements WHERE id = $1 AND etablissement_id = $2")
         .bind(event_id)
@@ -1184,7 +1404,8 @@ pub async fn ia_extract_etablissement(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<IaExtractPayload>,
 ) -> AppResult<impl IntoResponse> {
-    require_etab_admin(&state, user_id, etab_id).await?;
+    // L'extraction IA modifie blocs + programmes + meta etab → editor
+    require_etab_role(&state, user_id, etab_id, "editor").await?;
 
     if payload.fichiers.is_empty() {
         return Err(AppError::BadRequest("Aucun fichier fourni".to_string()));
@@ -1724,7 +1945,8 @@ pub async fn get_stats(
     Path(etab_id): Path<i32>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
-    require_etab_admin(&state, user_id, etab_id).await?;
+    // Lecture seule : viewer suffit
+    require_etab_role(&state, user_id, etab_id, "viewer").await?;
 
     let stats = sqlx::query(
         r#"

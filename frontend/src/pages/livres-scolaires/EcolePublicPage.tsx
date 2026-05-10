@@ -393,6 +393,9 @@ export const EcoleListeScolairePage: React.FC = () => {
   const [articles, setArticles] = useState<ArticleProgramme[]>([]);
   const [selected, setSelected] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
+  // Année courante détectée automatiquement par le backend (selon pays + date).
+  // Le parent ne sélectionne rien — il voit toujours la rentrée en cours.
+  const [annee, setAnnee] = useState<string>('');
 
   useEffect(() => {
     if (!slug || !classe) return;
@@ -404,6 +407,7 @@ export const EcoleListeScolairePage: React.FC = () => {
         const d = await res.json().catch(() => ({}));
         const items: ArticleProgramme[] = Array.isArray(d?.articles) ? d.articles : [];
         setArticles(items);
+        if (typeof d?.annee_scolaire === 'string') setAnnee(d.annee_scolaire);
         const initSelected: Record<number, boolean> = {};
         for (const it of items) initSelected[it.id] = true;
         setSelected(initSelected);
@@ -469,7 +473,12 @@ export const EcoleListeScolairePage: React.FC = () => {
           <h1 className="text-base font-bold text-gray-900 truncate">
             {t('bourse.liste.title_prefix')} {classe}
           </h1>
-          <p className="text-xs text-gray-500">{t('bourse.liste.annee')}</p>
+          {/* Année automatiquement détectée par le backend selon le pays de
+              l'établissement et la date courante. Le parent n'a pas besoin de
+              sélecteur — c'est la rentrée en cours par défaut. */}
+          <p className="text-xs text-gray-500">
+            {annee ? `Année ${annee}` : t('bourse.liste.annee')}
+          </p>
         </div>
       </div>
 

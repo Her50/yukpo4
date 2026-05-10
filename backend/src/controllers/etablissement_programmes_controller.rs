@@ -31,27 +31,27 @@ use std::sync::Arc;
 // Helpers
 // ============================================================================
 
-/// Vérifie que l'utilisateur est gérant de l'établissement (gerant_user_id ou user_id).
+/// Helpers de permission par rôle (manager / editor / viewer).
+/// Délégué au helper partagé `etablissement_pages_controller::require_etab_role`.
 async fn require_admin(state: &AppState, user_id: i32, etab_id: i32) -> AppResult<()> {
-    let ok: bool = sqlx::query_scalar::<_, bool>(
-        r#"
-        SELECT EXISTS(
-            SELECT 1 FROM etablissements_scolaires
-            WHERE id = $1 AND (gerant_user_id = $2 OR user_id = $2)
-        )
-        "#,
+    crate::controllers::etablissement_pages_controller::require_etab_role(
+        state, user_id, etab_id, "manager",
     )
-    .bind(etab_id)
-    .bind(user_id)
-    .fetch_one(&state.pg)
     .await
-    .map_err(|e| AppError::Database(format!("require_admin: {}", e)))?;
-    if !ok {
-        return Err(AppError::Forbidden(
-            "Vous n'êtes pas administrateur de cet établissement".into(),
-        ));
-    }
-    Ok(())
+}
+
+async fn require_editor(state: &AppState, user_id: i32, etab_id: i32) -> AppResult<()> {
+    crate::controllers::etablissement_pages_controller::require_etab_role(
+        state, user_id, etab_id, "editor",
+    )
+    .await
+}
+
+async fn require_viewer(state: &AppState, user_id: i32, etab_id: i32) -> AppResult<()> {
+    crate::controllers::etablissement_pages_controller::require_etab_role(
+        state, user_id, etab_id, "viewer",
+    )
+    .await
 }
 
 const ALLOWED_SYSTEMES: [&str; 3] = ["francophone", "anglophone", "bilingue"];
@@ -196,7 +196,7 @@ pub async fn preload_sources(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Query(q): Query<PreloadSourcesQuery>,
 ) -> AppResult<impl IntoResponse> {
-    require_admin(&state, user_id, etab_id).await?;
+    require_viewer(&state, user_id, etab_id).await?;
 
     // Récupère pays + systeme du courant pour matcher les établissements similaires
     let (pays, systeme): (Option<String>, Option<String>) = sqlx::query_as(
@@ -352,7 +352,7 @@ pub async fn preload(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(payload): Json<PreloadPayload>,
 ) -> AppResult<impl IntoResponse> {
-    require_admin(&state, user_id, etab_id).await?;
+    require_editor(&state, user_id, etab_id).await?;
 
     if payload.target_annee.trim().is_empty() {
         return Err(AppError::BadRequest("target_annee requis".into()));
@@ -555,7 +555,7 @@ pub async fn list_programmes(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Query(q): Query<ListProgrammesQuery>,
 ) -> AppResult<impl IntoResponse> {
-    require_admin(&state, user_id, etab_id).await?;
+    require_viewer(&state, user_id, etab_id).await?;
 
     use sqlx::Row;
     let rows = sqlx::query(
@@ -636,7 +636,7 @@ pub async fn create_article(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(p): Json<UpsertArticlePayload>,
 ) -> AppResult<impl IntoResponse> {
-    require_admin(&state, user_id, etab_id).await?;
+    require_editor(&state, user_id, etab_id).await?;
 
     let type_article = p.type_article.unwrap_or_else(|| "livre".to_string());
     if !ALLOWED_TYPE_ARTICLE.contains(&type_article.as_str()) {
@@ -715,7 +715,7 @@ pub async fn patch_article(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
     Json(p): Json<PatchArticlePayload>,
 ) -> AppResult<impl IntoResponse> {
-    require_admin(&state, user_id, etab_id).await?;
+    require_editor(&state, user_id, etab_id).await?;
 
     if let Some(t) = &p.type_article {
         if !ALLOWED_TYPE_ARTICLE.contains(&t.as_str()) {
@@ -1060,7 +1060,7 @@ pub async fn delete_article(
     Path((etab_id, prog_id)): Path<(i32, i32)>,
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
-    require_admin(&state, user_id, etab_id).await?;
+    require_editor(&state, user_id, etab_id).await?;
 
     let res = sqlx::query(
         r#"
