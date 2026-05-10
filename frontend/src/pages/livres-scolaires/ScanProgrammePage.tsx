@@ -1,6 +1,6 @@
 import {
   AlertCircle, ArrowLeft, BookOpen, Camera, CheckSquare,
-  ChevronRight, Copy, FileText, Image as ImageIcon, Loader2,
+  ChevronRight, Copy, FileText, Loader2,
   Minus, Plus, Search, ShoppingCart, Upload, X
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -172,7 +172,6 @@ const ScanProgrammePage: React.FC = () => {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
 
   const handlePaysChange = (p: PaysCode) => {
     setPays(p);
@@ -577,10 +576,9 @@ const ScanProgrammePage: React.FC = () => {
   if (step === 'pick') {
     return (
       <div className="min-h-screen bg-amber-600 flex flex-col">
-        {/* inputs cachés */}
+        {/* inputs cachés — galerie et fileRef fusionnés : un seul input
+            qui accepte images + PDF (depuis l'appareil ou la galerie). */}
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
-          onChange={e => handleFiles(e.target.files)} />
-        <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden"
           onChange={e => handleFiles(e.target.files)} />
         <input ref={fileRef} type="file" accept="image/*,.pdf" multiple className="hidden"
           onChange={e => handleFiles(e.target.files)} />
@@ -618,56 +616,21 @@ const ScanProgrammePage: React.FC = () => {
             <ChevronRight className="w-5 h-5 text-amber-400 shrink-0" />
           </button>
 
-          {/* Galerie */}
+          {/* Depuis mes fichiers — fusion ancien "galerie" + "pdf/fichier"
+              (image + PDF + Excel acceptés). Un seul bouton car l'action
+              est la même : choisir un fichier déjà sur l'appareil. */}
           <button
-            onClick={() => galleryRef.current?.click()}
+            onClick={() => fileRef.current?.click()}
             className="flex items-center gap-5 bg-blue-50 border-2 border-blue-200 rounded-2xl px-5 py-5 active:bg-blue-100 text-left"
           >
             <div className="w-14 h-14 rounded-2xl bg-blue-500 flex items-center justify-center shrink-0">
-              <ImageIcon className="w-7 h-7 text-white" />
+              <Upload className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.from_gallery')}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.from_gallery_desc')}</p>
+              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.from_files')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.from_files_desc')}</p>
             </div>
             <ChevronRight className="w-5 h-5 text-blue-400 shrink-0" />
-          </button>
-
-          {/* PDF / Fichier */}
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-5 bg-emerald-50 border-2 border-emerald-200 rounded-2xl px-5 py-5 active:bg-emerald-100 text-left"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center shrink-0">
-              <FileText className="w-7 h-7 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.pdf_file')}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.pdf_file_desc')}</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-emerald-400 shrink-0" />
-          </button>
-
-          {/* Séparateur */}
-          <div className="flex items-center gap-3 my-1">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-[11px] text-gray-400 uppercase tracking-wide">{t('bourse.home.or')}</span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
-
-          {/* Recherche par école — pas besoin de scanner */}
-          <button
-            onClick={() => navigate('/programme-ecole')}
-            className="flex items-center gap-5 bg-purple-50 border-2 border-purple-200 rounded-2xl px-5 py-5 active:bg-purple-100 text-left"
-          >
-            <div className="w-14 h-14 rounded-2xl bg-purple-500 flex items-center justify-center shrink-0">
-              <Search className="w-7 h-7 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900 text-base">{t('bourse.scan.search_school')}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{t('bourse.scan.search_school_desc')}</p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-purple-400 shrink-0" />
           </button>
 
           <p className="text-center text-xs text-gray-400 mt-2">
@@ -685,8 +648,6 @@ const ScanProgrammePage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
-          onChange={e => handleFiles(e.target.files)} />
-        <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden"
           onChange={e => handleFiles(e.target.files)} />
         <input ref={fileRef} type="file" accept="image/*,.pdf" multiple className="hidden"
           onChange={e => handleFiles(e.target.files)} />
