@@ -615,7 +615,7 @@ export const EcoleListeScolairePage: React.FC = () => {
                       className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
                         c === 'occasion' && trocIntent[a.id] ? 'bg-cyan-600 text-white shadow-sm' : 'text-gray-500'
                       }`}
-                      title="Troquer mon ancien livre — crédit immédiat ≈ 60 % de sa valeur."
+                      title="Troquer mon ancien livre — Yukpo l'évalue et le crédit est appliqué à la commande."
                     >Échange</button>
                   </div>
                 )}
