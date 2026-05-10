@@ -552,11 +552,16 @@ const ScanProgrammePage: React.FC = () => {
     // pour les livres en attente de matching. Sinon : recap classique.
     const trocCount = selected.filter(it => it.choix === 'occasion' && it.troc_intent).length;
     toast({ title: t(selected.length > 1 ? 'bourse.scan.toast_added_other' : 'bourse.scan.toast_added_one', { count: selected.length }) });
+    console.log('[scan] doAddToCart →', { trocCount, selected: selected.length, enfantId });
     if (trocCount > 0) {
-      navigate(`/rentree?capture-troc=1`);
+      // Petite tempo pour laisser le temps à React de flusher l'état du
+      // panier dans localStorage (useEffect du hook) avant la navigation.
+      setTimeout(() => navigate('/rentree?capture-troc=1', { replace: false }), 50);
       return;
     }
-    setStep('next-action');
+    // Pas de troc : on bascule sur le mini-récap classique (/rentree sans
+    // capture-troc) — cohérent avec le parcours école partenaire.
+    setTimeout(() => navigate('/rentree', { replace: false }), 50);
   };
 
   const addToCart = () => {
