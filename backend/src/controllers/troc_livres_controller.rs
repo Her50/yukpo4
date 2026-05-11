@@ -686,6 +686,147 @@ pub async fn get_chaine_details(
 }
 
 // ============================================================================
+// Retrait volontaire d'un livre par son propriétaire
+// ============================================================================
+
+/// POST /api/troc-livres/{livre_id}/withdraw
+/// Permet au parent propriétaire de retirer son livre du troc/vente à tout
+/// moment, tant que la collecte n'est pas effective. Règles :
+///   • status 'pending' ou 'matched' → autorisé, rollback crédit si avancé
+///   • status 'chained' → refusé (coursier déjà en route), redirige vers support
+///   • status 'delivered' / 'returned' / 'expired' → no-op (déjà clos)
+pub async fn withdraw_livre(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(livre_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    // 1. Récupère le livre + status + propriétaire
+    use sqlx::Row;
+    let row = sqlx::query(
+        "SELECT user_id, troc_status, titre FROM livres_scolaires WHERE id = $1 AND is_active = true",
+    )
+    .bind(livre_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("withdraw lookup: {}", e)))?;
+
+    let row = row.ok_or_else(|| AppError::NotFound(format!("Livre {} introuvable", livre_id)))?;
+    let owner_id: i32 = row.try_get("user_id").unwrap_or(0);
+    let status: String = row
+        .try_get::<Option<String>, _>("troc_status")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "pending".to_string());
+    let titre: String = row
+        .try_get::<Option<String>, _>("titre")
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "Livre".to_string());
+
+    if owner_id != user_id {
+        return Err(AppError::Forbidden(
+            "Vous n'êtes pas propriétaire de ce livre".into(),
+        ));
+    }
+
+    match status.as_str() {
+        "chained" => {
+            return Err(AppError::BadRequest(
+                "Coursier déjà engagé sur cette transaction. Contactez le support Yukpo.".into(),
+            ));
+        }
+        "delivered" | "returned" | "expired" => {
+            return Ok(Json(json!({
+                "success": true,
+                "noop": true,
+                "message": "Livre déjà clos, aucune action requise.",
+                "status": status,
+            })));
+        }
+        _ => { /* pending / matched : on procède au retrait */ }
+    }
+
+    // 2. Rollback du crédit s'il avait été avancé (status 'matched' = crédit
+    // provisional déjà appliqué). Pour 'pending', le crédit n'est pas encore
+    // sur le wallet — on skip le rollback.
+    let mut credit_restitue_xaf: f64 = 0.0;
+    if status == "matched" {
+        // Cherche le dernier crédit provisional pour ce livre dans le ledger
+        let ledger_row = sqlx::query(
+            r#"
+            SELECT amount::float8 AS amount FROM wallet_credit_bourse_ledger
+            WHERE livre_id = $1 AND direction = 'credit'
+              AND source IN ('troc_credit_provisional', 'troc_credit_engaged')
+              AND NOT EXISTS (
+                  SELECT 1 FROM wallet_credit_bourse_ledger ll
+                  WHERE ll.livre_id = $1
+                    AND ll.source = 'troc_credit_rolled_back'
+                    AND ll.created_at > wallet_credit_bourse_ledger.created_at
+              )
+            ORDER BY created_at DESC
+            LIMIT 1
+            "#,
+        )
+        .bind(livre_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Database(format!("withdraw ledger: {}", e)))?;
+
+        if let Some(lr) = ledger_row {
+            let amount: f64 = lr.try_get::<f64, _>("amount").unwrap_or(0.0);
+            if amount > 0.0 {
+                use crate::services::wallet_credit_bourse_service as wallet;
+                let dec = rust_decimal::Decimal::from_f64_retain(amount).unwrap_or_default();
+                wallet::consume_credit(
+                    &state.pg,
+                    user_id,
+                    dec,
+                    wallet::CreditSource::TrocCreditRolledBack,
+                    wallet::CreditMovementContext {
+                        livre_id: Some(livre_id),
+                        note: Some("Retrait volontaire par le propriétaire".into()),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .map_err(|e| {
+                    AppError::Internal(format!("Erreur rollback crédit retrait: {}", e))
+                })?;
+                credit_restitue_xaf = amount;
+            }
+        }
+    }
+
+    // 3. Marque le livre comme retiré (status 'returned' + is_active=false)
+    sqlx::query(
+        r#"UPDATE livres_scolaires
+           SET troc_status = 'returned', is_available = false, is_active = false,
+               updated_at = NOW()
+           WHERE id = $1"#,
+    )
+    .bind(livre_id)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("withdraw update: {}", e)))?;
+
+    Ok(Json(json!({
+        "success": true,
+        "livre_id": livre_id,
+        "titre": titre,
+        "previous_status": status,
+        "credit_restitue_xaf": credit_restitue_xaf,
+        "message": if credit_restitue_xaf > 0.0 {
+            format!(
+                "Livre retiré. Crédit de {} XAF restitué à votre wallet.",
+                credit_restitue_xaf as i64
+            )
+        } else {
+            "Livre retiré du troc/vente.".into()
+        },
+    })))
+}
+
+// ============================================================================
 // WhatsApp notifications queue — admin endpoints
 // ============================================================================
 

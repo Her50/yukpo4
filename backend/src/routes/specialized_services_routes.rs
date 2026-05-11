@@ -975,6 +975,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/v2/admin/wa-queue/{id}/mark-sent",
             post(troc_livres_controller::wa_queue_mark_sent),
         )
+        // ✅ 2026-05-11 : retrait volontaire d'un livre par son propriétaire
+        .route(
+            "/api/troc-livres/{livre_id}/withdraw",
+            post(troc_livres_controller::withdraw_livre),
+        )
         .route(
             "/api/troc-livres/direct",
             post(troc_livres_controller::create_troc_direct),

@@ -354,6 +354,9 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         // Dashboard D : lien vers la page de suivi des trocs (existante)
         dashboard_trocs_title: 'Mes trocs en cours',
         dashboard_trocs_desc: "Suivez l'évolution de chaque livre déposé : pending, matché, en route, etc.",
+        // Retrait volontaire d'un livre déjà photographié
+        withdraw_book_action: 'Retirer ce livre du troc',
+        withdraw_confirm: "Voulez-vous vraiment retirer ce livre du troc ? Si un crédit a été avancé, il sera annulé. Action irréversible.",
         sell_old_books_title: 'Je vends mes vieux livres SANS troc',
         sell_old_books_desc: 'Recevez du cash quand un acheteur sera trouvé. Pas appliqué à une commande.',
         sell_old_books_cta: 'Vendre mes vieux livres',
@@ -1049,6 +1052,8 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         go_full_recap_desc: '{{count}} item(s) — all my classes grouped, ready to order.',
         dashboard_trocs_title: 'My ongoing trades',
         dashboard_trocs_desc: 'Track each deposited book: pending, matched, in transit, etc.',
+        withdraw_book_action: 'Withdraw this book from the trade',
+        withdraw_confirm: 'Are you sure you want to withdraw this book? Any credit advanced will be cancelled. This is irreversible.',
         sell_old_books_title: 'Sell my old books WITHOUT trading',
         sell_old_books_desc: 'Get cash when a buyer is found. Not applied to an order.',
         sell_old_books_cta: 'Sell my old books',

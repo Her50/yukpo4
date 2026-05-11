@@ -291,6 +291,41 @@ const RentreeCenterPage: React.FC = () => {
     setShowTrocExplainer({ itemId: item.id });
   };
 
+  /** Retire un livre du troc/vente côté backend. Rollback du crédit
+   *  éventuellement avancé (status 'matched'). Confirmation utilisateur
+   *  obligatoire car opération irréversible. */
+  const withdrawTroc = useCallback(async (item: PanierItem) => {
+    if (!item.trocLivreId) return;
+    const ok = window.confirm(t('bourse.rentree.withdraw_confirm'));
+    if (!ok) return;
+    try {
+      const res = await apiPost(
+        `/api/troc-livres/${item.trocLivreId}/withdraw`,
+        {},
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
+      }
+      // Côté panier : on délie le trocLivreId (le livre n'existe plus
+      // côté backend) et on réinitialise le choix sur 'neuf' pour éviter
+      // que l'utilisateur reste avec un item orphelin.
+      updateTrocMatch(item.id, undefined);
+      clearTrocIntent(item.id);
+      updateChoix(item.id, 'neuf');
+      toast({
+        title: 'Livre retiré',
+        description: data?.message || 'Le livre a été retiré du troc.',
+      });
+    } catch (e: any) {
+      toast({
+        title: 'Retrait impossible',
+        description: e?.message || 'Réessayez',
+        variant: 'destructive',
+      });
+    }
+  }, [t, toast, updateTrocMatch, clearTrocIntent, updateChoix]);
+
   const continueToCapture = async () => {
     if (!showTrocExplainer) return;
     const sid = await ensureSession();
@@ -573,6 +608,7 @@ const RentreeCenterPage: React.FC = () => {
                       onTroc={() => startTroc(it)}
                       onRemove={() => removeItem(it.id)}
                       onCancelTrocIntent={() => clearTrocIntent(it.id)}
+                      onWithdraw={it.trocLivreId ? () => withdrawTroc(it) : undefined}
                       isTrocMatched={!!it.trocLivreId}
                       isTrocPending={!!it.troc_intent && !it.trocLivreId}
                     />
@@ -806,9 +842,10 @@ const ItemCard: React.FC<{
   onTroc: () => void;
   onRemove: () => void;
   onCancelTrocIntent: () => void;
+  onWithdraw?: () => void;
   isTrocMatched: boolean;
   isTrocPending: boolean;
-}> = ({ item, onChoix, onTroc, onRemove, onCancelTrocIntent, isTrocMatched, isTrocPending }) => {
+}> = ({ item, onChoix, onTroc, onRemove, onCancelTrocIntent, onWithdraw, isTrocMatched, isTrocPending }) => {
   const { t } = useTranslation();
   const isOccasionable = item.type === 'livre' || item.type === 'workbook' as any;
 
@@ -933,6 +970,18 @@ const ItemCard: React.FC<{
                   </div>
                 </div>
               </button>
+
+              {/* ✅ Bouton retrait — visible UNIQUEMENT si le livre a été
+                  photographié (trocLivreId connu côté backend). Permet
+                  d'annuler le troc et de rollback le crédit éventuel. */}
+              {isTrocMatched && onWithdraw && (
+                <button
+                  onClick={onWithdraw}
+                  className="w-full text-left text-[11px] text-red-600 active:text-red-800 underline underline-offset-2 px-1 py-1"
+                >
+                  {t('bourse.rentree.withdraw_book_action')}
+                </button>
+              )}
             </div>
           )}
         </>
