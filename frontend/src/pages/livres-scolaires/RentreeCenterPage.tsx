@@ -73,6 +73,13 @@ const RentreeCenterPage: React.FC = () => {
   // Modal "Ajouter une autre classe" — si l'enfant courant vient d'une école
   // partenaire, on propose de rester dans la même école (cas frère/sœur).
   const [showAddClassChoice, setShowAddClassChoice] = useState(false);
+  // Confirmation après analyse troc — on ne laisse PAS continuer la boucle
+  // capture-troc tant que le parent n'a pas cliqué OK (lecture du crédit
+  // estimé). Persistant jusqu'au tap utilisateur.
+  const [creditConfirmation, setCreditConfirmation] = useState<{
+    titre: string;
+    credit: number;
+  } | null>(null);
 
   // ✅ Lien direct depuis l'accueil : ?suggestions=1 ouvre directement le modal.
   // Si aucune classe → on ouvre le formulaire de classe d'abord.
@@ -105,6 +112,9 @@ const RentreeCenterPage: React.FC = () => {
   const captureTrocActive = searchParams.get('capture-troc') === '1';
   useEffect(() => {
     if (!captureTrocActive) return;
+    // Tant que la modale de confirmation du crédit est affichée, on ne
+    // déclenche PAS le livre suivant : on attend l'OK utilisateur.
+    if (creditConfirmation) return;
     if (!pendingTrocItem) {
       // Plus rien à capturer → on retire le param et reste sur la page recap.
       const next = new URLSearchParams(searchParams);
@@ -119,7 +129,7 @@ const RentreeCenterPage: React.FC = () => {
     if (!showPhotoCapture && !showTrocExplainer) {
       setShowTrocExplainer({ itemId: pendingTrocItem.id });
     }
-  }, [captureTrocActive, pendingTrocItem, activeId, showPhotoCapture, showTrocExplainer, searchParams, setSearchParams]);
+  }, [captureTrocActive, pendingTrocItem, activeId, showPhotoCapture, showTrocExplainer, searchParams, setSearchParams, creditConfirmation]);
 
   // ─── Session troc (pré-créée en arrière-plan dès qu'on a un troc pending) ───
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -299,9 +309,12 @@ const RentreeCenterPage: React.FC = () => {
     updateTrocMatch(itemId, result.livre_id);
     setShowPhotoCapture(null);
     const credit = Math.round(result.valeur_calculee * 0.6);
-    toast({
-      title: 'Crédit Yukpo réservé',
-      description: `≈ ${credit.toLocaleString('fr-FR')} XAF appliqués à votre commande.`,
+    // Modale de confirmation persistante : l'utilisateur doit cliquer OK
+    // pour valider la lecture du crédit avant que la boucle capture-troc
+    // n'enchaîne sur le livre suivant.
+    setCreditConfirmation({
+      titre: result.titre || 'Livre',
+      credit,
     });
   };
 
@@ -679,6 +692,15 @@ const RentreeCenterPage: React.FC = () => {
             setShowPhotoCapture(null);
           }}
           onAnalyzed={(r) => onPhotoAnalyzed(showPhotoCapture.itemId, r)}
+        />
+      )}
+
+      {/* Confirmation crédit après analyse — persistante jusqu'à OK. */}
+      {creditConfirmation && (
+        <CreditConfirmationModal
+          titre={creditConfirmation.titre}
+          credit={creditConfirmation.credit}
+          onOk={() => setCreditConfirmation(null)}
         />
       )}
     </div>
@@ -1216,6 +1238,54 @@ const PhotoCaptureModal: React.FC<{
         onAnalyzed={onAnalyzed}
         onCancel={onCancel}
       />
+    </ModalShell>
+  );
+};
+
+// ─── Modal de confirmation crédit (persistante) ───
+// Affichée après chaque livre photographié avec succès. Reste à l'écran tant
+// que l'utilisateur n'a pas cliqué OK — permet de lire tranquillement le
+// montant du crédit et son utilisation, sans subir un toast qui disparaît.
+const CreditConfirmationModal: React.FC<{
+  titre: string;
+  credit: number;
+  onOk: () => void;
+}> = ({ titre, credit, onOk }) => {
+  const { t } = useTranslation();
+  return (
+    <ModalShell onClose={onOk} title={t('bourse.rentree.credit_modal_title')}>
+      <div className="space-y-4">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5">
+          <div className="flex items-center gap-2 mb-1">
+            <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
+              {t('bourse.rentree.credit_modal_book_accepted')}
+            </span>
+          </div>
+          <p className="text-sm text-gray-800 line-clamp-2">{titre}</p>
+        </div>
+
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 text-center">
+          <p className="text-[11px] font-semibold text-amber-800 uppercase tracking-wide">
+            {t('bourse.rentree.credit_modal_credit_label')}
+          </p>
+          <p className="text-2xl font-bold text-amber-900 mt-1">
+            {credit.toLocaleString('fr-FR')} <span className="text-base">XAF</span>
+          </p>
+        </div>
+
+        <p className="text-xs text-gray-600 leading-relaxed">
+          {t('bourse.rentree.credit_modal_explanation')}
+        </p>
+      </div>
+
+      <button
+        onClick={onOk}
+        className="mt-5 w-full bg-amber-500 text-white font-bold py-3 rounded-xl active:bg-amber-600 min-h-[48px] inline-flex items-center justify-center gap-2"
+      >
+        <Check className="w-4 h-4" />
+        {t('bourse.rentree.credit_modal_ok')}
+      </button>
     </ModalShell>
   );
 };
