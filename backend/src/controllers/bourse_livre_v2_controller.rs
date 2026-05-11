@@ -409,6 +409,57 @@ pub async fn analyze_recto_verso(
         });
     }
 
+    // ✅ 2026-05-11 : vérification stricte d'appartenance au programme officiel.
+    // Si l'IA ne reconnaît PAS le livre comme étant au programme (ni national
+    // ni établissement), on REJETTE le livre — valeur = 0, état = 'rejete'.
+    // C'est une exigence métier : Yukpo n'accepte au troc que les manuels
+    // qui ont une demande réelle (cycle scolaire), pas n'importe quel livre
+    // scolaire des années précédentes ou hors curriculum.
+    //
+    // Double sécurité : on accepte si l'IA dit oui OU si on trouve une
+    // similarité titre >= 0.4 dans la table programmes_scolaires côté backend
+    // (cas où l'IA hésite mais que le matching trigram est fiable).
+    let ai_says_in_program = analysis.est_au_programme.unwrap_or(false);
+    let mut programme_match_serveur: Option<i32> = None;
+    if !ai_says_in_program {
+        if let Some(titre_ia) = analysis.titre.as_deref() {
+            // Vérif serveur via pg_trgm similarité — accepte les variantes
+            // d'orthographe / éditions différentes.
+            let match_id: Option<i32> = sqlx::query_scalar(
+                r#"SELECT id FROM programmes_scolaires
+                   WHERE is_active = true
+                     AND similarity(lower(unaccent(titre_livre)), lower(unaccent($1))) >= 0.4
+                   ORDER BY similarity(lower(unaccent(titre_livre)), lower(unaccent($1))) DESC
+                   LIMIT 1"#,
+            )
+            .bind(titre_ia)
+            .fetch_optional(&state.pg)
+            .await
+            .unwrap_or(None);
+            programme_match_serveur = match_id;
+        }
+    }
+    let is_in_program = ai_says_in_program || programme_match_serveur.is_some();
+    if !is_in_program {
+        info!(
+            "[analyze_recto_verso] Livre REJETÉ : pas au programme officiel — titre={:?}",
+            analysis.titre
+        );
+        // On force le rejet : état + valeur = 0
+        analysis.etat_classification = "rejete".to_string();
+        analysis.prix_detecte = Some(0.0);
+        let note = "Pas au programme scolaire officiel".to_string();
+        analysis.notes = Some(match analysis.notes.take() {
+            Some(n) if !n.is_empty() => format!("{} | {}", n, note),
+            _ => note,
+        });
+    } else if programme_match_serveur.is_some() && analysis.programme_scolaire_id.is_none() {
+        // Si la détection serveur a réussi (l'IA n'avait pas vu), on
+        // mémorise le programme_id pour l'INSERT plus bas.
+        analysis.programme_scolaire_id = programme_match_serveur;
+        analysis.est_au_programme = Some(true);
+    }
+
     // Calculer la valorisation
     let (valeur_calculee, ratio) = if let Some(prix) = analysis.prix_detecte {
         calculer_valeur_livre(prix, &analysis.etat_classification)
@@ -571,6 +622,37 @@ pub async fn analyze_recto_verso(
     // Invalider le cache après ajout d'un livre
     invalidate_bourse_livre_cache(&state).await;
 
+    // ✅ Raison du rejet visible côté UI : on dérive un code (et un message
+    // utilisateur) du contexte. Permet au frontend d'afficher un toast clair.
+    let (rejection_code, rejection_message) = if is_rejected {
+        if !is_in_program {
+            (
+                "not_in_program",
+                "Ce livre n'est pas au programme scolaire officiel. Yukpo n'accepte au troc que les manuels en demande sur le cycle scolaire courant.",
+            )
+        } else if analysis.etat_classification == "rejete" {
+            (
+                "etat_too_damaged",
+                "Livre trop dégradé pour le troc. Réessayez avec une photo plus nette ou choisissez le neuf.",
+            )
+        } else {
+            (
+                "value_zero",
+                "Valeur estimée nulle — ce livre ne peut pas générer de crédit.",
+            )
+        }
+    } else if valeur_calculee <= 0.0 {
+        // Cas limite : pas formellement rejeté mais valeur 0 → on traite
+        // comme un rejet doux pour ne pas tromper l'utilisateur.
+        (
+            "value_zero",
+            "Aucune valeur n'a pu être attribuée à ce livre. Réessayez avec une photo plus lisible.",
+        )
+    } else {
+        ("", "")
+    };
+    let effective_rejected = is_rejected || valeur_calculee <= 0.0;
+
     Ok((
         StatusCode::CREATED,
         Json(json!({
@@ -580,7 +662,9 @@ pub async fn analyze_recto_verso(
             "valeur_calculee": valeur_calculee,
             "ratio_etat": ratio,
             "etat_classification": analysis.etat_classification,
-            "is_rejected": is_rejected
+            "is_rejected": effective_rejected,
+            "rejection_code": rejection_code,
+            "rejection_message": rejection_message,
         })),
     ))
 }

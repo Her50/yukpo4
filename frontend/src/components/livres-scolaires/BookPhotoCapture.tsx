@@ -29,6 +29,11 @@ export interface AnalyzedBookResult {
   ratio_etat: number;
   etat_classification: 'bon' | 'acceptable' | 'rejete';
   is_rejected: boolean;
+  /** Code court envoyé par le backend pour différencier les motifs de rejet :
+   *  'not_in_program' | 'etat_too_damaged' | 'value_zero' | '' (accepté). */
+  rejection_code?: string;
+  /** Message FR prêt à afficher (toast / banner). */
+  rejection_message?: string;
 }
 
 export interface BookPhotoCaptureProps {
@@ -174,6 +179,15 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
         ? 0
         : Math.max(Math.round(detectedPrice * ETAT_RATIO[normalizedEtat]), 0);
 
+      // ✅ Récupère le code + message de rejet enrichis par le backend
+      // ('not_in_program', 'etat_too_damaged', 'value_zero'). Permet
+      // d'afficher une raison précise plutôt qu'un texte générique.
+      const rejection_code: string = String(data?.rejection_code ?? '');
+      const rejection_message: string = String(data?.rejection_message ?? '');
+      const effectiveRejected = Boolean(
+        data?.is_rejected ?? isRejected ?? false,
+      );
+
       const finalResult: AnalyzedBookResult = {
         livre_id: Number(livre?.id ?? data?.livre_id ?? 0),
         titre: String(livre?.titre ?? analysis?.titre ?? 'Livre'),
@@ -186,7 +200,9 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
         valeur_calculee: Number(data?.valeur_calculee ?? safeValue) || safeValue,
         ratio_etat: Number(data?.ratio_etat ?? ETAT_RATIO[normalizedEtat]),
         etat_classification: normalizedEtat,
-        is_rejected: isRejected,
+        is_rejected: effectiveRejected,
+        rejection_code: rejection_code || undefined,
+        rejection_message: rejection_message || undefined,
       };
       setResult(finalResult);
       setStep('result');
@@ -252,6 +268,13 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
 
   if (step === 'result' && result) {
     const isOk = !result.is_rejected;
+    // ✅ Titre de rejet dépendant du code (pas au programme / dégradé / valeur 0)
+    const rejectTitle =
+      result.rejection_code === 'not_in_program'
+        ? 'Livre rejeté — pas au programme'
+        : result.rejection_code === 'value_zero'
+        ? 'Livre rejeté — valeur nulle'
+        : 'Livre rejeté — trop dégradé';
     return (
       <div className={`rounded-2xl p-4 border ${isOk ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
         <div className="flex items-start gap-2 mb-2">
@@ -260,9 +283,14 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
             : <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />}
           <div className="flex-1 min-w-0">
             <p className={`text-sm font-bold leading-tight ${isOk ? 'text-emerald-900' : 'text-red-800'}`}>
-              {isOk ? 'Livre accepté' : 'Livre rejeté (trop dégradé)'}
+              {isOk ? 'Livre accepté' : rejectTitle}
             </p>
             <p className="text-xs text-gray-700 truncate mt-0.5">{result.titre}</p>
+            {!isOk && result.rejection_message && (
+              <p className="text-[11px] text-red-700 mt-1 leading-snug">
+                {result.rejection_message}
+              </p>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
