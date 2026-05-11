@@ -762,8 +762,19 @@ const RecapAchatPage: React.FC = () => {
     return () => clearTimeout(t);
   }, [user?.id, grandTotal]);
 
+  // ✅ 2026-05-11 : frais de livraison forfaitaires globaux (couvre la
+  // logistique de tous les articles de toutes les classes + collecte des
+  // livres en troc le cas échéant). Côté courrier, ce montant est optimisé
+  // selon la distance/zone — mais pour le parent c'est un forfait simple.
+  const DELIVERY_FEE_XAF = 1000;
+  const fraisLivraison = totalItems > 0 ? DELIVERY_FEE_XAF : 0;
+
   // Total réellement à payer après application du crédit prévisionnel
-  const grandTotalAvecCredit = Math.max(0, grandTotal - pendingCredit.engageable);
+  // ET ajout des frais de livraison.
+  const grandTotalAvecCredit = Math.max(
+    0,
+    grandTotal - pendingCredit.engageable + fraisLivraison,
+  );
 
   if (totalItems === 0) {
     return (
@@ -857,6 +868,10 @@ const RecapAchatPage: React.FC = () => {
               const payload = {
                 budget_total: safeBudget,
                 credit_bourse_used_xaf: credit_used_xaf,
+                // ✅ 2026-05-11 : frais de livraison forfaitaires côté parent.
+                // Le backend les enregistre tels quels ; le couple courrier-coursier
+                // optimise sa propre rémunération côté Yukpo.
+                frais_livraison_xaf: fraisLivraison,
                 devise: 'XAF',
                 mode_livraison: 'domicile',
                 adresse_livraison: info.adresse,
@@ -1257,23 +1272,37 @@ const RecapAchatPage: React.FC = () => {
             </div>
             {/* Crédit Bourse prévisionnel issu du troc — déduit du total */}
             {pendingCredit.engageable > 0 && (
-              <>
-                <div className="mt-1.5 flex items-center justify-between">
-                  <p className="text-xs text-emerald-700 flex items-center gap-1">
-                    <Repeat className="w-3.5 h-3.5" />
-                    Crédit troc ({pendingCredit.matchedCount} livre{pendingCredit.matchedCount > 1 ? 's' : ''} matché{pendingCredit.matchedCount > 1 ? 's' : ''})
-                  </p>
-                  <p className="text-xs font-bold text-emerald-700">
-                    − {pendingCredit.engageable.toLocaleString()} FCFA
-                  </p>
-                </div>
-                <div className="mt-1.5 pt-1.5 border-t border-emerald-200 flex items-center justify-between">
-                  <p className="font-bold text-emerald-900 text-sm">À payer</p>
-                  <p className="font-bold text-emerald-800 text-base">
-                    {grandTotalAvecCredit.toLocaleString()} FCFA
-                  </p>
-                </div>
-              </>
+              <div className="mt-1.5 flex items-center justify-between">
+                <p className="text-xs text-emerald-700 flex items-center gap-1">
+                  <Repeat className="w-3.5 h-3.5" />
+                  Crédit troc ({pendingCredit.matchedCount} livre{pendingCredit.matchedCount > 1 ? 's' : ''} matché{pendingCredit.matchedCount > 1 ? 's' : ''})
+                </p>
+                <p className="text-xs font-bold text-emerald-700">
+                  − {pendingCredit.engageable.toLocaleString()} FCFA
+                </p>
+              </div>
+            )}
+            {/* ✅ Frais de livraison forfaitaires — affichés systématiquement
+                quand le panier n'est pas vide. Forfait global toutes classes. */}
+            {fraisLivraison > 0 && (
+              <div className="mt-1.5 flex items-center justify-between">
+                <p className="text-xs text-amber-700 flex items-center gap-1">
+                  <Package className="w-3.5 h-3.5" />
+                  Frais de livraison
+                </p>
+                <p className="text-xs font-bold text-amber-700">
+                  + {fraisLivraison.toLocaleString()} FCFA
+                </p>
+              </div>
+            )}
+            {/* À payer : visible dès qu'il y a frais ou crédit en jeu */}
+            {(pendingCredit.engageable > 0 || fraisLivraison > 0) && (
+              <div className="mt-1.5 pt-1.5 border-t border-amber-200 flex items-center justify-between">
+                <p className="font-bold text-amber-900 text-sm">À payer</p>
+                <p className="font-bold text-amber-800 text-base">
+                  {grandTotalAvecCredit.toLocaleString()} FCFA
+                </p>
+              </div>
             )}
             {hasOccasionRange && (
               <p className="text-[11px] text-amber-700 mt-1.5 leading-snug">

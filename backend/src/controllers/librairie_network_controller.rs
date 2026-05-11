@@ -88,6 +88,12 @@ pub struct CreateCommandeMixteRequest {
     /// Optionnel — si absent, pas de débit.
     #[serde(default)]
     pub credit_bourse_used_xaf: Option<f64>,
+    /// ✅ 2026-05-11 : frais de livraison forfaitaires côté parent
+    /// (1000 FCFA par défaut). S'ajoutent au budget_total. La part coursier
+    /// est calculée à partir de ce montant lors de la création du paquet.
+    /// Optionnel — si absent, 0.
+    #[serde(default)]
+    pub frais_livraison_xaf: Option<f64>,
     pub devise: Option<String>,
     pub mode_livraison: Option<String>,
     pub adresse_livraison: Option<String>,
@@ -337,9 +343,9 @@ pub async fn create_commande_mixte(
             reference_commande,
             user_id, budget_total, devise, statut, mode_livraison,
             adresse_livraison, gps_livraison, notes_client,
-            commission_app, montant_net_libraires
+            commission_app, montant_net_libraires, frais_livraison
         )
-        VALUES ($1, $2, $3, $4, 'edition', $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, 'edition', $5, $6, $7, $8, $9, $10, $11)
         RETURNING
             id, user_id, reference_commande,
             budget_total::DOUBLE PRECISION AS budget_total,
@@ -360,6 +366,10 @@ pub async fn create_commande_mixte(
     .bind(&payload.notes_client)
     .bind(commission_app)
     .bind(montant_net_libraires)
+    // ✅ 2026-05-11 : forfait livraison parent (1000 FCFA par défaut),
+    // distinct de commission_app/montant_net_libraires. Redistribué au
+    // coursier (80 %) et à la plateforme (20 %) à la livraison.
+    .bind(payload.frais_livraison_xaf.unwrap_or(0.0))
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur création commande: {}", e)))?;

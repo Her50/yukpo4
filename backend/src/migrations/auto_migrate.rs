@@ -8778,6 +8778,15 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration programmes_scolaires schéma: {}", e),
     }
 
+    // ✅ 2026-05-11 : frais de livraison forfaitaires sur commandes_mixtes
+    match ensure_commandes_mixtes_frais_livraison(pool).await {
+        Ok(_) => info!("✅ Migration auto: commandes_mixtes.frais_livraison OK"),
+        Err(e) => error!(
+            "❌ Erreur migration commandes_mixtes.frais_livraison: {}",
+            e
+        ),
+    }
+
     // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
     match ensure_delivery_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
@@ -22559,5 +22568,16 @@ pub async fn ensure_programmes_scolaires_full_schema(pool: &PgPool) -> Result<()
     let sql = include_str!("../../migrations/20260510_009_programmes_scolaires_full_schema.sql");
     execute_migration_sql_safe(pool, sql).await?;
     info!("✅ programmes_scolaires schéma complet OK");
+    Ok(())
+}
+
+/// Migration : 20260511_001_commandes_mixtes_frais_livraison.sql
+/// Ajoute la colonne `frais_livraison` (forfait parent 1000 FCFA) à
+/// `commandes_mixtes`.
+pub async fn ensure_commandes_mixtes_frais_livraison(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration commandes_mixtes.frais_livraison...");
+    let sql = include_str!("../../migrations/20260511_001_commandes_mixtes_frais_livraison.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ commandes_mixtes.frais_livraison OK");
     Ok(())
 }
