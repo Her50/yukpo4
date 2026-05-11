@@ -8787,6 +8787,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         ),
     }
 
+    // ✅ 2026-05-11 : file d'attente notifications WhatsApp
+    match ensure_whatsapp_notifications_queue(pool).await {
+        Ok(_) => info!("✅ Migration auto: whatsapp_notifications_queue OK"),
+        Err(e) => error!("❌ Erreur migration whatsapp_notifications_queue: {}", e),
+    }
+
     // ✅ 2025-01-28 : Tables pour chat de livraison et gamification
     match ensure_delivery_chat_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: delivery chat et gamification tables OK"),
@@ -22579,5 +22585,15 @@ pub async fn ensure_commandes_mixtes_frais_livraison(pool: &PgPool) -> Result<()
     let sql = include_str!("../../migrations/20260511_001_commandes_mixtes_frais_livraison.sql");
     execute_migration_sql_safe(pool, sql).await?;
     info!("✅ commandes_mixtes.frais_livraison OK");
+    Ok(())
+}
+
+/// Migration : 20260511_002_whatsapp_notifications_queue.sql
+/// File d'attente des notifications WhatsApp (events troc/commande/saison).
+pub async fn ensure_whatsapp_notifications_queue(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration whatsapp_notifications_queue...");
+    let sql = include_str!("../../migrations/20260511_002_whatsapp_notifications_queue.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ whatsapp_notifications_queue OK");
     Ok(())
 }

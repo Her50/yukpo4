@@ -213,6 +213,23 @@ pub async fn register_user(
     validate_email(&payload.email)?;
     validate_password_strength(&payload.password)?;
 
+    // ✅ 2026-05-11 : numéro WhatsApp OBLIGATOIRE à l'inscription.
+    // Utilisé pour les notifications de matching troc, crédit disponible,
+    // livraison en route. Sans phone valide, le parent ne peut pas être
+    // averti des événements clés → bloque la valeur produit.
+    let phone_digits: String = payload
+        .phone
+        .as_deref()
+        .unwrap_or("")
+        .chars()
+        .filter(|c| c.is_ascii_digit())
+        .collect();
+    if phone_digits.len() < 8 || phone_digits.len() > 15 {
+        return Err(AppError::BadRequest(
+            "Numéro WhatsApp obligatoire (8 à 15 chiffres).".to_string(),
+        ));
+    }
+
     // ✅ Déterminer le rôle en premier pour adapter la validation des noms
     let user_role = if payload.is_partner.unwrap_or(false) {
         "partenaire"

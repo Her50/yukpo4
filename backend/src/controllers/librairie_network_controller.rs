@@ -466,6 +466,19 @@ pub async fn create_commande_mixte(
         commande.id
     );
 
+    // ✅ 2026-05-11 : notification WhatsApp post-commit (non bloquante).
+    // Confirmation au parent que la commande est bien prise en compte.
+    {
+        use crate::services::whatsapp_notification_service as wa;
+        let _ = wa::notify_order_created(
+            &state.pg,
+            user_id,
+            commande.id,
+            &commande.reference_commande,
+        )
+        .await;
+    }
+
     Ok(Json(serde_json::json!({
         "success": true,
         "commande": commande,
