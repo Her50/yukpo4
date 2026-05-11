@@ -58,6 +58,27 @@ const RentreeCenterPage: React.FC = () => {
     [panier, active]
   );
 
+  // ─── Groupement par type (livres → cahiers → fournitures → autres) ───
+  // Cohérent avec ScanProgrammePage et RecapAchatPage.
+  const groupedItems = useMemo(() => {
+    const norm = (raw: any): 'livre' | 'cahier' | 'fourniture' | 'autre' => {
+      const r = String(raw ?? '').toLowerCase();
+      if (['livre', 'workbook', 'livret', 'manuel', 'textbook', 'book'].includes(r)) return 'livre';
+      if (r === 'cahier') return 'cahier';
+      if (['fourniture', 'accessoire', 'supply'].includes(r)) return 'fourniture';
+      return 'autre';
+    };
+    const order: Array<'livre' | 'cahier' | 'fourniture' | 'autre'> = ['livre', 'cahier', 'fourniture', 'autre'];
+    return order
+      .map(typ => ({
+        type: typ,
+        items: itemsForActive
+          .filter(it => norm(it.type) === typ)
+          .sort((a, b) => (a.titre || '').localeCompare(b.titre || '', undefined, { sensitivity: 'base' })),
+      }))
+      .filter(g => g.items.length > 0);
+  }, [itemsForActive]);
+
   // Nombre global d'items en attente de photo troc (toutes classes confondues).
   // Sert à afficher la bannière "X livres à photographier" en haut.
   const pendingTrocCount = useMemo(
@@ -193,7 +214,7 @@ const RentreeCenterPage: React.FC = () => {
       return newId;
     } catch (e: any) {
       sessionInitRef.current = false;
-      toast({ title: 'Erreur session', description: e?.message || 'Réessayez', variant: 'destructive' });
+      toast({ title: t('bourse.rentree.toast_session_error'), description: e?.message || t('bourse.rentree.toast_session_retry'), variant: 'destructive' });
       return null;
     } finally {
       setSessionCreating(false);
@@ -260,7 +281,7 @@ const RentreeCenterPage: React.FC = () => {
       }));
     if (toAdd.length === 0) return;
     addItems(toAdd);
-    toast({ title: `${toAdd.length} article(s) ajoutés` });
+    toast({ title: t('bourse.rentree.toast_articles_added', { count: toAdd.length }) });
     setSelectedSugg({});
     setShowSuggestions(false);
   };
@@ -299,8 +320,8 @@ const RentreeCenterPage: React.FC = () => {
       // sur ce même item lors d'un éventuel ?capture-troc=1
       clearTrocIntent(itemId);
       toast({
-        title: 'Livre trop dégradé',
-        description: 'Réessayez avec une meilleure photo ou choisissez le neuf.',
+        title: t('bourse.rentree.toast_rejected_title'),
+        description: t('bourse.rentree.toast_rejected_desc'),
         variant: 'destructive',
       });
       setShowPhotoCapture(null);
@@ -510,20 +531,44 @@ const RentreeCenterPage: React.FC = () => {
               </button>
             </div>
 
-            <ul className="space-y-2">
-              {itemsForActive.map(it => (
-                <ItemCard
-                  key={it.id}
-                  item={it}
-                  onChoix={(c) => updateChoix(it.id, c)}
-                  onTroc={() => startTroc(it)}
-                  onRemove={() => removeItem(it.id)}
-                  onCancelTrocIntent={() => clearTrocIntent(it.id)}
-                  isTrocMatched={!!it.trocLivreId}
-                  isTrocPending={!!it.troc_intent && !it.trocLivreId}
-                />
-              ))}
-            </ul>
+            {/* Groupes : livres → cahiers → fournitures → autres.
+                Affichage table-style compact (cohérent avec ScanProgrammePage). */}
+            {groupedItems.map(({ type, items }) => (
+              <div key={type} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50 border-b border-gray-100">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      type === 'livre' ? 'bg-blue-500'
+                        : type === 'cahier' ? 'bg-emerald-500'
+                        : 'bg-amber-500'
+                    }`} />
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-gray-700">
+                      {type === 'livre' ? t('bourse.rentree.section_books')
+                        : type === 'cahier' ? t('bourse.rentree.section_notebooks')
+                        : type === 'fourniture' ? t('bourse.rentree.section_supplies')
+                        : t('bourse.rentree.section_other')}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-gray-500 font-semibold">
+                    {t(items.length > 1 ? 'bourse.rentree.item_count_other' : 'bourse.rentree.item_count_one', { count: items.length })}
+                  </span>
+                </div>
+                <ul>
+                  {items.map(it => (
+                    <ItemCard
+                      key={it.id}
+                      item={it}
+                      onChoix={(c) => updateChoix(it.id, c)}
+                      onTroc={() => startTroc(it)}
+                      onRemove={() => removeItem(it.id)}
+                      onCancelTrocIntent={() => clearTrocIntent(it.id)}
+                      isTrocMatched={!!it.trocLivreId}
+                      isTrocPending={!!it.troc_intent && !it.trocLivreId}
+                    />
+                  ))}
+                </ul>
+              </div>
+            ))}
           </section>
         )}
 
@@ -575,21 +620,29 @@ const RentreeCenterPage: React.FC = () => {
         )}
       </div>
 
-      {/* ─── Sticky bottom bar ─── */}
+      {/* ─── Bottom action — au-dessus du BourseNav (z-40 vs z-50 pour la
+            barre nav). On laisse en bas une mini-bar persistante avec total
+            + bouton 'Voir le récap' pour qu'elle reste visible quand l'écran
+            est rempli. */}
       {active && itemsForActive.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg z-30">
-          <div className="max-w-md mx-auto flex items-center gap-3">
+        <div className="fixed left-0 right-0 bg-white border-t border-amber-200 px-3 py-2 shadow-2xl z-40"
+             style={{ bottom: '56px' /* hauteur de BourseNav */ }}>
+          <div className="max-w-md mx-auto flex items-center gap-2">
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-gray-500">{t('bourse.rentree.total_label')}</div>
-              <div className="font-bold text-base text-gray-900">
-                {totalPrevisionnel.toLocaleString('fr-FR')} XAF
+              <div className="text-[10px] text-gray-500 uppercase tracking-wide font-semibold">
+                {t('bourse.rentree.total_label')}
+              </div>
+              <div className="font-bold text-sm text-gray-900 tabular-nums">
+                {totalPrevisionnel > 0
+                  ? `${totalPrevisionnel.toLocaleString('fr-FR')} XAF`
+                  : '—'}
               </div>
             </div>
             <button
               onClick={goRecap}
-              className="bg-amber-500 text-white font-bold px-5 py-3 rounded-xl active:bg-amber-600 min-h-[48px] inline-flex items-center gap-2"
+              className="bg-amber-500 text-white font-bold px-4 py-2 rounded-lg active:bg-amber-600 min-h-[40px] text-xs inline-flex items-center gap-1"
             >
-              {t('bourse.rentree.go_recap')} <ChevronRight className="w-4 h-4" />
+              {t('bourse.rentree.go_recap')} <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -726,50 +779,57 @@ const ItemCard: React.FC<{
   const isOccasionable = item.type === 'livre' || item.type === 'workbook' as any;
 
   return (
-    <li className={`bg-white rounded-2xl p-3 shadow-sm ${isTrocPending ? 'ring-1 ring-amber-300' : ''}`}>
-      <div className="flex items-start gap-2">
-        <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center flex-shrink-0">
-          <BookOpen className="w-4 h-4 text-amber-600" />
-        </div>
+    <li className={`px-2 py-1.5 border-b border-gray-100 last:border-b-0 ${isTrocPending ? 'bg-amber-50/50' : 'bg-white'}`}>
+      {/* Ligne 1 : titre + prix + supprimer */}
+      <div className="flex items-center gap-2">
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-sm text-gray-900 line-clamp-2">{item.titre}</div>
-          {item.matiere && <div className="text-xs text-gray-500">{item.matiere}</div>}
-          {item.prixNeuf && (
-            <div className="text-xs text-amber-700 font-semibold mt-0.5">
-              {item.prixNeuf.toLocaleString('fr-FR')} XAF
-            </div>
-          )}
-          {/* Badge "Photo à faire" — visible si l'utilisateur a choisi un
-              échange mais n'a pas encore fait la photo recto/verso. */}
-          {isTrocPending && (
-            <div className="mt-1 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-                <Camera className="w-3 h-3" /> {t('bourse.rentree.troc_pending_badge')}
-              </span>
-              <button
-                onClick={onTroc}
-                className="text-[11px] font-bold text-amber-700 active:text-amber-900 underline-offset-2 underline"
-              >
-                {t('bourse.rentree.troc_pending_action_photo')}
-              </button>
-              <span className="text-gray-300">·</span>
-              <button
-                onClick={onCancelTrocIntent}
-                className="text-[11px] text-gray-500 active:text-gray-700"
-              >
-                {t('bourse.rentree.troc_pending_action_cancel')}
-              </button>
-            </div>
+          <p className="font-semibold text-[13px] text-gray-900 leading-tight truncate" title={item.titre}>
+            {item.titre}
+          </p>
+          {item.matiere && item.matiere.toLowerCase() !== 'fournitures' && (
+            <p className="text-[10px] text-gray-500 leading-tight truncate">{item.matiere}</p>
           )}
         </div>
+        <span
+          className={`text-right text-[11px] font-bold tabular-nums shrink-0 min-w-[46px] ${
+            item.prixNeuf && item.prixNeuf > 0 ? 'text-amber-700' : 'text-gray-300'
+          }`}
+          title={item.prixNeuf && item.prixNeuf > 0 ? undefined : t('bourse.rentree.price_unavailable')}
+        >
+          {item.prixNeuf && item.prixNeuf > 0
+            ? `${item.prixNeuf.toLocaleString('fr-FR')} F`
+            : '—'}
+        </span>
         <button
           onClick={onRemove}
-          className="p-2 -m-2 text-gray-400 active:text-gray-600 min-h-[44px] min-w-[44px]"
+          className="w-7 h-7 rounded bg-white border border-gray-200 flex items-center justify-center text-gray-400 active:text-red-500 shrink-0"
           aria-label="Retirer"
         >
-          <X className="w-4 h-4" />
+          <X className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Ligne 2 : badge "Photo à faire" — si troc en attente */}
+      {isTrocPending && (
+        <div className="mt-1 flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
+            <Camera className="w-2.5 h-2.5" /> {t('bourse.rentree.troc_pending_badge')}
+          </span>
+          <button
+            onClick={onTroc}
+            className="text-[10px] font-bold text-amber-700 active:text-amber-900 underline"
+          >
+            {t('bourse.rentree.troc_pending_action_photo')}
+          </button>
+          <span className="text-gray-300 text-[10px]">·</span>
+          <button
+            onClick={onCancelTrocIntent}
+            className="text-[10px] text-gray-500 active:text-gray-700"
+          >
+            {t('bourse.rentree.troc_pending_action_cancel')}
+          </button>
+        </div>
+      )}
 
       {/* Choix principal : Neuf vs Occasion (2 boutons larges).
           Quand Occasion est sélectionné, on déroule inline la sous-question
@@ -778,7 +838,7 @@ const ItemCard: React.FC<{
           le lien entre Occasion et Troc. */}
       {isOccasionable && (
         <>
-          <div className="mt-2 flex items-center gap-1.5">
+          <div className="mt-1 flex items-center gap-1">
             <ChoixPill active={item.choix === 'neuf'} onClick={() => onChoix('neuf')}>
               {t('bourse.rentree.decision_neuf')}
             </ChoixPill>
@@ -788,8 +848,8 @@ const ItemCard: React.FC<{
           </div>
 
           {item.choix === 'occasion' && (
-            <div className="mt-2 ml-1 pl-2.5 border-l-2 border-amber-200 space-y-1.5">
-              <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+            <div className="mt-1.5 ml-0.5 pl-2 border-l-2 border-amber-200 space-y-1">
+              <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
                 {t('bourse.rentree.occasion_sub_question')}
               </div>
               {/* Sous-option 1 : sans troc */}
@@ -855,7 +915,7 @@ const ChoixPill: React.FC<{
 }> = ({ active, onClick, highlight, children }) => (
   <button
     onClick={onClick}
-    className={`flex-1 text-xs font-semibold px-2 py-2 rounded-lg min-h-[40px] ${
+    className={`flex-1 text-[11px] font-bold px-2 py-1 rounded min-h-[28px] transition-colors ${
       active
         ? highlight
           ? 'bg-green-600 text-white'
@@ -1228,8 +1288,9 @@ const PhotoCaptureModal: React.FC<{
   onCancel: () => void;
   onAnalyzed: (r: AnalyzedBookResult) => void;
 }> = ({ sessionId, gps, onCancel, onAnalyzed }) => {
+  const { t } = useTranslation();
   return (
-    <ModalShell onClose={onCancel} title="Photographier le livre" fullScreen>
+    <ModalShell onClose={onCancel} title={t('bourse.rentree.photo_modal_title')} fullScreen>
       <BookPhotoCapture
         sessionId={sessionId}
         userLat={gps?.lat}
