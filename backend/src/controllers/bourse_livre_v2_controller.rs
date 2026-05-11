@@ -2617,25 +2617,41 @@ async fn do_programme_extraction(
             let matiere = matiere_avec_type_article(livre);
             let classe = livre.classe.clone().or_else(|| Some("Toutes".to_string())).unwrap();
 
-            // Prix : IA d'abord, sinon matching référentiel national programmes_scolaires
+            // Prix : IA d'abord, sinon matching référentiel national programmes_scolaires.
+            // ✅ 2026-05-11 : on accepte les 2 formes de pays ('Cameroun' / 'CM')
+            //  car les seeds MINESEC/MINEDUB ont utilisé 'CM' alors que les imports
+            //  IA persistent en 'Cameroun'. Sans cela, le matching échouait à
+            //  100 % des cas pour les livres seedés → prix '—' affiché en UX.
+            //  L'année est aussi rendue tolérante (match exact OU LIKE '%2025%').
+            let pays_variants: Vec<String> = match pays.as_str() {
+                "Cameroun" | "cameroun" => vec!["Cameroun".to_string(), "CM".to_string()],
+                "CM" | "cm" => vec!["CM".to_string(), "Cameroun".to_string()],
+                other => vec![other.to_string()],
+            };
+            let annee_like = format!(
+                "%{}%",
+                periode.split('-').next().unwrap_or(periode.as_str())
+            );
             let mut prix = livre.prix_officiel.and_then(rust_decimal::Decimal::from_f64_retain);
             if prix.is_none() || prix.map(|p| p <= rust_decimal::Decimal::ZERO).unwrap_or(true) {
                 if let Ok(Some(p_ref)) = sqlx::query_scalar::<_, Option<rust_decimal::Decimal>>(
                     r#"SELECT prix_officiel
                        FROM programmes_scolaires
                        WHERE is_active = true
-                         AND etablissement_id IS NULL
-                         AND pays = $1
-                         AND annee_scolaire = $2
-                         AND (classe ILIKE $3 OR classe ILIKE $4)
-                         AND similarity(lower(unaccent(titre_livre)), lower(unaccent($5))) >= 0.4
+                         AND pays = ANY($1::text[])
+                         AND (annee_scolaire = $2 OR annee_scolaire ILIKE $3 OR annee_scolaire IS NULL)
+                         AND (classe ILIKE $4 OR classe ILIKE $5)
+                         AND similarity(lower(unaccent(titre_livre)), lower(unaccent($6))) >= 0.3
                          AND prix_officiel IS NOT NULL
                          AND prix_officiel > 0
-                       ORDER BY similarity(lower(unaccent(titre_livre)), lower(unaccent($5))) DESC
+                       ORDER BY
+                         (etablissement_id IS NULL) DESC,
+                         similarity(lower(unaccent(titre_livre)), lower(unaccent($6))) DESC
                        LIMIT 1"#,
                 )
-                .bind(&pays)
+                .bind(&pays_variants)
                 .bind(&periode)
+                .bind(&annee_like)
                 .bind(format!("%{}%", classe))
                 .bind(&classe)
                 .bind(&livre.titre)
