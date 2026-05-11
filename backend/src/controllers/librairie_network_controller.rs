@@ -1678,6 +1678,99 @@ pub async fn super_librairie_delivery_routes(
         by_city.entry(extract_city(&it.adresse)).or_default().push(it);
     }
 
+    // ─── Récupération détaillée des articles et des pickups troc ──────────
+    // Pour chaque commande, on charge :
+    //   - livres_a_livrer : articles neufs + occasion à DÉPOSER chez le parent
+    //     (titre, quantité, matière, classe)
+    //   - livres_a_recuperer : livres en occasion que le parent met EN ÉCHANGE
+    //     ou en vente — le coursier doit les RAMASSER au domicile (titre,
+    //     valeur estimée, état). Indispensable pour que le coursier sache
+    //     qu'il a aussi du pickup à faire en plus de la livraison.
+    // Une seule requête batchée pour éviter le N+1.
+    use std::collections::HashMap;
+    let all_cmd_ids: Vec<uuid::Uuid> = by_city
+        .values()
+        .flat_map(|v| v.iter().filter_map(|x| uuid::Uuid::parse_str(&x.commande_id).ok()))
+        .collect();
+
+    let mut livres_livrer_by_cmd: HashMap<String, Vec<serde_json::Value>> = HashMap::new();
+    let mut livres_recup_by_cmd: HashMap<String, Vec<serde_json::Value>> = HashMap::new();
+
+    if !all_cmd_ids.is_empty() {
+        let livrer_rows = sqlx::query(
+            r#"
+            SELECT
+                cln.commande_id,
+                cln.titre,
+                COALESCE(cln.matiere, '') AS matiere,
+                COALESCE(cln.classe, '') AS classe,
+                cln.quantite,
+                COALESCE(cln.prix_final, cln.prix_officiel)::DOUBLE PRECISION AS prix
+            FROM commande_livres_neufs cln
+            WHERE cln.commande_id = ANY($1)
+              AND (cln.statut_validation IS NULL OR cln.statut_validation::text != 'indisponible')
+            ORDER BY cln.classe NULLS LAST, cln.matiere NULLS LAST, cln.titre
+            "#,
+        )
+        .bind(&all_cmd_ids)
+        .fetch_all(&state.pg)
+        .await
+        .ok()
+        .unwrap_or_default();
+
+        for r in livrer_rows {
+            let cmd_id: uuid::Uuid = r.try_get("commande_id").unwrap_or_default();
+            let entry = serde_json::json!({
+                "titre": r.try_get::<String, _>("titre").unwrap_or_default(),
+                "matiere": r.try_get::<String, _>("matiere").unwrap_or_default(),
+                "classe": r.try_get::<String, _>("classe").unwrap_or_default(),
+                "quantite": r.try_get::<i32, _>("quantite").unwrap_or(1),
+                "prix": r.try_get::<Option<f64>, _>("prix").ok().flatten(),
+                "type": "livraison",
+            });
+            livres_livrer_by_cmd.entry(cmd_id.to_string()).or_default().push(entry);
+        }
+
+        // Livres à RÉCUPÉRER chez le parent : ceux qu'il a proposés en troc
+        // (référencés dans commande_livres_occasion qui pointe vers livres_scolaires
+        // — la table où le parent a stocké son livre via la photo recto/verso).
+        let recup_rows = sqlx::query(
+            r#"
+            SELECT
+                clo.commande_id,
+                ls.titre,
+                COALESCE(ls.matiere, '') AS matiere,
+                COALESCE(ls.classe, '') AS classe,
+                clo.quantite,
+                ls.etat_livre,
+                ls.valeur_calculee::DOUBLE PRECISION AS valeur
+            FROM commande_livres_occasion clo
+            JOIN livres_scolaires ls ON ls.id = clo.livre_scolaire_id
+            WHERE clo.commande_id = ANY($1)
+            ORDER BY ls.classe NULLS LAST, ls.titre
+            "#,
+        )
+        .bind(&all_cmd_ids)
+        .fetch_all(&state.pg)
+        .await
+        .ok()
+        .unwrap_or_default();
+
+        for r in recup_rows {
+            let cmd_id: uuid::Uuid = r.try_get("commande_id").unwrap_or_default();
+            let entry = serde_json::json!({
+                "titre": r.try_get::<String, _>("titre").unwrap_or_default(),
+                "matiere": r.try_get::<String, _>("matiere").unwrap_or_default(),
+                "classe": r.try_get::<String, _>("classe").unwrap_or_default(),
+                "quantite": r.try_get::<i32, _>("quantite").unwrap_or(1),
+                "etat": r.try_get::<Option<String>, _>("etat_livre").ok().flatten(),
+                "valeur_estimee": r.try_get::<Option<f64>, _>("valeur").ok().flatten(),
+                "type": "pickup_troc",
+            });
+            livres_recup_by_cmd.entry(cmd_id.to_string()).or_default().push(entry);
+        }
+    }
+
     let mut routes: Vec<serde_json::Value> = Vec::new();
     for (city, list) in by_city {
         // Sous-clusters GPS greedy : on parcourt les items, et on rattache à
@@ -1703,9 +1796,17 @@ pub async fn super_librairie_delivery_routes(
         for (idx, cluster) in clusters.into_iter().enumerate() {
             let pkg_ref = format!("PKG-{:03}", idx + 1);
             let count = cluster.len();
+            let mut cluster_has_pickup = false;
             let parents: Vec<serde_json::Value> = cluster
                 .iter()
                 .map(|x| {
+                    let livrer =
+                        livres_livrer_by_cmd.get(&x.commande_id).cloned().unwrap_or_default();
+                    let recup =
+                        livres_recup_by_cmd.get(&x.commande_id).cloned().unwrap_or_default();
+                    if !recup.is_empty() {
+                        cluster_has_pickup = true;
+                    }
                     serde_json::json!({
                         "package_ref": format!("{}#{}", x.reference_commande, pkg_ref),
                         "commande_id": x.commande_id,
@@ -1720,6 +1821,9 @@ pub async fn super_librairie_delivery_routes(
                         "nb_occasion": x.nb_occasion,
                         "total_articles": x.total_articles,
                         "classes": x.classes,
+                        // ✅ Détails à imprimer dans le PDF coursier
+                        "livres_a_livrer": livrer,
+                        "livres_a_recuperer": recup,
                     })
                 })
                 .collect();
@@ -1729,6 +1833,7 @@ pub async fn super_librairie_delivery_routes(
                 "cluster_ref": format!("{}-{}", city.chars().filter(|c| c.is_alphanumeric()).take(6).collect::<String>().to_uppercase(), pkg_ref),
                 "package_count": count,
                 "centre_gps": cluster.first().and_then(|x| x.gps).map(|(la, lo)| format!("{:.5},{:.5}", la, lo)),
+                "has_pickup": cluster_has_pickup,
                 "parents": parents,
             }));
         }

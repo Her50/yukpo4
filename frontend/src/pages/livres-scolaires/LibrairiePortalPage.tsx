@@ -829,6 +829,23 @@ const CampaignModal: React.FC<{ onClose: () => void; totalReachHint: number }> =
 };
 
 /* ─── TOURNÉES DE LIVRAISON ─── */
+interface RouteArticle {
+  titre: string;
+  matiere?: string;
+  classe?: string;
+  quantite: number;
+  prix?: number | null;
+  type?: string;
+}
+interface RoutePickup {
+  titre: string;
+  matiere?: string;
+  classe?: string;
+  quantite: number;
+  etat?: string | null;
+  valeur_estimee?: number | null;
+  type?: string;
+}
 interface RouteParent {
   package_ref: string;
   commande_id: string;
@@ -843,12 +860,16 @@ interface RouteParent {
   nb_occasion?: number;
   total_articles?: number;
   classes?: string[];
+  // ✅ Détails coursier — articles à déposer + livres à récupérer
+  livres_a_livrer?: RouteArticle[];
+  livres_a_recuperer?: RoutePickup[];
 }
 interface DeliveryRoute {
   city: string;
   cluster_ref: string;
   package_count: number;
   centre_gps?: string;
+  has_pickup?: boolean;
   parents: RouteParent[];
 }
 
@@ -877,7 +898,19 @@ const DeliveryRoutesPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
   return (
     <div className="fixed inset-0 bg-gray-50 z-40 overflow-y-auto">
-      <style>{`@media print { body { background: white !important; } .no-print { display: none !important; } }`}</style>
+      <style>{`
+        @media print {
+          body { background: white !important; }
+          .no-print { display: none !important; }
+          /* Force-open les <details> du listing pour imprimer toutes les
+             lignes "À livrer" sans avoir à les ouvrir manuellement. */
+          details { display: block !important; }
+          details > summary { display: none !important; }
+          details[open] > *, details > * { display: block !important; }
+          /* Évite qu'un bloc "pickup" soit coupé en 2 pages. */
+          .print-keep-together { page-break-inside: avoid; break-inside: avoid; }
+        }
+      `}</style>
       <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 pt-10 pb-4 sticky top-0 z-10 no-print">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           <button onClick={onClose} className="p-2 rounded-full bg-white/20"><ArrowLeft className="w-5 h-5" /></button>
@@ -935,32 +968,90 @@ const DeliveryRoutesPanel: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             </div>
             <div className="divide-y divide-gray-100">
               {r.parents.map(p => (
-                <div key={p.package_ref} className="px-3 py-2 flex items-start gap-2">
-                  <span className="text-[10px] font-bold uppercase bg-orange-600 text-white px-1.5 py-0.5 rounded shrink-0 leading-none mt-0.5">
-                    {p.package_ref.split('#').pop()}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-gray-900 leading-tight">
-                      {p.nom} <span className="text-gray-400 font-normal">· {p.reference_commande}</span>
-                    </p>
-                    {p.adresse && <p className="text-[11px] text-gray-600 truncate">{p.adresse}</p>}
-                    <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
-                      {p.phone && <span>{p.phone}</span>}
-                      {p.classes && p.classes.length > 0 && (
-                        <span className="text-orange-700 font-semibold">{p.classes.join(' · ')}</span>
-                      )}
-                      {(p.total_articles ?? 0) > 0 && <span>{p.total_articles} articles</span>}
+                <div key={p.package_ref} className="px-3 py-2">
+                  {/* En-tête parent (compact à l'écran, plus large à l'impression) */}
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] font-bold uppercase bg-orange-600 text-white px-1.5 py-0.5 rounded shrink-0 leading-none mt-0.5">
+                      {p.package_ref.split('#').pop()}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-gray-900 leading-tight">
+                        {p.nom} <span className="text-gray-400 font-normal">· {p.reference_commande}</span>
+                      </p>
+                      {p.adresse && <p className="text-[11px] text-gray-600 truncate print:whitespace-normal print:overflow-visible">{p.adresse}</p>}
+                      <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5 flex-wrap">
+                        {p.phone && <span>{p.phone}</span>}
+                        {p.classes && p.classes.length > 0 && (
+                          <span className="text-orange-700 font-semibold">{p.classes.join(' · ')}</span>
+                        )}
+                        {(p.total_articles ?? 0) > 0 && <span>{p.total_articles} articles</span>}
+                        {(p.livres_a_recuperer?.length ?? 0) > 0 && (
+                          <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">
+                            📦 {p.livres_a_recuperer!.length} pickup
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    {p.phone && (
+                      <a
+                        href={buildWhatsAppUrl(p.phone, `Bonjour ${p.nom}, livraison Yukpo en route — paquet ${p.package_ref}`)}
+                        target="_blank" rel="noopener noreferrer"
+                        className="no-print px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold flex items-center gap-1 shrink-0"
+                      >
+                        <Send className="w-3 h-3" />
+                        WA
+                      </a>
+                    )}
                   </div>
-                  {p.phone && (
-                    <a
-                      href={buildWhatsAppUrl(p.phone, `Bonjour ${p.nom}, livraison Yukpo en route — paquet ${p.package_ref}`)}
-                      target="_blank" rel="noopener noreferrer"
-                      className="no-print px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold flex items-center gap-1 shrink-0"
-                    >
-                      <Send className="w-3 h-3" />
-                      WA
-                    </a>
+
+                  {/* Articles à LIVRER (toujours visible à l'impression, repliable à l'écran) */}
+                  {(p.livres_a_livrer?.length ?? 0) > 0 && (
+                    <details className="mt-1.5 ml-7 print:open" open>
+                      <summary className="text-[10px] font-bold text-gray-600 uppercase tracking-wide cursor-pointer no-print">
+                        📚 À livrer ({p.livres_a_livrer!.length})
+                      </summary>
+                      <div className="hidden print:block text-[10px] font-bold text-gray-700 uppercase mt-1 mb-1">
+                        À LIVRER ({p.livres_a_livrer!.length} article{p.livres_a_livrer!.length > 1 ? 's' : ''})
+                      </div>
+                      <ul className="text-[11px] text-gray-700 mt-1 space-y-0.5">
+                        {p.livres_a_livrer!.map((art, i) => (
+                          <li key={`liv-${i}`} className="flex items-baseline gap-1.5">
+                            <span className="font-bold tabular-nums w-6 shrink-0">×{art.quantite}</span>
+                            <span className="flex-1">
+                              {art.titre}
+                              {art.classe && <span className="text-gray-400"> · {art.classe}</span>}
+                              {art.matiere && <span className="text-gray-400"> · {art.matiere}</span>}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+
+                  {/* Livres à RÉCUPÉRER (pickup troc) — bandeau ambre proéminent */}
+                  {(p.livres_a_recuperer?.length ?? 0) > 0 && (
+                    <div className="mt-1.5 ml-7 bg-amber-50 border border-amber-300 rounded-md p-2 print:break-inside-avoid">
+                      <p className="text-[10px] font-bold text-amber-900 uppercase tracking-wide mb-1">
+                        📦 À RÉCUPÉRER chez le parent ({p.livres_a_recuperer!.length})
+                      </p>
+                      <ul className="text-[11px] text-amber-900 space-y-0.5">
+                        {p.livres_a_recuperer!.map((pickup, i) => (
+                          <li key={`pku-${i}`} className="flex items-baseline gap-1.5">
+                            <span className="font-bold tabular-nums w-6 shrink-0">×{pickup.quantite}</span>
+                            <span className="flex-1">
+                              {pickup.titre}
+                              {pickup.classe && <span className="text-amber-600"> · {pickup.classe}</span>}
+                              {pickup.etat && <span className="text-amber-600"> · état {pickup.etat}</span>}
+                            </span>
+                            {pickup.valeur_estimee && pickup.valeur_estimee > 0 && (
+                              <span className="text-[10px] font-bold text-amber-700 shrink-0">
+                                ≈ {pickup.valeur_estimee.toLocaleString('fr-FR')} F
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
               ))}
