@@ -71,7 +71,16 @@ const VendreLivresPage: React.FC = () => {
     );
   }, [gpsAsked]);
 
-  // 2. Création session (auto après tentative GPS)
+  // 2. Création session (auto après tentative GPS).
+  // ✅ 2026-05-11 : fix boucle infinie + parsing session_id raté.
+  //   • Le backend renvoie { success, session: { id, ... } } — on extrait
+  //     id depuis data.session.id en priorité (plus data.session_id/id en
+  //     fallback pour rétro-compat).
+  //   • GPS désormais OPTIONNEL côté backend → on ne bloque plus si refusé.
+  //   • Le useEffect d'auto-création ne dépend PAS de ensureSession (qui
+  //     change ref à chaque flip de sessionCreating), seulement de
+  //     [gpsAsked, sessionId, sessionError]. Plus de retry infini ; en cas
+  //     d'erreur, l'utilisateur peut cliquer manuellement "Réessayer".
   const ensureSession = useCallback(async () => {
     if (sessionId || sessionCreating || sessionInitRef.current) return sessionId;
     sessionInitRef.current = true;
@@ -85,7 +94,13 @@ const VendreLivresPage: React.FC = () => {
       if (!res.ok || data?.success === false) {
         throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
       }
-      const newId = data?.session_id || data?.id || data?.data?.session_id || data?.data?.id;
+      const newId =
+        data?.session?.id
+        || data?.session_id
+        || data?.id
+        || data?.data?.session?.id
+        || data?.data?.session_id
+        || data?.data?.id;
       if (!newId) throw new Error('session_id absent de la réponse');
       setSessionId(newId);
       return newId;
@@ -98,11 +113,15 @@ const VendreLivresPage: React.FC = () => {
     }
   }, [gps, sessionId, sessionCreating, sessionMode]);
 
+  // ⚠️ Volontairement PAS de dépendance sur ensureSession (boucle infinie).
+  // On déclenche UNE fois quand GPS a été tenté ; en cas d'erreur, le
+  // bouton "Réessayer" relance manuellement.
   useEffect(() => {
-    if (gpsAsked && !sessionId && !sessionCreating) {
+    if (gpsAsked && !sessionId && !sessionCreating && !sessionError) {
       ensureSession();
     }
-  }, [gpsAsked, sessionId, sessionCreating, ensureSession]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gpsAsked, sessionId, sessionError]);
 
   const handleAnalyzed = (result: AnalyzedBookResult) => {
     if (result.is_rejected) {
