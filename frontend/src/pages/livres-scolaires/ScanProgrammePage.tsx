@@ -1050,86 +1050,52 @@ const ScanProgrammePage: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-amber-600 px-4 pt-10 pb-5 text-white">
+      {/* Header compact — école + classe inline pour gagner de la verticalité */}
+      <div className="bg-amber-600 px-4 pt-8 pb-3 text-white">
         <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-3 mb-3">
-          <button onClick={() => setStep('details')} className="p-2 rounded-full bg-white/20">
-            <ArrowLeft className="w-5 h-5 text-white" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full tracking-wider">YUKPO</span>
-            <h1 className="font-bold text-lg leading-tight mt-0.5">
-              {t(items.length > 1 ? 'bourse.scan.results_count_other' : 'bourse.scan.results_count_one', { count: items.length })}
-            </h1>
-            <p className="text-amber-100 text-xs">{t('bourse.scan.select_to_buy')}</p>
+          <div className="flex items-center gap-2 mb-1.5">
+            <button onClick={() => setStep('details')} className="p-1.5 -ml-1 rounded-full bg-white/20">
+              <ArrowLeft className="w-4 h-4 text-white" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 text-[10px] text-amber-100">
+                <span className="font-bold bg-white/20 px-1.5 py-0.5 rounded">YUKPO</span>
+                <span>·</span>
+                <span>{t(items.length > 1 ? 'bourse.scan.results_count_other' : 'bourse.scan.results_count_one', { count: items.length })}</span>
+              </div>
+              {/* École + classe inline (truncate pour tenir sur la largeur). Cohérences
+                  signalées par un point rouge sans bandeau séparé. */}
+              {detection && (detection.etablissement || detection.classe) && (
+                <p className="font-bold text-sm leading-tight truncate mt-0.5">
+                  {detection.etablissement && (
+                    <span className="text-white">{detection.etablissement}</span>
+                  )}
+                  {detection.etablissement && detection.classe && (
+                    <span className="text-amber-200 mx-1">·</span>
+                  )}
+                  {detection.classe && (
+                    <span className={detection.classe_coherente === false ? 'text-red-200 underline decoration-red-300' : 'text-white'}>
+                      {detection.classe}
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+            <LanguageSwitcherBourse tone="white" />
           </div>
-          <LanguageSwitcherBourse tone="white" />
-        </div>
-        <div className="flex items-center justify-between bg-white/10 rounded-xl px-3 py-2">
-          <span className="text-white text-sm font-medium">{t(selectedCount > 1 ? 'bourse.scan.selected_other' : 'bourse.scan.selected_one', { count: selectedCount })}</span>
-          <button onClick={allSelected ? deselectAll : selectAll}
-            className="flex items-center gap-1 text-amber-100 text-xs font-semibold">
-            {allSelected ? <Minus className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
-            {allSelected ? t('bourse.scan.deselect_all') : t('bourse.scan.select_all')}
-          </button>
-        </div>
+          {/* Mini-ligne incohérence si détectée (compact) */}
+          {detection && (detection.session_coherente === false || detection.classe_coherente === false) && (
+            <p className="text-[10px] text-red-100 mt-1">
+              ⚠ {t('bourse.scan.incoherence_warning')}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="px-4 pt-4 pb-36 max-w-2xl mx-auto">
-        <p className="text-[11px] text-gray-500 leading-snug px-1 mb-3">
+      <div className="px-4 pt-3 pb-36 max-w-2xl mx-auto">
+        <p className="text-[11px] text-gray-500 leading-snug px-1 mb-2">
           {t('bourse.rentree.choices_hint')}
         </p>
-        {/* Bandeau de vérification post-scan (métadonnées détectées par l'IA) */}
-        {detection && (detection.etablissement || detection.ville || detection.session || detection.classe) && (
-          <div className="mb-4 bg-white rounded-2xl border border-gray-200 p-4">
-            <div className="flex items-start gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-              <p className="text-sm font-semibold text-gray-900">{t('bourse.scan.verify_detected')}</p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              {detection.etablissement && (
-                <div className="bg-gray-50 rounded-lg p-2">
-                  <p className="text-gray-500">{t('bourse.scan.school')}</p>
-                  <p className="font-semibold text-gray-800 truncate">{detection.etablissement}</p>
-                </div>
-              )}
-              {detection.ville && (
-                <div className="bg-gray-50 rounded-lg p-2">
-                  <p className="text-gray-500">{t('bourse.scan.city')}</p>
-                  <p className="font-semibold text-gray-800 truncate">{detection.ville}</p>
-                </div>
-              )}
-              {detection.session && (
-                <div className={`rounded-lg p-2 ${detection.session_coherente === false ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
-                  <p className="text-gray-500">{t('bourse.scan.session')}</p>
-                  <p className={`font-semibold truncate ${detection.session_coherente === false ? 'text-red-700' : 'text-gray-800'}`}>
-                    {detection.session}
-                    {detection.session_coherente === false && detection.session_attendue && (
-                      <span className="block text-[10px] text-red-500 font-normal">{t('bourse.scan.session_expected', { session: detection.session_attendue })}</span>
-                    )}
-                  </p>
-                </div>
-              )}
-              {detection.classe && (
-                <div className={`rounded-lg p-2 ${detection.classe_coherente === false ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
-                  <p className="text-gray-500">{t('bourse.scan.class')}</p>
-                  <p className={`font-semibold truncate ${detection.classe_coherente === false ? 'text-red-700' : 'text-gray-800'}`}>
-                    {detection.classe}
-                    {detection.classe_coherente === false && (
-                      <span className="block text-[10px] text-red-500 font-normal">{t('bourse.scan.class_mismatch', { niveau })}</span>
-                    )}
-                  </p>
-                </div>
-              )}
-            </div>
-            {(detection.session_coherente === false || detection.classe_coherente === false) && (
-              <p className="mt-2 text-xs text-amber-700 bg-amber-50 rounded-lg p-2 border border-amber-200">
-                {t('bourse.scan.incoherence_warning')}
-              </p>
-            )}
-          </div>
-        )}
 
         {/* Aucune classe enregistrée → sélection de classe inline */}
         {enfants.length === 0 && currentNiveauObj && (
@@ -1187,6 +1153,22 @@ const ScanProgrammePage: React.FC = () => {
                 {t('bourse.scan.view_official')}
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Bandeau "X / Y sélectionnés · Tout (dé)cocher" juste avant le
+            tableau — déplacé ici depuis l'en-tête pour que le bouton soit
+            proche de l'action qu'il déclenche. */}
+        {items.length > 0 && (
+          <div className="flex items-center justify-between bg-white rounded-xl border border-gray-200 px-3 py-2 mb-2">
+            <span className="text-xs font-semibold text-gray-700">
+              {t(selectedCount > 1 ? 'bourse.scan.selected_other' : 'bourse.scan.selected_one', { count: selectedCount })}
+            </span>
+            <button onClick={allSelected ? deselectAll : selectAll}
+              className="flex items-center gap-1 text-xs font-bold text-amber-700 active:text-amber-800 min-h-[36px] px-2">
+              {allSelected ? <Minus className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
+              {allSelected ? t('bourse.scan.deselect_all') : t('bourse.scan.select_all')}
+            </button>
           </div>
         )}
 
