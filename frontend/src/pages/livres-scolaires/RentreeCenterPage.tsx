@@ -16,6 +16,7 @@ import {
 } from '../../data/schoolSystems';
 import type { Systeme } from '../../hooks/useParentShop';
 import BookPhotoCapture, { type AnalyzedBookResult } from '../../components/livres-scolaires/BookPhotoCapture';
+import GpsGate from '../../components/livres-scolaires/GpsGate';
 
 // ─── Types locaux ───
 type SuggestionItem = {
@@ -326,14 +327,42 @@ const RentreeCenterPage: React.FC = () => {
     }
   }, [t, toast, updateTrocMatch, clearTrocIntent, updateChoix]);
 
+  // ✅ 2026-05-11 : avant de créer la session troc, on EXIGE la position
+  // GPS via GpsGate (écran d'instructions clair). Si déjà en cache (1h),
+  // saute le gate et continue.
+  const [showGpsGate, setShowGpsGate] = useState(false);
   const continueToCapture = async () => {
     if (!showTrocExplainer) return;
+    if (!gps) {
+      // Pas de GPS → on affiche le gate. Quand granted, useEffect ci-dessous
+      // relance la suite du flow.
+      setShowGpsGate(true);
+      return;
+    }
     const sid = await ensureSession();
     if (!sid) return;
     const itemId = showTrocExplainer.itemId;
     setShowTrocExplainer(null);
     setShowPhotoCapture({ itemId });
   };
+
+  // Une fois le GPS accordé après gate, on relance continueToCapture
+  // automatiquement si l'utilisateur était en train de demander une photo.
+  useEffect(() => {
+    if (gps && !showGpsGate) return; // état stable, rien à faire
+    if (gps && showGpsGate && showTrocExplainer) {
+      // gate vient de fermer, on enchaîne
+      setShowGpsGate(false);
+      (async () => {
+        const sid = await ensureSession();
+        if (!sid) return;
+        const itemId = showTrocExplainer.itemId;
+        setShowTrocExplainer(null);
+        setShowPhotoCapture({ itemId });
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gps]);
 
   // ✅ Pré-création de la session backend en arrière-plan, dès qu'on détecte
   // au moins un livre en troc en attente. Évite l'attente de 1-3s au clic
@@ -764,6 +793,25 @@ const RentreeCenterPage: React.FC = () => {
       )}
 
       {/* Modal "Ajouter une autre classe" — choix école courante vs autre */}
+      {/* GpsGate — bloque l'écran jusqu'à obtention GPS avant capture troc */}
+      {showGpsGate && (
+        <div className="fixed inset-0 z-[60]">
+          <GpsGate
+            title="Avant de photographier votre livre"
+            reason="Yukpo doit connaître votre position pour organiser la collecte du livre après le matching. Cette information est obligatoire avant tout échange."
+            onGranted={(coords) => {
+              setGps(coords);
+              // setShowGpsGate(false) sera fait par l'effect qui voit gps
+              // changer et enchaîne ensureSession + showPhotoCapture.
+            }}
+            onCancel={() => {
+              setShowGpsGate(false);
+              setShowTrocExplainer(null);
+            }}
+          />
+        </div>
+      )}
+
       {showAddClassChoice && active?.etablissementSlug && (
         <ModalShell
           onClose={() => setShowAddClassChoice(false)}

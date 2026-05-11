@@ -5,6 +5,7 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import BookPhotoCapture, { AnalyzedBookResult } from '../../components/livres-scolaires/BookPhotoCapture';
+import GpsGate from '../../components/livres-scolaires/GpsGate';
 import { apiPost } from '../../services/apiService';
 import { useToast } from '../../hooks/use-toast';
 
@@ -59,17 +60,10 @@ const VendreLivresPage: React.FC = () => {
   const [showCapture, setShowCapture] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
 
-  // 1. Capture GPS au montage
-  useEffect(() => {
-    if (gpsAsked) return;
-    setGpsAsked(true);
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      pos => setGps({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      () => {},
-      { timeout: 5000, maximumAge: 60000 }
-    );
-  }, [gpsAsked]);
+  // 1. Capture GPS via GpsGate avant tout — la modale d'instructions
+  // s'affiche tant que la position n'a pas été accordée. Si l'utilisateur
+  // l'a déjà accordée récemment (cache localStorage 1h), on continue.
+  // Le composant appelle onGranted(coords) une fois prête.
 
   // 2. Création session (auto après tentative GPS).
   // ✅ 2026-05-11 : fix boucle infinie + parsing session_id raté.
@@ -196,6 +190,25 @@ const VendreLivresPage: React.FC = () => {
 
   const totalValue = books.filter(b => !b.is_rejected).reduce((s, b) => s + (b.valeur_calculee || 0), 0);
   const validBooksCount = books.filter(b => !b.is_rejected).length;
+
+  // ✅ 2026-05-11 : GPS gate obligatoire AVANT tout — la page complète
+  // ne se rend que quand la position est accordée. Tant que gps est
+  // null, on affiche un écran d'instructions clair (composant GpsGate).
+  // Une fois accordée, le state `gps` est rempli et le rendu normal
+  // de la page démarre. ensureSession utilise alors gps directement.
+  if (!gps) {
+    return (
+      <GpsGate
+        title="Avant de scanner vos livres"
+        reason="Yukpo doit connaître votre position pour organiser la collecte de vos livres après le matching. Sans cette information, impossible de planifier le coursier."
+        onGranted={(coords) => {
+          setGps(coords);
+          setGpsAsked(true);
+        }}
+        onCancel={() => navigate(-1)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32">

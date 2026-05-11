@@ -60,7 +60,7 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         // 'troc' (mai-juillet) : on met en avant la vente / échange.
         season_troc_badge: '⏰ C\'est le moment',
         season_troc_title: 'Vendez ou échangez vos vieux livres',
-        season_troc_desc: 'Avant la rentrée, transformez les manuels de l\'année passée en crédit Yukpo. Vous l\'utiliserez en août pour la liste scolaire.',
+        season_troc_desc: "Transformez les manuels de l'année passée en crédit Yukpo. Le crédit s'applique à tous vos achats (manuels, cahiers, fournitures) — utilisable immédiatement ou au moment de votre choix.",
         // Sous-lien en saison 'achat' pour les retardataires
         season_achat_troc_link: 'Vendre encore des vieux livres → crédit immédiat',
         // 'creuse' (oct-avril) : message d\'attente
@@ -776,7 +776,7 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         cart_count: 'Resume my order ({{count}})',
         season_troc_badge: '⏰ Now is the moment',
         season_troc_title: 'Sell or trade your old books',
-        season_troc_desc: 'Before back-to-school, turn last year\'s textbooks into Yukpo credit. You\'ll use it in August for the school list.',
+        season_troc_desc: 'Turn last year\'s textbooks into Yukpo credit. The credit applies to all your purchases (textbooks, notebooks, supplies) — usable immediately or whenever you choose.',
         season_achat_troc_link: 'Still selling old books → instant credit',
         season_creuse_msg: 'See you in May for the next trade campaign, then in August for back-to-school. You can manage your account anytime.',
       },
