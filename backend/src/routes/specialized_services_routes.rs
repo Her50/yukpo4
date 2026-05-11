@@ -966,6 +966,15 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/v2/admin/troc/consignation/{livre_id}/recover",
             post(troc_livres_controller::recover_consignation),
         )
+        // ✅ 2026-05-11 : queue notifications WhatsApp (admin)
+        .route(
+            "/api/v2/admin/wa-queue/pending",
+            get(troc_livres_controller::wa_queue_pending),
+        )
+        .route(
+            "/api/v2/admin/wa-queue/{id}/mark-sent",
+            post(troc_livres_controller::wa_queue_mark_sent),
+        )
         .route(
             "/api/troc-livres/direct",
             post(troc_livres_controller::create_troc_direct),

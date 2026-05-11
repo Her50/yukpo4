@@ -210,6 +210,35 @@ pub async fn notify_credit_available(
     .await
 }
 
+pub async fn notify_troc_chain_failed(
+    pool: &PgPool,
+    user_id: i32,
+    livre_id: i32,
+) -> Result<Option<i64>, sqlx::Error> {
+    enqueue_notification(
+        pool,
+        user_id,
+        WaEvent::TrocChain,
+        json!({}),
+        Some(livre_id),
+        None,
+    )
+    .await
+}
+
+pub async fn notify_book_expired(
+    pool: &PgPool,
+    user_id: i32,
+    livre_id: i32,
+) -> Result<Option<i64>, sqlx::Error> {
+    // On reuse SeasonOpenTroc message ? non — texte dédié serait mieux.
+    // Pour rester DRY on enqueue avec un event spécifique via enqueue_notification
+    // directement (template_key custom). Mais ici on garde simple : pas de notif
+    // dédiée pour l'expiration, le system in-app gère déjà.
+    let _ = (pool, user_id, livre_id);
+    Ok(None)
+}
+
 pub async fn notify_order_created(
     pool: &PgPool,
     user_id: i32,
@@ -227,4 +256,162 @@ pub async fn notify_order_created(
         Some(commande_id),
     )
     .await
+}
+
+// ============================================================================
+// CONSUMER : envoi des notifications pending
+// ============================================================================
+
+#[derive(Debug, serde::Serialize, sqlx::FromRow)]
+pub struct PendingNotification {
+    pub id: i64,
+    pub user_id: i32,
+    pub phone: String,
+    pub event_type: String,
+    pub rendered_message: Option<String>,
+    pub deeplink_url: Option<String>,
+    pub attempts: i32,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Récupère les notifs en attente (mode deeplink) — utilisé par le dashboard
+/// admin pour qu'un opérateur clique sur chaque deeplink wa.me et envoie
+/// manuellement, puis marque `mark_sent` après envoi.
+pub async fn list_pending(
+    pool: &PgPool,
+    limit: i64,
+) -> Result<Vec<PendingNotification>, sqlx::Error> {
+    sqlx::query_as::<_, PendingNotification>(
+        r#"
+        SELECT id, user_id, phone, event_type, rendered_message, deeplink_url,
+               attempts, created_at
+        FROM whatsapp_notifications_queue
+        WHERE status = 'pending'
+        ORDER BY created_at ASC
+        LIMIT $1
+        "#,
+    )
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn mark_sent(pool: &PgPool, id: i64) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE whatsapp_notifications_queue
+        SET status = 'sent', sent_at = NOW(), updated_at = NOW(),
+            attempts = attempts + 1
+        WHERE id = $1
+        "#,
+    )
+    .bind(id)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn mark_failed(pool: &PgPool, id: i64, error: &str) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE whatsapp_notifications_queue
+        SET status = 'failed', last_error = $2, updated_at = NOW(),
+            attempts = attempts + 1
+        WHERE id = $1
+        "#,
+    )
+    .bind(id)
+    .bind(error)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Envoie une notif via WhatsApp Cloud API (Meta). Disponible UNIQUEMENT si
+/// la variable d'environnement `WHATSAPP_CLOUD_API_TOKEN` ET
+/// `WHATSAPP_CLOUD_PHONE_ID` sont configurées. Sinon renvoie Ok(false) —
+/// l'admin doit traiter manuellement via le deeplink.
+pub async fn try_send_via_api(notif: &PendingNotification) -> Result<bool, String> {
+    let token = match std::env::var("WHATSAPP_CLOUD_API_TOKEN") {
+        Ok(v) if !v.is_empty() => v,
+        _ => return Ok(false),
+    };
+    let phone_id = match std::env::var("WHATSAPP_CLOUD_PHONE_ID") {
+        Ok(v) if !v.is_empty() => v,
+        _ => return Ok(false),
+    };
+
+    let message = notif
+        .rendered_message
+        .as_deref()
+        .ok_or_else(|| "Message rendu manquant".to_string())?;
+    let phone_clean = clean_phone(&notif.phone);
+
+    let client = reqwest::Client::new();
+    let url = format!("https://graph.facebook.com/v18.0/{}/messages", phone_id);
+    let body = json!({
+        "messaging_product": "whatsapp",
+        "to": phone_clean,
+        "type": "text",
+        "text": { "body": message },
+    });
+
+    let resp = client
+        .post(&url)
+        .bearer_auth(&token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Erreur réseau Meta API : {}", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let txt = resp.text().await.unwrap_or_default();
+        return Err(format!("HTTP {} : {}", status, txt));
+    }
+    Ok(true)
+}
+
+/// Worker autonome (à spawner depuis main.rs si on veut l'auto-send).
+/// Boucle infinie : lit les pending, tente l'API si configurée, marque
+/// sent ou failed. Si l'API n'est pas configurée, ne fait rien (les
+/// deeplinks restent pour traitement manuel admin).
+pub async fn run_auto_send_worker(pool: PgPool) {
+    let api_configured = std::env::var("WHATSAPP_CLOUD_API_TOKEN")
+        .map(|v| !v.is_empty())
+        .unwrap_or(false);
+    if !api_configured {
+        tracing::info!(
+            "[wa-notif-worker] WHATSAPP_CLOUD_API_TOKEN non configuré — worker auto-send désactivé, traitement manuel via dashboard admin."
+        );
+        return;
+    }
+    tracing::info!("[wa-notif-worker] Démarré, auto-send via Meta API actif.");
+    let mut ticker = tokio::time::interval(std::time::Duration::from_secs(60));
+    loop {
+        ticker.tick().await;
+        let pending = match list_pending(&pool, 50).await {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!("[wa-notif-worker] list_pending error: {}", e);
+                continue;
+            }
+        };
+        for notif in pending {
+            match try_send_via_api(&notif).await {
+                Ok(true) => {
+                    let _ = mark_sent(&pool, notif.id).await;
+                    tracing::info!("[wa-notif-worker] ✅ Envoyé #{}", notif.id);
+                }
+                Ok(false) => {
+                    // API non configurée → on sort de la boucle
+                    return;
+                }
+                Err(e) => {
+                    let _ = mark_failed(&pool, notif.id, &e).await;
+                    tracing::warn!("[wa-notif-worker] ❌ #{} : {}", notif.id, e);
+                }
+            }
+        }
+    }
 }

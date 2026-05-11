@@ -598,6 +598,29 @@ const RentreeCenterPage: React.FC = () => {
           </section>
         )}
 
+        {/* Lien dashboard "Mes trocs en cours" — visible si le parent a déjà
+            au moins un livre déposé en troc (intent ou matched). Permet de
+            suivre l'évolution sans repartir d'un parcours commande. */}
+        {pendingTrocCount > 0 && (
+          <section className="mt-4">
+            <button
+              onClick={() => navigate('/trocs/mes-trocs')}
+              className="w-full bg-cyan-50 border border-cyan-300 rounded-2xl p-3.5 text-left active:bg-cyan-100 min-h-[64px]"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 bg-cyan-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Repeat className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm text-cyan-900">{t('bourse.rentree.dashboard_trocs_title')}</div>
+                  <div className="text-xs text-cyan-800 mt-0.5">{t('bourse.rentree.dashboard_trocs_desc')}</div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-cyan-700 mt-2 flex-shrink-0" />
+              </div>
+            </button>
+          </section>
+        )}
+
         {/* Vendre vieux livres SANS troc */}
         {active && (
           <section className="mt-4 pt-4 border-t border-dashed border-gray-300">

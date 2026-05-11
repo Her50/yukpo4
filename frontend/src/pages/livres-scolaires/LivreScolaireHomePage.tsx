@@ -1,7 +1,7 @@
 import {
-  Camera, ChevronRight, School, ShoppingCart, Sparkles, Store,
+  Camera, ChevronRight, Repeat, School, ShoppingCart, Sparkles, Store,
 } from 'lucide-react';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import LanguageSwitcherBourse from '../../components/LanguageSwitcherBourse';
@@ -17,11 +17,29 @@ import { useUser } from '../../hooks/useUser';
  * accessible par URL directe pour les rôles avancés, mais n'apparaît plus
  * sur la home.
  */
+/**
+ * Saisonnalité de la rentrée scolaire (Cameroun par défaut).
+ *   • mai–juillet : période 'troc' (priorité : vendre / échanger ses vieux livres)
+ *   • août–septembre : période 'achat' (priorité : préparer la rentrée)
+ *   • reste de l'année : 'creuse' (entre deux rentrées)
+ * Les bornes peuvent évoluer par pays — pour V1 on prend le calendrier CM.
+ */
+type SchoolSeason = 'troc' | 'achat' | 'creuse';
+const getCurrentSchoolSeason = (now: Date = new Date()): SchoolSeason => {
+  const m = now.getMonth(); // 0-indexed
+  if (m >= 4 && m <= 6) return 'troc'; // mai (4) à juillet (6)
+  if (m === 7 || m === 8) return 'achat'; // août (7) à septembre (8)
+  return 'creuse';
+};
+
 const LivreScolaireHomePage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { totalItems } = useParentShop();
   const { user, isLoading } = useUser();
+  // Saison détectée automatiquement à chaque render — bornes CM pour V1.
+  // Re-évaluée à chaque mount, ce qui suffit pour une PWA ouverte ponctuellement.
+  const season: SchoolSeason = useMemo(() => getCurrentSchoolSeason(), []);
 
   // ✅ 2026-05-08 v3 : connexion obligatoire pour tous (parents + partenaires).
   // Une fois le compte créé, le JWT reste en localStorage → pas de reconnexion
@@ -81,10 +99,68 @@ const LivreScolaireHomePage: React.FC = () => {
             </button>
           )}
 
-          {/* 1. École partenaire (PRIORITÉ) */}
+          {/* ✅ 2026-05-11 — Bannière saisonnière + CTA contextuel.
+              Pendant la période 'troc' (mai-juillet), on met en avant
+              la vente/échange des vieux livres. Pendant 'achat' (août-sept),
+              les 3 sources d'ajout de liste sont prioritaires. Pendant
+              'creuse', un message d'attente + accès direct au compte. */}
+          {season === 'troc' && (
+            <button
+              onClick={() => navigate('/vendre')}
+              className="w-full bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 mb-4 shadow-md border-2 border-emerald-400 text-left active:from-green-100 min-h-[96px]"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Repeat className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">
+                    {t('bourse.home.season_troc_badge')}
+                  </div>
+                  <div className="font-bold text-base text-emerald-900 leading-tight mt-0.5">
+                    {t('bourse.home.season_troc_title')}
+                  </div>
+                  <div className="text-xs text-emerald-800 mt-1 leading-snug">
+                    {t('bourse.home.season_troc_desc')}
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-emerald-700 mt-2 flex-shrink-0" />
+              </div>
+            </button>
+          )}
+
+          {season === 'creuse' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-4">
+              <p className="text-xs text-blue-800 leading-snug">
+                {t('bourse.home.season_creuse_msg')}
+              </p>
+            </div>
+          )}
+
+          {/* Lien secondaire vers troc en saison 'achat' (parent qui a encore
+              des vieux livres à liquider entre 2 rentrées) */}
+          {season === 'achat' && (
+            <button
+              onClick={() => navigate('/vendre')}
+              className="w-full bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 mb-3 text-left active:bg-emerald-100 inline-flex items-center gap-2"
+            >
+              <Repeat className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" />
+              <span className="text-xs font-semibold text-emerald-800 flex-1">
+                {t('bourse.home.season_achat_troc_link')}
+              </span>
+              <ChevronRight className="w-3.5 h-3.5 text-emerald-700" />
+            </button>
+          )}
+
+          {/* 1. École partenaire (PRIORITÉ — sauf en saison creuse où on
+              désaccentue pour ne pas suggérer une rentrée qui n'arrive pas) */}
           <button
             onClick={() => navigate('/recherche-ecole')}
-            className="w-full bg-white rounded-2xl p-4 mb-3 shadow-sm border-2 border-amber-300 text-left active:bg-amber-50 min-h-[80px]"
+            className={`w-full rounded-2xl p-4 mb-3 shadow-sm text-left min-h-[80px] ${
+              season === 'achat'
+                ? 'bg-white border-2 border-amber-300 active:bg-amber-50'
+                : 'bg-white border border-gray-200 active:bg-gray-50'
+            }`}
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">

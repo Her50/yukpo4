@@ -684,3 +684,47 @@ pub async fn get_chaine_details(
 
     Ok(Json(json!({ "success": true, "chaine": chaine })))
 }
+
+// ============================================================================
+// WhatsApp notifications queue — admin endpoints
+// ============================================================================
+
+/// GET /api/v2/admin/wa-queue/pending — liste les notifs WA en attente.
+/// Le dashboard Librairie/Admin peut afficher chaque deeplink wa.me dans une
+/// liste cliquable ; chaque clic ouvre WhatsApp avec le message pré-rempli.
+pub async fn wa_queue_pending(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { role, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let r = role.to_lowercase();
+    if r != "admin" && r != "super_admin" && r != "super_libraire" {
+        return Err(AppError::Forbidden("Accès réservé".into()));
+    }
+    use crate::services::whatsapp_notification_service as wa;
+    let pending = wa::list_pending(&state.pg, 100)
+        .await
+        .map_err(|e| AppError::Database(format!("wa-queue: {}", e)))?;
+    Ok(Json(json!({
+        "success": true,
+        "count": pending.len(),
+        "items": pending,
+    })))
+}
+
+/// POST /api/v2/admin/wa-queue/:id/mark-sent — marque comme envoyée après
+/// que l'admin a cliqué sur le deeplink et envoyé manuellement.
+pub async fn wa_queue_mark_sent(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { role, .. }): Extension<AuthenticatedUser>,
+    Path(id): Path<i64>,
+) -> AppResult<impl IntoResponse> {
+    let r = role.to_lowercase();
+    if r != "admin" && r != "super_admin" && r != "super_libraire" {
+        return Err(AppError::Forbidden("Accès réservé".into()));
+    }
+    use crate::services::whatsapp_notification_service as wa;
+    wa::mark_sent(&state.pg, id)
+        .await
+        .map_err(|e| AppError::Database(format!("wa-mark-sent: {}", e)))?;
+    Ok(Json(json!({ "success": true, "id": id })))
+}

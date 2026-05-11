@@ -56,6 +56,15 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         librairie_portal: 'Espace Yukpo Librairie',
         etablissement_portal: 'Espace Yukpo Établissement',
         cart_count: 'Reprendre ma commande ({{count}})',
+        // ─── Saisonnalité de la rentrée (CM) ───
+        // 'troc' (mai-juillet) : on met en avant la vente / échange.
+        season_troc_badge: '⏰ C\'est le moment',
+        season_troc_title: 'Vendez ou échangez vos vieux livres',
+        season_troc_desc: 'Avant la rentrée, transformez les manuels de l\'année passée en crédit Yukpo. Vous l\'utiliserez en août pour la liste scolaire.',
+        // Sous-lien en saison 'achat' pour les retardataires
+        season_achat_troc_link: 'Vendre encore des vieux livres → crédit immédiat',
+        // 'creuse' (oct-avril) : message d\'attente
+        season_creuse_msg: 'Rendez-vous en mai pour la prochaine campagne de troc, puis en août pour préparer la rentrée. Vous pouvez gérer votre compte à tout moment.',
       },
       search: {
         title: 'Rechercher mon établissement',
@@ -342,6 +351,9 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         // CTA "J'ai fini → récap général"
         go_full_recap_title: "J'ai fini, voir mon récap général",
         go_full_recap_desc: "{{count}} article(s) — toutes mes classes regroupées, prêt à commander.",
+        // Dashboard D : lien vers la page de suivi des trocs (existante)
+        dashboard_trocs_title: 'Mes trocs en cours',
+        dashboard_trocs_desc: "Suivez l'évolution de chaque livre déposé : pending, matché, en route, etc.",
         sell_old_books_title: 'Je vends mes vieux livres SANS troc',
         sell_old_books_desc: 'Recevez du cash quand un acheteur sera trouvé. Pas appliqué à une commande.',
         sell_old_books_cta: 'Vendre mes vieux livres',
@@ -759,6 +771,11 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         librairie_portal: 'Yukpo Bookshop Area',
         etablissement_portal: 'Yukpo School Area',
         cart_count: 'Resume my order ({{count}})',
+        season_troc_badge: '⏰ Now is the moment',
+        season_troc_title: 'Sell or trade your old books',
+        season_troc_desc: 'Before back-to-school, turn last year\'s textbooks into Yukpo credit. You\'ll use it in August for the school list.',
+        season_achat_troc_link: 'Still selling old books → instant credit',
+        season_creuse_msg: 'See you in May for the next trade campaign, then in August for back-to-school. You can manage your account anytime.',
       },
       search: {
         title: 'Find my school',
@@ -1030,6 +1047,8 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         go_recap: 'View recap',
         go_full_recap_title: "I'm done, see my overall recap",
         go_full_recap_desc: '{{count}} item(s) — all my classes grouped, ready to order.',
+        dashboard_trocs_title: 'My ongoing trades',
+        dashboard_trocs_desc: 'Track each deposited book: pending, matched, in transit, etc.',
         sell_old_books_title: 'Sell my old books WITHOUT trading',
         sell_old_books_desc: 'Get cash when a buyer is found. Not applied to an order.',
         sell_old_books_cta: 'Sell my old books',

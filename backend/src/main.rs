@@ -3138,6 +3138,20 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
         .await;
     }));
 
+    // ✅ 2026-05-11 : Worker auto-send WhatsApp queue (conditionné par
+    // WHATSAPP_CLOUD_API_TOKEN env). Sans token, le worker se met en veille
+    // dès le 1er tick et les notifs restent en pending pour traitement
+    // manuel via le dashboard admin (deeplink wa.me).
+    let pool_clone_wa = app_state.pg.clone();
+    std::mem::drop(tokio::spawn(async move {
+        // Petite tempo pour ne pas saturer le boot
+        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+        yukpomnang_backend::services::whatsapp_notification_service::run_auto_send_worker(
+            pool_clone_wa,
+        )
+        .await;
+    }));
+
     // ✅ NOUVEAU 2025-12-30: Nettoyage automatique du cache audio (tous les jours)
     let pool_clone_audio = Arc::new(app_state.pg.clone());
     std::mem::drop(tokio::spawn(async move {
