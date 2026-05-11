@@ -255,7 +255,14 @@ const VendreLivresPage: React.FC = () => {
         {/* Sélecteur de mode listing par défaut session */}
         {books.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-3">
-            <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Type d'annonce par défaut</p>
+            <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Type d'annonce par défaut</p>
+            {/* ✅ Mini-descriptif soft pour aider le parent à choisir entre
+                les 3 modes. Court, gris-discret, pas envahissant. */}
+            <p className="text-[11px] text-gray-500 leading-snug mb-2">
+              <strong className="text-amber-700">Échange</strong> : crédit Yukpo immédiat applicable à votre prochaine commande ·{' '}
+              <strong className="text-orange-700">Vente</strong> : cash quand un acheteur sera trouvé ·{' '}
+              <strong className="text-emerald-700">Don</strong> : vous offrez le livre, sans contrepartie.
+            </p>
             <div className="grid grid-cols-3 gap-2">
               {(['troc', 'vente', 'don'] as ModeListing[]).map(m => {
                 const info = MODE_INFO[m];

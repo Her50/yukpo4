@@ -12,6 +12,7 @@ import {
   Systeme, TypeItem, useParentShop,
   Enfant,
 } from '../../hooks/useParentShop';
+import { useUserTrocPool } from '../../hooks/useUserTrocPool';
 import {
   getSystemesForPays, getSystemeById, LISTE_PAYS_UNIQUES, type PaysCode,
 } from '../../data/schoolSystems';
@@ -142,6 +143,8 @@ const ScanProgrammePage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { enfants, addItems, addEnfant } = useParentShop();
+  // Pool troc du parent pour détecter cross-flow (livre déjà en échange)
+  const { findMatchInPool } = useUserTrocPool();
 
   const enfantId = searchParams.get('enfantId') || enfants[0]?.id || '';
   const [selectedEnfantId, setSelectedEnfantId] = useState(enfantId);
@@ -1194,18 +1197,40 @@ const ScanProgrammePage: React.FC = () => {
                   </div>
 
                   <div className="divide-y divide-gray-100">
-                    {entries.map(({ item, idx: i }) => (
+                    {entries.map(({ item, idx: i }) => {
+                      // ✅ Cross-flow : ce livre est-il déjà dans le pool
+                      // troc du parent ? Si oui, on bloque la case et on
+                      // affiche un badge — pas besoin de l'acheter.
+                      const trocMatch = isOccasionableType(item.type)
+                        ? findMatchInPool(item.titre, item.matiere)
+                        : null;
+                      const lockedByPool = !!trocMatch;
+                      return (
                       <div key={i}
                         className={`px-2.5 py-1.5 transition-colors ${
-                          item.selected ? 'bg-amber-50/60' : 'bg-white hover:bg-gray-50'
+                          lockedByPool
+                            ? 'bg-cyan-50/80'
+                            : item.selected
+                            ? 'bg-amber-50/60'
+                            : 'bg-white hover:bg-gray-50'
                         }`}>
                         <div className="flex items-center gap-2">
                           {/* Checkbox */}
-                          <button onClick={() => toggleItem(i)} className="shrink-0" aria-label={t('bourse.scan.select_aria')}>
+                          <button
+                            onClick={() => !lockedByPool && toggleItem(i)}
+                            disabled={lockedByPool}
+                            className="shrink-0"
+                            aria-label={t('bourse.scan.select_aria')}
+                            title={lockedByPool ? 'Déjà couvert par votre échange en cours' : undefined}
+                          >
                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
-                              item.selected ? 'bg-amber-500 border-amber-500' : 'border-gray-300'
+                              lockedByPool
+                                ? 'bg-cyan-500 border-cyan-500 opacity-60'
+                                : item.selected
+                                ? 'bg-amber-500 border-amber-500'
+                                : 'border-gray-300'
                             }`}>
-                              {item.selected && <span className="text-white text-xs font-bold leading-none">✓</span>}
+                              {(item.selected || lockedByPool) && <span className="text-white text-xs font-bold leading-none">✓</span>}
                             </div>
                           </button>
 
@@ -1324,8 +1349,16 @@ const ScanProgrammePage: React.FC = () => {
                             )}
                           </div>
                         )}
+                        {/* Badge cross-flow : déjà dans le pool troc */}
+                        {lockedByPool && trocMatch && (
+                          <p className="text-[10px] text-cyan-800 bg-cyan-100 px-2 py-1 rounded mt-1 ml-7 leading-snug">
+                            📦 Déjà dans votre échange en cours ({trocMatch.troc_status}).
+                            {trocMatch.valeur ? ` Crédit estimé : ${Math.round(trocMatch.valeur * 0.6).toLocaleString('fr-FR')} XAF.` : ''}
+                          </p>
+                        )}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 </div>
               );

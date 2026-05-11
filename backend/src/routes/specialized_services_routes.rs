@@ -980,6 +980,11 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/troc-livres/{livre_id}/withdraw",
             post(troc_livres_controller::withdraw_livre),
         )
+        // ✅ 2026-05-11 : pool troc/vente personnel pour cross-flow detection
+        .route(
+            "/api/troc-livres/my-pool",
+            get(troc_livres_controller::my_troc_pool),
+        )
         .route(
             "/api/troc-livres/direct",
             post(troc_livres_controller::create_troc_direct),

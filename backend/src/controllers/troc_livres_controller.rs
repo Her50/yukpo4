@@ -686,6 +686,73 @@ pub async fn get_chaine_details(
 }
 
 // ============================================================================
+// Pool troc/vente du parent — pour cross-flow intelligence
+// ============================================================================
+
+/// GET /api/troc-livres/my-pool
+/// Retourne la liste des livres que le parent a déjà déposés (troc/vente/don)
+/// et qui ne sont pas encore conclus (status pending/matched/chained).
+/// Utilisé côté frontend pour :
+///   1. Marquer les items d'une liste scolaire (scan ou partenaire) comme
+///      "déjà couverts par votre échange" et éviter le double-achat.
+///   2. Lier automatiquement la valeur du troc au prix de la commande
+///      (l'utilisateur n'a pas à scanner deux fois le même livre).
+pub async fn my_troc_pool(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    use sqlx::Row;
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            id,
+            COALESCE(titre, '') AS titre,
+            COALESCE(auteur, '') AS auteur,
+            COALESCE(classe_actuelle, '') AS classe_actuelle,
+            COALESCE(classe_souhaitee, '') AS classe_souhaitee,
+            COALESCE(matiere, '') AS matiere,
+            COALESCE(mode_listing, 'troc') AS mode_listing,
+            COALESCE(troc_status, 'pending') AS troc_status,
+            valeur_calculee::float8 AS valeur,
+            created_at
+        FROM livres_scolaires
+        WHERE user_id = $1
+          AND is_active = true
+          AND COALESCE(troc_status, 'pending') IN ('pending', 'matched', 'chained')
+        ORDER BY created_at DESC
+        LIMIT 100
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("my_pool: {}", e)))?;
+
+    let items: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id": r.try_get::<i32, _>("id").unwrap_or(0),
+                "titre": r.try_get::<String, _>("titre").unwrap_or_default(),
+                "auteur": r.try_get::<String, _>("auteur").unwrap_or_default(),
+                "classe_actuelle": r.try_get::<String, _>("classe_actuelle").unwrap_or_default(),
+                "classe_souhaitee": r.try_get::<String, _>("classe_souhaitee").unwrap_or_default(),
+                "matiere": r.try_get::<String, _>("matiere").unwrap_or_default(),
+                "mode_listing": r.try_get::<String, _>("mode_listing").unwrap_or_default(),
+                "troc_status": r.try_get::<String, _>("troc_status").unwrap_or_default(),
+                "valeur": r.try_get::<Option<f64>, _>("valeur").ok().flatten(),
+            })
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "success": true,
+        "count": items.len(),
+        "items": items,
+    })))
+}
+
+// ============================================================================
 // Retrait volontaire d'un livre par son propriétaire
 // ============================================================================
 

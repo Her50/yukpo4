@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 import { useParentShop } from '../../hooks/useParentShop';
+import { useUserTrocPool } from '../../hooks/useUserTrocPool';
 import { apiGet } from '../../services/apiService';
 
 interface EcolePagePublic {
@@ -390,6 +391,10 @@ export const EcoleListeScolairePage: React.FC = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { addItems, addEnfant, enfants } = useParentShop();
+  // ✅ 2026-05-11 : pool troc du parent pour détecter les livres qu'il
+  // a déjà déposés en échange. Permet d'afficher un badge + bloquer
+  // la sélection (éviter d'acheter ce qu'on a déjà troqué).
+  const { findMatchInPool } = useUserTrocPool();
   const [articles, setArticles] = useState<ArticleProgramme[]>([]);
   const [selected, setSelected] = useState<Record<number, boolean>>({});
   // ✅ 2026-05-10 : choix d'achat par article (cohérent avec ScanProgrammePage
@@ -564,25 +569,47 @@ export const EcoleListeScolairePage: React.FC = () => {
         {articles.map(a => {
           const c = choix[a.id] || 'neuf';
           const isLivre = isOccasionable(a.type);
+          // ✅ Cross-flow : ce livre est-il déjà dans le pool troc du parent ?
+          // Si oui, on désactive la case à cocher et on affiche un badge.
+          const trocMatch = isLivre ? findMatchInPool(a.titre, classe) : null;
+          const isAlreadyInPool = !!trocMatch;
           return (
           <div
             key={a.id}
             className={`p-3 bg-white rounded-2xl border transition ${
-              selected[a.id] ? 'border-amber-300 bg-amber-50' : 'border-gray-100'
+              isAlreadyInPool
+                ? 'border-cyan-300 bg-cyan-50'
+                : selected[a.id]
+                ? 'border-amber-300 bg-amber-50'
+                : 'border-gray-100'
             }`}
           >
             <div className="flex items-start gap-3">
               <button
-                onClick={() => toggle(a.id)}
+                onClick={() => !isAlreadyInPool && toggle(a.id)}
+                disabled={isAlreadyInPool}
                 className={`w-5 h-5 mt-0.5 shrink-0 rounded-md border-2 flex items-center justify-center ${
-                  selected[a.id] ? 'bg-amber-500 border-amber-500' : 'border-gray-300'
+                  isAlreadyInPool
+                    ? 'bg-cyan-500 border-cyan-500 cursor-not-allowed opacity-60'
+                    : selected[a.id]
+                    ? 'bg-amber-500 border-amber-500'
+                    : 'border-gray-300'
                 }`}
+                title={isAlreadyInPool ? 'Déjà couvert par votre échange' : undefined}
               >
-                {selected[a.id] && <span className="text-white text-xs">✓</span>}
+                {(selected[a.id] || isAlreadyInPool) && <span className="text-white text-xs">✓</span>}
               </button>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900">{a.titre}</p>
                 {a.auteur && <p className="text-xs text-gray-500 mt-0.5">{a.auteur}</p>}
+                {/* Badge cross-flow : informe le parent que ce livre est
+                    déjà en cours d'échange dans son pool. */}
+                {isAlreadyInPool && (
+                  <p className="text-[11px] text-cyan-800 bg-cyan-100 px-2 py-1 rounded mt-1.5 leading-snug">
+                    📦 Déjà dans votre échange en cours ({trocMatch.troc_status}).
+                    {trocMatch.valeur ? ` Crédit estimé : ${Math.round(trocMatch.valeur * 0.6).toLocaleString('fr-FR')} XAF.` : ''}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-1.5 mt-1.5 text-xs">
                   {a.matiere && (
                     <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
