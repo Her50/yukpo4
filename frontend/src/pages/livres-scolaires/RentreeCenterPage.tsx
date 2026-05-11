@@ -94,6 +94,14 @@ const RentreeCenterPage: React.FC = () => {
     () => panier.find(p => p.choix === 'occasion' && p.troc_intent && !p.trocLivreId),
     [panier],
   );
+
+  // Y a-t-il au moins un livre en troc en attente (toutes classes confondues) ?
+  // On l'utilise pour pré-créer la session backend en arrière-plan dès que la
+  // page est chargée, afin que le clic "Photographier" soit instantané.
+  const hasAnyPendingTroc = useMemo(
+    () => panier.some(p => p.choix === 'occasion' && p.troc_intent && !p.trocLivreId),
+    [panier],
+  );
   const captureTrocActive = searchParams.get('capture-troc') === '1';
   useEffect(() => {
     if (!captureTrocActive) return;
@@ -113,11 +121,12 @@ const RentreeCenterPage: React.FC = () => {
     }
   }, [captureTrocActive, pendingTrocItem, activeId, showPhotoCapture, showTrocExplainer, searchParams, setSearchParams]);
 
-  // ─── Session troc (créée à la demande quand on photographie) ───
+  // ─── Session troc (pré-créée en arrière-plan dès qu'on a un troc pending) ───
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionCreating, setSessionCreating] = useState(false);
   const [gps, setGps] = useState<{ lat: number; lon: number } | null>(null);
   const sessionInitRef = useRef(false);
+  const sessionPrefetchRef = useRef(false);
 
   useEffect(() => {
     if (!navigator.geolocation || gps) return;
@@ -130,7 +139,8 @@ const RentreeCenterPage: React.FC = () => {
 
   /** Demande la position GPS à la demande (au moment du clic "Photographier").
    *  Si la permission a été refusée au montage, ce 2e appel re-déclenchera
-   *  le prompt navigateur sur la plupart des plateformes. */
+   *  le prompt navigateur sur la plupart des plateformes. Timeout court
+   *  (3s) — si pas de GPS, on continue sans (backend accepte). */
   const requestGpsNow = useCallback((): Promise<{ lat: number; lon: number } | null> => {
     return new Promise((resolve) => {
       if (gps) return resolve(gps);
@@ -142,7 +152,7 @@ const RentreeCenterPage: React.FC = () => {
           resolve(coords);
         },
         () => resolve(null),
-        { timeout: 8000, maximumAge: 60000 },
+        { timeout: 3000, maximumAge: 60000 },
       );
     });
   }, [gps]);
@@ -150,14 +160,14 @@ const RentreeCenterPage: React.FC = () => {
   const ensureSession = useCallback(async (): Promise<string | null> => {
     if (sessionId) return sessionId;
     if (sessionCreating || sessionInitRef.current) return null;
-    // GPS demandé JIT — désormais OPTIONNEL côté backend. Si l'utilisateur
-    // refuse, on continue avec une chaîne vide (la position de récupération
-    // sera collectée à la finalisation de la commande, étape "adresse de
-    // livraison" qui est déjà obligatoire).
-    let coords = gps;
-    if (!coords) coords = await requestGpsNow();
+    // ✅ Feedback IMMÉDIAT : on flip sessionCreating tout de suite (spinner
+    // sur le bouton "Photographier") avant la lecture GPS, sinon le clic
+    // semble figé jusqu'à 8s si l'utilisateur n'a pas encore accordé la
+    // géoloc. GPS désormais OPTIONNEL côté backend.
     sessionInitRef.current = true;
     setSessionCreating(true);
+    let coords = gps;
+    if (!coords) coords = await requestGpsNow();
     try {
       const payload: Record<string, any> = {
         mode_listing_defaut: 'troc',
@@ -258,6 +268,20 @@ const RentreeCenterPage: React.FC = () => {
     setShowTrocExplainer(null);
     setShowPhotoCapture({ itemId });
   };
+
+  // ✅ Pré-création de la session backend en arrière-plan, dès qu'on détecte
+  // au moins un livre en troc en attente. Évite l'attente de 1-3s au clic
+  // "J'ai compris, photographier mon livre".
+  useEffect(() => {
+    if (sessionId || sessionCreating || sessionPrefetchRef.current) return;
+    if (!hasAnyPendingTroc) return;
+    sessionPrefetchRef.current = true;
+    // Petite tempo pour laisser l'écran se peindre d'abord
+    const t = setTimeout(() => {
+      ensureSession();
+    }, 300);
+    return () => clearTimeout(t);
+  }, [hasAnyPendingTroc, sessionId, sessionCreating, ensureSession]);
 
   const onPhotoAnalyzed = (itemId: string, result: AnalyzedBookResult) => {
     if (result.is_rejected) {
