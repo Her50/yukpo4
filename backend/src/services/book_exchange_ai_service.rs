@@ -71,34 +71,55 @@ pub fn get_all_school_systems() -> Vec<&'static SchoolSystem> {
 }
 
 // -- Cameroun Francophone --
+// Aligné sur la convention DB unifiée : "Maternelle 1ère/2ème année" (MINEDUB
+// officiel), "Tle" (et non "Terminale"), classes secondaires sans distinction
+// Collège/Lycée. Le matcher accepte plusieurs alias en entrée (terminale, tle,
+// premiere, première, 1ere, 1ère) mais produit toujours la forme canonique.
 static SYSTEM_CAMEROUN_FR: SchoolSystem = SchoolSystem {
     code: "cm_fr",
     name: "Cameroun (Francophone)",
     language: "fr",
     currency: "XAF",
     hierarchy: &[
+        // Maternelle (MINEDUB officiel = 2 années, pas 3 sections)
+        (
+            "maternelle 1ère année",
+            "Maternelle 2ème année",
+            "Maternelle",
+        ),
+        (
+            "maternelle 1ere annee",
+            "Maternelle 2ème année",
+            "Maternelle",
+        ),
+        ("maternelle 1", "Maternelle 2ème année", "Maternelle"),
+        ("maternelle 2ème année", "SIL", "Maternelle"),
+        ("maternelle 2eme annee", "SIL", "Maternelle"),
+        ("maternelle 2", "SIL", "Maternelle"),
+        // Primaire
         ("sil", "CP", "Primaire"),
         ("cp", "CE1", "Primaire"),
         ("ce1", "CE2", "Primaire"),
         ("ce2", "CM1", "Primaire"),
         ("cm1", "CM2", "Primaire"),
         ("cm2", "6ème", "Primaire"),
-        ("6ème", "5ème", "Collège"),
-        ("6eme", "5ème", "Collège"),
-        ("5ème", "4ème", "Collège"),
-        ("5eme", "4ème", "Collège"),
-        ("4ème", "3ème", "Collège"),
-        ("4eme", "3ème", "Collège"),
-        ("3ème", "Seconde", "Collège"),
-        ("3eme", "Seconde", "Collège"),
-        ("seconde", "Première", "Lycée"),
-        ("2nde", "Première", "Lycée"),
-        ("première", "Terminale", "Lycée"),
-        ("premiere", "Terminale", "Lycée"),
-        ("1ère", "Terminale", "Lycée"),
-        ("1ere", "Terminale", "Lycée"),
-        ("terminale", "", "Lycée"),
-        ("tle", "", "Lycée"),
+        // Secondaire (collège + lycée fusionnés au niveau cycle)
+        ("6ème", "5ème", "Secondaire"),
+        ("6eme", "5ème", "Secondaire"),
+        ("5ème", "4ème", "Secondaire"),
+        ("5eme", "4ème", "Secondaire"),
+        ("4ème", "3ème", "Secondaire"),
+        ("4eme", "3ème", "Secondaire"),
+        ("3ème", "2nde", "Secondaire"),
+        ("3eme", "2nde", "Secondaire"),
+        ("seconde", "1ère", "Secondaire"),
+        ("2nde", "1ère", "Secondaire"),
+        ("première", "Tle", "Secondaire"),
+        ("premiere", "Tle", "Secondaire"),
+        ("1ère", "Tle", "Secondaire"),
+        ("1ere", "Tle", "Secondaire"),
+        ("terminale", "", "Secondaire"),
+        ("tle", "", "Secondaire"),
     ],
 };
 
@@ -191,16 +212,16 @@ static SYSTEM_FRANCOPHONE_WEST: SchoolSystem = SchoolSystem {
         ("5eme", "4ème", "Collège"),
         ("4ème", "3ème", "Collège"),
         ("4eme", "3ème", "Collège"),
-        ("3ème", "Seconde", "Collège"),
-        ("3eme", "Seconde", "Collège"),
-        ("seconde", "Première", "Lycée"),
-        ("2nde", "Première", "Lycée"),
-        ("première", "Terminale", "Lycée"),
-        ("premiere", "Terminale", "Lycée"),
-        ("1ère", "Terminale", "Lycée"),
-        ("1ere", "Terminale", "Lycée"),
-        ("terminale", "", "Lycée"),
-        ("tle", "", "Lycée"),
+        ("3ème", "2nde", "Secondaire"),
+        ("3eme", "2nde", "Secondaire"),
+        ("seconde", "1ère", "Secondaire"),
+        ("2nde", "1ère", "Secondaire"),
+        ("première", "Tle", "Secondaire"),
+        ("premiere", "Tle", "Secondaire"),
+        ("1ère", "Tle", "Secondaire"),
+        ("1ere", "Tle", "Secondaire"),
+        ("terminale", "", "Secondaire"),
+        ("tle", "", "Secondaire"),
     ],
 };
 
@@ -985,27 +1006,44 @@ pub fn compute_classe_superieure(classe_actuelle: &str) -> String {
 }
 
 /// Version GPS-aware de compute_classe_superieure.
+///
+/// Le matching essaie 3 stratégies dans l'ordre :
+///   1. Match exact sur la chaîne complète (ex: "2nde" → "1ère")
+///   2. Match par préfixe le plus long : la chaîne stockée en DB est de la forme
+///      `${classe.nom} ${serie.code}` (ex: "2nde A", "1ère année ELME"). On
+///      cherche dans la hiérarchie le `key` le plus long dont la chaîne
+///      commence par `${key} ` ou est égale à `${key}`. La série restante est
+///      réappliquée au résultat (ex: "2nde A" → "1ère A", "1ère année ELME" →
+///      "2ème année ELME").
+///   3. Si rien, retourne la classe inchangée (l'IA affinera si besoin).
 pub fn compute_classe_superieure_with_gps(
     classe_actuelle: &str,
     lat: Option<f64>,
     lng: Option<f64>,
 ) -> String {
     let normalized = classe_actuelle.trim().to_lowercase();
-
-    // 1. Si GPS disponible, essayer le système du pays détecté en priorité
-    if let (Some(lat_v), Some(lng_v)) = (lat, lng) {
-        if lat_v != 0.0 || lng_v != 0.0 {
-            let system = detect_school_system_from_gps(lat_v, lng_v);
-            for &(key, next, _) in system.hierarchy {
-                if normalized == key {
-                    return next.to_string();
-                }
-            }
-        }
+    if normalized.is_empty() {
+        return String::new();
     }
 
-    // 2. Fallback: chercher dans TOUS les systèmes
-    for system in get_all_school_systems() {
+    // Détermine l'ordre de recherche : GPS d'abord si dispo, puis fallback all.
+    let systems_priority: Vec<&'static SchoolSystem> = {
+        let mut v: Vec<&'static SchoolSystem> = Vec::new();
+        if let (Some(lat_v), Some(lng_v)) = (lat, lng) {
+            if lat_v != 0.0 || lng_v != 0.0 {
+                v.push(detect_school_system_from_gps(lat_v, lng_v));
+            }
+        }
+        for s in get_all_school_systems() {
+            if !v.iter().any(|x| std::ptr::eq(*x, s)) {
+                v.push(s);
+            }
+        }
+        v
+    };
+
+    // Stratégie 1 : match exact
+    for system in &systems_priority {
         for &(key, next, _) in system.hierarchy {
             if normalized == key {
                 return next.to_string();
@@ -1013,7 +1051,33 @@ pub fn compute_classe_superieure_with_gps(
         }
     }
 
-    // 3. Si non reconnu, retourner la même classe (l'IA devra affiner)
+    // Stratégie 2 : préfixe le plus long (gère "2nde A" → "1ère A", "1ère année ELME" → "2ème année ELME")
+    let mut best: Option<(&str, &str, usize)> = None; // (key, next, key_len)
+    for system in &systems_priority {
+        for &(key, next, _) in system.hierarchy {
+            if next.is_empty() {
+                continue; // pas de classe suivante, on saute
+            }
+            // Matche si normalized commence par "key " (avec espace, sinon on
+            // attraperait "5ème" pour "5ème année" ce qui serait faux).
+            if let Some(rest_with_space) = normalized.strip_prefix(key) {
+                if rest_with_space.starts_with(' ') {
+                    let key_len = key.len();
+                    if best.map_or(true, |(_, _, len)| key_len > len) {
+                        best = Some((key, next, key_len));
+                    }
+                }
+            }
+        }
+    }
+    if let Some((key, next, _)) = best {
+        // Réapplique la série/suffixe : "2nde A" → key="2nde", suffix=" A" → "1ère A"
+        // Conserve la casse originale du suffixe (la chaîne `next` reste canonique).
+        let suffix = &classe_actuelle.trim()[key.len()..];
+        return format!("{}{}", next, suffix);
+    }
+
+    // Stratégie 3 : pas trouvé
     classe_actuelle.to_string()
 }
 
@@ -1097,14 +1161,23 @@ pub fn is_workbook_or_livret(titre: &str) -> bool {
 }
 
 /// Vérifie si une classe est la dernière de son système (pas de troc possible, vente uniquement).
-/// Fonctionne pour tous les systèmes: Terminale, Upper Sixth, SSS 3, SHS 3, Form 4 (Kenya), 6ème secondaire (RDC)...
+/// Fonctionne pour tous les systèmes: Tle, Upper Sixth, SSS 3, SHS 3, Form 4 (Kenya), 6ème secondaire (RDC)...
+/// Gère les classes avec série suffixée ("Tle A", "Tle C", "Tle F2") via match préfixe.
 pub fn is_classe_terminale(classe: &str) -> bool {
     let normalized = classe.trim().to_lowercase();
+    if normalized.is_empty() {
+        return false;
+    }
 
-    // Chercher dans tous les systèmes: une classe est "terminale" si next_class == ""
     for system in get_all_school_systems() {
         for &(key, next, _) in system.hierarchy {
-            if normalized == key && next.is_empty() {
+            if !next.is_empty() {
+                continue;
+            }
+            // Match exact ou préfixe + espace (gère "Tle A" / "Upper Sixth Arts" / etc.)
+            if normalized == key
+                || normalized.strip_prefix(key).map_or(false, |r| r.starts_with(' '))
+            {
                 return true;
             }
         }
@@ -1113,8 +1186,14 @@ pub fn is_classe_terminale(classe: &str) -> bool {
 }
 
 /// Déduit le niveau scolaire depuis la classe (multi-système).
+/// Gère les classes avec série suffixée via match préfixe le plus long.
 pub fn compute_niveau_from_classe(classe: &str) -> &'static str {
     let normalized = classe.trim().to_lowercase();
+    if normalized.is_empty() {
+        return "Non déterminé";
+    }
+
+    // Match exact d'abord
     for system in get_all_school_systems() {
         for &(key, _, level) in system.hierarchy {
             if normalized == key {
@@ -1122,7 +1201,20 @@ pub fn compute_niveau_from_classe(classe: &str) -> &'static str {
             }
         }
     }
-    "Non déterminé"
+
+    // Match préfixe + espace (le plus long gagne)
+    let mut best: Option<(&'static str, usize)> = None;
+    for system in get_all_school_systems() {
+        for &(key, _, level) in system.hierarchy {
+            if normalized.strip_prefix(key).map_or(false, |r| r.starts_with(' ')) {
+                let key_len = key.len();
+                if best.map_or(true, |(_, len)| key_len > len) {
+                    best = Some((level, key_len));
+                }
+            }
+        }
+    }
+    best.map(|(level, _)| level).unwrap_or("Non déterminé")
 }
 
 /// Génère la description complète de la hiérarchie pour un système donné.

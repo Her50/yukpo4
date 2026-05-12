@@ -5,6 +5,7 @@ pub mod db_retry;
 pub mod detect_intention;
 pub mod embedding_client;
 pub mod etablissement_upsert;
+pub mod image_upload_validator;
 pub mod jwt_manager;
 pub mod lang;
 pub mod livekit;

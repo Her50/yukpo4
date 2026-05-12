@@ -8766,6 +8766,32 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur seed MINESEC complet: {}", e),
     }
 
+    // ✅ 2026-05-12 : Seed MINESEC Technique 2024-2025 (PDF officiel signé MINESEC
+    // du 26 juin 2024 — toutes spécialités technique industriel, 1er et 2nd cycle)
+    match ensure_seed_minesec_technique_2024_2025(pool).await {
+        Ok(_) => info!("✅ Seed auto: MINESEC Technique 2024-2025 (toutes spécialités) OK"),
+        Err(e) => error!("❌ Erreur seed MINESEC Technique 2024-2025: {}", e),
+    }
+
+    // ✅ 2026-05-12 : Normalisation classes (Terminale→Tle, purge placeholders technique)
+    match ensure_normalize_classe_general_technique(pool).await {
+        Ok(_) => info!("✅ Migration auto: normalisation classes UI/seed OK"),
+        Err(e) => error!("❌ Erreur normalisation classes UI/seed: {}", e),
+    }
+
+    // ✅ 2026-05-12 : Ajout colonne created_by (référencée par les INSERT mais
+    // jamais créée — bloquait le preload depuis le programme national)
+    match ensure_programmes_scolaires_add_created_by(pool).await {
+        Ok(_) => info!("✅ Migration auto: programmes_scolaires.created_by OK"),
+        Err(e) => error!("❌ Erreur migration created_by: {}", e),
+    }
+
+    // ✅ 2026-05-12 : Fusion 'college'+'lycee' → 'secondaire' dans cycles_offerts
+    match ensure_normalize_cycles_offerts(pool).await {
+        Ok(_) => info!("✅ Migration auto: cycles_offerts normalisés (college/lycee→secondaire)"),
+        Err(e) => error!("❌ Erreur normalisation cycles_offerts: {}", e),
+    }
+
     // ✅ 2026-05-10 : Wallet credit bourse + troc_status (pivot modèle troc)
     match ensure_troc_credit_bourse(pool).await {
         Ok(_) => info!("✅ Migration auto: wallet_credit_bourse + troc_status OK"),
@@ -8776,6 +8802,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_bourse_debt(pool).await {
         Ok(_) => info!("✅ Migration auto: users.bourse_debt_xaf OK"),
         Err(e) => error!("❌ Erreur migration users.bourse_debt_xaf: {}", e),
+    }
+
+    // ✅ 2026-05-12 : idempotence forte du ledger (patch sécurité C2)
+    match ensure_wallet_ledger_idempotence(pool).await {
+        Ok(_) => info!("✅ Migration auto: wallet_ledger idempotence (anti-double-rollback) OK"),
+        Err(e) => error!("❌ Erreur migration wallet_ledger idempotence: {}", e),
     }
 
     // ✅ 2026-05-10 : Schéma complet programmes_scolaires (matiere, titre_livre…)
@@ -22558,6 +22590,61 @@ pub async fn ensure_seed_minesec_complet(pool: &PgPool) -> Result<(), sqlx::Erro
     Ok(())
 }
 
+/// ✅ 2026-05-12 : Seed MINESEC Technique 2024-2025 — Cameroun
+/// Source : PDF officiel signé MINESEC du 26 juin 2024, toutes spécialités du
+/// Secondaire Technique Industriel (1er et 2nd cycle) :
+/// ELME, ELEQ, ELNI, FRCL (Génie Électrique) ; MENU, CHARP, AMEB, MAGE (bois) ;
+/// MEFE, COOM, CAPA, MEM, MA, MARE, MEFA, MF, CM, CH-TI (Génie Mécanique) ;
+/// MACO, INSA, ISRH, F4 (Génie Civil) ; F2, F3, F5 (Électronique/Électro/Froid) ;
+/// MIPE/F6, BIPE, COPH, F7, F8 (Génie Chimique / Biomédical) ;
+/// COME, ESCO, DECO, IH, AF1/2/3 (Art et Modes) ; TAG, TCPA (Agricoles) ;
+/// IB, TGF, AF-SC (Industrie du Bois) ; GT (Géomètre Topographe) ; BIJO.
+/// Annee_scolaire stockée : '2025-2026' (la liste 2024-2025 reste en vigueur,
+/// pas de nouvelle liste MINESEC technique publiée à ce jour).
+pub async fn ensure_seed_minesec_technique_2024_2025(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Seed MINESEC Technique 2024-2025 (toutes spécialités)...");
+    let sql = include_str!("../../migrations/20260512_003_seed_minesec_technique_2024_2025.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ Seed MINESEC Technique 2024-2025 OK");
+    Ok(())
+}
+
+/// ✅ 2026-05-12 : Normalisation des classes pour aligner les seeds avec l'UI.
+/// - UPDATE 'Terminale X' → 'Tle X' (20 manuels MINESEC général orphelins)
+/// - DELETE placeholders technique génériques de 20260510_007 (remplacés par
+///   le seed officiel MINESEC Technique 20260512_003).
+/// Migration idempotente.
+pub async fn ensure_normalize_classe_general_technique(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Normalisation classes UI/seed (Terminale→Tle, purge placeholders)...");
+    let sql = include_str!("../../migrations/20260512_004_normalize_classe_general_technique.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ Normalisation classes OK");
+    Ok(())
+}
+
+/// ✅ 2026-05-12 : Ajoute la colonne `created_by` à programmes_scolaires.
+/// Le contrôleur référençait cette colonne dans 2 INSERT (preload + création
+/// manuelle) mais elle n'existait pas → erreur runtime côté admin lors du
+/// chargement du programme national officiel.
+pub async fn ensure_programmes_scolaires_add_created_by(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration programmes_scolaires.created_by...");
+    let sql = include_str!("../../migrations/20260512_005_programmes_scolaires_add_created_by.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ programmes_scolaires.created_by OK");
+    Ok(())
+}
+
+/// ✅ 2026-05-12 : Normalise 'college' et 'lycee' → 'secondaire' dans
+/// etablissements_scolaires.cycles_offerts. Fusion UX : un seul bouton
+/// "Enseignement secondaire" au lieu de Collège (1er cycle) + Lycée (2nd cycle).
+pub async fn ensure_normalize_cycles_offerts(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Normalisation cycles_offerts (college/lycee→secondaire)...");
+    let sql = include_str!("../../migrations/20260512_006_normalize_cycles_offerts.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ cycles_offerts normalisés");
+    Ok(())
+}
+
 /// ✅ 2026-05-10 : pivot du modèle troc — passage du paiement post-completion
 /// au crédit immédiat in-app au checkout.
 ///   - users.wallet_credit_bourse (séparé de tokens_balance général)
@@ -22580,6 +22667,19 @@ pub async fn ensure_bourse_debt(pool: &PgPool) -> Result<(), sqlx::Error> {
     let sql = include_str!("../../migrations/20260512_001_bourse_debt.sql");
     execute_migration_sql_safe(pool, sql).await?;
     info!("✅ users.bourse_debt_xaf OK");
+    Ok(())
+}
+
+/// Migration : 20260512_007_wallet_ledger_idempotence.sql (patch sécurité C2)
+/// Index uniques partiels sur wallet_credit_bourse_ledger pour empêcher la
+/// double-écriture des sources critiques (provisional/engaged/rolled_back/
+/// rollback_debt) par livre_id. Bloque le double-spend / double-comptage
+/// de dette en cas de race (cron qui chevauche, double-clic finalize).
+pub async fn ensure_wallet_ledger_idempotence(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration wallet_ledger idempotence (indexes uniques partiels)...");
+    let sql = include_str!("../../migrations/20260512_007_wallet_ledger_idempotence.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ wallet_ledger idempotence OK");
     Ok(())
 }
 

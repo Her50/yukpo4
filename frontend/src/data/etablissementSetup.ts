@@ -16,14 +16,23 @@ import {
 
 export type SystemeScolaireDB = 'francophone' | 'anglophone' | 'bilingue';
 
+/**
+ * Cycles canoniques. Collège (1er cycle) et Lycée (2nd cycle) ont été fusionnés
+ * en un seul cycle `secondaire` car au Cameroun (et dans la plupart des pays)
+ * un même établissement couvre les deux et la distinction n'est pas utile à la
+ * configuration. Les anciennes valeurs 'college' / 'lycee' restent acceptées
+ * pour la rétrocompatibilité (auto-normalisées via SQL côté backend).
+ */
 export type CycleId =
   | 'maternelle'
   | 'primaire'
-  | 'college'
-  | 'lycee'
+  | 'secondaire'
   | 'technique'
   | 'professionnelle'
-  | 'superieur';
+  | 'superieur'
+  // Legacy — gardés pour ne pas casser les anciennes lignes en DB.
+  | 'college'
+  | 'lycee';
 
 export interface CycleDef {
   id: CycleId;
@@ -43,12 +52,16 @@ export const CYCLES: CycleDef[] = [
     matchTerms: ['primaire', 'primary', 'élémentaire', 'elementaire'],
   },
   {
-    id: 'college', label: 'Collège (1er cycle secondaire)', labelEn: 'Junior secondary',
-    matchTerms: ['collège', 'college', 'moyen', '1er cycle', 'cycle inférieur', 'junior secondary', 'jhs', 'jss'],
-  },
-  {
-    id: 'lycee', label: 'Lycée général (2nd cycle)', labelEn: 'Senior secondary',
-    matchTerms: ['lycée général', 'lycee general', 'secondaire général', 'secondaire general', 'cycle supérieur', 'humanités', 'senior secondary', 'shs', 'sss', 'high school', 'a level', 'o level'],
+    id: 'secondaire', label: 'Enseignement secondaire', labelEn: 'Secondary',
+    matchTerms: [
+      'secondaire', 'secondary',
+      // Anciens libellés MINESEC francophones
+      'collège', 'college', '1er cycle', 'moyen', 'cycle inférieur',
+      'lycée', 'lycee', '2nd cycle', 'cycle supérieur', 'humanités',
+      // Équivalents anglophones
+      'junior secondary', 'senior secondary', 'jhs', 'jss', 'shs', 'sss',
+      'high school', 'a level', 'o level',
+    ],
   },
   {
     id: 'technique', label: 'Technique / industriel', labelEn: 'Technical / industrial',
@@ -63,6 +76,22 @@ export const CYCLES: CycleDef[] = [
     matchTerms: ['supérieur', 'superieur', 'higher', 'university', 'université'],
   },
 ];
+
+/**
+ * Normalise les anciennes valeurs 'college' et 'lycee' en 'secondaire'.
+ * Appelée à la lecture des cycles_offerts depuis la DB.
+ */
+export function normalizeCycle(c: string): CycleId {
+  if (c === 'college' || c === 'lycee') return 'secondaire';
+  return c as CycleId;
+}
+
+export function normalizeCycles(cycles: string[] | null | undefined): CycleId[] {
+  if (!cycles) return [];
+  const normalized = cycles.map(normalizeCycle);
+  // Dédoublonne (si 'college' ET 'lycee' présents → un seul 'secondaire')
+  return Array.from(new Set(normalized));
+}
 
 const norm = (s: string): string =>
   (s || '')

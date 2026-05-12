@@ -38,27 +38,46 @@ primary_region = "cdg"
   YUKPO_SIGNUP_BONUS_TOKENS = "4000"
   YUKPO_IA_EXEMPT_ALL_PARTNERS = "true"   # phase de lancement : tous partenaires gratuits
 
+  # Patch H3 (2026-05-12) — Liste CSV des user_id des admins de la librairie
+  # Yukpo officielle. Ils ont les mêmes droits qu'un super_admin sur les
+  # endpoints admin Bourse (marketplace-overview, recover_consignation, etc.).
+  # Les libraires externes (partenaires) ne sont PAS dans cette liste.
+  # Exemple : "1,42,108". Vide ou absent = aucun admin librairie officielle.
+  YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS = ""
+
   # Migrations auto au démarrage (sqlx::migrate!)
   ENABLE_AUTO_MIGRATIONS = "true"
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"      # machines excédentaires s'arrêtent après 5 min idle
-  auto_start_machines = true       # démarrage auto sous charge
-  min_machines_running = 2         # 2 machines toujours chaudes (HA, pas de cold-start)
+  # ✅ Patch 2026-05-12 — Autoscaling intelligent pour la phase test :
+  #   - 1 seule machine en idle (économie phase test) ; scale automatique sous charge
+  #   - auto_stop_machines = "stop" : arrête les VMs excédentaires après ~5 min idle
+  #   - auto_start_machines = true : démarre des VMs supplémentaires quand soft_limit atteint
+  # Coût en phase test ≈ inchangé (1 VM 1 GB / 1 vCPU) ; explose à la demande seulement.
+  # Pour passer en prod HA : remettre min_machines_running = 2 (zéro cold-start).
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
 
-  # ✅ Auto-scale horizontal :
-  # Fly démarre une nouvelle machine dès qu'une dépasse `soft_limit` requêtes simultanées.
-  # `hard_limit` = protection (refus poli si > N req actives).
-  # Avec 2 machines min + soft 200 / hard 400 → ~400 simultanés couverts ; jusqu'à 8 machines auto.
+  # ✅ Concurrence orientée connexions (et non requêtes), car les requêtes LLM
+  # durent 5-30 s : on saturerait `requests` bien avant la vraie capacité réseau.
+  # Avec type = "connections", Fly scale dès que les sockets ouvertes dépassent
+  # le seuil — plus pertinent pour une API qui mixe REST courts + LLM longs.
+  # Capacité visée : 200 conn × N machines → 1 machine = 200, 4 machines = 800,
+  # 16 machines (plafond Fly par défaut) = 3200 connexions simultanées.
+  # Pour 10k users actifs : pas un problème (pas tous connectés en même temps).
   [http_service.concurrency]
-    type = "requests"
+    type = "connections"
     soft_limit = 200
-    hard_limit = 400
+    hard_limit = 350
 
   [http_service.http_options]
-    response_timeout = 120         # 2 min — large marge pour appels LLM lourds
+    response_timeout = 120         # 2 min — marge pour appels LLM lourds
+    # Idle timeout court pour libérer les connexions plus vite et permettre
+    # à l'autoscaler de redescendre quand le pic est passé.
+    idle_timeout = 60
 
 [[vm]]
   # Démarrage minimal — 1 GB suffit pour Rust Axum + sqlx (très léger).
@@ -78,3 +97,10 @@ primary_region = "cdg"
     port = 8080
     timeout = "10s"
     type = "http"
+
+# ✅ Patch 2026-05-12 — Shutdown gracieux lors du scale-down auto :
+# Fly envoie SIGINT (au lieu de SIGTERM), laisse 30s aux requêtes en cours
+# de se terminer, puis kill. Évite de couper brutalement un appel LLM en cours.
+# Note : nécessite que le binaire écoute SIGINT (axum::serve().with_graceful_shutdown).
+kill_signal = "SIGINT"
+kill_timeout = 30

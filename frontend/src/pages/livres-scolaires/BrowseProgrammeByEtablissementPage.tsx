@@ -66,6 +66,37 @@ const categorieDe = (t: TypeItem): CategorieAffichage => {
   return 'fournitures';
 };
 
+/**
+ * Sépare un classe stocké en DB (ex: "1ère année ELME", "2nde C", "2nd cycle TGF",
+ * "Tronc commun 1er cycle") en (classeNom, serieCode) en consultant le référentiel.
+ * Tente le matching le plus long d'abord pour éviter qu'un classe.nom à un mot
+ * mange une partie d'un classe.nom à plusieurs mots.
+ */
+function parseClasseAndSerie(classeFull: string, systemeId: string, niveauNom: string): { classeNom: string; serieCode: string } {
+  if (!classeFull) return { classeNom: '', serieCode: '' };
+  const systeme = getSystemeById(systemeId);
+  const niveau = systeme?.niveaux.find(n => n.nom === niveauNom);
+  const classes = niveau?.classes ?? [];
+  // Match exact d'abord (classe sans série)
+  const exact = classes.find(c => c.nom === classeFull);
+  if (exact) return { classeNom: exact.nom, serieCode: '' };
+  // Match "classe.nom + ' ' + serie.code" — préférer le classe.nom le plus long
+  const candidats = classes
+    .filter(c => classeFull.startsWith(c.nom + ' '))
+    .sort((a, b) => b.nom.length - a.nom.length);
+  for (const c of candidats) {
+    const reste = classeFull.slice(c.nom.length + 1);
+    const serieMatch = c.series?.find(s => s.code === reste);
+    if (serieMatch) return { classeNom: c.nom, serieCode: serieMatch.code };
+  }
+  // Fallback legacy : split sur premier espace
+  const firstSpace = classeFull.indexOf(' ');
+  if (firstSpace > 0) {
+    return { classeNom: classeFull.slice(0, firstSpace), serieCode: classeFull.slice(firstSpace + 1) };
+  }
+  return { classeNom: classeFull, serieCode: '' };
+}
+
 const DEVISE_LOCALE_PAR_PAYS: Record<string, string> = {
   CM: 'XAF', CI: 'XOF', SN: 'XOF', GA: 'XAF', CG: 'XAF', CD: 'CDF',
   BJ: 'XOF', TG: 'XOF', BF: 'XOF', ML: 'XOF', NE: 'XOF', NG: 'NGN', GH: 'GHS',
@@ -102,12 +133,19 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
     );
   }, []);
 
-  // Sélecteurs pays / système / niveau / classe / série
+  // Sélecteurs pays / système / niveau / classe / série.
+  // Parsing du classe seedé : si le classe.nom contient un espace (ex: "1ère année"),
+  // un split naïf casse la séparation classe/série. On résout en cherchant dans
+  // le référentiel le classe.nom qui matche la chaîne stockée.
+  const seedClasseRaw = seedEnfant?.classe ?? '';
+  const seedSystemeId = seedEnfant?.systemeId ?? 'CM-fr';
+  const seedNiveau = seedEnfant?.niveau ?? '';
+  const seedParsed = parseClasseAndSerie(seedClasseRaw, seedSystemeId, seedNiveau);
   const [pays, setPays] = useState<PaysCode>(seedEnfant?.pays ?? 'CM');
-  const [systemeId, setSystemeId] = useState(seedEnfant?.systemeId ?? 'CM-fr');
-  const [niveauNom, setNiveauNom] = useState(seedEnfant?.niveau ?? '');
-  const [classeNom, setClasseNom] = useState(seedEnfant?.classe?.split(' ')[0] ?? '');
-  const [serieCode, setSerieCode] = useState(seedEnfant?.serie ?? '');
+  const [systemeId, setSystemeId] = useState(seedSystemeId);
+  const [niveauNom, setNiveauNom] = useState(seedNiveau);
+  const [classeNom, setClasseNom] = useState(seedParsed.classeNom);
+  const [serieCode, setSerieCode] = useState(seedEnfant?.serie ?? seedParsed.serieCode);
 
   const currentSystemeObj = getSystemeById(systemeId) ?? getSystemesForPays(pays)[0];
   const currentNiveaux = currentSystemeObj?.niveaux ?? [];

@@ -119,6 +119,20 @@ RÈGLES :
 5. Si tu vois un programme scolaire (manuels par classe), extrait-le dans `listes_scolaires` avec un objet par classe.
 6. Pour les dates du calendrier scolaire, si une année n'est pas explicite, déduis-la (rentrée probablement août/septembre 2026).
 7. Sois fidèle à l'orthographe / aux abréviations / aux unités telles qu'écrites.
+8. ⚠️ HARMONISATION CLASSES (OBLIGATOIRE) — Convertis TOUJOURS les noms de classes vers la nomenclature \
+   nationale canonique avant de les écrire dans `listes_scolaires.classe` :
+   • Cameroun francophone : `Maternelle 1ère année`, `Maternelle 2ème année`, `SIL`, `CP`, `CE1`, `CE2`, `CM1`, `CM2`, \
+     `6ème`, `5ème`, `4ème`, `3ème`, `2nde A/C/E/SES/AC`, `1ère A/C/D/E/SES/TI`, `Tle A/C/D/E/SES/TI`.
+     ❌ N'écris JAMAIS `Terminale` (utilise `Tle`), `Maternelle 1` (utilise `Maternelle 1ère année`).
+   • Cameroun technique : `1ère/2ème/3ème/4ème année <SPEC>` (SPEC = ELME/ELEQ/ELNI/FRCL/MENU/CHARP/MEFE/COOM/CAPA/\
+     MEM/MARE/MACO/INSA/COME/ESCO/DECO/AF-SC), `2nde/1ère/Tle <CODE>` (F2/F3/F4/F5/MIPE/BIPE/COPH/GT/IB/ISRH/IH/\
+     AMEB/MAGE/MA/MEM/MF/CM/AF1/AF2/AF3), `2nd cycle <CODE>` pour BIJO/CH-TI/F7/F8/FM/TGF/TCPA/TAG/AQ/TAG/PM.
+   • Cameroun anglophone : `Nursery 1`, `Nursery 2`, `Class 1` … `Class 6`, `Form 1` … `Form 5`, `Form 1T` … `Form 5T`, \
+     `Lower Sixth`, `Upper Sixth` (avec série A/C/D… en suffixe quand pertinent).
+   Si le document utilise une orthographe différente (ex: "Première A", "Maternelle 2", "Terminale C"), TRADUIS-la dans la forme canonique ci-dessus.
+9. ⚠️ CYCLES OFFERTS (cycles_offerts) — Utilise les valeurs canoniques uniquement :
+   `maternelle`, `primaire`, `secondaire` (un seul label pour collège+lycée, fusionnés), `technique`, `professionnelle`, `superieur`.
+   N'écris PAS `college` ou `lycee` séparément — utilise `secondaire` à la place.
 
 FORMAT DE SORTIE — JSON STRICT (pas de texte avant ou après, pas de balises markdown) :
 {{
@@ -128,7 +142,7 @@ FORMAT DE SORTIE — JSON STRICT (pas de texte avant ou après, pas de balises m
     "nom_abrege": "string ou null  (sigle ou forme courte populaire — ex: CBLG, GBHS, Vogt)",
     "type_etablissement": "primaire | secondaire | superieur | mixte ou null",
     "systeme_scolaire": "francophone | anglophone | bilingue ou null",
-    "cycles_offerts": ["maternelle" | "primaire" | "college" | "lycee" | "technique" | "professionnelle" | "superieur"],
+    "cycles_offerts": ["maternelle" | "primaire" | "secondaire" | "technique" | "professionnelle" | "superieur"],
     "pays": "code ISO-2 (CM, CI, SN, GA, NG, GH…) ou null",
     "ville": "string ou null",
     "quartier": "string ou null",
@@ -208,7 +222,7 @@ FORMAT DE SORTIE — JSON STRICT (pas de texte avant ou après, pas de balises m
   ],
   "listes_scolaires": [
     {{
-      "classe": "string  (ex: 6ème, CE2, Form 4)",
+      "classe": "string  (forme canonique nationale — voir RÈGLE 8 ; ex: '6ème', 'CE2', 'Form 4', 'Tle C', 'Maternelle 1ère année', '2nde F3')",
       "annee_scolaire": "string  (ex: 2026-2027)",
       "articles": [
         {{

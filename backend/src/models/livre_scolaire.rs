@@ -506,13 +506,23 @@ pub fn calculer_valeur_livre(prix_detecte: f64, etat_classification: &str) -> (f
 
 /// Calculer le montant net à payer pour un échange
 /// montant_net = (valeur_livres_recus + commission + frais_livraison) - valeur_livres_donnes
+///
+/// Patch H4 (2026-05-12) : clamp à >= 0 sur tous les inputs. Sans ça, un
+/// `frais_livraison = -50000` injecté côté client offrirait des livres gratuits
+/// (le .max(0.0) en sortie cachait l'attaque sans vraiment l'empêcher).
 pub fn calculer_montant_net(
     valeur_livres_recus: f64,
     valeur_livres_donnes: f64,
     frais_livraison: f64,
 ) -> (f64, f64) {
-    let commission = valeur_livres_recus * TAUX_COMMISSION_APP;
-    let montant_net = (valeur_livres_recus + commission + frais_livraison) - valeur_livres_donnes;
+    // Refuse les montants négatifs ou NaN. Les inputs viennent de calculs IA
+    // (valeurs livres) ou de tarifs Yukpo (frais) : aucun ne peut légitimement
+    // être négatif.
+    let recus = valeur_livres_recus.max(0.0);
+    let donnes = valeur_livres_donnes.max(0.0);
+    let frais = frais_livraison.max(0.0);
+    let commission = recus * TAUX_COMMISSION_APP;
+    let montant_net = (recus + commission + frais) - donnes;
     (montant_net.max(0.0), commission)
 }
 

@@ -117,7 +117,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route(
             "/api/bourse-livre/v2/programmes-scolaires/submit",
             post(bourse_livre_v2_controller::submit_programmes_scolaires_etablissement)
-                .layer(axum::extract::DefaultBodyLimit::max(20_000_000)), // 20 MB — photos base64
+                // Patch C4 (2026-05-12) : 25 MB max au transport (base64 = +33% overhead
+                // sur 15 MB × max 10 fichiers = ~200 MB théorique ; on serre à 25 MB
+                // pour rester pragmatique : >1 fichier volumineux → API rate-limit).
+                // La validation magic-bytes + taille par fichier (5/15 MB) est faite
+                // dans le contrôleur via image_upload_validator.
+                .layer(axum::extract::DefaultBodyLimit::max(25_000_000)),
         )
         // Polling statut d'un job de scan (retourné en 202 par /submit)
         .route(

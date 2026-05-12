@@ -119,17 +119,17 @@ pub async fn get_upload_session(
 ///   - Compteurs globaux par mode (troc/vente/don) et par état
 ///   - Activité récente (50 derniers livres)
 ///   - Stats des matchings troc (pending/matched/chained/expired)
-/// Restreint à user.role = 'admin' OU 'librairie' OU 'super_admin'.
+///
+/// Patch H3 (2026-05-12) : restreint à
+///   - super_admin / admin globaux Yukpo
+///   - admins de la librairie Yukpo officielle (env YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS)
+/// Les libraires externes (partenaires) sont REJETÉS — ils n'ont pas vocation
+/// à voir les agrégats marketplace globaux et les patterns des autres vendeurs.
 pub async fn get_marketplace_overview(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
-    let role = user.role.as_str();
-    if !matches!(role, "admin" | "super_admin" | "librairie" | "libraire") {
-        return Err(AppError::Forbidden(
-            "Accès réservé aux admins et librairies".to_string(),
-        ));
-    }
+    crate::utils::role_helpers::ensure_bourse_admin(&user)?;
 
     use sqlx::Row;
 
@@ -525,7 +525,26 @@ pub async fn analyze_recto_verso(
         ));
     }
 
-    // Extraire base64 des images
+    // Patch C4 (2026-05-12) : valider magic-bytes + taille avant toute opération
+    // coûteuse (LLM, CDN). Refuse les payloads non-images (exécutables, archives)
+    // et borne la taille à 5 MB par image (anti-DoS storage et coût IA).
+    use crate::utils::image_upload_validator::{decode_and_validate_image, MAX_IMAGE_BYTES};
+    let (_recto_bytes, _recto_kind) =
+        decode_and_validate_image(&request.image_recto, MAX_IMAGE_BYTES).map_err(|e| match e {
+            AppError::BadRequest(msg) => {
+                AppError::BadRequest(format!("image_recto invalide : {}", msg))
+            }
+            other => other,
+        })?;
+    let (_verso_bytes, _verso_kind) =
+        decode_and_validate_image(&request.image_verso, MAX_IMAGE_BYTES).map_err(|e| match e {
+            AppError::BadRequest(msg) => {
+                AppError::BadRequest(format!("image_verso invalide : {}", msg))
+            }
+            other => other,
+        })?;
+
+    // Extraire base64 des images (déjà validé ci-dessus, on garde pour l'IA)
     let recto_b64 = extract_base64(&request.image_recto);
     let verso_b64 = extract_base64(&request.image_verso);
 
@@ -2825,6 +2844,59 @@ pub async fn submit_programmes_scolaires_etablissement(
         return Err(AppError::BadRequest(
             "Sélectionnez au moins un niveau".to_string(),
         ));
+    }
+
+    // Patch C4 (2026-05-12) : borner le nombre de fichiers + valider chaque
+    // payload (magic bytes + taille) avant d'enqueue le job IA. Évite qu'un
+    // attaquant envoie 100 fichiers binaires aléatoires qui finiront par
+    // saturer le worker IA et la storage Wasabi/CloudFront.
+    const MAX_FICHIERS_PAR_SUBMIT: usize = 10;
+    if payload.fichiers.len() > MAX_FICHIERS_PAR_SUBMIT {
+        return Err(AppError::BadRequest(format!(
+            "Maximum {} fichiers par envoi (reçu : {})",
+            MAX_FICHIERS_PAR_SUBMIT,
+            payload.fichiers.len()
+        )));
+    }
+    {
+        use crate::utils::image_upload_validator::{
+            decode_and_validate_image, DetectedKind, MAX_PROGRAMME_BYTES,
+        };
+        for (i, f) in payload.fichiers.iter().enumerate() {
+            let (_bytes, kind) = decode_and_validate_image(&f.base64, MAX_PROGRAMME_BYTES)
+                .map_err(|e| match e {
+                    AppError::BadRequest(msg) => {
+                        AppError::BadRequest(format!("Fichier #{} ({}): {}", i + 1, f.nom, msg))
+                    }
+                    other => other,
+                })?;
+            // Pour les programmes scolaires : accepter PDF/Excel (via détection)
+            // + images. On rejette les types incohérents (ex: PDF déclaré mais
+            // bytes JPEG, ou inverse).
+            let claimed = f.file_type.to_lowercase();
+            let coherent = match kind {
+                DetectedKind::Pdf => {
+                    claimed.contains("pdf") || claimed.is_empty() || claimed == "document"
+                }
+                DetectedKind::OfficeOpenXml | DetectedKind::OfficeLegacy => {
+                    claimed.contains("excel")
+                        || claimed.contains("sheet")
+                        || claimed == "document"
+                        || claimed.is_empty()
+                }
+                _ if kind.is_image() => claimed.contains("image") || claimed.is_empty(),
+                _ => false,
+            };
+            if !coherent {
+                return Err(AppError::BadRequest(format!(
+                    "Fichier #{} ({}) : type déclaré '{}' incohérent avec le contenu réel ({})",
+                    i + 1,
+                    f.nom,
+                    f.file_type,
+                    kind.mime()
+                )));
+            }
+        }
     }
 
     let job_id = Uuid::new_v4().to_string();
@@ -7060,52 +7132,147 @@ pub struct ValidateQRRequest {
 // ============================================================================
 
 /// POST /api/webhooks/book-purchase/:id
-/// Callback de paiement pour les achats directs de livres
-/// Route PUBLIQUE (pas de JWT — appelée par le prestataire de paiement)
-#[derive(Debug, Deserialize)]
-pub struct BookPurchaseWebhookPayload {
-    pub status: Option<String>, // "ACCEPTED", "REFUSED", etc.
-    pub transaction_id: Option<String>,
-    pub amount: Option<i64>,
-    pub currency: Option<String>,
-    pub payment_method: Option<String>,
-    // CinetPay-specific
-    pub cpm_trans_status: Option<String>,
-    pub cpm_trans_id: Option<String>,
-    // NotchPay-specific
-    pub reference: Option<String>,
-}
-
+/// Callback de paiement pour les achats directs de livres.
+/// Route PUBLIQUE (pas de JWT). Sécurisée par vérification de signature HMAC
+/// du prestataire (CinetPay/NotchPay/Flutterwave) via PaymentAggregator.
+///
+/// Sécurité (faille C1 — patch sécurité 2026-05-12) :
+///  - Signature HMAC vérifiée selon le provider stocké dans book_purchases.paiement_methode
+///  - Idempotence atomique : UPDATE conditionné sur paiement_statut IN ('en_attente_paiement','en_attente')
+///  - Anti-tampering du montant : verification.amount doit correspondre à purchase.montant_total
+///  - Toujours 200 OK si déjà traité (anti-retry du provider) ; 401 si signature invalide
 pub async fn book_purchase_webhook(
     State(state): State<Arc<AppState>>,
     Path(purchase_id): Path<i32>,
-    Json(payload): Json<BookPurchaseWebhookPayload>,
+    headers: axum::http::HeaderMap,
+    body: axum::body::Bytes,
 ) -> AppResult<impl IntoResponse> {
+    use crate::services::payment_aggregator::{
+        AggregatorProvider, PaymentAggStatus, PaymentAggregator,
+    };
+
     info!(
-        "[book_purchase_webhook] Purchase: {}, Status: {:?}, TransID: {:?}",
-        purchase_id, payload.status, payload.transaction_id
+        "[book_purchase_webhook] Purchase: {}, body: {} bytes",
+        purchase_id,
+        body.len()
     );
 
-    // Déterminer si le paiement est accepté
-    let is_accepted = payload
-        .status
-        .as_deref()
-        .map(|s| s == "ACCEPTED" || s == "completed" || s == "successful")
-        .unwrap_or(false)
-        || payload
-            .cpm_trans_status
-            .as_deref()
-            .map(|s| s == "ACCEPTED" || s == "00")
-            .unwrap_or(false);
+    // 1. Charger l'achat pour connaître le provider et le montant attendu
+    let purchase = sqlx::query_as::<_, crate::models::livre_scolaire::BookPurchase>(
+        "SELECT * FROM book_purchases WHERE id = $1",
+    )
+    .bind(purchase_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture purchase: {}", e)))?
+    .ok_or_else(|| AppError::NotFound(format!("Achat #{} introuvable", purchase_id)))?;
 
-    let ref_id = payload
-        .transaction_id
-        .or(payload.cpm_trans_id)
-        .or(payload.reference)
-        .unwrap_or_default();
+    // 2. Déterminer le provider depuis paiement_methode (renseigné à l'init de l'achat)
+    let provider = match purchase.paiement_methode.as_deref().unwrap_or("").to_lowercase().as_str()
+    {
+        "cinetpay" | "mtn_money" | "orange_money" | "mobile_money" => AggregatorProvider::CinetPay,
+        "notchpay" => AggregatorProvider::NotchPay,
+        "flutterwave" => AggregatorProvider::Flutterwave,
+        other => {
+            warn!(
+                "[book_purchase_webhook] Provider '{}' inconnu pour achat #{} — rejet",
+                other, purchase_id
+            );
+            return Err(AppError::BadRequest(format!(
+                "Méthode de paiement '{}' non supportée par ce webhook",
+                other
+            )));
+        }
+    };
 
-    if is_accepted {
-        // Mettre à jour le statut du paiement
+    // 3. Convertir headers Axum → HashMap (attendu par PaymentAggregator)
+    let mut header_map = std::collections::HashMap::new();
+    for (key, value) in headers.iter() {
+        if let Ok(v) = value.to_str() {
+            header_map.insert(key.as_str().to_string(), v.to_string());
+        }
+    }
+
+    // 4. Vérification du webhook (signature HMAC pour NotchPay/Flutterwave,
+    //    présence du cpm_trans_id pour CinetPay — la vraie validation passe par check_status)
+    let aggregator = PaymentAggregator::new();
+    let verification = aggregator.verify_webhook(&provider, &header_map, &body);
+
+    if !verification.is_valid {
+        warn!(
+            "[book_purchase_webhook] ❌ Webhook INVALIDE — provider={} purchase={} — tentative ignorée",
+            provider, purchase_id
+        );
+        return Err(AppError::Unauthorized(
+            "Webhook invalide (signature ou format)".to_string(),
+        ));
+    }
+
+    // 4-bis. Pour CinetPay : check_status auprès de l'API (la signature HMAC seule
+    //        est insuffisante — un attaquant pourrait forger n'importe quel cpm_trans_id).
+    //        Pour NotchPay/Flutterwave : la HMAC suffit, on garde le statut du webhook.
+    let (verified_status, verified_amount, verified_ref) = match &provider {
+        AggregatorProvider::CinetPay => {
+            let tid = verification.transaction_id.clone().ok_or_else(|| {
+                AppError::Unauthorized("CinetPay: transaction_id manquant".to_string())
+            })?;
+            let provider_ref = verification.provider_reference.clone().unwrap_or_default();
+            let check =
+                aggregator.check_status(&tid, &provider, &provider_ref).await.map_err(|e| {
+                    warn!(
+                        "[book_purchase_webhook] CinetPay check_status échec purchase={}: {}",
+                        purchase_id, e
+                    );
+                    AppError::Internal(format!("Vérification statut CinetPay: {}", e))
+                })?;
+            (Some(check.status), Some(check.amount), tid)
+        }
+        _ => (
+            verification.status.clone(),
+            verification.amount,
+            verification
+                .provider_reference
+                .clone()
+                .or(verification.transaction_id.clone())
+                .unwrap_or_default(),
+        ),
+    };
+
+    // 5. Anti-tampering : montant du webhook doit correspondre au montant attendu
+    if let (Some(webhook_amount), Some(expected)) =
+        (verified_amount, purchase.montant_total.as_ref())
+    {
+        let received_dec = rust_decimal::Decimal::from(webhook_amount);
+        if &received_dec != expected {
+            warn!(
+                "[book_purchase_webhook] ❌ Montant non concordant — purchase={} attendu={} reçu={}",
+                purchase_id, expected, webhook_amount
+            );
+            return Err(AppError::Unauthorized(
+                "Montant du webhook ne correspond pas".to_string(),
+            ));
+        }
+    }
+
+    let ref_id = verified_ref;
+
+    // 6. Si paiement déjà traité → 200 OK silencieux (anti-retry du provider)
+    if matches!(
+        purchase.paiement_statut.as_deref(),
+        Some("paye") | Some("echoue") | Some("rembourse")
+    ) {
+        info!(
+            "[book_purchase_webhook] Achat #{} déjà traité (statut={:?}) — ignored",
+            purchase_id, purchase.paiement_statut
+        );
+        return Ok(Json(json!({ "success": true, "already_processed": true })));
+    }
+
+    // 7. Traiter selon le statut vérifié
+    let is_completed = matches!(verified_status, Some(PaymentAggStatus::Completed));
+
+    if is_completed {
+        // UPDATE atomique conditionné — idempotence renforcée
         let updated = sqlx::query_as::<_, crate::models::livre_scolaire::BookPurchase>(
             r#"
             UPDATE book_purchases
@@ -7158,9 +7325,9 @@ pub async fn book_purchase_webhook(
             .await;
         }
     } else {
-        // Paiement échoué
+        // Paiement non complété : Failed / Cancelled / Expired
         let _ = sqlx::query(
-            "UPDATE book_purchases SET paiement_statut = 'echoue', paiement_reference = $1 WHERE id = $2",
+            "UPDATE book_purchases SET paiement_statut = 'echoue', paiement_reference = $1, updated_at = NOW() WHERE id = $2 AND paiement_statut IN ('en_attente_paiement', 'en_attente')",
         )
         .bind(&ref_id)
         .bind(purchase_id)
@@ -7168,8 +7335,8 @@ pub async fn book_purchase_webhook(
         .await;
 
         warn!(
-            "[book_purchase_webhook] ❌ Paiement échoué pour achat #{}: {:?}",
-            purchase_id, payload.status
+            "[book_purchase_webhook] ❌ Paiement non complété pour achat #{}: status={:?}",
+            purchase_id, verified_status
         );
     }
 

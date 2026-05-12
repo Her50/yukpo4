@@ -1476,6 +1476,10 @@ pub async fn ia_extract_etablissement(
                         s.as_str(),
                         "maternelle"
                             | "primaire"
+                            | "secondaire"
+                            // Anciennes valeurs : tolérées en entrée, normalisées
+                            // côté frontend via `normalizeCycles()`. La SQL
+                            // 20260512_006 a déjà migré les valeurs DB.
                             | "college"
                             | "lycee"
                             | "technique"

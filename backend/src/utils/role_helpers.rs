@@ -61,6 +61,55 @@ pub fn ensure_admin_role_str(role: &str) -> AppResult<()> {
     }
 }
 
+// ============================================================================
+// Patch H3 (2026-05-12) — Admins de la librairie Yukpo officielle
+//
+// La Bourse du Livre a une « librairie Yukpo officielle » gérée en interne :
+// stock central, opérations marketplace, supervision des libraires partenaires.
+// Les admins de cette librairie doivent avoir TOUS les accès admin Bourse,
+// au même titre que super_admin/admin globaux.
+//
+// Les libraires externes (partenaires), eux, sont restreints à leurs propres
+// stocks et ventes — ils n'ont PAS accès à marketplace-overview ou aux
+// agrégats globaux.
+//
+// Identification de la librairie officielle (au choix, sans migration DB) :
+//   - Variable d'env YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS = "1,42,108"
+//     (liste CSV d'IDs utilisateurs qui sont admins de la librairie officielle)
+//   - Évolution future : flag DB `users.is_yukpo_official_librairie` quand
+//     l'équipe deviendra plus grande.
+// ============================================================================
+
+/// Vérifie si le user est admin de la librairie Yukpo officielle (via env var).
+pub fn is_yukpo_official_librairie_admin(user_id: i32) -> bool {
+    let csv = match std::env::var("YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS") {
+        Ok(v) if !v.trim().is_empty() => v,
+        _ => return false,
+    };
+    csv.split(',')
+        .filter_map(|s| s.trim().parse::<i32>().ok())
+        .any(|id| id == user_id)
+}
+
+/// Vérifie qu'un user a accès aux opérations admin de la Bourse du Livre :
+///   - super_admin / admin globaux Yukpo
+///   - admin de la librairie Yukpo officielle (via YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS)
+///
+/// Les libraires externes (rôle "librairie"/"libraire") sont REJETÉS — ils ont
+/// leurs propres endpoints (stocks, ventes par succursale) et ne doivent pas
+/// voir les agrégats marketplace globaux.
+pub fn ensure_bourse_admin(user: &AuthenticatedUser) -> AppResult<()> {
+    if is_admin_role(&user.role) {
+        return Ok(());
+    }
+    if is_yukpo_official_librairie_admin(user.id) {
+        return Ok(());
+    }
+    Err(AppError::Forbidden(
+        "Accès réservé aux administrateurs Yukpo et aux admins de la librairie officielle".into(),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -72,6 +121,8 @@ mod tests {
         assert!(!is_admin_role("user"));
         assert!(!is_admin_role("client"));
         assert!(!is_admin_role("prestataire"));
+        assert!(!is_admin_role("librairie"));
+        assert!(!is_admin_role("libraire"));
     }
 
     #[test]
@@ -79,5 +130,18 @@ mod tests {
         assert!(ensure_admin_role_str("admin").is_ok());
         assert!(ensure_admin_role_str("super_admin").is_ok());
         assert!(ensure_admin_role_str("user").is_err());
+    }
+
+    #[test]
+    fn test_yukpo_official_librairie_admin_env() {
+        std::env::set_var("YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS", "1, 42 , 108");
+        assert!(is_yukpo_official_librairie_admin(1));
+        assert!(is_yukpo_official_librairie_admin(42));
+        assert!(is_yukpo_official_librairie_admin(108));
+        assert!(!is_yukpo_official_librairie_admin(99));
+        std::env::set_var("YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS", "");
+        assert!(!is_yukpo_official_librairie_admin(1));
+        std::env::remove_var("YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS");
+        assert!(!is_yukpo_official_librairie_admin(1));
     }
 }

@@ -17,7 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/use-toast';
 import { isGuestAccount } from '../../hooks/useGuestAuth';
 import { apiDelete, apiGet, apiPost, apiPut } from '../../services/apiService';
-import { CYCLES, CycleId, SystemeScolaireDB } from '../../data/etablissementSetup';
+import { CYCLES, CycleId, SystemeScolaireDB, normalizeCycles } from '../../data/etablissementSetup';
 import { LISTE_PAYS_UNIQUES, PaysCode } from '../../data/schoolSystems';
 
 const TYPES_BLOCS = [
@@ -1008,19 +1008,19 @@ const BlocEditModal: React.FC<{
       onClick={onClose}
     >
       <div
-        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg h-[92dvh] sm:h-auto sm:max-h-[92dvh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+        <div className="p-5 bg-white border-b border-gray-100 flex items-center gap-3 shrink-0">
           <p className="font-bold text-gray-900 flex-1">
             {t(`bourse.infos.sections.${typeBloc}`)}
           </p>
-          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100" aria-label="Fermer">
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           <div>
             <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
               Titre (optionnel)
@@ -1067,7 +1067,10 @@ const BlocEditModal: React.FC<{
           </label>
         </div>
 
-        <div className="p-5 sticky bottom-0 bg-white border-t border-gray-100 flex gap-2">
+        <div
+          className="p-5 bg-white border-t border-gray-100 flex gap-2 shrink-0"
+          style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+        >
           <button
             onClick={onClose}
             className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold"
@@ -1112,7 +1115,7 @@ const EtablissementConfigModal: React.FC<{
     (etab.systeme_scolaire as SystemeScolaireDB) || null,
   );
   const [cycles, setCycles] = useState<Set<CycleId>>(
-    new Set((etab.cycles_offerts || []) as CycleId[]),
+    new Set(normalizeCycles(etab.cycles_offerts || [])),
   );
   const [ville, setVille] = useState(etab.ville || '');
   const [quartier, setQuartier] = useState(etab.quartier || '');
@@ -1159,16 +1162,22 @@ const EtablissementConfigModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
-      <div className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+      {/* dvh > vh sur mobile : tient compte de la barre d'adresse Chrome qui se rétracte.
+          flex column avec header/footer fixes ET zone de scroll au milieu (flex-1).
+          pb safe-area-inset-bottom pour notch iOS. */}
+      <div
+        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg h-[92dvh] sm:h-auto sm:max-h-[92dvh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-5 bg-white border-b border-gray-100 flex items-center gap-3 shrink-0">
           <Settings className="w-5 h-5 text-emerald-600" />
           <p className="font-bold text-gray-900 flex-1">Configuration de l'établissement</p>
-          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100" aria-label="Fermer">
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {/* Nom + Nom abrégé */}
           <div>
             <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Nom complet *</label>
@@ -1276,7 +1285,10 @@ const EtablissementConfigModal: React.FC<{
           </div>
         </div>
 
-        <div className="p-5 sticky bottom-0 bg-white border-t border-gray-100 flex gap-2">
+        <div
+          className="p-5 bg-white border-t border-gray-100 flex gap-2 shrink-0"
+          style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+        >
           <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold">
             Annuler
           </button>
@@ -1484,16 +1496,19 @@ const InviteTeamMemberModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
-      <div className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+      <div
+        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg h-[92dvh] sm:h-auto sm:max-h-[92dvh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-5 bg-white border-b border-gray-100 flex items-center gap-3 shrink-0">
           <Plus className="w-5 h-5 text-emerald-600" />
           <p className="font-bold text-gray-900 flex-1">Inviter un membre d'équipe</p>
-          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
+          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100" aria-label="Fermer">
             <X className="w-4 h-4 text-gray-500" />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {!created && (
             <>
               <div>
@@ -1587,7 +1602,10 @@ const InviteTeamMemberModal: React.FC<{
           )}
         </div>
 
-        <div className="p-5 sticky bottom-0 bg-white border-t border-gray-100 flex gap-2">
+        <div
+          className="p-5 bg-white border-t border-gray-100 flex gap-2 shrink-0"
+          style={{ paddingBottom: 'max(20px, env(safe-area-inset-bottom))' }}
+        >
           <button onClick={onClose} className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-semibold">
             {created ? 'Fermer' : 'Annuler'}
           </button>

@@ -39,12 +39,12 @@ BEGIN
     SELECT v_etab_id, 'CM', 'francophone', niveau, classe, matiere, titre, editeur,
            'livre', prix, 'XAF', v_annee, true, 1, true
     FROM (VALUES
-        ('Maternelle', 'Maternelle 1', 'Langage', 'Mon cahier d''activités de langage 1ère année', 'NATHAN', 1000),
-        ('Maternelle', 'Maternelle 1', 'Mathématiques', 'Mon cahier d''activités de Mathématique 1ère année', 'NATHAN', 1000),
-        ('Maternelle', 'Maternelle 1', 'Dessin/Coloriage', 'Je pratique le Dessin et le Coloriage', 'AFRICA Education', 1000),
-        ('Maternelle', 'Maternelle 2', 'Langage', 'Les Majors en activité de Langage, Maternelle 2', 'ASVA', 1000),
-        ('Maternelle', 'Maternelle 2', 'Mathématiques', 'Mon cahier d''activités de Mathématiques, M. 2ème année', 'NATHAN', 1000),
-        ('Maternelle', 'Maternelle 2', 'Dessin/Coloriage', 'Je pratique le Dessin et le Coloriage', 'AFRICA Education', 1000)
+        ('Maternelle', 'Maternelle 1ère année', 'Langage', 'Mon cahier d''activités de langage 1ère année', 'NATHAN', 1000),
+        ('Maternelle', 'Maternelle 1ère année', 'Mathématiques', 'Mon cahier d''activités de Mathématique 1ère année', 'NATHAN', 1000),
+        ('Maternelle', 'Maternelle 1ère année', 'Dessin/Coloriage', 'Je pratique le Dessin et le Coloriage', 'AFRICA Education', 1000),
+        ('Maternelle', 'Maternelle 2ème année', 'Langage', 'Les Majors en activité de Langage, Maternelle 2', 'ASVA', 1000),
+        ('Maternelle', 'Maternelle 2ème année', 'Mathématiques', 'Mon cahier d''activités de Mathématiques, M. 2ème année', 'NATHAN', 1000),
+        ('Maternelle', 'Maternelle 2ème année', 'Dessin/Coloriage', 'Je pratique le Dessin et le Coloriage', 'AFRICA Education', 1000)
     ) AS s(niveau, classe, matiere, titre, editeur, prix)
     WHERE NOT EXISTS (
         SELECT 1 FROM programmes_scolaires p

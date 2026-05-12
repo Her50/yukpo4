@@ -76,9 +76,14 @@ pub async fn run_daily_maintenance(pool: &PgPool) -> Result<LifecycleReport, sql
           AND l.updated_at < NOW() - ($1::int * INTERVAL '1 day')
           AND pkg.id IS NULL
           AND NOT EXISTS (
+              -- Patch C2 (2026-05-12) : inclure les DEUX chemins de rollback.
+              -- Sans 'troc_rollback_debt', le cron reboucle sur les livres dont
+              -- le rollback s'est fait via dette (apply_debt_tx) car le wallet
+              -- était vide. L'index unique (migration 20260512_007) empêcherait
+              -- la double-insertion, mais on évite ici le bruit inutile.
               SELECT 1 FROM wallet_credit_bourse_ledger ll
               WHERE ll.livre_id = l.id
-                AND ll.source = 'troc_credit_rolled_back'
+                AND ll.source IN ('troc_credit_rolled_back', 'troc_rollback_debt')
                 AND ll.created_at > ledger.created_at
           )
         "#,
@@ -130,7 +135,7 @@ pub async fn run_daily_maintenance(pool: &PgPool) -> Result<LifecycleReport, sql
             }
             if !consumed {
                 if let Ok(mut tx) = pool.begin().await {
-                    let _ = wallet::apply_debt_tx(
+                    match wallet::apply_debt_tx(
                         &mut tx,
                         user_id,
                         amount,
@@ -143,8 +148,32 @@ pub async fn run_daily_maintenance(pool: &PgPool) -> Result<LifecycleReport, sql
                             ..Default::default()
                         },
                     )
-                    .await;
-                    let _ = tx.commit().await;
+                    .await
+                    {
+                        Ok(_) => {
+                            let _ = tx.commit().await;
+                        }
+                        Err(e) => {
+                            // Idempotence : si l'index unique partiel
+                            // (migration 20260512_007) bloque une 2e insertion,
+                            // c'est qu'un autre process a déjà fait le rollback.
+                            // On ignore silencieusement et on rollback la tx.
+                            let _ = tx.rollback().await;
+                            let msg = e.to_string();
+                            if msg.contains("23505") || msg.contains("duplicate") {
+                                log::info!(
+                                    "[troc_lifecycle] Livre {} déjà rollbacké (idempotence) — skip",
+                                    livre_id
+                                );
+                            } else {
+                                log::warn!(
+                                    "[troc_lifecycle] apply_debt_tx échec livre {}: {}",
+                                    livre_id,
+                                    msg
+                                );
+                            }
+                        }
+                    }
                 }
             }
             report.failed_chained_count += 1;

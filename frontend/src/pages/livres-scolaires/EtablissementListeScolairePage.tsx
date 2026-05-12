@@ -12,7 +12,7 @@
 //  - Vue tabulée par type d'article (livres / cahiers / fournitures).
 //
 import {
-  ArrowLeft, Book, Copy, CopyPlus, Download, Edit2, ExternalLink, Eye, FileText, GraduationCap, Loader2, NotebookPen,
+  ArrowLeft, Book, ChevronRight, Copy, CopyPlus, Download, Edit2, ExternalLink, Eye, FileText, GraduationCap, Loader2, NotebookPen,
   Package, Plus, RefreshCw, School, Sparkles, Trash2, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,8 +21,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../hooks/use-toast';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../../services/apiService';
 import {
-  CycleId, SystemeScolaireDB,
-  filtrerNiveauxParCycles, getSystemesPourEtablissement,
+  SystemeScolaireDB,
+  filtrerNiveauxParCycles, getSystemesPourEtablissement, normalizeCycles,
 } from '../../data/etablissementSetup';
 import {
   Classe, Niveau, PaysCode, SystemeScolaire,
@@ -148,7 +148,7 @@ const EtablissementListeScolairePage: React.FC = () => {
 
   const niveauxFiltres: Niveau[] = useMemo(() => {
     if (!systemeActif) return [];
-    const cycles = (etab?.cycles_offerts || []) as CycleId[];
+    const cycles = normalizeCycles(etab?.cycles_offerts || []);
     return filtrerNiveauxParCycles(systemeActif, cycles);
   }, [systemeActif, etab?.cycles_offerts]);
 
@@ -390,49 +390,28 @@ const EtablissementListeScolairePage: React.FC = () => {
             articles={articles}
             classesConfiguredCount={articlesByClasse.size}
             classesTotalCount={
-              niveauxFiltres.reduce((s, n) => s + n.classes.length, 0)
+              niveauxFiltres.reduce((s, n) => s + expandClassesWithSeries(n.classes).length, 0)
             }
           />
         )}
 
-        {/* Sélecteur de classe */}
+        {/* Sélecteur de classe — accordéon par niveau (replié par défaut sauf
+            les niveaux qui ont déjà des articles configurés). Évite de noyer
+            l'admin sous 70+ classes du lycée technique. */}
         {!activeClasseFull && niveauxFiltres.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {cyclesCount > 0 && (
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide px-1">
                 {t('etabAdmin.listeScolaire.choose_class')}
               </p>
             )}
             {niveauxFiltres.map(niveau => (
-              <div key={niveau.nom} className="bg-white rounded-2xl border border-gray-100 p-3">
-                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-2">
-                  {niveau.nom}
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {niveau.classes.map(c => {
-                    const fullName = c.nom;
-                    const count = articlesByClasse.get(fullName)?.length || 0;
-                    return (
-                      <button
-                        key={fullName}
-                        onClick={() => setActiveClasseFull(fullName)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
-                          count > 0
-                            ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
-                            : 'border-gray-200 bg-gray-50 text-gray-700'
-                        }`}
-                      >
-                        {fullName}
-                        {count > 0 && (
-                          <span className="ml-1.5 text-[10px] bg-emerald-600 text-white rounded-full px-1.5">
-                            {count}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <NiveauAccordion
+                key={niveau.nom}
+                niveau={niveau}
+                articlesByClasse={articlesByClasse}
+                onSelectClasse={setActiveClasseFull}
+              />
             ))}
           </div>
         )}
@@ -481,10 +460,105 @@ const EtablissementListeScolairePage: React.FC = () => {
   );
 };
 
+/**
+ * Section niveau pliable : titre cliquable avec compteur (classes configurées
+ * / total), chevron, et liste des classes seulement quand ouverte. Évite la
+ * page-wall de 70+ classes du lycée technique. Auto-ouvert si au moins une
+ * classe est déjà configurée pour ce niveau.
+ */
+const NiveauAccordion: React.FC<{
+  niveau: Niveau;
+  articlesByClasse: Map<string, Article[]>;
+  onSelectClasse: (classeFull: string) => void;
+}> = ({ niveau, articlesByClasse, onSelectClasse }) => {
+  const classesFull = useMemo(() => expandClassesWithSeries(niveau.classes), [niveau.classes]);
+  const configuredCount = useMemo(
+    () => classesFull.filter(c => (articlesByClasse.get(c)?.length || 0) > 0).length,
+    [classesFull, articlesByClasse],
+  );
+  const totalCount = classesFull.length;
+  // Auto-open si au moins 1 classe configurée — sinon replié pour économiser l'espace.
+  const [open, setOpen] = useState<boolean>(configuredCount > 0);
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full px-3 py-3 flex items-center gap-2 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
+        aria-expanded={open}
+      >
+        <span className={`text-emerald-600 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}>
+          <ChevronRight className="w-4 h-4" />
+        </span>
+        <span className="flex-1 text-xs font-bold text-emerald-700 uppercase tracking-wide truncate">
+          {niveau.nom}
+        </span>
+        <span className="text-[10px] font-semibold text-gray-500 tabular-nums shrink-0">
+          {configuredCount > 0 ? (
+            <span className="text-emerald-700">{configuredCount}</span>
+          ) : (
+            <span className="text-gray-400">0</span>
+          )}
+          <span className="text-gray-400">/{totalCount}</span>
+        </span>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-1">
+          <div className="flex flex-wrap gap-1.5">
+            {classesFull.map(fullName => {
+              const count = articlesByClasse.get(fullName)?.length || 0;
+              return (
+                <button
+                  key={fullName}
+                  onClick={() => onSelectClasse(fullName)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                    count > 0
+                      ? 'border-emerald-400 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  {fullName}
+                  {count > 0 && (
+                    <span className="ml-1.5 text-[10px] bg-emerald-600 text-white rounded-full px-1.5">
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Aplatit une liste de classes en intégrant leurs séries pour produire les
+ * vrais noms stockés en DB (`programmes_scolaires.classe`).
+ * Ex: { nom: '1ère année', series: [{code:'ELME'}, {code:'ELEQ'}] }
+ *  → ['1ère année ELME', '1ère année ELEQ']
+ */
+const expandClassesWithSeries = (classes: { nom: string; series?: { code: string }[] }[]): string[] => {
+  const out: string[] = [];
+  for (const c of classes) {
+    if (!c.series || c.series.length === 0) {
+      out.push(c.nom);
+    } else {
+      for (const s of c.series) out.push(`${c.nom} ${s.code}`);
+    }
+  }
+  return out;
+};
+
 const findNiveauForClasse = (systeme: SystemeScolaire | null, classeFull: string): string => {
   if (!systeme) return '';
   for (const n of systeme.niveaux) {
-    if (n.classes.some(c => c.nom === classeFull)) return n.nom;
+    for (const c of n.classes) {
+      if (c.nom === classeFull) return n.nom;
+      if (c.series && c.series.some(s => `${c.nom} ${s.code}` === classeFull)) return n.nom;
+    }
   }
   return '';
 };

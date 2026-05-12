@@ -68,29 +68,79 @@ const SERIES_LYCEE_AOF_GENERAL: Serie[] = [
   { code: 'D', label: 'Maths & Sciences de la Vie' },
 ];
 
-/** Technique industrielle CM — 2nde F (choix de filière dès la 2nde) */
-const SERIES_2NDE_F_CM: Serie[] = [
-  { code: 'F1', label: 'Mécanique générale' },
-  { code: 'F2', label: 'Électronique' },
-  { code: 'F3', label: 'Électrotechnique' },
-  { code: 'F4', label: 'Génie civil / Bâtiment' },
-  { code: 'F5', label: 'Construction aéronautique' },
-  { code: 'F6', label: 'Chimie industrielle' },
-  { code: 'F7', label: 'Mine & Géologie' },
-  { code: 'TI', label: 'Technologie informatique' },
+/**
+ * Lycée Technique CM — Premier Cycle CETIC (1ère→4ème année)
+ * Source : MINESEC liste officielle 2024-2025 Enseignement Secondaire Technique
+ * Industriel (PDF signé du 26 juin 2024).
+ */
+const SERIES_CETIC_PREMIER_CM: Serie[] = [
+  { code: 'ELME', label: 'Électromécanique' },
+  { code: 'ELEQ', label: 'Électricité d\'Équipement' },
+  { code: 'ELNI', label: 'Électronique' },
+  { code: 'FRCL', label: 'Froid et Climatisation' },
+  { code: 'MENU', label: 'Menuiserie' },
+  { code: 'CHARP', label: 'Charpente' },
+  { code: 'MEFE', label: 'Métaux en Feuilles' },
+  { code: 'COOM', label: 'Construction Ouvrages Métalliques' },
+  { code: 'CAPA', label: 'Carrosserie Peinture' },
+  { code: 'MEM', label: 'Maintenance Électro-Mécanique' },
+  { code: 'MARE', label: 'Mécanique Auto Réparation' },
+  { code: 'MACO', label: 'Maçonnerie' },
+  { code: 'INSA', label: 'Installation Sanitaire' },
+  { code: 'COME', label: 'Couture sur Mesure' },
+  { code: 'ESCO', label: 'Esthétique Coiffure' },
+  { code: 'DECO', label: 'Décoration' },
+  { code: 'AF-SC', label: 'Affûtage Sciage' },
 ];
 
-/** Technique industrielle CM — 1ère & Terminale F */
-const SERIES_TECHNIQUE_INDUSTRIEL_CM: Serie[] = [
-  { code: 'F1', label: 'Mécanique générale' },
+/** Lycée Technique CM — 1er cycle CETIC agro (PDF non séparé par année) */
+const SERIES_CETIC_AGRICOLE_CM: Serie[] = [
+  { code: 'TAG/PPO', label: 'Producteur de Porcs' },
+  { code: 'TAG/PVO', label: 'Producteur de Volaille' },
+  { code: 'TAG/PCE', label: 'Producteur de Céréales' },
+];
+
+/** Lycée Technique CM — 2nd cycle (2nde/1ère/Tle) industriel et tertiaire */
+const SERIES_TECHNIQUE_SECOND_CM: Serie[] = [
   { code: 'F2', label: 'Électronique' },
   { code: 'F3', label: 'Électrotechnique' },
-  { code: 'F4', label: 'Génie civil / Bâtiment' },
-  { code: 'F5', label: 'Construction aéronautique' },
-  { code: 'F6', label: 'Chimie industrielle' },
-  { code: 'F7', label: 'Mine & Géologie' },
-  { code: 'TI', label: 'Technologie informatique' },
+  { code: 'F4', label: 'Génie Civil / Bâtiment' },
+  { code: 'F5', label: 'Froid et Climatisation' },
+  { code: 'MIPE', label: 'Mine et Pétrole (F6)' },
+  { code: 'BIPE', label: 'Bioprocédé et Pétrochimie (F6)' },
+  { code: 'COPH', label: 'Cosmétique et Pharmacie (F6)' },
+  { code: 'GT', label: 'Géomètre Topographe' },
+  { code: 'IB', label: 'Industrie du Bois' },
+  { code: 'ISRH', label: 'Installation Sanitaire et Réseaux Hydrauliques' },
+  { code: 'IH', label: 'Industrie de l\'Habillement' },
+  { code: 'AMEB', label: 'Ameublement Ébénisterie' },
+  { code: 'MAGE', label: 'Menuiserie Agencement' },
+  { code: 'MA', label: 'Mécanique Auto' },
+  { code: 'MEM', label: 'Maintenance Électro-Mécanique' },
+  { code: 'MF', label: 'Métaux en Feuilles' },
+  { code: 'CM', label: 'Construction Mécanique' },
+  { code: 'AF1', label: 'Arts — Céramique' },
+  { code: 'AF2', label: 'Arts — Peinture' },
+  { code: 'AF3', label: 'Arts — Sculpture' },
 ];
+
+/** Lycée Technique CM — Spécialités 2nd cycle sans année spécifique */
+const SERIES_TECHNIQUE_GROUPED_CM: Serie[] = [
+  { code: 'BIJO', label: 'Bijouterie - Joaillerie' },
+  { code: 'CH-TI', label: 'Chaudronnerie Tuyauterie Industrielle' },
+  { code: 'F7', label: 'Sciences Biochimiques' },
+  { code: 'F8', label: 'Chimie Industrielle et Biomédicale' },
+  { code: 'FM', label: 'Fabrication Mécanique' },
+  { code: 'TAG/AQ', label: 'Aquaculture' },
+  { code: 'TAG/PM', label: 'Producteurs Monogastriques' },
+  { code: 'TAG/PCLC', label: 'Céréales, Légumineuses et Champignons' },
+  { code: 'TCPA', label: 'Transformation des Produits Agricoles' },
+  { code: 'TGF', label: 'Technique et Gestion Forestière' },
+];
+
+/** Legacy : conservé pour compatibilité avec d'autres systèmes pays */
+const SERIES_2NDE_F_CM: Serie[] = SERIES_TECHNIQUE_SECOND_CM;
+const SERIES_TECHNIQUE_INDUSTRIEL_CM: Serie[] = SERIES_TECHNIQUE_SECOND_CM;
 
 /** Technique commerciale CM — 2nde G */
 const SERIES_2NDE_G_CM: Serie[] = [
@@ -235,11 +285,12 @@ const CM_FRANCOPHONE: SystemeScolaire = {
   systemeLabel: 'Francophone',
   niveaux: [
     {
+      // Cameroun MINEDUB officiel : 2 années de maternelle (PDF signé 10/04/2025).
+      // Les classes correspondent exactement au référentiel national (programmes_scolaires).
       nom: 'Maternelle',
       classes: [
-        { nom: 'Petite section' },
-        { nom: 'Moyenne section' },
-        { nom: 'Grande section' },
+        { nom: 'Maternelle 1ère année' },
+        { nom: 'Maternelle 2ème année' },
       ],
     },
     {
@@ -264,12 +315,21 @@ const CM_FRANCOPHONE: SystemeScolaire = {
       ],
     },
     {
+      // Aligné sur la LISTE OFFICIELLE MINESEC 2024-2025 Enseignement Secondaire
+      // Technique Industriel. Classes correspondent exactement au référentiel
+      // national (programmes_scolaires.classe).
       nom: 'Lycée technique — Industriel',
       classes: [
-        { nom: '6ème TI' }, { nom: '5ème TI' }, { nom: '4ème TI' }, { nom: '3ème TI' },
-        { nom: '2nde F', series: SERIES_2NDE_F_CM },
-        { nom: '1ère', series: SERIES_TECHNIQUE_INDUSTRIEL_CM },
-        { nom: 'Tle', series: SERIES_TECHNIQUE_INDUSTRIEL_CM },
+        { nom: 'Tronc commun 1er cycle' },
+        { nom: '1ère année', series: SERIES_CETIC_PREMIER_CM },
+        { nom: '2ème année', series: SERIES_CETIC_PREMIER_CM },
+        { nom: '3ème année', series: SERIES_CETIC_PREMIER_CM },
+        { nom: '4ème année', series: SERIES_CETIC_PREMIER_CM },
+        { nom: '1er cycle', series: SERIES_CETIC_AGRICOLE_CM },
+        { nom: '2nde', series: SERIES_TECHNIQUE_SECOND_CM },
+        { nom: '1ère', series: SERIES_TECHNIQUE_SECOND_CM },
+        { nom: 'Tle',  series: SERIES_TECHNIQUE_SECOND_CM },
+        { nom: '2nd cycle', series: SERIES_TECHNIQUE_GROUPED_CM },
       ],
     },
     {

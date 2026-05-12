@@ -164,16 +164,13 @@ pub struct ConsignationRecoveryPayload {
 /// du pool d'expirés).
 pub async fn recover_consignation(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { role, .. }): Extension<AuthenticatedUser>,
+    user: Extension<AuthenticatedUser>,
     Path(livre_id): Path<i32>,
     Json(payload): Json<ConsignationRecoveryPayload>,
 ) -> AppResult<impl IntoResponse> {
-    let r = role.to_lowercase();
-    if r != "admin" && r != "super_admin" {
-        return Err(AppError::Forbidden(
-            "Réservé aux administrateurs Yukpo".into(),
-        ));
-    }
+    // Patch H3 (2026-05-12) : autoriser super_admin/admin Yukpo + admins de
+    // la librairie Yukpo officielle (env YUKPO_OFFICIAL_LIBRAIRIE_USER_IDS).
+    crate::utils::role_helpers::ensure_bourse_admin(&user)?;
 
     // Récupère l'owner pour le crédit éventuel
     let owner_id: Option<i32> = sqlx::query_scalar(
@@ -825,9 +822,10 @@ pub async fn withdraw_livre(
             WHERE livre_id = $1 AND direction = 'credit'
               AND source IN ('troc_credit_provisional', 'troc_credit_engaged')
               AND NOT EXISTS (
+                  -- Patch C2 (2026-05-12) : inclure les deux chemins de rollback
                   SELECT 1 FROM wallet_credit_bourse_ledger ll
                   WHERE ll.livre_id = $1
-                    AND ll.source = 'troc_credit_rolled_back'
+                    AND ll.source IN ('troc_credit_rolled_back', 'troc_rollback_debt')
                     AND ll.created_at > wallet_credit_bourse_ledger.created_at
               )
             ORDER BY created_at DESC
@@ -865,13 +863,17 @@ pub async fn withdraw_livre(
     }
 
     // 3. Marque le livre comme retiré (status 'returned' + is_active=false)
+    //    Patch C3 (2026-05-12) : défense en profondeur — la garde user_id
+    //    en WHERE empêche tout IDOR même si le check ligne 793 disparaissait
+    //    lors d'un futur refactor.
     sqlx::query(
         r#"UPDATE livres_scolaires
            SET troc_status = 'returned', is_available = false, is_active = false,
                updated_at = NOW()
-           WHERE id = $1"#,
+           WHERE id = $1 AND user_id = $2"#,
     )
     .bind(livre_id)
+    .bind(user_id)
     .execute(&state.pg)
     .await
     .map_err(|e| AppError::Database(format!("withdraw update: {}", e)))?;

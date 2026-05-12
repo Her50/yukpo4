@@ -433,9 +433,21 @@ impl TrocIntelligentService {
             }
         }
 
-        // Trier les arêtes par distance (les plus proches d'abord)
+        // Tri des arêtes :
+        //   1. Les livres d'OCCASION (mode_listing='vente') passent en PREMIER
+        //      → ils ancrent le début de la chaîne car ils sont tangibles et
+        //        immédiatement disponibles (pas dépendants d'une cascade troc).
+        //   2. À mode égal, les arêtes les plus proches géographiquement.
+        //
+        // Conséquence : la construction greedy du DAG positionne les vendeurs
+        // d'occasion comme sources de la chaîne, et les pures-troc ensuite.
         edges.sort_by(|a, b| {
-            a.distance_km.partial_cmp(&b.distance_km).unwrap_or(std::cmp::Ordering::Equal)
+            let a_is_vente = a.livre.mode_listing.as_deref() == Some("vente");
+            let b_is_vente = b.livre.mode_listing.as_deref() == Some("vente");
+            // true (vente) avant false (troc) → reverse cmp sur bool
+            b_is_vente.cmp(&a_is_vente).then_with(|| {
+                a.distance_km.partial_cmp(&b.distance_km).unwrap_or(std::cmp::Ordering::Equal)
+            })
         });
 
         info!(
