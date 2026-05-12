@@ -166,44 +166,26 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE :
      et convertis la classe vers le système local de l'utilisateur.
    - Utilise ta connaissance des systèmes éducatifs africains pour la correspondance.
 
-4. DÉTECTION PRIX ET DEVISE (CRITIQUE — le prix détermine la valeur de troc/vente) :
+4. DÉTECTION PRIX ET DEVISE (CRITIQUE — anti-fraude obligatoire) :
 
-   **Priorité 1 — LIRE le prix sur les photos** :
+   **LIRE le prix DIRECTEMENT sur les photos. NE JAMAIS estimer ni deviner.**
    Chercher SYSTÉMATIQUEMENT le prix IMPRIMÉ sur le livre :
      • Le VERSO / 4ème de couverture (zone la plus fréquente)
      • La tranche inférieure du verso (bandeau « Prix : … » ou « FCFA … »)
      • Le rabat intérieur de couverture
      • À côté du code-barres ISBN (souvent en petit)
-     • Sur un autocollant éditeur
+     • Sur un autocollant éditeur ou ticket de caisse
    Formats courants : « 3 500 FCFA », « Prix : 4500 F », « 3.500 XAF », « CFAF 5,000 », « N 2,500 »
    Identifier la devise ({devise_locale} par défaut, ou XAF/FCFA, XOF, NGN, GHS, KES, CDF, EUR, USD).
    Si prix en devise étrangère, fournir l'équivalent estimé en {devise_locale} dans `prix_detecte` et la devise d'origine dans `notes`.
 
-   **Priorité 2 — CONNAÎTRE le prix grâce à ton intelligence** (UNIQUEMENT si Priorité 1 échoue) :
-   Si tu ne vois pas le prix sur les photos MAIS que tu as identifié le titre, l'auteur et/ou l'éditeur du livre,
-   utilise TA CONNAISSANCE de ce livre spécifique pour donner son prix réel de vente en librairie.
-   Tu es un modèle de langage entraîné sur des milliards de données — tu connais le prix de la plupart des manuels scolaires courants en Afrique.
-   Exemples de prix que tu DOIS connaître :
-     • « CIAM Mathématiques 3ème » (EDICEF) → ~4 200 FCFA
-     • « L'Excellence en Français CM2 » → ~2 800 FCFA
-     • « Sciences de la Vie et de la Terre Tle D » (Hatier) → ~5 500 FCFA
-     • « New Oxford English 6e » → ~3 500 FCFA
-     • « Go for English Form 3 » → ~3 000 FCFA
-   Tu DOIS fournir le prix dans `prix_detecte` si tu reconnais le livre, même si le prix n'est pas visible sur l'image.
-   Dans `notes`, ajoute "prix_estime_par_ia" pour indiquer que c'est une estimation basée sur ta connaissance.
-
-   **Priorité 3 — ESTIMER un prix générique** (UNIQUEMENT si Priorité 1 ET Priorité 2 échouent) :
-   Si tu n'as pas pu lire le prix ET que tu ne reconnais pas ce livre spécifique, estime un prix catalogue
-   réaliste basé sur le niveau/classe et la matière dans le pays détecté ({pays_detecte}).
-   Fourchettes indicatives en {devise_locale} :
-     • Maternelle / Nursery : 1 000 – 2 500
-     • Primaire / Primary : 2 000 – 4 000
-     • Collège / Junior Secondary : 3 000 – 6 000
-     • Lycée / Senior Secondary : 4 000 – 8 000
-     • Université : 5 000 – 15 000
-   Choisis la valeur médiane de la fourchette. Dans `notes`, ajoute "prix_estime_generique".
-
-   NE LAISSE `prix_detecte` À NULL QUE si le livre est totalement illisible (aucun titre, aucune info exploitable).
+   **RÈGLE STRICTE — anti-fraude** :
+   - Si tu VOIS clairement un prix imprimé sur les photos → utilise cette valeur dans `prix_detecte`.
+   - Si tu NE VOIS PAS de prix sur les photos (flou, masqué, absent) → mets `prix_detecte: null`.
+   - **N'UTILISE JAMAIS ta connaissance pour deviner un prix non visible sur la photo.**
+   - **N'ESTIME JAMAIS un prix générique basé sur le niveau scolaire.**
+   - Un prix inventé fausse le crédit attribué au parent et constitue une fraude.
+   - L'application demandera à l'utilisateur de re-scanner si le prix manque — c'est OK.
 
 5. CLASSIFICATION DE L'ÉTAT (3 NIVEAUX — DÉCISION VISUELLE OBLIGATOIRE) :
    - Le champ JSON **`etat_classification` DOIT être exactement** l'un des trois mots ASCII, **en minuscules, sans accent** : `bon`, `acceptable`, `rejete` (pas « Bon », pas « bon_etat », pas « rejected »).

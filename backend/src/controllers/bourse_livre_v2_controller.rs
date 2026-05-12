@@ -499,7 +499,26 @@ pub async fn analyze_recto_verso(
         }
     }
 
-    // 3) Anti-fraude : ISBN obligatoire. Sans ISBN détecté, impossible de
+    // 3) Prix obligatoire. Sans prix détecté, impossible de calculer le
+    //    crédit utilisateur (= valeur_calculee × 0.75). On demande un re-scan
+    //    où le prix imprimé / facture / sticker est visible.
+    let prix_valide = analysis.prix_detecte.map(|p| p > 0.0).unwrap_or(false);
+    let prix_missing = !analysis.etat_classification.eq("rejete") && !prix_valide;
+    if prix_missing {
+        info!(
+            "[analyze_recto_verso] Livre REJETÉ : prix non détecté — re-scan requis (titre={:?})",
+            analysis.titre
+        );
+        analysis.etat_classification = "rejete".to_string();
+        analysis.prix_detecte = Some(0.0);
+        let note = "Prix non lisible — re-scanner en zoomant sur le prix imprimé".to_string();
+        analysis.notes = Some(match analysis.notes.take() {
+            Some(n) if !n.is_empty() => format!("{} | {}", n, note),
+            _ => note,
+        });
+    }
+
+    // 4) Anti-fraude : ISBN obligatoire. Sans ISBN détecté, impossible de
     //    dédupliquer. On demande un re-scan plus net du code-barres.
     let isbn_normalized = analysis
         .isbn
@@ -745,6 +764,11 @@ pub async fn analyze_recto_verso(
             (
                 "non_reusable_workbook",
                 "Ce livre consommable (cahier d'activité, workbook, livret) ne peut pas être réutilisé. Seuls les manuels scolaires en bon état sont acceptés.",
+            )
+        } else if notes_str.contains("Prix non lisible") {
+            (
+                "price_missing",
+                "Impossible de lire le prix sur la photo. Reprenez le scan en zoomant sur le prix imprimé (couverture, dos ou ticket).",
             )
         } else if notes_str.contains("ISBN non lisible") {
             (
