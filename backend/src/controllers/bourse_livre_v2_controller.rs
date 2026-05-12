@@ -140,16 +140,29 @@ pub async fn finalize_upload_session(
         payload.livres_modes.len()
     );
 
-    // Vérifier la session
-    let _session = sqlx::query_as::<_, BookUploadSession>(
-        "SELECT * FROM book_upload_sessions WHERE id = $1 AND user_id = $2 AND statut = 'en_cours'",
+    // ✅ 2026-05-12 : finalize idempotent — on accepte aussi statut='termine'
+    //    pour éviter "Session déjà finalisée" si le user double-clique ou si
+    //    le réseau a fait timer le 1er appel. Le user voit toujours un succès.
+    let session = sqlx::query_as::<_, BookUploadSession>(
+        "SELECT * FROM book_upload_sessions WHERE id = $1 AND user_id = $2",
     )
     .bind(&session_id)
     .bind(user_id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur vérification session: {}", e)))?
-    .ok_or_else(|| AppError::NotFound("Session non trouvée ou déjà finalisée".to_string()))?;
+    .ok_or_else(|| AppError::NotFound("Session non trouvée".to_string()))?;
+
+    // Si déjà finalisée, on retourne directement succès sans rien refaire.
+    if session.statut == "termine" {
+        info!(
+            "[finalize_upload_session] Session {} déjà 'termine' — réponse idempotente",
+            session_id
+        );
+        return Ok(Json(
+            json!({ "success": true, "message": "Session déjà finalisée", "idempotent": true }),
+        ));
+    }
 
     // Mettre à jour chaque livre avec son mode
     for lm in &payload.livres_modes {

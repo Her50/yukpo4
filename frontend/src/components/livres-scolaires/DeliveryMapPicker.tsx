@@ -30,13 +30,14 @@ L.Icon.Default.mergeOptions({
  * qui causait des "Oops! Something went wrong" silencieux côté parent.
  */
 
-// 🗺️ Carte de base : CartoDB Voyager — gratuit, sans API key, rendu détaillé
-//    avec bâtiments + rues nommées + parcs. Bien plus lisible qu'OSM Standard.
-const TILE_VOYAGER = 'https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png';
+// 🗺️ Carte de base : OpenStreetMap standard — le plus fiable globalement,
+//    chargement direct sans CDN tiers ni rate-limit imprévu.
+//    (Précédente tentative CartoDB Voyager: tiles parfois blanches selon le réseau.)
+const TILE_PLAN = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const TILE_PLAN_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 // 🛰️ Couche satellite optionnelle : Esri World Imagery — gratuit pour usage
 //    raisonnable, montre les bâtiments en image aérienne (utile en milieu rural CM).
 const TILE_SATELLITE = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-const TILE_VOYAGER_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
 const TILE_SATELLITE_ATTR = 'Tiles &copy; Esri';
 
 const DEFAULT_CENTER: [number, number] = [4.0511, 9.7679]; // Douala, CM
@@ -367,10 +368,10 @@ const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
               />
             ) : (
               <TileLayer
-                key="voyager"
-                url={TILE_VOYAGER}
-                attribution={TILE_VOYAGER_ATTR}
-                maxZoom={20}
+                key="plan"
+                url={TILE_PLAN}
+                attribution={TILE_PLAN_ATTR}
+                maxZoom={19}
               />
             )}
             <RecenterMap target={coords} zoom={zoom} />
