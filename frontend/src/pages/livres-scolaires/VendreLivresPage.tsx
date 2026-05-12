@@ -414,7 +414,7 @@ const VendreLivresPage: React.FC = () => {
                         </span>
                         <span className="text-gray-500"> · Crédit </span>
                         <span className="text-orange-700 font-bold">
-                          {Math.round(book.valeur_calculee * 0.70).toLocaleString('fr-FR')} XAF
+                          {Math.round(book.valeur_calculee * 0.75).toLocaleString('fr-FR')} XAF
                         </span>
                       </p>
                     ) : (

@@ -485,8 +485,8 @@ pub fn infer_type_article_from_matiere(matiere: &str) -> &'static str {
 // ✅ 2026-05-12 — Ratios revus pour mieux refléter la valeur résiduelle
 // réelle d'un manuel d'occasion (marge app maintenue à 30% via
 // RATIO_CREDIT_VS_VALEUR_IA = 0.70).
-pub const RATIO_ETAT_BON: f64 = 0.75;
-pub const RATIO_ETAT_ACCEPTABLE: f64 = 0.55;
+pub const RATIO_ETAT_BON: f64 = 0.70;
+pub const RATIO_ETAT_ACCEPTABLE: f64 = 0.50;
 pub const RATIO_ETAT_REJETE: f64 = 0.0;
 
 /// Taux de commission de l'application (5%)

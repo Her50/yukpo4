@@ -314,7 +314,7 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
             <p className="text-gray-500">Crédit estimé</p>
             <p className="font-semibold text-amber-700">
               {result.valeur_calculee > 0
-                ? `${Math.round(result.valeur_calculee * 0.70).toLocaleString('fr-FR')} XAF`
+                ? `${Math.round(result.valeur_calculee * 0.75).toLocaleString('fr-FR')} XAF`
                 : '—'}
             </p>
           </div>
