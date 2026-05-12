@@ -1,9 +1,12 @@
 use crate::utils::jwt_manager::decode_jwt;
 use axum::body::Body;
 use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::Json;
 use axum::{http::Request, middleware::Next, response::Response};
 #[cfg(debug_assertions)]
 use base64::Engine;
+use serde_json::json;
 use std::env;
 
 /// ? Authenticated user structure
@@ -13,11 +16,21 @@ pub struct AuthenticatedUser {
     pub role: String,
 }
 
+/// Helper: construit une réponse JSON cohérente avec AppError pour que
+/// le frontend puisse parser `response.json()` au lieu de voir
+/// "Unknown error" quand le body est du plain text.
+fn json_error(status: StatusCode, code: &str, message: &str) -> Response {
+    let body = Json(json!({
+        "error": message,
+        "message": message,
+        "code": code,
+        "status": status.as_u16()
+    }));
+    (status, body).into_response()
+}
+
 /// Middleware to check the JWT and add the authenticated user to the request extensions
-pub async fn jwt_auth(
-    mut req: Request<Body>,
-    next: Next,
-) -> Result<Response, (StatusCode, &'static str)> {
+pub async fn jwt_auth(mut req: Request<Body>, next: Next) -> Result<Response, Response> {
     eprintln!("[DEBUG] jwt_auth appel? pour: {}", req.uri());
 
     let auth_header = req.headers().get("Authorization").and_then(|v| v.to_str().ok());
@@ -60,7 +73,11 @@ pub async fn jwt_auth(
             // ✅ SÉCURITÉ: JWT_SECRET obligatoire
             let secret = env::var("JWT_SECRET").map_err(|_| {
                 eprintln!("[ERROR] JWT_SECRET manquant dans les variables d'environnement");
-                (StatusCode::INTERNAL_SERVER_ERROR, "Missing JWT_SECRET")
+                json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "MISSING_JWT_SECRET",
+                    "Configuration serveur incomplète",
+                )
             })?;
 
             match decode_jwt(token, &secret) {
@@ -79,16 +96,28 @@ pub async fn jwt_auth(
                 }
                 Err(e) => {
                     eprintln!("[ERROR] JWT invalide: {:?}", e);
-                    return Err((StatusCode::UNAUTHORIZED, "Invalid JWT"));
+                    return Err(json_error(
+                        StatusCode::UNAUTHORIZED,
+                        "INVALID_JWT",
+                        "Session expirée — reconnectez-vous pour continuer.",
+                    ));
                 }
             }
         } else {
             eprintln!("[ERROR] Header Authorization invalide (pas de 'Bearer ')");
-            return Err((StatusCode::UNAUTHORIZED, "Invalid Authorization header"));
+            return Err(json_error(
+                StatusCode::UNAUTHORIZED,
+                "INVALID_AUTH_HEADER",
+                "Header Authorization invalide — reconnectez-vous.",
+            ));
         }
     } else {
         eprintln!("[ERROR] Header Authorization manquant");
-        return Err((StatusCode::UNAUTHORIZED, "Missing Authorization header"));
+        return Err(json_error(
+            StatusCode::UNAUTHORIZED,
+            "MISSING_AUTH_HEADER",
+            "Vous n'êtes pas connecté. Reconnectez-vous pour continuer.",
+        ));
     }
 
     Ok(next.run(req).await)
