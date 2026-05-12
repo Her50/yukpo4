@@ -362,54 +362,14 @@ pub async fn analyze_recto_verso(
         )
         .await?;
 
-    // Prix sur couverture souvent illisible : compléter avec prix_officiel du programme si match
+    // Prix sur couverture parfois illisible : compléter avec prix_officiel du
+    // programme si on a un match exact (titre/auteur/éditeur). Source légitime.
     BookExchangeAIService::enrich_prix_from_programmes_officiels(&mut analysis, &programmes);
 
-    // Dernier filet de sécurité : si ni l'IA ni le matching programme n'ont trouvé de prix,
-    // utiliser un barème de référence par niveau scolaire (prix catalogue moyen XAF)
-    if analysis.prix_detecte.is_none() || analysis.prix_detecte == Some(0.0) {
-        let niveau = analysis.niveau.as_deref().unwrap_or("").to_lowercase();
-        let fallback_prix = if niveau.contains("maternelle")
-            || niveau.contains("nursery")
-            || niveau.contains("pre-primary")
-        {
-            1500.0
-        } else if niveau.contains("primaire") || niveau.contains("primary") {
-            2500.0
-        } else if niveau.contains("collège")
-            || niveau.contains("college")
-            || niveau.contains("junior")
-            || niveau.contains("jss")
-            || niveau.contains("jhs")
-        {
-            4000.0
-        } else if niveau.contains("lycée")
-            || niveau.contains("lycee")
-            || niveau.contains("senior")
-            || niveau.contains("sss")
-            || niveau.contains("shs")
-            || niveau.contains("secondary")
-        {
-            5500.0
-        } else if niveau.contains("université")
-            || niveau.contains("universite")
-            || niveau.contains("university")
-        {
-            8000.0
-        } else {
-            3500.0 // Valeur par défaut raisonnable
-        };
-        info!(
-            "[analyze_recto_verso] Prix non détecté par l'IA ni par le programme — barème de référence appliqué: {} XAF (niveau: {:?})",
-            fallback_prix, analysis.niveau
-        );
-        analysis.prix_detecte = Some(fallback_prix);
-        let note = format!("prix_reference_bareme (niveau: {})", niveau);
-        analysis.notes = Some(match analysis.notes.take() {
-            Some(n) if !n.is_empty() => format!("{} | {}", n, note),
-            _ => note,
-        });
-    }
+    // ⚠️ Le fallback "barème par niveau" précédent (3500 XAF par défaut, etc.)
+    // a été supprimé : il contournait l'anti-fraude et donnait un crédit
+    // arbitraire à des livres dont le prix n'avait jamais été détecté.
+    // Désormais si prix toujours absent → rejet 'price_missing' (cf. plus bas).
 
     // ✅ 2026-05-11 : vérification stricte d'appartenance au programme officiel.
     // Si l'IA ne reconnaît PAS le livre comme étant au programme (ni national
