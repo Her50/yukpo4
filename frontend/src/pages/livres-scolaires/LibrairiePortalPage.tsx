@@ -1738,14 +1738,6 @@ export const LibrairieDashboardPage: React.FC = () => {
               <Users className="w-3.5 h-3.5" />
               {t('librairie.equipe')}
             </button>
-            {/* ✅ Nouvel onglet : visibilité sur le marché Bourse (livres
-                parents en troc/vente/don + matchings algo) */}
-            <button
-              onClick={() => navigate('/librairie/marche-bourse')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/30 hover:bg-emerald-500/50 text-xs font-semibold whitespace-nowrap shrink-0"
-            >
-              🔄 Marché Bourse
-            </button>
           </div>
 
           {/* Filtres */}
@@ -1770,6 +1762,25 @@ export const LibrairieDashboardPage: React.FC = () => {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 pt-4">
+        {/* ✅ Bannière Marché Bourse — toujours visible juste sous le header.
+            Permet à la librairie d'accéder en 1 clic à la vue d'ensemble
+            des livres en troc/vente/don + matchings algo. */}
+        <button
+          onClick={() => navigate('/librairie/marche-bourse')}
+          className="w-full mb-4 flex items-center justify-between gap-3 bg-gradient-to-r from-emerald-50 to-cyan-50 border-2 border-emerald-300 rounded-2xl px-4 py-3 active:from-emerald-100 shadow-sm"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0 text-white text-lg">
+              🔄
+            </div>
+            <div className="text-left min-w-0">
+              <p className="font-bold text-emerald-900 text-sm leading-tight">Marché Bourse du Livre</p>
+              <p className="text-[11px] text-emerald-700 mt-0.5">Voir les livres parents (troc/vente/don) + stats algo</p>
+            </div>
+          </div>
+          <span className="text-emerald-600 text-xl flex-shrink-0">›</span>
+        </button>
+
         {/* Refresh */}
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs text-gray-500">
