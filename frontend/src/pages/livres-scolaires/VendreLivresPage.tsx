@@ -206,7 +206,11 @@ const VendreLivresPage: React.FC = () => {
     }
   };
 
-  const totalValue = books.filter(b => !b.is_rejected).reduce((s, b) => s + (b.valeur_calculee || 0), 0);
+  // Total = somme des crédits nets (× 0.75 pour cohérence avec l'affichage par livre).
+  // Avant le fix : on sommait valeur_calculee brute → total surestimé de 33%.
+  const totalValue = books
+    .filter(b => !b.is_rejected)
+    .reduce((s, b) => s + Math.round((b.valeur_calculee || 0) * 0.75), 0);
   const validBooksCount = books.filter(b => !b.is_rejected).length;
 
   // ✅ 2026-05-11 : GPS gate obligatoire AVANT tout — la page complète
@@ -458,7 +462,7 @@ const VendreLivresPage: React.FC = () => {
             {/* Total estimé */}
             {totalValue > 0 && (
               <div className="mt-3 bg-orange-50 border border-orange-200 rounded-2xl p-3 flex items-center justify-between">
-                <span className="text-sm text-orange-800">Valeur totale estimée</span>
+                <span className="text-sm text-orange-800">Crédit total estimé</span>
                 <span className="text-lg font-bold text-orange-700">{totalValue.toLocaleString('fr-FR')} XAF</span>
               </div>
             )}

@@ -83,8 +83,9 @@ const LivreScolaireFormPage: React.FC = () => {
             const response = await apiGet(`/api/bourse-livre/${livreId}`);
             const data = await response.json();
 
-            if (data.success && data.data?.livre) {
-                const livre = data.data.livre;
+            // Backend retourne { success: true, livre: {...} } à plat.
+            const livre = data.livre || data.data?.livre;
+            if (data.success && livre) {
                 setFormData({
                     titre: livre.titre || '',
                     auteur: livre.auteur || '',
@@ -219,7 +220,7 @@ const LivreScolaireFormPage: React.FC = () => {
                     title: 'Succès',
                     description: mode === 'edit' ? 'Livre modifié avec succès !' : 'Livre créé avec succès !',
                 });
-                navigate(`/${mode === 'edit' ? livreId : data.data?.livre?.id || ''}`);
+                navigate(`/${mode === 'edit' ? livreId : (data.livre?.id || data.data?.livre?.id || '')}`);
             } else {
                 toast({
                     title: 'Erreur',

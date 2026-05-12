@@ -43,8 +43,9 @@ const MesLivresPage: React.FC = () => {
             const response = await apiGet('/api/bourse-livre/mes-livres');
             const data = await response.json();
 
-            if (data.success && data.data) {
-                setLivres(data.data.livres || []);
+            // Le backend retourne { success: true, livres: [...] } (pas data.livres)
+            if (data.success) {
+                setLivres(data.livres || data.data?.livres || []);
             } else {
                 toast({
                     title: 'Erreur',
