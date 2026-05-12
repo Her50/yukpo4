@@ -151,7 +151,7 @@ const VendreLivresPage: React.FC = () => {
     setShowCapture(false);
     toast({
       title: 'Livre ajouté',
-      description: `${result.titre} — Crédit ${Math.round(result.valeur_calculee * 0.75).toLocaleString('fr-FR')} XAF`,
+      description: `${result.titre} — Crédit ${Math.round(result.credit_net_xaf ?? Math.max(0, result.valeur_calculee * 0.75 - 40)).toLocaleString('fr-FR')} XAF`,
     });
   };
 
@@ -206,11 +206,10 @@ const VendreLivresPage: React.FC = () => {
     }
   };
 
-  // Total = somme des crédits nets (× 0.75 pour cohérence avec l'affichage par livre).
-  // Avant le fix : on sommait valeur_calculee brute → total surestimé de 33%.
+  // Total = somme des crédits nets (credit_net_xaf du backend = × 0.75 − frais IA).
   const totalValue = books
     .filter(b => !b.is_rejected)
-    .reduce((s, b) => s + Math.round((b.valeur_calculee || 0) * 0.75), 0);
+    .reduce((s, b) => s + Math.round(b.credit_net_xaf ?? Math.max(0, (b.valeur_calculee || 0) * 0.75 - 40)), 0);
   const validBooksCount = books.filter(b => !b.is_rejected).length;
 
   // ✅ 2026-05-11 : GPS gate obligatoire AVANT tout — la page complète
@@ -418,7 +417,7 @@ const VendreLivresPage: React.FC = () => {
                         </span>
                         <span className="text-gray-500"> · Crédit </span>
                         <span className="text-orange-700 font-bold">
-                          {Math.round(book.valeur_calculee * 0.75).toLocaleString('fr-FR')} XAF
+                          {Math.round(book.credit_net_xaf ?? Math.max(0, book.valeur_calculee * 0.75 - 40)).toLocaleString('fr-FR')} XAF
                         </span>
                       </p>
                     ) : (

@@ -414,7 +414,7 @@ const RentreeCenterPage: React.FC = () => {
     }
     updateTrocMatch(itemId, result.livre_id);
     setShowPhotoCapture(null);
-    const credit = Math.round(result.valeur_calculee * 0.75);
+    const credit = Math.round(result.credit_net_xaf ?? Math.max(0, result.valeur_calculee * 0.75 - 40));
     // Modale de confirmation persistante : l'utilisateur doit cliquer OK
     // pour valider la lecture du crédit avant que la boucle capture-troc
     // n'enchaîne sur le livre suivant.

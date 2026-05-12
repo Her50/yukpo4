@@ -784,6 +784,12 @@ pub async fn analyze_recto_verso(
             "is_rejected": effective_rejected,
             "rejection_code": rejection_code,
             "rejection_message": rejection_message,
+            // ✅ Crédit final net pour le parent (= valeur × 0.75 − frais analyse IA).
+            //    Source de vérité backend. Le frontend l'affiche directement.
+            "credit_net_xaf": if effective_rejected { 0.0 } else {
+                crate::services::wallet_credit_bourse_service::compute_credit_for_book(valeur_calculee)
+            },
+            "llm_fee_xaf": crate::services::wallet_credit_bourse_service::LLM_ANALYSIS_FEE_XAF,
         })),
     ))
 }

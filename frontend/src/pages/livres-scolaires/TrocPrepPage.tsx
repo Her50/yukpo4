@@ -166,7 +166,7 @@ const TrocPrepPage: React.FC = () => {
       setOpenCaptureFor(null);
       toast({
         title: 'Livre proposé au troc',
-        description: `Crédit estimé : ${Math.round(result.valeur_calculee * 0.75).toLocaleString('fr-FR')} XAF`,
+        description: `Crédit estimé : ${Math.round(result.credit_net_xaf ?? Math.max(0, result.valeur_calculee * 0.75 - 40)).toLocaleString('fr-FR')} XAF`,
       });
     }
   };

@@ -26,6 +26,11 @@ export interface AnalyzedBookResult {
   niveau?: string;
   prix_detecte?: number;
   valeur_calculee: number;
+  /** Crédit net final pour le parent (= valeur × 0.75 − frais analyse IA).
+   *  Calculé côté backend. À afficher directement, ne pas recalculer. */
+  credit_net_xaf?: number;
+  /** Frais d'analyse IA déduit du crédit (info, déjà appliqué dans credit_net_xaf). */
+  llm_fee_xaf?: number;
   ratio_etat: number;
   etat_classification: 'bon' | 'acceptable' | 'rejete';
   is_rejected: boolean;
@@ -200,6 +205,12 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
         niveau: livre?.niveau ?? analysis?.niveau,
         prix_detecte: detectedPrice || undefined,
         valeur_calculee: Number(data?.valeur_calculee ?? safeValue) || safeValue,
+        // ✅ Crédit net final calculé par le backend (× 0.75 − frais IA).
+        //    Si absent (vieux backend), fallback à l'estimation locale × 0.75 − 40.
+        credit_net_xaf: typeof data?.credit_net_xaf === 'number'
+          ? data.credit_net_xaf
+          : Math.max(0, Math.round((Number(data?.valeur_calculee ?? safeValue) || 0) * 0.75 - 40)),
+        llm_fee_xaf: typeof data?.llm_fee_xaf === 'number' ? data.llm_fee_xaf : 40,
         ratio_etat: Number(data?.ratio_etat ?? ETAT_RATIO[normalizedEtat]),
         etat_classification: normalizedEtat,
         is_rejected: effectiveRejected,
@@ -321,8 +332,8 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
           <div className="bg-white rounded-lg px-2 py-1.5">
             <p className="text-gray-500">Crédit estimé</p>
             <p className="font-semibold text-amber-700">
-              {result.valeur_calculee > 0
-                ? `${Math.round(result.valeur_calculee * 0.75).toLocaleString('fr-FR')} XAF`
+              {(result.credit_net_xaf ?? 0) > 0
+                ? `${Math.round(result.credit_net_xaf ?? 0).toLocaleString('fr-FR')} XAF`
                 : '—'}
             </p>
           </div>

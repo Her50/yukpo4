@@ -1360,7 +1360,7 @@ const ScanProgrammePage: React.FC = () => {
                         {lockedByPool && trocMatch && (
                           <p className="text-[10px] text-cyan-800 bg-cyan-100 px-2 py-1 rounded mt-1 ml-7 leading-snug">
                             📦 Déjà dans votre échange en cours ({trocMatch.troc_status}).
-                            {trocMatch.valeur ? ` Crédit estimé : ${Math.round(trocMatch.valeur * 0.75).toLocaleString('fr-FR')} XAF.` : ''}
+                            {trocMatch.valeur ? ` Crédit estimé : ${Math.round(Math.max(0, trocMatch.valeur * 0.75 - 40)).toLocaleString('fr-FR')} XAF.` : ''}
                           </p>
                         )}
                       </div>

@@ -214,11 +214,18 @@ pub async fn get_balance(pool: &PgPool, user_id: i32) -> Result<Decimal, sqlx::E
 // Constantes du modèle de crédit
 // ============================================================================
 
-/// Ratio crédit / valeur IA — 75% (marge Yukpo 25%).
+/// Ratio crédit / valeur IA — 75% (marge troc Yukpo 25%).
 /// Ex: IA dit livre vaut 3850 XAF (état Bon = 70% du neuf 5500), parent A
-/// reçoit 3850 × 0.75 = 2887 XAF de crédit. Marge Yukpo = 3850 - 2887 = 963 XAF
-/// quand le livre est revendu à un parent B au prix IA.
+/// reçoit 3850 × 0.75 = 2887 XAF de crédit brut. Marge Yukpo troc = 963 XAF.
 pub const RATIO_CREDIT_VS_VALEUR_IA: f64 = 0.75;
+
+/// Frais d'analyse IA déduits du crédit final.
+/// Couvre :
+///  - Coût réel GPT-4o multimodal (~5000 tokens input + ~500 output) ≈ 20 XAF
+///  - Marge Yukpo sur l'opération d'analyse (~100%) ≈ 20 XAF
+/// Total 40 XAF déduit par livre accepté. Les livres rejetés ne coûtent rien
+/// à l'utilisateur (le frais n'est appliqué que sur le crédit final).
+pub const LLM_ANALYSIS_FEE_XAF: f64 = 40.0;
 
 /// Cap absolu de crédit avancé par parent par rentrée scolaire.
 pub const CAP_CREDIT_PAR_PARENT_XAF: f64 = 50_000.0;
@@ -237,9 +244,13 @@ pub const TTL_PENDING_DAYS: i64 = 60;
 /// TTL livre en `chained` sans coursier assigné avant rollback (fail-chain).
 pub const TTL_CHAINED_WITHOUT_COURSIER_DAYS: i64 = 7;
 
-/// Calcule le crédit prévisionnel pour un livre selon sa valeur IA.
+/// Calcule le crédit prévisionnel pour un livre selon sa valeur IA :
+/// crédit_net = (valeur_calculee × 0.75) − frais_analyse_IA
+/// Garanti ≥ 0 (les très petits livres dont la marge ne couvre pas les frais
+/// donnent un crédit de 0 mais ne sont pas "négatifs").
 pub fn compute_credit_for_book(valeur_calculee: f64) -> f64 {
-    (valeur_calculee * RATIO_CREDIT_VS_VALEUR_IA).max(0.0)
+    let credit_brut = valeur_calculee * RATIO_CREDIT_VS_VALEUR_IA;
+    (credit_brut - LLM_ANALYSIS_FEE_XAF).max(0.0)
 }
 
 /// Plafonne le crédit utilisable au checkout selon la commande.
