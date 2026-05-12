@@ -105,35 +105,28 @@ const LivreScolaireHomePage: React.FC = () => {
               les 3 sources d'ajout de liste sont prioritaires. Pendant
               'creuse', un message d'attente + accès direct au compte. */}
           {season === 'troc' && (
-            <>
-              <button
-                onClick={() => navigate('/vendre')}
-                className="w-full bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 mb-2 shadow-md border-2 border-emerald-400 text-left active:from-green-100 min-h-[96px]"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Repeat className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">
-                      {t('bourse.home.season_troc_badge')}
-                    </div>
-                    <div className="font-bold text-base text-emerald-900 leading-tight mt-0.5">
-                      {t('bourse.home.season_troc_title')}
-                    </div>
-                    <div className="text-xs text-emerald-800 mt-1 leading-snug">
-                      {t('bourse.home.season_troc_desc')}
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-emerald-700 mt-2 flex-shrink-0" />
+            <button
+              onClick={() => navigate('/vendre')}
+              className="w-full bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 mb-4 shadow-md border-2 border-emerald-400 text-left active:from-green-100 min-h-[96px]"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Repeat className="w-6 h-6 text-white" />
                 </div>
-              </button>
-              {/* Avertissement éligibilité — visible AVANT que le parent ne se
-                  lance dans la photo capture, pour éviter les rejets surprises */}
-              <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 leading-snug">
-                <strong>{t('bourse.home.eligibility_warning_title')}</strong> {t('bourse.home.eligibility_warning_desc')}
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] font-bold text-emerald-700 uppercase tracking-wide">
+                    {t('bourse.home.season_troc_badge')}
+                  </div>
+                  <div className="font-bold text-base text-emerald-900 leading-tight mt-0.5">
+                    {t('bourse.home.season_troc_title')}
+                  </div>
+                  <div className="text-xs text-emerald-800 mt-1 leading-snug">
+                    {t('bourse.home.season_troc_desc')}
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-emerald-700 mt-2 flex-shrink-0" />
               </div>
-            </>
+            </button>
           )}
 
           {season === 'creuse' && (

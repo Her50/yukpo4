@@ -104,22 +104,35 @@ impl PromptLoader {
     ) -> AppResult<String> {
         let prompt = self.load_prompt(prompt_name).await?;
 
-        // Extraire la section (entre ## Section Name et ## suivant)
-        let section_pattern = format!(r"##\s*{}\s*\n(.*?)(?=\n##|\z)", regex::escape(section_name));
-        let re = Regex::new(&section_pattern)
-            .map_err(|e| AppError::Internal(format!("Erreur regex: {}", e)))?;
+        // ✅ Extraction de section SANS regex look-ahead (interdit par RE2/Rust).
+        //    On localise l'en-tête `## Section Name` (case-insensitive sur
+        //    les espaces) puis on coupe jusqu'au prochain `\n## ` (début de
+        //    nouvelle section markdown) ou jusqu'à la fin du fichier.
+        let needle = format!("## {}", section_name.trim());
+        let content = &prompt.content;
+        let lower_content = content.to_lowercase();
+        let lower_needle = needle.to_lowercase();
 
-        if let Some(captures) = re.captures(&prompt.content) {
-            Ok(captures[1].trim().to_string())
-        } else {
-            // Si section non trouvée, retourner le prompt complet
-            log::warn!(
-                "[PromptLoader] Section '{}' non trouvée dans {}, utilisation du prompt complet",
-                section_name,
-                prompt_name
-            );
-            Ok(prompt.content.clone())
+        if let Some(start) = lower_content.find(&lower_needle) {
+            // Avancer jusqu'à la fin de la ligne d'en-tête
+            let after_header = match content[start..].find('\n') {
+                Some(offset) => start + offset + 1,
+                None => content.len(),
+            };
+            // Chercher la fin de la section : prochain `\n## ` (deux # + espace)
+            let rest = &content[after_header..];
+            let end_offset = rest.find("\n## ").unwrap_or(rest.len());
+            let section_body = &rest[..end_offset];
+            return Ok(section_body.trim().to_string());
         }
+
+        // Section non trouvée : retourner le prompt complet en warning
+        log::warn!(
+            "[PromptLoader] Section '{}' non trouvée dans {}, utilisation du prompt complet",
+            section_name,
+            prompt_name
+        );
+        Ok(prompt.content.clone())
     }
 
     /// Charge une section avec remplacement de variables

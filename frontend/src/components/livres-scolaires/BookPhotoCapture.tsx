@@ -311,10 +311,10 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
             </p>
           </div>
           <div className="bg-white rounded-lg px-2 py-1.5">
-            <p className="text-gray-500">Valeur nette estimée</p>
+            <p className="text-gray-500">Crédit estimé</p>
             <p className="font-semibold text-amber-700">
               {result.valeur_calculee > 0
-                ? `${Math.round(result.valeur_calculee * 0.95).toLocaleString('fr-FR')} XAF`
+                ? `${Math.round(result.valeur_calculee * 0.60).toLocaleString('fr-FR')} XAF`
                 : '—'}
             </p>
           </div>

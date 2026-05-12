@@ -66,6 +66,7 @@ const VendreLivresPage: React.FC = () => {
   })();
 
   const [sessionMode, setSessionMode] = useState<ModeListing>(initialMode);
+  const [eligibilityOpen, setEligibilityOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionCreating, setSessionCreating] = useState(false);
   const [sessionError, setSessionError] = useState<string>('');
@@ -269,15 +270,28 @@ const VendreLivresPage: React.FC = () => {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 pt-4">
-        {/* Avertissement éligibilité — visible AVANT toute capture de photo */}
+        {/* Avertissement éligibilité — dépliable pour ne pas être envahissant.
+            Click pour expand → texte complet ; click pour collapse → titre seul. */}
         {books.length === 0 && (
-          <div className="mb-3 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-snug flex items-start gap-2">
+          <button
+            type="button"
+            onClick={() => setEligibilityOpen((v) => !v)}
+            aria-expanded={eligibilityOpen}
+            className="w-full mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-snug flex items-start gap-2 active:bg-amber-100 text-left"
+          >
             <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
-            <div>
-              <strong className="block mb-0.5">{t('bourse.home.eligibility_warning_title')}</strong>
-              {t('bourse.home.eligibility_warning_desc')}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <strong>{t('bourse.home.eligibility_warning_title')}</strong>
+                <ChevronRight
+                  className={`w-3.5 h-3.5 text-amber-700 transition-transform shrink-0 ${eligibilityOpen ? 'rotate-90' : ''}`}
+                />
+              </div>
+              {eligibilityOpen && (
+                <p className="mt-1.5">{t('bourse.home.eligibility_warning_desc')}</p>
+              )}
             </div>
-          </div>
+          </button>
         )}
         {/* Sélecteur de mode listing par défaut session */}
         {books.length === 0 && (
@@ -398,9 +412,9 @@ const VendreLivresPage: React.FC = () => {
                         }>
                           {book.etat_classification === 'bon' ? 'Bon état' : 'État acceptable'}
                         </span>
-                        <span className="text-gray-500"> · </span>
+                        <span className="text-gray-500"> · Crédit </span>
                         <span className="text-orange-700 font-bold">
-                          {Math.round(book.valeur_calculee * 0.95).toLocaleString('fr-FR')} XAF
+                          {Math.round(book.valeur_calculee * 0.60).toLocaleString('fr-FR')} XAF
                         </span>
                       </p>
                     ) : (
