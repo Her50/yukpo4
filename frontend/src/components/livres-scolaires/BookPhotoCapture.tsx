@@ -222,7 +222,7 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
       // On notifie le parent même si rejeté — le parent décide d'inclure ou non.
       onAnalyzed(finalResult);
     } catch (e: any) {
-      setError(e?.message || "L'IA n'a pas pu analyser ce livre.");
+      setError(e?.message || "Yukpo n'a pas pu analyser ce livre.");
       setStep('error');
     }
   };
@@ -243,7 +243,7 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
     return (
       <div className="bg-white border border-amber-200 rounded-2xl p-5 text-center">
         <Loader2 className="w-6 h-6 text-amber-600 animate-spin mx-auto mb-2" />
-        <p className="text-sm font-semibold text-gray-800">Analyse IA en cours…</p>
+        <p className="text-sm font-semibold text-gray-800">Yukpo analyse votre livre…</p>
         <p className="text-xs text-gray-500 mt-1">Lecture du titre, état, valeur du livre</p>
       </div>
     );

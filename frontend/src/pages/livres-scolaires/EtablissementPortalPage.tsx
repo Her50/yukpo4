@@ -497,14 +497,14 @@ export const EtablissementDashboardPage: React.FC = () => {
           </div>
           <div className="flex-1 text-left">
             <p className="font-bold text-sm">Liste scolaire</p>
-            <p className="text-xs text-emerald-50 mt-0.5 leading-relaxed">
-              Configurer les livres, cahiers et fournitures par classe
+            <p className="text-xs text-emerald-50 mt-0.5">
+              Livres, cahiers et fournitures par classe
             </p>
           </div>
           <ChevronRight className="w-5 h-5" />
         </button>
 
-        {/* CTA IA — pré-remplissage automatique des blocs */}
+        {/* CTA Yukpo — pré-remplissage automatique des blocs */}
         <button
           onClick={() => setShowIaUpload(true)}
           className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white p-4 rounded-2xl shadow-md flex items-center gap-3 active:from-violet-700 active:to-fuchsia-700"
@@ -712,14 +712,21 @@ const IaUploadModal: React.FC<{
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center sm:p-4"
+      // ✅ z-[100] pour passer au-dessus de BourseNav (z-50). Sans ça, la
+      //    barre du bas masquait le bouton 'Lancer Yukpo' et bloquait le scroll.
+      className="fixed inset-0 bg-black/50 z-[100] flex items-end sm:items-center justify-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg max-h-[92vh] overflow-y-auto"
+        // ✅ Flex column avec hauteur dynamique (dvh = dynamic viewport height,
+        //    gère correctement la barre Android qui apparaît/disparaît).
+        //    Le header reste fixe en haut, le contenu scroll, le bouton
+        //    submit est en bas (sticky) → toujours accessible.
+        className="bg-white sm:rounded-3xl rounded-t-3xl w-full sm:max-w-lg flex flex-col"
+        style={{ maxHeight: '90dvh' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-5 sticky top-0 bg-white border-b border-gray-100 z-10 flex items-center gap-3">
+        <div className="p-5 bg-white border-b border-gray-100 flex items-center gap-3 shrink-0">
           <Sparkles className="w-5 h-5 text-violet-600" />
           <p className="font-bold text-gray-900 flex-1">{t('etabAdmin.ia.modal_title')}</p>
           <button onClick={onClose} className="p-1.5 rounded-full bg-gray-100">
@@ -727,7 +734,7 @@ const IaUploadModal: React.FC<{
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}>
           <p className="text-xs text-gray-600 leading-relaxed bg-violet-50 border border-violet-200 rounded-xl p-3">
             {t('etabAdmin.ia.tip')}
           </p>

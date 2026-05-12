@@ -144,7 +144,7 @@ const LibrairieBulkUploadPage: React.FC = () => {
           <div className="flex-1 min-w-0">
             <h1 className="font-bold text-lg">Upload catalogue librairie</h1>
             <p className="text-emerald-100 text-xs mt-0.5">
-              Importez votre stock — l'IA le matche avec le référentiel national
+              Importez votre stock — Yukpo le matche avec le référentiel national
             </p>
           </div>
         </div>
