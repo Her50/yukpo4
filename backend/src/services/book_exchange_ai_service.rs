@@ -1017,6 +1017,85 @@ pub fn compute_classe_superieure_with_gps(
     classe_actuelle.to_string()
 }
 
+/// Vérifie si une classe relève du cycle Maternelle ou Primaire (multi-système).
+/// Règle métier Yukpo : les livres Maternelle/Primaire sont quasi-exclusivement
+/// des cahiers d'activités consommables — donc NON éligibles au circuit
+/// échange/vente d'occasion. À distinguer de Terminale qui, elle, redirige
+/// vers la vente (ici on REJETTE complètement).
+pub fn is_niveau_primaire_or_maternelle(classe: &str) -> bool {
+    let normalized = classe.trim().to_lowercase();
+    if normalized.is_empty() {
+        return false;
+    }
+    // 1) Détection directe par mots-clés (couvre les classes maternelles absentes
+    //    de la table de progression, ex : "Maternelle 1", "Nursery 2")
+    const MATERNELLE_KEYWORDS: &[&str] = &[
+        "maternelle",
+        "nursery",
+        "pre-primary",
+        "pre primary",
+        "kindergarten",
+        "preschool",
+        "pré-scolaire",
+        "prescolaire",
+    ];
+    if MATERNELLE_KEYWORDS.iter().any(|k| normalized.contains(k)) {
+        return true;
+    }
+    // 2) Via le niveau déduit de la hiérarchie scolaire détectée
+    let niveau = compute_niveau_from_classe(classe).to_lowercase();
+    const PRIMAIRE_LEVEL_KEYWORDS: &[&str] = &[
+        "primaire",
+        "primary",
+        "pre-primary",
+        "elementary",
+        "maternelle",
+        "nursery",
+        "kindergarten",
+    ];
+    PRIMAIRE_LEVEL_KEYWORDS.iter().any(|k| niveau.contains(k))
+}
+
+/// Vérifie si un livre est un cahier d'activités, workbook ou livret —
+/// produit consommable (l'élève écrit dessus) donc NON réutilisable
+/// et NON éligible au circuit échange/vente d'occasion.
+/// S'applique à TOUS les niveaux scolaires (primaire ET secondaire).
+pub fn is_workbook_or_livret(titre: &str) -> bool {
+    let n = titre.trim().to_lowercase();
+    if n.is_empty() {
+        return false;
+    }
+    // Patterns spécifiques aux supports consommables — éviter les faux positifs
+    // sur "cahier" seul (qui désigne souvent un simple notebook ou un manuel).
+    const CONSUMABLE_PATTERNS: &[&str] = &[
+        "cahier d'activit",
+        "cahier d activit",
+        "cahiers d'activit",
+        "cahier d'exercice",
+        "cahier d exercice",
+        "cahiers d'exercice",
+        "cahier d'écriture",
+        "cahier d ecriture",
+        "cahier d'evaluation",
+        "cahier de travaux pratiques",
+        "cahier de tp",
+        "fichier d'activit",
+        "fichier d activit",
+        "workbook",
+        "work book",
+        "livret d'activit",
+        "livret d'exercice",
+        "livret de l'élève",
+        "activity book",
+        "exercise book",
+        "practice book",
+        "feuilles d'exercice",
+        "fiches d'activit",
+        "fiches d'exercice",
+    ];
+    CONSUMABLE_PATTERNS.iter().any(|p| n.contains(p))
+}
+
 /// Vérifie si une classe est la dernière de son système (pas de troc possible, vente uniquement).
 /// Fonctionne pour tous les systèmes: Terminale, Upper Sixth, SSS 3, SHS 3, Form 4 (Kenya), 6ème secondaire (RDC)...
 pub fn is_classe_terminale(classe: &str) -> bool {
@@ -1860,8 +1939,11 @@ Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, cla
             }
         };
 
-        // ✅ Fallback déterministe (GPS-aware): si l'IA a trouvé classe_actuelle mais pas classe_souhaitee,
-        // ou si classe_souhaitee est incorrecte, on la recalcule en tenant compte du système scolaire détecté
+        // ✅ Règle métier stricte : classe_souhaitee = next(classe_actuelle).
+        // L'utilisateur troque le livre d'une classe terminée pour obtenir le livre de la
+        // classe IMMÉDIATEMENT SUPÉRIEURE (même matière). On ignore donc la valeur retournée
+        // par l'IA et on dérive systématiquement la classe cible depuis la table de
+        // progression du système scolaire détecté (GPS-aware), pour éviter toute incohérence.
         let mut analysis = analysis;
         analysis.etat_classification =
             Self::normalize_etat_classification_llm(&analysis.etat_classification);
@@ -1876,17 +1958,17 @@ Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, cla
                 analysis.classe_souhaitee = None;
             } else {
                 let computed = compute_classe_superieure_with_gps(classe_act, user_lat, user_lng);
-                if analysis.classe_souhaitee.is_none()
-                    || analysis.classe_souhaitee.as_deref() == Some("")
-                {
+                let ia_value = analysis.classe_souhaitee.clone();
+                if ia_value.as_deref().map(|s| s.trim()) != Some(computed.trim()) {
                     log::info!(
-                        "[BookExchangeAIService] Fallback classe_souhaitee (système {}): {} → {}",
+                        "[BookExchangeAIService] Override classe_souhaitee (système {}): IA={:?} → règle next-class={} (à partir de classe_actuelle={})",
                         detected_system.name,
-                        classe_act,
-                        computed
+                        ia_value,
+                        computed,
+                        classe_act
                     );
-                    analysis.classe_souhaitee = Some(computed);
                 }
+                analysis.classe_souhaitee = Some(computed);
             }
         }
 

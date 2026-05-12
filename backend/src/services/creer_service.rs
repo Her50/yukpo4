@@ -227,8 +227,13 @@ pub async fn process_single_image_for_product(
 
     let StoredMedia {
         path: file_path,
-        bytes: mut image_bytes,
+        bytes: image_bytes,
     } = stored;
+    // ✅ `mut` n'est utile que si l'on réassigne `image_bytes` plus tard (feature `image_search`).
+    #[cfg(feature = "image_search")]
+    let mut image_bytes = image_bytes;
+    #[cfg(not(feature = "image_search"))]
+    let image_bytes = image_bytes;
 
     #[cfg(not(feature = "image_search"))]
     let _ = &image_bytes;
@@ -4168,8 +4173,12 @@ pub async fn creer_service(
 
                     let StoredMedia {
                         path: file_path,
-                        bytes: mut image_bytes,
+                        bytes: image_bytes,
                     } = stored;
+                    #[cfg(feature = "image_search")]
+                    let mut image_bytes = image_bytes;
+                    #[cfg(not(feature = "image_search"))]
+                    let image_bytes = image_bytes;
 
                     #[cfg(not(feature = "image_search"))]
                     let _ = &image_bytes;

@@ -26,9 +26,21 @@ import { useToast } from '../../hooks/use-toast';
 type ModeListing = 'troc' | 'vente' | 'don';
 
 const MODE_INFO: Record<ModeListing, { label: string; desc: string; color: string; bg: string; border: string; }> = {
-  troc:  { label: 'Échanger',      desc: 'Échanger contre un autre livre',     color: 'text-amber-900',   bg: 'bg-amber-50',   border: 'border-amber-400' },
-  vente: { label: 'Vendre',        desc: 'Mettre en vente d\'occasion',         color: 'text-orange-900',  bg: 'bg-orange-50',  border: 'border-orange-400' },
-  don:   { label: 'Donner',        desc: 'Donner gratuitement',                  color: 'text-emerald-900', bg: 'bg-emerald-50', border: 'border-emerald-400' },
+  troc:  {
+    label: 'Échanger',
+    desc: "Vous échangez votre livre de l'an dernier contre le livre de la classe suivante d'un autre parent (crédit Yukpo immédiat).",
+    color: 'text-amber-900',   bg: 'bg-amber-50',   border: 'border-amber-400',
+  },
+  vente: {
+    label: 'Vendre',
+    desc: "Vous mettez en vente un livre d'occasion déjà utilisé (cash dès qu'un acheteur le prend).",
+    color: 'text-orange-900',  bg: 'bg-orange-50',  border: 'border-orange-400',
+  },
+  don:   {
+    label: 'Donner',
+    desc: "Vous offrez le livre à la communauté Bourse Yukpo (geste solidaire, sans contrepartie financière).",
+    color: 'text-emerald-900', bg: 'bg-emerald-50', border: 'border-emerald-400',
+  },
 };
 
 interface AddedBook extends AnalyzedBookResult {
@@ -257,11 +269,12 @@ const VendreLivresPage: React.FC = () => {
           <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-3">
             <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Type d'annonce par défaut</p>
             {/* ✅ Mini-descriptif soft pour aider le parent à choisir entre
-                les 3 modes. Court, gris-discret, pas envahissant. */}
+                les 3 modes — orienté pratique réelle (ce qui se passe avec le livre),
+                avec un mot sur l'impact financier. */}
             <p className="text-[11px] text-gray-500 leading-snug mb-2">
-              <strong className="text-amber-700">Échange</strong> : crédit Yukpo immédiat applicable à votre prochaine commande ·{' '}
-              <strong className="text-orange-700">Vente</strong> : cash quand un acheteur sera trouvé ·{' '}
-              <strong className="text-emerald-700">Don</strong> : vous offrez le livre, sans contrepartie.
+              <strong className="text-amber-700">Échange</strong> : votre livre de l'an dernier part chez un autre parent, et vous recevez le livre de la classe suivante <span className="text-gray-400">(crédit immédiat)</span> ·{' '}
+              <strong className="text-orange-700">Vente</strong> : livre d'occasion remis en circulation <span className="text-gray-400">(cash à la vente)</span> ·{' '}
+              <strong className="text-emerald-700">Don</strong> : vous offrez le livre à la communauté <span className="text-gray-400">(sans contrepartie)</span>.
             </p>
             <div className="grid grid-cols-3 gap-2">
               {(['troc', 'vente', 'don'] as ModeListing[]).map(m => {

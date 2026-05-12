@@ -1,39 +1,39 @@
-// ✅ WhatsApp Notification Service — Yukpo Bourse du Livre
+// âœ… WhatsApp Notification Service â€” Yukpo Bourse du Livre
 // Date : 2026-05-11
 //
-// Stratégie :
-//   1. Tous les events métier (match troc, crédit dispo, livraison, etc.)
+// StratÃ©gie :
+//   1. Tous les events mÃ©tier (match troc, crÃ©dit dispo, livraison, etc.)
 //      appellent `enqueue_notification(...)` qui consigne dans
 //      `whatsapp_notifications_queue`.
-//   2. Le mode `deeplink` (par défaut) génère immédiatement un lien wa.me
-//      stocké dans `deeplink_url`. Un admin/cron peut ensuite l'ouvrir
+//   2. Le mode `deeplink` (par dÃ©faut) gÃ©nÃ¨re immÃ©diatement un lien wa.me
+//      stockÃ© dans `deeplink_url`. Un admin/cron peut ensuite l'ouvrir
 //      manuellement (clic depuis le dashboard Yukpo Librairie) ou un
 //      worker headless via Puppeteer.
-//   3. Le mode `api` (à activer plus tard, env `WHATSAPP_CLOUD_API_TOKEN`)
+//   3. Le mode `api` (Ã  activer plus tard, env `WHATSAPP_CLOUD_API_TOKEN`)
 //      permet d'envoyer via Meta WhatsApp Cloud API directement.
 //
-// Les templates sont multi-lang (FR par défaut). On utilise un mini
-// templating `{{var}}` plutôt qu'un moteur lourd pour rester minimal.
+// Les templates sont multi-lang (FR par dÃ©faut). On utilise un mini
+// templating `{{var}}` plutÃ´t qu'un moteur lourd pour rester minimal.
 
 use serde_json::{json, Value};
 use sqlx::PgPool;
 
-/// Types d'événement supportés. Une variante = un message standard.
+/// Types d'Ã©vÃ©nement supportÃ©s. Une variante = un message standard.
 #[derive(Debug, Clone, Copy)]
 pub enum WaEvent {
-    /// Le livre déposé en troc a trouvé un match — crédit débloqué.
+    /// Le livre dÃ©posÃ© en troc a trouvÃ© un match â€” crÃ©dit dÃ©bloquÃ©.
     TrocMatch,
-    /// La chaîne de troc est validée — crédit définitivement engagé.
+    /// La chaÃ®ne de troc est validÃ©e â€” crÃ©dit dÃ©finitivement engagÃ©.
     TrocChain,
-    /// Le crédit est disponible et utilisable sur la prochaine commande.
+    /// Le crÃ©dit est disponible et utilisable sur la prochaine commande.
     CreditAvailable,
-    /// Une commande a été créée — confirmation au parent.
+    /// Une commande a Ã©tÃ© crÃ©Ã©e â€” confirmation au parent.
     OrderCreated,
     /// Coursier en route vers le parent.
     OrderInDelivery,
-    /// Saison troc qui s'ouvre — invitation à déposer ses vieux livres.
+    /// Saison troc qui s'ouvre â€” invitation Ã  dÃ©poser ses vieux livres.
     SeasonOpenTroc,
-    /// Saison achat qui s'ouvre — invitation à utiliser son crédit.
+    /// Saison achat qui s'ouvre â€” invitation Ã  utiliser son crÃ©dit.
     SeasonOpenBuying,
 }
 
@@ -50,24 +50,24 @@ impl WaEvent {
         }
     }
 
-    /// Template par défaut (FR). On garde court : un parent qui ouvre WA
+    /// Template par dÃ©faut (FR). On garde court : un parent qui ouvre WA
     /// veut comprendre en 2 secondes. Pas d'emoji excessif.
     fn template_fr(&self) -> &'static str {
         match self {
             WaEvent::TrocMatch =>
-                "Yukpo : votre livre « {{titre}} » a trouvé un acheteur. Crédit de {{credit}} XAF débloqué sur votre compte.",
+                "Yukpo : votre livre Â« {{titre}} Â» a trouvÃ© un acheteur. CrÃ©dit de {{credit}} XAF dÃ©bloquÃ© sur votre compte.",
             WaEvent::TrocChain =>
-                "Yukpo : votre échange est validé. Crédit définitivement engagé sur votre prochaine commande.",
+                "Yukpo : votre Ã©change est validÃ©. CrÃ©dit dÃ©finitivement engagÃ© sur votre prochaine commande.",
             WaEvent::CreditAvailable =>
-                "Yukpo : vous avez {{credit}} XAF de crédit prêt à utiliser pour les fournitures de la rentrée.",
+                "Yukpo : vous avez {{credit}} XAF de crÃ©dit prÃªt Ã  utiliser pour les fournitures de la rentrÃ©e.",
             WaEvent::OrderCreated =>
-                "Yukpo : commande {{reference}} confirmée. Nous préparons votre livraison.",
+                "Yukpo : commande {{reference}} confirmÃ©e. Nous prÃ©parons votre livraison.",
             WaEvent::OrderInDelivery =>
                 "Yukpo : votre coursier {{coursier}} est en route ({{adresse}}). Tenez le {{phone}} sous la main.",
             WaEvent::SeasonOpenTroc =>
-                "Yukpo : c'est le moment d'envoyer photo de vos vieux livres pour les troquer. Crédit immédiat sur la rentrée.",
+                "Yukpo : c'est le moment d'envoyer photo de vos vieux livres pour les troquer. CrÃ©dit immÃ©diat sur la rentrÃ©e.",
             WaEvent::SeasonOpenBuying =>
-                "Yukpo : la rentrée arrive. Complétez la liste de votre enfant — votre crédit troc est prêt.",
+                "Yukpo : la rentrÃ©e arrive. ComplÃ©tez la liste de votre enfant â€” votre crÃ©dit troc est prÃªt.",
         }
     }
 }
@@ -85,11 +85,11 @@ fn render_template(tpl: &str, vars: &Value) -> String {
     out
 }
 
-/// Nettoie un numéro de téléphone pour usage dans wa.me.
+/// Nettoie un numÃ©ro de tÃ©lÃ©phone pour usage dans wa.me.
 /// Accepte format local (Cameroun 6XX...) ou international (+237...).
 fn clean_phone(raw: &str) -> String {
     let digits: String = raw.chars().filter(|c| c.is_ascii_digit()).collect();
-    // Cameroun par défaut si 9 chiffres commençant par 6 ou 2
+    // Cameroun par dÃ©faut si 9 chiffres commenÃ§ant par 6 ou 2
     if digits.len() == 9 && (digits.starts_with('6') || digits.starts_with('2')) {
         format!("237{}", digits)
     } else {
@@ -97,16 +97,16 @@ fn clean_phone(raw: &str) -> String {
     }
 }
 
-/// Construit l'URL wa.me avec message pré-rempli.
+/// Construit l'URL wa.me avec message prÃ©-rempli.
 fn build_deeplink(phone: &str, message: &str) -> String {
     let phone_clean = clean_phone(phone);
     let msg_enc = urlencoding::encode(message);
     format!("https://wa.me/{}?text={}", phone_clean, msg_enc)
 }
 
-/// Insère une notification dans la queue. Renvoie l'id ligne.
-/// Si le numéro est invalide ou vide, on logge mais on ne lève PAS d'erreur
-/// (on ne veut pas faire échouer le flow métier à cause d'une notif).
+/// InsÃ¨re une notification dans la queue. Renvoie l'id ligne.
+/// Si le numÃ©ro est invalide ou vide, on logge mais on ne lÃ¨ve PAS d'erreur
+/// (on ne veut pas faire Ã©chouer le flow mÃ©tier Ã  cause d'une notif).
 pub async fn enqueue_notification(
     pool: &PgPool,
     user_id: i32,
@@ -115,7 +115,7 @@ pub async fn enqueue_notification(
     related_livre_id: Option<i32>,
     related_commande_id: Option<uuid::Uuid>,
 ) -> Result<Option<i64>, sqlx::Error> {
-    // 1. Récupérer le téléphone WhatsApp de l'utilisateur
+    // 1. RÃ©cupÃ©rer le tÃ©lÃ©phone WhatsApp de l'utilisateur
     let phone: Option<String> = sqlx::query_scalar("SELECT phone FROM users WHERE id = $1")
         .bind(user_id)
         .fetch_optional(pool)
@@ -125,8 +125,8 @@ pub async fn enqueue_notification(
     let phone = match phone {
         Some(p) if !p.trim().is_empty() => p,
         _ => {
-            tracing::warn!(
-                "[wa-notif] User {} sans téléphone — notif {} ignorée",
+            log::warn!(
+                "[wa-notif] User {} sans tÃ©lÃ©phone â€” notif {} ignorÃ©e",
                 user_id,
                 event.as_str()
             );
@@ -160,8 +160,8 @@ pub async fn enqueue_notification(
     .fetch_one(pool)
     .await?;
 
-    tracing::info!(
-        "[wa-notif] Enqueued notif #{} ({}) → user {} ({})",
+    log::info!(
+        "[wa-notif] Enqueued notif #{} ({}) â†’ user {} ({})",
         id,
         event.as_str(),
         user_id,
@@ -170,7 +170,7 @@ pub async fn enqueue_notification(
     Ok(Some(id))
 }
 
-/// Helper pour les events les + courants (signature simplifiée).
+/// Helper pour les events les + courants (signature simplifiÃ©e).
 pub async fn notify_troc_match(
     pool: &PgPool,
     user_id: i32,
@@ -231,10 +231,10 @@ pub async fn notify_book_expired(
     user_id: i32,
     livre_id: i32,
 ) -> Result<Option<i64>, sqlx::Error> {
-    // On reuse SeasonOpenTroc message ? non — texte dédié serait mieux.
-    // Pour rester DRY on enqueue avec un event spécifique via enqueue_notification
+    // On reuse SeasonOpenTroc message ? non â€” texte dÃ©diÃ© serait mieux.
+    // Pour rester DRY on enqueue avec un event spÃ©cifique via enqueue_notification
     // directement (template_key custom). Mais ici on garde simple : pas de notif
-    // dédiée pour l'expiration, le system in-app gère déjà.
+    // dÃ©diÃ©e pour l'expiration, le system in-app gÃ¨re dÃ©jÃ .
     let _ = (pool, user_id, livre_id);
     Ok(None)
 }
@@ -274,9 +274,9 @@ pub struct PendingNotification {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
-/// Récupère les notifs en attente (mode deeplink) — utilisé par le dashboard
-/// admin pour qu'un opérateur clique sur chaque deeplink wa.me et envoie
-/// manuellement, puis marque `mark_sent` après envoi.
+/// RÃ©cupÃ¨re les notifs en attente (mode deeplink) â€” utilisÃ© par le dashboard
+/// admin pour qu'un opÃ©rateur clique sur chaque deeplink wa.me et envoie
+/// manuellement, puis marque `mark_sent` aprÃ¨s envoi.
 pub async fn list_pending(
     pool: &PgPool,
     limit: i64,
@@ -329,7 +329,7 @@ pub async fn mark_failed(pool: &PgPool, id: i64, error: &str) -> Result<(), sqlx
 
 /// Envoie une notif via WhatsApp Cloud API (Meta). Disponible UNIQUEMENT si
 /// la variable d'environnement `WHATSAPP_CLOUD_API_TOKEN` ET
-/// `WHATSAPP_CLOUD_PHONE_ID` sont configurées. Sinon renvoie Ok(false) —
+/// `WHATSAPP_CLOUD_PHONE_ID` sont configurÃ©es. Sinon renvoie Ok(false) â€”
 /// l'admin doit traiter manuellement via le deeplink.
 pub async fn try_send_via_api(notif: &PendingNotification) -> Result<bool, String> {
     let token = match std::env::var("WHATSAPP_CLOUD_API_TOKEN") {
@@ -362,7 +362,7 @@ pub async fn try_send_via_api(notif: &PendingNotification) -> Result<bool, Strin
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Erreur réseau Meta API : {}", e))?;
+        .map_err(|e| format!("Erreur rÃ©seau Meta API : {}", e))?;
 
     if !resp.status().is_success() {
         let status = resp.status();
@@ -372,28 +372,28 @@ pub async fn try_send_via_api(notif: &PendingNotification) -> Result<bool, Strin
     Ok(true)
 }
 
-/// Worker autonome (à spawner depuis main.rs si on veut l'auto-send).
-/// Boucle infinie : lit les pending, tente l'API si configurée, marque
-/// sent ou failed. Si l'API n'est pas configurée, ne fait rien (les
+/// Worker autonome (Ã  spawner depuis main.rs si on veut l'auto-send).
+/// Boucle infinie : lit les pending, tente l'API si configurÃ©e, marque
+/// sent ou failed. Si l'API n'est pas configurÃ©e, ne fait rien (les
 /// deeplinks restent pour traitement manuel admin).
 pub async fn run_auto_send_worker(pool: PgPool) {
     let api_configured = std::env::var("WHATSAPP_CLOUD_API_TOKEN")
         .map(|v| !v.is_empty())
         .unwrap_or(false);
     if !api_configured {
-        tracing::info!(
-            "[wa-notif-worker] WHATSAPP_CLOUD_API_TOKEN non configuré — worker auto-send désactivé, traitement manuel via dashboard admin."
+        log::info!(
+            "[wa-notif-worker] WHATSAPP_CLOUD_API_TOKEN non configurÃ© â€” worker auto-send dÃ©sactivÃ©, traitement manuel via dashboard admin."
         );
         return;
     }
-    tracing::info!("[wa-notif-worker] Démarré, auto-send via Meta API actif.");
+    log::info!("[wa-notif-worker] DÃ©marrÃ©, auto-send via Meta API actif.");
     let mut ticker = tokio::time::interval(std::time::Duration::from_secs(60));
     loop {
         ticker.tick().await;
         let pending = match list_pending(&pool, 50).await {
             Ok(v) => v,
             Err(e) => {
-                tracing::warn!("[wa-notif-worker] list_pending error: {}", e);
+                log::warn!("[wa-notif-worker] list_pending error: {}", e);
                 continue;
             }
         };
@@ -401,15 +401,15 @@ pub async fn run_auto_send_worker(pool: PgPool) {
             match try_send_via_api(&notif).await {
                 Ok(true) => {
                     let _ = mark_sent(&pool, notif.id).await;
-                    tracing::info!("[wa-notif-worker] ✅ Envoyé #{}", notif.id);
+                    log::info!("[wa-notif-worker] âœ… EnvoyÃ© #{}", notif.id);
                 }
                 Ok(false) => {
-                    // API non configurée → on sort de la boucle
+                    // API non configurÃ©e â†’ on sort de la boucle
                     return;
                 }
                 Err(e) => {
                     let _ = mark_failed(&pool, notif.id, &e).await;
-                    tracing::warn!("[wa-notif-worker] ❌ #{} : {}", notif.id, e);
+                    log::warn!("[wa-notif-worker] âŒ #{} : {}", notif.id, e);
                 }
             }
         }

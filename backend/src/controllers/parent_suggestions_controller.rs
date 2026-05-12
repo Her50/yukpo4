@@ -80,6 +80,12 @@ pub async fn articles_suggested(
 
     // ─── Source 1+2 : programmes_scolaires (établissement choisi + national)
     // On unifie les deux sources via UNION ALL et on dédoublonne par titre.
+    //
+    // ✅ Matching classe permissif : DB stocke "6ème", "CP", "Form 1"… mais le
+    // frontend peut envoyer "6ème", "6ème TI", "6e", "6EME", etc. On compare
+    // donc en lower(trim()) et on tolère que la valeur DB soit un préfixe de
+    // la valeur reçue (cas "6ème TI" → matche "6ème"), tout en gardant le
+    // matching strict en priorité.
     let rows = sqlx::query(
         r#"
         WITH sources AS (
@@ -91,7 +97,8 @@ pub async fn articles_suggested(
                    1 AS priority
             FROM programmes_scolaires
             WHERE is_active = true
-              AND classe = $1
+              AND (lower(trim(classe)) = lower(trim($1))
+                   OR lower(trim($1)) LIKE lower(trim(classe)) || ' %')
               AND type_article = ANY($2)
               AND etablissement_id = $3
               AND ($4::text IS NULL OR systeme_educatif = $4)
@@ -105,7 +112,8 @@ pub async fn articles_suggested(
             FROM programmes_scolaires p
             JOIN etablissements_scolaires e ON e.id = p.etablissement_id
             WHERE p.is_active = true
-              AND p.classe = $1
+              AND (lower(trim(p.classe)) = lower(trim($1))
+                   OR lower(trim($1)) LIKE lower(trim(p.classe)) || ' %')
               AND p.type_article = ANY($2)
               AND e.is_national = true
               AND e.pays = $5

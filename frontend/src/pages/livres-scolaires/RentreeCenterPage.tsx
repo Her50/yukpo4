@@ -383,11 +383,15 @@ const RentreeCenterPage: React.FC = () => {
       // Livre rejeté : on lève l'intention de troc pour éviter une boucle
       // sur ce même item lors d'un éventuel ?capture-troc=1. On utilise
       // en priorité le message précis renvoyé par le backend (rejection_message)
-      // pour distinguer les motifs : pas au programme / dégradé / valeur 0.
+      // pour distinguer les motifs : pas au programme / Maternelle/Primaire / consommable / dégradé / valeur 0.
       clearTrocIntent(itemId);
       const title =
         result.rejection_code === 'not_in_program'
           ? 'Livre pas au programme'
+          : result.rejection_code === 'niveau_primaire'
+          ? 'Maternelle/Primaire non eligible'
+          : result.rejection_code === 'non_reusable_workbook'
+          ? 'Cahier ou livret — non réutilisable'
           : result.rejection_code === 'value_zero'
           ? 'Valeur nulle'
           : t('bourse.rentree.toast_rejected_title');

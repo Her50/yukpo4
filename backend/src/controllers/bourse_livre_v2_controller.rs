@@ -9,7 +9,9 @@ use crate::models::livre_scolaire::{
     CreateDonationRequestPayload, CreateProgrammeScolaireRequest, CreateUploadSessionRequest,
     LivreExtraitProgramme, ProgrammeScolaire,
 };
-use crate::services::book_exchange_ai_service::BookExchangeAIService;
+use crate::services::book_exchange_ai_service::{
+    is_niveau_primaire_or_maternelle, is_workbook_or_livret, BookExchangeAIService,
+};
 use crate::state::AppState;
 use crate::utils::etablissement_upsert::{upsert_etablissement, EtablissementUpsertInput};
 use crate::utils::role_helpers::ensure_admin_role;
@@ -460,6 +462,43 @@ pub async fn analyze_recto_verso(
         analysis.est_au_programme = Some(true);
     }
 
+    // ─── Vérifications supplémentaires : rejeter les livres non-réutilisables ─────
+    // 1) Livres Maternelle/Primaire : quasi-exclusivement consommables (cahiers, fiches).
+    if let Some(classe) = analysis.classe_actuelle.as_deref() {
+        if is_niveau_primaire_or_maternelle(classe) {
+            info!(
+                "[analyze_recto_verso] Livre REJETÉ : Maternelle/Primaire (non-réutilisable) — classe={:?}",
+                classe
+            );
+            analysis.etat_classification = "rejete".to_string();
+            analysis.prix_detecte = Some(0.0);
+            let note =
+                "Cycle Maternelle/Primaire — livres quasi-exclusivement consommables".to_string();
+            analysis.notes = Some(match analysis.notes.take() {
+                Some(n) if !n.is_empty() => format!("{} | {}", n, note),
+                _ => note,
+            });
+        }
+    }
+
+    // 2) Cahiers d'activité, workbooks, livrets (tous niveaux) : consommables.
+    if let Some(titre) = analysis.titre.as_deref() {
+        if is_workbook_or_livret(titre) {
+            info!(
+                "[analyze_recto_verso] Livre REJETÉ : cahier d'activité/workbook/livret (consommable) — titre={:?}",
+                titre
+            );
+            analysis.etat_classification = "rejete".to_string();
+            analysis.prix_detecte = Some(0.0);
+            let note = "Livre consommable (cahier d'activité, workbook, livret) — non réutilisable"
+                .to_string();
+            analysis.notes = Some(match analysis.notes.take() {
+                Some(n) if !n.is_empty() => format!("{} | {}", n, note),
+                _ => note,
+            });
+        }
+    }
+
     // Calculer la valorisation
     let (valeur_calculee, ratio) = if let Some(prix) = analysis.prix_detecte {
         calculer_valeur_livre(prix, &analysis.etat_classification)
@@ -625,10 +664,21 @@ pub async fn analyze_recto_verso(
     // ✅ Raison du rejet visible côté UI : on dérive un code (et un message
     // utilisateur) du contexte. Permet au frontend d'afficher un toast clair.
     let (rejection_code, rejection_message) = if is_rejected {
+        let notes_str = analysis.notes.as_deref().unwrap_or("");
         if !is_in_program {
             (
                 "not_in_program",
                 "Ce livre n'est pas au programme scolaire officiel. Yukpo n'accepte au troc que les manuels en demande sur le cycle scolaire courant.",
+            )
+        } else if notes_str.contains("Cycle Maternelle/Primaire") {
+            (
+                "niveau_primaire",
+                "Les livres de Maternelle et Primaire ne sont pas éligibles au circuit d'échange/vente d'occasion. Ils sont quasi-exclusivement consommables (écrits par l'enfant).",
+            )
+        } else if notes_str.contains("Livre consommable") {
+            (
+                "non_reusable_workbook",
+                "Ce livre consommable (cahier d'activité, workbook, livret) ne peut pas être réutilisé. Seuls les manuels scolaires en bon état sont acceptés.",
             )
         } else if analysis.etat_classification == "rejete" {
             (

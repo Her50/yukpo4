@@ -13,6 +13,7 @@ import { useToast } from '../../hooks/use-toast';
 import {
   Enfant, Systeme, TypeItem, useParentShop,
 } from '../../hooks/useParentShop';
+import { useUserTrocPool } from '../../hooks/useUserTrocPool';
 
 interface ProgrammeItem {
   titre: string;
@@ -80,6 +81,9 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { enfants, addItems, addEnfant } = useParentShop();
+  // Pool troc du parent : grise les articles déjà couverts par un troc en cours
+  // (ex : 6ème → 5ème déposé en troc → l'article 5ème de la liste est verrouillé).
+  const { findMatchInPool } = useUserTrocPool();
 
   // Pré-remplissage : si un enfant a déjà un établissement rattaché, on le prend
   const seedEnfant = enfants.find(e => e.etablissementId);
@@ -572,17 +576,42 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                   </div>
 
                   <div className="divide-y divide-gray-100">
-                    {entries.map(({ item, idx: i }) => (
+                    {entries.map(({ item, idx: i }) => {
+                      // Match cross-flow : ce livre est-il déjà couvert par un troc
+                      // en cours du parent ? classeCible = classe affichée ici (= classe
+                      // à venir de l'enfant). Le pool est matché sur classe_souhaitee
+                      // (next-class), donc un troc 6ème→5ème grise bien le 5ème équivalent.
+                      const trocMatch = isOccasionableType(item.type)
+                        ? findMatchInPool({
+                            titre: item.titre,
+                            matiere: item.matiere,
+                            classeCible: classe,
+                          })
+                        : null;
+                      const lockedByPool = !!trocMatch;
+                      return (
                       <div key={i}
                         className={`px-2.5 py-1.5 transition-colors ${
-                          item.selected ? 'bg-amber-50/60' : 'bg-white hover:bg-gray-50'
+                          lockedByPool
+                            ? 'bg-cyan-50/60 opacity-70'
+                            : item.selected ? 'bg-amber-50/60' : 'bg-white hover:bg-gray-50'
                         }`}>
                         <div className="flex items-center gap-2">
-                          <button onClick={() => toggleItem(i)} className="shrink-0" aria-label="Sélectionner">
+                          <button
+                            onClick={() => !lockedByPool && toggleItem(i)}
+                            disabled={lockedByPool}
+                            className="shrink-0"
+                            aria-label={lockedByPool ? 'Déjà couvert par votre échange' : 'Sélectionner'}
+                            title={lockedByPool ? 'Déjà couvert par votre échange en cours' : undefined}
+                          >
                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
-                              item.selected ? 'bg-amber-500 border-amber-500' : 'border-gray-300'
+                              lockedByPool
+                                ? 'bg-cyan-100 border-cyan-300 cursor-not-allowed'
+                                : item.selected ? 'bg-amber-500 border-amber-500' : 'border-gray-300'
                             }`}>
-                              {item.selected && <span className="text-white text-xs font-bold leading-none">✓</span>}
+                              {lockedByPool
+                                ? <span className="text-cyan-700 text-[10px] font-bold leading-none">⇄</span>
+                                : item.selected && <span className="text-white text-xs font-bold leading-none">✓</span>}
                             </div>
                           </button>
 
@@ -594,12 +623,23 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                               {item.type === 'livre' && (
                                 <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">Livre</span>
                               )}
+                              {lockedByPool && (
+                                <span className="text-[9px] font-bold bg-cyan-100 text-cyan-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">Troc</span>
+                              )}
                               <p className={`text-[13px] font-semibold leading-tight truncate ${
-                                item.selected ? 'text-amber-900' : 'text-gray-800'
+                                lockedByPool ? 'text-cyan-800' : item.selected ? 'text-amber-900' : 'text-gray-800'
                               }`} title={item.titre} dir="auto">
                                 {item.titre}
                               </p>
                             </div>
+                            {lockedByPool && (
+                              <p className="text-[10px] text-cyan-700 mt-0.5">
+                                Déjà couvert par votre échange en cours
+                                {trocMatch?.classe_actuelle && trocMatch?.classe_souhaitee
+                                  ? ` (${trocMatch.classe_actuelle} → ${trocMatch.classe_souhaitee})`
+                                  : ''}
+                              </p>
+                            )}
                             {(item.auteur || item.editeur || item.source === 'etablissement') && (
                               <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500 leading-tight" dir="auto">
                                 {item.auteur && (
@@ -678,7 +718,8 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );

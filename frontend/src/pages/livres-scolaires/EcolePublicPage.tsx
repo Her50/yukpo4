@@ -571,7 +571,12 @@ export const EcoleListeScolairePage: React.FC = () => {
           const isLivre = isOccasionable(a.type);
           // ✅ Cross-flow : ce livre est-il déjà dans le pool troc du parent ?
           // Si oui, on désactive la case à cocher et on affiche un badge.
-          const trocMatch = isLivre ? findMatchInPool(a.titre, classe) : null;
+          // classeCible = classe affichée dans cette école (= classe à venir de
+          // l'enfant). Le pool est matché sur classe_souhaitee (next-class), donc
+          // un troc 6ème→5ème grise bien l'article 5ème de la liste.
+          const trocMatch = isLivre
+            ? findMatchInPool({ titre: a.titre, matiere: (a as any).matiere, classeCible: classe })
+            : null;
           const isAlreadyInPool = !!trocMatch;
           return (
           <div

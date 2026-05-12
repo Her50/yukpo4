@@ -104,7 +104,7 @@ reqwest = { version = "0.11", features = ["json", "multipart"] }
 http-body = "1.0.1"
 
 # ðŸ›¢ Base de donnÃ©es
-sqlx = { version = "0.8", features = ["postgres", "sqlite", "runtime-tokio-rustls", "uuid", "chrono", "rust_decimal", "bigdecimal"] }
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls", "uuid", "chrono", "rust_decimal", "bigdecimal"] }
 rust_decimal = "1.33"
 bigdecimal = { version = "0.4", features = ["serde"] }
 redis = { version = "0.26", features = ["tokio-native-tls-comp", "aio", "cluster"] }
@@ -176,4 +176,16 @@ tiny-skia = "0.11"
 
 # �💳 Payment processing (Stripe temporairement désactivé)
 # async-stripe = "1.0.0-rc.2"  # Réactiver une fois les dépendances corrigées
+
+# Profil release optimisé pour builders à RAM limitée (Fly remote builder ~7 GB).
+# opt-level=2 réduit la RAM peak de rustc d'environ 30 % vs opt-level=3, sans
+# perte significative de perf runtime sur ce backend I/O-bound.
+# codegen-units=16 (défaut) permet de paralléliser la codegen en petits morceaux.
+[profile.release]
+opt-level = 2
+codegen-units = 16
+lto = false
+incremental = false
+debug = false
+strip = "debuginfo"
 

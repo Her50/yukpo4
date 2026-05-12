@@ -12,7 +12,7 @@
 
 use crate::services::wallet_credit_bourse_service::{
     self as wallet, CreditMovementContext, CreditSource, MIN_CHAIN_MARGIN_XAF,
-    TTL_CHAINED_WITHOUT_COURSIER_DAYS, TTL_PENDING_DAYS,
+    TTL_CHAINED_WITHOUT_COURSIER_DAYS,
 };
 use rust_decimal::Decimal;
 use sqlx::PgPool;

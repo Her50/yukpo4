@@ -1202,7 +1202,14 @@ const ScanProgrammePage: React.FC = () => {
                       // troc du parent ? Si oui, on bloque la case et on
                       // affiche un badge — pas besoin de l'acheter.
                       const trocMatch = isOccasionableType(item.type)
-                        ? findMatchInPool(item.titre, item.matiere)
+                        ? findMatchInPool({
+                            titre: item.titre,
+                            matiere: item.matiere,
+                            // classeCible = la classe en cours de scan = la classe à venir de l'enfant.
+                            // Le pool est matché sur classe_souhaitee (next-class). Ex : scan d'un programme 5ème
+                            // grise les livres pour lesquels le parent a déjà déposé un 6ème en troc (6ème→5ème).
+                            classeCible: classe,
+                          })
                         : null;
                       const lockedByPool = !!trocMatch;
                       return (
