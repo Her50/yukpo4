@@ -214,11 +214,11 @@ pub async fn get_balance(pool: &PgPool, user_id: i32) -> Result<Decimal, sqlx::E
 // Constantes du modèle de crédit
 // ============================================================================
 
-/// Ratio crédit / valeur IA — au lancement on est conservateur (60%).
-/// Si IA dit livre vaut 3850 XAF (état Bon = 70% du neuf), parent A reçoit
-/// 3850 × 0.60 = 2310 XAF de crédit. Marge Yukpo = 3850 - 2310 = 1540 XAF
+/// Ratio crédit / valeur IA — 70% (marge Yukpo 30%).
+/// Ex: IA dit livre vaut 4400 XAF (état Bon = 80% du neuf 5500), parent A
+/// reçoit 4400 × 0.70 = 3080 XAF de crédit. Marge Yukpo = 4400 - 3080 = 1320 XAF
 /// quand le livre est revendu à un parent B au prix IA.
-pub const RATIO_CREDIT_VS_VALEUR_IA: f64 = 0.60;
+pub const RATIO_CREDIT_VS_VALEUR_IA: f64 = 0.70;
 
 /// Cap absolu de crédit avancé par parent par rentrée scolaire.
 pub const CAP_CREDIT_PAR_PARENT_XAF: f64 = 50_000.0;

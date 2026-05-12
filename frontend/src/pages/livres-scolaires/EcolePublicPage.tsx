@@ -612,7 +612,7 @@ export const EcoleListeScolairePage: React.FC = () => {
                 {isAlreadyInPool && (
                   <p className="text-[11px] text-cyan-800 bg-cyan-100 px-2 py-1 rounded mt-1.5 leading-snug">
                     📦 Déjà dans votre échange en cours ({trocMatch.troc_status}).
-                    {trocMatch.valeur ? ` Crédit estimé : ${Math.round(trocMatch.valeur * 0.6).toLocaleString('fr-FR')} XAF.` : ''}
+                    {trocMatch.valeur ? ` Crédit estimé : ${Math.round(trocMatch.valeur * 0.70).toLocaleString('fr-FR')} XAF.` : ''}
                   </p>
                 )}
                 <div className="flex flex-wrap gap-1.5 mt-1.5 text-xs">

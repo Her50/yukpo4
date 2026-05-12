@@ -482,8 +482,10 @@ pub fn infer_type_article_from_matiere(matiere: &str) -> &'static str {
 /// - "bon" : le livre est en très bon état → 70% du prix détecté
 /// - "acceptable" : le livre est usé mais utilisable → 40% du prix détecté
 /// - "rejete" : le livre est trop dégradé → valeur 0
-pub const RATIO_ETAT_BON: f64 = 0.70;
-pub const RATIO_ETAT_ACCEPTABLE: f64 = 0.40;
+// ✅ 2026-05-12 — Ratios revus à la hausse (margin app: 30% au lieu de 40%)
+// pour mieux refléter la valeur résiduelle réelle d'un manuel d'occasion.
+pub const RATIO_ETAT_BON: f64 = 0.80;
+pub const RATIO_ETAT_ACCEPTABLE: f64 = 0.60;
 pub const RATIO_ETAT_REJETE: f64 = 0.0;
 
 /// Taux de commission de l'application (5%)
