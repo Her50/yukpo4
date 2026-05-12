@@ -1,5 +1,6 @@
 # Configuration Fly.io pour le backend Yukpo (apps bourse, pharmacie, restaurant).
 # Déploiement temporaire — remplace GCP Cloud Run pendant la coupure facturation.
+# Redéploiement 2026-05-12 (frontend + patches sécurité).
 #
 # Caractéristiques :
 #   - Auto-scale horizontal via concurrence (req/s)

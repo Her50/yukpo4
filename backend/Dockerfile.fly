@@ -36,14 +36,10 @@ ENV SQLX_OFFLINE=true
 # Note: target-cpu=native retiré pour compatibilité AWS Fargate (évite "Illegal instruction")
 ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
-# ✅ 2026-05-12 : Réduire la consommation mémoire du builder Fly (4GB max)
-# codegen-units=1 → 1 seule unité de codegen (moins de RAM, plus lent)
-# incremental=0 → pas de cache incrémental (évite des pics mémoire)
-# opt-level=1 → optimisations LLVM minimales (RAM peak ~50% inférieur à -O2)
-#               Trade-off : runtime ~10-15% plus lent mais compile en 4GB.
-ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
-ENV CARGO_PROFILE_RELEASE_OPT_LEVEL=1
-ENV CARGO_INCREMENTAL=0
+# CI = GH Actions runner avec 16 GB RAM via `flyctl deploy --local-only`.
+# On garde les paramètres release par défaut (opt-level=2, codegen-units=16)
+# qui passent confortablement avec 16 GB. Les overrides --jobs sont définis
+# par étape de cargo build ci-dessous (cache 2, build final 2).
 
 # Copier les fichiers de configuration Rust (LAYER CACHE)
 COPY Cargo.toml Cargo.lock ./
@@ -59,7 +55,7 @@ RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/app/target \
     mkdir -p src && \
     echo "fn main() {}" > src/main.rs && \
-    cargo build --release --jobs 1 --features image 2>&1 | head -20 || true && \
+    cargo build --release --jobs 2 --features image 2>&1 | head -20 || true && \
     rm -rf src
 
 # Copier le code source (APRÈS le cache des dépendances)
@@ -79,7 +75,7 @@ COPY ia_intentions_instructions.md ./
 RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/root/.cargo/git \
     --mount=type=cache,target=/app/target \
-    cargo build --release --jobs 1 --features image \
+    cargo build --release --jobs 2 --features image \
     && strip target/release/yukpomnang_backend \
     && mkdir -p /app/bin \
     && cp target/release/yukpomnang_backend /app/bin/yukpomnang_backend \

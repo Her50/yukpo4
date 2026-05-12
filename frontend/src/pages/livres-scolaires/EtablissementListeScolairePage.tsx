@@ -27,6 +27,7 @@ import {
 import {
   Classe, Niveau, PaysCode, SystemeScolaire,
 } from '../../data/schoolSystems';
+import { IaUploadModal } from './EtablissementPortalPage';
 
 const TYPES_ARTICLE = [
   { id: 'livre',      labelKey: 'etabAdmin.listeScolaire.type_livre',      Icon: Book },
@@ -101,6 +102,7 @@ const EtablissementListeScolairePage: React.FC = () => {
   const [activeClasseFull, setActiveClasseFull] = useState<string | null>(null);
   const [activeBilingue, setActiveBilingue] = useState<'fr' | 'en'>('fr');
   const [loading, setLoading] = useState(true);
+  const [showIaUpload, setShowIaUpload] = useState(false);
   const [showArticleModal, setShowArticleModal] = useState<{
     classe: string; niveau: string; type: TypeArticle; article?: Article;
   } | null>(null);
@@ -350,7 +352,7 @@ const EtablissementListeScolairePage: React.FC = () => {
                 />
               ))}
               <button
-                onClick={() => navigate(`/etablissement-portal/${etabId}?ia=open`)}
+                onClick={() => setShowIaUpload(true)}
                 className="w-full flex items-center gap-3 p-3 rounded-xl border border-fuchsia-200 bg-fuchsia-50 active:bg-fuchsia-100 text-left"
               >
                 <div className="w-9 h-9 rounded-xl bg-fuchsia-200 flex items-center justify-center shrink-0">
@@ -454,6 +456,18 @@ const EtablissementListeScolairePage: React.FC = () => {
           pays={(etab.pays || 'CM')}
           onClose={() => setShowArticleModal(null)}
           onSaved={() => { setShowArticleModal(null); load(); }}
+        />
+      )}
+
+      {/* Modal d'upload IA pour extraction des listes scolaires depuis des
+          documents (PDF/Word/Excel/photos). Le prompt côté backend a été
+          renforcé pour harmoniser les noms de classes avec la convention
+          nationale (Tle, Maternelle 1ère année, 2nde F3, etc.). */}
+      {showIaUpload && (
+        <IaUploadModal
+          etabId={etabId}
+          onClose={() => setShowIaUpload(false)}
+          onSuccess={() => { setShowIaUpload(false); load(); }}
         />
       )}
     </div>

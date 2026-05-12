@@ -626,8 +626,9 @@ export const EtablissementDashboardPage: React.FC = () => {
 
 // ============================================================================
 // Modal d'upload IA — multi-fichiers (PDF, image, Word, Excel)
+// Exporté pour être réutilisable depuis EtablissementListeScolairePage.
 // ============================================================================
-const IaUploadModal: React.FC<{
+export const IaUploadModal: React.FC<{
   etabId: string;
   onClose: () => void;
   onSuccess: () => void;
