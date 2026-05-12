@@ -1,5 +1,5 @@
 import {
-  Camera, ChevronRight, Repeat, School, ShoppingCart, Sparkles, Store,
+  Camera, ChevronRight, LogOut, Repeat, School, ShoppingCart, Sparkles, Store,
 } from 'lucide-react';
 import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -77,6 +77,23 @@ const LivreScolaireHomePage: React.FC = () => {
                 <span className="text-white text-sm font-semibold">{totalItems}</span>
               </button>
             )}
+            {/* Bouton déconnexion — toujours visible pour permettre un
+                logout/relogin rapide en cas de token expiré. */}
+            <button
+              onClick={() => {
+                try {
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('yukpo_guest_account');
+                  window.dispatchEvent(new Event('tokens_updated'));
+                } catch {/* nothing */}
+                navigate('/login');
+              }}
+              className="flex items-center justify-center bg-white/20 backdrop-blur-sm w-9 h-9 rounded-full active:bg-white/30"
+              aria-label="Se déconnecter"
+              title="Se déconnecter"
+            >
+              <LogOut className="w-4 h-4 text-white" />
+            </button>
           </div>
         </div>
         <p className="text-amber-50 text-sm mt-1.5 font-medium">{t('bourse.home.subtitle')}</p>

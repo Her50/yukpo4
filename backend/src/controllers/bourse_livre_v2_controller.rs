@@ -114,6 +114,49 @@ pub async fn get_upload_session(
     })))
 }
 
+/// GET /api/bourse-livre/v2/sessions/active
+/// Retourne la session 'en_cours' la plus récente du user (s'il y en a une)
+/// + les livres déjà scannés dans cette session.
+/// Permet à la page /vendre de RESTAURER l'état après refresh ou retour navigation.
+pub async fn get_active_upload_session(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let session = sqlx::query_as::<_, BookUploadSession>(
+        r#"SELECT * FROM book_upload_sessions
+           WHERE user_id = $1 AND statut = 'en_cours'
+           ORDER BY created_at DESC LIMIT 1"#,
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur récupération session active: {}", e)))?;
+
+    match session {
+        Some(s) => {
+            let livres = sqlx::query_as::<_, crate::models::livre_scolaire::LivreScolaire>(
+                "SELECT * FROM livres_scolaires WHERE upload_session_id = $1 ORDER BY created_at ASC",
+            )
+            .bind(&s.id)
+            .fetch_all(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur récupération livres session: {}", e)))?;
+            Ok(Json(json!({
+                "success": true,
+                "has_active": true,
+                "session": s,
+                "livres": livres
+            })))
+        }
+        None => Ok(Json(json!({
+            "success": true,
+            "has_active": false,
+            "session": serde_json::Value::Null,
+            "livres": []
+        }))),
+    }
+}
+
 /// POST /api/bourse-livre/v2/sessions/:id/finalize
 /// Finaliser une session d'upload (choisir mode troc/vente/don pour chaque livre)
 #[derive(Debug, Deserialize)]

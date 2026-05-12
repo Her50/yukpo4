@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import BookPhotoCapture, { AnalyzedBookResult } from '../../components/livres-scolaires/BookPhotoCapture';
 import GpsGate from '../../components/livres-scolaires/GpsGate';
-import { apiPost } from '../../services/apiService';
+import { apiGet, apiPost } from '../../services/apiService';
 import { useToast } from '../../hooks/use-toast';
 
 /**
@@ -134,6 +134,73 @@ const VendreLivresPage: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gpsAsked, sessionId, sessionError]);
+
+  // ✅ 2026-05-12 : RESTAURATION AU MONTAGE.
+  // Si l'utilisateur a déjà une session 'en_cours' (a fermé la page, navigué
+  // ailleurs, ou refresh) — on récupère ses livres déjà scannés au lieu de
+  // tout recommencer. L'utilisateur reprend là où il s'était arrêté.
+  const restoreRef = useRef(false);
+  useEffect(() => {
+    if (restoreRef.current) return;
+    restoreRef.current = true;
+    (async () => {
+      try {
+        const res = await apiGet('/api/bourse-livre/v2/sessions/active');
+        const data = await res.json().catch(() => ({}));
+        if (data?.success && data?.has_active && data?.session?.id) {
+          setSessionId(data.session.id);
+          sessionInitRef.current = true; // évite ensureSession de créer un doublon
+          const livres = (data.livres || []) as Array<{
+            id: number;
+            titre: string;
+            auteur?: string;
+            matiere?: string;
+            classe_actuelle?: string;
+            classe_souhaitee?: string;
+            niveau?: string;
+            prix_detecte?: string | number;
+            valeur_calculee?: string | number;
+            etat_classification: string;
+            mode_listing?: string;
+          }>;
+          const restored: AddedBook[] = livres
+            .filter((l) => l.etat_classification !== 'rejete')
+            .map((l) => ({
+              localId: `restored-${l.id}`,
+              livre_id: l.id,
+              titre: l.titre,
+              auteur: l.auteur,
+              matiere: l.matiere,
+              classe_actuelle: l.classe_actuelle,
+              classe_souhaitee: l.classe_souhaitee,
+              niveau: l.niveau,
+              prix_detecte: Number(l.prix_detecte ?? 0) || undefined,
+              valeur_calculee: Number(l.valeur_calculee ?? 0),
+              credit_net_xaf: Math.max(0, Number(l.valeur_calculee ?? 0) * 0.75 - 40),
+              ratio_etat:
+                l.etat_classification === 'bon'
+                  ? 0.7
+                  : l.etat_classification === 'acceptable'
+                  ? 0.45
+                  : 0,
+              etat_classification: l.etat_classification as 'bon' | 'acceptable' | 'rejete',
+              is_rejected: false,
+              mode: (l.mode_listing as ModeListing) || sessionMode,
+            }));
+          if (restored.length > 0) {
+            setBooks(restored);
+            toast({
+              title: `Session reprise — ${restored.length} livre(s)`,
+              description: 'Vos livres précédemment scannés sont restaurés.',
+            });
+          }
+        }
+      } catch {
+        // Échec silencieux : on continue avec une session vierge
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAnalyzed = (result: AnalyzedBookResult) => {
     if (result.is_rejected) {
