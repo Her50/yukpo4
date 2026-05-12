@@ -10,7 +10,7 @@ import LanguageSwitcherBourse from '../../components/LanguageSwitcherBourse';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/use-toast';
 import { Choix, PanierItem, TypeItem, useParentShop } from '../../hooks/useParentShop';
-import { apiPost } from '../../services/apiService';
+import { apiGet, apiPost } from '../../services/apiService';
 
 // Picker GPS minimaliste (Google Maps + Places) — chargé à la demande pour
 // ne pas alourdir le bundle initial.
@@ -550,6 +550,23 @@ const RecapAchatPage: React.FC = () => {
     matchedCount: number;     // nb de livres qui ont déjà un match potentiel
   }>({ available: 0, engageable: 0, matchedCount: 0 });
 
+  // ✅ Dette troc (rollback chain après usage du crédit). Récupérée à cette
+  // commande en l'ajoutant au total à payer. 0 si pas de dette.
+  const [bourseDebtXaf, setBourseDebtXaf] = useState<number>(0);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiGet('/api/bourse-livre/wallet/balance');
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled && data?.success) {
+          setBourseDebtXaf(Number(data.bourse_debt_xaf ?? 0));
+        }
+      } catch { /* silencieux */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   /* ─── Décision troc/occasion ───
    *  Au montage : si le panier contient des livres marqués "occasion" et que
    *  l'utilisateur n'a pas encore pris de décision, on affiche la modale.
@@ -769,11 +786,12 @@ const RecapAchatPage: React.FC = () => {
   const DELIVERY_FEE_XAF = 1000;
   const fraisLivraison = totalItems > 0 ? DELIVERY_FEE_XAF : 0;
 
-  // Total réellement à payer après application du crédit prévisionnel
-  // ET ajout des frais de livraison.
+  // Total réellement à payer après application du crédit prévisionnel,
+  // ajout des frais de livraison, ET récupération de la dette troc éventuelle.
+  // La dette est ajoutée AU total à payer (le user la règle au coursier).
   const grandTotalAvecCredit = Math.max(
     0,
-    grandTotal - pendingCredit.engageable + fraisLivraison,
+    grandTotal - pendingCredit.engageable + fraisLivraison + bourseDebtXaf,
   );
 
   if (totalItems === 0) {
@@ -1376,6 +1394,19 @@ const RecapAchatPage: React.FC = () => {
                 </p>
                 <p className="text-xs font-bold text-amber-700">
                   + {fraisLivraison.toLocaleString()} FCFA
+                </p>
+              </div>
+            )}
+            {/* ⚠️ Dette troc — si l'user a une dette suite à un rollback chain
+                après usage du crédit, on la récupère ici (ajout au total).
+                Visible pour la transparence. */}
+            {bourseDebtXaf > 0 && (
+              <div className="mt-1.5 flex items-center justify-between">
+                <p className="text-xs text-red-700 flex items-center gap-1">
+                  ⚠️ Dette troc à régler (rollback précédent)
+                </p>
+                <p className="text-xs font-bold text-red-700">
+                  + {bourseDebtXaf.toLocaleString()} FCFA
                 </p>
               </div>
             )}

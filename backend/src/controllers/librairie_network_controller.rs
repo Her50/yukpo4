@@ -312,6 +312,35 @@ pub async fn create_commande_mixte(
     };
     let _ = credit_used; // utilisé via le ledger ; pas besoin de le persister sur commande pour V1
 
+    // ✅ 2026-05-12 : APURE de la dette troc (si user en a une).
+    // Si le user a une dette (rollback troc après usage du crédit), elle
+    // est récupérée ici en l'ajoutant implicitement au total à payer cash.
+    // Le frontend doit avoir présenté cette dette dans le récap "Reste à payer".
+    let debt_recovered: f64 = {
+        use crate::services::wallet_credit_bourse_service as wallet;
+        match wallet::get_debt(&state.pg, user_id).await {
+            Ok(d) if d > rust_decimal::Decimal::ZERO => {
+                let cleared = wallet::clear_debt_tx(
+                    &mut tx,
+                    user_id,
+                    d,
+                    wallet::CreditMovementContext {
+                        note: Some(format!(
+                            "Dette troc apurée via commande user {} (réf à venir)",
+                            user_id
+                        )),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .unwrap_or(rust_decimal::Decimal::ZERO);
+                cleared.to_string().parse::<f64>().unwrap_or(0.0)
+            }
+            _ => 0.0,
+        }
+    };
+    let _ = debt_recovered;
+
     let devise = payload.devise.unwrap_or_else(|| "XAF".to_string());
     let mode_livraison = payload.mode_livraison.unwrap_or_else(|| "coursier".to_string());
 

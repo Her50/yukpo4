@@ -93,24 +93,60 @@ pub async fn run_daily_maintenance(pool: &PgPool) -> Result<LifecycleReport, sql
         let user_id: i32 = row.try_get("user_id").unwrap_or(0);
         let amount: Decimal = row.try_get("amount").unwrap_or_default();
 
-        // Rollback : on débite le wallet_credit_bourse du même montant qui avait
-        // été crédité, et on remet le livre en pending pour une nouvelle tentative.
+        // Rollback : on tente d'abord de débiter le wallet_credit_bourse. Si
+        // le user a déjà dépensé ce crédit en commande, consume_credit échoue
+        // (solde insuffisant) → on bascule sur apply_debt_tx pour enregistrer
+        // une DETTE qui sera apurée à la prochaine commande du user.
+        // Le solde effectif (wallet_credit_bourse − bourse_debt_xaf) reflète
+        // alors correctement le manque-à-recouvrer côté Yukpo.
         if user_id > 0 && amount > Decimal::ZERO {
-            let _ = wallet::consume_credit(
-                pool,
-                user_id,
-                amount,
-                CreditSource::TrocCreditRolledBack,
-                CreditMovementContext {
-                    livre_id: Some(livre_id),
-                    note: Some(format!(
-                        "Rollback chaîne stuck > {}j sans coursier",
-                        TTL_CHAINED_WITHOUT_COURSIER_DAYS
-                    )),
-                    ..Default::default()
-                },
-            )
-            .await;
+            let mut consumed = false;
+            if let Ok(mut tx) = pool.begin().await {
+                match wallet::consume_credit_tx(
+                    &mut tx,
+                    user_id,
+                    amount,
+                    CreditSource::TrocCreditRolledBack,
+                    CreditMovementContext {
+                        livre_id: Some(livre_id),
+                        note: Some(format!(
+                            "Rollback chaîne stuck > {}j sans coursier",
+                            TTL_CHAINED_WITHOUT_COURSIER_DAYS
+                        )),
+                        ..Default::default()
+                    },
+                )
+                .await
+                {
+                    Ok(_) => {
+                        let _ = tx.commit().await;
+                        consumed = true;
+                    }
+                    Err(_) => {
+                        // Solde insuffisant — rollback la tx pour éviter mauvaise écriture
+                        let _ = tx.rollback().await;
+                    }
+                }
+            }
+            if !consumed {
+                if let Ok(mut tx) = pool.begin().await {
+                    let _ = wallet::apply_debt_tx(
+                        &mut tx,
+                        user_id,
+                        amount,
+                        CreditMovementContext {
+                            livre_id: Some(livre_id),
+                            note: Some(
+                                "Rollback troc — crédit déjà consommé en commande, dette à apurer"
+                                    .to_string(),
+                            ),
+                            ..Default::default()
+                        },
+                    )
+                    .await;
+                    let _ = tx.commit().await;
+                }
+            }
             report.failed_chained_count += 1;
             report.credit_rolled_back_xaf += f64::from_str(&amount.to_string()).unwrap_or(0.0);
         }

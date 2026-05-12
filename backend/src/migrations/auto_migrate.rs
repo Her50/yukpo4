@@ -8772,6 +8772,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration wallet_credit_bourse: {}", e),
     }
 
+    // ✅ 2026-05-12 : dette troc (rollback après usage du crédit)
+    match ensure_bourse_debt(pool).await {
+        Ok(_) => info!("✅ Migration auto: users.bourse_debt_xaf OK"),
+        Err(e) => error!("❌ Erreur migration users.bourse_debt_xaf: {}", e),
+    }
+
     // ✅ 2026-05-10 : Schéma complet programmes_scolaires (matiere, titre_livre…)
     match ensure_programmes_scolaires_full_schema(pool).await {
         Ok(_) => info!("✅ Migration auto: programmes_scolaires schéma complet OK"),
@@ -22563,6 +22569,17 @@ pub async fn ensure_troc_credit_bourse(pool: &PgPool) -> Result<(), sqlx::Error>
     let sql = include_str!("../../migrations/20260510_008_troc_credit_bourse.sql");
     execute_migration_sql_safe(pool, sql).await?;
     info!("✅ Wallet credit bourse + troc_status OK");
+    Ok(())
+}
+
+/// Migration : 20260512_001_bourse_debt.sql
+/// Ajoute users.bourse_debt_xaf pour gérer les dettes spécifiques au troc
+/// (rollback chain après usage du crédit provisional).
+pub async fn ensure_bourse_debt(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Migration users.bourse_debt_xaf...");
+    let sql = include_str!("../../migrations/20260512_001_bourse_debt.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ users.bourse_debt_xaf OK");
     Ok(())
 }
 

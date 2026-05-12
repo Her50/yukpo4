@@ -49,7 +49,11 @@ const LivreScolaireHomePage: React.FC = () => {
         const res = await apiGet('/api/bourse-livre/wallet/balance');
         const data = await res.json().catch(() => ({}));
         if (!cancelled && data?.success) {
-          setWalletBalance(Number(data.wallet_credit_bourse ?? 0));
+          // Solde effectif = crédit − dette (peut être négatif).
+          // Fallback : si solde_effectif absent (ancien backend), utiliser le
+          // crédit positif sans tenir compte de la dette.
+          const net = data.solde_effectif ?? data.wallet_credit_bourse ?? 0;
+          setWalletBalance(Number(net));
         }
       } catch { /* silencieux */ }
     })();

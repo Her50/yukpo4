@@ -122,12 +122,19 @@ pub async fn get_wallet_balance(
     Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
 ) -> AppResult<impl IntoResponse> {
     use sqlx::Row;
-    let balance: rust_decimal::Decimal =
-        sqlx::query_scalar("SELECT COALESCE(wallet_credit_bourse, 0) FROM users WHERE id = $1")
-            .bind(user_id)
-            .fetch_one(&state.pg)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur récupération solde: {}", e)))?;
+    let row = sqlx::query(
+        r#"SELECT COALESCE(wallet_credit_bourse, 0) AS credit,
+                  COALESCE(bourse_debt_xaf, 0) AS debt
+           FROM users WHERE id = $1"#,
+    )
+    .bind(user_id)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur récupération solde: {}", e)))?;
+    let balance: rust_decimal::Decimal = row.try_get("credit").unwrap_or_default();
+    let debt: rust_decimal::Decimal = row.try_get("debt").unwrap_or_default();
+    // Solde effectif = crédit − dette (peut être négatif si dette > crédit)
+    let net = balance - debt;
 
     let rows = sqlx::query(
         r#"SELECT amount, direction, source, note, balance_after, created_at
@@ -158,6 +165,8 @@ pub async fn get_wallet_balance(
     Ok(Json(json!({
         "success": true,
         "wallet_credit_bourse": balance,
+        "bourse_debt_xaf": debt,
+        "solde_effectif": net, // = credit − debt (peut être négatif)
         "devise": "XAF",
         "recent_movements": movements,
     })))

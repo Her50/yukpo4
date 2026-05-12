@@ -211,6 +211,114 @@ pub async fn get_balance(pool: &PgPool, user_id: i32) -> Result<Decimal, sqlx::E
 }
 
 // ============================================================================
+// 🟠 Dette Bourse — SPECIFIQUE au cas troc rollback après usage du crédit.
+// Cette dette ne casse PAS la sémantique du wallet (qui reste ≥ 0).
+// Elle est récupérée à la prochaine commande (ajoutée au total à payer).
+// ============================================================================
+
+/// Augmente la dette troc d'un user. Utilisée UNIQUEMENT par troc_lifecycle
+/// quand un rollback survient après que le crédit ait déjà été consommé.
+/// Atomique, audite via ledger (direction='debit', source='troc_rollback_debt').
+pub async fn apply_debt_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    user_id: i32,
+    amount: Decimal,
+    ctx: CreditMovementContext,
+) -> Result<Decimal, sqlx::Error> {
+    if amount <= Decimal::ZERO {
+        let bal: Decimal =
+            sqlx::query_scalar("SELECT COALESCE(bourse_debt_xaf, 0) FROM users WHERE id = $1")
+                .bind(user_id)
+                .fetch_one(&mut **tx)
+                .await?;
+        return Ok(bal);
+    }
+    let new_debt: Decimal = sqlx::query_scalar(
+        r#"UPDATE users
+           SET bourse_debt_xaf = COALESCE(bourse_debt_xaf, 0) + $2,
+               updated_at = NOW()
+           WHERE id = $1
+           RETURNING bourse_debt_xaf"#,
+    )
+    .bind(user_id)
+    .bind(amount)
+    .fetch_one(&mut **tx)
+    .await?;
+
+    // Trace dans le ledger pour audit (direction = 'debit' du point de vue user)
+    sqlx::query(
+        r#"INSERT INTO wallet_credit_bourse_ledger
+           (user_id, amount, direction, source, livre_id, chaine_id, troc_id, purchase_id, note, balance_after)
+           VALUES ($1, $2, 'debit', 'troc_rollback_debt', $3, $4, $5, $6, $7, $8)"#,
+    )
+    .bind(user_id)
+    .bind(amount)
+    .bind(ctx.livre_id)
+    .bind(ctx.chaine_id)
+    .bind(ctx.troc_id)
+    .bind(ctx.purchase_id)
+    .bind(ctx.note.as_deref().unwrap_or("Rollback troc — crédit non récupérable du wallet").to_string())
+    .bind(new_debt)
+    .execute(&mut **tx)
+    .await?;
+    Ok(new_debt)
+}
+
+/// Apure la dette troc lors d'une commande (le user paie la dette dans le
+/// total de sa commande). Décrémente bourse_debt_xaf de `amount`.
+/// Si amount > dette actuelle, on plafonne à la dette (jamais négatif).
+pub async fn clear_debt_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    user_id: i32,
+    amount: Decimal,
+    ctx: CreditMovementContext,
+) -> Result<Decimal, sqlx::Error> {
+    if amount <= Decimal::ZERO {
+        return Ok(Decimal::ZERO);
+    }
+    let result: Option<(Decimal, Decimal)> = sqlx::query_as(
+        r#"UPDATE users
+           SET bourse_debt_xaf = GREATEST(COALESCE(bourse_debt_xaf, 0) - $2, 0),
+               updated_at = NOW()
+           WHERE id = $1
+           RETURNING LEAST(COALESCE(bourse_debt_xaf, 0) + $2, $2) AS recovered,
+                     bourse_debt_xaf AS new_debt"#,
+    )
+    .bind(user_id)
+    .bind(amount)
+    .fetch_optional(&mut **tx)
+    .await?;
+    let (recovered, new_debt) = result.unwrap_or((Decimal::ZERO, Decimal::ZERO));
+
+    if recovered > Decimal::ZERO {
+        sqlx::query(
+            r#"INSERT INTO wallet_credit_bourse_ledger
+               (user_id, amount, direction, source, livre_id, chaine_id, troc_id, purchase_id, note, balance_after)
+               VALUES ($1, $2, 'credit', 'debt_repaid_via_order', $3, $4, $5, $6, $7, $8)"#,
+        )
+        .bind(user_id)
+        .bind(recovered)
+        .bind(ctx.livre_id)
+        .bind(ctx.chaine_id)
+        .bind(ctx.troc_id)
+        .bind(ctx.purchase_id)
+        .bind(ctx.note.as_deref().unwrap_or("Dette apurée via commande cash").to_string())
+        .bind(new_debt)
+        .execute(&mut **tx)
+        .await?;
+    }
+    Ok(recovered)
+}
+
+/// Renvoie la dette actuelle d'un user (toujours ≥ 0).
+pub async fn get_debt(pool: &PgPool, user_id: i32) -> Result<Decimal, sqlx::Error> {
+    sqlx::query_scalar("SELECT COALESCE(bourse_debt_xaf, 0) FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(pool)
+        .await
+}
+
+// ============================================================================
 // Constantes du modèle de crédit
 // ============================================================================
 
