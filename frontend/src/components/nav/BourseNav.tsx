@@ -1,10 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
-import { Home, ListChecks, Truck } from 'lucide-react';
+import { BookOpen, Home, ListChecks, Truck } from 'lucide-react';
 
-// Nav simplifiée : Accueil (relancer un scan), Récap (commande en cours),
-// Suivi (statut des commandes envoyées). Labels traduits via i18n.
+// Nav simplifiée : Accueil, Récap (commande en cours), Mes livres
+// (livres publiés en troc/vente/don), Suivi (statut des commandes).
+// Labels traduits via i18n.
 
 const BourseNav: React.FC = () => {
   const { t } = useTranslation();
@@ -12,6 +13,7 @@ const BourseNav: React.FC = () => {
   const tabs = [
     { to: '/', label: t('bourse.nav.home'), icon: Home, exact: true },
     { to: '/recap', label: t('bourse.nav.recap'), icon: ListChecks },
+    { to: '/mes-livres', label: t('bourse.nav.my_books', { defaultValue: 'Mes livres' }), icon: BookOpen },
     { to: '/mes-commandes', label: t('bourse.nav.tracking'), icon: Truck },
   ];
   return (

@@ -149,9 +149,12 @@ const MesLivresPage: React.FC = () => {
         <div className="container mx-auto px-4 py-8 max-w-6xl">
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-3xl font-bold">Mes Livres</h1>
-                <Button onClick={() => navigate('/nouveau')}>
+                <Button
+                    onClick={() => navigate('/vendre')}
+                    className="bg-amber-500 hover:bg-amber-600 text-white font-bold"
+                >
                     <Plus className="h-4 w-4 mr-2" />
-                    Créer un livre
+                    Scanner un livre
                 </Button>
             </div>
 
@@ -161,11 +164,14 @@ const MesLivresPage: React.FC = () => {
                         <BookOpen className="h-16 w-16 text-gray-400 mb-4" />
                         <h3 className="text-xl font-semibold mb-2">Aucun livre publié</h3>
                         <p className="text-gray-600 mb-4">
-                            Créez votre premier livre scolaire pour commencer à échanger
+                            Scannez votre premier livre scolaire pour commencer à échanger ou vendre
                         </p>
-                        <Button onClick={() => navigate('/nouveau')}>
+                        <Button
+                            onClick={() => navigate('/vendre')}
+                            className="bg-amber-500 hover:bg-amber-600 text-white font-bold"
+                        >
                             <Plus className="h-4 w-4 mr-2" />
-                            Créer un livre
+                            Scanner un livre
                         </Button>
                     </CardContent>
                 </Card>
