@@ -545,11 +545,12 @@ pub async fn analyze_recto_verso(
         });
     }
 
-    // 4) Anti-fraude : duplicate detection. Si l'utilisateur a déjà scanné un
-    //    livre avec le MÊME ISBN dans une session active de la rentrée courante,
-    //    on rejette le doublon. Note : un parent peut légitimement avoir
-    //    plusieurs exemplaires identiques (jumeaux, fratrie), mais c'est rare.
-    //    Pour ce cas extrême, on rejette en signalant l'option support.
+    // 4) Anti-fraude : duplicate detection. Un parent peut légitimement avoir
+    //    plusieurs exemplaires du MÊME manuel si plusieurs enfants sont dans
+    //    la même classe (jumeaux, triplés, fratrie même niveau).
+    //    Politique : tolère jusqu'à MAX_COPIES_PAR_ISBN par user, au-delà on
+    //    bloque et redirige vers le support (cas vraiment exceptionnels).
+    const MAX_COPIES_PAR_ISBN: i64 = 3;
     if let Some(ref isbn_n) = isbn_normalized {
         if !analysis.etat_classification.eq("rejete") {
             // Recherche dans les livres existants du user (90 derniers jours)
@@ -565,21 +566,29 @@ pub async fn analyze_recto_verso(
             .fetch_one(&state.pg)
             .await
             .unwrap_or(0);
-            if dup_count > 0 {
+            if dup_count >= MAX_COPIES_PAR_ISBN {
                 info!(
-                    "[analyze_recto_verso] Livre REJETÉ : ISBN duplicate ({}× pour user_id={}) — anti-fraude",
-                    dup_count, user_id
+                    "[analyze_recto_verso] Livre REJETÉ : ISBN duplicate ({}× déjà scanné, max={}) — anti-fraude user_id={}",
+                    dup_count, MAX_COPIES_PAR_ISBN, user_id
                 );
                 analysis.etat_classification = "rejete".to_string();
                 analysis.prix_detecte = Some(0.0);
                 let note = format!(
-                    "Livre déjà scanné dans votre session (ISBN {}). Pour plusieurs exemplaires, contactez le support.",
-                    isbn_n
+                    "Limite atteinte : {} exemplaires de ce livre déjà scannés (ISBN {}). Au-delà, contactez le support.",
+                    dup_count, isbn_n
                 );
                 analysis.notes = Some(match analysis.notes.take() {
                     Some(n) if !n.is_empty() => format!("{} | {}", n, note),
                     _ => note,
                 });
+            } else if dup_count >= 1 {
+                // Soft warning dans les notes (visible mais non bloquant) pour
+                // que le parent voit qu'il a déjà scanné ce livre — utile s'il
+                // ne se souvenait pas.
+                info!(
+                    "[analyze_recto_verso] ISBN déjà scanné {}× (toléré jusqu'à {}) — accepté user_id={}",
+                    dup_count, MAX_COPIES_PAR_ISBN, user_id
+                );
             }
         }
     }
@@ -775,10 +784,10 @@ pub async fn analyze_recto_verso(
                 "isbn_missing",
                 "Impossible de lire l'ISBN sur la photo. Reprenez le scan en zoomant sur la 4ème de couverture, là où se trouve le code-barres.",
             )
-        } else if notes_str.contains("déjà scanné dans votre session") {
+        } else if notes_str.contains("Limite atteinte") {
             (
                 "duplicate_book",
-                "Ce livre a déjà été scanné dans votre session (même ISBN). Si vous avez plusieurs exemplaires identiques, contactez le support Yukpo.",
+                "Vous avez déjà scanné 3 exemplaires de ce livre (limite tolérée pour fratrie/jumeaux). Pour plus, contactez le support Yukpo.",
             )
         } else if analysis.etat_classification == "rejete" {
             (
