@@ -1235,6 +1235,90 @@ const RecapAchatPage: React.FC = () => {
           });
         })()}
 
+        {/* ✅ Synthèse par catégories de livraison — 4 catégories distinctes
+            pour que le parent voie clairement ce qu'il achète et comment :
+            manuels neufs, via troc, occasion, fournitures & accessoires. */}
+        {(() => {
+          // Classification de chaque item du panier en 1 des 4 catégories
+          const cats = {
+            manuels_neufs: { count: 0, total: 0 },
+            manuels_troc: { count: 0, total: 0 },
+            manuels_occasion: { count: 0, total: 0 },
+            fournitures: { count: 0, total: 0 },
+          };
+          for (const it of panier) {
+            const q = it.quantite ?? 1;
+            const isLivre = ['livre', 'workbook', 'livret', 'manuel', 'textbook', 'book'].includes(
+              String(it.type ?? '').toLowerCase(),
+            );
+            const sub = estimateItem(it);
+            if (isLivre) {
+              if (it.trocLivreId || it.troc_intent) {
+                cats.manuels_troc.count += q;
+                cats.manuels_troc.total += sub;
+              } else if (it.choix === 'occasion') {
+                cats.manuels_occasion.count += q;
+                cats.manuels_occasion.total += sub;
+              } else {
+                cats.manuels_neufs.count += q;
+                cats.manuels_neufs.total += sub;
+              }
+            } else {
+              cats.fournitures.count += q;
+              cats.fournitures.total += sub;
+            }
+          }
+          const hasAnything =
+            cats.manuels_neufs.count + cats.manuels_troc.count +
+            cats.manuels_occasion.count + cats.fournitures.count > 0;
+          if (!hasAnything) return null;
+          const rows: Array<[string, string, { count: number; total: number }, string]> = [
+            ['Manuels neufs', '📘', cats.manuels_neufs, 'text-blue-800'],
+            ['Manuels via troc', '🔄', cats.manuels_troc, 'text-emerald-800'],
+            ["Manuels d'occasion", '📚', cats.manuels_occasion, 'text-orange-800'],
+            ['Fournitures & accessoires', '✏️', cats.fournitures, 'text-amber-800'],
+          ];
+          return (
+            <div className="bg-white border border-gray-200 rounded-2xl p-4 mt-2 mb-3 shadow-sm">
+              <p className="font-bold text-gray-800 text-sm mb-2.5">Récap par catégorie</p>
+              {rows.filter(([, , data]) => data.count > 0).map(([label, icon, data, color]) => (
+                <div key={label} className="flex items-center justify-between py-1.5 text-sm border-b border-gray-100 last:border-b-0">
+                  <div className="flex items-center gap-2">
+                    <span>{icon}</span>
+                    <span className={`font-semibold ${color}`}>{label}</span>
+                    <span className="text-xs text-gray-500">×{data.count}</span>
+                  </div>
+                  <span className={`font-bold tabular-nums ${color}`}>{data.total.toLocaleString('fr-FR')} F</span>
+                </div>
+              ))}
+              {/* Troc : rappel crédit / demande / gap clair */}
+              {cats.manuels_troc.count > 0 && pendingCredit.available > 0 && (
+                <div className="mt-3 pt-2.5 border-t border-emerald-200 bg-emerald-50 -mx-4 -mb-4 px-4 pb-4 rounded-b-2xl">
+                  <p className="font-bold text-emerald-900 text-xs uppercase tracking-wide mb-2">
+                    🔄 Détail Troc
+                  </p>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-emerald-800">Votre crédit Yukpo disponible</span>
+                      <span className="font-bold text-emerald-700">{pendingCredit.available.toLocaleString()} F</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-emerald-800">Crédit utilisable pour cette commande</span>
+                      <span className="font-bold text-emerald-700">− {pendingCredit.engageable.toLocaleString()} F</span>
+                    </div>
+                    {pendingCredit.available - pendingCredit.engageable > 0 && (
+                      <div className="flex justify-between text-[11px] text-emerald-600 italic">
+                        <span>Crédit restant après commande</span>
+                        <span>{(pendingCredit.available - pendingCredit.engageable).toLocaleString()} F</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Synthèse globale tous enfants */}
         {enfants.filter(e => countByEnfant(e.id) > 0).length > 1 && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mt-2">
@@ -1295,15 +1379,20 @@ const RecapAchatPage: React.FC = () => {
                 </p>
               </div>
             )}
-            {/* À payer : visible dès qu'il y a frais ou crédit en jeu */}
-            {(pendingCredit.engageable > 0 || fraisLivraison > 0) && (
-              <div className="mt-1.5 pt-1.5 border-t border-amber-200 flex items-center justify-between">
-                <p className="font-bold text-amber-900 text-sm">À payer</p>
-                <p className="font-bold text-amber-800 text-base">
-                  {grandTotalAvecCredit.toLocaleString()} FCFA
-                </p>
+            {/* Gap à payer — toujours visible, mis en évidence. */}
+            <div className="mt-2 pt-2 border-t-2 border-amber-300 flex items-center justify-between bg-amber-100 -mx-4 -mb-4 px-4 py-3 rounded-b-2xl">
+              <div>
+                <p className="font-bold text-amber-900 text-sm">💰 Reste à payer</p>
+                {pendingCredit.engageable > 0 && (
+                  <p className="text-[10px] text-amber-700 mt-0.5">
+                    Après déduction crédit troc {pendingCredit.engageable.toLocaleString()} F
+                  </p>
+                )}
               </div>
-            )}
+              <p className="font-bold text-amber-900 text-lg tabular-nums">
+                {grandTotalAvecCredit.toLocaleString()} FCFA
+              </p>
+            </div>
             {hasOccasionRange && (
               <p className="text-[11px] text-amber-700 mt-1.5 leading-snug">
                 {t('bourse.recap.range_help')}
