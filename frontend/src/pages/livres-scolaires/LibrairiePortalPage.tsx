@@ -1738,6 +1738,14 @@ export const LibrairieDashboardPage: React.FC = () => {
               <Users className="w-3.5 h-3.5" />
               {t('librairie.equipe')}
             </button>
+            {/* ✅ Nouvel onglet : visibilité sur le marché Bourse (livres
+                parents en troc/vente/don + matchings algo) */}
+            <button
+              onClick={() => navigate('/librairie/marche-bourse')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/30 hover:bg-emerald-500/50 text-xs font-semibold whitespace-nowrap shrink-0"
+            >
+              🔄 Marché Bourse
+            </button>
           </div>
 
           {/* Filtres */}

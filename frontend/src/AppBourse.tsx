@@ -30,6 +30,7 @@ import BrowseProgrammeByEtablissementPage from './pages/livres-scolaires/BrowseP
 import VendreLivresPage from './pages/livres-scolaires/VendreLivresPage';
 import MesCommandesPage from './pages/livres-scolaires/MesCommandesPage';
 import { LibrairieDashboardPage, LibrairieCommandeDetailPage } from './pages/livres-scolaires/LibrairiePortalPage';
+import LibrairieMarcheBoursePage from './pages/livres-scolaires/LibrairieMarcheBoursePage';
 import EcoleSearchPage from './pages/livres-scolaires/EcoleSearchPage';
 import {
   EcoleDecisionPage,
@@ -141,6 +142,7 @@ function AppBourse() {
               {/* Yukpo Librairie — portail libraire (login obligatoire, pas guest) */}
               <Route path="/librairie" element={<BourseLayout><RequireAuth><LibrairieDashboardPage /></RequireAuth></BourseLayout>} />
               <Route path="/librairie/commandes/:commandeId" element={<BourseLayout><RequireAuth><LibrairieCommandeDetailPage /></RequireAuth></BourseLayout>} />
+              <Route path="/librairie/marche-bourse" element={<BourseLayout><RequireAuth><LibrairieMarcheBoursePage /></RequireAuth></BourseLayout>} />
 
               {/* ✅ 2026-05-07 : Pages Officielles Établissements */}
               {/* Côté parent (mode invité OK) */}

@@ -114,6 +114,132 @@ pub async fn get_upload_session(
     })))
 }
 
+/// GET /api/bourse-livre/admin/marketplace-overview
+/// Vue d'ensemble du marché Bourse pour Yukpo Librairie / admins :
+///   - Compteurs globaux par mode (troc/vente/don) et par état
+///   - Activité récente (50 derniers livres)
+///   - Stats des matchings troc (pending/matched/chained/expired)
+/// Restreint à user.role = 'admin' OU 'librairie' OU 'super_admin'.
+pub async fn get_marketplace_overview(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    let role = user.role.as_str();
+    if !matches!(role, "admin" | "super_admin" | "librairie" | "libraire") {
+        return Err(AppError::Forbidden(
+            "Accès réservé aux admins et librairies".to_string(),
+        ));
+    }
+
+    use sqlx::Row;
+
+    // Compteurs globaux par mode_listing + troc_status
+    let stats_rows = sqlx::query(
+        r#"SELECT
+              mode_listing,
+              COALESCE(troc_status, 'n/a') AS troc_status,
+              COUNT(*)::bigint AS count,
+              COALESCE(SUM(valeur_calculee), 0)::float8 AS valeur_totale
+           FROM livres_scolaires
+           WHERE etat_classification != 'rejete'
+             AND created_at > NOW() - INTERVAL '90 days'
+           GROUP BY mode_listing, COALESCE(troc_status, 'n/a')
+           ORDER BY mode_listing, COALESCE(troc_status, 'n/a')"#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur stats marketplace: {}", e)))?;
+
+    let stats: Vec<serde_json::Value> = stats_rows
+        .iter()
+        .map(|r| {
+            json!({
+                "mode_listing": r.try_get::<Option<String>, _>("mode_listing").ok().flatten(),
+                "troc_status": r.try_get::<String, _>("troc_status").ok(),
+                "count": r.try_get::<i64, _>("count").unwrap_or(0),
+                "valeur_totale_xaf": r.try_get::<f64, _>("valeur_totale").unwrap_or(0.0),
+            })
+        })
+        .collect();
+
+    // Activité récente : 50 derniers livres avec leur statut
+    let recent_rows = sqlx::query(
+        r#"SELECT id, titre, auteur, classe_actuelle, classe_souhaitee, matiere,
+                  etat_classification, prix_detecte, valeur_calculee,
+                  mode_listing, troc_status, is_available, created_at, updated_at,
+                  user_id
+           FROM livres_scolaires
+           WHERE etat_classification != 'rejete'
+           ORDER BY created_at DESC
+           LIMIT 50"#,
+    )
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur activité récente: {}", e)))?;
+
+    let recent: Vec<serde_json::Value> = recent_rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id": r.try_get::<i32, _>("id").ok(),
+                "titre": r.try_get::<String, _>("titre").ok(),
+                "auteur": r.try_get::<Option<String>, _>("auteur").ok().flatten(),
+                "classe_actuelle": r.try_get::<Option<String>, _>("classe_actuelle").ok().flatten(),
+                "classe_souhaitee": r.try_get::<Option<String>, _>("classe_souhaitee").ok().flatten(),
+                "matiere": r.try_get::<Option<String>, _>("matiere").ok().flatten(),
+                "etat_classification": r.try_get::<String, _>("etat_classification").ok(),
+                "prix_detecte": r.try_get::<Option<rust_decimal::Decimal>, _>("prix_detecte").ok().flatten(),
+                "valeur_calculee": r.try_get::<Option<rust_decimal::Decimal>, _>("valeur_calculee").ok().flatten(),
+                "mode_listing": r.try_get::<Option<String>, _>("mode_listing").ok().flatten(),
+                "troc_status": r.try_get::<Option<String>, _>("troc_status").ok().flatten(),
+                "is_available": r.try_get::<bool, _>("is_available").ok(),
+                "user_id": r.try_get::<i32, _>("user_id").ok(),
+                "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok(),
+                "updated_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("updated_at").ok(),
+            })
+        })
+        .collect();
+
+    // Stats globales agrégées (totaux)
+    let global_row = sqlx::query(
+        r#"SELECT
+              COUNT(*)::bigint AS total,
+              COUNT(*) FILTER (WHERE mode_listing = 'troc')::bigint AS total_troc,
+              COUNT(*) FILTER (WHERE mode_listing = 'vente')::bigint AS total_vente,
+              COUNT(*) FILTER (WHERE mode_listing = 'don')::bigint AS total_don,
+              COUNT(*) FILTER (WHERE troc_status = 'matched')::bigint AS troc_matched,
+              COUNT(*) FILTER (WHERE troc_status = 'chained')::bigint AS troc_chained,
+              COUNT(*) FILTER (WHERE troc_status = 'expired')::bigint AS troc_expired,
+              COUNT(*) FILTER (WHERE is_available = false AND mode_listing IN ('vente','don'))::bigint AS sold_or_given,
+              COALESCE(SUM(valeur_calculee), 0)::float8 AS valeur_totale_xaf
+           FROM livres_scolaires
+           WHERE etat_classification != 'rejete'
+             AND created_at > NOW() - INTERVAL '90 days'"#,
+    )
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur stats globales: {}", e)))?;
+
+    let global = json!({
+        "total": global_row.try_get::<i64, _>("total").unwrap_or(0),
+        "total_troc": global_row.try_get::<i64, _>("total_troc").unwrap_or(0),
+        "total_vente": global_row.try_get::<i64, _>("total_vente").unwrap_or(0),
+        "total_don": global_row.try_get::<i64, _>("total_don").unwrap_or(0),
+        "troc_matched": global_row.try_get::<i64, _>("troc_matched").unwrap_or(0),
+        "troc_chained": global_row.try_get::<i64, _>("troc_chained").unwrap_or(0),
+        "troc_expired": global_row.try_get::<i64, _>("troc_expired").unwrap_or(0),
+        "sold_or_given": global_row.try_get::<i64, _>("sold_or_given").unwrap_or(0),
+        "valeur_totale_xaf": global_row.try_get::<f64, _>("valeur_totale_xaf").unwrap_or(0.0),
+    });
+
+    Ok(Json(json!({
+        "success": true,
+        "global": global,
+        "stats_by_mode_status": stats,
+        "recent_books": recent,
+    })))
+}
+
 /// GET /api/bourse-livre/wallet/balance
 /// Retourne le solde Yukpo (wallet_credit_bourse) du user + ses 5 derniers
 /// mouvements. Permet l'affichage dynamique du crédit dans le header.
