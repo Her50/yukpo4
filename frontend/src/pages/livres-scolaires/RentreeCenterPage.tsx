@@ -801,8 +801,8 @@ const RentreeCenterPage: React.FC = () => {
       {showGpsGate && (
         <div className="fixed inset-0 z-[60]">
           <GpsGate
-            title="Avant de photographier votre livre"
-            reason="Yukpo doit connaître votre position pour organiser la collecte du livre après le matching. Cette information est obligatoire avant tout échange."
+            title="Où venir chercher votre livre ?"
+            reason="Indiquez le point où le coursier passera récupérer votre livre une fois l'échange validé. Vous pouvez utiliser votre position actuelle ou choisir un lieu précis sur la carte."
             onGranted={(coords) => {
               setGps(coords);
               // setShowGpsGate(false) sera fait par l'effect qui voit gps

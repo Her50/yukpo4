@@ -305,16 +305,16 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
                 : result.etat_classification === 'acceptable' ? 'text-amber-700'
                 : 'text-red-700'
             }`}>
-              {result.etat_classification === 'bon' ? 'Bon (70%)'
-                : result.etat_classification === 'acceptable' ? 'Acceptable (40%)'
-                : 'Rejeté (0%)'}
+              {result.etat_classification === 'bon' ? 'Bon état'
+                : result.etat_classification === 'acceptable' ? 'État acceptable'
+                : 'Rejeté'}
             </p>
           </div>
           <div className="bg-white rounded-lg px-2 py-1.5">
-            <p className="text-gray-500">Valeur estimée</p>
+            <p className="text-gray-500">Valeur nette estimée</p>
             <p className="font-semibold text-amber-700">
               {result.valeur_calculee > 0
-                ? `${result.valeur_calculee.toLocaleString('fr-FR')} XAF`
+                ? `${Math.round(result.valeur_calculee * 0.95).toLocaleString('fr-FR')} XAF`
                 : '—'}
             </p>
           </div>

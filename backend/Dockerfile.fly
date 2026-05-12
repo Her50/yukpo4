@@ -128,6 +128,10 @@ COPY --from=builder --chown=appuser:appuser /app/bin/yukpomnang_backend /app/yuk
 COPY --from=builder --chown=appuser:appuser /app/config /app/config
 COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
 COPY --from=builder --chown=appuser:appuser /app/ia_prompts /app/ia_prompts
+# ✅ Prompts utilisés par le PromptLoader (bourse_livre, recherche_besoin, etc.)
+#    Le chargeur cherche dans `src/services/ia/prompts` — sans cette copie,
+#    le service tombait dans un fallback hardcodé inconsistant.
+COPY --from=builder --chown=appuser:appuser /app/src/services/ia/prompts /app/src/services/ia/prompts
 COPY --from=builder --chown=appuser:appuser /app/public /app/public
 COPY --from=builder --chown=appuser:appuser /app/ia_intentions_instructions.md /app/
 

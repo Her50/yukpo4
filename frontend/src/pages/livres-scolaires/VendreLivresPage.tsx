@@ -3,6 +3,7 @@ import {
   MapPin, Plus, Repeat, ShoppingBag, Trash2,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import BookPhotoCapture, { AnalyzedBookResult } from '../../components/livres-scolaires/BookPhotoCapture';
 import GpsGate from '../../components/livres-scolaires/GpsGate';
@@ -54,10 +55,14 @@ const VendreLivresPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
+  // Défaut = 'troc' : c'est le mode de loin le plus utilisé (échange livre
+  // contre celui de la classe suivante + crédit). 'vente' et 'don' restent
+  // accessibles via le sélecteur ou la query ?mode=vente|don.
   const initialMode: ModeListing = (() => {
     const m = searchParams.get('mode');
-    return m === 'troc' || m === 'don' ? m : 'vente';
+    return m === 'vente' || m === 'don' ? m : 'troc';
   })();
 
   const [sessionMode, setSessionMode] = useState<ModeListing>(initialMode);
@@ -211,8 +216,8 @@ const VendreLivresPage: React.FC = () => {
   if (!gps) {
     return (
       <GpsGate
-        title="Avant de scanner vos livres"
-        reason="Yukpo doit connaître votre position pour organiser la collecte de vos livres après le matching. Sans cette information, impossible de planifier le coursier."
+        title="Où venir chercher vos livres ?"
+        reason="Indiquez le point où le coursier viendra récupérer vos livres après matching. Vous pouvez utiliser votre position actuelle ou choisir un lieu précis sur la carte."
         onGranted={(coords) => {
           setGps(coords);
           setGpsAsked(true);
@@ -264,6 +269,16 @@ const VendreLivresPage: React.FC = () => {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 pt-4">
+        {/* Avertissement éligibilité — visible AVANT toute capture de photo */}
+        {books.length === 0 && (
+          <div className="mb-3 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-snug flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+            <div>
+              <strong className="block mb-0.5">{t('bourse.home.eligibility_warning_title')}</strong>
+              {t('bourse.home.eligibility_warning_desc')}
+            </div>
+          </div>
+        )}
         {/* Sélecteur de mode listing par défaut session */}
         {books.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-3">
@@ -381,11 +396,11 @@ const VendreLivresPage: React.FC = () => {
                           book.etat_classification === 'bon' ? 'text-emerald-700 font-semibold'
                             : 'text-amber-700 font-semibold'
                         }>
-                          {book.etat_classification === 'bon' ? 'Bon (70%)' : 'Acceptable (40%)'}
+                          {book.etat_classification === 'bon' ? 'Bon état' : 'État acceptable'}
                         </span>
                         <span className="text-gray-500"> · </span>
                         <span className="text-orange-700 font-bold">
-                          {book.valeur_calculee.toLocaleString('fr-FR')} XAF
+                          {Math.round(book.valeur_calculee * 0.95).toLocaleString('fr-FR')} XAF
                         </span>
                       </p>
                     ) : (
