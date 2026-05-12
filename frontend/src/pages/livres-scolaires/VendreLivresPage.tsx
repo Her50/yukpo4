@@ -151,7 +151,7 @@ const VendreLivresPage: React.FC = () => {
     setShowCapture(false);
     toast({
       title: 'Livre ajouté',
-      description: `${result.titre} — ${result.valeur_calculee.toLocaleString('fr-FR')} XAF`,
+      description: `${result.titre} — Crédit ${Math.round(result.valeur_calculee * 0.75).toLocaleString('fr-FR')} XAF`,
     });
   };
 
