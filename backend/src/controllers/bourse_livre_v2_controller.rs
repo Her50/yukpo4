@@ -114,6 +114,55 @@ pub async fn get_upload_session(
     })))
 }
 
+/// GET /api/bourse-livre/wallet/balance
+/// Retourne le solde Yukpo (wallet_credit_bourse) du user + ses 5 derniers
+/// mouvements. Permet l'affichage dynamique du crédit dans le header.
+pub async fn get_wallet_balance(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    use sqlx::Row;
+    let balance: rust_decimal::Decimal =
+        sqlx::query_scalar("SELECT COALESCE(wallet_credit_bourse, 0) FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_one(&state.pg)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur récupération solde: {}", e)))?;
+
+    let rows = sqlx::query(
+        r#"SELECT amount, direction, source, note, balance_after, created_at
+           FROM wallet_credit_bourse_ledger
+           WHERE user_id = $1
+           ORDER BY created_at DESC
+           LIMIT 5"#,
+    )
+    .bind(user_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let movements: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "amount": r.try_get::<rust_decimal::Decimal, _>("amount").ok(),
+                "direction": r.try_get::<String, _>("direction").ok(),
+                "source": r.try_get::<String, _>("source").ok(),
+                "note": r.try_get::<Option<String>, _>("note").ok().flatten(),
+                "balance_after": r.try_get::<rust_decimal::Decimal, _>("balance_after").ok(),
+                "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").ok(),
+            })
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "success": true,
+        "wallet_credit_bourse": balance,
+        "devise": "XAF",
+        "recent_movements": movements,
+    })))
+}
+
 /// GET /api/bourse-livre/v2/sessions/active
 /// Retourne la session 'en_cours' la plus récente du user (s'il y en a une)
 /// + les livres déjà scannés dans cette session.

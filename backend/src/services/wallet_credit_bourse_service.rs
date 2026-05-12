@@ -231,8 +231,9 @@ pub const LLM_ANALYSIS_FEE_XAF: f64 = 40.0;
 pub const CAP_CREDIT_PAR_PARENT_XAF: f64 = 50_000.0;
 
 /// Pourcentage max de la commande payable en crédit (le reste en cash/MoMo).
-/// Évite qu'un parent paie 100% de sa rentrée en crédit non encore matché.
-pub const RATIO_MAX_CREDIT_DANS_COMMANDE: f64 = 0.30;
+/// 1.0 = le crédit peut couvrir 100% de la commande. Si le crédit dépasse la
+/// commande, l'excédent reste dans le wallet pour les prochains achats.
+pub const RATIO_MAX_CREDIT_DANS_COMMANDE: f64 = 1.0;
 
 /// Marge brute minimale Yukpo pour engager une chaîne troc. En dessous, la
 /// chaîne est rejetée (logistique trop coûteuse vs revenu attendu).

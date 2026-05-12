@@ -1,12 +1,13 @@
 import {
-  Camera, ChevronRight, LogOut, Repeat, School, ShoppingCart, Sparkles, Store,
+  Camera, ChevronRight, LogOut, Repeat, School, ShoppingCart, Sparkles, Store, Wallet,
 } from 'lucide-react';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import LanguageSwitcherBourse from '../../components/LanguageSwitcherBourse';
 import { useParentShop } from '../../hooks/useParentShop';
 import { useUser } from '../../hooks/useUser';
+import { apiGet } from '../../services/apiService';
 
 /**
  * Page d'accueil minimaliste de la Bourse du Livre.
@@ -37,6 +38,23 @@ const LivreScolaireHomePage: React.FC = () => {
   const { t } = useTranslation();
   const { totalItems } = useParentShop();
   const { user, isLoading } = useUser();
+  // ✅ Solde Yukpo dynamique — affiché dans le header. Source de vérité backend
+  // (peut différer du localStorage si l'user a fait un troc/commande depuis).
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiGet('/api/bourse-livre/wallet/balance');
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled && data?.success) {
+          setWalletBalance(Number(data.wallet_credit_bourse ?? 0));
+        }
+      } catch { /* silencieux */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
   // Saison détectée automatiquement à chaque render — bornes CM pour V1.
   // Re-évaluée à chaque mount, ce qui suffit pour une PWA ouverte ponctuellement.
   const season: SchoolSeason = useMemo(() => getCurrentSchoolSeason(), []);
@@ -97,6 +115,28 @@ const LivreScolaireHomePage: React.FC = () => {
           </div>
         </div>
         <p className="text-amber-50 text-sm mt-1.5 font-medium">{t('bourse.home.subtitle')}</p>
+        {/* Solde Yukpo dynamique — toujours visible. Permet à l'utilisateur de
+            connaître son crédit avant de passer une nouvelle commande. */}
+        {walletBalance !== null && (
+          <button
+            onClick={() => navigate('/mes-livres')}
+            className="mt-3 w-full flex items-center justify-between bg-white/15 backdrop-blur-sm rounded-2xl px-4 py-3 active:bg-white/25"
+            aria-label="Voir détails du crédit"
+          >
+            <div className="flex items-center gap-2.5">
+              <Wallet className="w-5 h-5 text-white" />
+              <span className="text-white text-sm font-medium">Mon crédit Yukpo</span>
+            </div>
+            <div className="text-right">
+              <p className={`text-white font-bold text-base tabular-nums ${walletBalance < 0 ? 'text-red-100' : ''}`}>
+                {walletBalance >= 0 ? '' : '−'}{Math.abs(walletBalance).toLocaleString('fr-FR')} <span className="text-xs font-normal">XAF</span>
+              </p>
+              {walletBalance < 0 && (
+                <p className="text-[10px] text-red-100">À régler au prochain achat</p>
+              )}
+            </div>
+          </button>
+        )}
       </div>
 
       {/* ✅ 2026-05-10 : accueil épuré — header amber compact, puis directement

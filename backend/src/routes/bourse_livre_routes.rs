@@ -137,6 +137,10 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             get(bourse_livre_v2_controller::get_active_upload_session),
         )
         .route(
+            "/api/bourse-livre/wallet/balance",
+            get(bourse_livre_v2_controller::get_wallet_balance),
+        )
+        .route(
             "/api/bourse-livre/v2/sessions/{id}",
             get(bourse_livre_v2_controller::get_upload_session),
         )
