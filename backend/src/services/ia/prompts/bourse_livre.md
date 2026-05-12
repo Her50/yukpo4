@@ -124,7 +124,13 @@ TON RÔLE - ANALYSER LES DEUX FACES DU LIVRE :
    - Titre exact du livre
    - Auteur(s)
    - Éditeur / maison d'édition
-   - ISBN (souvent au verso, code-barres)
+   - **ISBN — CRITIQUE pour anti-fraude** : recherche ACTIVEMENT le code-barres
+     au verso de la 4ème de couverture. L'ISBN est généralement :
+       * 10 ou 13 chiffres (parfois avec tirets)
+       * Imprimé sous le code-barres
+       * Peut être précédé de "ISBN" ou "ISBN-13"
+     Si le code-barres est flou ou illisible, mets `null` (l'app demandera un rescan).
+     Ne devine JAMAIS un ISBN — un faux ISBN cause des doublons frauduleux.
    - Classe / niveau cible du livre → c'est la "classe_actuelle"
    - Matière (Mathématiques, Français, SVT, English, Biology, etc.)
    - Niveau scolaire (selon le système détecté)

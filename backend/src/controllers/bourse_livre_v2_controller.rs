@@ -499,6 +499,72 @@ pub async fn analyze_recto_verso(
         }
     }
 
+    // 3) Anti-fraude : ISBN obligatoire. Sans ISBN détecté, impossible de
+    //    dédupliquer. On demande un re-scan plus net du code-barres.
+    let isbn_normalized = analysis
+        .isbn
+        .as_deref()
+        .map(|s| {
+            s.chars()
+                .filter(|c| c.is_ascii_alphanumeric())
+                .collect::<String>()
+                .to_uppercase()
+        })
+        .filter(|s| s.len() >= 10); // ISBN-10 ou ISBN-13
+    let isbn_missing = !analysis.etat_classification.eq("rejete") && isbn_normalized.is_none();
+    if isbn_missing {
+        info!(
+            "[analyze_recto_verso] Livre REJETÉ : ISBN non détecté — re-scan requis (titre={:?})",
+            analysis.titre
+        );
+        analysis.etat_classification = "rejete".to_string();
+        analysis.prix_detecte = Some(0.0);
+        let note = "ISBN non lisible — re-scanner la 4ème de couverture (code-barres)".to_string();
+        analysis.notes = Some(match analysis.notes.take() {
+            Some(n) if !n.is_empty() => format!("{} | {}", n, note),
+            _ => note,
+        });
+    }
+
+    // 4) Anti-fraude : duplicate detection. Si l'utilisateur a déjà scanné un
+    //    livre avec le MÊME ISBN dans une session active de la rentrée courante,
+    //    on rejette le doublon. Note : un parent peut légitimement avoir
+    //    plusieurs exemplaires identiques (jumeaux, fratrie), mais c'est rare.
+    //    Pour ce cas extrême, on rejette en signalant l'option support.
+    if let Some(ref isbn_n) = isbn_normalized {
+        if !analysis.etat_classification.eq("rejete") {
+            // Recherche dans les livres existants du user (90 derniers jours)
+            let dup_count: i64 = sqlx::query_scalar(
+                r#"SELECT COUNT(*)::bigint FROM livres_scolaires
+                   WHERE user_id = $1
+                     AND created_at > NOW() - INTERVAL '90 days'
+                     AND etat_classification != 'rejete'
+                     AND UPPER(regexp_replace(COALESCE(isbn, ''), '[^A-Za-z0-9]', '', 'g')) = $2"#,
+            )
+            .bind(user_id)
+            .bind(isbn_n)
+            .fetch_one(&state.pg)
+            .await
+            .unwrap_or(0);
+            if dup_count > 0 {
+                info!(
+                    "[analyze_recto_verso] Livre REJETÉ : ISBN duplicate ({}× pour user_id={}) — anti-fraude",
+                    dup_count, user_id
+                );
+                analysis.etat_classification = "rejete".to_string();
+                analysis.prix_detecte = Some(0.0);
+                let note = format!(
+                    "Livre déjà scanné dans votre session (ISBN {}). Pour plusieurs exemplaires, contactez le support.",
+                    isbn_n
+                );
+                analysis.notes = Some(match analysis.notes.take() {
+                    Some(n) if !n.is_empty() => format!("{} | {}", n, note),
+                    _ => note,
+                });
+            }
+        }
+    }
+
     // Calculer la valorisation
     let (valeur_calculee, ratio) = if let Some(prix) = analysis.prix_detecte {
         calculer_valeur_livre(prix, &analysis.etat_classification)
@@ -679,6 +745,16 @@ pub async fn analyze_recto_verso(
             (
                 "non_reusable_workbook",
                 "Ce livre consommable (cahier d'activité, workbook, livret) ne peut pas être réutilisé. Seuls les manuels scolaires en bon état sont acceptés.",
+            )
+        } else if notes_str.contains("ISBN non lisible") {
+            (
+                "isbn_missing",
+                "Impossible de lire l'ISBN sur la photo. Reprenez le scan en zoomant sur la 4ème de couverture, là où se trouve le code-barres.",
+            )
+        } else if notes_str.contains("déjà scanné dans votre session") {
+            (
+                "duplicate_book",
+                "Ce livre a déjà été scanné dans votre session (même ISBN). Si vous avez plusieurs exemplaires identiques, contactez le support Yukpo.",
             )
         } else if analysis.etat_classification == "rejete" {
             (

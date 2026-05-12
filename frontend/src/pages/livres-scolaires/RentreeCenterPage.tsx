@@ -392,6 +392,10 @@ const RentreeCenterPage: React.FC = () => {
           ? 'Maternelle/Primaire non eligible'
           : result.rejection_code === 'non_reusable_workbook'
           ? 'Cahier ou livret — non réutilisable'
+          : result.rejection_code === 'isbn_missing'
+          ? 'ISBN non lisible — rescannez'
+          : result.rejection_code === 'duplicate_book'
+          ? 'Livre déjà scanné'
           : result.rejection_code === 'value_zero'
           ? 'Valeur nulle'
           : t('bourse.rentree.toast_rejected_title');

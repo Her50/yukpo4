@@ -30,7 +30,9 @@ export interface AnalyzedBookResult {
   etat_classification: 'bon' | 'acceptable' | 'rejete';
   is_rejected: boolean;
   /** Code court envoyé par le backend pour différencier les motifs de rejet :
-   *  'not_in_program' | 'niveau_primaire' | 'non_reusable_workbook' | 'etat_too_damaged' | 'value_zero' | '' (accepté). */
+   *  'not_in_program' | 'niveau_primaire' | 'non_reusable_workbook' |
+   *  'isbn_missing' | 'duplicate_book' | 'etat_too_damaged' | 'value_zero' |
+   *  '' (accepté). */
   rejection_code?: string;
   /** Message FR prêt à afficher (toast / banner). */
   rejection_message?: string;
@@ -276,6 +278,10 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
         ? 'Livre rejeté — Maternelle/Primaire'
         : result.rejection_code === 'non_reusable_workbook'
         ? 'Livre rejeté — cahier consommable'
+        : result.rejection_code === 'isbn_missing'
+        ? 'ISBN illisible — rescannez la 4ème de couverture'
+        : result.rejection_code === 'duplicate_book'
+        ? 'Livre déjà scanné dans votre session'
         : result.rejection_code === 'value_zero'
         ? 'Livre rejeté — valeur nulle'
         : 'Livre rejeté — trop dégradé';
