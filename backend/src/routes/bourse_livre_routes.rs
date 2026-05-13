@@ -510,6 +510,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/v2/parent/articles-suggested",
             get(parent_suggestions_controller::articles_suggested),
         )
+        // ✅ 2026-05-13 : Recherche cross-classes pour le bouton « + Ajouter
+        //   manuellement » dans la modale Suggestions (livres + fournitures).
+        .route(
+            "/api/v2/parent/articles-search",
+            get(parent_suggestions_controller::articles_search),
+        )
         // ✅ 2026-05-10 : Équipe établissement (invitations + liste + suppression)
         .route(
             "/api/v2/admin/etablissement/{id}/team/invitations",

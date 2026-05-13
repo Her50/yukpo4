@@ -257,3 +257,160 @@ pub async fn articles_suggested(
         })),
     ))
 }
+
+#[derive(Debug, Deserialize)]
+pub struct ArticlesSearchQuery {
+    pub q: String,
+    #[serde(default)]
+    pub type_groupe: Option<String>,
+    #[serde(default)]
+    pub pays: Option<String>,
+    #[serde(default = "default_search_limit")]
+    pub limit: i64,
+}
+
+fn default_search_limit() -> i64 {
+    20
+}
+
+/// GET /api/v2/parent/articles-search
+///
+/// Recherche d'articles **cross-classes** par mot-clé pour le bouton
+/// « + Ajouter manuellement » dans la modale Suggestions. Contrairement à
+/// `articles_suggested` qui restreint à une classe donnée, ici on cherche
+/// dans toute la base de programmes (national + établissements) + accessoires
+/// populaires du pays, filtré par groupe livres/fournitures.
+///
+/// Réponse identique en shape à `articles_suggested` (champ `items`).
+pub async fn articles_search(
+    State(state): State<Arc<AppState>>,
+    Extension(_user): Extension<AuthenticatedUser>,
+    Query(q): Query<ArticlesSearchQuery>,
+) -> AppResult<impl IntoResponse> {
+    let needle = q.q.trim();
+    if needle.len() < 2 {
+        return Ok((
+            StatusCode::OK,
+            Json(json!({ "success": true, "items": [], "count": 0 })),
+        ));
+    }
+    let pays = q.pays.clone().unwrap_or_else(|| "CM".to_string());
+    let groupe = q.type_groupe.as_deref().unwrap_or("livres").to_lowercase();
+    let types_filter: Vec<String> = match groupe.as_str() {
+        "fournitures" => vec![
+            "cahier".to_string(),
+            "fourniture".to_string(),
+            "accessoire".to_string(),
+        ],
+        _ => vec!["livre".to_string(), "workbook".to_string()],
+    };
+    // Pattern ILIKE — case+accent (limite : ILIKE ne supprime pas les accents,
+    // donc on s'appuie sur `unaccent` si l'extension est dispo, sinon ILIKE direct).
+    let pattern = format!("%{}%", needle.to_lowercase());
+
+    use sqlx::Row;
+    let rows = sqlx::query(
+        r#"
+        SELECT DISTINCT ON (lower(titre_livre), COALESCE(matiere,''), type_article)
+               id, niveau, classe, matiere, titre_livre, auteur_livre, editeur_livre,
+               isbn_livre, type_article, prix_officiel::float8 AS prix, devise,
+               COALESCE(quantite_defaut, 1) AS qte,
+               est_obligatoire, systeme_educatif
+        FROM programmes_scolaires
+        WHERE is_active = true
+          AND type_article = ANY($1)
+          AND pays = $2
+          AND (lower(titre_livre) LIKE $3
+               OR lower(COALESCE(matiere,'')) LIKE $3
+               OR lower(COALESCE(auteur_livre,'')) LIKE $3
+               OR lower(COALESCE(editeur_livre,'')) LIKE $3)
+        ORDER BY lower(titre_livre), COALESCE(matiere,''), type_article
+        LIMIT $4
+        "#,
+    )
+    .bind(&types_filter)
+    .bind(&pays)
+    .bind(&pattern)
+    .bind(q.limit)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("articles_search: {}", e)))?;
+
+    let mut items: Vec<serde_json::Value> = Vec::new();
+    for r in &rows {
+        items.push(json!({
+            "source": "national",
+            "type_article": r.try_get::<String, _>("type_article").ok(),
+            "titre": r.try_get::<String, _>("titre_livre").ok(),
+            "auteur": r.try_get::<Option<String>, _>("auteur_livre").ok().flatten(),
+            "editeur": r.try_get::<Option<String>, _>("editeur_livre").ok().flatten(),
+            "isbn": r.try_get::<Option<String>, _>("isbn_livre").ok().flatten(),
+            "matiere": r.try_get::<Option<String>, _>("matiere").ok().flatten(),
+            "niveau": r.try_get::<Option<String>, _>("niveau").ok().flatten(),
+            "classe": r.try_get::<Option<String>, _>("classe").ok().flatten(),
+            "prix_officiel": r.try_get::<Option<f64>, _>("prix").ok().flatten(),
+            "devise": r.try_get::<Option<String>, _>("devise").ok().flatten(),
+            "quantite_defaut": r.try_get::<i32, _>("qte").unwrap_or(1),
+            "est_obligatoire": r.try_get::<Option<bool>, _>("est_obligatoire").ok().flatten(),
+        }));
+    }
+
+    // Source 2 : accessoires_populaires_par_classe pour le groupe fournitures
+    if groupe == "fournitures" {
+        let pop_rows = sqlx::query(
+            r#"
+            SELECT id, nom, quantite_mediane, prix_median::float8 AS prix_median,
+                   gamme_defaut, classe, niveau
+            FROM accessoires_populaires_par_classe
+            WHERE pays = $1
+              AND lower(nom) LIKE $2
+            ORDER BY occurrences DESC, nom ASC
+            LIMIT $3
+            "#,
+        )
+        .bind(&pays)
+        .bind(&pattern)
+        .bind(q.limit)
+        .fetch_all(&state.pg)
+        .await
+        .ok()
+        .unwrap_or_default();
+        for r in &pop_rows {
+            let titre: String = r.try_get("nom").unwrap_or_default();
+            let already = items.iter().any(|x| {
+                x.get("titre")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.eq_ignore_ascii_case(&titre))
+                    .unwrap_or(false)
+            });
+            if already {
+                continue;
+            }
+            items.push(json!({
+                "source": "populaire",
+                "type_article": "fourniture",
+                "titre": titre,
+                "matiere": serde_json::Value::Null,
+                "classe": r.try_get::<Option<String>, _>("classe").ok().flatten(),
+                "niveau": r.try_get::<Option<String>, _>("niveau").ok().flatten(),
+                "prix_officiel": r.try_get::<Option<f64>, _>("prix_median").ok().flatten(),
+                "devise": "XAF",
+                "quantite_defaut": r.try_get::<Option<i32>, _>("quantite_mediane").ok().flatten().unwrap_or(1),
+                "gamme_defaut": r.try_get::<Option<String>, _>("gamme_defaut").ok().flatten(),
+            }));
+        }
+    }
+
+    let count = items.len();
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "items": items,
+            "count": count,
+            "query": needle,
+            "type_groupe": groupe,
+            "pays": pays,
+        })),
+    ))
+}

@@ -38,6 +38,29 @@ type SuggestionItem = {
 
 type GroupeFilter = 'livres' | 'fournitures';
 
+/** Catégorie d'affichage pour grouper les suggestions en rubriques (calqué
+ *  sur ScanProgrammePage) : Manuels & workbooks → Cahiers → Fournitures. */
+type SuggCategorie = 'livres' | 'cahiers' | 'fournitures';
+
+const suggCategorieDe = (typ: string | TypeItem): SuggCategorie => {
+  const s = String(typ ?? '').toLowerCase();
+  if (s === 'livre' || s === 'workbook' || s === 'manuel' || s === 'textbook' || s === 'book') return 'livres';
+  if (s === 'cahier') return 'cahiers';
+  return 'fournitures';
+};
+
+const suggCategorieStyle: Record<SuggCategorie, { bg: string; border: string; text: string; dot: string }> = {
+  livres:      { bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-800',    dot: 'bg-blue-500' },
+  cahiers:     { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', dot: 'bg-emerald-500' },
+  fournitures: { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   dot: 'bg-amber-500' },
+};
+
+const suggCategorieLabelKey: Record<SuggCategorie, string> = {
+  livres: 'bourse.scan.cat_books',
+  cahiers: 'bourse.scan.cat_notebooks',
+  fournitures: 'bourse.scan.cat_supplies',
+};
+
 const RentreeCenterPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -828,10 +851,18 @@ const RentreeCenterPage: React.FC = () => {
       {showSuggestions && active && (
         <SuggestionsModal
           classe={active.classe}
-          enfants={enfants}
-          activeId={activeId}
-          setActiveId={setActiveId}
-          onAddChild={() => { setShowSuggestions(false); setSuggestionsOpenedViaShortcut(false); setShowClassForm(true); }}
+          pays={active.pays || PAYS_PAR_DEFAUT}
+          onAddManualItem={(item) => {
+            // Préfixe l'item dans la liste pour qu'il apparaisse en haut de
+            // sa section et l'auto-sélectionne avec qte=1 pour que l'user
+            // voit immédiatement le toggle Neuf/Occasion/Échange et puisse
+            // valider d'un clic sur "Ajouter au panier".
+            setSuggestions(prev => {
+              const exists = prev.some(p => p.titre.toLowerCase().trim() === item.titre.toLowerCase().trim());
+              return exists ? prev : [item, ...prev];
+            });
+            setSelectedSugg(prev => ({ ...prev, [item.titre]: Math.max(1, prev[item.titre] ?? 0) }));
+          }}
           onPickClasse={(sel) => {
             // Si l'user pioche une classe déjà associée à un enfant, on
             // bascule simplement. Sinon, on crée un enfant à la volée
@@ -1348,6 +1379,134 @@ const ClassFormModal: React.FC<{
   );
 };
 
+// ─── Ajout manuel inline par section (Manuels / Cahiers / Fournitures) ───
+// Recherche cross-classes dans la base (programmes_scolaires + accessoires
+// populaires) via GET /api/v2/parent/articles-search. Pas de classe en
+// filtre — l'user peut ajouter un livre/cahier/accessoire qui n'apparaît
+// pas dans le programme de sa classe mais existe ailleurs dans la base.
+const ManualAddInline: React.FC<{
+  cat: SuggCategorie;
+  pays: PaysCode;
+  onPick: (item: SuggestionItem) => void;
+}> = ({ cat, pays, onPick }) => {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SuggestionItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const groupeForSearch: GroupeFilter = cat === 'livres' ? 'livres' : 'fournitures';
+
+  // Debounce 250ms pour éviter de spammer l'endpoint à chaque keystroke.
+  useEffect(() => {
+    if (!open) return;
+    const q = query.trim();
+    if (q.length < 2) { setResults([]); return; }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set('q', q);
+        params.set('type_groupe', groupeForSearch);
+        params.set('pays', pays);
+        const res = await apiGet(`/api/v2/parent/articles-search?${params}`);
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        setResults((data?.items || []) as SuggestionItem[]);
+      } catch {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [open, query, groupeForSearch, pays]);
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full px-3 py-2 text-[11px] font-semibold text-amber-700 hover:bg-amber-50 active:bg-amber-100 border-t border-gray-100 flex items-center justify-center gap-1.5"
+      >
+        <Plus className="w-3.5 h-3.5" />
+        {t(cat === 'livres'
+          ? 'bourse.rentree.manual_add_book'
+          : cat === 'cahiers'
+          ? 'bourse.rentree.manual_add_notebook'
+          : 'bourse.rentree.manual_add_supply')}
+      </button>
+    );
+  }
+
+  return (
+    <div className="border-t border-gray-100 p-2 bg-gray-50">
+      <div className="relative">
+        <input
+          type="search"
+          autoFocus
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t('bourse.rentree.manual_add_placeholder')}
+          className="w-full px-3 py-2 pl-9 pr-9 bg-white border border-amber-300 rounded-lg text-sm focus:outline-none focus:border-amber-500"
+        />
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 text-sm">🔍</span>
+        <button
+          onClick={() => { setOpen(false); setQuery(''); setResults([]); }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+          aria-label={t('bourse.rentree.manual_add_close')}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      {query.trim().length >= 2 && (
+        <div className="mt-2 max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+          {loading && (
+            <div className="px-3 py-3 text-center text-xs text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin inline-block mr-1" />
+              {t('bourse.rentree.manual_add_loading')}
+            </div>
+          )}
+          {!loading && results.length === 0 && (
+            <div className="px-3 py-3 text-center text-xs text-gray-500">
+              {t('bourse.rentree.manual_add_no_results')}
+            </div>
+          )}
+          {!loading && results.map((r, i) => (
+            <button
+              key={`${r.titre}-${i}`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onPick(r);
+                setQuery('');
+                setResults([]);
+                setOpen(false);
+              }}
+              className="w-full px-3 py-2 text-left hover:bg-amber-50 active:bg-amber-100"
+            >
+              <div className="font-semibold text-[13px] text-gray-900 truncate" dir="auto">{r.titre}</div>
+              <div className="text-[10px] text-gray-500 flex items-center gap-1.5 flex-wrap" dir="auto">
+                {r.matiere && <span>{r.matiere}</span>}
+                {r.matiere && r.editeur && <span className="text-gray-300">·</span>}
+                {r.editeur && <span className="text-purple-700">{r.editeur}</span>}
+                {r.prix_officiel ? (
+                  <span className="text-amber-700 font-semibold tabular-nums">
+                    {r.prix_officiel.toLocaleString('fr-FR')} {r.devise || 'XAF'}
+                  </span>
+                ) : null}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+      {query.trim().length < 2 && (
+        <p className="mt-1.5 text-[10px] text-gray-500 leading-snug">
+          {t('bourse.rentree.manual_add_hint')}
+        </p>
+      )}
+    </div>
+  );
+};
+
 // ─── Modal suggestions intelligentes ───
 // L'utilisateur peut choisir par item :
 //   - Quantité (+/−)
@@ -1356,19 +1515,16 @@ const ClassFormModal: React.FC<{
 //     usagée à prix réduit). TrocPrepPage est réservé au cas où le user
 //     veut ÉCHANGER un livre qu'il possède déjà.
 const SuggestionsModal: React.FC<{
+  /** Classe active : utilisée pour le matching cross-pool et l'entête. */
   classe: string;
-  /** Liste de tous les enfants déclarés par le parent — permet de basculer
-   *  rapidement vers les manuels d'une autre classe sans fermer le modal. */
-  enfants: Enfant[];
-  activeId: string;
-  setActiveId: (id: string) => void;
-  /** Callback pour ajouter une nouvelle classe d'enfant (ferme le modal
-   *  Suggestions et ouvre le formulaire de classe). */
-  onAddChild: () => void;
+  /** Pays utilisé pour le filtrage de la recherche cross-classes. */
+  pays: PaysCode;
   /** Callback quand l'user pioche une classe via l'autocomplete intelligent.
-   *  Crée un enfant à la volée si la classe ne correspond à aucun enfant
-   *  existant, puis bascule l'enfant actif. */
+   *  Le parent gère la création de l'enfant interne à la volée (l'UX ne
+   *  manipule jamais d'enfants directement — voir feedback "class-only"). */
   onPickClasse: (sel: ClasseSelection) => void;
+  /** Ajout manuel : prépend l'item dans la liste et le pré-sélectionne. */
+  onAddManualItem: (item: SuggestionItem) => void;
   panier: PanierItem[];
   findMatchInPool: ReturnType<typeof useUserTrocPool>['findMatchInPool'];
   loading: boolean;
@@ -1381,7 +1537,7 @@ const SuggestionsModal: React.FC<{
   setChoixMap: (m: Record<string, 'neuf' | 'occasion' | 'troc'>) => void;
   onClose: () => void;
   onAdd: () => void;
-}> = ({ classe, enfants, activeId, setActiveId, onAddChild, onPickClasse, panier, findMatchInPool, loading, suggestions, groupe, setGroupe, selected, setSelected, choixMap, setChoixMap, onClose, onAdd }) => {
+}> = ({ classe, pays, onPickClasse, onAddManualItem, panier, findMatchInPool, loading, suggestions, groupe, setGroupe, selected, setSelected, choixMap, setChoixMap, onClose, onAdd }) => {
   const { t } = useTranslation();
   const total = Object.values(selected).filter(v => v > 0).length;
 
@@ -1421,48 +1577,23 @@ const SuggestionsModal: React.FC<{
     <ModalShell onClose={onClose} title={t('bourse.rentree.suggestions_title', { classe })} fullScreen>
       <p className="text-xs text-gray-500 mb-2">{t('bourse.rentree.suggestions_subtitle')}</p>
 
-      {/* Sélecteur de classe : pills cliquables pour les enfants déjà
-          déclarés + autocomplete intelligent pour explorer/changer
-          librement de classe (matching fuzzy, alias maternelle, etc.).
-          Si l'user pioche une classe non rattachée à un enfant existant,
-          un enfant virtuel est créé à la volée pour cette classe. */}
-      <div className="mb-3 space-y-2">
-        {enfants.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] text-gray-500 uppercase font-bold mr-1">
-              {t('bourse.rentree.suggestions_for_class')}
-            </span>
-            {enfants.map(e => (
-              <button
-                key={e.id}
-                onClick={() => setActiveId(e.id)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${
-                  activeId === e.id
-                    ? 'bg-amber-500 text-white'
-                    : 'bg-gray-100 text-gray-700 active:bg-gray-200'
-                }`}
-              >
-                {e.classe}
-              </button>
-            ))}
-          </div>
-        )}
-        <details className="bg-white border border-gray-200 rounded-lg overflow-visible">
-          <summary className="px-3 py-2 cursor-pointer text-[11px] font-semibold text-amber-700 flex items-center gap-1.5 list-none">
-            <Plus className="w-3.5 h-3.5" />
-            {t('bourse.rentree.suggestions_change_class')}
-          </summary>
-          <div className="px-3 pb-3">
-            <p className="text-[10px] text-gray-500 mb-2">
-              {t('bourse.rentree.suggestions_change_class_help')}
-            </p>
-            <ClasseAutocomplete
-              showPaysSelector={true}
-              onSelect={onPickClasse}
-              placeholder={t('bourse.rentree.suggestions_classe_placeholder')}
-            />
-          </div>
-        </details>
+      {/* Sélecteur de classe — autocomplete intelligent unique. Le workflow
+          de gestion d'enfants a été supprimé (jugé intrusif) : on raisonne
+          en CLASSE, et l'enfant interne est créé à la volée à la sélection
+          pour stocker le panier. Pas de pills, pas de "ajouter une autre
+          classe" : on retape simplement une classe pour basculer. */}
+      <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+        <p className="text-[11px] font-semibold text-amber-900 mb-1.5">
+          {t('bourse.rentree.suggestions_current_class_label', { classe })}
+        </p>
+        <p className="text-[10px] text-amber-800 mb-2 leading-snug">
+          {t('bourse.rentree.suggestions_change_class_help')}
+        </p>
+        <ClasseAutocomplete
+          showPaysSelector={true}
+          onSelect={onPickClasse}
+          placeholder={t('bourse.rentree.suggestions_classe_placeholder')}
+        />
       </div>
 
       {/* Bandeau d'orientation : explique les 3 modes (Neuf/Occasion/Échange).
@@ -1543,136 +1674,184 @@ const SuggestionsModal: React.FC<{
         </div>
       )}
 
-      <ul className="space-y-2 pb-40">
-        {filteredSuggestions.map(s => {
-          const qte = selected[s.titre] ?? 0;
-          const choix = choixMap[s.titre] ?? 'neuf';
-          const sourceLabel = s.source === 'etablissement'
-            ? t('bourse.rentree.suggestions_source_etab')
-            : s.source === 'national'
-            ? t('bourse.rentree.suggestions_source_national')
-            : t('bourse.rentree.suggestions_source_popular');
+      {/* Rendu groupé par rubrique (Manuels → Cahiers → Fournitures) calqué
+          sur ScanProgrammePage. Le tri par catégorie est calculé à partir
+          de `type_article` côté suggestion, le filtre tab livres/fournitures
+          ci-dessus a déjà restreint l'ensemble. */}
+      {filteredSuggestions.length > 0 && (() => {
+        const buckets: Record<SuggCategorie, SuggestionItem[]> = { livres: [], cahiers: [], fournitures: [] };
+        for (const s of filteredSuggestions) {
+          buckets[suggCategorieDe(s.type_article)].push(s);
+        }
+        const sections = (['livres', 'cahiers', 'fournitures'] as SuggCategorie[])
+          .filter(cat => buckets[cat].length > 0)
+          .map(cat => ({ cat, items: buckets[cat] }));
 
-          // ✅ Cross-flow : vérifier que ce livre n'est pas déjà :
-          //   1) Engagé dans le pool troc/vente/don du user (livre déjà
-          //      photographié et mis en échange — il l'a donné, peut pas
-          //      le racheter dans le même flow)
-          //   2) Déjà dans le panier actuel (même titre déjà coché)
-          // Dans les deux cas on bloque la sélection avec un badge clair.
-          const isLivre = s.type_article === 'livre' || s.type_article === 'workbook';
-          const trocMatch = isLivre
-            ? findMatchInPool({ titre: s.titre, matiere: s.matiere || undefined, classeCible: classe })
-            : null;
-          const inPanier = panier.some(p => p.titre.toLowerCase().trim() === s.titre.toLowerCase().trim());
-          const lockedByPool = !!trocMatch;
-          const locked = lockedByPool || inPanier;
-          const lockReason = lockedByPool
-            ? t('bourse.rentree.suggestions_locked_pool')
-            : inPanier
-            ? t('bourse.rentree.suggestions_locked_panier')
-            : '';
-
-          return (
-            <li
-              key={s.titre}
-              className={`border rounded-xl p-3 transition-colors ${
-                locked
-                  ? 'bg-cyan-50/80 border-cyan-200 opacity-80'
-                  : qte > 0
-                    ? 'bg-white border-amber-300'
-                    : 'bg-white border-gray-200'
-              }`}
-            >
-              <div className="flex items-start gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-gray-500 mb-0.5">{sourceLabel}</div>
-                  <div className="font-semibold text-sm text-gray-900 line-clamp-2">{s.titre}</div>
-                  {s.matiere && <div className="text-xs text-gray-500">{s.matiere}</div>}
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {s.prix_officiel && (
-                      <span className="text-xs text-amber-700 font-semibold">
-                        {s.prix_officiel.toLocaleString('fr-FR')} {s.devise || 'XAF'}
+        return (
+          <div className="space-y-3 pb-40">
+            {sections.map(({ cat, items }) => {
+              const style = suggCategorieStyle[cat];
+              return (
+                <div key={cat} className={`rounded-2xl border ${style.border} overflow-hidden bg-white`}>
+                  {/* En-tête de section */}
+                  <div className={`flex items-center justify-between px-3 py-2 ${style.bg}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
+                      <span className={`text-[11px] font-bold uppercase tracking-wide ${style.text}`}>
+                        {t(suggCategorieLabelKey[cat])}
                       </span>
-                    )}
-                    {s.est_obligatoire && (
-                      <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">
-                        {t('bourse.rentree.suggestions_required')}
-                      </span>
-                    )}
-                    {locked && (
-                      <span className="text-[10px] bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full font-semibold">
-                        ✓ {lockReason}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => toggle(s.titre, Math.max(0, qte - 1))}
-                    className="w-9 h-9 rounded-lg bg-gray-100 active:bg-gray-200 text-gray-700 font-bold disabled:opacity-40"
-                    disabled={qte === 0 || locked}
-                  >
-                    −
-                  </button>
-                  <span className="w-7 text-center text-sm font-bold">{qte}</span>
-                  <button
-                    onClick={() => toggle(s.titre, qte + 1)}
-                    className="w-9 h-9 rounded-lg bg-amber-500 text-white font-bold active:bg-amber-600 disabled:bg-gray-200 disabled:text-gray-400"
-                    disabled={locked}
-                    aria-label={locked ? lockReason : undefined}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {/* Toggle 3 modes — affiché seulement si item sélectionné et type livre. */}
-              {qte > 0 && !locked && isLivre && (
-                <div className="mt-2 pt-2 border-t border-gray-100 space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-gray-500 font-medium">
-                      {t('bourse.rentree.suggestions_condition_label')}
-                    </span>
-                    <div className="inline-flex rounded-lg overflow-hidden border border-gray-200">
-                      <button
-                        onClick={() => setChoix(s.titre, 'neuf')}
-                        className={`px-2.5 py-1.5 text-[11px] font-semibold ${
-                          choix === 'neuf' ? 'bg-emerald-500 text-white' : 'bg-white text-gray-700'
-                        }`}
-                      >
-                        {t('bourse.rentree.suggestions_choice_neuf')}
-                      </button>
-                      <button
-                        onClick={() => setChoix(s.titre, 'occasion')}
-                        className={`px-2.5 py-1.5 text-[11px] font-semibold border-l border-gray-200 ${
-                          choix === 'occasion' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700'
-                        }`}
-                      >
-                        {t('bourse.rentree.suggestions_choice_occasion')}
-                      </button>
-                      <button
-                        onClick={() => setChoix(s.titre, 'troc')}
-                        className={`px-2.5 py-1.5 text-[11px] font-semibold border-l border-gray-200 ${
-                          choix === 'troc' ? 'bg-amber-500 text-white' : 'bg-white text-gray-700'
-                        }`}
-                      >
-                        {t('bourse.rentree.suggestions_choice_troc')}
-                      </button>
                     </div>
+                    <span className="text-[10px] text-gray-500 font-semibold">
+                      {t(items.length > 1 ? 'bourse.scan.articles_other' : 'bourse.scan.articles_one', { count: items.length })}
+                    </span>
                   </div>
-                  {/* Mini-descriptif contextuel selon le mode choisi pour
-                      aider l'user à comprendre l'impact financier de son choix. */}
-                  <p className="text-[10px] text-gray-500 leading-snug">
-                    {choix === 'neuf' && t('bourse.rentree.suggestions_help_neuf')}
-                    {choix === 'occasion' && t('bourse.rentree.suggestions_help_occasion')}
-                    {choix === 'troc' && t('bourse.rentree.suggestions_help_troc')}
-                  </p>
+
+                  <ul className="divide-y divide-gray-100">
+                    {items.map(s => {
+                      const qte = selected[s.titre] ?? 0;
+                      const choix = choixMap[s.titre] ?? 'neuf';
+                      const isLivre = s.type_article === 'livre' || s.type_article === 'workbook';
+                      const isWorkbook = String(s.type_article).toLowerCase() === 'workbook';
+                      const trocMatch = isLivre
+                        ? findMatchInPool({ titre: s.titre, matiere: s.matiere || undefined, classeCible: classe })
+                        : null;
+                      const inPanier = panier.some(p => p.titre.toLowerCase().trim() === s.titre.toLowerCase().trim());
+                      const lockedByPool = !!trocMatch;
+                      const locked = lockedByPool || inPanier;
+                      const lockReason = lockedByPool
+                        ? t('bourse.rentree.suggestions_locked_pool')
+                        : inPanier
+                        ? t('bourse.rentree.suggestions_locked_panier')
+                        : '';
+                      const sourceLabel = s.source === 'etablissement'
+                        ? t('bourse.rentree.suggestions_source_etab')
+                        : s.source === 'national'
+                        ? t('bourse.rentree.suggestions_source_national')
+                        : t('bourse.rentree.suggestions_source_popular');
+
+                      return (
+                        <li
+                          key={s.titre}
+                          className={`px-3 py-2 transition-colors ${
+                            locked ? 'bg-cyan-50/80 opacity-90'
+                            : qte > 0 ? 'bg-amber-50/60'
+                            : 'bg-white'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                {/* Tags livre/workbook — données métier (titre, matière) jamais traduites */}
+                                {cat === 'livres' && !isWorkbook && (
+                                  <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">
+                                    {t('bourse.scan.tag_book')}
+                                  </span>
+                                )}
+                                {isWorkbook && (
+                                  <span className="text-[9px] font-bold bg-teal-100 text-teal-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">
+                                    {t('bourse.scan.tag_workbook')}
+                                  </span>
+                                )}
+                                <p className="font-semibold text-[13px] text-gray-900 truncate" title={s.titre} dir="auto">
+                                  {s.titre}
+                                </p>
+                              </div>
+                              {(s.matiere || s.editeur) && (
+                                <div className="text-[10px] text-gray-500 leading-tight flex items-center gap-1.5 flex-wrap" dir="auto">
+                                  {s.matiere && <span className="truncate max-w-[120px]" title={s.matiere}>{s.matiere}</span>}
+                                  {s.matiere && s.editeur && <span className="text-gray-300">·</span>}
+                                  {s.editeur && <span className="truncate max-w-[120px] text-purple-700" title={s.editeur}>{s.editeur}</span>}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <span className="text-[9px] text-gray-400 uppercase">{sourceLabel}</span>
+                                {s.prix_officiel ? (
+                                  <span className="text-[11px] text-amber-700 font-bold tabular-nums">
+                                    {s.prix_officiel.toLocaleString('fr-FR')} {s.devise || 'XAF'}
+                                  </span>
+                                ) : null}
+                                {s.est_obligatoire && (
+                                  <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold uppercase">
+                                    {t('bourse.rentree.suggestions_required')}
+                                  </span>
+                                )}
+                                {locked && (
+                                  <span className="text-[9px] bg-cyan-100 text-cyan-800 px-1.5 py-0.5 rounded-full font-semibold">
+                                    ✓ {lockReason}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {/* Stepper qty — compact (~80px) */}
+                            <div className="inline-flex items-center bg-gray-50 border border-gray-200 rounded-md shrink-0 overflow-hidden">
+                              <button
+                                onClick={() => toggle(s.titre, Math.max(0, qte - 1))}
+                                disabled={qte === 0 || locked}
+                                className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 text-base leading-none"
+                                aria-label="−"
+                              >−</button>
+                              <span className="text-xs font-bold text-gray-800 w-5 text-center tabular-nums leading-none">{qte}</span>
+                              <button
+                                onClick={() => toggle(s.titre, qte + 1)}
+                                disabled={locked}
+                                className="w-7 h-7 flex items-center justify-center text-amber-700 hover:bg-amber-100 disabled:opacity-30 text-base leading-none"
+                                aria-label={locked ? lockReason : '+'}
+                              >+</button>
+                            </div>
+                          </div>
+
+                          {/* Toggle 3 modes Neuf/Occasion/Échange — uniquement pour les livres */}
+                          {qte > 0 && !locked && isLivre && (
+                            <div className="mt-1.5 ml-0 flex items-center gap-2 flex-wrap">
+                              <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
+                                <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">
+                                  {t('bourse.scan.state')}
+                                </span>
+                                <button
+                                  onClick={() => setChoix(s.titre, 'neuf')}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                    choix === 'neuf' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
+                                  }`}
+                                >{t('bourse.scan.new')}</button>
+                                <button
+                                  onClick={() => setChoix(s.titre, 'occasion')}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                    choix === 'occasion' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
+                                  }`}
+                                >{t('bourse.scan.used')}</button>
+                                <button
+                                  onClick={() => setChoix(s.titre, 'troc')}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                    choix === 'troc' ? 'bg-cyan-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
+                                  }`}
+                                >{t('bourse.scan.troc_short')}</button>
+                              </div>
+                              <p className="text-[10px] text-gray-500 leading-snug flex-1 min-w-0">
+                                {choix === 'neuf' && t('bourse.rentree.suggestions_help_neuf')}
+                                {choix === 'occasion' && t('bourse.rentree.suggestions_help_occasion')}
+                                {choix === 'troc' && t('bourse.rentree.suggestions_help_troc')}
+                              </p>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {/* Footer : ajout manuel par section. Recherche cross-classes
+                      dans la base de programmes + accessoires populaires.
+                      Si l'user pioche un item, il est préfixé dans la liste
+                      avec qte=1 → visible immédiatement avec son toggle. */}
+                  <ManualAddInline
+                    cat={cat}
+                    pays={pays}
+                    onPick={onAddManualItem}
+                  />
                 </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* Sticky add bar — fixé au viewport avec gestion safe-area iOS. */}
       <div
