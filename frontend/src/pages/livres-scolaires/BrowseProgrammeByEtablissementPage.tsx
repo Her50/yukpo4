@@ -210,43 +210,62 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
   // Sélection enfant cible (pour ajout au panier)
   const [selectedEnfantId, setSelectedEnfantId] = useState(enfants[0]?.id ?? '');
 
-  // Chargement automatique dès que établissement + classe sont définis
+  // ✅ 2026-05-13 : Source unifiée avec SuggestionsModal — utilise désormais
+  // /api/v2/parent/articles-suggested (livres + fournitures en parallèle) au
+  // lieu de /api/bourse-livre/v2/programmes. Garantit l'équivalence avec
+  // l'ancien modal Suggestions (qui mergait aussi accessoires_populaires
+  // pour les fournitures quand le programme officiel n'en couvrait pas).
+  // Si pas d'etab → programme national + accessoires populaires nationaux.
+  // Si etab → priorité aux articles de l'etab, fallback national + populaires.
   const loadProgramme = useCallback(async () => {
     if (!classeNom) return;
     setLoading(true);
     setError('');
     setLoaded(false);
     try {
-      const params = new URLSearchParams();
-      if (etablissement?.id) params.set('etablissement_id', String(etablissement.id));
-      if (niveauNom) params.set('niveau', niveauNom);
-      if (classe) params.set('classe', classe);
-      params.set('pays', pays);
+      const fetchGroup = async (groupe: 'livres' | 'fournitures'): Promise<any[]> => {
+        const p = new URLSearchParams();
+        p.set('classe', classe);
+        p.set('type_groupe', groupe);
+        p.set('pays', pays);
+        if (etablissement?.id) p.set('etablissement_id', String(etablissement.id));
+        const res = await apiGet(`/api/v2/parent/articles-suggested?${p}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+        return (data?.items || []) as any[];
+      };
+      const [livresRaw, fournituresRaw] = await Promise.all([
+        fetchGroup('livres'),
+        fetchGroup('fournitures'),
+      ]);
+      const all = [...livresRaw, ...fournituresRaw];
 
-      const res = await fetch(`/api/bourse-livre/v2/programmes?${params}`);
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data?.message || `Erreur serveur (${res.status})`);
-        setItems([]);
-        return;
-      }
-
-      const list: any[] = data?.programmes || data?.data?.programmes || [];
-      const mapped: ProgrammeItem[] = list.map((m: any) => ({
-        titre: m.titre_livre || m.titre || 'Manuel',
-        auteur: m.auteur_livre || m.auteur,
-        matiere: m.matiere,
-        editeur: m.editeur_livre || m.editeur,
-        type: (m.type as TypeItem) || 'livre',
-        quantite: typeof m.quantite_defaut === 'number' ? m.quantite_defaut : 1,
-        prix: typeof m.prix_officiel === 'number'
-          ? m.prix_officiel
-          : (parseFloat(m.prix_officiel ?? m.prix ?? '') || undefined),
-        source: m.etablissement_id ? 'etablissement' : 'national',
-        selected: true,
-        choix: 'neuf' as const,
-      }));
+      const mapped: ProgrammeItem[] = all.map((m: any): ProgrammeItem => {
+        const rawType = String(m.type_article || m.type || 'livre').toLowerCase();
+        const type: TypeItem = (
+          rawType === 'workbook' ? 'livre'
+          : (rawType === 'livre' || rawType === 'cahier' || rawType === 'fourniture' || rawType === 'autre')
+            ? (rawType as TypeItem)
+            : 'fourniture'
+        );
+        return {
+          titre: m.titre || m.titre_livre || 'Article',
+          auteur: m.auteur || m.auteur_livre || undefined,
+          matiere: m.matiere || undefined,
+          editeur: m.editeur || m.editeur_livre || undefined,
+          type,
+          quantite: typeof m.quantite_defaut === 'number' ? m.quantite_defaut : 1,
+          prix: typeof m.prix_officiel === 'number'
+            ? m.prix_officiel
+            : (parseFloat(m.prix_officiel ?? m.prix ?? '') || undefined),
+          source: m.source === 'etablissement' ? 'etablissement' : 'national',
+          // Pré-coche par défaut UNIQUEMENT les livres/workbooks (comme dans
+          // SuggestionsModal). Cahiers et fournitures restent décochés —
+          // l'user choisit ce qu'il veut commander.
+          selected: type === 'livre',
+          choix: 'neuf' as const,
+        };
+      });
       setItems(mapped);
       setLoaded(true);
     } catch (e: any) {

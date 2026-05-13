@@ -252,22 +252,12 @@ const LivreScolaireHomePage: React.FC = () => {
             </div>
           </button>
 
-          {/* 3. Manuel (suggestions intelligentes) */}
-          <button
-            onClick={() => navigate('/rentree?suggestions=1')}
-            className="w-full bg-white rounded-2xl p-4 mb-3 shadow-sm border border-gray-200 text-left active:bg-gray-50 min-h-[80px]"
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm text-gray-900">{t('bourse.home.manual_cta')}</div>
-                <div className="text-xs text-gray-500 mt-0.5 leading-snug">{t('bourse.home.manual_description')}</div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-purple-600 mt-2 flex-shrink-0" />
-            </div>
-          </button>
+          {/* ✅ 2026-05-13 : Bouton "Suggestions intelligentes" SUPPRIMÉ.
+              Son contenu (programme national + accessoires populaires par
+              classe) est désormais strictement équivalent à celui de la
+              page "Établissement partenaire" quand aucune école n'est
+              choisie (programme national par défaut). Garde une seule
+              porte d'entrée pour réduire la confusion utilisateur. */}
 
           {/* Liens discrets vers les portails (connexion requise) */}
           <div className="mt-auto pt-8 flex flex-col items-center gap-2.5">
