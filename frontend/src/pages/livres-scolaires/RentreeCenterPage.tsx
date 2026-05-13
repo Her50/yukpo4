@@ -307,7 +307,26 @@ const RentreeCenterPage: React.FC = () => {
         const data = await res.json().catch(() => ({}));
         if (cancelled) return;
         if (!res.ok) throw new Error(data?.message || 'load failed');
-        setSuggestions((data?.items || []) as SuggestionItem[]);
+        const items = (data?.items || []) as SuggestionItem[];
+        setSuggestions(items);
+        // ✅ Pré-sélection : les LIVRES du programme officiel sont cochés
+        // par défaut (qte=quantite_defaut||1), comme sur ScanProgrammePage.
+        // Les fournitures restent à 0 — l'user coche ce qui l'intéresse.
+        // Ne remplace pas une qte déjà saisie manuellement (préserve les
+        // décisions de l'user au changement de tab).
+        if (suggGroupe === 'livres') {
+          setSelectedSugg(prev => {
+            const next = { ...prev };
+            let changed = false;
+            for (const s of items) {
+              if ((s.type_article === 'livre' || s.type_article === 'workbook') && next[s.titre] === undefined) {
+                next[s.titre] = s.quantite_defaut || 1;
+                changed = true;
+              }
+            }
+            return changed ? next : prev;
+          });
+        }
       } catch (e: any) {
         if (cancelled || errorShownRef.current) return;
         errorShownRef.current = true;
@@ -1575,33 +1594,15 @@ const SuggestionsModal: React.FC<{
 
   return (
     <ModalShell onClose={onClose} title={t('bourse.rentree.suggestions_title', { classe })} fullScreen>
-      <p className="text-xs text-gray-500 mb-2">{t('bourse.rentree.suggestions_subtitle')}</p>
-
-      {/* Sélecteur de classe — autocomplete intelligent unique. Le workflow
-          de gestion d'enfants a été supprimé (jugé intrusif) : on raisonne
-          en CLASSE, et l'enfant interne est créé à la volée à la sélection
-          pour stocker le panier. Pas de pills, pas de "ajouter une autre
-          classe" : on retape simplement une classe pour basculer. */}
-      <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-        <p className="text-[11px] font-semibold text-amber-900 mb-1.5">
-          {t('bourse.rentree.suggestions_current_class_label', { classe })}
-        </p>
-        <p className="text-[10px] text-amber-800 mb-2 leading-snug">
-          {t('bourse.rentree.suggestions_change_class_help')}
-        </p>
+      {/* Sélecteur de classe — autocomplete intelligent unique. Sert à
+          BASCULER ET AJOUTER une autre classe (frère/sœur). Pas de pills
+          d'enfants (workflow class-only). */}
+      <div className="mb-3">
         <ClasseAutocomplete
           showPaysSelector={true}
           onSelect={onPickClasse}
-          placeholder={t('bourse.rentree.suggestions_classe_placeholder')}
+          placeholder={t('bourse.rentree.suggestions_classe_placeholder_v2', { classe })}
         />
-      </div>
-
-      {/* Bandeau d'orientation : explique les 3 modes (Neuf/Occasion/Échange).
-          Aide l'utilisateur à comprendre l'impact financier avant de cocher. */}
-      <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-        <p className="text-[11px] text-amber-900 leading-snug">
-          {t('bourse.rentree.suggestions_intro_help')}
-        </p>
       </div>
 
       {/* Filtres */}
@@ -1729,18 +1730,42 @@ const SuggestionsModal: React.FC<{
                         ? t('bourse.rentree.suggestions_source_national')
                         : t('bourse.rentree.suggestions_source_popular');
 
+                      const checked = qte > 0;
+                      // Click checkbox : toggle entre 0 et la quantité par défaut.
+                      // Si la quantité avait été incrémentée à 3 puis décochée, on
+                      // ré-active à 1 (comportement attendu : recheck = relancer à 1).
+                      const toggleCheck = () => {
+                        if (locked) return;
+                        toggle(s.titre, checked ? 0 : 1);
+                      };
                       return (
                         <li
                           key={s.titre}
-                          className={`px-3 py-2 transition-colors ${
+                          className={`px-2.5 py-1.5 transition-colors ${
                             locked ? 'bg-cyan-50/80 opacity-90'
-                            : qte > 0 ? 'bg-amber-50/60'
+                            : checked ? 'bg-amber-50/60'
                             : 'bg-white'
                           }`}
                         >
-                          <div className="flex items-start gap-2">
+                          <div className="flex items-center gap-2">
+                            {/* Checkbox à gauche — pré-cochée pour les livres */}
+                            <button
+                              onClick={toggleCheck}
+                              disabled={locked}
+                              className="shrink-0"
+                              aria-label={checked ? t('bourse.scan.deselect_aria') : t('bourse.scan.select_aria')}
+                            >
+                              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
+                                locked ? 'bg-cyan-500 border-cyan-500 opacity-60'
+                                : checked ? 'bg-amber-500 border-amber-500'
+                                : 'border-gray-300'
+                              }`}>
+                                {(checked || locked) && <span className="text-white text-xs font-bold leading-none">✓</span>}
+                              </div>
+                            </button>
+
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5">
+                              <div className="flex items-center gap-1.5">
                                 {/* Tags livre/workbook — données métier (titre, matière) jamais traduites */}
                                 {cat === 'livres' && !isWorkbook && (
                                   <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1 py-0.5 rounded shrink-0 leading-none uppercase">
@@ -1756,53 +1781,56 @@ const SuggestionsModal: React.FC<{
                                   {s.titre}
                                 </p>
                               </div>
-                              {(s.matiere || s.editeur) && (
-                                <div className="text-[10px] text-gray-500 leading-tight flex items-center gap-1.5 flex-wrap" dir="auto">
-                                  {s.matiere && <span className="truncate max-w-[120px]" title={s.matiere}>{s.matiere}</span>}
-                                  {s.matiere && s.editeur && <span className="text-gray-300">·</span>}
-                                  {s.editeur && <span className="truncate max-w-[120px] text-purple-700" title={s.editeur}>{s.editeur}</span>}
-                                </div>
-                              )}
-                              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <span className="text-[9px] text-gray-400 uppercase">{sourceLabel}</span>
+                              <div className="text-[10px] text-gray-500 leading-tight flex items-center gap-1.5 flex-wrap" dir="auto">
+                                {s.matiere && <span className="truncate max-w-[110px]" title={s.matiere}>{s.matiere}</span>}
+                                {s.matiere && s.editeur && <span className="text-gray-300">·</span>}
+                                {s.editeur && <span className="truncate max-w-[110px] text-purple-700" title={s.editeur}>{s.editeur}</span>}
                                 {s.prix_officiel ? (
-                                  <span className="text-[11px] text-amber-700 font-bold tabular-nums">
+                                  <span className="text-amber-700 font-bold tabular-nums">
                                     {s.prix_officiel.toLocaleString('fr-FR')} {s.devise || 'XAF'}
                                   </span>
                                 ) : null}
-                                {s.est_obligatoire && (
-                                  <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold uppercase">
-                                    {t('bourse.rentree.suggestions_required')}
-                                  </span>
-                                )}
                                 {locked && (
-                                  <span className="text-[9px] bg-cyan-100 text-cyan-800 px-1.5 py-0.5 rounded-full font-semibold">
+                                  <span className="text-cyan-800 bg-cyan-100 px-1.5 py-0.5 rounded-full font-semibold">
                                     ✓ {lockReason}
                                   </span>
                                 )}
                               </div>
                             </div>
-                            {/* Stepper qty — compact (~80px) */}
-                            <div className="inline-flex items-center bg-gray-50 border border-gray-200 rounded-md shrink-0 overflow-hidden">
+
+                            {/* Stepper qty — visible uniquement si coché */}
+                            {checked && !locked && (
+                              <div className="inline-flex items-center bg-gray-50 border border-gray-200 rounded-md shrink-0 overflow-hidden">
+                                <button
+                                  onClick={() => toggle(s.titre, Math.max(0, qte - 1))}
+                                  className="w-6 h-6 flex items-center justify-center text-gray-600 hover:bg-gray-100 text-base leading-none"
+                                  aria-label="−"
+                                >−</button>
+                                <span className="text-xs font-bold text-gray-800 w-5 text-center tabular-nums leading-none">{qte}</span>
+                                <button
+                                  onClick={() => toggle(s.titre, qte + 1)}
+                                  className="w-6 h-6 flex items-center justify-center text-amber-700 hover:bg-amber-100 text-base leading-none"
+                                  aria-label="+"
+                                >+</button>
+                              </div>
+                            )}
+
+                            {/* Icône suppression — équivalent désélection rapide */}
+                            {checked && !locked && (
                               <button
-                                onClick={() => toggle(s.titre, Math.max(0, qte - 1))}
-                                disabled={qte === 0 || locked}
-                                className="w-7 h-7 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 text-base leading-none"
-                                aria-label="−"
-                              >−</button>
-                              <span className="text-xs font-bold text-gray-800 w-5 text-center tabular-nums leading-none">{qte}</span>
-                              <button
-                                onClick={() => toggle(s.titre, qte + 1)}
-                                disabled={locked}
-                                className="w-7 h-7 flex items-center justify-center text-amber-700 hover:bg-amber-100 disabled:opacity-30 text-base leading-none"
-                                aria-label={locked ? lockReason : '+'}
-                              >+</button>
-                            </div>
+                                onClick={() => toggle(s.titre, 0)}
+                                className="shrink-0 p-1 text-gray-400 hover:text-red-600 active:text-red-700"
+                                aria-label={t('bourse.scan.deselect_aria')}
+                                title={t('bourse.scan.deselect_aria')}
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
 
-                          {/* Toggle 3 modes Neuf/Occasion/Échange — uniquement pour les livres */}
-                          {qte > 0 && !locked && isLivre && (
-                            <div className="mt-1.5 ml-0 flex items-center gap-2 flex-wrap">
+                          {/* Toggle 3 modes Neuf/Occasion/Échange — uniquement pour les livres cochés */}
+                          {checked && !locked && isLivre && (
+                            <div className="mt-1.5 ml-7 flex items-center gap-2 flex-wrap">
                               <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
                                 <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">
                                   {t('bourse.scan.state')}
@@ -1826,11 +1854,6 @@ const SuggestionsModal: React.FC<{
                                   }`}
                                 >{t('bourse.scan.troc_short')}</button>
                               </div>
-                              <p className="text-[10px] text-gray-500 leading-snug flex-1 min-w-0">
-                                {choix === 'neuf' && t('bourse.rentree.suggestions_help_neuf')}
-                                {choix === 'occasion' && t('bourse.rentree.suggestions_help_occasion')}
-                                {choix === 'troc' && t('bourse.rentree.suggestions_help_troc')}
-                              </p>
                             </div>
                           )}
                         </li>
