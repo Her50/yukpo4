@@ -102,24 +102,35 @@ const EcolePickerPopover: React.FC<EcolePickerPopoverProps> = ({
 
         {/* ✅ 2026-05-14 : Option claire pour passer en programme national
             sans avoir à sélectionner d'établissement. Visible en haut de
-            la liste pour que l'utilisateur sache que c'est OK de skip. */}
+            la liste avec bordure plus prominente pour ne pas la manquer. */}
         {onSkipToNational && (
           <button
             onClick={() => { onSkipToNational(); onClose(); }}
-            className="w-full flex items-start gap-3 px-3 py-2.5 mb-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:border-emerald-300 text-left"
+            className="w-full flex items-start gap-3 px-3 py-3 mb-3 rounded-xl border-2 border-emerald-300 bg-emerald-50 hover:border-emerald-400 active:bg-emerald-100 text-left shadow-sm"
           >
-            <span className="text-lg leading-none mt-0.5">🇨🇲</span>
+            <span className="text-2xl leading-none mt-0.5">🇨🇲</span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-emerald-800 leading-tight">Aucune école — programme national</p>
-              <p className="text-[11px] text-emerald-700 leading-snug">
-                Voir la liste officielle du Ministère, valable partout.
+              <p className="text-sm font-bold text-emerald-800 leading-tight">Aucune école — programme national</p>
+              <p className="text-[11px] text-emerald-700 leading-snug mt-0.5">
+                Voir la liste officielle du Ministère, valable partout. Cliquez ici pour continuer.
               </p>
             </div>
           </button>
         )}
         {loading && <p className="text-xs text-gray-400 text-center py-2">Recherche…</p>}
         {!loading && q.trim().length >= 2 && results.length === 0 && (
-          <p className="text-xs text-gray-400 text-center py-3">Aucune école trouvée</p>
+          <div className="text-center py-3 space-y-2">
+            <p className="text-xs text-gray-500">Aucune école trouvée pour « {q.trim()} »</p>
+            {onSkipToNational && (
+              <button
+                onClick={() => { onSkipToNational(); onClose(); }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold"
+              >
+                <span>🇨🇲</span>
+                Continuer avec le programme national
+              </button>
+            )}
+          </div>
         )}
         <div className="space-y-1.5">
           {results.map(etab => (

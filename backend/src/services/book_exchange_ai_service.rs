@@ -1982,33 +1982,51 @@ Si l'utilisateur a inversé l'ordre (image 1 = couverture ARRIÈRE avec ISBN/pri
 - confidence ≤ 0.4
 Indices d'inversion : image 1 montre un code-barres EAN-13/ISBN en grand + prix + résumé (= verso) au lieu d'un titre principal et d'une illustration (= recto attendu).
 
-⚠️ ANALYSE STRICTE DE L'ÉTAT PHYSIQUE (qualité circulation):
-Yukpo refuse de remettre en circulation des livres TRÈS DÉGRADÉS. Examine attentivement :
-1. Couverture cartonnée — chercher : déchirures (pas juste cornées), arrachements partiels de pelliculage,
-   morceaux manquants, séparation carton/papier, plis profonds traversants, pages décollées de la reliure,
-   taches importantes (>20% surface) de gras/encre/liquide indélébile, moisissures, brûlures.
+⚠️ ANALYSE STRICTE DE L'ÉTAT PHYSIQUE (qualité circulation) — PRINCIPE DU DOUTE :
+Yukpo refuse de remettre en circulation des livres dégradés. En cas de DOUTE sur la sévérité d'un défaut visible (déchirure, tache, arrachement), TU REJETTES — il vaut mieux refuser à tort qu'accepter un livre abîmé. Examine attentivement :
+
+1. Couverture cartonnée — INSPECTE chaque cm² visible sur l'image et chercher :
+   • TOUTE déchirure visible (même petite, même partiellement réparée par scotch/colle)
+   • Arrachements partiels de pelliculage (zones brillantes manquantes laissant le carton à nu)
+   • Morceaux de carton manquants (coins, bords, bandes le long d'un côté)
+   • Séparation carton/papier (couches qui se décollent visiblement)
+   • Plis profonds traversants (pas juste cornure → un pli qui marque le carton de part en part)
+   • Pages décollées de la reliure (couverture qui pend, espace visible entre couverture et bloc)
+   • Taches importantes (>10% surface) de gras/encre/liquide indélébile
+   • Moisissures (points noirs, halo verdâtre, gondolement) ou brûlures
+   • Inscriptions/dessins au stylo/feutre sur la couverture (pas juste sticker amovible)
+
 2. Pages intérieures visibles — chercher : pages déchirées non recollées, gribouillages massifs au stylo
    rendant le texte illisible sur plusieurs pages, surlignage excessif, pages collées entre elles.
+
 3. Reliure — chercher : dos arraché, pages tombantes (cahier qui se détache du dos), fil cousu visible/rompu.
 
 Classification finale stricte :
-- "bon" (ratio 70%) : couverture quasi intacte, intérieur propre, reliure solide. Petits défauts mineurs OK
-  (légères cornures aux coins, traces d'usage normales, prénom écrit discret sur la 1ère page de garde).
+- "bon" (ratio 70%) : couverture parfaitement intacte (aucune déchirure même minuscule), intérieur propre,
+  reliure solide. Acceptable : légères cornures aux coins (<5mm), traces d'usage normales sans déchirure,
+  prénom écrit discret sur la 1ère page de garde (pas sur la couverture).
+
 - "acceptable" (ratio 40%) : usure visible mais le livre reste utilisable un an scolaire complet :
-  cornures modérées, petite déchirure recollée, quelques annotations effaçables, dos un peu marqué
-  mais relié, couverture cornée mais entière.
-- "rejete" (ratio 0) — REFUSER si AU MOINS UN des critères ci-dessous est vrai :
-  • Couverture déchirée traversante OU morceau manquant
-  • Pelliculage arraché sur > 30% de la couverture
-  • Plus de 3 pages déchirées sans réparation
-  • Texte illisible sur plus de 10% des pages (gribouillage, taches, encre baveuse)
-  • Reliure rompue : pages qui tombent
+  cornures modérées (5-15mm sans déchirure), petites taches localisées non baveuses, dos un peu marqué
+  mais relié, couverture cornée mais ENTIÈRE (aucune déchirure ouverte).
+
+- "rejete" (ratio 0) — REFUSER STRICTEMENT si AU MOINS UN des critères ci-dessous est vrai :
+  • TOUTE déchirure traversante de la couverture (même 1cm visible suffit)
+  • Morceau de couverture manquant (même un coin de 1×1 cm)
+  • Pelliculage arraché sur > 20% de la couverture
+  • Plus de 2 pages déchirées sans réparation
+  • Texte illisible sur plus de 5% des pages (gribouillage, taches, encre baveuse)
+  • Reliure rompue : pages qui tombent ou couverture détachée du bloc
   • Moisissures / taches biologiques / odeur perceptible
   • Brûlures, déchirures par eau ayant gondolé le papier
+  • Inscriptions au feutre/stylo permanent sur la couverture
+  • Tu HÉSITES entre "acceptable" et "rejete" pour cause de déchirure → REJETTE
 
 Quand tu rejettes pour mauvais état, dans `notes` précise QUEL critère :
-notes = "État rejeté : couverture déchirée traversante" OU "État rejeté : >3 pages déchirées" OU
-"État rejeté : pelliculage arraché sur >30% de la couverture" OU "État rejeté : moisissures visibles"
+notes = "État rejeté : couverture déchirée" OU "État rejeté : couverture déchirée traversante" OU
+"État rejeté : morceau de couverture manquant" OU "État rejeté : pelliculage arraché" OU
+"État rejeté : >2 pages déchirées" OU "État rejeté : moisissures visibles" OU
+"État rejeté : inscriptions au stylo sur la couverture"
 (message court et précis pour l'utilisateur).
 
 ⚠️ DÉTECTION DE COUVERTURE NON-VALIDE (CRITIQUE — anti-triche):
@@ -2027,19 +2045,38 @@ L'utilisateur PEUT envoyer autre chose que les vraies couvertures du livre (phot
    - CONTENU : code-barres ISBN + EAN-13, prix imprimé, résumé (4ème de couv.), logo éditeur, parfois mentions légales
    - PHYSIQUE : mêmes critères cartonnés que le recto (épaisseur, reflets, bords)
 
-⚠️ PIÈGE COURANT — page de titre INTÉRIEURE :
+⚠️ PIÈGE COURANT — page de titre INTÉRIEURE (CRITIQUE) :
 Juste APRÈS la couverture cartonnée, la 1ère page papier (« page de titre » ou « page de garde »)
 reprend souvent les MÊMES informations : titre, auteur, éditeur. MAIS c'est du PAPIER FIN, pas du carton.
-TU DOIS LA REJETER. Indices pour la distinguer de la vraie couverture :
-   - Papier fin et plat (pas d'épaisseur sur les bords)
-   - On voit souvent une 2ème page derrière en transparence
-   - Mise en page plus sobre, beaucoup de blanc autour du texte
-   - Pas de pelliculage/brillance carton
-   - Parfois on voit la reliure (cousue/collée) ou les pages adjacentes
-   - Numéro de page possible (typiquement 1 ou 3)
-   - Pas d'illustration grande / pas la mise en page promotionnelle de la couverture
-Si tu détectes une page de titre intérieure (papier au lieu de carton), TU REJETTES :
+
+PRINCIPE DU DOUTE : si tu n'es pas CERTAIN à >80% qu'il s'agit de la couverture cartonnée, TU REJETTES.
+Le scan d'une page intérieure de titre est l'arnaque la plus courante pour contourner la détection — sois
+EXTRÊMEMENT strict.
+
+Indices CUMULATIFS pour identifier une page intérieure (REJETTE si ≥2 indices présents) :
+   - Papier fin et plat (pas d'épaisseur visible sur les bords ; absence d'ombre 3D)
+   - On voit une 2ème page derrière en transparence (texte/image visible par transparence)
+   - Mise en page plus sobre, beaucoup de blanc autour du texte (pas la mise en page graphique de la couv)
+   - Pas de pelliculage/brillance carton (surface mate uniforme, sans reflets épais)
+   - Reliure visible : couture (fil cousu), colle au dos, pages adjacentes apparentes
+   - Numéro de page (typiquement 1 ou 3 en bas)
+   - Bords droits et nets sans cornure ni usure (un livre d'occasion a généralement des bords cornés)
+   - Format/proportions différent (page intérieure ≈ légèrement plus petite que la couv qui dépasse de 2-3mm)
+   - Aucune illustration grande / aucune mention promotionnelle (genre "nouvelle édition", "conforme programme")
+   - Absence d'éléments réservés à la couverture : logo éditeur en grand, niveau scolaire en gros, photo principale
+
+Indices CUMULATIFS pour identifier la vraie couverture cartonnée (REQUIS ≥3 indices) :
+   - Épaisseur visible sur au moins UN bord (ombre 3D, relief, tranche apparente)
+   - Pelliculage/brillance/reflets sur la surface (effet plastifié)
+   - Mise en page graphique riche : illustration principale, titre en grand caractère décoratif
+   - Coins usés/cornés (signe d'utilisation réelle d'un livre cartonné)
+   - Mention "niveau scolaire" en gros (ex: "6ème", "CE1", "Form 4") ou logo éditeur en grand format
+   - Aucune page visible derrière (opacité totale du carton)
+
+Si tu détectes une page de titre intérieure (papier au lieu de carton), TU REJETTES SANS HÉSITATION :
+   etat_classification = "rejete"
    notes = "Image recto non-conforme : page de titre intérieure (papier) au lieu de la couverture cartonnée"
+   confidence = 0.3 maximum
 
 Cas de REJET avec `etat_classification="rejete"` et notes ciblées :
 1. Si l'image 1 (recto) n'est PAS une couverture cartonnée valide (page intérieure, page de titre,

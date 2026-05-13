@@ -125,33 +125,43 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
   const [result, setResult] = useState<AnalyzedBookResult | null>(null);
   /** Compteur de tentatives verso identiques au recto (pour ne pas spammer le user). */
   const [versoIdenticalTries, setVersoIdenticalTries] = useState(0);
-  /** Si le user re-clique sur Recto alors qu'il est déjà capturé, on demande
-   *  confirmation avant de remplacer (évite l'écrasement accidentel). */
-  const [pendingRectoReplace, setPendingRectoReplace] = useState(false);
+  /** Timestamp du dernier clic re-recto. Si l'user re-clique dans la fenêtre
+   *  CONFIRM_MS, on considère que c'est une confirmation explicite et on
+   *  écrase. Sinon, premier re-clic = juste un toast d'avertissement (PAS
+   *  de changement visuel du bouton — il reste en état "✓ capturé"). */
+  const lastRectoReclickRef = useRef<number>(0);
+  const CONFIRM_MS = 4000;
 
   const rectoInputRef = useRef<HTMLInputElement>(null);
   const versoInputRef = useRef<HTMLInputElement>(null);
 
-  /** Click handler du bouton Recto : gère la re-capture avec confirmation. */
+  /** Click handler du bouton Recto :
+   *   - 1er clic (pas encore capturé)        → ouvre la caméra
+   *   - clic alors que recto déjà capturé    → toast warning, bouton inchangé
+   *   - 2e clic dans les 4s suivantes        → confirme et écrase
+   *  L'UX cible : si user clique recto par erreur au lieu de verso, il
+   *  voit juste un toast l'informant qu'il a déjà un recto, sans que le
+   *  bouton change visuellement. Pour vraiment remplacer il doit reclic. */
   const onRectoButtonClick = () => {
     if (!rectoBase64) {
       // Premier clic : ouvre la caméra directement.
       rectoInputRef.current?.click();
       return;
     }
-    // Recto déjà capturé : demande confirmation.
-    if (!pendingRectoReplace) {
-      setPendingRectoReplace(true);
+    const now = Date.now();
+    const elapsed = now - lastRectoReclickRef.current;
+    if (elapsed > CONFIRM_MS) {
+      // Premier re-clic depuis longtemps → on prévient avec un toast
+      // SANS modifier l'état du bouton (le bouton reste "Recto ✓").
+      lastRectoReclickRef.current = now;
       toast({
         title: t('bourse.bookCapture.toast_recto_already_title'),
         description: t('bourse.bookCapture.toast_recto_already_desc'),
       });
-      // Reset l'état pendant après 4s si pas reconfirmé
-      setTimeout(() => setPendingRectoReplace(false), 4000);
       return;
     }
-    // 2e clic en moins de 4s → confirmation : on écrase
-    setPendingRectoReplace(false);
+    // 2e clic en moins de CONFIRM_MS → confirmation : on écrase.
+    lastRectoReclickRef.current = 0;
     setRectoBase64(null);
     setRectoHash(null);
     setVersoBase64(null); // on invalide aussi le verso car il dépend du recto
@@ -480,28 +490,21 @@ const BookPhotoCapture: React.FC<BookPhotoCaptureProps> = ({
       />
 
       <div className="grid grid-cols-2 gap-2">
-        {/* Recto — toujours cliquable. Re-clic déclenche un flux de remplacement
-            avec confirmation (cf. onRectoButtonClick). */}
+        {/* Recto — toujours cliquable. Re-clic = toast warning (pas de
+            changement visuel) ; 2e re-clic dans 4s = écrase et reprend. */}
         <button
           onClick={onRectoButtonClick}
           className={`flex flex-col items-center justify-center gap-1.5 py-4 px-2 rounded-xl border-2 transition-colors ${
-            pendingRectoReplace
-              ? 'border-orange-400 bg-orange-50 animate-pulse'
-              : rectoBase64
-                ? 'border-emerald-300 bg-emerald-50 active:bg-emerald-100'
-                : 'border-amber-300 bg-amber-50 active:bg-amber-100'
+            rectoBase64
+              ? 'border-emerald-300 bg-emerald-50 active:bg-emerald-100'
+              : 'border-amber-300 bg-amber-50 active:bg-amber-100'
           }`}
         >
-          {pendingRectoReplace
-            ? <RefreshCw className="w-5 h-5 text-orange-600" />
-            : rectoBase64
-              ? <Check className="w-5 h-5 text-emerald-600" />
-              : <Camera className="w-5 h-5 text-amber-600" />}
+          {rectoBase64
+            ? <Check className="w-5 h-5 text-emerald-600" />
+            : <Camera className="w-5 h-5 text-amber-600" />}
           <span className="text-[11px] font-semibold text-gray-800">{t('bourse.bookCapture.recto_label')}</span>
-          {pendingRectoReplace && (
-            <span className="text-[10px] text-orange-700 font-semibold">{t('bourse.bookCapture.click_to_replace')}</span>
-          )}
-          {!pendingRectoReplace && rectoBase64 && (
+          {rectoBase64 && (
             <span className="text-[10px] text-emerald-700">{t('bourse.bookCapture.captured_check')}</span>
           )}
         </button>

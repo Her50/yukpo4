@@ -769,11 +769,48 @@ pub async fn analyze_recto_verso(
     //    la même classe (jumeaux, triplés, fratrie même niveau).
     //    Politique : tolère jusqu'à MAX_COPIES_PAR_ISBN par user, au-delà on
     //    bloque et redirige vers le support (cas vraiment exceptionnels).
+    //
+    //    ✅ 2026-05-14 : Détection robuste sur 2 niveaux :
+    //      a) ISBN normalisé (clé primaire — précise)
+    //      b) FALLBACK : (titre normalisé + classe normalisée) quand l'ISBN
+    //         est manquant, partiel ou non fiable. Évite que des doublons
+    //         passent en cas d'extraction IA imparfaite du code-barres.
     const MAX_COPIES_PAR_ISBN: i64 = 3;
-    if let Some(ref isbn_n) = isbn_normalized {
-        if !analysis.etat_classification.eq("rejete") {
-            // Recherche dans les livres existants du user (90 derniers jours)
-            let dup_count: i64 = sqlx::query_scalar(
+    if !analysis.etat_classification.eq("rejete") {
+        // Normalise le titre pour la dédup fallback : minuscules, sans accents,
+        // sans ponctuation, espaces simples. "Maths CM1 - Édition 2024" devient
+        // "maths cm1 edition 2024".
+        let titre_normalized: Option<String> = analysis.titre.as_deref().and_then(|t| {
+            let normalized: String = t
+                .to_lowercase()
+                .chars()
+                .map(|c| match c {
+                    'à' | 'â' | 'ä' => 'a',
+                    'é' | 'è' | 'ê' | 'ë' => 'e',
+                    'î' | 'ï' => 'i',
+                    'ô' | 'ö' => 'o',
+                    'û' | 'ü' | 'ù' => 'u',
+                    'ç' => 'c',
+                    c if c.is_ascii_alphanumeric() || c == ' ' => c,
+                    _ => ' ',
+                })
+                .collect();
+            let cleaned: String = normalized.split_whitespace().collect::<Vec<&str>>().join(" ");
+            if cleaned.len() >= 4 {
+                Some(cleaned)
+            } else {
+                None
+            }
+        });
+        let classe_normalized: Option<String> = analysis
+            .classe_actuelle
+            .as_deref()
+            .map(|c| c.to_lowercase().trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let dup_count: i64 = if let Some(ref isbn_n) = isbn_normalized {
+            // Mode A : ISBN dispo → match exact sur ISBN
+            sqlx::query_scalar(
                 r#"SELECT COUNT(*)::bigint FROM livres_scolaires
                    WHERE user_id = $1
                      AND created_at > NOW() - INTERVAL '90 days'
@@ -784,31 +821,61 @@ pub async fn analyze_recto_verso(
             .bind(isbn_n)
             .fetch_one(&state.pg)
             .await
-            .unwrap_or(0);
-            if dup_count >= MAX_COPIES_PAR_ISBN {
-                info!(
-                    "[analyze_recto_verso] Livre REJETÉ : ISBN duplicate ({}× déjà scanné, max={}) — anti-fraude user_id={}",
-                    dup_count, MAX_COPIES_PAR_ISBN, user_id
-                );
-                analysis.etat_classification = "rejete".to_string();
-                analysis.prix_detecte = Some(0.0);
-                let note = format!(
-                    "Limite atteinte : {} exemplaires de ce livre déjà scannés (ISBN {}). Au-delà, contactez le support.",
-                    dup_count, isbn_n
-                );
-                analysis.notes = Some(match analysis.notes.take() {
-                    Some(n) if !n.is_empty() => format!("{} | {}", n, note),
-                    _ => note,
-                });
-            } else if dup_count >= 1 {
-                // Soft warning dans les notes (visible mais non bloquant) pour
-                // que le parent voit qu'il a déjà scanné ce livre — utile s'il
-                // ne se souvenait pas.
-                info!(
-                    "[analyze_recto_verso] ISBN déjà scanné {}× (toléré jusqu'à {}) — accepté user_id={}",
-                    dup_count, MAX_COPIES_PAR_ISBN, user_id
-                );
-            }
+            .unwrap_or(0)
+        } else if let (Some(t_n), Some(c_n)) = (&titre_normalized, &classe_normalized) {
+            // Mode B (fallback) : pas d'ISBN → match titre+classe normalisés.
+            // pg_trgm similarity >= 0.7 pour tolérer petites variations de saisie IA.
+            sqlx::query_scalar(
+                r#"SELECT COUNT(*)::bigint FROM livres_scolaires
+                   WHERE user_id = $1
+                     AND created_at > NOW() - INTERVAL '90 days'
+                     AND etat_classification != 'rejete'
+                     AND lower(trim(COALESCE(classe_actuelle, ''))) = $2
+                     AND similarity(
+                         lower(regexp_replace(unaccent(COALESCE(titre, '')), '[^a-z0-9 ]', ' ', 'g')),
+                         $3
+                     ) >= 0.7"#,
+            )
+            .bind(user_id)
+            .bind(c_n)
+            .bind(t_n)
+            .fetch_one(&state.pg)
+            .await
+            .unwrap_or(0)
+        } else {
+            0
+        };
+
+        if dup_count >= MAX_COPIES_PAR_ISBN {
+            let dedup_mode = if isbn_normalized.is_some() {
+                "ISBN"
+            } else {
+                "titre+classe"
+            };
+            info!(
+                "[analyze_recto_verso] Livre REJETÉ : duplicate ({}× déjà scanné via {}, max={}) — anti-fraude user_id={}",
+                dup_count, dedup_mode, MAX_COPIES_PAR_ISBN, user_id
+            );
+            analysis.etat_classification = "rejete".to_string();
+            analysis.prix_detecte = Some(0.0);
+            let note = format!(
+                "Limite atteinte : {} exemplaires de ce livre déjà scannés (détection via {}). Au-delà, contactez le support.",
+                dup_count, dedup_mode
+            );
+            analysis.notes = Some(match analysis.notes.take() {
+                Some(n) if !n.is_empty() => format!("{} | {}", n, note),
+                _ => note,
+            });
+        } else if dup_count >= 1 {
+            let dedup_mode = if isbn_normalized.is_some() {
+                "ISBN"
+            } else {
+                "titre+classe"
+            };
+            info!(
+                "[analyze_recto_verso] Doublon déjà scanné {}× via {} (toléré jusqu'à {}) — accepté user_id={}",
+                dup_count, dedup_mode, MAX_COPIES_PAR_ISBN, user_id
+            );
         }
     }
 
