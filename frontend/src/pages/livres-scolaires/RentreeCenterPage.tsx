@@ -17,6 +17,7 @@ import {
 } from '../../data/schoolSystems';
 import type { Systeme } from '../../hooks/useParentShop';
 import BookPhotoCapture, { type AnalyzedBookResult } from '../../components/livres-scolaires/BookPhotoCapture';
+import ClasseAutocomplete, { type ClasseSelection } from '../../components/livres-scolaires/ClasseAutocomplete';
 import GpsGate from '../../components/livres-scolaires/GpsGate';
 
 // ─── Types locaux ───
@@ -831,6 +832,31 @@ const RentreeCenterPage: React.FC = () => {
           activeId={activeId}
           setActiveId={setActiveId}
           onAddChild={() => { setShowSuggestions(false); setSuggestionsOpenedViaShortcut(false); setShowClassForm(true); }}
+          onPickClasse={(sel) => {
+            // Si l'user pioche une classe déjà associée à un enfant, on
+            // bascule simplement. Sinon, on crée un enfant à la volée
+            // pour cette classe (permet de commander pour cette classe).
+            const existing = enfants.find(e =>
+              e.classe === sel.classe && e.systemeId === sel.systemeId
+            );
+            if (existing) {
+              setActiveId(existing.id);
+              return;
+            }
+            const sys: Systeme = sel.systemeLabel?.toLowerCase().includes('angl') ? 'anglophone' : 'francophone';
+            const created = addEnfant({
+              systeme: sys,
+              niveau: sel.niveau,
+              classe: sel.classe,
+              pays: sel.pays,
+              serie: sel.serie,
+              systemeId: sel.systemeId,
+            } as Omit<Enfant, 'id'>);
+            if (created?.id) setActiveId(created.id);
+            toast({
+              title: t('bourse.rentree.toast_new_classe_added', { classe: sel.classe }),
+            });
+          }}
           panier={panier}
           findMatchInPool={findMatchInPool}
           loading={loadingSugg}
@@ -1339,6 +1365,10 @@ const SuggestionsModal: React.FC<{
   /** Callback pour ajouter une nouvelle classe d'enfant (ferme le modal
    *  Suggestions et ouvre le formulaire de classe). */
   onAddChild: () => void;
+  /** Callback quand l'user pioche une classe via l'autocomplete intelligent.
+   *  Crée un enfant à la volée si la classe ne correspond à aucun enfant
+   *  existant, puis bascule l'enfant actif. */
+  onPickClasse: (sel: ClasseSelection) => void;
   panier: PanierItem[];
   findMatchInPool: ReturnType<typeof useUserTrocPool>['findMatchInPool'];
   loading: boolean;
@@ -1351,7 +1381,7 @@ const SuggestionsModal: React.FC<{
   setChoixMap: (m: Record<string, 'neuf' | 'occasion' | 'troc'>) => void;
   onClose: () => void;
   onAdd: () => void;
-}> = ({ classe, enfants, activeId, setActiveId, onAddChild, panier, findMatchInPool, loading, suggestions, groupe, setGroupe, selected, setSelected, choixMap, setChoixMap, onClose, onAdd }) => {
+}> = ({ classe, enfants, activeId, setActiveId, onAddChild, onPickClasse, panier, findMatchInPool, loading, suggestions, groupe, setGroupe, selected, setSelected, choixMap, setChoixMap, onClose, onAdd }) => {
   const { t } = useTranslation();
   const total = Object.values(selected).filter(v => v > 0).length;
 
@@ -1391,33 +1421,48 @@ const SuggestionsModal: React.FC<{
     <ModalShell onClose={onClose} title={t('bourse.rentree.suggestions_title', { classe })} fullScreen>
       <p className="text-xs text-gray-500 mb-2">{t('bourse.rentree.suggestions_subtitle')}</p>
 
-      {/* Sélecteur de classe — permet de basculer rapidement entre les
-          classes des enfants déclarés OU d'en ajouter une nouvelle.
-          Si un seul enfant : juste le bouton « + Autre classe ». */}
-      <div className="mb-3 flex items-center gap-1.5 flex-wrap">
-        <span className="text-[10px] text-gray-500 uppercase font-bold mr-1">
-          {t('bourse.rentree.suggestions_for_class')}
-        </span>
-        {enfants.map(e => (
-          <button
-            key={e.id}
-            onClick={() => setActiveId(e.id)}
-            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${
-              activeId === e.id
-                ? 'bg-amber-500 text-white'
-                : 'bg-gray-100 text-gray-700 active:bg-gray-200'
-            }`}
-          >
-            {e.classe}
-          </button>
-        ))}
-        <button
-          onClick={onAddChild}
-          className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-white border border-dashed border-amber-300 text-amber-700 active:bg-amber-50 inline-flex items-center gap-1"
-        >
-          <Plus className="w-3 h-3" />
-          {t('bourse.rentree.suggestions_add_other_class')}
-        </button>
+      {/* Sélecteur de classe : pills cliquables pour les enfants déjà
+          déclarés + autocomplete intelligent pour explorer/changer
+          librement de classe (matching fuzzy, alias maternelle, etc.).
+          Si l'user pioche une classe non rattachée à un enfant existant,
+          un enfant virtuel est créé à la volée pour cette classe. */}
+      <div className="mb-3 space-y-2">
+        {enfants.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] text-gray-500 uppercase font-bold mr-1">
+              {t('bourse.rentree.suggestions_for_class')}
+            </span>
+            {enfants.map(e => (
+              <button
+                key={e.id}
+                onClick={() => setActiveId(e.id)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors ${
+                  activeId === e.id
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+                }`}
+              >
+                {e.classe}
+              </button>
+            ))}
+          </div>
+        )}
+        <details className="bg-white border border-gray-200 rounded-lg overflow-visible">
+          <summary className="px-3 py-2 cursor-pointer text-[11px] font-semibold text-amber-700 flex items-center gap-1.5 list-none">
+            <Plus className="w-3.5 h-3.5" />
+            {t('bourse.rentree.suggestions_change_class')}
+          </summary>
+          <div className="px-3 pb-3">
+            <p className="text-[10px] text-gray-500 mb-2">
+              {t('bourse.rentree.suggestions_change_class_help')}
+            </p>
+            <ClasseAutocomplete
+              showPaysSelector={true}
+              onSelect={onPickClasse}
+              placeholder={t('bourse.rentree.suggestions_classe_placeholder')}
+            />
+          </div>
+        </details>
       </div>
 
       {/* Bandeau d'orientation : explique les 3 modes (Neuf/Occasion/Échange).
