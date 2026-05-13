@@ -121,8 +121,13 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
   // (ex : 6ème → 5ème déposé en troc → l'article 5ème de la liste est verrouillé).
   const { findMatchInPool } = useUserTrocPool();
 
-  // Pré-remplissage : si un enfant a déjà un établissement rattaché, on le prend
-  const seedEnfant = enfants.find(e => e.etablissementId);
+  // ✅ 2026-05-13 : Workflow class-only — la couche `enfants[]` reste utilisée
+  // comme persistance interne (pas exposée à l'UX). Le seed récupère TOUJOURS
+  // la dernière classe utilisée. L'établissement n'est pré-sélectionné QUE
+  // si cette même classe avait un etablissementId attaché. Sinon → programme
+  // national par défaut (ce qui correspond à l'attente utilisateur).
+  // On prend la dernière entrée (la plus récente), pas la première.
+  const seedEnfant: Enfant | undefined = enfants[enfants.length - 1] ?? enfants[0];
   const [etablissement, setEtablissement] = useState<{ id: number; nom: string; ville?: string } | null>(
     seedEnfant?.etablissementId
       ? { id: seedEnfant.etablissementId, nom: seedEnfant.etablissementNom ?? 'École' }
