@@ -1355,6 +1355,14 @@ const ScanProgrammePage: React.FC = () => {
                                 >{t('bourse.scan.troc_short')}</button>
                               </div>
                             )}
+                            {/* Mini-descriptif contextuel selon le mode actif */}
+                            {isOccasionableType(item.type) && item.selected && (
+                              <p className="text-[10px] text-gray-500 leading-snug flex-1 min-w-0">
+                                {item.choix === 'neuf' && t('bourse.scan.help_neuf')}
+                                {item.choix === 'occasion' && !item.troc_intent && t('bourse.scan.help_occasion')}
+                                {item.choix === 'occasion' && item.troc_intent && t('bourse.scan.help_troc')}
+                              </p>
+                            )}
                             {isGammeableType(item.type) && (
                               <div className="inline-flex items-center gap-1">
                                 <span className="text-[9px] text-gray-400 uppercase font-bold">{t('bourse.scan.range')}</span>

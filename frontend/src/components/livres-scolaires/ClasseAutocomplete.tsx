@@ -48,6 +48,10 @@ interface ClasseAutocompleteProps {
   initialQuery?: string;
   /** Si true, focus auto à l'ouverture. */
   autoFocus?: boolean;
+  /** Optionnel — restreint les suggestions aux classes listées (cas d'un
+   *  établissement partenaire dont le programme ne couvre qu'un sous-ensemble).
+   *  Match insensible casse/accents sur le couple (niveau, classe). */
+  allowedClasses?: Array<{ niveau?: string | null; classe: string }>;
 }
 
 /** Alias courants → forme canonique. Insensible à la casse/accents. */
@@ -179,17 +183,41 @@ const ClasseAutocomplete: React.FC<ClasseAutocompleteProps> = ({
   onSelect,
   initialQuery = '',
   autoFocus = false,
+  allowedClasses,
 }) => {
   const [pays, setPays] = useState<PaysCode>(initialPays);
   const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Précalcule le set de classes autorisées (clé normalisée "niveau|classe")
+  // pour un filtrage O(1). Si non fourni, pas de restriction.
+  const allowedSet = useMemo(() => {
+    if (!allowedClasses) return null;
+    const s = new Set<string>();
+    for (const ac of allowedClasses) {
+      // Stocke 2 clés : une avec niveau, une sans (pour tolérer un niveau absent
+      // côté schoolSystems vs DB programmes_scolaires).
+      const c = norm(ac.classe);
+      s.add(`|${c}`);
+      if (ac.niveau) s.add(`${norm(ac.niveau)}|${c}`);
+    }
+    return s;
+  }, [allowedClasses]);
+
   // Toutes les options du pays + leur score de match avec la requête.
   // L'alias résout d'abord (ex: "PS" → "Maternelle 1ère année"), puis on
   // calcule le score sur la forme canonique.
   const matchedOptions = useMemo(() => {
-    const opts = buildOptionsForPays(pays);
+    let opts = buildOptionsForPays(pays);
+    // Filtre par allowedClasses si fourni
+    if (allowedSet) {
+      opts = opts.filter(o => {
+        const c = norm(o.classe);
+        const n = norm(o.niveau);
+        return allowedSet.has(`|${c}`) || allowedSet.has(`${n}|${c}`);
+      });
+    }
     const nq = norm(query);
     if (!nq) return opts.slice(0, 30); // Vue par défaut : 30 premières
 
@@ -208,7 +236,7 @@ const ClasseAutocomplete: React.FC<ClasseAutocompleteProps> = ({
       .sort((a, b) => b.matchScore - a.matchScore);
 
     return scored.slice(0, 30);
-  }, [pays, query]);
+  }, [pays, query, allowedSet]);
 
   const handleSelect = (opt: ClasseOption) => {
     setQuery(opt.classe);

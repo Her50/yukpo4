@@ -5320,6 +5320,54 @@ pub async fn get_classes_with_programmes(
     Ok(Json(response))
 }
 
+/// GET /api/bourse-livre/v2/etablissements/:id/classes-disponibles
+///
+/// Retourne la liste des classes effectivement présentes dans le programme
+/// scolaire de l'établissement (DISTINCT niveau, classe). Utilisé par le
+/// `ClasseAutocomplete` côté frontend pour restreindre les suggestions aux
+/// classes que l'école propose réellement.
+pub async fn get_classes_disponibles_par_etablissement(
+    State(state): State<Arc<AppState>>,
+    Path(etab_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    use sqlx::Row;
+    let rows = sqlx::query(
+        r#"SELECT DISTINCT
+                  niveau,
+                  classe,
+                  systeme_educatif
+           FROM programmes_scolaires
+           WHERE is_active = true
+             AND etablissement_id = $1
+             AND classe IS NOT NULL
+             AND TRIM(classe) <> ''
+           ORDER BY niveau, classe"#,
+    )
+    .bind(etab_id)
+    .fetch_all(&state.pg)
+    .await
+    .unwrap_or_default();
+
+    let items: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "niveau": r.try_get::<Option<String>, _>("niveau").ok().flatten(),
+                "classe": r.try_get::<String, _>("classe").unwrap_or_default(),
+                "systeme_educatif": r.try_get::<Option<String>, _>("systeme_educatif").ok().flatten(),
+            })
+        })
+        .collect();
+
+    let count = items.len();
+    Ok(Json(json!({
+        "success": true,
+        "etablissement_id": etab_id,
+        "classes": items,
+        "count": count,
+    })))
+}
+
 // ============================================================================
 // PHASE 3: PONT VERS SYSTÈME DE LIVRAISON INTELLIGENT
 // ============================================================================

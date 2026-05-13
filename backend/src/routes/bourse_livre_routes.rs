@@ -102,6 +102,12 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/v2/classes-programmes",
             get(bourse_livre_v2_controller::get_classes_with_programmes),
         )
+        // ✅ 2026-05-13 : Classes disponibles d'un établissement (pour le
+        //   ClasseAutocomplete restreint aux classes que l'école propose).
+        .route(
+            "/api/bourse-livre/v2/etablissements/{id}/classes-disponibles",
+            get(bourse_livre_v2_controller::get_classes_disponibles_par_etablissement),
+        )
         // Suggestions intelligentes (autocomplete multi-critères)
         .route(
             "/api/bourse-livre/v2/suggestions",

@@ -4,11 +4,13 @@ import {
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ClasseAutocomplete, { type ClasseSelection } from '../../components/livres-scolaires/ClasseAutocomplete';
 import EcolePickerPopover from '../../components/livres-scolaires/EcolePickerPopover';
 import GammeSelector, { Gamme, priceForGamme } from '../../components/livres-scolaires/GammeSelector';
 import {
-  getSystemeById, getSystemesForPays, LISTE_PAYS_UNIQUES, type PaysCode,
+  getSystemeById, getSystemesForPays, type PaysCode,
 } from '../../data/schoolSystems';
+import { apiGet } from '../../services/apiService';
 import { useToast } from '../../hooks/use-toast';
 import {
   Enfant, Systeme, TypeItem, useParentShop,
@@ -174,6 +176,29 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
     setNiveauNom(nv[2]?.nom ?? nv[0]?.nom ?? '');
     setClasseNom(''); setSerieCode('');
   };
+
+  // ✅ 2026-05-13 : Classes effectivement présentes dans le programme de
+  // l'établissement choisi. Récupéré côté backend. Sert à filtrer le
+  // ClasseAutocomplete pour ne proposer que ce que l'école offre vraiment.
+  // Si aucun etab choisi → undefined = pas de restriction (toutes les classes).
+  const [classesDispo, setClassesDispo] = useState<Array<{ niveau?: string | null; classe: string }> | undefined>(undefined);
+  useEffect(() => {
+    if (!etablissement?.id) { setClassesDispo(undefined); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiGet(`/api/bourse-livre/v2/etablissements/${etablissement.id}/classes-disponibles`);
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        if (data?.success && Array.isArray(data?.classes)) {
+          setClassesDispo(data.classes);
+        }
+      } catch {
+        if (!cancelled) setClassesDispo(undefined);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [etablissement?.id]);
 
   // Items chargés depuis le programme officiel
   const [items, setItems] = useState<ProgrammeItem[]>([]);
@@ -441,113 +466,37 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Sélecteurs pays / niveau / classe */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3 space-y-3">
-          <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Classe</p>
-
-          <div>
-            <p className="text-xs text-gray-500 mb-1.5">Pays</p>
-            <select
-              value={pays}
-              onChange={e => handlePaysChange(e.target.value as PaysCode)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400"
-            >
-              {LISTE_PAYS_UNIQUES.map(p => (
-                <option key={p.code} value={p.code}>{p.emoji} {p.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {getSystemesForPays(pays).length > 1 && (
-            <div>
-              <p className="text-xs text-gray-500 mb-1.5">Système</p>
-              <div className="flex gap-2">
-                {getSystemesForPays(pays).map(s => (
-                  <button key={s.id} onClick={() => handleSystemeIdChange(s.id)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-semibold border ${
-                      systemeId === s.id ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
-                    }`}>
-                    {s.systemeLabel}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <p className="text-xs text-gray-500 mb-1.5">Niveau</p>
-            <div className="flex flex-wrap gap-1.5">
-              {currentNiveaux.map(n => (
-                <button key={n.nom} onClick={() => { setNiveauNom(n.nom); setClasseNom(''); setSerieCode(''); }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
-                    niveauNom === n.nom ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
-                  }`}>
-                  {n.nom}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {currentNiveauObj && (
-            <div>
-              <p className="text-xs text-gray-500 mb-1.5">Classe</p>
-              {currentNiveauObj.classes.length > 6 ? (
-                <select
-                  value={classeNom}
-                  onChange={e => { setClasseNom(e.target.value); setSerieCode(''); }}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400"
-                >
-                  <option value="">— Choisir une classe —</option>
-                  {currentNiveauObj.classes.map(c => (
-                    <option key={c.nom} value={c.nom}>{c.nom}</option>
-                  ))}
-                </select>
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {currentNiveauObj.classes.map(c => (
-                    <button key={c.nom} onClick={() => { setClasseNom(prev => prev === c.nom ? '' : c.nom); setSerieCode(''); }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
-                        classeNom === c.nom ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
-                      }`}>
-                      {c.nom}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {currentClasseObj && hasClasseSeries && (
-            <div>
-              <p className="text-xs text-gray-500 mb-1.5">Série / Filière</p>
-              {currentClasseObj.series!.length > 4 ? (
-                <select
-                  value={serieCode}
-                  onChange={e => setSerieCode(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:border-amber-400"
-                >
-                  <option value="">— Choisir une série —</option>
-                  {currentClasseObj.series!.map(s => (
-                    <option key={s.code} value={s.code}>
-                      {s.code}{s.label ? ` — ${s.label}` : ''}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {currentClasseObj.series!.map(s => (
-                    <button key={s.code} onClick={() => setSerieCode(prev => prev === s.code ? '' : s.code)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-baseline gap-1 ${
-                        serieCode === s.code ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'
-                      }`}>
-                      <span className="font-bold">{s.code}</span>
-                      {s.label && <span className="text-[10px] opacity-70">{s.label}</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+        {/* ✅ 2026-05-13 : Sélecteur de classe unifié — ClasseAutocomplete
+            intelligent (fuzzy/alias/accents) au lieu du multi-step manuel
+            pays/système/niveau/classe/série. Si un établissement est choisi,
+            on restreint les suggestions aux classes effectivement présentes
+            dans son programme (allowedClasses). Sinon → toutes les classes
+            du pays par défaut. */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-3">
+          <p className="text-[10px] text-gray-500 mb-1 leading-snug">
+            💡 Tapez le nom de votre classe (ex : « 6ème », « CP », « Tle A », « Petite Section »…). Le programme s'affichera automatiquement.
+            {etablissement && classesDispo && (
+              <span className="block mt-0.5 text-amber-700 font-medium">
+                Suggestions limitées aux {classesDispo.length} classe{classesDispo.length > 1 ? 's' : ''} proposée{classesDispo.length > 1 ? 's' : ''} par {etablissement.nom}.
+              </span>
+            )}
+          </p>
+          <ClasseAutocomplete
+            initialPays={pays}
+            showPaysSelector={!etablissement}
+            placeholder={classeNom ? `Classe active : ${classe} — tapez pour changer…` : 'Cherchez votre classe…'}
+            allowedClasses={classesDispo}
+            onSelect={(sel: ClasseSelection) => {
+              setPays(sel.pays);
+              setSystemeId(sel.systemeId);
+              setNiveauNom(sel.niveau);
+              // sel.classe peut contenir la série déjà (ex: "2nde A"),
+              // on délègue à parseClasseAndSerie pour scinder proprement.
+              const parsed = parseClasseAndSerie(sel.classe, sel.systemeId, sel.niveau);
+              setClasseNom(parsed.classeNom);
+              setSerieCode(parsed.serieCode || sel.serie || '');
+            }}
+          />
         </div>
 
         {/* Sélection enfant cible (si plusieurs) */}
@@ -800,6 +749,14 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                                   title="Échange — vous donnez votre ancien livre contre crédit"
                                 >Échange</button>
                               </div>
+                            )}
+                            {/* Mini-descriptif contextuel selon le mode actif */}
+                            {isOccasionableType(item.type) && item.selected && (
+                              <p className="text-[10px] text-gray-500 leading-snug flex-1 min-w-0">
+                                {item.choix === 'neuf' && 'Plein tarif, livraison rapide.'}
+                                {item.choix === 'occasion' && !item.troc_intent && "Exemplaire usagé, moins cher. Vous n'avez rien à donner en échange."}
+                                {item.choix === 'occasion' && item.troc_intent && 'Vous donnez votre ancien livre contre un crédit Yukpo utilisable sur cet achat.'}
+                              </p>
                             )}
                             {isGammeableType(item.type) && item.prix && item.prix > 0 && (
                               <div className="inline-flex items-center gap-1">

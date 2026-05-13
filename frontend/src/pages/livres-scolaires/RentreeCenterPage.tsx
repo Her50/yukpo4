@@ -1871,6 +1871,12 @@ const SuggestionsModal: React.FC<{
                                   }`}
                                 >{t('bourse.scan.troc_short')}</button>
                               </div>
+                              {/* Mini-descriptif contextuel selon le mode actif */}
+                              <p className="text-[10px] text-gray-500 leading-snug flex-1 min-w-0">
+                                {choix === 'neuf' && t('bourse.rentree.suggestions_help_neuf')}
+                                {choix === 'occasion' && t('bourse.rentree.suggestions_help_occasion')}
+                                {choix === 'troc' && t('bourse.rentree.suggestions_help_troc')}
+                              </p>
                             </div>
                           )}
                         </li>
