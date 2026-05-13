@@ -110,15 +110,35 @@ const RentreeCenterPage: React.FC = () => {
 
   // ✅ Lien direct depuis l'accueil : ?suggestions=1 ouvre directement le modal.
   // Si aucune classe → on ouvre le formulaire de classe d'abord.
+  // On track aussi le fait que le modal a été ouvert via ce shortcut pour que
+  // la fermeture renvoie à l'accueil au lieu de laisser /rentree vide.
+  const [suggestionsOpenedViaShortcut, setSuggestionsOpenedViaShortcut] = useState(false);
   useEffect(() => {
     if (searchParams.get('suggestions') === '1') {
       if (enfants.length === 0) setShowClassForm(true);
-      else setShowSuggestions(true);
+      else {
+        setShowSuggestions(true);
+        setSuggestionsOpenedViaShortcut(true);
+      }
       const next = new URLSearchParams(searchParams);
       next.delete('suggestions');
       setSearchParams(next, { replace: true });
     }
   }, [searchParams, enfants.length, setSearchParams]);
+
+  /** Fermeture du modal Suggestions :
+   *  - Si ouvert via le shortcut depuis l'accueil (`/?suggestions=1` ou bouton
+   *    "Suggestions intelligentes" sur la home) → on retourne directement à
+   *    l'accueil, sinon l'user reste sur /rentree qui peut être vide.
+   *  - Sinon (ouvert manuellement depuis /rentree) → on ferme simplement.
+   */
+  const closeSuggestions = useCallback(() => {
+    setShowSuggestions(false);
+    if (suggestionsOpenedViaShortcut) {
+      setSuggestionsOpenedViaShortcut(false);
+      navigate('/');
+    }
+  }, [suggestionsOpenedViaShortcut, navigate]);
 
   // ✅ Depuis la page scan : ?capture-troc=1 → ouvre directement la photo
   // capture pour le 1er item marqué troc_intent (sans match déjà fait). Au
@@ -810,7 +830,7 @@ const RentreeCenterPage: React.FC = () => {
           enfants={enfants}
           activeId={activeId}
           setActiveId={setActiveId}
-          onAddChild={() => { setShowSuggestions(false); setShowClassForm(true); }}
+          onAddChild={() => { setShowSuggestions(false); setSuggestionsOpenedViaShortcut(false); setShowClassForm(true); }}
           panier={panier}
           findMatchInPool={findMatchInPool}
           loading={loadingSugg}
@@ -821,7 +841,7 @@ const RentreeCenterPage: React.FC = () => {
           setSelected={setSelectedSugg}
           choixMap={choixSugg}
           setChoixMap={setChoixSugg}
-          onClose={() => setShowSuggestions(false)}
+          onClose={closeSuggestions}
           onAdd={handleAddSelectedSuggestions}
         />
       )}
