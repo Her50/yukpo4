@@ -36,6 +36,11 @@ ENV SQLX_OFFLINE=true
 # Note: target-cpu=native retiré pour compatibilité AWS Fargate (évite "Illegal instruction")
 ENV RUSTFLAGS="-C link-arg=-fuse-ld=lld"
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+# ⚠️ 2026-05-13 : SIGKILL OOM répétés sur le builder distant Fly avec
+#    codegen-units=16 (défaut release). Forçage à 1 unit pour drastiquement
+#    réduire le pic mémoire de rustc (compromise : build plus lent, binaire
+#    un peu plus optimisé). Affecte uniquement le profile release.
+ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 # CI = GH Actions runner avec 16 GB RAM via `flyctl deploy --local-only`.
 # On garde les paramètres release par défaut (opt-level=2, codegen-units=16)
 # qui passent confortablement avec 16 GB. Les overrides --jobs sont définis
@@ -75,11 +80,16 @@ COPY ia_intentions_instructions.md ./
 RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/root/.cargo/git \
     --mount=type=cache,target=/app/target \
-    cargo build --release --jobs 2 --features image \
+    cargo build --release --jobs 1 --features image \
     && strip target/release/yukpomnang_backend \
     && mkdir -p /app/bin \
     && cp target/release/yukpomnang_backend /app/bin/yukpomnang_backend \
     && chmod +x /app/bin/yukpomnang_backend
+# ⚠️ 2026-05-13 : --jobs 2 a échoué deux fois par OOM (SIGKILL à 73s puis 212s)
+#    sur le builder distant Fly. Passage à --jobs 1 pour la phase finale.
+#    Build plus lent mais tient dans la RAM allouée au builder. La phase de
+#    cache des deps reste --jobs 2 car les dépendances ne sont pas réservées
+#    à la même charge mémoire que le lib crate complet.
 
 ############################################
 # Stage 2: Runtime - Image finale OPTIMISÉE
