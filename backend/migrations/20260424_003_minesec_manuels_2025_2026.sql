@@ -6,10 +6,12 @@
 
 BEGIN;
 
--- Index unique idempotent pour les programmes nationaux
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_programmes_national_cm
-    ON programmes_scolaires(pays, classe, matiere, titre_livre, annee_scolaire)
-    WHERE is_active = true AND etablissement_id IS NULL AND annee_scolaire IS NOT NULL;
+-- ⚠️ Index unique uniq_programmes_national_cm RETIRÉ le 2026-05-13.
+-- Il ne tenait pas compte de type_article → bloquait livre + workbook
+-- avec mêmes (pays, classe, matière, titre, année). L'index correct
+-- uniq_programmes_national_article (migration 20260510_002) le remplace.
+-- La migration 20260513_001 fait un DROP IF EXISTS pour nettoyer les
+-- bases déjà déployées.
 
 -- ============================================================================
 -- COLLÈGE — 6ème

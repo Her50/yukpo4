@@ -8792,6 +8792,13 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur normalisation cycles_offerts: {}", e),
     }
 
+    // ✅ 2026-05-13 : Drop index uniq_programmes_national_cm trop strict
+    // (ne tient pas compte de type_article → bloque livre+workbook même titre)
+    match ensure_drop_uniq_programmes_national_cm(pool).await {
+        Ok(_) => info!("✅ Migration auto: uniq_programmes_national_cm dropped"),
+        Err(e) => error!("❌ Erreur drop uniq_programmes_national_cm: {}", e),
+    }
+
     // ✅ 2026-05-10 : Wallet credit bourse + troc_status (pivot modèle troc)
     match ensure_troc_credit_bourse(pool).await {
         Ok(_) => info!("✅ Migration auto: wallet_credit_bourse + troc_status OK"),
@@ -22642,6 +22649,20 @@ pub async fn ensure_normalize_cycles_offerts(pool: &PgPool) -> Result<(), sqlx::
     let sql = include_str!("../../migrations/20260512_006_normalize_cycles_offerts.sql");
     execute_migration_sql_safe(pool, sql).await?;
     info!("✅ cycles_offerts normalisés");
+    Ok(())
+}
+
+/// ✅ 2026-05-13 : Drop l'index unique partiel uniq_programmes_national_cm
+/// créé par 20260424_003. Cet index n'incluait PAS type_article dans sa
+/// clé → bloquait l'insertion d'un workbook quand un livre existait déjà
+/// avec mêmes (pays, classe, matière, titre, année). Erreur user observée
+/// lors du preload « Programme national officiel (CM) ». L'index correct
+/// uniq_programmes_national_article (20260510_002) suffit.
+pub async fn ensure_drop_uniq_programmes_national_cm(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Drop index uniq_programmes_national_cm (trop strict, bloque livre+workbook)...");
+    let sql = include_str!("../../migrations/20260513_001_drop_uniq_programmes_national_cm.sql");
+    execute_migration_sql_safe(pool, sql).await?;
+    info!("✅ uniq_programmes_national_cm dropped");
     Ok(())
 }
 

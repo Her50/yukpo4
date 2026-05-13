@@ -1382,9 +1382,10 @@ const SuggestionsModal: React.FC<{
       </div>
 
       {/* Champ de recherche autocomplete — case+accent insensible.
-          Filtre sur titre, matière et éditeur. Utile surtout pour
-          fournitures (longue liste de cahiers/accessoires variés). */}
-      {!loading && suggestions.length > 5 && (
+          Filtre sur titre, matière et éditeur. Toujours visible une fois
+          chargé pour que l'user puisse chercher même dans des petites
+          listes (et puisse retaper après recherche vide). */}
+      {!loading && (
         <div className="mb-3 relative">
           <input
             type="search"

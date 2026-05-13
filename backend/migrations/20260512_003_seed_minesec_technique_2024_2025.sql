@@ -21,10 +21,9 @@
 
 BEGIN;
 
--- Index unique idempotent (référentiel national)
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_programmes_national_cm
-    ON programmes_scolaires(pays, classe, matiere, titre_livre, annee_scolaire)
-    WHERE is_active = true AND etablissement_id IS NULL AND annee_scolaire IS NOT NULL;
+-- ⚠️ Index uniq_programmes_national_cm RETIRÉ (cf. migration 20260513_001).
+-- L'index correct uniq_programmes_national_article (20260510_002) couvre
+-- déjà ce besoin avec type_article dans la clé.
 
 -- ============================================================================
 -- TRONC COMMUN TECHNIQUE — Premier Cycle (toutes spécialités)

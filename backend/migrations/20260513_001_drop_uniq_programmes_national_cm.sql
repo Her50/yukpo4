@@ -1,0 +1,24 @@
+-- ============================================================================
+-- Migration : Drop l'index unique uniq_programmes_national_cm trop strict
+-- Date : 2026-05-13
+-- ============================================================================
+-- Bug : la migration 20260424_003 avait créé
+--   CREATE UNIQUE INDEX uniq_programmes_national_cm
+--     ON programmes_scolaires(pays, classe, matiere, titre_livre, annee_scolaire)
+--     WHERE is_active = true AND etablissement_id IS NULL AND annee_scolaire IS NOT NULL;
+--
+-- Cet index ne tient PAS compte de type_article dans sa clé. Conséquences :
+-- - Un même titre peut exister en `livre` ET `workbook` (cahier d'activités
+--   associé) avec mêmes pays/classe/matière/année → l'index les considère
+--   comme doublons et rejette le 2ème INSERT.
+-- - Le preload « Programme national officiel (CM) » échoue en cascade
+--   sur les paires livre+workbook → erreur user :
+--   « duplicate key value violates unique constraint uniq_programmes_national_cm »
+--
+-- Fix : drop cet index. Le constraint correct existe déjà :
+--   uniq_programmes_national_article (migration 20260510_002) qui inclut
+--   type_article dans la clé et utilise COALESCE pour gérer les NULL.
+--   Ce dernier suffit à garantir l'idempotence des seeds nationaux.
+-- ============================================================================
+
+DROP INDEX IF EXISTS uniq_programmes_national_cm;
