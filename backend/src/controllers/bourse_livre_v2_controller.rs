@@ -978,10 +978,13 @@ pub async fn analyze_recto_verso(
     // utilisateur) du contexte. Permet au frontend d'afficher un toast clair.
     let (rejection_code, rejection_message) = if is_rejected {
         let notes_str = analysis.notes.as_deref().unwrap_or("");
-        // ✅ Détection en amont du cas « faces dupliquées » (recto et verso
-        // photographient la même face) — l'IA a posé ce diagnostic dans notes.
-        // Ce check passe AVANT les autres rejets pour donner un message
-        // spécifique à l'utilisateur (reprendre la photo manquante).
+        // ✅ Détections IA prioritaires sur les autres motifs de rejet. Ordre :
+        //    1. Faces dupliquées (même côté photographié 2×)
+        //    2. Aucune couverture détectée (les 2 images sont fausses)
+        //    3. Recto invalide (page intérieure / autre objet à la place de la couv. avant)
+        //    4. Verso invalide (idem côté arrière)
+        // Permet de donner un message d'action ciblé : « reprends UNE des 2 photos »
+        // vs « reprends TOUT ». Cf. prompt LLM analyze_book_recto_verso.
         if notes_str.contains("Faces dupliquées")
             || notes_str.contains("recto et verso identiques")
             || notes_str.contains("même face du livre")
@@ -989,6 +992,21 @@ pub async fn analyze_recto_verso(
             (
                 "recto_verso_same_side",
                 "Les deux photos montrent la même face du livre. Retournez le livre et photographiez réellement le verso (couverture arrière avec code-barres ISBN et prix éditeur).",
+            )
+        } else if notes_str.contains("Aucune couverture détectée") {
+            (
+                "no_cover_detected",
+                "Les deux photos ne montrent pas la couverture du livre. Photographiez la COUVERTURE AVANT (avec le titre du livre) puis la COUVERTURE ARRIÈRE (avec code-barres ISBN et prix).",
+            )
+        } else if notes_str.contains("Image recto non-conforme") {
+            (
+                "invalid_recto_cover",
+                "La 1ère photo n'est pas la couverture avant du livre. Reprenez le recto : la couverture avec le titre principal du livre, le nom de l'auteur et l'illustration.",
+            )
+        } else if notes_str.contains("Image verso non-conforme") {
+            (
+                "invalid_verso_cover",
+                "La 2ème photo n'est pas la couverture arrière du livre. Reprenez le verso : la 4ème de couverture avec le code-barres ISBN, le prix imprimé et le résumé.",
             )
         } else if !is_in_program {
             (

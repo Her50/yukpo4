@@ -401,6 +401,9 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         value_zero: 'Valeur nulle',
         etat_too_damaged: 'Livre trop dégradé',
         recto_verso_same_side: 'Faces dupliquées',
+        no_cover_detected: 'Pas de couverture détectée',
+        invalid_recto_cover: 'Recto non-conforme',
+        invalid_verso_cover: 'Verso non-conforme',
       },
       retraitLivre: {
         toast_removed_title: 'Livre retiré',
@@ -1373,6 +1376,9 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         value_zero: 'Value is zero',
         etat_too_damaged: 'Book too damaged',
         recto_verso_same_side: 'Same side photographed twice',
+        no_cover_detected: 'No cover detected',
+        invalid_recto_cover: 'Front cover invalid',
+        invalid_verso_cover: 'Back cover invalid',
       },
       retraitLivre: {
         toast_removed_title: 'Book removed',

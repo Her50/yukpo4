@@ -1975,6 +1975,23 @@ Si les 2 images montrent la MÊME FACE du livre (par ex. les 2 sont des couvertu
 - confidence ≤ 0.5
 L'utilisateur reprendra la photo manquante. NE PAS inventer un faux verso.
 
+⚠️ DÉTECTION DE COUVERTURE NON-VALIDE (CRITIQUE — anti-triche):
+L'utilisateur PEUT envoyer autre chose que les vraies couvertures du livre (photos d'une page intérieure, du dos relié, d'un cahier, d'un objet aléatoire, d'une capture d'écran, etc.) pour contourner le système.
+Tu DOIS rejeter dans ces cas :
+- RECTO (1ère image) attendu = couverture AVANT du livre : doit montrer le titre principal en grand, le nom de l'auteur ou de l'éditeur, généralement une illustration ou photo, la mention du niveau scolaire.
+- VERSO (2ème image) attendu = couverture ARRIÈRE du livre : doit montrer un code-barres ISBN, le prix imprimé, un résumé (4ème de couverture), le logo de l'éditeur.
+
+Cas de REJET avec `etat_classification="rejete"` et notes ciblées :
+1. Si l'image 1 (recto) n'est PAS une couverture avant de livre scolaire (ex: page intérieure de texte/exercices, dos de reliure, autre objet, écran, photo floue/illisible) :
+   notes = "Image recto non-conforme : ce n'est pas la couverture avant du livre"
+2. Si l'image 2 (verso) n'est PAS une couverture arrière (ex: page intérieure, sommaire, exercice, écran, autre livre) :
+   notes = "Image verso non-conforme : ce n'est pas la couverture arrière du livre (code-barres ISBN + prix éditeur attendus)"
+3. Si AUCUNE des 2 images ne montre une vraie couverture de livre :
+   notes = "Aucune couverture détectée : les 2 images ne montrent pas le livre attendu"
+
+Dans tous ces cas : confidence ≤ 0.4, est_au_programme = false, prix_detecte = null.
+L'utilisateur DOIT reprendre les photos. NE PAS inventer un titre/auteur/prix basés sur des indices marginaux.
+
 Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, classe_souhaitee, matiere, niveau, prix_detecte, devise_detectee, etat_classification, etat_description, est_au_programme, programme_scolaire_id, programme_match_details, confidence, notes."#,
                 lat = lat,
                 lng = lng,

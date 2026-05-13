@@ -392,6 +392,7 @@ const RentreeCenterPage: React.FC = () => {
         'not_in_program', 'niveau_primaire', 'non_reusable_workbook',
         'price_missing', 'isbn_missing', 'duplicate_book', 'value_zero',
         'etat_too_damaged', 'recto_verso_same_side',
+        'no_cover_detected', 'invalid_recto_cover', 'invalid_verso_cover',
       ];
       const title = knownCodes.includes(result.rejection_code || '')
         ? t(`bourse.rejectionCodes.${result.rejection_code}`)
