@@ -227,6 +227,12 @@ const RentreeCenterPage: React.FC = () => {
   const [loadingSugg, setLoadingSugg] = useState(false);
   const [suggGroupe, setSuggGroupe] = useState<GroupeFilter>('livres');
   const [selectedSugg, setSelectedSugg] = useState<Record<string, number>>({}); // titre → qte
+  // Choix par item : neuf (défaut, plein tarif) ou occasion (moins cher, sans
+  // troc). Le user peut décider dès l'écran suggestions. L'achat 'occasion'
+  // ne demande PAS de proposer un livre en échange — c'est juste un achat
+  // d'occasion classique. TrocPrepPage est utilisé seulement si le user
+  // veut ÉCHANGER (troc) un livre qu'il a déjà.
+  const [choixSugg, setChoixSugg] = useState<Record<string, 'neuf' | 'occasion'>>({});
 
   // ✅ Évite les boucles : on ne dépend QUE des paramètres réels (classe, groupe,
   // établissement) — `t`/`toast` ne doivent JAMAIS être dans les deps d'un effect
@@ -277,13 +283,16 @@ const RentreeCenterPage: React.FC = () => {
         editeur: s.editeur || undefined,
         type: ((s.type_article as TypeItem) || 'livre'),
         prixNeuf: s.prix_officiel || undefined,
-        choix: 'neuf' as Choix,
+        // Choix utilisateur : par défaut 'neuf', mais 'occasion' si toggle activé
+        // pour cet item dans le modal suggestions.
+        choix: (choixSugg[s.titre] ?? 'neuf') as Choix,
         quantite: selectedSugg[s.titre] ?? 1,
       }));
     if (toAdd.length === 0) return;
     addItems(toAdd);
     toast({ title: t('bourse.rentree.toast_articles_added', { count: toAdd.length }) });
     setSelectedSugg({});
+    setChoixSugg({});
     setShowSuggestions(false);
   };
 
@@ -774,6 +783,8 @@ const RentreeCenterPage: React.FC = () => {
           setGroupe={setSuggGroupe}
           selected={selectedSugg}
           setSelected={setSelectedSugg}
+          choixMap={choixSugg}
+          setChoixMap={setChoixSugg}
           onClose={() => setShowSuggestions(false)}
           onAdd={handleAddSelectedSuggestions}
         />
@@ -1256,6 +1267,12 @@ const ClassFormModal: React.FC<{
 };
 
 // ─── Modal suggestions intelligentes ───
+// L'utilisateur peut choisir par item :
+//   - Quantité (+/−)
+//   - Neuf (défaut) ou Occasion (achat d'un livre d'occasion moins cher,
+//     SANS troc — il ne donne rien en échange, il achète juste une version
+//     usagée à prix réduit). TrocPrepPage est réservé au cas où le user
+//     veut ÉCHANGER un livre qu'il possède déjà.
 const SuggestionsModal: React.FC<{
   classe: string;
   loading: boolean;
@@ -1264,9 +1281,11 @@ const SuggestionsModal: React.FC<{
   setGroupe: (g: GroupeFilter) => void;
   selected: Record<string, number>;
   setSelected: (s: Record<string, number>) => void;
+  choixMap: Record<string, 'neuf' | 'occasion'>;
+  setChoixMap: (m: Record<string, 'neuf' | 'occasion'>) => void;
   onClose: () => void;
   onAdd: () => void;
-}> = ({ classe, loading, suggestions, groupe, setGroupe, selected, setSelected, onClose, onAdd }) => {
+}> = ({ classe, loading, suggestions, groupe, setGroupe, selected, setSelected, choixMap, setChoixMap, onClose, onAdd }) => {
   const { t } = useTranslation();
   const total = Object.values(selected).filter(v => v > 0).length;
 
@@ -1274,6 +1293,13 @@ const SuggestionsModal: React.FC<{
     const next = { ...selected };
     if (qte <= 0) delete next[titre]; else next[titre] = qte;
     setSelected(next);
+  };
+
+  const setChoix = (titre: string, choix: 'neuf' | 'occasion') => {
+    const next = { ...choixMap };
+    if (choix === 'neuf') delete next[titre]; // neuf = défaut, pas besoin de stocker
+    else next[titre] = choix;
+    setChoixMap(next);
   };
 
   return (
@@ -1311,13 +1337,14 @@ const SuggestionsModal: React.FC<{
       <ul className="space-y-2 pb-40">
         {suggestions.map(s => {
           const qte = selected[s.titre] ?? 0;
+          const choix = choixMap[s.titre] ?? 'neuf';
           const sourceLabel = s.source === 'etablissement'
             ? t('bourse.rentree.suggestions_source_etab')
             : s.source === 'national'
             ? t('bourse.rentree.suggestions_source_national')
             : t('bourse.rentree.suggestions_source_popular');
           return (
-            <li key={s.titre} className="bg-white border border-gray-200 rounded-xl p-3">
+            <li key={s.titre} className={`bg-white border rounded-xl p-3 ${qte > 0 ? 'border-amber-300' : 'border-gray-200'}`}>
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-gray-500 mb-0.5">{sourceLabel}</div>
@@ -1353,6 +1380,35 @@ const SuggestionsModal: React.FC<{
                   </button>
                 </div>
               </div>
+
+              {/* Toggle Neuf/Occasion — affiché seulement si item sélectionné.
+                  Achat d'occasion = livre usagé moins cher, SANS troc.
+                  Pour ÉCHANGER un livre (vraie troc), passer par TrocPrep. */}
+              {qte > 0 && s.type_article !== 'fourniture' && s.type_article !== 'cahier' && s.type_article !== 'accessoire' && (
+                <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-gray-500 font-medium">
+                    {t('bourse.rentree.suggestions_condition_label')}
+                  </span>
+                  <div className="inline-flex rounded-lg overflow-hidden border border-gray-200">
+                    <button
+                      onClick={() => setChoix(s.titre, 'neuf')}
+                      className={`px-3 py-1.5 text-[11px] font-semibold ${
+                        choix === 'neuf' ? 'bg-emerald-500 text-white' : 'bg-white text-gray-700'
+                      }`}
+                    >
+                      {t('bourse.rentree.suggestions_choice_neuf')}
+                    </button>
+                    <button
+                      onClick={() => setChoix(s.titre, 'occasion')}
+                      className={`px-3 py-1.5 text-[11px] font-semibold ${
+                        choix === 'occasion' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700'
+                      }`}
+                    >
+                      {t('bourse.rentree.suggestions_choice_occasion')}
+                    </button>
+                  </div>
+                </div>
+              )}
             </li>
           );
         })}
