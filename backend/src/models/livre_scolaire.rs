@@ -58,6 +58,12 @@ pub struct LivreScolaire {
     pub situation_troc: Option<String>, // 'offre', 'offre_demande'
     pub offre_matchee: Option<bool>,
 
+    // ✅ Troc lifecycle status (migration 20260510_008) — exposé au frontend pour
+    //    afficher "vendu / troqué / pas encore vendu" et l'état du crédit.
+    //    Valeurs : 'pending' | 'matched' | 'chained' | 'delivered' | 'expired' | 'returned'
+    #[sqlx(default)]
+    pub troc_status: Option<String>,
+
     // ✅ V2: Session d'upload
     pub upload_session_id: Option<String>,
 

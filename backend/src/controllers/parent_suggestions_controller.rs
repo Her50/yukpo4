@@ -103,7 +103,8 @@ pub async fn articles_suggested(
               AND etablissement_id = $3
               AND ($4::text IS NULL OR systeme_educatif = $4)
             UNION ALL
-            -- Programme national du pays (priorité 2)
+            -- Programme national du pays — lié à un etab is_national (priorité 2)
+            -- Convention MINEDUB (seed 20260512_002), MINESEC complet (20260510_007)
             SELECT p.id, p.niveau, p.classe, p.matiere, p.titre_livre, p.auteur_livre, p.editeur_livre,
                    p.isbn_livre, p.type_article, p.prix_officiel::float8 AS prix, p.devise,
                    COALESCE(p.quantite_defaut, 1) AS qte,
@@ -119,6 +120,23 @@ pub async fn articles_suggested(
               AND e.pays = $5
               AND ($4::text IS NULL OR p.systeme_educatif = $4)
               AND ($3::int IS NULL OR p.etablissement_id != $3)
+            UNION ALL
+            -- Programme national sans etab parent — etablissement_id IS NULL
+            -- Convention MINESEC général (seed 20260424_003) et MINESEC technique
+            -- (seed 20260512_003). Filtre par pays directement sur la colonne.
+            SELECT id, niveau, classe, matiere, titre_livre, auteur_livre, editeur_livre,
+                   isbn_livre, type_article, prix_officiel::float8 AS prix, devise,
+                   COALESCE(quantite_defaut, 1) AS qte,
+                   est_obligatoire, systeme_educatif,
+                   2 AS priority
+            FROM programmes_scolaires
+            WHERE is_active = true
+              AND etablissement_id IS NULL
+              AND (lower(trim(classe)) = lower(trim($1))
+                   OR lower(trim($1)) LIKE lower(trim(classe)) || ' %')
+              AND type_article = ANY($2)
+              AND pays = $5
+              AND ($4::text IS NULL OR systeme_educatif = $4)
         )
         SELECT DISTINCT ON (lower(titre_livre), COALESCE(matiere,''), type_article)
                id, niveau, classe, matiere, titre_livre, auteur_livre, editeur_livre,

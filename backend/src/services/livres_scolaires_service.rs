@@ -328,6 +328,9 @@ impl LivresScolairesService {
                         offre_matchee: row
                             .try_get::<Option<bool>, _>("offre_matchee")
                             .unwrap_or(None),
+                        troc_status: row
+                            .try_get::<Option<String>, _>("troc_status")
+                            .unwrap_or(None),
                         upload_session_id: row
                             .try_get::<Option<String>, _>("upload_session_id")
                             .unwrap_or(None),

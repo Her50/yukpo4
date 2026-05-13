@@ -1308,7 +1308,7 @@ const SuggestionsModal: React.FC<{
         </div>
       )}
 
-      <ul className="space-y-2 pb-32">
+      <ul className="space-y-2 pb-40">
         {suggestions.map(s => {
           const qte = selected[s.titre] ?? 0;
           const sourceLabel = s.source === 'etablissement'
@@ -1358,8 +1358,11 @@ const SuggestionsModal: React.FC<{
         })}
       </ul>
 
-      {/* Sticky add bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg">
+      {/* Sticky add bar — fixé au viewport avec gestion safe-area iOS. */}
+      <div
+        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 shadow-lg z-30"
+        style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+      >
         <div className="max-w-md mx-auto flex gap-2">
           <button
             onClick={onClose}
@@ -1489,6 +1492,10 @@ const CreditConfirmationModal: React.FC<{
 };
 
 // ─── Coque modale réutilisable ───
+// `dvh` (dynamic viewport height) au lieu de `vh` pour gérer correctement
+// la barre d'adresse Chrome mobile qui se rétracte/déploie. Sans ça, le
+// modal s'étend SOUS le viewport visible et les éléments du bas (boutons
+// d'action) sont inaccessibles. Voir aussi safe-area-inset-bottom pour iOS.
 const ModalShell: React.FC<{
   onClose: () => void;
   title: string;
@@ -1496,7 +1503,7 @@ const ModalShell: React.FC<{
   children: React.ReactNode;
 }> = ({ onClose, title, fullScreen, children }) => (
   <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center">
-    <div className={`bg-white w-full max-w-md ${fullScreen ? 'h-full sm:h-[90vh] sm:rounded-2xl' : 'rounded-t-2xl sm:rounded-2xl'} p-4 overflow-y-auto`}>
+    <div className={`bg-white w-full max-w-md ${fullScreen ? 'h-[100dvh] sm:h-[90dvh] sm:rounded-2xl' : 'rounded-t-2xl sm:rounded-2xl max-h-[90dvh]'} p-4 overflow-y-auto`}>
       <div className="flex items-center justify-between mb-3 sticky top-0 bg-white z-20 -mt-4 -mx-4 px-4 pt-4 pb-2 border-b border-gray-100">
         <h3 className="font-bold text-base text-gray-900 truncate">{title}</h3>
         <button onClick={onClose} className="p-2 -m-2 text-gray-500 active:text-gray-800 min-h-[44px] min-w-[44px]" aria-label="Fermer">

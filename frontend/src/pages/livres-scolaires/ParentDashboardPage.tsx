@@ -47,9 +47,15 @@ interface WalletData {
 interface LivreLite {
   id: number;
   titre?: string;
-  prix_estime?: number | null;
-  prix_achat?: number | null;
-  statut?: string | null;
+  // ⚠️ Le modèle Rust LivreScolaire utilise `valeur_calculee` (Decimal)
+  //    pour la valeur que Yukpo alloue au livre (prix_detecte × ratio_etat).
+  //    Bug initial : on cherchait `prix_estime`/`prix_achat` qui n'existent
+  //    pas sur ce modèle → toutes les valeurs sommées à 0.
+  valeur_calculee?: number | string | null;
+  prix_detecte?: number | string | null;
+  // Cycle troc (migration 20260510_008) : pending → matched → chained →
+  // delivered | expired | returned. Permet de calculer crédit estimé vs libéré.
+  troc_status?: string | null;
   is_available?: boolean;
   is_active?: boolean;
 }
@@ -67,7 +73,14 @@ interface PurchaseLite {
   statut?: string | null;
 }
 
-const STATUS_RELEASED = new Set(['vendu', 'echange', 'echangé', 'livre', 'livré', 'completed']);
+// ✅ troc_status canonique (migration 20260510_008) :
+//   pending  → en attente d'appariement (crédit estimé, non encore acquis)
+//   matched  → apparié (crédit provisionnel)
+//   chained  → engagé dans une chaîne (crédit verrouillé)
+//   delivered → livré : le crédit est libéré dans le wallet de l'user
+//   expired / returned → annulé / rollback : pas de crédit
+const STATUS_RELEASED = new Set(['delivered']);
+const STATUS_PENDING = new Set(['pending', 'matched', 'chained']);
 
 function toNumber(v: number | string | null | undefined): number {
   if (v === null || v === undefined) return 0;
@@ -166,18 +179,14 @@ const ParentDashboardPage: React.FC = () => {
     setRefreshing(false);
   };
 
-  // Agrégats livres
+  // Agrégats livres — on somme `valeur_calculee` (= prix_detecte × ratio_etat),
+  // calculée par Yukpo à la publication. Fallback sur prix_detecte si manquant.
   const livresPublies = livres.filter((l) => l.is_active !== false);
-  const estimatedCredit = livresPublies.reduce((acc, l) => {
-    const released = l.statut && STATUS_RELEASED.has(l.statut);
-    if (released) return acc;
-    return acc + toNumber(l.prix_estime ?? l.prix_achat ?? null);
-  }, 0);
-  const releasedCredit = livresPublies.reduce((acc, l) => {
-    const released = l.statut && STATUS_RELEASED.has(l.statut);
-    if (!released) return acc;
-    return acc + toNumber(l.prix_estime ?? l.prix_achat ?? null);
-  }, 0);
+  const valueOf = (l: LivreLite) => toNumber((l.valeur_calculee ?? l.prix_detecte ?? null) as number | string | null);
+  const isReleased = (l: LivreLite) => !!l.troc_status && STATUS_RELEASED.has(l.troc_status);
+  const isPending = (l: LivreLite) => !l.troc_status || STATUS_PENDING.has(l.troc_status);
+  const estimatedCredit = livresPublies.reduce((acc, l) => (isPending(l) ? acc + valueOf(l) : acc), 0);
+  const releasedCredit = livresPublies.reduce((acc, l) => (isReleased(l) ? acc + valueOf(l) : acc), 0);
 
   // Agrégats colis
   // expediteur_id correspond à l'user → colis "À expédier" ; destinataire_id
@@ -425,11 +434,21 @@ const ParentDashboardPage: React.FC = () => {
           ) : (
             <ul className="divide-y divide-gray-100">
               {wallet.movements.map((m, idx) => {
-                const isIn = m.direction === 'in';
-                const sourceKey = `bourse.dashboard.wallet.source_${m.source ?? ''}`;
+                // ✅ Le backend renvoie direction='credit'|'debit' (pas 'in'|'out').
+                //    Voir migration 20260510_008 et bourse_livre_v2_controller.rs:282.
+                const isIn = m.direction === 'credit' || m.direction === 'in';
+                // ✅ Mapping des sources backend canoniques :
+                //    troc_credit_provisional → "Échange en attente"
+                //    troc_credit_engaged     → "Échange engagé"
+                //    troc_credit_rolled_back → "Échange annulé"
+                //    order_credit_used       → "Commande" (consommation au checkout)
+                //    consignation_recovery   → "Récupération vente boutique"
+                //    manual_admin_adjustment → "Ajustement admin"
+                //    Cf. migration 20260510_008_troc_credit_bourse.sql lignes 68-75.
+                const sourceKey = `bourse.dashboard.wallet.source_${m.source ?? 'unknown'}`;
                 const sourceLabel = m.source
                   ? t(sourceKey, { defaultValue: m.source })
-                  : t('bourse.dashboard.wallet.source_troc');
+                  : t('bourse.dashboard.wallet.source_unknown', { defaultValue: '—' });
                 return (
                   <li key={idx} className="py-2.5 flex items-center gap-3">
                     <span
