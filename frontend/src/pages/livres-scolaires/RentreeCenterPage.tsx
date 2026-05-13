@@ -272,9 +272,11 @@ const RentreeCenterPage: React.FC = () => {
   }, [gps, sessionId, sessionCreating, toast, requestGpsNow]);
 
   // ─── Suggestions (modal "ajouter manuellement") ───
+  // 2026-05-13 : suppression des tabs Manuels/Fournitures. On fetche les
+  // DEUX groupes en parallèle et on affiche tout en sections empilées
+  // (livres → cahiers → fournitures), comme dans ScanProgrammePage.
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [loadingSugg, setLoadingSugg] = useState(false);
-  const [suggGroupe, setSuggGroupe] = useState<GroupeFilter>('livres');
   const [selectedSugg, setSelectedSugg] = useState<Record<string, number>>({}); // titre → qte
   // Choix par item dans Suggestions :
   //   - 'neuf' (défaut)     → achat plein tarif d'un livre neuf
@@ -297,36 +299,38 @@ const RentreeCenterPage: React.FC = () => {
     errorShownRef.current = false;
     (async () => {
       try {
-        const params = new URLSearchParams();
-        params.set('classe', active.classe);
-        params.set('type_groupe', suggGroupe);
-        params.set('pays', active.pays || PAYS_PAR_DEFAUT);
-        if (active.systeme) params.set('systeme', active.systeme);
-        if (active.etablissementId) params.set('etablissement_id', String(active.etablissementId));
-        const res = await apiGet(`/api/v2/parent/articles-suggested?${params}`);
-        const data = await res.json().catch(() => ({}));
+        // Fetch parallèle des 2 groupes (livres + fournitures) — pas de tabs.
+        // Affichage en sections empilées (livres → cahiers → fournitures).
+        const fetchGroup = async (groupe: GroupeFilter): Promise<SuggestionItem[]> => {
+          const params = new URLSearchParams();
+          params.set('classe', active.classe);
+          params.set('type_groupe', groupe);
+          params.set('pays', active.pays || PAYS_PAR_DEFAUT);
+          if (active.systeme) params.set('systeme', active.systeme);
+          if (active.etablissementId) params.set('etablissement_id', String(active.etablissementId));
+          const res = await apiGet(`/api/v2/parent/articles-suggested?${params}`);
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data?.message || 'load failed');
+          return (data?.items || []) as SuggestionItem[];
+        };
+        const [livres, fournitures] = await Promise.all([fetchGroup('livres'), fetchGroup('fournitures')]);
         if (cancelled) return;
-        if (!res.ok) throw new Error(data?.message || 'load failed');
-        const items = (data?.items || []) as SuggestionItem[];
+        const items = [...livres, ...fournitures];
         setSuggestions(items);
         // ✅ Pré-sélection : les LIVRES du programme officiel sont cochés
         // par défaut (qte=quantite_defaut||1), comme sur ScanProgrammePage.
         // Les fournitures restent à 0 — l'user coche ce qui l'intéresse.
-        // Ne remplace pas une qte déjà saisie manuellement (préserve les
-        // décisions de l'user au changement de tab).
-        if (suggGroupe === 'livres') {
-          setSelectedSugg(prev => {
-            const next = { ...prev };
-            let changed = false;
-            for (const s of items) {
-              if ((s.type_article === 'livre' || s.type_article === 'workbook') && next[s.titre] === undefined) {
-                next[s.titre] = s.quantite_defaut || 1;
-                changed = true;
-              }
+        setSelectedSugg(prev => {
+          const next = { ...prev };
+          let changed = false;
+          for (const s of items) {
+            if ((s.type_article === 'livre' || s.type_article === 'workbook') && next[s.titre] === undefined) {
+              next[s.titre] = s.quantite_defaut || 1;
+              changed = true;
             }
-            return changed ? next : prev;
-          });
-        }
+          }
+          return changed ? next : prev;
+        });
       } catch (e: any) {
         if (cancelled || errorShownRef.current) return;
         errorShownRef.current = true;
@@ -337,7 +341,7 @@ const RentreeCenterPage: React.FC = () => {
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSuggestions, suggGroupe, active?.classe, active?.systeme, active?.pays, active?.etablissementId]);
+  }, [showSuggestions, active?.classe, active?.systeme, active?.pays, active?.etablissementId]);
 
   // ─── Actions ───
   const handleAddSelectedSuggestions = () => {
@@ -911,8 +915,6 @@ const RentreeCenterPage: React.FC = () => {
           findMatchInPool={findMatchInPool}
           loading={loadingSugg}
           suggestions={suggestions}
-          groupe={suggGroupe}
-          setGroupe={setSuggGroupe}
           selected={selectedSugg}
           setSelected={setSelectedSugg}
           choixMap={choixSugg}
@@ -1548,17 +1550,30 @@ const SuggestionsModal: React.FC<{
   findMatchInPool: ReturnType<typeof useUserTrocPool>['findMatchInPool'];
   loading: boolean;
   suggestions: SuggestionItem[];
-  groupe: GroupeFilter;
-  setGroupe: (g: GroupeFilter) => void;
   selected: Record<string, number>;
   setSelected: (s: Record<string, number>) => void;
   choixMap: Record<string, 'neuf' | 'occasion' | 'troc'>;
   setChoixMap: (m: Record<string, 'neuf' | 'occasion' | 'troc'>) => void;
   onClose: () => void;
   onAdd: () => void;
-}> = ({ classe, pays, onPickClasse, onAddManualItem, panier, findMatchInPool, loading, suggestions, groupe, setGroupe, selected, setSelected, choixMap, setChoixMap, onClose, onAdd }) => {
+}> = ({ classe, pays, onPickClasse, onAddManualItem, panier, findMatchInPool, loading, suggestions, selected, setSelected, choixMap, setChoixMap, onClose, onAdd }) => {
   const { t } = useTranslation();
   const total = Object.values(selected).filter(v => v > 0).length;
+
+  // Total estimé réactif (somme qte × prix_officiel) — recalculé à chaque
+  // changement de selected/suggestions. Inclut livres + cahiers + fournitures.
+  const { totalEstime, totalSelectedCount } = useMemo(() => {
+    let amount = 0;
+    let count = 0;
+    for (const s of suggestions) {
+      const qte = selected[s.titre] ?? 0;
+      if (qte > 0) {
+        count += qte;
+        if (s.prix_officiel) amount += s.prix_officiel * qte;
+      }
+    }
+    return { totalEstime: Math.round(amount), totalSelectedCount: count };
+  }, [suggestions, selected]);
 
   const toggle = (titre: string, qte: number) => {
     const next = { ...selected };
@@ -1596,8 +1611,12 @@ const SuggestionsModal: React.FC<{
     <ModalShell onClose={onClose} title={t('bourse.rentree.suggestions_title', { classe })} fullScreen>
       {/* Sélecteur de classe — autocomplete intelligent unique. Sert à
           BASCULER ET AJOUTER une autre classe (frère/sœur). Pas de pills
-          d'enfants (workflow class-only). */}
+          d'enfants (workflow class-only). Hint court au-dessus pour
+          rappeler le double usage du champ. */}
       <div className="mb-3">
+        <p className="text-[10px] text-gray-500 mb-1 leading-snug">
+          💡 {t('bourse.rentree.suggestions_change_class_hint_short')}
+        </p>
         <ClasseAutocomplete
           showPaysSelector={true}
           onSelect={onPickClasse}
@@ -1605,36 +1624,34 @@ const SuggestionsModal: React.FC<{
         />
       </div>
 
-      {/* Filtres */}
-      <div className="flex gap-2 mb-2 sticky top-0 bg-white z-10 pb-2">
-        {(['livres', 'fournitures'] as GroupeFilter[]).map(g => (
-          <button
-            key={g}
-            onClick={() => setGroupe(g)}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold min-h-[40px] ${
-              g === groupe ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-700'
-            }`}
-          >
-            {g === 'livres' ? t('bourse.rentree.suggestions_filter_books') : t('bourse.rentree.suggestions_filter_supplies')}
-          </button>
-        ))}
-      </div>
+      {/* Total estimé — réactif : somme (qte × prix_officiel) sur tous les
+          items cochés (livres + cahiers + fournitures). Mise à jour en
+          temps réel quand l'user coche/décoche/ajuste les quantités. */}
+      {!loading && totalEstime > 0 && (
+        <div className="mb-3 bg-amber-50 border-2 border-amber-300 rounded-xl p-3 flex items-center justify-between sticky top-0 z-10">
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] text-amber-700 uppercase font-bold tracking-wide">
+              {t('bourse.rentree.suggestions_total_label')}
+            </span>
+            <span className="text-[10px] text-gray-600 truncate">
+              {t('bourse.rentree.suggestions_total_count', { count: totalSelectedCount })}
+            </span>
+          </div>
+          <span className="text-lg font-bold text-amber-700 tabular-nums shrink-0">
+            {totalEstime.toLocaleString('fr-FR')} XAF
+          </span>
+        </div>
+      )}
 
       {/* Champ de recherche autocomplete — case+accent insensible.
-          Filtre sur titre, matière et éditeur. Toujours visible une fois
-          chargé pour que l'user puisse chercher même dans des petites
-          listes (et puisse retaper après recherche vide). */}
+          Filtre sur titre, matière et éditeur. */}
       {!loading && (
         <div className="mb-3 relative">
           <input
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              groupe === 'fournitures'
-                ? t('bourse.rentree.suggestions_search_supplies')
-                : t('bourse.rentree.suggestions_search_books')
-            }
+            placeholder={t('bourse.rentree.suggestions_search_all')}
             className="w-full px-3 py-2 pl-9 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-amber-400 focus:bg-white"
             aria-label={t('bourse.rentree.suggestions_search_aria')}
           />

@@ -96,6 +96,66 @@ X-Content-Type-Options = "nosniff"
 
 [[redirects]]
 from = "/api/*"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/:splat"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/auth/*"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/api/auth/:splat"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/ai/*"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/ai/:splat"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/ws/*"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/ws/:splat"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/healthz"
+to = "https://yukpo-backend-376093909298.europe-west1.run.app/healthz"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/api/*"
 to = "https://yukpo-fly-backend.fly.dev/api/:splat"
 status = 200.0
 force = false

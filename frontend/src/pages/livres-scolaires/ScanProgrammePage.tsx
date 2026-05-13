@@ -1175,6 +1175,19 @@ const ScanProgrammePage: React.FC = () => {
           </div>
         )}
 
+        {/* ✅ 2026-05-13 : Total estimé sticky au-dessus du premier tableau.
+            Réactif : recalculé à chaque coche/décoche/changement de quantité. */}
+        {items.length > 0 && totalEstime > 0 && (
+          <div className="sticky top-0 z-20 mb-2 bg-amber-50 border-2 border-amber-300 rounded-xl px-3 py-2 flex items-center justify-between shadow-sm">
+            <span className="text-[10px] text-amber-700 uppercase font-bold tracking-wide">
+              {t('bourse.scan.total_estimated')}
+            </span>
+            <span className="text-base font-bold text-amber-700 tabular-nums">
+              {formatPrix(totalEstime, pays)}
+            </span>
+          </div>
+        )}
+
         {/* Tableau regroupé par rubrique : Manuels → Cahiers → Fournitures.
             Lignes ~38-44px, toggle Neuf/Occasion à 2 segments toujours visible. */}
         {items.length > 0 && (
