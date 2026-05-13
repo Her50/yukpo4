@@ -1977,20 +1977,48 @@ L'utilisateur reprendra la photo manquante. NE PAS inventer un faux verso.
 
 ⚠️ DÉTECTION DE COUVERTURE NON-VALIDE (CRITIQUE — anti-triche):
 L'utilisateur PEUT envoyer autre chose que les vraies couvertures du livre (photos d'une page intérieure, du dos relié, d'un cahier, d'un objet aléatoire, d'une capture d'écran, etc.) pour contourner le système.
-Tu DOIS rejeter dans ces cas :
-- RECTO (1ère image) attendu = couverture AVANT du livre : doit montrer le titre principal en grand, le nom de l'auteur ou de l'éditeur, généralement une illustration ou photo, la mention du niveau scolaire.
-- VERSO (2ème image) attendu = couverture ARRIÈRE du livre : doit montrer un code-barres ISBN, le prix imprimé, un résumé (4ème de couverture), le logo de l'éditeur.
+
+📘 RECTO (1ère image) attendu = couverture AVANT cartonnée :
+   - CONTENU : titre principal en grand, nom auteur/éditeur, illustration/photo, mention niveau scolaire
+   - PHYSIQUE (indices visuels CRUCIAUX pour distinguer de la page de titre intérieure) :
+     • Surface cartonnée/laminée : reflets brillants ou texture mate épaisse, parfois pelliculage
+     • Bords épais visibles (3-5 mm d'épaisseur sur les côtés ou en bas)
+     • Coins parfois cornés, usure aux arêtes
+     • Souvent une ombre/relief 3D au bord — pas un plat parfait
+     • PAS d'autre page visible derrière (ni numéro de page, ni texte de la 2ème page transparent)
+
+📕 VERSO (2ème image) attendu = couverture ARRIÈRE cartonnée :
+   - CONTENU : code-barres ISBN + EAN-13, prix imprimé, résumé (4ème de couv.), logo éditeur, parfois mentions légales
+   - PHYSIQUE : mêmes critères cartonnés que le recto (épaisseur, reflets, bords)
+
+⚠️ PIÈGE COURANT — page de titre INTÉRIEURE :
+Juste APRÈS la couverture cartonnée, la 1ère page papier (« page de titre » ou « page de garde »)
+reprend souvent les MÊMES informations : titre, auteur, éditeur. MAIS c'est du PAPIER FIN, pas du carton.
+TU DOIS LA REJETER. Indices pour la distinguer de la vraie couverture :
+   - Papier fin et plat (pas d'épaisseur sur les bords)
+   - On voit souvent une 2ème page derrière en transparence
+   - Mise en page plus sobre, beaucoup de blanc autour du texte
+   - Pas de pelliculage/brillance carton
+   - Parfois on voit la reliure (cousue/collée) ou les pages adjacentes
+   - Numéro de page possible (typiquement 1 ou 3)
+   - Pas d'illustration grande / pas la mise en page promotionnelle de la couverture
+Si tu détectes une page de titre intérieure (papier au lieu de carton), TU REJETTES :
+   notes = "Image recto non-conforme : page de titre intérieure (papier) au lieu de la couverture cartonnée"
 
 Cas de REJET avec `etat_classification="rejete"` et notes ciblées :
-1. Si l'image 1 (recto) n'est PAS une couverture avant de livre scolaire (ex: page intérieure de texte/exercices, dos de reliure, autre objet, écran, photo floue/illisible) :
-   notes = "Image recto non-conforme : ce n'est pas la couverture avant du livre"
-2. Si l'image 2 (verso) n'est PAS une couverture arrière (ex: page intérieure, sommaire, exercice, écran, autre livre) :
-   notes = "Image verso non-conforme : ce n'est pas la couverture arrière du livre (code-barres ISBN + prix éditeur attendus)"
-3. Si AUCUNE des 2 images ne montre une vraie couverture de livre :
-   notes = "Aucune couverture détectée : les 2 images ne montrent pas le livre attendu"
+1. Si l'image 1 (recto) n'est PAS une couverture cartonnée valide (page intérieure, page de titre,
+   dos de reliure, autre objet, écran, photo floue/illisible) :
+   notes = "Image recto non-conforme : ce n'est pas la couverture cartonnée avant du livre"
+   (précise le sous-cas si page de titre intérieure → voir paragraphe pièges ci-dessus)
+2. Si l'image 2 (verso) n'est PAS une couverture arrière cartonnée (page intérieure, sommaire,
+   page d'exercices, table des matières, écran, autre livre) :
+   notes = "Image verso non-conforme : ce n'est pas la couverture cartonnée arrière du livre (code-barres ISBN + prix éditeur attendus)"
+3. Si AUCUNE des 2 images ne montre une vraie couverture cartonnée :
+   notes = "Aucune couverture détectée : les 2 images ne montrent pas les pages cartonnées du livre"
 
 Dans tous ces cas : confidence ≤ 0.4, est_au_programme = false, prix_detecte = null.
 L'utilisateur DOIT reprendre les photos. NE PAS inventer un titre/auteur/prix basés sur des indices marginaux.
+NE PAS se laisser tromper par une page de titre intérieure qui ressemble à la couverture.
 
 Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, classe_souhaitee, matiere, niveau, prix_detecte, devise_detectee, etat_classification, etat_description, est_au_programme, programme_scolaire_id, programme_match_details, confidence, notes."#,
                 lat = lat,
