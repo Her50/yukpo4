@@ -186,6 +186,60 @@ pub struct UpdateAvailabilityRequest {
     pub is_available: bool,
 }
 
+/// POST /api/bourse-livre/:id/mark-as-don
+/// Convertit un livre du user en DON (mode_listing='don'). Utilisé après
+/// rejet d'un livre dans le flow troc/vente : Yukpo propose au user de
+/// donner gracieusement son livre rejeté à un parent nécessiteux.
+/// Aucun crédit n'est généré — c'est un geste social. La disponibilité
+/// est forcée à true pour que Yukpo puisse le proposer.
+pub async fn mark_as_don(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Path(livre_id): Path<i32>,
+) -> AppResult<impl IntoResponse> {
+    info!(
+        "[mark_as_don] User ID: {}, Livre ID: {} → mode_listing=don",
+        user_id, livre_id
+    );
+
+    // Sécurité : on s'assure que c'est bien le livre de l'user (anti-IDOR).
+    // Réinitialise aussi etat_classification à 'acceptable' si rejeté pour
+    // que le livre puisse circuler en don (les dons tolèrent davantage que
+    // troc/vente).
+    let updated = sqlx::query_scalar::<_, i32>(
+        r#"
+        UPDATE livres_scolaires
+        SET mode_listing = 'don',
+            is_available = true,
+            is_active = true,
+            etat_classification = CASE
+                WHEN etat_classification = 'rejete' THEN 'acceptable'
+                ELSE etat_classification
+            END,
+            updated_at = NOW()
+        WHERE id = $1 AND user_id = $2
+        RETURNING id
+        "#,
+    )
+    .bind(livre_id)
+    .bind(user_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Database(format!("mark_as_don: {}", e)))?;
+
+    match updated {
+        Some(id) => Ok(Json(json!({
+            "success": true,
+            "livre_id": id,
+            "message": "Livre marqué comme don. Yukpo le proposera aux parents en demande de don."
+        }))),
+        None => Err(AppError::NotFound(format!(
+            "Livre {} introuvable pour cet utilisateur",
+            livre_id
+        ))),
+    }
+}
+
 // ============================================================================
 // ENDPOINTS IA - BOURSE DU LIVRE
 // ============================================================================

@@ -232,12 +232,13 @@ const RentreeCenterPage: React.FC = () => {
   const [loadingSugg, setLoadingSugg] = useState(false);
   const [suggGroupe, setSuggGroupe] = useState<GroupeFilter>('livres');
   const [selectedSugg, setSelectedSugg] = useState<Record<string, number>>({}); // titre → qte
-  // Choix par item : neuf (défaut, plein tarif) ou occasion (moins cher, sans
-  // troc). Le user peut décider dès l'écran suggestions. L'achat 'occasion'
-  // ne demande PAS de proposer un livre en échange — c'est juste un achat
-  // d'occasion classique. TrocPrepPage est utilisé seulement si le user
-  // veut ÉCHANGER (troc) un livre qu'il a déjà.
-  const [choixSugg, setChoixSugg] = useState<Record<string, 'neuf' | 'occasion'>>({});
+  // Choix par item dans Suggestions :
+  //   - 'neuf' (défaut)     → achat plein tarif d'un livre neuf
+  //   - 'occasion'          → achat d'une copie usagée moins chère (sans troc)
+  //   - 'troc'              → l'user veut ÉCHANGER un livre qu'il a (vs crédit).
+  //                           Après "Ajouter", on redirige vers TrocPrepPage
+  //                           pour la capture photo des livres à donner.
+  const [choixSugg, setChoixSugg] = useState<Record<string, 'neuf' | 'occasion' | 'troc'>>({});
 
   // ✅ Évite les boucles : on ne dépend QUE des paramètres réels (classe, groupe,
   // établissement) — `t`/`toast` ne doivent JAMAIS être dans les deps d'un effect
@@ -280,25 +281,49 @@ const RentreeCenterPage: React.FC = () => {
     if (!active) return;
     const toAdd: Omit<PanierItem, 'id'>[] = suggestions
       .filter(s => (selectedSugg[s.titre] ?? 0) > 0)
-      .map(s => ({
-        enfantId: active.id,
-        titre: s.titre,
-        auteur: s.auteur || undefined,
-        matiere: s.matiere || undefined,
-        editeur: s.editeur || undefined,
-        type: ((s.type_article as TypeItem) || 'livre'),
-        prixNeuf: s.prix_officiel || undefined,
-        // Choix utilisateur : par défaut 'neuf', mais 'occasion' si toggle activé
-        // pour cet item dans le modal suggestions.
-        choix: (choixSugg[s.titre] ?? 'neuf') as Choix,
-        quantite: selectedSugg[s.titre] ?? 1,
-      }));
+      .map(s => {
+        const mode = choixSugg[s.titre] ?? 'neuf';
+        // Mapping mode UI → PanierItem :
+        //   'neuf' → choix='neuf' (achat plein tarif)
+        //   'occasion' → choix='occasion', pas de troc_intent (achat usagé simple)
+        //   'troc' → choix='occasion' + troc_intent=true (échange contre crédit)
+        return {
+          enfantId: active.id,
+          titre: s.titre,
+          auteur: s.auteur || undefined,
+          matiere: s.matiere || undefined,
+          editeur: s.editeur || undefined,
+          type: ((s.type_article as TypeItem) || 'livre'),
+          prixNeuf: s.prix_officiel || undefined,
+          choix: (mode === 'neuf' ? 'neuf' : 'occasion') as Choix,
+          troc_intent: mode === 'troc' ? true : undefined,
+          quantite: selectedSugg[s.titre] ?? 1,
+        };
+      });
     if (toAdd.length === 0) return;
     addItems(toAdd);
-    toast({ title: t('bourse.rentree.toast_articles_added', { count: toAdd.length }) });
+    const trocCount = toAdd.filter(it => it.troc_intent).length;
+    toast({
+      title: t('bourse.rentree.toast_articles_added', { count: toAdd.length }),
+      description: trocCount > 0
+        ? t(
+            trocCount > 1
+              ? 'bourse.rentree.toast_troc_pending_other'
+              : 'bourse.rentree.toast_troc_pending_one',
+            { count: trocCount },
+          )
+        : undefined,
+    });
     setSelectedSugg({});
     setChoixSugg({});
     setShowSuggestions(false);
+    // ✅ Si au moins un item est en mode troc, on bascule directement vers
+    // la prep-troc où l'user photographie les livres à donner en échange.
+    // Sinon, retour normal sur la page Rentrée pour continuer la commande.
+    if (trocCount > 0) {
+      // Petite tempo pour laisser le toast s'afficher avant la navigation.
+      setTimeout(() => navigate('/troc-prep'), 200);
+    }
   };
 
   const startTroc = (item: PanierItem) => {
@@ -1290,8 +1315,8 @@ const SuggestionsModal: React.FC<{
   setGroupe: (g: GroupeFilter) => void;
   selected: Record<string, number>;
   setSelected: (s: Record<string, number>) => void;
-  choixMap: Record<string, 'neuf' | 'occasion'>;
-  setChoixMap: (m: Record<string, 'neuf' | 'occasion'>) => void;
+  choixMap: Record<string, 'neuf' | 'occasion' | 'troc'>;
+  setChoixMap: (m: Record<string, 'neuf' | 'occasion' | 'troc'>) => void;
   onClose: () => void;
   onAdd: () => void;
 }> = ({ classe, panier, findMatchInPool, loading, suggestions, groupe, setGroupe, selected, setSelected, choixMap, setChoixMap, onClose, onAdd }) => {
@@ -1304,7 +1329,7 @@ const SuggestionsModal: React.FC<{
     setSelected(next);
   };
 
-  const setChoix = (titre: string, choix: 'neuf' | 'occasion') => {
+  const setChoix = (titre: string, choix: 'neuf' | 'occasion' | 'troc') => {
     const next = { ...choixMap };
     if (choix === 'neuf') delete next[titre]; // neuf = défaut, pas besoin de stocker
     else next[titre] = choix;
@@ -1332,7 +1357,14 @@ const SuggestionsModal: React.FC<{
 
   return (
     <ModalShell onClose={onClose} title={t('bourse.rentree.suggestions_title', { classe })} fullScreen>
-      <p className="text-xs text-gray-500 mb-3">{t('bourse.rentree.suggestions_subtitle')}</p>
+      <p className="text-xs text-gray-500 mb-2">{t('bourse.rentree.suggestions_subtitle')}</p>
+      {/* Bandeau d'orientation : explique les 3 modes (Neuf/Occasion/Échange).
+          Aide l'utilisateur à comprendre l'impact financier avant de cocher. */}
+      <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+        <p className="text-[11px] text-amber-900 leading-snug">
+          {t('bourse.rentree.suggestions_intro_help')}
+        </p>
+      </div>
 
       {/* Filtres */}
       <div className="flex gap-2 mb-2 sticky top-0 bg-white z-10 pb-2">
@@ -1486,32 +1518,47 @@ const SuggestionsModal: React.FC<{
                 </div>
               </div>
 
-              {/* Toggle Neuf/Occasion — affiché seulement si item sélectionné.
-                  Achat d'occasion = livre usagé moins cher, SANS troc.
-                  Pour ÉCHANGER un livre (vraie troc), passer par TrocPrep. */}
+              {/* Toggle 3 modes — affiché seulement si item sélectionné et type livre. */}
               {qte > 0 && !locked && isLivre && (
-                <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-gray-500 font-medium">
-                    {t('bourse.rentree.suggestions_condition_label')}
-                  </span>
-                  <div className="inline-flex rounded-lg overflow-hidden border border-gray-200">
-                    <button
-                      onClick={() => setChoix(s.titre, 'neuf')}
-                      className={`px-3 py-1.5 text-[11px] font-semibold ${
-                        choix === 'neuf' ? 'bg-emerald-500 text-white' : 'bg-white text-gray-700'
-                      }`}
-                    >
-                      {t('bourse.rentree.suggestions_choice_neuf')}
-                    </button>
-                    <button
-                      onClick={() => setChoix(s.titre, 'occasion')}
-                      className={`px-3 py-1.5 text-[11px] font-semibold ${
-                        choix === 'occasion' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700'
-                      }`}
-                    >
-                      {t('bourse.rentree.suggestions_choice_occasion')}
-                    </button>
+                <div className="mt-2 pt-2 border-t border-gray-100 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] text-gray-500 font-medium">
+                      {t('bourse.rentree.suggestions_condition_label')}
+                    </span>
+                    <div className="inline-flex rounded-lg overflow-hidden border border-gray-200">
+                      <button
+                        onClick={() => setChoix(s.titre, 'neuf')}
+                        className={`px-2.5 py-1.5 text-[11px] font-semibold ${
+                          choix === 'neuf' ? 'bg-emerald-500 text-white' : 'bg-white text-gray-700'
+                        }`}
+                      >
+                        {t('bourse.rentree.suggestions_choice_neuf')}
+                      </button>
+                      <button
+                        onClick={() => setChoix(s.titre, 'occasion')}
+                        className={`px-2.5 py-1.5 text-[11px] font-semibold border-l border-gray-200 ${
+                          choix === 'occasion' ? 'bg-orange-500 text-white' : 'bg-white text-gray-700'
+                        }`}
+                      >
+                        {t('bourse.rentree.suggestions_choice_occasion')}
+                      </button>
+                      <button
+                        onClick={() => setChoix(s.titre, 'troc')}
+                        className={`px-2.5 py-1.5 text-[11px] font-semibold border-l border-gray-200 ${
+                          choix === 'troc' ? 'bg-amber-500 text-white' : 'bg-white text-gray-700'
+                        }`}
+                      >
+                        {t('bourse.rentree.suggestions_choice_troc')}
+                      </button>
+                    </div>
                   </div>
+                  {/* Mini-descriptif contextuel selon le mode choisi pour
+                      aider l'user à comprendre l'impact financier de son choix. */}
+                  <p className="text-[10px] text-gray-500 leading-snug">
+                    {choix === 'neuf' && t('bourse.rentree.suggestions_help_neuf')}
+                    {choix === 'occasion' && t('bourse.rentree.suggestions_help_occasion')}
+                    {choix === 'troc' && t('bourse.rentree.suggestions_help_troc')}
+                  </p>
                 </div>
               )}
             </li>

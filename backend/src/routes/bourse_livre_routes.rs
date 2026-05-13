@@ -63,6 +63,10 @@ pub fn bourse_livre_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
             "/api/bourse-livre/{id}/availability",
             axum::routing::patch(livres_scolaires_controller::update_availability),
         )
+        .route(
+            "/api/bourse-livre/{id}/mark-as-don",
+            post(livres_scolaires_controller::mark_as_don),
+        )
         // Endpoints IA
         .route(
             "/api/bourse-livre/ai/recommendations",

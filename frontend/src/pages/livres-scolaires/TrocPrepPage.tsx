@@ -1,5 +1,5 @@
 import {
-  AlertTriangle, ArrowLeft, BookOpen, Camera, Check, ChevronRight, Loader2,
+  AlertTriangle, ArrowLeft, BookOpen, Camera, Check, ChevronRight, Gift, Loader2,
   MapPin, Repeat, ShoppingBag, Sparkles, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -31,6 +31,11 @@ interface ItemMatch {
   livre_id?: number;
   etat_classification?: 'bon' | 'acceptable' | 'rejete';
   valeur_calculee?: number;
+  /** Code de rejet (etat_too_damaged, niveau_primaire, non_reusable_workbook…)
+   *  pour proposer la bonne action de fallback dans l'UI. */
+  rejection_code?: string;
+  /** Message complet utilisateur (extrait des notes IA / contrôleur). */
+  rejection_message?: string;
 }
 
 const TrocPrepPage: React.FC = () => {
@@ -143,13 +148,17 @@ const TrocPrepPage: React.FC = () => {
           livre_id: result.livre_id || undefined,
           etat_classification: result.etat_classification,
           valeur_calculee: 0,
+          rejection_code: result.rejection_code,
+          rejection_message: result.rejection_message,
         },
       }));
       // On ne persiste PAS le trocLivreId pour un livre rejeté.
       updateTrocMatch(itemId, undefined);
+      // ✅ Le toast est plus court ; les actions de remplacement (neuf,
+      // occasion, don) sont proposées dans l'UI de l'item rejeté.
       toast({
         title: t('bourse.trocPrep.toast_rejected_title'),
-        description: t('bourse.trocPrep.toast_rejected_desc'),
+        description: result.rejection_message || t('bourse.trocPrep.toast_rejected_desc'),
         variant: 'destructive',
       });
     } else {
@@ -180,6 +189,52 @@ const TrocPrepPage: React.FC = () => {
     updateTrocMatch(item.id, undefined); // efface tout match troc précédent
     setMatches(prev => ({ ...prev, [item.id]: { status: 'switched' } }));
     toast({ title: t('bourse.trocPrep.toast_switched_one_item', { titre: item.titre }) });
+  };
+
+  /** Bascule l'item en achat d'occasion (sans troc). C'est le bon livre de
+   *  la classe supérieure qui sera commandé en version usagée (moins cher
+   *  qu'un neuf, sans avoir à donner un livre en échange). */
+  const switchToOccasion = (item: PanierItem) => {
+    updateChoix(item.id, 'occasion');
+    updateTrocMatch(item.id, undefined);
+    clearTrocIntent(item.id);
+    setMatches(prev => ({ ...prev, [item.id]: { status: 'switched' } }));
+    toast({ title: t('bourse.trocPrep.toast_switched_occasion', { titre: item.titre }) });
+  };
+
+  /** Offre le livre rejeté en DON. Le livre conservé en DB passe en
+   *  mode_listing='don', état est_available=true. Yukpo le proposera aux
+   *  parents nécessiteux qui ont émis le souhait de recevoir un don.
+   *  Demande confirmation explicite (action gratuite, sans crédit). */
+  const offerAsDon = async (itemId: string) => {
+    const m = matches[itemId];
+    if (!m?.livre_id) return;
+    if (!window.confirm(t('bourse.trocPrep.don_confirm'))) return;
+    try {
+      const res = await apiPost(`/api/bourse-livre/${m.livre_id}/mark-as-don`, {});
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        throw new Error(data?.error || data?.message || 'Échec du don');
+      }
+      // Statut local : marque l'item comme « don envoyé » pour éviter
+      // double-clic. L'item du panier reste en attente d'action (neuf,
+      // occasion ou skip) car le don ne remplace PAS la commande de
+      // la classe supérieure — c'est un geste pour le livre rejeté.
+      setMatches(prev => ({
+        ...prev,
+        [itemId]: { ...prev[itemId], status: 'rejected' },
+      }));
+      toast({
+        title: t('bourse.trocPrep.don_done_title'),
+        description: t('bourse.trocPrep.don_done_desc'),
+      });
+    } catch (e: any) {
+      toast({
+        title: t('bourse.trocPrep.don_failed_title'),
+        description: e?.message || t('bourse.trocPrep.don_failed_desc'),
+        variant: 'destructive',
+      });
+    }
   };
 
   const skipItem = (item: PanierItem) => {
@@ -371,9 +426,16 @@ const TrocPrepPage: React.FC = () => {
                       </p>
                     )}
                     {match.status === 'rejected' && (
-                      <p className="text-[11px] text-red-700 font-semibold mt-1 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" /> {t('bourse.trocPrep.status_rejected')}
-                      </p>
+                      <div className="mt-1">
+                        <p className="text-[11px] text-red-700 font-semibold flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" /> {t('bourse.trocPrep.status_rejected')}
+                        </p>
+                        {match.rejection_message && (
+                          <p className="text-[10px] text-red-600 leading-snug mt-0.5">
+                            {match.rejection_message}
+                          </p>
+                        )}
+                      </div>
                     )}
                     {match.status === 'switched' && (
                       <p className="text-[11px] text-blue-700 font-semibold mt-1 flex items-center gap-1">
@@ -411,22 +473,55 @@ const TrocPrepPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Bouton réessayer si rejeté */}
+                {/* Bloc actions de fallback si le livre photographié est REJETÉ.
+                    On présente à l'user 4 options claires pour quand même
+                    obtenir le livre de la classe supérieure (item.titre) :
+                    1. Réessayer la photo (peut-être mauvaise prise)
+                    2. Acheter le livre voulu en NEUF
+                    3. Acheter le livre voulu en OCCASION (moins cher)
+                    4. Faire DON du livre rejeté à un parent nécessiteux
+                       (uniquement si on a un livre_id côté backend).
+                    Le titre `item.titre` est déjà le livre de la classe
+                    supérieure visée. Donc switchToNeuf/Occasion commande
+                    automatiquement le bon livre. */}
                 {match.status === 'rejected' && !isCaptureOpen && (
-                  <div className="px-3 pb-3 flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setOpenCaptureFor(item.id)}
-                      disabled={!sessionId}
-                      className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 py-2 px-3 bg-amber-500 disabled:bg-gray-200 text-white rounded-xl text-xs font-semibold"
-                    >
-                      <Camera className="w-3.5 h-3.5" /> {t('bourse.trocPrep.action_retry_photo')}
-                    </button>
-                    <button
-                      onClick={() => switchToNeuf(item)}
-                      className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold"
-                    >
-                      {t('bourse.trocPrep.action_neuf')}
-                    </button>
+                  <div className="px-3 pb-3 space-y-2">
+                    <p className="text-[11px] text-gray-600 leading-snug">
+                      {t('bourse.trocPrep.rejected_fallback_help', { titre: item.titre })}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setOpenCaptureFor(item.id)}
+                        disabled={!sessionId}
+                        className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 py-2 px-3 bg-amber-500 disabled:bg-gray-200 text-white rounded-xl text-xs font-semibold"
+                      >
+                        <Camera className="w-3.5 h-3.5" /> {t('bourse.trocPrep.action_retry_photo')}
+                      </button>
+                      <button
+                        onClick={() => switchToNeuf(item)}
+                        className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 py-2 px-3 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-xl text-xs font-semibold"
+                      >
+                        {t('bourse.trocPrep.action_buy_neuf')}
+                      </button>
+                      <button
+                        onClick={() => switchToOccasion(item)}
+                        className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 py-2 px-3 bg-orange-50 text-orange-700 border border-orange-300 rounded-xl text-xs font-semibold"
+                      >
+                        {t('bourse.trocPrep.action_buy_occasion')}
+                      </button>
+                    </div>
+                    {/* Don : possible seulement si on a un livre_id (livre
+                        bien enregistré côté backend, même si rejeté pour
+                        cause d'état ou de niveau). Pour les rejets « no_cover »,
+                        livre_id peut être 0/absent → on n'affiche pas le don. */}
+                    {match.livre_id && match.livre_id > 0 && (
+                      <button
+                        onClick={() => offerAsDon(item.id)}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 text-blue-700 border border-blue-300 rounded-xl text-xs font-semibold"
+                      >
+                        <Gift className="w-3.5 h-3.5" /> {t('bourse.trocPrep.action_offer_as_don')}
+                      </button>
+                    )}
                   </div>
                 )}
 
