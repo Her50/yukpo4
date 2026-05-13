@@ -315,13 +315,13 @@ const RentreeCenterPage: React.FC = () => {
       clearTrocIntent(item.id);
       updateChoix(item.id, 'neuf');
       toast({
-        title: 'Livre retiré',
-        description: data?.message || 'Le livre a été retiré du troc.',
+        title: t('bourse.retraitLivre.toast_removed_title'),
+        description: data?.message || t('bourse.retraitLivre.toast_removed_desc'),
       });
     } catch (e: any) {
       toast({
-        title: 'Retrait impossible',
-        description: e?.message || 'Réessayez',
+        title: t('bourse.retraitLivre.toast_failed_title'),
+        description: e?.message || t('bourse.retraitLivre.toast_failed_desc'),
         variant: 'destructive',
       });
     }
@@ -385,22 +385,17 @@ const RentreeCenterPage: React.FC = () => {
       // en priorité le message précis renvoyé par le backend (rejection_message)
       // pour distinguer les motifs : pas au programme / Maternelle/Primaire / consommable / dégradé / valeur 0.
       clearTrocIntent(itemId);
-      const title =
-        result.rejection_code === 'not_in_program'
-          ? 'Livre pas au programme'
-          : result.rejection_code === 'niveau_primaire'
-          ? 'Maternelle/Primaire non eligible'
-          : result.rejection_code === 'non_reusable_workbook'
-          ? 'Cahier ou livret — non réutilisable'
-          : result.rejection_code === 'price_missing'
-          ? 'Prix non lisible — rescannez'
-          : result.rejection_code === 'isbn_missing'
-          ? 'ISBN non lisible — rescannez'
-          : result.rejection_code === 'duplicate_book'
-          ? 'Livre déjà scanné'
-          : result.rejection_code === 'value_zero'
-          ? 'Valeur nulle'
-          : t('bourse.rentree.toast_rejected_title');
+      // Mapping rejection_code → titre traduit. Si code inconnu, fallback
+      // sur le titre générique. La traduction est synchronisée avec le backend
+      // (cf. bourse_livre_v2_controller.rs:rejection_code).
+      const knownCodes = [
+        'not_in_program', 'niveau_primaire', 'non_reusable_workbook',
+        'price_missing', 'isbn_missing', 'duplicate_book', 'value_zero',
+        'etat_too_damaged', 'recto_verso_same_side',
+      ];
+      const title = knownCodes.includes(result.rejection_code || '')
+        ? t(`bourse.rejectionCodes.${result.rejection_code}`)
+        : t('bourse.rentree.toast_rejected_title');
       const desc = result.rejection_message
         ? result.rejection_message
         : t('bourse.rentree.toast_rejected_desc');

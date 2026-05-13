@@ -30,11 +30,14 @@ L.Icon.Default.mergeOptions({
  * qui causait des "Oops! Something went wrong" silencieux côté parent.
  */
 
-// 🗺️ Carte de base : OpenStreetMap standard — le plus fiable globalement,
-//    chargement direct sans CDN tiers ni rate-limit imprévu.
-//    (Précédente tentative CartoDB Voyager: tiles parfois blanches selon le réseau.)
-const TILE_PLAN = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-const TILE_PLAN_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+// 🗺️ Carte de base : OSM Humanitarian (HOT) — style optimisé pour l'Afrique
+//    avec un meilleur rendu des rues, numéros, bâtiments et points d'intérêt
+//    que le style Mapnik standard, qui sous-affiche les voiries au Cameroun.
+//    Servi par OSM France, CORS-ouvert, gratuit.
+const TILE_PLAN = 'https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png';
+const TILE_PLAN_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> — Style HOT';
+// 🗺️ Fallback : tile.openstreetmap.org si HOT indisponible (rare).
+const TILE_PLAN_FALLBACK = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 // 🛰️ Couche satellite optionnelle : Esri World Imagery — gratuit pour usage
 //    raisonnable, montre les bâtiments en image aérienne (utile en milieu rural CM).
 const TILE_SATELLITE = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
@@ -146,13 +149,14 @@ const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
       ? [initialLocation.lat, initialLocation.lng]
       : cachedInit ?? DEFAULT_CENTER,
   );
-  const [zoom, setZoom] = useState<number>(initialLocation || cachedInit ? 15 : 13);
+  const [zoom, setZoom] = useState<number>(initialLocation || cachedInit ? 17 : 14);
   const [address, setAddress] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searching, setSearching] = useState(false);
   const [locating, setLocating] = useState(false);
   const [predictions, setPredictions] = useState<Suggestion[]>([]);
   const [showSatellite, setShowSatellite] = useState(false);
+  const [useFallbackTiles, setUseFallbackTiles] = useState(false);
   const [showPreds, setShowPreds] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
   const debounceRef = useRef<number | null>(null);
@@ -165,7 +169,7 @@ const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
     if (initialLocation || cachedInit || !navigator.geolocation) return;
     const onOk = (pos: GeolocationPosition) => {
       setCoords([pos.coords.latitude, pos.coords.longitude]);
-      setZoom(15);
+      setZoom(17);
     };
     navigator.geolocation.getCurrentPosition(
       onOk,
@@ -270,7 +274,7 @@ const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
     // ✅ Stratégie 2 étages — voir GpsGate pour les détails.
     const onSuccess = (pos: GeolocationPosition) => {
       setCoords([pos.coords.latitude, pos.coords.longitude]);
-      setZoom(16);
+      setZoom(17);
       setLocating(false);
     };
     const onFinalFail = (err?: GeolocationPositionError) => {
@@ -332,7 +336,11 @@ const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
             )}
           </div>
           {showPreds && predictions.length > 0 && (
-            <div className="absolute z-10 left-4 right-4 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-y-auto">
+            // ⚠️ z-index élevé OBLIGATOIRE : Leaflet utilise z-index jusqu'à
+            //    700 sur ses panes (tile=200, overlay=400, marker=600). Sans
+            //    z-[1000], les suggestions s'affichent DERRIÈRE la carte et
+            //    l'utilisateur croit que l'autocomplete ne fonctionne pas.
+            <div className="absolute z-[1000] left-4 right-4 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-y-auto">
               {predictions.map((p) => (
                 <button
                   key={p.id}
@@ -368,10 +376,15 @@ const DeliveryMapPicker: React.FC<DeliveryMapPickerProps> = ({
               />
             ) : (
               <TileLayer
-                key="plan"
-                url={TILE_PLAN}
+                key={useFallbackTiles ? 'plan-fallback' : 'plan'}
+                url={useFallbackTiles ? TILE_PLAN_FALLBACK : TILE_PLAN}
                 attribution={TILE_PLAN_ATTR}
                 maxZoom={19}
+                eventHandlers={{
+                  tileerror: () => {
+                    if (!useFallbackTiles) setUseFallbackTiles(true);
+                  },
+                }}
               />
             )}
             <RecenterMap target={coords} zoom={zoom} />

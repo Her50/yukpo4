@@ -978,7 +978,19 @@ pub async fn analyze_recto_verso(
     // utilisateur) du contexte. Permet au frontend d'afficher un toast clair.
     let (rejection_code, rejection_message) = if is_rejected {
         let notes_str = analysis.notes.as_deref().unwrap_or("");
-        if !is_in_program {
+        // ✅ Détection en amont du cas « faces dupliquées » (recto et verso
+        // photographient la même face) — l'IA a posé ce diagnostic dans notes.
+        // Ce check passe AVANT les autres rejets pour donner un message
+        // spécifique à l'utilisateur (reprendre la photo manquante).
+        if notes_str.contains("Faces dupliquées")
+            || notes_str.contains("recto et verso identiques")
+            || notes_str.contains("même face du livre")
+        {
+            (
+                "recto_verso_same_side",
+                "Les deux photos montrent la même face du livre. Retournez le livre et photographiez réellement le verso (couverture arrière avec code-barres ISBN et prix éditeur).",
+            )
+        } else if !is_in_program {
             (
                 "not_in_program",
                 "Ce livre n'est pas au programme scolaire officiel. Yukpo n'accepte au troc que les manuels en demande sur le cycle scolaire courant.",

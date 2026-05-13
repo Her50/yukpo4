@@ -712,10 +712,20 @@ impl LivresScolairesService {
         Ok(())
     }
 
-    /// Obtenir les livres d'un utilisateur
+    /// Obtenir les livres d'un utilisateur (hors rejets).
+    ///
+    /// On exclut explicitement `etat_classification = 'rejete'` car ces livres
+    /// ne peuvent pas être publiés (ISBN invalide, état dégradé, programme
+    /// inconnu, etc.). Les afficher dans "Mes livres" laisse l'utilisateur
+    /// croire qu'ils sont en attente alors qu'ils ne seront jamais matchés.
+    /// `is_active = true` reste appliqué pour le soft-delete.
     pub async fn get_mes_livres(&self, user_id: i32) -> AppResult<Vec<LivreScolaire>> {
         let livres = sqlx::query_as::<_, LivreScolaire>(
-            "SELECT * FROM livres_scolaires WHERE user_id = $1 AND is_active = true ORDER BY created_at DESC"
+            "SELECT * FROM livres_scolaires
+             WHERE user_id = $1
+               AND is_active = true
+               AND (etat_classification IS NULL OR etat_classification <> 'rejete')
+             ORDER BY created_at DESC",
         )
         .bind(user_id)
         .fetch_all(&*self.pool)

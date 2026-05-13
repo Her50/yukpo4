@@ -352,6 +352,7 @@ const ProductRedirectPage: React.FC = () => {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 };
 

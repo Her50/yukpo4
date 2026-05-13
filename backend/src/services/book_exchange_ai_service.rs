@@ -1967,6 +1967,14 @@ ADAPTATION INTELLIGENTE:
 - Utilise ta connaissance des systèmes éducatifs africains pour faire la correspondance.
 - Si tu détectes que le livre vient d'un système DIFFÉRENT, signale-le dans les notes.
 
+⚠️ DÉTECTION RECTO/VERSO DUPLIQUÉS (CRITIQUE pour la qualité d'analyse):
+Tu reçois 2 images : la 1ère DOIT être le RECTO (couverture avant : titre principal, illustration), la 2ème DOIT être le VERSO (couverture arrière : code-barres/ISBN, prix éditeur, résumé).
+Si les 2 images montrent la MÊME FACE du livre (par ex. les 2 sont des couvertures avant identiques, ou 2 photos du même verso) :
+- etat_classification = "rejete"
+- Mets dans `notes` : "Faces dupliquées : recto et verso identiques"
+- confidence ≤ 0.5
+L'utilisateur reprendra la photo manquante. NE PAS inventer un faux verso.
+
 Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, classe_souhaitee, matiere, niveau, prix_detecte, devise_detectee, etat_classification, etat_description, est_au_programme, programme_scolaire_id, programme_match_details, confidence, notes."#,
                 lat = lat,
                 lng = lng,

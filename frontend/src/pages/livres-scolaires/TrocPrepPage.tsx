@@ -3,6 +3,7 @@ import {
   MapPin, Repeat, ShoppingBag, Sparkles, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import BookPhotoCapture, { AnalyzedBookResult } from '../../components/livres-scolaires/BookPhotoCapture';
 import { apiPost } from '../../services/apiService';
@@ -33,6 +34,7 @@ interface ItemMatch {
 }
 
 const TrocPrepPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { panier, enfants, updateChoix, updateTrocMatch } = useParentShop();
@@ -110,15 +112,15 @@ const TrocPrepPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6 text-center">
         <Repeat className="w-12 h-12 text-amber-300 mb-3" />
-        <p className="text-sm text-gray-700 font-semibold mb-1">Aucun livre en occasion</p>
+        <p className="text-sm text-gray-700 font-semibold mb-1">{t('bourse.trocPrep.empty_title')}</p>
         <p className="text-xs text-gray-500 mb-5">
-          Marquez d'abord vos livres en occasion depuis la page de scan ou de programme.
+          {t('bourse.trocPrep.empty_desc')}
         </p>
         <button
           onClick={() => navigate('/recap')}
           className="bg-amber-500 text-white font-bold px-5 py-2.5 rounded-2xl text-sm"
         >
-          Retour au récap
+          {t('bourse.trocPrep.empty_back')}
         </button>
       </div>
     );
@@ -146,8 +148,8 @@ const TrocPrepPage: React.FC = () => {
       // On ne persiste PAS le trocLivreId pour un livre rejeté.
       updateTrocMatch(itemId, undefined);
       toast({
-        title: 'Livre rejeté',
-        description: 'Trop dégradé pour le troc. Réessayez avec une autre photo ou choisissez le neuf.',
+        title: t('bourse.trocPrep.toast_rejected_title'),
+        description: t('bourse.trocPrep.toast_rejected_desc'),
         variant: 'destructive',
       });
     } else {
@@ -165,8 +167,10 @@ const TrocPrepPage: React.FC = () => {
       if (result.livre_id) updateTrocMatch(itemId, result.livre_id);
       setOpenCaptureFor(null);
       toast({
-        title: 'Livre proposé au troc',
-        description: `Crédit estimé : ${Math.round(result.credit_net_xaf ?? Math.max(0, result.valeur_calculee * 0.75 - 40)).toLocaleString('fr-FR')} XAF`,
+        title: t('bourse.trocPrep.toast_matched_title'),
+        description: t('bourse.trocPrep.toast_matched_desc', {
+          credit: Math.round(result.credit_net_xaf ?? Math.max(0, result.valeur_calculee * 0.75 - 40)).toLocaleString('fr-FR'),
+        }),
       });
     }
   };
@@ -175,7 +179,7 @@ const TrocPrepPage: React.FC = () => {
     updateChoix(item.id, 'neuf');
     updateTrocMatch(item.id, undefined); // efface tout match troc précédent
     setMatches(prev => ({ ...prev, [item.id]: { status: 'switched' } }));
-    toast({ title: `« ${item.titre} » basculé en neuf` });
+    toast({ title: t('bourse.trocPrep.toast_switched_one_item', { titre: item.titre }) });
   };
 
   const skipItem = (item: PanierItem) => {
@@ -185,7 +189,7 @@ const TrocPrepPage: React.FC = () => {
   const skipAllToNeuf = () => {
     const pending = occasionItems.filter(it => (matches[it.id]?.status || 'pending') === 'pending');
     if (pending.length === 0) {
-      toast({ title: 'Aucun item en attente — tous déjà décidés' });
+      toast({ title: t('bourse.trocPrep.toast_no_pending_title') });
       return;
     }
     pending.forEach(it => updateChoix(it.id, 'neuf'));
@@ -196,8 +200,13 @@ const TrocPrepPage: React.FC = () => {
     });
     sessionStorage.setItem('yukpo_recap_troc_choice', 'neuf');
     toast({
-      title: `${pending.length} article(s) basculé(s) en neuf`,
-      description: 'Vous pouvez maintenant valider votre récapitulatif.',
+      title: t(
+        pending.length > 1
+          ? 'bourse.trocPrep.toast_switched_other_title'
+          : 'bourse.trocPrep.toast_switched_one_title',
+        { count: pending.length },
+      ),
+      description: t('bourse.trocPrep.toast_switched_desc'),
     });
   };
 
@@ -227,15 +236,20 @@ const TrocPrepPage: React.FC = () => {
           }
         }
         toast({
-          title: `${matchedLivres.length} livre(s) en troc`,
-          description: 'Yukpo va chercher les meilleurs échanges.',
+          title: t(
+            matchedLivres.length > 1
+              ? 'bourse.trocPrep.toast_matched_count_other_title'
+              : 'bourse.trocPrep.toast_matched_count_one_title',
+            { count: matchedLivres.length },
+          ),
+          description: t('bourse.trocPrep.toast_matched_count_desc'),
         });
       } catch (e: any) {
         // Non bloquant : on laisse passer au récap, l'utilisateur pourra retenter.
         console.error('[TrocPrep] Finalize error:', e);
         toast({
-          title: 'Finalisation partielle',
-          description: 'Vos livres ont bien été enregistrés. La finalisation se fera au paiement.',
+          title: t('bourse.trocPrep.toast_finalize_partial_title'),
+          description: t('bourse.trocPrep.toast_finalize_partial_desc'),
         });
       } finally {
         setFinalizing(false);
@@ -255,11 +269,21 @@ const TrocPrepPage: React.FC = () => {
             </button>
             <div className="flex-1 min-w-0">
               <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full tracking-wider">YUKPO</span>
-              <h1 className="font-bold text-lg leading-tight mt-0.5">Mes livres à échanger</h1>
+              <h1 className="font-bold text-lg leading-tight mt-0.5">{t('bourse.trocPrep.header_title')}</h1>
               <p className="text-amber-100 text-xs">
-                {occasionItems.length} livre{occasionItems.length > 1 ? 's' : ''} en occasion
-                {matchedCount > 0 && ` · ${matchedCount} mis au troc`}
-                {rejectedCount > 0 && ` · ${rejectedCount} rejeté${rejectedCount > 1 ? 's' : ''}`}
+                {t(
+                  occasionItems.length > 1
+                    ? 'bourse.trocPrep.header_books_count_other'
+                    : 'bourse.trocPrep.header_books_count_one',
+                  { count: occasionItems.length },
+                )}
+                {matchedCount > 0 && t('bourse.trocPrep.header_books_matched_suffix', { count: matchedCount })}
+                {rejectedCount > 0 && t(
+                  rejectedCount > 1
+                    ? 'bourse.trocPrep.header_books_rejected_other_suffix'
+                    : 'bourse.trocPrep.header_books_rejected_one_suffix',
+                  { count: rejectedCount },
+                )}
               </p>
             </div>
           </div>
@@ -267,13 +291,15 @@ const TrocPrepPage: React.FC = () => {
           {/* Statut GPS + session */}
           <div className="flex items-center gap-2 text-[11px] text-amber-100">
             <MapPin className="w-3 h-3" />
-            <span>{gps ? `GPS ok (${gps.lat.toFixed(2)}, ${gps.lon.toFixed(2)})` : 'GPS non disponible'}</span>
+            <span>{gps
+              ? t('bourse.trocPrep.gps_ok', { lat: gps.lat.toFixed(2), lon: gps.lon.toFixed(2) })
+              : t('bourse.trocPrep.gps_unavailable')}</span>
             <span>·</span>
             <span>
-              {sessionCreating ? 'Session…'
-                : sessionId ? 'Session prête'
-                : sessionError ? 'Erreur session'
-                : 'En attente'}
+              {sessionCreating ? t('bourse.trocPrep.session_creating')
+                : sessionId ? t('bourse.trocPrep.session_ready')
+                : sessionError ? t('bourse.trocPrep.session_error')
+                : t('bourse.trocPrep.session_waiting')}
             </span>
           </div>
         </div>
@@ -284,10 +310,9 @@ const TrocPrepPage: React.FC = () => {
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-3 flex gap-3">
           <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <p className="text-xs font-semibold text-amber-900">Le manuel de l'aîné finance la classe suivante</p>
+            <p className="text-xs font-semibold text-amber-900">{t('bourse.trocPrep.edu_title')}</p>
             <p className="text-[11px] text-amber-700 leading-relaxed mt-0.5">
-              Photographiez recto + verso de votre livre. L'IA détecte automatiquement le titre,
-              l'état, et calcule la valeur (Bon&nbsp;: 70%, Acceptable&nbsp;: 40%, trop dégradé&nbsp;: rejeté).
+              {t('bourse.trocPrep.edu_desc')}
             </p>
           </div>
         </div>
@@ -297,13 +322,13 @@ const TrocPrepPage: React.FC = () => {
           <div className="bg-red-50 border border-red-200 rounded-2xl p-3 mb-3 flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-red-800">Impossible de créer la session troc</p>
+              <p className="text-xs font-semibold text-red-800">{t('bourse.trocPrep.session_create_failed')}</p>
               <p className="text-[11px] text-red-700">{sessionError}</p>
               <button
                 onClick={() => ensureSession()}
                 className="mt-1.5 text-[11px] underline text-red-700 font-semibold"
               >
-                Réessayer
+                {t('bourse.trocPrep.session_retry')}
               </button>
             </div>
           </div>
@@ -316,7 +341,7 @@ const TrocPrepPage: React.FC = () => {
             className="w-full mb-4 flex items-center justify-center gap-2 py-2.5 px-4 bg-white border border-blue-200 rounded-2xl text-xs font-semibold text-blue-700 active:bg-blue-50"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            Je n'ai aucun livre à échanger — tout en neuf
+            {t('bourse.trocPrep.skip_all')}
           </button>
         )}
 
@@ -340,23 +365,23 @@ const TrocPrepPage: React.FC = () => {
                     {match.status === 'matched' && (
                       <p className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1">
                         <Check className="w-3 h-3" />
-                        Proposé au troc
+                        {t('bourse.trocPrep.status_matched')}
                         {match.valeur_calculee !== undefined && match.valeur_calculee > 0 &&
                           ` · ${match.valeur_calculee.toLocaleString('fr-FR')} XAF (${match.etat_classification})`}
                       </p>
                     )}
                     {match.status === 'rejected' && (
                       <p className="text-[11px] text-red-700 font-semibold mt-1 flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" /> Livre rejeté (trop dégradé)
+                        <AlertTriangle className="w-3 h-3" /> {t('bourse.trocPrep.status_rejected')}
                       </p>
                     )}
                     {match.status === 'switched' && (
                       <p className="text-[11px] text-blue-700 font-semibold mt-1 flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Basculé en neuf
+                        <Check className="w-3 h-3" /> {t('bourse.trocPrep.status_switched')}
                       </p>
                     )}
                     {match.status === 'skipped' && (
-                      <p className="text-[11px] text-gray-500 mt-1">Acheter d'occasion sans troc</p>
+                      <p className="text-[11px] text-gray-500 mt-1">{t('bourse.trocPrep.status_skipped')}</p>
                     )}
                   </div>
                 </div>
@@ -369,19 +394,19 @@ const TrocPrepPage: React.FC = () => {
                       disabled={!sessionId}
                       className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 py-2 px-3 bg-amber-500 disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-xl text-xs font-semibold"
                     >
-                      <Camera className="w-3.5 h-3.5" /> Photographier mon livre
+                      <Camera className="w-3.5 h-3.5" /> {t('bourse.trocPrep.action_photo')}
                     </button>
                     <button
                       onClick={() => switchToNeuf(item)}
                       className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold"
                     >
-                      Prendre neuf
+                      {t('bourse.trocPrep.action_neuf')}
                     </button>
                     <button
                       onClick={() => skipItem(item)}
                       className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 py-2 px-3 bg-gray-50 text-gray-600 border border-gray-200 rounded-xl text-xs font-semibold"
                     >
-                      Plus tard
+                      {t('bourse.trocPrep.action_later')}
                     </button>
                   </div>
                 )}
@@ -394,13 +419,13 @@ const TrocPrepPage: React.FC = () => {
                       disabled={!sessionId}
                       className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 py-2 px-3 bg-amber-500 disabled:bg-gray-200 text-white rounded-xl text-xs font-semibold"
                     >
-                      <Camera className="w-3.5 h-3.5" /> Réessayer avec autre photo
+                      <Camera className="w-3.5 h-3.5" /> {t('bourse.trocPrep.action_retry_photo')}
                     </button>
                     <button
                       onClick={() => switchToNeuf(item)}
                       className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold"
                     >
-                      Prendre neuf
+                      {t('bourse.trocPrep.action_neuf')}
                     </button>
                   </div>
                 )}
@@ -425,7 +450,10 @@ const TrocPrepPage: React.FC = () => {
 
         {remaining > 0 && (
           <p className="text-center text-[11px] text-gray-500 mt-4">
-            {remaining} livre{remaining > 1 ? 's' : ''} en attente de décision
+            {t(
+              remaining > 1 ? 'bourse.trocPrep.remaining_other' : 'bourse.trocPrep.remaining_one',
+              { count: remaining },
+            )}
           </p>
         )}
       </div>
@@ -440,7 +468,7 @@ const TrocPrepPage: React.FC = () => {
           {finalizing
             ? <Loader2 className="w-5 h-5 animate-spin" />
             : <ShoppingBag className="w-5 h-5" />}
-          {finalizing ? 'Finalisation…' : 'Continuer vers le récapitulatif'}
+          {finalizing ? t('bourse.trocPrep.cta_finalizing') : t('bourse.trocPrep.cta_continue')}
           <ChevronRight className="w-4 h-4 ml-auto" />
         </button>
       </div>

@@ -21,6 +21,7 @@ import LivreScolaireListPage from './pages/livres-scolaires/LivreScolaireListPag
 import LivreScolaireDetailsPage from './pages/livres-scolaires/LivreScolaireDetailsPage';
 import LivreScolaireFormPage from './pages/livres-scolaires/LivreScolaireFormPage';
 import MesLivresPage from './pages/livres-scolaires/MesLivresPage';
+import ParentDashboardPage from './pages/livres-scolaires/ParentDashboardPage';
 import ParentSelectionPage from './pages/livres-scolaires/ParentSelectionPage';
 import ScanProgrammePage from './pages/livres-scolaires/ScanProgrammePage';
 import RecapAchatPage from './pages/livres-scolaires/RecapAchatPage';
@@ -161,6 +162,8 @@ function AppBourse() {
               <Route path="/compte" element={<BourseLayout><RequireAuth><ComptePage /></RequireAuth></BourseLayout>} />
               <Route path="/profil" element={<BourseLayout><RequireAuth><ComptePage /></RequireAuth></BourseLayout>} />
               <Route path="/recharge" element={<BourseLayout><RequireAuth><RechargePage /></RequireAuth></BourseLayout>} />
+              {/* Tableau de bord parent — solde Yukpo + crédit estimé/libéré + commandes + colis */}
+              <Route path="/tableau-de-bord" element={<BourseLayout><RequireAuth><ParentDashboardPage /></RequireAuth></BourseLayout>} />
 
               {/* Acceptation d'invitation d'équipe (lien WhatsApp) */}
               <Route path="/team/accept" element={<TeamInvitationAcceptPage />} />

@@ -15,7 +15,7 @@
 //      refus — même fonctionne quand le navigateur ne supporte pas geoloc.
 //   4. Coords persistés dans localStorage + onGranted appelé.
 
-import { Loader2, MapPin, Pencil, RefreshCw } from 'lucide-react';
+import { Home, Loader2, MapPin, Pencil, RefreshCw } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import DeliveryMapPicker from './DeliveryMapPicker';
 
@@ -76,6 +76,10 @@ const GpsGate: React.FC<GpsGateProps> = ({
 }) => {
   const [status, setStatus] = useState<'idle' | 'asking' | 'unsupported'>('idle');
   const [showMapPicker, setShowMapPicker] = useState(false);
+  // ✅ Position détectée silencieusement au montage — pré-remplit le picker
+  //    quand l'utilisateur clique "Choisir sur la carte" pour qu'il s'ouvre
+  //    sur SA zone et non sur Douala par défaut.
+  const [detectedCoords, setDetectedCoords] = useState<GpsCoords | null>(null);
 
   const requestGps = useCallback(async () => {
     if (!navigator.geolocation) {
@@ -136,9 +140,41 @@ const GpsGate: React.FC<GpsGateProps> = ({
   // Sinon on AFFICHE le choix (auto via navigateur ou saisie manuelle) sans
   // déclencher la popup système — beaucoup d'utilisateurs bloquent la perm
   // et restent coincés. Mieux vaut leur laisser choisir manuellement.
+  //
+  // ⚡ En parallèle, on tente une détection silencieuse (sans popup système si
+  //    la permission est déjà accordée) pour pré-centrer le picker manuel sur
+  //    la zone réelle de l'utilisateur. Si la permission est « prompt » ou
+  //    « denied », on ne fait rien — la popup ne sera déclenchée qu'au clic
+  //    explicite du bouton « Utiliser ma position ».
   useEffect(() => {
     const cached = readCachedGps();
-    if (cached) onGranted(cached);
+    if (cached) {
+      onGranted(cached);
+      return;
+    }
+    if (!navigator.geolocation || !navigator.permissions?.query) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const perm = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+        if (perm.state !== 'granted') return; // pas de popup système non sollicitée
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            if (cancelled) return;
+            setDetectedCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+          },
+          () => {
+            /* silencieux : on tombera sur Douala dans le picker, l'user pourra recentrer */
+          },
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 600000 },
+        );
+      } catch {
+        // Permissions API indisponible — on n'insiste pas pour ne pas trigger la popup.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [onGranted]);
 
   const handleManualConfirm = useCallback(
@@ -154,6 +190,9 @@ const GpsGate: React.FC<GpsGateProps> = ({
   if (showMapPicker) {
     return (
       <DeliveryMapPicker
+        initialLocation={
+          detectedCoords ? { lat: detectedCoords.lat, lng: detectedCoords.lon } : undefined
+        }
         onClose={() => setShowMapPicker(false)}
         onConfirm={handleManualConfirm}
       />
@@ -173,6 +212,20 @@ const GpsGate: React.FC<GpsGateProps> = ({
           </div>
           <h2 className="font-bold text-base text-gray-900">{title}</h2>
           <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">{reason}</p>
+
+          {/* 💡 Conseil pratique : la précision GPS est bien meilleure en
+              intérieur fixe (Wi-Fi domestique + position stable) qu'en
+              déplacement. On le recommande explicitement pour éviter que
+              le coursier soit envoyé à 200 m du vrai point de collecte. */}
+          <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-left">
+            <Home className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-900 leading-snug">
+              <span className="font-semibold">Conseil :</span> faites cette
+              prise de position <span className="font-semibold">depuis votre domicile</span>{' '}
+              afin que le coursier capte précisément le lieu de collecte ou
+              de livraison de vos livres.
+            </p>
+          </div>
 
           {status === 'unsupported' && (
             <p className="text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2 mt-3 leading-snug">

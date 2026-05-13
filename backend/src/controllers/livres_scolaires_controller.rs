@@ -508,31 +508,74 @@ TON RÔLE :
   * Auteur(s)
   * Éditeur
   * ISBN (si visible)
-  * Classe/niveau cible du livre (ex: "6ème", "5ème", "Terminale") → c'est la "classe_actuelle"
+  * Classe/niveau cible du livre → "classe_actuelle" (voir règle ci-dessous)
   * Matière (Mathématiques, Français, etc.)
   * État visuel du livre (Neuf, Très bon, Bon, Acceptable)
   * Description de l'état (détails visibles : pages, couverture, etc.)
 
+⚠️ RÈGLE CRITIQUE — SYSTÈME SCOLAIRE & LANGUE DE LA CLASSE (patch H2, 2026-05-13) :
+Au Cameroun coexistent DEUX systèmes scolaires distincts. Tu DOIS conserver le
+nom de la classe EXACTEMENT tel qu'il apparaît sur le livre, dans la langue
+d'origine. Ne traduis JAMAIS une classe anglophone en équivalent francophone
+(ni l'inverse). Si le livre indique "Class 4", la valeur de classe_actuelle
+DOIT être "Class 4" (pas "CM1", pas "CE2", pas "Class IV").
+
+Systèmes reconnus :
+
+  📘 Système francophone (Cameroun/France) — la classe est en français :
+     Primaire    : SIL → CP → CE1 → CE2 → CM1 → CM2
+     Collège     : 6ème → 5ème → 4ème → 3ème
+     Lycée       : Seconde (2nde) → Première (1ère) → Terminale (Tle)
+
+  📗 Système anglophone (Cameroun GCE / Nigeria) — la classe est en anglais :
+     Primary     : Class 1 → Class 2 → Class 3 → Class 4 → Class 5 → Class 6
+     Secondary   : Form 1 → Form 2 → Form 3 → Form 4 → Form 5
+     High School : Lower Sixth → Upper Sixth
+
+Indices pour identifier le système :
+- Texte de couverture en anglais (ex: "Mathematics for Class 4", "English Form 3")
+  → système anglophone, garde "Class 4" / "Form 3" tels quels.
+- Texte de couverture en français (ex: "Mathématiques 6ème", "Français CM2")
+  → système francophone, garde "6ème" / "CM2" tels quels.
+- Mention "GCE", "Anglophone", "Sub-System English" → anglophone.
+- Si ambigu, base-toi sur la langue dominante du contenu visible.
+
+⚠️ Équivalences APPROXIMATIVES (pour information seulement — NE PAS appliquer) :
+  Class 1≈SIL, Class 2≈CP, Class 3≈CE1, Class 4≈CE2, Class 5≈CM1, Class 6≈CM2
+  Form 1≈6ème, Form 2≈5ème, Form 3≈4ème, Form 4≈3ème, Form 5≈Seconde
+Ne renvoie JAMAIS l'équivalent francophone d'une classe anglophone ni l'inverse.
+
 CALCUL CLASSE SUPÉRIEURE (OBLIGATOIRE) :
 L'élève qui uploade ce livre l'a DÉJÀ UTILISÉ → il passe en classe supérieure.
-"classe_souhaitee" = la classe IMMÉDIATEMENT SUPÉRIEURE à "classe_actuelle".
-Hiérarchie des classes (système camerounais/francophone) :
-  Primaire : SIL → CP → CE1 → CE2 → CM1 → CM2
-  Collège  : 6ème → 5ème → 4ème → 3ème
-  Lycée    : Seconde → Première → Terminale
-Exemples :
-  - Livre de "6ème" → classe_souhaitee = "5ème"
-  - Livre de "CM2"  → classe_souhaitee = "6ème"
-  - Livre de "3ème" → classe_souhaitee = "Seconde"
-  - Livre de "Terminale" → classe_souhaitee = "Terminale"
+"classe_souhaitee" = la classe IMMÉDIATEMENT SUPÉRIEURE à "classe_actuelle",
+DANS LE MÊME SYSTÈME que classe_actuelle. JAMAIS dans l'autre système.
+
+Exemples (à respecter strictement) :
+  Francophone :
+   - "6ème"      → classe_souhaitee = "5ème"
+   - "CM2"       → classe_souhaitee = "6ème"
+   - "3ème"      → classe_souhaitee = "Seconde"
+   - "Terminale" → classe_souhaitee = null (dernière classe)
+  Anglophone :
+   - "Class 4"   → classe_souhaitee = "Class 5"   ← PAS "CM1", PAS "CM2"
+   - "Class 6"   → classe_souhaitee = "Form 1"
+   - "Form 4"    → classe_souhaitee = "Form 5"
+   - "Form 5"    → classe_souhaitee = "Lower Sixth"
+   - "Upper Sixth" → classe_souhaitee = null (dernière classe)
 
 IMPORTANT :
 - Sois précis dans l'extraction des informations
 - Si une information n'est pas visible, indique null
-- Pour la classe, utilise les formats standards : "SIL", "CP", "CE1", "CE2", "CM1", "CM2", "6ème", "5ème", "4ème", "3ème", "Seconde", "Première", "Terminale"
-- Pour la matière, utilise les noms standards : "Mathématiques", "Français", "Anglais", "SVT", "Physique-Chimie", "Histoire-Géo", "Philosophie", etc.
+- Pour la classe, conserve l'orthographe exacte du livre. Formats valides :
+    Francophone : "SIL", "CP", "CE1", "CE2", "CM1", "CM2", "6ème", "5ème",
+                  "4ème", "3ème", "Seconde", "Première", "Terminale"
+    Anglophone  : "Class 1" … "Class 6", "Form 1" … "Form 5",
+                  "Lower Sixth", "Upper Sixth"
+- Pour la matière, utilise des noms standards dans la LANGUE du livre :
+    Francophone : "Mathématiques", "Français", "Anglais", "SVT", "Physique-Chimie", "Histoire-Géo", "Philosophie", etc.
+    Anglophone  : "Mathematics", "English", "French", "Biology", "Physics", "Chemistry", "History", "Geography", etc.
 - Pour l'état, évalue visuellement : "Neuf" (aucun signe d'usure), "Très bon" (légère usure), "Bon" (usure modérée), "Acceptable" (usure importante mais utilisable)
-- classe_souhaitee est TOUJOURS la classe immédiatement supérieure à classe_actuelle
+- classe_souhaitee est TOUJOURS la classe immédiatement supérieure à classe_actuelle DANS LE MÊME SYSTÈME
 
 RÉPONSE ATTENDUE (JSON strict) :
 {{
@@ -627,9 +670,17 @@ RÉPONSE ATTENDUE (JSON strict) :
             book_info["mode_listing_suggere"] = json!("vente");
             log::info!("[analyze_book_image] Classe Terminale → classe_souhaitee=null, mode=vente");
         } else {
-            let computed = crate::services::book_exchange_ai_service::compute_classe_superieure(
-                &classe_act_owned,
-            );
+            // ✅ Patch H2 (2026-05-13) : on passe les coords GPS pour que la
+            //    détection du système scolaire (anglophone vs francophone CM)
+            //    prime sur le fallback all-systems qui essayait francophone
+            //    en premier. Sans GPS, le calcul reste tolérant et essaie tous
+            //    les systèmes dans l'ordre d'enregistrement.
+            let computed =
+                crate::services::book_exchange_ai_service::compute_classe_superieure_with_gps(
+                    &classe_act_owned,
+                    request.user_lat,
+                    request.user_lng,
+                );
             // Toujours écraser avec la valeur calculée déterministe si:
             // - classe_souhaitee est vide, "null", ou identique à classe_actuelle (boucle IA)
             let current_souhaitee =
