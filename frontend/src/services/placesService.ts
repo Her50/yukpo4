@@ -25,16 +25,21 @@ class PlacesService {
         }
 
         try {
+            // ✅ 2026-05-13 : Corrige le mismatch param FE↔BE.
+            //   Le backend attend `type` (renommé via #[serde(rename="type")])
+            //   et `city`, pas `scope`/`city_context`. Sans ce fix, le scope
+            //   était toujours ignoré côté backend (heureusement = recherche
+            //   universelle par défaut, mais à corriger pour clarté).
             const params = new URLSearchParams({
                 query: query.trim(),
             });
 
             if (scope && scope !== 'all') {
-                params.append('scope', scope);
+                params.append('type', scope);
             }
 
             if (cityContext) {
-                params.append('city_context', cityContext);
+                params.append('city', cityContext);
             }
 
             const response = await apiGet(`/api/places/autocomplete?${params.toString()}`);

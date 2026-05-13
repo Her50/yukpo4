@@ -37,6 +37,145 @@ pub struct PlacesAutocompleteResponse {
     pub error: Option<String>,
 }
 
+/// Fallback Photon (Komoot, OSM) — gratuit, sans clé API, couvre rues + POI.
+/// Utilisé quand GOOGLE_MAPS_API_KEY n'est pas configurée OU que Google ne
+/// retourne rien. Le biais géographique se fait via `lat`/`lon` query params
+/// — sinon on biaise vers Douala par défaut.
+async fn photon_autocomplete(
+    query: &str,
+    lat: Option<f64>,
+    lng: Option<f64>,
+) -> (StatusCode, Json<PlacesAutocompleteResponse>) {
+    let q = query.trim();
+    if q.is_empty() {
+        return (
+            StatusCode::OK,
+            Json(PlacesAutocompleteResponse {
+                success: true,
+                data: Some(vec![]),
+                results: Some(vec![]),
+                error: None,
+            }),
+        );
+    }
+    // Biais : coordonnées fournies, sinon Douala (4.05, 9.7).
+    let bias_lat = lat.unwrap_or(4.05);
+    let bias_lon = lng.unwrap_or(9.7);
+    let url = format!(
+        "https://photon.komoot.io/api/?q={}&lang=fr&limit=15&lat={}&lon={}",
+        urlencoding::encode(q),
+        bias_lat,
+        bias_lon
+    );
+
+    let empty_resp = || PlacesAutocompleteResponse {
+        success: true,
+        data: Some(vec![]),
+        results: Some(vec![]),
+        error: None,
+    };
+
+    let client = match reqwest::Client::builder().timeout(std::time::Duration::from_secs(6)).build()
+    {
+        Ok(c) => c,
+        Err(_) => return (StatusCode::OK, Json(empty_resp())),
+    };
+
+    let json = match client.get(&url).send().await {
+        Ok(resp) => match resp.json::<serde_json::Value>().await {
+            Ok(j) => j,
+            Err(e) => {
+                eprintln!("[Photon] parse error: {:?}", e);
+                return (StatusCode::OK, Json(empty_resp()));
+            }
+        },
+        Err(e) => {
+            eprintln!("[Photon] http error: {:?}", e);
+            return (StatusCode::OK, Json(empty_resp()));
+        }
+    };
+
+    let features = match json.get("features").and_then(|v| v.as_array()) {
+        Some(f) => f,
+        None => return (StatusCode::OK, Json(empty_resp())),
+    };
+
+    let mut descriptions: Vec<String> = Vec::new();
+    let mut enriched: Vec<PlaceResult> = Vec::new();
+    for f in features.iter() {
+        let p = match f.get("properties") {
+            Some(p) => p,
+            None => continue,
+        };
+        // Construit un label hiérarchique : name, [housenumber street],
+        // [postcode city], state, country. Photon supporte les rues + POI.
+        let name = p.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let housenumber = p.get("housenumber").and_then(|v| v.as_str()).unwrap_or("");
+        let street = p.get("street").and_then(|v| v.as_str()).unwrap_or("");
+        let postcode = p.get("postcode").and_then(|v| v.as_str()).unwrap_or("");
+        let city = p.get("city").and_then(|v| v.as_str()).unwrap_or("");
+        let state = p.get("state").and_then(|v| v.as_str()).unwrap_or("");
+        let country = p.get("country").and_then(|v| v.as_str()).unwrap_or("");
+
+        let street_full = if !housenumber.is_empty() && !street.is_empty() {
+            format!("{} {}", housenumber, street)
+        } else {
+            street.to_string()
+        };
+        let city_full = if !postcode.is_empty() && !city.is_empty() {
+            format!("{} {}", postcode, city)
+        } else {
+            city.to_string()
+        };
+        let parts: Vec<String> = vec![
+            name.clone(),
+            street_full,
+            city_full,
+            state.to_string(),
+            country.to_string(),
+        ]
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect();
+        // Dédoublonne (parfois name == street ou name == city).
+        let mut dedup: Vec<String> = Vec::new();
+        for s in parts {
+            if !dedup.contains(&s) {
+                dedup.push(s);
+            }
+        }
+        let label = dedup.join(", ");
+        if label.is_empty() {
+            continue;
+        }
+
+        let osm_type = p.get("osm_value").and_then(|v| v.as_str()).unwrap_or("place").to_string();
+        let osm_id = p.get("osm_id").and_then(|v| v.as_i64()).map(|i| i.to_string());
+
+        descriptions.push(label.clone());
+        enriched.push(PlaceResult {
+            description: label,
+            place_id: osm_id,
+            types: Some(vec![osm_type]),
+        });
+    }
+
+    eprintln!(
+        "[Photon] q={:?} → {} résultats (rues + POI inclus)",
+        q,
+        descriptions.len()
+    );
+    (
+        StatusCode::OK,
+        Json(PlacesAutocompleteResponse {
+            success: true,
+            data: Some(descriptions),
+            results: Some(enriched),
+            error: None,
+        }),
+    )
+}
+
 /// Endpoint pour l'autocomplete de lieux avec Google Maps API
 /// GET /api/places/autocomplete?query=Doual&type=city
 /// GET /api/places/autocomplete?query=Bonanjo&type=neighborhood&city=Douala
@@ -118,16 +257,11 @@ pub async fn autocomplete_places(
     }
 
     if google_api_key.is_empty() {
-        // Pas de clé API configurée, retourner vide pour fallback local
-        return (
-            StatusCode::OK,
-            Json(PlacesAutocompleteResponse {
-                success: true,
-                data: Some(vec![]),
-                results: Some(vec![]),
-                error: None,
-            }),
-        );
+        // ✅ 2026-05-13 : Pas de clé Google → fallback Photon (OSM, gratuit, sans clé)
+        // Photon retourne rues, numéros, quartiers, villes, points d'intérêt.
+        // C'est l'option idéale pour les rues et adresses précises demandées par
+        // l'utilisateur (création compte partenaire, lieu de collecte livre).
+        return photon_autocomplete(query_str, params.lat, params.lng).await;
     }
 
     // Construire la requête Google Maps API
@@ -266,6 +400,13 @@ pub async fn autocomplete_places(
                         .take(20) // Limiter à 20 résultats
                         .collect();
 
+                    // ✅ 2026-05-13 : Si Google retourne 0 résultat (clé sans accès
+                    // Places API, quota dépassé, query peu connue) → fallback Photon.
+                    if enriched_results.is_empty() {
+                        eprintln!("[Places API] Google retourne 0 résultat → fallback Photon");
+                        return photon_autocomplete(query_str, params.lat, params.lng).await;
+                    }
+
                     // ✅ Compatibilité: format simple (string) pour l'ancien code
                     let simple_results: Vec<String> =
                         enriched_results.iter().map(|r| r.description.clone()).collect();
@@ -282,29 +423,17 @@ pub async fn autocomplete_places(
                 }
             }
 
-            // Erreur de parsing, retourner vide pour fallback
-            (
-                StatusCode::OK,
-                Json(PlacesAutocompleteResponse {
-                    success: true,
-                    data: Some(vec![]),
-                    results: Some(vec![]),
-                    error: None,
-                }),
-            )
+            // Erreur de parsing → fallback Photon (mieux que vide)
+            eprintln!("[Places API] Erreur parsing JSON Google → fallback Photon");
+            photon_autocomplete(query_str, params.lat, params.lng).await
         }
         Err(err) => {
-            // Erreur réseau, retourner vide pour fallback
-            eprintln!("[Places API] Error calling Google Maps: {:?}", err);
-            (
-                StatusCode::OK,
-                Json(PlacesAutocompleteResponse {
-                    success: true,
-                    data: Some(vec![]),
-                    results: Some(vec![]),
-                    error: None,
-                }),
-            )
+            // Erreur réseau → fallback Photon (mieux que vide)
+            eprintln!(
+                "[Places API] Error calling Google Maps: {:?} → fallback Photon",
+                err
+            );
+            photon_autocomplete(query_str, params.lat, params.lng).await
         }
     }
 }
