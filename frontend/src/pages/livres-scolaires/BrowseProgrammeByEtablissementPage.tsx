@@ -27,6 +27,9 @@ interface ProgrammeItem {
   selected: boolean;
   /** Choix d'achat — par défaut 'neuf'. Toggle dispo uniquement pour les livres. */
   choix: 'neuf' | 'occasion';
+  /** Si true ET choix='occasion' → l'user veut faire un troc (échange contre
+   *  un livre qu'il possède déjà). À distinguer de l'achat d'occasion simple. */
+  troc_intent?: boolean;
   /** Gamme choisie pour les fournitures/cahiers/accessoires. */
   gamme?: Gamme;
 }
@@ -251,7 +254,13 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
       : it));
   const setChoix = (idx: number, choix: 'neuf' | 'occasion') =>
     setItems(prev => prev.map((it, i) => i === idx && isOccasionableType(it.type)
-      ? { ...it, choix }
+      ? { ...it, choix, troc_intent: undefined }
+      : it));
+  /** Active explicitement le mode Échange : choix='occasion' + troc_intent=true.
+   *  Le user devra photographier son ancien livre après validation panier. */
+  const setTrocIntent = (idx: number, intent: boolean) =>
+    setItems(prev => prev.map((it, i) => i === idx && isOccasionableType(it.type)
+      ? { ...it, choix: 'occasion' as const, troc_intent: intent }
       : it));
   const setGamme = (idx: number, g: Gamme) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, gamme: g } : it));
@@ -309,11 +318,24 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
       prixNeuf: effectivePrice(it) || it.prix,
       quantite: it.quantite ?? 1,
       choix: it.choix,
+      troc_intent: it.troc_intent || undefined,
       gamme: isGammeableType(it.type) ? (it.gamme || 'standard') : undefined,
     })));
     setSaving(false);
-    toast({ title: `${selected.length} article${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''} à votre sélection` });
-    navigate('/recap');
+    // Si au moins un item est en mode Échange → bascule sur /troc-prep
+    // pour photographier le livre à donner. Sinon flow normal vers /recap.
+    const trocCount = selected.filter(it => it.choix === 'occasion' && it.troc_intent).length;
+    toast({
+      title: `${selected.length} article${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''} à votre sélection`,
+      description: trocCount > 0
+        ? `${trocCount} en échange — photographiez les livres à donner.`
+        : undefined,
+    });
+    if (trocCount > 0) {
+      setTimeout(() => navigate('/troc-prep'), 200);
+    } else {
+      navigate('/recap');
+    }
   };
 
   const handleAddToCart = () => {
@@ -594,6 +616,20 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
           </div>
         )}
 
+        {/* Bandeau d'orientation : explique les 3 modes par item. Affiché
+            seulement si on a chargé une liste avec au moins 1 livre éligible
+            (pas pour fournitures pures où le toggle n'apparaît pas). */}
+        {loaded && items.some(it => isOccasionableType(it.type)) && (
+          <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-[11px] text-amber-900 leading-snug">
+              💡 Cochez les livres voulus, puis choisissez par item :
+              <strong className="text-emerald-700"> Neuf</strong> (plein tarif),
+              <strong className="text-orange-700"> Occasion</strong> (usagé moins cher) ou
+              <strong className="text-cyan-700"> Échange</strong> (vous donnez votre ancien livre contre crédit).
+            </p>
+          </div>
+        )}
+
         {/* Tableau regroupé par rubrique avec lignes compactes */}
         {loaded && items.length > 0 && (
           <div className="space-y-3">
@@ -728,17 +764,28 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                           <div className="flex items-center gap-2 mt-1 ml-7">
                             {isOccasionableType(item.type) && (
                               <div className="inline-flex bg-gray-100 rounded-md p-0.5 gap-0.5 items-center">
-                                <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">État</span>
+                                <span className="text-[9px] text-gray-400 uppercase font-bold pl-1.5 pr-0.5">Mode</span>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setChoix(i, 'neuf'); }}
                                   className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
                                     item.choix === 'neuf' ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
-                                  }`}>Neuf</button>
+                                  }`}
+                                  title="Achat neuf — plein tarif, livraison rapide"
+                                >Neuf</button>
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); setChoix(i, 'occasion'); }}
+                                  onClick={(e) => { e.stopPropagation(); setTrocIntent(i, false); }}
                                   className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                                    item.choix === 'occasion' ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
-                                  }`}>Occasion</button>
+                                    item.choix === 'occasion' && !item.troc_intent ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
+                                  }`}
+                                  title="Achat d'occasion — moins cher, sans rien donner en échange"
+                                >Occasion</button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setTrocIntent(i, true); }}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                    item.choix === 'occasion' && item.troc_intent ? 'bg-cyan-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-200'
+                                  }`}
+                                  title="Échange — vous donnez votre ancien livre contre crédit"
+                                >Échange</button>
                               </div>
                             )}
                             {isGammeableType(item.type) && item.prix && item.prix > 0 && (

@@ -204,9 +204,42 @@ const VendreLivresPage: React.FC = () => {
 
   const handleAnalyzed = (result: AnalyzedBookResult) => {
     if (result.is_rejected) {
+      // ✅ Fallback 1-clic : si le livre n'est PAS vendable (rejeté pour
+      // mauvais état, primaire, etc.) mais existe en DB (livre_id > 0),
+      // on propose au user d'en faire un DON immédiat. Le don accepte
+      // une qualité moindre que vente — un livre "rejeté" en vente peut
+      // quand même servir à un parent en demande.
+      if (result.livre_id && result.livre_id > 0 && sessionMode !== 'don') {
+        const confirmDon = window.confirm(
+          `${result.rejection_message || t('bourse.vendre.toast_rejected_desc')}\n\n${t('bourse.vendre.confirm_offer_as_don')}`,
+        );
+        if (confirmDon) {
+          (async () => {
+            try {
+              const res = await apiPost(`/api/bourse-livre/${result.livre_id}/mark-as-don`, {});
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok || data?.success === false) {
+                throw new Error(data?.error || data?.message || 'Échec');
+              }
+              setShowCapture(false);
+              toast({
+                title: t('bourse.vendre.toast_don_done_title'),
+                description: t('bourse.vendre.toast_don_done_desc'),
+              });
+            } catch (e: any) {
+              toast({
+                title: t('bourse.vendre.toast_rejected_title'),
+                description: e?.message || t('bourse.vendre.toast_rejected_desc'),
+                variant: 'destructive',
+              });
+            }
+          })();
+          return;
+        }
+      }
       toast({
         title: t('bourse.vendre.toast_rejected_title'),
-        description: t('bourse.vendre.toast_rejected_desc'),
+        description: result.rejection_message || t('bourse.vendre.toast_rejected_desc'),
         variant: 'destructive',
       });
       // Le composant BookPhotoCapture gère déjà l'affichage du rejet ;

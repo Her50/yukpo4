@@ -335,6 +335,10 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         toast_published_desc: '{{count}} livre(s) sont visibles sur Yukpo.',
         toast_finalize_error_title: 'Erreur finalisation',
         toast_finalize_error_desc: 'Réessayez dans un instant',
+        // Fallback 1-clic en cas de rejet : proposition de don
+        confirm_offer_as_don: 'Yukpo propose de transformer ce livre en DON gratuit pour un parent nécessiteux. Confirmez-vous ?',
+        toast_don_done_title: 'Don enregistré 🎁',
+        toast_don_done_desc: 'Yukpo proposera votre livre aux parents en demande de don.',
       },
       mesLivres: {
         title: 'Mes Livres',
@@ -1379,6 +1383,9 @@ export const BOURSE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> = {
         toast_published_desc: '{{count}} book(s) are visible on Yukpo.',
         toast_finalize_error_title: 'Finalization error',
         toast_finalize_error_desc: 'Retry in a moment',
+        confirm_offer_as_don: 'Yukpo can turn this book into a FREE donation for a parent in need. Confirm?',
+        toast_don_done_title: 'Donation registered 🎁',
+        toast_don_done_desc: 'Yukpo will offer your book to parents requesting a donation.',
       },
       mesLivres: {
         title: 'My Books',
