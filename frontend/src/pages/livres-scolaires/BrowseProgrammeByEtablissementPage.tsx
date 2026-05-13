@@ -1,6 +1,6 @@
 import {
   ArrowLeft, BookOpen, CheckSquare, ChevronRight, Copy, Loader2,
-  Minus, Plus, School, ShoppingCart,
+  Minus, Plus, School, ShoppingCart, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -480,14 +480,34 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                   {etablissement.ville && <p className="text-xs text-gray-500 truncate">{etablissement.ville}</p>}
                 </div>
               ) : (
-                <span className="text-sm text-gray-500">Choisir une école…</span>
+                <span className="text-sm text-gray-500">Choisir une école partenaire…</span>
               )}
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
           </button>
-          <p className="text-[11px] text-gray-400 mt-2">
-            Si aucune école n'est choisie, le programme national est affiché.
-          </p>
+
+          {/* ✅ 2026-05-14 : Indication CLAIRE que sans école = programme national.
+              Bandeau coloré au lieu d'un hint gris discret. Cliquable pour
+              effacer l'école si déjà choisie. */}
+          {!etablissement ? (
+            <div className="mt-2 flex items-start gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+              <span className="text-emerald-600 mt-0.5">✓</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-emerald-800">Programme national (par défaut)</p>
+                <p className="text-[10px] text-emerald-700 leading-snug">
+                  Vous pouvez aussi choisir votre école partenaire ci-dessus pour voir SA liste exacte.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setEtablissement(null)}
+              className="mt-2 w-full text-left flex items-center gap-2 text-[11px] text-amber-700 hover:text-amber-800 px-2 py-1.5 rounded-lg hover:bg-amber-50"
+            >
+              <X className="w-3 h-3" />
+              Revenir au programme national
+            </button>
+          )}
         </div>
 
         {/* ✅ 2026-05-13 : Sélecteur de classe unifié — ClasseAutocomplete
@@ -838,8 +858,9 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
           gps={gps}
           onSelect={(etab) => setEtablissement({ id: etab.id, nom: etab.nom, ville: etab.ville })}
           onClose={() => setShowPicker(false)}
-          title="Choisir l'école"
-          placeholder="Nom de l'école…"
+          onSkipToNational={() => setEtablissement(null)}
+          title="École partenaire ou programme national ?"
+          placeholder="Nom de l'école partenaire…"
         />
       )}
     </div>

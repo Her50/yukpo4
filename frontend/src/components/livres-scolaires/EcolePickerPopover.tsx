@@ -26,6 +26,10 @@ export interface EcolePickerPopoverProps {
   onClose: () => void;
   title?: string;
   placeholder?: string;
+  /** Si fourni, affiche une option "Continuer avec le programme national"
+   *  au-dessus de la liste — utile pour les flux où aucune école n'est
+   *  obligatoire (Browse programme par école). */
+  onSkipToNational?: () => void;
 }
 
 const EcolePickerPopover: React.FC<EcolePickerPopoverProps> = ({
@@ -35,6 +39,7 @@ const EcolePickerPopover: React.FC<EcolePickerPopoverProps> = ({
   onClose,
   title = "Choisir l'école",
   placeholder = "Nom de l'école…",
+  onSkipToNational,
 }) => {
   const [q, setQ] = useState(currentNom ?? '');
   const [results, setResults] = useState<EtabSuggestion[]>([]);
@@ -94,6 +99,24 @@ const EcolePickerPopover: React.FC<EcolePickerPopoverProps> = ({
             className="flex-1 bg-transparent outline-none text-sm"
           />
         </div>
+
+        {/* ✅ 2026-05-14 : Option claire pour passer en programme national
+            sans avoir à sélectionner d'établissement. Visible en haut de
+            la liste pour que l'utilisateur sache que c'est OK de skip. */}
+        {onSkipToNational && (
+          <button
+            onClick={() => { onSkipToNational(); onClose(); }}
+            className="w-full flex items-start gap-3 px-3 py-2.5 mb-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:border-emerald-300 text-left"
+          >
+            <span className="text-lg leading-none mt-0.5">🇨🇲</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-emerald-800 leading-tight">Aucune école — programme national</p>
+              <p className="text-[11px] text-emerald-700 leading-snug">
+                Voir la liste officielle du Ministère, valable partout.
+              </p>
+            </div>
+          </button>
+        )}
         {loading && <p className="text-xs text-gray-400 text-center py-2">Recherche…</p>}
         {!loading && q.trim().length >= 2 && results.length === 0 && (
           <p className="text-xs text-gray-400 text-center py-3">Aucune école trouvée</p>
