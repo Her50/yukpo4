@@ -2,6 +2,7 @@
 
 import { BookOpen, Edit, Eye, EyeOff, Loader2, Plus, Trash2 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -26,6 +27,7 @@ interface LivreScolaire {
 }
 
 const MesLivresPage: React.FC = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
@@ -48,16 +50,16 @@ const MesLivresPage: React.FC = () => {
                 setLivres(data.livres || data.data?.livres || []);
             } else {
                 toast({
-                    title: 'Erreur',
-                    description: 'Impossible de charger vos livres',
+                    title: t('bourse.mesLivres.toast_load_error_title'),
+                    description: t('bourse.mesLivres.toast_load_error_desc'),
                     variant: 'destructive',
                 });
             }
         } catch (error: any) {
             console.error('[MesLivresPage] Erreur:', error);
             toast({
-                title: 'Erreur',
-                description: error.message || 'Impossible de charger vos livres',
+                title: t('bourse.mesLivres.toast_load_error_title'),
+                description: error.message || t('bourse.mesLivres.toast_load_error_desc'),
                 variant: 'destructive',
             });
         } finally {
@@ -75,47 +77,47 @@ const MesLivresPage: React.FC = () => {
             if (data.success) {
                 await loadLivres();
                 toast({
-                    title: 'Succès',
-                    description: 'Disponibilité mise à jour',
+                    title: t('bourse.mesLivres.toast_avail_updated_title'),
+                    description: t('bourse.mesLivres.toast_avail_updated_desc'),
                 });
             } else {
                 toast({
-                    title: 'Erreur',
-                    description: 'Impossible de mettre à jour la disponibilité',
+                    title: t('bourse.mesLivres.toast_load_error_title'),
+                    description: t('bourse.mesLivres.toast_avail_failed_desc'),
                     variant: 'destructive',
                 });
             }
         } catch (error: any) {
             toast({
-                title: 'Erreur',
-                description: error.message || 'Une erreur est survenue',
+                title: t('bourse.mesLivres.toast_load_error_title'),
+                description: error.message || t('bourse.mesLivres.toast_generic_error_desc'),
                 variant: 'destructive',
             });
         }
     };
 
     const handleDelete = async (livre: LivreScolaire) => {
-        if (confirm(`Êtes-vous sûr de vouloir supprimer "${livre.titre}" ?`)) {
+        if (confirm(t('bourse.mesLivres.delete_confirm', { titre: livre.titre }))) {
             try {
                 const response = await apiDelete(`/api/bourse-livre/${livre.id}`);
                 const data = await response.json();
                 if (data.success) {
                     await loadLivres();
                     toast({
-                        title: 'Succès',
-                        description: 'Livre supprimé',
+                        title: t('bourse.mesLivres.toast_deleted_title'),
+                        description: t('bourse.mesLivres.toast_deleted_desc'),
                     });
                 } else {
                     toast({
-                        title: 'Erreur',
-                        description: 'Impossible de supprimer le livre',
+                        title: t('bourse.mesLivres.toast_load_error_title'),
+                        description: t('bourse.mesLivres.toast_delete_failed_desc'),
                         variant: 'destructive',
                     });
                 }
             } catch (error: any) {
                 toast({
-                    title: 'Erreur',
-                    description: error.message || 'Impossible de supprimer le livre',
+                    title: t('bourse.mesLivres.toast_load_error_title'),
+                    description: error.message || t('bourse.mesLivres.toast_delete_failed_desc'),
                     variant: 'destructive',
                 });
             }
@@ -138,7 +140,7 @@ const MesLivresPage: React.FC = () => {
                 <div className="flex items-center justify-center min-h-[400px]">
                     <div className="text-center">
                         <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mx-auto mb-4" />
-                        <p className="text-gray-600">Chargement...</p>
+                        <p className="text-gray-600">{t('bourse.mesLivres.loading')}</p>
                     </div>
                 </div>
             </div>
@@ -148,13 +150,13 @@ const MesLivresPage: React.FC = () => {
     return (
         <div className="container mx-auto px-4 py-8 max-w-6xl">
             <div className="flex items-center justify-between mb-6">
-                <h1 className="text-3xl font-bold">Mes Livres</h1>
+                <h1 className="text-3xl font-bold">{t('bourse.mesLivres.title')}</h1>
                 <Button
                     onClick={() => navigate('/vendre')}
                     className="bg-amber-500 hover:bg-amber-600 text-white font-bold"
                 >
                     <Plus className="h-4 w-4 mr-2" />
-                    Scanner un livre
+                    {t('bourse.mesLivres.scan_book')}
                 </Button>
             </div>
 
@@ -162,16 +164,16 @@ const MesLivresPage: React.FC = () => {
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">
                         <BookOpen className="h-16 w-16 text-gray-400 mb-4" />
-                        <h3 className="text-xl font-semibold mb-2">Aucun livre publié</h3>
+                        <h3 className="text-xl font-semibold mb-2">{t('bourse.mesLivres.empty_title')}</h3>
                         <p className="text-gray-600 mb-4">
-                            Scannez votre premier livre scolaire pour commencer à échanger ou vendre
+                            {t('bourse.mesLivres.empty_desc')}
                         </p>
                         <Button
                             onClick={() => navigate('/vendre')}
                             className="bg-amber-500 hover:bg-amber-600 text-white font-bold"
                         >
                             <Plus className="h-4 w-4 mr-2" />
-                            Scanner un livre
+                            {t('bourse.mesLivres.scan_book')}
                         </Button>
                     </CardContent>
                 </Card>
@@ -209,7 +211,7 @@ const MesLivresPage: React.FC = () => {
                                         <Badge
                                             variant={livre.is_available ? 'default' : 'secondary'}
                                         >
-                                            {livre.is_available ? 'Disponible' : 'Indisponible'}
+                                            {livre.is_available ? t('bourse.mesLivres.available') : t('bourse.mesLivres.unavailable')}
                                         </Badge>
                                     </div>
                                     <div className="flex gap-2">
@@ -220,7 +222,7 @@ const MesLivresPage: React.FC = () => {
                                             onClick={() => navigate(`/${livre.id}/modifier`)}
                                         >
                                             <Edit className="h-4 w-4 mr-1" />
-                                            Modifier
+                                            {t('bourse.mesLivres.edit')}
                                         </Button>
                                         <Button
                                             variant="outline"

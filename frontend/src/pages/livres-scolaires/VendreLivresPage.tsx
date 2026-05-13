@@ -190,8 +190,8 @@ const VendreLivresPage: React.FC = () => {
           if (restored.length > 0) {
             setBooks(restored);
             toast({
-              title: `Session reprise — ${restored.length} livre(s)`,
-              description: 'Vos livres précédemment scannés sont restaurés.',
+              title: t('bourse.vendre.toast_session_reprise_title', { count: restored.length }),
+              description: t('bourse.vendre.toast_session_reprise_desc'),
             });
           }
         }
@@ -205,8 +205,8 @@ const VendreLivresPage: React.FC = () => {
   const handleAnalyzed = (result: AnalyzedBookResult) => {
     if (result.is_rejected) {
       toast({
-        title: 'Livre rejeté',
-        description: 'Ce livre est trop dégradé. Réessayez avec une autre photo.',
+        title: t('bourse.vendre.toast_rejected_title'),
+        description: t('bourse.vendre.toast_rejected_desc'),
         variant: 'destructive',
       });
       // Le composant BookPhotoCapture gère déjà l'affichage du rejet ;
@@ -217,8 +217,11 @@ const VendreLivresPage: React.FC = () => {
     setBooks(prev => [...prev, { ...result, localId, mode: sessionMode }]);
     setShowCapture(false);
     toast({
-      title: 'Livre ajouté',
-      description: `${result.titre} — Crédit ${Math.round(result.credit_net_xaf ?? Math.max(0, result.valeur_calculee * 0.75 - 40)).toLocaleString('fr-FR')} XAF`,
+      title: t('bourse.vendre.toast_added_title'),
+      description: t('bourse.vendre.toast_added_desc', {
+        titre: result.titre,
+        credit: Math.round(result.credit_net_xaf ?? Math.max(0, result.valeur_calculee * 0.75 - 40)).toLocaleString('fr-FR'),
+      }),
     });
   };
 
@@ -232,7 +235,7 @@ const VendreLivresPage: React.FC = () => {
 
   const finalize = async () => {
     if (!sessionId || books.length === 0) {
-      toast({ title: 'Aucun livre à valider', variant: 'destructive' });
+      toast({ title: t('bourse.vendre.toast_no_book_title'), variant: 'destructive' });
       return;
     }
     setFinalizing(true);
@@ -258,14 +261,14 @@ const VendreLivresPage: React.FC = () => {
         }
       }
       toast({
-        title: 'Annonce(s) publiée(s)',
-        description: `${livres_modes.length} livre(s) sont visibles sur Yukpo.`,
+        title: t('bourse.vendre.toast_published_title'),
+        description: t('bourse.vendre.toast_published_desc', { count: livres_modes.length }),
       });
       navigate('/mes-livres');
     } catch (e: any) {
       toast({
-        title: 'Erreur finalisation',
-        description: e?.message || 'Réessayez dans un instant',
+        title: t('bourse.vendre.toast_finalize_error_title'),
+        description: e?.message || t('bourse.vendre.toast_finalize_error_desc'),
         variant: 'destructive',
       });
     } finally {
@@ -310,29 +313,32 @@ const VendreLivresPage: React.FC = () => {
             <div className="flex-1 min-w-0">
               <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded-full tracking-wider">YUKPO</span>
               <h1 className="font-bold text-lg leading-tight mt-0.5">
-                {sessionMode === 'vente' ? 'Vendre mes livres'
-                  : sessionMode === 'don' ? 'Donner mes livres'
-                  : 'Mettre au troc'}
+                {sessionMode === 'vente' ? t('bourse.vendre.title_vente')
+                  : sessionMode === 'don' ? t('bourse.vendre.title_don')
+                  : t('bourse.vendre.title_troc')}
               </h1>
               <p className="text-orange-100 text-xs">
-                Photo IA → titre, état, valeur détectés automatiquement
+                {t('bourse.vendre.subtitle')}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 text-[11px] text-orange-100">
             <MapPin className="w-3 h-3" />
-            <span>{gps ? `GPS ok` : 'GPS non disponible'}</span>
+            <span>{gps ? t('bourse.vendre.gps_ok_short') : t('bourse.vendre.gps_unavailable')}</span>
             <span>·</span>
             <span>
-              {sessionCreating ? 'Session…'
-                : sessionId ? 'Session prête'
-                : sessionError ? 'Erreur session'
-                : 'En attente'}
+              {sessionCreating ? t('bourse.vendre.session_creating')
+                : sessionId ? t('bourse.vendre.session_ready')
+                : sessionError ? t('bourse.vendre.session_error')
+                : t('bourse.vendre.session_waiting')}
             </span>
             {books.length > 0 && (
               <>
                 <span>·</span>
-                <span>{validBooksCount} livre{validBooksCount > 1 ? 's' : ''}</span>
+                <span>{t(
+                  validBooksCount > 1 ? 'bourse.vendre.books_count_other' : 'bourse.vendre.books_count_one',
+                  { count: validBooksCount },
+                )}</span>
               </>
             )}
           </div>
@@ -366,14 +372,20 @@ const VendreLivresPage: React.FC = () => {
         {/* Sélecteur de mode listing par défaut session */}
         {books.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 p-3 mb-3">
-            <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">Type d'annonce par défaut</p>
-            {/* ✅ Mini-descriptif soft pour aider le parent à choisir entre
-                les 3 modes — orienté pratique réelle (ce qui se passe avec le livre),
-                avec un mot sur l'impact financier. */}
+            <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-1">{t('bourse.vendre.mode_default_title')}</p>
+            {/* Légende des 3 modes — texte i18n unique avec interpolation
+                pour conserver les couleurs sémantiques par mode. */}
             <p className="text-[11px] text-gray-500 leading-snug mb-2">
-              <strong className="text-amber-700">Échange</strong> : votre livre de l'an dernier part chez un autre parent, et vous recevez le livre de la classe suivante <span className="text-gray-400">(crédit immédiat)</span> ·{' '}
-              <strong className="text-orange-700">Vente</strong> : livre d'occasion remis en circulation <span className="text-gray-400">(cash à la vente)</span> ·{' '}
-              <strong className="text-emerald-700">Don</strong> : vous offrez le livre à la communauté <span className="text-gray-400">(sans contrepartie)</span>.
+              {t('bourse.vendre.mode_legend', {
+                troc: '__TROC__',
+                vente: '__VENTE__',
+                don: '__DON__',
+              }).split(/(__TROC__|__VENTE__|__DON__)/).map((part, i) => {
+                if (part === '__TROC__') return <strong key={i} className="text-amber-700">{MODE_INFO.troc.label}</strong>;
+                if (part === '__VENTE__') return <strong key={i} className="text-orange-700">{MODE_INFO.vente.label}</strong>;
+                if (part === '__DON__') return <strong key={i} className="text-emerald-700">{MODE_INFO.don.label}</strong>;
+                return part;
+              })}
             </p>
             <div className="grid grid-cols-3 gap-2">
               {(['troc', 'vente', 'don'] as ModeListing[]).map(m => {
@@ -404,10 +416,10 @@ const VendreLivresPage: React.FC = () => {
           <div className="bg-red-50 border border-red-200 rounded-2xl p-3 mb-3 flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-red-800">Impossible de créer la session</p>
+              <p className="text-xs font-semibold text-red-800">{t('bourse.vendre.session_failed')}</p>
               <p className="text-[11px] text-red-700">{sessionError}</p>
               <button onClick={() => ensureSession()} className="mt-1.5 text-[11px] underline text-red-700 font-semibold">
-                Réessayer
+                {t('bourse.vendre.session_retry')}
               </button>
             </div>
           </div>
@@ -432,8 +444,8 @@ const VendreLivresPage: React.FC = () => {
           >
             {sessionCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
             {sessionCreating
-              ? 'Préparation…'
-              : books.length === 0 ? 'Photographier mon premier livre' : 'Ajouter un autre livre'}
+              ? t('bourse.vendre.cta_preparing')
+              : books.length === 0 ? t('bourse.vendre.cta_photo_first') : t('bourse.vendre.cta_photo_more')}
           </button>
         )}
 
@@ -455,7 +467,7 @@ const VendreLivresPage: React.FC = () => {
         {books.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mt-3 mb-1">
-              Livres prêts à publier
+              {t('bourse.vendre.books_ready')}
             </p>
             {books.map(book => (
               <div key={book.localId} className={`rounded-2xl border p-3 ${
@@ -480,21 +492,21 @@ const VendreLivresPage: React.FC = () => {
                           book.etat_classification === 'bon' ? 'text-emerald-700 font-semibold'
                             : 'text-amber-700 font-semibold'
                         }>
-                          {book.etat_classification === 'bon' ? 'Bon état' : 'État acceptable'}
+                          {book.etat_classification === 'bon' ? t('bourse.vendre.bon_etat') : t('bourse.vendre.acceptable_etat')}
                         </span>
-                        <span className="text-gray-500"> · Crédit </span>
+                        <span className="text-gray-500">{t('bourse.vendre.credit_label')}</span>
                         <span className="text-orange-700 font-bold">
                           {Math.round(book.credit_net_xaf ?? Math.max(0, book.valeur_calculee * 0.75 - 40)).toLocaleString('fr-FR')} XAF
                         </span>
                       </p>
                     ) : (
-                      <p className="text-[11px] text-red-700 font-semibold mt-1">Livre rejeté</p>
+                      <p className="text-[11px] text-red-700 font-semibold mt-1">{t('bourse.vendre.book_rejected')}</p>
                     )}
                   </div>
                   <button
                     onClick={() => removeBook(book.localId)}
                     className="p-1.5 rounded-full hover:bg-gray-100 shrink-0"
-                    aria-label="Retirer"
+                    aria-label={t('bourse.vendre.remove_book')}
                   >
                     <Trash2 className="w-3.5 h-3.5 text-gray-400" />
                   </button>
@@ -528,7 +540,7 @@ const VendreLivresPage: React.FC = () => {
             {/* Total estimé */}
             {totalValue > 0 && (
               <div className="mt-3 bg-orange-50 border border-orange-200 rounded-2xl p-3 flex items-center justify-between">
-                <span className="text-sm text-orange-800">Crédit total estimé</span>
+                <span className="text-sm text-orange-800">{t('bourse.vendre.total_credit_label')}</span>
                 <span className="text-lg font-bold text-orange-700">{totalValue.toLocaleString('fr-FR')} XAF</span>
               </div>
             )}
@@ -539,8 +551,8 @@ const VendreLivresPage: React.FC = () => {
         {books.length === 0 && !showCapture && sessionId && (
           <div className="bg-white border border-dashed border-gray-300 rounded-2xl p-6 text-center">
             <BookOpen className="w-10 h-10 text-orange-300 mx-auto mb-2" />
-            <p className="text-xs text-gray-500">Photographiez votre premier livre pour commencer.</p>
-            <p className="text-[10px] text-gray-400 mt-1">L'IA détectera tout : titre, état, valeur.</p>
+            <p className="text-xs text-gray-500">{t('bourse.vendre.hint_first_book')}</p>
+            <p className="text-[10px] text-gray-400 mt-1">{t('bourse.vendre.hint_ai_detect')}</p>
           </div>
         )}
       </div>
@@ -555,8 +567,11 @@ const VendreLivresPage: React.FC = () => {
           >
             {finalizing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
             {finalizing
-              ? 'Publication…'
-              : `Publier ${validBooksCount} livre${validBooksCount > 1 ? 's' : ''}`}
+              ? t('bourse.vendre.cta_publishing')
+              : t(
+                  validBooksCount > 1 ? 'bourse.vendre.cta_publish_other' : 'bourse.vendre.cta_publish_one',
+                  { count: validBooksCount },
+                )}
             <ChevronRight className="w-4 h-4 ml-auto" />
           </button>
         </div>
