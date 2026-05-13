@@ -1335,7 +1335,7 @@ const SuggestionsModal: React.FC<{
       <p className="text-xs text-gray-500 mb-3">{t('bourse.rentree.suggestions_subtitle')}</p>
 
       {/* Filtres */}
-      <div className="flex gap-2 mb-3 sticky top-0 bg-white z-10 pb-2">
+      <div className="flex gap-2 mb-2 sticky top-0 bg-white z-10 pb-2">
         {(['livres', 'fournitures'] as GroupeFilter[]).map(g => (
           <button
             key={g}
@@ -1348,6 +1348,41 @@ const SuggestionsModal: React.FC<{
           </button>
         ))}
       </div>
+
+      {/* Champ de recherche autocomplete — case+accent insensible.
+          Filtre sur titre, matière et éditeur. Utile surtout pour
+          fournitures (longue liste de cahiers/accessoires variés). */}
+      {!loading && suggestions.length > 5 && (
+        <div className="mb-3 relative">
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={
+              groupe === 'fournitures'
+                ? t('bourse.rentree.suggestions_search_supplies')
+                : t('bourse.rentree.suggestions_search_books')
+            }
+            className="w-full px-3 py-2 pl-9 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-amber-400 focus:bg-white"
+            aria-label={t('bourse.rentree.suggestions_search_aria')}
+          />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 px-1"
+              aria-label={t('bourse.rentree.suggestions_search_clear')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+          {searchQuery && (
+            <p className="mt-1 text-[11px] text-gray-500">
+              {t('bourse.rentree.suggestions_search_results', { count: filteredSuggestions.length })}
+            </p>
+          )}
+        </div>
+      )}
 
       {loading && (
         <div className="py-12 text-center">
@@ -1362,8 +1397,14 @@ const SuggestionsModal: React.FC<{
         </div>
       )}
 
+      {!loading && filteredSuggestions.length === 0 && suggestions.length > 0 && (
+        <div className="py-8 text-center text-sm text-gray-500">
+          {t('bourse.rentree.suggestions_search_no_match')}
+        </div>
+      )}
+
       <ul className="space-y-2 pb-40">
-        {suggestions.map(s => {
+        {filteredSuggestions.map(s => {
           const qte = selected[s.titre] ?? 0;
           const choix = choixMap[s.titre] ?? 'neuf';
           const sourceLabel = s.source === 'etablissement'
