@@ -311,10 +311,16 @@ const MesLivresPage: React.FC = () => {
                                         </div>
                                     )}
 
-                                    {/* Badges : etat_livre (déclaratif), classification IA, dispo */}
+                                    {/* Badges : état (classification IA prioritaire, fallback déclaratif) + dispo
+                                        2026-05-14 : on ne montre PAS les deux pour éviter le doublon
+                                        ("bon état" déclaré vs "Bon état" classification IA). La classif IA
+                                        est la décision Yukpo qui détermine la valeur — c'est elle qui compte. */}
                                     <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                                        <Badge className={getEtatColor(livre.etat_livre)}>{livre.etat_livre}</Badge>
-                                        {classifBadge && <Badge className={classifBadge.cls}>{classifBadge.label}</Badge>}
+                                        {classifBadge ? (
+                                            <Badge className={classifBadge.cls}>{classifBadge.label}</Badge>
+                                        ) : (
+                                            <Badge className={getEtatColor(livre.etat_livre)}>{livre.etat_livre}</Badge>
+                                        )}
                                         <Badge variant={livre.is_available ? 'default' : 'secondary'}>
                                             {livre.is_available
                                                 ? t('bourse.mesLivres.available', { defaultValue: 'Disponible' })
