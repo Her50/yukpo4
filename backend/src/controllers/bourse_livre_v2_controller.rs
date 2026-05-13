@@ -993,6 +993,11 @@ pub async fn analyze_recto_verso(
                 "recto_verso_same_side",
                 "Les deux photos montrent la même face du livre. Retournez le livre et photographiez réellement le verso (couverture arrière avec code-barres ISBN et prix éditeur).",
             )
+        } else if notes_str.contains("Recto/Verso inversés") || notes_str.contains("inversés") {
+            (
+                "recto_verso_swapped",
+                "Vous avez inversé l'ordre des photos. Reprenez : 1ère photo = couverture AVANT (avec titre principal et illustration), 2ème photo = couverture ARRIÈRE (avec code-barres ISBN et prix).",
+            )
         } else if notes_str.contains("Aucune couverture détectée") {
             (
                 "no_cover_detected",

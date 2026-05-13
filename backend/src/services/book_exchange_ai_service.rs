@@ -1975,6 +1975,42 @@ Si les 2 images montrent la MÊME FACE du livre (par ex. les 2 sont des couvertu
 - confidence ≤ 0.5
 L'utilisateur reprendra la photo manquante. NE PAS inventer un faux verso.
 
+⚠️ DÉTECTION D'INVERSION RECTO/VERSO :
+Si l'utilisateur a inversé l'ordre (image 1 = couverture ARRIÈRE avec ISBN/prix, image 2 = couverture AVANT avec titre principal), TU DOIS le détecter et rejeter pour qu'il reprenne dans le bon ordre :
+- etat_classification = "rejete"
+- Mets dans `notes` : "Recto/Verso inversés : l'image 1 doit être la couverture AVANT (titre principal en grand), l'image 2 la couverture ARRIÈRE (ISBN + prix)"
+- confidence ≤ 0.4
+Indices d'inversion : image 1 montre un code-barres EAN-13/ISBN en grand + prix + résumé (= verso) au lieu d'un titre principal et d'une illustration (= recto attendu).
+
+⚠️ ANALYSE STRICTE DE L'ÉTAT PHYSIQUE (qualité circulation):
+Yukpo refuse de remettre en circulation des livres TRÈS DÉGRADÉS. Examine attentivement :
+1. Couverture cartonnée — chercher : déchirures (pas juste cornées), arrachements partiels de pelliculage,
+   morceaux manquants, séparation carton/papier, plis profonds traversants, pages décollées de la reliure,
+   taches importantes (>20% surface) de gras/encre/liquide indélébile, moisissures, brûlures.
+2. Pages intérieures visibles — chercher : pages déchirées non recollées, gribouillages massifs au stylo
+   rendant le texte illisible sur plusieurs pages, surlignage excessif, pages collées entre elles.
+3. Reliure — chercher : dos arraché, pages tombantes (cahier qui se détache du dos), fil cousu visible/rompu.
+
+Classification finale stricte :
+- "bon" (ratio 70%) : couverture quasi intacte, intérieur propre, reliure solide. Petits défauts mineurs OK
+  (légères cornures aux coins, traces d'usage normales, prénom écrit discret sur la 1ère page de garde).
+- "acceptable" (ratio 40%) : usure visible mais le livre reste utilisable un an scolaire complet :
+  cornures modérées, petite déchirure recollée, quelques annotations effaçables, dos un peu marqué
+  mais relié, couverture cornée mais entière.
+- "rejete" (ratio 0) — REFUSER si AU MOINS UN des critères ci-dessous est vrai :
+  • Couverture déchirée traversante OU morceau manquant
+  • Pelliculage arraché sur > 30% de la couverture
+  • Plus de 3 pages déchirées sans réparation
+  • Texte illisible sur plus de 10% des pages (gribouillage, taches, encre baveuse)
+  • Reliure rompue : pages qui tombent
+  • Moisissures / taches biologiques / odeur perceptible
+  • Brûlures, déchirures par eau ayant gondolé le papier
+
+Quand tu rejettes pour mauvais état, dans `notes` précise QUEL critère :
+notes = "État rejeté : couverture déchirée traversante" OU "État rejeté : >3 pages déchirées" OU
+"État rejeté : pelliculage arraché sur >30% de la couverture" OU "État rejeté : moisissures visibles"
+(message court et précis pour l'utilisateur).
+
 ⚠️ DÉTECTION DE COUVERTURE NON-VALIDE (CRITIQUE — anti-triche):
 L'utilisateur PEUT envoyer autre chose que les vraies couvertures du livre (photos d'une page intérieure, du dos relié, d'un cahier, d'un objet aléatoire, d'une capture d'écran, etc.) pour contourner le système.
 

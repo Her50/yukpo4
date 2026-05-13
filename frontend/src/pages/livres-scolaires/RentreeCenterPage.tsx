@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { apiPost, apiGet } from '../../services/apiService';
 import { useToast } from '../../hooks/use-toast';
 import { useParentShop, type Enfant, type PanierItem, type TypeItem, type Choix } from '../../hooks/useParentShop';
+import { useUserTrocPool } from '../../hooks/useUserTrocPool';
 import { PAYS_PAR_DEFAUT, type PaysCode } from '../../data/schoolSystemsLegacy';
 import {
   getSystemesForPays,
@@ -45,6 +46,10 @@ const RentreeCenterPage: React.FC = () => {
     enfants, panier, addEnfant,
     addItems, removeItem, updateChoix, updateTrocMatch, clearTrocIntent,
   } = useParentShop();
+  // Pool troc du user : pour griser dans Suggestions les livres déjà mis
+  // en échange/vente/don (évite que le user re-paye un livre qu'il a déjà
+  // engagé en troc).
+  const { findMatchInPool } = useUserTrocPool();
 
   // ─── Onglet classe actif (par défaut le 1er) ───
   const [activeId, setActiveId] = useState<string>('');
@@ -400,7 +405,7 @@ const RentreeCenterPage: React.FC = () => {
       const knownCodes = [
         'not_in_program', 'niveau_primaire', 'non_reusable_workbook',
         'price_missing', 'isbn_missing', 'duplicate_book', 'value_zero',
-        'etat_too_damaged', 'recto_verso_same_side',
+        'etat_too_damaged', 'recto_verso_same_side', 'recto_verso_swapped',
         'no_cover_detected', 'invalid_recto_cover', 'invalid_verso_cover',
       ];
       const title = knownCodes.includes(result.rejection_code || '')
@@ -777,6 +782,8 @@ const RentreeCenterPage: React.FC = () => {
       {showSuggestions && active && (
         <SuggestionsModal
           classe={active.classe}
+          panier={panier}
+          findMatchInPool={findMatchInPool}
           loading={loadingSugg}
           suggestions={suggestions}
           groupe={suggGroupe}
@@ -1275,6 +1282,8 @@ const ClassFormModal: React.FC<{
 //     veut ÉCHANGER un livre qu'il possède déjà.
 const SuggestionsModal: React.FC<{
   classe: string;
+  panier: PanierItem[];
+  findMatchInPool: ReturnType<typeof useUserTrocPool>['findMatchInPool'];
   loading: boolean;
   suggestions: SuggestionItem[];
   groupe: GroupeFilter;
@@ -1285,7 +1294,7 @@ const SuggestionsModal: React.FC<{
   setChoixMap: (m: Record<string, 'neuf' | 'occasion'>) => void;
   onClose: () => void;
   onAdd: () => void;
-}> = ({ classe, loading, suggestions, groupe, setGroupe, selected, setSelected, choixMap, setChoixMap, onClose, onAdd }) => {
+}> = ({ classe, panier, findMatchInPool, loading, suggestions, groupe, setGroupe, selected, setSelected, choixMap, setChoixMap, onClose, onAdd }) => {
   const { t } = useTranslation();
   const total = Object.values(selected).filter(v => v > 0).length;
 
@@ -1301,6 +1310,25 @@ const SuggestionsModal: React.FC<{
     else next[titre] = choix;
     setChoixMap(next);
   };
+
+  // Recherche autocomplete (utile surtout pour fournitures où la liste peut
+  // être longue : cahiers de différents formats, accessoires variés).
+  // Filtre case+accent-insensible sur titre ET matière. Affichée toujours :
+  // dans le tab livres on a souvent <20 entrées, mais ça reste utile pour
+  // trouver vite un manuel par mot-clé (matière, niveau).
+  const [searchQuery, setSearchQuery] = useState('');
+  const normalize = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const filteredSuggestions = useMemo(() => {
+    const q = normalize(searchQuery.trim());
+    if (!q) return suggestions;
+    return suggestions.filter(s => {
+      const tit = normalize(s.titre);
+      const mat = normalize(s.matiere || '');
+      const ed = normalize(s.editeur || '');
+      return tit.includes(q) || mat.includes(q) || ed.includes(q);
+    });
+  }, [suggestions, searchQuery]);
 
   return (
     <ModalShell onClose={onClose} title={t('bourse.rentree.suggestions_title', { classe })} fullScreen>
@@ -1343,14 +1371,43 @@ const SuggestionsModal: React.FC<{
             : s.source === 'national'
             ? t('bourse.rentree.suggestions_source_national')
             : t('bourse.rentree.suggestions_source_popular');
+
+          // ✅ Cross-flow : vérifier que ce livre n'est pas déjà :
+          //   1) Engagé dans le pool troc/vente/don du user (livre déjà
+          //      photographié et mis en échange — il l'a donné, peut pas
+          //      le racheter dans le même flow)
+          //   2) Déjà dans le panier actuel (même titre déjà coché)
+          // Dans les deux cas on bloque la sélection avec un badge clair.
+          const isLivre = s.type_article === 'livre' || s.type_article === 'workbook';
+          const trocMatch = isLivre
+            ? findMatchInPool({ titre: s.titre, matiere: s.matiere || undefined, classeCible: classe })
+            : null;
+          const inPanier = panier.some(p => p.titre.toLowerCase().trim() === s.titre.toLowerCase().trim());
+          const lockedByPool = !!trocMatch;
+          const locked = lockedByPool || inPanier;
+          const lockReason = lockedByPool
+            ? t('bourse.rentree.suggestions_locked_pool')
+            : inPanier
+            ? t('bourse.rentree.suggestions_locked_panier')
+            : '';
+
           return (
-            <li key={s.titre} className={`bg-white border rounded-xl p-3 ${qte > 0 ? 'border-amber-300' : 'border-gray-200'}`}>
+            <li
+              key={s.titre}
+              className={`border rounded-xl p-3 transition-colors ${
+                locked
+                  ? 'bg-cyan-50/80 border-cyan-200 opacity-80'
+                  : qte > 0
+                    ? 'bg-white border-amber-300'
+                    : 'bg-white border-gray-200'
+              }`}
+            >
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-gray-500 mb-0.5">{sourceLabel}</div>
                   <div className="font-semibold text-sm text-gray-900 line-clamp-2">{s.titre}</div>
                   {s.matiere && <div className="text-xs text-gray-500">{s.matiere}</div>}
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {s.prix_officiel && (
                       <span className="text-xs text-amber-700 font-semibold">
                         {s.prix_officiel.toLocaleString('fr-FR')} {s.devise || 'XAF'}
@@ -1361,20 +1418,27 @@ const SuggestionsModal: React.FC<{
                         {t('bourse.rentree.suggestions_required')}
                       </span>
                     )}
+                    {locked && (
+                      <span className="text-[10px] bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full font-semibold">
+                        ✓ {lockReason}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => toggle(s.titre, Math.max(0, qte - 1))}
-                    className="w-9 h-9 rounded-lg bg-gray-100 active:bg-gray-200 text-gray-700 font-bold"
-                    disabled={qte === 0}
+                    className="w-9 h-9 rounded-lg bg-gray-100 active:bg-gray-200 text-gray-700 font-bold disabled:opacity-40"
+                    disabled={qte === 0 || locked}
                   >
                     −
                   </button>
                   <span className="w-7 text-center text-sm font-bold">{qte}</span>
                   <button
                     onClick={() => toggle(s.titre, qte + 1)}
-                    className="w-9 h-9 rounded-lg bg-amber-500 text-white font-bold active:bg-amber-600"
+                    className="w-9 h-9 rounded-lg bg-amber-500 text-white font-bold active:bg-amber-600 disabled:bg-gray-200 disabled:text-gray-400"
+                    disabled={locked}
+                    aria-label={locked ? lockReason : undefined}
                   >
                     +
                   </button>
@@ -1384,7 +1448,7 @@ const SuggestionsModal: React.FC<{
               {/* Toggle Neuf/Occasion — affiché seulement si item sélectionné.
                   Achat d'occasion = livre usagé moins cher, SANS troc.
                   Pour ÉCHANGER un livre (vraie troc), passer par TrocPrep. */}
-              {qte > 0 && s.type_article !== 'fourniture' && s.type_article !== 'cahier' && s.type_article !== 'accessoire' && (
+              {qte > 0 && !locked && isLivre && (
                 <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
                   <span className="text-[11px] text-gray-500 font-medium">
                     {t('bourse.rentree.suggestions_condition_label')}
