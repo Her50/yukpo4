@@ -129,7 +129,7 @@ const LivreScolaireHomePage: React.FC = () => {
           >
             <div className="flex items-center gap-2.5">
               <Wallet className="w-5 h-5 text-white" />
-              <span className="text-white text-sm font-medium">Mon crédit Yukpo</span>
+              <span className="text-white text-sm font-medium">Bon d'achat Yukpo disponible</span>
             </div>
             <div className="text-right">
               <p className={`text-white font-bold text-base tabular-nums ${walletBalance < 0 ? 'text-red-100' : ''}`}>
