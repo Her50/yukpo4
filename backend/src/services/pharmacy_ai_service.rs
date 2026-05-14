@@ -476,21 +476,41 @@ IMPORTANT :
         let cleaned = clean_json_response(&response);
         let json_str = extract_json_array(&cleaned);
 
-        let medications: Vec<ExtractedMedication> = match serde_json::from_str(&json_str) {
-            Ok(meds) => meds,
-            Err(e) => {
-                log::warn!(
-                    "[PharmacyAIService] Erreur parsing ordonnance JSON: {}. json_str: '{}', réponse brute: '{}'",
-                    e,
-                    &json_str[..json_str.len().min(300)],
-                    &response[..response.len().min(300)]
-                );
-                // Tentative de récupération : chercher des noms de médicaments dans le texte brut
-                Self::extract_medications_from_text(&response)
+        // Le LLM peut retourner soit un objet {medications, metadata} (nouveau
+        // format), soit un array (ancien format). On essaie l'objet d'abord.
+        let cleaned_obj = clean_json_response(&response);
+        let parsed_full: Option<ExtractedOrdonnance> = serde_json::from_str(&cleaned_obj).ok();
+
+        let extracted = if let Some(full) = parsed_full {
+            full
+        } else {
+            // Fallback ancien format : array seulement
+            let medications: Vec<ExtractedMedication> = match serde_json::from_str(&json_str) {
+                Ok(meds) => meds,
+                Err(e) => {
+                    log::warn!(
+                        "[PharmacyAIService] Erreur parsing ordonnance JSON: {}. json_str: '{}', réponse brute: '{}'",
+                        e,
+                        &json_str[..json_str.len().min(300)],
+                        &response[..response.len().min(300)]
+                    );
+                    Self::extract_medications_from_text(&response)
+                }
+            };
+            ExtractedOrdonnance {
+                medications,
+                metadata: OrdonnanceMetadata::default(),
             }
         };
 
-        Ok(medications)
+        log::info!(
+            "[PharmacyAIService] Extraction : {} médicament(s), patient={:?}, médecin={:?}",
+            extracted.medications.len(),
+            extracted.metadata.patient_name,
+            extracted.metadata.doctor_name
+        );
+
+        Ok(extracted)
     }
 
     /// Fallback: tente d'extraire des noms de médicaments depuis une réponse texte libre de l'IA

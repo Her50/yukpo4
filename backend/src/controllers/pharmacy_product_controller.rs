@@ -902,21 +902,25 @@ pub async fn extract_ordonnance(
     }
 
     let ai_service = PharmacyAIService::new(state.ia.clone());
-    let medications = ai_service
-        .extract_ordonnance_medications(&payload.image_base64, payload.lat, payload.lng)
+    let extracted = ai_service
+        .extract_ordonnance_full(&payload.image_base64, payload.lat, payload.lng)
         .await?;
 
     log::info!(
-        "[extract_ordonnance] {} médicament(s) extraits",
-        medications.len()
+        "[extract_ordonnance] {} médicament(s) extraits, patient={:?}",
+        extracted.medications.len(),
+        extracted.metadata.patient_name
     );
 
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "medications": medications,
-            "count": medications.len()
+            "medications": extracted.medications,
+            "count": extracted.medications.len(),
+            // ✅ 2026-05-14: métadonnées extraites par LLM pour pré-remplir
+            // l'archivage côté pharmacien (patient, médecin, hôpital, ville).
+            "metadata": extracted.metadata
         })),
     ))
 }
