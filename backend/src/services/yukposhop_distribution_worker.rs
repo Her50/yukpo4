@@ -25,10 +25,12 @@ const BATCH_SIZE: i32 = 10;
 const MAX_ATTEMPTS: i32 = 3;
 const META_GRAPH_BASE: &str = "https://graph.facebook.com/v19.0";
 
-
 pub fn spawn_worker(state: Arc<AppState>) {
     tokio::spawn(async move {
-        info!("[yukposhop-dist-worker] démarrage (poll {}s)", POLL_INTERVAL_S);
+        info!(
+            "[yukposhop-dist-worker] démarrage (poll {}s)",
+            POLL_INTERVAL_S
+        );
         // Petit délai initial pour laisser les autres systèmes démarrer
         tokio::time::sleep(Duration::from_secs(15)).await;
         loop {
@@ -41,7 +43,6 @@ pub fn spawn_worker(state: Arc<AppState>) {
         }
     });
 }
-
 
 async fn run_one_batch(state: &AppState) -> Result<u32, sqlx::Error> {
     // 1. Pick + lock un batch (status='pending' OR status='retry')
@@ -87,7 +88,14 @@ async fn run_one_batch(state: &AppState) -> Result<u32, sqlx::Error> {
         .await;
 
         // Tente la publication
-        let outcome = process_one(state, service_id, user_id, &platform, msg_template.as_deref()).await;
+        let outcome = process_one(
+            state,
+            service_id,
+            user_id,
+            &platform,
+            msg_template.as_deref(),
+        )
+        .await;
 
         let (new_status, err_msg): (&str, Option<String>) = match outcome {
             Ok(()) => ("done", None),
@@ -117,12 +125,15 @@ async fn run_one_batch(state: &AppState) -> Result<u32, sqlx::Error> {
         processed += 1;
         info!(
             "[yukposhop-dist-worker] job={} svc={} platform={} -> {} (attempt {})",
-            job_id, service_id, platform, new_status, attempts + 1
+            job_id,
+            service_id,
+            platform,
+            new_status,
+            attempts + 1
         );
     }
     Ok(processed)
 }
-
 
 /// Tente la publication d'UN job sur UNE plateforme.
 async fn process_one(
@@ -156,7 +167,11 @@ async fn process_one(
     let default_caption = format!(
         "🛍 {titre}\n💰 {} {devise}\n{}",
         prix as i64,
-        if boutique_url.is_empty() { "" } else { boutique_url }
+        if boutique_url.is_empty() {
+            ""
+        } else {
+            boutique_url
+        }
     );
     let caption = msg_template.unwrap_or(&default_caption);
 
@@ -173,7 +188,11 @@ async fn process_one(
     .map_err(|e| format!("lookup social_account: {e}"))?;
     let acc = match acc_row {
         Some(r) => r,
-        None => return Err(format!("compte {platform} non connecté pour user {user_id}")),
+        None => {
+            return Err(format!(
+                "compte {platform} non connecté pour user {user_id}"
+            ))
+        }
     };
     let account_id: String = acc.try_get("account_id").map_err(|e| format!("acc id: {e}"))?;
     let access_token: String = acc.try_get("access_token").map_err(|e| format!("acc tok: {e}"))?;
@@ -187,7 +206,6 @@ async fn process_one(
         other => Err(format!("platform inconnue : {other}")),
     }
 }
-
 
 async fn post_facebook(
     page_id: &str,
@@ -227,8 +245,16 @@ async fn post_facebook(
     let status = resp.status();
     let body = resp.text().await.unwrap_or_default();
     if !status.is_success() {
-        return Err(format!("fb HTTP {} : {}", status.as_u16(), body.chars().take(200).collect::<String>()));
+        return Err(format!(
+            "fb HTTP {} : {}",
+            status.as_u16(),
+            body.chars().take(200).collect::<String>()
+        ));
     }
-    info!("[yukposhop-dist-worker] FB post OK page={} body[..80]={}", page_id, body.chars().take(80).collect::<String>());
+    info!(
+        "[yukposhop-dist-worker] FB post OK page={} body[..80]={}",
+        page_id,
+        body.chars().take(80).collect::<String>()
+    );
     Ok(())
 }
