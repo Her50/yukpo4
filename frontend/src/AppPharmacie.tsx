@@ -79,6 +79,7 @@ function AppPharmacie() {
               {/* Espace partenaire */}
               <Route path="/dashboard" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
               <Route path="/dashboard/alertes" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
+              <Route path="/dashboard/archives" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
               <Route path="/dashboard/commandes" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
               <Route path="/dashboard/produits" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />
               <Route path="/dashboard/stats" element={<PharmacieLayout><PharmacieDashboardPage /></PharmacieLayout>} />

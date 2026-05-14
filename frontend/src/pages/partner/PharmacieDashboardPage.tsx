@@ -13,10 +13,11 @@ import {
   BulkImportRow, parseBulkImportInput, parseImportFileSmart,
 } from '@/services/pharmacyPartner';
 import PharmacyAlertsTab from './PharmacyAlertsTab';
+import PharmacyArchivesTab from './PharmacyArchivesTab';
 // Note : pas de YukpoCostBadge côté pharmacien partenaire — outils internes gratuits
 // (la marge plateforme se fait sur le client patient final, pas sur le partenaire métier).
 
-type TabKey = 'alertes' | 'commandes' | 'produits' | 'stats' | 'qr' | 'finances';
+type TabKey = 'alertes' | 'commandes' | 'archives' | 'produits' | 'stats' | 'qr' | 'finances';
 
 const TABS: Array<{ key: TabKey; labelKey: string; icon: any }> = [
   // Tab "Alertes" en premier : workflow RFQ — demandes en temps réel des
@@ -24,6 +25,9 @@ const TABS: Array<{ key: TabKey; labelKey: string; icon: any }> = [
   // catalogue partagé). C'est l'action quotidienne principale du pharmacien.
   { key: 'alertes',   labelKey: 'pharmaPartner.tab.alerts',    icon: Bell },
   { key: 'commandes', labelKey: 'pharmaPartner.tab.orders',    icon: ClipboardList },
+  // Archives : ordonnances scannées par le pharmacien lors de la dispensation,
+  // recherchables par nom patient (en cas de retour, effet indésirable, etc.).
+  { key: 'archives',  labelKey: 'pharmaPartner.tab.archives',  icon: FileText },
   { key: 'produits',  labelKey: 'pharmaPartner.tab.products',  icon: Package },
   { key: 'stats',     labelKey: 'pharmaPartner.tab.stats',     icon: BarChart3 },
   { key: 'qr',        labelKey: 'pharmaPartner.tab.qr',        icon: QrCode },
@@ -58,7 +62,7 @@ const PharmacieDashboardPage: React.FC = () => {
   // Détection du tab depuis URL : /dashboard, /dashboard/commandes, /dashboard/stats, etc.
   const pathTab = useMemo<TabKey>(() => {
     const seg = window.location.pathname.split('/').pop();
-    if (seg && ['alertes', 'commandes', 'produits', 'stats', 'qr', 'finances'].includes(seg)) return seg as TabKey;
+    if (seg && ['alertes', 'commandes', 'archives', 'produits', 'stats', 'qr', 'finances'].includes(seg)) return seg as TabKey;
     return (params.get('tab') as TabKey) || 'commandes';
   }, [params]);
 
@@ -292,6 +296,10 @@ const PharmacieDashboardPage: React.FC = () => {
 
       <div className="max-w-screen-md mx-auto px-4 py-4">
         {tab === 'alertes' && <PharmacyAlertsTab />}
+
+        {tab === 'archives' && pharmacyId !== null && (
+          <PharmacyArchivesTab pharmacies={[{ id: pharmacyId, nom: pharmacyName || 'Ma pharmacie' }]} />
+        )}
 
         {tab === 'commandes' && (
           <>
