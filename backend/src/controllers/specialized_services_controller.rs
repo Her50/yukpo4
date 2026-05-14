@@ -6766,7 +6766,7 @@ pub async fn admin_get_yukpo_official_pharmacy(
 // l'utilisateur voit les pharmacies classées par taux de complétude.
 // Migration : 20260514_003_medication_alerts_broadcast.sql
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, serde::Serialize)]
 pub struct QueryItem {
     pub name: String,
     #[serde(default)]
@@ -7030,7 +7030,7 @@ pub async fn get_medication_alert(
     ))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, serde::Serialize)]
 pub struct ItemStatusInput {
     pub name: String,
     pub available: bool,
@@ -7040,7 +7040,7 @@ pub struct ItemStatusInput {
     pub note: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, serde::Serialize)]
 pub struct AlternativeInput {
     pub original: String,
     pub alt: String,
