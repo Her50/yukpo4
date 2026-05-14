@@ -105,6 +105,9 @@ pub struct YukpoEnrichment {
     pub quality_score: Option<i32>, // 0-100 (titre+desc+photos+prix)
     pub language_detected: Option<String>, // "fr" | "en" | autre
     pub cost_tokens: i32,         // tokens consommés (audit)
+    // ── Piste 6d — modération IA via LLM sur titre+description+tags ──
+    pub moderation_status: Option<String>, // approved | flagged | rejected
+    pub moderation_reason: Option<String>, // raison si flagged/rejected
 }
 
 #[derive(Debug, Serialize)]
@@ -403,7 +406,10 @@ async fn enrich_yukposhop_product(
            \"description_enriched_fr\": \"<texte de 120-200 mots commercial en FR si la description \
             ci-dessus fait moins de 50 caractères, sinon null>\",\n\
            \"language_detected\": \"<fr|en|ar|sw|autre>\",\n\
-           \"quality_score\": <0-100 selon titre+description+photos+prix, integer>\n\
+           \"quality_score\": <0-100 selon titre+description+photos+prix, integer>,\n\
+           \"moderation_status\": \"<approved si conforme | flagged si suspect (mineurs, armes, contrefaçon, \
+            santé sans agrément, contenu adulte explicite, drogues illégales) | rejected si manifestement interdit>\",\n\
+           \"moderation_reason\": \"<si flagged ou rejected, raison courte en FR (max 200 chars), sinon null>\"\n\
          }}",
         produit.titre,
         if produit.description.is_empty() { "(vide)" } else { &produit.description },
@@ -481,6 +487,15 @@ async fn enrich_yukposhop_product(
         quality_score: parsed["quality_score"].as_i64().map(|n| n.clamp(0, 100) as i32),
         language_detected: parsed["language_detected"].as_str().map(|s| s.to_string()),
         cost_tokens,
+        // 6d — modération produit (LLM analyse titre+description+tags)
+        moderation_status: parsed["moderation_status"]
+            .as_str()
+            .filter(|s| ["approved", "flagged", "rejected"].contains(s))
+            .map(|s| s.to_string()),
+        moderation_reason: parsed["moderation_reason"]
+            .as_str()
+            .filter(|s| !s.is_empty() && *s != "null")
+            .map(|s| s.chars().take(300).collect::<String>()),
     };
 
     // Persist back dans services.data + specialized_type column natif
@@ -1066,6 +1081,192 @@ impl serde::Serialize for InventoryDecrementRequest {
     }
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// Piste 6e — Google Places enrichment d'une boutique YukpoShop
+// ════════════════════════════════════════════════════════════════════════
+//
+// Reçoit nom_boutique + ville + pays. Appelle Google Places API (déjà
+// configuré côté Rust pour creer_service) pour trouver l'établissement
+// et retourner adresse + GPS + horaires + photos + rating. Best-effort.
+
+#[derive(Debug, Deserialize)]
+pub struct BoutiqueEnrichRequest {
+    pub nom_boutique: String,
+    #[serde(default)]
+    pub ville: Option<String>,
+    #[serde(default = "default_pays")]
+    pub pays: String,
+}
+
+#[derive(Debug, Serialize, Default)]
+pub struct BoutiqueEnrichResponse {
+    pub ok: bool,
+    pub place_id: Option<String>,
+    pub adresse_complete: Option<String>,
+    pub gps: Option<String>, // "lat,lng"
+    pub rating: Option<f64>,
+    pub telephone: Option<String>,
+    pub horaires_json: Option<Value>,
+    pub photo_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+pub async fn enrich_boutique_via_google_places(
+    State(_state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> impl IntoResponse {
+    let secret = std::env::var("YUKPOSHOP_BRIDGE_HMAC_KEY").unwrap_or_default();
+    if secret.is_empty() {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({"ok": false, "error": "bridge non configuré"})),
+        )
+            .into_response();
+    }
+    if let Err(e) = verify_hmac(&body, &headers, &secret) {
+        warn!("[yukposhop bridge boutique-enrich] HMAC reject: {e}");
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"ok": false, "error": e})),
+        )
+            .into_response();
+    }
+    let req: BoutiqueEnrichRequest = match serde_json::from_slice(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"ok": false, "error": format!("invalid json: {e}")})),
+            )
+                .into_response()
+        }
+    };
+
+    // Appelle Google Places Text Search (clé API : GOOGLE_PLACES_API_KEY)
+    let api_key = std::env::var("GOOGLE_PLACES_API_KEY").unwrap_or_default();
+    if api_key.is_empty() {
+        return (
+            StatusCode::OK,
+            Json(BoutiqueEnrichResponse {
+                ok: false,
+                error: Some("GOOGLE_PLACES_API_KEY non configuré côté Rust".into()),
+                ..Default::default()
+            }),
+        )
+            .into_response();
+    }
+
+    let query = format!(
+        "{} {} {}",
+        req.nom_boutique,
+        req.ville.clone().unwrap_or_default(),
+        req.pays
+    );
+
+    let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(10)).build();
+    let client = match client {
+        Ok(c) => c,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"ok": false, "error": format!("http client: {e}")})),
+            )
+                .into_response()
+        }
+    };
+    let url = "https://maps.googleapis.com/maps/api/place/textsearch/json";
+    let resp = client
+        .get(url)
+        .query(&[("query", query.as_str()), ("key", api_key.as_str())])
+        .send()
+        .await;
+    let resp = match resp {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::OK,
+                Json(BoutiqueEnrichResponse {
+                    ok: false,
+                    error: Some(format!("google api: {e}")),
+                    ..Default::default()
+                }),
+            )
+                .into_response()
+        }
+    };
+    let data: Value = match resp.json().await {
+        Ok(v) => v,
+        Err(e) => {
+            return (
+                StatusCode::OK,
+                Json(BoutiqueEnrichResponse {
+                    ok: false,
+                    error: Some(format!("google body: {e}")),
+                    ..Default::default()
+                }),
+            )
+                .into_response()
+        }
+    };
+
+    // Prend le 1er résultat (le plus pertinent)
+    let first = data["results"].as_array().and_then(|a| a.first());
+    let Some(r) = first else {
+        return (
+            StatusCode::OK,
+            Json(BoutiqueEnrichResponse {
+                ok: false,
+                error: Some("aucun lieu trouvé pour ce nom".into()),
+                ..Default::default()
+            }),
+        )
+            .into_response();
+    };
+    let place_id = r["place_id"].as_str().map(|s| s.to_string());
+    let adresse = r["formatted_address"].as_str().map(|s| s.to_string());
+    let rating = r["rating"].as_f64();
+    let gps = if let (Some(lat), Some(lng)) = (
+        r["geometry"]["location"]["lat"].as_f64(),
+        r["geometry"]["location"]["lng"].as_f64(),
+    ) {
+        Some(format!("{},{}", lat, lng))
+    } else {
+        None
+    };
+    let photo_ref = r["photos"][0]["photo_reference"].as_str();
+    let photo_url = photo_ref.map(|pr| {
+        format!(
+        "https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference={}&key={}",
+        pr, api_key
+    )
+    });
+
+    // Optionnel : 2e appel Places Details pour horaires + téléphone
+    // (Skip pour rester fast — peut être ajouté plus tard)
+
+    info!(
+        "[yukposhop bridge boutique-enrich] place_id={:?} adresse={:?}",
+        place_id, adresse
+    );
+    (
+        StatusCode::OK,
+        Json(BoutiqueEnrichResponse {
+            ok: true,
+            place_id,
+            adresse_complete: adresse,
+            gps,
+            rating,
+            telephone: None,     // Phase B : Places Details API
+            horaires_json: None, // idem
+            photo_url,
+            error: None,
+        }),
+    )
+        .into_response()
+}
+
 // ─── Router ─────────────────────────────────────────────────────────────
 
 pub fn integrations_yukposhop_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
@@ -1089,6 +1290,11 @@ pub fn integrations_yukposhop_routes(state: Arc<AppState>) -> Router<Arc<AppStat
         .route(
             "/api/v1/integrations/yukposhop/inventory/decrement",
             post(inventory_decrement_from_yukposhop),
+        )
+        // Piste 6e
+        .route(
+            "/api/v1/integrations/yukposhop/boutique/enrich",
+            post(enrich_boutique_via_google_places),
         )
         .with_state(state)
 }

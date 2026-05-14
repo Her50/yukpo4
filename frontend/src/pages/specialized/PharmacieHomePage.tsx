@@ -66,10 +66,20 @@ const PharmacieHomePage: React.FC = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { gps, status: gpsStatus, detect: redetectGps } = useGpsWithFallback();
-  const { isPartner, partnerType, isAdmin } = useUser();
+  const { user, isLoading: userLoading, isPartner, partnerType, isAdmin } = useUser();
   // Le pharmacien partenaire (et les admins Yukpo via leur ComptePage) peut
   // accéder à son dashboard pour uploader son catalogue, gérer commandes…
   const showPartnerCta = isPartner && partnerType === 'pharmacie';
+
+  // ✅ 2026-05-14 : connexion obligatoire (parité Bourse du Livre).
+  // Sans token, redirection vers /login avec source=shared_service pour
+  // que le formulaire propose aussi le bouton "Devenir partenaire" pour les
+  // pharmaciens qui veulent inscrire leur officine.
+  useEffect(() => {
+    if (!userLoading && !user) {
+      navigate('/login?source=shared_service&redirect=%2F', { replace: true });
+    }
+  }, [userLoading, user, navigate]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [medications, setMedications] = useState<Medication[]>([]);
