@@ -70,6 +70,8 @@ data/test/
 data/*.json
 data/*.csv
 !data/.gitkeep
+# Fichiers data nécessaires au compile-time via include_str!
+!data/otc_medications_cm.json
 
 ############################################
 # Tests et coverage
