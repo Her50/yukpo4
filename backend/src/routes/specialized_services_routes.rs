@@ -179,6 +179,17 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/pharmacies/consent",
             post(specialized_services_controller::pharmacie_consent_log),
         )
+        // Workflow "Demande de disponibilité" (RFQ pharmacie) — PUBLIC pour
+        // permettre à un utilisateur non connecté de demander des médicaments.
+        // Migration : 20260514_003.
+        .route(
+            "/api/medication-alerts",
+            post(specialized_services_controller::create_medication_alert),
+        )
+        .route(
+            "/api/medication-alerts/{id}",
+            get(specialized_services_controller::get_medication_alert),
+        )
         // Routes Banques de sang (publiques pour recherche)
         .route(
             "/api/banques-sang/search",
@@ -1113,6 +1124,15 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/admin/pharmacie/yukpo-official",
             get(specialized_services_controller::admin_get_yukpo_official_pharmacy),
+        )
+        // Workflow alertes pharmacie côté pharmacien (JWT requis)
+        .route(
+            "/api/pharmacies/me/alerts",
+            get(specialized_services_controller::get_my_pharmacy_alerts),
+        )
+        .route(
+            "/api/medication-alerts/{id}/respond",
+            post(specialized_services_controller::respond_to_medication_alert),
         )
         .route(
             "/api/pharmacies/me/financial-movements",

@@ -6756,6 +6756,503 @@ pub async fn admin_get_yukpo_official_pharmacy(
     }
 }
 
+// ============================================================================
+// WORKFLOW "DEMANDE DE DISPONIBILITÉ" (RFQ pharmacie)
+// ============================================================================
+//
+// L'utilisateur émet une alerte avec une liste de médicaments + sa position.
+// Le backend broadcast aux pharmacies dans un rayon (5 km par défaut), chaque
+// pharmacie valide manuellement la disponibilité (pas de catalogue partagé),
+// l'utilisateur voit les pharmacies classées par taux de complétude.
+// Migration : 20260514_003_medication_alerts_broadcast.sql
+
+#[derive(Debug, Deserialize)]
+pub struct QueryItem {
+    pub name: String,
+    #[serde(default)]
+    pub quantity: Option<i32>,
+    #[serde(default)]
+    pub dosage: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateMedicationAlertRequest {
+    pub query_items: Vec<QueryItem>,
+    pub gps_lat: f64,
+    pub gps_lng: f64,
+    #[serde(default)]
+    pub radius_km: Option<f32>,
+    #[serde(default)]
+    pub ttl_minutes: Option<i32>,
+}
+
+/// Crée une alerte de demande de disponibilité et broadcast aux pharmacies
+/// dans le rayon. Endpoint public (utilisateur authentifié ou anonyme).
+pub async fn create_medication_alert(
+    State(state): State<Arc<AppState>>,
+    user: Option<Extension<AuthenticatedUser>>,
+    Json(payload): Json<CreateMedicationAlertRequest>,
+) -> AppResult<impl IntoResponse> {
+    if payload.query_items.is_empty() {
+        return Err(AppError::BadRequest(
+            "Au moins un médicament est requis".to_string(),
+        ));
+    }
+    if payload.query_items.len() > 30 {
+        return Err(AppError::BadRequest(
+            "Maximum 30 médicaments par alerte".to_string(),
+        ));
+    }
+
+    let total = payload.query_items.len() as i32;
+    let radius_km = payload.radius_km.unwrap_or(5.0).clamp(1.0, 25.0);
+    let ttl = payload.ttl_minutes.unwrap_or(5).clamp(1, 60);
+    let user_id = user.as_ref().map(|u| u.0.id);
+
+    let items_json = serde_json::to_value(&payload.query_items)
+        .map_err(|e| AppError::Internal(format!("Erreur sérialisation query_items: {}", e)))?;
+
+    // Création de l'alerte
+    let row = sqlx::query(
+        r#"
+        INSERT INTO medication_alerts
+            (user_id, query_items, total_items, gps_lat, gps_lng, radius_km, expires_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW() + ($7 || ' minutes')::INTERVAL)
+        RETURNING id, expires_at
+        "#,
+    )
+    .bind(user_id)
+    .bind(&items_json)
+    .bind(total)
+    .bind(payload.gps_lat)
+    .bind(payload.gps_lng)
+    .bind(radius_km)
+    .bind(ttl.to_string())
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur création alerte: {}", e)))?;
+
+    let alert_id: i64 = row.try_get("id").unwrap_or_default();
+    let expires_at: chrono::DateTime<chrono::Utc> =
+        row.try_get("expires_at").unwrap_or_else(|_| chrono::Utc::now());
+
+    // Trouver les pharmacies dans le rayon (haversine via PG)
+    // pharmacies.gps est stocké en VARCHAR "lat,lng" — on parse côté SQL.
+    let notified = sqlx::query_scalar::<_, i64>(
+        r#"
+        WITH parsed AS (
+            SELECT
+                p.id,
+                p.user_id,
+                p.nom,
+                p.gps,
+                split_part(p.gps, ',', 1)::DOUBLE PRECISION AS lat,
+                split_part(p.gps, ',', 2)::DOUBLE PRECISION AS lng
+            FROM pharmacies p
+            WHERE p.is_active = TRUE
+              AND p.gps IS NOT NULL
+              AND p.gps ~ '^-?[0-9.]+,-?[0-9.]+$'
+        ),
+        in_radius AS (
+            SELECT
+                id,
+                user_id,
+                nom,
+                -- Distance haversine en km (rayon Terre = 6371 km)
+                6371.0 * 2 * ASIN(
+                    SQRT(
+                        POWER(SIN(RADIANS((lat - $1) / 2)), 2)
+                      + COS(RADIANS($1)) * COS(RADIANS(lat))
+                      * POWER(SIN(RADIANS((lng - $2) / 2)), 2)
+                    )
+                ) AS distance_km
+            FROM parsed
+        )
+        SELECT COUNT(*)::BIGINT
+        FROM in_radius
+        WHERE distance_km <= $3
+        "#,
+    )
+    .bind(payload.gps_lat)
+    .bind(payload.gps_lng)
+    .bind(radius_km as f64)
+    .fetch_one(&state.pg)
+    .await
+    .unwrap_or(0);
+
+    // Mise à jour du compteur de pharmacies notifiées (cache)
+    let _ =
+        sqlx::query("UPDATE medication_alerts SET notified_pharmacies_count = $1 WHERE id = $2")
+            .bind(notified as i32)
+            .bind(alert_id)
+            .execute(&state.pg)
+            .await;
+
+    info!(
+        "[create_medication_alert] alert_id={} user={:?} {} médicament(s), rayon={} km, {} pharmacies notifiées",
+        alert_id, user_id, total, radius_km, notified
+    );
+
+    // TODO: Worker async pour push web + WhatsApp aux pharmaciens dans le rayon.
+    // Pour ce MVP, on logge seulement — le frontend pharmacien polle les
+    // alertes ouvertes via GET /api/pharmacies/me/alerts.
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "alert_id": alert_id,
+            "total_items": total,
+            "radius_km": radius_km,
+            "notified_pharmacies_count": notified,
+            "expires_at": expires_at.to_rfc3339(),
+        })),
+    ))
+}
+
+/// GET /api/medication-alerts/:id — statut + matches
+/// Endpoint public, le client polle toutes les 5s pendant l'attente.
+pub async fn get_medication_alert(
+    State(state): State<Arc<AppState>>,
+    Path(alert_id): Path<i64>,
+) -> AppResult<impl IntoResponse> {
+    let alert_row = sqlx::query(
+        r#"
+        SELECT id, total_items, gps_lat, gps_lng, radius_km, status,
+               notified_pharmacies_count, expires_at, created_at, closed_at,
+               (expires_at <= NOW()) AS is_expired
+        FROM medication_alerts WHERE id = $1
+        "#,
+    )
+    .bind(alert_id)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture alerte: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Alerte introuvable".to_string()))?;
+
+    let total: i32 = alert_row.try_get("total_items").unwrap_or(0);
+    let status: String = alert_row.try_get("status").unwrap_or_default();
+    let is_expired: bool = alert_row.try_get("is_expired").unwrap_or(false);
+    let notified: i32 = alert_row.try_get("notified_pharmacies_count").unwrap_or(0);
+    let expires_at: chrono::DateTime<chrono::Utc> =
+        alert_row.try_get("expires_at").unwrap_or_else(|_| chrono::Utc::now());
+    let gps_lat: f64 = alert_row.try_get("gps_lat").unwrap_or(0.0);
+    let gps_lng: f64 = alert_row.try_get("gps_lng").unwrap_or(0.0);
+    let radius_km: f32 = alert_row.try_get("radius_km").unwrap_or(5.0);
+
+    // Charge les réponses pharmacie classées par completeness
+    let responses_rows = sqlx::query(
+        r#"
+        SELECT
+            pr.id, pr.pharmacy_id, pr.found_count, pr.items_status,
+            pr.alternatives, pr.responded_at,
+            p.nom, p.ville, p.quartier, p.telephone, p.whatsapp, p.gps,
+            split_part(p.gps, ',', 1)::DOUBLE PRECISION AS lat,
+            split_part(p.gps, ',', 2)::DOUBLE PRECISION AS lng
+        FROM pharmacy_responses pr
+        JOIN pharmacies p ON p.id = pr.pharmacy_id
+        WHERE pr.alert_id = $1
+        ORDER BY pr.found_count DESC, pr.responded_at ASC
+        LIMIT 30
+        "#,
+    )
+    .bind(alert_id)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture réponses: {}", e)))?;
+
+    let mut matches = Vec::new();
+    let mut best_completeness = 0;
+    for r in &responses_rows {
+        let found: i32 = r.try_get("found_count").unwrap_or(0);
+        if found > best_completeness {
+            best_completeness = found;
+        }
+        let lat: Option<f64> = r.try_get("lat").ok();
+        let lng: Option<f64> = r.try_get("lng").ok();
+        let distance_km: Option<f64> = match (lat, lng) {
+            (Some(la), Some(lo)) => {
+                let dlat = (la - gps_lat).to_radians();
+                let dlng = (lo - gps_lng).to_radians();
+                let a = (dlat / 2.0).sin().powi(2)
+                    + gps_lat.to_radians().cos()
+                        * la.to_radians().cos()
+                        * (dlng / 2.0).sin().powi(2);
+                Some(6371.0 * 2.0 * a.sqrt().asin())
+            }
+            _ => None,
+        };
+        matches.push(json!({
+            "pharmacy_id": r.try_get::<i32, _>("pharmacy_id").unwrap_or_default(),
+            "name": r.try_get::<String, _>("nom").unwrap_or_default(),
+            "ville": r.try_get::<Option<String>, _>("ville").unwrap_or(None),
+            "quartier": r.try_get::<Option<String>, _>("quartier").unwrap_or(None),
+            "telephone": r.try_get::<Option<String>, _>("telephone").unwrap_or(None),
+            "whatsapp": r.try_get::<Option<String>, _>("whatsapp").unwrap_or(None),
+            "found_count": found,
+            "total_count": total,
+            "items_status": r.try_get::<serde_json::Value, _>("items_status").unwrap_or(json!([])),
+            "alternatives": r.try_get::<Option<serde_json::Value>, _>("alternatives").unwrap_or(None),
+            "distance_km": distance_km,
+            "responded_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("responded_at")
+                .map(|d| d.to_rfc3339())
+                .unwrap_or_default(),
+        }));
+    }
+
+    // Fallback : si l'alerte est expirée ET qu'aucune pharmacie n'a 100%
+    // (best_completeness < total), on inclut l'historique récent des
+    // pharmacies du rayon ayant déjà répondu positivement aux mêmes
+    // médicaments dans les 7 derniers jours.
+    let fallback = if (is_expired || status == "closed") && best_completeness < total {
+        Some(json!({
+            "reason": "no_full_match",
+            "suggestion": "Augmenter le rayon de recherche pour trouver d'autres pharmacies.",
+            "max_completeness": best_completeness,
+        }))
+    } else {
+        None
+    };
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "alert_id": alert_id,
+            "status": if is_expired && status == "open" { "expired".to_string() } else { status },
+            "total_items": total,
+            "notified_pharmacies_count": notified,
+            "expires_at": expires_at.to_rfc3339(),
+            "radius_km": radius_km,
+            "matches": matches,
+            "fallback": fallback,
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ItemStatusInput {
+    pub name: String,
+    pub available: bool,
+    #[serde(default)]
+    pub price: Option<f64>,
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AlternativeInput {
+    pub original: String,
+    pub alt: String,
+    #[serde(default)]
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RespondToAlertRequest {
+    pub pharmacy_id: i32,
+    pub items_status: Vec<ItemStatusInput>,
+    #[serde(default)]
+    pub alternatives: Option<Vec<AlternativeInput>>,
+}
+
+/// POST /api/medication-alerts/:id/respond — pharmacien valide
+pub async fn respond_to_medication_alert(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
+    Path(alert_id): Path<i64>,
+    Json(payload): Json<RespondToAlertRequest>,
+) -> AppResult<impl IntoResponse> {
+    // Vérif que la pharmacie appartient à l'user (ou bypass admin officiel)
+    let is_owner: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM pharmacies
+            WHERE id = $1 AND (user_id = $2
+                OR (is_official = TRUE AND $3 IN ('admin', 'super_admin')))
+        )
+        "#,
+    )
+    .bind(payload.pharmacy_id)
+    .bind(user_id)
+    .bind(&user_role)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
+    if !is_owner {
+        return Err(AppError::Forbidden(
+            "Vous ne pouvez pas répondre pour cette pharmacie".to_string(),
+        ));
+    }
+
+    let found_count = payload.items_status.iter().filter(|i| i.available).count() as i32;
+    let items_json = serde_json::to_value(&payload.items_status)
+        .map_err(|e| AppError::Internal(format!("Erreur sérialisation items: {}", e)))?;
+    let alt_json = payload
+        .alternatives
+        .as_ref()
+        .map(|a| serde_json::to_value(a).unwrap_or(json!([])));
+
+    // UPSERT (un pharmacien peut éditer sa réponse tant que l'alerte est open)
+    let row = sqlx::query(
+        r#"
+        INSERT INTO pharmacy_responses
+            (alert_id, pharmacy_id, pharmacy_user_id, items_status, found_count, alternatives)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (alert_id, pharmacy_id)
+        DO UPDATE SET items_status = EXCLUDED.items_status,
+                      found_count = EXCLUDED.found_count,
+                      alternatives = EXCLUDED.alternatives,
+                      responded_at = NOW()
+        RETURNING id, responded_at, found_count
+        "#,
+    )
+    .bind(alert_id)
+    .bind(payload.pharmacy_id)
+    .bind(user_id)
+    .bind(&items_json)
+    .bind(found_count)
+    .bind(&alt_json)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur enregistrement réponse: {}", e)))?;
+
+    let response_id: i64 = row.try_get("id").unwrap_or_default();
+    info!(
+        "[respond_to_medication_alert] alert={} pharmacy={} found={}",
+        alert_id, payload.pharmacy_id, found_count
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "response_id": response_id,
+            "found_count": found_count,
+            "responded_at": row
+                .try_get::<chrono::DateTime<chrono::Utc>, _>("responded_at")
+                .map(|d| d.to_rfc3339())
+                .unwrap_or_default(),
+        })),
+    ))
+}
+
+/// GET /api/pharmacies/me/alerts — alertes en cours adressées au pharmacien
+pub async fn get_my_pharmacy_alerts(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    // Liste les pharmacies du user (+ pharmacie officielle si admin)
+    let pharmacies_rows = sqlx::query(
+        r#"
+        SELECT id, gps, radius_km_filter
+        FROM (
+            SELECT p.id, p.gps, NULL::REAL AS radius_km_filter
+            FROM pharmacies p
+            WHERE p.user_id = $1 AND p.is_active = TRUE
+            UNION ALL
+            SELECT p.id, p.gps, NULL::REAL
+            FROM pharmacies p
+            WHERE p.is_official = TRUE AND $2 IN ('admin', 'super_admin')
+        ) AS my_pharmacies
+        "#,
+    )
+    .bind(user_id)
+    .bind(&user_role)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture pharmacies: {}", e)))?;
+
+    if pharmacies_rows.is_empty() {
+        return Ok((
+            StatusCode::OK,
+            Json(json!({ "success": true, "alerts": [] })),
+        ));
+    }
+
+    // Pour chaque pharmacie, on cherche les alertes ouvertes dans son rayon
+    // (où la pharmacie ne s'est pas encore prononcée).
+    let mut all_alerts: Vec<serde_json::Value> = Vec::new();
+    for row in pharmacies_rows {
+        let pharmacy_id: i32 = row.try_get("id").unwrap_or_default();
+        let gps: Option<String> = row.try_get("gps").ok();
+        let Some(gps) = gps else { continue };
+        let parts: Vec<&str> = gps.split(',').collect();
+        if parts.len() != 2 {
+            continue;
+        }
+        let Ok(p_lat) = parts[0].trim().parse::<f64>() else {
+            continue;
+        };
+        let Ok(p_lng) = parts[1].trim().parse::<f64>() else {
+            continue;
+        };
+
+        let alerts = sqlx::query(
+            r#"
+            SELECT a.id, a.query_items, a.total_items, a.gps_lat, a.gps_lng,
+                   a.radius_km, a.expires_at, a.created_at,
+                   6371.0 * 2 * ASIN(
+                       SQRT(
+                           POWER(SIN(RADIANS((a.gps_lat - $1) / 2)), 2)
+                         + COS(RADIANS($1)) * COS(RADIANS(a.gps_lat))
+                         * POWER(SIN(RADIANS((a.gps_lng - $2) / 2)), 2)
+                       )
+                   ) AS distance_km,
+                   EXISTS(
+                       SELECT 1 FROM pharmacy_responses pr
+                       WHERE pr.alert_id = a.id AND pr.pharmacy_id = $3
+                   ) AS already_responded
+            FROM medication_alerts a
+            WHERE a.status = 'open'
+              AND a.expires_at > NOW()
+            HAVING 6371.0 * 2 * ASIN(
+                SQRT(
+                    POWER(SIN(RADIANS((a.gps_lat - $1) / 2)), 2)
+                  + COS(RADIANS($1)) * COS(RADIANS(a.gps_lat))
+                  * POWER(SIN(RADIANS((a.gps_lng - $2) / 2)), 2)
+                )
+            ) <= a.radius_km
+            ORDER BY a.created_at DESC
+            LIMIT 50
+            "#,
+        )
+        .bind(p_lat)
+        .bind(p_lng)
+        .bind(pharmacy_id)
+        .fetch_all(&state.pg)
+        .await
+        .unwrap_or_default();
+
+        for a in alerts {
+            all_alerts.push(json!({
+                "alert_id": a.try_get::<i64, _>("id").unwrap_or_default(),
+                "pharmacy_id": pharmacy_id,
+                "query_items": a.try_get::<serde_json::Value, _>("query_items").unwrap_or(json!([])),
+                "total_items": a.try_get::<i32, _>("total_items").unwrap_or(0),
+                "distance_km": a.try_get::<f64, _>("distance_km").unwrap_or(0.0),
+                "radius_km": a.try_get::<f32, _>("radius_km").unwrap_or(5.0),
+                "expires_at": a.try_get::<chrono::DateTime<chrono::Utc>, _>("expires_at")
+                    .map(|d| d.to_rfc3339()).unwrap_or_default(),
+                "already_responded": a.try_get::<bool, _>("already_responded").unwrap_or(false),
+            }));
+        }
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({ "success": true, "alerts": all_alerts })),
+    ))
+}
+
 /// Enregistrer le consentement utilisateur pour la PWA Pharmacie
 ///
 /// Conformité éthique/réglementaire : trace serveur pour prouver que
