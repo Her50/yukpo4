@@ -6786,6 +6786,122 @@ pub struct CreateMedicationAlertRequest {
     pub ttl_minutes: Option<i32>,
 }
 
+/// Worker async : pour chaque pharmacie du rayon, envoie une notif push
+/// au user_id propriétaire + un message WhatsApp si pharmacies.whatsapp est
+/// renseigné. Silencieux : les erreurs sont loggées mais ne lèvent pas.
+async fn broadcast_alert_to_pharmacies(
+    pool: &sqlx::PgPool,
+    alert_id: i64,
+    lat: f64,
+    lng: f64,
+    radius_km: f64,
+    med_names: Vec<String>,
+) {
+    use crate::services::push_notification_service;
+    use crate::services::whatsapp_alert_service::send_whatsapp_outbound;
+
+    // Récupère les pharmacies du rayon avec user_id propriétaire + whatsapp.
+    let rows = sqlx::query(
+        r#"
+        WITH parsed AS (
+            SELECT
+                p.id, p.user_id, p.nom, p.whatsapp, p.telephone,
+                split_part(p.gps, ',', 1)::DOUBLE PRECISION AS lat,
+                split_part(p.gps, ',', 2)::DOUBLE PRECISION AS lng
+            FROM pharmacies p
+            WHERE p.is_active = TRUE
+              AND p.gps IS NOT NULL
+              AND p.gps ~ '^-?[0-9.]+,-?[0-9.]+$'
+        )
+        SELECT
+            id, user_id, nom, whatsapp, telephone,
+            6371.0 * 2 * ASIN(
+                SQRT(
+                    POWER(SIN(RADIANS((lat - $1) / 2)), 2)
+                  + COS(RADIANS($1)) * COS(RADIANS(lat))
+                  * POWER(SIN(RADIANS((lng - $2) / 2)), 2)
+                )
+            ) AS distance_km
+        FROM parsed
+        WHERE 6371.0 * 2 * ASIN(
+            SQRT(
+                POWER(SIN(RADIANS((lat - $1) / 2)), 2)
+              + COS(RADIANS($1)) * COS(RADIANS(lat))
+              * POWER(SIN(RADIANS((lng - $2) / 2)), 2)
+            )
+        ) <= $3
+        LIMIT 100
+        "#,
+    )
+    .bind(lat)
+    .bind(lng)
+    .bind(radius_km)
+    .fetch_all(pool)
+    .await;
+
+    let rows = match rows {
+        Ok(r) => r,
+        Err(e) => {
+            log::error!("[broadcast_alert] erreur lecture pharmacies : {}", e);
+            return;
+        }
+    };
+
+    let med_summary = if med_names.len() <= 3 {
+        med_names.join(", ")
+    } else {
+        format!(
+            "{} (+ {} autres)",
+            med_names[..3].join(", "),
+            med_names.len() - 3
+        )
+    };
+    let push_title = "🔔 Demande de médicaments Yukpo".to_string();
+    let push_body = format!("Patient à proximité cherche : {}", med_summary);
+    let push_data = serde_json::json!({
+        "type": "medication_alert",
+        "alert_id": alert_id,
+        "deep_link": "/dashboard/alertes",
+    });
+
+    for row in rows {
+        let user_id: i32 = row.try_get("user_id").unwrap_or(0);
+        if user_id <= 0 {
+            continue;
+        }
+        let whatsapp: Option<String> = row.try_get("whatsapp").ok().flatten();
+        let distance_km: f64 = row.try_get("distance_km").unwrap_or(0.0);
+
+        // Push web (silent fail)
+        let _ = push_notification_service::send_push_notification(
+            pool,
+            user_id,
+            push_title.clone(),
+            push_body.clone(),
+            Some(push_data.clone()),
+            Some("default".to_string()),
+        )
+        .await;
+
+        // WhatsApp si numéro renseigné. send_whatsapp_outbound retourne bool,
+        // pas d'erreur à propager.
+        if let Some(wa) = whatsapp.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+            let msg = format!(
+                "🔔 *Yukpo Pharmacie*\n\nUn patient à environ {:.1} km cherche :\n• {}\n\nVous avez 5 minutes pour répondre directement depuis votre dashboard :\nhttps://pharmacie.yukpomnang.com/dashboard/alertes",
+                distance_km,
+                med_names.join("\n• "),
+            );
+            let _ = send_whatsapp_outbound(wa, &msg).await;
+        }
+    }
+
+    log::info!(
+        "[broadcast_alert] alert_id={} : broadcast terminé pour {} médicament(s)",
+        alert_id,
+        med_names.len()
+    );
+}
+
 /// Crée une alerte de demande de disponibilité et broadcast aux pharmacies
 /// dans le rayon. Endpoint public (utilisateur authentifié ou anonyme).
 pub async fn create_medication_alert(
@@ -6893,9 +7009,32 @@ pub async fn create_medication_alert(
         alert_id, user_id, total, radius_km, notified
     );
 
-    // TODO: Worker async pour push web + WhatsApp aux pharmaciens dans le rayon.
-    // Pour ce MVP, on logge seulement — le frontend pharmacien polle les
-    // alertes ouvertes via GET /api/pharmacies/me/alerts.
+    // Worker async (non-bloquant) : push web + WhatsApp aux pharmaciens du rayon.
+    // On spawn une tâche Tokio pour ne pas retarder la réponse HTTP : le client
+    // navigue immédiatement vers /alerts/:id (page progression) pendant que le
+    // broadcast se fait en parallèle. Le polling 10s du dashboard pharmacien
+    // garantit que même si push/WhatsApp échouent, le pharmacien voit l'alerte
+    // sous 10s.
+    if notified > 0 {
+        let pool = state.pg.clone();
+        let med_names: Vec<String> = payload.query_items.iter().map(|q| q.name.clone()).collect();
+        let lat = payload.gps_lat;
+        let lng = payload.gps_lng;
+        let radius_for_task = radius_km as f64;
+        let alert_id_for_task = alert_id;
+
+        tokio::spawn(async move {
+            broadcast_alert_to_pharmacies(
+                &pool,
+                alert_id_for_task,
+                lat,
+                lng,
+                radius_for_task,
+                med_names,
+            )
+            .await;
+        });
+    }
 
     Ok((
         StatusCode::CREATED,
