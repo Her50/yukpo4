@@ -645,6 +645,244 @@ pub async fn distribute_yukposhop_produits(
         .into_response()
 }
 
+// ════════════════════════════════════════════════════════════════════════
+// Piste 5 — Inventory decrement (YukpoShop -> Rust)
+// ════════════════════════════════════════════════════════════════════════
+//
+// Quand une commande YukpoShop est passee, le stock local est decremente
+// et un evenement est pousse ici pour maintenir l'inventaire Rust marketplace
+// coherent. Idempotency via event_id UUID (table yukposhop_inventory_events).
+
+#[derive(Debug, Deserialize)]
+pub struct InventoryDecrementRequest {
+    pub event_id: String,    // uuid v4 cote YukpoShop
+    pub source: String,      // "yukposhop"
+    pub external_id: String, // shop_products.id
+    pub delta: i32,          // < 0 = decrement
+    #[serde(default)]
+    pub raison: Option<String>,
+    #[serde(default)]
+    pub order_numero: Option<String>,
+    #[serde(default)]
+    pub ts: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct InventoryDecrementResponse {
+    pub ok: bool,
+    pub event_id: String,
+    pub rust_service_id: Option<i32>,
+    pub new_stock: Option<i32>,
+    pub idempotent_skip: bool,
+}
+
+pub async fn inventory_decrement_from_yukposhop(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> impl IntoResponse {
+    let secret = std::env::var("YUKPOSHOP_BRIDGE_HMAC_KEY").unwrap_or_default();
+    if secret.is_empty() {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({"ok": false, "error": "bridge non configuré"})),
+        )
+            .into_response();
+    }
+    if let Err(e) = verify_hmac(&body, &headers, &secret) {
+        warn!("[yukposhop bridge inventory] HMAC reject: {e}");
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"ok": false, "error": e})),
+        )
+            .into_response();
+    }
+
+    let req: InventoryDecrementRequest = match serde_json::from_slice(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"ok": false, "error": format!("invalid json: {e}")})),
+            )
+                .into_response()
+        }
+    };
+    if req.source != SOURCE_APP {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"ok": false, "error": "source mismatch"})),
+        )
+            .into_response();
+    }
+
+    // Idempotency : si event_id déjà processé, on retourne le résultat précédent
+    use sqlx::Row;
+    let event_uuid = match uuid::Uuid::parse_str(&req.event_id) {
+        Ok(u) => u,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"ok": false, "error": "event_id pas un UUID v4"})),
+            )
+                .into_response()
+        }
+    };
+
+    let already = sqlx::query(
+        "SELECT rust_service_id, new_stock_after FROM yukposhop_inventory_events \
+         WHERE event_id = $1 LIMIT 1",
+    )
+    .bind(event_uuid)
+    .fetch_optional(&state.pg)
+    .await
+    .ok()
+    .flatten();
+    if let Some(row) = already {
+        let rust_service_id: Option<i32> = row.try_get("rust_service_id").ok();
+        let new_stock: Option<i32> = row.try_get("new_stock_after").ok();
+        return (
+            StatusCode::OK,
+            Json(InventoryDecrementResponse {
+                ok: true,
+                event_id: req.event_id,
+                rust_service_id,
+                new_stock,
+                idempotent_skip: true,
+            }),
+        )
+            .into_response();
+    }
+
+    // Résoudre external_id -> rust_service_id via la table Piste 1
+    let link = sqlx::query(
+        "SELECT rust_service_id FROM external_product_links \
+         WHERE source_app = 'yukposhop' AND external_id = $1 LIMIT 1",
+    )
+    .bind(&req.external_id)
+    .fetch_optional(&state.pg)
+    .await;
+    let rust_service_id: i32 = match link {
+        Ok(Some(r)) => r.get("rust_service_id"),
+        Ok(None) => {
+            // On enregistre l'event quand même pour audit, mais sans impact
+            let payload = serde_json::to_value(&req).unwrap_or(json!({}));
+            let _ = sqlx::query(
+                "INSERT INTO yukposhop_inventory_events \
+                 (event_id, source_app, external_id, rust_service_id, delta, \
+                  raison, order_numero, new_stock_after, payload_jsonb) \
+                 VALUES ($1, 'yukposhop', $2, NULL, $3, $4, $5, NULL, $6) \
+                 ON CONFLICT (event_id) DO NOTHING",
+            )
+            .bind(event_uuid)
+            .bind(&req.external_id)
+            .bind(req.delta)
+            .bind(&req.raison)
+            .bind(&req.order_numero)
+            .bind(&payload)
+            .execute(&state.pg)
+            .await;
+            return (
+                StatusCode::OK,
+                Json(InventoryDecrementResponse {
+                    ok: false,
+                    event_id: req.event_id,
+                    rust_service_id: None,
+                    new_stock: None,
+                    idempotent_skip: false,
+                }),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            warn!("[yukposhop bridge inventory] lookup link échec: {e}");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"ok": false, "error": format!("lookup: {e}")})),
+            )
+                .into_response();
+        }
+    };
+
+    // Lit le stock actuel depuis services.data->>'stock', calcule new_stock,
+    // jamais < 0. Single UPDATE atomique avec COALESCE pour défaut 0.
+    let new_stock_row = sqlx::query(
+        "UPDATE services \
+         SET data = jsonb_set( \
+                       data, \
+                       '{stock}', \
+                       to_jsonb(GREATEST(0, COALESCE((data->>'stock')::int, 0) + $2)) \
+                    ), \
+             updated_at = NOW() \
+         WHERE id = $1 \
+         RETURNING (data->>'stock')::int AS new_stock",
+    )
+    .bind(rust_service_id)
+    .bind(req.delta)
+    .fetch_optional(&state.pg)
+    .await;
+
+    let new_stock: Option<i32> = match new_stock_row {
+        Ok(Some(r)) => r.try_get::<i32, _>("new_stock").ok(),
+        _ => None,
+    };
+
+    // Enregistre l'event (idempotency garantie par UNIQUE event_id)
+    let payload = serde_json::to_value(&req).unwrap_or(json!({}));
+    let _ = sqlx::query(
+        "INSERT INTO yukposhop_inventory_events \
+         (event_id, source_app, external_id, rust_service_id, delta, \
+          raison, order_numero, new_stock_after, payload_jsonb) \
+         VALUES ($1, 'yukposhop', $2, $3, $4, $5, $6, $7, $8) \
+         ON CONFLICT (event_id) DO NOTHING",
+    )
+    .bind(event_uuid)
+    .bind(&req.external_id)
+    .bind(rust_service_id)
+    .bind(req.delta)
+    .bind(&req.raison)
+    .bind(&req.order_numero)
+    .bind(new_stock)
+    .bind(&payload)
+    .execute(&state.pg)
+    .await;
+
+    info!(
+        "[yukposhop bridge inventory] event={} svc={} delta={} new_stock={:?}",
+        req.event_id, rust_service_id, req.delta, new_stock
+    );
+
+    (
+        StatusCode::OK,
+        Json(InventoryDecrementResponse {
+            ok: true,
+            event_id: req.event_id,
+            rust_service_id: Some(rust_service_id),
+            new_stock,
+            idempotent_skip: false,
+        }),
+    )
+        .into_response()
+}
+
+// On a besoin de #[derive(Serialize)] sur InventoryDecrementRequest pour
+// pouvoir le sérialiser en JSON pour payload_jsonb. Re-impl via to_value.
+// Mais comme c'est Deserialize only, on utilise une serialisation manuelle.
+impl serde::Serialize for InventoryDecrementRequest {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let mut m = s.serialize_map(Some(7))?;
+        m.serialize_entry("event_id", &self.event_id)?;
+        m.serialize_entry("source", &self.source)?;
+        m.serialize_entry("external_id", &self.external_id)?;
+        m.serialize_entry("delta", &self.delta)?;
+        m.serialize_entry("raison", &self.raison)?;
+        m.serialize_entry("order_numero", &self.order_numero)?;
+        m.serialize_entry("ts", &self.ts)?;
+        m.end()
+    }
+}
+
 // ─── Router ─────────────────────────────────────────────────────────────
 
 pub fn integrations_yukposhop_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
@@ -663,6 +901,11 @@ pub fn integrations_yukposhop_routes(state: Arc<AppState>) -> Router<Arc<AppStat
         .route(
             "/api/v1/integrations/yukposhop/distribute",
             post(distribute_yukposhop_produits),
+        )
+        // Piste 5
+        .route(
+            "/api/v1/integrations/yukposhop/inventory/decrement",
+            post(inventory_decrement_from_yukposhop),
         )
         .with_state(state)
 }

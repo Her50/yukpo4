@@ -277,6 +277,7 @@
     "headerSubtitle": "{{name}}",
     "headerSubtitleDefault": "Espace pharmacien",
     "tab": {
+      "alerts": "Alertes",
       "orders": "Commandes",
       "products": "Produits",
       "stats": "Stats",
