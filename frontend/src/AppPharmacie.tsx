@@ -23,6 +23,7 @@ import PharmacieListPage from './pages/specialized/PharmacieListPage';
 import PharmacieDetailsPage from './pages/specialized/PharmacieDetailsPage';
 import MyPharmacyOrdersPage from './pages/specialized/MyPharmacyOrdersPage';
 import PharmacieDashboardPage from './pages/partner/PharmacieDashboardPage';
+import PharmacieConsentGate from './pages/specialized/pharmacie/PharmacieConsentGate';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
   state = { error: null };
@@ -62,6 +63,10 @@ function AppPharmacie() {
       <ToasterProvider>
         <AuthProvider>
           <Router>
+            {/* ⚠️ Consentement utilisateur obligatoire avant utilisation
+                des fonctions IA (posologie, interactions, alternatives) —
+                voir PharmacieConsentGate.tsx pour le détail réglementaire. */}
+            <PharmacieConsentGate>
             <Routes>
               {/* Auth */}
               <Route path="/login" element={<LoginPage />} />
@@ -99,6 +104,7 @@ function AppPharmacie() {
 
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </PharmacieConsentGate>
           </Router>
           <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
         </AuthProvider>

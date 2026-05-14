@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   Camera,
   ChevronRight,
   FileText,
@@ -24,6 +25,7 @@ import LanguageSwitcherBourse from '@/components/LanguageSwitcherBourse';
 import { useToast } from '@/hooks/use-toast';
 import { useGpsWithFallback } from '@/hooks/useGpsWithFallback';
 import { apiGet, apiPost } from '@/services/apiService';
+import MedicationDetailSheet from './pharmacie/MedicationDetailSheet';
 
 interface Medication {
   id: number;
@@ -39,6 +41,26 @@ interface Medication {
   pharmacy_quartier?: string;
   pharmacy_telephone?: string;
   pharmacy_service_id?: number;
+}
+
+interface InteractionsResult {
+  severity: 'none' | 'minor' | 'moderate' | 'major' | 'contraindicated' | string;
+  description: string;
+  recommendation: string;
+  alternative_suggestions: string[];
+}
+
+interface PharmacyMatch {
+  id: number;
+  nom: string;
+  ville?: string;
+  quartier?: string;
+  telephone?: string;
+  matching_score: number;
+  found_count?: number;
+  total_count?: number;
+  distance_km?: number;
+  medications_availability?: { name: string; available: boolean; price?: number }[];
 }
 
 type ScanKind = 'ordonnance' | 'boite' | 'symptom' | 'ask';
@@ -65,6 +87,16 @@ const PharmacieHomePage: React.FC = () => {
   const [aiSheetOpen, setAiSheetOpen] = useState(false);
   const [analyzingImage, setAnalyzingImage] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
+
+  // Médicament en focus (fiche détaillée : posologie + alternatives)
+  const [focusedMedication, setFocusedMedication] = useState<string | null>(null);
+
+  // Résultats des scans d'ordonnance multi-médicaments
+  const [interactions, setInteractions] = useState<InteractionsResult | null>(null);
+  const [interactionsLoading, setInteractionsLoading] = useState(false);
+  const [matchingPharmacies, setMatchingPharmacies] = useState<PharmacyMatch[] | null>(null);
+  const [matchingLoading, setMatchingLoading] = useState(false);
+  const [matchingTotal, setMatchingTotal] = useState(0);
 
   // AI chat state
   const [aiQuestion, setAiQuestion] = useState('');
@@ -164,9 +196,63 @@ const PharmacieHomePage: React.FC = () => {
     [medications, t],
   );
 
+  const runInteractionsCheck = useCallback(async (meds: string[]) => {
+    if (meds.length < 2) return;
+    setInteractionsLoading(true);
+    setInteractions(null);
+    try {
+      const res = await apiPost('/api/pharmacies/ai/interactions', { medications: meds });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (data?.success) {
+        setInteractions({
+          severity: data.severity || 'none',
+          description: data.description || '',
+          recommendation: data.recommendation || '',
+          alternative_suggestions: Array.isArray(data.alternative_suggestions)
+            ? data.alternative_suggestions
+            : [],
+        });
+      }
+    } catch {
+      // Silencieux : l'absence de bandeau d'interactions n'est pas critique
+      // pour l'utilisateur. On évite d'afficher un faux "aucune interaction".
+    } finally {
+      setInteractionsLoading(false);
+    }
+  }, []);
+
+  const runMatchingSearch = useCallback(
+    async (meds: string[]) => {
+      setMatchingLoading(true);
+      setMatchingPharmacies(null);
+      setMatchingTotal(meds.length);
+      try {
+        const res = await apiPost('/api/pharmacies/search-by-medications', {
+          medications: meds.map(name => ({ name })),
+          lat: gps?.lat,
+          lng: gps?.lng,
+          radius_km: radiusKm,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const items: PharmacyMatch[] =
+          data?.pharmacies || data?.items || data?.data?.items || data?.data?.pharmacies || [];
+        setMatchingPharmacies(Array.isArray(items) ? items : []);
+      } catch {
+        setMatchingPharmacies([]);
+      } finally {
+        setMatchingLoading(false);
+      }
+    },
+    [gps?.lat, gps?.lng, radiusKm],
+  );
+
   const handleScanFile = async (file: File, kind: 'ordonnance' | 'boite') => {
     setAnalyzingImage(true);
     setScanResult(null);
+    setInteractions(null);
+    setMatchingPharmacies(null);
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -180,26 +266,34 @@ const PharmacieHomePage: React.FC = () => {
         lng: gps?.lng,
       });
       const data = await res.json();
-      const meds: string[] = data?.medications?.map((m: any) => m.name || m.nom).filter(Boolean) || [];
-      if (data?.success && meds.length > 0) {
-        const list = meds.join(', ');
-        setScanResult(`${t('pharmacie.scan.extracted')} ${list}`);
-        // Pré-remplir une recherche sur les noms détectés (sans appeler l'IA chat
-        // si elle est down — on a déjà un résultat utile : la liste extraite).
-        setSearchQuery(meds[0]);
-        loadMedications(meds[0]);
-        // Question contextualisée pour l'IA — si elle est dispo elle complétera.
-        const q =
-          kind === 'ordonnance'
-            ? `Ordonnance : ${list}. Où puis-je trouver ces médicaments près de moi ?`
-            : `Médicament identifié : ${list}. Donnez-moi posologie, précautions et effets secondaires.`;
-        askAI(q);
-      } else {
+      const meds: string[] =
+        data?.medications?.map((m: any) => m.name || m.nom).filter(Boolean) || [];
+
+      if (!data?.success || meds.length === 0) {
         setScanResult(t('pharmacie.scan.none'));
         toast({ title: t('pharmacie.scan.none'), variant: 'destructive' });
+        return;
+      }
+
+      setScanResult(`${t('pharmacie.scan.extracted')} ${meds.join(', ')}`);
+
+      if (kind === 'boite' || meds.length === 1) {
+        // Photo de boîte ou ordonnance mono-médicament : on ouvre la fiche
+        // médicament détaillée (posologie + alternatives) via les routes IA réelles.
+        setFocusedMedication(meds[0]);
+      } else {
+        // Ordonnance multi-médicaments : on parallélise interactions + matching
+        // pharmacies. Le chat IA générique n'est plus déclenché : l'utilisateur
+        // a maintenant des données structurées et actionnables.
+        runInteractionsCheck(meds);
+        runMatchingSearch(meds);
       }
     } catch (e: any) {
-      toast({ title: t('pharmacie.errors.scanFailed'), description: e?.message, variant: 'destructive' });
+      toast({
+        title: t('pharmacie.errors.scanFailed'),
+        description: e?.message,
+        variant: 'destructive',
+      });
       setScanResult(t('pharmacie.errors.scanFailed'));
     } finally {
       setAnalyzingImage(false);
@@ -246,6 +340,16 @@ const PharmacieHomePage: React.FC = () => {
             </div>
           </div>
           <LanguageSwitcherBourse variant="minimal" tone="white" />
+        </div>
+      </div>
+
+      {/* === Disclaimer permanent sticky — visible sur tous les écrans === */}
+      <div className="max-w-2xl mx-auto px-5 pb-3">
+        <div className="bg-amber-50/95 backdrop-blur-sm border border-amber-200 rounded-xl px-3 py-2 flex items-center gap-2">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+          <p className="text-[11px] text-amber-900 font-medium leading-tight">
+            {t('pharmacie.disclaimer.permanent')}
+          </p>
         </div>
       </div>
 
@@ -349,12 +453,112 @@ const PharmacieHomePage: React.FC = () => {
               <Pill className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600" />
               <div className="flex-1 min-w-0">{scanResult}</div>
               <button
-                onClick={() => setScanResult(null)}
+                onClick={() => {
+                  setScanResult(null);
+                  setInteractions(null);
+                  setMatchingPharmacies(null);
+                }}
                 className="text-emerald-600 active:text-emerald-800"
                 aria-label="close"
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+          )}
+
+          {/* === Bandeau interactions médicamenteuses (post-scan ordonnance) === */}
+          {(interactionsLoading || interactions) && (
+            <div className="mx-4 mb-4">
+              <InteractionsBanner
+                loading={interactionsLoading}
+                result={interactions}
+                onRetry={() => {
+                  /* on garde la même liste de médicaments si on a déjà scanné */
+                }}
+              />
+            </div>
+          )}
+
+          {/* === Liste des pharmacies matching (post-scan ordonnance multi-méd) === */}
+          {(matchingLoading || matchingPharmacies !== null) && (
+            <div className="px-4 mb-5">
+              <h2 className="font-semibold text-gray-800 text-sm mb-3 inline-flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                {t('pharmacie.matching.title')}
+              </h2>
+              {matchingLoading ? (
+                <div className="flex items-center gap-2 text-sm text-blue-600 px-1">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t('pharmacie.matching.loading')}
+                </div>
+              ) : matchingPharmacies && matchingPharmacies.length === 0 ? (
+                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                  {t('pharmacie.matching.empty')}
+                  <button
+                    onClick={() => setRadiusKm(r => Math.min(50, r + 15))}
+                    className="block mt-2 text-xs font-semibold text-blue-600"
+                  >
+                    {t('pharmacie.matching.widen')}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {matchingPharmacies?.map((ph, i) => {
+                    const found = ph.found_count ?? ph.medications_availability?.filter(a => a.available).length ?? 0;
+                    const total = ph.total_count ?? matchingTotal;
+                    const isFull = total > 0 && found === total;
+                    return (
+                      <div
+                        key={ph.id || i}
+                        className={`rounded-2xl border px-4 py-3 cursor-pointer active:bg-gray-50 ${
+                          isFull ? 'border-emerald-300 bg-emerald-50/50' : 'border-gray-100 bg-white'
+                        }`}
+                        onClick={() => ph.id && navigate(`/${ph.id}`)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 text-sm leading-tight truncate">
+                              {ph.nom}
+                            </p>
+                            {(ph.quartier || ph.ville) && (
+                              <p className="text-xs text-gray-500 mt-0.5 truncate">
+                                {[ph.quartier, ph.ville].filter(Boolean).join(', ')}
+                              </p>
+                            )}
+                            <p
+                              className={`text-xs font-semibold mt-1 inline-flex items-center gap-1 ${
+                                isFull ? 'text-emerald-700' : 'text-blue-600'
+                              }`}
+                            >
+                              <Pill className="w-3 h-3" />
+                              {isFull
+                                ? t('pharmacie.matching.scoreFull')
+                                : t('pharmacie.matching.score', { found, total })}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            {ph.distance_km !== undefined && (
+                              <p className="text-xs text-gray-400">
+                                {ph.distance_km.toFixed(1)} {t('pharmacie.card.km')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {ph.telephone && (
+                          <a
+                            href={`tel:${ph.telephone}`}
+                            onClick={e => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 mt-2 text-xs text-emerald-600 active:text-emerald-800"
+                          >
+                            <Phone className="w-3 h-3" />
+                            {ph.telephone}
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -610,13 +814,25 @@ const PharmacieHomePage: React.FC = () => {
       )}
 
       {/* Loader plein écran pendant l'analyse de l'image (en plus du sheet IA) */}
-      {analyzingImage && !aiSheetOpen && (
+      {analyzingImage && !aiSheetOpen && !focusedMedication && (
         <div className="fixed inset-0 z-40 bg-black/40 flex items-end justify-center pb-32 pointer-events-none">
           <div className="bg-white rounded-full px-4 py-2 shadow-lg inline-flex items-center gap-2 text-sm text-blue-700">
             <Loader2 className="w-4 h-4 animate-spin" />
             {t('pharmacie.scan.analyzing')}
           </div>
         </div>
+      )}
+
+      {/* === Fiche médicament (posologie + alternatives + warnings) === */}
+      {focusedMedication && (
+        <MedicationDetailSheet
+          medicationName={focusedMedication}
+          onClose={() => setFocusedMedication(null)}
+          onFindPharmacies={med => {
+            setSearchQuery(med);
+            loadMedications(med);
+          }}
+        />
       )}
     </div>
   );
@@ -652,6 +868,67 @@ interface ScanOptionProps {
   onClick: () => void;
   badge?: React.ReactNode;
 }
+
+// Mapping severity IA → couleurs + clé i18n
+const SEVERITY_STYLES: Record<string, { bg: string; border: string; text: string; iconColor: string; key: string }> = {
+  none: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-900', iconColor: 'text-emerald-600', key: 'bannerTitleNone' },
+  minor: { bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-900', iconColor: 'text-yellow-600', key: 'bannerTitleMinor' },
+  moderate: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-900', iconColor: 'text-orange-600', key: 'bannerTitleModerate' },
+  major: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-900', iconColor: 'text-red-600', key: 'bannerTitleMajor' },
+  contraindicated: { bg: 'bg-red-100', border: 'border-red-300', text: 'text-red-900', iconColor: 'text-red-700', key: 'bannerTitleContraindicated' },
+};
+
+const InteractionsBanner: React.FC<{
+  loading: boolean;
+  result: InteractionsResult | null;
+  onRetry: () => void;
+}> = ({ loading, result }) => {
+  const { t } = useTranslation();
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-blue-600 px-3 py-2.5 rounded-xl border border-blue-100 bg-blue-50">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        {t('pharmacie.interactions.checking')}
+      </div>
+    );
+  }
+  if (!result) return null;
+  const styles = SEVERITY_STYLES[result.severity] || SEVERITY_STYLES.none;
+  return (
+    <div className={`rounded-2xl border-2 ${styles.border} ${styles.bg} px-4 py-3`}>
+      <div className="flex items-start gap-3">
+        <AlertTriangle className={`w-5 h-5 ${styles.iconColor} shrink-0 mt-0.5`} />
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-bold ${styles.text}`}>
+            {t(`pharmacie.interactions.${styles.key}`)}
+          </p>
+          {result.description && (
+            <p className={`text-xs ${styles.text} mt-1 leading-snug opacity-90`}>{result.description}</p>
+          )}
+          {result.recommendation && (
+            <div className={`mt-2 text-xs ${styles.text}`}>
+              <span className="font-semibold">{t('pharmacie.interactions.recommendation')} : </span>
+              {result.recommendation}
+            </div>
+          )}
+          {result.alternative_suggestions.length > 0 && (
+            <div className={`mt-2 text-xs ${styles.text}`}>
+              <p className="font-semibold mb-0.5">{t('pharmacie.interactions.alternativesLabel')}</p>
+              <ul className="list-disc list-inside leading-snug opacity-90">
+                {result.alternative_suggestions.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className={`text-[11px] ${styles.text} mt-2 opacity-75 italic`}>
+            {t('pharmacie.disclaimer.long')}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ScanOption: React.FC<ScanOptionProps> = ({ icon, iconBg, title, hint, onClick, badge }) => (
   <button

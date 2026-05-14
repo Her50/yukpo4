@@ -7,6 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import ClasseAutocomplete, { type ClasseSelection } from '../../components/livres-scolaires/ClasseAutocomplete';
 import EcolePickerPopover from '../../components/livres-scolaires/EcolePickerPopover';
 import GammeSelector, { Gamme, priceForGamme } from '../../components/livres-scolaires/GammeSelector';
+import ManualAddInline, { type ManualAddItem } from '../../components/livres-scolaires/ManualAddInline';
 import {
   getSystemeById, getSystemesForPays, type PaysCode,
 } from '../../data/schoolSystems';
@@ -365,16 +366,33 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
     .reduce((sum, it) => sum + effectivePrice(it) * (it.quantite ?? 1), 0),
     [items]);
 
-  /** Items regroupés par rubrique : livres → cahiers → fournitures. */
+  // ✅ 2026-05-14 : Champ de recherche/filtre sur les items chargés.
+  // Insensible casse+accents. Filtre titre/matière/éditeur/auteur.
+  const [filterQuery, setFilterQuery] = useState('');
+  const norm = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+  /** Items regroupés par rubrique : livres → cahiers → fournitures.
+   *  Filtré par filterQuery. */
   const groupedItems = useMemo(() => {
+    const q = norm(filterQuery.trim());
     const buckets: Record<CategorieAffichage, { item: ProgrammeItem; idx: number }[]> = {
       livres: [], cahiers: [], fournitures: [],
     };
-    items.forEach((item, idx) => buckets[categorieDe(item.type)].push({ item, idx }));
+    items.forEach((item, idx) => {
+      // Filtre : si query active, l'item doit matcher dans un des champs textuels
+      if (q) {
+        const hit = [item.titre, item.matiere, item.editeur, item.auteur]
+          .filter(Boolean)
+          .some(f => norm(String(f)).includes(q));
+        if (!hit) return;
+      }
+      buckets[categorieDe(item.type)].push({ item, idx });
+    });
     return (['livres', 'cahiers', 'fournitures'] as CategorieAffichage[])
       .filter(cat => buckets[cat].length > 0)
       .map(cat => ({ cat, entries: buckets[cat] }));
-  }, [items]);
+  }, [items, filterQuery]);
 
   const doAddToCart = (enfantId: string) => {
     const selected = items.filter(it => it.selected);
@@ -662,6 +680,35 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
           </div>
         )}
 
+        {/* ✅ 2026-05-14 : Champ de recherche/filtre sur les items affichés.
+            Insensible casse+accents, filtre titre/matière/éditeur/auteur. */}
+        {loaded && items.length > 0 && (
+          <div className="mb-3 relative">
+            <input
+              type="search"
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              placeholder="Rechercher (titre, matière, éditeur)…"
+              className="w-full px-3 py-2 pl-9 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-amber-400 focus:bg-white"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+            {filterQuery && (
+              <button
+                onClick={() => setFilterQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 px-1"
+                aria-label="Effacer la recherche"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            {filterQuery && (
+              <p className="mt-1 text-[11px] text-gray-500">
+                {groupedItems.reduce((sum, g) => sum + g.entries.length, 0)} résultat(s)
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Tableau regroupé par rubrique avec lignes compactes */}
         {loaded && items.length > 0 && (
           <div className="space-y-3">
@@ -846,6 +893,45 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
                       );
                     })}
                   </div>
+                  {/* ✅ 2026-05-14 : Bouton "+ Ajouter manuellement" en footer
+                      de chaque section (Manuels/Cahiers/Fournitures), comme
+                      dans SuggestionsModal. Recherche cross-classes via le
+                      même endpoint /api/v2/parent/articles-search. */}
+                  <ManualAddInline
+                    cat={cat}
+                    pays={pays}
+                    onPick={(picked: ManualAddItem) => {
+                      const rawType = String(picked.type_article || 'livre').toLowerCase();
+                      const itemType: TypeItem = (
+                        rawType === 'workbook' ? 'livre'
+                        : (rawType === 'livre' || rawType === 'cahier' || rawType === 'fourniture' || rawType === 'autre')
+                          ? (rawType as TypeItem)
+                          : 'fourniture'
+                      );
+                      // Évite doublons par titre normalisé.
+                      const newTitre = picked.titre.trim().toLowerCase();
+                      if (items.some(it => it.titre.trim().toLowerCase() === newTitre)) {
+                        toast({ title: 'Déjà dans la liste', description: picked.titre });
+                        return;
+                      }
+                      setItems(prev => [
+                        ...prev,
+                        {
+                          titre: picked.titre,
+                          auteur: picked.auteur ?? undefined,
+                          matiere: picked.matiere ?? undefined,
+                          editeur: picked.editeur ?? undefined,
+                          type: itemType,
+                          quantite: typeof picked.quantite_defaut === 'number' ? picked.quantite_defaut : 1,
+                          prix: typeof picked.prix_officiel === 'number' ? picked.prix_officiel : undefined,
+                          source: 'suggestion',
+                          selected: true,
+                          choix: 'neuf' as const,
+                        },
+                      ]);
+                      toast({ title: 'Article ajouté', description: picked.titre });
+                    }}
+                  />
                 </div>
               );
             })}

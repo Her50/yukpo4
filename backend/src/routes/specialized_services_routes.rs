@@ -1084,6 +1084,10 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             post(specialized_services_controller::suggest_medication_dosage),
         )
         .route(
+            "/api/pharmacies/ai/alternatives",
+            post(specialized_services_controller::suggest_medication_alternatives),
+        )
+        .route(
             "/api/pharmacies/my-orders",
             get(specialized_services_controller::get_my_pharmacy_orders),
         )

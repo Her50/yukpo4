@@ -19,6 +19,7 @@ import type { Systeme } from '../../hooks/useParentShop';
 import BookPhotoCapture, { type AnalyzedBookResult } from '../../components/livres-scolaires/BookPhotoCapture';
 import ClasseAutocomplete, { type ClasseSelection } from '../../components/livres-scolaires/ClasseAutocomplete';
 import GpsGate from '../../components/livres-scolaires/GpsGate';
+import ManualAddInline from '../../components/livres-scolaires/ManualAddInline';
 
 // ─── Types locaux ───
 type SuggestionItem = {
@@ -1400,134 +1401,6 @@ const ClassFormModal: React.FC<{
   );
 };
 
-// ─── Ajout manuel inline par section (Manuels / Cahiers / Fournitures) ───
-// Recherche cross-classes dans la base (programmes_scolaires + accessoires
-// populaires) via GET /api/v2/parent/articles-search. Pas de classe en
-// filtre — l'user peut ajouter un livre/cahier/accessoire qui n'apparaît
-// pas dans le programme de sa classe mais existe ailleurs dans la base.
-const ManualAddInline: React.FC<{
-  cat: SuggCategorie;
-  pays: PaysCode;
-  onPick: (item: SuggestionItem) => void;
-}> = ({ cat, pays, onPick }) => {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SuggestionItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const groupeForSearch: GroupeFilter = cat === 'livres' ? 'livres' : 'fournitures';
-
-  // Debounce 250ms pour éviter de spammer l'endpoint à chaque keystroke.
-  useEffect(() => {
-    if (!open) return;
-    const q = query.trim();
-    if (q.length < 2) { setResults([]); return; }
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        params.set('q', q);
-        params.set('type_groupe', groupeForSearch);
-        params.set('pays', pays);
-        const res = await apiGet(`/api/v2/parent/articles-search?${params}`);
-        const data = await res.json().catch(() => ({}));
-        if (cancelled) return;
-        setResults((data?.items || []) as SuggestionItem[]);
-      } catch {
-        if (!cancelled) setResults([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }, 250);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [open, query, groupeForSearch, pays]);
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="w-full px-3 py-2 text-[11px] font-semibold text-amber-700 hover:bg-amber-50 active:bg-amber-100 border-t border-gray-100 flex items-center justify-center gap-1.5"
-      >
-        <Plus className="w-3.5 h-3.5" />
-        {t(cat === 'livres'
-          ? 'bourse.rentree.manual_add_book'
-          : cat === 'cahiers'
-          ? 'bourse.rentree.manual_add_notebook'
-          : 'bourse.rentree.manual_add_supply')}
-      </button>
-    );
-  }
-
-  return (
-    <div className="border-t border-gray-100 p-2 bg-gray-50">
-      <div className="relative">
-        <input
-          type="search"
-          autoFocus
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t('bourse.rentree.manual_add_placeholder')}
-          className="w-full px-3 py-2 pl-9 pr-9 bg-white border border-amber-300 rounded-lg text-sm focus:outline-none focus:border-amber-500"
-        />
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 text-sm">🔍</span>
-        <button
-          onClick={() => { setOpen(false); setQuery(''); setResults([]); }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-          aria-label={t('bourse.rentree.manual_add_close')}
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-      {query.trim().length >= 2 && (
-        <div className="mt-2 max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
-          {loading && (
-            <div className="px-3 py-3 text-center text-xs text-gray-500">
-              <Loader2 className="w-4 h-4 animate-spin inline-block mr-1" />
-              {t('bourse.rentree.manual_add_loading')}
-            </div>
-          )}
-          {!loading && results.length === 0 && (
-            <div className="px-3 py-3 text-center text-xs text-gray-500">
-              {t('bourse.rentree.manual_add_no_results')}
-            </div>
-          )}
-          {!loading && results.map((r, i) => (
-            <button
-              key={`${r.titre}-${i}`}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onPick(r);
-                setQuery('');
-                setResults([]);
-                setOpen(false);
-              }}
-              className="w-full px-3 py-2 text-left hover:bg-amber-50 active:bg-amber-100"
-            >
-              <div className="font-semibold text-[13px] text-gray-900 truncate" dir="auto">{r.titre}</div>
-              <div className="text-[10px] text-gray-500 flex items-center gap-1.5 flex-wrap" dir="auto">
-                {r.matiere && <span>{r.matiere}</span>}
-                {r.matiere && r.editeur && <span className="text-gray-300">·</span>}
-                {r.editeur && <span className="text-purple-700">{r.editeur}</span>}
-                {r.prix_officiel ? (
-                  <span className="text-amber-700 font-semibold tabular-nums">
-                    {r.prix_officiel.toLocaleString('fr-FR')} {r.devise || 'XAF'}
-                  </span>
-                ) : null}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-      {query.trim().length < 2 && (
-        <p className="mt-1.5 text-[10px] text-gray-500 leading-snug">
-          {t('bourse.rentree.manual_add_hint')}
-        </p>
-      )}
-    </div>
-  );
-};
-
 // ─── Modal suggestions intelligentes ───
 // L'utilisateur peut choisir par item :
 //   - Quantité (+/−)
@@ -1890,7 +1763,22 @@ const SuggestionsModal: React.FC<{
                   <ManualAddInline
                     cat={cat}
                     pays={pays}
-                    onPick={onAddManualItem}
+                    onPick={(picked) => {
+                      // ManualAddItem (shape générique) → SuggestionItem (shape local)
+                      onAddManualItem({
+                        source: (picked.source as SuggestionItem['source']) || 'national',
+                        type_article: picked.type_article || 'livre',
+                        titre: picked.titre,
+                        auteur: picked.auteur ?? null,
+                        editeur: picked.editeur ?? null,
+                        matiere: picked.matiere ?? null,
+                        niveau: picked.niveau ?? null,
+                        prix_officiel: picked.prix_officiel ?? null,
+                        devise: picked.devise ?? null,
+                        quantite_defaut: picked.quantite_defaut,
+                        est_obligatoire: picked.est_obligatoire ?? null,
+                      });
+                    }}
                   />
                 </div>
               );

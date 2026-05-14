@@ -6388,32 +6388,59 @@ pub async fn list_partner_withdrawals(
     ))
 }
 
-/// Vérifier les interactions médicamenteuses
+/// Vérifier les interactions médicamenteuses (IA réelle via PharmacyAIService)
 #[derive(Debug, Deserialize)]
 pub struct CheckMedicationInteractionsRequest {
     pub medications: Vec<String>,
+    pub age: Option<i32>,
+    pub medical_conditions: Option<Vec<String>>,
 }
 
 pub async fn check_medication_interactions(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(request): Json<CheckMedicationInteractionsRequest>,
 ) -> AppResult<impl IntoResponse> {
+    use crate::services::pharmacy_ai_service::PharmacyAIService;
+
     info!(
-        "[check_medication_interactions] medications={:?}",
-        request.medications
+        "[check_medication_interactions] medications={:?} age={:?}",
+        request.medications, request.age
     );
+
+    if request.medications.len() < 2 {
+        // Pas d'interaction possible avec un seul médicament — on retourne
+        // explicitement severity="none" pour que le front sache afficher la fiche
+        // sans bandeau d'alerte.
+        return Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "severity": "none",
+                "description": "Au moins deux médicaments sont nécessaires pour vérifier des interactions.",
+                "recommendation": "",
+                "alternative_suggestions": []
+            })),
+        ));
+    }
+
+    let ai_service = PharmacyAIService::new(state.ia.clone());
+    let interaction = ai_service
+        .check_medication_interactions(request.medications, request.age, request.medical_conditions)
+        .await?;
 
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "interactions": [],
-            "warnings": []
+            "severity": interaction.severity,
+            "description": interaction.description,
+            "recommendation": interaction.recommendation,
+            "alternative_suggestions": interaction.alternative_suggestions,
         })),
     ))
 }
 
-/// Suggérer le dosage d'un médicament
+/// Suggérer le dosage d'un médicament (IA réelle via PharmacyAIService)
 #[derive(Debug, Deserialize)]
 pub struct SuggestMedicationDosageRequest {
     pub medication_name: String,
@@ -6423,20 +6450,87 @@ pub struct SuggestMedicationDosageRequest {
 }
 
 pub async fn suggest_medication_dosage(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Json(request): Json<SuggestMedicationDosageRequest>,
 ) -> AppResult<impl IntoResponse> {
+    use crate::services::pharmacy_ai_service::PharmacyAIService;
+
     info!(
-        "[suggest_medication_dosage] medication={}",
-        request.medication_name
+        "[suggest_medication_dosage] medication={} age={:?}",
+        request.medication_name, request.patient_age
     );
+
+    if request.medication_name.trim().is_empty() {
+        return Err(AppError::BadRequest(
+            "medication_name est requis".to_string(),
+        ));
+    }
+
+    let ai_service = PharmacyAIService::new(state.ia.clone());
+    let dosage = ai_service
+        .suggest_medication_dosage(
+            &request.medication_name,
+            request.patient_age,
+            request.patient_weight.map(|w| w as f32),
+            request.condition.as_deref(),
+        )
+        .await?;
 
     Ok((
         StatusCode::OK,
         Json(json!({
             "success": true,
-            "dosage": "1 comprimé, 2 fois par jour",
-            "duration": "7 jours"
+            "medication": request.medication_name,
+            "dosage": dosage.dosage,
+            "frequency": dosage.frequency,
+            "duration": dosage.duration,
+            "precautions": dosage.precautions,
+            "warnings": dosage.warnings,
+        })),
+    ))
+}
+
+/// Suggérer des alternatives génériques pour un médicament (IA réelle)
+#[derive(Debug, Deserialize)]
+pub struct SuggestMedicationAlternativesRequest {
+    pub medication_name: String,
+    pub purpose: Option<String>,
+    pub allergies: Option<Vec<String>>,
+}
+
+pub async fn suggest_medication_alternatives(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<SuggestMedicationAlternativesRequest>,
+) -> AppResult<impl IntoResponse> {
+    use crate::services::pharmacy_ai_service::PharmacyAIService;
+
+    info!(
+        "[suggest_medication_alternatives] medication={}",
+        request.medication_name
+    );
+
+    if request.medication_name.trim().is_empty() {
+        return Err(AppError::BadRequest(
+            "medication_name est requis".to_string(),
+        ));
+    }
+
+    let ai_service = PharmacyAIService::new(state.ia.clone());
+    let alternatives = ai_service
+        .suggest_medication_alternatives(
+            &request.medication_name,
+            request.purpose.as_deref(),
+            request.allergies,
+        )
+        .await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "medication": request.medication_name,
+            "alternatives": alternatives,
+            "count": alternatives.len(),
         })),
     ))
 }
