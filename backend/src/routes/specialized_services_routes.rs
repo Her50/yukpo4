@@ -1108,6 +1108,12 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/pharmacies/my-orders",
             get(specialized_services_controller::get_my_pharmacy_orders),
         )
+        // Pharmacie officielle Yukpo (test admin) — protected JWT requis.
+        // Le handler vérifie role='admin' ou 'super_admin'.
+        .route(
+            "/api/admin/pharmacie/yukpo-official",
+            get(specialized_services_controller::admin_get_yukpo_official_pharmacy),
+        )
         .route(
             "/api/pharmacies/me/financial-movements",
             get(specialized_services_controller::get_pharmacy_financial_movements),

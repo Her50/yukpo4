@@ -27,6 +27,9 @@ export const PHARMACIE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> =
         nearbyEmptyHint: 'Essayez une recherche ou modifiez les filtres',
         advancedSearch: 'Recherche avancée de pharmacies',
         seeMore: 'Voir plus',
+        partnerCtaTitle: 'Vous êtes pharmacien partenaire ?',
+        partnerCtaSubtitle: 'Accédez à votre tableau de bord : produits, commandes, statistiques.',
+        partnerCtaButton: 'Ouvrir mon dashboard',
       },
       filters: {
         near: 'Proche de moi',
@@ -165,6 +168,9 @@ export const PHARMACIE_TRANSLATIONS: Record<SupportedLng, Record<string, any>> =
         nearbyEmptyHint: 'Try a search or adjust the filters',
         advancedSearch: 'Advanced pharmacy search',
         seeMore: 'See more',
+        partnerCtaTitle: 'Are you a partner pharmacist?',
+        partnerCtaSubtitle: 'Open your dashboard: products, orders, stats.',
+        partnerCtaButton: 'Open my dashboard',
       },
       filters: {
         near: 'Near me',

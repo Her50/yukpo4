@@ -20,6 +20,7 @@ import LanguageSwitcherBourse from '@/components/LanguageSwitcherBourse';
 import { useToast } from '@/hooks/use-toast';
 import { useGpsWithFallback } from '@/hooks/useGpsWithFallback';
 import { useHistoryBackClose } from '@/hooks/useHistoryBackClose';
+import { useUser } from '@/hooks/useUser';
 import { apiGet, apiPost } from '@/services/apiService';
 import MedicationDetailSheet from './pharmacie/MedicationDetailSheet';
 
@@ -65,6 +66,10 @@ const PharmacieHomePage: React.FC = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { gps, status: gpsStatus, detect: redetectGps } = useGpsWithFallback();
+  const { isPartner, partnerType, isAdmin } = useUser();
+  // Le pharmacien partenaire (et les admins Yukpo via leur ComptePage) peut
+  // accéder à son dashboard pour uploader son catalogue, gérer commandes…
+  const showPartnerCta = isPartner && partnerType === 'pharmacie';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [medications, setMedications] = useState<Medication[]>([]);
@@ -346,6 +351,67 @@ const PharmacieHomePage: React.FC = () => {
           </div>
           <LanguageSwitcherBourse variant="minimal" tone="white" />
         </div>
+
+        {/* CTA pharmacien partenaire connecté — accès direct au dashboard
+            d'upload produits CSV/Excel, commandes, stats. Visible uniquement
+            si l'utilisateur est partenaire pharmacie. */}
+        {showPartnerCta && (
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="mt-4 w-full bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl px-4 py-3 text-left inline-flex items-center gap-3 transition-colors"
+          >
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <Pill className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white leading-tight">
+                {t('pharmacie.home.partnerCtaTitle')}
+              </p>
+              <p className="text-[11px] text-blue-100 leading-snug truncate">
+                {t('pharmacie.home.partnerCtaSubtitle')}
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-white shrink-0 inline-flex items-center gap-1">
+              {t('pharmacie.home.partnerCtaButton')}
+              <RefreshCw className="w-3 h-3" />
+            </span>
+          </button>
+        )}
+
+        {/* CTA admin Yukpo : ouvre la pharmacie officielle Yukpo en mode test
+            (upload de produits, recherche, scan). Visible uniquement pour les
+            comptes ayant role='admin' ou 'super_admin'. */}
+        {isAdmin && (
+          <button
+            onClick={async () => {
+              try {
+                const res = await apiGet('/api/admin/pharmacie/yukpo-official');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                navigate(`/dashboard/produits?service_id=${data.service_id}&official=1`);
+              } catch (e: any) {
+                toast({
+                  title: 'Pharmacie officielle indisponible',
+                  description: e?.message || 'Vérifiez la migration 20260514_002.',
+                  variant: 'destructive',
+                });
+              }
+            }}
+            className="mt-2 w-full bg-amber-400/20 hover:bg-amber-400/30 backdrop-blur-sm border border-amber-200/40 rounded-2xl px-4 py-2.5 text-left inline-flex items-center gap-3 transition-colors"
+          >
+            <div className="w-8 h-8 rounded-lg bg-amber-300/30 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 text-amber-100" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-white leading-tight">
+                Tester Yukpo Pharmacie
+              </p>
+              <p className="text-[10px] text-amber-100/90 leading-snug truncate">
+                Admin uniquement · upload Excel, recherche, scan
+              </p>
+            </div>
+          </button>
+        )}
       </div>
 
       {/* === Disclaimer permanent sticky — visible sur tous les écrans === */}

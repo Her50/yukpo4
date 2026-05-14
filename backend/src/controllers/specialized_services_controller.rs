@@ -6692,6 +6692,70 @@ RÉPONSE :
     ))
 }
 
+/// Renvoie les coordonnées de la pharmacie officielle Yukpo (test admin)
+///
+/// Endpoint réservé aux comptes ayant role='admin' ou 'super_admin'.
+/// Permet au frontend de connaître le `service_id` à passer au dashboard
+/// pharmacie pour opérer cette pharmacie de test (upload produits CSV/Excel,
+/// scan ordonnance, vérification recherche, etc.).
+///
+/// La pharmacie officielle est créée par la migration
+/// `20260514_002_yukpo_official_pharmacy.sql` avec `is_official=true` et
+/// attachée au premier super_admin disponible.
+pub async fn admin_get_yukpo_official_pharmacy(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id, role, ..
+    }): Extension<AuthenticatedUser>,
+) -> AppResult<impl IntoResponse> {
+    use crate::utils::role_helpers::ensure_admin_role_str;
+
+    ensure_admin_role_str(&role)
+        .map_err(|_| AppError::Forbidden("Accès réservé aux administrateurs Yukpo".to_string()))?;
+
+    let row = sqlx::query(
+        r#"
+        SELECT p.id AS pharmacy_id, p.service_id, p.nom, p.user_id AS owner_user_id
+        FROM pharmacies p
+        WHERE p.is_official = TRUE
+        ORDER BY p.id ASC
+        LIMIT 1
+        "#,
+    )
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture pharmacie officielle: {}", e)))?;
+
+    match row {
+        Some(r) => {
+            let pharmacy_id: i32 = r.try_get("pharmacy_id").unwrap_or_default();
+            let service_id: i32 = r.try_get("service_id").unwrap_or_default();
+            let nom: String = r.try_get("nom").unwrap_or_default();
+            let owner_user_id: i32 = r.try_get("owner_user_id").unwrap_or_default();
+
+            info!(
+                "[admin_get_yukpo_official_pharmacy] user={} role={} → service_id={}",
+                user_id, role, service_id
+            );
+
+            Ok((
+                StatusCode::OK,
+                Json(json!({
+                    "success": true,
+                    "pharmacy_id": pharmacy_id,
+                    "service_id": service_id,
+                    "name": nom,
+                    "owner_user_id": owner_user_id,
+                    "is_official": true,
+                })),
+            ))
+        }
+        None => Err(AppError::NotFound(
+            "Pharmacie officielle Yukpo non créée. Vérifier la migration 20260514_002.".to_string(),
+        )),
+    }
+}
+
 /// Enregistrer le consentement utilisateur pour la PWA Pharmacie
 ///
 /// Conformité éthique/réglementaire : trace serveur pour prouver que
