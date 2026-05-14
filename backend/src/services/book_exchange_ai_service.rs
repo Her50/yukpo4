@@ -2093,7 +2093,39 @@ Dans tous ces cas : confidence ≤ 0.4, est_au_programme = false, prix_detecte =
 L'utilisateur DOIT reprendre les photos. NE PAS inventer un titre/auteur/prix basés sur des indices marginaux.
 NE PAS se laisser tromper par une page de titre intérieure qui ressemble à la couverture.
 
-Réponds en JSON strict avec: titre, auteur, editeur, isbn, classe_actuelle, classe_souhaitee, matiere, niveau, prix_detecte, devise_detectee, etat_classification, etat_description, est_au_programme, programme_scolaire_id, programme_match_details, confidence, notes."#,
+⚠️⚠️⚠️ CHECKLIST OBLIGATOIRE — degradation_flags ⚠️⚠️⚠️
+TU DOIS remplir ces 9 booléens SANS EXCEPTION. Examine chaque cm² visible.
+N'invente pas, mais ne sois pas indulgent : en cas de doute pour un défaut visible, mets true.
+Si UN SEUL est true → le livre sera AUTOMATIQUEMENT rejeté côté backend.
+
+  degradation_flags: {{
+    "has_tear": <true|false>,                  // Déchirure visible sur la couverture (même 1cm, même recollée)
+    "has_missing_piece": <true|false>,         // Morceau de couverture manquant (coin, bord, bande)
+    "has_pelliculage_arrache": <true|false>,   // Pelliculage arraché >20% (zones où le carton est à nu)
+    "has_inscription_permanent": <true|false>, // Stylo/feutre/marker permanent sur la couverture (PAS un sticker)
+    "has_moisissure": <true|false>,            // Moisissures, taches biologiques, points noirs, halo verdâtre
+    "has_water_damage": <true|false>,          // Papier gondolé, taches d'eau, brûlures
+    "is_paper_not_cardboard": <true|false>,    // L'image montre une PAGE INTÉRIEURE PAPIER au lieu de la couverture cartonnée
+    "has_broken_binding": <true|false>,        // Reliure cassée : pages tombantes ou couverture détachée
+    "has_illegible_pages": <true|false>        // Texte illisible >5% des pages visibles (gribouillage, taches)
+  }}
+
+🔍 PROCÉDURE STRICTE (suis l'ordre, ne saute aucune étape) :
+1. Observe l'image recto (zoom mental sur chaque zone : coins, bords, centre, surface).
+2. Pour chaque flag de degradation_flags, demande-toi : "Est-ce que je VOIS ce défaut ?"
+   - Si OUI ou si TU HÉSITES → mets true (mieux refuser à tort qu'accepter à tort)
+   - Si NON sans aucun doute → mets false
+3. Idem pour l'image verso.
+4. Renseigne degradation_flags avec OR logique des deux images.
+5. Choisis etat_classification :
+   - Si ≥1 flag à true → "rejete" (le backend forcera de toute façon)
+   - Sinon, juge si la qualité globale est "bon" (≥95% intact) ou "acceptable".
+6. Si rejete, dans `notes` cite EXPLICITEMENT le(s) flag(s) déclenché(s) :
+   ex: "Déchirure visible sur la couverture (has_tear=true)"
+   ex: "Page intérieure papier au lieu de couverture cartonnée (is_paper_not_cardboard=true)"
+   ex: "Pelliculage arraché sur la couverture (has_pelliculage_arrache=true)"
+
+Réponds en JSON strict avec TOUS les champs : titre, auteur, editeur, isbn, classe_actuelle, classe_souhaitee, matiere, niveau, prix_detecte, devise_detectee, etat_classification, etat_description, est_au_programme, programme_scolaire_id, programme_match_details, confidence, notes, degradation_flags."#,
                 lat = lat,
                 lng = lng,
                 country = country_code.to_uppercase(),
@@ -2784,4 +2816,41 @@ pub struct BookRectoVersoAnalysis {
     pub programme_match_details: Option<String>,
     pub confidence: f64,
     pub notes: Option<String>,
+    /// ✅ 2026-05-14 : Checklist booléenne forcée pour la détection d'état.
+    /// L'IA DOIT remplir chaque champ. Si N'IMPORTE LEQUEL est true, le code
+    /// force `etat_classification = "rejete"`. Mécanisme anti-hallucination :
+    /// le LLM ne peut plus "oublier" une déchirure visible.
+    #[serde(default)]
+    pub degradation_flags: Option<DegradationFlags>,
+}
+
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct DegradationFlags {
+    /// Toute déchirure visible (même petite, même réparée par scotch) sur la couverture
+    #[serde(default)]
+    pub has_tear: bool,
+    /// Morceau de couverture manquant (coin, bord, bande)
+    #[serde(default)]
+    pub has_missing_piece: bool,
+    /// Pelliculage arraché sur >20% de la couverture (zones où le carton est à nu)
+    #[serde(default)]
+    pub has_pelliculage_arrache: bool,
+    /// Inscriptions au stylo/feutre/marker permanent sur la couverture (pas un sticker)
+    #[serde(default)]
+    pub has_inscription_permanent: bool,
+    /// Moisissures, taches biologiques, points noirs, halo verdâtre
+    #[serde(default)]
+    pub has_moisissure: bool,
+    /// Dégâts liquides : papier gondolé, taches d'eau, brûlures
+    #[serde(default)]
+    pub has_water_damage: bool,
+    /// L'image montre une page papier intérieure au lieu de la couverture cartonnée
+    #[serde(default)]
+    pub is_paper_not_cardboard: bool,
+    /// Reliure cassée : pages tombantes ou couverture détachée du bloc
+    #[serde(default)]
+    pub has_broken_binding: bool,
+    /// Texte illisible sur plus de 5% des pages (gribouillages, taches)
+    #[serde(default)]
+    pub has_illegible_pages: bool,
 }

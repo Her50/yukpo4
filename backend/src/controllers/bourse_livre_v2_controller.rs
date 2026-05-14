@@ -682,6 +682,55 @@ pub async fn analyze_recto_verso(
     }
 
     // ─── Vérifications supplémentaires : rejeter les livres non-réutilisables ─────
+
+    // ✅ 2026-05-14 : 0) FORCE REJECT sur degradation_flags. Si l'IA a coché
+    //    UN SEUL flag bloquant, on force le rejet — mécanisme anti-hallucination
+    //    qui empêche le LLM de "minimiser" un défaut visible.
+    if let Some(flags) = analysis.degradation_flags.clone() {
+        let mut bloquants: Vec<&str> = Vec::new();
+        if flags.has_tear {
+            bloquants.push("déchirure visible");
+        }
+        if flags.has_missing_piece {
+            bloquants.push("morceau manquant");
+        }
+        if flags.has_pelliculage_arrache {
+            bloquants.push("pelliculage arraché");
+        }
+        if flags.has_inscription_permanent {
+            bloquants.push("inscriptions au stylo/feutre permanent");
+        }
+        if flags.has_moisissure {
+            bloquants.push("moisissures/taches biologiques");
+        }
+        if flags.has_water_damage {
+            bloquants.push("dégâts liquides/papier gondolé");
+        }
+        if flags.is_paper_not_cardboard {
+            bloquants.push("page intérieure papier (pas la couverture cartonnée)");
+        }
+        if flags.has_broken_binding {
+            bloquants.push("reliure cassée");
+        }
+        if flags.has_illegible_pages {
+            bloquants.push("texte illisible (>5% des pages)");
+        }
+
+        if !bloquants.is_empty() {
+            info!(
+                "[analyze_recto_verso] Livre FORCÉ REJETÉ via degradation_flags : {:?}",
+                bloquants
+            );
+            analysis.etat_classification = "rejete".to_string();
+            analysis.prix_detecte = Some(0.0);
+            let note = format!("État rejeté — défauts détectés : {}", bloquants.join(", "));
+            analysis.notes = Some(match analysis.notes.take() {
+                Some(n) if !n.is_empty() => format!("{} | {}", n, note),
+                _ => note,
+            });
+        }
+    }
+
     // 1) Livres Maternelle/Primaire : quasi-exclusivement consommables (cahiers, fiches).
     if let Some(classe) = analysis.classe_actuelle.as_deref() {
         if is_niveau_primaire_or_maternelle(classe) {
