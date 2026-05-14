@@ -2185,6 +2185,7 @@ Réponds en JSON strict avec TOUS les champs : titre, auteur, editeur, isbn, cla
                     programme_match_details: None,
                     confidence: 0.3,
                     notes: Some(format!("Erreur parsing: {}", e)),
+                    degradation_flags: None,
                 }
             }
         };
