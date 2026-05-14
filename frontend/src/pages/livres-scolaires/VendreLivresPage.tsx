@@ -77,11 +77,17 @@ const VendreLivresPage: React.FC = () => {
   const [books, setBooks] = useState<AddedBook[]>([]);
   const [showCapture, setShowCapture] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
-  /** ✅ 2026-05-14 : Quand un livre est rejeté, on présente une modale 3 options
-   *  (Don / Neuf classe sup / Occasion classe sup) au lieu d'un window.confirm
-   *  binaire dont les boutons "OK/Annuler" ne correspondaient pas à la question. */
+  /** ✅ 2026-05-14 : Quand un livre est rejeté, modale fallback avec :
+   *  - Checkbox Don (cumulable) — propose au parent d'offrir le livre à la
+   *    communauté, geste solidaire.
+   *  - Radio Achat classe supérieure : Neuf / Occasion / Aucun.
+   *    Occasion conditionnel : masqué si rejet primaire (et classe sup non-secondaire)
+   *    ou si rejet workbook (consommables non réutilisables).
+   *  - Bouton Valider exécute Don puis navigue vers /programme-ecole si achat choisi. */
   const [rejectionFallback, setRejectionFallback] = useState<AnalyzedBookResult | null>(null);
-  const [rejectionAction, setRejectionAction] = useState<'don' | 'neuf' | 'occasion' | null>(null);
+  const [donChoice, setDonChoice] = useState<boolean>(true);
+  const [buyChoice, setBuyChoice] = useState<'aucun' | 'neuf' | 'occasion'>('aucun');
+  const [rejectionProcessing, setRejectionProcessing] = useState<boolean>(false);
 
   // 1. Capture GPS via GpsGate avant tout — la modale d'instructions
   // s'affiche tant que la position n'a pas été accordée. Si l'utilisateur
@@ -209,14 +215,32 @@ const VendreLivresPage: React.FC = () => {
 
   const handleAnalyzed = (result: AnalyzedBookResult) => {
     if (result.is_rejected) {
-      // ✅ Fallback multi-options : si le livre est rejeté (état, primaire,
-      // hors programme, etc.), on ouvre une MODALE avec 3 options claires :
-      //   1. 📚 Faire un don du livre actuel (si livre_id existe)
-      //   2. 🆕 Acheter le neuf de la classe supérieure
-      //   3. 🛍️ Acheter d'occasion la classe supérieure
-      // Plus un bouton Annuler. Remplace l'ancien window.confirm dont les
-      // boutons "OK/Annuler" ne correspondaient pas à la question posée.
+      // ✅ Codes de rejet liés à un problème de SCAN — pas un défaut du livre.
+      // L'utilisateur doit juste reprendre la photo, pas se voir proposer
+      // des fallbacks. On affiche un toast et on garde la modale capture ouverte.
+      const SCAN_REJECTIONS = new Set([
+        'recto_verso_same_side', 'recto_verso_swapped', 'no_cover_detected',
+        'invalid_recto_cover', 'invalid_verso_cover', 'price_missing', 'isbn_missing',
+      ]);
+      if (SCAN_REJECTIONS.has(result.rejection_code ?? '')) {
+        toast({
+          title: t('bourse.vendre.toast_rejected_title'),
+          description: result.rejection_message || t('bourse.vendre.toast_rejected_desc'),
+          variant: 'destructive',
+        });
+        return; // user reprend la photo, BookPhotoCapture gère l'affichage
+      }
+
+      // ✅ Fallback multi-options pour les rejets liés au livre lui-même
+      // (mauvais état, primaire, hors programme, workbook, duplicate, etc.) :
+      // modale avec checkbox Don + radio (Neuf/Occasion/Aucun) de la classe
+      // supérieure. Don cumulable avec un achat. Règles conditionnelles :
+      //   - Si rejet primaire : Occasion masqué SAUF si classe_sup = 1er
+      //     niveau secondaire (6ème/Form 1).
+      //   - Si rejet workbook : Occasion masqué (consommables non réutilisables).
       setRejectionFallback(result);
+      setDonChoice(true); // par défaut on propose le don
+      setBuyChoice('aucun');
       return;
     }
     const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -583,133 +607,233 @@ const VendreLivresPage: React.FC = () => {
         </div>
       )}
 
-      {/* ✅ 2026-05-14 : Modale fallback rejet livre — 3 options claires.
-          Remplace le window.confirm dont les boutons OK/Annuler ne
-          correspondaient pas à la question. */}
-      {rejectionFallback && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-3">
-          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[90dvh] overflow-y-auto">
-            <div className="flex items-start gap-2 mb-3">
-              <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 text-sm">
-                  {t('bourse.vendre.rejection_title', { defaultValue: 'Ce livre ne peut pas être listé' })}
-                </h3>
-                <p className="text-xs text-gray-600 mt-0.5 leading-snug">
-                  {rejectionFallback.rejection_message || t('bourse.vendre.toast_rejected_desc')}
-                </p>
+      {/* ✅ 2026-05-14 : Modale fallback rejet — design refactoré pour cumul
+          Don + Achat classe supérieure, avec règles conditionnelles selon
+          rejection_code (primaire/workbook désactivent Occasion). */}
+      {rejectionFallback && (() => {
+        const r = rejectionFallback;
+        const code = r.rejection_code ?? '';
+        const classeSup = r.classe_souhaitee || '';
+        // Détection classe primaire : SIL/CP/CE/CM (FR) + Class 1-6 (EN) + Maternelle X année.
+        const isClassPrimary = (cls: string): boolean => {
+          const c = cls.trim().toLowerCase();
+          if (!c) return false;
+          // Maternelle (toujours pré-primaire/primaire)
+          if (c.includes('maternelle') || c.includes('nursery') || c.includes('petite section') || c.includes('grande section')) return true;
+          // Francophone primaire
+          if (/^(sil|cp|ce[12]|cm[12])($|\s)/i.test(c)) return true;
+          // Anglophone primaire (Class 1-6)
+          if (/^class\s*[1-6]($|\s)/i.test(c)) return true;
+          return false;
+        };
+        const isClassFirstSecondary = (cls: string): boolean => {
+          const c = cls.trim().toLowerCase();
+          // 6ème (FR) ou Form 1 (EN)
+          return /^6\s*[èe]me?($|\s)/i.test(c) || /^form\s*1($|\s)/i.test(c);
+        };
+
+        // Disponibilité du Don : nécessite livre_id ET pas déjà mode don.
+        const canDon = !!r.livre_id && r.livre_id > 0 && sessionMode !== 'don';
+        // Disponibilité Occasion : SAUF si rejet primaire/workbook ET classe_sup
+        // n'est pas le 1er niveau secondaire.
+        const isPrimaryReject = code === 'niveau_primaire';
+        const isWorkbookReject = code === 'non_reusable_workbook';
+        const supIsFirstSecondary = isClassFirstSecondary(classeSup);
+        const supIsPrimary = isClassPrimary(classeSup);
+        const occasionAllowed = !!classeSup
+          && (
+            (!isPrimaryReject && !isWorkbookReject && !supIsPrimary)
+            || (isPrimaryReject && supIsFirstSecondary)
+            // workbook : jamais d'occasion (workbook consommable de toute classe)
+          );
+        const neufAllowed = !!classeSup;
+        // Au moins une option active pour pouvoir valider.
+        const canConfirm = !rejectionProcessing && (
+          (canDon && donChoice) || (neufAllowed && buyChoice !== 'aucun')
+        );
+
+        const onConfirm = async () => {
+          if (!canConfirm) return;
+          setRejectionProcessing(true);
+          try {
+            // 1) Don d'abord si coché
+            if (canDon && donChoice) {
+              const res = await apiPost(`/api/bourse-livre/${r.livre_id}/mark-as-don`, {});
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok || data?.success === false) {
+                throw new Error(data?.error || data?.message || 'Échec du don');
+              }
+              toast({
+                title: t('bourse.vendre.toast_don_done_title'),
+                description: t('bourse.vendre.toast_don_done_desc'),
+              });
+            }
+            // 2) Achat classe supérieure si choisi
+            if (buyChoice !== 'aucun' && classeSup) {
+              setRejectionFallback(null);
+              setShowCapture(false);
+              navigate(`/programme-ecole?classe=${encodeURIComponent(classeSup)}&mode=${buyChoice}`);
+              return;
+            }
+            // Sinon (don seul) : ferme la modale
+            setRejectionFallback(null);
+            setShowCapture(false);
+          } catch (e: any) {
+            toast({
+              title: t('bourse.vendre.toast_rejected_title'),
+              description: e?.message || t('bourse.vendre.toast_rejected_desc'),
+              variant: 'destructive',
+            });
+          } finally {
+            setRejectionProcessing(false);
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-3">
+            <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[90dvh] overflow-y-auto">
+              <div className="flex items-start gap-2 mb-3">
+                <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-gray-900 text-sm">
+                    {t('bourse.vendre.rejection_title', { defaultValue: 'Ce livre ne peut pas être listé' })}
+                  </h3>
+                  <p className="text-xs text-gray-600 mt-0.5 leading-snug">
+                    {r.rejection_message || t('bourse.vendre.toast_rejected_desc')}
+                  </p>
+                </div>
+              </div>
+
+              {/* ──── Section 1 : Don (checkbox cumulable) ──── */}
+              {canDon && (
+                <div className="mb-3 border-2 border-emerald-200 rounded-xl bg-emerald-50 overflow-hidden">
+                  <label className="flex items-start gap-3 px-3 py-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={donChoice}
+                      onChange={(e) => setDonChoice(e.target.checked)}
+                      disabled={rejectionProcessing}
+                      className="mt-0.5 w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <Gift className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <p className="text-sm font-bold text-emerald-800 leading-tight">
+                          {t('bourse.vendre.fallback_don_title', { defaultValue: 'Faire don de ce livre' })}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-emerald-700 leading-snug mt-0.5">
+                        {t('bourse.vendre.fallback_don_desc', { defaultValue: 'Un autre parent en aura l\'usage. Geste solidaire, sans contrepartie.' })}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              {/* ──── Section 2 : Achat classe supérieure (radio) ──── */}
+              {classeSup && (
+                <div className="mb-3">
+                  <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wide mb-2">
+                    {t('bourse.vendre.fallback_upper_class', { defaultValue: 'Acheter le livre de la classe supérieure ({{classe}})', classe: classeSup })}
+                  </p>
+                  <div className="space-y-2">
+                    {neufAllowed && (
+                      <label className="flex items-start gap-3 px-3 py-3 rounded-xl border-2 cursor-pointer transition-colors ${buyChoice === 'neuf' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white hover:border-blue-200'}"
+                        style={{ borderColor: buyChoice === 'neuf' ? '#60a5fa' : '#e5e7eb', background: buyChoice === 'neuf' ? '#eff6ff' : 'white' }}
+                      >
+                        <input
+                          type="radio"
+                          name="buyChoice"
+                          checked={buyChoice === 'neuf'}
+                          onChange={() => setBuyChoice('neuf')}
+                          disabled={rejectionProcessing}
+                          className="mt-0.5 w-4 h-4 text-blue-600 focus:ring-blue-500 shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <ShoppingBag className="w-4 h-4 text-blue-600 shrink-0" />
+                            <p className="text-sm font-bold text-blue-800 leading-tight">
+                              {t('bourse.vendre.fallback_buy_new_title', { defaultValue: 'Neuf', classe: '' })}
+                            </p>
+                          </div>
+                          <p className="text-[11px] text-blue-700 leading-snug mt-0.5">
+                            {t('bourse.vendre.fallback_buy_new_desc', { defaultValue: 'Plein tarif, livraison rapide, livre flambant neuf.' })}
+                          </p>
+                        </div>
+                      </label>
+                    )}
+                    {occasionAllowed && (
+                      <label className="flex items-start gap-3 px-3 py-3 rounded-xl border-2 cursor-pointer transition-colors"
+                        style={{ borderColor: buyChoice === 'occasion' ? '#fb923c' : '#e5e7eb', background: buyChoice === 'occasion' ? '#fff7ed' : 'white' }}
+                      >
+                        <input
+                          type="radio"
+                          name="buyChoice"
+                          checked={buyChoice === 'occasion'}
+                          onChange={() => setBuyChoice('occasion')}
+                          disabled={rejectionProcessing}
+                          className="mt-0.5 w-4 h-4 text-orange-600 focus:ring-orange-500 shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <Repeat className="w-4 h-4 text-orange-600 shrink-0" />
+                            <p className="text-sm font-bold text-orange-800 leading-tight">
+                              {t('bourse.vendre.fallback_buy_used_title', { defaultValue: 'Occasion', classe: '' })}
+                            </p>
+                          </div>
+                          <p className="text-[11px] text-orange-700 leading-snug mt-0.5">
+                            {t('bourse.vendre.fallback_buy_used_desc', { defaultValue: 'Moins cher, mêmes contenus. Disponibilité variable.' })}
+                          </p>
+                        </div>
+                      </label>
+                    )}
+                    <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50">
+                      <input
+                        type="radio"
+                        name="buyChoice"
+                        checked={buyChoice === 'aucun'}
+                        onChange={() => setBuyChoice('aucun')}
+                        disabled={rejectionProcessing}
+                        className="w-4 h-4 text-gray-500"
+                      />
+                      <p className="text-[12px] text-gray-600">
+                        {t('bourse.vendre.fallback_buy_none', { defaultValue: 'Pas maintenant' })}
+                      </p>
+                    </label>
+                  </div>
+                  {/* Info contextuelle pour rejet primaire avec occasion masqué */}
+                  {(isPrimaryReject || isWorkbookReject) && !occasionAllowed && (
+                    <p className="text-[10px] text-gray-500 italic mt-1.5 leading-snug">
+                      {isPrimaryReject
+                        ? t('bourse.vendre.fallback_no_occasion_primary', { defaultValue: '🛈 L\'occasion n\'est pas disponible pour les livres du primaire (consommables).' })
+                        : t('bourse.vendre.fallback_no_occasion_workbook', { defaultValue: '🛈 L\'occasion n\'est pas disponible pour les cahiers d\'activité (consommables).' })}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* ──── Boutons d'action ──── */}
+              <div className="flex gap-2">
+                <button
+                  disabled={rejectionProcessing}
+                  onClick={() => setRejectionFallback(null)}
+                  className="flex-1 px-3 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-xl disabled:opacity-50"
+                >
+                  {t('bourse.vendre.fallback_cancel', { defaultValue: 'Annuler' })}
+                </button>
+                <button
+                  disabled={!canConfirm}
+                  onClick={onConfirm}
+                  className="flex-1 px-3 py-3 text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 active:bg-amber-800 disabled:bg-gray-300 disabled:text-gray-500 rounded-xl inline-flex items-center justify-center gap-2"
+                >
+                  {rejectionProcessing && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {t('bourse.vendre.fallback_confirm', { defaultValue: 'Valider' })}
+                </button>
               </div>
             </div>
-
-            <p className="text-[11px] text-gray-500 mb-3">
-              {t('bourse.vendre.rejection_alternatives', { defaultValue: 'Que souhaitez-vous faire à la place ?' })}
-            </p>
-
-            <div className="space-y-2">
-              {/* Option 1 : Faire un don (si livre_id existe et pas déjà don) */}
-              {rejectionFallback.livre_id && rejectionFallback.livre_id > 0 && sessionMode !== 'don' && (
-                <button
-                  disabled={rejectionAction !== null}
-                  onClick={async () => {
-                    setRejectionAction('don');
-                    try {
-                      const res = await apiPost(`/api/bourse-livre/${rejectionFallback.livre_id}/mark-as-don`, {});
-                      const data = await res.json().catch(() => ({}));
-                      if (!res.ok || data?.success === false) {
-                        throw new Error(data?.error || data?.message || 'Échec');
-                      }
-                      setShowCapture(false);
-                      setRejectionFallback(null);
-                      toast({
-                        title: t('bourse.vendre.toast_don_done_title'),
-                        description: t('bourse.vendre.toast_don_done_desc'),
-                      });
-                    } catch (e: any) {
-                      toast({
-                        title: t('bourse.vendre.toast_rejected_title'),
-                        description: e?.message || t('bourse.vendre.toast_rejected_desc'),
-                        variant: 'destructive',
-                      });
-                    } finally {
-                      setRejectionAction(null);
-                    }
-                  }}
-                  className="w-full flex items-start gap-3 px-3 py-3 rounded-xl border-2 border-emerald-200 bg-emerald-50 hover:border-emerald-300 active:bg-emerald-100 text-left disabled:opacity-60"
-                >
-                  <Gift className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-emerald-800 leading-tight">
-                      {t('bourse.vendre.fallback_don_title', { defaultValue: 'Faire un don de ce livre' })}
-                    </p>
-                    <p className="text-[11px] text-emerald-700 leading-snug mt-0.5">
-                      {t('bourse.vendre.fallback_don_desc', { defaultValue: 'Un autre parent en aura l\'usage. Geste solidaire, sans contrepartie.' })}
-                    </p>
-                  </div>
-                </button>
-              )}
-
-              {/* Option 2 : Acheter NEUF de la classe supérieure */}
-              {rejectionFallback.classe_souhaitee && (
-                <button
-                  disabled={rejectionAction !== null}
-                  onClick={() => {
-                    const classeSup = rejectionFallback.classe_souhaitee || '';
-                    setRejectionFallback(null);
-                    setShowCapture(false);
-                    // Navigation vers Browse avec la classe supérieure pré-sélectionnée.
-                    // Mode 'neuf' implicite — l'user pourra ajuster sur place.
-                    navigate(`/programme-ecole?classe=${encodeURIComponent(classeSup)}&mode=neuf`);
-                  }}
-                  className="w-full flex items-start gap-3 px-3 py-3 rounded-xl border-2 border-blue-200 bg-blue-50 hover:border-blue-300 active:bg-blue-100 text-left disabled:opacity-60"
-                >
-                  <ShoppingBag className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-blue-800 leading-tight">
-                      {t('bourse.vendre.fallback_buy_new_title', { defaultValue: 'Acheter neuf — {{classe}}', classe: rejectionFallback.classe_souhaitee })}
-                    </p>
-                    <p className="text-[11px] text-blue-700 leading-snug mt-0.5">
-                      {t('bourse.vendre.fallback_buy_new_desc', { defaultValue: 'Le livre de la classe suivante au prix plein, neuf.' })}
-                    </p>
-                  </div>
-                </button>
-              )}
-
-              {/* Option 3 : Acheter OCCASION de la classe supérieure */}
-              {rejectionFallback.classe_souhaitee && (
-                <button
-                  disabled={rejectionAction !== null}
-                  onClick={() => {
-                    const classeSup = rejectionFallback.classe_souhaitee || '';
-                    setRejectionFallback(null);
-                    setShowCapture(false);
-                    navigate(`/programme-ecole?classe=${encodeURIComponent(classeSup)}&mode=occasion`);
-                  }}
-                  className="w-full flex items-start gap-3 px-3 py-3 rounded-xl border-2 border-orange-200 bg-orange-50 hover:border-orange-300 active:bg-orange-100 text-left disabled:opacity-60"
-                >
-                  <Repeat className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-orange-800 leading-tight">
-                      {t('bourse.vendre.fallback_buy_used_title', { defaultValue: 'Acheter d\'occasion — {{classe}}', classe: rejectionFallback.classe_souhaitee })}
-                    </p>
-                    <p className="text-[11px] text-orange-700 leading-snug mt-0.5">
-                      {t('bourse.vendre.fallback_buy_used_desc', { defaultValue: 'Moins cher qu\'un neuf, mêmes contenus. Disponibilité variable.' })}
-                    </p>
-                  </div>
-                </button>
-              )}
-
-              {/* Annuler — réessayer avec un autre livre */}
-              <button
-                disabled={rejectionAction !== null}
-                onClick={() => setRejectionFallback(null)}
-                className="w-full px-3 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-800 active:bg-gray-100 rounded-xl"
-              >
-                {t('bourse.vendre.fallback_cancel', { defaultValue: 'Annuler — réessayer avec un autre livre' })}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
