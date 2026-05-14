@@ -503,60 +503,15 @@ const PharmacieHomePage: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {matchingPharmacies?.map((ph, i) => {
-                    const found = ph.found_count ?? ph.medications_availability?.filter(a => a.available).length ?? 0;
-                    const total = ph.total_count ?? matchingTotal;
-                    const isFull = total > 0 && found === total;
-                    return (
-                      <div
-                        key={ph.id || i}
-                        className={`rounded-2xl border px-4 py-3 cursor-pointer active:bg-gray-50 ${
-                          isFull ? 'border-emerald-300 bg-emerald-50/50' : 'border-gray-100 bg-white'
-                        }`}
-                        onClick={() => ph.id && navigate(`/${ph.id}`)}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-900 text-sm leading-tight truncate">
-                              {ph.nom}
-                            </p>
-                            {(ph.quartier || ph.ville) && (
-                              <p className="text-xs text-gray-500 mt-0.5 truncate">
-                                {[ph.quartier, ph.ville].filter(Boolean).join(', ')}
-                              </p>
-                            )}
-                            <p
-                              className={`text-xs font-semibold mt-1 inline-flex items-center gap-1 ${
-                                isFull ? 'text-emerald-700' : 'text-blue-600'
-                              }`}
-                            >
-                              <Pill className="w-3 h-3" />
-                              {isFull
-                                ? t('pharmacie.matching.scoreFull')
-                                : t('pharmacie.matching.score', { found, total })}
-                            </p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            {ph.distance_km !== undefined && (
-                              <p className="text-xs text-gray-400">
-                                {ph.distance_km.toFixed(1)} {t('pharmacie.card.km')}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        {ph.telephone && (
-                          <a
-                            href={`tel:${ph.telephone}`}
-                            onClick={e => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 mt-2 text-xs text-emerald-600 active:text-emerald-800"
-                          >
-                            <Phone className="w-3 h-3" />
-                            {ph.telephone}
-                          </a>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {matchingPharmacies?.map((ph, i) => (
+                    <PharmacyMatchCard
+                      key={ph.id || i}
+                      ph={ph}
+                      fallbackTotal={matchingTotal}
+                      onOpen={id => navigate(`/${id}`)}
+                      onMedClick={med => setFocusedMedication(med)}
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -733,11 +688,18 @@ const PharmacieHomePage: React.FC = () => {
       {/* === Bottom sheet : AI chat === */}
       {aiSheetOpen && (
         <SheetOverlay onClose={() => setAiSheetOpen(false)}>
-          <div className="px-5 pt-2 pb-5 max-h-[80vh] flex flex-col">
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+          <div className="px-5 pt-2 pb-5 max-h-[85vh] flex flex-col">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-3" />
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-4 h-4 text-blue-600" />
               <h3 className="text-base font-bold text-gray-900">{t('pharmacie.ai.title')}</h3>
+            </div>
+            {/* Disclaimer dans le sheet IA — toujours visible avant la conversation */}
+            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 mb-3 flex items-start gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-amber-900 leading-snug">
+                {t('pharmacie.disclaimer.long')}
+              </p>
             </div>
 
             <div className="flex-1 overflow-y-auto mb-3 -mx-1 px-1">
@@ -868,6 +830,125 @@ interface ScanOptionProps {
   onClick: () => void;
   badge?: React.ReactNode;
 }
+
+// Carte d'une pharmacie matching avec détail médicaments + prix + budget total
+const PharmacyMatchCard: React.FC<{
+  ph: PharmacyMatch;
+  fallbackTotal: number;
+  onOpen: (id: number) => void;
+  onMedClick: (medication: string) => void;
+}> = ({ ph, fallbackTotal, onOpen, onMedClick }) => {
+  const { t } = useTranslation();
+  const avail = ph.medications_availability || [];
+  const found = ph.found_count ?? avail.filter(a => a.available).length;
+  const total = ph.total_count ?? (avail.length || fallbackTotal);
+  const isFull = total > 0 && found === total;
+  const budgetSum = avail
+    .filter(a => a.available && typeof a.price === 'number')
+    .reduce((s, a) => s + (a.price as number), 0);
+  const missing = avail.filter(a => !a.available).map(a => a.name);
+
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 cursor-pointer active:bg-gray-50 ${
+        isFull ? 'border-emerald-300 bg-emerald-50/50' : 'border-gray-100 bg-white'
+      }`}
+      onClick={() => ph.id && onOpen(ph.id)}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{ph.nom}</p>
+          {(ph.quartier || ph.ville) && (
+            <p className="text-xs text-gray-500 mt-0.5 truncate">
+              {[ph.quartier, ph.ville].filter(Boolean).join(', ')}
+            </p>
+          )}
+          <p
+            className={`text-xs font-semibold mt-1 inline-flex items-center gap-1 ${
+              isFull ? 'text-emerald-700' : 'text-blue-600'
+            }`}
+          >
+            <Pill className="w-3 h-3" />
+            {isFull
+              ? t('pharmacie.matching.scoreFull')
+              : t('pharmacie.matching.score', { found, total })}
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          {ph.distance_km !== undefined && (
+            <p className="text-xs text-gray-400">
+              {ph.distance_km.toFixed(1)} {t('pharmacie.card.km')}
+            </p>
+          )}
+          {budgetSum > 0 && (
+            <div className="mt-1">
+              <p className="text-[10px] uppercase text-gray-500 leading-none tracking-wide">
+                {t('pharmacie.matching.totalBudget')}
+              </p>
+              <p className="text-sm font-bold text-blue-700">
+                {budgetSum.toLocaleString()} {t('pharmacie.card.currency')}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Liste détaillée des médicaments avec leur prix dans cette pharmacie */}
+      {avail.length > 0 && (
+        <div className="mt-3 space-y-1 border-t border-dashed border-gray-100 pt-2">
+          {avail.map((m, i) => (
+            <div key={`${m.name}-${i}`} className="flex items-center gap-2 text-xs">
+              <span
+                className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${
+                  m.available ? 'bg-emerald-500' : 'bg-red-400'
+                }`}
+              />
+              <span
+                onClick={e => {
+                  e.stopPropagation();
+                  onMedClick(m.name);
+                }}
+                className={`flex-1 min-w-0 truncate hover:underline ${
+                  m.available ? 'text-gray-800' : 'text-gray-400 line-through'
+                }`}
+              >
+                {m.name}
+              </span>
+              {m.available ? (
+                typeof m.price === 'number' ? (
+                  <span className="text-blue-700 font-semibold shrink-0">
+                    {m.price.toLocaleString()} {t('pharmacie.card.currency')}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 text-[10px] shrink-0">
+                    {t('pharmacie.matching.priceUnavailable')}
+                  </span>
+                )
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {missing.length > 0 && (
+        <p className="text-[11px] text-amber-700 mt-2">
+          {t('pharmacie.matching.missingHere')} : {missing.join(', ')}
+        </p>
+      )}
+
+      {ph.telephone && (
+        <a
+          href={`tel:${ph.telephone}`}
+          onClick={e => e.stopPropagation()}
+          className="inline-flex items-center gap-1 mt-2 text-xs text-emerald-600 active:text-emerald-800"
+        >
+          <Phone className="w-3 h-3" />
+          {ph.telephone}
+        </a>
+      )}
+    </div>
+  );
+};
 
 // Mapping severity IA → couleurs + clé i18n
 const SEVERITY_STYLES: Record<string, { bg: string; border: string; text: string; iconColor: string; key: string }> = {

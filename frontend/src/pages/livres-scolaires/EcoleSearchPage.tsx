@@ -178,28 +178,10 @@ const EcoleSearchPage: React.FC = () => {
           </div>
         )}
 
-        {/* ✅ 2026-05-14 : CTA persistant Programme national visible MÊME quand
-            des résultats existent. L'user peut toujours choisir le national
-            si aucune des écoles partenaires affichées ne lui convient. */}
-        {!loading && (results.length > 0 || query.trim().length < 2) && (
-          <div className="mb-3 bg-emerald-50 border-2 border-emerald-300 rounded-xl p-3 flex items-center gap-3 shadow-sm">
-            <span className="text-2xl shrink-0">🇨🇲</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-emerald-800 leading-tight">
-                {t('bourse.search.national_programme_card_title', { defaultValue: 'Aucune école — programme national' })}
-              </p>
-              <p className="text-[11px] text-emerald-700 leading-snug">
-                {t('bourse.search.national_programme_hint', { defaultValue: 'La liste officielle du Ministère, valable dans toutes les écoles publiques.' })}
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/programme-ecole')}
-              className="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg"
-            >
-              {t('bourse.search.continue', { defaultValue: 'Continuer' })}
-            </button>
-          </div>
-        )}
+        {/* ✅ 2026-05-14 : Plus de bandeau persistant. Le CTA programme national
+            n'apparaît QUE quand la recherche est infructueuse — c'est le
+            moment où l'user a vraiment besoin de cette alternative. Affichage
+            contextuel = UX moins bruyante. */}
 
         {results.length > 0 && (
           <div className="space-y-2">

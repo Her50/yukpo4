@@ -6453,6 +6453,7 @@ pub async fn suggest_medication_dosage(
     State(state): State<Arc<AppState>>,
     Json(request): Json<SuggestMedicationDosageRequest>,
 ) -> AppResult<impl IntoResponse> {
+    use crate::services::otc_classification;
     use crate::services::pharmacy_ai_service::PharmacyAIService;
 
     info!(
@@ -6463,6 +6464,33 @@ pub async fn suggest_medication_dosage(
     if request.medication_name.trim().is_empty() {
         return Err(AppError::BadRequest(
             "medication_name est requis".to_string(),
+        ));
+    }
+
+    // ⚠️ Filtre OTC AVANT appel IA : si le médicament n'est pas dans la liste
+    // positive (CM/CEMAC), on retourne directement requires_prescription=true
+    // sans interroger l'IA. Économise des tokens + garantit qu'on n'affichera
+    // jamais de posologie chiffrée pour un médicament soumis à ordonnance.
+    if !otc_classification::is_otc(&request.medication_name) {
+        info!(
+            "[suggest_medication_dosage] {} non-OTC → blocage posologie (requires_prescription forcé)",
+            request.medication_name
+        );
+        return Ok((
+            StatusCode::OK,
+            Json(json!({
+                "success": true,
+                "medication": request.medication_name,
+                "dosage": "Sur conseil pharmacien",
+                "frequency": "Selon ordonnance",
+                "duration": "Selon ordonnance",
+                "precautions": [],
+                "warnings": [
+                    "Ce médicament n'apparaît pas dans la liste de vente libre — présentez votre ordonnance à un pharmacien."
+                ],
+                "requires_prescription": true,
+                "disclaimer": "Médicament non listé OTC. Consultation pharmacien obligatoire.",
+            })),
         ));
     }
 
@@ -6486,6 +6514,10 @@ pub async fn suggest_medication_dosage(
             "duration": dosage.duration,
             "precautions": dosage.precautions,
             "warnings": dosage.warnings,
+            "requires_prescription": dosage.requires_prescription,
+            // Disclaimer servi côté backend pour traçabilité — le front affiche
+            // son propre bandeau permanent en plus.
+            "disclaimer": "Information indicative basée sur les notices fabricants. Ne remplace pas l'avis d'un pharmacien ou d'un médecin.",
         })),
     ))
 }
@@ -6531,6 +6563,89 @@ pub async fn suggest_medication_alternatives(
             "medication": request.medication_name,
             "alternatives": alternatives,
             "count": alternatives.len(),
+        })),
+    ))
+}
+
+/// Enregistrer le consentement utilisateur pour la PWA Pharmacie
+///
+/// Conformité éthique/réglementaire : trace serveur pour prouver que
+/// l'utilisateur a explicitement accepté que les informations IA
+/// (posologie, interactions, alternatives) sont indicatives et ne
+/// remplacent pas l'avis d'un pharmacien/médecin. L'IP est hashée pour
+/// rester aligné RGPD / loi 2024-046 Cameroun.
+#[derive(Debug, Deserialize)]
+pub struct PharmacieConsentRequest {
+    pub consent_version: Option<String>,
+    pub lang: Option<String>,
+    pub meta: Option<serde_json::Value>,
+}
+
+pub async fn pharmacie_consent_log(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+    user: Option<Extension<AuthenticatedUser>>,
+    Json(payload): Json<PharmacieConsentRequest>,
+) -> AppResult<impl IntoResponse> {
+    use sha2::{Digest, Sha256};
+
+    // Extraction IP via headers proxy (x-forwarded-for prioritaire), puis
+    // hash SHA-256 hex tronqué — non réversible, suffit pour dédoublonner.
+    let ip = headers
+        .get("x-forwarded-for")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.split(',').next())
+        .map(|s| s.trim().to_string())
+        .or_else(|| headers.get("x-real-ip").and_then(|h| h.to_str().ok()).map(|s| s.to_string()))
+        .unwrap_or_else(|| "unknown".to_string());
+    let ip_hash = format!("{:x}", Sha256::digest(ip.as_bytes()));
+
+    let user_agent = headers
+        .get("user-agent")
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.chars().take(512).collect::<String>());
+
+    let user_id = user.as_ref().map(|u| u.0.id);
+    let version = payload.consent_version.unwrap_or_else(|| "v1".to_string());
+
+    // Merge la langue dans le meta JSONB pour traçabilité analytique
+    let mut meta = payload.meta.unwrap_or_else(|| serde_json::json!({}));
+    if let Some(lang) = payload.lang {
+        if let Some(obj) = meta.as_object_mut() {
+            obj.insert("lang".to_string(), serde_json::Value::String(lang));
+        }
+    }
+
+    let row = sqlx::query(
+        r#"
+        INSERT INTO pharmacie_consents (user_id, ip_hash, user_agent, consent_version, meta)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, accepted_at
+        "#,
+    )
+    .bind(user_id)
+    .bind(&ip_hash)
+    .bind(user_agent.as_deref())
+    .bind(&version)
+    .bind(&meta)
+    .fetch_one(&state.pg)
+    .await?;
+
+    let consent_id: i64 = row.try_get("id").unwrap_or_default();
+    let accepted_at: chrono::DateTime<chrono::Utc> =
+        row.try_get("accepted_at").unwrap_or_else(|_| chrono::Utc::now());
+
+    info!(
+        "[pharmacie_consent_log] consent_id={} user_id={:?} version={}",
+        consent_id, user_id, version
+    );
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "consent_id": consent_id,
+            "accepted_at": accepted_at.to_rfc3339(),
         })),
     ))
 }

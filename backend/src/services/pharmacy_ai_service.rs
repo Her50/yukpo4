@@ -21,6 +21,13 @@ pub struct MedicationInteraction {
 }
 
 /// Recommandation de posologie
+///
+/// ⚠️ Conformité réglementaire : pour les médicaments soumis à prescription
+/// médicale obligatoire, le frontend masque les champs chiffrés (dosage,
+/// frequency, duration) et n'affiche qu'un message d'orientation vers le
+/// pharmacien. La classification est faite par l'IA via le champ
+/// `requires_prescription` ; en cas de doute, le service force `true` (plus
+/// prudent juridiquement que de donner par défaut une posologie).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DosageRecommendation {
     pub dosage: String,
@@ -28,6 +35,15 @@ pub struct DosageRecommendation {
     pub duration: String,
     pub precautions: Vec<String>,
     pub warnings: Vec<String>,
+    #[serde(default = "default_requires_prescription")]
+    pub requires_prescription: bool,
+}
+
+fn default_requires_prescription() -> bool {
+    // Défaut prudent : si l'IA ne renvoie pas le champ, on considère que le
+    // médicament est soumis à prescription. Mieux vaut un faux positif qu'une
+    // fausse autorisation de posologie sans ordonnance.
+    true
 }
 
 /// Alternative médicamenteuse
@@ -63,34 +79,46 @@ impl PharmacyAIService {
             .map(|c| c.join(", "))
             .unwrap_or_else(|| "Non spécifiées".to_string());
 
+        // ⚠️ Prompt cadré : Yukpo n'est PAS un avis médical, juste un
+        // aide-mémoire factuel basé sur les interactions documentées dans les
+        // bases publiques (notices fabricants, ANSM, OMS). En cas de major/
+        // contraindicated, on impose une recommandation de consultation
+        // immédiate. La décision finale revient au pharmacien.
         let prompt = format!(
             r#"
-Tu es un pharmacien expert en interactions médicamenteuses pour Yukpo.
+Tu es un assistant d'information pharmaceutique pour Yukpo. Tu n'es PAS un médecin
+ni un pharmacien. Tes réponses sont strictement INDICATIVES, basées sur les
+interactions médicamenteuses DOCUMENTÉES dans les notices fabricants et bases
+publiques (ANSM, OMS, FDA). Tu ne donnes JAMAIS de prescription.
 
 CONTEXTE :
 - Médicaments : {}
 - Âge du patient : {}
 - Conditions médicales : {}
 
-TON RÔLE :
-- Analyser les interactions entre les médicaments
-- Identifier les contre-indications
-- Proposer des alternatives si nécessaire
-- Donner des recommandations de sécurité
-
 NIVEAUX DE SÉVÉRITÉ :
-- "contraindicated" : Contre-indiqué, ne pas prendre ensemble
-- "major" : Interaction majeure, nécessite surveillance médicale
-- "moderate" : Interaction modérée, précautions recommandées
-- "minor" : Interaction mineure, généralement acceptable
-- "none" : Aucune interaction connue
+- "contraindicated" : Combinaison contre-indiquée — recommander consultation immédiate
+- "major"           : Interaction majeure — surveillance médicale requise
+- "moderate"        : Interaction modérée — précautions recommandées
+- "minor"           : Interaction mineure — généralement acceptable
+- "none"            : Aucune interaction documentée
 
-RÉPONSE ATTENDUE (JSON strict) :
+INSTRUCTIONS :
+- Reste factuel : cite l'interaction documentée, sans diagnostic du patient.
+- Pour "major" ou "contraindicated" → la `recommendation` DOIT inclure
+  « Consultez immédiatement votre pharmacien ou médecin avant toute prise ».
+- `alternative_suggestions` : noms communs (DCI), pas de marques précises sauf
+  si elles sont des génériques OTC bien connus.
+- Si tu ne connais pas l'interaction → `severity: "none"` et description
+  « Aucune interaction documentée dans nos sources — vérifiez avec votre
+  pharmacien ».
+
+RÉPONSE ATTENDUE (JSON strict, sans markdown) :
 {{
     "severity": "moderate",
-    "description": "Description de l'interaction",
-    "recommendation": "Recommandation pour le patient",
-    "alternative_suggestions": ["Médicament alternatif 1", "Médicament alternatif 2"]
+    "description": "Description factuelle et brève de l'interaction documentée",
+    "recommendation": "Recommandation neutre, orientée pharmacien/médecin",
+    "alternative_suggestions": ["DCI alternative 1", "DCI alternative 2"]
 }}
 "#,
             medications_str, age_str, conditions_str
@@ -136,9 +164,16 @@ RÉPONSE ATTENDUE (JSON strict) :
             weight.map(|w| w.to_string()).unwrap_or_else(|| "Non spécifié".to_string());
         let condition_str = medical_condition.unwrap_or("Non spécifiée");
 
+        // ⚠️ Prompt prudent : on demande à l'IA de classifier "prescription
+        // obligatoire" vs "OTC" pour que le frontend masque la posologie chiffrée
+        // des médicaments à prescription. On insiste sur le caractère indicatif
+        // et le refus de poser des chiffres pour les enfants sans données.
         let prompt = format!(
             r#"
-Tu es un pharmacien expert en posologie pour Yukpo.
+Tu es un assistant d'information pharmaceutique pour Yukpo. Tu n'es PAS un médecin
+ni un pharmacien et tes réponses sont strictement INDICATIVES, fondées sur les
+notices grand public des fabricants. La responsabilité de la prescription reste
+au prescripteur. Reste neutre et factuel.
 
 CONTEXTE :
 - Médicament : {}
@@ -146,23 +181,32 @@ CONTEXTE :
 - Poids : {} kg
 - Condition médicale : {}
 
-TON RÔLE :
-- Recommander une posologie adaptée au patient
-- Donner des précautions d'emploi
-- Mettre en garde contre les effets secondaires possibles
+CLASSIFICATION OBLIGATOIRE (champ `requires_prescription`) :
+- true  → médicament soumis à prescription médicale dans la plupart des juridictions
+           (antibiotiques, anxiolytiques, corticoïdes systémiques, opioïdes,
+           anticancéreux, anticoagulants, antidiabétiques, antihypertenseurs, etc.)
+- false → médicament de vente libre / OTC (paracétamol, ibuprofène ≤ 400 mg sans
+           ordonnance, antiacides, sirops contre la toux grand public, vitamines…)
+En cas de doute → mets `true` (refuser de donner posologie est plus prudent).
 
-IMPORTANT :
-- Respecter les posologies standard selon l'âge et le poids
-- Adapter selon les conditions médicales
-- Toujours recommander de suivre l'ordonnance du médecin
+INSTRUCTIONS :
+- Si `requires_prescription` = true → renseigne dosage/frequency/duration avec
+  "Sur ordonnance — voir prescripteur" et laisse precautions et warnings vides
+  (le frontend masquera ces champs).
+- Si `requires_prescription` = false → donne la posologie ADULTE STANDARD selon
+  la notice fabricant publique. Pour les enfants (< 12 ans), ajoute toujours dans
+  warnings : "Posologie pédiatrique : consulter obligatoirement un pharmacien".
+- Toujours inclure dans warnings : "Information indicative, à confirmer avec
+  votre pharmacien".
 
-RÉPONSE ATTENDUE (JSON strict) :
+RÉPONSE ATTENDUE (JSON strict, sans markdown) :
 {{
-    "dosage": "500mg",
-    "frequency": "2 fois par jour",
-    "duration": "7 jours",
-    "precautions": ["Prendre avec les repas", "Éviter l'alcool"],
-    "warnings": ["Peut causer somnolence"]
+    "dosage": "500 mg",
+    "frequency": "2 à 3 fois par jour",
+    "duration": "Jusqu'à 5 jours",
+    "precautions": ["À prendre au cours des repas", "Éviter l'alcool"],
+    "warnings": ["Information indicative, à confirmer avec votre pharmacien"],
+    "requires_prescription": false
 }}
 "#,
             medication_name, age_str, weight_str, condition_str
@@ -175,17 +219,23 @@ RÉPONSE ATTENDUE (JSON strict) :
             tokens
         );
 
-        // Parser la réponse JSON
+        // Parser la réponse JSON. En cas d'échec, on retourne un fallback
+        // CONSERVATEUR (requires_prescription: true) qui force le frontend à
+        // masquer la posologie chiffrée — meilleure protection que d'afficher
+        // une recommandation par défaut potentiellement inadaptée.
         let dosage: DosageRecommendation = match serde_json::from_str(&response) {
             Ok(d) => d,
             Err(e) => {
-                log::warn!("[PharmacyAIService] Erreur parsing JSON: {}", e);
+                log::warn!("[PharmacyAIService] Erreur parsing JSON dosage: {}", e);
                 DosageRecommendation {
-                    dosage: "Consultez votre médecin".to_string(),
-                    frequency: "Selon prescription".to_string(),
-                    duration: "Selon prescription".to_string(),
+                    dosage: "Sur conseil pharmacien".to_string(),
+                    frequency: "Selon ordonnance".to_string(),
+                    duration: "Selon ordonnance".to_string(),
                     precautions: vec![],
-                    warnings: vec![],
+                    warnings: vec![
+                        "Information indicative, à confirmer avec votre pharmacien".to_string()
+                    ],
+                    requires_prescription: true,
                 }
             }
         };

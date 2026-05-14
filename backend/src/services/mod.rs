@@ -146,6 +146,7 @@ pub mod optimized_media_processor; // ✅ NOUVEAU 2025-01-27: Service optimisé 
 pub mod orchestration_ia;
 pub mod orchestration_ia_optimized;
 pub mod order_preparation_service; // ✅ NOUVEAU : Workflow de préparation des commandes
+pub mod otc_classification; // ✅ 2026-05-14: Classification statique OTC (CM/CEMAC) — filtre avant IA dosage
 pub mod payment_aggregator; // ✅ Agrégateur de paiement (CinetPay/NotchPay/Flutterwave) pour Mobile Money + Cartes
 pub mod payment_matching_service; // ✅ Phase 5 - Matching intelligent modes de paiement (MTN/Orange Money)
 pub mod payment_service;

@@ -150,6 +150,29 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/pharmacies/search-by-medications",
             post(pharmacy_product_controller::search_by_medications),
         )
+        // Endpoints IA pharmacie — PUBLICS pour permettre à un utilisateur
+        // non authentifié d'utiliser la PWA (recherche médicament, scan
+        // ordonnance/boîte). Le rate-limit middleware s'applique à tout le
+        // router pour éviter l'abus de tokens IA.
+        .route(
+            "/api/pharmacies/ai/interactions",
+            post(specialized_services_controller::check_medication_interactions),
+        )
+        .route(
+            "/api/pharmacies/ai/dosage",
+            post(specialized_services_controller::suggest_medication_dosage),
+        )
+        .route(
+            "/api/pharmacies/ai/alternatives",
+            post(specialized_services_controller::suggest_medication_alternatives),
+        )
+        // Log de consentement utilisateur — endpoint PUBLIC (l'utilisateur
+        // peut accepter avant de se créer un compte). Si JWT présent, on
+        // associe le consent à l'user_id ; sinon on garde seulement ip_hash.
+        .route(
+            "/api/pharmacies/consent",
+            post(specialized_services_controller::pharmacie_consent_log),
+        )
         // Routes Banques de sang (publiques pour recherche)
         .route(
             "/api/banques-sang/search",
@@ -1074,18 +1097,6 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
         .route(
             "/api/pharmacies/{id}/order",
             post(specialized_services_controller::create_pharmacy_order),
-        )
-        .route(
-            "/api/pharmacies/ai/interactions",
-            post(specialized_services_controller::check_medication_interactions),
-        )
-        .route(
-            "/api/pharmacies/ai/dosage",
-            post(specialized_services_controller::suggest_medication_dosage),
-        )
-        .route(
-            "/api/pharmacies/ai/alternatives",
-            post(specialized_services_controller::suggest_medication_alternatives),
         )
         .route(
             "/api/pharmacies/my-orders",
