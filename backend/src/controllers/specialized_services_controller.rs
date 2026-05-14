@@ -7253,6 +7253,322 @@ pub async fn get_my_pharmacy_alerts(
     ))
 }
 
+// ============================================================================
+// ARCHIVAGE D'ORDONNANCES (côté pharmacien partenaire)
+// ============================================================================
+//
+// Quand un patient présente une ordonnance, le pharmacien la scanne. L'IA
+// extrait automatiquement le nom du patient (+ médecin / hôpital / ville si
+// lisibles) et la liste des médicaments. Tout est archivé dans
+// pharmacy_archived_prescriptions. Plus tard, en cas de problème (effet
+// indésirable, retour patient), le pharmacien recherche par nom et retrouve
+// l'ordonnance scannée.
+
+#[derive(Debug, Deserialize)]
+pub struct ArchivePrescriptionRequest {
+    pub pharmacy_id: i32,
+    pub patient_name: String,
+    #[serde(default)]
+    pub patient_phone: Option<String>,
+    #[serde(default)]
+    pub patient_notes: Option<String>,
+    #[serde(default)]
+    pub image_base64: Option<String>,
+    #[serde(default)]
+    pub image_mime: Option<String>,
+    /// Liste de médicaments extraits par l'IA (ou édités par le pharmacien)
+    #[serde(default)]
+    pub extracted_medications: Option<serde_json::Value>,
+    /// Date au format YYYY-MM-DD (optionnel)
+    #[serde(default)]
+    pub prescription_date: Option<String>,
+    /// Métadonnées libres : doctor_name, hospital, city (extraites par IA)
+    #[serde(default)]
+    pub doctor_name: Option<String>,
+    #[serde(default)]
+    pub hospital: Option<String>,
+    #[serde(default)]
+    pub city: Option<String>,
+}
+
+/// POST /api/pharmacies/me/prescriptions/archive — pharmacien archive une ordo
+pub async fn archive_prescription(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
+    Json(payload): Json<ArchivePrescriptionRequest>,
+) -> AppResult<impl IntoResponse> {
+    if payload.patient_name.trim().is_empty() {
+        return Err(AppError::BadRequest("patient_name est requis".to_string()));
+    }
+
+    // Vérif appartenance pharmacie (ou bypass admin officiel)
+    let owns: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM pharmacies
+            WHERE id = $1 AND (user_id = $2
+                OR (is_official = TRUE AND $3 IN ('admin', 'super_admin')))
+        )
+        "#,
+    )
+    .bind(payload.pharmacy_id)
+    .bind(user_id)
+    .bind(&user_role)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
+    if !owns {
+        return Err(AppError::Forbidden(
+            "Cette pharmacie ne vous appartient pas".to_string(),
+        ));
+    }
+
+    // Fusionne doctor/hospital/city dans extracted_medications.metadata pour
+    // garder une trace dans un seul champ JSONB (évite d'ajouter 3 colonnes
+    // optionnelles à la table — la BD reste simple, on stocke en JSON souple).
+    let meta_json = serde_json::json!({
+        "doctor_name": payload.doctor_name,
+        "hospital": payload.hospital,
+        "city": payload.city,
+        "medications": payload.extracted_medications,
+    });
+
+    let prescription_date = payload
+        .prescription_date
+        .as_deref()
+        .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d").ok());
+
+    let row = sqlx::query(
+        r#"
+        INSERT INTO pharmacy_archived_prescriptions
+            (pharmacy_id, pharmacy_user_id, patient_name, patient_phone,
+             patient_notes, image_base64, image_mime, extracted_medications,
+             prescription_date)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING id, scanned_at
+        "#,
+    )
+    .bind(payload.pharmacy_id)
+    .bind(user_id)
+    .bind(&payload.patient_name)
+    .bind(payload.patient_phone.as_deref())
+    .bind(payload.patient_notes.as_deref())
+    .bind(payload.image_base64.as_deref())
+    .bind(payload.image_mime.as_deref())
+    .bind(&meta_json)
+    .bind(prescription_date)
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur archivage: {}", e)))?;
+
+    let archive_id: i64 = row.try_get("id").unwrap_or_default();
+    info!(
+        "[archive_prescription] archive_id={} pharmacy={} patient='{}'",
+        archive_id, payload.pharmacy_id, payload.patient_name
+    );
+
+    Ok((
+        StatusCode::CREATED,
+        Json(json!({
+            "success": true,
+            "archive_id": archive_id,
+            "scanned_at": row
+                .try_get::<chrono::DateTime<chrono::Utc>, _>("scanned_at")
+                .map(|d| d.to_rfc3339())
+                .unwrap_or_default(),
+        })),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SearchArchivesQuery {
+    /// Recherche partielle sur patient_name (case-insensitive, LIKE %q%)
+    pub q: Option<String>,
+    pub pharmacy_id: Option<i32>,
+    pub limit: Option<i32>,
+}
+
+/// GET /api/pharmacies/me/prescriptions/search?q=... — recherche archives
+pub async fn search_archived_prescriptions(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
+    Query(params): Query<SearchArchivesQuery>,
+) -> AppResult<impl IntoResponse> {
+    let q = params.q.unwrap_or_default();
+    let limit = params.limit.unwrap_or(50).clamp(1, 200);
+    let pattern = format!("%{}%", q.trim().to_lowercase());
+
+    // Liste les pharmacies du user (+ officielle si admin), puis cherche dans
+    // leurs archives. Évite d'avoir à passer pharmacy_id pour les pharmaciens
+    // mono-pharmacie.
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            ar.id, ar.pharmacy_id, ar.patient_name, ar.patient_phone,
+            ar.patient_notes, ar.prescription_date, ar.scanned_at,
+            ar.extracted_medications,
+            -- Pas d'image_base64 en liste : trop lourd. Le détail le charge.
+            p.nom AS pharmacy_name
+        FROM pharmacy_archived_prescriptions ar
+        JOIN pharmacies p ON p.id = ar.pharmacy_id
+        WHERE
+            (p.user_id = $1
+             OR (p.is_official = TRUE AND $2 IN ('admin', 'super_admin')))
+            AND ($3::TEXT = '' OR lower(ar.patient_name) LIKE $4)
+            AND ($5::INTEGER IS NULL OR ar.pharmacy_id = $5)
+        ORDER BY ar.scanned_at DESC
+        LIMIT $6
+        "#,
+    )
+    .bind(user_id)
+    .bind(&user_role)
+    .bind(q.trim().to_lowercase())
+    .bind(&pattern)
+    .bind(params.pharmacy_id)
+    .bind(limit as i64)
+    .fetch_all(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur recherche archives: {}", e)))?;
+
+    let archives: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "id": r.try_get::<i64, _>("id").unwrap_or_default(),
+                "pharmacy_id": r.try_get::<i32, _>("pharmacy_id").unwrap_or_default(),
+                "pharmacy_name": r.try_get::<String, _>("pharmacy_name").unwrap_or_default(),
+                "patient_name": r.try_get::<String, _>("patient_name").unwrap_or_default(),
+                "patient_phone": r.try_get::<Option<String>, _>("patient_phone").unwrap_or(None),
+                "patient_notes": r.try_get::<Option<String>, _>("patient_notes").unwrap_or(None),
+                "prescription_date": r
+                    .try_get::<Option<chrono::NaiveDate>, _>("prescription_date")
+                    .unwrap_or(None)
+                    .map(|d| d.to_string()),
+                "scanned_at": r
+                    .try_get::<chrono::DateTime<chrono::Utc>, _>("scanned_at")
+                    .map(|d| d.to_rfc3339())
+                    .unwrap_or_default(),
+                "extracted_medications": r
+                    .try_get::<Option<serde_json::Value>, _>("extracted_medications")
+                    .unwrap_or(None),
+            })
+        })
+        .collect();
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "count": archives.len(),
+            "archives": archives,
+        })),
+    ))
+}
+
+/// GET /api/pharmacies/me/prescriptions/:id — détail archive (avec image)
+pub async fn get_archived_prescription(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
+    Path(archive_id): Path<i64>,
+) -> AppResult<impl IntoResponse> {
+    let row = sqlx::query(
+        r#"
+        SELECT
+            ar.id, ar.pharmacy_id, ar.patient_name, ar.patient_phone,
+            ar.patient_notes, ar.image_base64, ar.image_mime,
+            ar.extracted_medications, ar.prescription_date, ar.scanned_at,
+            p.nom AS pharmacy_name
+        FROM pharmacy_archived_prescriptions ar
+        JOIN pharmacies p ON p.id = ar.pharmacy_id
+        WHERE ar.id = $1
+          AND (p.user_id = $2
+               OR (p.is_official = TRUE AND $3 IN ('admin', 'super_admin')))
+        "#,
+    )
+    .bind(archive_id)
+    .bind(user_id)
+    .bind(&user_role)
+    .fetch_optional(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur lecture archive: {}", e)))?
+    .ok_or_else(|| AppError::NotFound("Archive introuvable".to_string()))?;
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "archive": {
+                "id": row.try_get::<i64, _>("id").unwrap_or_default(),
+                "pharmacy_id": row.try_get::<i32, _>("pharmacy_id").unwrap_or_default(),
+                "pharmacy_name": row.try_get::<String, _>("pharmacy_name").unwrap_or_default(),
+                "patient_name": row.try_get::<String, _>("patient_name").unwrap_or_default(),
+                "patient_phone": row.try_get::<Option<String>, _>("patient_phone").unwrap_or(None),
+                "patient_notes": row.try_get::<Option<String>, _>("patient_notes").unwrap_or(None),
+                "image_base64": row.try_get::<Option<String>, _>("image_base64").unwrap_or(None),
+                "image_mime": row.try_get::<Option<String>, _>("image_mime").unwrap_or(None),
+                "extracted_medications": row
+                    .try_get::<Option<serde_json::Value>, _>("extracted_medications")
+                    .unwrap_or(None),
+                "prescription_date": row
+                    .try_get::<Option<chrono::NaiveDate>, _>("prescription_date")
+                    .unwrap_or(None)
+                    .map(|d| d.to_string()),
+                "scanned_at": row
+                    .try_get::<chrono::DateTime<chrono::Utc>, _>("scanned_at")
+                    .map(|d| d.to_rfc3339())
+                    .unwrap_or_default(),
+            }
+        })),
+    ))
+}
+
+/// DELETE /api/pharmacies/me/prescriptions/:id — supprime une archive
+pub async fn delete_archived_prescription(
+    State(state): State<Arc<AppState>>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
+    Path(archive_id): Path<i64>,
+) -> AppResult<impl IntoResponse> {
+    let result = sqlx::query(
+        r#"
+        DELETE FROM pharmacy_archived_prescriptions ar
+        USING pharmacies p
+        WHERE ar.id = $1
+          AND ar.pharmacy_id = p.id
+          AND (p.user_id = $2
+               OR (p.is_official = TRUE AND $3 IN ('admin', 'super_admin')))
+        "#,
+    )
+    .bind(archive_id)
+    .bind(user_id)
+    .bind(&user_role)
+    .execute(&state.pg)
+    .await
+    .map_err(|e| AppError::Internal(format!("Erreur suppression: {}", e)))?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "Archive introuvable ou non autorisée".to_string(),
+        ));
+    }
+    Ok((StatusCode::OK, Json(json!({ "success": true }))))
+}
+
 /// Enregistrer le consentement utilisateur pour la PWA Pharmacie
 ///
 /// Conformité éthique/réglementaire : trace serveur pour prouver que

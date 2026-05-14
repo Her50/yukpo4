@@ -1134,6 +1134,24 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/medication-alerts/{id}/respond",
             post(specialized_services_controller::respond_to_medication_alert),
         )
+        // Archivage ordonnances scannées par le pharmacien (JWT requis)
+        // — Migration 20260514_003 (table pharmacy_archived_prescriptions)
+        .route(
+            "/api/pharmacies/me/prescriptions/archive",
+            post(specialized_services_controller::archive_prescription),
+        )
+        .route(
+            "/api/pharmacies/me/prescriptions/search",
+            get(specialized_services_controller::search_archived_prescriptions),
+        )
+        .route(
+            "/api/pharmacies/me/prescriptions/{id}",
+            get(specialized_services_controller::get_archived_prescription),
+        )
+        .route(
+            "/api/pharmacies/me/prescriptions/{id}",
+            delete(specialized_services_controller::delete_archived_prescription),
+        )
         .route(
             "/api/pharmacies/me/financial-movements",
             get(specialized_services_controller::get_pharmacy_financial_movements),

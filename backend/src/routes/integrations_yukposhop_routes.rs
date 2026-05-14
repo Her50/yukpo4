@@ -96,11 +96,24 @@ pub struct YukposhopSyncRequest {
     pub retour_au_marchand: Option<YukposhopRetour>,
 }
 
+#[derive(Debug, Serialize, Default)]
+pub struct YukpoEnrichment {
+    pub category: Option<String>, // ex: "electronique", "pharmacie", "mode"
+    pub specialized_type: Option<String>, // ex: "smartphone", "medicament", "vetement"
+    pub tags_fr: Vec<String>,     // 3-8 tags fr auto-générés
+    pub description_enriched_fr: Option<String>, // si description vide ou < 50 chars
+    pub quality_score: Option<i32>, // 0-100 (titre+desc+photos+prix)
+    pub language_detected: Option<String>, // "fr" | "en" | autre
+    pub cost_tokens: i32,         // tokens consommés (audit)
+}
+
 #[derive(Debug, Serialize)]
 pub struct SyncResponse {
     pub ok: bool,
     pub rust_service_id: i32,
     pub action: String, // "created" | "updated"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enrichment: Option<YukpoEnrichment>,
 }
 
 // ─── HMAC verification ──────────────────────────────────────────────────
@@ -325,15 +338,185 @@ pub async fn sync_yukposhop_produit(
         action, rust_service_id, req.external_id, user_id
     );
 
+    // ── Piste 6a : enrichissement IA en synchrone ─────────────────────────
+    // Best-effort : si l'enrichissement échoue (LLM down, timeout, quota),
+    // la sync reste OK — YukpoShop reçoit juste enrichment=null et peut
+    // ré-essayer plus tard via /sync (idempotent côté upsert).
+    let enrichment = enrich_yukposhop_product(&state, rust_service_id, &req.produit).await;
+
     (
         StatusCode::OK,
         Json(SyncResponse {
             ok: true,
             rust_service_id,
             action,
+            enrichment,
         }),
     )
         .into_response()
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Piste 6a — Enrichissement IA produit YukpoShop
+// ════════════════════════════════════════════════════════════════════════
+//
+// Au moment du sync, on demande à GPT-4o-mini (rapide + pas cher) de
+// catégoriser, tagger, détecter le type spécialisé et compléter la
+// description si elle est trop courte. Le résultat est mergé dans
+// services.data ET retourné dans la réponse pour que YukpoShop le store.
+
+async fn enrich_yukposhop_product(
+    state: &AppState,
+    rust_service_id: i32,
+    produit: &YukposhopProduit,
+) -> Option<YukpoEnrichment> {
+    let api_key = match crate::services::yukpo_openai_outbound::resolve_openai_api_key() {
+        Some(k) => k,
+        None => {
+            warn!("[piste6] OPENAI_API_KEY indispo — skip enrichissement");
+            return None;
+        }
+    };
+
+    // Construit un prompt compact mais structuré (1 seul appel LLM)
+    let photos_count = produit.photos_urls.len();
+    let desc_len = produit.description.len();
+    let prompt = format!(
+        "Tu es un classifieur produit e-commerce africain (FR principal). \
+         Analyse ce produit YukpoShop et renvoie un JSON STRICT (aucun autre texte).\n\
+         \n\
+         Produit :\n\
+         - titre: {}\n\
+         - description: {}\n\
+         - prix: {} {}\n\
+         - tags initiaux: {:?}\n\
+         - photos: {} fournie(s)\n\
+         - pays: {}\n\
+         \n\
+         Renvoie EXACTEMENT ce JSON (rien d'autre, pas de markdown) :\n\
+         {{\n\
+           \"category\": \"<une catégorie parmi : electronique, mode, alimentation, sante_pharmacie, \
+            maison, beaute, auto, sport, livre, jouet, agroalimentaire, services_pro, autre>\",\n\
+           \"specialized_type\": \"<sous-type spécifique en 1-3 mots, ex: 'smartphone 5G', \
+            'medicament_otc', 'chaussure_femme', null si non applicable>\",\n\
+           \"tags_fr\": [\"<3 à 6 tags français normalisés, ex: 'smartphone', 'écran amoled'>\"],\n\
+           \"description_enriched_fr\": \"<texte de 120-200 mots commercial en FR si la description \
+            ci-dessus fait moins de 50 caractères, sinon null>\",\n\
+           \"language_detected\": \"<fr|en|ar|sw|autre>\",\n\
+           \"quality_score\": <0-100 selon titre+description+photos+prix, integer>\n\
+         }}",
+        produit.titre,
+        if produit.description.is_empty() { "(vide)" } else { &produit.description },
+        produit.prix,
+        produit.devise,
+        produit.tags,
+        photos_count,
+        produit.pays,
+    );
+
+    let body = json!({
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": "Tu réponds UNIQUEMENT en JSON valide, sans markdown."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.3,
+        "max_tokens": 600,
+        "response_format": {"type": "json_object"}
+    });
+
+    let resp = match crate::services::yukpo_openai_outbound::post_chat_completions(&api_key, &body)
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            warn!("[piste6] OpenAI call échec : {e}");
+            return None;
+        }
+    };
+    if !resp.status().is_success() {
+        let s = resp.status();
+        let txt = resp.text().await.unwrap_or_default();
+        warn!(
+            "[piste6] OpenAI HTTP {} : {}",
+            s.as_u16(),
+            txt.chars().take(200).collect::<String>()
+        );
+        return None;
+    }
+    let raw: Value = match resp.json().await {
+        Ok(v) => v,
+        Err(e) => {
+            warn!("[piste6] OpenAI body parse échec : {e}");
+            return None;
+        }
+    };
+    let content_str = raw["choices"][0]["message"]["content"].as_str().unwrap_or("{}");
+    let parsed: Value = match serde_json::from_str(content_str) {
+        Ok(v) => v,
+        Err(e) => {
+            warn!(
+                "[piste6] JSON parse échec : {e} (raw={})",
+                content_str.chars().take(150).collect::<String>()
+            );
+            return None;
+        }
+    };
+    let cost_tokens = raw["usage"]["total_tokens"].as_i64().unwrap_or(0) as i32;
+
+    let enrichment = YukpoEnrichment {
+        category: parsed["category"].as_str().map(|s| s.to_string()),
+        specialized_type: parsed["specialized_type"]
+            .as_str()
+            .filter(|s| !s.is_empty() && *s != "null")
+            .map(|s| s.to_string()),
+        tags_fr: parsed["tags_fr"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).take(8).collect())
+            .unwrap_or_default(),
+        description_enriched_fr: parsed["description_enriched_fr"]
+            .as_str()
+            .filter(|s| !s.is_empty() && *s != "null")
+            .map(|s| s.to_string()),
+        quality_score: parsed["quality_score"].as_i64().map(|n| n.clamp(0, 100) as i32),
+        language_detected: parsed["language_detected"].as_str().map(|s| s.to_string()),
+        cost_tokens,
+    };
+
+    // Persist back dans services.data + specialized_type column natif
+    let merge_data = json!({
+        "yukpo_enrichment": {
+            "category": enrichment.category,
+            "specialized_type": enrichment.specialized_type,
+            "tags_fr": enrichment.tags_fr,
+            "description_enriched_fr": enrichment.description_enriched_fr,
+            "language_detected": enrichment.language_detected,
+            "quality_score": enrichment.quality_score,
+            "enriched_at": chrono::Utc::now().to_rfc3339(),
+        }
+    });
+    let _ = sqlx::query(
+        "UPDATE services SET data = data || $1, \
+         specialized_type = COALESCE($2, specialized_type), \
+         category = COALESCE($3, category), \
+         updated_at = NOW() \
+         WHERE id = $4",
+    )
+    .bind(&merge_data)
+    .bind(&enrichment.specialized_type)
+    .bind(&enrichment.category)
+    .bind(rust_service_id)
+    .execute(&state.pg)
+    .await;
+
+    info!(
+        "[piste6] svc={} category={:?} tags={} tokens={}",
+        rust_service_id,
+        enrichment.category,
+        enrichment.tags_fr.len(),
+        enrichment.cost_tokens
+    );
+    Some(enrichment)
 }
 
 async fn resolve_or_create_user(
