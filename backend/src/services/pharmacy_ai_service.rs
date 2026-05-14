@@ -326,14 +326,49 @@ pub struct ExtractedMedication {
     pub posologie: Option<String>,
 }
 
+/// Métadonnées extraites de l'en-tête d'une ordonnance (patient, prescripteur,
+/// établissement). Utiles pour l'archivage côté pharmacien : le pharmacien
+/// scanne l'ordonnance reçue, l'IA extrait nom du patient + médecin + hôpital
+/// + ville, et le pharmacien peut retrouver l'ordonnance plus tard en
+/// recherchant par nom de patient.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct OrdonnanceMetadata {
+    pub patient_name: Option<String>,
+    pub doctor_name: Option<String>,
+    pub hospital: Option<String>,
+    pub city: Option<String>,
+    pub prescription_date: Option<String>,
+}
+
+/// Résultat complet d'extraction d'une ordonnance par IA.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExtractedOrdonnance {
+    pub medications: Vec<ExtractedMedication>,
+    pub metadata: OrdonnanceMetadata,
+}
+
 impl PharmacyAIService {
-    /// Extrait les médicaments d'une image d'ordonnance via IA multimodale
+    /// Extrait les médicaments d'une image d'ordonnance via IA multimodale.
+    /// Wrapper qui retourne uniquement la liste de médicaments (compat ascendante).
     pub async fn extract_ordonnance_medications(
         &self,
         image_base64: &str,
         lat: Option<f64>,
         lng: Option<f64>,
     ) -> AppResult<Vec<ExtractedMedication>> {
+        let full = self.extract_ordonnance_full(image_base64, lat, lng).await?;
+        Ok(full.medications)
+    }
+
+    /// Extraction complète : médicaments + métadonnées de l'ordonnance.
+    /// Utilisée par l'endpoint extract-ordonnance qui retourne les deux au
+    /// frontend (pharmacien : pré-remplissage formulaire d'archivage).
+    pub async fn extract_ordonnance_full(
+        &self,
+        image_base64: &str,
+        lat: Option<f64>,
+        lng: Option<f64>,
+    ) -> AppResult<ExtractedOrdonnance> {
         // Contexte géographique dynamique basé sur la position de l'utilisateur
         let geo_context = match (lat, lng) {
             (Some(la), Some(lo)) => {
