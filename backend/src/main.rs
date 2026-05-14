@@ -213,9 +213,11 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     eprintln!("[MAIN] 🔍 Conversion listener std → tokio (bind déjà fait dans main())");
     let listener = tokio::net::TcpListener::from_std(std_listener)?;
 
-    // ✅ 2026-05-14 Piste 4 Phase B — worker queue distribution sociale YukpoShop.
-    // Lancé après le serve task pour ne pas bloquer le démarrage Cloud Run.
-    yukpomnang_backend::services::yukposhop_distribution_worker::spawn_worker(app_state.clone());
+    // ⚠️ 2026-05-14 : worker yukposhop_distribution_worker — déplacé après la
+    // création de app_state (~ligne 2662). À cet endroit, app_state n'est pas
+    // encore défini dans le scope, ce qui provoquait E0425.
+    // L'appel original `yukposhop_distribution_worker::spawn_worker(app_state.clone())`
+    // est désormais effectué juste après le `let app_state = Arc::new(...)`.
 
     eprintln!(
         "[MAIN] 🚀 axum::serve (shell) sur :{} — accept immédiat",
@@ -2668,6 +2670,11 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
         redis_available_for_ws,
         degraded_mode, // ✅ CORRIGÉ 2026-03-23: Passer le flag de mode dégradé
     ));
+
+    // ✅ 2026-05-14 Piste 4 Phase B — worker queue distribution sociale YukpoShop.
+    // Lancé juste après création app_state pour qu'il puisse cloner la pool DB
+    // et tourner en background pendant tout le cycle de vie du serveur.
+    yukpomnang_backend::services::yukposhop_distribution_worker::spawn_worker(app_state.clone());
 
     // ✅ OPTIMISÉ Cloud Run 2026-02-14: Lancer toutes les migrations SQLx en arrière-plan pour Cloud Run
     // ✅ CORRIGÉ 2026-04-01: Réutiliser pg_pool (déjà configuré avec PgConnectOptions + attente socket)
