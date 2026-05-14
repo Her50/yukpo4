@@ -166,6 +166,12 @@ pub fn specialized_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>
             "/api/pharmacies/ai/alternatives",
             post(specialized_services_controller::suggest_medication_alternatives),
         )
+        // Router LLM pour la search bar : classifie l'intention (médicament,
+        // symptôme, question, chat libre) et retourne la requête reformulée.
+        .route(
+            "/api/pharmacies/ai/route-intent",
+            post(specialized_services_controller::route_text_intent),
+        )
         // Log de consentement utilisateur — endpoint PUBLIC (l'utilisateur
         // peut accepter avant de se créer un compte). Si JWT présent, on
         // associe le consent à l'user_id ; sinon on garde seulement ip_hash.

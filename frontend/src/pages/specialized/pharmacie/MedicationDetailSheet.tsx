@@ -26,6 +26,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiPost } from '@/services/apiService';
+import { useHistoryBackClose } from '@/hooks/useHistoryBackClose';
 
 interface DosageData {
   dosage: string;
@@ -52,6 +53,9 @@ interface Props {
 
 const MedicationDetailSheet: React.FC<Props> = ({ medicationName, onClose, onFindPharmacies }) => {
   const { t } = useTranslation();
+
+  // Bouton Retour navigateur ferme la fiche au lieu de quitter la PWA.
+  useHistoryBackClose(true, onClose);
 
   const [dosage, setDosage] = useState<DosageData | null>(null);
   const [dosageLoading, setDosageLoading] = useState(true);

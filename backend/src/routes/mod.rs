@@ -47,6 +47,7 @@ pub mod hotel_group_routes; // ✅ 2026-04-01: Routes groupes, form config, prof
 pub mod hotel_room_management_routes; // ✅ 2026-01-27: Routes gestion chambres/unités hôtels et meublés
 pub mod ia_routes;
 pub mod image_search_routes;
+pub mod integrations_yukposhop_routes; // ✅ 2026-05-14: Bridge YukpoShop -> marketplace
 pub mod kyc_admin_routes;
 pub mod kyc_webhook_routes;
 pub mod librairie_network_routes; // ✅ NOUVEAU 2026-03-16: Routes réseau de librairies

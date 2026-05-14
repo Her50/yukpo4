@@ -6567,6 +6567,131 @@ pub async fn suggest_medication_alternatives(
     ))
 }
 
+/// Router LLM pour la search bar pharmacie.
+///
+/// L'utilisateur tape n'importe quoi dans le champ recherche. Au lieu de faire
+/// du pattern matching mots-clés côté front (fragile), on demande à l'IA de
+/// classifier l'intention et de retourner :
+///   - intent="medication_search" → on lance la recherche pharmacie classique
+///   - intent="symptom_inquiry"   → on reformule en question et on ouvre le chat IA
+///   - intent="medical_question"  → on ouvre le chat IA avec la question
+///   - intent="general_chat"      → chat IA libre
+///
+/// ⚠️ Le prompt insiste pour rester strictement classificateur, sans donner de
+/// conseil médical à ce stade (le chat IA s'en charge si pertinent).
+#[derive(Debug, Deserialize)]
+pub struct RouteIntentRequest {
+    pub text: String,
+    pub lang: Option<String>,
+}
+
+pub async fn route_text_intent(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<RouteIntentRequest>,
+) -> AppResult<impl IntoResponse> {
+    let raw = payload.text.trim();
+    if raw.is_empty() {
+        return Err(AppError::BadRequest("text est requis".to_string()));
+    }
+    // Garde-fou : on tronque les inputs trop longs pour éviter les coûts IA
+    // abusifs. 600 caractères est largement suffisant pour une search bar.
+    let text = if raw.len() > 600 { &raw[..600] } else { raw };
+    let lang = payload.lang.as_deref().unwrap_or("fr");
+
+    let prompt = format!(
+        r#"
+Tu es un classificateur d'intention pour la barre de recherche de Yukpo Pharmacie,
+une PWA grand public (Cameroun, Afrique francophone). Tu n'es PAS un médecin ni
+un pharmacien — tu te limites STRICTEMENT à classer l'intention de l'utilisateur,
+sans donner de conseil thérapeutique. La langue de l'utilisateur est "{lang}".
+
+ENTRÉE :
+"""
+{text}
+"""
+
+WORKFLOW DE DÉCISION :
+
+1. Si l'entrée est un NOM DE MÉDICAMENT (DCI ou marque) — éventuellement avec un
+   dosage et/ou une forme galénique. Exemples : "Doliprane", "paracétamol 500",
+   "Amoxicilline", "Ventoline 100µg", "Spasfon comprimé", "ibuprofène"
+   → intent = "medication_search"
+   → query_for_search = le nom de médicament normalisé en minuscules, sans dose
+
+2. Si l'entrée décrit un SYMPTÔME ou une plainte sans question explicite :
+   "j'ai mal au ventre", "fièvre depuis hier", "toux sèche", "ça pique les yeux"
+   → intent = "symptom_inquiry"
+   → question_for_chat = reformule en question claire pour un assistant
+      pharmaceutique, en gardant les détails essentiels (durée, intensité…).
+      Exemple : "j'ai mal au ventre" → "Quels médicaments en vente libre peuvent
+      soulager des douleurs abdominales légères ?"
+
+3. Si l'entrée est explicitement une QUESTION (avec ?, "comment", "que faire",
+   "pourquoi", "est-ce que…") :
+   "comment traiter une migraine ?", "que faire si je tousse beaucoup ?"
+   → intent = "medical_question"
+   → question_for_chat = la question telle quelle, éventuellement clarifiée
+
+4. Sinon (salutation, message non pertinent, requête hors-sujet pharmacie) :
+   "bonjour", "merci", "yukpo c'est quoi", "qui es-tu", "test"
+   → intent = "general_chat"
+   → question_for_chat = la requête telle quelle pour l'assistant Yukpo
+
+RÈGLES IMPORTANTES :
+- Tu ne donnes JAMAIS de diagnostic ni de posologie ici.
+- Si tu hésites entre medication_search et symptom_inquiry, privilégie
+  medication_search uniquement si le mot est PROBABLEMENT un nom de médicament
+  (peux-tu raisonnablement le retrouver dans une notice pharmaceutique ?).
+- Reste 100 % en JSON strict, sans markdown, sans commentaire avant/après.
+
+RÉPONSE :
+{{
+    "intent": "medication_search" | "symptom_inquiry" | "medical_question" | "general_chat",
+    "query_for_search": "...",
+    "question_for_chat": "..."
+}}
+"#,
+        text = text,
+        lang = lang,
+    );
+
+    let (model_name, response, tokens) = state.ia.predict(&prompt).await?;
+    info!(
+        "[route_text_intent] model={} tokens={} input_len={}",
+        model_name,
+        tokens,
+        text.len()
+    );
+
+    // Tentative de parse strict. En cas d'échec, défaut conservateur :
+    // medical_question avec la requête originale → on bascule sur chat IA
+    // qui pourra gérer poliment l'ambiguïté.
+    #[derive(Debug, Deserialize)]
+    struct ParsedIntent {
+        intent: String,
+        #[serde(default)]
+        query_for_search: Option<String>,
+        #[serde(default)]
+        question_for_chat: Option<String>,
+    }
+
+    let parsed: ParsedIntent = serde_json::from_str(&response).unwrap_or(ParsedIntent {
+        intent: "medical_question".to_string(),
+        query_for_search: None,
+        question_for_chat: Some(text.to_string()),
+    });
+
+    Ok((
+        StatusCode::OK,
+        Json(json!({
+            "success": true,
+            "intent": parsed.intent,
+            "query_for_search": parsed.query_for_search,
+            "question_for_chat": parsed.question_for_chat,
+        })),
+    ))
+}
+
 /// Enregistrer le consentement utilisateur pour la PWA Pharmacie
 ///
 /// Conformité éthique/réglementaire : trace serveur pour prouver que

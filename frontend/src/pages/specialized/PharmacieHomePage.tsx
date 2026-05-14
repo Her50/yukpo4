@@ -1,8 +1,5 @@
 import {
   AlertTriangle,
-  Camera,
-  ChevronRight,
-  FileText,
   Loader2,
   MapPin,
   Phone,
@@ -13,17 +10,16 @@ import {
   Send,
   Shield,
   Sparkles,
-  Stethoscope,
   Tag,
   X,
 } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import YukpoCostBadge from '@/components/YukpoCostBadge';
 import LanguageSwitcherBourse from '@/components/LanguageSwitcherBourse';
 import { useToast } from '@/hooks/use-toast';
 import { useGpsWithFallback } from '@/hooks/useGpsWithFallback';
+import { useHistoryBackClose } from '@/hooks/useHistoryBackClose';
 import { apiGet, apiPost } from '@/services/apiService';
 import MedicationDetailSheet from './pharmacie/MedicationDetailSheet';
 
@@ -63,15 +59,11 @@ interface PharmacyMatch {
   medications_availability?: { name: string; available: boolean; price?: number }[];
 }
 
-type ScanKind = 'ordonnance' | 'boite' | 'symptom' | 'ask';
 
 const PharmacieHomePage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const ordonnanceInputRef = useRef<HTMLInputElement>(null);
-  const boiteInputRef = useRef<HTMLInputElement>(null);
-
   const { gps, status: gpsStatus, detect: redetectGps } = useGpsWithFallback();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,8 +74,11 @@ const PharmacieHomePage: React.FC = () => {
   const [radiusKm, setRadiusKm] = useState(20);
   const [activeChip, setActiveChip] = useState<string | null>(null);
 
-  // Sheets
-  const [scanSheetOpen, setScanSheetOpen] = useState(false);
+  // Sheets — Le sheet "Que voulez-vous faire ?" a été supprimé : le bouton
+  // scan ouvre directement la caméra et le routage post-extraction se fait
+  // automatiquement (1 méd → fiche, N méds → matching pharmacies + interactions).
+  // La recherche texte route vers l'IA si le texte ressemble à une question
+  // (cf. looksLikeQuestion en haut de fichier).
   const [aiSheetOpen, setAiSheetOpen] = useState(false);
   const [analyzingImage, setAnalyzingImage] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
@@ -149,13 +144,42 @@ const PharmacieHomePage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gps?.lat, gps?.lng, onDutyOnly, radiusKm]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const [routingIntent, setRoutingIntent] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) {
+    const q = searchQuery.trim();
+    if (!q) {
       toast({ title: t('pharmacie.home.emptySearch'), variant: 'destructive' });
       return;
     }
-    loadMedications(searchQuery);
+    // ✅ Routage par LLM côté backend (pas d'heuristique mots-clés) : on
+    // demande à l'IA de classifier l'intention (médicament / symptôme /
+    // question / chat). En cas d'échec réseau → fallback direct sur recherche
+    // médicament classique pour ne pas bloquer l'utilisateur.
+    setRoutingIntent(true);
+    try {
+      const res = await apiPost('/api/pharmacies/ai/route-intent', {
+        text: q,
+        lang: typeof document !== 'undefined' ? document.documentElement.lang || 'fr' : 'fr',
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const intent: string = data?.intent || 'medication_search';
+      if (intent === 'medication_search') {
+        const query = data?.query_for_search || q;
+        setSearchQuery(query);
+        loadMedications(query);
+      } else {
+        const question = data?.question_for_chat || q;
+        askAI(question);
+      }
+    } catch {
+      // Fallback : routage médicament par défaut, jamais on ne bloque l'utilisateur
+      loadMedications(q);
+    } finally {
+      setRoutingIntent(false);
+    }
   };
 
   const handleChip = (chipId: string) => {
@@ -300,25 +324,6 @@ const PharmacieHomePage: React.FC = () => {
     }
   };
 
-  const handleScanChoice = (kind: ScanKind) => {
-    setScanSheetOpen(false);
-    if (kind === 'ordonnance') {
-      ordonnanceInputRef.current?.click();
-    } else if (kind === 'boite') {
-      boiteInputRef.current?.click();
-    } else if (kind === 'symptom') {
-      setAiQuestion('');
-      setAiResponse(null);
-      setAiUnavailable(false);
-      setAiSheetOpen(true);
-    } else if (kind === 'ask') {
-      setAiQuestion('');
-      setAiResponse(null);
-      setAiUnavailable(false);
-      setAiSheetOpen(true);
-    }
-  };
-
   const aiSuggestions = [
     t('pharmacie.ai.suggestions.fever'),
     t('pharmacie.ai.suggestions.headache'),
@@ -369,19 +374,39 @@ const PharmacieHomePage: React.FC = () => {
                   aria-label={t('pharmacie.home.searchPlaceholder')}
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => setScanSheetOpen(true)}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 rounded-xl border border-blue-200 inline-flex items-center justify-center"
+              {/* Bouton scan unifié : ouvre directement la caméra. Le backend
+                  détecte si c'est une ordonnance ou une boîte de médicament
+                  et le routage (fiche médicament vs matching pharmacies) se
+                  fait automatiquement selon le nombre de molécules extraites. */}
+              <label
+                className={`bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 rounded-xl border border-blue-200 inline-flex items-center justify-center cursor-pointer ${
+                  analyzingImage ? 'opacity-60 pointer-events-none' : ''
+                }`}
                 aria-label={t('pharmacie.scan.fab')}
               >
-                <ScanLine className="w-5 h-5" />
-              </button>
+                {analyzingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <ScanLine className="w-5 h-5" />}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) handleScanFile(f, 'ordonnance');
+                    e.target.value = '';
+                  }}
+                />
+              </label>
               <button
                 type="submit"
-                className="bg-blue-600 active:bg-blue-700 text-white px-4 py-3 rounded-xl font-semibold text-sm"
+                disabled={routingIntent}
+                className="bg-blue-600 active:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-3 rounded-xl font-semibold text-sm inline-flex items-center justify-center min-w-[48px]"
               >
-                {t('pharmacie.home.searchSubmit')}
+                {routingIntent ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  t('pharmacie.home.searchSubmit')
+                )}
               </button>
             </form>
 
@@ -428,25 +453,6 @@ const PharmacieHomePage: React.FC = () => {
               {t('pharmacie.gps.detecting')}
             </div>
           )}
-
-          {/* Scan inline CTA — discret, sous les chips, juste avant la liste.
-              Le bouton ScanLine dans la search bar sert d'entrée principale ;
-              cette card sert de redirection pédagogique pour les nouveaux. */}
-          <div className="px-4 mb-4">
-            <button
-              onClick={() => setScanSheetOpen(true)}
-              className="w-full flex items-center gap-3 rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 active:from-blue-100 active:to-indigo-100"
-            >
-              <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shrink-0 border border-blue-100">
-                <Sparkles className="w-4 h-4 text-blue-600" />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-semibold text-blue-900 leading-tight">{t('pharmacie.scan.sheetTitle')}</p>
-                <p className="text-xs text-blue-700/80 leading-snug">{t('pharmacie.scan.sheetSubtitle')}</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-blue-400 shrink-0" />
-            </button>
-          </div>
 
           {scanResult && (
             <div className="mx-4 mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800 flex items-start gap-2">
@@ -614,76 +620,6 @@ const PharmacieHomePage: React.FC = () => {
         </div>
       </div>
 
-      {/* === Inputs cachés (capture caméra mobile) === */}
-      <input
-        ref={ordonnanceInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={e => {
-          const f = e.target.files?.[0];
-          if (f) handleScanFile(f, 'ordonnance');
-          e.target.value = '';
-        }}
-      />
-      <input
-        ref={boiteInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={e => {
-          const f = e.target.files?.[0];
-          if (f) handleScanFile(f, 'boite');
-          e.target.value = '';
-        }}
-      />
-
-      {/* === Bottom sheet : Scan options === */}
-      {scanSheetOpen && (
-        <SheetOverlay onClose={() => setScanSheetOpen(false)}>
-          <div className="px-5 pt-2 pb-6">
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            <h3 className="text-base font-bold text-gray-900">{t('pharmacie.scan.sheetTitle')}</h3>
-            <p className="text-xs text-gray-500 mt-0.5">{t('pharmacie.scan.sheetSubtitle')}</p>
-            <div className="mt-4 space-y-2">
-              <ScanOption
-                icon={<FileText className="w-5 h-5 text-blue-600" />}
-                iconBg="bg-blue-50"
-                title={t('pharmacie.scan.ordonnance')}
-                hint={t('pharmacie.scan.ordonnanceHint')}
-                onClick={() => handleScanChoice('ordonnance')}
-                badge={<YukpoCostBadge action="ordonnance_extract" variant="inline" />}
-              />
-              <ScanOption
-                icon={<Camera className="w-5 h-5 text-indigo-600" />}
-                iconBg="bg-indigo-50"
-                title={t('pharmacie.scan.boite')}
-                hint={t('pharmacie.scan.boiteHint')}
-                onClick={() => handleScanChoice('boite')}
-                badge={<YukpoCostBadge action="vision_image" variant="inline" />}
-              />
-              <ScanOption
-                icon={<Stethoscope className="w-5 h-5 text-emerald-600" />}
-                iconBg="bg-emerald-50"
-                title={t('pharmacie.scan.symptom')}
-                hint={t('pharmacie.scan.symptomHint')}
-                onClick={() => handleScanChoice('symptom')}
-                badge={<YukpoCostBadge action="chat_message" variant="inline" />}
-              />
-              <ScanOption
-                icon={<Sparkles className="w-5 h-5 text-blue-600" />}
-                iconBg="bg-blue-50"
-                title={t('pharmacie.scan.ask')}
-                hint={t('pharmacie.scan.askHint')}
-                onClick={() => handleScanChoice('ask')}
-                badge={<YukpoCostBadge action="chat_message" variant="inline" />}
-              />
-            </div>
-          </div>
-        </SheetOverlay>
-      )}
 
       {/* === Bottom sheet : AI chat === */}
       {aiSheetOpen && (
@@ -805,6 +741,10 @@ const PharmacieHomePage: React.FC = () => {
 // ============================================================================
 
 const SheetOverlay: React.FC<{ onClose: () => void; children: React.ReactNode }> = ({ onClose, children }) => {
+  // Bouton Retour navigateur (ou geste back Android) → ferme le sheet au lieu
+  // de quitter la PWA. Le hook push une entrée d'historique fictive à
+  // l'ouverture et la consomme à la fermeture.
+  useHistoryBackClose(true, onClose);
   return (
     <div
       className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center"
@@ -813,7 +753,7 @@ const SheetOverlay: React.FC<{ onClose: () => void; children: React.ReactNode }>
       aria-modal="true"
     >
       <div
-        className="bg-white rounded-t-3xl w-full max-w-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] animate-slide-up-sheet"
+        className="bg-white rounded-t-3xl w-full max-w-2xl shadow-2xl pb-[env(safe-area-inset-bottom)] animate-slide-up-sheet max-h-[90vh] overflow-y-auto overscroll-contain"
         onClick={e => e.stopPropagation()}
       >
         {children}
@@ -821,15 +761,6 @@ const SheetOverlay: React.FC<{ onClose: () => void; children: React.ReactNode }>
     </div>
   );
 };
-
-interface ScanOptionProps {
-  icon: React.ReactNode;
-  iconBg: string;
-  title: string;
-  hint: string;
-  onClick: () => void;
-  badge?: React.ReactNode;
-}
 
 // Carte d'une pharmacie matching avec détail médicaments + prix + budget total
 const PharmacyMatchCard: React.FC<{
@@ -1010,20 +941,5 @@ const InteractionsBanner: React.FC<{
     </div>
   );
 };
-
-const ScanOption: React.FC<ScanOptionProps> = ({ icon, iconBg, title, hint, onClick, badge }) => (
-  <button
-    onClick={onClick}
-    className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl border border-gray-100 hover:bg-gray-50 active:bg-gray-100 text-left"
-  >
-    <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>{icon}</div>
-    <div className="flex-1 min-w-0">
-      <p className="text-sm font-semibold text-gray-900 leading-tight">{title}</p>
-      <p className="text-xs text-gray-500 leading-snug">{hint}</p>
-      {badge && <div className="mt-1">{badge}</div>}
-    </div>
-    <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-  </button>
-);
 
 export default PharmacieHomePage;
