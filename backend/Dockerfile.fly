@@ -71,6 +71,7 @@ COPY ia_prompts ./ia_prompts
 COPY config ./config
 COPY migrations ./migrations
 COPY public ./public
+COPY data ./data
 COPY ia_intentions_instructions.md ./
 
 # Construire l'application avec optimisations maximales
