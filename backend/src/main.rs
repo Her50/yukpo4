@@ -213,6 +213,10 @@ async fn async_main(std_listener: std::net::TcpListener) -> Result<(), Box<dyn s
     eprintln!("[MAIN] 🔍 Conversion listener std → tokio (bind déjà fait dans main())");
     let listener = tokio::net::TcpListener::from_std(std_listener)?;
 
+    // ✅ 2026-05-14 Piste 4 Phase B — worker queue distribution sociale YukpoShop.
+    // Lancé après le serve task pour ne pas bloquer le démarrage Cloud Run.
+    yukpomnang_backend::services::yukposhop_distribution_worker::spawn_worker(app_state.clone());
+
     eprintln!(
         "[MAIN] 🚀 axum::serve (shell) sur :{} — accept immédiat",
         port

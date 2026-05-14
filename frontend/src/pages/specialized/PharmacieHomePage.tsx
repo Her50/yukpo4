@@ -251,6 +251,39 @@ const PharmacieHomePage: React.FC = () => {
     }
   }, []);
 
+  // Workflow RFQ : émet une alerte de disponibilité aux pharmacies du rayon
+  // (5 km par défaut). Les pharmaciens valident manuellement, l'utilisateur
+  // voit les réponses classées en temps réel sur /alerts/:id.
+  const broadcastAlert = useCallback(
+    async (meds: string[]) => {
+      if (meds.length === 0) {
+        toast({ title: 'Aucun médicament à demander', variant: 'destructive' });
+        return;
+      }
+      try {
+        const res = await apiPost(
+          '/api/medication-alerts',
+          {
+            query_items: meds.map(name => ({ name })),
+            gps_lat: gps?.lat ?? 4.0511,
+            gps_lng: gps?.lng ?? 9.7679,
+            radius_km: 5,
+          },
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        navigate(`/alerts/${data.alert_id}`);
+      } catch (e: any) {
+        toast({
+          title: 'Impossible d’émettre l’alerte',
+          description: e?.message,
+          variant: 'destructive',
+        });
+      }
+    },
+    [gps?.lat, gps?.lng, navigate, toast],
+  );
+
   const runMatchingSearch = useCallback(
     async (meds: string[]) => {
       setMatchingLoading(true);
@@ -311,11 +344,13 @@ const PharmacieHomePage: React.FC = () => {
         // médicament détaillée (posologie + alternatives) via les routes IA réelles.
         setFocusedMedication(meds[0]);
       } else {
-        // Ordonnance multi-médicaments : on parallélise interactions + matching
-        // pharmacies. Le chat IA générique n'est plus déclenché : l'utilisateur
-        // a maintenant des données structurées et actionnables.
+        // Ordonnance multi-médicaments : workflow RFQ.
+        // - On vérifie les interactions en parallèle (banner)
+        // - On broadcast une alerte aux pharmacies du rayon → l'utilisateur
+        //   bascule sur la page /alerts/:id qui affiche les réponses en
+        //   temps réel et le classement par taux de complétude.
         runInteractionsCheck(meds);
-        runMatchingSearch(meds);
+        broadcastAlert(meds);
       }
     } catch (e: any) {
       toast({
@@ -612,10 +647,21 @@ const PharmacieHomePage: React.FC = () => {
                 <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : medications.length === 0 ? (
-              <div className="flex flex-col items-center py-12 text-center">
+              <div className="flex flex-col items-center py-10 text-center">
                 <Pill className="w-12 h-12 text-gray-200 mb-3" />
                 <p className="text-gray-500 text-sm">{t('pharmacie.home.nearbyEmpty')}</p>
-                <p className="text-gray-400 text-xs mt-1">{t('pharmacie.home.nearbyEmptyHint')}</p>
+                <p className="text-gray-400 text-xs mt-1 mb-4">
+                  {t('pharmacie.home.nearbyEmptyHint')}
+                </p>
+                {searchQuery.trim() && (
+                  <button
+                    onClick={() => broadcastAlert([searchQuery.trim()])}
+                    className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-5 py-2.5 rounded-xl font-semibold text-sm inline-flex items-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Demander aux pharmacies du quartier
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
