@@ -59,12 +59,20 @@ export const makeLiteConfig = (cfg: LiteAppConfig) => {
       outDir: cfg.outDir,
       sourcemap: false,
       minify: true,
+      // Seuil légèrement élevé : 524 KB raw ≈ 165 KB gzip, ce qui reste sain
+      // pour une PWA. On split agressivement les libs partagées pour bénéficier
+      // du cache HTTP entre les apps (bourse / pharmacie / restaurant).
+      chunkSizeWarningLimit: 600,
       rollupOptions: {
         input: path.resolve(__dirname, cfg.entryHtml),
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'ui-vendor': ['lucide-react'],
+            'ui-vendor': ['lucide-react', 'react-hot-toast', 'sonner'],
+            'i18n-vendor': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
+            'http-vendor': ['axios'],
+            // date-fns retiré : utilisé seulement par composants delivery non
+            // inclus dans pharmacie → chunk vide. Laissé au bundle qui l'importe.
           },
         },
       },

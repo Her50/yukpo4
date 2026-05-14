@@ -150,12 +150,53 @@ const EcoleSearchPage: React.FC = () => {
             <p className="text-xs text-gray-400 mb-5">
               {t('bourse.search.not_partner_yet')}
             </p>
+            {/* ✅ 2026-05-14 : Option principale = programme national (gratuit,
+                couvre toutes les écoles publiques du pays). C'est la solution
+                la plus pratique quand l'école cherchée n'est pas partenaire. */}
+            <button
+              onClick={() => navigate('/programme-ecole')}
+              className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-bold rounded-full shadow-sm mb-3"
+            >
+              <span>🇨🇲</span>
+              {t('bourse.search.national_programme_cta', { defaultValue: 'Continuer avec le programme national' })}
+            </button>
+            <p className="text-[11px] text-gray-500 mb-4 max-w-xs mx-auto leading-snug">
+              {t('bourse.search.national_programme_hint', { defaultValue: 'La liste officielle du Ministère, valable dans toutes les écoles publiques.' })}
+            </p>
+            <div className="flex items-center justify-center gap-2 my-3">
+              <span className="h-px bg-gray-200 flex-1 max-w-[60px]" />
+              <span className="text-[10px] text-gray-400 uppercase">{t('bourse.search.or', { defaultValue: 'ou' })}</span>
+              <span className="h-px bg-gray-200 flex-1 max-w-[60px]" />
+            </div>
             <button
               onClick={() => navigate('/scan-programme')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-white text-sm font-semibold rounded-full"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-amber-300 text-amber-700 text-xs font-semibold rounded-full"
             >
-              <Camera className="w-4 h-4" />
+              <Camera className="w-3.5 h-3.5" />
               {t('bourse.search.scan_fallback')}
+            </button>
+          </div>
+        )}
+
+        {/* ✅ 2026-05-14 : CTA persistant Programme national visible MÊME quand
+            des résultats existent. L'user peut toujours choisir le national
+            si aucune des écoles partenaires affichées ne lui convient. */}
+        {!loading && (results.length > 0 || query.trim().length < 2) && (
+          <div className="mb-3 bg-emerald-50 border-2 border-emerald-300 rounded-xl p-3 flex items-center gap-3 shadow-sm">
+            <span className="text-2xl shrink-0">🇨🇲</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-emerald-800 leading-tight">
+                {t('bourse.search.national_programme_card_title', { defaultValue: 'Aucune école — programme national' })}
+              </p>
+              <p className="text-[11px] text-emerald-700 leading-snug">
+                {t('bourse.search.national_programme_hint', { defaultValue: 'La liste officielle du Ministère, valable dans toutes les écoles publiques.' })}
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/programme-ecole')}
+              className="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg"
+            >
+              {t('bourse.search.continue', { defaultValue: 'Continuer' })}
             </button>
           </div>
         )}
