@@ -151,10 +151,11 @@ const EcoleSearchPage: React.FC = () => {
               {t('bourse.search.not_partner_yet')}
             </p>
             {/* ✅ 2026-05-14 : Option principale = programme national (gratuit,
-                couvre toutes les écoles publiques du pays). C'est la solution
-                la plus pratique quand l'école cherchée n'est pas partenaire. */}
+                couvre toutes les écoles publiques du pays). reset=1 force
+                Browse à oublier la classe seedée pour que l'user choisisse
+                explicitement sa classe via l'autocomplete (UX cohérent). */}
             <button
-              onClick={() => navigate('/programme-ecole')}
+              onClick={() => navigate('/programme-ecole?reset=1')}
               className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-bold rounded-full shadow-sm mb-3"
             >
               <span>🇨🇲</span>

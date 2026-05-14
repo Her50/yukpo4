@@ -2098,6 +2098,19 @@ TU DOIS remplir ces 9 booléens SANS EXCEPTION. Examine chaque cm² visible.
 N'invente pas, mais ne sois pas indulgent : en cas de doute pour un défaut visible, mets true.
 Si UN SEUL est true → le livre sera AUTOMATIQUEMENT rejeté côté backend.
 
+🔥 RÈGLE CARDINALE — OR LOGIQUE RECTO/VERSO :
+La qualité du livre est déterminée par la PIRE des 2 images. Donc :
+  - Si RECTO endommagé (déchirure, morceau manquant, etc.) ET VERSO en bon état → REJET (flag true)
+  - Si VERSO endommagé ET RECTO en bon état → REJET (flag true)
+  - Si UN SEUL des défauts est visible sur UNE SEULE des deux images → flag = true
+
+TU N'AS PAS LE DROIT de moyenner la qualité ou d'ignorer un défaut sur le recto sous prétexte
+que le verso est propre. Le livre PHYSIQUE est endommagé dès qu'une face l'est. C'est l'objet
+entier qui circule, pas une seule face.
+
+Exemple critique : une couverture AVANT (recto) déchirée mais une couverture ARRIÈRE (verso)
+en parfait état → has_tear = true → rejet automatique. C'est NON NÉGOCIABLE.
+
   degradation_flags: {{
     "has_tear": <true|false>,                  // Déchirure visible sur la couverture (même 1cm, même recollée)
     "has_missing_piece": <true|false>,         // Morceau de couverture manquant (coin, bord, bande)

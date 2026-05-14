@@ -129,7 +129,10 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
   // si cette même classe avait un etablissementId attaché. Sinon → programme
   // national par défaut (ce qui correspond à l'attente utilisateur).
   // On prend la dernière entrée (la plus récente), pas la première.
-  const seedEnfant: Enfant | undefined = enfants[enfants.length - 1] ?? enfants[0];
+  // ✅ 2026-05-14 : ?reset=1 force le démarrage à zéro (CTA Programme national
+  // depuis EcoleSearchPage) — sinon l'user voit la classe précédente figée.
+  const resetMode = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('reset') === '1');
+  const seedEnfant: Enfant | undefined = resetMode ? undefined : (enfants[enfants.length - 1] ?? enfants[0]);
   const [etablissement, setEtablissement] = useState<{ id: number; nom: string; ville?: string } | null>(
     seedEnfant?.etablissementId
       ? { id: seedEnfant.etablissementId, nom: seedEnfant.etablissementNom ?? 'École' }
@@ -938,12 +941,27 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
           </div>
         )}
 
-        {/* État initial : rien sélectionné */}
-        {!loading && !error && !loaded && (
+        {/* État initial : aucune classe sélectionnée → message clair pour
+            inviter l'user à utiliser le ClasseAutocomplete au-dessus. */}
+        {!loading && !error && !loaded && !classeNom && (
+          <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 flex flex-col items-center justify-center text-center">
+            <BookOpen className="w-10 h-10 text-amber-500 mb-2" />
+            <p className="text-sm text-amber-900 font-bold mb-1">
+              {etablissement
+                ? 'Choisissez la classe pour voir le programme de l\'école'
+                : 'Choisissez votre classe pour voir le programme national'}
+            </p>
+            <p className="text-xs text-amber-700">
+              Tapez le nom de votre classe dans le champ ci-dessus (ex : « 6ème », « CP », « Tle A »…).
+            </p>
+          </div>
+        )}
+
+        {/* État classe choisie mais programme pas encore chargé (rare, transition) */}
+        {!loading && !error && !loaded && classeNom && (
           <div className="bg-white rounded-2xl border border-gray-100 p-8 flex flex-col items-center justify-center text-center">
-            <BookOpen className="w-10 h-10 text-amber-400 mb-2" />
-            <p className="text-sm text-gray-700 font-semibold mb-1">Choisissez une école et une classe</p>
-            <p className="text-xs text-gray-500">Le programme officiel s'affiche automatiquement.</p>
+            <Loader2 className="w-6 h-6 text-amber-500 animate-spin mb-2" />
+            <p className="text-sm text-gray-600">Chargement du programme…</p>
           </div>
         )}
       </div>
