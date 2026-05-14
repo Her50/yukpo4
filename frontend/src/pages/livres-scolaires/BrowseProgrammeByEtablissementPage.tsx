@@ -3,7 +3,7 @@ import {
   Minus, Plus, School, ShoppingCart, X,
 } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import ClasseAutocomplete, { type ClasseSelection } from '../../components/livres-scolaires/ClasseAutocomplete';
 import EcolePickerPopover from '../../components/livres-scolaires/EcolePickerPopover';
 import GammeSelector, { Gamme, priceForGamme } from '../../components/livres-scolaires/GammeSelector';
@@ -115,6 +115,7 @@ function formatPrix(prix: number | undefined, pays: string): string {
 
 const BrowseProgrammeByEtablissementPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { enfants, addItems, addEnfant } = useParentShop();
   // Pool troc du parent : grise les articles déjà couverts par un troc en cours
@@ -164,6 +165,31 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
   const hasClasseSeries = (currentClasseObj?.series?.length ?? 0) > 0;
   const classe = serieCode ? `${classeNom} ${serieCode}` : classeNom;
   const systeme: Systeme = currentSystemeObj?.langue === 'en' ? 'anglophone' : 'francophone';
+
+  // ✅ 2026-05-14 : Pré-remplissage depuis query string (?classe=&mode=neuf|occasion).
+  // Utilisé par le fallback rejet de VendreLivresPage : quand le livre du parent
+  // est rejeté, on lui propose d'acheter le neuf/occasion de la classe supérieure
+  // via un navigate('/programme-ecole?classe=2nde A&mode=neuf'). On parse la
+  // classe ici pour seed niveauNom/classeNom/serieCode.
+  useEffect(() => {
+    const cParam = searchParams.get('classe');
+    if (cParam && !classeNom) {
+      // Trouve le niveau qui contient cette classe
+      const sys = currentSystemeObj;
+      if (sys) {
+        for (const n of sys.niveaux) {
+          const parsed = parseClasseAndSerie(cParam, sys.id, n.nom);
+          if (parsed.classeNom && n.classes.some(c => c.nom === parsed.classeNom)) {
+            setNiveauNom(n.nom);
+            setClasseNom(parsed.classeNom);
+            setSerieCode(parsed.serieCode);
+            break;
+          }
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handlePaysChange = (p: PaysCode) => {
     setPays(p);
