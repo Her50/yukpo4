@@ -76,11 +76,52 @@ pub struct BudgetItem {
     pub quantity: i32,
 }
 
+/// Helper interne : vérifie qu'un user peut administrer une pharmacie
+/// (créer/modifier/supprimer ses produits).
+///
+/// Renvoie `true` si :
+///   1. user_id est propriétaire du service (chemin standard)
+///   2. user_id est propriétaire direct de la pharmacie via pharmacies.user_id
+///   3. Bypass admin Yukpo : la pharmacie a is_official=true ET role∈{admin,super_admin}
+///      → permet à tout admin de tester la pharmacie officielle Yukpo
+///      (créée par migration 20260514_002).
+async fn user_can_manage_pharmacy(
+    pool: &sqlx::PgPool,
+    user_id: i32,
+    user_role: &str,
+    service_id: i32,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar::<_, bool>(
+        r#"
+        SELECT EXISTS (
+            SELECT 1 FROM services
+            WHERE id = $1 AND user_id = $2 AND specialized_type = 'pharmacie'
+            UNION ALL
+            SELECT 1 FROM pharmacies
+            WHERE service_id = $1 AND user_id = $2
+            UNION ALL
+            SELECT 1 FROM pharmacies
+            WHERE service_id = $1 AND is_official = TRUE
+              AND $3 IN ('admin', 'super_admin')
+        )
+        "#,
+    )
+    .bind(service_id)
+    .bind(user_id)
+    .bind(user_role)
+    .fetch_one(pool)
+    .await
+}
+
 /// POST /api/pharmacies/products
 /// Créer un produit
 pub async fn create_product(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateProductRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
@@ -89,34 +130,35 @@ pub async fn create_product(
     );
 
     // ✅ FIX 2026-04-08: Vérification de propriété élargie.
-    // Ancienne version : vérifiait uniquement services.specialized_type = 'pharmacie',
-    // ce qui bloquait les partenaires dont la pharmacie était créée avant d'appeler create_pharmacy
-    // (le flag specialized_type n'était pas encore posé).
-    // Nouvelle version : accepte si l'une OU l'autre condition est vraie.
+    // ✅ FIX 2026-05-14: Bypass admin Yukpo pour pharmacie officielle de test.
+    //    Tout user avec role='admin' ou 'super_admin' peut opérer la pharmacie
+    //    flaggée is_official=true (créée par migration 20260514_002).
     let is_owner: bool = sqlx::query_scalar(
         r#"
         SELECT EXISTS (
-            -- Vérification via la table services (chemin normal)
             SELECT 1 FROM services
-            WHERE id = $1 AND user_id = $2
-              AND specialized_type = 'pharmacie'
+            WHERE id = $1 AND user_id = $2 AND specialized_type = 'pharmacie'
             UNION ALL
-            -- Vérification directe via pharmacies.user_id (partenaires validés sans service complet)
+            SELECT 1 FROM pharmacies WHERE service_id = $1 AND user_id = $2
+            UNION ALL
+            -- Bypass admin : tout admin Yukpo peut opérer la pharmacie officielle
             SELECT 1 FROM pharmacies
-            WHERE service_id = $1 AND user_id = $2
+            WHERE service_id = $1 AND is_official = TRUE
+              AND $3 IN ('admin', 'super_admin')
         )
         "#,
     )
     .bind(payload.pharmacy_service_id)
     .bind(user_id)
+    .bind(&user_role)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur vérification propriétaire: {}", e)))?;
 
     if !is_owner {
         error!(
-            "[create_product] Accès refusé: user_id={} n'est pas propriétaire du service_id={}",
-            user_id, payload.pharmacy_service_id
+            "[create_product] Accès refusé: user_id={} (role={}) n'est pas propriétaire du service_id={}",
+            user_id, user_role, payload.pharmacy_service_id
         );
         return Err(AppError::Forbidden(
             "Vous n'êtes pas propriétaire de cette pharmacie".to_string(),
@@ -257,7 +299,11 @@ pub async fn get_pharmacy_products(
 /// Mettre à jour un produit
 pub async fn update_product(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
     Path(product_id): Path<i32>,
     Json(payload): Json<UpdateProductRequest>,
 ) -> AppResult<impl IntoResponse> {
@@ -278,20 +324,10 @@ pub async fn update_product(
     .map_err(|e| AppError::Internal(format!("Erreur récupération produit: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Produit non trouvé".to_string()))?;
 
-    // Vérifier propriétaire
-    let is_owner: bool = sqlx::query_scalar(
-        r#"
-        SELECT EXISTS (
-            SELECT 1 FROM services
-            WHERE id = $1 AND user_id = $2
-        )
-        "#,
-    )
-    .bind(pharmacy_service_id)
-    .bind(user_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
+    // ✅ FIX 2026-05-14: helper avec bypass admin Yukpo (pharmacie officielle)
+    let is_owner = user_can_manage_pharmacy(&state.pg, user_id, &user_role, pharmacy_service_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
 
     if !is_owner {
         return Err(AppError::Forbidden(
@@ -359,7 +395,11 @@ pub struct ExternalCatalogSyncRequest {
 /// Import en masse de produits
 pub async fn bulk_import_products(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
     Json(payload): Json<BulkImportRequest>,
 ) -> AppResult<impl IntoResponse> {
     info!(
@@ -369,20 +409,11 @@ pub async fn bulk_import_products(
         payload.products.len()
     );
 
-    // Vérifier propriétaire
-    let is_owner: bool = sqlx::query_scalar(
-        r#"
-        SELECT EXISTS (
-            SELECT 1 FROM services
-            WHERE id = $1 AND user_id = $2 AND specialized_type = 'pharmacie'
-        )
-        "#,
-    )
-    .bind(payload.pharmacy_service_id)
-    .bind(user_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
+    // ✅ FIX 2026-05-14: helper avec bypass admin Yukpo (pharmacie officielle)
+    let is_owner =
+        user_can_manage_pharmacy(&state.pg, user_id, &user_role, payload.pharmacy_service_id)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
 
     if !is_owner {
         return Err(AppError::Forbidden(
@@ -449,22 +480,17 @@ fn extract_by_path<'a>(value: &'a serde_json::Value, path: &str) -> Option<&'a s
 /// Synchroniser le catalogue depuis une API externe JSON.
 pub async fn sync_products_from_external_api(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
     Json(payload): Json<ExternalCatalogSyncRequest>,
 ) -> AppResult<impl IntoResponse> {
-    let is_owner: bool = sqlx::query_scalar(
-        r#"
-        SELECT EXISTS (
-            SELECT 1 FROM services
-            WHERE id = $1 AND user_id = $2 AND specialized_type = 'pharmacie'
-        )
-        "#,
-    )
-    .bind(payload.pharmacy_service_id)
-    .bind(user_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
+    let is_owner =
+        user_can_manage_pharmacy(&state.pg, user_id, &user_role, payload.pharmacy_service_id)
+            .await
+            .map_err(|e| AppError::Internal(format!("Erreur vérification: {}", e)))?;
 
     if !is_owner {
         return Err(AppError::Forbidden(
@@ -605,7 +631,11 @@ pub async fn sync_products_from_external_api(
 /// Supprimer un produit
 pub async fn delete_product(
     State(state): State<Arc<AppState>>,
-    Extension(AuthenticatedUser { id: user_id, .. }): Extension<AuthenticatedUser>,
+    Extension(AuthenticatedUser {
+        id: user_id,
+        role: user_role,
+        ..
+    }): Extension<AuthenticatedUser>,
     Path(product_id): Path<i32>,
 ) -> AppResult<impl IntoResponse> {
     info!(
@@ -625,19 +655,10 @@ pub async fn delete_product(
     .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?
     .ok_or_else(|| AppError::NotFound("Produit non trouvé".to_string()))?;
 
-    // Vérifier propriétaire
-    let is_owner: bool = sqlx::query_scalar(
-        r#"
-        SELECT EXISTS (
-            SELECT 1 FROM services WHERE id = $1 AND user_id = $2
-        )
-        "#,
-    )
-    .bind(pharmacy_service_id)
-    .bind(user_id)
-    .fetch_one(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
+    // ✅ FIX 2026-05-14: helper avec bypass admin Yukpo (pharmacie officielle)
+    let is_owner = user_can_manage_pharmacy(&state.pg, user_id, &user_role, pharmacy_service_id)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur: {}", e)))?;
 
     if !is_owner {
         return Err(AppError::Forbidden(
