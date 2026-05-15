@@ -8,7 +8,7 @@
 //   - Trie par taux de complétude desc (5/5 > 3/5 > 1/5)
 //   - À expiration, si aucune n'a 100 % → affiche option "élargir le rayon"
 
-import { AlertTriangle, ArrowLeft, Check, Clock, Loader2, MapPin, Package, Phone, Pill, Sparkles, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRightLeft, Check, Clock, Loader2, MapPin, Package, Phone, Pill, Sparkles, X } from 'lucide-react';
 import { QRCodeSVG as QRCode } from 'qrcode.react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,114 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPost } from '@/services/apiService';
 import { useGpsWithFallback } from '@/hooks/useGpsWithFallback';
 import PersonalInteractionsBanner from '@/components/pharmacie/PersonalInteractionsBanner';
+
+interface SubstituteAlt {
+  brand: string;
+  dosage_form?: string | null;
+  notes?: string | null;
+}
+
+interface SubstituteResult {
+  dci: string | null;
+  alternatives: SubstituteAlt[];
+}
+
+const SubstitutesBanner: React.FC<{ unavailableNames: string[] }> = ({ unavailableNames }) => {
+  const [data, setData] = useState<Record<string, SubstituteResult> | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchSubs = useCallback(async () => {
+    if (unavailableNames.length === 0) return;
+    setLoading(true);
+    try {
+      const r = await apiPost('/api/medications/substitutes', { names: unavailableNames });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      setData(j?.results || {});
+    } catch {
+      setData({});
+    } finally {
+      setLoading(false);
+    }
+  }, [unavailableNames]);
+
+  if (unavailableNames.length === 0) return null;
+
+  // Filtrer les résultats qui ont des alternatives
+  const withAlts = data
+    ? Object.entries(data).filter(([_, r]) => r.alternatives.length > 0)
+    : [];
+
+  return (
+    <div className="rounded-2xl border-2 border-purple-200 bg-purple-50 px-4 py-3">
+      <div className="flex items-start gap-3 mb-2">
+        <ArrowRightLeft className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold text-purple-700 uppercase tracking-wide">
+            Équivalents génériques disponibles
+          </p>
+          <p className="text-xs text-purple-900 mt-0.5 leading-snug">
+            {unavailableNames.length} médicament(s) indisponible(s) — Yukpo peut chercher des
+            génériques équivalents (même DCI) dans les pharmacies voisines.
+          </p>
+        </div>
+      </div>
+
+      {data === null && (
+        <button
+          onClick={fetchSubs}
+          disabled={loading}
+          className="w-full mt-2 px-4 py-2.5 rounded-xl bg-purple-600 text-white text-sm font-semibold hover:bg-purple-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
+          Chercher des équivalents
+        </button>
+      )}
+
+      {data !== null && withAlts.length === 0 && (
+        <p className="text-[11px] text-purple-700/80 italic mt-1">
+          Aucun équivalent générique connu dans notre base. Demandez conseil à votre pharmacien.
+        </p>
+      )}
+
+      {withAlts.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {withAlts.map(([name, r]) => (
+            <div key={name} className="bg-white rounded-xl p-2.5 border border-purple-100">
+              <div className="text-xs font-semibold text-gray-800">
+                {name}
+                {r.dci && (
+                  <span className="ml-1.5 text-[10px] text-purple-700 font-normal">
+                    ({r.dci})
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {r.alternatives.slice(0, 6).map((a, i) => (
+                  <span
+                    key={i}
+                    className="inline-block px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[11px] font-medium"
+                  >
+                    {a.brand}
+                  </span>
+                ))}
+                {r.alternatives.length > 6 && (
+                  <span className="text-[10px] text-purple-600 italic self-center">
+                    +{r.alternatives.length - 6}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+          <p className="text-[10px] text-purple-700/70 italic mt-1">
+            Une marque générique = même DCI = effet thérapeutique équivalent. Confirmez avec votre pharmacien
+            l'équivalence exacte de dosage avant substitution.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface ItemStatus {
   name: string;
@@ -175,6 +283,24 @@ const MedicationAlertPage: React.FC = () => {
   const fullMatches = data.matches.filter(m => m.found_count === m.total_count);
   const partialMatches = data.matches.filter(m => m.found_count < m.total_count);
 
+  // ✅ Phase C3 (2026-05-15) — Substitution générique. Pour chaque médicament
+  // demandé, on vérifie s'il est disponible chez au moins une pharmacie qui a
+  // répondu. Sinon, on propose à l'utilisateur de chercher un équivalent
+  // générique via la table dci_equivalents.
+  const unavailableMedications: string[] = (() => {
+    if (data.matches.length === 0) return [];
+    // Set des noms (lowercase) disponibles quelque part
+    const availableNames = new Set<string>();
+    for (const m of data.matches) {
+      for (const it of m.items_status) {
+        if (it.available) availableNames.add(it.name.trim().toLowerCase());
+      }
+    }
+    // On déduit les "demandés" depuis items_status de la 1ère pharmacie
+    const allNames = data.matches[0]?.items_status?.map(s => s.name) || [];
+    return allNames.filter(n => !availableNames.has(n.trim().toLowerCase()));
+  })();
+
   // ✅ Budget total de l'ordonnance (prix harmonisés au CM → identique entre
   // pharmacies). On prend la 1ère pharmacie 100% si disponible, sinon le
   // meilleur match partiel + indique que c'est partiel.
@@ -254,6 +380,14 @@ const MedicationAlertPage: React.FC = () => {
             .map(m => (
               <PickupReadyCard key={`pickup-${m.pharmacy_id}`} match={m} />
             ))}
+
+          {/* Phase C3 : substitution générique. Visible si au moins un
+              médicament demandé n'est dispo chez AUCUNE pharmacie ayant
+              répondu — propose les équivalents (même DCI) dans une autre
+              pharmacie. */}
+          {unavailableMedications.length > 0 && (
+            <SubstitutesBanner unavailableNames={unavailableMedications} />
+          )}
 
           {/* Budget total de l'ordonnance — visible en haut. Les prix des
               médicaments sont harmonisés au Cameroun (régulation MINSANTE)
