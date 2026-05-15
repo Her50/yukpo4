@@ -1450,6 +1450,27 @@ const RecapAchatPage: React.FC = () => {
         >
           {t('bourse.recap.add_more')}
         </button>
+
+        {/* ✅ 2026-05-15 (Phase 2) : CTA Cahiers & Accessoires après la
+            sélection des livres. Apparaît juste avant la validation pour
+            inviter le parent à compléter sa commande avec les fournitures. */}
+        <button
+          onClick={() => navigate('/cahiers-accessoires')}
+          className="w-full mt-3 flex items-start gap-3 px-4 py-3 bg-purple-50 border-2 border-purple-200 hover:border-purple-300 active:bg-purple-100 rounded-2xl text-left"
+        >
+          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-lg">✏️</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm text-purple-900 leading-tight">
+              {t('bourse.recap.cahiers_cta_title', { defaultValue: 'Compléter avec les cahiers & accessoires' })}
+            </p>
+            <p className="text-[11px] text-purple-700 leading-snug mt-0.5">
+              {t('bourse.recap.cahiers_cta_desc', { defaultValue: 'Liste agrégée par classe, déjà calculée selon vos enfants.' })}
+            </p>
+          </div>
+          <span className="text-purple-600 mt-2 flex-shrink-0">→</span>
+        </button>
       </div>
 
       {/* Bottom bar sticky */}

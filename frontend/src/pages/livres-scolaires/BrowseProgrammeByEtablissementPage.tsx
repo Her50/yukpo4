@@ -258,6 +258,11 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
     setError('');
     setLoaded(false);
     try {
+      // ✅ 2026-05-15 (Phase 2) : on ne fetch QUE les livres ici. Les cahiers/
+      // fournitures ont été déplacés sur la page dédiée /cahiers-accessoires
+      // (accessible depuis la home + Recap après validation commande). Cela
+      // évite d'afficher les fournitures à chaque étape de sélection (pour
+      // chaque classe) et garde Browse focalisé sur la sélection des livres.
       const fetchGroup = async (groupe: 'livres' | 'fournitures'): Promise<any[]> => {
         const p = new URLSearchParams();
         p.set('classe', classe);
@@ -269,11 +274,8 @@ const BrowseProgrammeByEtablissementPage: React.FC = () => {
         if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
         return (data?.items || []) as any[];
       };
-      const [livresRaw, fournituresRaw] = await Promise.all([
-        fetchGroup('livres'),
-        fetchGroup('fournitures'),
-      ]);
-      const all = [...livresRaw, ...fournituresRaw];
+      const livresRaw = await fetchGroup('livres');
+      const all = livresRaw;
 
       const mapped: ProgrammeItem[] = all.map((m: any): ProgrammeItem => {
         const rawType = String(m.type_article || m.type || 'livre').toLowerCase();

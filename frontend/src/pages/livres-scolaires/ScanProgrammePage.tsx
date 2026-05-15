@@ -262,15 +262,21 @@ const ScanProgrammePage: React.FC = () => {
   // alias pour retro-compatibilité
   const duplicateItem = (idx: number) => requestDuplicate(idx);
   const allSelected = items.length > 0 && items.every(it => it.selected);
-  const selectedCount = items.filter(it => it.selected).length;
-  const occasionCount = items.filter(it => it.selected && it.choix === 'occasion').length;
+  // ✅ 2026-05-15 (Phase 2) : compte et tri ne portent QUE sur les livres
+  // affichés (cahiers/fournitures gérés sur la page dédiée).
+  const selectedCount = items.filter(it => it.selected && categorieDe(it.type) === 'livres').length;
+  const occasionCount = items.filter(it => it.selected && it.choix === 'occasion' && categorieDe(it.type) === 'livres').length;
   const totalEstime = items
     .filter(it => it.selected && it.prix && it.prix > 0)
     .reduce((sum, it) => sum + effectivePrice(it) * (it.quantite ?? 1), 0);
 
-  /** Items regroupés par rubrique dans l'ordre fixe : livres → cahiers → fournitures.
-   *  On conserve l'index original pour rester compatible avec les handlers
-   *  toggleItem(i)/adjustQuantite(i)/duplicateItem(i) etc. */
+  /** Items regroupés par rubrique. On conserve l'index original pour rester
+   *  compatible avec les handlers toggleItem(i)/adjustQuantite(i)/duplicateItem(i).
+   *  ✅ 2026-05-15 (Phase 2) : on n'affiche QUE la section livres ici. Les
+   *  cahiers/fournitures extraits par le scan sont gérés sur la page dédiée
+   *  /cahiers-accessoires (accessible après validation de la commande).
+   *  Les items non-livres restent dans `items` (state) au cas où on voudrait
+   *  les exploiter ailleurs, mais ne sont pas rendus dans ce tableau. */
   const groupedItems: { cat: CategorieAffichage; entries: { item: ExtractedItem; idx: number }[] }[] = (() => {
     const buckets: Record<CategorieAffichage, { item: ExtractedItem; idx: number }[]> = {
       livres: [], cahiers: [], fournitures: [],
@@ -278,10 +284,17 @@ const ScanProgrammePage: React.FC = () => {
     items.forEach((item, idx) => {
       buckets[categorieDe(item.type)].push({ item, idx });
     });
-    return (['livres', 'cahiers', 'fournitures'] as CategorieAffichage[])
+    return (['livres'] as CategorieAffichage[])
       .filter(cat => buckets[cat].length > 0)
       .map(cat => ({ cat, entries: buckets[cat] }));
   })();
+
+  /** Compte de cahiers/fournitures détectés par le scan mais non affichés ici.
+   *  Sert à inviter l'user à utiliser la page dédiée /cahiers-accessoires. */
+  const nbFournituresDetectees = items.filter(it => {
+    const c = categorieDe(it.type);
+    return c === 'cahiers' || c === 'fournitures';
+  }).length;
 
   /** Enrichit les items dont le prix est manquant via le matching IA backend
    *  (POST /api/bourse-livre/v2/match-programmes-by-title : pg_trgm + IA Claude
@@ -531,7 +544,10 @@ const ScanProgrammePage: React.FC = () => {
   const submit = () => submitWithFiles(files);
 
   const doAddToCart = (enfantId: string) => {
-    const selected = items.filter(it => it.selected);
+    // ✅ 2026-05-15 (Phase 2) : on ajoute UNIQUEMENT les livres au panier.
+    // Les cahiers/fournitures extraits par le scan sont à gérer sur la
+    // page dédiée /cahiers-accessoires (CTA dans Recap).
+    const selected = items.filter(it => it.selected && categorieDe(it.type) === 'livres');
     if (!selected.length) { toast({ title: t('bourse.scan.toast_select_one'), variant: 'destructive' }); return; }
     setSaving(true);
     addItems(selected.map(it => ({

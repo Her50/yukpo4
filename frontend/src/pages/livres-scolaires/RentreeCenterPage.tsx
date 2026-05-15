@@ -314,9 +314,11 @@ const RentreeCenterPage: React.FC = () => {
           if (!res.ok) throw new Error(data?.message || 'load failed');
           return (data?.items || []) as SuggestionItem[];
         };
-        const [livres, fournitures] = await Promise.all([fetchGroup('livres'), fetchGroup('fournitures')]);
+        // ✅ 2026-05-15 (Phase 2) : on ne fetch QUE les livres. Les cahiers/
+        // fournitures vivent sur la page dédiée /cahiers-accessoires.
+        const livres = await fetchGroup('livres');
         if (cancelled) return;
-        const items = [...livres, ...fournitures];
+        const items = livres;
         setSuggestions(items);
         // ✅ Pré-sélection : les LIVRES du programme officiel sont cochés
         // par défaut (qte=quantite_defaut||1), comme sur ScanProgrammePage.
